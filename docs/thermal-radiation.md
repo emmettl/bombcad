@@ -225,10 +225,9 @@ see [With the gas cooling](#with-the-gas-cooling) for why.
 - **It is taken on the GPU** every `interval` steps, four by default, and at each batch's end,
   for the time since: the box round the luminous cells is found as the medium is made, the 13
   lines are marched together (one at a time in a box of over a million cells), and each luminous
-  cell's loss over that time comes off its energy,
-  its density and momentum unchanged. A cell may lose at most a quarter of its internal energy
-  at once, a guard never reached: the outer cells of an opaque fireball at 3,000 K lose under a
-  hundredth of their heat a step. Where the air is refined, the coarse cells lose it and the
+  cell's loss over that time comes off its energy, its density and momentum unchanged. A cell
+  may lose at most a quarter of its internal energy at once, a guard never reached: the outer
+  cells of an opaque fireball at 3,000 K lose under a hundredth of their heat a step. Where the air is refined, the coarse cells lose it and the
   fine cells under them lose as much a volume, as they take what debris trades with the air, so
   that the levels agree and the energy is still conserved across their edges.
 - **What it radiated** is added up in a fixed order, so runs repeat exactly, as
