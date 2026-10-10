@@ -113,7 +113,8 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    within 6% of Kingery–Bulmash; and the air's dissociation, as an option, which moves those
    by under 1% in the open and up to 6% in the densest rooms, at 3.6 times the cost; see the
    [air-blast model](air-blast-model.md#dissociating-air).)
-4. **Shear in concrete.** A member that failed in shear under a blast, to judge a sectional
+4. **Shear in concrete.** (The [concrete strategy](concrete-strategy.md) proposes discrete bars,
+   then embedded cracks where members fail in shear.) A member that failed in shear under a blast, to judge a sectional
    check for shells; a sectional check that works under impact, where the present one breaks
    every beam; and solid elements that fail in shear on coarse meshes, which cannot separate
    cracks 100 mm apart on 46 mm elements; crack tracking did not help without bond slip (see
@@ -165,7 +166,9 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    and which the specimen's inertia, already in the model, needs evidence from tests built to
    separate them.
 6. **Close-in damage**: spalling of the faces, and a breach under the charge, which the
-   close-in slabs show and the model does not produce on any mesh. (Done: bars that outlive
+   close-in slabs show and the model does not produce on any mesh. (The
+   [concrete strategy](concrete-strategy.md) proposes failed concrete turned to particles, not
+   deleted, then a peridynamic zone if needed.) (Done: bars that outlive
    the concrete around them, as bare elements, so that a holed member hangs on its bars; see
    [Removal](concrete-model.md#removal). And a fracture energy that grows more slowly with
    strain rate than the strength, after which the reflected wave spalls the far face under a
