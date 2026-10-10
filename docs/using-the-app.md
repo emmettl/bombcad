@@ -20,7 +20,7 @@ run `python3 Scripts/prepare-ifc-converter.py` first to enable IFC import.
 [Releasing](releasing.md) describes signed, notarized builds for other Macs.
 
 In the view: drag or two-finger scroll to orbit, shift-drag or right-drag to pan, pinch or mouse
-wheel to zoom. Space runs and pauses, ⌘R resets.
+wheel to zoom (out to three times the domain's longest side). Space runs and pauses, ⌘R resets.
 
 The sidebar has two tabs. **Run** picks a built-in layout, the grid, the charge and the display.
 The layouts are open ground, a single building, a street canyon and a courtyard (rigid blocks);
@@ -41,6 +41,17 @@ document containing the scene, simulation settings, camera and embedded import s
 reopen without the original OBJ/STL files. Named projects autosave; each
 project has its own window, and closing an edited untitled project asks whether to save.
 BombCAD → Settings (⌘,) sets defaults for new projects and playback windows.
+
+**Large scenes.** The charge's slider runs from 1 kg to 10 kt. The **Grid** offers, beside the
+0.5, 0.25 and 0.125 m presets, cells scaled to a large charge (0.2, 0.1 and 0.05 m/kg^(1/3)), and
+**Cell size** takes any size from 0.01 to 200 m. **Domain** sets the air's extent from its origin,
+keeping everything where it is; **Height for the far ground** raises the open top to what the
+farthest ground needs (1.5 √(R W^(1/3))); and for an open scene, with nothing in it but the
+charge, gauges and terrain, **Fit to the charge** makes a square domain reaching 10, 20 or 40
+m/kg^(1/3), centres the charge in it and chooses a grid scaled to it. Under Gauges, **Add Gauge
+Line** lays gauges outward from the charge at the Kingery–Bulmash scaled distances that fit; up to
+64 gauges are recorded. The Thermal section sets how far apart its ground receivers stand, at
+most 250,000 of them. See [Large scenes](large-scenes.md) for which grid to choose.
 The More menu offers Save As and Import Layout JSON. Export Layout JSON saves just the scene. See [Save files](save-files.md).
 
 **Import Model…** reads watertight OBJ/STL geometry and IFC buildings. Confirm source units, up axis and

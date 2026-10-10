@@ -222,13 +222,21 @@ public final class StructureSolver {
         constants.setConstantValue(&single, type: .bool, index: 0)
         var traced = false
         constants.setConstantValue(&traced, type: .bool, index: 3)
+        var secant = model.hourglassFollowsCracking
+        var withoutSteel = !model.hourglassCapsSteel
+        constants.setConstantValue(&secant, type: .bool, index: 8)
+        constants.setConstantValue(&withoutSteel, type: .bool, index: 9)
         elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
         traceElementPipeline = {
             let tracing = MTLFunctionConstantValues()
             var single = single
             var traced = true
+            var secant = secant
+            var withoutSteel = withoutSteel
             tracing.setConstantValue(&single, type: .bool, index: 0)
             tracing.setConstantValue(&traced, type: .bool, index: 3)
+            tracing.setConstantValue(&secant, type: .bool, index: 8)
+            tracing.setConstantValue(&withoutSteel, type: .bool, index: 9)
             return try? ShaderLibrary.pipeline("structureElements", in: library, constants: tracing)
         }
         // Keep the general connection law out of kernels for ordinary clamped/free bodies.
@@ -841,20 +849,22 @@ public final class StructureSolver {
         /// `tensionNormal` on planes cracked, but by less than 0.1 mm: the concrete between
         /// cracks, as far as the mesh separates it.
         case tensionHairline
+        /// Hourglass control held at its cap, where it dissipates: not counted in `hourglass`.
+        case hourglassCapped
 
         public var label: String {
             [
                 "tension", "compression", "uncracked shear", "interlock", "dowel", "kinking", "bars", "bond",
                 "hourglass", "other", "viscosity", "crack shear", "interlock, pressed",
                 "crack shear, pressed",
-                "tension, cracked", "compression, crushed", "tension, hairline",
+                "tension, cracked", "compression, crushed", "tension, hairline", "hourglass, capped",
             ][rawValue]
         }
     }
 
     /// Adds each element's work by mechanism to a trace (`workTotals`), as a diagnostic of where
     /// a structure's stiffness and strength come from. Off by default; it costs a buffer of
-    /// seventeen floats per element.
+    /// eighteen floats per element.
     public var tracesWork = false {
         didSet {
             guard tracesWork, workBuffer == nil else { return }

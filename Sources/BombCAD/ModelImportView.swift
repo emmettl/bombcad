@@ -205,11 +205,9 @@ struct ModelImportView: View {
                             detailed: model.settings.detailedCharge, refined: model.settings.sharpShocks,
                             memoryBudget: memory.budget,
                             chooseGrid: { value in
-                                if let r = Resolution.allCases.first(where: { $0.cellSize == value }) {
-                                    resolution = r
-                                }
+                                if let r = Resolution(cellSize: value) { resolution = r }
                             },
-                            canRefine: resolution != .fine, refine: { previewFiner() }
+                            canRefine: resolution.finer != nil, refine: { previewFiner() }
                         )
                         .opacity(isPreviewCurrent ? 1 : 0.4).allowsHitTesting(isPreviewCurrent)
                     } else if !busy {
@@ -475,11 +473,7 @@ struct ModelImportView: View {
         previewModel.update(currentRequest, delay: immediately ? .zero : .milliseconds(350))
     }
     private func previewFiner() {
-        switch resolution {
-        case .coarse: resolution = .medium
-        case .medium: resolution = .fine
-        case .fine: break
-        }
+        if let finer = resolution.finer { resolution = finer }
     }
     private enum Placement { case center, ground, expand }
     private func place(_ action: Placement) {

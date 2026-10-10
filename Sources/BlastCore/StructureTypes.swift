@@ -564,6 +564,14 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// saved.
     public internal(set) var detectedRegime: StructuralRegime?
     public internal(set) var detectedLoading: StructuralLoading?
+    /// Whether a cracked solid element's hourglass control (the bending its one integration point
+    /// cannot feel) stiffens only as its most opened crack's secant share of the elastic, instead
+    /// of as an uncracked element whatever its cracking, up to the cap.
+    public var hourglassFollowsCracking = false
+    /// Whether the bars' strength counts in the cap on a solid element's hourglass control, as if
+    /// they were spread through its depth and so could bend it; off, only the concrete's
+    /// remaining strength does.
+    public var hourglassCapsSteel = true
     /// Bars take their strain rate, for their strain-rate law, as their stretching rate averaged
     /// over their debonded length (the window their rupture is judged over), instead of the
     /// effective strain rate of the element they run through, which grows as the mesh is
@@ -1261,6 +1269,7 @@ extension StructureModel {
             solidElementKind
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
         case slipWidensCracks, pressedInterlock, regimeOverride, loadingOverride, regimeDefaults
+        case hourglassFollowsCracking, hourglassCapsSteel
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -1290,6 +1299,10 @@ extension StructureModel {
         try container.encodeIfPresent(regimeOverride, forKey: .regimeOverride)
         try container.encodeIfPresent(loadingOverride, forKey: .loadingOverride)
         if !regimeDefaults { try container.encode(regimeDefaults, forKey: .regimeDefaults) }
+        if hourglassFollowsCracking {
+            try container.encode(hourglassFollowsCracking, forKey: .hourglassFollowsCracking)
+        }
+        if !hourglassCapsSteel { try container.encode(hourglassCapsSteel, forKey: .hourglassCapsSteel) }
         try container.encodeIfPresent(bondSlip, forKey: .bondSlip)
         try container.encode(crackShearStiffness, forKey: .crackShearStiffness)
         try container.encode(barRateAlongBars, forKey: .barRateAlongBars)
@@ -1332,6 +1345,9 @@ extension StructureModel {
         regimeOverride = try container.decodeIfPresent(StructuralRegime.self, forKey: .regimeOverride)
         loadingOverride = try container.decodeIfPresent(StructuralLoading.self, forKey: .loadingOverride)
         regimeDefaults = try container.decodeIfPresent(Bool.self, forKey: .regimeDefaults) ?? true
+        hourglassFollowsCracking =
+            try container.decodeIfPresent(Bool.self, forKey: .hourglassFollowsCracking) ?? false
+        hourglassCapsSteel = try container.decodeIfPresent(Bool.self, forKey: .hourglassCapsSteel) ?? true
         bondSlip = try container.decodeIfPresent(BondSlip.self, forKey: .bondSlip)
         crackShearStiffness = try container.decodeIfPresent(Bool.self, forKey: .crackShearStiffness) ?? false
         barRateAlongBars = try container.decodeIfPresent(Bool.self, forKey: .barRateAlongBars) ?? true
