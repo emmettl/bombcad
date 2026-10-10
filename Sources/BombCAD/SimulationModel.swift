@@ -997,6 +997,10 @@ final class SimulationModel {
 
     var domainSize: SIMD3<Float> { settings.scenario.domainSize }
 
+    /// The farthest the view zooms out: three times the domain's longest side, and no less than
+    /// SceneView's own 600 m.
+    var farthestZoom: Float { max(3 * max(domainSize.x, domainSize.y, domainSize.z), 600) }
+
     // MARK: - Editing the layout
 
     /// The box picked out for editing, if it still exists.
