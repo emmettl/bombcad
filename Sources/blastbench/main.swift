@@ -121,6 +121,8 @@ func chosenScenario() -> Scenario {
     if let distance = option("solid-near").flatMap({ Float($0) }), let structure = scenario.structure {
         scenario.structure = structure.solidNear(scenario.charge.position, within: distance, shellSize: 0.25)
     }
+    // `--terrain hill|ridge|slope|flat|dem.asc` lays a terrain under the scene (TerrainBench.swift).
+    if let terrain = option("terrain") { applyTerrain(terrain, to: &scenario) }
     return scenario
 }
 

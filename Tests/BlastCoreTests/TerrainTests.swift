@@ -174,3 +174,94 @@ struct TerrainTests {
         }
     }
 }
+
+/// What follows the terrain besides the air: fragments landing, thermal receivers.
+@Suite("Terrain downstream")
+struct TerrainDownstreamTests {
+    /// Still air of `density` over a 100 m cube, for `duration` from `start`.
+    private func still(density: Float, from start: Double, duration: Double) -> (AirSlice, AirSlice) {
+        let counts = SIMD3<Int32>(repeating: 10)
+        let values = [Float16](
+            repeating: 0, count: 5 * 1000
+        ).enumerated().map { n, _ in n % 5 == 0 ? Float16(density) : n % 5 == 4 ? Float16(0.101325) : 0 }
+        let ambient = Primitive(density: density, pressure: 101_325)
+        let a = AirSlice(
+            time: start, cellSize: 10, grid: counts, first: .zero, counts: counts, stride: 1, values: values,
+            ambient: ambient)
+        var b = a
+        b.time = start + duration
+        return (a, b)
+    }
+
+    @Test("A fragment lands on the terrain's surface, where its path meets it")
+    func fragmentLands() {
+        // A 30° slope rising along x from x = 20 m; dropped from 30 m over x = 40 m, where the
+        // surface is 20 tan 30° = 11.55 m up.
+        let terrain = Terrain.slope(domain: SIMD3(100, 100, 50), spacing: 1, foot: 20, angle: 30)
+        var cloud = FragmentCloud(
+            particles: [.init(position: SIMD3(40, 50, 30), velocity: .zero, mass: 0.01, area: 1e-4)],
+            terrain: terrain)
+        var t = 0.0
+        while cloud.airborne > 0, t < 5 {
+            let (a, b) = still(density: 0, from: t, duration: 0.01)
+            cloud.advance(from: a, to: b)
+            t += 0.01
+        }
+        let impact = cloud.impacts[0]
+        #expect(impact.surface == "ground")
+        #expect(abs(impact.position.z - 20 * tan(Float.pi / 6)) < 1e-3)
+        #expect(abs(impact.time - (2 * (30 - 11.547) / 9.81).squareRoot()) < 2e-3)
+    }
+
+    @Test("Thermal receivers on the ground lie on the terrain, facing out of it")
+    func thermalReceivers() throws {
+        var scenario = Scenario(
+            name: "Hill", domainSize: SIMD3(40, 30, 20), boxes: [],
+            charge: Charge(mass: 10, position: SIMD3(5, 15, 1)))
+        let hill = Terrain.hill(
+            domain: scenario.domainSize, spacing: 0.5, centre: SIMD2(25, 15), height: 6, radius: 5)
+        scenario.terrain = hill
+        let grids = ThermalExposure.surfaceGrids(scene: FragmentScene(scenario), spec: ThermalSpec())
+        let ground = try #require(grids.first { $0.surface == "ground" })
+        #expect(!ground.receivers.isEmpty)
+        for receiver in ground.receivers {
+            // A millimetre off the surface along the normal there.
+            let foot = receiver.position - 0.001 * receiver.normal
+            #expect(simd_distance(receiver.normal, hill.normal(at: SIMD2(foot.x, foot.y))) < 1e-5)
+            #expect(abs(foot.z - hill.height(at: foot)) < 1e-4)
+        }
+        #expect(ground.receivers.contains { $0.normal.z < 0.9 })
+    }
+
+    @Test("The USD export carries the terrain as a mesh of its nodes")
+    func usd() throws {
+        let folder = FileManager.default.temporaryDirectory.appending(
+            path: "terrain-usd-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appending(path: "scene.usda")
+        var scenario = Scenario(
+            name: "Ridge", domainSize: SIMD3(12, 8, 6), boxes: [],
+            charge: Charge(mass: 1, position: SIMD3(2, 4, 0.5)))
+        scenario.terrain = .ridge(domain: scenario.domainSize, spacing: 2, crest: 6, height: 2, halfWidth: 3)
+        let writer = try USDSceneWriter(url: url, scenario: scenario, frameInterval: 0.001)
+        try writer.append(nil)
+        try writer.finish()
+        let text = try String(contentsOf: url, encoding: .utf8)
+        #expect(text.contains("def Mesh \"Terrain\""))
+        #expect(text.contains("bombcad:terrainSource = \"ridge 2.0 m high, 6.0 m wide\""))
+        // 7 × 5 nodes, 6 × 4 quads; the crest's nodes are 2 m up.
+        let mesh = try #require(text.components(separatedBy: "def Mesh \"Terrain\"").last)
+        let points = try #require(
+            mesh.components(separatedBy: "point3f[] points = [").last?.prefix { $0 != "]" })
+        #expect(points.components(separatedBy: "), (").count == 35)
+        #expect(points.contains("(6, 0, 2)"))
+        // Flat ground has none.
+        scenario.terrain = .flat(domain: scenario.domainSize, spacing: 2)
+        let flatURL = folder.appending(path: "flat.usda")
+        let flat = try USDSceneWriter(url: flatURL, scenario: scenario, frameInterval: 0.001)
+        try flat.append(nil)
+        try flat.finish()
+        #expect(try !String(contentsOf: flatURL, encoding: .utf8).contains("Terrain"))
+    }
+}

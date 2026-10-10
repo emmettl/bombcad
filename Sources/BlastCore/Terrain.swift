@@ -223,3 +223,29 @@ extension Terrain {
         try c.encode(data, forKey: .heights)
     }
 }
+
+// MARK: - Scenes
+
+extension Scenario {
+    /// The ground's height under `point`: the terrain's, or the floor's.
+    public func groundHeight(at point: SIMD3<Float>) -> Float { terrain?.height(at: point) ?? 0 }
+
+    /// Lays `terrain` (nil for flat ground) under the scene, moving the charges and gauges up or
+    /// down by as much as the ground under each moves, so that what stood on it, or so high above
+    /// it, still does.
+    public mutating func replaceTerrain(with terrain: Terrain?) {
+        let old = self.terrain
+        func shift(_ point: inout SIMD3<Float>) {
+            let before = old?.height(at: point) ?? 0
+            let after = terrain?.height(at: point) ?? 0
+            point.z = max(0, point.z + after - before)
+        }
+        shift(&charge.position)
+        if var extra = additionalCharges {
+            for n in extra.indices { shift(&extra[n].position) }
+            additionalCharges = extra
+        }
+        for n in gauges.indices { shift(&gauges[n].position) }
+        self.terrain = terrain
+    }
+}

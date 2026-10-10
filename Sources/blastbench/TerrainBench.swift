@@ -12,7 +12,6 @@ import simd
 //   blastbench terrain --dem file.asc|file.tif --origin x,y [--size 200,200] [--spacing 1]   (a DEM's crop)
 //   [--out dir]   (CSV of every row; default /Volumes/StudioData/bombcad/terrain)
 
-@MainActor
 func runTerrain(device: MTLDevice) throws {
     let out = URL(filePath: option("out") ?? "/Volumes/StudioData/bombcad/terrain")
     try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
@@ -28,12 +27,10 @@ func runTerrain(device: MTLDevice) throws {
     }
 }
 
-@MainActor
 private func list(_ name: String, _ fallback: [Double]) -> [Double] {
     option(name).map { $0.split(separator: ",").compactMap { Double($0) } } ?? fallback
 }
 
-@MainActor
 private func runWedgeStudy(device: MTLDevice, out: URL) throws {
     let mach = option("mach").flatMap(Double.init) ?? 2
     let wedges = list("wedges", [20, 30, 40, 45, 48, 50, 52, 55, 60])
@@ -98,7 +95,6 @@ private struct ProfileRun {
 
 /// A surface burst of `mass` at x = 5 m on the centreline, the y = 0 face a mirror (so half the
 /// charge is laid down), over `terrain` or flat ground, with `blocks`.
-@MainActor
 private func profileRun(
     device: MTLDevice, mass: Float, domain: SIMD3<Float>, terrain: Terrain?, blocks: [Box] = [], dx: Float,
     duration: Double, gauges: [Float]
@@ -189,7 +185,6 @@ private func interpolate(_ xs: [Float], _ values: [Double], at x: Float) -> Doub
     return values[upper - 1] + f * (values[upper] - values[upper - 1])
 }
 
-@MainActor
 private func runShieldStudy(device: MTLDevice, out: URL) throws {
     let mass = option("mass").flatMap(Float.init) ?? 100
     let dx = option("dx").flatMap(Float.init) ?? 0.25
@@ -261,7 +256,6 @@ private func runShieldStudy(device: MTLDevice, out: URL) throws {
     try arrivals.write(to: out.appending(path: "shield-gauges-\(tag).csv"), atomically: true, encoding: .utf8)
 }
 
-@MainActor
 private func runHillStudy(device: MTLDevice, out: URL) throws {
     let mass = option("mass").flatMap(Float.init) ?? 100
     let cells = list("dx", [0.5, 0.25, 0.125]).map(Float.init)
@@ -309,7 +303,6 @@ private func runHillStudy(device: MTLDevice, out: URL) throws {
     try csv.write(to: out.appending(path: "hill-\(tag).csv"), atomically: true, encoding: .utf8)
 }
 
-@MainActor
 private func runTerrainDEM(_ path: String) throws {
     let grid = try ElevationGrid(contentsOf: URL(filePath: path))
     let origin = list("origin", [grid.southWest.x, grid.southWest.y])
@@ -322,4 +315,48 @@ private func runTerrainDEM(_ path: String) throws {
         "\(grid.columns) × \(grid.rows) cells of \(grid.step.x) \(grid.units.rawValue); crop "
             + "\(terrain.columns) × \(terrain.rows) nodes, \(report.lowest)–\(report.highest) m, "
             + "\(report.filled) filled; relief \(terrain.highest) m")
+}
+
+/// Lays `name`'s terrain under `scenario`: a hill, a ridge across x, a 20° slope or flat ground
+/// a metre apart, centred on the domain's floor and half the domain's height at most; or a DEM's
+/// crop from `--origin` (the DEM's south-west corner by default) at `--spacing` (1 m). The charge
+/// (moved to `--charge-at x,y` if given) and the gauges are lifted onto it.
+func applyTerrain(_ name: String, to scenario: inout Scenario) {
+    let domain = scenario.domainSize
+    let centre = SIMD2(domain.x, domain.y) / 2
+    let spacing = option("spacing").flatMap(Float.init) ?? 1
+    let height = 0.4 * domain.z
+    var terrain: Terrain
+    switch name {
+    case "hill":
+        terrain = .hill(
+            domain: domain, spacing: spacing, centre: centre, height: height, radius: 0.15 * domain.x)
+    case "ridge":
+        terrain = .ridge(
+            domain: domain, spacing: spacing, crest: centre.x, height: height, halfWidth: 2 * height)
+    case "slope": terrain = .slope(domain: domain, spacing: spacing, foot: 0.3 * domain.x, angle: 20)
+    case "flat": terrain = .flat(domain: domain, spacing: spacing)
+    default:
+        do {
+            let grid = try ElevationGrid(contentsOf: URL(filePath: name))
+            let origin = list("origin", [grid.southWest.x, grid.southWest.y])
+            terrain = try grid.terrain(
+                origin: SIMD2(origin[0], origin[1]), size: SIMD2(domain.x, domain.y), spacing: spacing,
+                name: URL(filePath: name).lastPathComponent
+            ).terrain
+        } catch {
+            print("Could not read the terrain \(name): \(error)")
+            exit(1)
+        }
+    }
+    if terrain.highest >= domain.z {
+        terrain.heights = terrain.heights.map { $0 * 0.5 * domain.z / terrain.highest }
+        print("Scaled the terrain to half the domain's height.")
+    }
+    if let at = option("charge-at").map({ $0.split(separator: ",").compactMap { Float($0) } }), at.count == 2
+    {
+        scenario.charge.position.x = at[0]
+        scenario.charge.position.y = at[1]
+    }
+    scenario.replaceTerrain(with: terrain)
 }
