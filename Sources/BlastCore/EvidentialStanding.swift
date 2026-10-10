@@ -1567,8 +1567,8 @@ private struct StandingScene {
         if inputs.fragments == nil { effects.append("Casing fragments: the charge is bare.") }
         if has(.terrain) {
             effects.append(
-                "The terrain is unseen by the thermal radiation, freestanding objects, footings and fragments "
-                    + "crossing a ridge within a step.")
+                "The terrain does not hide the fireball from receivers; freestanding objects and footings stay "
+                    + "on level ground, and ground points' soil is level beneath it.")
         }
         if !(inputs.scenario.rigidObjects ?? []).isEmpty || !(inputs.scenario.rigidCars ?? []).isEmpty {
             effects.append("Freestanding objects in the ordinary run: they move only in Compute Motion.")
