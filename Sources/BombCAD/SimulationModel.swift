@@ -1895,13 +1895,18 @@ final class SimulationModel {
             return
         }
 
+        // Steps are cut short only to land on the end and on samples, which are the same at any
+        // speed. The playback clock only says when the next batch may start and how many steps
+        // it takes: cutting steps to it made a paced run take many more, shorter steps than one
+        // as fast as possible, and different ones each time.
         var limit = duration
+        if samples { limit = min(limit, nextStructureSampleTime) }
+        var target = limit
         if speed != .unlimited {
             let wall = (ContinuousClock.now - paceOriginWall).seconds
-            limit = min(duration, paceOriginTime + wall / speed.rawValue)
+            target = min(limit, paceOriginTime + wall / speed.rawValue)
         }
-        if samples { limit = min(limit, nextStructureSampleTime) }
-        let remaining = limit - solver.time
+        let remaining = target - solver.time
         guard remaining > 1e-9 else {
             if solver.time >= duration - 1e-9 {
                 finish()
@@ -1918,9 +1923,10 @@ final class SimulationModel {
             return
         }
 
-        // Steps past the limit would be wasted work, so only encode as many as are needed.
+        // Steps past the limit would be wasted work, so only encode as many as are needed; to
+        // the playback clock, just enough to reach it.
         let timeStep = liveStats.timeStep
-        let needed = timeStep > 0 ? Int((remaining / timeStep).rounded(.up)) + 1 : 2
+        let needed = timeStep > 0 ? Int((remaining / timeStep).rounded(.up)) + (target < limit ? 0 : 1) : 2
         var steps = max(1, min(batchSize, needed))
         // Fragments take a frame a millisecond: keep batches within one, so that frames are too,
         // by taking fewer steps, never shorter ones, so the air is the same as without them.

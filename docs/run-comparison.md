@@ -13,6 +13,15 @@ add result data or mark a project changed. Keeping, renaming and removing result
 project saving and autosave include those choices. Changing inputs or selecting another preset
 keeps earlier named runs. Opening a different project restores that project's run collection.
 
+The playback speed does not change a run's results. The slow-motion clock decides only when the
+next batch of steps starts; steps are cut short only to land on the end and on structural
+samples, which fall at the same simulated times at any speed. A run kept at 100× slow motion
+therefore takes the same steps, to the bit, as one run as fast as possible, and as a headless
+run or sweep case of the same inputs (a headless run feeding fragments, radiation or ground
+shock, or exporting volumes, ends a step on every millisecond, and so differs slightly). Until 2026-10-10 steps were also cut to the playback clock. When the GPU was ahead
+of it, that gave many slivers of steps: a 10 ms street-canyon run at 100× took 2331 steps instead
+of 91. The results also changed slightly from one run to the next.
+
 ## Restore a baseline and run experiments
 
 **Use this run’s inputs** restores the selected run's geometry, materials and numerical settings

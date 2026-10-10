@@ -206,6 +206,36 @@ struct SimulationModelTests {
         #expect(abs(model.time - 0.02) < 1e-6)
     }
 
+    @Test("Paced playback takes the same steps as a run as fast as possible")
+    func pacedMatchesUnlimited() async throws {
+        func run(_ speed: PlaybackSpeed) async throws -> (steps: Int, peaks: [Double], points: [[Double]]) {
+            let model = try await makeModel()
+            model.speed = speed
+            model.duration = 0.01
+            model.run()
+            try await waitUntil { !model.isRunning }
+            #expect(abs(model.time - 0.01) < 1e-6 && model.errorMessage == nil)
+            return (
+                model.stepCount, model.traces.map(\.peak),
+                model.traces.map { $0.points.map(\.overpressure) }
+            )
+        }
+        let fast = try await run(.unlimited)
+        // As a headless run, and so a sweep case, of the same inputs.
+        var document = ProjectDocument()
+        document.runSettings?.resolution = "coarse"
+        document.runSettings?.duration = 0.01
+        let headless = try await HeadlessRun.perform(
+            document, options: HeadlessRun.Options(project: URL(filePath: "/dev/null")))
+        #expect(headless.run.stepCount == fast.steps, "\(headless.run.stepCount) steps against \(fast.steps)")
+        // The playback clock decides when each batch starts, never how long a step is.
+        for speed in [PlaybackSpeed.x25, .x100] {
+            let paced = try await run(speed)
+            #expect(paced.steps == fast.steps, "\(speed.title): \(paced.steps) steps against \(fast.steps)")
+            #expect(paced.peaks == fast.peaks && paced.points == fast.points, "\(speed.title)")
+        }
+    }
+
     @Test("Changing settings mid-run rebuilds from the start")
     func rebuildWhileRunning() async throws {
         let model = try await makeModel()
