@@ -211,4 +211,21 @@ struct GravityTests {
             #expect(worst < 0.01, "a gauge in air at rest read \(worst) Pa")
         }
     }
+
+    @Test(
+        "Under gravity the cloud's hand-over finds no warm gas in air at rest, and a bubble's at its height")
+    func handOverAtHeight() throws {
+        let solver = try column(AirGravity(), cells: SIMD3(8, 8, 64), cellSize: 2)
+        let still = solver.cloudHandOver(hotterThan: 300)
+        #expect(
+            still.mass == 0 && still.warmBuoyancy == 0, "warm gas in air at rest: \(still.warmBuoyancy) N")
+        // A hot cell 100 m up, at the pressure around it.
+        solver.mutateState { cells in cells[solver.grid.index(4, 4, 50)].density *= 0.5 }
+        let bubble = solver.cloudHandOver(hotterThan: 300)
+        let around = AirGravity().atmosphere(at: 101, ground: Primitive(density: 1.225, pressure: 101_325))
+        let expected = Double(around.pressure / (around.density * 287.05)) * 2
+        #expect(
+            abs(bubble.temperature / expected - 1) < 1e-3, "\(bubble.temperature) K against \(expected) K")
+        #expect(abs(bubble.centre.z - 101) < 1e-3)
+    }
 }

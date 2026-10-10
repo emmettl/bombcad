@@ -242,6 +242,20 @@ extension BlastSolver {
         let ambientPressure = Double(configuration.ambientPressure)
         let gasConstant = Double(AirModel.gasConstant)
         let ambientTemperature = ambientPressure / (Double(ambientDensity) * gasConstant)
+        // Under gravity, each plane's own ambient pressure and temperature, the atmosphere the air
+        // rests in, so that gas risen high is relaxed to the pressure around it and judged against
+        // the air beside it.
+        let gravity = configuration.gravity
+        let ground = gravityGround
+        let planeAmbient: [(pressure: Double, temperature: Double)] = (0..<nz).map { k in
+            guard let gravity else { return (ambientPressure, ambientTemperature) }
+            let air = gravity.atmosphere(at: (Float(k) + 0.5) * grid.cellSize, ground: ground)
+            // A hundred-thousandth above it, so that the rounding between the background the GPU
+            // holds and this one reads as no warmth.
+            return (
+                Double(air.pressure), 1.00001 * Double(air.pressure) / (Double(air.density) * gasConstant)
+            )
+        }
         let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
         struct Sums {
             var mass = 0.0
@@ -256,6 +270,7 @@ extension BlastSolver {
             planes.withUnsafeMutableBufferPointer { planes in
                 DispatchQueue.concurrentPerform(iterations: nz) { k in
                     var sums = Sums()
+                    let (planePressure, planeTemperature) = planeAmbient[k]
                     for j in 0..<ny {
                         for i in 0..<nx {
                             let index = grid.index(i, j, k)
@@ -266,11 +281,11 @@ extension BlastSolver {
                             guard density > 0, pressure > 0, density.isFinite, pressure.isFinite else {
                                 continue
                             }
-                            let relaxed = density * pow(ambientPressure / pressure, 1 / Double(gamma))
-                            let t = ambientPressure / (relaxed * gasConstant)
-                            guard t > ambientTemperature else { continue }
+                            let relaxed = density * pow(planePressure / pressure, 1 / Double(gamma))
+                            let t = planePressure / (relaxed * gasConstant)
+                            guard t > planeTemperature else { continue }
                             let mass = density * cellVolume
-                            sums.warm += mass * (t / ambientTemperature - 1)
+                            sums.warm += mass * (t / planeTemperature - 1)
                             guard t >= Double(threshold) else { continue }
                             sums.mass += mass
                             sums.heat += mass * t
@@ -300,11 +315,18 @@ extension BlastSolver {
                 ambientPressure: ambientPressure)
         }
         let temperature = total.heat / total.mass
+        let centre = SIMD3<Float>(total.position / total.mass * h)
+        // Under gravity, its volume and buoyancy in the air at its centre's height.
+        let around: (pressure: Double, temperature: Double) =
+            gravity.map { gravity in
+                let air = gravity.atmosphere(at: centre.z, ground: ground)
+                return (Double(air.pressure), Double(air.pressure) / (Double(air.density) * gasConstant))
+            } ?? (ambientPressure, ambientTemperature)
         return CloudHandOver(
-            time: time, mass: total.mass, volume: total.mass * gasConstant * temperature / ambientPressure,
-            centre: SIMD3<Float>(total.position / total.mass * h), temperature: temperature,
+            time: time, mass: total.mass, volume: total.mass * gasConstant * temperature / around.pressure,
+            centre: centre, temperature: temperature,
             riseSpeed: total.momentum.z / total.mass, hottest: total.hottest,
-            buoyancy: g * total.mass * (temperature / ambientTemperature - 1), warmBuoyancy: g * total.warm,
+            buoyancy: g * total.mass * (temperature / around.temperature - 1), warmBuoyancy: g * total.warm,
             ambientTemperature: ambientTemperature, ambientPressure: ambientPressure,
             horizontalVelocity: SIMD2(total.momentum.x, total.momentum.y) / total.mass)
     }

@@ -209,7 +209,7 @@ struct RunComparisonView: View {
                             unrecorded: true)
                     }
                     Text(
-                        "\(run.settings.resolution.capitalized) grid · Afterburning \(run.settings.detailedCharge ? "on" : "off") · Shock refinement \(run.settings.sharpShocks ? ((run.settings.shockLevels ?? 1) > 1 ? "in two levels" : "on") : "off")"
+                        "\(run.settings.resolution.capitalized) grid · Afterburning \(run.settings.detailedCharge ? "on" : "off") · Shock refinement \(run.settings.sharpShocks ? ((run.settings.shockLevels ?? 1) > 1 ? "in two levels" : "on") : "off")\(run.settings.gravity == true ? " · Gravity" : "")"
                     )
                     .font(.caption).foregroundStyle(.secondary)
                     DisclosureGroup("Run inputs") {

@@ -63,6 +63,31 @@ struct ProjectDocumentTests {
         #expect(decoded.shockLevels == nil && decoded == one)
     }
 
+    @Test("Gravity in the air is saved when on, and off is saved as before it existed")
+    func gravity() throws {
+        let model = SimulationModel()
+        model.settings.resolution = .coarse
+        model.settings.gravity = true
+        let snapshot = ProjectDocument(model: model)
+        #expect(snapshot.runSettings?.gravity == true)
+        let restored = try ProjectDocument(fileWrapper: snapshot.makeArchive().fileWrapper())
+        model.settings.gravity = false
+        model.open(restored)
+        #expect(model.settings.gravity)
+        var configuration = SolverConfiguration()
+        ProjectRunSettings.configureAir(
+            &configuration, detailedCharge: false, sharpShocks: false, shockLevels: 1,
+            gravity: model.settings.gravity)
+        #expect(configuration.gravity != nil)
+        // Off writes no key, so settings and run fingerprints saved before it are unchanged.
+        model.settings.gravity = false
+        let off = try #require(ProjectDocument(model: model).runSettings)
+        let encoded = try JSONEncoder().encode(off)
+        #expect(!String(decoding: encoded, as: UTF8.self).contains("gravity"))
+        let decoded = try JSONDecoder().decode(ProjectRunSettings.self, from: encoded)
+        #expect(decoded.gravity == nil && decoded == off)
+    }
+
     @Test("Re-saving and replacing the scene preserve embedded assets and document identity")
     func assetPreservation() throws {
         let model = SimulationModel()

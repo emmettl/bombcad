@@ -8,12 +8,14 @@ extension ProjectRunSettings {
     /// Sets the air's charge model and refinement as these settings ask; the app's solver and
     /// the standing both take them from here.
     static func configureAir(
-        _ configuration: inout SolverConfiguration, detailedCharge: Bool, sharpShocks: Bool, shockLevels: Int
+        _ configuration: inout SolverConfiguration, detailedCharge: Bool, sharpShocks: Bool, shockLevels: Int,
+        gravity: Bool = false
     ) {
         configuration.afterburning = detailedCharge
         configuration.airModel = detailedCharge ? .thermallyPerfect : .idealGas
         configuration.refinement = sharpShocks ? 2 : 1
         configuration.refinementLevels = sharpShocks ? shockLevels : 1
+        configuration.gravity = gravity ? AirGravity() : nil
     }
 
     /// What the standing of a run of `scenario` under these settings is derived from.
@@ -24,7 +26,7 @@ extension ProjectRunSettings {
         var configuration = SolverConfiguration()
         Self.configureAir(
             &configuration, detailedCharge: detailedCharge, sharpShocks: sharpShocks,
-            shockLevels: shockLevels ?? 1)
+            shockLevels: shockLevels ?? 1, gravity: gravity ?? false)
         return StandingInputs(
             scenario: scenario, cellSize: (Resolution(rawValue: resolution) ?? .medium).cellSize,
             configuration: configuration, thermal: thermal, cloud: cloud, fragments: fragments,
