@@ -695,6 +695,7 @@ Collapse and debris have not been compared with anything.
 | [Thermal radiation](docs/thermal-radiation.md) | The fireball's radiant heat on the ground and the scene's faces, frame by frame, from the air model's hot gas, drawn over the blast, here or on another Mac |
 | [Surfaces heated by the fireball](docs/surface-heating.md) | Each receiver's absorbed radiation conducted into its material for its peak surface temperature, with illustrative ignition thresholds from tests |
 | [The fireball's rise and cloud](docs/fireball-rise.md) | The hot gas left after the blast, followed as a rising, entraining cloud that spreads once it stops, carried by the wind, for minutes after |
+| [Gas deflagrations](docs/deflagration.md) | An illustrative second source: a methane or propane cloud lit in a room, and vent panels that release at a pressure |
 | [Ground shock](docs/ground-shock.md) | An illustrative estimate of the ground's shaking away from the charge, or a layered soil column, fed the overpressure on the ground |
 | [Terrain](docs/terrain.md) | A heightfield ground the blast sees, DEM import, and slopes checked against shock reflection theory |
 | [USD export](docs/usd-export.md) | Writing a run over time as USD and OpenVDB volumes, for rendering in Blender and elsewhere |

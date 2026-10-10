@@ -21,6 +21,9 @@ private var inputSamples: [Any] {
         GroundShockSpec(),
         GroundSoil(),
         Terrain(spacing: 1, columns: 2, rows: 2, heights: [0, 0, 0, 1]),
+        Deflagration(region: Box(min: .zero, max: .one), ignition: .zero),
+        FlameAcceleration(),
+        VentPanel(box: Box(min: .zero, max: .one), releasePressure: 1000),
     ]
 }
 
@@ -80,6 +83,16 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
         let stale = Set(StandingTable.fields.keys).subtracting(names)
         #expect(
             stale.isEmpty, "StandingTable.fields names properties that no longer exist: \(stale.sorted())")
+    }
+
+    @Test func aDeflagrationDoesNotQuoteTheChargesComparisons() {
+        let scene = standing(ScenarioPreset.ventedGasRoom.scenario, cellSize: 0.125)
+        for kind in [ResultKind.peakOverpressure, .impulse] {
+            let result = scene.results.first { $0.kind == kind }
+            #expect(result?.level == .illustrative)
+            #expect(result?.evidence.contains { $0.check.contains("Kingery") } == false)
+            #expect(result?.evidence.contains { $0.document.hasPrefix("deflagration.md") } == true)
+        }
     }
 
     @Test func everyOptionIsSetBySomeInput() {

@@ -188,6 +188,8 @@ final class SimulationModel {
     @ObservationIgnored var holdBatches: (() -> Bool)?
     @ObservationIgnored private var waitingForHold = false
     @ObservationIgnored private var lastSampleTime: Double?
+    /// Vent panels the renderer has been told have opened.
+    @ObservationIgnored private var openedVentPanels = 0
     private var samples: Bool { structureSummary != nil || onSample != nil }
     private var sampleInterval: Double {
         structureSummary != nil ? Self.structureSampleInterval : airSampleInterval
@@ -1896,6 +1898,17 @@ final class SimulationModel {
 
     // MARK: - Building
 
+    /// Stops drawing the vent panels that have released.
+    private func showOpenedVentPanels(_ solver: BlastSolver) {
+        let times = solver.ventPanelOpenTimes
+        let opened = times.filter { $0 != nil }.count
+        guard opened != openedVentPanels else { return }
+        openedVentPanels = opened
+        let panels = (scenario.ventPanels ?? []).filter { $0.releasePressure > 0 }
+        renderer?.setVentPanels(zip(panels, times).compactMap { $1 == nil ? $0.box : nil })
+        sceneVersion += 1
+    }
+
     private func requestRebuild() {
         envelopeExposure = []
         envelopeExposureStatus = ""
@@ -1946,6 +1959,7 @@ final class SimulationModel {
                 let refined = settings.sharpShocks
                 let required =
                     grid.cellCount * (settings.detailedCharge ? 73 : 57)
+                    + grid.cellCount * (scenario.deflagration == nil ? 0 : 20)
                     + (refined ? SolverConfiguration().refinementMemory : 0)
                 guard UInt64(required) < device.recommendedMaxWorkingSetSize / 10 * 7 else {
                     throw BlastError.allocationFailed(
@@ -1997,6 +2011,7 @@ final class SimulationModel {
         nextStructureSampleTime = sampleInterval
         lastSampleTime = nil
         chargeIsBlocked = scenario.chargeIsBlocked
+        openedVentPanels = 0
         time = 0
         stepCount = 0
         stats = SimulationStats()
@@ -2100,6 +2115,7 @@ final class SimulationModel {
         batchInFlight = false
         let result = solver.completeBatch()
         let finished = solver.time >= duration - 1e-9
+        showOpenedVentPanels(solver)
         sendFragmentFrame(solver, last: finished)
         sendGroundShockFrame(solver, last: finished)
         sendFireball(solver)

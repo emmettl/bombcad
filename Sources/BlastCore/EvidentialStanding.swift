@@ -224,6 +224,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case stationaryWalls
     case closedBoundaries
     case terrain
+    case deflagration
+    case ventPanels
     // The structure.
     case shellElements
     case shellSectionShear
@@ -286,6 +288,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .stationaryWalls: return !structures.isEmpty && !config.movingWalls
         case .closedBoundaries: return inputs.scenario.reflectiveFaces != .ground
         case .terrain: return inputs.scenario.terrain.map { !$0.isFlat } ?? false
+        case .deflagration: return inputs.scenario.deflagration != nil
+        case .ventPanels: return !(inputs.scenario.ventPanels ?? []).isEmpty
         case .shellElements:
             return any { $0.elementKind == .shell || $0.solidElementKind.contains(.shell) }
         case .shellSectionShear: return any { $0.shellSectionShear }
@@ -448,6 +452,19 @@ public enum StandingTable {
                     + "ridges is consistency-checked only, and peaks focused far behind a round hill do not "
                     + "converge.",
                 document: "terrain.md#limitations")
+        case .deflagration:
+            return Entry(
+                title: "Gas deflagration", affects: air + structure + [.envelopeExposure],
+                limit: .illustrative,
+                note: "A methane or propane cloud's flame: checked against the thin-flame model in a closed "
+                    + "vessel, but its acceleration by turbulence and instabilities is an uncalibrated factor, and "
+                    + "vented rooms' pressures come out far below the venting correlations and FM Global's tests.",
+                document: "deflagration.md#limitations")
+        case .ventPanels:
+            return Entry(
+                title: "Vent panels", affects: air + structure + [.envelopeExposure], limit: .approximation,
+                note: "Massless, instantaneous; verified only to open at the release pressure.",
+                document: "deflagration.md#vent-panels")
         case .shellElements:
             return Entry(
                 title: "Shell elements", affects: structure, limit: nil,
@@ -662,6 +679,18 @@ public enum StandingTable {
         "Scenario.atmosphere": .input,
         "Scenario.reflectiveFaces": .option([.closedBoundaries]),
         "Scenario.terrain": .option([.terrain]),
+        "Scenario.deflagration": .option([.deflagration]),
+        "Scenario.ventPanels": .option([.ventPanels]),
+        "Deflagration.gas": .input,
+        "Deflagration.concentration": .input,
+        "Deflagration.region": .input,
+        "Deflagration.ignition": .input,
+        "Deflagration.acceleration": .option([.deflagration]),
+        "FlameAcceleration.factor": .option([.deflagration]),
+        "FlameAcceleration.wrinklingRadius": .option([.deflagration]),
+        "FlameAcceleration.subgridCoefficient": .option([.deflagration]),
+        "VentPanel.box": .input,
+        "VentPanel.releasePressure": .input,
         "Terrain.origin": .input,
         "Terrain.spacing": .input,
         "Terrain.columns": .input,
@@ -1109,7 +1138,54 @@ private struct StandingScene {
         ]
     }
 
+    /// The deflagration's checks: no charge fires, so the comparisons with Kingery–Bulmash do not
+    /// apply.
+    private var deflagrationEvidence: [StandingEvidence] {
+        [
+            StandingEvidence(
+                "A closed sphere of stoichiometric methane against the thin-flame model (blastbench "
+                    + "deflagration vessel)",
+                "Burns out at the AICC pressure the heat was fitted to, energy conserved to 1e-5; rise times "
+                    + "within 1–3% on 48 cells across the radius; K_G 51 bar m/s against 76, converging from "
+                    + "below (verified)", "deflagration.md#a-closed-sphere"),
+            StandingEvidence(
+                "A laminar flame lit at a tube's closed end",
+                "Runs at the expansion ratio times the burning velocity within 10% (verified)",
+                "deflagration.md#a-closed-sphere"),
+            StandingEvidence(
+                "Vented rooms against EN 14994, NFPA 68 and Molkov (blastbench deflagration vented)",
+                "A thirtieth to a fiftieth of Molkov's best fit with the default flame, a fifth to an eighth "
+                    + "with the burning velocity tripled",
+                "deflagration.md#vented-rooms-against-the-correlations"),
+            StandingEvidence(
+                "FM Global's 63.7 m³ chamber, Bauwens et al. 2008 (six tests, peaks only plotted)",
+                "A tenth (lit in the middle) to a half (at the back wall) of the plots' axes",
+                "deflagration.md#bauwens-chaffee-and-dorofeev-2008"),
+        ]
+    }
+
+    /// Peak overpressure or impulse from a gas cloud's deflagration.
+    private func deflagrationResult(_ kind: ResultKind) -> ResultStanding {
+        var resolution = ["Air: \(cellDescription); the flame is about four cells thick."]
+        if !(inputs.scenario.ventPanels ?? []).isEmpty {
+            resolution.append("Vent panels have no mass and release at once.")
+        }
+        return result(
+            kind, .illustrative,
+            "A gas deflagration: its flame converges on the thin-flame model in a closed vessel, but its "
+                + "acceleration by turbulence and instabilities is an uncalibrated factor, and vented rooms' "
+                + "pressures fall far below EN 14994, NFPA 68 and FM Global's tests.",
+            evidence: deflagrationEvidence + terrainEvidence,
+            assumptions: [
+                "Burnt and unburnt gas are treated as air; the heat released is the share of the heat of "
+                    + "combustion that reaches the stoichiometric AICC pressure.",
+                "The flame's acceleration is a constant factor, wrinkling with radius and a vorticity estimate "
+                    + "of sub-grid turbulence; none is calibrated.",
+            ], resolution: resolution, documents: ["deflagration.md#checks", "deflagration.md#limitations"])
+    }
+
     func peakOverpressure() -> ResultStanding {
+        if has(.deflagration) { return deflagrationResult(.peakOverpressure) }
         let incident = ["0.125": "86–97%", "0.25": "76–82%", "0.5": "57–69%"]
         let reflected = ["0.125": "67–92%", "0.25": "37–82%", "0.5": "20–69%"]
         var evidence: [StandingEvidence] = []
@@ -1170,6 +1246,7 @@ private struct StandingScene {
     }
 
     func impulse() -> ResultStanding {
+        if has(.deflagration) { return deflagrationResult(.impulse) }
         let reflected = ["0.125": "94–105%", "0.25": "84–102%", "0.5": "73–99%"]
         var evidence: [StandingEvidence] = []
         var level = EvidenceLevel.measured
@@ -1597,6 +1674,10 @@ private struct StandingScene {
                 ? "Fire: ignition is flagged against test thresholds, but nothing burns or spreads."
                 : "Ignition, material heating and fire.")
         if inputs.fragments == nil { effects.append("Casing fragments: the charge is bare.") }
+        if has(.deflagration) {
+            effects.append(
+                "Flame acceleration is modelled but uncalibrated; there is no transition to detonation.")
+        }
         if has(.terrain) {
             effects.append(
                 "The terrain does not hide the fireball from receivers; freestanding objects and footings stay "

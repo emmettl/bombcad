@@ -211,6 +211,8 @@ struct SolverUniforms {
     var gravityLapse: Float = 0
     var gravityT0: Float = 0
     var gravityP0: Float = 0
+    /// 1 when the air carries a deflagration's unburnt mixture (see `Deflagration.metal`).
+    var deflagration: UInt32 = 0
 }
 
 /// Layout matches `StepControl` in `Solver.metal`.

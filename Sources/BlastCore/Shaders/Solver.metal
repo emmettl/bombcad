@@ -100,7 +100,15 @@ struct SolverUniforms {
     float gravityLapse;
     float gravityT0;
     float gravityP0;
+    // 1 when the species carry a deflagration's unburnt mixture (x) instead of afterburning's fuel
+    // and oxygen: they are carried as afterburning's are, and burnt by Deflagration.metal.
+    uint deflagration;
 };
+
+// Whether the air carries species, for afterburning or a deflagration.
+static inline bool carriesSpecies(constant SolverUniforms &u) {
+    return u.afterburnEnergy > 0.0f || u.deflagration != 0u;
+}
 
 // Each experimental box has `boxVectors` definition vectors: quaternion, half-size, local
 // centre-of-mass offset, velocity, spin, centre, and its bounds' low and high corners.
@@ -806,6 +814,11 @@ static inline float2 speciesFlux(float mass, float2 behind, float2 ahead) {
     return mass * (mass > 0.0f ? behind : ahead);
 }
 
+// Componentwise minmod.
+static inline float2 minmodPair(float2 a, float2 b) {
+    return select(select(b, a, fabs(a) < fabs(b)), float2(0.0f), a * b <= 0.0f);
+}
+
 // Fuel burnt over `dt` in a cell holding `species`, as far as its oxygen allows (see `sweepCell`).
 static inline float burnt(float2 species, float dt, constant SolverUniforms &u) {
     return min(species.x, species.y / u.oxygenPerFuel) * (1.0f - exp(-dt * u.afterburnRate));
@@ -837,7 +850,7 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
         Cell held = dst[index];
         dst[index] = src[index];
         src[index] = held;
-        if (u.afterburnEnergy > 0.0f) {
+        if (carriesSpecies(u)) {
             float2 species = speciesDst[index];
             speciesDst[index] = speciesSrc[index];
             speciesSrc[index] = species;
@@ -1002,20 +1015,40 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
     // as the oxygen allows, after the final sweep of the step: afterburning limited by mixing,
     // which here is the grid's own.
     float2 species = float2(0.0f);
-    if (u.afterburnEnergy > 0.0f) {
+    if (carriesSpecies(u)) {
         float2 own = speciesSrc[index];
         float2 fraction = own / max(c.rho, u.densityFloor);
         float2 below = kindM1 == kindFluid ? speciesSrc[index - stride] / wM1.rho : fraction;
         float2 above = kindP1 == kindFluid ? speciesSrc[index + stride] / wP1.rho : fraction;
         float2 inflow = speciesFlux(fluxLow.mass, below, fraction);
         float2 outflow = speciesFlux(fluxHigh.mass, fraction, above);
+        if (u.deflagration != 0u) {
+            // A deflagration's mixture is carried at limited linear (MUSCL) mass fractions at the
+            // faces instead: at the upwind cell's, the grid's diffusion would spread its flame
+            // over many cells (see Deflagration.metal). Both cells beside a face work out the
+            // same value, so the species stay conserved.
+            float2 below2 = below;
+            if (kindM1 == kindFluid && classify(mask, index, -2, stride, i, n, lowWall, highWall) == kindFluid) {
+                below2 = speciesSrc[index - 2 * stride] / wM2.rho;
+            }
+            float2 above2 = above;
+            if (kindP1 == kindFluid && classify(mask, index, 2, stride, i, n, lowWall, highWall) == kindFluid) {
+                above2 = speciesSrc[index + 2 * stride] / wP2.rho;
+            }
+            float2 lowFace = fluxLow.mass > 0.0f ? below + 0.5f * minmodPair(below - below2, fraction - below)
+                                                 : fraction - 0.5f * minmodPair(fraction - below, above - fraction);
+            float2 highFace = fluxHigh.mass > 0.0f ? fraction + 0.5f * minmodPair(fraction - below, above - fraction)
+                                                   : above - 0.5f * minmodPair(above - fraction, above2 - above);
+            inflow = fluxLow.mass * lowFace;
+            outflow = fluxHigh.mass * highFace;
+        }
         species = max(own - lambda * (outflow - inflow), 0.0f);
         if (speciesRegister >= 0) {
             float2 through = (registerLow ? inflow : outflow) * dt;
             coarseSpeciesFlux[speciesRegister] = through.x;
             coarseSpeciesFlux[speciesRegister + 1] = through.y;
         }
-        if (u.finalSweep != 0) {
+        if (u.finalSweep != 0 && u.afterburnEnergy > 0.0f) {
             float fuel = burnt(species, control.dt, u);
             species.x -= fuel;
             species.y -= fuel * u.oxygenPerFuel;
