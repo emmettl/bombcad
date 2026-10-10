@@ -521,6 +521,61 @@ struct FootingTests {
         }
     }
 
+    // MARK: - Cyclic sand
+
+    /// A 1 × 1 × 2 m block on a 1.5 m square footing on sand bearing 600 kPa, settled, then
+    /// pushed one way and the other on its faces, `cycles` times, each push's moment about the
+    /// footing's base `share` of W B / 2; its settlement after each cycle.
+    private func rocked(_ sand: CyclicSand?, share: Float = 0.6, cycles: Int = 4) throws -> (
+        rest: Float, settlement: [Float]
+    ) {
+        var soil = Soil(bearingCapacity: 600e3)
+        soil.cyclic = sand
+        let footing = Footing(overhang: SIMD2(0.25, 0.25), thickness: 0.5, soil: soil)
+        let solver = try block(SIMD3(1, 1, 2), footing: footing)
+        solver.damping = 200
+        solver.advance(steps: steps(solver, seconds: 0.5))
+        let rest = try #require(solver.footingSummaries().first)
+        let weight = (bodyMass(solver) + rest.mass) * g
+        // A face of 2 m², its middle 1.5 m above the footing's base.
+        let push = share * weight * (1.5 / 2) / 1.5 / 2
+        solver.damping = 20
+        var settlement: [Float] = []
+        for _ in 0..<cycles {
+            for side in [false, true] {
+                solver.appliedLoad = PressureLoad(
+                    axis: 0, positiveSide: side, history: [SIMD2(0, push), SIMD2(1e6, push)])
+                solver.advance(steps: steps(solver, seconds: 0.4))
+            }
+            solver.appliedLoad = nil
+            solver.advance(steps: steps(solver, seconds: 0.2))
+            let now = try #require(solver.footingSummaries().first)
+            settlement.append(rest.displacement.z - now.displacement.z)
+        }
+        return (rest.displacement.z, settlement)
+    }
+
+    @Test("Cyclic sand settles under its weight as the elastic bed does, and at every cycle of rocking")
+    func cyclicSandRatchets() throws {
+        let elastic = try rocked(nil, cycles: 2)
+        let gajan = try rocked(CyclicSand())
+        // First loaded, the sand is as stiff as the elastic bed.
+        #expect(abs(gajan.rest / elastic.rest - 1) < 0.03, "\(gajan.rest) against \(elastic.rest)")
+        // Rocked on the elastic bed, its stiff edges yield a little at first and then no more; on
+        // Gajan's sand it settles at every cycle, by about as much each time.
+        #expect(
+            elastic.settlement[1] - elastic.settlement[0] < 0.2 * elastic.settlement[0],
+            "\(elastic.settlement)")
+        let steps = zip(gajan.settlement, [0] + gajan.settlement).map { $0 - $1 }
+        #expect(steps.allSatisfy { $0 > 0.2 * abs(gajan.rest) }, "\(gajan.settlement)")
+        #expect(steps[3] > 0.3 * steps[1], "\(steps)")
+        // Remembering the force each point bore, it shakes down after the first cycle.
+        let remembering = try rocked(CyclicSand(memory: 1, heave: 0))
+        #expect(
+            remembering.settlement[3] - remembering.settlement[1] < 0.2 * remembering.settlement[0],
+            "\(remembering.settlement)")
+    }
+
     // MARK: - Measured
 
     @Test(

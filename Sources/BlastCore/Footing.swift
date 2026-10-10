@@ -60,6 +60,9 @@ public struct Soil: Sendable, Hashable, Codable {
     public var layerDepth: Float?
     /// What lies under the layer; nil for rock that does not move.
     public var beneath: SoilMaterial?
+    /// Sand that compresses for good when pressed past the most it has borne (`CyclicSand`); nil
+    /// for a bed elastic up to its bearing capacity.
+    public var cyclic: CyclicSand?
 
     public init(
         material: SoilMaterial = .mediumDenseSand, bearingCapacity: Float? = 600e3, friction: Float = 0.5,
@@ -89,11 +92,56 @@ public struct Soil: Sendable, Hashable, Codable {
     func validate() throws {
         try material.validate()
         try beneath?.validate()
+        try cyclic?.validate()
         guard friction.isFinite, friction >= 0, (bearingCapacity ?? 1).isFinite, (bearingCapacity ?? 1) > 0,
             (layerDepth ?? 1).isFinite, (layerDepth ?? 1) > 0
         else {
             throw ImportedMesh.ImportError.invalid(
                 "Soil friction must be nonnegative, and its bearing capacity and layer depth positive.")
+        }
+    }
+}
+
+/// Sand under a footing's bed that settles under cycles of load well below its bearing capacity,
+/// as S. Gajan's contact interface model has it ("Physical and numerical modeling of nonlinear
+/// cyclic load-deformation behavior of shallow foundations supporting rocking shear walls", PhD
+/// dissertation, UC Davis, 2006, §6.5; S. Gajan and B. L. Kutter, J. Geotech. Geoenviron. Eng.
+/// 135(3), 2009).
+///
+/// Each point of the bed, pressed past the largest force it has borne, is as stiff as the
+/// elastic bed, but gives back only `elasticShare` of that compression when unloaded: the rest
+/// is settlement (Gajan's model gives back none). Below that force it unloads and reloads
+/// elastically, `1 / elasticShare` times as stiff. Unloaded to nothing, it keeps `memory` of the
+/// force (Gajan's bearing pressure falls to nothing where the footing lifts, and builds again
+/// only as the footing presses deeper). Lifted clear of the soil, further than the soil springs
+/// back, the soil heaves back by `heave` of how far it has been pressed down, times 1 − 1/FS for
+/// the footing's static factor of safety (Gajan's rebounding ratio, Rv = Rv₀ (1 − 1/FS),
+/// Rv₀ = 0.1 for all his tests), loosened: the point forgets the force.
+///
+/// The defaults: no memory, as Gajan's; for the share given back, his vertical push on the Nevada
+/// sand at 80% relative density, which first loaded it at about 11 MN/m³ and unloaded and
+/// reloaded it at 80–100 (§4.2, Figs. 4.1–4.3), about an eighth; and no heave. In his model the
+/// heave raises only a second surface, which bears weakly; here it raises the one surface the
+/// point bears on, and any Rv₀ from 0.01 to 0.1 stopped a footing rocked slowly settling after
+/// its first packet of cycles (docs/validation.md#a-footing-shaken-on-dry-sand).
+public struct CyclicSand: Sendable, Hashable, Codable {
+    public var elasticShare: Float
+    public var memory: Float
+    public var heave: Float
+
+    public init(elasticShare: Float = 0.12, memory: Float = 0, heave: Float = 0) {
+        self.elasticShare = elasticShare
+        self.memory = memory
+        self.heave = heave
+    }
+
+    func validate() throws {
+        guard elasticShare.isFinite, elasticShare > 0, elasticShare <= 1, (0...1).contains(memory),
+            (0...1).contains(heave)
+        else {
+            throw ImportedMesh.ImportError.invalid(
+                "Cyclic sand gives back more than none and no more than all of a first loading, and its "
+                    + "memory and heave are from 0 to 1.")
         }
     }
 }

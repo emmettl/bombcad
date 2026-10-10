@@ -248,6 +248,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case baseConnections
     case jointsBetweenParts
     case footings
+    case cyclicSand
     case freeBase
     // Materials.
     case rateIndependent
@@ -327,6 +328,11 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
             return any { s in
                 (s.fixedBase && s.baseAnchorage?.footing != nil)
                     || s.supportAnchorages.contains { $0?.footing != nil }
+            }
+        case .cyclicSand:
+            return any { s in
+                (s.fixedBase && s.baseAnchorage?.footing?.soil.cyclic != nil)
+                    || s.supportAnchorages.contains { $0?.footing?.soil.cyclic != nil }
             }
         case .freeBase: return any { !$0.fixedBase }
         case .rateIndependent: return structural.contains { !$0.rateDependent }
@@ -598,6 +604,14 @@ public enum StandingTable {
                 note: "One footing rocked on dry sand: moment within 6% to 14 mrad and 7–17% low beyond; "
                     + "settlement a tenth of that measured.",
                 document: "validation.md#a-footing-rocked-on-dry-sand")
+        case .cyclicSand:
+            return Entry(
+                title: "Sand that settles under cycles", affects: structure, limit: nil,
+                note:
+                    "Settlement under rocking within 0.6–1.5 times of eight shaken centrifuge events (FoRDy) and "
+                    + "1.7–2.2 times of a slow-cycled one (FoRCy), against a tenth on the elastic bed; a sixth to "
+                    + "a half of the energy the shaken footings dissipated.",
+                document: "validation.md#a-footing-shaken-on-dry-sand")
         case .freeBase:
             return Entry(
                 title: "Base resting on the ground", affects: structure, limit: .verified,
@@ -834,7 +848,7 @@ public enum StandingTable {
         "Anchorage.cohesionSlip": .input,
         "Anchorage.friction": .input,
         "Anchorage.bearingCapacity": .input,
-        "Anchorage.footing": .option([.footings]),
+        "Anchorage.footing": .option([.footings, .cyclicSand]),
         "Anchorage.side": .input,
         "Anchorage.jointNormal": .input,
         "Anchorage.betweenParts": .option([.jointsBetweenParts]),

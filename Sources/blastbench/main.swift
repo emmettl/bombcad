@@ -38,6 +38,9 @@ import simd
 //   blastbench precast [--tests i0_50,i0_100,i0_150] [--friction 0.7] [--reversals 40] [--samples Samples/PrecastSeat] [--history out-%.csv]
 //                      (a precast beam's seat cycled along its corbel, against Batalha et al.'s tests)
 //   blastbench rocking [--shear 40] [--bearing 814] [--packets a,b,c,d,e] [--speed 0.2] [--history out.csv]
+//                      [--cyclic [--elastic-share 0.12] [--memory 0] [--heave 0.1]]   (cyclic sand; also for shaking)
+//   blastbench shaking [--tests ssg04-dsw,ssg04-shw,ssg03-dsw] [--shear 80] [--bearing 814] [--samples Samples/FoRDy]
+//                      [--history out-%.csv]   (a wall on a footing shaken at its base, against FoRDy's SSG03/SSG04)
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03]
 //                       [--mode peak|now|impulse|fluence|irradiance]
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
@@ -3680,7 +3683,8 @@ func runRocking() throws {
     )
     let result = try FootingRockingTest.run(
         device: device, shearModulus: shear, bearingCapacity: bearing, packets: packets,
-        speed: option("speed").flatMap { Float($0) } ?? 0.2, progress: { print("  " + $0) })
+        speed: option("speed").flatMap { Float($0) } ?? 0.2, cyclic: cyclicSandOption(),
+        progress: { print("  " + $0) })
     print("")
     print(
         pad("packet", 8) + pad("rotation", 18) + pad("moment forward", 18) + pad("moment back", 18)
@@ -3702,6 +3706,73 @@ func runRocking() throws {
     if let path = option("history") {
         let lines = ["rotation,moment,settlement"] + result.history.map { "\($0.x),\($0.y),\($0.z)" }
         try lines.joined(separator: "\n").write(toFile: path, atomically: true, encoding: .utf8)
+    }
+}
+
+/// The cyclic sand asked for: `--cyclic` for Gajan's, `--elastic-share`, `--memory` and `--heave`
+/// to change it (`CyclicSand`).
+func cyclicSandOption() -> CyclicSand? {
+    guard flag("cyclic") else { return nil }
+    var sand = CyclicSand()
+    if let v = option("elastic-share").flatMap({ Float($0) }) { sand.elasticShare = v }
+    if let v = option("memory").flatMap({ Float($0) }) { sand.memory = v }
+    if let v = option("heave").flatMap({ Float($0) }) { sand.heave = v }
+    return sand
+}
+
+func runShaking() throws {
+    let shear = (option("shear").flatMap { Float($0) } ?? 80) * 1e6
+    let bearing = (option("bearing").flatMap { Float($0) } ?? 814) * 1e3
+    let folder = URL(fileURLWithPath: option("samples") ?? "Samples/FoRDy")
+    let names = option("tests").map { $0.split(separator: ",").map(String.init) }
+    let tests = FootingShakingTest.tests.filter { names?.contains($0.name) ?? true }
+    for test in tests {
+        let measured = try test.events.map {
+            try FootingShakingTest.Series.load(folder.appendingPathComponent("\($0).csv"))
+        }
+        print(
+            "\n\(test.name): \(test.structure.name) on the 2.8 × 0.65 m footing"
+                + (test.structure.embedment > 0 ? ", set \(test.structure.embedment) m in" : "")
+                + ", on sand of \(format(Double(shear) / 1e6, 0)) MPa, bearing \(format(Double(bearing) / 1e3, 0)) kPa"
+        )
+        let result = try FootingShakingTest.run(
+            device: device, test: test, series: measured, shearModulus: shear, bearingCapacity: bearing,
+            cyclic: cyclicSandOption(), progress: { print("  " + $0) })
+        print(String(format: "  static pressure %.0f kPa; %.0f s", result.pressure / 1e3, result.wallSeconds))
+        print(
+            pad("event", 15) + pad("peak g", 8) + pad("rotation + / − (mrad)", 26) + pad("moment + / −", 26)
+                + pad("settlement / L", 18) + pad("∫M dθ", 18) + pad("travel", 16))
+        print(
+            pad("", 23) + String(repeating: pad("measured  model", 26), count: 2)
+                + String(repeating: pad("measured  model", 18), count: 2) + pad("measured  model", 16))
+        for (index, name) in test.events.enumerated() {
+            let a = measured[index].summary
+            let b = result.events[index].summary
+            func mrad(_ v: SIMD2<Float>) -> String { String(format: "%+.1f/%+.1f", v.x * 1000, v.y * 1000) }
+            func pair2(_ v: SIMD2<Float>) -> String { String(format: "%.2f/%.2f", v.x, v.y) }
+            let peak = measured[index].base.map(abs).max() ?? 0
+            print(
+                pad(name, 15) + pad(format(Double(peak), 2), 8)
+                    + pad(mrad(a.rotation) + "  " + mrad(b.rotation), 26)
+                    + pad(pair2(a.moment) + "  " + pair2(b.moment), 26)
+                    + pad(String(format: "%.4f  %.4f", a.settlement, b.settlement), 18)
+                    + pad(String(format: "%.4f  %.4f", a.energy, b.energy), 18)
+                    + pad(String(format: "%.3f  %.3f", a.travel, b.travel), 16))
+        }
+        if let pattern = option("history") {
+            for (index, name) in test.events.enumerated() {
+                let m = result.events[index]
+                var lines = ["time,base_g,rotation,moment,shear,sliding,settlement"]
+                for i in m.time.indices {
+                    lines.append(
+                        "\(m.time[i]),\(m.base[i]),\(m.rotation[i]),\(m.moment[i]),\(m.shear[i]),\(m.sliding[i]),\(m.settlement[i])"
+                    )
+                }
+                try lines.joined(separator: "\n").write(
+                    toFile: pattern.replacingOccurrences(of: "%", with: name), atomically: true,
+                    encoding: .utf8)
+            }
+        }
     }
 }
 
@@ -3862,6 +3933,7 @@ do {
     case "snapshot": try runSnapshot()
     case "anchorage": try runAnchorage()
     case "rocking": try runRocking()
+    case "shaking": try runShaking()
     case "seat": try runSeat()
     case "precast": try runPrecast()
     case "thermal": try runThermal()
