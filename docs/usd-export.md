@@ -38,7 +38,7 @@ USD in its text form (`.usda`), Z up, in metres, written without any USD library
 | `/Scene/Camera` | The project's saved view, in a 16:9 frame |
 | `/Scene/Structure` | The body's surface, frame by frame |
 | `/Scene/Fragments`, `/Scene/Tracers` | With `--fragments`, Points that follow the frames ([Fragments](fragments.md)) |
-| `/Scene/Thermal` | With `--thermal`, Points at the receivers, with their fluence and peak irradiance ([Thermal radiation](thermal-radiation.md)) |
+| `/Scene/Thermal` | With `--thermal`, Points at the receivers, with their fluence and peak irradiance ([Thermal radiation](thermal-radiation.md)), and their peak surface temperature and illustrative ignition flags ([Surfaces heated by the fireball](surface-heating.md)) |
 | `/Scene/GroundShock` | With `--ground-shock`, Points at the ground points, with their peak overpressure, impulse, surface velocity, settlement and arrival ([Ground shock](ground-shock.md#output)) |
 | `/Scene/Cloud` | With `--cloud`, a sphere rising and drifting after the run, on frames of its own that follow the run's ([The fireball's rise and cloud](fireball-rise.md)) |
 

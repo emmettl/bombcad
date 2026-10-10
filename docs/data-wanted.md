@@ -30,7 +30,7 @@ no comparison at all its first one, and open sources ahead of those that need th
 | 2 | Peterson et al. 2026, KTH: 18 beams with and without stirrups struck to shear failure, with raw high-speed images ([2d](#2d-interlock-and-tension-stiffening-under-impact)) | Shear under impact; interlock | Open, CC BY 4.0 (Mendeley Data) | Support reactions and images from which crack opening and slip can be read, on beams that fail in shear |
 | 3 | Hupfauf and Gebbeken 2022, and Hupfauf's 2024 thesis: 15 slabs under contact charges ([3c](#3c-collapse-and-debris)) | Debris; spall | Open, CC BY 4.0 | The first debris comparison: secondary debris velocities and spall craters, on documented slabs |
 | 4 | Hrynyk 2013, slabs struck by a falling weight, digital records on the VecTor site ([2d](#2d-interlock-and-tension-stiffening-under-impact)) | Tension stiffening under impact | Open download, terms not stated | Raw records of reinforced and fibre-reinforced slabs, which separate what the concrete between cracks carries |
-| 5 | FoRDy, the dynamic sister of FoRCy ([3b](#3b-a-footing-or-connection-under-fast-loading)) | Footings | Open, CC BY-NC-SA 4.0 | Settlement measured under shaking, on the sand family of SSG02_03, where the model settles a tenth as much |
+| 5 | FoRDy, the dynamic sister of FoRCy ([3b](#3b-a-footing-or-connection-under-fast-loading)) | Footings | Open, Open Data Commons Attribution on DesignSafe (CC BY-NC-SA 4.0 on DataCenterHub) | Settlement measured under shaking, on the sand family of SSG02_03, where the model settles a tenth as much |
 | 6 | Wang et al. 2022, *Materials* 15, 6449: two slabs, steel in both faces, 10 kg at 1.2 m ([1a](#1a-a-slab-with-steel-in-both-faces-under-an-open-air-charge)) | Air and structure together | Open, CC BY 4.0 | Reflected pressures and deflection histories from one open-air shot; but an aluminised charge and nominal materials |
 | 7 | Prairie Flat (WES TR N-72-2), the Watching Hill soil data, and Pre-Dice Throw II ([3a](#3a-air-induced-ground-shock)) | Ground shock | Needs the user to obtain (ERDC, DTIC) | Gauges at depth either side of the superseismic limit under a 500-ton surface burst, with the site's soil; Pre-Dice Throw II adds published blind predictions |
 | 8 | Pattman 1971, Dial Pack thermal measurements, DREO Report 642 ([3e](#3e-fireball-radiation)) | Fireball radiation | Open (Government of Canada), 1.45 MB | A second 500-ton TNT shot measured by the group behind the one comparison so far |
@@ -41,7 +41,8 @@ no comparison at all its first one, and open sources ahead of those that need th
 | 13 | Sharon et al. 2012, and the DRDC field trials of 2012 ([3d](#3d-an-he-clouds-growth-after-two-minutes)) | The cloud after two minutes | Paywalled; the DRDC report open, 2.62 MB | Cloud heights against time below Church's charges; lidar extents of small clouds |
 
 The vented gas deflagration ([3f](#3f-a-vented-gas-deflagration)) is not ranked with these: it
-serves a second source still being added.
+serves a second source still being added. The open ones among 1 to 11 have been downloaded with
+the user's agreement (see [Downloaded, not yet in use](#downloaded-not-yet-in-use)).
 
 ## 1. A second structural test from the same contest
 
@@ -111,8 +112,9 @@ serves a second source still being added.
     rebound and residual deflection; damaged areas on both faces and the diameter of any hole.
     No pressure gauges. **Gives:** nearly everything, and pairs one layer against two at the
     same charge; the holes test the breach the model never makes (limitations 4 and 8). The
-    summary's distance between the two layers is garbled and is to be read from the paper.
-    Small: an HTML article with figures.
+    concrete's 47.0 MPa is the mean of six 150 mm cubes, not cylinders; and the paper prints
+    the two layers 600 mm apart in a slab 100 mm thick, a misprint, so their depths are to be
+    read from its drawings.
   - W. Wang et al., "Blast resistance of reinforced concrete slabs based on residual
     load-bearing capacity", *Materials* 15(18), 6449 (2022), doi:10.3390/ma15186449,
     [PMC9502281](https://pmc.ncbi.nlm.nih.gov/articles/PMC9502281/), CC BY 4.0. Two slabs
@@ -121,8 +123,8 @@ serves a second source still being added.
     1.2 m from both slabs at 0.7 m above the ground. Four reflected pressure gauges and five
     displacement gauges a slab; peaks 19.8 and 14.1 mm. **Gives:** an open-air shot with the
     load and the response measured together (item 2); against it, an aluminised charge whose
-    TNT equivalence is uncertain, nominal materials, and a cover and steel ratio that read oddly
-    in the summary.
+    TNT equivalence is uncertain, nominal materials, and a cover printed as 50 mm in a slab
+    100 mm thick, to be read from its Figure 1.
   - J. Yao, S. Li, P. Zhang, S. Deng and G. Zhou, "Dynamic response and damage
     characteristics of large reinforced concrete slabs under explosion", *Applied Sciences*
     13(23), 12552 (2023), doi:10.3390/app132312552, CC BY 4.0: by search summaries a slab
@@ -467,14 +469,15 @@ Nine values in the code were written from memory and should be checked against t
     K. Sharma, T. Kouno, M. Hakhamaneshi, G. Gazetas and K. Athipotta Variam, *FoRDy: Rocking
     shallow foundation performance in dynamic experiments*, 2019, doi:10.13019/3rqyd929,
     [DataCenterHub landing page](https://datacenterhub.org/landingpages/529/529_LandingPage.html),
-    CC BY-NC-SA 4.0 there (the DOI now resolves to DesignSafe PRJ-3836, which refused automated
-    access; its licence there is to be checked). Described in A. G. Gavras et al., *Earthquake
+    CC BY-NC-SA 4.0 there; the DOI now resolves to DesignSafe PRJ-3836, where its publication
+    record gives the Open Data Commons Attribution License, as for FoRCy, which is the copy to
+    use (809 files, 2.34 GB). Described in A. G. Gavras et al., *Earthquake
     Spectra* 36(2) (2020) 960–982, doi:10.1177/8755293019891727. Five centrifuge and three 1 g
     shaking-table series (UC Davis, NTUA, PWRI): 13 structures, 18 soil profiles, over 50
     ground motions, 200 events, each as tab-delimited time series with baseline-corrected
     motions and spectra; drift, rotation, sliding, settlement and the footing's loads. Size not
     stated. **Gives:** settlement under shaking on the same family of sands as SSG02_03, with
-    sequences of motions on one model. Its NC-SA terms would bind any fixture derived from it.
+    sequences of motions on one model.
   - PWRI's 1 g footings on Toyoura sand (Shirato, Paolucci et al., *EESD* 2008,
     doi:10.1002/eqe.773) are in FoRCy and probably FoRDy already; they add the contact pressure
     under an uplifting footing. Whether TRISEE's embedded footings (ELSA, Ispra) are in FoRCy is
@@ -626,7 +629,7 @@ Nine values in the code were written from memory and should be checked against t
   - J. D. R. Pattman, *Operation Dial Pack 1970: Canadian project A7 thermal radiation
     measurements*, DREO Report 642 (1971),
     [publications.gc.ca](https://publications.gc.ca/site/eng/9.941855/publication.html), open,
-    1.45 MB, about 28 pages: 500 tons of TNT measured by a high-speed bolometer, filtered
+    1.52 MB, 33 pages (downloaded): 500 tons of TNT measured by a high-speed bolometer, filtered
     photodetectors and calorimeters; the total energy radiated, the pulse's timing, the
     spectrum against time and the surface temperature, compared with earlier TNT shots.
     **Gives:** a second shot by the same group and methods as Tate and Pattmann, so a repeat of
@@ -673,9 +676,14 @@ Nine values in the code were written from memory and should be checked against t
 - **Found, 10 October 2026:**
   - C. R. Bauwens, J. Chaffee and S. Dorofeev, "Experimental and numerical study of
     methane-air deflagrations in a vented enclosure", *Fire Safety Science* 9 (2008)
-    1043–1054 (IAFSS, open on its publications site, PDF about 1.3 MB): FM Global's 63.7 m³
-    chamber, with the vent's size and the ignition point varied, pressures and flame
-    measured. Whether the peaks are tabulated or only plotted is to be checked. The first
+    1043–1054 (IAFSS, open on its publications site, 12 pages, 1.3 MB; downloaded): FM
+    Global's chamber, 4.6 × 4.6 × 3.0 m, with a square vent of 5.4 or 2.7 m² in the middle of
+    one wall closed by 0.02 mm polypropylene, no obstacles. Six tests (Table 1): methane at
+    9.0 to 10.3%, ignited at the centre or 0.25 m from the back wall, after fans had mixed it
+    and settled to about 0.1 m/s. Four pressure gauges in the chamber (back wall, vent wall,
+    two on a side wall), two outside at 1.17 and 3.45 m from the vent, twenty thermocouples
+    for the flame's arrival, sampled at 25 kHz. The peaks are not tabulated: the back wall's
+    pressure histories are plotted (Figures 3 and 6 to 9) and would be digitised. The first
     choice. Their propane work (*Combustion Science and Technology*, 2010) and
     *International Journal of Hydrogen Energy* paper (2011) are paywalled.
   - Mercx (1992), IChemE Symposium Series 130, paper 29 (a PDF on icheme.org, title not
@@ -696,6 +704,28 @@ Nine values in the code were written from memory and should be checked against t
   not needed now that the Kingery–Bulmash coefficients are in use.
 - Fan Jin's 2014 University of Ottawa thesis, which re-used each specimen for several shots.
   Only the first shot on each specimen would be usable, and only if it is reported separately.
+
+## Downloaded, not yet in use
+
+Fetched on 10 October 2026 with the user's agreement, to `/Volumes/StudioData/bombcad/data/`,
+one folder a source, each with a `SOURCE.md` giving the citation, terms and how it was fetched.
+Nothing here is in the repository; a comparison would commit only small derived fixtures, with
+their licence, as `Samples/FoRCy` does.
+
+| Folder | What | Size | Terms |
+|---|---|---|---|
+| `Wu2023` | The article as HTML and JATS XML (Europe PMC's API), and its figures | 1.3 MB | CC BY 4.0 |
+| `Wang2022` | The same for Wang et al. | 1.6 MB | CC BY 4.0 |
+| `Peterson2026` | 3,537 files: load cells and accelerometers (.mat) for 16 beams, high-speed frames (.tif) for 18, each checked against its SHA-256 | 2.5 GB | CC BY 4.0 |
+| `Hupfauf` | The 2022 paper and the 2024 thesis | 3.5 and 59.7 MB | CC BY 4.0; open access |
+| `Hrynyk2013` | `Experimental Data.zip`, 39 spreadsheets for slabs TH2 and TH4 to TH8, unpacked | 183 MB (474 MB unpacked) | Not stated |
+| `FoRDy` | DesignSafe PRJ-3836: mastersheet, 550 data files, critical plots, references, photos | 2.34 GB, still downloading (DesignSafe serves about 12 KB/s a connection) | Open Data Commons Attribution |
+| `DialPack1971` | Pattman's DREO Report 642 | 1.52 MB | Government of Canada |
+| `Bauwens2008` | The *Fire Safety Science* 9 paper and a text extract | 1.3 MB | Free to read (IAFSS) |
+| `Alsubaei2015` | The Western University thesis | 8.4 MB | Not stated |
+
+PMC's own PDFs of the two *Materials* papers sit behind a proof-of-work check and were not
+fetched; the XML and figures carry the same content.
 
 ## Obtained
 
