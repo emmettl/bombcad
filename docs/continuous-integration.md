@@ -137,3 +137,12 @@ takes is still to be seen.
   notary profile in its Keychain. [Releasing](releasing.md) stays on the development machine.
 - **Notification of a changed result** is GitHub's failed-workflow email; nothing posts the
   diff anywhere else.
+
+## Bounded shared wall adoption comparison
+
+The manual Check suite `wall-adoption` runs the complete original/shared wall, piston
+and public reflection comparison, then independent conservation/completeness and
+negative-control gates. It uploads complete reports and dependency pins for fourteen
+days. It has a separate concurrency group so unrelated main pushes cannot replace
+its pending run; the physical runner still serializes its jobs. The normal app check
+also packages the optimized application and verifies its deep strict signature.
