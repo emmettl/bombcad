@@ -463,6 +463,14 @@ public final class BlastSolver {
         commandBuffer.waitUntilCompleted()
     }
 
+    /// Gives each refined level gravity's background at its resolution and its parent's.
+    func assignGravityTables() {
+        for level in refinementLevels {
+            level.gravityTable = gravityTable(scale: level.parentScale * level.ratio)
+            level.parentGravityTable = gravityTable(scale: level.parentScale)
+        }
+    }
+
     /// Gravity's background for the level with `scale` cells along a coarse cell's edge: a row a
     /// cell of its height, from 4 below the ground to 4 above the top (see `gravityCellOf`).
     func gravityTable(scale: Int) -> MTLBuffer? {
@@ -1181,6 +1189,7 @@ public final class BlastSolver {
         }
 
         setUpRefinement()
+        assignGravityTables()
 
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
             let encoder = commandBuffer.makeComputeCommandEncoder()
@@ -1395,11 +1404,7 @@ public final class BlastSolver {
         precondition(!batchInFlight, "completeBatch() must be called before encoding another batch")
         guard !interObjectContactDetected && !couplingCapacityExceeded else { return nil }
         let steps = batchSteps(steps)
-        if configuration.gravity != nil {
-            for level in refinementLevels {
-                level.gravityTable = gravityTable(scale: level.parentScale * level.ratio)
-            }
-        }
+        assignGravityTables()
         gpuProfiler?.beginBatch()
         guard let kernels = try? cellKernels(),
             let commandBuffer = commandQueue.makeCommandBuffer(),

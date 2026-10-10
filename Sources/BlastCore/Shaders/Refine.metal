@@ -156,17 +156,32 @@ static inline float cellPressureOf(Cell c, constant SolverUniforms &u) {
     return gasPressure(rho, c.energy - kinetic, u.airModel, u.gamma);
 }
 
+// A cell less gravity's background at its height (or with `add`, plus it), from a level's table.
+static inline Cell gravityDeviation(Cell c, const device float4 *table, int k, float sign) {
+    float4 b = gravityCellOf(table, k);
+    c.rho += sign * b.x;
+    c.energy += sign * b.y;
+    return c;
+}
+
 // Fine cell `fine` filled from the coarse air around it: the coarse cell it lies in, plus
 // minmod-limited slopes towards its fluid neighbours. The slopes' offsets sum to zero over a
 // coarse cell's fine cells, so their mean is the coarse cell. Where that would leave density or
-// pressure below the floors, the coarse cell alone.
+// pressure below the floors, the coarse cell alone. With gravity, the coarse cells' deviations
+// from the background are filled so, and the fine cell's own background added, so that air at
+// rest in it fills fine cells at rest in it.
 static inline Cell prolong(int3 fine, int3 tile, uint patch, const device Cell *coarse, const device Cell *halo,
                            const device uchar *mask, float alpha, constant SolverUniforms &u,
-                           const device int *parentPatches) {
+                           const device int *parentPatches, const device float4 *parentTable,
+                           const device float4 *levelTable) {
     int r = int(u.refineRatio);
     int3 cell = fine / r;
     int3 dims = int3(u.nx, u.ny, u.nz);
+    bool gravity = u.gravity != 0.0f;
     Cell c = coarseAt(cell, tile, patch, coarse, halo, alpha, u, parentPatches);
+    if (gravity) {
+        c = gravityDeviation(c, parentTable, cell.z, -1.0f);
+    }
     float3 offset = (float3(fine - cell * r) + 0.5f) / float(r) - 0.5f;
     Cell result = c;
     for (int axis = 0; axis < 3; ++axis) {
@@ -181,9 +196,15 @@ static inline Cell prolong(int3 fine, int3 tile, uint patch, const device Cell *
         Cell hi = c;
         if (below[axis] >= 0 && !parentSolid(mask, parentIndex(below, parentPatches, u), u)) {
             lo = coarseAt(below, tile, patch, coarse, halo, alpha, u, parentPatches);
+            if (gravity) {
+                lo = gravityDeviation(lo, parentTable, below.z, -1.0f);
+            }
         }
         if (above[axis] < dims[axis] && !parentSolid(mask, parentIndex(above, parentPatches, u), u)) {
             hi = coarseAt(above, tile, patch, coarse, halo, alpha, u, parentPatches);
+            if (gravity) {
+                hi = gravityDeviation(hi, parentTable, above.z, -1.0f);
+            }
         }
         float o = offset[axis];
         result.rho += o * limitedSlope(c.rho - lo.rho, hi.rho - c.rho, 1.0f);
@@ -191,6 +212,10 @@ static inline Cell prolong(int3 fine, int3 tile, uint patch, const device Cell *
         result.my += o * limitedSlope(c.my - lo.my, hi.my - c.my, 1.0f);
         result.mz += o * limitedSlope(c.mz - lo.mz, hi.mz - c.mz, 1.0f);
         result.energy += o * limitedSlope(c.energy - lo.energy, hi.energy - c.energy, 1.0f);
+    }
+    if (gravity) {
+        c = gravityDeviation(c, levelTable, fine.z, 1.0f);
+        result = gravityDeviation(result, levelTable, fine.z, 1.0f);
     }
     if (result.rho <= u.densityFloor || cellPressureOf(result, u) <= u.pressureFloor) {
         return c;
@@ -275,6 +300,8 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
                          device float2 *ghostSpecies [[buffer(16)]],
                          const device float2 *coarseSpecies [[buffer(17)]],
                          const device int *parentPatches [[buffer(18)]],
+                         const device float4 *parentTable [[buffer(19)]],
+                         const device float4 *levelTable [[buffer(20)]],
                          uint gid [[thread_position_in_grid]]) {
     uint side = uint(patchSize) * u.refineRatio;
     uint perPatch = 4u * side * side;
@@ -330,7 +357,8 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
         }
         return;
     }
-    Cell outside = prolong(fine, tile, patch, coarse, halo, mask, u.refineAlpha, u, parentPatches);
+    Cell outside = prolong(fine, tile, patch, coarse, halo, mask, u.refineAlpha, u, parentPatches, parentTable,
+                           levelTable);
     ghosts[index] = outside;
     ghostKinds[index] = ghostCoarse;
     if (u.afterburnEnergy > 0.0f) {
@@ -1499,6 +1527,8 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
                        const device int *parentPatches [[buffer(19)]],
                        const device float *terrainHeights [[buffer(20)]],
                        constant TerrainUniforms &terrain [[buffer(21)]],
+                       const device float4 *gravityTable [[buffer(22)]],
+                       const device float4 *parentGravityTable [[buffer(23)]],
                        uint gid [[thread_position_in_grid]]) {
     uint r = u.refineRatio;
     uint side = uint(patchSize) * r;
@@ -1544,24 +1574,34 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
     fineWall[at] = own ? experimentalBoxVelocity(point,boxDefinition+boxVectors*uint(owner))
                       : structure ? parentWallVelocity(wallVelocity, cell, index, u) : float3(0.0f);
     if (!parentIsSolid) {
-        fine[at] = prolong(fineCoordinates, tile, patch, coarse, coarse, mask, 1.0f, u, parentPatches);
+        fine[at] = prolong(fineCoordinates, tile, patch, coarse, coarse, mask, 1.0f, u, parentPatches,
+                           parentGravityTable, gravityTable);
     } else {
         // A fine cell of air in a coarse cell that is solid: air the coarse cells could not see,
         // which has held the still air the domain was filled with. (The mean of the air beside it
-        // would copy the hottest gas into it, beside a charge, and add energy.)
+        // would copy the hottest gas into it, beside a charge, and add energy.) With gravity, the
+        // air at rest at its height.
         Cell still;
         still.rho = u.stillRho;
         still.mx = u.stillMx;
         still.my = u.stillMy;
         still.mz = u.stillMz;
         still.energy = u.stillEnergy;
+        if (u.gravity != 0.0f) {
+            float4 b = gravityCellOf(gravityTable, fineCoordinates.z);
+            still.rho = b.x;
+            still.mx = 0.0f;
+            still.my = 0.0f;
+            still.mz = 0.0f;
+            still.energy = b.y;
+        }
         fine[at] = still;
     }
     if (u.afterburnEnergy > 0.0f) {
         // At the coarse cell's mass fractions, so that the fine cells' mean is the coarse cell's.
         fineSpecies[at] = !parentIsSolid
             ? coarseSpecies[index] / max(coarse[index].rho, u.densityFloor) * fine[at].rho
-            : float2(0.0f, u.stillOxygen);
+            : float2(0.0f, u.gravity != 0.0f ? u.stillOxygen / u.stillRho * fine[at].rho : u.stillOxygen);
     }
     fineImpulse[at] = 0.0f;
     // The first fine cell of each coarse cell keeps the impulse the coarse cell had so far.

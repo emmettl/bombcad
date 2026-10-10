@@ -58,6 +58,8 @@ final class AirRefinement {
     /// Gravity's background at this level's resolution (see `gravityCellOf` in Solver.metal),
     /// while the air has gravity.
     var gravityTable: MTLBuffer?
+    /// And at the resolution of the level it refines.
+    var parentGravityTable: MTLBuffer?
     private var combinedBodyOccupancy: MTLBuffer?
     private var bodyComposePipeline: MTLComputePipelineState?
     private var bodyPublishPipeline: MTLComputePipelineState?
@@ -690,6 +692,9 @@ final class AirRefinement {
                 encoder.setBuffer(ghostSpecies, offset: 0, index: 16)
                 set(encoder, parent.species, 17)
                 set(encoder, parent.patches, 18)
+                // Not read without gravity.
+                encoder.setBuffer(parentGravityTable ?? ghosts, offset: 0, index: 19)
+                encoder.setBuffer(gravityTable ?? ghosts, offset: 0, index: 20)
                 encoder.dispatchThreadgroups(
                     indirectBuffer: arguments, indirectBufferOffset: 60,
                     threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
@@ -1027,6 +1032,9 @@ final class AirRefinement {
         encoder.setBuffer(terrainHeights, offset: 0, index: 20)
         var terrain = terrainUniforms
         encoder.setBytes(&terrain, length: MemoryLayout<TerrainUniforms>.stride, index: 21)
+        // Not read without gravity.
+        encoder.setBuffer(gravityTable ?? fine[0], offset: 0, index: 22)
+        encoder.setBuffer(parentGravityTable ?? fine[0], offset: 0, index: 23)
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 48,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
