@@ -88,6 +88,7 @@ struct SidebarView: View {
             }
             VentPanelSection(model: model)
 
+            TerrainSection(model: model)
             FragmentSection(model: model)
             ThermalSection(model: model)
             CloudSection(model: model)
@@ -98,6 +99,7 @@ struct SidebarView: View {
             if let summary = model.structureSummary {
                 Section(model.settings.scenario.structuralObjects.count > 1 ? "All structures" : "Structure")
                 {
+                    StandingRow(model: model, kinds: [.structuralResponse, .structuralDamage])
                     if model.settings.scenario.structuralObjects.count > 1 {
                         Picker(
                             "Editing structure",
@@ -142,6 +144,8 @@ struct SidebarView: View {
                 }
                 .monospacedDigit()
             }
+
+            SceneStandingSection(model: model)
 
             Section("Playback") {
                 Picker("Speed", selection: $model.speed) {
@@ -246,11 +250,17 @@ struct SidebarView: View {
                 title: "Y", value: axisBinding(\.y), range: 1...Double(model.domainSize.y - 1),
                 text: metres(model.settings.chargePosition.y))
             LabeledSlider(
-                title: "Height", value: axisBinding(\.z), range: 0...Double(model.domainSize.z / 2),
+                title: "Height", value: axisBinding(\.z),
+                range:
+                    0...Double(
+                        max(
+                            model.domainSize.z / 2,
+                            min(model.settings.scenario.terrain?.highest ?? 0, model.domainSize.z - 1) + 1
+                        )),
                 text: metres(model.settings.chargePosition.z))
             if model.chargeIsBlocked {
                 Label(
-                    "The charge is inside a block or wall and will release no energy.",
+                    "The charge is inside a block, a wall or the ground and will release no energy.",
                     systemImage: "exclamationmark.triangle"
                 )
                 .font(.caption)

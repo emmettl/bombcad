@@ -1006,6 +1006,7 @@ struct StructureUniforms {
     var gravityX: Float = 0
     var gravityY: Float = 0
     var gravityZ: Float = -1
+    var pairs: UInt32 = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in

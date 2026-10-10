@@ -155,6 +155,25 @@ struct RunComparisonView: View {
                 Label("These runs use different solver versions.", systemImage: "exclamationmark.triangle")
                     .font(.caption).foregroundStyle(.orange)
             }
+            standingWarnings
+        }
+    }
+
+    /// Differences in what the selected runs' results rest on, beside those in their numbers.
+    @ViewBuilder private var standingWarnings: some View {
+        let differences = baseline.map { runs.standingDifferences(from: $0) } ?? []
+        if !differences.isEmpty {
+            Label(
+                "These runs differ in standing, not only in their numbers:",
+                systemImage: "exclamationmark.triangle"
+            )
+            .font(.caption).foregroundStyle(.orange)
+            .help("Their results rest on different evidence. Click a run's badge below for each one's.")
+            ForEach(differences, id: \.self) { Text($0).font(.caption).foregroundStyle(.secondary) }
+        }
+        if runs.count > 1, runs.contains(where: { $0.standing == nil }) {
+            Text("Standing not recorded for runs kept before it was, so differences in it cannot be shown.")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -181,7 +200,14 @@ struct RunComparisonView: View {
         VStack(alignment: .leading, spacing: 10) {
             ForEach(runs) { run in
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(run.name + (run.id == baseline?.id ? " · Reference" : "")).font(.headline)
+                    HStack {
+                        Text(run.name + (run.id == baseline?.id ? " · Reference" : "")).font(.headline)
+                        StandingBadge(
+                            standing: run.standing,
+                            kinds: plotsStructure
+                                ? [.structuralResponse, .structuralDamage] : [.peakOverpressure, .impulse],
+                            unrecorded: true)
+                    }
                     Text(
                         "\(run.settings.resolution.capitalized) grid · Afterburning \(run.settings.detailedCharge ? "on" : "off") · Shock refinement \(run.settings.sharpShocks ? ((run.settings.shockLevels ?? 1) > 1 ? "in two levels" : "on") : "off")"
                     )

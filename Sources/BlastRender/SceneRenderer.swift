@@ -190,6 +190,12 @@ private struct MeshUniforms {
     var sun: SIMD4<Float>
 }
 
+/// Layout matches `TerrainMesh` in `Render.metal`.
+private struct TerrainMesh {
+    var grid: SIMD4<Float>
+    var dims: SIMD4<UInt32>
+}
+
 /// Draws a scenario, its deformable structure and the solver's visualisation volume.
 ///
 /// A frame takes two passes: the scene and the structure's mesh go into an offscreen colour and
@@ -221,6 +227,9 @@ public final class SceneRenderer {
     private var dotBuffer: MTLBuffer?
     private var dotCount = 0
     private let freestandingPipeline: MTLRenderPipelineState
+    private let terrainPipeline: MTLRenderPipelineState
+    private var terrainHeights: MTLBuffer?
+    private var terrainMesh: TerrainMesh?
     private var freestandingBuffer: MTLBuffer?
     private var freestandingCount = 0
     private let compositePipeline: MTLRenderPipelineState
@@ -281,6 +290,7 @@ public final class SceneRenderer {
         freestandingPipeline = try pipeline(
             vertex: "freestandingVertex", fragment: "freestandingFragment", depth: true)
         paintPipeline = try pipeline(vertex: "paintVertex", fragment: "paintFragment", depth: true)
+        terrainPipeline = try pipeline(vertex: "terrainVertex", fragment: "terrainFragment", depth: true)
         linePipeline = try pipeline(vertex: "lineVertex", fragment: "lineFragment", depth: true)
         compositePipeline = try pipeline(
             vertex: "fullscreenVertex", fragment: "compositeFragment", depth: false)
@@ -325,6 +335,7 @@ public final class SceneRenderer {
             boxes[2 * n] = SIMD4(box.min, 0)
             boxes[2 * n + 1] = SIMD4(box.max, 0)
         }
+        setTerrain(scenario.terrain)
         setVentPanels((scenario.ventPanels ?? []).filter { $0.releasePressure > 0 }.map(\.box))
         gaugeCount = min(scenario.gauges.count, BlastSolver.maxGauges)
         let gauges = gaugeBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: BlastSolver.maxGauges)
@@ -342,6 +353,25 @@ public final class SceneRenderer {
             boxes[2 * (rigidBoxCount + n) + 1] = SIMD4(box.max, 0)
         }
         boxCount = rigidBoxCount + count
+    }
+
+    /// The terrain's mesh, from its heights; none for flat ground, which the ground plane draws.
+    private func setTerrain(_ terrain: Terrain?) {
+        guard let terrain, !terrain.isFlat else {
+            terrainMesh = nil
+            terrainHeights = nil
+            return
+        }
+        terrainHeights = terrain.heights.withUnsafeBytes { bytes in
+            bytes.baseAddress.flatMap {
+                device.makeBuffer(bytes: $0, length: bytes.count, options: .storageModeShared)
+            }
+        }
+        // Lifted a couple of centimetres, so that where it lies on the floor it is drawn over the
+        // ground plane rather than fighting it.
+        terrainMesh = TerrainMesh(
+            grid: SIMD4(terrain.origin.x, terrain.origin.y, terrain.spacing, 0.02),
+            dims: SIMD4(UInt32(terrain.columns), UInt32(terrain.rows), 1, 0))
     }
 
     /// Pixels to a point on the screen drawn to, for dots of a size in points.
@@ -497,6 +527,29 @@ public final class SceneRenderer {
         sceneEncoder.setFragmentBuffer(gaugeBuffer, offset: 0, index: 2)
         sceneEncoder.setFragmentTexture(field, index: 0)
         sceneEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+
+        if var terrain = terrainMesh, let terrainHeights {
+            var mesh = MeshUniforms(
+                eye: SIMD4(eye, 1), right: SIMD4(right, 0), up: SIMD4(up, 0), forward: SIMD4(forward, 0),
+                projection: SIMD4(
+                    1 / (halfHeight * aspectRatio), 1 / halfHeight, Self.nearPlane, Self.farPlane),
+                lattice: .zero, dims: .zero, sun: sun)
+            // The thermal radiation's paint is for the flat ground; over a terrain the blast's field
+            // is not painted while it is shown.
+            terrain.dims.z = settings.thermal == nil ? 1 : 0
+            sceneEncoder.setRenderPipelineState(terrainPipeline)
+            sceneEncoder.setDepthStencilState(meshDepthState)
+            sceneEncoder.setCullMode(.none)
+            sceneEncoder.setVertexBuffer(terrainHeights, offset: 0, index: 0)
+            sceneEncoder.setVertexBytes(&terrain, length: MemoryLayout<TerrainMesh>.stride, index: 1)
+            sceneEncoder.setVertexBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 2)
+            sceneEncoder.setFragmentBytes(&uniforms, length: MemoryLayout<RenderUniforms>.stride, index: 0)
+            sceneEncoder.setFragmentBytes(&terrain, length: MemoryLayout<TerrainMesh>.stride, index: 1)
+            sceneEncoder.setFragmentTexture(field, index: 0)
+            sceneEncoder.drawPrimitives(
+                type: .triangle, vertexStart: 0, vertexCount: 6,
+                instanceCount: (Int(terrain.dims.x) - 1) * (Int(terrain.dims.y) - 1))
+        }
 
         var transparentBodies: [ShellSolver] = []
         for body in bodies {

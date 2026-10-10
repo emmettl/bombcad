@@ -68,10 +68,13 @@ public enum AnchorageStudy {
     /// The connection `base` stands for. On a footing, the strip's footing reaches beyond the wall
     /// across its thickness only, as a slice of a long footing does, and stands on `soil` when
     /// given.
-    public static func anchorage(_ base: BaseConnection, soil: Soil? = nil) -> Anchorage? {
+    public static func anchorage(_ base: BaseConnection, soil: Soil? = nil, embedment: Embedment? = nil)
+        -> Anchorage?
+    {
         guard var law = base.anchorage else { return nil }
         law.footing?.overhang.y = 0
         if let soil { law.footing?.soil = soil }
+        law.footing?.embedment = embedment
         return law
     }
 
@@ -117,14 +120,15 @@ public enum AnchorageStudy {
     /// its top's sway is at mid-length.
     public static func run(
         device: MTLDevice, base: BaseConnection, mass: Float = 50, standoff: Float = 6, duration: Float = 0.5,
-        elementSize: Float = 0.0625, shells: Bool = false, soil: Soil? = nil, edges: BaseConnection? = nil
+        elementSize: Float = 0.0625, shells: Bool = false, soil: Soil? = nil, edges: BaseConnection? = nil,
+        embedment: Embedment? = nil
     ) throws -> Result {
         let started = ContinuousClock.now
         let length = edges == nil ? Self.length : height
         let wall = Box(min: .zero, max: SIMD3(thickness, length, height))
         var model = StructureModel(solids: [wall], elementSize: elementSize, fixedBase: true)
         model.addMat(to: wall, thicknessAxis: 0, areaPerMetre: barArea, depth: 0.04)
-        model.baseAnchorage = anchorage(base, soil: soil)
+        model.baseAnchorage = anchorage(base, soil: soil, embedment: embedment)
         if let edges {
             guard edges.anchorage?.footing == nil, edges != .soil else {
                 throw ImportedMesh.ImportError.invalid("A panel's edges are joints, not soil.")

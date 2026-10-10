@@ -1413,6 +1413,7 @@ final class SimulationModel {
             throw ProjectFileError.invalid("The cloud is still being followed; keep the run in a moment.")
         }
         run.cloud = cloud
+        run.standing = run.derivedStanding()
         try run.validate()
         // Reject an oversized capture before it can make the document unsavable.
         var document = ProjectDocument(model: self)
@@ -1918,10 +1919,9 @@ final class SimulationModel {
     /// Sets the air's charge model and refinement from the settings; takes effect when the
     /// scenario is loaded.
     private func configureAir(_ solver: BlastSolver) {
-        solver.configuration.afterburning = settings.detailedCharge
-        solver.configuration.airModel = settings.detailedCharge ? .thermallyPerfect : .idealGas
-        solver.configuration.refinement = settings.sharpShocks ? 2 : 1
-        solver.configuration.refinementLevels = settings.sharpShocks ? settings.shockLevels : 1
+        ProjectRunSettings.configureAir(
+            &solver.configuration, detailedCharge: settings.detailedCharge, sharpShocks: settings.sharpShocks,
+            shockLevels: settings.shockLevels)
     }
 
     private func rebuild() {

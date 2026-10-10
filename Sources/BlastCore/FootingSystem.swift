@@ -38,15 +38,22 @@ public struct FootingBed: Sendable {
     /// The cones fitted to it.
     public var impedance: FootingImpedance
 
-    /// The bed under a footing `width` along x and `length` along y on `soil`.
-    public init(width: Float, length: Float, soil: Soil) {
+    /// The bed under a footing `width` along x and `length` along y on `soil`; set into it by
+    /// `embedment`, `thickness` deep, the base is stiffer vertically and horizontally by
+    /// Gazetas's trench factor (its sides' share, and the rest of its rocking, is
+    /// `FootingSides`').
+    public init(width: Float, length: Float, soil: Soil, embedment: Embedment? = nil, thickness: Float = 0) {
         var radiating = soil
         radiating.radiationDamping = true
         let halfSpace = FootingImpedance(width: width, length: length, soil: radiating)
         // Massless soil over a layer is stiffer as the cones' echoes say, statically. (The
         // half-space's rocking stiffness already has the layer's.)
+        let trench =
+            embedment?.gazetasFactors(width: width, length: length, thickness: thickness).trench
+            ?? [1, 1, 1, 1, 1]
         let target = FootingImpedance.Mode.allCases.map {
-            soil.radiationDamping ? halfSpace.stiffness[$0.rawValue] : halfSpace.staticStiffness($0)
+            (soil.radiationDamping ? halfSpace.stiffness[$0.rawValue] : halfSpace.staticStiffness($0))
+                * trench[$0.rawValue]
         }
         let n = Self.pointsAcross
         // Scaled to the vertical stiffness, or stiffer if the rocking needs it: the bed's rocking
@@ -142,6 +149,133 @@ public struct FootingBed: Sendable {
     }
 }
 
+/// The soil against an embedded footing's sides (`Embedment`): points over each side, from its
+/// base up to the soil's surface or its top, 9 along and 5 down, each a spring across the side
+/// from the soil's pressure at rest, limited by the active and passive pressures, and a spring
+/// along it limited by friction. Their stiffnesses give the footing Gazetas's embedded static
+/// stiffness vertically and horizontally along x and y, the base giving the rest; the sides'
+/// rocking stiffness follows.
+public struct FootingSides: Sendable {
+    public struct Point: Sendable {
+        /// From the base centre, in metres, and the area it stands for.
+        public var place: SIMD3<Float>
+        public var area: Float
+        /// The side's outward normal, in plan.
+        public var normal: SIMD2<Float>
+        /// Stiffness across and along the side per unit area, Pa/m.
+        public var across: Float
+        public var along: Float
+        /// The soil's pressure there at rest, active and passive, in Pa.
+        public var pressures: SIMD3<Float>
+    }
+
+    public static let pointsAlong = 9
+    public static let pointsDown = 5
+
+    public var points: [Point]
+    /// What the sides add to the footing's static stiffness, by `FootingImpedance.Mode`, about
+    /// the base centre.
+    public var stiffness: [Float]
+    /// What Gazetas's embedded footing has in all, base and sides.
+    public var target: [Float]
+    /// The rocking stiffness about x and y Gazetas's footing has beyond what the base and the
+    /// sides' springs give: a spring on the footing itself. Springs on the sides turn it less
+    /// than a quarter as much as Gazetas says embedment does, their lever no longer than the
+    /// sides are high.
+    public var rocking: SIMD2<Float>
+    /// The most moment that spring gives, about x and y: what the passive pressure, less that at
+    /// rest, on the side the turning pushes into resists about the base centre.
+    public var rockingLimit: SIMD2<Float>
+    /// The horizontal force along x per radian of turning about y, and along y per radian about
+    /// x, that the sides give about the base centre.
+    public var coupling: SIMD2<Float>
+
+    /// The sides of a footing `width` along x by `length` along y and `thickness` deep, set into
+    /// `soil` by `embedment`, whose base alone gives `base` (with its trench factor).
+    public init(
+        width: Float, length: Float, thickness: Float, soil: Soil, embedment: Embedment, base: [Float]
+    ) {
+        let factors = embedment.gazetasFactors(width: width, length: length, thickness: thickness)
+        let surface = zip(base, factors.trench).map { $0 / $1 }
+        let turns = surface.indices.map { FootingImpedance.Mode(rawValue: $0)!.isRocking }
+        target = surface.indices.map {
+            surface[$0] * factors.sidewall[$0] * (turns[$0] ? 1 : factors.trench[$0])
+        }
+        let d = embedment.contactHeight(thickness: thickness)
+        let unitWeight = soil.material.density * 9.81
+        // The springs: along the sides for the vertical stiffness, then across those facing x
+        // and y for the horizontal ones, less what the sides along the motion grip.
+        let wall = 2 * (width + length) * d
+        let along = max(target[0] - base[0], 0) / wall
+        let acrossX = max((target[1] - base[1] - along * 2 * width * d) / (2 * length * d), 0.01 * along)
+        let acrossY = max((target[2] - base[2] - along * 2 * length * d) / (2 * width * d), 0.01 * along)
+        var points: [Point] = []
+        let n = Self.pointsAlong
+        let m = Self.pointsDown
+        func weight(_ k: Int, of count: Int) -> Float {
+            (k == 0 || k == count - 1 ? 0.5 : 1) / Float(count - 1)
+        }
+        for (normal, extent, stiffness) in [
+            (SIMD2<Float>(1, 0), length, acrossX), (SIMD2<Float>(-1, 0), length, acrossX),
+            (SIMD2<Float>(0, 1), width, acrossY), (SIMD2<Float>(0, -1), width, acrossY),
+        ] {
+            for i in 0..<n {
+                for j in 0..<m {
+                    let s = Float(i) / Float(n - 1) - 0.5
+                    let z = Float(j) / Float(m - 1) * d
+                    let depth = embedment.depth - z
+                    let tangent = SIMD2(-normal.y, normal.x)
+                    let plan = normal * SIMD2(width, length) / 2 + tangent * s * extent
+                    points.append(
+                        Point(
+                            place: SIMD3(plan.x, plan.y, z),
+                            area: weight(i, of: n) * weight(j, of: m) * extent * d,
+                            normal: normal, across: stiffness, along: along,
+                            pressures: SIMD3(embedment.atRest, embedment.active, embedment.passive)
+                                * unitWeight * depth))
+                }
+            }
+        }
+        self.points = points
+        // What they give, turned or moved a little about the base centre.
+        func give(_ motion: (SIMD3<Float>) -> SIMD3<Float>, _ measure: (SIMD3<Float>, SIMD3<Float>) -> Float)
+            -> Float
+        {
+            points.reduce(0) { total, point in
+                let normal = SIMD3(point.normal.x, point.normal.y, 0)
+                let up = SIMD3<Float>(0, 0, 1)
+                let sideways = simd_cross(up, normal)
+                let u = motion(point.place)
+                let force =
+                    point.area
+                    * (point.across * simd_dot(u, normal) * normal + point.along * simd_dot(u, up) * up
+                        + point.along * simd_dot(u, sideways) * sideways)
+                return total + measure(point.place, force)
+            }
+        }
+        let stiffness = [
+            give({ _ in SIMD3(0, 0, 1) }, { $1.z }),
+            give({ _ in SIMD3(1, 0, 0) }, { $1.x }),
+            give({ _ in SIMD3(0, 1, 0) }, { $1.y }),
+            give({ simd_cross(SIMD3(1, 0, 0), $0) }, { simd_cross($0, $1).x }),
+            give({ simd_cross(SIMD3(0, 1, 0), $0) }, { simd_cross($0, $1).y }),
+        ]
+        self.stiffness = stiffness
+        let target = target
+        rocking = SIMD2(
+            max(target[3] - base[3] - stiffness[3], 0), max(target[4] - base[4] - stiffness[4], 0))
+        func limit(_ normal: SIMD2<Float>) -> Float {
+            points.filter { $0.normal == normal }.reduce(0) {
+                $0 + ($1.pressures.z - $1.pressures.x) * $1.area * $1.place.z
+            }
+        }
+        rockingLimit = SIMD2(limit(SIMD2(0, 1)), limit(SIMD2(1, 0)))
+        coupling = SIMD2(
+            give({ simd_cross(SIMD3(0, 1, 0), $0) }, { $1.x }),
+            give({ simd_cross(SIMD3(1, 0, 0), $0) }, { $1.y }))
+    }
+}
+
 /// A footing's state after the last step (`StructureSolver.footingSummaries()`).
 public struct FootingSummary: Sendable {
     /// The plan: centre of the base at rest, and its extent along x and y.
@@ -165,6 +299,10 @@ public struct FootingSummary: Sendable {
     /// greatest y (empty, least above greatest, when none does).
     public var contact: SIMD4<Float>
     public var mass: Float
+    /// Embedded: the soil's force on its sides, and the most the soil has given way or followed
+    /// across any side, in metres.
+    public var sideForce: SIMD3<Float> = .zero
+    public var sideGiveWay: Float = 0
 }
 
 /// The rigid footings under a body's connected bases (`Footing`), moved on the GPU by
@@ -184,7 +322,8 @@ final class FootingSystem {
         var layer: SIMD4<Float>
         var history: SIMD4<UInt32>
         var totals: SIMD4<Float>
-        var unused: SIMD4<Float> = .zero
+        var sides: SIMD4<UInt32> = .zero
+        var embedded: SIMD4<Float> = .zero
     }
 
     /// Layout matches `FootingState`.
@@ -199,6 +338,14 @@ final class FootingSystem {
         var jointForce: SIMD4<Float> = .zero
         var contact: SIMD4<Float> = .zero
         var elastic: SIMD4<Float> = .zero
+        var sideForce: SIMD4<Float> = .zero
+    }
+
+    /// Layout matches `SidePoint` in Footing.metal.
+    struct SidePoint {
+        var placeAndArea: SIMD4<Float>
+        var normalAndStiffness: SIMD4<Float>
+        var pressures: SIMD4<Float>
     }
 
     /// Layout matches `BedPoint` in Footing.metal.
@@ -243,6 +390,8 @@ final class FootingSystem {
     let constantBuffer: MTLBuffer
     private let bedBuffer: MTLBuffer
     private let bedStateBuffer: MTLBuffer
+    private let sideBuffer: MTLBuffer
+    private let sideStateBuffer: MTLBuffer
     private let memberBuffer: MTLBuffer
     /// For each connected entity, its footing plus one (zero: on the ground).
     let footingOfBuffer: MTLBuffer
@@ -272,6 +421,7 @@ final class FootingSystem {
         }
         var constants: [Constants] = []
         var bed: [BedPoint] = []
+        var sidePoints: [SidePoint] = []
         var memberList: [UInt32] = []
         var footingOf = [UInt32](repeating: 0, count: max(entityCount, 1))
         var echoes: [Float] = []
@@ -296,7 +446,20 @@ final class FootingSystem {
             let thickness = footing.thickness
             let centre = SIMD3(middle.x, middle.y, top - thickness / 2)
             let mass = footing.density * size.x * size.y * thickness
-            let soilBed = FootingBed(width: size.x, length: size.y, soil: footing.soil)
+            let soilBed = FootingBed(
+                width: size.x, length: size.y, soil: footing.soil, embedment: footing.embedment,
+                thickness: thickness)
+            let sides = footing.embedment.map {
+                FootingSides(
+                    width: size.x, length: size.y, thickness: thickness, soil: footing.soil, embedment: $0,
+                    base: soilBed.stiffness)
+            }
+            // Set into the soil, the base bears the overburden's share as well.
+            let capacity = footing.soil.bearingCapacity.map { surface in
+                footing.embedment?.bearingCapacity(
+                    surface: surface, width: size.x, length: size.y, material: footing.soil.material)
+                    ?? surface
+            }
             let impedance = soilBed.impedance
             typealias Mode = FootingImpedance.Mode
             let damped = footing.soil.radiationDamping
@@ -327,9 +490,17 @@ final class FootingSystem {
                     BedPoint(
                         placeAndBearing: SIMD4(
                             point.place.x, point.place.y, point.vertical,
-                            (footing.soil.bearingCapacity ?? 0) * point.area),
+                            (capacity ?? 0) * point.area),
                         shearAndDamping: SIMD4(point.horizontal.x, point.horizontal.y, dashpots.x, dashpots.y)
                     ))
+            }
+            let firstSide = sidePoints.count
+            for point in sides?.points ?? [] {
+                sidePoints.append(
+                    SidePoint(
+                        placeAndArea: SIMD4(point.place, point.area),
+                        normalAndStiffness: SIMD4(point.normal.x, point.normal.y, point.across, point.along),
+                        pressures: SIMD4(point.pressures, footing.embedment?.wallFriction ?? 0)))
             }
             let firstMember = memberList.count
             for member in tied {
@@ -378,7 +549,10 @@ final class FootingSystem {
                     history: SIMD4(
                         UInt32(firstHistory), UInt32(firstEcho), UInt32(Self.historyCapacity),
                         UInt32(Self.echoSlots)),
-                    totals: SIMD4(sums, footing.soil.friction)))
+                    totals: SIMD4(sums, footing.soil.friction),
+                    sides: SIMD4(UInt32(firstSide), UInt32(sides?.points.count ?? 0), 0, 0),
+                    embedded: SIMD4(
+                        lowHalf: sides?.rocking ?? .zero, highHalf: sides?.rockingLimit ?? .zero)))
             summaries.append(
                 FootingSummary(
                     baseCentre: SIMD3(middle.x, middle.y, top - thickness), size: size, displacement: .zero,
@@ -394,6 +568,12 @@ final class FootingSystem {
                 $0 + max($1.vertical, $1.horizontal.max())
                     * (simd_length_squared($1.place) + thickness * thickness / 4)
             }
+            for point in sides?.points ?? [] {
+                let k = max(point.across, point.along) * point.area
+                translation += k
+                rotation += k * simd_length_squared(point.place + SIMD3(0, 0, -thickness / 2))
+            }
+            rotation += sides.map { max($0.rocking.x, $0.rocking.y) } ?? 0
             for member in tied {
                 let k = max(member.stiffness.normal, member.stiffness.shear) * member.area
                 translation += k
@@ -419,6 +599,9 @@ final class FootingSystem {
         bedBuffer = try buffer(bed.count * MemoryLayout<BedPoint>.stride, "footing beds")
         bedBuffer.copy(bed)
         bedStateBuffer = try buffer(bed.count * 16, "footing bed states")
+        sideBuffer = try buffer(sidePoints.count * MemoryLayout<SidePoint>.stride, "footing sides")
+        sideBuffer.copy(sidePoints)
+        sideStateBuffer = try buffer(sidePoints.count * 16, "footing side states")
         memberBuffer = try buffer(memberList.count * 4, "footing members")
         memberBuffer.copy(memberList)
         footingOfBuffer = try buffer(footingOf.count * 4, "footing of each point")
@@ -435,6 +618,7 @@ final class FootingSystem {
         let states = stateBuffer.contents().bindMemory(to: State.self, capacity: count)
         for n in 0..<count { states[n] = State() }
         memset(bedStateBuffer.contents(), 0, bedStateBuffer.length)
+        memset(sideStateBuffer.contents(), 0, sideStateBuffer.length)
         memset(linkBuffer.contents(), 0, linkBuffer.length)
         memset(historyBuffer.contents(), 0, historyBuffer.length)
     }
@@ -454,6 +638,8 @@ final class FootingSystem {
         encoder.setBuffer(echoBuffer, offset: 0, index: 7)
         encoder.setBuffer(control, offset: 0, index: 8)
         encoder.setBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 9)
+        encoder.setBuffer(sideBuffer, offset: 0, index: 10)
+        encoder.setBuffer(sideStateBuffer, offset: 0, index: 11)
         encoder.dispatchThreadgroups(
             MTLSize(width: count, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: Self.threads, height: 1, depth: 1))
@@ -482,6 +668,8 @@ final class FootingSystem {
             summary.uplift = state.soilMoment.w
             summary.settlement = state.jointForce.w
             summary.contact = state.contact
+            summary.sideForce = SIMD3(state.sideForce.x, state.sideForce.y, state.sideForce.z)
+            summary.sideGiveWay = state.sideForce.w
             return summary
         }
     }

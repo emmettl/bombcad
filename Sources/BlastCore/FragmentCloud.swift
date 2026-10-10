@@ -98,6 +98,8 @@ public struct FragmentScene: Codable, Sendable, Equatable {
     public var structureOwners: [UUID]?
     /// The material's name of each starting structural region, for the surfaces' heating.
     public var structureMaterials: [String]?
+    /// The ground's shape; nil for flat ground (and for scenes saved before terrain).
+    public var terrain: Terrain?
 
     public init(_ scenario: Scenario) {
         charge = scenario.charge
@@ -111,7 +113,11 @@ public struct FragmentScene: Codable, Sendable, Equatable {
         structureOwners =
             bodies.count > 1
             ? bodies.flatMap { body in body.structure!.solids.map { _ in body.id } } : nil
+        terrain = scenario.terrain
     }
+
+    /// The ground's height under `point`: the terrain's, or the floor's.
+    public func groundHeight(at point: SIMD3<Float>) -> Float { terrain?.height(at: point) ?? 0 }
 }
 
 public struct FragmentCloud: Sendable {
@@ -136,6 +142,7 @@ public struct FragmentCloud: Sendable {
     let blocks: [Box]
     let structure: [Box]
     let structureOwners: [UUID]?
+    let terrain: Terrain?
     let gravity = SIMD3<Float>(0, 0, -9.81)
 
     public var fragmentCount: Int { particles.lazy.filter { $0.mass > 0 }.count }
@@ -153,6 +160,7 @@ public struct FragmentCloud: Sendable {
         blocks = scene.blocks
         structure = scene.structure
         structureOwners = scene.structureOwners?.count == scene.structure.count ? scene.structureOwners : nil
+        terrain = scene.terrain
         var particles: [Particle] = []
         // Mott: P(mass > m) = exp(-√(m/μ)), whose mean is 2μ; scaled after to the casing's mass.
         let mu = spec.count > 0 ? spec.casingMass / Float(2 * spec.count) : 0
@@ -194,12 +202,16 @@ public struct FragmentCloud: Sendable {
     }
 
     /// Particles placed directly, for tests.
-    init(particles: [Particle], blocks: [Box] = [], structure: [Box] = [], structureOwners: [UUID]? = nil) {
+    init(
+        particles: [Particle], blocks: [Box] = [], structure: [Box] = [], structureOwners: [UUID]? = nil,
+        terrain: Terrain? = nil
+    ) {
         self.particles = particles
         launchSpeed = 0
         self.blocks = blocks
         self.structure = structure
         self.structureOwners = structureOwners?.count == structure.count ? structureOwners : nil
+        self.terrain = terrain
     }
 
     /// The box a consumer needs air over to carry every airborne particle `ahead` seconds on,
@@ -326,12 +338,33 @@ public struct FragmentCloud: Sendable {
         return gravity + dragRate(particle, air) * relative
     }
 
-    /// Where a straight step first meets the ground, a block or the structure.
+    /// Where a straight step first meets the ground (the terrain's surface, where there is one), a
+    /// block or the structure. A step that crosses a ridge and comes down beyond it within one step
+    /// passes through it: steps are short against any hill.
     private func hit(from start: SIMD3<Float>, to end: SIMD3<Float>) -> (
         point: SIMD3<Float>, surface: String, objectID: UUID?
     )? {
         var best: (fraction: Float, surface: String, objectID: UUID?)?
-        if end.z <= 0, start.z > 0 {
+        if let terrain {
+            // Above the surface at the start and on or below it at the end: where between, by
+            // bisection on the height above it, which the bilinear surface makes continuous.
+            func clearance(_ f: Float) -> Float {
+                let p = start + (end - start) * f
+                return p.z - terrain.height(at: p)
+            }
+            if clearance(1) <= 0 {
+                if clearance(0) > 0 {
+                    var (low, high): (Float, Float) = (0, 1)
+                    for _ in 0..<24 {
+                        let middle = 0.5 * (low + high)
+                        if clearance(middle) > 0 { low = middle } else { high = middle }
+                    }
+                    best = (high, "ground", nil)
+                } else {
+                    best = (0, "ground", nil)
+                }
+            }
+        } else if end.z <= 0, start.z > 0 {
             best = (start.z / (start.z - end.z), "ground", nil)
         } else if end.z <= 0 {
             best = (0, "ground", nil)
