@@ -325,8 +325,17 @@ It costs about 28% more a step (the street to 170 ms: 13.6–13.8 s against 10.5
   of the integral model of a thermal that entrains at Morton, Taylor and Turner's α = 0.25.
 
 So on these cells the large eddies the grid resolves, and the scheme's own dissipation, do the
-mixing. A [deflagration](deflagration.md)'s burning velocity has its own sub-grid term; with both
-on, sub-grid turbulence is partly counted twice.
+mixing.
+
+**The σ-model, an option** (`SubgridMixing.model = .sigma`, coefficient 1.35). Nicoud et al.'s
+(2011) operator σ₃(σ₁ − σ₂)(σ₂ − σ₃)/σ₁², from the singular values of the velocity gradient,
+replaces |S|. It is zero wherever the resolved flow is one- or two-dimensional, axisymmetric, a
+pure shear or a rigid rotation. So the laminar flow round a growing flame, an irrotational
+spherical expansion that Smagorinsky's |S| takes for turbulence, gets none (`MixingTests`; on the
+grid's differences a point source's flow keeps a share of Smagorinsky's that falls as (Δ/r)², a
+quarter at five cells and a twelfth at ten). A [deflagration](deflagration.md#the-burning-velocity)
+with flame turbulence turns it on and takes its sub-grid velocity from it, so the flame and the
+air share one sub-grid model. Charges keep Smagorinsky's, bit for bit.
 
 ## Skipping still air
 
@@ -481,6 +490,10 @@ that of the cells behind it; the solution itself was right. Around the chamber's
 refined air first lost 15% of its energy and the roof rose half as far: ghost cells took their
 kind from the coarse mask even inside a neighbouring patch, so where the fine outline differed
 the two sides of a face disagreed on whether it was a wall.
+
+The threshold decides how far out the refinement follows a shock: at the default 0.1 to about
+20 kPa, at 0.005 beyond 40 m/kg^(1/3), after which the peak falls to the coarse cells' share (see
+[Large scenes](large-scenes.md#against-kingerybulmash-to-40-mkg13)).
 
 ## Freezing the air
 

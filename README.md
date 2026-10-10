@@ -121,6 +121,7 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [Structural editing](docs/structural-editing.md) | Building structures, materials, openings and restraints in the app |
 | [Freestanding objects](docs/freestanding-objects.md) | Rigid boxes and cars coupled to the air, contact and populated scenes |
 | [Terrain](docs/terrain.md)                  | A heightfield ground the blast sees, DEM import, and slopes checked against shock reflection theory |
+| [Large scenes](docs/large-scenes.md) | Bursts of hundreds of tonnes to kilotonnes over kilometres: accuracy, cost and grids against Kingery–Bulmash, terrain at scale |
 | [Validation](docs/validation.md)            | Every comparison with measurements and theory, with a summary   |
 | [Standing of results](docs/standing.md)     | Each result's evidential standing, derived from the scene and carried with runs and exports |
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |

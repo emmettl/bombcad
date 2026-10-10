@@ -293,4 +293,27 @@ struct BlastValidationTests {
         #expect(abs(middle.arrival(mass: 10_000) - 0.0481) < 1e-9)
         #expect(zip(points, points.dropFirst()).allSatisfy { $0.scaledDistance < $1.scaledDistance })
     }
+
+    @Test("A line of gauges stands at the charge's scaled distances, on the terrain, inside the domain")
+    func gaugeLine() throws {
+        // 500 t, cube root 79.37 kg^(1/3): Z = 10 is 794 m out, Z = 14 would be 1,111 m.
+        var scenario = Scenario(
+            name: "Field", domainSize: SIMD3(1000, 600, 200), boxes: [],
+            charge: Charge(mass: 500_000, position: SIMD3(100, 300, 0)))
+        #expect(scenario.roomiestGaugeLineDirection == SIMD2(1, 0))
+        let line = scenario.gaugeLine(direction: scenario.roomiestGaugeLineDirection)
+        #expect(line.map(\.name).first == "Z 1 · 79 m")
+        #expect(line.count == 8)
+        #expect(line.last.map { abs($0.position.x - (100 + 10 * Float(cbrt(500_000.0)))) < 0.01 } == true)
+        #expect(line.allSatisfy { $0.position.y == 300 && $0.position.z == 1.5 })
+        scenario.terrain = .slope(domain: scenario.domainSize, spacing: 5, foot: 400, angle: 10)
+        for gauge in scenario.gaugeLine(direction: SIMD2(1, 0)) {
+            let ground = scenario.terrain!.height(at: gauge.position)
+            #expect(abs(gauge.position.z - ground - 1.5) < 1e-4)
+        }
+        // Nothing beyond the domain, and nothing for a charge of no mass.
+        #expect(scenario.gaugeLine(direction: SIMD2(0, -1)).count == 4)
+        scenario.charge.mass = 0
+        #expect(scenario.gaugeLine(direction: SIMD2(1, 0)).isEmpty)
+    }
 }

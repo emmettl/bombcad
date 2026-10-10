@@ -23,6 +23,7 @@ private var inputSamples: [Any] {
         Terrain(spacing: 1, columns: 2, rows: 2, heights: [0, 0, 0, 1]),
         Deflagration(region: Box(min: .zero, max: .one), ignition: .zero),
         FlameAcceleration(),
+        FlameTurbulence(),
         VentPanel(box: Box(min: .zero, max: .one), releasePressure: 1000),
     ]
 }

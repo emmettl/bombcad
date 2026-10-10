@@ -15,7 +15,7 @@ public final class BlastSolver {
     /// contact and debris). Batches end at these checkpoints, so that the decisions depend only
     /// on the step count, never on how the steps were batched.
     public static let checkpointInterval = 64
-    public static let maxGauges = 16
+    public static let maxGauges = 64
 
     public let device: MTLDevice
     public let commandQueue: MTLCommandQueue
@@ -118,6 +118,8 @@ public final class BlastSolver {
     public var refinementPatchCapacity: Int { refinement?.maxPatches ?? 0 }
     /// The patches the second level's pool holds (0 without one).
     public var finerRefinementPatchCapacity: Int { finerRefinement?.maxPatches ?? 0 }
+    /// The patches each refined level holds after the last regrid, the first level first.
+    public var refinementPatchesInUse: [Int] { refinementLevels.map(\.patchCount) }
     private var bodyStep: Float? { bodies.map(\.criticalTimeStep).min() }
     public func body(id: UUID) -> StructuralBody? { bodies.first { $0.id == id } }
     public var couplingStatistics: CouplingStatistics {
@@ -1677,7 +1679,7 @@ public final class BlastSolver {
                     encoder, state: stateBuffers[current],
                     species: hasSpecies ? speciesBuffers[current] : nil,
                     mask: maskBuffer,
-                    rigidMask: rigidMaskBuffer, control: controlBuffer)
+                    rigidMask: rigidMaskBuffer, viscosity: mixingViscosity(), control: controlBuffer)
             }
 
             phase("mechanics")
@@ -2158,6 +2160,7 @@ public final class BlastSolver {
         if let mixing = configuration.mixing {
             uniforms.mixingCoefficient = mixing.coefficient
             uniforms.mixingPrandtl = mixing.prandtl
+            uniforms.mixingModel = mixing.model == .sigma ? 1 : 0
         }
         if let gravity = configuration.gravity {
             uniforms.gravity = gravity.acceleration

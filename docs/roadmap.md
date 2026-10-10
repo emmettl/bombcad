@@ -113,7 +113,8 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    within 6% of Kingery–Bulmash; and the air's dissociation, as an option, which moves those
    by under 1% in the open and up to 6% in the densest rooms, at 3.6 times the cost; see the
    [air-blast model](air-blast-model.md#dissociating-air).)
-4. **Shear in concrete.** A member that failed in shear under a blast, to judge a sectional
+4. **Shear in concrete.** (The [concrete strategy](concrete-strategy.md) proposes discrete bars,
+   then embedded cracks where members fail in shear.) A member that failed in shear under a blast, to judge a sectional
    check for shells; a sectional check that works under impact, where the present one breaks
    every beam; and solid elements that fail in shear on coarse meshes, which cannot separate
    cracks 100 mm apart on 46 mm elements; crack tracking did not help without bond slip (see
@@ -165,7 +166,9 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    and which the specimen's inertia, already in the model, needs evidence from tests built to
    separate them.
 6. **Close-in damage**: spalling of the faces, and a breach under the charge, which the
-   close-in slabs show and the model does not produce on any mesh. (Done: bars that outlive
+   close-in slabs show and the model does not produce on any mesh. (The
+   [concrete strategy](concrete-strategy.md) proposes failed concrete turned to particles, not
+   deleted, then a peridynamic zone if needed.) (Done: bars that outlive
    the concrete around them, as bare elements, so that a holed member hangs on its bars; see
    [Removal](concrete-model.md#removal). And a fracture energy that grows more slowly with
    strain rate than the strength, after which the reflected wave spalls the far face under a
@@ -260,10 +263,16 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    points, objects and the thermal paint; see [Terrain](terrain.md). Next: cut cells for its
    slopes, and footings and the ground's connection on a slope.)
 16. **Gas deflagrations**, beside the charge. (Started, illustrative: a methane or propane cloud lit
-   at a point, burning by Weller's regress variable, and vent panels that release at a pressure;
-   closed vessels converge on the thin-flame model, but vented rooms fall well short of the venting
-   correlations and of FM Global's tests, the flame's acceleration being a factor, not a model. See
-   [Gas deflagrations](deflagration.md). Next: a turbulence model for the flame.)
+   at a point, burning by Weller's regress variable and wrinkled by sub-grid turbulence from the
+   air's σ-model mixing, and vent panels that release at a pressure. Closed vessels converge on the
+   thin-flame model. In FM Global's chamber, lit at the back wall, the flame runs at the tests'
+   speeds and peaks at 55–60% of their pressure; lit in the middle, at a fifth to a seventh, its back
+   half stalling. See [Gas deflagrations](deflagration.md). Next: why it stalls, a young flame's
+   speed on coarse cells, and the instabilities.)
+17. **Large scenes**: surface bursts of hundreds of tonnes to kilotonnes over kilometres. (Started:
+   checked against Kingery–Bulmash to 40 m/kg^(1/3) and over terrain at 500 t; refined twice at a low
+   threshold, 16 m cells give 4 m cells' peaks in a quarter of the time; see [Large
+   scenes](large-scenes.md). Next: cell sizes and domains chosen by the scene in the app.)
 
 ### Freestanding objects and supports
 
