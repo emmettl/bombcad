@@ -251,6 +251,11 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
 15. **Terrain**, at neighbourhood and small-landscape scale. (Started: a heightfield ground, from
    shapes or a DEM, solid in the air's mask on every level; see [Terrain](terrain.md). Next: cut
    cells for its slopes, and terrain in thermal visibility and rigid contact.)
+16. **Gas deflagrations**, beside the charge. (Started, illustrative: a methane or propane cloud lit
+   at a point, burning by Weller's regress variable, and vent panels that release at a pressure;
+   closed vessels converge on the thin-flame model, but vented rooms fall well short of the venting
+   correlations and of FM Global's tests, the flame's acceleration being a factor, not a model. See
+   [Gas deflagrations](deflagration.md). Next: a turbulence model for the flame.)
 
 ### Freestanding objects and supports
 

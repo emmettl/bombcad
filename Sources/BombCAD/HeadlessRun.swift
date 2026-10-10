@@ -813,7 +813,7 @@ enum HeadlessRun {
         func format(_ value: Double, _ digits: Int) -> String { String(format: "%.\(digits)f", value) }
         var lines = [
             "\(run.name): \(run.scenario.name), \(run.settings.resolution) grid, "
-                + "\(format(Double(run.scenario.charge.mass), 2)) kg TNT",
+                + run.scenario.sourceDescription,
             "\(run.stepCount) steps to \(format(run.elapsedTime * 1000, 1)) ms on \(run.deviceName), "
                 + "in \(format(wallSeconds, 1)) s"
                 + (blastGPUSeconds.map { ", \(format($0, 1)) s of them the GPU's on the blast" } ?? ""),

@@ -215,7 +215,7 @@ extension BlastSolver {
         let size = SIMD3(grid.nx, grid.ny, grid.nz)
         let low = 2 &* lowest
         let counts = simd_min(2 &* (highest &+ 1), size) &- low
-        let hasProducts = readSpecies { $0 != nil }
+        let hasProducts = speciesHoldDetonationProducts
         if let packed = frameExtractor?.luminousCells(
             luminous: luminousTemperature, time: time, steps: stepCount, count: grid.cellCount)
         {
@@ -241,6 +241,7 @@ extension BlastSolver {
         let airModel = configuration.airModel
         let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
         var packed = [UInt32](repeating: 0, count: counts.x * counts.y * counts.z)
+        let hasProducts = speciesHoldDetonationProducts
         withState { cells in
             readSpecies { species in
                 packed.withUnsafeMutableBufferPointer { packed in
@@ -258,7 +259,8 @@ extension BlastSolver {
                                     : bound
                                 guard t >= luminousTemperature, t.isFinite else { continue }
                                 let kelvin = UInt32(min(max(t.rounded(), 1), 65535))
-                                let products = Float16(min(max(species?[index].x ?? 0, 0), 65504))
+                                let held = hasProducts ? species?[index].x ?? 0 : 0
+                                let products = Float16(min(max(held, 0), 65504))
                                 packed[i + counts.x * (j + counts.y * k)] =
                                     kelvin | UInt32(products.bitPattern) << 16
                             }
