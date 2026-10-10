@@ -11,6 +11,12 @@ def verify(root):
     require(len(data['wallCases'])==360,'complete ordinary wall tree')
     require(len({(v['density'],v['pressure'],v['velocity'],v['gamma']) for v in data['wallCases']})==360,'unique wall cases')
     require(len(data['wallStudy'])==8 and len(data['reflection'])==8 and len(data['pistons'])==12,'complete coupled tree')
+    require([v['normalMach'] for v in data['wallStudy']]==[-6,-4,-2,-.1,0,.1,1,3],'wall study inputs')
+    require({(v['cellLength'],v['cfl'],v['mach'],v['transport']) for v in data['reflection']}=={(h,.2,m,t) for h in [.1,.05] for m in [1.2,2] for t in ['limitedSSPRK2','conservedQuadraticSSPRK2']},'reflection inputs')
+    for v in data['reflection']:
+        require([f['arrivalFraction'] for f in v['frames']]==[.8,1,1.2,1.4],'complete reflection clocks')
+        require(all(abs(f['time']-v['arrivalTime']*f['arrivalFraction'])<1e-14 for f in v['frames']) and abs(v['frames'][-1]['time']-v['duration'])<1e-14,'reflection physical clocks')
+        require(v['steps']>0 and abs(v['relativeMassChange'])<1e-11 and abs(v['relativeEnergyChange'])<1e-11 and len(v['momentumBudgetResidual'])==3 and all(abs(x)<1e-10 for x in v['momentumBudgetResidual']),'reflection conservation budgets')
     require({(p['spacing'],p['velocity'],p['reconstruction']) for p in data['pistons']}=={(h,v,r) for h in [.05,.025,.0125] for v in [-20,20] for r in ['constant','minmod']},'piston inputs')
     total=0
     for p in data['pistons']:

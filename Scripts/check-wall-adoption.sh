@@ -35,3 +35,4 @@ for variant in original shared; do
   cp "$scratch/$variant/Fixtures/WallAdoptionBenchmark/Package.resolved" "$output/$variant/consumer-Package.resolved"
 done
 python3 Scripts/verify-wall-adoption-output.py "$output"
+python3 Scripts/test-wall-adoption-gate.py "$output"
