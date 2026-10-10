@@ -239,6 +239,68 @@ struct ConcreteModelTests {
         #expect(abs(back.stress - turn.stress) / abs(turn.stress) < 0.01)
     }
 
+    /// One cubic element whose eight nodes are all driven, so that its strain is uniform and
+    /// follows a prescribed path; `work` adds up the work done on it, per unit volume.
+    private final class DrivenCube {
+        let solver: StructureSolver
+        let size: Float = 0.05
+        private(set) var strain = simd_float3x3()
+        private(set) var work: Double = 0
+
+        init(
+            device: MTLDevice, material: StructureMaterial, secondCracks: Bool = true,
+            reinforcement: [ReinforcementLayer] = [], inclinedBars: [InclinedBars] = []
+        ) throws {
+            let cube = Box(min: SIMD3(0, 0, 1), max: SIMD3(size, size, 1 + size))
+            var model = StructureModel(
+                solids: [cube], material: material, elementSize: size, fixedBase: false)
+            model.secondCracks = secondCracks
+            model.reinforcement = reinforcement
+            model.inclinedBars = inclinedBars
+            solver = try StructureSolver(device: device, model: model)
+            solver.gravity = 0
+            solver.groundContact = false
+        }
+
+        /// The stress tensor (Pa).
+        var stress: simd_float3x3 {
+            let s = solver.stress(0, 0, 0)
+            return simd_float3x3(rows: [
+                SIMD3(s[0], s[3], s[5]), SIMD3(s[3], s[1], s[4]), SIMD3(s[5], s[4], s[2]),
+            ])
+        }
+
+        /// Takes the strain to `target` at a steady rate over `steps` steps.
+        func drive(to target: simd_float3x3, steps: Int = 3000, sample: (() -> Void)? = nil) {
+            let dt = solver.criticalTimeStep
+            let rate = (target - strain) * (1 / (Float(steps) * dt))
+            let size = self.size
+            solver.mutateNodes { nodes in
+                for n in 0..<8 {
+                    let position = SIMD3(Float(n & 1), Float((n >> 1) & 1), Float(n >> 2)) * size
+                    nodes[solver.nodeIndex(n & 1, (n >> 1) & 1, n >> 2)].isPrescribed = true
+                    nodes[solver.nodeIndex(n & 1, (n >> 1) & 1, n >> 2)].velocity = rate * position
+                }
+            }
+            for _ in 0..<(steps / 20) {
+                solver.advance(steps: 20)
+                var power: Double = 0
+                for n in 0..<8 {
+                    let position = SIMD3(Float(n & 1), Float((n >> 1) & 1), Float(n >> 2)) * size
+                    power -= Double(simd_dot(solver.nodalForce(n & 1, (n >> 1) & 1, n >> 2), rate * position))
+                }
+                work += power * Double(20 * dt) / Double(size * size * size)
+                sample?()
+            }
+            strain = target
+        }
+    }
+
+    /// A strain of `xx`, `yy` and shear `xy` (engineering shear 2 xy), in units of `unit`.
+    private static func plane(_ xx: Float, _ yy: Float, _ xy: Float, _ unit: Float) -> simd_float3x3 {
+        simd_float3x3(columns: (SIMD3(xx, xy, 0), SIMD3(xy, yy, 0), .zero)) * unit
+    }
+
     @Test("Tension turned 45 degrees from a fixed crack opens a second crack instead of locking")
     func secondCrackRelievesLocking() throws {
         var material = Self.concrete()
