@@ -17,7 +17,8 @@ enum HeadlessRun {
                            [--cloud <spec.json> [--sounding <sounding.csv>] [--cloud-results <file.json>]]
                            [--ground-shock <spec.json> [--ground-results <file.json>]]
                            [--envelope-results <file.json>]
-                           [--consumer <ssh host> | fragments=<where>,thermal=<where>,ground=<where>]
+                           [--consumer <ssh host> | auto | fragments=<where>,thermal=<where>,ground=<where>]
+                           [--worker <ssh host>]…
 
         Runs the project's simulation to its duration and prints a summary. --out writes a copy of
         the project with the run added to its saved runs; --csv writes the gauge and deflection
@@ -39,7 +40,11 @@ enum HeadlessRun {
         the ground's shaking under chosen points from the overpressure the run records on the
         ground, frame by frame; --ground-results writes it as JSON. Each of these three runs here
         unless --consumer places it on another Mac over SSH, <where> being local or an SSH host;
-        models on one Mac share a connection to it, and a host alone places the fragments.
+        models on one Mac share a connection to it, and a host alone places the fragments. auto,
+        alone or as a model's <where>, places by cost among this Mac and each --worker: each
+        Mac's cost a frame is probed before the run and the run's own taken from the last run
+        of the same inputs (until there is one, a model goes elsewhere only if that Mac is quicker
+        at it than the time it would take from the blast here).
         --resolution and --mass change the inputs as a sweep case would; the project itself is
         never modified.
         """
@@ -58,9 +63,11 @@ enum HeadlessRun {
         var vdbFields = BlastSolver.defaultVolumeFields
         /// A cased charge's fragments to fly through the blast, where, and where their results go.
         var fragments: FragmentSpec?
-        /// Where each consumer runs, by name (fragments, thermal, ground): "local", or an SSH
-        /// host; here unless named.
+        /// Where each consumer runs, by name (fragments, thermal, ground): "local", an SSH
+        /// host, or "auto", by cost among this Mac and `workers`; here unless named.
         var consumers: [String: String] = [:]
+        /// The other Macs `auto` may place consumers on.
+        var workers: [String] = []
         var fragmentResults: URL?
         /// The fireball's thermal radiation on the scene, and where its results go.
         var thermal: ThermalSpec?
@@ -79,12 +86,13 @@ enum HeadlessRun {
         /// The consumers `--consumer` can place.
         static let consumerNames = ["fragments", "thermal", "ground"]
 
-        /// Where the consumer `name` runs: "local" or an SSH host.
+        /// Where the consumer `name` runs: "local", an SSH host or "auto".
         func place(_ name: String) -> String { consumers[name] ?? "local" }
 
         static func parse(_ arguments: [String]) throws -> Options {
             var positional: [String] = []
             var values: [String: String] = [:]
+            var workers: [String] = []
             var index = 0
             while index < arguments.count {
                 let argument = arguments[index]
@@ -96,15 +104,16 @@ enum HeadlessRun {
                             "vdb-fields", "fragments",
                             "consumer", "fragment-results", "thermal", "thermal-results", "cloud",
                             "cloud-results", "sounding", "ground-shock", "ground-results", "envelope-results",
-                            "frame-interval",
+                            "frame-interval", "worker",
                         ]
                         .contains(key)
                     else {
                         throw ProjectFileError.invalid("Unknown option \(argument).")
                     }
-                    guard index + 1 < arguments.count, values[key] == nil else {
+                    guard index + 1 < arguments.count, values[key] == nil || key == "worker" else {
                         throw ProjectFileError.invalid("Give \(argument) one value.")
                     }
+                    if key == "worker" { workers.append(arguments[index + 1]) }
                     values[key] = arguments[index + 1]
                     index += 2
                 } else {
@@ -195,10 +204,17 @@ enum HeadlessRun {
                 throw ProjectFileError.invalid("--ground-results needs --ground-shock.")
             }
             if let value = values["consumer"] {
-                // A bare place is the fragments', as before there were others.
+                // A bare place is the fragments', as before there were others, but for auto,
+                // which places every model given.
+                let given = Self.consumerNames.filter { name in
+                    name == "fragments"
+                        ? options.fragments != nil
+                        : name == "thermal" ? options.thermal != nil : options.groundShock != nil
+                }
                 let pairs =
                     value.contains("=")
-                    ? value.split(separator: ",").map(String.init) : ["fragments=\(value)"]
+                    ? value.split(separator: ",").map(String.init)
+                    : value == "auto" ? given.map { "\($0)=auto" } : ["fragments=\(value)"]
                 for pair in pairs {
                     let parts = pair.split(separator: "=", maxSplits: 1).map {
                         $0.trimmingCharacters(in: .whitespaces)
@@ -219,9 +235,20 @@ enum HeadlessRun {
                     else {
                         throw ProjectFileError.invalid("--consumer \(parts[0])= needs \(needed[parts[0]]!).")
                     }
-                    if parts[1] != "local" { try RemoteSweepWorker.validate(parts[1]) }
+                    if parts[1] != "local", parts[1] != "auto" { try RemoteSweepWorker.validate(parts[1]) }
                     options.consumers[parts[0]] = parts[1]
                 }
+            }
+            guard Set(workers).count == workers.count else {
+                throw ProjectFileError.invalid("Name each --worker host once.")
+            }
+            for host in workers { try RemoteSweepWorker.validate(host) }
+            options.workers = workers
+            if options.consumers.values.contains("auto") != !workers.isEmpty {
+                throw ProjectFileError.invalid(
+                    workers.isEmpty
+                        ? "--consumer auto needs a --worker to place models on."
+                        : "--worker names a Mac for --consumer auto.")
             }
             if let text = values["frame-interval"] {
                 guard
@@ -287,14 +314,14 @@ enum HeadlessRun {
     }
 
     /// Runs the project, writes any requested outputs and returns the kept run.
-    static func execute(_ options: Options) async throws -> (
+    static func execute(_ options: Options, costs: ConsumerCostStore? = nil) async throws -> (
         run: SavedSimulationRun, fragments: FragmentResult?, streams: [String], thermal: ThermalResult?,
-        cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?
+        cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?, blastGPUSeconds: Double
     ) {
         var document = try ProjectDocument.read(from: options.project)
         // Without --out the earlier runs are not needed, and must not use up the run limit.
         if options.out == nil { document.savedRuns = [] }
-        let result = try await perform(document, options: options)
+        let result = try await perform(document, options: options, costs: costs)
         if let out = options.out {
             try result.document.makeArchive().fileWrapper().write(to: out, originalContentsURL: nil)
         }
@@ -320,7 +347,7 @@ enum HeadlessRun {
         }
         return (
             result.run, result.fragments, result.streams, result.thermal, result.cloud, result.ground,
-            result.envelopes
+            result.envelopes, result.blastGPUSeconds
         )
     }
 
@@ -328,16 +355,18 @@ enum HeadlessRun {
     /// the kept run and the document, its own inputs unchanged, with the run added to its saved
     /// runs. `progress` is told the fraction of the simulated time reached, now and then.
     /// `connect` starts a worker on a host named in `options.consumers`; tests stand in-process
-    /// workers in for them. Cancelling the task stops the run.
+    /// workers in for them. `costs` keeps what the consumers cost, for `auto` to place them by
+    /// in this run and later ones. Cancelling the task stops the run.
     static func perform(
         _ document: ProjectDocument, options: Options, progress: ((Double) -> Void)? = nil,
-        consumer injected: (any FrameConsumer)? = nil,
+        consumer injected: (any FrameConsumer)? = nil, costs store: ConsumerCostStore? = nil,
         connect: (String) async throws -> SweepWorkerClient = {
             try await RemoteSweepWorker.connect(host: $0)
         }
     ) async throws -> (
         run: SavedSimulationRun, document: ProjectDocument, fragments: FragmentResult?, streams: [String],
-        thermal: ThermalResult?, cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?
+        thermal: ThermalResult?, cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?,
+        blastGPUSeconds: Double
     ) {
         var document = document
         let inputs = try inputs(for: document, options: options)
@@ -395,6 +424,7 @@ enum HeadlessRun {
             if !finished, let folder = options.vdb { try? FileManager.default.removeItem(at: folder) }
         }
         var exportError: Error?
+        var streams: [String] = []
         // The models fed each frame, each here or on another Mac, those on the same Mac sharing
         // one connection to it.
         var clients: [String: SweepWorkerClient] = [:]
@@ -413,18 +443,33 @@ enum HeadlessRun {
         if let injected {
             feeds.append(Feed(injected, place: injected is RemoteFrameConsumer ? "on a worker" : "here"))
         }
+        let costKey = ConsumerCostStore.key(inputs, frameInterval: interval)
+        var costs = costKey.flatMap { store?.costs(for: $0) } ?? ConsumerCosts()
+        var places = Dictionary(uniqueKeysWithValues: kinds.map { ($0.name, options.place($0.name)) })
+        if places.values.contains("auto") {
+            let plan = try await placeByCost(
+                kinds, places: places, workers: options.workers, inputs: inputs, costs: &costs,
+                clients: &clients, connect: connect)
+            places = plan.places
+            streams.append(plan.line)
+        }
         for (name, kind) in kinds {
-            let place = options.place(name)
+            let place = places[name] ?? "local"
             if place == "local" {
-                feeds.append(Feed(LocalFrameConsumer(kind), place: "here"))
+                feeds.append(Feed(LocalFrameConsumer(kind), place: "here", name: name, site: place))
             } else {
                 if clients[place] == nil { clients[place] = try await connect(place) }
                 // Should that Mac fail, the model carries on here from the frames kept.
                 feeds.append(
                     Feed(
                         try ResilientFrameConsumer(client: clients[place]!, kind: kind, ownsClient: false),
-                        place: "on \(place)"))
+                        place: "on \(place)", name: name, site: place))
             }
+        }
+        // Macs probed but given no model are let go.
+        for (host, client) in clients where !places.values.contains(host) {
+            client.close()
+            clients[host] = nil
         }
         let fragmentFeed = feeds.first { if case .fragments = $0.consumer.kind { true } else { false } }
         let streamStart = ContinuousClock.now
@@ -538,7 +583,6 @@ enum HeadlessRun {
         var fragments: FragmentResult?
         var thermalResult: ThermalResult?
         var groundResult: GroundShockResult?
-        var streams: [String] = []
         for feed in feeds {
             switch try await feed.consumer.finish(frameInterval: interval) {
             case .fragments(let result): fragments = result
@@ -559,9 +603,18 @@ enum HeadlessRun {
                     1000 * feed.cost.seconds / Double(max(consumer.sent, 1)),
                     1000 * consumer.seconds / Double(max(consumer.sent, 1)), feed.held.seconds,
                     running.seconds)
+                    + ((consumer as? LocalFrameConsumer)?.gpuSeconds.map {
+                        String(
+                            format: "; %.2f ms a frame of this Mac's GPU",
+                            1000 * $0 / Double(max(consumer.sent, 1)))
+                    } ?? "")
                     + ((consumer as? ResilientFrameConsumer)?.fallback.map {
                         "; here after frame \($0.frame + 1), that Mac having failed: \($0.reason)"
                     } ?? ""))
+        }
+        if let store, let costKey, !feeds.isEmpty {
+            record(feeds, running: running.seconds, thermal: thermalResult, into: &costs)
+            store.record(costs, for: costKey)
         }
         if let fragments {
             let edges = fragments.masses.map { cbrt($0 / (options.fragments?.fragmentDensity ?? 7850)) }
@@ -610,7 +663,10 @@ enum HeadlessRun {
         // The project's own inputs, with the new run among its saved ones.
         document.savedRuns = model.savedRuns
         let envelopeData = try options.envelopeResults.map { _ in try model.envelopeResultsData() }
-        return (run, document, fragments, streams, thermalResult, cloud, groundResult, envelopeData)
+        return (
+            run, document, fragments, streams, thermalResult, cloud, groundResult, envelopeData,
+            model.blastGPUSeconds
+        )
     }
 
     /// A consumer the run feeds each frame, where it runs, and what it has cost the run: the time
@@ -618,14 +674,84 @@ enum HeadlessRun {
     @MainActor final class Feed {
         let consumer: any FrameConsumer
         let place: String
+        /// The model's name as `--consumer` gives it, and where it runs: "local" or a host; nil
+        /// for one handed to the run.
+        let name: String?
+        let site: String?
         var cost = Duration.zero
         var held = Duration.zero
         var heldSince: ContinuousClock.Instant?
 
-        init(_ consumer: any FrameConsumer, place: String) {
+        init(_ consumer: any FrameConsumer, place: String, name: String? = nil, site: String? = nil) {
             self.consumer = consumer
             self.place = place
+            self.name = name
+            self.site = site
         }
+    }
+
+    /// Places each model `places` leaves to `auto` by cost, among this Mac and `workers`: each
+    /// Mac connected to (one that fails to connect is left out) and the thermal radiation probed
+    /// on each, then `ConsumerPlacement`'s plan. Returns where each model goes and a line saying
+    /// so.
+    private static func placeByCost(
+        _ kinds: [(name: String, kind: ConsumerKind)], places: [String: String], workers: [String],
+        inputs: SimulationInputs, costs: inout ConsumerCosts, clients: inout [String: SweepWorkerClient],
+        connect: (String) async throws -> SweepWorkerClient
+    ) async throws -> (places: [String: String], line: String) {
+        var unreachable: [String] = []
+        for host in workers where clients[host] == nil {
+            do {
+                clients[host] = try await connect(host)
+            } catch {
+                unreachable.append(host)
+            }
+        }
+        let hosts = workers.filter { clients[$0] != nil }
+        for (name, kind) in kinds where places[name] == "auto" {
+            await ConsumerProbe.probe(
+                name, kind: kind, inputs: inputs, workers: hosts.map { ($0, clients[$0]!) }, into: &costs)
+        }
+        let choices = places.mapValues { $0 == "auto" ? ["local"] + hosts : [$0] }
+        let plan = ConsumerPlacement.plan(
+            choices, kinds: Dictionary(uniqueKeysWithValues: kinds.map { ($0.name, $0.kind) }), costs: costs)
+        let parts = kinds.filter { places[$0.name] == "auto" }.map { name, _ in
+            let place = plan.places[name] ?? "local"
+            let seconds = costs.models[name].flatMap { $0.seconds[place] }
+            return "\(name) \(place == "local" ? "here" : "on \(place)")"
+                + (seconds.map { String(format: " (%.1f ms a frame)", 1000 * $0) } ?? "")
+        }
+        let line =
+            "Placed by cost: " + parts.joined(separator: ", ")
+            + (costs.frameSeconds.map {
+                String(format: "; the blast's last run took %.1f ms a frame", 1000 * $0)
+            } ?? "; no run of these inputs measured yet")
+            + String(format: "; estimated %.1f ms a frame", 1000 * plan.frameSeconds)
+            + (unreachable.isEmpty ? "" : "; could not reach " + unreachable.joined(separator: ", "))
+        return (plan.places, line)
+    }
+
+    /// What `feeds` cost over a run of `running` seconds, into `costs`: each model's seconds a
+    /// frame where it ran, and the blast's own, less the time the run waited for models and the
+    /// time of those here sharing its GPU.
+    private static func record(
+        _ feeds: [Feed], running: Double, thermal: ThermalResult?, into costs: inout ConsumerCosts
+    ) {
+        let frames = feeds.map(\.consumer.sent).max() ?? 0
+        guard frames > 0 else { return }
+        var blast = running - (feeds.map(\.held.seconds).max() ?? 0)
+        for feed in feeds {
+            guard let name = feed.name, let site = feed.site else { continue }
+            let consumer = feed.consumer
+            // A model that fell back here measured part of the run on each Mac.
+            guard (consumer as? ResilientFrameConsumer)?.fallback == nil, consumer.sent > 0 else { continue }
+            let seconds = consumer.seconds / Double(consumer.sent)
+            let gpu = (consumer as? LocalFrameConsumer)?.gpuSeconds.map { $0 > 0 }
+            costs.measured(name, kind: consumer.kind, place: site, seconds: seconds, usesGPU: gpu)
+            if site == "local", gpu == true { blast -= consumer.seconds }
+        }
+        costs.frameSeconds = max(blast, 0) / Double(frames)
+        if let largest = thermal?.fireball.map(\.radius).max(), largest > 0 { costs.fireballRadius = largest }
     }
 
     /// How many frames a consumer may fall behind before the run waits for it.
@@ -651,13 +777,17 @@ enum HeadlessRun {
         if let error = model.errorMessage { throw ProjectFileError.invalid(error) }
     }
 
-    nonisolated static func summary(_ run: SavedSimulationRun, wallSeconds: Double) -> String {
+    /// `blastGPUSeconds`, if given, is the GPU's time on the blast's batches.
+    nonisolated static func summary(
+        _ run: SavedSimulationRun, wallSeconds: Double, blastGPUSeconds: Double? = nil
+    ) -> String {
         func format(_ value: Double, _ digits: Int) -> String { String(format: "%.\(digits)f", value) }
         var lines = [
             "\(run.name): \(run.scenario.name), \(run.settings.resolution) grid, "
                 + "\(format(Double(run.scenario.charge.mass), 2)) kg TNT",
             "\(run.stepCount) steps to \(format(run.elapsedTime * 1000, 1)) ms on \(run.deviceName), "
-                + "in \(format(wallSeconds, 1)) s",
+                + "in \(format(wallSeconds, 1)) s"
+                + (blastGPUSeconds.map { ", \(format($0, 1)) s of them the GPU's on the blast" } ?? ""),
         ]
         for gauge in run.gauges {
             lines.append("  \(gauge.key.name): peak \(format(gauge.peak, 1)) kPa")
@@ -685,13 +815,14 @@ enum HeadlessRun {
         }
         let start = ContinuousClock.now
         do {
-            let result = try await execute(options)
+            let result = try await execute(options, costs: .standard)
             let wall = start.duration(to: .now)
             print(
                 summary(
                     result.run,
-                    wallSeconds: Double(wall.components.seconds) + Double(wall.components.attoseconds) * 1e-18
-                ))
+                    wallSeconds: Double(wall.components.seconds) + Double(wall.components.attoseconds)
+                        * 1e-18,
+                    blastGPUSeconds: result.blastGPUSeconds))
             if let fragments = result.fragments { print("  " + fragments.summary) }
             for stream in result.streams { print("  " + stream) }
             for line in result.thermal?.summary ?? [] { print("  " + line) }

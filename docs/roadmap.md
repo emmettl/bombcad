@@ -213,7 +213,8 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    cased charge's [fragments](fragments.md), and the fireball's [thermal
    radiation](thermal-radiation.md) on the ground and faces of a scene, from the air model's own
    hot gas in its own shape, which needs afterburning and hot air to make a fireball of plausible
-   size, painted onto the surfaces in the app as it goes and reckoned there or on another Mac,
+   size, painted onto the surfaces in the app as it goes and reckoned there or on another Mac, chosen
+   by cost if asked,
    its luminous cells marched on the GPU as a partly transparent volume, and, as an option, the
    heat they radiate taken out of the gas, which halves the fluences, and compared with two TNT
    shots, whose pulse it gets wrong in shape; the radiation [conducted into
