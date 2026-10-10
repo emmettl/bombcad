@@ -1,0 +1,142 @@
+{
+  "revision": "b7d86c445d7aa40ed63bab1562e9c956b1c5c31e",
+  "schemaVersion": 1,
+  "sources": {
+    "Sources/BlastCore/AdvectedQuadraticGas.swift": {
+      "blob": "1ab507cf6de08d98ba9267802fb668d5774d851d",
+      "sha256": "e9e96bae901e1815e9509d1c299774196198aef6cf14a1f094864ef93fc8e849"
+    },
+    "Sources/BlastCore/BoxSurfacePressureReference.swift": {
+      "blob": "4d5ef26551c43f9a0cbe1d503d25a332c2c0e814",
+      "sha256": "c1e68f82fcb82d32874399291ff0c89658500ce07bfc9a2276ab01c85b62962f"
+    },
+    "Sources/BlastCore/ConnectedGasGroups.swift": {
+      "blob": "2930f29bf0e59e148e89206c1e755bbe5cef14c3",
+      "sha256": "7ade62a63e02782f820ad46329c6730ba941e6fd0ec2a053b9afbb414a668ba4"
+    },
+    "Sources/BlastCore/ConservedGasReconstruction.swift": {
+      "blob": "3e2b5dffd343f26dd0957ac76fdbe3841fcc444a",
+      "sha256": "55ccef8419142735965d7b19b7f961f903546f3bc1d4a0684893b6fd6df59d72"
+    },
+    "Sources/BlastCore/ConservedGroupedGasGeometry.swift": {
+      "blob": "cde1c8182c3f7edbfb648f87ce525129fecff2b4",
+      "sha256": "edb2cc78a9b53f4ab9dc08cabec757d513930fca79105422280b18f4861d54e2"
+    },
+    "Sources/BlastCore/ExperimentalConnectedGasStudy.swift": {
+      "blob": "d4146fb02e4dac0397a1baa9493ecc3cd5a88aa4",
+      "sha256": "0bfae064ebf95f99ed77fcd614d613ef0d621a17aa98671b33e754965e8b11d6"
+    },
+    "Sources/BlastCore/ExperimentalConnectedLoadStudy.swift": {
+      "blob": "089942dc0acf22b64d6227a082afb7aba0dab2b9",
+      "sha256": "e59e0ab7354a95915c2e709d30a4f7f7c7b8c29ff1fe14fe427f6294494d910f"
+    },
+    "Sources/BlastCore/ExperimentalInitialWallTraceStudy.swift": {
+      "blob": "b4689ec4efa564e42cb5b03612c8589674add780",
+      "sha256": "bb442456c987a3dd429d4283605c8b9a53de02e88a91312ba75633d827697029"
+    },
+    "Sources/BlastCore/ExperimentalMovingEntropyStudy.swift": {
+      "blob": "37a44b49f5d912edab0bfb714462a944419b92e7",
+      "sha256": "40cc39bc4303314f101d61777939c775a2f59fe3aca210953b4348f72e931022"
+    },
+    "Sources/BlastCore/ExperimentalMovingGroupsStudy.swift": {
+      "blob": "2051ccc1c862832e10c328365050467b6e6d4b96",
+      "sha256": "b851d6433288dfcc9af5a41ac0a22ac363072ddec591a145b69f358fa9be296c"
+    },
+    "Sources/BlastCore/ExperimentalMovingLoadStudy.swift": {
+      "blob": "a72ae720933eff3a57a53e23e545d0853c3d3ad1",
+      "sha256": "95ed7f863d75ca3e7d98eeb731ba49cebd1f25a739966c8789f9d5caa6e2748c"
+    },
+    "Sources/BlastCore/ExperimentalMovingPressureStudy.swift": {
+      "blob": "5a200939bd13fe66aaa360e177d3043a0920b82b",
+      "sha256": "58b09c9a7216aefb1cb9bb1bbdc25e63eb08ad4f84ac819e152c5d52f794f521"
+    },
+    "Sources/BlastCore/ExperimentalMovingReflectionStudy.swift": {
+      "blob": "851c6584f20f43bf23c5ad314dc3cac8922f3faf",
+      "sha256": "1a1bd431a8c9e9fa2705791a0b832f4248cf2fc9147d14f670f21818e318532d"
+    },
+    "Sources/BlastCore/ExperimentalMovingTrajectoryStudy.swift": {
+      "blob": "fb877beff6945779fda233debca7f45ca0775cc6",
+      "sha256": "eea72149bc5c05d4e0a88dd5c11531491a3b4a7c8eb7ff4081e26b45ebca3f4e"
+    },
+    "Sources/BlastCore/ExperimentalPistonWaveStudy.swift": {
+      "blob": "a8785565bb04aaade8a2f748082cb4152df4bd00",
+      "sha256": "b39a7362d9b8ee392511b2d7b002ab7aefe5c0b91849fc59edc0267b2df3b739"
+    },
+    "Sources/BlastCore/ExperimentalTranslatingBoxGeometryStudy.swift": {
+      "blob": "1d57b1bcef6b508122c113d2dc66ff7d1dec624c",
+      "sha256": "92639c7c21507ff1ce104962b0d5859584c68ddf6320955379ce009185a2bf52"
+    },
+    "Sources/BlastCore/ExperimentalVolumePressureFitStudy.swift": {
+      "blob": "acfd65584a21ca2eb9cfcd4e0b7ed63d44b5e6de",
+      "sha256": "aa76df9ba6ab50c59fb0658e31567d92cce2c6db5225bba7b156261666eed998"
+    },
+    "Sources/BlastCore/ExperimentalWallReflectionStudy.swift": {
+      "blob": "ca8637c2b5701a07b799099d93895dde59676b5e",
+      "sha256": "1851e322ca1e3282669349d036cade2e8f3eaa7107b9a7721acf4e11dfec7ac8"
+    },
+    "Sources/BlastCore/FiniteVolumePressureFit.swift": {
+      "blob": "31e58a31f681d81b8379fc7e81a000f75ba8df8d",
+      "sha256": "8120e41b29cd28d68c731a96b637bd8db56f6b08c3871241a3f51e5c9c95f7f2"
+    },
+    "Sources/BlastCore/FractionalBoxGeometry.swift": {
+      "blob": "410efb88fafde3e2d8118180743c5bf4920c6eac",
+      "sha256": "74d770b77c421b61b07f936a2153c8e8c872cc7d5959a8df234f7f56232a86e2"
+    },
+    "Sources/BlastCore/FractionalEulerFlux.swift": {
+      "blob": "76885a4ca1b4ad43eff79f793c2c06be36897cfb",
+      "sha256": "49fd8b82eaa99a528ce3feeb28aec782181318f482ace4cf6e83d44dd75c6c6b"
+    },
+    "Sources/BlastCore/FractionalGasTransport.swift": {
+      "blob": "b36245da657648a3bbd7b9cab5737c4a5f0c6772",
+      "sha256": "37f728e2cec03fbf543973701dda65d480148571833a5232137af4df99a0f937"
+    },
+    "Sources/BlastCore/IdealGasWallRiemann.swift": {
+      "blob": "43422fa593bd22132ef1b5a494a952988c16667e",
+      "sha256": "c2d4b7fbe3bb8baf4364cdc36c7a0cfdfc311365107cb0aa607bde3a065b459f"
+    },
+    "Sources/BlastCore/LimitedGroupedGasFlux.swift": {
+      "blob": "2e6792e1ee7f0172d31100c41b55a0777eda1e97",
+      "sha256": "c0202dc9e3f1aa58226d2df49ce930305658725987ab9e965ac53a5de090144c"
+    },
+    "Sources/BlastCore/LimitedMovingGroupScatter.swift": {
+      "blob": "40725a482a0e198f07484df81fd9ffb0234337d6",
+      "sha256": "a1a864ded006a3158024a35b8b10fa1b2b21c06559267016a127bb9eefeda207"
+    },
+    "Sources/BlastCore/LimitedTubeFlux.swift": {
+      "blob": "563e00ba27fae6edfe7fe3fd9b7201019f1843c1",
+      "sha256": "361c0e8d5e32721604b6bde6fa6625b47e94b8d58ea5e7c4e1bc7e6787f3cd21"
+    },
+    "Sources/BlastCore/MovingConnectedGasGroups.swift": {
+      "blob": "7bebc19dbbb830870a810f30e5b3fed3214f8fff",
+      "sha256": "aa9dc9fb80810803c00f7fb6c16233cd8ecda00157e4200b8771a98faa1bf6ed"
+    },
+    "Sources/BlastCore/MovingShockReflection.swift": {
+      "blob": "9d5fc7ddbb8d51e8b06077931e1330ccd1971ac1",
+      "sha256": "cde800044fdfdd0058992551f4b89208cbef46f4a9792bb7c665506128d2daf5"
+    },
+    "Sources/BlastCore/MovingWallPressureQuadrature.swift": {
+      "blob": "c2aaaf1c185eedb14f907c96f8789575d8530c37",
+      "sha256": "d33d8d9982e285b9141c494659f23d2a9856db50060a44e9e3344147773f0e67"
+    },
+    "Sources/BlastCore/NormalShockReflection.swift": {
+      "blob": "a6e37d9fac0cd429960f671e2d5c7f003ca1aa8a",
+      "sha256": "be3754a4993dd1ee621ecd2a80ceb0c597625f82ac24f509127259ec49fd0ae1"
+    },
+    "Sources/BlastCore/PlanarPistonWave.swift": {
+      "blob": "b291359d51f9f3727a429028b40ea37d3a48cfa6",
+      "sha256": "97c2a5b93e47b18ddd03c2267e6735a8dd05449f8565408968476dfc1dcb1791"
+    },
+    "Sources/BlastCore/PrescribedPistonTube.swift": {
+      "blob": "2d15dd65533638dc811c620306efaf61ae5e4804",
+      "sha256": "aad15d8ca40fedf5e839e6eaa847b893b7de56e7a182eb82fb45036ef1620bab"
+    },
+    "Sources/BlastCore/RigidBoxBody.swift": {
+      "blob": "565d5464b24315295f3bc6f04c60a57e40b3acc1",
+      "sha256": "9b806ceeb5934e0a66279d335730297dfc70b8af9eca960c7d2a094d5c58a435"
+    },
+    "Sources/BlastCore/TranslatingBoxSpaceTimeGeometry.swift": {
+      "blob": "7fa799a56f84430c55fb6e5b378b27a3976a5813",
+      "sha256": "fd4807da463cf77ca1b6329bf55acf474db99a7a97add6ece28cb8a54c8e8fd7"
+    }
+  }
+}

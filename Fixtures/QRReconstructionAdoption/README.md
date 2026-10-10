@@ -72,3 +72,40 @@ coefficients with every prediction, means, frame/threshold/limiter/backoff/EOS,
 source bindings and dependency pins. The bounded physical-mini suite is
 `qr-reconstruction-adoption`; full application/coupled history and packaging gates
 remain separate required work before this draft can merge.
+
+The separate `qr-coupled-adoption` suite captures ten selected production CPU
+study cases from all 34 protected gas reference source files: two rotated comoving
+geometries under Euler/Heun, Mach 1.2/2 wall reflections, one/two/three-ring initial
+volume pressure fits, and four accepted evolving pulse steps. Complete native
+payloads include every prepared stage, plan/moment tree, inventory, scatter field,
+wall load and accepted clock; the verifier reads one complete case at a time.
+The source gate restores the protected Git blobs and regenerates every passive
+observation and consumer manifest, with frozen alpha.16/alpha.19 dependencies.
+
+The scalar SI flux/wall/CFL reference remains byte-protected from Core alpha.16.
+Selected checks replay every returned stage, SSPRK2 and corrected sampled Heun
+composition, paired patch impulse/work/moment, accepted state continuity,
+reservoir and per-group scatter ledgers. Volume pressure fits use independent
+exact-native least squares with conditioning-dependent bounds, original mean and
+sampled control-factor checks. Fourteen targeted native corruption controls and
+three source/pin/recipe controls must reject. This suite complements the complete
+reconstruction policy gate; independent clipped-geometry/pressure-mode aggregate
+accuracy, full two-host application/Metal/package/signature checks and durable
+combined evidence replay remain required before adoption is complete. No coarse
+selected cohort alone establishes convergence or measured blast accuracy.
+
+`Scripts/check-grouped-gas-reference.py --release` now declares the current exact
+shared products in its temporary package; source, test cases and acceptance bounds
+are unchanged. Its existing 129 tests in 25 suites passed on the M4 Max, including
+the optimized spatial/reflection/moving-body refinement contracts.
+
+The reconstruction-only gate now passes on both physical hosts at exact committed
+producer `83d08e6c95480c3bcadcbc54e4364b6c5b9d1f4e`: M4 Max locally and M4 mini
+in [run 38090215012](https://github.com/emmettl/bombcad/actions/runs/38090215012).
+Both complete native reports, complete reference findings and all 105 corruption
+control results are byte-identical across hosts. Original raw SHA-256 is
+`29bf188d19d0d847f1a4f4cf2892e25ffa13077b60c0fb0cbf0205937530f977`;
+shared raw SHA-256 is
+`a0e1eac4da0d49adf49b9852d65b8c6e8c4ead72e2d12457424ef4598d069c90`.
+This completes the bounded reconstruction policy comparison, while the distinct
+coupled/application/archive requirements above remain open.
