@@ -22,9 +22,11 @@ import simd
 //   blastbench pushoff [--specimens 1/.2/.4,1/.4/.3] [--size 50] [--crack-shear] [--dilatancy 0.5] [--slide-apart] [--close]
 //   blastbench impact [--tests SS0a-1,SS0b-1] [--layers 16] [--time 0.2] [--beams 0.1] [--map] [--bond ...] [--spread]
 //   blastbench closeair [--z 0.3,0.5,0.75,1] [--dx 0.02] [--mapped] [--refine 2] [--refine-levels 2]
-//   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress]
+//   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress] [--bond ...]
 //                      [--trace out-%.csv [--trace-until 0.001]] [--faces] [--energy] [--under] [--skirts]
 //   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map] [--plan [0.1]]
+//                   [--stiffening [--profile [--line] [--column -44]]]   (where the tension along the span is carried)
+//   blastbench tie [--h 0.02,0.01] [--bond none|splitting] [--factor 1.25]   (a tie against the Model Code)
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
 //   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
 //                        [--bases clamped,resting] [--air [--cell 0.25] [--margin 12] [--height 18] [--progress]]
@@ -384,6 +386,8 @@ func runChamber() throws {
     if let dowel = option("dowel").flatMap({ Float($0) }) { scenario.structure?.material.dowelFactor = dowel }
     if var structure = scenario.structure {
         applyRateOptions(&structure)
+        // `--bond pullout`: bars that slip, of the 16 mm bars' diameter.
+        if let bond = chosenBondSlip(diameter: 0.016) { structure.bondSlip = bond }
         scenario.structure = structure
     }
     let result = try ChamberTest.run(
@@ -1537,6 +1541,8 @@ func runCloseIn() throws {
                 }
                 if var structure = scenario.structure {
                     applyRateOptions(&structure)
+                    // `--bond pullout`: bars that slip, of the 12 mm bars' diameter.
+                    if let bond = chosenBondSlip(diameter: 0.012) { structure.bondSlip = bond }
                     scenario.structure = structure
                 }
             },
@@ -2017,6 +2023,199 @@ func printSlabCrackPlan(_ solver: StructureSolver) {
             + "\(format(Double(total * h) * 1000, 1)) mm in all")
 }
 
+/// The bars' share of element (i, j, k)'s Cauchy stress along x, times h²: from their force with
+/// bars that slip (per unit reference area, so times the element's stretch), else E_s (λ − 1 −
+/// ε_p) ρ, exact while they are loaded one way.
+func barShare(_ solver: StructureSolver, _ i: Int, _ j: Int, _ k: Int, steelModulus: Float) -> Float {
+    let h = solver.model.elementSize
+    var stretch: Float = 0
+    for (b, c) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+        stretch +=
+            (simd_length(solver.position(i + 1, j + b, k + c) - solver.position(i, j + b, k + c)) / h - 1) / 4
+    }
+    if let force = solver.barForce(i, j, k) { return force.x * (1 + stretch) }
+    let plastic = solver.barPlasticStrain(i, j, k).x
+    return abs(plastic) < 1e8 ? steelModulus * (stretch - plastic) * solver.steelRatio(i, j, k).x * h * h : 0
+}
+
+/// `--stiffening`: where the tension along the span is carried, over the columns of elements
+/// `columns` (along x), summed over each column and averaged over them, in kN: the bars, and the
+/// concrete in tension by its crack across x (opened by its strain past the cracking strain
+/// over its band): never cracked, cracked under 0.02 mm, 0.02 to 0.1 mm and wider. With
+/// `profile`, column by column too. Bars that slip report their force; bonded bars' force is E_s (ε − ε_p), from the
+/// element's stretch along x.
+func tensionStiffening(_ solver: StructureSolver, columns: Range<Int>, label: String, profile: Bool) {
+    let h = solver.model.elementSize
+    let material = solver.model.material
+    let band = solver.model.bondSlip != nil ? h : max(h, material.crackSpacing)
+    let steelModulus = material.steel?.youngsModulus ?? 200e9
+    var parts = [Double](repeating: 0, count: 5)  // bars, uncracked, <0.02, 0.02-0.1, wider
+    var rows: [String] = []
+    var layers = [[Double]](repeating: [Double](repeating: 0, count: 5), count: solver.ez)
+    var net = [Double](repeating: 0, count: solver.ez)
+    for i in columns {
+        var column = [Double](repeating: 0, count: 5)
+        var widest: Float = 0
+        for j in 0..<solver.ey {
+            for k in 0..<solver.ez where solver.flag(i, j, k) == .active {
+                let ratio = solver.steelRatio(i, j, k).x
+                let bar = ratio > 0 ? barShare(solver, i, j, k, steelModulus: steelModulus) : 0
+                column[0] += Double(bar)
+                let concrete = solver.stress(i, j, k)[0] * h * h - bar
+                if k < solver.ez - 2 { net[k] += Double(concrete) / Double(columns.count) }
+                guard concrete > 0 else { continue }
+                let planes = solver.crackPlanes(i, j, k)
+                // The plane whose normal lies nearest x.
+                let plane = (0..<3).max { abs(planes.normals[$0].x) < abs(planes.normals[$1].x) } ?? 0
+                let factor = solver.crackingFactor(i, j, k)
+                let onset =
+                    material.tensileStrength * material.concreteRateFactor * max(factor, 1)
+                    / material.youngsModulus
+                let opening = factor > 0 ? max(planes.history[plane] - onset, 0) * band : 0
+                widest = max(widest, k == 0 ? opening : 0)
+                let bin = factor == 0 ? 1 : opening < 2e-5 ? 2 : opening < 1e-4 ? 3 : 4
+                column[bin] += Double(concrete)
+                layers[k][bin] += Double(concrete) / Double(columns.count)
+            }
+        }
+        for n in 0..<5 { parts[n] += column[n] / Double(columns.count) }
+        if profile {
+            let concrete = column[1...4].reduce(0, +)
+            rows.append(
+                "    \(pad(format(Double((Float(i) + 0.5 - Float(solver.ex) / 2) * h) * 1000, 0), 6)) mm: bars "
+                    + "\(pad(format(column[0] / 1000, 1), 6)), concrete \(pad(format(concrete / 1000, 1), 6)) kN "
+                    + "(uncracked \(pad(format(column[1] / 1000, 1), 5)), <0.02 mm \(pad(format(column[2] / 1000, 1), 5)), "
+                    + "0.02-0.1 \(pad(format(column[3] / 1000, 1), 5)), wider \(pad(format(column[4] / 1000, 1), 5))); "
+                    + "face crack \(format(Double(widest) * 1000, 2)) mm")
+        }
+    }
+    if profile, flag("line") {
+        // `--line`: along the span at mid-width, in the two layers of elements the bars run
+        // through: the bars' force and the concrete's stress along x, the crack across x, and the
+        // bars' slip at the node between the layers.
+        let j = solver.ey / 2
+        let bottom = (0..<solver.ez).first { solver.steelRatio(columns.lowerBound, j, $0).x > 0 } ?? 1
+        print("    along the span at mid-width, bars in layers \(bottom) and \(bottom + 1):")
+        print("        x mm   bars kN   concrete MPa     crack mm      slip mm  largest")
+        for i in columns {
+            var bars: Float = 0
+            var concrete: [Float] = []
+            var cracks: [Float] = []
+            for k in bottom...(bottom + 1) {
+                let bar = barShare(solver, i, j, k, steelModulus: steelModulus)
+                bars += bar
+                concrete.append((solver.stress(i, j, k)[0] * h * h - bar) / (h * h))
+                let planes = solver.crackPlanes(i, j, k)
+                let nearest = (0..<3).max { abs(planes.normals[$0].x) < abs(planes.normals[$1].x) } ?? 0
+                let factor = solver.crackingFactor(i, j, k)
+                let onset = material.tensileStrength * max(factor, 1) / material.youngsModulus
+                cracks.append(factor > 0 ? max(planes.history[nearest] - onset, 0) * band : 0)
+            }
+            let slip = solver.barSlip(i, j, bottom + 1)
+            var line = "    " + pad(format(Double((Float(i) + 0.5 - Float(solver.ex) / 2) * h) * 1000, 0), 8)
+            line += pad(format(Double(bars) / 1000, 2), 10)
+            line += concrete.map { pad(format(Double($0) / 1e6, 2), 7) }.joined()
+            line += cracks.map { pad(format(Double($0) * 1000, 3), 7) }.joined()
+            line +=
+                pad(format(Double(slip?.slip.x ?? 0) * 1000, 3), 9)
+                + pad(format(Double(slip?.largest.x ?? 0) * 1000, 3), 9)
+            print(line)
+        }
+    }
+    if profile, let column = option("column").flatMap({ Float($0) }) {
+        // `--column -44`: that column (mm from mid-span) element by element, at mid-width.
+        let i = Int((column / 1000 / h + Float(solver.ex) / 2).rounded(.down))
+        let j = solver.ey / 2
+        print(
+            "    column \(i), mid-width, bottom first: concrete and bar stress (MPa), crack history, rate factor"
+        )
+        for k in 0..<solver.ez {
+            let planes = solver.crackPlanes(i, j, k)
+            let bar: Float = barShare(solver, i, j, k, steelModulus: steelModulus)
+            let sigma = solver.stress(i, j, k)
+            let total: Double = Double(sigma[0]) / 1e6
+            let barStress: Double = Double(bar / (h * h)) / 1e6
+            // The concrete's stress across the crack nearest x, and the shear on it.
+            let tensor = simd_float3x3(
+                SIMD3(sigma[0] - bar / (h * h), sigma[3], sigma[5]), SIMD3(sigma[3], sigma[1], sigma[4]),
+                SIMD3(sigma[5], sigma[4], sigma[2]))
+            let nearest = (0..<3).max { abs(planes.normals[$0].x) < abs(planes.normals[$1].x) } ?? 0
+            let traction = tensor * planes.normals[nearest]
+            let across = simd_dot(traction, planes.normals[nearest])
+            let along = simd_length(traction - across * planes.normals[nearest])
+            let history: [String] = (0..<3).map { format(Double(planes.history[$0]) * 1e3, 3) }
+            let normals: [String] = planes.normals.map { n -> String in
+                let parts: [String] = [n.x, n.y, n.z].map { format(Double($0), 2) }
+                return "(" + parts.joined(separator: ",") + ")"
+            }
+            var line =
+                "      k \(k): total \(format(total, 2)), bars \(format(barStress, 2)), concrete across the crack "
+            line +=
+                "\(format(Double(across) / 1e6, 2)), shear on it \(format(Double(along) / 1e6, 2)), history "
+            line += history.joined(separator: " ") + " e-3, normals " + normals.joined(separator: " ")
+            line +=
+                ", factor \(format(Double(solver.crackingFactor(i, j, k)), 2)), ratio \(solver.steelRatio(i, j, k).x)"
+            line += ", stress " + sigma.map { format(Double($0) / 1e6, 2) }.joined(separator: " ")
+            print(line)
+        }
+    }
+    let concrete = parts[1...4].reduce(0, +)
+    print(
+        "  \(label): bars \(format(parts[0] / 1000, 1)) kN, concrete in tension \(format(concrete / 1000, 1)) kN "
+            + "(\(format(100 * concrete / max(parts[0] + concrete, 1), 0))% of the tension): uncracked "
+            + "\(format(parts[1] / 1000, 1)), under 0.02 mm \(format(parts[2] / 1000, 1)), 0.02-0.1 mm "
+            + "\(format(parts[3] / 1000, 1)), wider \(format(parts[4] / 1000, 1))")
+    for row in rows { print(row) }
+    if profile {
+        print("    by layer, bottom first (kN): uncracked, under 0.02 mm, 0.02-0.1, wider")
+        for (k, layer) in layers.enumerated() {
+            print(
+                "      k \(k): " + layer[1...4].map { pad(format($0 / 1000, 1), 6) }.joined()
+                    + "   net, tension and compression: \(format(net[k] / 1000, 1))")
+        }
+    }
+}
+
+/// A reinforced tie pulled to a mean strain of 1.5e-3 (`TieBenchmark`), its cracks and pull against
+/// the Model Code's spacing and tension stiffening. `--h 0.02,0.01` the meshes, `--bond none` bonded
+/// bars, `--factor 1.25` the concrete's strengths raised by that factor as at blast rates (its
+/// fracture energy by the factor's square root, as the tensile rate law raises it), the bond not.
+func runTie() throws {
+    let sizes = (option("h") ?? "0.02,0.01").split(separator: ",").compactMap { Float($0) }
+    let factor = option("factor").flatMap { Float($0) } ?? 1
+    let strain = option("strain").flatMap { Float($0) } ?? 1.5e-3
+    let bond =
+        option("bond") == nil
+        ? BondSlip(condition: .pullOut, barDiameter: TieBenchmark.diameter)
+        : chosenBondSlip(diameter: TieBenchmark.diameter)
+    let strength = TieBenchmark.material.tensileStrength * factor
+    print(
+        "Tie 1 m x 100 mm x 100 mm, 2% of 12 mm bars, pulled to \(format(Double(strain) * 1000, 2))e-3; "
+            + "strengths x\(format(Double(factor), 2))")
+    let transfer = TieBenchmark.transferLength(raised: factor)
+    print(
+        "Model Code, the bond kept static: cracks \(format(Double(transfer) * 1000, 0)) to \(format(Double(2 * transfer) * 1000, 0)) mm apart; pull "
+            + "\(format(Double(TieBenchmark.expectedLoad(strain: strain, beta: 0.4, strength: strength)) / 1000, 1)) kN "
+            + "(beta 0.4) to \(format(Double(TieBenchmark.expectedLoad(strain: strain, beta: 0.6, strength: strength)) / 1000, 1)) kN (0.6); "
+            + "bare bars \(format(Double(TieBenchmark.expectedLoad(strain: strain, beta: 0, strength: strength)) / 1000, 1)) kN"
+    )
+    for h in sizes {
+        let result = try TieBenchmark.run(device: device, elementSize: h, bond: bond, strain: strain) {
+            material in
+            material.concreteRateFactor = factor
+            material.fractureEnergy *= factor.squareRoot()
+            applyRateOptions(&material)
+        }
+        let spacings = result.spacings
+        let mean = spacings.isEmpty ? 0 : spacings.reduce(0, +) / Float(spacings.count)
+        print(
+            "  \(format(Double(h) * 1000, 1)) mm elements: \(spacings.count + 1) cracks, "
+                + "\(format(Double(spacings.min() ?? 0) * 1000, 0))-\(format(Double(spacings.max() ?? 0) * 1000, 0)) mm apart "
+                + "(mean \(format(Double(mean) * 1000, 0))); pull \(format(Double(result.load) / 1000, 1)) kN"
+        )
+    }
+}
+
 func runSlab() throws {
     if flag("unload") {
         // `--unload`: pushed slowly at mid-span to the test's peak, then released.
@@ -2141,26 +2340,40 @@ func runSlab() throws {
                 if flag("pressed-interlock") { $0.pressedInterlock = true }
             },
             prepare: prepareTrace,
-            sample: flag("work")
+            sample: flag("stiffening")
                 ? { solver in
+                    // `--stiffening`: where the tension is carried over the 600 mm about mid-span,
+                    // every 20 mm on the way down.
                     let deflection = -solver.displacement(solver.ex / 2, solver.ey / 2, 0).z
                     let step = 0.02 * Float(milestones.count + 1)
-                    let crossed = deflection >= step && atPeak.map { deflection >= $0.deflection } ?? true
-                    let peak = deflection > (atPeak?.deflection ?? 0)
-                    let end = solver.time >= 0.08
-                    guard crossed || peak || end else { return }
-                    let totals = solver.workTotals()
-                    if crossed { milestones.append(("\(Int((step * 1000).rounded())) mm", totals)) }
-                    if peak {
-                        atPeak = (
-                            deflection, totals,
-                            regions.map { region in solver.workTotals { region.1($0, $1, $2, solver) } }
-                        )
-                    }
-                    if end {
-                        milestones.append(("80 ms, \(format(Double(deflection) * 1000, 0)) mm", totals))
-                    }
-                } : nil,
+                    guard deflection >= step, solver.time < 0.03 else { return }
+                    milestones.append(("", []))
+                    let reach = Int((0.3 / solver.model.elementSize).rounded())
+                    tensionStiffening(
+                        solver, columns: (solver.ex / 2 - reach)..<(solver.ex / 2 + reach),
+                        label: "\(Int((step * 1000).rounded())) mm, \(format(solver.time * 1000, 1)) ms",
+                        profile: flag("profile") && step >= 0.08)
+                }
+                : flag("work")
+                    ? { solver in
+                        let deflection = -solver.displacement(solver.ex / 2, solver.ey / 2, 0).z
+                        let step = 0.02 * Float(milestones.count + 1)
+                        let crossed = deflection >= step && atPeak.map { deflection >= $0.deflection } ?? true
+                        let peak = deflection > (atPeak?.deflection ?? 0)
+                        let end = solver.time >= 0.08
+                        guard crossed || peak || end else { return }
+                        let totals = solver.workTotals()
+                        if crossed { milestones.append(("\(Int((step * 1000).rounded())) mm", totals)) }
+                        if peak {
+                            atPeak = (
+                                deflection, totals,
+                                regions.map { region in solver.workTotals { region.1($0, $1, $2, solver) } }
+                            )
+                        }
+                        if end {
+                            milestones.append(("80 ms, \(format(Double(deflection) * 1000, 0)) mm", totals))
+                        }
+                    } : nil,
             inspect: flag("hinge")
                 ? { solver in
                     for offset in [Float(0), 0.15] {
@@ -2604,6 +2817,7 @@ do {
     switch command {
     case "digest": try runDigest()
     case "slab": try runSlab()
+    case "tie": try runTie()
     case "beam": try runBeam()
     case "shear": try runShearBeam()
     case "pushoff": try runPushOff()
