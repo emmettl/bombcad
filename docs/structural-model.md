@@ -558,8 +558,49 @@ flows from under the toe. `FootingTests` checks the moment of the first two pack
 and that the model still settles less than a third as much. A run of all five packets takes
 about 90 s.
 
-**Not modelled.** The footing is rigid, rectangular, flat-bottomed and sits on the surface:
-there is no embedment and no soil against its sides. It is drawn nowhere in the app. The bed's
+**Set into the soil** (`Footing.embedment`, `Embedment`, `FootingSides`). A footing can have its
+base a depth D below the surface, the soil then against its sides over its thickness or D,
+whichever is less (d). Each side carries 9 × 5 points. The soil there starts at rest, at
+J. Jáky's K₀ γ z (the same on opposite sides, so it pushes nowhere), and bears on the side as a
+spring until it reaches W. J. M. Rankine's passive pressure Kₚ γ z, past which it gives way for
+good, or falls to the active Kₐ γ z as the side moves away, past which it follows; along the side
+it grips by friction (tan 2φ/3 by default) on that pressure. The springs are set so that the
+footing's static stiffness vertically and horizontally is G. Gazetas's for an embedded rigid
+rectangle: the base bed made stiffer by his trench factor, the sides adding his sidewall
+factor (vertically by their shear, horizontally by the sides facing the motion, less the grip of
+those along it). Springs on the sides turn the footing about its base far less than Gazetas's
+embedded rocking factor says, their lever no longer than d: in the checks they add a fifth to
+two fifths of what he says embedment adds. The rest is a rocking spring on the footing itself,
+scaled by the share of the base bearing, as the cones are, and limited to the moment that the
+passive pressure (less that at rest) on the side being pushed into resists about the base
+centre. The base bears more by the soil beside it: the surface footing's bearing capacity plus
+γ D N_q s_q d_q, with N_q = e^(π tan φ) tan²(45° + φ/2), E. E. De Beer's s_q = 1 + (B/L) tan φ and
+J. Brinch Hansen's d_q = 1 + 2 tan φ (1 − sin φ)² D/B (arctan D/B past D = B); φ is 35° by
+default, a medium dense sand's. Gazetas's formulas are written from memory, as his surface
+ones are; the bearing factors are the textbooks' (B. M. Das, *Principles of Foundation
+Engineering*; J. E. Bowles, *Foundation Analysis and Design*).
+
+Checks (`EmbedmentTests`): base and sides give Gazetas's embedded vertical and horizontal
+stiffnesses within 1%, and with the footing's spring his rocking, for square footings 1 m and
+0.5 m thick 1 m deep and a 1.5 by 4 m one 0.8 m deep; N_q, s_q and d_q give the tables' 33.3,
+1.70 and 1.127 for φ = 35° and D/B = 0.5, and Kₚ, Kₐ and K₀ 3.69, 0.271 and 0.426; a block on an
+embedded footing settles W / K within 3%, its sides carrying their share (with sides that grip
+without slipping: at half a metre sand's friction on its pressure at rest lets them slip under
+the weight, and the stiffness is for small motions); pushed a little sideways, the footing slides
+and turns as its stiffnesses about the base centre, coupled through the sides, say within 5%;
+pressed by 0.8 of the embedded bearing capacity it settles and holds, by 1.2 it sinks; and pushed
+sideways it holds 0.8 of its base friction plus (Kₚ − Kₐ) γ D² / 2 on the face it pushes and the
+sides' friction on K₀, and slides at 1.2, where on the surface 0.8 of it slides.
+
+On the freestanding wall (`blastbench anchorage --bases footing --embed 1`), its footing 0.4 m
+thick set 1 m into the sand: the footing turns 187, 51, 20 and 6.5 mrad at 6, 10, 15 and 25 m
+against 398, 103, 37 and 12 on the surface, the wall sways 659, 179, 70 and 24 mm against
+1,384 (over), 360, 130 and 43, and at 6 m it is left leaning 0.6 m rather than going over.
+
+**Not modelled.** The footing is rigid, rectangular and flat-bottomed. Embedded, the soil
+against its sides is springs with limits, its rocking past their reach a spring on the footing
+with its own limit; the soil's radiation from the sides, and a gap left by soil that has given
+way, are left out. It is drawn nowhere in the app. The bed's
 springs do not interact, and its points yield one by one with no rounding of the soil under
 the toe. One footing spans every point its connection ties, however far apart. Settlement under cyclic
 rocking is a tenth of a measured footing's (above).
@@ -784,6 +825,14 @@ shock, and the drag and pressure-gradient push on loose debris.
 
 ## Sources
 
+- G. Gazetas, "Formulas and charts for impedances of surface and embedded foundations", *J.
+  Geotech. Eng.* 117(9), 1991; and G. Mylonakis, S. Nikolaou and G. Gazetas, "Footings under
+  seismic loading: Analysis and design issues with emphasis on bridge foundations", *Soil Dyn.
+  Earthq. Eng.* 26, 2006. Static stiffness of surface and embedded footings.
+- J. Brinch Hansen, "A revised and extended formula for bearing capacity", *Danish Geotechnical
+  Institute Bulletin* 28, 1970; A. S. Vesić, "Analysis of ultimate loads of shallow
+  foundations", *J. Soil Mech. Found. Div.* 99(SM1), 1973. Bearing capacity and its depth and
+  shape factors, as tabulated by B. M. Das, *Principles of Foundation Engineering*.
 - CEN, EN 1992-1-1:2004, *Eurocode 2: Design of concrete structures — Part 1-1*, §6.2.5, shear
   at the interface between concretes cast at different times. The construction joint's
   cohesion and friction, and the clamping of bars across it.

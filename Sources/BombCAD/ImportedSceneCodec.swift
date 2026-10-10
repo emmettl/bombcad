@@ -292,12 +292,16 @@ extension Scenario {
     }
 
     /// Whether any support's joint lies at an angle of its own (`Anchorage.jointNormal`), or ties
-    /// two parts of the body (`Anchorage.betweenParts`), which readers before scene version 7
-    /// would take for a joint to the ground under the body.
+    /// two parts of the body (`Anchorage.betweenParts`), or any footing is set into the soil
+    /// (`Embedment`), which readers before scene version 7 would take for a joint to the ground
+    /// under the body or a footing on the surface.
     var hasLaterConnections: Bool {
         structuralObjects.contains { object in
-            object.structure?.supportAnchorages.contains { $0?.jointNormal != nil || $0?.betweenParts != nil }
-                ?? false
+            guard let body = object.structure else { return false }
+            return body.baseAnchorage?.footing?.embedment != nil
+                || body.supportAnchorages.contains {
+                    $0?.jointNormal != nil || $0?.betweenParts != nil || $0?.footing?.embedment != nil
+                }
         }
     }
 }

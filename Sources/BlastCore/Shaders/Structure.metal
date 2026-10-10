@@ -2704,7 +2704,9 @@ struct FootingConstants {
     float4 layer;             // round trips of the vertical and of the shear waves; sample intervals of each
     uint4 history;            // first history value, first echo weight, samples kept per mode, echoes per mode
     float4 totals;            // the bed's sum k, sum k x^2, sum k y^2 (about the base centre); friction
-    float4 unused;
+    uint4 sides;              // an embedded footing's: first side point, side points
+    float4 embedded;          // its rocking stiffness about x and y beyond its base's and sides' springs, and
+                              // the most moment that gives about each
 };
 
 // A footing's state, laid out as `FootingSystem.State`.
@@ -2720,6 +2722,7 @@ struct FootingState {
     float4 contact;      // the bearing part of the base: least and greatest x, least and greatest y
     float4 elastic;      // the soil's deformation under it, from its springs (z, x, y); over a layer, all the
                          // soil bears over what the bed's points do (0 until set)
+    float4 sideForce;    // the soil's force on an embedded footing's sides; the most it has given way
 };
 
 static inline float3 footingRotate(float4 q, float3 v) {

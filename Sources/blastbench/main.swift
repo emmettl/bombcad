@@ -28,7 +28,7 @@ import simd
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
 //   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
 //                        [--bases clamped,resting] [--air [--cell 0.25] [--margin 12] [--height 18] [--progress]]
-//                        [--massless] [--layer 3 [--beneath rock|sand|clay]]   (the footing's soil)
+//                        [--massless] [--layer 3 [--beneath rock|sand|clay]] [--embed 1]   (the footing's soil)
 //                        [--panel]   (a 3 m panel resting on the ground, its edges tied to columns by each base)
 //   blastbench seat [--speeds 4,8,12] [--seats 0.1,0.2] [--time 1.5] [--h 0.1] [--dowels]
 //                   (a precast beam on corbels of two columns, one column struck away from the span)
@@ -2339,7 +2339,8 @@ func runAnchorage() throws {
                     : try AnchorageStudy.run(
                         device: device, base: base, mass: mass, standoff: standoff, duration: duration,
                         elementSize: h,
-                        shells: shells, soil: soil)
+                        shells: shells, soil: soil,
+                        embedment: option("embed").flatMap { Float($0) }.map { Embedment(depth: $0) })
             if !header {
                 print(
                     "\(format(Double(standoff), 0)) m: \(format(Double(r.pressure) / 1000, 0)) kPa reflected for "
