@@ -844,10 +844,10 @@ extension StandingScene {
             }
             if has(.alternativeRateLaws) {
                 add(
-                    "Other strain-rate laws", nil,
-                    "Malvar and Ross's tension law brings the slab to 93–99% but leaves heavy drops a quarter too stiff "
-                        + "and the close-in slab far short.",
-                    nil, "validation.md#beams-struck-by-a-falling-weight")
+                    "Bars without their strain-rate law", nil,
+                    "The bars' strength was compared under a blast only with the CEB's strain-rate law; without "
+                        + "it they were not.",
+                    nil, "concrete-model.md#strain-rate-effects")
             }
             if place == "in contact" {
                 add(
