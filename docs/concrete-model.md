@@ -1068,7 +1068,11 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    99 MPa across at the face, a mean of about four times f_c, compacting it by 1.3%), so the
    difference between its stresses stays under 40 MPa, far below its strength by this law or
    by Holmquist, Johnson and Cook's (about 4.6 f_c, 115 MPa, at that pressure, with their
-   constants as recalled). A charge in contact, or denser shocks, would test it.
+   constants as recalled). A charge in contact, or denser shocks, would test it. Under charges
+   in contact (see [Validation](validation.md#slabs-under-contact-charges)) concrete compacts
+   past the curve's locking point, where it is three to twenty times stiffer than elastic, and
+   the explicit step, set by the elastic wave speed, runs away within 50 µs; those runs take a
+   quarter of it.
 7. **Reinforcement is perfectly bonded and smeared.** There is no bond slip, bar buckling or
    lap failure, and bars are placed by the element, not individually. Dowel action is a cap on
    the shear stress, mobilised as soon as a crack forms rather than over the first millimetre

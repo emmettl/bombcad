@@ -33,7 +33,7 @@ it should be used to judge the safety of a real structure.
 | 2 | Shear failure and joints are the least reliable predictions             | Breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | The default gas has no afterburning and treats hot air as cold          | Incident impulse 13–22% low and rooms' gas half the design value, unless afterburning and hot air (2 times slower) are switched on; the gas loses its radiated heat only with radiative cooling on | [Air-blast model](air-blast-model.md#hot-air) |
 | 4 | Peak pressure is under-resolved near the charge                         | Close-in loading needs fine or twice-refined air; spall needs cells of 0.005 W^(1/3) and 12 elements through a slab | [Validation](validation.md#what-stops-the-spall-and-the-breach) |
-| 5 | Collapse and debris have never been compared with anything              | They look plausible; that is all                              | [Structural model](structural-model.md#limitations) |
+| 5 | Collapse has never been compared with anything; debris once, off slabs under contact charges | Collapse looks plausible, that is all; loose concrete is held back rather than thrown | [Validation](validation.md#slabs-under-contact-charges) |
 | 6 | Moving solids are a staircase of whole cells                            | Wall positions are good to a cell; small fragments are crude  | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak is too large; concrete broken under a close-in charge is never removed | Rebound is too large; no hole under a close-in charge (strength with pressure, and cracks pressed shut, checked: not the cause) | [Concrete model](concrete-model.md#limitations) |
@@ -159,7 +159,12 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    so there is no hole; and the tests' damage lies mostly along the mid-span hinge, following
    bending the model gets a third to a half of, after the wave wrapping under the slab takes
    back a quarter of its impulse. Confinement now comes from the stresses carried, not strains.
-   See [Validation](validation.md#what-stops-the-spall-and-the-breach).)
+   See [Validation](validation.md#what-stops-the-spall-and-the-breach). Against Hupfauf's
+   slabs under contact charges, the first debris comparison: the far face starts at about the
+   debris's speed, within a factor of two, and cracks loose over about the spall crater, but
+   the loose layer is held back, not thrown, and no slab is holed; a ball of hot air in contact
+   gives about twice the products' impulse. See
+   [Validation](validation.md#slabs-under-contact-charges).)
 7. **The rebound.** The slab's mid-span hinge springs back twice as far as the specimen did on
    every mesh. (Done for beams: cracks that slide for good and ride up on their aggregate,
    after which beams struck by a falling weight keep their deflection as the tests did; the

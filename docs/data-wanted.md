@@ -28,7 +28,7 @@ no comparison at all its first one, and open sources ahead of those that need th
 |---|--------|-----|--------|-----|
 | 1 | Wu et al. 2023, *Materials* 16, 4068: 16 slabs, one layer of steel or two, contact and close-in TNT ([1a](#1a-a-slab-with-steel-in-both-faces-under-an-open-air-charge)) | Steel in both faces; close-in damage | Open, CC BY 4.0 | Measured materials, one shot a slab, displacement histories, and the holes' diameters: the breach the model never makes |
 | 2 | Peterson et al. 2026, KTH: 18 beams with and without stirrups struck to shear failure, with raw high-speed images ([2d](#2d-interlock-and-tension-stiffening-under-impact)) | Shear under impact; interlock | Open, CC BY 4.0 (Mendeley Data) | Support reactions and images from which crack opening and slip can be read, on beams that fail in shear |
-| 3 | Hupfauf and Gebbeken 2022, and Hupfauf's 2024 thesis: 15 slabs under contact charges ([3c](#3c-collapse-and-debris)) | Debris; spall | Open, CC BY 4.0 | The first debris comparison: secondary debris velocities and spall craters, on documented slabs |
+| 3 | Hupfauf and Gebbeken 2022, and Hupfauf's 2024 thesis: 15 slabs under contact charges ([3c](#3c-collapse-and-debris)) | Debris; spall | Open, CC BY 4.0; used ([Validation](validation.md#slabs-under-contact-charges)) | The first debris comparison: secondary debris velocities and spall craters, on documented slabs |
 | 4 | Hrynyk 2013, slabs struck by a falling weight, digital records on the VecTor site ([2d](#2d-interlock-and-tension-stiffening-under-impact)) | Tension stiffening under impact | Open download, terms not stated | Raw records of reinforced and fibre-reinforced slabs, which separate what the concrete between cracks carries |
 | 5 | FoRDy, the dynamic sister of FoRCy ([3b](#3b-a-footing-or-connection-under-fast-loading)) | Footings | Open, Open Data Commons Attribution on DesignSafe (CC BY-NC-SA 4.0 on DataCenterHub) | Settlement measured under shaking, on the sand family of SSG02_03, where the model settles a tenth as much |
 | 6 | Wang et al. 2022, *Materials* 15, 6449: two slabs, steel in both faces, 10 kg at 1.2 m ([1a](#1a-a-slab-with-steel-in-both-faces-under-an-open-air-charge)) | Air and structure together | Open, CC BY 4.0 | Reflected pressures and deflection histories from one open-air shot; but an aluminised charge and nominal materials |
@@ -533,7 +533,9 @@ Ten values in the code were written from memory and should be checked against th
     stated. By search summaries, fifteen slabs of scaled thickness 1.6 to 2.8 cm/g^(1/3); high-speed
     video of the far face gives the debris's velocities, scans the spall crater and the mass
     thrown; the thesis varies thickness, steel fibres and charge. **Gives:** the debris's speed
-    and mass off a slab, and its spall, open and documented; close in, not collapse.
+    and mass off a slab, and its spall, open and documented; close in, not collapse. **Used**
+    2026-10-10: fifteen slabs in `Fixtures/Hupfauf`, six run by `blastbench contact` (see
+    [Validation](validation.md#slabs-under-contact-charges)).
   - J. Schneider, M. von Ramin, A. Stottmeister and A. Stolz, "Masonry failure and debris
     throw characteristics under dynamic blast loads", *Chemical Engineering Transactions* 77
     (2019) 217–222, doi:10.3303/CET1977037,
