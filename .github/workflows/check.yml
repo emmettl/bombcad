@@ -19,7 +19,7 @@ on:
 concurrency:
   # A bounded manual comparison must survive unrelated pushes to main. The
   # physical runner still serializes jobs; ordinary app checks keep their group.
-  group: ${{ github.event_name == 'workflow_dispatch' && (inputs.suite == 'wall-adoption' || inputs.suite == 'packet-adoption') && inputs.suite || 'check' }}
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.suite != 'all' && inputs.suite || 'check' }}
   cancel-in-progress: false
 
 permissions:
