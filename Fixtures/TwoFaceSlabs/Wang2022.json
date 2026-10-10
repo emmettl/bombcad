@@ -1,0 +1,124 @@
+{
+ "source": "W. Wang et al., 'Blast resistance of reinforced concrete slabs based on residual load-bearing capacity', Materials 15(18), 6449 (2022), doi:10.3390/ma15186449, PMC9502281",
+ "licence": "CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Derived data: values transcribed from the paper's text, Tables 1-5 and Figure 1; nothing digitised from plots.",
+ "slabs": {
+  "length_m": 1.2,
+  "width_m": 0.5,
+  "thickness_m": 0.1,
+  "orientation": "upright, centre 0.7 m above the ground, clamped at the corners with plates welded between, 'fixed on four sides'",
+  "A": {
+   "bar_mm": 8,
+   "ratio_percent": 0.63
+  },
+  "B": {
+   "bar_mm": 12,
+   "ratio_percent": 1.41
+  },
+  "bars": "HRB400, both ways in both faces at 100 mm (Figure 1), 4 mm HPB235 ties",
+  "cover": "the text's 50 mm is a misprint; Figure 1 marks 13 mm, and the ratios put the bars 80 mm from the far face",
+  "concrete": "C30, by grade only (the paper's own model used 30 MPa and 2,300 kg/m3)"
+ },
+ "charge": {
+  "kind": "bare sphere of TNT and RDX (4:6 by mass) with aluminium, centrally initiated",
+  "tnt_equivalent_kg": 10,
+  "distance_m": 1.2,
+  "height_m": 0.7,
+  "note": "the TNT equivalence is the paper's; what it was matched to is not stated"
+ },
+ "pressure_gauges": {
+  "on": "a separate steel plate placed as the slabs were",
+  "points": [
+   {
+    "gauge": "P1",
+    "x_m": 0,
+    "y_m": 0,
+    "distance_m": 1.2,
+    "scaled_m_per_kg13": 0.557,
+    "incidence_deg": 90,
+    "peak_MPa": 32.32,
+    "arrival_ms": 0.36,
+    "impulse_MPa_ms": 3.35
+   },
+   {
+    "gauge": "P2",
+    "x_m": 0.16,
+    "y_m": 0,
+    "distance_m": 1.211,
+    "scaled_m_per_kg13": 0.562,
+    "incidence_deg": 82.4,
+    "peak_MPa": 26.47,
+    "arrival_ms": 0.363,
+    "impulse_MPa_ms": 3.02
+   },
+   {
+    "gauge": "P3",
+    "x_m": 0,
+    "y_m": 0.3,
+    "distance_m": 1.237,
+    "scaled_m_per_kg13": 0.574,
+    "incidence_deg": 75.96,
+    "peak_MPa": 23.58,
+    "arrival_ms": 0.38,
+    "impulse_MPa_ms": 2.93
+   }
+  ],
+  "P4": {
+   "x_m": 0.16,
+   "y_m": 0.3,
+   "note": "position only; no record given"
+  }
+ },
+ "displacements": {
+  "on": "the slabs' back faces, pen-type gauges, top to bottom (Figures 5 and 6 sketch their places)",
+  "A": {
+   "gauges": [
+    "D1",
+    "D2",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "peak_cm": [
+    0.51,
+    1.18,
+    1.97,
+    1.98,
+    0.89
+   ],
+   "residual_cm": [
+    -0.37,
+    1.18,
+    1.97,
+    1.73,
+    0.38
+   ]
+  },
+  "B": {
+   "gauges": [
+    "D6",
+    "D7",
+    "D8",
+    "D9",
+    "D10"
+   ],
+   "peak_cm": [
+    0.67,
+    0.92,
+    1.41,
+    1.09,
+    0.79
+   ],
+   "residual_cm": [
+    0.03,
+    0.31,
+    0.58,
+    0.8,
+    0.08
+   ]
+  }
+ },
+ "damage": {
+  "A": "front intact; back cracked both ways, oblique shear cracks at both ends, concrete broken near an edge, bars exposed",
+  "B": "front intact; fine cracks both ways at the back"
+ }
+}

@@ -1,0 +1,199 @@
+{
+ "source": "Y. Wu et al., 'A research investigation into the impact of reinforcement distribution and blast distance on the blast resilience of reinforced concrete slabs', Materials 16(11), 4068 (2023), doi:10.3390/ma16114068, PMC10254842",
+ "licence": "CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Derived data: values transcribed from the paper's Tables 1-6, 9 and 10 and its Figure 1; nothing digitised from plots.",
+ "slab": {
+  "length_m": 2.0,
+  "width_m": 2.0,
+  "thickness_m": 0.1,
+  "spanning": "one way, on a steel frame, two bolted clamps a side",
+  "single_layer": {
+   "bar_mm": 8,
+   "spacing_mm": 100,
+   "layer_from_bottom_mm": 20,
+   "note": "Figure 1a"
+  },
+  "double_layer": {
+   "bar_mm": 8,
+   "spacing_mm": 200,
+   "layers_from_faces_mm": [
+    20,
+    20
+   ],
+   "note": "Figure 1b dimensions 20/60/20; the text's 'spacing of layers was 600 mm' is a misprint"
+  },
+  "reinforcement_ratio_percent": 0.45
+ },
+ "materials": {
+  "concrete_cubes_150mm_MPa": [
+   45.8,
+   48.2,
+   47.4,
+   46.8,
+   46.4,
+   47.6
+  ],
+  "concrete_cube_mean_MPa": 47.0,
+  "steel": {
+   "grade": "HRB400E",
+   "E_GPa": 200,
+   "yield_MPa": 455,
+   "tensile_MPa": 587.5,
+   "yield_strain_percent": 0.23,
+   "elongation_percent": 21
+  }
+ },
+ "charges": "stacked 200 g TNT blocks (100 x 50 x 25 mm); contact charges at the top face's centre, non-contact hung above it",
+ "measurement": "displacement 300 mm from the centre of the underside (DH5G107); Table 10 gives the peak (down negative), the peak rebound and the residual",
+ "contact": [
+  {
+   "specimen": "S1",
+   "layers": 1,
+   "charge_kg": 0.2,
+   "top_damage_cm2": 750,
+   "bottom_damage_cm2": 1400,
+   "hole_cm": 15
+  },
+  {
+   "specimen": "S2",
+   "layers": 1,
+   "charge_kg": 0.4,
+   "top_damage_cm2": 1000,
+   "bottom_damage_cm2": 1950,
+   "hole_cm": 21
+  },
+  {
+   "specimen": "S3",
+   "layers": 1,
+   "charge_kg": 0.8,
+   "top_damage_cm2": 1100,
+   "bottom_damage_cm2": 2225,
+   "hole_cm": 23
+  },
+  {
+   "specimen": "S4",
+   "layers": 1,
+   "charge_kg": 1.6,
+   "top_damage_cm2": 1275,
+   "bottom_damage_cm2": 2850,
+   "hole_cm": 27.5
+  },
+  {
+   "specimen": "D1",
+   "layers": 2,
+   "charge_kg": 0.2,
+   "top_damage_cm2": 650,
+   "bottom_damage_cm2": 1375,
+   "hole_cm": 14
+  },
+  {
+   "specimen": "D2",
+   "layers": 2,
+   "charge_kg": 0.4,
+   "top_damage_cm2": 825,
+   "bottom_damage_cm2": 1500,
+   "hole_cm": 18
+  },
+  {
+   "specimen": "D3",
+   "layers": 2,
+   "charge_kg": 0.8,
+   "top_damage_cm2": 975,
+   "bottom_damage_cm2": 1925,
+   "hole_cm": 22
+  },
+  {
+   "specimen": "D4",
+   "layers": 2,
+   "charge_kg": 1.6,
+   "top_damage_cm2": 1125,
+   "bottom_damage_cm2": 2125,
+   "hole_cm": 23.5
+  }
+ ],
+ "non_contact": [
+  {
+   "specimen": "S5",
+   "layers": 1,
+   "charge_kg": 0.2,
+   "distance_m": 0.25,
+   "peak_mm": -3.99,
+   "rebound_mm": 1.85,
+   "residual_mm": -0.7,
+   "bottom_damage_cm2": null
+  },
+  {
+   "specimen": "S6",
+   "layers": 1,
+   "charge_kg": 0.4,
+   "distance_m": 0.32,
+   "peak_mm": -8.24,
+   "rebound_mm": 5.87,
+   "residual_mm": -1.99,
+   "bottom_damage_cm2": 1075
+  },
+  {
+   "specimen": "S7",
+   "layers": 1,
+   "charge_kg": 0.8,
+   "distance_m": 0.4,
+   "peak_mm": -13.19,
+   "rebound_mm": 11.64,
+   "residual_mm": -4.25,
+   "bottom_damage_cm2": 975
+  },
+  {
+   "specimen": "S8",
+   "layers": 1,
+   "charge_kg": 1.6,
+   "distance_m": 0.5,
+   "peak_mm": -17.99,
+   "rebound_mm": 18.4,
+   "residual_mm": -5.61,
+   "bottom_damage_cm2": null
+  },
+  {
+   "specimen": "D5",
+   "layers": 2,
+   "charge_kg": 0.2,
+   "distance_m": 0.25,
+   "peak_mm": -4.1,
+   "rebound_mm": -1.1,
+   "residual_mm": -1.97,
+   "bottom_damage_cm2": null
+  },
+  {
+   "specimen": "D6",
+   "layers": 2,
+   "charge_kg": 0.4,
+   "distance_m": 0.32,
+   "peak_mm": -10.1,
+   "rebound_mm": 4.28,
+   "residual_mm": -4.06,
+   "bottom_damage_cm2": 1400
+  },
+  {
+   "specimen": "D7",
+   "layers": 2,
+   "charge_kg": 0.8,
+   "distance_m": 0.4,
+   "peak_mm": -11.98,
+   "rebound_mm": 9.59,
+   "residual_mm": -4.36,
+   "bottom_damage_cm2": null
+  },
+  {
+   "specimen": "D8",
+   "layers": 2,
+   "charge_kg": 1.6,
+   "distance_m": 0.5,
+   "peak_mm": -13.91,
+   "rebound_mm": 13.12,
+   "residual_mm": -6.95,
+   "bottom_damage_cm2": null
+  }
+ ],
+ "notes": [
+  "The paper's Tables 2 and 3 number the non-contact slabs S1-S4 and D1-D4; its Tables 8-10 S5-S8 and D5-D8, used here.",
+  "D8's residual is 6.95 mm in Table 10 and 6.93 mm in the text."
+ ]
+}
