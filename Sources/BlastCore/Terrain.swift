@@ -105,6 +105,47 @@ public struct Terrain: Sendable, Hashable, Codable {
         return simd_normalize(SIMD3(-dx, -dy, 1))
     }
 
+    /// The surface's elevation and upward unit normal at `p`, as `height(at:)` and `normal(at:)`
+    /// in double precision, for contact, where a float's rounding would show as a jitter.
+    func surface(at p: SIMD2<Double>) -> (height: Double, normal: SIMD3<Double>) {
+        let s = Double(spacing)
+        let last = SIMD2(Double(columns - 1), Double(rows - 1))
+        let raw = (p - SIMD2<Double>(origin)) / s
+        let position = simd_clamp(raw, .zero, last)
+        let low = simd_min(SIMD2<Int>(position.rounded(.down)), SIMD2(columns - 2, rows - 2))
+        let f = position - SIMD2<Double>(low)
+        let base = low.x + columns * low.y
+        let h00 = Double(heights[base])
+        let h10 = Double(heights[base + 1])
+        let h01 = Double(heights[base + columns])
+        let h11 = Double(heights[base + columns + 1])
+        let bottom = h00 + f.x * (h10 - h00)
+        let top = h01 + f.x * (h11 - h01)
+        var dx = ((h10 - h00) * (1 - f.y) + (h11 - h01) * f.y) / s
+        var dy = ((h01 - h00) * (1 - f.x) + (h11 - h10) * f.x) / s
+        if raw.x < 0 || raw.x > last.x { dx = 0 }
+        if raw.y < 0 || raw.y > last.y { dy = 0 }
+        return (bottom + f.y * (top - bottom), simd_normalize(SIMD3(-dx, -dy, 1)))
+    }
+
+    /// The nodes covering the rectangle from `low` to `high` (scene metres), with a node to spare
+    /// on each side where there is one: the same surface over the rectangle, on the same nodes.
+    public func cropped(low: SIMD2<Float>, high: SIMD2<Float>) -> Terrain {
+        func range(_ low: Float, _ high: Float, _ origin: Float, _ count: Int) -> ClosedRange<Int> {
+            let first = min(max(Int(((low - origin) / spacing).rounded(.down)) - 1, 0), count - 2)
+            let last = min(max(Int(((high - origin) / spacing).rounded(.up)) + 1, first + 1), count - 1)
+            return first...last
+        }
+        let i = range(low.x, high.x, origin.x, columns)
+        let j = range(low.y, high.y, origin.y, rows)
+        var piece: [Float] = []
+        piece.reserveCapacity(i.count * j.count)
+        for row in j { piece += heights[i.lowerBound + columns * row...i.upperBound + columns * row] }
+        return Terrain(
+            origin: origin + spacing * SIMD2(Float(i.lowerBound), Float(j.lowerBound)), spacing: spacing,
+            columns: i.count, rows: j.count, heights: piece, source: source)
+    }
+
     /// True when `point` is below the surface.
     public func contains(_ point: SIMD3<Float>) -> Bool { point.z < height(at: point) }
 
@@ -232,7 +273,9 @@ extension Scenario {
 
     /// Lays `terrain` (nil for flat ground) under the scene, moving the charges and gauges up or
     /// down by as much as the ground under each moves, so that what stood on it, or so high above
-    /// it, still does.
+    /// it, still does; and each freestanding object and car up or down until its lowest corner or
+    /// tyre is as far off the new ground as it was off the old (on it, if it rested there), its
+    /// orientation kept: one laid on a slope then settles onto it.
     public mutating func replaceTerrain(with terrain: Terrain?) {
         let old = self.terrain
         func shift(_ point: inout SIMD3<Float>) {
@@ -246,6 +289,54 @@ extension Scenario {
             additionalCharges = extra
         }
         for n in gauges.indices { shift(&gauges[n].position) }
+        rigidObjects = rigidObjects?.map { object in
+            guard let points = try? Self.lowestPoints(object),
+                let moved = try? object.edited(
+                    position: object.position + SIMD3(0, 0, Self.lift(points, from: old, to: terrain)))
+            else { return object }
+            return moved
+        }
+        rigidCars = rigidCars?.map { car in
+            guard let points = try? Self.lowestPoints(car),
+                let moved = try? car.moved(
+                    to: car.position + SIMD3(0, 0, Self.lift(points, from: old, to: terrain)))
+            else { return car }
+            return moved
+        }
         self.terrain = terrain
+    }
+
+    /// `object` raised or lowered to rest on the ground, its lowest corner on it, as placed; its
+    /// orientation kept.
+    public func resting(_ object: RigidObjectDefinition) throws -> RigidObjectDefinition {
+        let points = try Self.lowestPoints(object)
+        return try object.edited(position: object.position + SIMD3(0, 0, Self.lift(points, to: terrain)))
+    }
+
+    /// `car` raised or lowered to rest on the ground, its lowest tyre or corner on it.
+    public func resting(_ car: RigidCarDefinition) throws -> RigidCarDefinition {
+        try car.moved(to: car.position + SIMD3(0, 0, Self.lift(try Self.lowestPoints(car), to: terrain)))
+    }
+
+    private static func lowestPoints(_ object: RigidObjectDefinition) throws -> [SIMD3<Double>] {
+        try object.makeBody().corners
+    }
+
+    private static func lowestPoints(_ car: RigidCarDefinition) throws -> [SIMD3<Double>] {
+        let made = try car.makeBody()
+        return made.body.corners + made.tyres.map(made.body.worldPoint)
+    }
+
+    /// How far to raise a body whose lowest points are `points` so that it stands as far off the
+    /// `new` ground as it stood off the `old` (on the `new`, with no `old` given), never below
+    /// the floor.
+    private static func lift(_ points: [SIMD3<Double>], from old: Terrain?? = nil, to new: Terrain?) -> Double
+    {
+        func clearance(_ ground: Terrain?) -> Double {
+            points.map { $0.z - Double(ground?.height(at: SIMD3<Float>($0)) ?? 0) }.min() ?? 0
+        }
+        let lowest = points.map(\.z).min() ?? 0
+        let kept = old.map { clearance($0) } ?? 0
+        return max(kept - clearance(new), -lowest)
     }
 }
