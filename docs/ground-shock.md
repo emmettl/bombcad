@@ -139,8 +139,8 @@ the compaction the blast leaves behind.
   An elastic, undamped layer then runs at a Courant number of one, where the scheme carries a
   wave, even a jump, without error. Just below one, a jump would ring up to a fifth too high.
   The price is that each layer's thickness is rounded to a whole number of elements, so an
-  interface can be up to half an element out (under 2.5 cm in 300 m/s soil at the default
-  step). In soil that unloads stiffly, the loading wave crosses an element in r = c_u/c steps.
+  interface can be up to half an element, c_uΔt/2, out: under a centimetre in soil unloading at
+  300 m/s at the default step. In soil that unloads stiffly, the loading wave crosses an element in r = c_u/c steps.
   The scheme is then first order at the front, and the peak converges as the step shrinks
   (below). The mass-proportional damping is centred in time, and the stiffness-proportional part
   is taken from the last half-step's strain rate. The step is shortened to keep that stable,
