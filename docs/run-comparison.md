@@ -166,6 +166,10 @@ resolved. Failure fraction and maximum damage are final-run readouts. Debris dis
 excluded, as in the existing structural chart. Different structures can be overlaid, but the
 largest intact displacement can refer to different physical locations in each structure.
 
+Each selected run has a badge of its [standing](standing.md) beside its name, for pressure or
+deflection as plotted, and the view warns when the runs differ in standing from the reference, not
+only in their numbers. Runs kept before standing was recorded show "Standing not recorded".
+
 Only completed, stable runs can be kept. The captured numerical settings come from the loaded
 solver, with its target duration recorded at completion. Changing the stop target after completion
 does not rewrite the historical target. An input edit awaiting rebuild cannot capture old fields
@@ -221,6 +225,7 @@ device, each gauge's peak and the structure's largest deflection.
 | `--consumer local\|<ssh host>` | Where the fragments fly: this Mac's CPU (the default) or another Mac |
 | `--fragment-results <file>` | Writes the fragments' impacts as JSON |
 | `--ground-shock <spec.json>` | Estimates the ground's shaking under chosen points from the overpressure on the ground, a frame at a time; `--ground-results` writes it as JSON; see [Ground shock](ground-shock.md) |
+| `--standing <file.json>` | Writes the [standing](standing.md) of each result as JSON; the summary ends with it, and the results files, USD scene and volumes carry it too |
 | `--frame-interval <ms>` | Milliseconds of simulated time between frames of `--usd`, `--vdb`, `--fragments`, `--thermal` and `--ground-shock`, 1 by default |
 
 The input project is never modified, and neither `--out` nor `--csv` overwrites an existing
