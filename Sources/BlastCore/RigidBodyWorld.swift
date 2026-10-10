@@ -14,6 +14,12 @@ import simd
 /// against static blocks, and each block's corners against the boxes. Edge-on-edge contact (two
 /// boxes crossed at an angle meeting along edges, with no corner inside the other) is not found.
 /// Candidate pairs come from a sweep along x over bounds grown by each body's travel in the step.
+///
+/// A deformable structure's nodes can be handed in for a step (`nodes`): each is a point mass, or
+/// a sphere of half a shell's thickness, struck by the members' faces with the same impulses,
+/// equal and opposite between the member and the node. A member's corner pressed into a
+/// structure's face between its nodes is not found, so its elements should be smaller than the
+/// members' faces.
 struct RigidBodyWorld {
     struct Member {
         var body: RigidBoxBody
@@ -29,6 +35,16 @@ struct RigidBodyWorld {
         case ground
         case block(Int)
         case member(Int)
+        case node(Int)
+    }
+
+    /// A node of a deformable structure: a point, or a sphere of `radius`, of mass
+    /// `1 / inverseMass` (immovable where that is zero).
+    struct Node {
+        var position: SIMD3<Double>
+        var velocity: SIMD3<Double>
+        let inverseMass: Double
+        let radius: Double
     }
 
     struct Contact {
@@ -49,6 +65,13 @@ struct RigidBodyWorld {
 
     private(set) var members: [Member]
     let blocks: [Box]
+    /// The structure's nodes for the next step; contact changes their velocities.
+    var nodes: [Node] = []
+    /// Friction between members and the structure's nodes (a pair takes the smaller coefficients).
+    var nodeFriction = RigidBoxBody.Ground()
+    /// Kinetic energy that contact changed over the last step, of the members and of the nodes
+    /// (J): the members' loss can only exceed the nodes' gain.
+    private(set) var lastContactWork = (members: 0.0, nodes: 0.0)
     /// Pairs tested in the last step after the sweep, for checking the spatial filter.
     private(set) var lastCandidatePairs = 0
 
@@ -71,6 +94,11 @@ struct RigidBodyWorld {
     }
 
     var kineticEnergy: Double { members.reduce(0) { $0 + $1.body.kineticEnergy } }
+    private var nodeKineticEnergy: Double {
+        nodes.reduce(0) {
+            $1.inverseMass > 0 ? $0 + 0.5 * simd_length_squared($1.velocity) / $1.inverseMass : $0
+        }
+    }
     var linearMomentum: SIMD3<Double> {
         members.reduce(.zero) { $0 + $1.body.mass * $1.body.linearVelocity }
     }
@@ -97,18 +125,21 @@ struct RigidBodyWorld {
         forces: [SIMD3<Double>]? = nil, torques: [SIMD3<Double>]? = nil
     ) -> [Contact] {
         precondition(dt.isFinite && dt >= 0)
+        lastContactWork = (0, 0)
         guard dt > 0, !members.isEmpty else { return [] }
         let initial = members.map(\.body)
+        let initialNodes = nodes
         for n in members.indices {
             members[n].body.applyImpulse(dt * (members[n].body.mass * gravity + (forces?[n] ?? .zero)))
             members[n].body.applyAngularImpulse(dt * (torques?[n] ?? .zero))
         }
         let unconstrained = members.map(\.body)
+        let energies = (members: kineticEnergy, nodes: nodeKineticEnergy)
         var contacts = findContacts(dt: dt, ground: ground)
         let responses = contacts.map(response)
         let slipTolerance = 1e-6  // m/s, as for the single bodies
         var coefficients = contacts.map { contact in
-            let slip = relativeVelocity(contact, bodies: initial)
+            let slip = relativeVelocity(contact, bodies: initial, nodes: initialNodes)
             let tangential = slip - simd_dot(slip, contact.normal) * contact.normal
             let pair = friction(contact)
             return simd_length(tangential) > slipTolerance ? pair.slidingFriction : pair.staticFriction
@@ -160,11 +191,13 @@ struct RigidBodyWorld {
             }
             guard changed else { break }
             for n in members.indices { members[n].body = unconstrained[n] }
+            nodes = initialNodes
             for n in contacts.indices {
                 contacts[n].normalImpulse = 0
                 contacts[n].tangentImpulse = .zero
             }
         }
+        lastContactWork = (kineticEnergy - energies.members, nodeKineticEnergy - energies.nodes)
         for n in members.indices { members[n].body.advance(by: dt, gravity: .zero) }
         separate(ground: ground)
         return contacts
@@ -230,7 +263,7 @@ struct RigidBodyWorld {
             switch p.1 {
             case .member(let j): (p.0, j)
             case .block(let k): (p.0, members.count + k)
-            case .ground: (p.0, -1)
+            case .ground, .node: (p.0, -1)
             }
         }
         return pairs.sorted { key($0) < key($1) }
@@ -315,7 +348,31 @@ struct RigidBodyWorld {
                         }
                     }
                 }
-            case .ground: break
+            case .ground, .node: break
+            }
+        }
+        // Each member's faces against the structure's nodes near it: the node pushes the member
+        // away from the face it is near.
+        if !nodes.isEmpty {
+            for n in members.indices {
+                let body = members[n].body
+                let box = bounds(n, dt: dt)
+                let centre = body.worldPoint(.zero)
+                let travel =
+                    dt
+                    * (simd_length(body.linearVelocity) + simd_length(body.angularVelocity)
+                        * simd_length(body.size))
+                for (k, node) in nodes.enumerated() {
+                    let reach = node.radius + dt * simd_length(node.velocity)
+                    guard all(node.position .>= box.low - reach), all(node.position .<= box.high + reach),
+                        let c = Self.pointAgainstBox(
+                            node.position, centre: centre, pose: body.orientation, half: body.size / 2,
+                            towards: node.position - centre, reach: reach + travel + contactTolerance)
+                    else { continue }
+                    add(
+                        &contacts, member: n, other: .node(k), point: node.position - c.gap * c.normal,
+                        gap: c.gap - node.radius, normal: -c.normal, dt: dt)
+                }
             }
         }
         return contacts
@@ -379,8 +436,12 @@ struct RigidBodyWorld {
 
     private func friction(_ contact: Contact) -> RigidBoxBody.Ground {
         let own = members[contact.member].friction
-        guard case .member(let j) = contact.other else { return own }
-        let theirs = members[j].friction
+        let theirs: RigidBoxBody.Ground
+        switch contact.other {
+        case .member(let j): theirs = members[j].friction
+        case .node: theirs = nodeFriction
+        case .ground, .block: return own
+        }
         return RigidBoxBody.Ground(
             staticFriction: min(own.staticFriction, theirs.staticFriction),
             slidingFriction: min(own.slidingFriction, theirs.slidingFriction))
@@ -391,16 +452,24 @@ struct RigidBodyWorld {
     }
 
     /// Velocity of the member's point relative to whatever it touches, for given body states.
-    private func relativeVelocity(_ c: Contact, bodies: [RigidBoxBody]) -> SIMD3<Double> {
+    private func relativeVelocity(_ c: Contact, bodies: [RigidBoxBody], nodes: [Node]) -> SIMD3<Double> {
         var v = pointVelocity(bodies[c.member], c.point)
-        if case .member(let j) = c.other { v -= pointVelocity(bodies[j], c.point) }
+        switch c.other {
+        case .member(let j): v -= pointVelocity(bodies[j], c.point)
+        case .node(let k): v -= nodes[k].velocity
+        case .ground, .block: break
+        }
         return v
     }
 
     /// Velocity of the member's point relative to whatever it touches.
     private func relativeVelocity(_ c: Contact) -> SIMD3<Double> {
         var v = pointVelocity(members[c.member].body, c.point)
-        if case .member(let j) = c.other { v -= pointVelocity(members[j].body, c.point) }
+        switch c.other {
+        case .member(let j): v -= pointVelocity(members[j].body, c.point)
+        case .node(let k): v -= nodes[k].velocity
+        case .ground, .block: break
+        }
         return v
     }
 
@@ -425,12 +494,20 @@ struct RigidBodyWorld {
                 simd_dot(Self.impulseResponse(body, c.tangents.0, arm: arm), c.tangents.0)
                 + simd_dot(Self.impulseResponse(body, c.tangents.1, arm: arm), c.tangents.1)
         }
+        if case .node(let k) = c.other {
+            normal += nodes[k].inverseMass
+            tangent += 2 * nodes[k].inverseMass
+        }
         return (normal, tangent)
     }
 
     private mutating func apply(_ impulse: SIMD3<Double>, _ c: Contact) {
         members[c.member].body.applyImpulse(impulse, at: c.point)
-        if case .member(let j) = c.other { members[j].body.applyImpulse(-impulse, at: c.point) }
+        switch c.other {
+        case .member(let j): members[j].body.applyImpulse(-impulse, at: c.point)
+        case .node(let k): nodes[k].velocity -= impulse * nodes[k].inverseMass
+        case .ground, .block: break
+        }
     }
 
     // MARK: Position correction
@@ -486,8 +563,27 @@ struct RigidBodyWorld {
                     guard let worst else { continue }
                     members[i].body = a.translated(by: worst.normal * (worst.depth - tolerance))
                     moved = true
-                case .ground: break
+                case .ground, .node: break
                 }
+            }
+            // Out of the structure's nodes, moving the member alone.
+            for i in members.indices where !nodes.isEmpty {
+                let a = members[i].body
+                let box = bounds(i, dt: 0)
+                var worst: (depth: Double, normal: SIMD3<Double>)?
+                for node in nodes {
+                    guard all(node.position .>= box.low - node.radius),
+                        all(node.position .<= box.high + node.radius),
+                        let c = Self.pointAgainstBox(
+                            node.position, centre: a.worldPoint(.zero), pose: a.orientation, half: a.size / 2,
+                            towards: node.position - a.worldPoint(.zero), reach: node.radius),
+                        c.gap - node.radius < -tolerance, node.radius - c.gap > (worst?.depth ?? 0)
+                    else { continue }
+                    worst = (node.radius - c.gap, -c.normal)
+                }
+                guard let worst else { continue }
+                members[i].body = a.translated(by: worst.normal * (worst.depth - tolerance))
+                moved = true
             }
             if !moved { break }
         }
