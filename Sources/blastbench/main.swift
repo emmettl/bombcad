@@ -31,13 +31,16 @@ import simd
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
 //   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
 //                        [--bases clamped,resting] [--air [--cell 0.25] [--margin 12] [--height 18] [--progress]]
-//                        [--massless] [--layer 3 [--beneath rock|sand|clay]] [--embed 1]   (the footing's soil)
+//                        [--massless] [--layer 3 [--beneath rock|sand|clay]] [--embed 1] [--elastic]   (the footing's soil)
 //                        [--panel]   (a 3 m panel resting on the ground, its edges tied to columns by each base)
 //   blastbench seat [--speeds 4,8,12] [--seats 0.1,0.2] [--time 1.5] [--h 0.1] [--dowels]
 //                   (a precast beam on corbels of two columns, one column struck away from the span)
 //   blastbench precast [--tests i0_50,i0_100,i0_150] [--friction 0.7] [--reversals 40] [--samples Samples/PrecastSeat] [--history out-%.csv]
 //                      (a precast beam's seat cycled along its corbel, against Batalha et al.'s tests)
 //   blastbench rocking [--shear 40] [--bearing 814] [--packets a,b,c,d,e] [--speed 0.2] [--history out.csv]
+//                      [--elastic | --elastic-share 0.12 --memory 0 --heave 0]   (the sand's settling; also for shaking)
+//   blastbench shaking [--tests ssg04-dsw,ssg04-shw,ssg03-dsw] [--shear 80] [--bearing 814] [--samples Samples/FoRDy]
+//                      [--history out-%.csv]   (a wall on a footing shaken at its base, against FoRDy's SSG03/SSG04)
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03]
 //                       [--mode peak|now|impulse|fluence|irradiance]
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
@@ -54,10 +57,14 @@ import simd
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1] [--terrain hill]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
 //   blastbench deflagration [vessel|vented|tube|ball|layout] [--gas methane|propane] [--percent 9.5] [--air thermal]
+//                           [--laminar] [--turbulence 0.7] [--factor 1] [--wrinkling 1] [--mixing [--mixing-model smagorinsky]]
+//                           vented: [--vent 5.4] [--dx 0.1] [--ignition back] [--release Pa] [--posts 0.2] [--speeds]
+//                           [--arrivals f.csv] [--history f.csv] [--front] [--axis --until s]; ball: [--closed] [--shells]
 //                           (closed sphere against the thin-flame model; vented room against EN 14994/NFPA 68;
 //                            a tube's and a free sphere's flame profiles; layout --out f.json writes the
 //                            gas-room preset as a layout for `BombCAD run`)
 //   blastbench terrain --study wedge|shield|hill ...   (the terrain's checks; see TerrainBench.swift)
+//   blastbench landscape [--mass 500000] [--dx 8] ...   (large surface bursts; see LandscapeBench.swift)
 //   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80] [--terrain flat]   (hashes of short runs, to compare builds)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
@@ -2219,6 +2226,50 @@ func runImpact() throws {
     print(
         pad("test", 8) + pad("weight", 8) + pad("measured", 18) + pad("model", 18) + pad("reaction", 18)
             + pad("failed", 8) + pad("run time", 10))
+    if flag("peterson") {
+        // Peterson et al. (KTH, 2026): 0.8 m beams struck by 70 kg at 6.86 m/s near a support.
+        print("Peterson et al. (2026): 150 x 150 mm beams on 0.70 m, struck by 70 kg at 6.86 m/s")
+        print(
+            pad("test", 13) + pad("damage", 7) + pad("impact kN", 16) + pad("near kN (ms)", 26)
+                + pad("far kN (ms)", 26) + pad("failed", 8) + pad("under load", 12))
+        func force(_ value: Float?, _ time: Float?) -> String {
+            guard let value else { return "-" }
+            return "\(format(Double(value) / 1000, 0))"
+                + (time.map { " (\(format(Double($0) * 1000, 2)))" } ?? "")
+        }
+        for test in ImpactBenchmark.petersonTests where names?.contains(test.name) ?? true {
+            let result = try ImpactBenchmark.run(
+                device: device, test: test, elementsThroughDepth: layers, duration: min(duration, 0.03),
+                specimen: { specimen in
+                    chooseSupports(&specimen)
+                    if flag("spread") { specimen.spreadBars = true }
+                },
+                adjust: { model in
+                    if flag("no-rate") { model.material.rateDependent = false }
+                    // `--bond`: the 8 mm bars slip.
+                    if let bond = chosenBondSlip(diameter: 0.008) { model.bondSlip = bond }
+                    applyRateOptions(&model)
+                },
+                inspect: { solver in
+                    if flag("map") { for line in solver.crackMap(row: solver.ey / 2) { print(line) } }
+                })
+            print(
+                pad(test.name, 13) + pad(test.damage, 7)
+                    + pad(force(test.impact, nil) + " / " + force(result.peakImpactForce, nil), 16)
+                    + pad(
+                        force(test.nearReaction, test.nearTime) + " / "
+                            + force(result.supportReactions.x, result.supportReactionTimes.x), 26)
+                    + pad(
+                        force(test.farReaction, test.farTime) + " / "
+                            + force(result.supportReactions.y, result.supportReactionTimes.y), 26)
+                    + pad("\(result.summary.erodedElements)", 8)
+                    + pad("\(format(Double(result.peak) * 1000)) mm", 12))
+        }
+        print(
+            "\nMeasured / model; times after the impact began. The impact force over 0.42 ms, reactions over 0.5 ms."
+        )
+        return
+    }
     if flag("ando") {
         // Ando et al. (2000): beams without stirrups, struck once each by 300 kg.
         print(
@@ -3217,9 +3268,11 @@ func runAnchorage() throws {
     }
     // The footing's soil: `--massless` without its mass and radiation damping; `--layer d` a layer
     // d metres deep over rock (or `--beneath sand`, a looser sand, or `--beneath clay`, a soft
-    // clay, as a half-space).
+    // clay, as a half-space); `--elastic` elastic up to its bearing capacity, not settling under
+    // cycles.
     var soil = Soil()
     soil.radiationDamping = !flag("massless")
+    soil.cyclic = cyclicSandOption()
     soil.layerDepth = option("layer").flatMap { Float($0) }
     switch option("beneath") {
     case "sand": soil.beneath = SoilMaterial(shearModulus: 20e6, poissonRatio: 0.3, density: 1800)
@@ -3229,6 +3282,7 @@ func runAnchorage() throws {
     if soil != Soil() {
         print(
             "Footing on medium dense sand" + (soil.radiationDamping ? "" : " without its mass")
+                + (soil.cyclic == nil ? ", elastic" : "")
                 + (soil.layerDepth.map {
                     " as a layer \(format(Double($0), 1)) m deep over " + (option("beneath") ?? "rock")
                 } ?? ""))
@@ -3806,7 +3860,8 @@ func runRocking() throws {
     )
     let result = try FootingRockingTest.run(
         device: device, shearModulus: shear, bearingCapacity: bearing, packets: packets,
-        speed: option("speed").flatMap { Float($0) } ?? 0.2, progress: { print("  " + $0) })
+        speed: option("speed").flatMap { Float($0) } ?? 0.2, cyclic: cyclicSandOption(),
+        progress: { print("  " + $0) })
     print("")
     print(
         pad("packet", 8) + pad("rotation", 18) + pad("moment forward", 18) + pad("moment back", 18)
@@ -3828,6 +3883,73 @@ func runRocking() throws {
     if let path = option("history") {
         let lines = ["rotation,moment,settlement"] + result.history.map { "\($0.x),\($0.y),\($0.z)" }
         try lines.joined(separator: "\n").write(toFile: path, atomically: true, encoding: .utf8)
+    }
+}
+
+/// The footing's sand: Gajan's cyclic sand (`CyclicSand`), changed by `--elastic-share`,
+/// `--memory` and `--heave`; `--elastic` for the bed elastic up to its bearing capacity.
+func cyclicSandOption() -> CyclicSand? {
+    guard !flag("elastic") else { return nil }
+    var sand = CyclicSand()
+    if let v = option("elastic-share").flatMap({ Float($0) }) { sand.elasticShare = v }
+    if let v = option("memory").flatMap({ Float($0) }) { sand.memory = v }
+    if let v = option("heave").flatMap({ Float($0) }) { sand.heave = v }
+    return sand
+}
+
+func runShaking() throws {
+    let shear = (option("shear").flatMap { Float($0) } ?? 80) * 1e6
+    let bearing = (option("bearing").flatMap { Float($0) } ?? 814) * 1e3
+    let folder = URL(fileURLWithPath: option("samples") ?? "Samples/FoRDy")
+    let names = option("tests").map { $0.split(separator: ",").map(String.init) }
+    let tests = FootingShakingTest.tests.filter { names?.contains($0.name) ?? true }
+    for test in tests {
+        let measured = try test.events.map {
+            try FootingShakingTest.Series.load(folder.appendingPathComponent("\($0).csv"))
+        }
+        print(
+            "\n\(test.name): \(test.structure.name) on the 2.8 × 0.65 m footing"
+                + (test.structure.embedment > 0 ? ", set \(test.structure.embedment) m in" : "")
+                + ", on sand of \(format(Double(shear) / 1e6, 0)) MPa, bearing \(format(Double(bearing) / 1e3, 0)) kPa"
+        )
+        let result = try FootingShakingTest.run(
+            device: device, test: test, series: measured, shearModulus: shear, bearingCapacity: bearing,
+            cyclic: cyclicSandOption(), progress: { print("  " + $0) })
+        print(String(format: "  static pressure %.0f kPa; %.0f s", result.pressure / 1e3, result.wallSeconds))
+        print(
+            pad("event", 15) + pad("peak g", 8) + pad("rotation + / − (mrad)", 26) + pad("moment + / −", 26)
+                + pad("settlement / L", 18) + pad("∫M dθ", 18) + pad("travel", 16))
+        print(
+            pad("", 23) + String(repeating: pad("measured  model", 26), count: 2)
+                + String(repeating: pad("measured  model", 18), count: 2) + pad("measured  model", 16))
+        for (index, name) in test.events.enumerated() {
+            let a = measured[index].summary
+            let b = result.events[index].summary
+            func mrad(_ v: SIMD2<Float>) -> String { String(format: "%+.1f/%+.1f", v.x * 1000, v.y * 1000) }
+            func pair2(_ v: SIMD2<Float>) -> String { String(format: "%.2f/%.2f", v.x, v.y) }
+            let peak = measured[index].base.map(abs).max() ?? 0
+            print(
+                pad(name, 15) + pad(format(Double(peak), 2), 8)
+                    + pad(mrad(a.rotation) + "  " + mrad(b.rotation), 26)
+                    + pad(pair2(a.moment) + "  " + pair2(b.moment), 26)
+                    + pad(String(format: "%.4f  %.4f", a.settlement, b.settlement), 18)
+                    + pad(String(format: "%.4f  %.4f", a.energy, b.energy), 18)
+                    + pad(String(format: "%.3f  %.3f", a.travel, b.travel), 16))
+        }
+        if let pattern = option("history") {
+            for (index, name) in test.events.enumerated() {
+                let m = result.events[index]
+                var lines = ["time,base_g,rotation,moment,shear,sliding,settlement"]
+                for i in m.time.indices {
+                    lines.append(
+                        "\(m.time[i]),\(m.base[i]),\(m.rotation[i]),\(m.moment[i]),\(m.shear[i]),\(m.sliding[i]),\(m.settlement[i])"
+                    )
+                }
+                try lines.joined(separator: "\n").write(
+                    toFile: pattern.replacingOccurrences(of: "%", with: name), atomically: true,
+                    encoding: .utf8)
+            }
+        }
     }
 }
 
@@ -3988,6 +4110,7 @@ do {
     case "snapshot": try runSnapshot()
     case "anchorage": try runAnchorage()
     case "rocking": try runRocking()
+    case "shaking": try runShaking()
     case "seat": try runSeat()
     case "precast": try runPrecast()
     case "thermal": try runThermal()
@@ -3997,6 +4120,7 @@ do {
     case "soilcolumn": try runSoilColumn()
     case "heating": try runHeating()
     case "terrain": try runTerrain(device: device)
+    case "landscape": try runLandscape(device: device)
     case "deflagration": try runDeflagration()
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")

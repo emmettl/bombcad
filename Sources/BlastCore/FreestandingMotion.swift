@@ -15,6 +15,7 @@ public struct FreestandingMotion: Codable, Sendable {
         public let size: SIMD3<Double>
         public let displacement: SIMD3<Double>
         public let peakSpeed: Double
+        /// Degrees from the ground's normal under the object (the vertical on flat ground).
         public let peakTilt: Double
         public let finalTilt: Double
         /// Tipped past the angle it balances at, on its side or roof.
@@ -100,6 +101,17 @@ public struct FreestandingMotion: Codable, Sendable {
         low = ((low - margin) / step).rounded(.down) * step
         high = ((high + margin) / step).rounded(.up) * step
         low.z = 0
+        // A terrain's nodes over the crop, moved with it; the domain kept above them.
+        let terrain = scenario.terrain.flatMap { $0.isFlat ? nil : $0 }.map { whole -> Terrain in
+            var piece = whole.cropped(
+                low: SIMD2<Float>(Float(low.x), Float(low.y)),
+                high: SIMD2<Float>(Float(high.x), Float(high.y)))
+            piece.origin -= SIMD2<Float>(Float(low.x), Float(low.y))
+            return piece
+        }
+        if let top = terrain?.highest {
+            high.z = max(high.z, ((Double(top) + margin) / step).rounded(.up) * step)
+        }
         let size = high - low
         let cells = Int(
             (size.x / cellSize).rounded() * (size.y / cellSize).rounded() * (size.z / cellSize).rounded())
@@ -128,6 +140,7 @@ public struct FreestandingMotion: Codable, Sendable {
             return Box(min: lo, max: hi)
         }
         scene.gauges = []
+        scene.terrain = terrain
         return (scene, low)
     }
 
@@ -147,6 +160,13 @@ public struct FreestandingMotion: Codable, Sendable {
         let refinement = refinement ?? resolution.refinement
         let refinementMemory = refinementMemory ?? max(512 << 20, count * (64 << 20))
         let (scene, offset) = try cropped(scenario, cellSize: Double(cellSize))
+        // Tilt from the ground's normal under the object's centre: on a slope, lying on it is
+        // upright.
+        func tilt(_ member: ExperimentalRigidWorldSimulation.Member) -> Double {
+            guard let terrain = scene.terrain else { return member.tilt }
+            let centre = member.centreOfMass
+            return member.tilt(from: terrain.surface(at: SIMD2(centre.x, centre.y)).normal)
+        }
         var configuration = SolverConfiguration()
         configuration.refinement = refinement
         if refinement > 1 { configuration.refinementMemory = refinementMemory }
@@ -179,7 +199,7 @@ public struct FreestandingMotion: Codable, Sendable {
             }
             for (n, member) in simulation.members.enumerated() {
                 peakSpeed[n] = max(peakSpeed[n], simd_length(member.velocity))
-                peakTilt[n] = max(peakTilt[n], member.tilt)
+                peakTilt[n] = max(peakTilt[n], tilt(member))
             }
             if simulation.air.time >= next - 1e-9 {
                 record()
@@ -203,7 +223,7 @@ public struct FreestandingMotion: Codable, Sendable {
             return Object(
                 id: ids[n], name: last.name, isCar: last.isCar, size: size,
                 displacement: last.centreOfMass - first.centreOfMass, peakSpeed: peakSpeed[n],
-                peakTilt: peakTilt[n], finalTilt: last.tilt, overturned: last.tilt > balance * 180 / .pi,
+                peakTilt: peakTilt[n], finalTilt: tilt(last), overturned: tilt(last) > balance * 180 / .pi,
                 leftAir: simulation.leftAir[n])
         }
         return FreestandingMotion(

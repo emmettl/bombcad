@@ -131,4 +131,33 @@ struct TerrainGroundTests {
         let velocity = level.points[0].responses[0].verticalVelocity
         #expect(abs(velocity / (80e3 / spec.soil.impedance) - 1) < 0.03)
     }
+
+    @Test("A body on a step stands on a footing at each level, through a support region for each")
+    func steppedFootings() throws {
+        // Two blocks, one on the ground and one on a step a metre up, cast onto footings with
+        // starter bars: the ground's connection holds only z = 0, so each level is a support region
+        // with its own connection and footing.
+        let material = StructureMaterial.elastic(density: 2400, youngsModulus: 30e9, poissonRatio: 0.2)
+        var model = StructureModel(
+            solids: [Box(min: .zero, max: SIMD3(1, 1, 2)), Box(min: SIMD3(1, 0, 1), max: SIMD3(2, 1, 2))],
+            material: material, elementSize: 0.25, fixedBase: false)
+        model.supports = [
+            Box(min: SIMD3(-0.01, -0.01, -0.01), max: SIMD3(1.01, 1.01, 0.01)),
+            Box(min: SIMD3(0.99, -0.01, 0.99), max: SIMD3(2.01, 1.01, 1.01)),
+        ]
+        var joint = Anchorage.dowelled(ratio: BaseConnection.dowelRatio)
+        joint.footing = Footing(overhang: SIMD2(0.25, 0.25), thickness: 0.4, soil: Soil(bearingCapacity: nil))
+        model.setAnchorage(joint, ofSupport: 0)
+        model.setAnchorage(joint, ofSupport: 1)
+        let solver = try StructureSolver(device: device, model: model)
+        let placed = solver.footingSummaries()
+        #expect(placed.count == 2)
+        #expect(abs(placed[0].baseCentre.z + 0.4) < 1e-5 && abs(placed[1].baseCentre.z - 0.6) < 1e-5)
+        #expect(abs(placed[0].baseCentre.x - 0.5) < 1e-5 && abs(placed[1].baseCentre.x - 1.5) < 1e-5)
+        solver.damping = 200
+        solver.advance(steps: Int((0.2 / Double(solver.criticalTimeStep)).rounded()))
+        let settled = solver.footingSummaries()
+        #expect(
+            settled.allSatisfy { $0.soilForce.z > 0 && $0.displacement.z < 0 && $0.displacement.z.isFinite })
+    }
 }

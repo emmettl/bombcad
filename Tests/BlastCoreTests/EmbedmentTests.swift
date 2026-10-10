@@ -52,7 +52,7 @@ struct EmbedmentTests {
 
     @Test("Base and sides give Gazetas's embedded stiffness vertically and horizontally; rocking follows")
     func stiffness() {
-        let soil = Soil()
+        let soil = Soil(cyclic: nil)
         for (width, length, thickness, depth) in [
             (Float(2), Float(2), Float(1), Float(1)), (2, 2, 0.5, 1), (1.5, 4, 0.8, 0.8),
         ] {
@@ -100,7 +100,7 @@ struct EmbedmentTests {
     func settlement() throws {
         // Sides that grip without slipping: at this depth sand's friction on its pressure at rest
         // would let them slip under the weight, and the static stiffness is for small motions.
-        let soil = Soil(bearingCapacity: nil)
+        let soil = Soil(bearingCapacity: nil, cyclic: nil)
         let embedment = Embedment(depth: 0.5, sideFriction: 10)
         let footing = Footing(overhang: SIMD2(0.5, 0.5), thickness: 0.5, soil: soil, embedment: embedment)
         let solver = try block(SIMD3(1, 1, 1), footing: footing)
@@ -121,7 +121,7 @@ struct EmbedmentTests {
         "Pushed a little sideways, an embedded footing slides and turns as its stiffnesses about the base say"
     )
     func sway() throws {
-        let soil = Soil(bearingCapacity: nil)
+        let soil = Soil(bearingCapacity: nil, cyclic: nil)
         let embedment = Embedment(depth: 1, sideFriction: 10)
         let footing = Footing(overhang: SIMD2(0.5, 0.5), thickness: 0.5, soil: soil, embedment: embedment)
         let solver = try block(SIMD3(1, 1, 1), footing: footing)
@@ -153,7 +153,7 @@ struct EmbedmentTests {
 
     @Test("Pressed past the embedded bearing capacity a footing sinks; below it, it holds")
     func bearing() throws {
-        let soil = Soil(bearingCapacity: 300e3, radiationDamping: false)
+        let soil = Soil(bearingCapacity: 300e3, radiationDamping: false, cyclic: nil)
         let embedment = Embedment(depth: 0.5)
         let footing = Footing(overhang: SIMD2(0.5, 0.5), thickness: 0.5, soil: soil, embedment: embedment)
         let capacity =
@@ -184,7 +184,7 @@ struct EmbedmentTests {
     /// (or on the surface), pushed on its face by `push` newtons: how far the footing has slid
     /// after 0.4 s.
     private func slide(push: Float, depth: Float?) throws -> Float {
-        let soil = Soil(bearingCapacity: nil, friction: 0.5)
+        let soil = Soil(bearingCapacity: nil, friction: 0.5, cyclic: nil)
         let footing = Footing(
             overhang: SIMD2(0.5, 0.5), thickness: 0.5, soil: soil,
             embedment: depth.map { Embedment(depth: $0) })
@@ -212,7 +212,8 @@ struct EmbedmentTests {
         // the pressure at rest along the push.
         let embedment = Embedment(depth: 0.5)
         let gamma: Float = 1900 * 9.81
-        let solver = try block(SIMD3(1, 1, 0.5), footing: Footing(thickness: 0.5, soil: Soil(friction: 0.5)))
+        let solver = try block(
+            SIMD3(1, 1, 0.5), footing: Footing(thickness: 0.5, soil: Soil(friction: 0.5, cyclic: nil)))
         let weight = (bodyMass(solver) + solver.footingSummaries()[0].mass) * g
         let pressure = gamma * 0.5 * 0.5 / 2
         let resistance =

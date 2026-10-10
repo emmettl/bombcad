@@ -967,6 +967,21 @@ final class SimulationModel {
         selection = .gauge(settings.scenario.gauges.count - 1)
     }
 
+    /// Adds gauges 1.5 m above the ground on a line from the charge, where it has the most room,
+    /// at the scaled distances of the Kingery-Bulmash curves that fit in the domain, as many as the
+    /// solver can record; gauges already there by those names are kept.
+    func addGaugeLine() {
+        let scenario = settings.scenario
+        let names = Set(scenario.gauges.map(\.name))
+        let line = scenario.gaugeLine(direction: scenario.roomiestGaugeLineDirection).filter {
+            !names.contains($0.name)
+        }
+        let room = BlastSolver.maxGauges - scenario.gauges.count
+        guard room > 0, !line.isEmpty else { return }
+        settings.scenario.gauges.append(contentsOf: line.prefix(room))
+        selection = nil
+    }
+
     func removeGauge(at index: Int) {
         guard settings.scenario.gauges.indices.contains(index) else { return }
         settings.scenario.gauges.remove(at: index)

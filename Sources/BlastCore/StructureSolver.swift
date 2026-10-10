@@ -60,6 +60,10 @@ public final class StructureSolver {
     /// The way gravity pulls, down unless turned (to turn a whole problem against the lattice); a
     /// footing's own weight always acts down.
     public var gravityDirection = SIMD3<Float>(0, 0, -1)
+    /// The ground's acceleration in m/s², for a body shaken at its base: the problem is solved in
+    /// the ground's frame, every node and footing pulled by −m a besides gravity (its footings'
+    /// soil moving with the ground). Zero leaves the kernels as they were. Solid elements only.
+    public var groundAcceleration = SIMD3<Float>.zero
     /// Mass-proportional damping rate in 1/s.
     public var damping: Float = 0
     /// Hourglass stiffness as a multiple of the element's physical bending stiffness.
@@ -1471,7 +1475,9 @@ public final class StructureSolver {
                 encoder.dispatchThreads(
                     MTLSize(width: pairs.count, height: 1, depth: 1), threadsPerThreadgroup: group)
             }
-            let down = gravityDirection.x == 0 && gravityDirection.y == 0 && gravityDirection.z < 0
+            let down =
+                gravityDirection.x == 0 && gravityDirection.y == 0 && gravityDirection.z < 0
+                && groundAcceleration == .zero
             encoder.setComputePipelineState(down ? nodePipeline : turnedNodes ?? nodePipeline)
             encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
             encoder.setBuffer(forceBuffer, offset: 0, index: 1)
@@ -1509,7 +1515,8 @@ public final class StructureSolver {
                 encoder,
                 uniforms: FootingSystem.Uniforms(
                     fixedStep: uniforms.fixedStep, criticalStep: criticalTimeStep, substep: UInt32(substep),
-                    gravity: gravity, damping: damping, footings: 0),
+                    gravity: gravity, damping: damping, footings: 0, groundX: groundAcceleration.x,
+                    groundY: groundAcceleration.y, groundZ: groundAcceleration.z),
                 control: fluid?.control ?? placeholderBuffer)
             afterNodes?(substep)
         }
@@ -1554,6 +1561,13 @@ public final class StructureSolver {
             contactFriction: contactFriction)
         let down = simd_normalize(gravityDirection)
         (uniforms.gravityX, uniforms.gravityY, uniforms.gravityZ) = (down.x, down.y, down.z)
+        if groundAcceleration != .zero {
+            // Shaken: gravity and the ground's acceleration, felt together in the ground's frame.
+            let pull = gravity * down - groundAcceleration
+            uniforms.gravity = simd_length(pull)
+            let way = pull / max(uniforms.gravity, 1e-30)
+            (uniforms.gravityX, uniforms.gravityY, uniforms.gravityZ) = (way.x, way.y, way.z)
+        }
         // Time constant of the running averages of strain rate and confinement: 50 steps.
         uniforms.rateFilter = 1 / (50 * criticalTimeStep)
         uniforms.orientedCracks = model.crackAxes.uniform

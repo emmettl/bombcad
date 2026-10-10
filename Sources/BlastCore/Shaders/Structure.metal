@@ -2764,6 +2764,8 @@ struct FootingConstants {
     uint4 sides;              // an embedded footing's: first side point, side points
     float4 embedded;          // its rocking stiffness about x and y beyond its base's and sides' springs, and
                               // the most moment that gives about each
+    float4 cyclic;            // cyclic sand (1: on), the part of the largest force borne it remembers once
+                              // lifted off, its heave then
 };
 
 // A footing's state, laid out as `FootingSystem.State`.

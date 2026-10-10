@@ -250,6 +250,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case baseConnections
     case jointsBetweenParts
     case footings
+    case cyclicSand
     case freeBase
     // Materials.
     case rateIndependent
@@ -331,6 +332,11 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
             return any { s in
                 (s.fixedBase && s.baseAnchorage?.footing != nil)
                     || s.supportAnchorages.contains { $0?.footing != nil }
+            }
+        case .cyclicSand:
+            return any { s in
+                (s.fixedBase && s.baseAnchorage?.footing?.soil.cyclic != nil)
+                    || s.supportAnchorages.contains { $0?.footing?.soil.cyclic != nil }
             }
         case .freeBase: return any { !$0.fixedBase }
         case .rateIndependent: return structural.contains { !$0.rateDependent }
@@ -469,7 +475,11 @@ public enum StandingTable {
                 document: "validation.md#gas-pressure-in-a-closed-room")
         case .terrain:
             return Entry(
-                title: "Terrain", affects: air + structure + [.envelopeExposure], limit: .approximation,
+                title: "Terrain",
+                affects: air + structure + [
+                    .envelopeExposure, .thermal, .freestandingMotion, .fragments, .groundShock,
+                ],
+                limit: .approximation,
                 note:
                     "A staircase of whole cells: it delays Mach reflection off a slope by 3–11° and under-reads "
                     + "the triple point's angle by 20–75% on 100–400 cells along the run; shielding behind "
@@ -481,8 +491,9 @@ public enum StandingTable {
                 title: "Gas deflagration", affects: air + structure + [.envelopeExposure],
                 limit: .illustrative,
                 note: "A methane or propane cloud's flame: checked against the thin-flame model in a closed "
-                    + "vessel, but its acceleration by turbulence and instabilities is an uncalibrated factor, and "
-                    + "vented rooms' pressures come out far below the venting correlations and FM Global's tests.",
+                    + "vessel and wrinkled by sub-grid turbulence after FM Global's LES; in their vented chamber it "
+                    + "reaches 55–60% of the tests' peaks lit at the back wall, a fifth to a seventh lit in the "
+                    + "middle, and far below the venting correlations.",
                 document: "deflagration.md#limitations")
         case .ventPanels:
             return Entry(
@@ -611,9 +622,19 @@ public enum StandingTable {
         case .footings:
             return Entry(
                 title: "Footings on soil", affects: structure, limit: nil,
-                note: "One footing rocked on dry sand: moment within 6% to 14 mrad and 7–17% low beyond; "
-                    + "settlement a tenth of that measured.",
+                note:
+                    "One footing rocked slowly on dry sand: moment within 11% to 14 mrad and 5–16% low beyond. "
+                    + "With the sand that settles under cycles (the default), settlement 1.7–2.2 times that "
+                    + "measured, and 0.6–1.5 times in eight shaken events; a tenth on the elastic bed.",
                 document: "validation.md#a-footing-rocked-on-dry-sand")
+        case .cyclicSand:
+            return Entry(
+                title: "Sand that settles under cycles", affects: structure, limit: nil,
+                note:
+                    "Settlement under rocking 0.6–1.5 times that of eight shaken centrifuge events (FoRDy) and "
+                    + "1.7–2.2 times a slowly rocked one's (FoRCy), against a tenth on the elastic bed; a sixth to "
+                    + "a half of the energy the shaken footings dissipated.",
+                document: "validation.md#a-footing-shaken-on-dry-sand")
         case .freeBase:
             return Entry(
                 title: "Base resting on the ground", affects: structure, limit: .verified,
@@ -731,7 +752,8 @@ public enum StandingTable {
         "Deflagration.acceleration": .option([.deflagration]),
         "FlameAcceleration.factor": .option([.deflagration]),
         "FlameAcceleration.wrinklingRadius": .option([.deflagration]),
-        "FlameAcceleration.subgridCoefficient": .option([.deflagration]),
+        "FlameAcceleration.turbulence": .option([.deflagration]),
+        "FlameTurbulence.scale": .option([.deflagration]),
         "VentPanel.box": .input,
         "VentPanel.releasePressure": .input,
         "Terrain.origin": .input,
@@ -852,7 +874,7 @@ public enum StandingTable {
         "Anchorage.cohesionSlip": .input,
         "Anchorage.friction": .input,
         "Anchorage.bearingCapacity": .input,
-        "Anchorage.footing": .option([.footings]),
+        "Anchorage.footing": .option([.footings, .cyclicSand]),
         "Anchorage.side": .input,
         "Anchorage.jointNormal": .input,
         "Anchorage.betweenParts": .option([.jointsBetweenParts]),
@@ -1098,7 +1120,9 @@ private struct StandingScene {
             notes.append(
                 String(
                     format: "Gauges as far as %.1f m/kg^(1/3) lie beyond the open-air comparison, which "
-                        + "stopped at 6.", far))
+                        + "stopped at 6; the large-scene comparison, to 40, found the peaks' share the same "
+                        + "there on the same scaled cells, but falling to the coarse cells' share where "
+                        + "the shock is too weak to be refined.", far))
         }
         let near = nearOpenFace
         if !near.isEmpty {
@@ -1194,21 +1218,22 @@ private struct StandingScene {
             StandingEvidence(
                 "A closed sphere of stoichiometric methane against the thin-flame model (blastbench "
                     + "deflagration vessel)",
-                "Burns out at the AICC pressure the heat was fitted to, energy conserved to 1e-5; rise times "
-                    + "within 1–3% on 48 cells across the radius; K_G 51 bar m/s against 76, converging from "
-                    + "below (verified)", "deflagration.md#a-closed-sphere"),
+                "Burns out at the AICC pressure the heat was fitted to, energy conserved to 1e-5; laminar rise "
+                    + "times within 1–3% on 48 cells across the radius, the turbulent flame's 4–8% ahead; K_G "
+                    + "51 bar m/s against 76, converging from below (verified)",
+                "deflagration.md#a-closed-sphere"),
             StandingEvidence(
                 "A laminar flame lit at a tube's closed end",
                 "Runs at the expansion ratio times the burning velocity within 10% (verified)",
                 "deflagration.md#a-closed-sphere"),
             StandingEvidence(
                 "Vented rooms against EN 14994, NFPA 68 and Molkov (blastbench deflagration vented)",
-                "A thirtieth to a fiftieth of Molkov's best fit with the default flame, a fifth to an eighth "
-                    + "with the burning velocity tripled",
+                "A thirtieth to a sixtieth of Molkov's best fit; trend with vent area A^-1.4 against A^-2",
                 "deflagration.md#vented-rooms-against-the-correlations"),
             StandingEvidence(
-                "FM Global's 63.7 m³ chamber, Bauwens et al. 2008 (six tests, peaks only plotted)",
-                "A tenth (lit in the middle) to a half (at the back wall) of the plots' axes",
+                "FM Global's 63.7 m³ chamber, Bauwens et al. 2008 (six tests, digitised)",
+                "Lit at the back wall, 55–60% of the measured peaks with the measured flame speeds; lit in the "
+                    + "middle, a fifth to a seventh, the flame stalling towards the back wall",
                 "deflagration.md#bauwens-chaffee-and-dorofeev-2008"),
         ]
     }
@@ -1221,15 +1246,16 @@ private struct StandingScene {
         }
         return result(
             kind, .illustrative,
-            "A gas deflagration: its flame converges on the thin-flame model in a closed vessel, but its "
-                + "acceleration by turbulence and instabilities is an uncalibrated factor, and vented rooms' "
-                + "pressures fall far below EN 14994, NFPA 68 and FM Global's tests.",
+            "A gas deflagration: its flame converges on the thin-flame model in a closed vessel and is "
+                + "wrinkled by sub-grid turbulence, but its instabilities are not modelled, and vented rooms' "
+                + "pressures fall below FM Global's tests and far below EN 14994 and NFPA 68.",
             evidence: deflagrationEvidence + terrainEvidence,
             assumptions: [
                 "Burnt and unburnt gas are treated as air; the heat released is the share of the heat of "
                     + "combustion that reaches the stoichiometric AICC pressure.",
-                "The flame's acceleration is a constant factor, wrinkling with radius and a vorticity estimate "
-                    + "of sub-grid turbulence; none is calibrated.",
+                "The flame is wrinkled by sub-grid turbulence from the air's σ-model mixing through Bradley's "
+                    + "correlation, scaled as Bauwens et al. fitted it in FM Global's chamber; instabilities are "
+                    + "not modelled, and a young flame is slow until it is about seventeen cells across.",
             ], resolution: resolution, documents: ["deflagration.md#checks", "deflagration.md#limitations"])
     }
 
@@ -1729,8 +1755,10 @@ private struct StandingScene {
         }
         if has(.terrain) {
             effects.append(
-                "The terrain does not hide the fireball from receivers; freestanding objects and footings stay "
-                    + "on level ground, and ground points' soil is level beneath it.")
+                "Over the terrain, footings and the ground's connection stay level and hold the base at z = 0 "
+                    + "(a stepped base takes a support region a level); a ground point's soil column is level "
+                    + "ground's, along the surface's normal; the fireball's radiated power is measured over the "
+                    + "floor.")
         }
         if !(inputs.scenario.rigidObjects ?? []).isEmpty || !(inputs.scenario.rigidCars ?? []).isEmpty {
             effects.append("Freestanding objects in the ordinary run: they move only in Compute Motion.")

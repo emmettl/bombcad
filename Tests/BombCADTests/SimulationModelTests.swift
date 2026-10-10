@@ -517,9 +517,21 @@ struct SimulationModelTests {
 
         model.removeGauge(at: count)
         #expect(model.settings.scenario.gauges.count == count && model.selection == nil)
-        // The solver records at most sixteen.
-        for _ in 0..<20 { model.addGauge() }
-        #expect(model.settings.scenario.gauges.count == 16 && !model.canAddGauge)
+        // The solver records at most `BlastSolver.maxGauges`.
+        for _ in 0..<(BlastSolver.maxGauges + 4) { model.addGauge() }
+        #expect(model.settings.scenario.gauges.count == BlastSolver.maxGauges && !model.canAddGauge)
+    }
+
+    @Test("A gauge line runs from the charge at the Kingery-Bulmash scaled distances that fit")
+    func gaugeLine() async throws {
+        let model = try await makeModel()
+        model.settings.scenario.gauges = []
+        model.addGaugeLine()
+        let line = model.settings.scenario.gauges
+        #expect(!line.isEmpty && line.allSatisfy { $0.name.hasPrefix("Z ") })
+        // Again, nothing new: those names are there already.
+        model.addGaugeLine()
+        #expect(model.settings.scenario.gauges == line)
     }
 
     @Test("Results export as one row per gauge sample and deflection sample")

@@ -64,8 +64,8 @@ swift run -c release blastbench chamber
 | Steel in both faces | Wu et al. (2023): 2 m slabs, one layer or two, within −20% to +7% at the peak under 1.6 kg at 0.43 m/kg^(1/3), 40–70% under 0.2–0.8 kg where the tests spalled; contact charges hole them, not to size. Wang et al. (2022): an aluminised charge's impulse 75% as its stated 10 kg of TNT, 94% with afterburning; the slabs several times too stiff as supported | Moderate for bending under the larger charges; low for one layer against two, spall and holes |
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof is about twice as stiff as the paper's model and its edge is left 15 mm up against 95 mm | Low: the joints' inclined cracking decides it, and the crack models disagree |
 | Fireball radiation   | Two TNT shots by one group (DREO): 100 t, whose total the volume exceeds three to five times; Dial Pack, 500 t, against which the pulse is a sixth as bright at its first maximum, dark from 40 to 350 ms and two to five times too bright after 1 s, 3.9% radiated by 2 s against 2.4%; with gravity it rises but stays as hot, with or without sub-grid mixing | Low: illustrative; afterburning keeps the fireball near the flame temperature |
-| Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; rise times within 1–3% at 48 cells across the radius; K_G 51 against 76, converging from below. Vented rooms: a thirtieth to a fiftieth of Molkov's correlation with the default flame, a fifth to an eighth with the burning velocity tripled; FM Global's six tests (plotted only): the model at a tenth to a half of the plots' axes | Verified for a laminar flame in a closed vessel; illustrative for vented rooms |
-| Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 6% to 14 mrad of rotation, 7–17% low beyond; settlement a tenth of that measured | Moderate for rocking moment; low for settlement |
+| Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; laminar rise times within 1–3% at 48 cells across the radius, the turbulent flame's 4–8% ahead; K_G 51 against 76, converging from below. Vented rooms: a thirtieth to a sixtieth of Molkov's correlation. FM Global's six tests (digitised): lit at the back wall, 55–60% of the measured peaks, with the measured flame speeds; lit in the middle, a fifth to a seventh, the flame stalling towards the back wall | Verified for a laminar flame in a closed vessel; illustrative for vented rooms |
+| Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 11% to 14 mrad of rotation, 5–16% low beyond; settlement 1.7–2.2 times that measured. The same footing shaken (FoRDy, eight events on three structures): settlement 0.6–1.5 times, peak rotation within 22% where the test did not lurch one way, a sixth to a half of the energy dissipated | Moderate for rocking moment and settlement; low for energy and for a footing that lurches |
 | Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.2–1.9 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own; collapse nothing | Low for debris; none for collapse |
 
 ## Structural response against a real test
@@ -1012,6 +1012,67 @@ impacts.
 Beam elements with the sectional shear check are not usable under impacts: the check is
 static and breaks every beam. They are usable without it, for bending, where they come within
 a few per cent of the heavy drops.
+
+## Short beams struck to a shear failure
+
+V. Peterson, J. Magnusson, M. Hallgren and A. Ansell, "Shear-type failure of deep, short and
+slender impact-loaded RC beams", *International Journal of Impact Engineering* 208, 105539
+(2026), with Peterson's KTH thesis (2026) and the records on Mendeley Data
+(doi:10.17632/kn28g6dbj5.3, CC BY 4.0; described in *Data in Brief* 65, 112487). Eighteen beams
+0.80 m long and 150 × 150 mm on supports 0.70 m apart, three 8 mm K500C bars in the face away
+from the load and two in the face struck, 26 mm cover; no stirrups, or 6 mm stirrups at 90 or
+45 mm; struck once each by 70 kg dropped 2.4 m (6.86 m/s) through a fibreboard, 48, 120 or
+240 mm from one support (shear spans of 0.4, 1 and 2 effective depths), two beams of each kind.
+Concrete 44 MPa on cubes; the 8 mm bars yield at 511 MPa and the 6 mm at 609. Load cells under
+both supports and an accelerometer on the striker were read at 19.2 kHz. Every beam struck
+failed in shear but the slender ones with stirrups, which bent: the deep and short beams by
+crushing of the strut (at the support for most deep ones), the slender ones without stirrups by
+flexural-shear in the long span.
+
+**The records.** Sixteen beams have them. Read with numpy alone (`Scripts/peterson2026`, which
+says how; scipy and h5py were not available), the impact force is the striker's mass times its
+deceleration over 0.42 ms, as `blastbench impact --force` reads the model's, and the reactions
+are over 0.5 ms. The two records filed under beams the dataset says have none are taken as named;
+one striker trace, implying five times the striker's momentum, is set aside.
+
+**The model** (`blastbench impact --peterson`). Assumed: concrete of 36 MPa on cylinders, 16 mm
+aggregate, the 8 mm bars' steel for the stirrups too, a striker face 100 mm long across the
+beam, supports 30 mm wide that bear the beam without holding it down, and the fibreboard as a
+pad of 2 GPa per metre (`--pad`), set so that the struck beams' impact forces come out about as
+measured (on one beam of shear span d it gives 274 kN against 227, on one of 2d 202 against
+263). Everything else is the present defaults.
+
+Largest forces (kN, the measured range over the beams of each kind, then the model's), 16
+elements through the depth:
+
+| Shear span | Stirrups | Impact | Near support | Far support | Measured damage | Model |
+|---|---|---|---|---|---|---|
+| 0.4 d | none | 195–260 / 382 | 206–220 / 335 | 20–29 / 28 | strut crushing | 221 elements lost, crushed under the load |
+| 0.4 d | 90 or 45 mm | 211 / 381 | 192–217 / 335 | 12–13 / 44–51 | strut crushing at the support | holds (30 lost) |
+| 1 d | none | 282–296 / 269 | 161–179 / 171 | 44–49 / 61 | strut crushing | fails, split along its bars (1,224 lost) |
+| 1 d | 90 or 45 mm | 207–246 / 274–275 | 157–196 / 176–181 | 54–78 / 56 | strut crushing | holds, 9 mm down |
+| 2 d | none | 210–298 / 200 | 107–140 / 80 | 81–84 / 62 | flexural-shear | fails, split along its bars (1,289 lost) |
+| 2 d | 90 or 45 mm | 208–263 / 202–203 | 110–121 / 72 | 76–86 / 56–58 | flexure | bends, 15–16 mm |
+
+At a shear span of one depth the forces come out as measured: impact within the scatter, the
+near support's reaction within 10%, the far one's within a fifth, the near reaction peaking at
+1.2–1.3 ms against 0.9–1.6. The deep beams take half as much again to twice the impact, and half
+as much again at the near support, as the tests (382 and 335 kN against 195–260 and 192–220): with the load 48 mm
+from the support the strut is so short that the pad is the only give, and the model's is too
+stiff there. The slender beams' reactions are a third low at the near support and a quarter at
+the far one, though their impact force is within the scatter; their inertia carries more of the
+blow in the model.
+
+The failures are half right. Without stirrups the model's beams fail where the tests' did,
+but by splitting along their bottom bars, the fault of the beams without stirrups on fine
+meshes (above), where the tests' crushed or split their strut or failed in flexural-shear;
+crushing under the load joins it in the deep and short ones. With stirrups the slender beams
+bend as the tests' did, but the deep and short ones, all of which failed by crushing of the
+strut, hold. So the model's concrete strut is too strong under impact, or its stirrups too
+effective: the strut's crushing at these rates, and its splitting, are not what the beams
+without stirrups test elsewhere. With bars that slip (`--bond splitting`) the forces move by
+under 6%, but four of the six kinds fail wrongly: the beams of shear span d and 2d without
+stirrups hold, and those with stirrups at 45 mm fail, where their companions at 90 mm hold.
 
 ## Slabs under close-in charges
 
@@ -2034,25 +2095,76 @@ A premixed methane or propane cloud lit at a point (see [Gas deflagrations](defl
   conserved to 10⁻⁵; the times to half and nine tenths of the rise converge on the model's,
   within 1% and 3% at 48 cells across the radius; the deflagration index converges slowly from
   below (51 bar m/s against 76 at 48 cells), the last unburnt gas being far thinner than a cell.
-- **A tube**: a laminar flame lit at the closed end runs at the expansion ratio times the
-  burning velocity to within 10%.
-- **Vented rooms**: in FM Global's 63.7 m³ chamber, the model's peak pressures are a thirtieth to a fiftieth of
-  Molkov's correlation, and far below Bartknecht's and NFPA 68's, with the default flame; a fifth
-  to a seventh with its burning velocity tripled. Against Bauwens et al.'s six tests in that
-  chamber, whose peaks are only plotted, the model reaches a tenth (lit in the middle) to a half
-  (lit at the back wall) of the plots' axes, with the measured trends' directions. The flame's
-  acceleration by turbulence and instabilities, which these tests and correlations include, is a
-  factor in the model, not a model. The vented peak does not converge (0.56, 0.35 and 0.57 kPa on
-  0.2, 0.1 and 0.05 m cells). Illustrative.
+- **A tube**: a flame lit at the closed end runs at the expansion ratio times the burning
+  velocity to within 10%, laminar or turbulent.
+- **The turbulent flame** (the default) is wrinkled by sub-grid turbulence after Bauwens et al.'s
+  LES, Bradley's correlation fed by the air's σ-model eddy viscosity. In the closed sphere it runs
+  4–8% ahead of the laminar flame, from the grid's own flow at the front.
+- **Vented rooms**: in FM Global's 63.7 m³ chamber, the model's peak pressures are a thirtieth to a
+  sixtieth of Molkov's correlation, and far below Bartknecht's and NFPA 68's. Against Bauwens et
+  al.'s six tests in that chamber, digitised from the paper's plots:
+  - Lit at the back wall, the model reaches 55–60% of the measured peaks (their LES 30–60%), with
+    flame speeds within a fifth of the measured beyond 3 m.
+  - Lit in the middle it reaches a fifth to a seventh, its flame stalling towards the back wall
+    where the tests' ran at 3 m/s.
+
+  Obstacles the grid resolves now speed the flame (posts in the room: 0.55 kPa against 0.30). The
+  vented peak does not converge (0.64, 0.30 and 0.42 kPa on 0.2, 0.1 and 0.05 m cells); the flame
+  speed towards the vent roughly does. A young flame burns short of its speed until it is about
+  seventeen cells across. Illustrative.
 
 ## A footing rocked on dry sand
 
 S. Gajan and B. L. Kutter's centrifuge test SSG02_03, from the FoRCy database: a 29 Mg shear
 wall on a 2.8 × 0.65 m surface footing on dry Nevada sand at 80% relative density, pushed
 slowly to and fro through five packets of rising amplitude. On sand of 80 MPa the footing's
-moment follows the test within 6% to 14 mrad and levels off at the rigid footing's capacity,
-7–17% below the test's at 30 to 60 mrad; it settles a tenth as much as the sand did. Details,
-the 40 MPa run and why: [footings](structural-model.md#footings) (`blastbench rocking`).
+moment follows the test within 11% to 14 mrad and levels off near the rigid footing's capacity,
+5–16% below the test's at 30 to 60 mrad. On the sand that settles under cycles (the default since
+the shaken tests below) it settles 1.7 to 2.2 times as much as the test did; on the bed elastic
+up to its capacity, a tenth as much. Details: [footings](structural-model.md#footings)
+(`blastbench rocking`, `--elastic` for the elastic bed).
+
+## A footing shaken on dry sand
+
+FoRDy, FoRCy's dynamic sister: the same footing on the same sand in S. Gajan's centrifuge tests
+SSG04 (on the surface) and SSG03 (its base 0.7 m down), carrying a 33.6 Mg aluminium wall
+(DSW, static pressure 198 kPa, factor of safety 4) or a 54.8 Mg steel one (SHW, 313 kPa, 2.6),
+each shaken at its container's base by a tapered 1.2 Hz sine at two or three levels in turn
+(`blastbench shaking`, data in [Samples/FoRDy](../Samples/FoRDy/README.md)). The model drives
+the wall and footing with the measured base acceleration, every node and the footing pulled by
+−m a in the ground's frame, on the 80 MPa sand of the slow test with its 814 kPa bearing
+capacity; nothing was fitted to these tests. 2026-10-10:
+
+| Event | Peak base | Rotation (mrad), measured / model | Settlement / L, measured / model / elastic bed | ∫ M dθ / (P L / 2), measured / model / elastic bed |
+|---|---|---|---|---|
+| SSG04 DSW 3 | 0.13 g | +3.6 −4.8 / +5.2 −5.6 | 0.0091 / 0.0087 / 0.0007 | 0.010 / 0.005 / 0.002 |
+| SSG04 DSW 4 | 0.53 g | +9.0 −9.9 / +9.2 −9.2 | 0.0162 / 0.0238 / 0.0003 | 0.062 / 0.021 / 0.002 |
+| SSG04 DSW 5 | 0.73 g | +9.0 −20.8 / +15.1 −11.1 | 0.0240 / 0.0362 / 0.0001 | 0.104 / 0.036 / 0.003 |
+| SSG04 SHW 3 | 0.12 g | +3.2 −2.5 / +3.9 −3.8 | 0.0083 / 0.0095 / 0.0010 | 0.008 / 0.004 / 0.001 |
+| SSG04 SHW 4 | 0.60 g | +15.0 −5.4 / +8.6 −7.8 | 0.0284 / 0.0220 / 0.0007 | 0.049 / 0.013 / 0.003 |
+| SSG03 DSW 3 (embedded) | 0.13 g | +5.1 −3.7 / +1.7 −1.4 | 0.0047 / 0.0029 / 0.0010 | 0.011 / 0.002 / 0.006 |
+| SSG03 DSW 4 | 0.49 g | +21.6 −7.1 / +10.2 −10.4 | 0.0186 / 0.0224 / 0.0000 | 0.119 / 0.041 / 0.015 |
+| SSG03 DSW 5 | 0.97 g | +49.5 +2.8 / +13.5 −13.6 | 0.0190 / 0.0217 / 0.0001 | 0.175 / 0.045 / 0.019 |
+
+![Moment against rotation in SSG04's DSW event 4, settlement through its three events, and settlement against rotation in the slow SSG02_03: measured, on cyclic sand and on the elastic bed](footing-shaken.png)
+
+On the bed elastic up to its bearing capacity, the footing settled a tenth to a two-hundredth
+of what the sand did, and its moment–rotation loops were thin: it went on rocking for seconds
+after each shake had stopped, where the test's footing came to rest. The sand that settles
+under cycles (see [footings](structural-model.md#footings)) settles 0.6 to 1.5 times as much
+as measured in every event, and follows the measured settlement through each shake, building
+while the shaking is strong and stopping with it. It takes Gajan's contact interface model's
+rules and the share given back from his vertical push on the same sand, so that the slow test
+and these are run on the same sand: it settles twice as much as the slow test did and about as
+much as these, which Gajan found too (the dynamic tests settling more for the same rotation,
+in part by the free field's own settlement, which here was a fifth to a quarter of the
+footing's in SSG04's heavier event). The peak rotation of the surface footing is within 22% where the
+test rocked both ways; where it lurched one way (SSG04 DSW 5, SHW 4 and SSG03 DSW 4 and 5, left leaning by
+8 to 27 mrad) the model rocks symmetrically and does not lurch. The loops are fatter than the
+elastic bed's but still a sixth to a half as wide as measured: the sand dissipates by settling
+under the toe, and by nothing else. The peak moment is up to 0.13 of P L / 2 above the test's
+on the lighter wall. The embedded footing's first event is the worst: it rocks a third as far
+as the test did, its sides as stiff as Gazetas's formulas say.
 
 ## Hourglass control
 

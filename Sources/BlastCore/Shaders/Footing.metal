@@ -9,8 +9,10 @@ struct FootingUniforms {
     float gravity;
     float damping;  // the body's mass-proportional damping, 1/s
     uint footings;
-    uint unused0;
-    uint unused1;
+    float groundX;  // the ground's acceleration, m/s², the footing pulled by -m a in its frame
+    float groundY;
+    float groundZ;
+    uint unused;
 };
 
 // A point of the bed of springs under a footing: where it is from the base centre (x, y), its
@@ -19,6 +21,7 @@ struct FootingUniforms {
 struct BedPoint {
     float4 placeAndBearing;
     float4 shearAndDamping;
+    float4 virgin;  // cyclic sand: the point's first-loading stiffness against its unloading one
 };
 
 // A point of an embedded footing's side: where it is from the base centre and its area; the
@@ -89,6 +92,7 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
     float3 baseArm = footingRotate(s.rotation, c.base.xyz);
     float3 baseVelocity = s.velocity.xyz + cross(s.spin.xyz, baseArm);
     bool pointDamping = c.base.w > 0.5f;
+    bool virgin = c.cyclic.x > 0.0f;  // the bed's sand loaded for the first time is softer
 
     // The body's pull on the footing through the connection, as the node pass left it.
     float3 jointForce = float3(0.0f);
@@ -108,7 +112,7 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
     float4 extent = float4(INFINITY, -INFINITY, INFINITY, -INFINITY);
     for (uint p = c.ranges.x + worker; p < c.ranges.x + c.ranges.y; p += footingThreads) {
         BedPoint point = bed[p];
-        float4 state = bedState[p];  // slip x, slip y, settlement, unused
+        float4 state = bedState[p];  // slip x, slip y, settlement; largest force borne (< 0 lifted off)
         float2 place = point.placeAndBearing.xy;
         float k = point.placeAndBearing.z;
         float capacity = point.placeAndBearing.w;
@@ -120,9 +124,22 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
         float3 force = float3(0.0f);
         if (opening < 0.0f) {
             float push = -k * opening;
+            if (virgin) {
+                // Sand pressed past the most it has borne compresses along its first-loading
+                // curve, softer than it unloads, and keeps what it does not give back. Unloaded
+                // to nothing, it kept c.cyclic.y of that force.
+                float borne = state.w < 0.0f ? -state.w * c.cyclic.y : state.w;
+                if (push > borne) {
+                    float force = borne + point.virgin.x * (push - borne);
+                    state.z = displacement.z + force / k;
+                    push = force;
+                }
+                state.w = push > borne ? push : borne;
+            }
             if (capacity > 0.0f && push > capacity) {
                 state.z = displacement.z + capacity / k;  // the soil yields, and the footing sinks for good
                 push = capacity;
+                state.w = virgin ? capacity : state.w;
             }
             float normal = max(push - point.shearAndDamping.z * velocity.z, 0.0f);
             if (capacity > 0.0f) {
@@ -152,6 +169,16 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
         } else {
             state.xy = displacement.xy;  // off the ground: it lands again unstrained
             lift = max(lift, opening);
+            if (virgin && state.w > 0.0f) {
+                state.w = -state.w;  // unloaded to nothing: remembered (< 0) for when it lands
+            }
+            if (virgin && c.cyclic.z > 0.0f && state.w < 0.0f && opening > -state.w / k) {
+                // Lifted clear, further than the sand springs back from the force it bore (not
+                // flickering at the edge of the contact): the soil heaves back by a part of how
+                // far it has been pressed down, loosened, and the point forgets.
+                state.z += c.cyclic.z * max(-state.z, 0.0f);
+                state.w = -0.0f;
+            }
         }
         sunk = max(sunk, -state.z);
         bedState[p] = state;
@@ -389,7 +416,8 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
 
     // Move the footing: forces and moments about its centre of mass, gravity, and the body's
     // damping.
-    float3 force = jointForce + soilForce + lumpedForce - float3(0.0f, 0.0f, c.rest.w * u.gravity);
+    float3 force = jointForce + soilForce + lumpedForce - float3(0.0f, 0.0f, c.rest.w * u.gravity)
+                   - c.rest.w * float3(u.groundX, u.groundY, u.groundZ);
     float3 moment = jointMoment + soilMoment + cross(baseArm, lumpedForce) + float3(lumpedMoment, 0.0f);
     float decay = max(0.0f, 1.0f - u.damping * dt);
     float3 mass = float3(c.rest.w, c.rest.w, c.rest.w + c.inertia.w);
