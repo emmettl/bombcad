@@ -151,3 +151,28 @@ producer `6b0b96e1c9471e61de84fe7b2293bf21a063170f`, rather than relying on prel
 captures. The standard coupled wrapper retains and runs both auxiliary verifiers
 on future captures; the already-dispatched physical-mini capture will be replayed
 with these exact verifier sources after its existing run finishes.
+
+`Scripts/verify-qr-cut-cell-moments.py` adds selected local geometry verification.
+It intersects each cube cell with the posed solid using twelve half-spaces,
+enumerates vertices from constraint triples and integrates the resulting convex
+solid by analytic simplex moments. Subtracting these from the cube integrals
+produces independent gas capacities, centroids and covariance. This uses neither
+production iterative clipping nor its tetrahedral gas quadrature. Native whole-
+domain checks are complemented by every selected final member capacity, old/final
+group moment and retained pressure-sample moment, including neighbour samples for
+which quadrature nodes were not captured.
+
+Both committed original/shared M4 Max captures pass all eight geometry-bearing
+cases and two coherent local corruption controls whose changes cancel in global
+volume/moment totals. The reference retains selected vertex conditioning and
+absolute capacity budgets (`1024 eps (1 + inverse-norm condition) h^3`), propagating
+them to group moments. Near-zero capacities are compared within this declared
+rounding budget. This is a bounded selected-pose reference, not a universal robust
+clipping certificate; production predicates and tolerance remain unchanged.
+
+The original frozen alpha.16 wall/packet/Euler application comparison also passed
+on the M4 Max from checkpoint `b7d86c445d7aa40ed63bab1562e9c956b1c5c31e`, including
+40 rejecting controls and complete original/shared native fields, load intervals
+and staged histories. The frozen original sources/pins/verifiers were not edited.
+Current QR histories have independent references rather than an imposed equality
+with the original coefficients.

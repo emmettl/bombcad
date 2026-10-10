@@ -11,7 +11,7 @@ python3 - "$root" "$output" <<'PYMETA'
 import hashlib,json,platform,shutil,subprocess,sys
 from pathlib import Path
 r,o=map(Path,sys.argv[1:])
-paths=subprocess.check_output(['git','ls-files','Package.swift','Package.resolved','Sources/BlastCore','Fixtures/QRReconstructionAdoption','Fixtures/EulerAdoptionBenchmark/References','Scripts/check-grouped-gas-reference.py','Scripts/prepare-qr-coupled-capture.py','Scripts/verify-qr-coupled-output.py','Scripts/verify-qr-coupled-source.py','Scripts/verify-qr-coupled-geometry.py','Scripts/verify-qr-pressure-loads.py','Scripts/test-qr-coupled-gate.py','Scripts/check-qr-coupled-adoption.sh'],cwd=r,text=True).splitlines()
+paths=subprocess.check_output(['git','ls-files','Package.swift','Package.resolved','Sources/BlastCore','Fixtures/QRReconstructionAdoption','Fixtures/EulerAdoptionBenchmark/References','Scripts/check-grouped-gas-reference.py','Scripts/prepare-qr-coupled-capture.py','Scripts/verify-qr-coupled-output.py','Scripts/verify-qr-coupled-source.py','Scripts/verify-qr-coupled-geometry.py','Scripts/verify-qr-pressure-loads.py','Scripts/verify-qr-cut-cell-moments.py','Scripts/test-qr-coupled-gate.py','Scripts/check-qr-coupled-adoption.sh'],cwd=r,text=True).splitlines()
 env={'schemaVersion':1,'candidate':subprocess.check_output(['git','rev-parse','HEAD'],cwd=r,text=True).strip(),'workingTreeDirty':False,'sourceHashes':{p:hashlib.sha256((r/p).read_bytes()).hexdigest() for p in paths},'hardware':subprocess.check_output(['sysctl','-n','machdep.cpu.brand_string'],text=True).strip(),'swift':subprocess.check_output(['swift','--version'],text=True).strip(),'os':platform.platform(),'flags':['-c','release'],'scope':'complete selected actual production CPU studies; no empirical blast validation'}
 (o/'environment.json').write_text(json.dumps(env,indent=2,sort_keys=True)+'\n')
 for path in paths:
@@ -39,4 +39,5 @@ python3 "$root/Scripts/test-qr-coupled-gate.py" "$output"
 for variant in original shared; do
   python3 "$root/Scripts/verify-qr-coupled-geometry.py" "$output/$variant.json" --output "$output/$variant-geometry-reference.json"
   python3 "$root/Scripts/verify-qr-pressure-loads.py" "$output/$variant.json" --output "$output/$variant-pressure-reference.json"
+  python3 "$root/Scripts/verify-qr-cut-cell-moments.py" "$output/$variant.json" --output "$output/$variant-cut-cell-reference.json"
 done
