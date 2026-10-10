@@ -2,9 +2,9 @@ import Foundation
 import Metal
 import simd
 
-/// The visibility test on the GPU's ray-tracing hardware: the blocks and the structure's starting
-/// outline in one acceleration structure, as bounding boxes, and one dispatch for all of a
-/// frame's rays. The hardware finds each ray's candidate boxes and the same exact test as
+/// The visibility test on the GPU's ray-tracing hardware: the blocks, the structure's starting
+/// outline and the terrain's cells in one acceleration structure, as bounding boxes, and one
+/// dispatch for all of a frame's rays. The hardware finds each ray's candidate boxes and the same exact test as
 /// `CPUThermalVisibility`'s decides (Thermal.metal), so the answers agree.
 ///
 /// Other work can keep the GPU busy, the blast itself or another app. When a frame's rays have
@@ -21,12 +21,18 @@ public final class MetalThermalVisibility: ThermalVisibility, @unchecked Sendabl
     }
 
     public let occluders: [Box]
+    /// Nil for flat ground.
+    public let terrain: TerrainSight?
     private let cpu: CPUThermalVisibility
     let shared: Shared
     /// The boxes in an acceleration structure and as the exact test reads them, shared with the
     /// fireball's march (`MetalThermalMarch`).
     let structure: MTLAccelerationStructure
     let boxes: MTLBuffer
+    /// The terrain as the kernels read it, after the boxes in the structure; its heights, or one
+    /// stand-in float.
+    let terrainUniforms: TerrainSightUniforms
+    let heights: MTLBuffer
     private let lock = NSLock()
     private var buffers: Buffers?
     /// From committing a frame's rays to having them back, smoothed over the GPU's frames.
@@ -40,23 +46,27 @@ public final class MetalThermalVisibility: ThermalVisibility, @unchecked Sendabl
     }
     private var stall: MTLSharedEvent?
 
-    /// Nil where there is no GPU with ray tracing, or nothing to block the view but the ground,
+    /// Nil where there is no GPU with ray tracing, or nothing to block the view but flat ground,
     /// which the CPU tests as quickly.
-    public convenience init?(occluders: [Box]) {
-        guard !occluders.isEmpty else { return nil }
-        self.init(occluders: occluders, allowingNone: true)
+    public convenience init?(occluders: [Box], terrain: Terrain? = nil) {
+        guard !occluders.isEmpty || TerrainSight(terrain) != nil else { return nil }
+        self.init(occluders: occluders, terrain: terrain, allowingNone: true)
     }
 
-    /// With `allowingNone`, made even with no occluders, for the march, which needs a structure
-    /// to bind: one box far below the ground stands in, which no ray above it can reach.
-    init?(occluders: [Box], allowingNone: Bool) {
-        guard allowingNone || !occluders.isEmpty, let shared = Shared.system else { return nil }
+    /// With `allowingNone`, made even with nothing in the way, for the march, which needs a
+    /// structure to bind: one box far below the ground stands in, which no ray above it can reach.
+    init?(occluders: [Box], terrain: Terrain? = nil, allowingNone: Bool) {
+        let sight = TerrainSight(terrain)
+        guard allowingNone || !occluders.isEmpty || sight != nil, let shared = Shared.system else {
+            return nil
+        }
         let device = shared.device
         let built =
             occluders.isEmpty ? [Box(min: SIMD3(0, 0, -2e6), max: SIMD3(1, 1, -1e6))] : occluders
         // Each box a little enlarged, so that the hardware's candidates include every box the
-        // exact test could find across a ray.
-        let bounds = built.map { box -> MTLAxisAlignedBoundingBox in
+        // exact test could find across a ray; the terrain's cells after them, from the floor to
+        // their highest node.
+        let bounds = (built + (sight?.cellBounds ?? [])).map { box -> MTLAxisAlignedBoundingBox in
             let low = simd_min(box.min, box.max)
             let high = simd_max(box.min, box.max)
             let margin = 0.001 + 1e-5 * max(simd_reduce_max(abs(low)), simd_reduce_max(abs(high)))
@@ -70,7 +80,10 @@ public final class MetalThermalVisibility: ThermalVisibility, @unchecked Sendabl
                 bytes: built, length: MemoryLayout<Box>.stride * built.count,
                 options: .storageModeShared),
             let boundsBuffer = device.makeBuffer(
-                bytes: bounds, length: stride * bounds.count, options: .storageModeShared)
+                bytes: bounds, length: stride * bounds.count, options: .storageModeShared),
+            let heights = device.makeBuffer(
+                bytes: sight?.terrain.heights ?? [0], length: 4 * max(sight?.terrain.heights.count ?? 1, 1),
+                options: .storageModeShared)
         else { return nil }
         let geometry = MTLAccelerationStructureBoundingBoxGeometryDescriptor()
         geometry.boundingBoxBuffer = boundsBuffer
@@ -93,10 +106,17 @@ public final class MetalThermalVisibility: ThermalVisibility, @unchecked Sendabl
         commandBuffer.waitUntilCompleted()
         guard commandBuffer.status == .completed else { return nil }
         self.occluders = occluders
-        cpu = CPUThermalVisibility(occluders: occluders)
+        self.terrain = sight
+        cpu = CPUThermalVisibility(occluders: occluders, terrain: terrain)
         self.shared = shared
         self.structure = structure
         self.boxes = boxes
+        self.heights = heights
+        terrainUniforms = TerrainSightUniforms(
+            originX: sight?.terrain.origin.x ?? 0, originY: sight?.terrain.origin.y ?? 0,
+            spacing: sight?.terrain.spacing ?? 1, reach: TerrainSight.reach,
+            columns: UInt32(sight?.terrain.columns ?? 0), rows: UInt32(sight?.terrain.rows ?? 0),
+            firstCell: sight == nil ? UInt32.max : UInt32(built.count), present: sight == nil ? 0 : 1)
     }
 
     public var usage: Usage { lock.withLock { counts } }
@@ -138,6 +158,9 @@ public final class MetalThermalVisibility: ThermalVisibility, @unchecked Sendabl
         encoder.setAccelerationStructure(structure, bufferIndex: 2)
         encoder.setBuffer(buffers.visible, offset: 0, index: 3)
         encoder.setBytes(&count, length: MemoryLayout<UInt32>.size, index: 4)
+        var terrain = terrainUniforms
+        encoder.setBytes(&terrain, length: MemoryLayout<TerrainSightUniforms>.stride, index: 5)
+        encoder.setBuffer(heights, offset: 0, index: 6)
         encoder.dispatchThreads(
             MTLSize(width: rays.count, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(
@@ -247,16 +270,30 @@ public final class MetalThermalVisibility: ThermalVisibility, @unchecked Sendabl
     }
 }
 
+/// The terrain as the kernels read it (`ThermalTerrain` in Thermal.metal).
+struct TerrainSightUniforms {
+    var originX: Float
+    var originY: Float
+    var spacing: Float
+    var reach: Float
+    var columns: UInt32
+    var rows: UInt32
+    /// The first cell's primitive in the acceleration structure; all of them are boxes with no
+    /// terrain.
+    var firstCell: UInt32
+    var present: UInt32
+}
+
 extension ThermalExposure {
     /// The visibility test to use: on the GPU's ray-tracing hardware where there is one,
     /// otherwise on the CPU. `BOMBCAD_THERMAL_VISIBILITY=cpu` in the environment keeps it on the
     /// CPU.
-    public static func defaultVisibility(occluders: [Box]) -> any ThermalVisibility {
+    public static func defaultVisibility(occluders: [Box], terrain: Terrain? = nil) -> any ThermalVisibility {
         if ProcessInfo.processInfo.environment["BOMBCAD_THERMAL_VISIBILITY"] != "cpu",
-            let metal = MetalThermalVisibility(occluders: occluders)
+            let metal = MetalThermalVisibility(occluders: occluders, terrain: terrain)
         {
             return metal
         }
-        return CPUThermalVisibility(occluders: occluders)
+        return CPUThermalVisibility(occluders: occluders, terrain: terrain)
     }
 }
