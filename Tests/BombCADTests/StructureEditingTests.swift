@@ -2,6 +2,7 @@ import BlastCore
 import DocumentKit
 import Foundation
 import Testing
+import simd
 
 @testable import BombCAD
 
@@ -280,6 +281,36 @@ struct StructuralEditorWorkflowTests {
         law.footing = Footing()
         model.setSupportAnchorage(law, at: 0)
         #expect(model.settings.scenario == turned)
+    }
+
+    @Test(
+        "A support joint at an angle saves as scene version 7, reopens and undoes; a zero normal is refused")
+    func inclinedJointEditing() throws {
+        let model = try model()
+        model.addSupport()
+        model.recordEdit()
+        let before = model.settings.scenario
+        var law = Anchorage.constructionJoint
+        law.jointNormal = Anchorage.normal(tilt: 30 * .pi / 180, azimuth: .pi)
+        model.setSupportAnchorage(law, at: 0)
+        let inclined = model.settings.scenario
+        #expect(inclined.structure?.anchorage(ofSupport: 0)?.jointNormal == law.jointNormal)
+        let archive = try ProjectDocument(model: model).makeArchive()
+        let payload = try JSONDecoder().decode(
+            ImportedSceneCodec.ScenePayload.self, from: #require(archive.files["scene.json"]))
+        #expect(payload.encodingVersion == 7)
+        #expect(try ProjectDocument(archive: archive).scenario == inclined)
+        model.undo()
+        #expect(model.settings.scenario == before)
+        model.redo()
+        #expect(model.settings.scenario == inclined)
+        // The editor's angles give the normal back.
+        let angles = JointAngles(law.across)
+        #expect(abs(angles.tilt - 30) < 1e-3 && abs(abs(angles.azimuth) - 180) < 1e-3)
+        #expect(simd_distance(angles.normal, law.across) < 1e-5)
+        law.jointNormal = .zero
+        model.setSupportAnchorage(law, at: 0)
+        #expect(model.settings.scenario == inclined)
     }
 
     @Test("Ground restraint can stay source-managed; custom support and part reinforcement detach")

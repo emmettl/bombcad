@@ -82,7 +82,15 @@ struct ShellUniforms {
     uint fluidDeepBlocksY;
     uint fluidDeepPatchOffset;
     uint fluidDeepCellOffset;
+    float gravityX;  // the way gravity pulls, as in `StructureUniforms`
+    float gravityY;
+    float gravityZ;
 };
+
+// Gravity's pull per unit mass, when it has been turned (`turnedGravity`).
+float3 gravityPull(constant ShellUniforms &u) {
+    return -u.gravity * float3(u.gravityX, u.gravityY, u.gravityZ);
+}
 
 AnchorLaw anchorLaw(constant ShellUniforms &u) {
     return AnchorLaw{u.anchorNormalStiffness, u.anchorShearStiffness, u.anchorTension, u.anchorPlateau,
@@ -1710,31 +1718,31 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
         interfaceLoads[2 * link + 1] = float4(moment, 0.0f);
         return;
     }
-    // A node on a connected base: the connection acts at points of its footprint (through a
-    // wall's thickness, or over a column's section), each moving with the node's rotation, so
-    // that the base can open at its heel while it bears at its toe.
+    // A node on a connection: it acts at points of the faces that face its joint (through a wall's
+    // thickness at a free edge, over a column's section, at the corners of a face), each moving
+    // with the node's rotation, so that a base can open at its heel while it bears at its toe.
     bool anchoredNode = finiteConnections && u.anchored != 0 && anchorStart[n + 1] > anchorStart[n];
     if (anchoredNode) {
         for (uint f = anchorStart[n]; f < anchorStart[n + 1]; ++f) {
             AnchorLaw law = anchorLaws[f];
-            float4 point = anchorPoints[f];
-            float3 arm = float3(point.xy, 0.0f);
+            float4 point = anchorPoints[2 * f];  // offset from the node, area
+            float nodeArea = anchorPoints[2 * f + 1].x;
+            float3 arm = point.xyz;
             float3 turn = rotationOffset(node.rotation, arm);
-            float rise = node.velocity.z + cross(float3(node.spin), arm + turn).z;
-            float damper = 2.0f * u.contactDamping * sqrt(law.kn * node.mass / point.w);
+            float3 pointVelocity = float3(node.velocity) + cross(float3(node.spin), arm + turn);
+            float damper = 2.0f * u.contactDamping * sqrt(law.kn * node.mass / nodeArea);
             float4 state = anchorState[f];
             float settlement = anchorForces[f].w;  // the ground's, kept beside the force
             uint footing = u.footings != 0 ? footingOf[f] : 0u;
             float3 pointForce;
             if (footing == 0) {
                 pointForce =
-                    -point.z * anchorTraction(state, settlement, float3(node.displacement) + turn, rise, damper, law);
+                    -point.w * jointTraction(state, settlement, float3(node.displacement) + turn, pointVelocity, damper, law);
             } else {
                 // On a footing: the point is tied to the footing's top, which moves and turns.
                 float3 rest = reference[n].xyz + arm;
-                float3 pointVelocity = float3(node.velocity) + cross(float3(node.spin), arm + turn);
                 pointForce = footingJoint(state, settlement, rest, rest + float3(node.displacement) + turn,
-                                          pointVelocity, point.z, damper, law, footingConstants[footing - 1],
+                                          pointVelocity, point.w, damper, law, footingConstants[footing - 1],
                                           footingStates[footing - 1], footingLinks + 2 * f);
             }
             anchorState[f] = state;
@@ -1753,7 +1761,8 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
         force += airForce;
     }
     float decay = max(0.0f, 1.0f - u.damping * dt);
-    float3 velocity = float3(node.velocity) + dt * (force / node.mass - float3(0.0f, 0.0f, u.gravity));
+    float3 velocity = float3(node.velocity)
+        + dt * (force / node.mass - (turnedGravity ? gravityPull(u) : float3(0.0f, 0.0f, u.gravity)));
     velocity *= decay;
     float3 spin = (float3(node.spin) + dt * moment / node.inertia) * decay;
     if ((node.flags & 8u) != 0) {

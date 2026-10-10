@@ -52,6 +52,18 @@ public struct CloudSpec: Codable, Sendable, Equatable {
     /// the direction of north in it, in degrees anticlockwise from the scene's x axis.
     public var sounding: CloudSounding?
     public var northDirection = 90.0
+    /// Once it stops rising, the cloud spreads at its level as a gravity current where the air
+    /// is stable, and grows as a passive puff in the air's turbulence, drifting with the wind;
+    /// false follows the rising thermal on instead.
+    public var spread = true
+    /// The Froude number at the gravity current's front, u = Fr N h / 2; 1.19 after Ungarish.
+    public var frontFroude = 1.19
+    /// The Pasquill stability class, "A" (very unstable) to "F" (moderately stable), that sets
+    /// the puff's growth; nil, the default, takes it from the air's lapse rate at the cloud.
+    public var stabilityClass: String?
+    /// The puff's growth is given against the distance it has travelled; in calmer air than
+    /// this, in metres a second, it is taken to travel at this speed.
+    public var leastTransportSpeed = 1.0
     /// Seconds of the cloud's rise followed after the run.
     public var duration = 600.0
     /// Seconds of the cloud's rise between frames of the USD scene.
@@ -97,6 +109,12 @@ public struct CloudSpec: Codable, Sendable, Equatable {
         sounding = try values.decodeIfPresent(CloudSounding.self, forKey: .sounding)
         northDirection =
             try values.decodeIfPresent(Double.self, forKey: .northDirection) ?? defaults.northDirection
+        spread = try values.decodeIfPresent(Bool.self, forKey: .spread) ?? defaults.spread
+        frontFroude = try values.decodeIfPresent(Double.self, forKey: .frontFroude) ?? defaults.frontFroude
+        stabilityClass = try values.decodeIfPresent(String.self, forKey: .stabilityClass)
+        leastTransportSpeed =
+            try values.decodeIfPresent(Double.self, forKey: .leastTransportSpeed)
+            ?? defaults.leastTransportSpeed
         duration = try values.decodeIfPresent(Double.self, forKey: .duration) ?? defaults.duration
         frameInterval =
             try values.decodeIfPresent(Double.self, forKey: .frameInterval) ?? defaults.frameInterval
@@ -108,7 +126,7 @@ public struct CloudSpec: Codable, Sendable, Equatable {
             specificHeat,
             duration, frameInterval, windSpeed, windDirection, windHeight, windExponent, windCeiling,
             relativeHumidity, productWater, rainRate, rainThreshold, frictionVelocity, convectiveVelocity,
-            boundaryLayerHeight, turbulentEntrainment, northDirection,
+            boundaryLayerHeight, turbulentEntrainment, northDirection, frontFroude, leastTransportSpeed,
         ]
         guard finite.allSatisfy(\.isFinite), handOverTemperature > 300, entrainment > 0, entrainment <= 1,
             addedMass >= 0, addedMass <= 2, emissivity >= 0, emissivity <= 1, lapseRate >= 0,
@@ -120,7 +138,8 @@ public struct CloudSpec: Codable, Sendable, Equatable {
             productWater <= 1, rainRate >= 0, rainRate <= 1, rainThreshold >= 0, rainThreshold <= 0.01,
             frictionVelocity >= 0, frictionVelocity <= 3, convectiveVelocity >= 0, convectiveVelocity <= 5,
             boundaryLayerHeight >= 10, boundaryLayerHeight <= 5000, turbulentEntrainment >= 0,
-            turbulentEntrainment <= 2
+            turbulentEntrainment <= 2, frontFroude >= 0, frontFroude <= 3, leastTransportSpeed >= 0.1,
+            leastTransportSpeed <= 10, stabilityClass.map({ PasquillClass(rawValue: $0) != nil }) ?? true
         else {
             throw CocoaError(
                 .coderInvalidValue,
@@ -453,13 +472,20 @@ public struct CloudSample: Codable, Sendable, Equatable {
     /// The water that has fallen out of it so far, in kilograms, and how much of that as snow.
     public var precipitation: Double
     public var snow: Double
+    /// Once it has stopped rising and spreads, its half-depth, the vertical semi-axis of an
+    /// ellipsoid whose horizontal semi-axis is `radius`; nil while it is a rising sphere.
+    public var thickness: Double?
+    /// The Pasquill stability class its growth took then.
+    public var stabilityClass: String?
 
     public init(
         time: Double, height: Double, radius: Double, temperature: Double, ambientTemperature: Double,
         riseSpeed: Double, mass: Double, position: SIMD2<Double> = .zero, velocity: SIMD2<Double> = .zero,
         water: Double = 0, liquidWater: Double = 0, ice: Double = 0, precipitation: Double = 0,
-        snow: Double = 0
+        snow: Double = 0, thickness: Double? = nil, stabilityClass: String? = nil
     ) {
+        self.thickness = thickness
+        self.stabilityClass = stabilityClass
         self.water = water
         self.liquidWater = liquidWater
         self.ice = ice
@@ -476,8 +502,17 @@ public struct CloudSample: Codable, Sendable, Equatable {
         self.mass = mass
     }
 
+    /// Its vertical semi-axis: its radius while it rises, its half-depth once it spreads.
+    public var halfDepth: Double { thickness ?? radius }
+
     /// The top of the cloud above the ground.
-    public var top: Double { height + radius }
+    public var top: Double { height + halfDepth }
+
+    /// Its bottom, at the ground once it reaches it.
+    public var bottom: Double { max(height - halfDepth, 0) }
+
+    /// Its volume, a sphere's or an ellipsoid's.
+    public var volume: Double { 4 / 3 * Double.pi * radius * radius * halfDepth }
 }
 
 /// The rise of a buoyant cloud as an integral model of a turbulent thermal: Morton, Taylor and
@@ -672,7 +707,13 @@ public enum CloudRise {
             state = state + (k1 + k2 * 2 + k3 * 2 + k4) * (step / 6)
             time += step
             let now = model.sample(state, time: time)
-            if rising, now.riseSpeed <= 0, stabilised == nil { stabilised = now }
+            if rising, now.riseSpeed <= 0, stabilised == nil {
+                stabilised = now
+                if spec.spread {
+                    samples += model.spread(from: state, time: time, at: Array(times[next...]))
+                    break
+                }
+            }
             rising = now.riseSpeed > 0
             while next < times.count, times[next] <= time + 1e-9 {
                 samples.append(now)
@@ -908,12 +949,28 @@ public struct CloudResult: Codable, Sendable, Equatable {
                     start, last.snow))
         }
         if let last = samples.last {
-            lines.append(
-                String(
-                    format: "  at %.0f s: centre %.0f m up, top %.0f m, %.0f m across, rising at %.1f m/s",
-                    last.time, last.height, last.top, 2 * last.radius, last.riseSpeed) + drift(last))
+            if let depth = last.thickness, let stabilised {
+                lines.append(
+                    String(
+                        format:
+                            "  at %.0f s: spread at %.0f m up, %.0f m across and %.0f m deep, its top %.0f m, class %@, %.1f times the gas it held when it stopped",
+                        last.time, last.height, 2 * last.radius, 2 * depth, last.top,
+                        last.stabilityClass ?? "?",
+                        last.mass / stabilised.mass) + drift(last))
+            } else {
+                lines.append(
+                    String(
+                        format:
+                            "  at %.0f s: centre %.0f m up, top %.0f m, %.0f m across, rising at %.1f m/s",
+                        last.time, last.height, last.top, 2 * last.radius, last.riseSpeed) + drift(last))
+            }
         }
         return lines
+    }
+
+    /// How far the cloud's centre has drifted across the ground from over the hand-over, in metres.
+    public func drift(_ sample: CloudSample) -> Double {
+        simd_length(sample.position - SIMD2(Double(handOver.centre.x), Double(handOver.centre.y)))
     }
 }
 

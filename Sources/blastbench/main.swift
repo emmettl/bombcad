@@ -16,6 +16,9 @@ import simd
 //   blastbench beam [--layers 12,24] [--rate 0.1]
 //   blastbench shear [--layers 12,24] [--rate 0.05] [--slice 92] [--dowel 1] [--map 9]
 //               [--bond pullout|splitting|confined] [--crack-shear] [--slide-apart]   (also on beam and slab)
+//               [--pressed-interlock]   (also on beam, slab, pushoff, impact, chamber and closein)
+//               [--work] [--hourglass 0.5] [--interlock 0.2] [--dowel 0] [--confinement 0]
+//               [--fracture-energy 0.5] [--tensile-strength 0.8]   (work trace on slab too; knobs everywhere)
 //   blastbench pushoff [--specimens 1/.2/.4,1/.4/.3] [--size 50] [--crack-shear] [--dilatancy 0.5] [--slide-apart] [--close]
 //   blastbench impact [--tests SS0a-1,SS0b-1] [--layers 16] [--time 0.2] [--beams 0.1] [--map] [--bond ...] [--spread]
 //   blastbench closeair [--z 0.3,0.5,0.75,1] [--dx 0.02] [--mapped] [--refine 2] [--refine-levels 2]
@@ -34,7 +37,7 @@ import simd
 //                       [--thermal spec.json [--thermal-compare [--thermal-compare-with shape]]
 //                        [--thermal-variants a.json,b.json]]
 //                       [--air thermal] [--afterburn] [--radiate [--absorption 0.1] [--soot-yield 0.185]]
-//                       [--stationary-walls] [--cloud spec.json [--frame-cloud]]
+//                       [--stationary-walls] [--cloud spec.json [--frame-cloud] [--cloud-results out.json]]
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
 //   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80]   (hashes of short runs, to compare builds)
@@ -168,6 +171,44 @@ func applyRateOptions(_ material: inout StructureMaterial) {
     if let exponent = option("fracture-rate").flatMap({ Float($0) }) {
         material.fractureRateExponent = exponent
     }
+    // `--interlock 0.2`, `--dowel 0`, `--confinement 0`, `--fracture-energy 0.5` and
+    // `--tensile-strength 0.8` scale aggregate interlock, the bars' dowel action, confinement, the
+    // fracture energy and the tensile strength, to see what each mechanism carries.
+    if let factor = option("interlock").flatMap({ Float($0) }) { material.interlockFactor = factor }
+    if let factor = option("dowel").flatMap({ Float($0) }) { material.dowelFactor = factor }
+    if let factor = option("confinement").flatMap({ Float($0) }) { material.confinementCoefficient *= factor }
+    if let factor = option("fracture-energy").flatMap({ Float($0) }) { material.fractureEnergy *= factor }
+    if let factor = option("tensile-strength").flatMap({ Float($0) }) { material.tensileStrength *= factor }
+}
+
+/// `--work`: the work trace (`StructureSolver.tracesWork`), and `--hourglass 0.5` scales the
+/// hourglass control, for any bench that builds a solid body.
+func prepareTrace(_ solver: StructureSolver) {
+    solver.tracesWork = flag("work")
+    if let factor = option("hourglass").flatMap({ Float($0) }) { solver.hourglassCoefficient = factor }
+}
+
+/// The work trace's channels in the order printed.
+let workOrder: [StructureSolver.WorkChannel] = [
+    .tensionNormal, .tensionHairline, .tensionCracked, .compressionNormal, .compressionCrushed,
+    .uncrackedShear, .crackShear,
+    .crackShearPressed, .interlock, .interlockPressed, .dowel, .kink, .bars, .bond, .hourglass, .other,
+    .viscosity,
+]
+
+func workHeader(_ first: String, _ width: Int) -> String {
+    let short = [
+        "tension", "hairline", "cracked", "compr.", "crushed", "uncr. sh.", "crack sh.", "pressed",
+        "interlock", "pressed",
+        "dowel", "kinking", "bars", "bond", "hourglass", "other", "viscous",
+    ]
+    return pad(first, width) + short.map { pad($0, 10) }.joined() + pad("total", 10)
+}
+
+/// A row of the work trace: each mechanism's work, in joules.
+func workRow(_ label: String, _ width: Int, _ totals: [Double]) -> String {
+    pad(label, width) + workOrder.map { pad(format(totals[$0.rawValue], 1), 10) }.joined()
+        + pad(format(totals.reduce(0, +), 1), 10)
 }
 
 func applyRateOptions(_ model: inout StructureModel) {
@@ -177,6 +218,8 @@ func applyRateOptions(_ model: inout StructureModel) {
     if flag("no-crack-slip") { model.crackSlip = false }
     // `--slide-apart`: what a crack has slid by no longer counts as opening it.
     if flag("slide-apart") { model.slipWidensCracks = false }
+    // `--pressed-interlock`: cracks press as they slide, and carry more shear pressed.
+    if flag("pressed-interlock") { model.pressedInterlock = true }
     applyRateOptions(&model.material)
     model.solidMaterial = model.solidMaterial.map {
         $0.map {
@@ -958,6 +1001,9 @@ func runSnapshot() throws {
         let cloud = CloudResult(
             spec: spec, handOver: solver.cloudHandOver(hotterThan: spec.handOverTemperature))
         for line in cloud.summary { print(line) }
+        if let results = option("cloud-results") {
+            try JSONEncoder().encode(cloud).write(to: URL(fileURLWithPath: results))
+        }
         if flag("frame-cloud") { camera = CloudOverlay.framing(cloud) }
         if let distance = option("distance").flatMap({ Float($0) }) { camera.distance = distance }
         if let azimuth = option("azimuth").flatMap({ Float($0) }) { camera.azimuth = azimuth }
@@ -1082,8 +1128,9 @@ func runBeam() throws {
             deflection: option("to").flatMap { Float($0) }.map { $0 / 1000 } ?? 0.06, rate: rate,
             unload: flag("unload"), crackSlip: !flag("no-crack-slip"), crackAxes: chosenCrackAxes(),
             bondSlip: chosenBondSlip(diameter: 0.019), crackShearStiffness: flag("crack-shear"),
-            slipWidensCracks: !flag("slide-apart")
+            slipWidensCracks: !flag("slide-apart"), pressedInterlock: flag("pressed-interlock")
         ) { material in
+            applyRateOptions(&material)
             if let spacing { material.crackSpacing = spacing / 1000 }
             if let dowel { material.dowelFactor = dowel }
         }
@@ -1737,20 +1784,62 @@ func runShearBeam() throws {
         let dowel = option("dowel").flatMap { Float($0) }
         // `--slice 92` models a slice of the beam that many millimetres wide.
         let slice = option("slice").flatMap { Float($0) }.map { $0 / 1000 }
+        // `--work`: the work each mechanism has done at every millimetre and at the peak, through
+        // the whole beam, and at the peak by part of the beam. Scaled to the whole beam.
+        var milestones: [(deflection: Float, load: Float, external: Double, totals: [Double])] = []
+        var atPeak: (deflection: Float, load: Float, external: Double, totals: [Double], parts: [[Double]])?
+        var external = 0.0
+        var last = SIMD2<Float>.zero
+        let regions: [(String, (Int, Int, Int, StructureSolver) -> Bool)] = [
+            ("top quarter", { _, _, k, s in 4 * k >= 3 * s.ez }),
+            ("middle half", { _, _, k, s in 4 * k >= s.ez && 4 * k < 3 * s.ez }),
+            ("bottom quarter", { _, _, k, s in 4 * k < s.ez }),
+            (
+                "0.5 m about the load",
+                { i, _, _, s in abs(Float(i) + 0.5 - Float(s.ex) / 2) * s.model.elementSize < 0.25 }
+            ),
+            (
+                "shear spans",
+                { i, _, _, s in abs(Float(i) + 0.5 - Float(s.ex) / 2) * s.model.elementSize >= 0.25 }
+            ),
+        ]
+        let scale = Double(ShearBeamBenchmark.width / (slice ?? ShearBeamBenchmark.width))
         let result = try ShearBeamBenchmark.run(
             device: device, elementsThroughDepth: layers, slice: slice, rate: rate,
             crackAxes: chosenCrackAxes(), bondSlip: chosenBondSlip(diameter: 0.028),
             crackShearStiffness: flag("crack-shear"),
             mapAt: option("map").flatMap { Float($0) }.map { $0 / 1000 },
-            slipWidensCracks: !flag("slide-apart")
-        ) { material in
-            if let dowel { material.dowelFactor = dowel }
-            // `--crack-spacing 25` (mm) and `--aggregate 10` (mm), for studying the shear strength.
-            if let spacing = option("crack-spacing").flatMap({ Float($0) }) {
-                material.crackSpacing = spacing / 1000
-            }
-            if let size = option("aggregate").flatMap({ Float($0) }) { material.aggregateSize = size / 1000 }
-        }
+            slipWidensCracks: !flag("slide-apart"),
+            pressedInterlock: flag("pressed-interlock"),
+            adjust: { material in
+                applyRateOptions(&material)
+                if let dowel { material.dowelFactor = dowel }
+                // `--crack-spacing 25` (mm) and `--aggregate 10` (mm), for studying the shear strength.
+                if let spacing = option("crack-spacing").flatMap({ Float($0) }) {
+                    material.crackSpacing = spacing / 1000
+                }
+                if let size = option("aggregate").flatMap({ Float($0) }) {
+                    material.aggregateSize = size / 1000
+                }
+            },
+            prepare: prepareTrace,
+            sample: flag("work")
+                ? { solver, deflection, load in
+                    external += Double(0.5 * (load + last.y) * (deflection - last.x))
+                    last = SIMD2(deflection, load)
+                    let crossed =
+                        Int(deflection * 1000) > (milestones.last.map { Int($0.deflection * 1000) } ?? 0)
+                    let peak = load > (atPeak?.load ?? 0)
+                    guard crossed || peak else { return }
+                    let totals = solver.workTotals().map { $0 * scale }
+                    if crossed { milestones.append((deflection, load, external, totals)) }
+                    if peak {
+                        let parts = regions.map { region in
+                            solver.workTotals { region.1($0, $1, $2, solver) }.map { $0 * scale }
+                        }
+                        atPeak = (deflection, load, external, totals, parts)
+                    }
+                } : nil)
         results.append((layers, result))
         print(
             pad("\(layers)", 8) + pad("\(result.elementCount)", 10)
@@ -1758,6 +1847,22 @@ func runShearBeam() throws {
                 + pad("\(format(Double(result.peak / ShearBeamBenchmark.measuredPeak) * 100, 0))%", 9)
                 + pad("\(format(Double(result.peakDeflection) * 1000)) mm", 9)
                 + pad("\(result.summary.erodedElements)", 8) + pad("\(format(result.wallSeconds)) s", 10))
+        if let atPeak {
+            print("\nWork done by each mechanism (J), \(layers) layers; 'load' the work the load has done:")
+            print(workHeader("deflection", 12) + pad("load", 10))
+            for m in milestones {
+                print(
+                    workRow("\(format(Double(m.deflection) * 1000)) mm", 12, m.totals)
+                        + pad(format(m.external, 1), 10))
+            }
+            print(
+                workRow("peak \(format(Double(atPeak.deflection) * 1000)) mm", 12, atPeak.totals)
+                    + pad(format(atPeak.external, 1), 10))
+            print("At the peak, \(format(Double(atPeak.load) / 1000, 0)) kN, by part of the beam:")
+            print(workHeader("part", 22))
+            for (region, totals) in zip(regions, atPeak.parts) { print(workRow(region.0, 22, totals)) }
+            print("")
+        }
     }
     // `--map 9` draws the cracks through the middle of the width at 9 mm of deflection.
     for (layers, result) in results where !result.crackMap.isEmpty {
@@ -2003,6 +2108,28 @@ func runSlab() throws {
         // `--held-bearings` supports the slab on 1 in bearings that hold it down.
         let supports: SlabBenchmark.Supports =
             flag("held-bearings") ? .bearings(width: 0.0254, holdDown: true) : .lines
+        // `--work`: the work each mechanism has done every 20 mm on the way down, at the peak and
+        // at the end, through the whole slab, and at the peak by part of it.
+        var milestones: [(label: String, totals: [Double])] = []
+        var atPeak: (deflection: Float, totals: [Double], parts: [[Double]])?
+        let regions: [(String, (Int, Int, Int, StructureSolver) -> Bool)] = [
+            ("loaded half", { _, _, k, s in 2 * k >= s.ez }),
+            ("unloaded half", { _, _, k, s in 2 * k < s.ez }),
+            (
+                "600 mm about mid-span",
+                { i, _, _, s in abs(Float(i) + 0.5 - Float(s.ex) / 2) * s.model.elementSize < 0.3 }
+            ),
+            (
+                "the rest",
+                { i, _, _, s in abs(Float(i) + 0.5 - Float(s.ex) / 2) * s.model.elementSize >= 0.3 }
+            ),
+            (
+                "unloaded half, 600 mm",
+                { i, _, k, s in
+                    2 * k < s.ez && abs(Float(i) + 0.5 - Float(s.ex) / 2) * s.model.elementSize < 0.3
+                }
+            ),
+        ]
         let result = try SlabBenchmark.run(
             device: device, elementsThroughThickness: layers, rate: rate, supports: supports, width: width,
             crackAxes: chosenCrackAxes(), bondSlip: chosenBondSlip(diameter: 0.0095),
@@ -2011,7 +2138,29 @@ func runSlab() throws {
             adjustModel: {
                 if flag("element-bar-rate") { $0.barRateAlongBars = false }
                 if flag("slide-apart") { $0.slipWidensCracks = false }
+                if flag("pressed-interlock") { $0.pressedInterlock = true }
             },
+            prepare: prepareTrace,
+            sample: flag("work")
+                ? { solver in
+                    let deflection = -solver.displacement(solver.ex / 2, solver.ey / 2, 0).z
+                    let step = 0.02 * Float(milestones.count + 1)
+                    let crossed = deflection >= step && atPeak.map { deflection >= $0.deflection } ?? true
+                    let peak = deflection > (atPeak?.deflection ?? 0)
+                    let end = solver.time >= 0.08
+                    guard crossed || peak || end else { return }
+                    let totals = solver.workTotals()
+                    if crossed { milestones.append(("\(Int((step * 1000).rounded())) mm", totals)) }
+                    if peak {
+                        atPeak = (
+                            deflection, totals,
+                            regions.map { region in solver.workTotals { region.1($0, $1, $2, solver) } }
+                        )
+                    }
+                    if end {
+                        milestones.append(("80 ms, \(format(Double(deflection) * 1000, 0)) mm", totals))
+                    }
+                } : nil,
             inspect: flag("hinge")
                 ? { solver in
                     for offset in [Float(0), 0.15] {
@@ -2041,6 +2190,14 @@ func runSlab() throws {
                 + pad("\(format(Double(result.residual / SlabBenchmark.measuredResidual) * 100, 0))%", 9)
                 + pad("\(result.summary.erodedElements)", 8)
                 + pad("\(format(result.wallSeconds, 1)) s", 10))
+        if let atPeak {
+            print("  work done by each mechanism (J):")
+            print("  " + workHeader("", 22))
+            for m in milestones { print("  " + workRow(m.label, 22, m.totals)) }
+            print("  " + workRow("peak \(format(Double(atPeak.deflection) * 1000, 1)) mm", 22, atPeak.totals))
+            print("  at the peak, by part of the slab:")
+            for (region, totals) in zip(regions, atPeak.parts) { print("  " + workRow(region.0, 22, totals)) }
+        }
         if flag("history") {
             for sample in result.history where Int((sample.x * 1000).rounded()) % 5 == 0 {
                 print(
@@ -2186,7 +2343,7 @@ func runAnchorage() throws {
                 : flag("panel")
                     ? try AnchorageStudy.run(
                         device: device, base: .resting, mass: mass, standoff: standoff, duration: duration,
-                        elementSize: h, edges: base)
+                        elementSize: h, shells: shells, edges: base)
                     : try AnchorageStudy.run(
                         device: device, base: base, mass: mass, standoff: standoff, duration: duration,
                         elementSize: h,

@@ -3,7 +3,8 @@
 What becomes of the fireball once the blast has gone: the hot gas the air model leaves at the end
 of a run is handed over to a model of a rising buoyant cloud, which follows its height, size,
 temperature, rise speed, drift in the wind, the water it condenses and freezes, and the rain and
-snow that fall from it, for minutes to hours after, in a standard atmosphere or a measured
+snow that fall from it, and, once it stops rising, how it spreads at its level and grows and
+dilutes as it drifts downwind, for minutes to hours after, in a standard atmosphere or a measured
 sounding, in still or turbulent air. It is the hand-over in sequence that
 [Distributed computing](distributed-computing.md#the-long-term-visions-effects) foresaw: a few
 numbers from the air model's final state, and nothing passed back.
@@ -12,9 +13,13 @@ numbers from the air model's final state, and nothing passed back.
 coefficients from laboratory thermals, started from whatever the gas model leaves; its cloud's top
 agrees with the tops Church measured over 22 detonations of 54 to 1,270 kg of TNT, from half a
 minute to two minutes after each, to 4% on average and 21% shot by shot, as closely as his own
-fit, but falls behind them later, as the real clouds go on spreading (below). Use it to see roughly how high and wide the cloud of a charge
-goes, roughly where the wind takes it, and how that changes with the charge, the gas model and
-the weather, not for dispersion or hazard estimates.
+fit, but falls behind them later, as the real clouds go on growing (below). Once it stops rising,
+it spreads as a gravity current and grows as a Pasquill–Gifford puff; no open measurements of a
+high-explosive cloud's width have been found to check that against, and its top after it stops
+falls further behind Church's than the rising thermal's did. Use it to see roughly how high and
+wide the cloud of a charge goes, roughly where the wind takes it and how much it has spread and
+thinned by then, and how that changes with the charge, the gas model and the weather, not for
+dispersion or hazard estimates.
 
 ```bash
 swift run -c release BombCAD run street.bombcad --cloud cloud.json --cloud-results cloud-results.json --usd street.usda
@@ -54,6 +59,10 @@ The description is JSON; any field left out takes its default, so `{}` will do:
   "boundaryLayerHeight": 1000,
   "turbulentEntrainment": 0.655,
   "northDirection": 90,
+  "spread": true,
+  "frontFroude": 1.19,
+  "stabilityClass": null,
+  "leastTransportSpeed": 1,
   "duration": 600,
   "frameInterval": 1
 }
@@ -71,18 +80,21 @@ a few milliseconds; a run paused before its end has no cloud.
 
 The view then draws where the cloud went: the track of its centre in white, its outline (the
 sphere's silhouette from the eye) at round intervals until it stopped rising, at most eight, the
-cloud where it stopped in orange, with a ring at its height and a line down to the ground, and
-the track of its centre across the ground in dark grey, which shows how far it drifted. Under
-Display, **Cloud's path** hides it. The section gives what was handed over, when the cloud stopped
-rising (or that it had not by the end), its centre and top then, how wide it was and how far
-downwind, and charts its height against time, or against its distance downwind when the wind
-carries it: its centre as a line, the band from its bottom to its top, and where it stopped.
-**Frame the Cloud** turns the view to the path up to where it stopped, from the side and a little
-above the ground; the view's controls zoom out to 600 m, so when the wind has carried the cloud
-farther than that it frames the cloud where it stopped, and the chart shows the whole path.
-**Frame the Scene** turns it back.
+cloud where it stopped in orange, with a ring at its height and a line down to the ground, its
+ring at its height in teal at round intervals as it spread after, at most eight, with its outline
+from the side at the end and a line down from there, and the track of its centre across the
+ground in dark grey, which shows how far it drifted. Under Display, **Cloud's path** hides it.
+The section gives what was handed over, when the cloud stopped rising (or that it had not by the
+end), its centre and top then, how wide it was and how far downwind, how wide and deep it had
+spread by the end and how many times the gas it held when it stopped it then held, and charts
+its height against time, or against its distance downwind when the wind carries it: its centre
+as a line, the band from its bottom to its top, and where it stopped; and below, its width and
+depth, with where it stopped. **Frame the Cloud** turns the view to the whole path, from the side
+and a little above the ground; the view's controls zoom out to 600 m, so when the wind has
+carried the cloud farther than that it frames the cloud where it stopped, and the charts show
+the whole path. **Frame the Scene** turns it back.
 
-![The street canyon's cloud, 100 kg with afterburning and hot air, in still air: the white track rising from the street, the outlines a minute apart growing as it rises, and the cloud where it stopped rising, 355 m up after six minutes, in orange](street-cloud.png)
+![The street canyon's cloud, 100 kg with afterburning and hot air, in still air for ten minutes: the white track rising from the street, the outlines a minute apart growing as it rises, the cloud where it stopped rising, 357 m up after six minutes, in orange, and its rings in teal half a minute apart as it settles to 313 m and spreads to 378 m across](street-cloud.png)
 
 `blastbench snapshot --cloud cloud.json --frame-cloud` hands over at the snapshot's time and draws
 the path as the view does (the figure, with `--preset street --air thermal --afterburn --time 0.17
@@ -199,7 +211,44 @@ fingerprint.
   not used. Two soundings over Las Vegas on a June day, a few kilobytes each, are in
   [Samples/Soundings](../Samples/Soundings/README.md) with their source and licence.
 - **Stopped rising** is the first moment the rise speed falls to zero, a common definition of a
-  cloud's stabilisation; the model goes on past it to `duration` seconds after the run.
+  cloud's stabilisation; the model goes on past it to `duration` seconds after the run, spreading
+  the cloud as below, or, with `spread` false, following the thermal on as it overshoots and
+  settles back.
+- **Once it stops** (`spread`, on by default), the cloud is no longer a rising sphere but an
+  ellipsoid of horizontal semi-axis a and vertical semi-axis c, drifting with the wind at its
+  centre, which grows in three ways:
+  - *It settles back* to its level of neutral buoyancy, where its gas, brought there without
+    mixing (dh = dp / ρ), is as dense as the air, over half a buoyancy period π / N of the air
+    between, z = z_n + (z_s − z_n)(1 + cos(πt / t_s)) / 2: the thermal stops at the top of an
+    overshoot, and would otherwise oscillate about that level, as the rising model does.
+  - *It spreads as a gravity current* where the air is stable, N² > 0: a well-mixed cloud in
+    stratified air is lighter than the air at its top and heavier than that at its bottom, and
+    collapses into a layer that spreads at its level, an intrusion. A box model of a constant
+    volume V, the cloud's when it stopped, with the front condition u = Fr N h / 2 of Ungarish
+    (2006), h = V / πa² its mean thickness and Fr = 1.19 (`frontFroude`), gives
+    da/dt = Fr N V / 2πa², so its radius a_g³ = b³ + (3 Fr / 2π) N V t from the radius b where
+    it stopped, and its half-depth c_g = b³ / a_g², the volume kept; the long-time t^⅓ of Ungarish and Zemach's (2007) inertial
+    regime for a constant-volume intrusion, the regime Ib of Pouget et al. (2016). N is the air's
+    over the cloud's depth around its centre, from its density temperature.
+  - *It grows as a passive puff* in the air's turbulence, by the spreads of an instantaneous puff
+    that Slade (1968) estimated for each of Pasquill's stability classes, as CCPS (1999) gives
+    them: σ_y = δ x^β across the wind (and along it) and σ_z vertically, with x the distance
+    travelled, A to F from 0.18 x^0.92 to 0.02 x^0.89 across and 0.60 x^0.75 to 0.05 x^0.61 up,
+    for 100 m to 4 km. Each grows from the distance at which a puff of its class would have
+    reached its present spread, so that its growth depends on its size, and goes on smoothly when
+    the class changes with height. The class (`stabilityClass`) is taken, unless given, from the
+    air's lapse rate over the cloud's depth by the US NRC's temperature-difference criteria
+    (Safety Guide 23, 1972): A where it cools by more than 1.9 K a hundred metres, then B to 1.7,
+    C to 1.5, D to 0.5, E to warming by 1.5 K, F beyond, so that the standard atmosphere is D and
+    Church's nights E. The curves are against distance, so in air calmer than 1 m/s
+    (`leastTransportSpeed`) the puff is taken to travel at that speed.
+
+  The gravity current's and the turbulence's spreads add as variances, as independent spreading
+  does, with the ellipsoid's semi-axes √5 σ, as a uniform sphere's radius is √5 times its σ:
+  a² = a_g² + 5σ_y², c² = c_g² + 5σ_z². As it grows the cloud draws in the air it grows into,
+  ρ_air dV, with that air's heat and vapour, so its water goes on condensing, freezing and
+  raining out as the rising cloud's does, by the same rain rate. The rising thermal's ADMS
+  turbulence (above) is not used once it stops: the class sets the growth.
 - **The domain and the ground are left behind**: the cloud rises freely from the hand-over, with
   no blocks, structure, ground or domain ceiling, and the ground does not hold it back even while
   it overlaps it at the start.
@@ -218,7 +267,8 @@ fingerprint.
 Integration is by fourth-order Runge–Kutta, with steps short against the time the cloud takes to
 move its own radius through the air, from rest or at its speed, and to draw in its own mass; ten
 minutes takes a few milliseconds, two hours of a cloud filling the troposphere a few tenths of a
-second.
+second. The spread goes in steps of at most a second, shorter while it settles, each exact for the
+gravity current and the puff's growth at the step's stability and class.
 
 ## Checks
 
@@ -270,6 +320,18 @@ The tests check the model against what it should reproduce exactly:
   with afterburning and in each shot's stability, the cloud's top is 1.04 times his measured top
   on average, scattered no more than his fit (a geometric standard deviation under 1.24); without
   afterburning, under three-quarters.
+- **The spread.** The stability classes from the lapse rate, and Slade's σ = δ x^β grown in a
+  hundred steps as in one, to a part in a billion. A neutrally buoyant puff without a gravity
+  current grows as a² = b² + 5σ_y² and c² = b² + 5σ_z² for its class and the distance the wind
+  has carried it, drifts at the wind's speed and holds the air's density times its volume, all to
+  a part in a billion. In the standard atmosphere, a cloud at the air's temperature spreads as
+  a³ = b³ + (3 Fr / 2π) N V t to 0.2% over ten minutes, keeping its volume to 5%, and does not
+  spread in air at the dry adiabatic lapse rate. A cloud stopped 0.2 K colder than the air
+  settles to where the air's potential temperature is its own, to half a metre, sinking only and
+  in half a buoyancy period to 15 s. Wet gas spreading and raining in humid air keeps every drop,
+  in it, fallen out or drawn in with the air, to a part in a billion. The result spreads the cloud
+  from where it stopped, its radius within 2% a second later and never shrinking, flattening first
+  and then thickened by the turbulence; with `spread` false the thermal goes on as before.
 - The standard atmosphere's pressure at the tropopause and at 20 km, a hot sphere in the air model
   handed over with its mass, place, temperature and buoyancy, and a headless run whose number of
   steps and gauges are the same with the cloud as without.
@@ -394,6 +456,51 @@ stability alone still setting it. The convective case is the standard atmosphere
 6.5 K/km with a mixed layer's turbulence, which a real afternoon does not have; the afternoon
 sounding below has both.
 
+**Once it stops rising**, the street's hand-over with afterburning (`blastbench snapshot --cloud
+… --cloud-results`, without the products' water), in the standard atmosphere, followed for an
+hour; at each time how far downwind its centre is, how wide and deep it is, and how many times the
+gas it held when it stopped it holds:
+
+| Wind 10 m up | Stopped rising | 10 min | 30 min | 60 min |
+|---|---|---|---|---|
+| None | 365 s, 357 m up, 197 m across | 384 × 61 m, 1.2 | 707 × 115 m, 7.5 | 970 × 192 m, 24 |
+| 2 m/s | 365 s, 357 m, 200 m | 1.9 km, 408 × 91 m, 1.9 | 6.1 km, 959 × 261 m, 30 | 11.7 km, 1,607 × 440 m, 144 |
+| 5 m/s | 365 s, 352 m, 208 m | 4.8 km, 503 × 151 m, 4.3 | 15.2 km, 1,724 × 494 m, 165 | 29.2 km, 3,269 × 836 m, 1,000 |
+| 10 m/s | 365 s, 334 m, 225 m | 9.6 km, 715 × 235 m, 11 | 30.3 km, 3,062 × 800 m, 665 | 58.2 km, 6,002 × 1,354 m, 4,320 |
+| 5 m/s, not spreading | | 241 m sphere, 1.6 | 314 m, 3.5 | 370 m, 5.7 |
+
+**At the hand-over to the spread**, the rising thermal has already drawn in some six thousand
+times the gas handed over, 4,700 t of air, and is about 200 m across; the spread then takes it
+past a kilometre across within half an hour in a 5 m/s wind and dilutes it a thousandfold more
+within the hour, some six million times the gas handed over, when the charge's 100 kg of products
+would be about 20 µg in each cubic metre of its 4.7 km³, against 25 mg in the cloud when it
+stopped. In the first ten minutes the gravity current does most of it: the cloud settles about 50 m
+to its level of neutral buoyancy in the five minutes of half the standard atmosphere's buoyancy
+period, flattens to under a third of its depth and nearly doubles its width, its top falling from
+455 to about 340 m. After that the puff's growth takes over, as fast as the wind carries it, so
+that the wind, which hardly changes how high the cloud goes, sets how big and how thin it gets as
+well as how far it goes; by an hour the puff reaches the ground (the bottom of its band in the
+chart) in a 5 m/s wind or more. The distance is the wind's at the cloud's height, 8.2 m/s for
+5 m/s 10 m up, and is the same within 1% without the spread.
+
+**How certain**: the stability class matters most. At 5 m/s after an hour, a class either side of
+the standard atmosphere's D gives 2.3 km (E) to 5.3 km (C) across, 0.34 to 2.1 km deep and 195 to
+6,640 times the gas it held when it stopped; Pasquill's classes are a coarse description of the
+turbulence, and a lapse rate alone often misjudges them by a class, so take a factor of about 1.6
+on the width and 5 on the dilution. The front's Froude number, from 0.6 to 2.4, changes the width
+by −11% to +16% at ten minutes and under 3% after an hour. In still air the speed taken for the puff's
+travel matters as much as the class: 0.5 or 2 m/s in place of 1 gives 890 or 1,214 m across and
+12 or 60 times the gas after an hour. A cloud in still air for an hour is itself an idealisation;
+real air is rarely so still for so long.
+
+In the Las Vegas soundings it spreads as the air there says: at dawn, in the stable layer, class E,
+2.9 km across, 0.4 km deep and 37 km downwind after an hour; in the afternoon, stopped a kilometre
+up after 20 minutes, class D, 3.2 km across and 29 km downwind. In
+saturated air the cloud stopping 5.4 km up after 50 minutes spreads to 14 km across within the
+next 70 minutes in still air, a gravity current of fourteen cubic kilometres in stable air, an anvil;
+some 8,600 t of water fall out of it by two hours, against 10,600 t when the thermal goes on
+rising and sinking about its level.
+
 ## Against Church's measured clouds
 
 Church (1969) measured the tops of the clouds of 23 surface detonations of 118 to 2,800 lb (54 to
@@ -418,9 +525,11 @@ geometric standard deviation, leaving out the shot P3, as he did:
 | After the detonation | ½ min | 1 min | 2 min | 3 min | 4 min | 5 min |
 |---|---|---|---|---|---|---|
 | Shots measured | 21 | 22 | 22 | 20 | 9 | 13 |
-| Afterburning, still air | 1.06 (1.21) | 1.05 (1.18) | 1.04 (1.21) | 0.98 (1.25) | 0.90 (1.49) | 0.79 (1.32) |
-| Afterburning, a guess at the turbulence | 1.01 (1.22) | 0.99 (1.19) | 0.97 (1.24) | 0.91 (1.26) | 0.80 (1.51) | 0.76 (1.31) |
-| Default gas, the 15 shots of 140, 560 and 1,600 lb | 0.72 (1.23) | 0.70 (1.19) | 0.68 (1.23) | 0.63 (1.25) | 0.61 (1.59) | 0.52 (1.25) |
+| Afterburning, still air | 1.06 (1.21) | 1.05 (1.18) | 1.04 (1.21) | 0.94 (1.27) | 0.84 (1.52) | 0.69 (1.36) |
+| The same, the thermal going on once it stops | 1.06 (1.21) | 1.05 (1.18) | 1.04 (1.21) | 0.98 (1.25) | 0.90 (1.49) | 0.79 (1.32) |
+| The same, spreading in class A | | | | 0.96 (1.27) | 0.87 (1.51) | 0.82 (1.38) |
+| Afterburning, a guess at the turbulence | 1.01 (1.22) | 0.99 (1.19) | 0.97 (1.24) | 0.88 (1.27) | 0.74 (1.51) | 0.65 (1.33) |
+| Default gas, the 15 shots of 140, 560 and 1,600 lb | 0.72 (1.23) | 0.70 (1.19) | 0.68 (1.23) | 0.62 (1.26) | 0.61 (1.59) | 0.46 (1.31) |
 
 **For the first two minutes the model is as close as Church's own fit, and accounts for the
 air's stability.** Two minutes after, its tops are 4% above his on average, scattered by a factor
@@ -433,14 +542,22 @@ model's clouds stop rising 2¼ to 4 minutes after the detonation, where he saw t
 which Church left out, the model puts at 168 m against 76 m, 2.2 times too high, his fit at 3.4
 times; a stability averaged over the lowest 600 m does not describe a shallow, strong inversion.
 
-**Later the measured tops go on growing and the model's do not**: by five minutes it is a fifth
-low. The model's cloud stops, overshoots and settles back, while Church's went on spreading as
-the wind carried them; shot 1, on a windy afternoon, reached 978 m at four minutes against the
-model's 487 m. A guess at the lake bed's turbulence does not mend this (u* a twenty-third of the
-mean wind, over ground about a millimetre rough, in a 2 km convective layer with w* 2 m/s in the
-afternoon and a 200 m layer at night): it widens the cloud but lowers it more, 0.97 at two
-minutes and 0.76 at five. One sphere centred on the cloud's mean cannot show a top that the
-largest eddies lift.
+**Later the measured tops go on growing and the model's do not**: by five minutes it is nearly a
+third low. Once the model's cloud stops, it settles back to its level and, in the stable night air
+of most shots, flattens into a layer, so that its top falls; Church's mostly went on rising, by up
+to 1.5 m/s from two to five minutes on the stable nights (shot 8 from 450 to 680 m, P7 from 565
+to 832 m, though shot 9 and Clean Slate 2 hardly grew), and shot 1, on a windy afternoon, reached 978 m at four minutes against the model's 487 m.
+Following the thermal on instead, as it overshoots and settles back, leaves it a fifth low at
+five minutes; neither spreading nor rising fits what he saw. Passive growth cannot lift the top
+that fast: even the most unstable class, A, against the shots' E, only brings five minutes to
+0.82, and with no gravity current to 0.88. A guess at the lake bed's turbulence does not mend
+this either (u* a twenty-third of the mean wind, over ground about a millimetre rough, in a 2 km
+convective layer with w* 2 m/s in the afternoon and a 200 m layer at night): it widens the cloud
+but lowers it more, 0.97 at two minutes and 0.65 at five. What lifts the measured tops is more
+likely the air's own layers, a strong inversion near the ground and much weaker stability above
+it, which one lapse rate to 600 m averages away, and a cloud that is not well mixed, whose hotter
+core or largest eddies go on rising after its mean has stopped; neither is in this model. Church
+gives tops only, so how wide his clouds spread is not compared.
 
 **The hand-over needs afterburning.** Without it, only about two-fifths of the warm gas's
 buoyancy is at least 500 K, and the tops are a third too low. With it, the hand-over carries about
@@ -502,11 +619,14 @@ and which ADMS describes otherwise.
   moment it stopped rising, as JSON: each with the time since the detonation, the height of the
   centre, the radius, the temperature and the air's, the rise speed, the mass, and the centre's
   place and velocity across the ground, its water and the liquid and frozen parts of it, and the
-  water fallen out of it so far, in all and as snow.
+  water fallen out of it so far, in all and as snow; once it spreads, also its half-depth
+  (`thickness`), its radius then being its horizontal semi-axis, and its stability class. The
+  summary gives its spread at the end, and the samples are 5% apart in time, so tens of seconds
+  apart by the time it stops.
 - **The USD scene** (`--usd`) gains `/Scene/Cloud`, a sphere starting at the hand-over's centre
   whose position, radius, `temperature` primvar (kelvin) and `liquidWater` and `ice` primvars
   (grams a kilogram, for showing it as a visible cloud) are sampled every `frameInterval`
-  seconds of the cloud's rise. Its frames follow the run's on the timeline, at that slower rate, and it is
+  seconds of the cloud's rise, scaled vertically (`xformOp:scale`) to its depth once it spreads. Its frames follow the run's on the timeline, at that slower rate, and it is
   hidden until then; `cloudStartTimeCode` and `simulatedSecondsPerCloudFrame` in the layer's
   data say where it starts and how fast it goes. The scene's camera is set for the blast, so a
   cloud hundreds of metres up leaves its view.
@@ -519,6 +639,22 @@ and which ADMS describes otherwise.
   turbulence spreads them, the model does not follow.
 - One sphere, well mixed: real clouds form a vortex ring with a hot core, carry dust and smoke,
   and spread into a cap; the integral model knows only their averages.
+- The spread once it stops is three textbook pieces put side by side, not a model fitted or
+  checked against a spreading explosion cloud: no open measurements of one's width have been
+  found, and Church's tops after it stops, which go on growing, it does not follow. Its gravity
+  current is a box model in the inertial regime throughout, without the drag that slows real
+  intrusions to t^2/9 (Pouget et al., 2016), the mixing at its head, or the earth's rotation; it
+  acts on the volume the cloud had when it stopped, however much the turbulence has mixed it
+  since, and on the air's stability around the cloud, through which the thin layer it becomes
+  spreads in reality only at its own level. Settling back over half a buoyancy period is a
+  description of the thermal's damped overshoot, not worked out.
+- The puff's growth is Slade's (1968) estimates for instantaneous puffs, for 100 m to 4 km of
+  travel near the ground, used here kilometres up and out to tens of kilometres; one stability
+  class at a time from the lapse rate alone, without the wind and the sunshine that Pasquill's
+  classes are also set by; one spread along and across the wind, without the wind's shear
+  drawing the cloud out along it or a sounding's turning wind twisting it; no limit at the
+  mixing height or the tropopause, and no reflection from the ground, so a puff that reaches the
+  ground goes on counting the volume below it. In still air the travel is taken at 1 m/s.
 - The entrainment coefficient is from laboratory thermals of small density difference; a
   fireball's first seconds are far from that.
 - The standard atmosphere has one lapse rate and one relative humidity up to the tropopause: no
@@ -564,9 +700,15 @@ and which ADMS describes otherwise.
 
 ## Future work
 
-- The cloud's later growth, which Church's tops show and the model does not: the largest
-  eddies' lifting and spreading of a cloud that has stopped rising. Church's appendix's
-  temperature and wind profiles, transcribed, would replace the one lapse rate here.
+- The growth of Church's tops after two minutes, which neither the rising thermal nor the spread
+  follows: Church's appendix's temperature and wind profiles, transcribed, would replace the one
+  lapse rate here and show whether the air above the night's inversion lets the cloud go on
+  rising; a cloud that is not well mixed, its hot core rising on, is the other candidate.
+- Measured widths of spreading explosion clouds, to check the spread against: Roller Coaster's
+  and the large high-explosive tests' cloud photographs, if any are open.
+- The spread's gravity current with drag and the puff's growth with wind shear, a mixing height
+  and the ground's reflection, and the class from the wind and sunshine as well as the lapse rate,
+  or from the turbulence's own σ_v and σ_w as ADMS gives them.
 - Thompson, Snyder and Weil's (2000) tank experiments on thermals from open detonations give
   their growth in stratified water and through inversions, which P3's inversion needs; the paper
   is not openly available, and has not been compared.
@@ -625,5 +767,30 @@ and which ADMS describes otherwise.
   the Las Vegas soundings, the US National Weather Service's observations.
 - D. P. Hoult, J. A. Fay and L. J. Forney, "A theory of plume rise compared with field
   observations", *J. Air Pollut. Control Assoc.* 19, 585–590, 1969: entrainment in a crosswind.
+- D. H. Slade (ed.), *Meteorology and Atomic Energy 1968*, US Atomic Energy Commission,
+  TID-24190, 1968: the spreads of instantaneous puffs by stability class, as tabulated (σ = δ x^β,
+  A to F) in Center for Chemical Process Safety, *Guidelines for Consequence Analysis of
+  Chemical Releases*, AIChE, 1999, and quoted in GasDispersion.jl's documentation
+  ([aefarrell.github.io/GasDispersion.jl](https://aefarrell.github.io/GasDispersion.jl/dev/puff/)).
+- F. Pasquill, "The estimation of the dispersion of windborne material", *Meteorol. Mag.* 90,
+  33–49, 1961: the stability classes; US Atomic Energy Commission, *Onsite Meteorological
+  Programs*, Safety Guide 23, 1972 (now NRC Regulatory Guide 1.23): the classes from the
+  temperature's change with height.
+- M. Ungarish, "On gravity currents in a linearly stratified ambient: a generalization of
+  Benjamin's steady-state propagation results", *J. Fluid Mech.* 548, 49–68, 2006: the front's
+  Froude number, 1.19; M. Ungarish and T. Zemach, "On axisymmetric intrusive gravity currents in
+  a stratified ambient – shallow-water theory and numerical results", *Eur. J. Mech. B/Fluids*
+  26, 220–235, 2007: the constant-volume intrusion's t^⅓.
+- S. Pouget, M. Bursik, C. G. Johnson, A. J. Hogg, J. C. Phillips and R. S. J. Sparks,
+  "Interpretation of umbrella cloud growth and morphology: implications for flow regimes of
+  short-lived and long-lived eruptions", *Bull. Volcanol.* 78, 1, 2016: the regimes of an
+  intrusion's spread, inertial t^⅓ and drag-dominated t^2/9 for a constant volume, and the front
+  condition u = Fr N h / 2.
+- B. Tull, J. Shaw and A. Davies (AWE), "Dispersion model validation illustrating the importance
+  of the source term in hazard assessments from explosive releases", HARMO 15, Madrid, 2013, and K. T.
+  Foster, R. P. Freis and J. S. Nasstrom, *Incorporation of an explosive cloud rise code into
+  ARAC's ADPIC transport and diffusion model*, LLNL UCRL-ID-103443, 1990: dispersion models
+  of explosive clouds checked against Roller Coaster's deposition and Church's tops, read for
+  measured cloud widths, which they do not give.
 - Long-term scope: [Long-term vision](long-term-vision.md); where it runs:
   [Distributed computing](distributed-computing.md#the-long-term-visions-effects).

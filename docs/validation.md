@@ -302,6 +302,48 @@ Keeping a crack's slide out of its opening (`--slide-apart`; see
 [one crack sheared along its measured path](#one-crack-sheared-along-its-measured-path))
 changes neither.
 
+**Traced by mechanism.** `blastbench slab --work` adds up, element by element, the work each
+mechanism does as the slab goes down (`StructureSolver.tracesWork`; the stresses split in each
+element's crack axes, so a plane's tension, compression and shear are told apart; on the
+shear beam below the parts add up to the load's work within 0.2%). By 80 mm, on 8 elements
+through, in joules:
+
+| Mechanism | Perfect bond | Bars that slip |
+|---|---|---|
+| Bars, and the bond on their slip | 7,716 | 7,355 + 305 = 7,660 |
+| Concrete in compression; of it, crushed past its peak | 516; 1 | 937; 289 |
+| Concrete in tension: uncracked / cracked under 0.1 mm / wider | 37 / 116 / 4 | 33 / 421 / 14 |
+| Shear across cracks; of it, on cracks pressed shut | 174; 0.1 | 154; 1 |
+| Shear on uncracked planes | 20 | 22 |
+| Hourglass control | 683 | 718 |
+| Total | 9,264 | 9,958 |
+
+The bars and their bond do the same work either way. What slip adds is the concrete between
+its cracks, cracked by under 0.1 mm but still carrying tension, which does three and a half
+times the work it does perfectly bonded, and the compression zone that balances it, which
+crushes from 40–60 mm on instead of from 90. Shear across cracks is 1–2% of the work, and
+almost none of it on cracks pressed shut, so interlock under pressure (below) has nothing to
+act on here. Turned down one at a time with slip (`--interlock`, `--dowel`, `--confinement`,
+`--fracture-energy`, `--tensile-strength`, `--hourglass`), only the concrete's tension moves the
+peak much:
+
+| Change, 8 elements through | Perfect bond | Bars that slip |
+|---|---|---|
+| None | 113 mm | 95 mm |
+| Tensile strength 20% lower | 115 mm | 100 mm |
+| Tensile strength halved | | 105 mm |
+| Fracture energy halved | 114 mm | 100 mm |
+| Both of the first and third | | 103 mm |
+| No interlock; a fifth of it | falls apart (615, 630 mm) | 99, 97 mm |
+| No dowel action | 113 mm | 95 mm |
+| No confinement | 114 mm | 97 mm |
+| Hourglass control halved | 116 mm | 97 mm |
+
+So the slab's stiffness with slip is tension stiffening: the concrete between its cracks
+carrying tension at blast rates, which the bonded slab, its cracks smeared, lacks. Whether the
+model's is too strong there, with the tensile strength raised by its rate law and the bond
+not, is the next question.
+
 ### What this does and does not show
 
 It shows that the model reproduces the flexural response of a lightly reinforced one-way slab
@@ -479,6 +521,32 @@ cracking 464 kN, and with no dowel action at all the beam carries the same 457 k
 bar but the bottom ones crosses the diagonal crack. The load rate does not matter either
 (457 kN at half the speed).
 
+**Traced by mechanism** (`blastbench shear --work`; see [its cracks](#its-cracks)). At the
+peak, perfectly bonded, the bars take 50% and 45% of the work on 12 and 24 elements through,
+the compression zone 25%, the concrete in tension 13%, the shear across cracks 6% and 10% (at
+the interlock cap 2% and 7%), dowel action nothing and hourglass control 4%. The failure is a
+crack sliding at its cap: the work at the cap jumps from 135 J to 465 J between 8.8 and 9 mm
+on 24 elements. With bars that slip the beam reaches its bending strength, 489 kN at 13 mm on
+24 elements, with 3% of the work at the cap and 2% below it; and of that a ninth is on cracks
+pressed shut, so interlock that grows with pressure would not take its excess away. Turned
+down one at a time, on 12 elements through:
+
+| Change | Perfect bond | Bars that slip |
+|---|---|---|
+| None | 456 kN | 472 kN |
+| A fifth of the interlock; none | 201; 163 kN | 400; 332 kN |
+| No dowel action | 458 kN | 468 kN |
+| Hourglass control halved; quartered | 431; 397 kN | 482; 465 kN |
+| No confinement | 455 kN | 456 kN |
+| Fracture energy halved | 372 kN | 451 kN |
+| Both halved | 290 kN | 350 kN |
+
+Without any interlock, with slip, the beam still carries the measured 332 kN: across the web,
+concrete cracked by under 0.1 mm still carries tension (167 J of the 1,186 done by the peak,
+against 39 J of shear on uncracked planes and 3 J of dowel action). Perfectly bonded on the
+coarse mesh, the excess depends on the hourglass control and the fracture energy, both of
+which set how readily a smeared diagonal band softens.
+
 **With shells and beams.** Built from beam elements, the beam carried 470 kN, its bending
 strength, and did not fail. Beams now check each section's shear against the simplified
 modified compression field theory (see the [shell model](shell-model.md#materials)): the
@@ -591,11 +659,58 @@ slid 0.5 mm further under 9–12 MPa of pressure, it carries 0.03–0.3 MPa, whe
 limit is several MPa. Its cap is read from the widest opening the crack has had, not the
 present one, and nothing in it grows with pressure.
 
+**Pressed cracks (an option).** `StructureModel.pressedInterlock` (`--pressed-interlock`) gives
+the crack both halves of what it lacks, from Walraven and Reinhardt's own relations (eqs. 1a
+and 1b, which give the shear and the stress across a crack from its opening w and slip δ):
+sliding, an open crack's faces press on whatever holds it, by σ = C_σ(w) δ − f_cc/20; and
+pressed by σ, from that or from anything else, it carries C_τ(w)/C_σ(w) σ more shear, a ratio
+of 1 to 2, up to half the concrete's compressive strength (the theory's v_max held the most
+restrained specimen to 6.3 MPa where it carried 9.9). Along the same paths:
+
+| Specimen | Shear measured | Pressed | Across, measured | Pressed |
+|---|---|---|---|---|
+| 1/.0/6.8 | 9.9 MPa | 7.9 | 8.0 | 6.3 |
+| 1/.0/3.6 | 7.1 | 6.5 | 3.9 | 4.4 |
+| 1/.2/1.6 | 5.5 | 5.6 | (3.4 at 0.8 mm) | 4.8 |
+| 1/.4/1.0 | 5.6 | 3.3 | 2.9 | 2.3 |
+| 1/.2/1.4 | 4.6 | 2.6 | 3.6 | 2.5 |
+| 1/.2/.4 | 4.0 | 3.4 | 2.3 | 3.1 |
+| 1/.4/.3 | 2.6 | 2.0 | 2.0 | 2.0 |
+
+That is 0.57 to 1.03 of the shear the specimens carried, where without it the model carried
+a twentieth to a fifth, and the stress across the crack within 0.85–0.93 of the paper's fit;
+the fit itself gives 0.68 to 1.29 of the shear at the same points. Closed after sliding, the
+crack now jams: pushed back to 0.05 mm and slid on it carries 14 MPa.
+
+But every member it moves it moves the wrong way, except the chamber, so it stays an option:
+
+| Test | Default | Pressed cracks | Measured |
+|---|---|---|---|
+| The contest slab, 4 / 8 through; left at 80 ms on 8 | 114 / 113 mm; 76 mm | 114 / 114 mm; 78 mm | 108 mm; 90 mm |
+| The same with slip | 95 mm | 95 mm | |
+| Janney's beam, 12 / 24 through | 42.0 / 41.2 kN m, failing at 53 mm / holding | 43.2 / 43.1 kN m, failing at 40 mm | 41.5 kN m, failing at 42 mm |
+| Vecchio and Shim's OA1, 12 / 24 through | 456 / 368 kN | 623 / 419 kN | 332 kN |
+| The same with slip | 472 / 489 kN | 524 / 504 kN | |
+| Saatci's light drops, 16 through | 17.0, 13.6, 12.4 mm; SS0a-1 losing 246 elements | 81, 308, 15.3 mm; SS0a-1 and SS1a-1 broken | 9.3, 12.1, 10.0 mm, whole |
+| Saatci's heavy drops with stirrups | 40.5, 37.1, 33.6 mm | 45.0, 39.5, 33.2 mm | 39.5, 37.9, 35.3 mm |
+| Ando's A24 at 4 / 5 / 6 m/s, 16 through | 22.9 / 30.6 / 78.8 mm | 139 / 813 / 455 mm, some 7,000 elements removed | 16 / 29 / 54 mm |
+| The chamber's roof edge, peak / left | 38 / 16 mm | 49 / 25 mm | 95 mm left (paper's model 87 / 62) |
+| The close-in slabs P7 / P2, left (peak) | 113 (161) / 210 (262) mm | 110 (155) / 222 (265) mm, the loaded face spalled over 2.3% / 0.6% | 340 / 510 mm |
+
+Under impact the beams lose thousands of elements, and OA1, whose diagonal crack presses on
+the concrete round it as it slides, holds more; neither has been traced further. With the pressure on the cap
+alone, from what presses a crack and not from its own sliding (tried, not kept), OA1 is
+unchanged (456 / 370 kN), as the trace above says it should be, the push-off paths carry what
+they did without it, since only their sliding pressed them, and Saatci's heavy drops go
+9–12% short and are left 12–13 mm down against 18.
+
 ### What this does and does not show
 
 It shows that the interlock cap is not too generous: on the paths real cracks took, the model
 carries far less than they did, because a restrained crack is pressed shut by what restrains
-it and the model's crack cannot be. So a fifth of the cap, which brought Vecchio and Shim's
+it and the model's crack cannot be. With Walraven and Reinhardt's relations for the pressure
+(an option) it carries about what they did, but the members tested then go wrong, most of
+all under impact. So a fifth of the cap, which brought Vecchio and Shim's
 beam to its measured strength with bars that slip, has nothing measured behind it, and the
 beam's excess strength must come from elsewhere. Where cracks are crossed by bars that their
 opening stretches, stirrups above all, the model will underestimate what the cracks carry;
@@ -1035,7 +1150,10 @@ under 1%.
 the momentum under the charge spreads outward: the column peaks at 30 m/s, 0.3 m away 20 m/s,
 0.5 m away 13. Afterwards the lower half under the charge is cracked open across all three
 planes, 0.5–2.5 mm (rubble), and the upper half is crushed by about 1%, neither of which any
-removal rule touches, so nothing leaves and no hole opens. The test authors' own model
+removal rule touches, so nothing leaves and no hole opens. Cracks that press as they slide, and
+carry more shear pressed (`--pressed-interlock`; see
+[one crack sheared](#one-crack-sheared-along-its-measured-path)), leave P7 110 mm and P2 222 mm
+down on 50 mm air, spall 2.3% and 0.6% of the loaded face, and hole neither. The test authors' own model
 (LS-DYNA, its continuous surface cap model on 18 mm elements, loads from Kingery and Bulmash)
 removed elements once fully damaged and stretched 5%, and holed the slab (S. Martínez-Almajano
 et al., 2021). Removing concrete here once cracked open every way, until no plane carried 1%

@@ -175,6 +175,9 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     /// Multiplier on the bars' dowel action across cracks (1, Rasmussen's strength for a bar
     /// well embedded in concrete), for studying how much it matters.
     public var dowelFactor: Float = 1
+    /// Multiplier on aggregate interlock's shear capacity across cracks (1, the modified
+    /// compression field theory's), for studying how much it matters.
+    public var interlockFactor: Float = 1
     /// With `rateDependent`, the fracture energy grows as the tensile strength's rate factor to
     /// this power: 1 scales the whole tension-softening curve with the strength, 0 keeps the
     /// static fracture energy.
@@ -536,6 +539,12 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// measurements on cracks in plain concrete (1981), instead of keeping a quarter of the
     /// concrete's whatever its width. Solid elements only.
     public var crackShearStiffness = false
+    /// Whether a crack's faces, riding up on their aggregate as it slides, press on whatever holds
+    /// it from opening, and pressed, carry more shear: Walraven and Reinhardt's relations between
+    /// a crack's opening, slip, shear and the stress across it (HERON 26(1A), 1981, eqs. 1a and
+    /// 1b), which their push-off tests with restraint follow. Off, a crack carries the interlock
+    /// of an unpressed crack whatever presses it. Solid elements only; not saved.
+    public var pressedInterlock = false
     /// Bars take their strain rate, for their strain-rate law, as their stretching rate averaged
     /// over their debonded length (the window their rupture is judged over), instead of the
     /// effective strain rate of the element they run through, which grows as the mesh is
@@ -993,6 +1002,10 @@ struct StructureUniforms {
     var fluidDeepBlocksY: UInt32 = 0
     var fluidDeepPatchOffset: UInt32 = 0
     var fluidDeepCellOffset: UInt32 = 0
+    var pressedInterlock: UInt32 = 0
+    var gravityX: Float = 0
+    var gravityY: Float = 0
+    var gravityZ: Float = -1
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -1168,6 +1181,7 @@ extension StructureMaterial {
         confinementCoefficient = try value(.confinementCoefficient, confinementCoefficient)
         crackResidual = try value(.crackResidual, crackResidual)
         dowelFactor = try value(.dowelFactor, dowelFactor)
+        interlockFactor = try value(.interlockFactor, interlockFactor)
         fractureRateExponent = try value(.fractureRateExponent, fractureRateExponent)
         tensionRateLaw = try value(.tensionRateLaw, tensionRateLaw)
         crackDilatancy = try value(.crackDilatancy, crackDilatancy)

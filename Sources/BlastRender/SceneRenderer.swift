@@ -347,7 +347,7 @@ public final class SceneRenderer {
     }
 
     /// Lines to draw over the scene while `settings.showCloud` is set, of a width on screen
-    /// whatever their length: each two vectors, one end and a kind (0 to 3, as
+    /// whatever their length: each two vectors, one end and a kind (0 to 4, as
     /// `CloudOverlay.Kind`), and the other end and 0.
     public func setLines(_ lines: [SIMD4<Float>]) {
         lineCount = lines.count / 2
