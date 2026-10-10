@@ -324,6 +324,7 @@ final class FootingSystem {
         var totals: SIMD4<Float>
         var sides: SIMD4<UInt32> = .zero
         var embedded: SIMD4<Float> = .zero
+        var cyclic: SIMD4<Float> = .zero
     }
 
     /// Layout matches `FootingState`.
@@ -352,6 +353,8 @@ final class FootingSystem {
     struct BedPoint {
         var placeAndBearing: SIMD4<Float>
         var shearAndDamping: SIMD4<Float>
+        /// Cyclic sand: the point's first-loading stiffness against its unloading one (0: off).
+        var virgin: SIMD4<Float> = .zero
     }
 
     /// Layout matches `FootingUniforms`.
@@ -362,8 +365,11 @@ final class FootingSystem {
         var gravity: Float
         var damping: Float
         var footings: UInt32
-        var unused0: UInt32 = 0
-        var unused1: UInt32 = 0
+        /// The ground's acceleration (`StructureSolver.groundAcceleration`).
+        var groundX: Float = 0
+        var groundY: Float = 0
+        var groundZ: Float = 0
+        var unused: UInt32 = 0
     }
 
     /// A point of the body tied to a footing: its index among the solver's connected entities
@@ -471,6 +477,8 @@ final class FootingSystem {
                 mass * (size.x * size.x + size.y * size.y) / 12)
             let first = bed.count
             let area = size.x * size.y
+            // Cyclic sand unloads and reloads stiffer than it is first loaded.
+            let unloading = footing.soil.cyclic.map { 1 / $0.elasticShare } ?? 1
             let bearingMass = mass + bodyMass
             for point in soilBed.points {
                 // Each point's dashpots in proportion to its springs, so that a point's dashpot
@@ -489,10 +497,11 @@ final class FootingSystem {
                 bed.append(
                     BedPoint(
                         placeAndBearing: SIMD4(
-                            point.place.x, point.place.y, point.vertical,
+                            point.place.x, point.place.y, point.vertical * unloading,
                             (capacity ?? 0) * point.area),
-                        shearAndDamping: SIMD4(point.horizontal.x, point.horizontal.y, dashpots.x, dashpots.y)
-                    ))
+                        shearAndDamping: SIMD4(
+                            point.horizontal.x, point.horizontal.y, dashpots.x, dashpots.y),
+                        virgin: SIMD4(footing.soil.cyclic?.elasticShare ?? 0, 0, 0, 0)))
             }
             let firstSide = sidePoints.count
             for point in sides?.points ?? [] {
@@ -528,7 +537,13 @@ final class FootingSystem {
                 rockingStiffness.x > 0 ? 3 * rockingDashpot.x * rockingDashpot.x / rockingStiffness.x : 0,
                 rockingStiffness.y > 0 ? 3 * rockingDashpot.y * rockingDashpot.y / rockingStiffness.y : 0)
             let sums = soilBed.points.reduce(SIMD3<Float>.zero) {
-                $0 + $1.vertical * SIMD3(1, $1.place.x * $1.place.x, $1.place.y * $1.place.y)
+                $0 + unloading * $1.vertical * SIMD3(1, $1.place.x * $1.place.x, $1.place.y * $1.place.y)
+            }
+            // Cyclic sand: on, its memory, and its heave by Gajan's 1 − 1/FS.
+            var cyclic = SIMD4<Float>.zero
+            if let sand = footing.soil.cyclic {
+                let safety = (capacity ?? .infinity) * area / max(bearingMass * 9.81, 1e-30)
+                cyclic = SIMD4(1, sand.memory, sand.heave * max(1 - 1 / safety, 0), 0)
             }
             constants.append(
                 Constants(
@@ -552,7 +567,8 @@ final class FootingSystem {
                     totals: SIMD4(sums, footing.soil.friction),
                     sides: SIMD4(UInt32(firstSide), UInt32(sides?.points.count ?? 0), 0, 0),
                     embedded: SIMD4(
-                        lowHalf: sides?.rocking ?? .zero, highHalf: sides?.rockingLimit ?? .zero)))
+                        lowHalf: sides?.rocking ?? .zero, highHalf: sides?.rockingLimit ?? .zero),
+                    cyclic: cyclic))
             summaries.append(
                 FootingSummary(
                     baseCentre: SIMD3(middle.x, middle.y, top - thickness), size: size, displacement: .zero,
@@ -563,9 +579,11 @@ final class FootingSystem {
             // Its highest frequency on the connection and the soil, as a free rigid body: each
             // spring alone against the mass or the least moment of inertia, and the dashpots'
             // rate.
-            var translation: Float = soilBed.points.reduce(0) { $0 + max($1.vertical, $1.horizontal.max()) }
+            var translation: Float = soilBed.points.reduce(0) {
+                $0 + max(unloading * $1.vertical, $1.horizontal.max())
+            }
             var rotation: Float = soilBed.points.reduce(0) {
-                $0 + max($1.vertical, $1.horizontal.max())
+                $0 + max(unloading * $1.vertical, $1.horizontal.max())
                     * (simd_length_squared($1.place) + thickness * thickness / 4)
             }
             for point in sides?.points ?? [] {

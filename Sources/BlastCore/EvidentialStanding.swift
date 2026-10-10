@@ -248,6 +248,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case baseConnections
     case jointsBetweenParts
     case footings
+    case cyclicSand
     case freeBase
     // Materials.
     case rateIndependent
@@ -327,6 +328,11 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
             return any { s in
                 (s.fixedBase && s.baseAnchorage?.footing != nil)
                     || s.supportAnchorages.contains { $0?.footing != nil }
+            }
+        case .cyclicSand:
+            return any { s in
+                (s.fixedBase && s.baseAnchorage?.footing?.soil.cyclic != nil)
+                    || s.supportAnchorages.contains { $0?.footing?.soil.cyclic != nil }
             }
         case .freeBase: return any { !$0.fixedBase }
         case .rateIndependent: return structural.contains { !$0.rateDependent }
@@ -599,9 +605,19 @@ public enum StandingTable {
         case .footings:
             return Entry(
                 title: "Footings on soil", affects: structure, limit: nil,
-                note: "One footing rocked on dry sand: moment within 6% to 14 mrad and 7–17% low beyond; "
-                    + "settlement a tenth of that measured.",
+                note:
+                    "One footing rocked slowly on dry sand: moment within 11% to 14 mrad and 5–16% low beyond. "
+                    + "With the sand that settles under cycles (the default), settlement 1.7–2.2 times that "
+                    + "measured, and 0.6–1.5 times in eight shaken events; a tenth on the elastic bed.",
                 document: "validation.md#a-footing-rocked-on-dry-sand")
+        case .cyclicSand:
+            return Entry(
+                title: "Sand that settles under cycles", affects: structure, limit: nil,
+                note:
+                    "Settlement under rocking 0.6–1.5 times that of eight shaken centrifuge events (FoRDy) and "
+                    + "1.7–2.2 times a slowly rocked one's (FoRCy), against a tenth on the elastic bed; a sixth to "
+                    + "a half of the energy the shaken footings dissipated.",
+                document: "validation.md#a-footing-shaken-on-dry-sand")
         case .freeBase:
             return Entry(
                 title: "Base resting on the ground", affects: structure, limit: .verified,
@@ -838,7 +854,7 @@ public enum StandingTable {
         "Anchorage.cohesionSlip": .input,
         "Anchorage.friction": .input,
         "Anchorage.bearingCapacity": .input,
-        "Anchorage.footing": .option([.footings]),
+        "Anchorage.footing": .option([.footings, .cyclicSand]),
         "Anchorage.side": .input,
         "Anchorage.jointNormal": .input,
         "Anchorage.betweenParts": .option([.jointsBetweenParts]),

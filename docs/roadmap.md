@@ -37,7 +37,7 @@ it should be used to judge the safety of a real structure.
 | 6 | Moving solids are a staircase of whole cells                            | Wall positions are good to a cell; small fragments are crude  | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak is too large; concrete broken under a close-in charge is never removed by default | Rebound is too large; no hole under a close-in charge (strength with pressure, and cracks pressed shut, checked: not the cause); removing fragments, an option, holes slabs both ways | [Validation](validation.md#holes-under-close-in-and-contact-charges) |
-| 9 | Supports and freestanding objects are checked against statics and theory, and footings against one centrifuge test only | Footings on soil and connections that open and slide are in, as are boxes and cars that slide, lift and overturn; every object takes the air's load, but late flow is not converged and the cars and furniture are illustrative | [Freestanding objects and supports](#freestanding-objects-and-supports) |
+| 9 | Supports and freestanding objects are checked against statics and theory, and footings against nine centrifuge events on one sand (FoRCy, FoRDy) | Footings on soil and connections that open and slide are in, as are boxes and cars that slide, lift and overturn; every object takes the air's load, but late flow is not converged and the cars and furniture are illustrative | [Freestanding objects and supports](#freestanding-objects-and-supports) |
 | 10 | Only selected panels and document workflows have had visual review      | Other layouts and native interactions may still have problems | Below |
 
 On the last point: the app's logic is covered by tests that drive its model without a window,
@@ -2027,13 +2027,14 @@ of finite plan whose heel lifts and whose contact shifts as it turns, on soil wi
 for its mass and radiation damping and a layer's echoes, checked against statics and the cones'
 impedance ([footings](structural-model.md#footings)); and support joints can face up or
 sideways for solid elements. Against a measured footing rocked on dry sand (FoRCy, SSG02_03)
-the moment follows within 6% to 14 mrad and levels off 7–17% low, but the footing settles a
-tenth as much. Joints can lie at any angle, on solids and shells, and tie two moving parts of a
+the moment follows within 11% to 14 mrad and levels off 5–16% low; on sand that settles under
+cycles, now the default, the footing settles twice as much as that test and 0.6–1.5 times as
+much as eight shaken ones (FoRDy, `blastbench shaking`), where the elastic bed settled a tenth. Joints can lie at any angle, on solids and shells, and tie two moving parts of a
 body (a beam seated on a corbel slides off and drops its span: `blastbench seat`); footings can
 be set into the soil, as stiff as Gazetas's embedded footing; and a seat resting with Eurocode
 2's 0.7 dissipates within 4% of three measured precast seats' energy over their whole cycling
-(`blastbench precast`; neoprene pads and dowels are not followed). Still open: settlement under
-cyclic rocking; pads' and dowels' laws; a measured embedded footing. Loaded by the air instead of a pulse
+(`blastbench precast`; neoprene pads and dowels are not followed). Still open: a shaken footing's
+lurch and the energy it dissipates (a sixth to a half); pads' and dowels' laws. Loaded by the air instead of a pulse
 (`blastbench anchorage --air`), the freestanding wall sways about a third as far: the wave
 wraps over and round it and loads its back face, so at 25 m walls without bars stand that the
 pulse throws over.
