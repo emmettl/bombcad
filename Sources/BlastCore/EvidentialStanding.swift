@@ -414,7 +414,9 @@ public enum StandingTable {
         case .subgridMixing:
             return Entry(
                 title: "Sub-grid mixing", affects: air + [.thermal, .cloud], limit: nil,
-                note: "SUBGRID_NOTE",
+                note: "An eddy viscosity after Smagorinsky, kept out of shocks; mass and energy kept to 1e-6 "
+                    + "and blast loads within 0.5%, but on metre cells it changes a mixing layer, a rising "
+                    + "thermal and Dial Pack's fireball little: the grid's resolved eddies do the mixing.",
                 document: "air-blast-model.md#sub-grid-mixing")
         case .shockRefinement:
             return Entry(

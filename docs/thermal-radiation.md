@@ -573,9 +573,34 @@ But rising does not cool it. Its products go on burning, and on metre cells only
 mixing draws in cold air, so it stays at 2,400 to 2,600 K where Dial Pack's fell to 1,600 to
 1,800 K. At T⁴ that is four to five times the radiance, and the late fluence does not come down:
 lifted off the ground, the fireball shows the instruments more of itself, and radiates a little
-more. The gas cooling brings it down by a quarter to a third. What is missing is turbulent
-mixing below the grid's scale. Treating the products as air may matter too, since CO₂ and water
-hold more heat for their temperature.
+more. The gas cooling brings it down by a quarter to a third.
+
+**Sub-grid mixing changes little; the afterburning decides it.** With [sub-grid
+mixing](air-blast-model.md#sub-grid-mixing) as well as gravity (8 m cells to 6 s, 4 m cells to
+3 s):
+
+| Gravity and | Temperature at 1, 3 and 6 s (8 m cells) | Radiated by 6 s | Radiated by 3 s (4 m cells) |
+|---|---|---|---|
+| Measured | about 1,900 and 1,600 K at 1 and 3 s | 5.1% | 3.2% |
+| Nothing else | 2,030, 2,440, 2,580 K | 32% | 8.6% |
+| Mixing | 2,030, 2,430, 2,560 K | 30% | 8.4% |
+| Mixing and the gas cooling | 1,970, 2,200, 2,150 K | 21% | 6.5% |
+| Mixing at C = 0.4, five times the eddy viscosity | 2,020, 2,420, 2,520 K | 25% | |
+| Afterburning four times faster (τ 0.19 s) | 2,300, 2,530, 2,610 K | 52% | |
+| Afterburning four times slower (τ 3.1 s) | 1,550, 1,950, 2,260 K | 20% | |
+
+The model's fireball heats over the seconds while Dial Pack's cooled, and settles near
+2,500 K, about the flame temperature of TNT's products burning in air. Afterburning here burns the
+products wherever they meet oxygen, at any temperature, at a rate fitted to the blast's impulse.
+So the diluted gas round the fireball keeps being reheated, where a real flame would go out once
+its mixture was too cool. How fast it burns moves the radiated share by a factor of two or more,
+the mixing by a fifth.
+
+Treating the products as air matters less. CO₂ and water hold more heat for their temperature
+(JANAF), so with the products a fifth to a third of the gas's mass, the same energy would be
+60 to 100 K cooler, 10% to 15% less radiance. With gravity the fireball's own rise can be
+followed further, and the cloud's hand-over [made later](air-blast-model.md#gravity), but the
+radiation will not come right until the afterburning stops in cool mixtures.
 
 Over the first second the errors offset: the fluence at 600 m by 1 s is 4.9 kJ/m² (4.5 cooling;
 4 m cells refined), against 6.7 measured. **The opaque shapes are no better.** The shape at

@@ -3054,6 +3054,7 @@ func runDialPack() throws {
     configureRefinement(&configuration)
     configuration.afterburning = true
     configuration.airModel = .thermallyPerfect
+    if let time = option("burn-time").flatMap({ Float($0) }) { configuration.afterburnTime = time / 1000 }
     configuration.radiativeCooling = try chosenCooling()
     configuration.gravity = chosenGravity()
     configuration.mixing = chosenMixing()
