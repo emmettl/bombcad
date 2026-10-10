@@ -209,7 +209,7 @@ struct RunComparisonView: View {
                             unrecorded: true)
                     }
                     Text(
-                        "\(run.settings.resolution.capitalized) grid · Afterburning \(run.settings.detailedCharge ? "on" : "off") · Shock refinement \(run.settings.sharpShocks ? ((run.settings.shockLevels ?? 1) > 1 ? "in two levels" : "on") : "off")\(run.settings.gravity == true ? " · Gravity" : "")"
+                        "\(run.settings.gridName.capitalized) grid · Afterburning \(run.settings.detailedCharge ? "on" : "off") · Shock refinement \(run.settings.sharpShocks ? ((run.settings.shockLevels ?? 1) > 1 ? "in two levels" : "on") : "off")\(run.settings.gravity == true ? " · Gravity" : "")"
                     )
                     .font(.caption).foregroundStyle(.secondary)
                     DisclosureGroup("Run inputs") {
@@ -328,7 +328,7 @@ struct RunComparisonView: View {
                         let a = PressureMeasurements(points: coarse.points, threshold: arrivalThreshold)
                         let b = PressureMeasurements(points: fine.points, threshold: arrivalThreshold)
                         Text(
-                            "\(pair.0.settings.resolution.capitalized) → \(pair.1.settings.resolution.capitalized)"
+                            "\(pair.0.settings.gridName.capitalized) → \(pair.1.settings.gridName.capitalized)"
                         ).font(.headline)
                         metric("Peak", fine.peak, coarse.peak, "kPa")
                         metric("Positive impulse", b.positiveImpulse, a.positiveImpulse, "Pa·s")

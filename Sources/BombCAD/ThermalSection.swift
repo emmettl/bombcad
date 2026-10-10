@@ -51,6 +51,17 @@ struct ThermalSection: View {
                     range: 800...3000, text: "\(Int(spec.luminousTemperature)) K"
                 )
                 .help("Gas at least this hot is part of the fireball.")
+                // On a log scale, in halves of a doubling, from 0.25 m to 64 m.
+                LabeledSlider(
+                    title: "Ground every",
+                    value: Binding(
+                        get: { Double(log2(spec.groundSpacing)) },
+                        set: { model.thermalSpec?.groundSpacing = Float(pow(2, ($0 * 2).rounded() / 2)) }),
+                    range: -2...6, text: groundSpacingText(spec)
+                )
+                .help(
+                    "How far apart the receivers on the ground stand. Over a floor larger than a square "
+                        + "kilometre they stand further apart, so that there are at most 250,000.")
                 Toggle("Heat the surfaces", isOn: heating(\.enabled))
                     .help(
                         "Conducts what each surface absorbs into its material, one dimension deep, losing heat by "
@@ -88,6 +99,14 @@ struct ThermalSection: View {
     }
 
     /// A picker of the library's materials for one kind of surface; the structure takes its own.
+    private func groundSpacingText(_ spec: ThermalSpec) -> String {
+        let asked = spec.groundSpacing
+        let used = spec.groundSpacing(over: model.domainSize)
+        return used > asked * 1.001
+            ? String(format: "%g m (%.0f m here)", Double(asked), Double(used))
+            : String(format: "%g m", Double(asked))
+    }
+
     private func materialPicker(
         _ title: String, _ path: WritableKeyPath<SurfaceHeatingSpec, String>, _ names: [String]
     ) -> some View {

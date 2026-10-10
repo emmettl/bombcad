@@ -1247,6 +1247,7 @@ extension StructureModel {
         case bareBars, removesFragments, crackSlip, bondSlip, crackShearStiffness, barRateAlongBars,
             solidElementKind
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
+        case slipWidensCracks, pressedInterlock
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -1270,6 +1271,9 @@ extension StructureModel {
         try container.encode(bareBars, forKey: .bareBars)
         if removesFragments { try container.encode(removesFragments, forKey: .removesFragments) }
         try container.encode(crackSlip, forKey: .crackSlip)
+        // Saved only where they differ from the standard, so files without them read as before.
+        if !slipWidensCracks { try container.encode(slipWidensCracks, forKey: .slipWidensCracks) }
+        if pressedInterlock { try container.encode(pressedInterlock, forKey: .pressedInterlock) }
         try container.encodeIfPresent(bondSlip, forKey: .bondSlip)
         try container.encode(crackShearStiffness, forKey: .crackShearStiffness)
         try container.encode(barRateAlongBars, forKey: .barRateAlongBars)
@@ -1307,6 +1311,8 @@ extension StructureModel {
         bareBars = try container.decodeIfPresent(Bool.self, forKey: .bareBars) ?? true
         removesFragments = try container.decodeIfPresent(Bool.self, forKey: .removesFragments) ?? false
         crackSlip = try container.decodeIfPresent(Bool.self, forKey: .crackSlip) ?? true
+        slipWidensCracks = try container.decodeIfPresent(Bool.self, forKey: .slipWidensCracks) ?? true
+        pressedInterlock = try container.decodeIfPresent(Bool.self, forKey: .pressedInterlock) ?? false
         bondSlip = try container.decodeIfPresent(BondSlip.self, forKey: .bondSlip)
         crackShearStiffness = try container.decodeIfPresent(Bool.self, forKey: .crackShearStiffness) ?? false
         barRateAlongBars = try container.decodeIfPresent(Bool.self, forKey: .barRateAlongBars) ?? true

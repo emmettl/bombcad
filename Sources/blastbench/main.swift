@@ -41,7 +41,7 @@ import simd
 //                      [--elastic | --elastic-share 0.12 --memory 0 --heave 0]   (the sand's settling; also for shaking)
 //   blastbench shaking [--tests ssg04-dsw,ssg04-shw,ssg03-dsw] [--shear 80] [--bearing 814] [--samples Samples/FoRDy]
 //                      [--history out-%.csv]   (a wall on a footing shaken at its base, against FoRDy's SSG03/SSG04)
-//   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03]
+//   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mass kg] [--fit-reach Z]
 //                       [--mode peak|now|impulse|fluence|irradiance]
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
 //                       [--thermal spec.json [--thermal-compare [--thermal-compare-with shape]]
@@ -136,11 +136,13 @@ func chosenScenario() -> Scenario {
     }
     // `--no-units` gives masonry its wall's strength throughout, without units and joints.
     if flag("no-units") { scenario.structure?.unitJoints = false }
-    // `--bond` lets masonry come away from concrete at the bond of mortar to concrete.
-    if flag("bond"), var structure = scenario.structure {
+    // `--bond` (or `--bond mortar`) lets masonry come away from concrete at the bond of mortar
+    // to concrete; `--bond pullout` and the like make the bars slip instead.
+    if chosenBond == .mortar, var structure = scenario.structure {
         structure.interfaceBond = StructureModel.masonryBond
         scenario.structure = structure
     }
+    if let bond = chosenBondSlip(diameter: 0.016) { scenario.structure?.bondSlip = bond }
     // `--solid-near 4` meshes the pieces within 4 m of the charge with solid elements and the
     // rest with shells.
     if let distance = option("solid-near").flatMap({ Float($0) }), let structure = scenario.structure {
@@ -166,14 +168,12 @@ func chosenCrackAxes() -> CrackAxes {
 func chosenBondSlip(diameter: Float) -> BondSlip? {
     let bar = option("bar").flatMap { Float($0) }.map { $0 / 1000 } ?? diameter
     // `--keep-yielded-bond`: bars hold as well after yielding as before.
-    let loss = !flag("keep-yielded-bond")
-    switch option("bond") {
-    case "pullout": return BondSlip(condition: .pullOut, barDiameter: bar, yieldedBondLoss: loss)
-    case "splitting": return BondSlip(condition: .splitting, barDiameter: bar, yieldedBondLoss: loss)
-    case "confined": return BondSlip(condition: .confinedSplitting, barDiameter: bar, yieldedBondLoss: loss)
-    default: return nil
-    }
+    return chosenBond.bondSlip(diameter: bar, yieldedBondLoss: !flag("keep-yielded-bond"))
 }
+
+/// What `--bond` asks for: bars that slip (`pullout`, `splitting`, `confined`), perfect bond
+/// (`none`), or, alone or as `--bond mortar`, the joint where masonry meets concrete.
+let chosenBond = BondArgument(present: flag("bond"), value: option("bond"))
 
 /// The air model `--air thermal` or `--air dissociating` asks for, or nil for the default.
 func chosenAirModel() -> AirModel? {
@@ -787,6 +787,13 @@ func runValidation() throws {
 func runSnapshot() throws {
     var scenario = chosenScenario()
     if let mass = option("mass").flatMap({ Float($0) }) { scenario.charge.mass = mass }
+    // `--fit-reach 10` fits an open scene to its charge as the app's Domain section does; a
+    // `--terrain` is laid again over the domain it fits.
+    if let reach = option("fit-reach").flatMap({ Float($0) }) {
+        scenario.terrain = nil
+        try scenario.fitOpenScene(scaledReach: reach)
+        if let terrain = option("terrain") { applyTerrain(terrain, to: &scenario) }
+    }
     let cellSize = option("dx").flatMap { Float($0) } ?? 0.25
     let time = option("time").flatMap { Double($0) } ?? 0.03
     let output = option("out") ?? "snapshot.png"
