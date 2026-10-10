@@ -120,29 +120,48 @@ private struct CloudReadout: View {
                     format: "%.1f km then, %.1f km at %.0f min", cloud.drift(sample) / 1000,
                     cloud.drift(cloud.samples.last!) / 1000, cloud.samples.last!.time / 60))
         }
+        if let stopped = cloud.stabilised, let last = cloud.samples.last, let depth = last.thickness {
+            LabeledContent(
+                String(format: "Spread at %.0f min", last.time / 60),
+                value: String(format: "%.0f m across, %.0f m deep", 2 * last.radius, 2 * depth))
+            LabeledContent(
+                "Diluted",
+                value: String(
+                    format: "%.0f times since it stopped, class %@", last.mass / stopped.mass,
+                    last.stabilityClass ?? "?"))
+        }
     }
 }
 
 /// The cloud's height against time, or against its distance downwind: its centre, the band from
-/// its bottom to its top, and where it stopped rising.
-private struct CloudChart: View {
+/// its bottom to its top, and where it stopped rising; and below, how wide and deep it was.
+struct CloudChart: View {
     let cloud: CloudResult
-    @State private var downwind = false
+    @State var downwind = false
 
     private struct Point {
         var x: Double
         var centre: Double
         var bottom: Double
         var top: Double
+        var across: Double
+        var depth: Double
     }
 
     private var points: [Point] {
         cloud.samples.map { sample in
             Point(
                 x: downwind ? cloud.drift(sample) / 1000 : sample.time / 60, centre: sample.height,
-                bottom: max(sample.height - sample.radius, 0), top: sample.top)
+                bottom: sample.bottom, top: sample.top, across: 2 * sample.radius, depth: 2 * sample.halfDepth
+            )
         }
     }
+
+    private var stoppedX: Double? {
+        cloud.stabilised.map { downwind ? cloud.drift($0) / 1000 : $0.time / 60 }
+    }
+
+    private var xLabel: String { downwind ? "Downwind (km)" : "Time since detonation (min)" }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -177,12 +196,41 @@ private struct CloudChart: View {
             }
             .chartXScale(domain: 0...max(points.map(\.x).max() ?? 0, 1e-3))
             .chartYScale(domain: 0...max(points.map(\.top).max() ?? 0, 1) * 1.05)
-            .chartXAxisLabel(downwind ? "Downwind (km)" : "Time since detonation (min)")
+            .chartXAxisLabel(xLabel)
             .chartYAxisLabel("Height (m)")
             .frame(height: 150)
             Text("The line is the cloud's centre, the band its bottom to its top.")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
+            Chart {
+                LinePlot(points, x: .value("X", \.x), y: .value("Across", \.across))
+                    .foregroundStyle(by: .value("Size", "Across"))
+                    .lineStyle(StrokeStyle(lineWidth: 1.5))
+                LinePlot(points, x: .value("X", \.x), y: .value("Deep", \.depth))
+                    .foregroundStyle(by: .value("Size", "Deep"))
+                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                if let stoppedX {
+                    RuleMark(x: .value("X", stoppedX))
+                        .foregroundStyle(Color(red: 1.0, green: 0.62, blue: 0.12).opacity(0.8))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 2]))
+                }
+            }
+            .chartForegroundStyleScale([
+                "Across": Color.primary, "Deep": Color(red: 0.2, green: 0.62, blue: 0.68),
+            ])
+            .chartXScale(domain: 0...max(points.map(\.x).max() ?? 0, 1e-3))
+            .chartYScale(domain: 0...max(points.map(\.across).max() ?? 0, 1) * 1.05)
+            .chartXAxisLabel(xLabel)
+            .chartYAxisLabel("Size (m)")
+            .frame(height: 120)
+            Text(
+                cloud.stabilised != nil && cloud.samples.last?.thickness != nil
+                    ? "Its width and depth; after it stopped (the orange line) it spreads, flattening where the air is stable and growing in its turbulence."
+                    : "Its width and depth."
+            )
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

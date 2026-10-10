@@ -262,6 +262,8 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                     sample.velocity.y, sample.water, sample.liquidWater, sample.ice, sample.precipitation,
                     sample.snow,
                 ].allSatisfy(\.isFinite) && sample.radius >= 0 && sample.mass >= 0 && sample.temperature >= 0
+                    && (sample.thickness.map { $0.isFinite && $0 >= 0 } ?? true)
+                    && (sample.stabilityClass.map { PasquillClass(rawValue: $0) != nil } ?? true)
             }
             guard (try? cloud.spec.validate()) != nil, cloud.samples.count <= Self.maximumSamples,
                 [
@@ -377,11 +379,6 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
 }
 
 extension CloudResult {
-    /// How far the cloud's centre has drifted across the ground from over the hand-over, in metres.
-    func drift(_ sample: CloudSample) -> Double {
-        simd_length(sample.position - SIMD2(Double(handOver.centre.x), Double(handOver.centre.y)))
-    }
-
     /// One line for comparing runs: where the cloud stopped rising, or where it was at the end.
     var comparison: String {
         guard handOver.mass > 0 else {
@@ -389,10 +386,16 @@ extension CloudResult {
                 format: "Cloud: no gas at least %.0f K to hand over", Double(spec.handOverTemperature))
         }
         guard let sample = stabilised ?? samples.last else { return "Cloud: not followed" }
+        let spread =
+            samples.last.flatMap { last in
+                last.thickness.map { _ in
+                    String(format: "; %.0f m across at %.0f min", 2 * last.radius, last.time / 60)
+                }
+            } ?? ""
         return String(
             format: "Cloud: %@ at %.0f s, centre %.0f m up, top %.0f m, %.0f m across, %.1f km downwind",
             stabilised == nil ? "still rising" : "stopped rising", sample.time, sample.height, sample.top,
-            2 * sample.radius, drift(sample) / 1000)
+            2 * sample.radius, drift(sample) / 1000) + spread
     }
 }
 

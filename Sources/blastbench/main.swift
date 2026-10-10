@@ -34,7 +34,7 @@ import simd
 //                       [--thermal spec.json [--thermal-compare [--thermal-compare-with shape]]
 //                        [--thermal-variants a.json,b.json]]
 //                       [--air thermal] [--afterburn]
-//                       [--stationary-walls] [--cloud spec.json [--frame-cloud]]
+//                       [--stationary-walls] [--cloud spec.json [--frame-cloud] [--cloud-results out.json]]
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
 //   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80]   (hashes of short runs, to compare builds)
@@ -916,6 +916,9 @@ func runSnapshot() throws {
         let cloud = CloudResult(
             spec: spec, handOver: solver.cloudHandOver(hotterThan: spec.handOverTemperature))
         for line in cloud.summary { print(line) }
+        if let results = option("cloud-results") {
+            try JSONEncoder().encode(cloud).write(to: URL(fileURLWithPath: results))
+        }
         if flag("frame-cloud") { camera = CloudOverlay.framing(cloud) }
         if let distance = option("distance").flatMap({ Float($0) }) { camera.distance = distance }
         if let azimuth = option("azimuth").flatMap({ Float($0) }) { camera.azimuth = azimuth }
