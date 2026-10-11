@@ -111,8 +111,9 @@ standing says why.
   gauges on a surface. With afterburning and hot air their own tables apply. Gauges beyond
   6 m/kg^(1/3), closer than 0.3, shielded from the charge, over terrain, or on cells coarser than
   any compared grid get none.
-- **Structures** take the slab test's 104–114% on 4 to 32 solid elements through (124% on
-  shells) in the far field; close in, Wu's slabs (40–70% under charges to 0.8 kg, −20% to +7% to
+- **Structures** take the slab test's 79–114% on 4 to 32 solid elements through in the far
+  field, either way by load (104–114% under the contest's load, 79–88% under its lower shot), with
+  the contest's repeat, 3%, as the tests' scatter (124% on shells); close in, Wu's slabs (40–70% under charges to 0.8 kg, −20% to +7% to
   2 kg) and, from 2 kg, Chiquito's deflection left (a third to a half); confined, the chamber's
   wall pressures (0.9 to 1.6 times). Strength in shear is 37% strong on 12 elements through and
   11–15% on 24 or more, interpolated between. Any structural option the tests were not run with
