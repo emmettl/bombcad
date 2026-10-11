@@ -1,7 +1,8 @@
-# The validation suite and the benchmarks, every night on the self-hosted Mac mini. Results are
-# compared with the previous night's (kept on the runner in ~/bombcad-nightly); the job fails
-# when a result changes, a run is much slower than usual or a command fails. See
-# docs/continuous-integration.md.
+# Every night on the self-hosted Mac mini: the full check on main's head, which pushes no longer
+# run, reporting what failed and the commits since the last green full check as suspects; then
+# the validation suite and the benchmarks. Results are compared with the previous night's (kept
+# on the runner in ~/bombcad-nightly); the job fails when a result changes, a run is much slower
+# than usual or a command fails. See docs/continuous-integration.md.
 name: Nightly
 
 # Started two ways each evening: by GitHub's schedule, which has run hours late or not at all,
@@ -27,7 +28,62 @@ permissions:
   actions: read
 
 jobs:
+  full-check:
+    # Not when a run asks for only some suite entries.
+    if: github.event_name == 'schedule' || inputs.only == ''
+    runs-on: [self-hosted, macOS, ARM64, metal]
+    timeout-minutes: 120
+    steps:
+      - name: Skip if tonight's suite has already started
+        id: guard
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          since=$(date -u -v-12H +%Y-%m-%dT%H:%M:%SZ)
+          others=$(/opt/homebrew/bin/gh run list -R "$GITHUB_REPOSITORY" -w nightly.yml -L 20 \
+            --json databaseId,createdAt \
+            --jq "[.[] | select(.createdAt >= \"$since\" and .databaseId != $GITHUB_RUN_ID)] | length")
+          echo "Nightly runs started since $since besides this one: $others"
+          if [ "$others" -gt 0 ]; then echo "skip=true" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          # The suspects are named from the history since the last green full check.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Full check
+        id: full
+        if: steps.guard.outputs.skip != 'true'
+        timeout-minutes: 100
+        shell: bash
+        run: |
+          set -o pipefail
+          log_dir="${{ runner.temp }}/full-${{ github.run_id }}-${{ github.run_attempt }}"
+          mkdir -p "$log_dir"
+          { make lint && make ci-test && make build && make test \
+            && bash Scripts/build-app.sh release \
+            && codesign --verify --deep --strict dist/BombCAD.app; } 2>&1 | tee "$log_dir/full.log"
+      - name: Report failures and name suspects
+        if: always() && steps.guard.outputs.skip != 'true'
+        run: >
+          python3 Scripts/nightly-suspects.py
+          --outcome "${{ steps.full.outcome }}"
+          --log "${{ runner.temp }}/full-${{ github.run_id }}-${{ github.run_attempt }}/full.log"
+          --marker "$HOME/bombcad-nightly/last-green-full"
+          --summary "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always() && steps.guard.outputs.skip != 'true'
+        with:
+          name: full-check-${{ github.run_number }}
+          path: ${{ runner.temp }}/full-${{ github.run_id }}-${{ github.run_attempt }}/full.log
+          if-no-files-found: warn
+          retention-days: 14
+
   nightly:
+    # After the full check, whatever its result, on the same runner.
+    needs: full-check
+    if: always()
     runs-on: [self-hosted, macOS, ARM64, metal]
     timeout-minutes: 480
     steps:
