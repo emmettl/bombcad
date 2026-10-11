@@ -72,6 +72,13 @@ public final class StructureSolver {
     public var timeStepSafety: Float = 0.5
     /// Let nodes that fall to z = 0 land instead of passing through.
     public var groundContact = true
+    /// The ground's Coulomb friction coefficient against debris on it: each step a node pressed
+    /// into the ground loses this times the speed the ground stopped of its fall, from its
+    /// sliding speed. Zero (the default) instead lets the sliding speed decay at 8/s while the
+    /// node is pressed in, which a node chattering on and off the ground mostly escapes, so
+    /// debris on the ground can creep on for seconds (see docs/structural-model.md). An option
+    /// until the debris comparisons decide it; Keys's walls use 0.6.
+    public var groundFrictionCoefficient: Float = 0
     /// Whether separate pieces of the structure, and loose debris, collide with each other.
     public var contactMode = ContactMode.afterFailure
     /// Contact spring stiffness as a fraction of the stiffest spring the time step allows.
@@ -1870,6 +1877,7 @@ public final class StructureSolver {
             contactStiffness: contactStiffness / (criticalTimeStep * criticalTimeStep),
             contactDamping: contactDamping,
             contactFriction: contactFriction)
+        uniforms.groundCoulomb = groundContact ? groundFrictionCoefficient : 0
         let down = simd_normalize(gravityDirection)
         (uniforms.gravityX, uniforms.gravityY, uniforms.gravityZ) = (down.x, down.y, down.z)
         if groundAcceleration != .zero {

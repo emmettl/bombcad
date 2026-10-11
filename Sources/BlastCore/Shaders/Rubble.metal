@@ -296,9 +296,17 @@ kernel void rubbleMove(device RubbleParticle *particles [[buffer(0)]],
     velocity *= max(0.0f, 1.0f - u.damping * dt);
     position += dt * velocity;
     if (position.z < 0.0f && u.groundFriction >= 0.0f) {
+        // As the nodes land (`structureNodes`): Coulomb friction from the speed the ground stops
+        // where `groundCoulomb` is set, otherwise the decay.
+        float stopped = max(-velocity.z, 0.0f);
         position.z = 0.0f;
         velocity.z = max(velocity.z, 0.0f);
-        velocity.xy *= max(0.0f, 1.0f - u.groundFriction * dt);
+        if (u.groundCoulomb > 0.0f) {
+            float sliding = length(velocity.xy);
+            velocity.xy *= sliding > 0.0f ? max(0.0f, 1.0f - u.groundCoulomb * stopped / sliding) : 0.0f;
+        } else {
+            velocity.xy *= max(0.0f, 1.0f - u.groundFriction * dt);
+        }
     }
     if (exchangeCell >= 0) {
         recordExchange(exchange, exchangeCell, airForce, 0.5f * (float3(p.velocity) + velocity), dt, u.fluidCell);

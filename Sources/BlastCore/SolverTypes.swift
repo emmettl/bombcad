@@ -83,6 +83,10 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// by when the blast has long gone. A collapsing structure keeps stirring the air near it,
     /// so the pressure test alone may never be met. Zero disables this.
     public var airSleepCrossings: Float = 5
+    /// How far beyond the structure's starting bounds (m, along x, y and z) the air's mask
+    /// follows it and loads its loose debris. Debris that flies further keeps flying but feels no
+    /// air; walls thrown tens of metres down a shock tube need it larger.
+    public var debrisReach = SIMD3<Float>(4, 4, 3)
     /// Smallest radius, in cells, of the sphere a charge's energy is deposited into.
     public var minimumBalloonCells: Float = 2
     /// Refine the air where the blast's shock is by this ratio, 2 or 4: each block of 4 x 4 x 4

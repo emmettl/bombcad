@@ -1,0 +1,57 @@
+{
+  "source": "R. A. Keys and S. K. Clubley, Experimental analysis of debris distribution of masonry panels subjected to long duration blast loading, Engineering Structures 130 (2017) 229-241, doi:10.1016/j.engstruct.2016.10.044 (accepted manuscript, Loughborough repository, figshare 9443321); construction details also from R. A. Keys, PhD thesis, University of Southampton, 2016",
+  "licence": "Numbers only, transcribed from the paper's table 1 and text and read off its figures 14, 19 and 20; no text or figure is reproduced. The paper is CC BY-NC-ND 4.0; the trials' data are the property of the UK MoD. See README.md.",
+  "construction": {
+    "brick": "frogged London brick, 215 x 100 x 65 mm, about 2.1 kg, compressive strength 4-6 MPa",
+    "brickSize_m": [0.215, 0.100, 0.065],
+    "brickMass_kg": 2.1,
+    "mortar": "class (ii), 8-10 MPa, 10 mm joints",
+    "jointThickness_m": 0.010,
+    "bond": "single leaf, running (stretcher) bond",
+    "courses": 26,
+    "height_m": 2.0,
+    "thickness_m": 0.1,
+    "base": "mortared to the tunnel floor",
+    "edges": "free at the top and both sides (unenclosed panels)"
+  },
+  "tunnel": {
+    "name": "Air Blast Tunnel, MoD Shoeburyness",
+    "sections_m": [4.9, 10.2],
+    "positivePhase_ms": { "4.9": 200, "10.2": 150 }
+  },
+  "walls": [
+    {
+      "name": "BWL1A", "section_m": 4.9, "width_m": 1.0,
+      "targetOverpressure_kPa": 110, "overpressure_kPa": 100, "impulse_kPa_ms": 7260,
+      "reflected_kPa": 290, "dynamic_kPa": 42, "positivePhase_ms": 214,
+      "crackHeights_m": [0.3, 0.5, 1.6], "wholeBricks": 0.80, "largestFragment_kg": 6.2,
+      "fragmentsOver100g_kg": 340.6, "fragmentsUnder100g_kg": 4.4,
+      "binWidth_m": 1.0,
+      "massByDistance_kg": [0, 0, 0, 2, 0, 6, 0, 3, 1, 0, 4, 12, 7, 9, 2, 4, 5, 3, 5, 19, 2, 2, 13, 4, 9, 7, 10, 25, 26, 13, 42, 48, 28, 5, 2, 5, 3, 4, 2, 2, 2, 3, 4, 1, 3, 2, 1, 2, 0, 1],
+      "obstruction": "two instrumentation columns at about 30 m piled the debris; without them the authors expect 30-50 m and a farthest throw of 50-60 m"
+    },
+    {
+      "name": "BWL2C", "section_m": 10.2, "width_m": 1.0,
+      "targetOverpressure_kPa": 55, "overpressure_kPa": 60, "impulse_kPa_ms": 3952,
+      "reflected_kPa": 131, "dynamic_kPa": 24, "positivePhase_ms": 179,
+      "crackHeights_m": [0.5, 1.5], "wholeBricks": 0.81, "largestFragment_kg": 26.1,
+      "fragmentsOver100g_kg": 358.8, "fragmentsUnder100g_kg": 3.6,
+      "lateralSpread_m": [-1.5, 1.5],
+      "binWidth_m": 0.5,
+      "massByDistance_kg": [0, 0, 0, 0, 1, 9, 3, 19, 13, 16, 50, 15, 6, 10, 66, 63, 54, 12, 6, 5, 2, 0, 1, 2, 1, 0, 1, 0],
+      "obstruction": "lights for the high-speed cameras at about 7 m piled the debris; without them the authors expect it spread over 6-12 m"
+    },
+    {
+      "name": "BWL3B", "section_m": 10.2, "width_m": 2.0,
+      "targetOverpressure_kPa": 55, "overpressure_kPa": 57, "impulse_kPa_ms": 3362,
+      "reflected_kPa": 124, "dynamic_kPa": 24, "positivePhase_ms": 152,
+      "crackHeights_m": [], "wholeBricks": 0.82, "largestFragment_kg": 27.5,
+      "fragmentsOver100g_kg": 743.2, "fragmentsUnder100g_kg": 9.1,
+      "lateralSpread_m": [-2.5, 2.0],
+      "binWidth_m": 0.5,
+      "massByDistance_kg": [2, 3, 93, 30, 8, 30, 26, 30, 60, 20, 35, 15, 40, 57, 91, 48, 44, 20, 22, 12, 5, 10, 2, 5, 10, 5, 1, 5, 2, 18],
+      "obstruction": "lights at about 7 m, as for BWL2C; the plot ends at 14.5 m with mass still in its last bin"
+    }
+  ],
+  "notes": "x is measured downstream from the structure's most upstream point (the front face); each value is the mass in the bin starting at index x binWidth, read off the total-mass curve to about 3 kg. Cracks: horizontal, along bed joints, seen at 50 ms (first visible at 10-15 ms). BWL3B formed 2-3 horizontal cracks at similar intervals plus vertical and stepped ones down its centre; its heights are not stated."
+}

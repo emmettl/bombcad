@@ -124,7 +124,8 @@ Supports and loading:
 - the nodes on the ground plane can be tied to it by a connection of finite stiffness and
   strength instead of clamped ([base connections](#base-connections));
 - gravity acts on every node;
-- nodes cannot pass below the ground plane, and lose horizontal speed while on it;
+- nodes cannot pass below the ground plane, and lose horizontal speed while on it ([on the
+  ground](#on-the-ground));
 - for running without the air, a pressure history can be applied to one outer face.
 
 ## Base connections
@@ -887,6 +888,25 @@ resists its motion. Air throughput is unchanged.
 **Substep bookkeeping.** The air's time step is decided on the GPU, so the CPU cannot know how
 many substeps each air step will need. It encodes the largest number that could be needed
 (bounded by the time step of still air), and surplus substeps return immediately.
+
+### On the ground
+
+A node that would pass below the ground plane is put back on it and its fall stopped. By
+default its sliding speed then decays at 8/s in each step it is pressed into the ground. Debris
+lying on the ground rings, and its lowest nodes are pushed up off the ground most steps and
+pressed into it only now and then, so it escapes nearly all of that decay: a brick wall toppled
+onto the ground (Keys's walls; see [Validation](validation.md#brick-walls-debris)) lost about a
+fiftieth of the friction it should have and crept on at 0.3 to 0.7 m/s for seconds, and a slab
+of the brickwork thrown along the ground at 1 m/s was still at 0.5 m/s after 0.65 s.
+
+`StructureSolver.groundFrictionCoefficient` (an option, zero by default) replaces the decay by
+Coulomb friction: each step the sliding speed is cut by μ times the speed the ground took off
+the node's fall, down to nothing. Summed over the steps a node bears on the ground, the
+friction is μ times what bears on it however much it chatters, so the same slab at μ = 0.6
+(typical of brick or concrete on hard ground) slows at 0.6 g and stops in 0.17 s (v / μg is
+0.17 s), and the toppled wall comes to rest. Keys's walls are run with it. Rubble particles land the same
+way. Nodes tied to the ground by a base connection are left to the connection's own friction,
+and shells keep the decay. Whether it should become the default for debris is for the debris comparisons to decide.
 
 ## Verification
 
