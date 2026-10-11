@@ -280,6 +280,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case bondSlip
     case discreteBars
     case nonlocalCracking
+    case rubbleParticles
     case pressedInterlock
     case hourglassSecant
     case hourglassWithoutSteel
@@ -351,6 +352,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .bondSlip: return any { $0.bondSlip != nil }
         case .discreteBars: return any { !$0.allDiscreteBars.isEmpty }
         case .nonlocalCracking: return !concrete.isEmpty && any { $0.crackAveraging != nil }
+        case .rubbleParticles: return !concrete.isEmpty && any { $0.rubbleParticles }
         case .pressedInterlock: return any { $0.pressedInterlock }
         case .hourglassSecant: return !concrete.isEmpty && any { $0.hourglassFollowsCracking }
         case .hourglassWithoutSteel: return !concrete.isEmpty && any { !$0.hourglassCapsSteel }
@@ -608,6 +610,12 @@ public enum StandingTable {
                 note:
                     "Cracks soften by their strain averaged across their band; being judged on the case matrix.",
                 document: "concrete-model.md#nonlocal-cracking")
+        case .rubbleParticles:
+            return Entry(
+                title: "Rubble particles", affects: [.structuralDamage], limit: .approximation,
+                note: "Failed concrete keeps its mass as particles in contact: Hupfauf's debris thrown at "
+                    + "about 22% from the measured speed against 45%, but no slab holed that the tests holed.",
+                document: "validation.md#rubble-kept-as-particles-stage-3")
         case .pressedInterlock:
             return Entry(
                 title: "Pressed interlock", affects: structure, limit: .approximation,
@@ -875,6 +883,7 @@ public enum StandingTable {
         "StructureModel.barsAsTrusses": .option([.discreteBars]),
         "StructureModel.trussDiameter": .option([.discreteBars]),
         "StructureModel.crackAveraging": .option([.nonlocalCracking]),
+        "StructureModel.rubbleParticles": .option([.rubbleParticles]),
         "StructureModel.pressedInterlock": .option([.pressedInterlock]),
         "StructureModel.hourglassFollowsCracking": .option([.hourglassSecant]),
         "StructureModel.hourglassCapsSteel": .option([.hourglassWithoutSteel]),

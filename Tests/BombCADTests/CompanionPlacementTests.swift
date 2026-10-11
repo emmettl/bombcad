@@ -5,7 +5,7 @@ import Testing
 
 @testable import BombCAD
 
-@MainActor @Suite("The app's companions placed on different Macs", .serialized)
+@MainActor @Suite("The app's companions placed on different Macs", .serialized, .hangLimit)
 struct CompanionPlacementTests {
     private func document() -> ProjectDocument {
         var scene = Scenario(
@@ -28,14 +28,13 @@ struct CompanionPlacementTests {
     }
 
     private func run(_ model: SimulationModel) async throws -> SavedSimulationRun {
-        let deadline = ContinuousClock.now + .seconds(120)
         while !model.experimentIsReady {
-            try #require(ContinuousClock.now < deadline && model.errorMessage == nil)
+            try #require(model.errorMessage == nil)
             try await Task.sleep(for: .milliseconds(5))
         }
         model.run()
         while model.isRunning || model.hasPendingGPUWork || !model.companionsCaughtUp {
-            try #require(ContinuousClock.now < deadline && model.errorMessage == nil)
+            try #require(model.errorMessage == nil)
             try await Task.sleep(for: .milliseconds(5))
         }
         try model.keepRun(named: "Run")
@@ -76,7 +75,7 @@ struct CompanionPlacementTests {
     }
 }
 
-@MainActor @Suite("The app's companions placed automatically, by cost", .serialized)
+@MainActor @Suite("The app's companions placed automatically, by cost", .serialized, .hangLimit)
 struct AutomaticCompanionPlacementTests {
     private func model(store: ConsumerCostStore) -> SimulationModel {
         var scene = Scenario(
@@ -97,14 +96,13 @@ struct AutomaticCompanionPlacementTests {
     }
 
     private func run(_ model: SimulationModel) async throws -> SavedSimulationRun {
-        let deadline = ContinuousClock.now + .seconds(120)
         while !model.experimentIsReady {
-            try #require(ContinuousClock.now < deadline && model.errorMessage == nil)
+            try #require(model.errorMessage == nil)
             try await Task.sleep(for: .milliseconds(5))
         }
         model.run()
         while model.isRunning || model.hasPendingGPUWork || !model.companionsCaughtUp {
-            try #require(ContinuousClock.now < deadline && model.errorMessage == nil)
+            try #require(model.errorMessage == nil)
             try await Task.sleep(for: .milliseconds(5))
         }
         try model.keepRun(named: "Run")
@@ -128,8 +126,7 @@ struct AutomaticCompanionPlacementTests {
         #expect(first.thermal is LocalFrameConsumer)
         // The run's costs are kept once every frame is in.
         let key = try #require(ConsumerCostStore.key(first.currentInputs, frameInterval: 0.001))
-        let deadline = ContinuousClock.now + .seconds(30)
-        while store.costs(for: key)?.frameSeconds == nil, ContinuousClock.now < deadline {
+        while store.costs(for: key)?.frameSeconds == nil {
             try await Task.sleep(for: .milliseconds(10))
         }
         var costs = try #require(store.costs(for: key))

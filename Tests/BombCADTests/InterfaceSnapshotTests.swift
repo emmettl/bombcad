@@ -7,7 +7,7 @@ import Testing
 
 @MainActor
 @Suite(
-    "Offscreen interface review", .serialized,
+    "Offscreen interface review", .serialized, .hangLimit,
     .enabled(if: ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"] != nil))
 struct InterfaceSnapshotTests {
     @Test("Render isolated app panels for layout review", arguments: ["light", "dark"])
@@ -157,14 +157,11 @@ struct InterfaceSnapshotTests {
         document.runSettings?.resolution = "medium"
         document.runSettings?.duration = 0.03
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
-        let deadline = ContinuousClock.now + .seconds(300)
         while !model.experimentIsReady {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(20))
         }
         model.run()
         while model.isRunning || model.time < 0.029 {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(20))
         }
         let appearance: NSAppearance.Name = style == "dark" ? .darkAqua : .aqua

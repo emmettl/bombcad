@@ -1802,6 +1802,71 @@ twice the impulse of a proper equation of state for its products
 charges are under-resolved on practical cells; and at 0.5 m Chiquito's slabs are neither
 crushed through nor spalled through by the model, whatever removes them.
 
+### Rubble kept as particles (stage 3)
+
+The concrete strategy's stage 3: concrete that fails becomes a particle that keeps its mass and
+pushes on the rest in contact only (`StructureModel.rubbleParticles`, `--rubble`; see the
+[concrete model](concrete-model.md#removal)), instead of leaving its mass on the nodes of what is
+left. Judged on the same three sets, alone and with fragments removed (`--fragments`), every
+removal rule otherwise as it is. Wu's in contact at a quarter step for 20 ms, Hupfauf's for 3 ms,
+Chiquito's for 300 ms; holes in cm, measured in brackets:
+
+| Case | Today | Rubble | Rubble and fragments |
+|---|---|---|---|
+| Wu S4 (27.5) | 14.0 | 10.6 | 37.5 |
+| Wu D4 (23.5) | 8.3 | 7.5 | 27.7 |
+| Wu S1, D1 (15, 14) | 0, 0 | 0, 0 | 0, 0 |
+| Hupfauf, the four that holed (20 and 25 cm) | none | none | SN142 and SN128 holed |
+| Hupfauf, the four that held (25 and 30 cm) | none | none | SN175 and SN147 holed too |
+| Chiquito P2, S5 (holed) | not | not (nothing fails) | not (about 320 elements fail, under the charge's face) |
+
+**Alone, rubble holes less**, not more: it carries compression where removed concrete carried
+nothing, so less of the slab around it fails. What it changes is the debris. The far face's
+fastest speed on Hupfauf's slabs against the thesis's fit (m/s):
+
+| Slab | Fit | Today | Rubble |
+|---|---|---|---|
+| SN174 | 81 | 101 | 76 |
+| SN142 | 71 | 145 | 56 |
+| SN144 | 51 | 70 | 70 |
+| SN128 | 45 | 61 | 66 |
+| SN175 | 37 | 54 | 46 |
+| SN147 | 26 | 27 | 32 |
+| SN145 | 21 | 34 | 16 |
+| SN131 | 15 | 22 | 18 |
+
+about 22% off on average against 45%: the loose layer, its mass no longer on the nodes held at its
+rim, is thrown instead of pulled back. The mass thrown off the far half hardly moves (2 to 31 kg,
+the tests' 39 to 70), and no slab holes.
+
+**With fragments removed,** the holes run away instead. On Wu's slabs the rule's two openings
+decide the size and nothing between them holds it: concrete open two ways by 0.5 mm (the rule's
+own) holes S4 and D4 at 37.5 and 27.7 cm and leaves them sagging 40–80 mm, damage over 1.5–2
+times the measured areas, and S4's gauge goes to NaN late in the run; before the fix below, at
+40 and 42 cm; by 0.7 mm, S4 at 37.8 and D4 at 11.5; by 1 mm, 13.6 and 9.6 (these two before the
+fix, which on Wu's slabs, their particles smaller than the air's cells, moved rubble's own holes
+by under a centimetre). Any threshold matching one slab would be fitted to it, and none matches
+both. Rubble with fragments removed is also not robust: a node of S4 went to NaN. On Hupfauf's slabs the rule holes every slab tried, the 30 cm one
+that held as well, and throws 1.4 to 2.5 times the measured mass at 1.6 to 3 times the speed.
+
+**A fix found on the way.** The air pushed each particle by the pressure gradient over its whole
+volume and took the same momentum from its one air cell, as it does for loose nodes. Rubble
+packed into a cell, or a particle larger than the cell (Hupfauf's 30 cm slabs: 25 mm elements in
+20 mm air), took more than the pressure gave that cell's air, reversing its flow: SN147 and
+SN131 went to NaN within 2 ms. Rubble's pressure push is limited to its share of half the cell's
+volume; with it SN147 runs clean and holds, as the test did.
+
+**Cost.** Rubble adds no measurable GPU time until particles exist (S1 for 4 ms: 11–13 s of GPU
+time with it, 13–18 without, on a shared machine), and about a fifth of the wall time from its
+extra dispatches; the particles then cost as many nodes in contact. The runs above made up to
+3,700 particles with rubble alone and 23,000 with fragments.
+
+So rubble stays an option: it throws Hupfauf's debris at nearer the measured speed, but holes no
+slab the tests holed, and the only rule that makes it hole does so where the tests held as well,
+at sizes set by its threshold. Chiquito's slabs at 0.5 m lose no element at all, so no treatment
+of failed concrete reaches them. The holes need concrete to fail where it failed, which is the
+strategy's stage 4.
+
 ## Perimeter walls under field blasts
 
 The first walls in the open air: reinforced concrete and blockwork perimeter walls on their

@@ -86,6 +86,10 @@ public final class StructureSolver {
     /// Contact damping as a fraction of critical.
     public var contactDamping: Float = 0.3
     public var contactFriction: Float = 0.5
+    /// With `StructureModel.removesFragments`: concrete cracked open across two planes by
+    /// `fragmentOpening` (m) and with a crack strain of `fragmentStrain` across one is fragments.
+    public var fragmentOpening: Float = 0.5e-3
+    public var fragmentStrain: Float = 0.05
 
     /// Let the air push loose debris (nodes no longer attached to any intact element) by its
     /// pressure gradient and drag, when coupled to the air.
@@ -168,7 +172,7 @@ public final class StructureSolver {
     /// Contact force on each listed node.
     let contactForceBuffer: MTLBuffer
     /// Non-zero once any element has failed.
-    private let failureGateBuffer: MTLBuffer
+    let failureGateBuffer: MTLBuffer
     /// Bars that slip (`StructureModel.bondSlip`): each node's slip state along each axis (three
     /// `SIMD4<Float>`: slip, its rate, plastic slip, largest slip); the bond's area and the slip's
     /// stiffness at each node along each axis (two `SIMD4<Float>`); and each element's bar force
@@ -198,6 +202,8 @@ public final class StructureSolver {
     private var barNodePipeline: MTLComputePipelineState?
     private var barGatherPipeline: MTLComputePipelineState?
     private var barRupturePipeline: MTLComputePipelineState?
+    /// Failed concrete as particles (`StructureModel.rubbleParticles`), when the body has them.
+    private(set) var rubbleSystem: RubbleSystem?
     private let pairPipeline: MTLComputePipelineState
     private var stamp: UInt32 = 0
 
@@ -245,6 +251,9 @@ public final class StructureSolver {
         if discrete { constants.setConstantValue(&discrete, type: .bool, index: 10) }
         var nonlocal = model.crackAveraging != nil
         if nonlocal { constants.setConstantValue(&nonlocal, type: .bool, index: 11) }
+        // Without rubble the constant stays undefined, so the kernels are as before.
+        var rubble = model.rubbleParticles
+        if rubble { constants.setConstantValue(&rubble, type: .bool, index: 12) }
         elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
         traceElementPipeline = {
             let tracing = MTLFunctionConstantValues()
@@ -260,6 +269,8 @@ public final class StructureSolver {
             if discrete { tracing.setConstantValue(&discrete, type: .bool, index: 10) }
             var nonlocal = nonlocal
             if nonlocal { tracing.setConstantValue(&nonlocal, type: .bool, index: 11) }
+            var rubble = rubble
+            if rubble { tracing.setConstantValue(&rubble, type: .bool, index: 12) }
             return try? ShaderLibrary.pipeline("structureElements", in: library, constants: tracing)
         }
         // Keep the general connection law out of kernels for ordinary clamped/free bodies.
@@ -267,6 +278,7 @@ public final class StructureSolver {
         var connected = model.connectionStiffness != nil
         nodeConstants.setConstantValue(&connected, type: .bool, index: 1)
         if discrete { nodeConstants.setConstantValue(&discrete, type: .bool, index: 10) }
+        if rubble { nodeConstants.setConstantValue(&rubble, type: .bool, index: 12) }
         nodePipeline = try ShaderLibrary.pipeline("structureNodes", in: library, constants: nodeConstants)
         var turned = true
         nodeConstants.setConstantValue(&turned, type: .bool, index: 4)
@@ -274,9 +286,14 @@ public final class StructureSolver {
             try? ShaderLibrary.pipeline("structureNodes", in: library, constants: nodeConstants)
         }
         pairPipeline = try pipeline("structurePairs")
-        contactClearPipeline = try pipeline("contactClear")
-        contactHashPipeline = try pipeline("contactHash")
-        contactForcePipeline = try pipeline("contactForces")
+        let contactConstants = MTLFunctionConstantValues()
+        if rubble { contactConstants.setConstantValue(&rubble, type: .bool, index: 12) }
+        contactClearPipeline = try ShaderLibrary.pipeline(
+            "contactClear", in: library, constants: contactConstants)
+        contactHashPipeline = try ShaderLibrary.pipeline(
+            "contactHash", in: library, constants: contactConstants)
+        contactForcePipeline = try ShaderLibrary.pipeline(
+            "contactForces", in: library, constants: contactConstants)
         debrisAreaPipeline = try pipeline("debrisAreas")
 
         func buffer(_ length: Int, _ label: String) throws -> MTLBuffer {
@@ -525,6 +542,19 @@ public final class StructureSolver {
             "connection laws")
         try setUpBondSlip()
         try setUpDiscreteBars(trusses, library: library)
+        if model.rubbleParticles {
+            // Each concrete element's mass on its nodes, and the share of it its smeared bars are,
+            // which stays on the nodes while the bars stand bare.
+            let ratios = steelBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: elements)
+            let masses = (0..<elementCount).map { n -> SIMD2<Float> in
+                let material = materials[Int(elementMaterials[n] & 15)]
+                guard material.model == .concrete else { return .zero }
+                let steel = material.steel != nil ? ratios[n].x + ratios[n].y + ratios[n].z : 0
+                return SIMD2(material.density * h * h * h, min(steel * 7850 / material.density, 1))
+            }
+            rubbleSystem = try RubbleSystem(
+                device: device, library: library, masses: masses, gridCells: gridCells)
+        }
         reset()
         if let anchorStiffness {
             let stiffest = max(anchorStiffness.normal, anchorStiffness.shear)
@@ -815,6 +845,7 @@ public final class StructureSolver {
         footings?.reset()
         pairs?.reset()
         discreteBarSystem?.reset()
+        rubbleSystem?.reset()
         let materialIndices = materialIndexBuffer.contents().bindMemory(
             to: UInt8.self, capacity: max(elementCount, 1))
         let onGround = model.fixedBase && abs(origin.z) < 0.5 * h
@@ -1331,6 +1362,13 @@ public final class StructureSolver {
                 total += SIMD3<Double>(node.velocity) * Double(node.mass)
             }
         }
+        if let rubble = rubbleSystem {
+            let particles = rubble.particles.contents().bindMemory(
+                to: RubbleParticle.self, capacity: rubble.count)
+            for n in 0..<rubble.count where particles[n].alive != 0 {
+                total += SIMD3<Double>(particles[n].velocity) * Double(particles[n].mass)
+            }
+        }
         return total
     }
 
@@ -1475,6 +1513,19 @@ public final class StructureSolver {
             encoder.setBuffer(fluid.couplingMap ?? placeholderBuffer, offset: 0, index: 8)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            if let rubble = rubbleSystem {
+                encoder.setComputePipelineState(rubble.areas)
+                encoder.setBuffer(rubble.particles, offset: 0, index: 0)
+                encoder.setBuffer(fluid.control, offset: 0, index: 1)
+                encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 2)
+                encoder.setBuffer(fluid.mask, offset: 0, index: 3)
+                encoder.setBuffer(area, offset: 0, index: 4)
+                encoder.setBuffer(failureGateBuffer, offset: 0, index: 5)
+                encoder.setBuffer(fluid.couplingMap ?? placeholderBuffer, offset: 0, index: 6)
+                encoder.setBuffer(rubble.state, offset: 0, index: 7)
+                encoder.dispatchThreads(
+                    MTLSize(width: rubble.count, height: 1, depth: 1), threadsPerThreadgroup: group)
+            }
         }
     }
 
@@ -1524,7 +1575,11 @@ public final class StructureSolver {
         // Until something has failed there is nothing to collide, so the contact kernels are
         // left out; they join in from the first batch encoded after a failure (coupled to the
         // air, from its first checkpoint after one).
-        let encodeContact = contactMode == .always || (contactMode == .afterFailure && encodesAsFailed)
+        // Rubble is made within a batch, as elements fail, and pushes on what it meets from then
+        // on: with it the contact kernels are always encoded, and wait in the GPU for a failure.
+        let encodeContact =
+            contactMode == .always
+            || (contactMode == .afterFailure && (encodesAsFailed || rubbleSystem != nil))
 
         // Loose debris adds up its frontal area in each air cell before the substeps, for the
         // implicit form of its drag. There is none until something has failed.
@@ -1568,12 +1623,58 @@ public final class StructureSolver {
             encoder.dispatchThreads(
                 MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
 
+            if let rubble = rubbleSystem {
+                encoder.setComputePipelineState(rubble.convert)
+                encoder.setBuffer(rubble.particles, offset: 0, index: 0)
+                encoder.setBuffer(nodeBuffer, offset: 0, index: 1)
+                encoder.setBuffer(flagBuffer, offset: 0, index: 2)
+                encoder.setBuffer(instanceBuffer, offset: 0, index: 3)
+                encoder.setBuffer(nodeMapBuffer, offset: 0, index: 4)
+                encoder.setBuffer(rubble.masses, offset: 0, index: 5)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 6)
+                encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 7)
+                encoder.setBuffer(failureGateBuffer, offset: 0, index: 8)
+                encoder.setBuffer(nodeListBuffer, offset: 0, index: 9)
+                encoder.setBuffer(rubble.state, offset: 0, index: 10)
+                encoder.dispatchThreads(
+                    MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+                encoder.setComputePipelineState(rubble.nodes)
+                encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
+                encoder.setBuffer(flagBuffer, offset: 0, index: 1)
+                encoder.setBuffer(rubble.particles, offset: 0, index: 2)
+                encoder.setBuffer(cellElementBuffer, offset: 0, index: 3)
+                encoder.setBuffer(nodeListBuffer, offset: 0, index: 4)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 5)
+                encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 6)
+                encoder.setBuffer(failureGateBuffer, offset: 0, index: 7)
+                encoder.setBuffer(rubble.state, offset: 0, index: 8)
+                encoder.dispatchThreads(
+                    MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            }
+
             if encodeContact {
                 // The stamp distinguishes this substep's grid entries from stale ones.
                 stamp = stamp % 0x1FFF_FFF0 + 1
                 uniforms.stamp = stamp
                 let nodes = MTLSize(width: nodeCount, height: 1, depth: 1)
                 for pipeline in [contactClearPipeline, contactHashPipeline, contactForcePipeline] {
+                    if pipeline === contactForcePipeline, let rubble = rubbleSystem {
+                        // The particles' table, before the nodes read it.
+                        for kernel in [rubble.clear, rubble.hash] {
+                            encoder.setComputePipelineState(kernel)
+                            encoder.setBuffer(rubble.particles, offset: 0, index: 0)
+                            encoder.setBuffer(rubble.heads, offset: 0, index: 1)
+                            encoder.setBuffer(rubble.slots, offset: 0, index: 2)
+                            encoder.setBuffer(failureGateBuffer, offset: 0, index: 3)
+                            encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 4)
+                            encoder.setBytes(
+                                &uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 5)
+                            encoder.setBuffer(rubble.state, offset: 0, index: 6)
+                            encoder.dispatchThreads(
+                                MTLSize(width: rubble.count, height: 1, depth: 1),
+                                threadsPerThreadgroup: group)
+                        }
+                    }
                     encoder.setComputePipelineState(pipeline)
                     encoder.setBuffer(nodeListBuffer, offset: 0, index: 0)
                     encoder.setBuffer(nodeBuffer, offset: 0, index: 1)
@@ -1584,10 +1685,31 @@ public final class StructureSolver {
                     if pipeline === contactForcePipeline {
                         encoder.setBuffer(contactForceBuffer, offset: 0, index: 7)
                         encoder.setBuffer(contactSlotBuffer, offset: 0, index: 8)
+                        encoder.setBuffer(rubbleSystem?.particles ?? placeholderBuffer, offset: 0, index: 9)
+                        encoder.setBuffer(rubbleSystem?.heads ?? placeholderBuffer, offset: 0, index: 10)
+                        encoder.setBuffer(rubbleSystem?.slots ?? placeholderBuffer, offset: 0, index: 11)
+                        encoder.setBuffer(rubbleSystem?.state ?? placeholderBuffer, offset: 0, index: 12)
                     } else {
                         encoder.setBuffer(contactSlotBuffer, offset: 0, index: 6)
                     }
                     encoder.dispatchThreads(nodes, threadsPerThreadgroup: group)
+                }
+                if let rubble = rubbleSystem {
+                    encoder.setComputePipelineState(rubble.force)
+                    encoder.setBuffer(rubble.particles, offset: 0, index: 0)
+                    encoder.setBuffer(rubble.heads, offset: 0, index: 1)
+                    encoder.setBuffer(rubble.slots, offset: 0, index: 2)
+                    encoder.setBuffer(failureGateBuffer, offset: 0, index: 3)
+                    encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 4)
+                    encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 5)
+                    encoder.setBuffer(rubble.forces, offset: 0, index: 6)
+                    encoder.setBuffer(nodeBuffer, offset: 0, index: 7)
+                    encoder.setBuffer(nodeListBuffer, offset: 0, index: 8)
+                    encoder.setBuffer(contactHeadBuffer, offset: 0, index: 9)
+                    encoder.setBuffer(contactSlotBuffer, offset: 0, index: 10)
+                    encoder.setBuffer(rubble.state, offset: 0, index: 11)
+                    encoder.dispatchThreads(
+                        MTLSize(width: rubble.count, height: 1, depth: 1), threadsPerThreadgroup: group)
                 }
             }
 
@@ -1689,6 +1811,22 @@ public final class StructureSolver {
             encoder.setBuffer(discreteBarSystem?.nodeForce ?? placeholderBuffer, offset: 0, index: 30)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            if let rubble = rubbleSystem {
+                encoder.setComputePipelineState(rubble.move)
+                encoder.setBuffer(rubble.particles, offset: 0, index: 0)
+                encoder.setBuffer(rubble.forces, offset: 0, index: 1)
+                encoder.setBuffer(failureGateBuffer, offset: 0, index: 2)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 3)
+                encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 4)
+                encoder.setBuffer(fluid?.state ?? placeholderBuffer, offset: 0, index: 5)
+                encoder.setBuffer(fluid?.mask ?? placeholderBuffer, offset: 0, index: 6)
+                encoder.setBuffer(fluid?.exchange ?? placeholderBuffer, offset: 0, index: 7)
+                encoder.setBuffer(fluid?.debrisArea ?? placeholderBuffer, offset: 0, index: 8)
+                encoder.setBuffer(fluid?.couplingMap ?? placeholderBuffer, offset: 0, index: 9)
+                encoder.setBuffer(rubble.state, offset: 0, index: 10)
+                encoder.dispatchThreads(
+                    MTLSize(width: rubble.count, height: 1, depth: 1), threadsPerThreadgroup: group)
+            }
             footings?.encode(
                 encoder,
                 uniforms: FootingSystem.Uniforms(
@@ -1752,6 +1890,8 @@ public final class StructureSolver {
         uniforms.secondCracks = model.secondCracks ? 1 : 0
         uniforms.bareBars = model.bareBars ? 1 : 0
         uniforms.removesFragments = model.removesFragments ? 1 : 0
+        uniforms.fragmentOpening = fragmentOpening
+        uniforms.fragmentStrain = fragmentStrain
         uniforms.crackSlip = model.crackSlip ? 1 : 0
         uniforms.barAxes = barAxes
         uniforms.pressedInterlock = model.appliesPressedInterlock ? 1 : 0

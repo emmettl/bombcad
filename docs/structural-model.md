@@ -843,9 +843,9 @@ Coulomb friction: each step the sliding speed is cut by μ times the speed the g
 the node's fall, down to nothing. Summed over the steps a node bears on the ground, the
 friction is μ times what bears on it however much it chatters, so the same slab at μ = 0.6
 (typical of brick or concrete on hard ground) slows at 0.6 g and stops in 0.17 s (v / μg is
-0.17 s), and the toppled wall comes to rest. Keys's walls are run with it. Nodes tied to the
-ground by a base connection are left to the connection's own friction, and shells keep the
-decay. Whether it should become the default for debris is for the debris comparisons to decide.
+0.17 s), and the toppled wall comes to rest. Keys's walls are run with it. Rubble particles land the same
+way. Nodes tied to the ground by a base connection are left to the connection's own friction,
+and shells keep the decay. Whether it should become the default for debris is for the debris comparisons to decide.
 
 ## Verification
 

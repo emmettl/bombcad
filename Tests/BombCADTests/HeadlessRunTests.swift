@@ -5,7 +5,7 @@ import Testing
 
 @testable import BombCAD
 
-@Suite("Headless run options")
+@Suite("Headless run options", .hangLimit)
 struct HeadlessRunOptionTests {
     @Test("Options parse, and unknown, repeated or invalid ones are refused")
     func parsing() throws {
@@ -45,7 +45,7 @@ struct HeadlessRunOptionTests {
     }
 }
 
-@MainActor @Suite("Headless runs", .serialized)
+@MainActor @Suite("Headless runs", .serialized, .hangLimit)
 struct HeadlessRunTests {
     private func directory() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appending(path: "headless-\(UUID().uuidString)")
@@ -83,9 +83,7 @@ struct HeadlessRunTests {
     private func sweep(_ document: ProjectDocument, mass: Float) async throws -> SavedSimulationRun {
         let model = SimulationModel(document: document)
         try model.sweep.start(.init(prefix: "Sweep", parameter: .chargeMass([mass])))
-        let deadline = ContinuousClock.now + .seconds(120)
         while model.sweep.isActive || !model.experimentIsReady {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(5))
         }
         return try #require(model.savedRuns.last)
