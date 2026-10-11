@@ -320,6 +320,36 @@ func workRow(_ label: String, _ width: Int, _ totals: [Double]) -> String {
         + pad(format(totals.reduce(0, +), 1), 10)
 }
 
+/// `--rubble-trace`: every 0.05 ms, the rubble's count and fastest particle, and where it is.
+nonisolated(unsafe) var nextRubbleTrace = 0.0
+func rubbleTrace(_ solver: StructureSolver, _ time: Double) {
+    guard time >= nextRubbleTrace else { return }
+    // `--rubble-trace-from 1.8` (ms): every 2 µs from then on.
+    let fine = option("rubble-trace-from").flatMap { Double($0) }.map { time >= $0 / 1000 } ?? false
+    nextRubbleTrace = time + (fine ? 0.000002 : 0.00005)
+    let particles = solver.rubbleParticles()
+    guard
+        let fastest = particles.max(by: {
+            !(simd_length($1.particle.velocity) <= simd_length($0.particle.velocity))
+        })
+    else { return }
+    let p = fastest.particle
+    let (i, j, k) = solver.elementCoordinates(fastest.element)
+    let broken = particles.filter { !simd_length($0.particle.velocity).isFinite }.count
+    var brokenNodes = 0
+    var fastestNode: Float = 0
+    solver.mutateNodes { nodes in
+        for node in nodes where node.mass > 0 {
+            let speed = simd_length(node.velocity)
+            if !speed.isFinite { brokenNodes += 1 } else { fastestNode = max(fastestNode, speed) }
+        }
+    }
+    print(
+        "  \(format(time * 1000, 3)) ms: \(particles.count) particles, \(broken) not finite, nodes \(brokenNodes) not finite, fastest node \(format(Double(fastestNode), 1)); fastest \(format(Double(simd_length(p.velocity)), 1)) m/s from (\(i), \(j), \(k)) at \(p.position), mass \(p.mass), reach \(p.reach), volume \(p.volume)"
+    )
+    fflush(stdout)
+}
+
 /// With rubble (`--rubble`): how many particles, their mass, and how fast they move.
 func printRubble(_ solver: StructureSolver) {
     let particles = solver.rubbleParticles().map(\.particle)
@@ -1882,6 +1912,7 @@ func runContact() throws {
                 lastStructure = structure
                 if flag("no-debris-drag") { structure.debrisDrag = false }
                 applyFragmentThresholds(structure)
+                if flag("rubble-trace") { rubbleTrace(structure, time) }
                 if flag("no-contact") { structure.contactMode = .off }
                 if flag("report") || flag("census"), time >= duration * 0.995, !reported {
                     reported = true

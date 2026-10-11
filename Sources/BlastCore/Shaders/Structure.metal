@@ -2005,7 +2005,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     if (rubbleParticles && bare) {
         float3 ratio = float3(steel[compact].ratio);
         float share = (ratio.x + ratio.y + ratio.z + float(steel[compact].inclined)) * 7850.0f / m.density;
-        hourglassStiffness *= clamp(share, 1e-3f, 1.0f);
+        hourglassStiffness *= min(share, 1.0f);
     }
     for (uint mode = 0; mode < 4; ++mode) {
         float3 q = state.hourglass[mode];
@@ -2204,10 +2204,13 @@ kernel void debrisAreas(const device StructureNode *nodes [[buffer(0)]],
                               memory_order_relaxed);
 }
 
+// `packed`, for rubble: the pressure gradient pushes the debris in a cell only up to half the air's
+// own volume there (see `rubbleMove`).
 template <typename Uniforms>
 static inline float3 debrisAirForce(float3 position, float3 velocity, float volume, const device Cell *fluid,
                                     const device uchar *fluidMask, const device int *area, float airStep,
-                                    constant Uniforms &u, device atomic_uint *couplingMap, thread int &exchangeCell) {
+                                    constant Uniforms &u, device atomic_uint *couplingMap, thread int &exchangeCell,
+                                    bool packed = false) {
     exchangeCell = debrisCell(position, fluidMask, u, couplingMap);
     if (exchangeCell < 0) {
         return float3(0.0f);
@@ -2267,6 +2270,12 @@ static inline float3 debrisAirForce(float3 position, float3 velocity, float volu
     float speed = length(wind);
     float cellArea = max(float(area[exchangeCell]) / exchangeAreaScale, 0.0f);
     float factor = 1.0f / (1.0f + 0.5f * speed * cellArea * airStep);
+    if (packed) {
+        // The debris's share of the cell's volume, from its frontal area there (per unit of the
+        // cell's volume) times this body's size: like bodies packed into a cell together.
+        float share = max(cellArea * pow(volume, 1.0f / 3.0f), volume / (u.fluidCell * u.fluidCell * u.fluidCell));
+        return -gradient * volume * min(1.0f, 0.5f / max(share, 1e-6f)) + factor * 0.5f * rho * frontal * speed * wind;
+    }
     return -gradient * volume + factor * 0.5f * rho * frontal * speed * wind;
 }
 

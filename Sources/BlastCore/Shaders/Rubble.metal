@@ -284,8 +284,12 @@ kernel void rubbleMove(device RubbleParticle *particles [[buffer(0)]],
     float3 airForce = float3(0.0f);
     int exchangeCell = -1;
     if (u.coupled != 0 && u.debrisLoading != 0) {
+        // Packed rubble would take more momentum from its air cell than the pressure there gives the
+        // air, reversing the flow: on Hupfauf's 30 cm slabs, with elements larger than the air's
+        // cells, everything went to NaN within 2 ms. So its pressure push is limited to its share
+        // of half the cell's volume (`packed`); drag is already implicit.
         airForce = debrisAirForce(position, float3(p.velocity), p.volume, fluid, fluidMask, debrisArea, control.dt, u,
-                                  couplingMap, exchangeCell);
+                                  couplingMap, exchangeCell, true);
         force += airForce;
     }
     float3 velocity = float3(p.velocity) + dt * (force / p.mass - gravityPull(u));
