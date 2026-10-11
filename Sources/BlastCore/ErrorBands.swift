@@ -221,11 +221,11 @@ public enum ValidationTables {
     /// heading and holds the figure's numbers.
     public static let figures: [Figure] = [
         Figure(
-            id: "slabSolid", low: 1.05, high: 1.15, document: "validation.md#summary",
-            quote: "solid elements 113–124 mm (105–115%) on 4 to 32 elements through"),
+            id: "slabSolid", low: 1.04, high: 1.14, document: "validation.md#summary",
+            quote: "solid elements 113–124 mm (104–114%) on 4 to 32 elements through"),
         Figure(
-            id: "slabShell", low: 1.25, high: 1.25, document: "validation.md#summary",
-            quote: "shells 135 mm (125%)"),
+            id: "slabShell", low: 1.24, high: 1.24, document: "validation.md#summary",
+            quote: "shells 135 mm (124%)"),
         Figure(
             id: "beamMoment", low: 0.98, high: 1.01, document: "validation.md#summary",
             quote: "peak moment 98–101%, failing at 53–57 mm on 12 elements"),

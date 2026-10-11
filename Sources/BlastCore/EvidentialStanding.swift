@@ -550,7 +550,7 @@ public enum StandingTable {
         case .shellElements:
             return Entry(
                 title: "Shell elements", affects: structure, limit: nil,
-                note: "On the slab test shells peaked at 135 mm, 125% of that measured, against 105–115% "
+                note: "On the slab test shells peaked at 135 mm, 124% of that measured, against 104–114% "
                     + "for solid elements.",
                 document: "validation.md#structural-response-against-a-real-test")
         case .shellSectionShear:
@@ -1490,9 +1490,11 @@ struct StandingScene {
             evidence += [
                 StandingEvidence(
                     "A reinforced slab under a blast",
-                    "Reads high (safe side): 113–124 mm against 108 mm measured (105–115%) on 4 to 32 solid "
-                        + "elements through, rising with the mesh and not converged, a strip of it running away on "
-                        + "32; shells 135 mm (125%); a 5% change in its hand-read load moves it 13–14%",
+                    "Reads high (safe side) under the test's load: 113–124 mm against 109 mm measured, and 113 "
+                        + "in its repeat (104–114% of the first), on 4 to 32 solid elements through, rising with the "
+                        + "mesh and not converged, a strip of it running away on 32; shells 135 mm (124%); a 5% "
+                        + "change in its hand-read load moves it 13–14%, a source's 68 ksi bar yield 9%. Under the "
+                        + "contest's lower shot (a scaled record) about 80% of the peak: too stiff",
                     "validation.md#structural-response-against-a-real-test"),
                 StandingEvidence(
                     "A reinforced beam bent to failure",
