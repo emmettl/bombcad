@@ -170,3 +170,21 @@ to 4 samples and the middle.** Each sample took about 3.5 hours on the CI Mac mi
 GPU six ways, so 8 would have run into the next day. A fresh Latin hypercube of 4 (seed 1) is
 used rather than the first 4 of the 8, whose strata would not be balanced; the middle is the
 same in both and was kept.
+
+**4. 2026-10-12, after the first full runs, before anything was committed: the face set back on
+the slab when its bond has gone, penetration read off the slab's top, and every run made again.**
+In the first full runs (16 elements, all three slabs, four impacts each, finished on the evening of
+2026-10-11), impact 1 removed, in every slab, exactly the 1,444 elements of concrete that touched
+the face's underside: the bonded face tore the layer under it off as it rebounded, then flew off
+as a loose piece (the penetration read 40 to 870 mm *upwards*). Impacts 2 to 4 then set that piece,
+wherever it had come to rest, going down at 8 m/s, so they did not strike the slab's centre as the
+test's weight did: a harness error against the inputs. From now on, at the start of each impact,
+if no concrete element still holds any node of the face's underside, the face is set back,
+undeformed and at rest, over the centre, one element above the highest point of the slab's top
+beneath it, where the solver's contact begins; contact is on by default once any element has
+failed, as it has by then. The weight then strikes through that contact rather than through a
+bond. Impact 1, with the face bonded, is as before. Penetration is now the step in the slab's own
+top (the highest node in each column still held by concrete) at the face's edge, which while the
+face is bonded is what it was. Nothing else changed. The first runs' numbers are kept on the
+predictor's folder and are not the prediction; no run state was kept between impacts, so all the
+runs (primary, 8-element and ensemble) are made again from the start.
