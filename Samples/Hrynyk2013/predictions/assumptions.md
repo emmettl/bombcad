@@ -21,6 +21,11 @@ asks (rule 3). Frozen commit: `1c857744802e8cfd2d536f8379d68dad1a85e743`. The ha
 - Per the orchestrator's addendum (rule 2, b651c20): no other Claude session's transcript was
   searched or read, with the session-management tools or otherwise, and no memory note about
   this test was read. The orchestrator's message said it held no results, and it held none.
+- Per the orchestrator's later tightening: nothing in `/Volumes/StudioData/bombcad/blind/`
+  outside `predictor/` has been listed, opened or read. The only commands to touch that tree
+  were `mkdir -p .../blind/predictor`, runs writing by full path into `predictor/`, and one
+  `ls -la` of `.../blind/predictor/smoke`. The second blind test (docs/blind-tests.md's
+  "Test 2", `Samples/Mendonca2020/`) has not been read.
 
 ## The model
 
@@ -70,7 +75,8 @@ the slab, and one alike over it (the socketed plate's size and thickness not giv
 the slab. The spherical pin beneath is a 5 × 5 patch of nodes (32 mm square) at the centre of
 the lower plate's underside that rests on its support (pushes up, lifts off freely); the ball
 above is a 5 × 5 patch at the centre of the upper plate's top that is held down (cannot rise,
-falls away freely). The patches let the corner turn freely in both directions. Sideways, the
+falls away freely). The patches let the corner turn freely in both directions. *(Changed after
+the smoke run to one node each, with elastic plates: see change 1 below.)* Sideways, the
 lower patch is held as the inputs' lateral restraints say, with the slab's corners south (0, 0),
 east (1.8, 0), north (1.8, 1.8) and west (0, 1.8): east pinned (x and y), north held in x (free
 along the north-east edge, y), south held in y (free along the south-east edge, x), west free.
@@ -141,4 +147,26 @@ crash), the fix and its reason will be added below, dated, before the prediction
 
 ## Changes after the first run
 
-None yet.
+**1. 2026-10-11, after a 5 ms smoke run (TH2, impact 1, 8 and 16 elements, cut short): each
+corner seated on one node above and one below, and the bearing plates elastic** (commit
+87ff5a7). The 5 × 5 seats under and over each corner clamped it between them: as the corner
+turned, the lower seat pressed up on one edge and the upper seat down on the other, a couple
+32 mm long. In 5 ms the load cells' sum rose to 1.3 MN while the seats above pulled down by
+0.85 MN, more than the weight's momentum could give, and against the inputs' corners that
+"rotate freely". Seated on one node each, on one vertical line, the corner turns freely; the
+plates are elastic steel because one node now carries each corner's reaction, which would
+yield structural steel locally where the real pin's seat spreads it. This was a harness error,
+judged on the model's own consistency; no measurement was seen.
+
+**2. 2026-10-11, at the ensemble's start, before any of its results: the 8-element mesh run is
+made on its own.** The ensemble's middle sample takes each input at its median, which for the
+two uniform inputs is not the primary's value (bearing plates 112.5 mm against 100 mm, rupture
+1.35 against 1.3 times the strain at fu), so it is not the 8-element run on the primary's
+settings that the secondary runs promised. That run is made separately; the ensemble's spread
+is taken, as declared, as ratios of its samples to its own middle.
+
+**3. 2026-10-11 13:40, before any ensemble sample but the middle had finished: the ensemble cut
+to 4 samples and the middle.** Each sample took about 3.5 hours on the CI Mac mini sharing its
+GPU six ways, so 8 would have run into the next day. A fresh Latin hypercube of 4 (seed 1) is
+used rather than the first 4 of the 8, whose strata would not be balanced; the middle is the
+same in both and was kept.

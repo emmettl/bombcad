@@ -134,8 +134,9 @@ public enum HrynykSlabTest {
         public var bearingSide: Float = 0.1
         public var bearingThickness: Float = 0.02
         /// The seat of the spherical pin beneath and of the ball above: the patch of the plates'
-        /// outer faces held.
-        public var seatSide: Float = 0.032
+        /// outer faces held, nil a single node each, on one vertical line, so that the corner
+        /// turns freely (a patch above and one below clamp it between them).
+        public var seatSide: Float = 0
         /// The weight's flat steel face, as steel elements on the slab carrying the rest of the
         /// weight's mass on their top nodes.
         public var faceThickness: Float = 0.016
@@ -225,7 +226,7 @@ public enum HrynykSlabTest {
             faceHalf: Int((inputs.faceSide / 2 / h).rounded(.down)),
             supports: [support, planElements - support],
             bearingHalf: max(Int((settings.bearingSide / 2 / h).rounded()), 1),
-            seatHalf: max(Int((settings.seatSide / 2 / h).rounded()), 1))
+            seatHalf: max(Int((settings.seatSide / 2 / h).rounded()), 0))
     }
 
     /// The slab meshed with solid elements, its four layers of bars each smeared through a band
@@ -256,10 +257,11 @@ public enum HrynykSlabTest {
         var model = StructureModel(
             solids: solids, material: material ?? self.material(slab, inputs: inputs, settings: settings),
             elementSize: h, fixedBase: false)
-        // The weight's face: a concrete-filled steel section, stiff; elastic steel. The bearing
-        // plates: structural steel.
-        model.setMaterial(.elastic(density: 7850, youngsModulus: 210e9, poissonRatio: 0.3), of: 1)
-        for index in 2..<solids.count { model.setMaterial(.structuralSteel, of: index) }
+        // The weight's face, a concrete-filled steel section, stiff, and the bearing plates, each
+        // held at one node: elastic steel.
+        for index in 1..<solids.count {
+            model.setMaterial(.elastic(density: 7850, youngsModulus: 210e9, poissonRatio: 0.3), of: index)
+        }
         // Symmetric through the depth; the bars along x outside those along y in both mats.
         let middle = (z(l.slabBottom) + z(l.slabTop)) / 2
         let layers: [(height: Float, axis: Int)] = [
