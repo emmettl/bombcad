@@ -189,3 +189,4 @@ reads as they stand, by a rule fixed before any prediction.
 |---|---|---|---|---|---|
 | 1 | Hrynyk 2013, plain slabs TH2, TH6, TH7 | `1c85774` (2026-10-11) | | | |
 | 2 | Mendonça et al. 2020, unretrofitted slabs 1, 2, 4, 5, 7, 9, 10 | named when its predictor starts, after test 1's reveal | | | |
+| 3 | *Reserved candidate:* K. A. Reynolds, UMKC MS thesis, 2015 (probably the contest's high-strength slabs, on the calibrated slab's rig). Unread; moved to `/Volumes/StudioData/bombcad/blind/reynolds-sealed/` on 2026-10-11. No session opens it, or the contest's high-strength results anywhere, until the judge has assessed it after test 1's reveal | | | | |
