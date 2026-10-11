@@ -96,7 +96,7 @@ func flakyWorker(dropAfter limit: Int = .max) -> SweepWorkerClient {
     ) { try? toWorker.fileHandleForWriting.close() }
 }
 
-@MainActor @Suite("Models fed by the blast, here or on workers", .serialized)
+@MainActor @Suite("Models fed by the blast, here or on workers", .serialized, .hangLimit)
 struct FrameConsumerTests {
     @Test("Each kind gives the same result here, all on one worker, or spread over two")
     func placement() async throws {
@@ -161,9 +161,7 @@ struct FrameConsumerTests {
                 there[n].send(input)
             }
         }
-        let deadline = ContinuousClock.now + .seconds(30)
         while !(here + there as [any FrameConsumer]).allSatisfy(\.caughtUp) {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(5))
         }
         // Caught up, each has its last frame's state in.
@@ -191,9 +189,7 @@ struct FrameConsumerTests {
             // The radiation is sent the ground's layer by mistake.
             thermal.send(frame[2])
         }
-        let deadline = ContinuousClock.now + .seconds(10)
         while ground.report.frame < 2 {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(5))
         }
         #expect(ground.report(after: 1)?.frame == 1)

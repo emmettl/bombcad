@@ -5,7 +5,7 @@ import simd
 
 @testable import BombCAD
 
-@Suite("IFC batch geometry review")
+@Suite("IFC batch geometry review", .hangLimit)
 struct IFCBatchReviewTests {
     private func fixture(_ name: String) throws -> Data {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
@@ -122,9 +122,7 @@ struct IFCBatchReviewTests {
         document.runSettings?.resolution = "medium"
         let restored = try ProjectDocument(archive: document.makeArchive())
         let session = ProjectSession(document: restored)
-        let deadline = ContinuousClock.now + .seconds(15)
         while session.model.isLoadingInputs || session.model.isPreparingImports {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(10))
         }
         #expect(session.model.errorMessage == nil)

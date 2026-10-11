@@ -45,7 +45,7 @@ enum MultiBodyFixture {
     }
 }
 
-@Suite("Multiple structure projects")
+@Suite("Multiple structure projects", .hangLimit)
 struct MultiBodyProjectTests {
     @Test("The renderer draws every body's geometry")
     func rendering() throws {
@@ -140,7 +140,7 @@ struct MultiBodyProjectTests {
 }
 
 @MainActor
-@Suite("Multiple structure editor", .serialized)
+@Suite("Multiple structure editor", .serialized, .hangLimit)
 struct MultiBodyEditorTests {
     @Test("Switching owners scopes component edits, material settings and undo")
     func scopedEditing() throws {
@@ -182,10 +182,8 @@ struct MultiBodyEditorTests {
         document.runSettings?.duration = 0.01
         let model = SimulationModel(document: document)
         model.run()
-        let deadline = ContinuousClock.now + .seconds(30)
         while !model.canKeepRun {
             try #require(model.errorMessage == nil)
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(5))
             if !model.isRunning && model.time == 0 { model.run() }
         }

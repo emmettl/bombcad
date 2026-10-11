@@ -6,7 +6,7 @@ import simd
 
 @testable import BombCAD
 
-@MainActor @Suite("Thermal radiation reckoned apart from the run", .serialized)
+@MainActor @Suite("Thermal radiation reckoned apart from the run", .serialized, .hangLimit)
 struct ThermalSessionTests {
     private var scene: FragmentScene {
         var scenario = Scenario(
@@ -79,9 +79,7 @@ struct ThermalSessionTests {
         #expect(ThermalExposure.receivers(scene: scene, spec: spec) == local.receivers)
         for frame in frames { there.send(.fireball(frame)) }
         // The receivers come back after each frame, the same as here.
-        let deadline = ContinuousClock.now + .seconds(30)
         while (there.thermalLive?.frames ?? 0) < frames.count {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(5))
         }
         #expect(there.thermalLive == here.thermalLive)

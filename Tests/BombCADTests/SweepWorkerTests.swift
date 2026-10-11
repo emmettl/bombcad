@@ -5,7 +5,7 @@ import Testing
 
 @testable import BombCAD
 
-@Suite("Sweep scheduling")
+@Suite("Sweep scheduling", .hangLimit)
 struct SweepScheduleTests {
     @Test("With no workers this Mac takes every case, largest first")
     func noWorkers() {
@@ -281,7 +281,7 @@ struct SweepScheduleTests {
     }
 }
 
-@Suite("Sweep worker messages")
+@Suite("Sweep worker messages", .hangLimit)
 struct SweepWorkerFrameTests {
     @Test("Messages survive framing, split across reads")
     func frames() async throws {
@@ -358,7 +358,7 @@ private func droppingWorker() -> SweepWorkerClient {
     ) { try? toWorker.fileHandleForWriting.close() }
 }
 
-@MainActor @Suite("Sweeps shared with workers", .serialized)
+@MainActor @Suite("Sweeps shared with workers", .serialized, .hangLimit)
 struct SweepWorkerTests {
     private func document() -> ProjectDocument {
         var scene = Scenario(
@@ -378,9 +378,7 @@ struct SweepWorkerTests {
         model.sweep.remoteWorkers = workers
         model.sweep.remoteRatio = ratio
         try model.sweep.start(.init(prefix: "Mass", parameter: .chargeMass([0.01, 0.02, 0.03])))
-        let deadline = ContinuousClock.now + .seconds(120)
         while model.sweep.isActive || !model.experimentIsReady {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(5))
         }
     }
@@ -493,14 +491,12 @@ struct SweepWorkerTests {
         model.sweep.remoteRatio = 1
         try model.sweep.start(
             .init(prefix: "Cancel", parameter: .chargeMass([0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08])))
-        let deadline = ContinuousClock.now + .seconds(60)
         while !(model.sweep.message.contains("on worker A") && model.sweep.message.contains("on worker B")) {
-            try #require(ContinuousClock.now < deadline && model.sweep.isActive)
+            try #require(model.sweep.isActive)
             try await Task.sleep(for: .milliseconds(1))
         }
         model.sweep.cancel()
         while model.sweep.isActive || !model.experimentIsReady {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(5))
         }
         #expect(model.sweep.message.contains("cancelled"))
