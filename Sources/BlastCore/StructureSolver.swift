@@ -1540,6 +1540,18 @@ public final class StructureSolver {
         _ encoder: MTLComputeCommandEncoder, count: Int, fluid: FluidBinding?, interface: InterfaceBuffers?,
         beforeNodes: ((Int, StructureUniforms) -> Void)?, afterNodes: ((Int) -> Void)?
     ) {
+        encodeSubsteps(
+            encoder, substeps: 0..<count, prelude: true, fluid: fluid, interface: interface,
+            beforeNodes: beforeNodes, afterNodes: afterNodes)
+    }
+
+    /// Encodes the substeps in `substeps`, with the once-per-batch work first if `prelude`, so
+    /// that several bodies can be encoded a substep at a time, side by side.
+    func encodeSubsteps(
+        _ encoder: MTLComputeCommandEncoder, substeps: Range<Int>, prelude: Bool, fluid: FluidBinding?,
+        interface: InterfaceBuffers?, beforeNodes: ((Int, StructureUniforms) -> Void)?,
+        afterNodes: ((Int) -> Void)?
+    ) {
         var uniforms = makeUniforms(fluid: fluid)
         uniforms.interfaceLinks = UInt32(interface?.count ?? 0)
         var parameters = zip(materials, jointed).map { material, jointed in
@@ -1564,9 +1576,9 @@ public final class StructureSolver {
 
         // Loose debris adds up its frontal area in each air cell before the substeps, for the
         // implicit form of its drag. There is none until something has failed.
-        if let fluid, !fluid.debrisAreasPrepared { encodeDebrisAreas(encoder, fluid: fluid) }
+        if prelude, let fluid, !fluid.debrisAreasPrepared { encodeDebrisAreas(encoder, fluid: fluid) }
 
-        for substep in 0..<count {
+        for substep in substeps {
             uniforms.substep = UInt32(substep)
             uniforms.loadTime = Float(time + Double(substep) * Double(criticalTimeStep))
             encoder.setComputePipelineState(tracesWork ? tracingPipeline ?? elementPipeline : elementPipeline)

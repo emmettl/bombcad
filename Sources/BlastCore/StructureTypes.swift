@@ -1101,7 +1101,9 @@ public enum ContactMode: UInt32, Sendable {
 enum ShaderLibrary {
     static func make(device: MTLDevice) throws -> MTLLibrary {
         let files = [
-            "Solver", "Refine", "Structure", "Rubble", "Shell", "Footing", "Extract", "Radiation", "Gravity",
+            "Solver", "Refine", "Structure", "Rubble", "Shell", "BodyContact", "Footing", "Extract",
+            "Radiation",
+            "Gravity",
             "Deflagration", "Mixing",
         ]
         let source = try files.map { name in

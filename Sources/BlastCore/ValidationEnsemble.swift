@@ -206,7 +206,10 @@ public enum ValidationEnsemble {
             ],
             outputs: [
                 EnsembleOutput(
-                    key: "peak", name: "peak deflection", unit: "mm", measured: 108, measuredVariation: nil)
+                    key: "peak", name: "peak deflection", unit: "mm", measured: 109,
+                    // The repeat (the contest's slab 4) peaked at 113 mm: range 4 mm on a mean of 111,
+                    // over d2 = 1.128 for two.
+                    measuredVariation: 0.032)
             ], estimatedSeconds: 27),
         EnsembleCase(
             id: "janney", title: "Janney's beam bent to failure, 12 elements through",

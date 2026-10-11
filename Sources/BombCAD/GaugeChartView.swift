@@ -173,6 +173,23 @@ private struct StructureReadout: View {
             row("Elements failed", String(format: "%.1f%%", summary.erodedFraction * 100))
             row("Worst damage", String(format: "%.0f%%", min(summary.maxDamage, 1) * 100))
         }
+        // Several structures: each its own deflection now and largest so far.
+        let structures = model.settings.scenario.structuralObjects
+        if structures.count > 1 {
+            ForEach(structures, id: \.id) { object in
+                let history = model.bodyHistories[object.id] ?? []
+                row(
+                    object.name,
+                    String(
+                        format: "%.0f mm, largest %.0f mm", history.last?.deflection ?? 0,
+                        history.map(\.deflection).max() ?? 0))
+            }
+            if let from = model.structuresInContactFrom {
+                Text(String(format: "In contact with each other from %.1f ms.", from * 1000))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
         Spacer(minLength: 0)
         Text("Deflection is of the part still attached; debris is not counted.")
             .font(.caption2)
@@ -230,14 +247,40 @@ private struct StructureChart: View {
 
     var body: some View {
         Chart {
-            LinePlot(model.structureHistory, x: .value("Time", \.time), y: .value("Deflection", \.deflection))
+            if model.settings.scenario.structuralObjects.count > 1 {
+                // A line for each structure.
+                LinePlot(
+                    points, x: .value("Time", \.time), y: .value("Deflection", \.deflection),
+                    series: .value("Structure", \.name)
+                )
+                .foregroundStyle(by: .value("Structure", \.name))
+                .lineStyle(StrokeStyle(lineWidth: 1.5))
+            } else {
+                LinePlot(
+                    model.structureHistory, x: .value("Time", \.time), y: .value("Deflection", \.deflection)
+                )
                 .foregroundStyle(.orange)
                 .lineStyle(StrokeStyle(lineWidth: 1.5))
+            }
         }
         .chartXScale(domain: 0...(model.duration * 1000))
         .chartXAxisLabel("Time since detonation (ms)")
         .chartYAxisLabel("Largest deflection of intact structure (mm)")
         .chartOverlay { proxy in NowLine.overlay(model: model, proxy: proxy) }
+    }
+
+    private struct Point {
+        var name: String
+        var time: Double
+        var deflection: Double
+    }
+
+    private var points: [Point] {
+        model.settings.scenario.structuralObjects.flatMap { object in
+            (model.bodyHistories[object.id] ?? []).map {
+                Point(name: object.name, time: $0.time, deflection: $0.deflection)
+            }
+        }
     }
 }
 

@@ -17,6 +17,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     case glassFacade
     case carPark
     case populatedCarPark
+    case buildingsAcrossStreet
     case underpass
     case blockHouse
     case blockWall
@@ -44,6 +45,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .glassFacade: "Glass façade"
         case .carPark: "Car park"
         case .populatedCarPark: "Car park with parked cars (freestanding)"
+        case .buildingsAcrossStreet: "Three buildings across a street"
         case .underpass: "Underpass"
         case .blockHouse: "Block-built house"
         case .blockWall: "Blockwork wall"
@@ -61,11 +63,16 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     public var scenario: Scenario {
         var result = authoredScenario
         // Presets are reproducible inputs, including those assembled by editing other presets.
-        let body = result.structure
+        let bodies = result.structuralObjects
         result.objects = result.boxes.enumerated().map {
             SceneObject.legacyBlock($0.element, index: $0.offset)
         }
-        if let body { result.objects.append(.legacyStructure(body)) }
+        for (index, body) in bodies.enumerated() {
+            guard let model = body.structure else { continue }
+            var object = SceneObject.legacyStructure(model, index: index)
+            if bodies.count > 1 { object.name = body.name }
+            result.objects.append(object)
+        }
         return result
     }
 
@@ -429,6 +436,43 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .internalExplosion:
             // The reinforced concrete chamber of Shang et al. (2026), half of it: see ChamberTest.
             return ChamberTest.scenario()
+
+        case .buildingsAcrossStreet:
+            // Three single-storey reinforced concrete buildings, 8 m square and 4 m high, with
+            // 250 mm walls and roof, each its own structure: one either side of a 10 m street with
+            // 50 kg in it, 4 m from the near one's front, and a third behind the far one, in its
+            // shelter. Shells and beams of 0.5 m; each base clamped.
+            func building(_ x: Float, _ y: Float) -> StructureModel {
+                let walls: [(box: Box, axis: Int)] = [
+                    (Box(x: x...(x + 0.25), y: y...(y + 8), height: 4), 0),
+                    (Box(x: (x + 7.75)...(x + 8), y: y...(y + 8), height: 4), 0),
+                    (Box(x: x...(x + 8), y: y...(y + 0.25), height: 4), 1),
+                    (Box(x: x...(x + 8), y: (y + 7.75)...(y + 8), height: 4), 1),
+                    (Box(min: SIMD3(x, y, 3.75), max: SIMD3(x + 8, y + 8, 4)), 2),
+                ]
+                var model = StructureModel(solids: walls.map(\.box), elementSize: 0.5)
+                model.elementKind = .shell
+                for wall in walls {
+                    model.addMat(
+                        to: wall.box, thicknessAxis: wall.axis, areaPerMetre: Self.barArea,
+                        depth: Self.barDepth)
+                }
+                return model
+            }
+            var scenario = Scenario(
+                name: title, domainSize: SIMD3(32, 52, 12), boxes: [],
+                charge: Charge(mass: 50, position: SIMD3(16, 18, 0.5)),
+                gauges: [
+                    Gauge("Near front", at: SIMD3(16, 14.1, 1.5)),
+                    Gauge("Far front", at: SIMD3(16, 23.9, 1.5)),
+                    Gauge("Sheltered front", at: SIMD3(16, 37.9, 1.5)),
+                    Gauge("Down the street", at: SIMD3(28, 19, 1.5)),
+                ],
+                structure: building(12, 6))
+            _ = try? scenario.addStructureObject(building(12, 24), name: "Far building")
+            _ = try? scenario.addStructureObject(building(12, 38), name: "Sheltered building")
+            scenario.objects[scenario.objects.firstIndex { $0.structure != nil }!].name = "Near building"
+            return scenario
 
         case .populatedCarPark:
             // The car park held rigid, with rows of freestanding cars: see PopulatedScene.

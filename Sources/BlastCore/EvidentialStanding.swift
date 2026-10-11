@@ -558,7 +558,7 @@ public enum StandingTable {
         case .shellElements:
             return Entry(
                 title: "Shell elements", affects: structure, limit: nil,
-                note: "On the slab test shells peaked at 135 mm, 125% of that measured, against 105–115% "
+                note: "On the slab test shells peaked at 135 mm, 124% of that measured, against 104–114% "
                     + "for solid elements.",
                 document: "validation.md#structural-response-against-a-real-test")
         case .shellSectionShear:
@@ -820,6 +820,8 @@ public enum StandingTable {
         // The air solver.
         "SolverConfiguration.bodyCouplingLayout": .numerical,
         "SolverConfiguration.bodyCouplingTileCapacity": .numerical,
+        // Off, a run stops where independent bodies come close; what it gives up to there is the same.
+        "SolverConfiguration.interBodyContact": .numerical,
         "SolverConfiguration.gamma": .input,
         "SolverConfiguration.cfl": .numerical,
         "SolverConfiguration.ambientPressure": .input,
@@ -1513,9 +1515,11 @@ struct StandingScene {
             evidence += [
                 StandingEvidence(
                     "A reinforced slab under a blast",
-                    "Reads high (safe side): 113–124 mm against 108 mm measured (105–115%) on 4 to 32 solid "
-                        + "elements through, rising with the mesh and not converged, a strip of it running away on "
-                        + "32; shells 135 mm (125%); a 5% change in its hand-read load moves it 13–14%",
+                    "Either way by load. Reads high under the test's load: 113–124 mm against 109 mm measured, and 113 "
+                        + "in its repeat (104–114% of the first), on 4 to 32 solid elements through, rising with the "
+                        + "mesh and not converged, a strip of it running away on 32; shells 135 mm (124%); a 5% "
+                        + "change in its hand-read load moves it 13–14%, a source's 68 ksi bar yield 9%. Under the "
+                        + "contest's lower shot (a scaled record) 79–88% of the peak: too stiff, the unsafe side",
                     "validation.md#structural-response-against-a-real-test"),
                 StandingEvidence(
                     "A reinforced beam bent to failure",
@@ -1541,8 +1545,8 @@ struct StandingScene {
             ]
             parts.append(
                 "reinforced concrete errs mostly on the unsafe side, towards too little damage: too strong in "
-                    + "shear, too stiff in a full-scale chamber and close in. In bending it reads 5–15% high on "
-                    + "one slab, not converged, and its beams struck on 16 elements come within 12–24%; it "
+                    + "shear, too stiff in a full-scale chamber and close in. In bending one slab reads either way, "
+                    + "4–14% high under the contest's load and 12–21% low under its lower shot, not converged, and its beams struck on 16 elements come within 12–24%; it "
                     + "springs back too far")
         }
         if classes.contains(.plainConcrete) {
@@ -1611,7 +1615,9 @@ struct StandingScene {
         }
         if structures.count > 1 {
             resolution.append(
-                "Independent bodies have no contact with each other; overlapping ones stop the run.")
+                "Independent bodies meet through contact between their nodes, the spring and damper of contact "
+                    + "within a body, checked for momentum and energy but never against a test; they must start "
+                    + "apart and never bond.")
         }
         // Options a saved structure set that have since been retired, and what applies instead.
         for note in Set(structures.flatMap(\.retiredOptions)).sorted() { resolution.append(note) }
@@ -1856,7 +1862,7 @@ struct StandingScene {
             effects.append(
                 "Collapse has never been compared with anything, and debris only once, off slabs under contact "
                     + "charges.")
-            if structures.count > 1 { effects.append("Contact between independent structures.") }
+            if structures.count > 1 { effects.append("Bonds or connections between independent structures.") }
         }
         if inputs.thermal == nil {
             effects.append("Radiant heat from the fireball (not reckoned in this scene).")
