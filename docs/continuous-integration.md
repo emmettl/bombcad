@@ -10,8 +10,20 @@ reached as `scrimply-ci-tb`. The runner is `mac-mini-bombcad`, installed in
 
 | Workflow | When | What |
 |---|---|---|
-| [Check](../.github/workflows/check.yml) | Every push to `main`, or by hand | Lint, release/nightly script tests, build, then application and core tests |
-| [Nightly](../.github/workflows/nightly.yml) | 19:00 UTC by GitHub's schedule and 19:20 UTC from the mini, whichever comes first; or by hand | `Scripts/nightly.py`: the benchmarks and the validation suite, compared with earlier nights |
+| [Check](../.github/workflows/check.yml), light | Every push to `main` | `make check-light`: lint, script tests, build, the core tests and the release-build smoke runs, about ten minutes |
+| [Check](../.github/workflows/check.yml), full | By hand (suite `all`) | Lint, script tests, build, application and core tests, the packaged app's signature |
+| [Nightly](../.github/workflows/nightly.yml) | 19:00 UTC by GitHub's schedule and 19:20 UTC from the mini, whichever comes first; or by hand | The full check on `main`'s head, with what failed and the suspect commits; then `Scripts/nightly.py`: the benchmarks and the validation suite, compared with earlier nights |
+
+**The gate is the full check before pushing.** Every session runs `make check` (or
+`make check-anywhere`, see [below](#checks-on-the-mini-instead-of-this-mac)) before it pushes, so
+CI repeating it after every push was mostly duplicate work that kept the mini busy an hour each
+time. Since 11 October a push runs only the light check, a backstop for what a pre-push check
+cannot catch (a merge of two green branches, a file left out of a commit), and the nightly runs
+the whole suite on `main`'s head. When the nightly's full check fails, its summary lists the
+failing tests and errors, and the commits since the last green full check, newest first, as
+the suspects (`Scripts/nightly-suspects.py`; the runner keeps that commit in
+`~/bombcad-nightly/last-green-full`). A full run by hand is still there for a change that wants
+it at once.
 
 A Check run is never cancelled by a newer push: the newest push waits behind it and older waiting
 ones are dropped, so at most one waits. A run started by hand has a queue of its own, by its suite
@@ -23,7 +35,7 @@ to miss Scrimply's, which takes the mini from about 01:30 to 04:30 UTC. A time f
 may be another job on the machine: check the Actions tabs of those repositories before looking
 for a regression.
 
-Check exposes lint, script tests, build and `make test` as separate steps. The test step has a
+The full Check exposes lint, script tests, build and `make test` as separate steps. The test step has a
 45-minute limit inside the job's 60-minute limit so a stalled test process fails before the
 job runs out of time to retain its diagnostics. Its combined output is streamed to Actions
 and uploaded as `check-<run ID>-<attempt>/tests.log`, retained for 14 days even if the test step
@@ -113,10 +125,10 @@ free for a measurement.
 
 Measured on 11 October: `make check` on the mini took 46 minutes from a cold build cache, every
 test passing (278 core and 868 application tests), after waiting its turn behind a Check run; on
-the Studio it took about 30 minutes at load averages near 20. **The catch:** BombCAD's own Check
-keeps the mini's runner busy much of the day, 45 to 70 minutes for each push to `main`, and pushes
-come about hourly, so a check sent there often waits for a gap. `check-anywhere` does not wait,
-and so runs here then.
+the Studio it took about 30 minutes at load averages near 20. Until then BombCAD's own Check kept
+the mini's runner busy much of the day, 45 to 70 minutes for each push to `main`, with pushes about
+hourly, so a check sent there mostly waited; that is why a push now runs only the light check,
+LIGHT on the mini. `check-anywhere` never waits: when the mini is taken it runs here.
 
 ### The nightly comparison
 

@@ -324,16 +324,29 @@ def check_remote(host, settings, target, wait):
                      "--target %s --wait %d" % (ROOT, worktree, quote(json.dumps(settings)), worktree, target,
                                                 int(wait))]
     process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE)
-    pending = b""
-    while True:
-        chunk = process.stdout.read1(65536) if hasattr(process.stdout, "read1") else process.stdout.read(1)
-        if not chunk:
-            break
-        text = (pending + chunk).replace(b"\r\n", b"\n")
-        pending = b"\r" if text.endswith(b"\r") else b""
-        sys.stdout.buffer.write(text[:-1] if pending else text)
-        sys.stdout.buffer.flush()
-    return process.wait()
+
+    # Stopped here, the connection goes too, which hangs up the other end; left alone, SSH would
+    # outlive this process and keep the other end waiting or running.
+    def stop(signum, frame):
+        process.terminate()
+        sys.exit(128 + signum)
+
+    for signum in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
+        signal.signal(signum, stop)
+    try:
+        pending = b""
+        while True:
+            chunk = process.stdout.read1(65536) if hasattr(process.stdout, "read1") else process.stdout.read(1)
+            if not chunk:
+                break
+            text = (pending + chunk).replace(b"\r\n", b"\n")
+            pending = b"\r" if text.endswith(b"\r") else b""
+            sys.stdout.buffer.write(text[:-1] if pending else text)
+            sys.stdout.buffer.flush()
+        return process.wait()
+    finally:
+        if process.poll() is None:
+            process.terminate()
 
 
 def main(arguments):
