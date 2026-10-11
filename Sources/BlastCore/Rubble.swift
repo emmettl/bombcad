@@ -37,6 +37,9 @@ final class RubbleSystem {
     let heads: MTLBuffer
     let slots: MTLBuffer
     let forces: MTLBuffer
+    /// Four words (any particle made; one made this substep; two spare), then a bit per slot in
+    /// use, so that the kernels over all the slots skip empty ones cheaply.
+    let state: MTLBuffer
     let count: Int
     let convert: MTLComputePipelineState
     let nodes: MTLComputePipelineState
@@ -64,6 +67,7 @@ final class RubbleSystem {
         heads = try buffer(gridCells * 4, "rubble contact headers")
         slots = try buffer(gridCells * 32, "rubble contact slots")
         forces = try buffer(count * 16, "rubble contact forces")
+        state = try buffer((4 + (count + 31) / 32) * 4, "rubble state")
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
             try ShaderLibrary.pipeline(name, in: library)
         }
@@ -80,6 +84,7 @@ final class RubbleSystem {
     func reset() {
         memset(particles.contents(), 0, particles.length)
         memset(forces.contents(), 0, forces.length)
+        memset(state.contents(), 0, state.length)
         memset(heads.contents(), 0xFF, heads.length)
     }
 
@@ -139,11 +144,12 @@ extension StructureSolver {
 }
 
 extension StructureSolver {
-    /// Marks the element at lattice cell (i, j, k) as failing (3 in Structure.metal), as the
-    /// element pass marks one, so that the next substep removes it, and with rubble turns it into
-    /// a particle.
-    public func failElement(_ i: Int, _ j: Int, _ k: Int) {
-        flagBuffer.contents().storeBytes(of: UInt8(3), toByteOffset: elementIndex(i, j, k), as: UInt8.self)
+    /// Marks the element at lattice cell (i, j, k) as failing (3 in Structure.metal), or as losing
+    /// its concrete to leave its bars (5), as the element pass marks one, so that the next substep
+    /// removes it, and with rubble turns it, or its concrete, into a particle.
+    public func failElement(_ i: Int, _ j: Int, _ k: Int, leavingBars: Bool = false) {
+        flagBuffer.contents().storeBytes(
+            of: UInt8(leavingBars ? 5 : 3), toByteOffset: elementIndex(i, j, k), as: UInt8.self)
         failureGateBuffer.contents().storeBytes(of: 1, as: UInt32.self)
     }
 }

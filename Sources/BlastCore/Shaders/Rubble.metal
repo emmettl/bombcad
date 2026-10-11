@@ -9,6 +9,16 @@
 // Each element the body started with has a slot, used once it has failed. Contact uses a table of
 // its own, built as the nodes' is (`contactClear`, `contactHash`), and the nodes' contact kernel
 // reads it, so that a particle and a node push on each other equally and oppositely.
+//
+// Most slots are never used, so a word of state says which are, a bit each (`rubbleState`): the
+// kernels over the slots read their bit before their particle, and a slot not in use costs them a
+// bit, not a particle. The state's first word is set once any particle has been made, its second
+// while this substep has made one (cleared as the substep's particles move).
+
+// Whether slot `index` holds a particle, from its bit in the rubble's state.
+static inline bool rubbleInUse(const device uint *state, uint index) {
+    return ((state[rubbleBits + index / 32u] >> (index % 32u)) & 1u) != 0u;
+}
 
 // Each substep, after the element pass: an element failing in it (or losing its concrete to
 // leave its bars) becomes a particle. Its eight nodes are read before the node pass moves them.
@@ -22,6 +32,7 @@ kernel void rubbleConvert(device RubbleParticle *particles [[buffer(0)]],
                           constant StructureUniforms &u [[buffer(7)]],
                           const device uint *failureGate [[buffer(8)]],
                           const device uint *nodeList [[buffer(9)]],
+                          device atomic_uint *state [[buffer(10)]],
                           uint compact [[thread_position_in_grid]]) {
     bool active;
     structureStep(u, control, active);
@@ -72,6 +83,9 @@ kernel void rubbleConvert(device RubbleParticle *particles [[buffer(0)]],
     p.alive = 1;
     p.spare = 0.0f;
     particles[compact] = p;
+    atomic_fetch_or_explicit(&state[rubbleBits + compact / 32u], 1u << (compact % 32u), memory_order_relaxed);
+    atomic_store_explicit(&state[0], 1u, memory_order_relaxed);
+    atomic_store_explicit(&state[1], 1u, memory_order_relaxed);
 }
 
 // ...then each node gives up an eighth of each particle made from an element around it. A node
@@ -84,10 +98,11 @@ kernel void rubbleNodes(device StructureNode *nodes [[buffer(0)]],
                         const device StepControl &control [[buffer(5)]],
                         constant StructureUniforms &u [[buffer(6)]],
                         const device uint *failureGate [[buffer(7)]],
+                        const device uint *state [[buffer(8)]],
                         uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     structureStep(u, control, active);
-    if (!active || failureGate[0] == 0) {
+    if (!active || state[1] == 0) {
         return;
     }
     uint3 tid = latticeNode(nodeList[threadIndex], u);
@@ -119,10 +134,11 @@ kernel void rubbleClear(const device RubbleParticle *particles [[buffer(0)]],
                         const device uint *failureGate [[buffer(3)]],
                         const device StepControl &control [[buffer(4)]],
                         constant StructureUniforms &u [[buffer(5)]],
+                        const device uint *state [[buffer(6)]],
                         uint index [[thread_position_in_grid]]) {
     bool active;
     structureStep(u, control, active);
-    if (!active || !contactEnabled(u, failureGate) || particles[index].alive == 0) {
+    if (!active || !rubbleInUse(state, index) || !contactEnabled(u, failureGate)) {
         return;
     }
     uint target = contactBucket(contactCell(float3(particles[index].position), u), u);
@@ -138,10 +154,11 @@ kernel void rubbleHash(const device RubbleParticle *particles [[buffer(0)]],
                        const device uint *failureGate [[buffer(3)]],
                        const device StepControl &control [[buffer(4)]],
                        constant StructureUniforms &u [[buffer(5)]],
+                       const device uint *state [[buffer(6)]],
                        uint index [[thread_position_in_grid]]) {
     bool active;
     structureStep(u, control, active);
-    if (!active || !contactEnabled(u, failureGate) || particles[index].alive == 0) {
+    if (!active || !rubbleInUse(state, index) || !contactEnabled(u, failureGate)) {
         return;
     }
     uint target = contactBucket(contactCell(float3(particles[index].position), u), u);
@@ -165,10 +182,11 @@ kernel void rubbleForces(const device RubbleParticle *particles [[buffer(0)]],
                          const device uint *nodeList [[buffer(8)]],
                          const device uint *nodeHeads [[buffer(9)]],
                          const device uint *nodeSlots [[buffer(10)]],
+                         const device uint *state [[buffer(11)]],
                          uint index [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
-    if (!active || !contactEnabled(u, failureGate)) {
+    if (!active || !rubbleInUse(state, index) || !contactEnabled(u, failureGate)) {
         return;
     }
     RubbleParticle p = particles[index];
@@ -244,10 +262,17 @@ kernel void rubbleMove(device RubbleParticle *particles [[buffer(0)]],
                        device atomic_uint *exchange [[buffer(7)]],
                        const device int *debrisArea [[buffer(8)]],
                        device atomic_uint *couplingMap [[buffer(9)]],
+                       device uint *state [[buffer(10)]],
                        uint index [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
-    if (!active || failureGate[0] == 0) {
+    if (!active) {
+        return;
+    }
+    if (index == 0) {
+        state[1] = 0;  // read by this substep's node pass, which has run
+    }
+    if (!rubbleInUse(state, index)) {
         return;
     }
     RubbleParticle p = particles[index];
@@ -287,8 +312,9 @@ kernel void rubbleAreas(const device RubbleParticle *particles [[buffer(0)]],
                         device atomic_int *area [[buffer(4)]],
                         const device uint *failureGate [[buffer(5)]],
                         device atomic_uint *couplingMap [[buffer(6)]],
+                        const device uint *state [[buffer(7)]],
                         uint index [[thread_position_in_grid]]) {
-    if (control.dt <= 0.0f || failureGate[0] == 0 || particles[index].alive == 0) {
+    if (control.dt <= 0.0f || !rubbleInUse(state, index)) {
         return;
     }
     RubbleParticle p = particles[index];

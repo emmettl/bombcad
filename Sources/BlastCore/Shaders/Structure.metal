@@ -1995,9 +1995,18 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     // fully plastic moment (strength * h^2 / 8 in these units) just as the stress is capped.
     float limit = 0.125f * capacity * u.h * u.h;
     bool atCap[4] = {false, false, false, false};
+    // With rubble, a bare element's concrete has left its nodes as particles, and they hold the
+    // bars' mass alone: its hourglass control stiffens them only in proportion, or it would ring
+    // far faster than the step allows.
+    float hourglassStiffness = m.hourglassStiffness;
+    if (rubbleParticles && bare) {
+        float3 ratio = float3(steel[compact].ratio);
+        float share = (ratio.x + ratio.y + ratio.z + float(steel[compact].inclined)) * 7850.0f / m.density;
+        hourglassStiffness *= clamp(share, 1e-3f, 1.0f);
+    }
     for (uint mode = 0; mode < 4; ++mode) {
         float3 q = state.hourglass[mode];
-        q += dt * (m.hourglassStiffness * (hourglassSecant ? hourglassScale * rate[mode] : rate[mode]) + spin * q);
+        q += dt * (hourglassStiffness * (hourglassSecant ? hourglassScale * rate[mode] : rate[mode]) + spin * q);
         float magnitude = length(q);
         if (magnitude > limit) {
             q *= limit / magnitude;
@@ -2335,6 +2344,10 @@ kernel void contactHash(const device uint *nodeList [[buffer(0)]],
 }
 
 // Rubble's particles (see Rubble.metal) and their contact with each other and with nodes.
+// The rubble's state starts with four words (any particle made; one made this substep; two spare)
+// before the bits marking the slots in use.
+constant uint rubbleBits = 4;
+
 struct RubbleParticle {
     packed_float3 position;  // world position (m)
     float mass;              // kg; zero for a slot not in use
@@ -2428,6 +2441,7 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                           const device RubbleParticle *particles [[buffer(9)]],
                           const device uint *rubbleHeads [[buffer(10)]],
                           const device uint *rubbleSlots [[buffer(11)]],
+                          const device uint *rubbleState [[buffer(12)]],
                           uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -2514,7 +2528,7 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
             }
         }
     }
-    if (rubbleParticles) {
+    if (rubbleParticles && rubbleState[0] != 0) {
         force += rubbleOnNode(position, float3(node.velocity), node.mass, particles, rubbleHeads, rubbleSlots, u);
     }
     float largest = node.mass * contactKick / max(dt, 1e-12f);

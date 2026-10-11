@@ -240,6 +240,9 @@ public final class StructureSolver {
         if discrete { constants.setConstantValue(&discrete, type: .bool, index: 10) }
         var nonlocal = model.crackAveraging != nil
         if nonlocal { constants.setConstantValue(&nonlocal, type: .bool, index: 11) }
+        // Without rubble the constant stays undefined, so the kernels are as before.
+        var rubble = model.rubbleParticles
+        if rubble { constants.setConstantValue(&rubble, type: .bool, index: 12) }
         elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
         traceElementPipeline = {
             let tracing = MTLFunctionConstantValues()
@@ -255,6 +258,8 @@ public final class StructureSolver {
             if discrete { tracing.setConstantValue(&discrete, type: .bool, index: 10) }
             var nonlocal = nonlocal
             if nonlocal { tracing.setConstantValue(&nonlocal, type: .bool, index: 11) }
+            var rubble = rubble
+            if rubble { tracing.setConstantValue(&rubble, type: .bool, index: 12) }
             return try? ShaderLibrary.pipeline("structureElements", in: library, constants: tracing)
         }
         // Keep the general connection law out of kernels for ordinary clamped/free bodies.
@@ -262,8 +267,6 @@ public final class StructureSolver {
         var connected = model.connectionStiffness != nil
         nodeConstants.setConstantValue(&connected, type: .bool, index: 1)
         if discrete { nodeConstants.setConstantValue(&discrete, type: .bool, index: 10) }
-        // Without rubble the constant stays undefined, so the node and contact kernels are as before.
-        var rubble = model.rubbleParticles
         if rubble { nodeConstants.setConstantValue(&rubble, type: .bool, index: 12) }
         nodePipeline = try ShaderLibrary.pipeline("structureNodes", in: library, constants: nodeConstants)
         var turned = true
@@ -1508,6 +1511,7 @@ public final class StructureSolver {
                 encoder.setBuffer(area, offset: 0, index: 4)
                 encoder.setBuffer(failureGateBuffer, offset: 0, index: 5)
                 encoder.setBuffer(fluid.couplingMap ?? placeholderBuffer, offset: 0, index: 6)
+                encoder.setBuffer(rubble.state, offset: 0, index: 7)
                 encoder.dispatchThreads(
                     MTLSize(width: rubble.count, height: 1, depth: 1), threadsPerThreadgroup: group)
             }
@@ -1608,6 +1612,7 @@ public final class StructureSolver {
                 encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 7)
                 encoder.setBuffer(failureGateBuffer, offset: 0, index: 8)
                 encoder.setBuffer(nodeListBuffer, offset: 0, index: 9)
+                encoder.setBuffer(rubble.state, offset: 0, index: 10)
                 encoder.dispatchThreads(
                     MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
                 encoder.setComputePipelineState(rubble.nodes)
@@ -1619,6 +1624,7 @@ public final class StructureSolver {
                 encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 5)
                 encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 6)
                 encoder.setBuffer(failureGateBuffer, offset: 0, index: 7)
+                encoder.setBuffer(rubble.state, offset: 0, index: 8)
                 encoder.dispatchThreads(
                     MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
             }
@@ -1640,6 +1646,7 @@ public final class StructureSolver {
                             encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 4)
                             encoder.setBytes(
                                 &uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 5)
+                            encoder.setBuffer(rubble.state, offset: 0, index: 6)
                             encoder.dispatchThreads(
                                 MTLSize(width: rubble.count, height: 1, depth: 1),
                                 threadsPerThreadgroup: group)
@@ -1658,6 +1665,7 @@ public final class StructureSolver {
                         encoder.setBuffer(rubbleSystem?.particles ?? placeholderBuffer, offset: 0, index: 9)
                         encoder.setBuffer(rubbleSystem?.heads ?? placeholderBuffer, offset: 0, index: 10)
                         encoder.setBuffer(rubbleSystem?.slots ?? placeholderBuffer, offset: 0, index: 11)
+                        encoder.setBuffer(rubbleSystem?.state ?? placeholderBuffer, offset: 0, index: 12)
                     } else {
                         encoder.setBuffer(contactSlotBuffer, offset: 0, index: 6)
                     }
@@ -1676,6 +1684,7 @@ public final class StructureSolver {
                     encoder.setBuffer(nodeListBuffer, offset: 0, index: 8)
                     encoder.setBuffer(contactHeadBuffer, offset: 0, index: 9)
                     encoder.setBuffer(contactSlotBuffer, offset: 0, index: 10)
+                    encoder.setBuffer(rubble.state, offset: 0, index: 11)
                     encoder.dispatchThreads(
                         MTLSize(width: rubble.count, height: 1, depth: 1), threadsPerThreadgroup: group)
                 }
@@ -1791,6 +1800,7 @@ public final class StructureSolver {
                 encoder.setBuffer(fluid?.exchange ?? placeholderBuffer, offset: 0, index: 7)
                 encoder.setBuffer(fluid?.debrisArea ?? placeholderBuffer, offset: 0, index: 8)
                 encoder.setBuffer(fluid?.couplingMap ?? placeholderBuffer, offset: 0, index: 9)
+                encoder.setBuffer(rubble.state, offset: 0, index: 10)
                 encoder.dispatchThreads(
                     MTLSize(width: rubble.count, height: 1, depth: 1), threadsPerThreadgroup: group)
             }

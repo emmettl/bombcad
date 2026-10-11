@@ -111,6 +111,49 @@ struct RubbleParticleTests {
         #expect(looseLowest < 0.2 - 0.5 * h)
     }
 
+    @Test("Bars left bare when their concrete becomes rubble hold their nodes steadily")
+    func bareBars() throws {
+        let h: Float = 0.05
+        let beam = Box(min: SIMD3(0, 0, 1), max: SIMD3(0.6, 0.1, 1.1))
+        let steel = SteelProperties(
+            yieldStress: 500e6, ultimateStress: 600e6, ultimateStrain: 0.1, ruptureStrain: 0.15)
+        let material = StructureMaterial.concrete(name: "C30", compressiveStrength: 30e6, steel: steel)
+        var model = StructureModel(solids: [beam], material: material, elementSize: h, fixedBase: false)
+        model.addMat(to: beam, thicknessAxis: 2, areaPerMetre: 2e-4, depth: 0.025)
+        model.rubbleParticles = true
+        let solver = try StructureSolver(device: device, model: model)
+        solver.groundContact = false
+        // Held at both ends, its middle two columns' concrete gone at once, leaving their bars.
+        solver.mutateNodes { nodes in
+            for k in 0...solver.ez {
+                for j in 0...solver.ey {
+                    for i in [0, solver.ex] { nodes[solver.nodeIndex(i, j, k)].isFixed = true }
+                }
+            }
+        }
+        for i in 5...6 {
+            for j in 0..<solver.ey {
+                for k in 0..<solver.ez { solver.failElement(i, j, k, leavingBars: true) }
+            }
+        }
+        solver.advance(steps: 4000)
+        let particles = solver.rubbleParticles()
+        #expect(particles.count == 2 * solver.ey * solver.ez)
+        // The concrete's mass left; the bars' stayed.
+        let concrete = 2400 * h * h * h
+        #expect(particles.allSatisfy { $0.particle.mass <= concrete && $0.particle.mass > 0.95 * concrete })
+        #expect(particles.contains { $0.particle.mass < 0.999 * concrete })
+        var largest: Float = 0
+        for k in 0...solver.ez {
+            for j in 0...solver.ey {
+                for i in 0...solver.ex where solver.storedNode(i, j, k) != nil {
+                    largest = max(largest, simd_length(solver.node(i, j, k).velocity))
+                }
+            }
+        }
+        #expect(largest.isFinite && largest < 5)
+    }
+
     @Test("Rubble is saved with the model, and a model saved without it reads without it")
     func persistence() throws {
         var model = StructureModel(solids: [Box(min: .zero, max: SIMD3(1, 1, 1))], elementSize: 0.25)
