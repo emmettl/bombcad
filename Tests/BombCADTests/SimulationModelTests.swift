@@ -563,16 +563,15 @@ struct SimulationModelTests {
                 <= SimulationModel.fittedCellBudget)
         // The view zooms out far enough to see it whole, past SceneView's own 600 m.
         #expect(model.farthestZoom == 3 * scenario.domainSize.x)
-        for _ in 0..<200 { model.camera.zoom(by: 1.2, farthest: model.farthestZoom) }
+        #expect(model.zoomLimits == 3...model.farthestZoom)
+        for _ in 0..<200 { model.camera.zoom(by: 1.2, within: model.zoomLimits) }
         #expect(model.camera.distance == model.farthestZoom)
-        var small = OrbitCamera(target: .zero, distance: 500, azimuth: 0, elevation: 0.5)
-        small.zoom(by: 2, farthest: 200)
-        #expect(small.distance == 600, "a small scene keeps SceneView's limit")
         // Shrinking the domain past the charge is refused and changes nothing.
         model.resizeDomain(to: SIMD3(100, 100, 100))
         #expect(model.settings.scenario.domainSize == scenario.domainSize)
         model.select(.singleBuilding)
         #expect(!model.canFitOpenScene)
+        #expect(model.zoomLimits == OrbitCamera.defaultZoomLimits, "a small scene keeps SceneView's limit")
     }
 
     @Test("A gauge line runs from the charge at the Kingery-Bulmash scaled distances that fit")
