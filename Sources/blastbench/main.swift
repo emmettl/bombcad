@@ -199,6 +199,14 @@ func applyRateOptions(_ material: inout StructureMaterial) {
     }
     // `--static-steel`: the bars without their strain-rate law.
     if flag("static-steel") { material.steelRateDependent = false }
+    // `--steel-strength 0.944`: the bars' whole stress-strain curve scaled, to see what a source's
+    // different yield (68 ksi against the measured curve's 72 for the contest slab) does.
+    if let factor = option("steel-strength").flatMap({ Float($0) }), var steel = material.steel {
+        steel.yieldStress *= factor
+        steel.ultimateStress *= factor
+        steel.measuredCurve = steel.measuredCurve?.map { SIMD2($0.x, $0.y * factor) }
+        material.steel = steel
+    }
     if let exponent = option("fracture-rate").flatMap({ Float($0) }) {
         material.fractureRateExponent = exponent
     }
@@ -3166,8 +3174,12 @@ func runSlab() throws {
                 }
             ),
         ]
+        // `--load-scale 0.764`: the pressure record scaled, as for the contest's lower-impulse shot.
         let result = try SlabBenchmark.run(
-            device: device, elementsThroughThickness: layers, rate: rate, supports: supports, width: width,
+            device: device, elementsThroughThickness: layers, rate: rate,
+            loadScale: option("load-scale").flatMap { Float($0) } ?? 1, supports: supports, width: width,
+            // `--span 58`: the supports that many inches apart (52 by default).
+            span: option("span").flatMap { Float($0) }.map { $0 * 0.0254 } ?? SlabBenchmark.span,
             bondSlip: chosenBondSlip(diameter: 0.0095),
             adjust: { applyRateOptions(&$0) },
             adjustModel: {

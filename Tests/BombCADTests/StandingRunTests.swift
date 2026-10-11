@@ -131,8 +131,8 @@ struct StandingRunTests {
             StandingInputs(scenario: ScenarioPreset.blastWall.scenario, cellSize: 0.25))
         let band = try #require(standing.band(.peakDeflection))
         let shown = ShownValue(measure: .peakDeflection, value: 115, unit: "mm")
-        // 105–115%, and the inputs' 12% spread (±20% at 5–95%) added in quadrature.
-        #expect(shown.expectation(band) == "expect 83–130 mm (model reads high: too flexible; inputs ±20%)")
+        // 104–114%, and the inputs' 12% spread (±20% at 5–95%) added in quadrature.
+        #expect(shown.expectation(band) == "expect 84–130 mm (model reads high: too flexible; inputs ±20%)")
         #expect(
             ShownValue(measure: .peakOverpressure, value: 1, unit: "kPa").range(25.3...29.6) == "25–30 kPa")
         // About 40% wide with the inputs: 20% apart cannot be told apart, twice can.
