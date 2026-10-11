@@ -116,4 +116,4 @@ cells beneath ball-jointed supports, whose own compliance the model may not have
 
 | # | Test | Frozen commit | Predictions committed | Revealed | Result |
 |---|---|---|---|---|---|
-| 1 | Hrynyk 2013, plain slabs TH2, TH6, TH7 | see `Samples/Hrynyk2013/FROZEN` | | | |
+| 1 | Hrynyk 2013, plain slabs TH2, TH6, TH7 | `1c85774` (2026-10-11) | | | |
