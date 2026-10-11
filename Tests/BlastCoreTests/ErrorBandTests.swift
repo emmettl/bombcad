@@ -156,6 +156,15 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
             }
         }
         #expect(Set(ValidationTables.figures.map(\.id)).count == ValidationTables.figures.count)
+        // The ensemble's spreads: each row under its heading, holding "mean, coefficient%".
+        let spreads = try section(ValidationTables.spreadDocument)
+        for spread in ValidationTables.spreads {
+            #expect(
+                spreads.contains(normalised(spread.quote)), "\(spread.id): row not in the ensemble's table")
+            #expect(
+                spread.quote.contains(String(format: ", %.0f%% |", spread.coefficient * 100)),
+                "\(spread.id): \(spread.coefficient) is not the row's spread")
+        }
     }
 
     @Test func readingATableInterpolatesBetweenGridsAndSpansDistances() throws {
@@ -230,6 +239,7 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
         let face = try #require(standing.gauge("Face"))
         #expect(face.onSurface)
         #expect(face.peak?.quantity == "Reflected peak overpressure")
+        #expect(face.peak?.inputSpread == 0.02 && face.impulse?.inputSpread == 0.01)
         // Behind the wall, shielded: not compared.
         scenario.gauges = [Gauge("Behind", at: SIMD3(wall.max.x + 0.1, (wall.min.y + wall.max.y) / 2, 1))]
         let behind = try #require(
@@ -240,6 +250,7 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
     @Test func structuresTakeBandsByRegimeMeshAndMaterial() throws {
         let wall = SceneStanding(StandingInputs(scenario: ScenarioPreset.blastWall.scenario, cellSize: 0.25))
         let deflection = try #require(wall.band(.peakDeflection))
+        #expect(deflection.inputSpread == 0.12)
         #expect(deflection.ratio == "105–115%" && deflection.reads == "reads high: too flexible")
         let expected = deflection.expected(115)
         #expect(abs(expected.lowerBound - 100) < 1e-9 && abs(expected.upperBound - 115 / 1.05) < 1e-9)

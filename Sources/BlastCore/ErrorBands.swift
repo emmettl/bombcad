@@ -43,6 +43,9 @@ public struct ErrorBand: Codable, Hashable, Sendable {
     public var document: String
     /// Whether it was scaled to this scene's resolution between compared grids.
     public var scaled: Bool
+    /// The model's own spread from uncertain inputs in the case behind the band, as a coefficient
+    /// of variation (validation.md, "The model's spread from uncertain inputs"); nil where not run.
+    public var inputSpread: Double? = nil
 
     /// Which way the model errs.
     public var reads: String {
@@ -71,9 +74,22 @@ public struct ErrorBand: Codable, Hashable, Sendable {
         return min(a, b)...max(a, b)
     }
 
-    /// Half the band's width over its middle: differences between runs smaller than this cannot be
-    /// told apart against measurement.
+    /// Half the band's width over its middle.
     public var relativeHalfWidth: Double { (high - low) / (high + low) }
+
+    /// The band's half-width and the inputs' 5–95% half-range (1.645 coefficients of variation)
+    /// added in quadrature: the model's error and its spread from uncertain inputs are separate.
+    public var combinedHalfWidth: Double {
+        let inputs = 1.645 * (inputSpread ?? 0)
+        return (relativeHalfWidth * relativeHalfWidth + inputs * inputs).squareRoot()
+    }
+
+    /// Where the measured value would lie for a model value, with the inputs' spread as well.
+    public func expectedWithInputs(_ value: Double) -> ClosedRange<Double> {
+        guard inputSpread != nil else { return expected(value) }
+        let centre = value / ((low + high) / 2)
+        return centre * (1 - combinedHalfWidth)...centre * (1 + combinedHalfWidth)
+    }
 }
 
 /// The bands of one gauge, by its scaled distance and whether it sits on a surface.
@@ -259,6 +275,38 @@ public enum ValidationTables {
     ]
 
     public static func figure(_ id: String) -> Figure { figures.first { $0.id == id }! }
+
+    /// The model's spread from uncertain inputs in a validation case, as a coefficient of variation.
+    public struct Spread: Sendable {
+        public var id: String
+        public var coefficient: Double
+        /// The table's row, which must hold "mean, coefficient%".
+        public var quote: String
+    }
+
+    public static let spreadDocument = "validation.md#the-models-spread-from-uncertain-inputs"
+
+    public static let spreads: [Spread] = [
+        Spread(
+            id: "slab", coefficient: 0.12,
+            quote: "| Contest slab, peak (mm) | 108 | 113 | 107, 12% | 89–126 |"),
+        Spread(
+            id: "wuPeak", coefficient: 0.04,
+            quote: "| Wu S8, peak (mm) | 18.0 | 14.4 | 14.3, 4% | 13.6–15.2 |"),
+        Spread(
+            id: "closeInGauge", coefficient: 0.08,
+            quote: "| Chiquito S1–S3, gauge at 1 m (MPa) | 2.5 | 1.48 | 1.48, 8% | 1.32–1.66 |"),
+        Spread(
+            id: "wallPeak", coefficient: 0.02,
+            quote: "| Kingery–Bulmash wall, reflected peak (kPa) | 1,060 (K–B) | 691 | 697, 2% | 672–715 |"),
+        Spread(
+            id: "wallImpulse", coefficient: 0.01,
+            quote:
+                "| Kingery–Bulmash wall, reflected impulse (Pa s) | 1,690 (K–B) | 1,710 | 1,710, 1% | 1,670–1,740 |"
+        ),
+    ]
+
+    public static func spread(_ id: String) -> Double { spreads.first { $0.id == id }!.coefficient }
 }
 
 // MARK: - Reading a band from a table
@@ -510,6 +558,15 @@ extension StandingScene {
                         : "Cells coarser than any grid compared (0.5 m for 100 kg)."
                 }
             }
+            // The inputs' spread where the ensemble ran the case: a wall facing the charge, or the
+            // close-in slab's gauges.
+            let closeIn = bands.peak?.document == "validation.md#close-in"
+            if bands.peak?.quantity == "Reflected peak overpressure" {
+                bands.peak?.inputSpread = ValidationTables.spread(closeIn ? "closeInGauge" : "wallPeak")
+            }
+            if bands.impulse?.quantity == "Reflected impulse", !closeIn {
+                bands.impulse?.inputSpread = ValidationTables.spread("wallImpulse")
+            }
             return bands
         }
     }
@@ -568,11 +625,13 @@ extension StandingScene {
         high: String, validity: String, check: String
     ) -> ErrorBand {
         let figure = ValidationTables.figure(id)
+        // The cases the ensemble ran, by the figure they share.
+        let spreads = ["slabSolid": "slab", "wuSmall": "wuPeak", "wuLarge": "wuPeak"]
         return ErrorBand(
             measure: measure, quantity: quantity, low: figure.low, high: figure.high,
             lowIsUnsafe: lowIsUnsafe,
             meaningLow: low, meaningHigh: high, validity: validity, check: check, document: figure.document,
-            scaled: false)
+            scaled: false, inputSpread: spreads[id].map(ValidationTables.spread))
     }
 
     /// Several bands spanned as one: the lowest low and the highest high.
