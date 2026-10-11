@@ -411,7 +411,8 @@ extension BlastSolver {
         }
         setGauges(cells: gaugeCells, points: scenario.gauges.map(\.position))
         restart()
-        if interObjectContactDetected { throw SceneObjectError.interObjectContact }
+        // Bodies must start apart: contact between them is no reason to bond them.
+        if bodyEnvelopesOverlap { throw SceneObjectError.interObjectContact }
         if couplingCapacityExceeded {
             throw BlastError.allocationFailed("local coupling tiles for the current geometry")
         }
