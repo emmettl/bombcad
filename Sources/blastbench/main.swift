@@ -218,6 +218,9 @@ func applyRateOptions(_ material: inout StructureMaterial) {
     if let factor = option("confinement").flatMap({ Float($0) }) { material.confinementCoefficient *= factor }
     if let factor = option("fracture-energy").flatMap({ Float($0) }) { material.fractureEnergy *= factor }
     if let factor = option("tensile-strength").flatMap({ Float($0) }) { material.tensileStrength *= factor }
+    // `--crushing-energy 0.1`: scales the energy crushing dissipates, which one element's softening
+    // spreads over its own size; a tenth stands for crushing gathered into a zone ten elements long.
+    if let factor = option("crushing-energy").flatMap({ Float($0) }) { material.crushingEnergy *= factor }
 }
 
 /// `--hourglass-secant` and `--hourglass-no-steel`: hourglass control that softens with cracking,
@@ -319,6 +322,128 @@ func printHourglassBreakdown(_ s: StructureSolver, label: String, near: ((Int, I
 /// span; the longest inclined crack there (elements in touch, its line by principal axes) at 1, 2
 /// and 5 ms; and when concrete within 30 mm of the load (in the top three rows) or of the near
 /// support (in the bottom three) first crushes past its peak (0.35%), and first is removed.
+/// The row of elements across the width the Peterson traces read: the middle, or with
+/// `--trace-face` the side face, which the high-speed images show.
+func traceRow(_ solver: StructureSolver) -> Int { flag("trace-face") ? 0 : solver.ey / 2 }
+
+/// `--removal-trace`: why the elements through the middle of a beam's width are removed. Every
+/// 0.02 ms it keeps each whole element's cracks (the opening across each plane, its normal) and
+/// crushing; when one is removed or left as bars, it reports the state it had last.
+final class RemovalTrace {
+    var nextSample = 0.0
+    var last: [Int: (openings: SIMD3<Float>, normals: [SIMD3<Float>], crushed: Float)] = [:]
+    var removed: [(ms: Double, i: Int, k: Int, opening: Float, angle: Float, crushed: Float, bare: Bool)] = []
+
+    lazy var sample: (StructureSolver) -> Void = { [unowned self] solver in
+        guard solver.time >= nextSample - 1e-9 else { return }
+        nextSample += 0.00002
+        let h = solver.model.elementSize
+        let j = traceRow(solver)
+        for k in 0..<solver.ez {
+            for i in 0..<solver.ex {
+                let key = i + solver.ex * k
+                let flag = solver.flag(i, j, k)
+                if flag == .active {
+                    let planes = solver.crackPlanes(i, j, k)
+                    last[key] = (planes.history * h, planes.normals, solver.plasticStrain(i, j, k))
+                } else if flag == .eroded || flag == .bare, let state = last[key] {
+                    let p =
+                        state.openings.x >= state.openings.y
+                        ? (state.openings.x >= state.openings.z ? 0 : 2)
+                        : (state.openings.y >= state.openings.z ? 1 : 2)
+                    let n = state.normals.count == 3 ? state.normals[p] : SIMD3(0, 0, 1)
+                    // The crack plane's normal from the vertical: 0 for a crack along the beam.
+                    let angle = atan2(simd_length(SIMD2(n.x, n.y)), abs(n.z)) * 180 / .pi
+                    removed.append(
+                        (solver.time * 1000, i, k, state.openings[p], angle, state.crushed, flag == .bare))
+                    last[key] = nil
+                }
+            }
+        }
+    }
+
+    func report() {
+        print("  removed through the middle of the width: \(removed.count)")
+        var byRow: [Int: Int] = [:]
+        for r in removed { byRow[r.k, default: 0] += 1 }
+        print(
+            "  by row from the bottom: "
+                + byRow.keys.sorted().map { "\($0): \(byRow[$0]!)" }.joined(separator: ", "))
+        for r in removed.prefix(25) {
+            print(
+                "    \(format(r.ms, 2)) ms  (\(r.i), \(r.k))  widest crack \(format(Double(r.opening) * 1000, 2)) mm, normal \(format(Double(r.angle), 0))° from vertical, crushed \(format(Double(r.crushed) * 100, 2))%\(r.bare ? ", left as bars" : "")"
+            )
+        }
+    }
+}
+
+/// `--strut-trace`: the concrete a Peterson beam's strut bears on, under the load and at the near
+/// support, every 0.25 ms to 6 ms: of the elements through the middle of the width within 30 mm
+/// and three rows of each, the most compressed one's crushing strain, effective strain rate, the
+/// compressive strength's rate factor (CEB-FIP 1990, as the kernel takes it), confinement gain,
+/// and least principal stress over the cylinder strength.
+final class StrutTrace {
+    let strike: Float
+    let strength: Float
+    var nextSample = 0.0
+    var lines: [String] = []
+
+    init(strike: Float, strength: Float) {
+        self.strike = strike
+        self.strength = strength
+    }
+
+    func factor(_ rate: Float) -> Float {
+        let alpha = 1 / (5 + 9 * strength / 10e6)
+        if rate <= 30 { return pow(max(rate, 30e-6) / 30e-6, 1.026 * alpha) }
+        return pow(10, 6.156 * alpha - 2) * pow(rate / 30e-6, 1 / 3)
+    }
+
+    lazy var sample: (StructureSolver) -> Void = { [unowned self] solver in
+        guard solver.time >= nextSample - 1e-9, solver.time <= 0.0062 else { return }
+        nextSample += 0.00025
+        let h = solver.model.elementSize
+        let j = traceRow(solver)
+        let rows = Int((0.15 / h).rounded())
+        let support = 0.05 - solver.origin.x
+        func x(_ i: Int) -> Float { (Float(i) + 0.5) * h - support }
+        var line = "    \(format(solver.time * 1000, 2)) ms"
+        for (label, near) in [
+            ("load", { (i: Int, k: Int) in abs(x(i) - self.strike) < 0.03 && k >= rows - 3 }),
+            ("support", { (i: Int, k: Int) in abs(x(i)) < 0.03 && k < 3 }),
+        ] {
+            var best: (stress: Float, text: String)?
+            for k in 0..<min(rows, solver.ez) {
+                for i in 0..<solver.ex where near(i, k) && solver.flag(i, j, k) == .active {
+                    let s = solver.stress(i, j, k)
+                    let tensor = simd_float3x3(
+                        SIMD3(s[0], s[3], s[5]), SIMD3(s[3], s[1], s[4]), SIMD3(s[5], s[4], s[2]))
+                    // Least principal stress, by the trace and invariants' cubic.
+                    let mean = (s[0] + s[1] + s[2]) / 3
+                    let deviator = tensor - simd_float3x3(diagonal: SIMD3(repeating: mean))
+                    let j2 = 0.5 * (0..<3).reduce(Float(0)) { $0 + simd_length_squared(deviator[$1]) }
+                    let r = max(j2 / 3, 1e-12).squareRoot()
+                    let cosine = max(-1, min(1, deviator.determinant / (2 * r * r * r)))
+                    let least = mean + 2 * r * cos((acos(cosine) + 2 * .pi) / 3)
+                    guard best == nil || least < best!.stress else { continue }
+                    let rate = solver.strainRate(i, j, k)
+                    let planes = solver.crackPlanes(i, j, k)
+                    let gain = solver.confinementGain(i, j, k)
+                    func f(_ v: Float) -> String { format(Double(v / strength), 2) }
+                    best = (
+                        least,
+                        "\(label) (\(i),\(k)) crush \(format(Double(planes.crush.max()) * 100, 2))%, rate \(format(Double(rate), 0))/s, factor \(format(Double(factor(rate)), 2)), gains \(format(Double(gain.x), 2))/\(format(Double(gain.y), 2))/\(format(Double(gain.z), 2)), least \(format(Double(-least / strength), 2)) f_c, xx \(f(s[0])) yy \(f(s[1])) zz \(f(s[2])) xz \(f(s[5])), axes \(planes.normals.map { "(\(format(Double($0.x), 2)),\(format(Double($0.y), 2)),\(format(Double($0.z), 2)))" }.joined())"
+                    )
+                }
+            }
+            line += "  " + (best?.text ?? "\(label) gone")
+        }
+        lines.append(line)
+    }
+
+    func report() { for line in lines { print(line) } }
+}
+
 final class PetersonCrackTrace {
     let name: String
     let strike: Float
@@ -339,7 +464,7 @@ final class PetersonCrackTrace {
         guard solver.time >= nextSample - 1e-9, solver.time <= 0.0052 else { return }
         nextSample += 0.0001
         let h = solver.model.elementSize
-        let j = solver.ey / 2
+        let j = traceRow(solver)
         let rows = Int((0.15 / h).rounded())
         let support = 0.05 - solver.origin.x  // the near support, from the lattice's origin
         func x(_ i: Int) -> Float { (Float(i) + 0.5) * h - support }  // from the near support
@@ -2513,6 +2638,9 @@ func runImpact() throws {
             // `--crack-trace`: the cracks and crushing through the middle of the width every 0.1 ms,
             // as Peterson's high-speed images show them (see `PetersonCrackTrace`).
             let trace = PetersonCrackTrace(name: test.name, strike: test.strike)
+            let removals = RemovalTrace()
+            let strut = StrutTrace(strike: test.strike, strength: 36e6)
+            var applied = false
             let result = try ImpactBenchmark.run(
                 device: device, test: test, elementsThroughDepth: layers, duration: min(duration, 0.03),
                 specimen: { specimen in
@@ -2527,8 +2655,19 @@ func runImpact() throws {
                 inspect: { solver in
                     if flag("map") { for line in solver.crackMap(row: solver.ey / 2) { print(line) } }
                 },
-                sample: flag("crack-trace") ? trace.sample : nil)
+                sample: flag("crack-trace") || flag("removal-trace") || flag("strut-trace")
+                    ? { solver in
+                        if !applied, let erosion = option("crush-erosion").flatMap({ Float($0) }) {
+                            solver.crushErosion = erosion
+                            applied = true
+                        }
+                        if flag("crack-trace") { trace.sample(solver) }
+                        if flag("removal-trace") { removals.sample(solver) }
+                        if flag("strut-trace") { strut.sample(solver) }
+                    } : nil)
             if flag("crack-trace") { trace.report() }
+            if flag("removal-trace") { removals.report() }
+            if flag("strut-trace") { strut.report() }
             print(
                 pad(test.name, 13) + pad(test.damage, 7)
                     + pad(force(test.impact, nil) + " / " + force(result.peakImpactForce, nil), 16)
