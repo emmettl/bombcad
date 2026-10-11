@@ -32,13 +32,18 @@ no comparison at all its first one, and open sources ahead of those that need th
 | 4 | Hrynyk 2013, slabs struck by a falling weight, digital records on the VecTor site ([2d](#2d-interlock-and-tension-stiffening-under-impact)) | Tension stiffening under impact | Open download, terms not stated | Raw records of reinforced and fibre-reinforced slabs, which separate what the concrete between cracks carries |
 | 5 | FoRDy, the dynamic sister of FoRCy ([3b](#3b-a-footing-or-connection-under-fast-loading)) | Footings | Open, Open Data Commons Attribution on DesignSafe (CC BY-NC-SA 4.0 on DataCenterHub); used ([Validation](validation.md#a-footing-shaken-on-dry-sand)) | Settlement measured under shaking, on the sand of SSG02_03: eight events of SSG03 and SSG04 now compared, settling 0.6–1.5 times as much on cyclic sand |
 | 6 | Wang et al. 2022, *Materials* 15, 6449: two slabs, steel in both faces, 10 kg at 1.2 m ([1a](#1a-a-slab-with-steel-in-both-faces-under-an-open-air-charge)) | Air and structure together | Open, CC BY 4.0; used ([Validation](validation.md#slabs-with-steel-in-both-faces)) | Reflected pressures and deflection histories from one open-air shot; but an aluminised charge and nominal materials |
-| 7 | Prairie Flat (WES TR N-72-2), the Watching Hill soil data, and Pre-Dice Throw II ([3a](#3a-air-induced-ground-shock)) | Ground shock | Needs the user to obtain (ERDC, DTIC) | Gauges at depth either side of the superseismic limit under a 500-ton surface burst, with the site's soil; Pre-Dice Throw II adds published blind predictions |
+| 7 | Prairie Flat (WES TR N-72-2), the Watching Hill soil data, and Pre-Dice Throw II ([3a](#3a-air-induced-ground-shock)) | Ground shock | Reports open in a browser (ERDC, DTIC); digital records and the soil report by request ([draft](data-requests.md#2-prairie-flat-the-watching-hill-soil-data-and-pre-dice-throw-ii)) | Gauges at depth either side of the superseismic limit under a 500-ton surface burst, with the site's soil; Pre-Dice Throw II adds published blind predictions |
 | 8 | Pattman 1971, Dial Pack thermal measurements, DREO Report 642 ([3e](#3e-fireball-radiation)) | Fireball radiation | Open (Government of Canada), 1.45 MB; used ([Validation](validation.md#the-fireballs-radiation-against-dial-pack)) | A second 500-ton TNT shot measured by the group behind the 100-ton comparison |
-| 9 | Keys and Clubley 2017, and Keys's 2016 thesis: masonry panels and small buildings under long-duration blast ([3c](#3c-collapse-and-debris)) | Collapse and debris | Needs the user to obtain | Debris distributions on the ground from walls broken by drag, the loading the model's debris feels |
-| 10 | Reynolds 2015 (UMKC thesis) and ACI SP-306 (2016) ([1](#1-a-second-structural-test-from-the-same-contest)) | The contest's high-strength slab | The theses downloaded; SP-306 needs the user | Likely the high-strength slabs' details and histories; nothing open has them |
+| 9 | Keys and Clubley 2017, and Keys's 2016 thesis: masonry panels and small buildings under long-duration blast ([3c](#3c-collapse-and-debris)) | Collapse and debris | Thesis and accepted manuscript downloaded; the debris data is UK MoD property, by request ([draft](data-requests.md#4-masonry-debris-under-long-duration-blast-keys-and-clubley-2017-keys-2016)) | Debris distributions on the ground from walls broken by drag, the loading the model's debris feels |
+| 10 | Reynolds 2015 (UMKC thesis) and ACI SP-306 (2016) ([1](#1-a-second-structural-test-from-the-same-contest)) | The contest's high-strength slab | The theses downloaded; SP-306 needs the user; digital records by request ([draft](data-requests.md#3-the-contests-high-strength-slab-thiagarajan-et-al-2015-reynolds-2015)) | Likely the high-strength slabs' details and histories; nothing open has them |
 | 11 | Alsubaei 2015, Western University thesis: perimeter walls under field blasts ([2b](#2b-a-freestanding-wall-under-an-open-air-charge)) | A wall in the open | Open, 8.42 MB, terms not stated | Used: column peaks with and without walls, a blockwork deflection, damage; the wing walls' length is not given |
-| 12 | Kasun-III, KLOTZ Group, 2008: debris of five internal shots in small concrete cubes ([3c](#3c-collapse-and-debris)) | Debris | Needs the user to obtain (DTIC; the database by request) | Over 21,500 pieces of debris, mapped; the best debris benchmark known, but not open |
+| 12 | Kasun-III, KLOTZ Group, 2008: debris of five internal shots in small concrete cubes ([3c](#3c-collapse-and-debris)) | Debris | Paper open (DTIC); the database by request, release uncertain ([draft](data-requests.md#1-kasun-iii-debris-database-klotz-group-2008)) | Over 21,500 pieces of debris, mapped; the best debris benchmark known, but not open |
 | 13 | Sharon et al. 2012, and the DRDC field trials of 2012 ([3d](#3d-an-he-clouds-growth-after-two-minutes)) | The cloud after two minutes | Paywalled; the DRDC report open, 2.62 MB | Cloud heights against time below Church's charges; lidar extents of small clouds |
+
+Drafts of requests for the closed sources (7, 9, 10 and 12), with contacts, routes and access
+terms checked on 11 October 2026, are in [Data requests](data-requests.md); nothing has been
+sent. Checking them found that the documents behind 9 and 10, and the reports behind 7 and 12,
+are open in a browser; what has to be asked for is the digital records and the debris data.
 
 The vented gas deflagration ([3f](#3f-a-vented-gas-deflagration)) is not ranked with these: it
 serves a second source still being added. The open ones among 1 to 11 have been downloaded with
@@ -421,8 +426,10 @@ Ten values in the code were written from memory and should be checked against th
   ground beside velocity or acceleration gauges at and below the surface, at known ranges, and
   the soil's layers. No open, machine-readable set has all three. The best are the reports of
   the Army's Waterways Experiment Station (WES) on the large HE shots of 1966–76, several
-  cleared for unlimited release, on the ERDC library behind a browser check or on DTIC; all
-  need the user to obtain:
+  cleared for unlimited release, on the ERDC library behind a browser check or on DTIC (N-72-2
+  and the Pre-Dice Throw II report are public, by the listings checked 11 October 2026, and
+  open in a browser; the digital records and the soil report are asked for in the
+  [draft requests](data-requests.md#2-prairie-flat-the-watching-hill-soil-data-and-pre-dice-throw-ii)):
   - **Prairie Flat**, 500 short tons of TNT, a sphere resting on the ground, Suffield, 1968:
     WES TR N-72-2, earth motion and stress measurements
     ([ERDC 11681/6813](https://erdc-library.erdc.dren.mil/jspui/handle/11681/6813)).
@@ -564,9 +571,12 @@ Ten values in the code were written from memory and should be checked against th
     mapped; the thesis adds 22 structures in five trials, two of nine small masonry buildings
     under 41 kg TNT equivalent. The accepted manuscript was downloaded on 11 October 2026 from
     Loughborough's copy (figshare article 9443321, CC BY-NC-ND 4.0, 7.9 MB); the thesis,
-    14 MB under Southampton's thesis licence, is behind a bot check and needs the user to
-    obtain. **Gives:** debris on the ground from walls broken by drag-dominated loading, with
-    several panels a trial.
+    14 MB under Southampton's thesis licence, was saved by the user (`Keys2016`). It plots each
+    structure's debris mass distribution but does not tabulate it, and its trials, at MoD
+    Shoeburyness, left the data the property of the UK MoD; the logged data is asked for in a
+    [draft request](data-requests.md#4-masonry-debris-under-long-duration-blast-keys-and-clubley-2017-keys-2016).
+    **Gives:** debris on the ground from walls broken by drag-dominated loading, with several
+    panels a trial.
   - Kasun-III, KLOTZ Group, Norway and Sweden, 2008: five internal shots in reinforced concrete
     cubes 2 m inside, one to sixteen 155 mm shells or 6.9 and 110 kg of bare explosive, with
     over 21,500 pieces of concrete, steel and casing logged by mass and position, and external
@@ -575,8 +585,12 @@ Ten values in the code were written from memory and should be checked against th
     ADA532249, and a companion, ADA532261 (DTIC answered "request is blocked" on 11 October 2026;
     needs the user to obtain); M. M. van der Voort and J. Weerheijm, "A statistical description of
     explosion produced debris dispersion", *International Journal of Impact Engineering* 59
-    (2013) 29–37, paywalled. The database itself would have to be asked of KLOTZ or TNO. Needs
-    the user to obtain. **Gives:** the best debris benchmark known, a series in charge mass.
+    (2013) 29–37, paywalled. The full test report, FOI-R--2749--SE (2009, 169 pp., English), is
+    orderable from FOI's report search, not downloadable; by its summary it compiles the
+    fragments' sizes and throw distances. The database itself would have to be asked of FOI,
+    Forsvarsbygg or the KLOTZ Group's chairman (see the
+    [draft request](data-requests.md#1-kasun-iii-debris-database-klotz-group-2008)). Needs the
+    user to obtain. **Gives:** the best debris benchmark known, a series in charge mass.
   - S. Saburi, S. Kubota, K. Katoh and Y. Ogata, "Experimental studies on debris hazards from
     explosions in subsurface magazines", *Science and Technology of Energetic Materials* 74(3)
     (2013) 53–60, [JES](https://jes.or.jp/mag_eng/stem/Vol.74/No.3.01.html), open: scale
@@ -806,6 +820,8 @@ their licence, as `Samples/FoRCy` does.
 | `DRDC2013` | DRDC TR 2013-056, the 2012 field trials with lidar | 2.75 MB | Government of Canada |
 | `Peterson2026` (added) | Peterson's KTH thesis | 18.4 MB | Open access |
 | `Swisdak1994`, `Cooper1996`, `UFC-3-340-02`, `XuLu2016`, `KinneyGraham1985` | Copies the user supplied of sources already in use (see Obtained), placed here on 11 October 2026 | 0.5, 15.5, 18.0, 5.3 and 9.0 MB | The user's own copies, private reference only; Kinney and Graham's is an unofficial copy of a book in copyright: never commit it, its text or its figures |
+| `Keys2016` | Keys's PhD thesis, saved by the user from Southampton's repository, with a text extract: the masonry trials, at MoD Shoeburyness, whose data remains MoD property | 14.3 MB | University of Southampton Thesis Licence |
+| `KlotzGroup2018` | Weerheijm and Conway's 2018 paper on the KLOTZ Group (two versions) and slides, from `ndia.dtic.mil`: the Kasun cubes' design and the Kasun reports' numbers | 5.9 MB | Public proceedings, terms not stated |
 | `Schwer2015` | L. E. Schwer, "Blind blast simulation: a validation effort assessment", SMiRT-23 (2015), on the slab contest; supplied by the user | 1.5 MB | The user's own copy; not yet read (a candidate for blind test 2) |
 | `reference-scatter` | Farrimond et al. 2024, Rigby et al. 2014, Rae and McAfee 2018, Oswald 2018 and 2025 (two), with text extracts; fetched 11 October 2026 (see [3g](#3g-the-reference-curves-own-scatter)), and now in use | 10.4 MB | CC BY 4.0 (Farrimond); free to read (the rest) |
 
@@ -816,8 +832,8 @@ Open but not fetchable automatically on 11 October 2026, for the user to downloa
 DTIC ADA532249 and ADA532261 (Kasun-III) and ADA048003 (Pre-Dice Throw II), which answered
 "request is blocked" on a retry after DTIC's maintenance; WES TR N-72-2 (Prairie Flat, 3.17 MB,
 [ERDC 11681/6813](https://erdc-library.erdc.dren.mil/jspui/handle/11681/6813)), behind ERDC's
-browser check; and Keys's 2016 thesis (14 MB,
-[Southampton eprint 413951](https://eprints.soton.ac.uk/id/eprint/413951/)), behind a bot check.
+browser check. Keys's 2016 thesis, behind a bot check, was saved by the user and is now in
+`Keys2016`.
 
 ## Obtained
 
