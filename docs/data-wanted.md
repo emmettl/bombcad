@@ -32,13 +32,18 @@ no comparison at all its first one, and open sources ahead of those that need th
 | 4 | Hrynyk 2013, slabs struck by a falling weight, digital records on the VecTor site ([2d](#2d-interlock-and-tension-stiffening-under-impact)) | Tension stiffening under impact | Open download, terms not stated | Raw records of reinforced and fibre-reinforced slabs, which separate what the concrete between cracks carries |
 | 5 | FoRDy, the dynamic sister of FoRCy ([3b](#3b-a-footing-or-connection-under-fast-loading)) | Footings | Open, Open Data Commons Attribution on DesignSafe (CC BY-NC-SA 4.0 on DataCenterHub); used ([Validation](validation.md#a-footing-shaken-on-dry-sand)) | Settlement measured under shaking, on the sand of SSG02_03: eight events of SSG03 and SSG04 now compared, settling 0.6–1.5 times as much on cyclic sand |
 | 6 | Wang et al. 2022, *Materials* 15, 6449: two slabs, steel in both faces, 10 kg at 1.2 m ([1a](#1a-a-slab-with-steel-in-both-faces-under-an-open-air-charge)) | Air and structure together | Open, CC BY 4.0; used ([Validation](validation.md#slabs-with-steel-in-both-faces)) | Reflected pressures and deflection histories from one open-air shot; but an aluminised charge and nominal materials |
-| 7 | Prairie Flat (WES TR N-72-2), the Watching Hill soil data, and Pre-Dice Throw II ([3a](#3a-air-induced-ground-shock)) | Ground shock | Needs the user to obtain (ERDC, DTIC) | Gauges at depth either side of the superseismic limit under a 500-ton surface burst, with the site's soil; Pre-Dice Throw II adds published blind predictions |
+| 7 | Prairie Flat (WES TR N-72-2), the Watching Hill soil data, and Pre-Dice Throw II ([3a](#3a-air-induced-ground-shock)) | Ground shock | Reports open in a browser (ERDC, DTIC); digital records and the soil report by request ([draft](data-requests.md#2-prairie-flat-the-watching-hill-soil-data-and-pre-dice-throw-ii)) | Gauges at depth either side of the superseismic limit under a 500-ton surface burst, with the site's soil; Pre-Dice Throw II adds published blind predictions |
 | 8 | Pattman 1971, Dial Pack thermal measurements, DREO Report 642 ([3e](#3e-fireball-radiation)) | Fireball radiation | Open (Government of Canada), 1.45 MB; used ([Validation](validation.md#the-fireballs-radiation-against-dial-pack)) | A second 500-ton TNT shot measured by the group behind the 100-ton comparison |
-| 9 | Keys and Clubley 2017, and Keys's 2016 thesis: masonry panels and small buildings under long-duration blast ([3c](#3c-collapse-and-debris)) | Collapse and debris | Needs the user to obtain | Debris distributions on the ground from walls broken by drag, the loading the model's debris feels |
-| 10 | Reynolds 2015 (UMKC thesis) and ACI SP-306 (2016) ([1](#1-a-second-structural-test-from-the-same-contest)) | The contest's high-strength slab | Needs the user to obtain | Likely the high-strength slabs' details and histories; nothing open has them |
+| 9 | Keys and Clubley 2017, and Keys's 2016 thesis: masonry panels and small buildings under long-duration blast ([3c](#3c-collapse-and-debris)) | Collapse and debris | Thesis and accepted manuscript open in a browser; debris maps by request ([draft](data-requests.md#4-masonry-debris-under-long-duration-blast-keys-and-clubley-2017-keys-2016)) | Debris distributions on the ground from walls broken by drag, the loading the model's debris feels |
+| 10 | Reynolds 2015 (UMKC thesis) and ACI SP-306 (2016) ([1](#1-a-second-structural-test-from-the-same-contest)) | The contest's high-strength slab | Reynolds's thesis open in a browser; digital records by request ([draft](data-requests.md#3-the-contests-high-strength-slab-thiagarajan-et-al-2015-reynolds-2015)) | Likely the high-strength slabs' details and histories; nothing open has them |
 | 11 | Alsubaei 2015, Western University thesis: perimeter walls under field blasts ([2b](#2b-a-freestanding-wall-under-an-open-air-charge)) | A wall in the open | Open, 8.42 MB, terms not stated | Used: column peaks with and without walls, a blockwork deflection, damage; the wing walls' length is not given |
-| 12 | Kasun-III, KLOTZ Group, 2008: debris of five internal shots in small concrete cubes ([3c](#3c-collapse-and-debris)) | Debris | Needs the user to obtain (DTIC; the database by request) | Over 21,500 pieces of debris, mapped; the best debris benchmark known, but not open |
+| 12 | Kasun-III, KLOTZ Group, 2008: debris of five internal shots in small concrete cubes ([3c](#3c-collapse-and-debris)) | Debris | Paper open (DTIC); the database by request, release uncertain ([draft](data-requests.md#1-kasun-iii-debris-database-klotz-group-2008)) | Over 21,500 pieces of debris, mapped; the best debris benchmark known, but not open |
 | 13 | Sharon et al. 2012, and the DRDC field trials of 2012 ([3d](#3d-an-he-clouds-growth-after-two-minutes)) | The cloud after two minutes | Paywalled; the DRDC report open, 2.62 MB | Cloud heights against time below Church's charges; lidar extents of small clouds |
+
+Drafts of requests for the closed sources (7, 9, 10 and 12), with contacts, routes and access
+terms checked on 11 October 2026, are in [Data requests](data-requests.md); nothing has been
+sent. Checking them found that the documents behind 9 and 10, and the reports behind 7 and 12,
+are open in a browser; what has to be asked for is the digital records and the debris data.
 
 The vented gas deflagration ([3f](#3f-a-vented-gas-deflagration)) is not ranked with these: it
 serves a second source still being added. The open ones among 1 to 11 have been downloaded with
@@ -81,12 +86,12 @@ the user's agreement (see [Downloaded, not yet in use](#downloaded-not-yet-in-us
     loading*, MS thesis, UMKC, 2015,
     [MOspace 10355/48353](https://mospace.umsystem.edu/xmlui/handle/10355/48353): by search
     summaries, pressure, impulse and deflection histories of high-strength slabs at two steel
-    ratios. MOspace refused automated access; needs the user to obtain. Whether each slab was
-    shot once is not known.
+    ratios. Open, 6.29 MB (MOspace refuses automated access but opens in a browser, checked
+    11 October 2026). Whether each slab was shot once is not known.
   - A. K. Vasudevan, *FE analysis and experimental comparison of doubly reinforced concrete
     slabs subjected to blast loads*, MS thesis, UMKC, 2012,
     [MOspace 10355/14606](https://mospace.umsystem.edu/xmlui/handle/10355/14606): probably the
-    series behind the 2015 paper. Needs the user to obtain. MOspace items 10355/33223 and
+    series behind the 2015 paper. Open, 2.96 MB, in a browser. MOspace items 10355/33223 and
     10355/67037 also came up, contents unknown.
   - T. H. Kewaisy's SP-306 paper (doi:10.14359/51688871), his NDIA 2018 paper
     (`ndia.dtic.mil/wp-content/uploads/2018/intexpsafety/Kewaisy2Paper.pdf`) and his ACI
@@ -421,8 +426,10 @@ Ten values in the code were written from memory and should be checked against th
   ground beside velocity or acceleration gauges at and below the surface, at known ranges, and
   the soil's layers. No open, machine-readable set has all three. The best are the reports of
   the Army's Waterways Experiment Station (WES) on the large HE shots of 1966–76, several
-  cleared for unlimited release, on the ERDC library behind a browser check or on DTIC; all
-  need the user to obtain:
+  cleared for unlimited release, on the ERDC library behind a browser check or on DTIC (N-72-2
+  and the Pre-Dice Throw II report are public, by the listings checked 11 October 2026, and
+  open in a browser; the digital records and the soil report are asked for in the
+  [draft requests](data-requests.md#2-prairie-flat-the-watching-hill-soil-data-and-pre-dice-throw-ii)):
   - **Prairie Flat**, 500 short tons of TNT, a sphere resting on the ground, Suffield, 1968:
     WES TR N-72-2, earth motion and stress measurements
     ([ERDC 11681/6813](https://erdc-library.erdc.dren.mil/jspui/handle/11681/6813)).
@@ -559,8 +566,8 @@ Ten values in the code were written from memory and should be checked against th
     Loughborough); and R. Keys, PhD thesis, University of Southampton, 2016 (eprint 413951):
     ten masonry panels at about 55 and 110 kPa for 150 to 200 ms, all destroyed, their debris
     mapped; the thesis adds 22 structures in five trials, two of nine small masonry buildings
-    under 41 kg TNT equivalent. Both repositories refused automated access; needs the user to
-    obtain. **Gives:** debris on the ground from walls broken by drag-dominated loading, with
+    under 41 kg TNT equivalent. Both open at Southampton (thesis 14 MB, accepted manuscript
+    7 MB), in a browser; the debris maps as data are not, and would have to be asked for. **Gives:** debris on the ground from walls broken by drag-dominated loading, with
     several panels a trial.
   - Kasun-III, KLOTZ Group, Norway and Sweden, 2008: five internal shots in reinforced concrete
     cubes 2 m inside, one to sixteen 155 mm shells or 6.9 and 110 kg of bare explosive, with
