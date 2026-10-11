@@ -171,7 +171,7 @@ CASES = [
     ("slab", "Contest slab", "far field, bending", ["slab", "--layers", "4,8,16"], ["slab", "--layers", "8"], slab),
     ("janney", "Janney's beam", "quasi-static, bending", ["beam", "--layers", "12,24"], ["beam", "--layers", "12"], janney),
     ("oa1", "OA1", "quasi-static, shear", ["shear", "--layers", "12,24"], ["shear", "--layers", "12"], oa1),
-    ("pushoff", "Push-off tests", "quasi-static, restrained crack", ["pushoff"], ["pushoff"], pushoff),
+    ("pushoff", "Push-off tests", "quasi-static", ["pushoff"], ["pushoff"], pushoff),
     ("tie", "Tie (Model Code)", "quasi-static, tension", ["tie"], ["tie", "--h", "0.02"], tie),
     ("saatci", "Saatci's beams", "impulsive, flexure and shear", ["impact", "--layers", "16"],
      ["impact", "--layers", "16", "--tests", "SS0a-1,SS1b-1"], saatci),

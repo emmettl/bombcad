@@ -667,7 +667,17 @@ test failed at 42 mm; smeared, 42.0 kN m, failing at 53). The contest slab on 4 
 soft: 77 mm at 15 ms against 70 smeared and 66 measured, and its hinge gathers into one crack,
 whose segment's plastic strain reaches 42% before its bars rupture at 23 ms, with pull-out bond
 as bonded; on 8 elements it comes apart too. Why it is softer than the smeared bars, though its
-bars carry more (63 kN each at 80 mm against about 53), is open. Wu's slabs under 1.6 kg at
+bars carry more (63 kN each at 80 mm against about 53), is open. Traced (`blastbench slab
+--discrete 9.5 --discrete-trace`, which prints each bar's largest plastic strain, the bottom
+crack strain and top crushing near mid-span, and the deflected shape every 5 ms): by 15 ms the
+concrete's crack at mid-span has gathered into one element column (7.1% against 2–3.8% spread
+along the span with smeared bars), the compression zone not yet crushed, and every bar's yield
+with it into the one segment there (16% against the smeared bars' 2.2%). It is not the bars' fall
+after their peak (held at the peak, `--steel-plateau`, they still gather), their rupture rule, the
+bond lost where they yield (now applied to discrete bars too), nor the plain concrete between
+them (a 25 mm strip, a bar under every element, does the same). It is the concrete's cracking
+localising, which the smeared bars spread and the discrete bars follow: what stage 2's nonlocal
+cracking is for, and part of its acceptance. Wu's slabs under 1.6 kg at
 0.5 m (`blastbench twoface --wu S8,D8 --discrete 8`): 14.5 and 15.1 mm bonded, 11.4 and 12.0 mm
 with pull-out bond, against 18.0 and 13.9 measured and 14.4 and 14.9 smeared: discrete bars do
 not tell one layer of steel from two, so that is not where the smeared bars fail (see the
@@ -845,7 +855,11 @@ can set either (`regimeOverride`, `loadingOverride`), or turn the regime's defau
   scene or bench has no loading, and no loading's defaults.
 
 Bending and shear in members are not told apart yet: no option is better in one than the other
-(see the strategy's stage 2).
+(see the strategy's stage 2). Nor is a crack restrained statically from outside, as the push-off
+tests' are: pressed interlock brings those within 0.57–1.03 of the measured shear, but OA1, also
+loaded slowly, to 126–188%, and nothing in a scene says a crack is so restrained. So the push-off
+tests run without it, at a twentieth to a fifth of the measured shear (`--pressed-interlock`
+for the comparison).
 
 ## Default parameters
 

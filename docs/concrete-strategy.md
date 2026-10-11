@@ -282,8 +282,12 @@ spacing and carries its tension stiffening within 5% on two meshes, and Janney's
 hourglass session also found (the two-layer slab's compression layer is fully engaged, and its
 bars do a quarter of the work). And the contest slab comes apart with them on 4 and 8 elements:
 its hinge gathers into one crack and its bars rupture there at 23 ms, softer from 15 ms than with
-smeared bars though its bars carry more. Stage 2 is next; discrete bars stay an option, for the
-holes of stage 3 to hang on.
+smeared bars though its bars carry more. Traced, it is the concrete's crack at mid-span gathering
+into one element column, which the bars follow (see the
+[concrete model](concrete-model.md#discrete-bars)): the localising that stage 2's nonlocal
+cracking is meant to cure. So the contest slab with discrete bars, holding together within the
+measured scatter, is part of stage 2's acceptance. Discrete bars stay an option meanwhile, for
+the holes of stage 3 to hang on.
 
 **Stage 2: embedded cracks for members failing in shear (one to two months).**
 

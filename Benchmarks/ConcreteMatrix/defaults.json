@@ -85,7 +85,7 @@
   {
    "key": "pushoff",
    "title": "Push-off tests",
-   "regime": "quasi-static, restrained crack",
+   "regime": "quasi-static",
    "command": "pushoff",
    "seconds": 39,
    "exit": 0,

@@ -179,6 +179,16 @@ func chosenAirModel() -> AirModel? {
 func applyRateOptions(_ material: inout StructureMaterial) {
     if let residual = option("crack-residual").flatMap({ Float($0) }) { material.crackResidual = residual }
     if let dilatancy = option("dilatancy").flatMap({ Float($0) }) { material.crackDilatancy = dilatancy }
+    // `--steel-plateau`: the bars' measured curve held at its peak instead of falling after it
+    // (a study: the fall is the test bar's necking over its gauge length).
+    if flag("steel-plateau"), var steel = material.steel, let curve = steel.measuredCurve,
+        let peak = curve.firstIndex(where: { $0.y == curve.map(\.y).max() })
+    {
+        steel.measuredCurve = curve.enumerated().map {
+            $0.offset > peak ? SIMD2($0.element.x, curve[peak].y) : $0.element
+        }
+        material.steel = steel
+    }
     // `--static-steel`: the bars without their strain-rate law.
     if flag("static-steel") { material.steelRateDependent = false }
     if let exponent = option("fracture-rate").flatMap({ Float($0) }) {
@@ -3033,6 +3043,76 @@ func runSlab() throws {
                         worst = max(worst, solver.discreteBarPlastic(b).filter { $0 < 1e8 }.max() ?? 0)
                     }
                     let deflection = -solver.displacement(solver.ex / 2, solver.ey / 2, 0).z
+                    if millisecond % 5 == 0, solver.discreteBarRuptures.segments == 0 {
+                        // Smeared: the bars' plastic strain along the span at mid-width, in the
+                        // layer of elements they lie in, every element.
+                        let layer =
+                            (0..<solver.ez).first {
+                                solver.steelRatio(solver.ex / 2, solver.ey / 2, $0).x > 0
+                            } ?? 0
+                        print(
+                            "    smeared bars' plastic strain (%): "
+                                + (0..<solver.ex).map {
+                                    format(
+                                        Double(solver.barPlasticStrain($0, solver.ey / 2, layer).x) * 100, 1)
+                                }.joined(separator: " "))
+                    }
+                    if millisecond % 5 == 0, solver.discreteBarRuptures.segments > 0 {
+                        var each: [String] = []
+                        for b in 0..<64 {
+                            let plastic = solver.discreteBarPlastic(b)
+                            guard !plastic.isEmpty else { break }
+                            let worst = plastic.enumerated().max { $0.element < $1.element }!
+                            each.append(
+                                "\(b):\(format(Double(min(worst.element, 9.99)) * 100, 1))@\(worst.offset)/\(plastic.count)"
+                            )
+                        }
+                        print(
+                            "    each bar's largest plastic strain (%) at segment: "
+                                + each.joined(separator: " "))
+                    }
+                    if millisecond % 5 == 0, let bar = Optional(solver.discreteBarPlastic(4)), !bar.isEmpty {
+                        print(
+                            "    discrete bar 4's plastic strain (%): "
+                                + bar.map { format(Double(min($0, 9.99)) * 100, 1) }.joined(separator: " "))
+                    }
+                    if millisecond % 5 == 0 {
+                        // The compression zone: the largest crushing strain in the top layer, and
+                        // the crack strain in the bottom layer, near mid-span.
+                        let middle = solver.ex / 2
+                        let near = (middle - 6)...(middle + 6)
+                        print(
+                            "    top crushing (%): "
+                                + near.map {
+                                    format(
+                                        Double(solver.plasticStrain($0, solver.ey / 2, solver.ez - 1)) * 100,
+                                        2)
+                                }
+                                .joined(separator: " "))
+                        print(
+                            "    bottom crack strain (%): "
+                                + near.map {
+                                    format(Double(solver.crackStrain($0, solver.ey / 2, 0)) * 100, 1)
+                                }
+                                .joined(separator: " "))
+                    }
+                    if millisecond % 5 == 0 {
+                        // The deflected shape along the span at mid-width, bottom and top faces.
+                        let columns = stride(from: 0, through: solver.ex, by: max(1, solver.ex / 16))
+                        print(
+                            "    shape, bottom (mm): "
+                                + columns.map {
+                                    format(Double(-solver.displacement($0, solver.ey / 2, 0).z) * 1000, 1)
+                                }
+                                .joined(separator: " "))
+                        print(
+                            "    shape, top (mm):    "
+                                + columns.map {
+                                    format(
+                                        Double(-solver.displacement($0, solver.ey / 2, solver.ez).z) * 1000, 1
+                                    )
+                                }.joined(separator: " "))
+                    }
                     print(
                         "  \(millisecond) ms: \(format(Double(deflection) * 1000, 1)) mm, \(bars.ruptured) ruptured, "
                             + "largest plastic \(format(Double(worst) * 100, 2))%, force \(format(Double(strongest) / 1000, 1)) kN"
@@ -3085,7 +3165,7 @@ func runSlab() throws {
                                     ("80 ms, \(format(Double(deflection) * 1000, 0)) mm", totals))
                             }
                         } : nil,
-            inspect: flag("discrete")
+            inspect: flag("discrete") && !flag("plan")
                 ? { solver in
                     let bars = solver.discreteBarRuptures
                     print("  discrete bars: \(bars.ruptured) of \(bars.segments) segments ruptured")

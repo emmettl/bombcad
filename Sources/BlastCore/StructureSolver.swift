@@ -1752,6 +1752,13 @@ public final class StructureSolver {
             uniforms.bondS2 = law.s2
             uniforms.bondS3 = law.s3
             uniforms.bondAlpha = law.alpha
+            if bond.yieldedBondLoss, let steel = model.material.steel,
+                let top = steel.curve.max(by: { $0.y < $1.y }), top.x > 0
+            {
+                uniforms.bondYieldRange = top.x
+                let excess = 2 - top.y / steel.curve[0].y
+                uniforms.bondYieldExponent = max(excess * excess, 0.1)
+            }
         }
         if anchorStiffness != nil {
             uniforms.anchored = 1

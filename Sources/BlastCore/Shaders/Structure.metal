@@ -3650,18 +3650,36 @@ kernel void discreteBarNodes(const device DiscreteBarNode *barNodesDevice [[buff
     DiscreteBarNode n = barNodesDevice[id];
     float before = n.previous >= 0 ? segmentState[n.previous].x : 0.0f;
     float after = n.next >= 0 ? segmentState[n.next].x : 0.0f;
-    float left = after - before;  // along the bar: the segment after pulls it forward
+    float leftOver = after - before;  // along the bar: the segment after pulls it forward
     float3 axis = float3(n.axis);
     // A bar's ends are anchored, as by hooks or plates: they do not slip.
     if (u.discreteBond == 0u || n.previous < 0 || n.next < 0) {
-        barTransfer[id] = float4(left * axis, 0.0f);
+        barTransfer[id] = float4(leftOver * axis, 0.0f);
         return;
     }
     float4 state = barSlips[id];
     float plastic = state.z;
     float largest = state.w;
     float area = n.perimeter * n.length;
-    float bond = bondStress(state.x, plastic, largest, 1.0f, u) * area;
+    // Where the bar has yielded it holds less well, by the Model Code's Omega_y, from the plastic
+    // strain of the segments either side (as the smeared bars' slip has it).
+    float left = 1.0f;
+    if (u.bondYieldRange > 0.0f) {
+        float yielded = 0.0f;
+        int counted = 0;
+        for (int side = 0; side < 2; ++side) {
+            int k = side == 0 ? n.previous : n.next;
+            if (k >= 0 && segmentState[k].w == 0.0f) {
+                yielded += max(segmentState[k].y, 0.0f);
+                counted += 1;
+            }
+        }
+        if (counted > 0 && yielded > 0.0f) {
+            float a = min(yielded / float(counted) / u.bondYieldRange, 1.0f);
+            left = 1.0f - 0.85f * (1.0f - exp(-5.0f * pow(a, u.bondYieldExponent)));
+        }
+    }
+    float bond = bondStress(state.x, plastic, largest, left, u) * area;
     // The slip's stiffness: the bond's at the start of its law, and the bars' either side, each
     // counted twice, since a segment ties this node's slip to its neighbour's (a Gershgorin
     // bound): counted once, the slip rang along the bar, as the smeared bars' slip once did.
@@ -3677,13 +3695,13 @@ kernel void discreteBarNodes(const device DiscreteBarNode *barNodesDevice [[buff
     float step = u.criticalStep;
     float mass = stiffness * step * step;
     float damping = 1.4f * stiffness * step;
-    float rate = (state.y + dt * (left - bond) / mass) / (1.0f + dt * damping / mass);
+    float rate = (state.y + dt * (leftOver - bond) / mass) / (1.0f + dt * damping / mass);
     barSlips[id] = float4(state.x + dt * rate, rate, plastic, largest);
     // The slip is the bar's motion relative to the concrete, so the concrete feels the bar's own
     // forces either side, as it would bonded: the bond only balances them in the slip. (Given
     // the bond's force instead, the concrete lagged the bar it had already moved, and the tie
     // rang.)
-    barTransfer[id] = float4(left * axis, 0.0f);
+    barTransfer[id] = float4(leftOver * axis, 0.0f);
 }
 
 // What the bars' bond passes to the concrete at the bar nodes embedded beside each body node, in
