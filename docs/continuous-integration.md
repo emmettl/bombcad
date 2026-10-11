@@ -35,6 +35,13 @@ minutes at load averages of 50–140, so a deadline failed for load rather than 
 that never gets there is failed as hung after ten minutes (`hangLimit`). Paced playback is
 checked on a clock the test drives, not the wall's.
 
+The core tests have no deadlines, sleeps or timings of their own (their elapsed times are
+simulated). They wait on the GPU synchronously, though, so with the GPU busy Swift Testing's
+threads fill with waiting tests and even trivial ones report only near the end of the run. All
+868 passed in 3,199 s and 4,244 s with the GPU kept busy by other `blastbench` runs, against
+2,016 s in an ordinary `make check`. A ten-minute limit would fail them while they wait for a thread, so CI's
+45-minute test step is their backstop; the core-target stalls above may be this.
+
 On 9 October, Check runs [37965308304](https://github.com/emmettl/bombcad/actions/runs/37965308304)
 and [37975918140](https://github.com/emmettl/bombcad/actions/runs/37975918140) hit the job limit
 in the core test target.
