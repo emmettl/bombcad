@@ -218,11 +218,9 @@ at 50 ms intervals were nearly all of that kind.
 - **Thermal ground receivers spaced to the floor.** Over a floor larger than a square kilometre
   they stand far enough apart that there are at most 250,000 (6.7 m over 3.3 km); the Thermal
   section sets the spacing and shows what it comes to.
-- **Zoom.** SceneView's `OrbitControlView` stops zooming out at 600 m and cannot be subclassed, so
-  the viewport takes the mouse wheel and pinches itself and zooms out to three times the domain's
-  longest side (never less than 600 m). **Asked upstream:** a zoom limit that the controller sets
-  (or that follows the scene's bounds) in ContinuumKit's `OrbitCamera.zoom(by:)`, after which this
-  workaround can go.
+- **Zoom.** The view zooms out to three times the domain's longest side (never less than 600 m):
+  ContinuumKit 0.1.0-alpha.21 lets the controller set the orbit view's zoom limits, which BombCAD
+  widens with the domain.
 
 Rendering at this scale was checked offscreen (`blastbench snapshot --fit-reach 10 --mass 500000
 --dx 8`, with and without `--terrain hill`): the domain is framed whole from 2.6 km, the hemisphere
@@ -261,7 +259,7 @@ would mean moving every kind of object in a scene.
 - A refinement criterion that follows weak shocks without refining the wake: a jump relative to
   the overpressure rather than to the pressure, so that the default follows a shock to
   40 m/kg^(1/3) at threshold 0.005's cost or less.
-- The zoom limit in ContinuumKit itself, and a domain grown about its centre.
+- A domain grown about its centre.
 - Large-HE field data: the Defense Nuclear Agency's Minor Scale and Misers Bluff reports, for
   gauge records over flat ground, and any over hills.
 

@@ -30,6 +30,11 @@ any prediction is made, and the register of blind tests.
    abstracts, anyone's simulation of the test, or other sessions' transcripts and memory notes
    about it (the judge's session handled the measurements). Where the inputs leave something open, it
    decides, and writes the decision and its reason down before running.
+   Its working folder lies outside `/Volumes/StudioData/bombcad/blind/`, which holds the
+   sealed folders (for example `/Volumes/StudioData/bombcad/<source>-prediction/`), and it
+   never lists or opens anything under `blind/`. (Test 1's predictor was started with its
+   folder at `blind/predictor/`, before this rule; it was told not to list or open anything
+   else under `blind/`, and to say in its `assumptions.md` if it had.)
 3. **Declared before running.** Before its first run the predictor commits an
    `assumptions.md`: each assumption, the mesh (elements through the thickness) and air or
    contact settings of the primary prediction, and any secondary runs it will make (another
@@ -113,8 +118,75 @@ force is measured on only some impacts (accelerometers saturated on others) and 
 flags one of its own values as possibly unrepresentative; the measured reactions are from load
 cells beneath ball-jointed supports, whose own compliance the model may not have.
 
+## Test 2: slabs under an open-air charge (Mendonça et al.)
+
+**Source.** F. B. Mendonça, G. S. Urgessa, A. S. Augusto and J. A. F. F. Rocco, "Experimental
+records from blast tests of ten reinforced concrete slabs", *CivilEng* 1(2), 2020, with the
+records on the George Mason University Dataverse (doi:10.13021/ORC2020/MVTEFA, CC0) and two
+companion papers (2018, 2021). Inputs: [Samples/Mendonca2020](../Samples/Mendonca2020/README.md).
+Sealed: `/Volumes/StudioData/bombcad/blind/mendonca-sealed/`, checked by
+`Samples/Mendonca2020/SEALED.sha256`.
+
+**Why this test.** It differs from test 1 in load and in what it asks: an open-air charge, so
+the air solver loads the structure, on thin slabs simply supported on two sides, which may
+survive cracked or collapse. Two groups are repeats (slabs 2 and 5; slabs 4, 7 and 9), so the
+tests' own scatter is measured, not assumed. No session had read these sources before.
+
+**Slabs.** The seven without foam: 1, 2, 4, 5, 7, 9 and 10. 1.0 m square and 80 mm thick,
+steel in the bottom face only, resting on timber trestles along two opposite sides 0.4 m above
+the ground, under about 2.7 kg TNT-equivalent of unconfined PBX hung 1.3, 1.6 or 2.0 m above
+their centres (see the inputs).
+
+**Frozen commit.** Named in `Samples/Mendonca2020/FROZEN` when the predictor starts, which is
+after test 1's reveal, so that test 2 runs on whatever defaults stand then.
+
+**What to predict**, for each of the seven slabs, each run until the slab has come to rest or
+for at least 100 ms:
+
+| # | Quantity | Units |
+|---|---|---|
+| 1 | Whether the slab collapses: breaks through its thickness right across and falls from its supports or is left in pieces, as against cracked but still spanning | collapses / survives |
+| 2 | Peak downward displacement of the bottom face's centre | mm |
+| 3 | Displacement of the bottom face's centre at the end of the run | mm |
+| 4 | Peak pressure and positive impulse at the slab's top surface at each of its four corners and at its centre | kPa, kPa ms |
+| 5 | The damage: where the main cracks run on the bottom face, and whether the top face crushes or spalls | words, and an image of the crack field if the harness draws one |
+
+Also committed: the displacement history of the bottom face's centre (0–100 ms) and the
+pressure histories at the five points, as CSV, and the predictor's own estimate of the
+uncertainty of quantity 2 if it has one. For slab A's two layouts of the span (which way the
+10 mm bars run is not given) the predictor declares one as primary before running; the other
+may be run as a secondary.
+
+**Scoring.** Against the measured outcomes and the records, processed once by the sealed
+script before any prediction:
+
+- **Primary score**: quantity 1 on all seven slabs, as the number predicted rightly; and
+  quantity 2 on the slabs that survived, as the ratio of predicted to measured, each slab and
+  each repeat group's mean.
+- **Secondary scores**: quantity 2 against each repeat group's measured range (inside it, or by
+  how far outside); quantity 3 as a ratio, with the caveat below; quantity 4's peaks and
+  impulses against the corner gauges as the dataset's readme places them, as ratios; quantity 5
+  against the papers' descriptions.
+- **Against the calibrated record.** The calibrated open-air slabs came out a third to a half as
+  far down as measured close in (Chiquito et al.), within −20% to +7% under Wu et al.'s largest
+  charge and at 40–70% under the smaller ones, and several times too stiff on Wang et al.'s
+  supports. The blind result is read as *as good as the calibrated record* if at least six of
+  the seven outcomes are right and each repeat group's mean ratio for quantity 2 lies within
+  0.75–1.25; *worse* if four or fewer outcomes are right or a group's ratio lies outside 0.5–2;
+  and *between* otherwise. The numbers are reported as well as the verdict.
+
+**Known limits of the test.** A field test on a modest budget: the supports, steel grade,
+charge geometry and gauge positions are partly undocumented (the inputs list each gap); the
+TNT equivalence of the PBX is the authors' and its method unstated; the charge is a vertical
+cylinder fired from its top, which BombCAD's spherical charge does not represent; the trestles
+stood on clay, and the source's pre-test check found the supports moving in it, which rigid
+supports in the model leave out; and the displacement meters are pull-wires whose records the judge
+reads as they stand, by a rule fixed before any prediction.
+
 ## Register
 
 | # | Test | Frozen commit | Predictions committed | Revealed | Result |
 |---|---|---|---|---|---|
 | 1 | Hrynyk 2013, plain slabs TH2, TH6, TH7 | `1c85774` (2026-10-11) | | | |
+| 2 | Mendonça et al. 2020, unretrofitted slabs 1, 2, 4, 5, 7, 9, 10 | named when its predictor starts, after test 1's reveal | | | |
+| 3 | *Reserved candidate:* K. A. Reynolds, UMKC MS thesis, 2015 (probably the contest's high-strength slabs, on the calibrated slab's rig). Unread; moved to `/Volumes/StudioData/bombcad/blind/reynolds-sealed/` on 2026-10-11. No session opens it, or the contest's high-strength results anywhere, until the judge has assessed it after test 1's reveal. A. K. Vasudevan's UMKC MS thesis (2012), on the contest's slab series, sealed unread beside it in `/Volumes/StudioData/bombcad/blind/vasudevan-sealed/` as a possible companion or source of leaks; released back to `data/` if the assessment finds it unrelated | | | | |

@@ -113,6 +113,8 @@ struct StructureUniforms {
     uint removesFragments;  // 1: concrete broken into fragments is removed (`StructureModel`)
     uint discreteBond;      // 1: discrete bars slip by the bond law in the `bond...` fields above
     uint crackReach;        // elements either side a crack's band reaches (`crackAveraging`)
+    float fragmentOpening;  // m: with `removesFragments`, the opening across two planes...
+    float fragmentStrain;   // ...and the crack strain across one that make concrete fragments
 };
 
 // Gravity's pull per unit mass, when it has been turned.
@@ -269,6 +271,9 @@ constant bool workTraced [[function_constant(3)]];
 // trusses' bond acts on the nodes. Undefined, as for every body without them, the kernels are as
 // they always were.
 constant bool discreteBarsConstant [[function_constant(10)]];
+// Failed concrete becomes particles (`StructureModel.rubbleParticles`, Rubble.metal).
+constant bool rubbleParticlesConstant [[function_constant(12)]];
+constant bool rubbleParticles = is_function_constant_defined(rubbleParticlesConstant) && rubbleParticlesConstant;
 // Cracking averaged across each crack's band (`StructureModel.crackAveraging`); undefined, as for
 // every body without it, the kernel is as it always was.
 constant bool nonlocalCrackingConstant [[function_constant(11)]];
@@ -1873,13 +1878,14 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // 100%, on large elements) is gone. Bars bridging a single crack rupture before that.
         eroded = eroded || torn || pulverised || crack > max(1.0f, 3.0f * m.erosionStrain);
         // Optionally, concrete broken into fragments, whatever bridges it: cracked open across two
-        // planes or more by 0.5 mm and across one by 5% of its size (`removesFragments`).
+        // planes or more by 0.5 mm and across one by 5% of its size (`removesFragments`; the two
+        // thresholds are the solver's `fragmentOpening` and `fragmentStrain`).
         if (u.removesFragments != 0 && joints == 0u) {
             int open = 0;
             for (int j = 0; j < 3; ++j) {
-                open += history[j] * u.h >= 0.5e-3f ? 1 : 0;
+                open += history[j] * u.h >= u.fragmentOpening ? 1 : 0;
             }
-            eroded = eroded || (crack >= 0.05f && open >= 2);
+            eroded = eroded || (crack >= u.fragmentStrain && open >= 2);
         }
         // Concrete removed while some of its bars are intact leaves them: the element carries on
         // as those bars alone, from the next step, until they too have ruptured.
@@ -1992,9 +1998,18 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     // fully plastic moment (strength * h^2 / 8 in these units) just as the stress is capped.
     float limit = 0.125f * capacity * u.h * u.h;
     bool atCap[4] = {false, false, false, false};
+    // With rubble, a bare element's concrete has left its nodes as particles, and they hold the
+    // bars' mass alone: its hourglass control stiffens them only in proportion, or it would ring
+    // far faster than the step allows.
+    float hourglassStiffness = m.hourglassStiffness;
+    if (rubbleParticles && bare) {
+        float3 ratio = float3(steel[compact].ratio);
+        float share = (ratio.x + ratio.y + ratio.z + float(steel[compact].inclined)) * 7850.0f / m.density;
+        hourglassStiffness *= min(share, 1.0f);
+    }
     for (uint mode = 0; mode < 4; ++mode) {
         float3 q = state.hourglass[mode];
-        q += dt * (m.hourglassStiffness * (hourglassSecant ? hourglassScale * rate[mode] : rate[mode]) + spin * q);
+        q += dt * (hourglassStiffness * (hourglassSecant ? hourglassScale * rate[mode] : rate[mode]) + spin * q);
         float magnitude = length(q);
         if (magnitude > limit) {
             q *= limit / magnitude;
@@ -2189,10 +2204,13 @@ kernel void debrisAreas(const device StructureNode *nodes [[buffer(0)]],
                               memory_order_relaxed);
 }
 
+// `packed`, for rubble: the pressure gradient pushes the debris in a cell only up to half the air's
+// own volume there (see `rubbleMove`).
 template <typename Uniforms>
 static inline float3 debrisAirForce(float3 position, float3 velocity, float volume, const device Cell *fluid,
                                     const device uchar *fluidMask, const device int *area, float airStep,
-                                    constant Uniforms &u, device atomic_uint *couplingMap, thread int &exchangeCell) {
+                                    constant Uniforms &u, device atomic_uint *couplingMap, thread int &exchangeCell,
+                                    bool packed = false) {
     exchangeCell = debrisCell(position, fluidMask, u, couplingMap);
     if (exchangeCell < 0) {
         return float3(0.0f);
@@ -2252,6 +2270,12 @@ static inline float3 debrisAirForce(float3 position, float3 velocity, float volu
     float speed = length(wind);
     float cellArea = max(float(area[exchangeCell]) / exchangeAreaScale, 0.0f);
     float factor = 1.0f / (1.0f + 0.5f * speed * cellArea * airStep);
+    if (packed) {
+        // The debris's share of the cell's volume, from its frontal area there (per unit of the
+        // cell's volume) times this body's size: like bodies packed into a cell together.
+        float share = max(cellArea * pow(volume, 1.0f / 3.0f), volume / (u.fluidCell * u.fluidCell * u.fluidCell));
+        return -gradient * volume * min(1.0f, 0.5f / max(share, 1e-6f)) + factor * 0.5f * rho * frontal * speed * wind;
+    }
     return -gradient * volume + factor * 0.5f * rho * frontal * speed * wind;
 }
 
@@ -2288,7 +2312,7 @@ kernel void contactClear(const device uint *nodeList [[buffer(0)]],
     if (!active || !contactEnabled(u, failureGate)) {
         return;
     }
-    if ((nodes[threadIndex].flags & nodeBuried) != 0) {
+    if ((nodes[threadIndex].flags & nodeBuried) != 0 || (rubbleParticles && nodes[threadIndex].mass <= 0.0f)) {
         return;
     }
     float3 position = nodePosition(threadIndex, nodeList, nodes, u);
@@ -2317,7 +2341,7 @@ kernel void contactHash(const device uint *nodeList [[buffer(0)]],
     if (!active || !contactEnabled(u, failureGate)) {
         return;
     }
-    if ((nodes[threadIndex].flags & nodeBuried) != 0) {
+    if ((nodes[threadIndex].flags & nodeBuried) != 0 || (rubbleParticles && nodes[threadIndex].mass <= 0.0f)) {
         return;
     }
     float3 position = nodePosition(threadIndex, nodeList, nodes, u);
@@ -2331,6 +2355,93 @@ kernel void contactHash(const device uint *nodeList [[buffer(0)]],
     }
 }
 
+// Rubble's particles (see Rubble.metal) and their contact with each other and with nodes.
+// The rubble's state starts with four words (any particle made; one made this substep; two spare)
+// before the bits marking the slots in use.
+constant uint rubbleBits = 4;
+
+struct RubbleParticle {
+    packed_float3 position;  // world position (m)
+    float mass;              // kg; zero for a slot not in use
+    packed_float3 velocity;
+    float reach;     // m: how near a node's centre it comes before it touches it
+    float internal;  // J: the energy of the nodes' motion about its centre, when it was made
+    float volume;    // m³ of the material it stands for
+    uint alive;      // 1 once made
+    float spare;
+};
+
+// How near two particles come before they touch: an element apart, while they keep the reach of
+// an undeformed element's centre to its corners (sqrt(3)/2 of an element).
+static inline float rubblePairReach(float a, float b) {
+    return (a + b) * 0.57735027f;
+}
+
+// The contact force on one of two touching things (a particle or a node) at `offset` from the
+// other, moving at `relative` to it, touching within `reach`: a penalty spring on the overlap,
+// damped, with Coulomb friction regularised as a damper at low sliding speed, as nodes push each
+// other in `contactForces`. Swapping the two negates it exactly.
+static inline float3 rubbleContact(float3 offset, float reach, float3 relative, float mass,
+                                   constant StructureUniforms &u) {
+    float distance = length(offset);
+    if (distance >= reach || distance < 1e-9f) {
+        return float3(0.0f);
+    }
+    float3 normal = offset / distance;
+    float stiffness = u.contactStiffness * mass;
+    float damping = 2.0f * u.contactDamping * sqrt(stiffness * mass);
+    float approach = dot(relative, normal);
+    float push = approach > separationLimit ? 0.0f : max(stiffness * (reach - distance) - damping * approach, 0.0f);
+    float3 force = push * normal;
+    float3 sliding = relative - approach * normal;
+    float speed = length(sliding);
+    if (speed > 1e-6f) {
+        force -= min(u.contactFriction * push, damping * speed) * (sliding / speed);
+    }
+    return force;
+}
+
+// Whether `index` is among the entries a table's cell `target` keeps: one its crowded cell left
+// out is invisible to every other, and pushes none of them.
+static inline bool rubbleListed(const device uint *slots, uint target, uint index) {
+    bool listed = false;
+    for (uint slot = 0; slot < contactSlots; ++slot) {
+        listed = listed || slots[target * contactSlots + slot] == index;
+    }
+    return listed;
+}
+
+// The contact force on a node at `position` from the particles around it (`contactForces`).
+static inline float3 rubbleOnNode(float3 position, float3 velocity, float mass, const device RubbleParticle *particles,
+                                  const device uint *heads, const device uint *slots, constant StructureUniforms &u) {
+    int3 cell = contactCell(position, u);
+    float3 force = float3(0.0f);
+    for (int dz = -1; dz <= 1; ++dz) {
+        for (int dy = -1; dy <= 1; ++dy) {
+            for (int dx = -1; dx <= 1; ++dx) {
+                int3 c = cell + int3(dx, dy, dz);
+                uint target = contactBucket(c, u);
+                if (heads[target] != u.stamp) {
+                    continue;
+                }
+                for (uint slot = 0; slot < contactSlots; ++slot) {
+                    uint other = slots[target * contactSlots + slot];
+                    if (other == emptySlot) {
+                        break;
+                    }
+                    RubbleParticle p = particles[other];
+                    float3 at = float3(p.position);
+                    if (any(contactCell(at, u) != c)) {
+                        continue;
+                    }
+                    force += rubbleContact(position - at, p.reach, velocity - float3(p.velocity), min(mass, p.mass), u);
+                }
+            }
+        }
+    }
+    return force;
+}
+
 kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                           const device StructureNode *nodes [[buffer(1)]],
                           const device uint *heads [[buffer(2)]],
@@ -2339,6 +2450,10 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                           constant StructureUniforms &u [[buffer(5)]],
                           device packed_float3 *contact [[buffer(7)]],
                           const device uint *slots [[buffer(8)]],
+                          const device RubbleParticle *particles [[buffer(9)]],
+                          const device uint *rubbleHeads [[buffer(10)]],
+                          const device uint *rubbleSlots [[buffer(11)]],
+                          const device uint *rubbleState [[buffer(12)]],
                           uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -2424,6 +2539,9 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                 }
             }
         }
+    }
+    if (rubbleParticles && rubbleState[0] != 0) {
+        force += rubbleOnNode(position, float3(node.velocity), node.mass, particles, rubbleHeads, rubbleSlots, u);
     }
     float largest = node.mass * contactKick / max(dt, 1e-12f);
     float size = length(force);
@@ -2852,6 +2970,9 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         } else if (flags[own] == elementBaring) {
             flags[own] = elementBare;
         }
+    }
+    if (rubbleParticles && node.mass <= 0.0f) {
+        return;  // all its elements have become rubble
     }
     float3 force = float3(0.0f);
     uint intact = 0;
@@ -3441,10 +3562,13 @@ kernel void publishFineBodyOccupancy(device uint *scratch [[buffer(0)]],
     }
 }
 
+// Stops the run on the interactions in `halting`: the bodies' envelopes or cells overlapping
+// (1) unless they are in contact, and the coupling's storage running out (2).
 kernel void haltBodyInteraction(const device uint *interaction [[buffer(0)]],
                                 device StepControl &control [[buffer(1)]],
+                                constant uint &halting [[buffer(2)]],
                                 uint tid [[thread_position_in_grid]]) {
-    if (tid == 0 && interaction[0] != 0u) { control.stopped = 3u; }
+    if (tid == 0 && (interaction[0] & halting) != 0u) { control.stopped = 3u; }
 }
 
 static inline uint bodyOrderedFloat(float value) {
@@ -3485,9 +3609,12 @@ kernel void solidBodyEnvelope(const device StructureNode *nodes [[buffer(0)]],
     float3 reference = origin.xyz + origin.w * float3(n % layout.y, (n / layout.y) % layout.z, n / (layout.y * layout.z));
     bodyEnvelopePoint(reference + float3(nodes[tid].displacement), 0.5f * origin.w, layout.x, bounds);
 }
+// Envelopes closer than `margin` count as overlapping: with contact between bodies, contact is
+// switched on before their nodes' spheres can touch.
 kernel void validateBodyEnvelopes(const device uint *bounds [[buffer(0)]],
                                   constant uint &count [[buffer(1)]],
                                   device atomic_uint *interaction [[buffer(2)]],
+                                  constant float &margin [[buffer(3)]],
                                   uint tid [[thread_position_in_grid]]) {
     if (tid >= count) { return; }
     for (uint other = tid + 1u; other < count; ++other) {
@@ -3497,7 +3624,7 @@ kernel void validateBodyEnvelopes(const device uint *bounds [[buffer(0)]],
             uint blo = bounds[6u * other + axis], bhi = bounds[6u * other + 3u + axis];
             if (alo > ahi || blo > bhi) { overlap = false; break; }
             overlap = overlap && min(bodyFloatFromOrder(ahi), bodyFloatFromOrder(bhi))
-                >= max(bodyFloatFromOrder(alo), bodyFloatFromOrder(blo)) - 1e-5f;
+                >= max(bodyFloatFromOrder(alo), bodyFloatFromOrder(blo)) - 1e-5f - margin;
         }
         if (overlap) { atomic_fetch_or_explicit(interaction, 1u, memory_order_relaxed); }
     }

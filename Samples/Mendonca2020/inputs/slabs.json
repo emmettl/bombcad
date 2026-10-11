@@ -1,0 +1,60 @@
+{
+  "about": "Inputs only for blind test 2 of docs/blind-tests.md: seven unretrofitted reinforced concrete slabs of the DCTA field blast tests in São José dos Campos, Brazil (F. B. Mendonça, G. S. Urgessa, A. S. Augusto and J. A. F. F. Rocco, 'Experimental records from blast tests of ten reinforced concrete slabs', CivilEng 1(2) 51-74, 2020, doi:10.3390/civileng1020005, CC BY 4.0; with Mendonça, Urgessa and Rocco, Ingeniería e Investigación 38(2) 27-33, 2018, doi:10.15446/ing.investig.v38n2.65305, CC BY 4.0; and Mendonça et al., An. Acad. Bras. Ciênc. 93(1) e20200511, 2021, doi:10.1590/0001-3765202120200511, CC BY 4.0). Taken from their test descriptions, Table 1 of the 2020 paper and their set-up figures. No measured response is here. Lengths in m unless named otherwise.",
+  "slab": {
+    "plan_m": [1.0, 1.0],
+    "thickness_m": 0.08,
+    "mass_kg": "180 for slab 2 and 175 for slab 5 (the 2018 paper, whose four slabs are matched to these by their charges); not given for the others",
+    "cast": "Cast in place in timber forms; cured wet for three days; tested at 28 days"
+  },
+  "concrete": {
+    "nominal_and_tested_fck_MPa": {"40": 42, "50": 53, "60": 62},
+    "tests": "Static compression of 10 x 20 cm cylinders to NBR 12655 by an outside laboratory; the 2020 paper gives the tested values as f'ck 42, 53 and 62 MPa for the nominal 40, 50 and 60 MPa concretes. The 40 and 50 MPa concretes were ready-mixed bridge-beam concrete; the 60 MPa concrete was bridge-deck concrete with silica fume.",
+    "tensile": "Not measured; the 2021 paper's analyses took 10% of the compressive strength.",
+    "aggregate": "Not stated"
+  },
+  "reinforcement": {
+    "position": "A single mat near the bottom face only (the face away from the charge); 2.5 cm cover on the lower face (2020 paper; its Figure 2 dimensions 2.5 cm from the bottom face to the bars' level). No top steel, no links.",
+    "layouts": {
+      "A": "5.0 mm bars at 15 cm both ways (7 bars each way), plus two 10 mm bars side by side near the middle of the slab running in one direction only. Areas (2018 paper): 1.40 cm2 in one direction, 2.96 cm2 in the other (the 5 mm bars plus the two 10 mm bars), ratios 0.175% and 0.37% of the 100 x 8 cm section. The 2020 paper's Table 1 writes the 10 mm bars as '10 mm at 10 cm one way'; its Figure 2a and the 2018 paper show two bars.",
+      "B": "5.0 mm bars at 10 cm both ways (about 10 bars each way), 0.25% each way.",
+      "C": "5.0 mm bars at 15 cm both ways (7 bars each way), 0.17% (0.175%) each way."
+    },
+    "orientation_of_A": "Not stated: which of slab A's two directions spans between the supports is not given.",
+    "steel": {
+      "yield_MPa": "350, given by the 2021 paper as an estimate; no grade, test or ultimate strength is given",
+      "note": "Brazilian bar grades of these sizes are CA-50 (500 MPa) and CA-60 (600 MPa, drawn wire, made up to 10 mm); which was used is not stated"
+    }
+  },
+  "supports": {
+    "arrangement": "Simply supported on two opposite sides, resting on two timber trestles (easels), not tied down.",
+    "trestles": "Each 0.80 m long, 0.40 m high and 0.267 m wide at its base (2021 paper, Figure 2b), shorter than the slab's 1.0 m edge; the width of the timber the slab bears on and the clear span are not given.",
+    "height_above_ground_m": 0.40,
+    "ground": "Clay soil at the DCTA test site; the space under the slab is open at the two unsupported sides (the slabs were not in closed boxes).",
+    "under_slab": "A steel box protecting the displacement meters stood on the ground under the slab's centre (size not given)."
+  },
+  "charge": {
+    "explosive": "PBX: 80% HMX, 20% binder, unconfined (no casing)",
+    "shape": "A vertical cylinder 20 cm high and 10.5 cm in diameter, suspended from a pole above the slab's centre; a booster on top of the cylinder held the detonator, which was fired electrically.",
+    "tnt_equivalent_kg_by_slab": {"1": 2.76, "2": 2.72, "4": 2.69, "5": 2.58, "7": 2.60, "9": 2.72, "10": 2.60},
+    "tnt_equivalence_note": "As stated by the authors for each test; how the equivalence was worked out is not stated. The 2018 paper describes the charge as containing 2.70 kg of equivalent TNT.",
+    "standoff_h_m_by_slab": {"1": 1.3, "2": 2.0, "4": 2.0, "5": 2.0, "7": 2.0, "9": 2.0, "10": 1.6},
+    "standoff_note": "h is the stand-off above the slab's upper surface (the 2018 paper: 'detonated at 2 m stand-off distance', '2.0 m from slab upper surface'); which point of the charge it is measured to is not stated.",
+    "scaled_distance_by_slab_m_per_kg_cube_root": {"1": 0.93, "2": 1.43, "4": 1.44, "5": 1.46, "7": 1.45, "9": 1.43, "10": 1.16}
+  },
+  "specimens": {
+    "1":  {"concrete": "40 (42)", "layout": "C", "group": "C"},
+    "2":  {"concrete": "50 (53)", "layout": "A", "group": "A"},
+    "4":  {"concrete": "60 (62)", "layout": "B", "group": "B"},
+    "5":  {"concrete": "50 (53)", "layout": "A", "group": "A"},
+    "7":  {"concrete": "60 (62)", "layout": "B", "group": "B"},
+    "9":  {"concrete": "60 (62)", "layout": "B", "group": "B"},
+    "10": {"concrete": "40 (42)", "layout": "C", "group": "C"},
+    "repeats": "Slabs 2 and 5 are nominally identical; so are 4, 7 and 9.",
+    "left_out": "Slabs 3, 6 and 8 had 50 mm of expanded polystyrene foam on their top faces, which BombCAD does not model."
+  },
+  "instruments": {
+    "displacement": "Two wire potentiometers hooked to the bottom face near its centre, sampled every 0.42 ms.",
+    "pressure": "Eight piezoelectric pencil gauges (to 5 MPa, sampled every 0.01 ms) round the slab: four at its corners (1, 3, 4, 6) and four at the middle of its sides (2, 5, 7, 8; 7 and 5 on the supported sides). The dataset's readme puts the corner gauges on the slab's upper surface and the mid-side gauges at specified heights above it, pointing at the charge; the heights are not given, and the 2020 paper's tables assign the positions the other way round for slab 1. Sensor layout, with the supports along the edges of gauges 7 and 5: 6 (corner) 7 (mid-side) 4 (corner) / 2 (mid-side) [slab] 8 (mid-side) / 3 (corner) 5 (mid-side) 1 (corner).",
+    "acceleration": "One accelerometer under the slab, sampled every 24 ms (too coarse for a peak; not used)."
+  }
+}

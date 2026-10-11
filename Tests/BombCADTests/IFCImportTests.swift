@@ -5,7 +5,7 @@ import simd
 
 @testable import BombCAD
 
-@Suite("IFC native import")
+@Suite("IFC native import", .hangLimit)
 struct IFCImportTests {
     private var fixture: URL {
         URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
@@ -89,7 +89,7 @@ struct IFCImportTests {
     func openSurface() {
         let id = "0OfZwWc8j9QP5uX8xPTxDH"
         let obj = "g \(id)\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"
-        #expect(throws: IFCImporter.ElementFailure.self) {
+        #expect(throws: IFCImporter.ElementFailures.self) {
             try IFCImporter.decodeOBJ(
                 Data(obj.utf8),
                 metadata: [id: .init(id: id, name: "Open wall", ifcClass: "IfcWall", storey: "Ground")])
@@ -124,9 +124,7 @@ struct IFCImportTests {
     func fileLoader() async throws {
         let loader = ImportFileLoader()
         loader.load(fixture)
-        let deadline = ContinuousClock.now + .seconds(20)
         while loader.isLoading {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(10))
         }
         #expect(loader.error == nil)
@@ -134,8 +132,8 @@ struct IFCImportTests {
         #expect(loader.result?.inspection == nil)
         loader.load(fixture)
         loader.cancel()
-        try await Task.sleep(for: .milliseconds(300))
-        #expect(!loader.isLoading && loader.result == nil)
+        while loader.isLoading { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(loader.result == nil)
     }
 
 }

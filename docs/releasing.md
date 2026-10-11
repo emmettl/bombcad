@@ -95,6 +95,8 @@ The whole path has been run for real, with the `BombCAD-notary` profile, from 20
 | 0.1.0 (2)  | `2a906cb` | `1bf60a66-4602-46a3-b940-7eda11545870` | Published as v0.1.0           |
 | 0.1.1 (3)  | `646ff4e` | `59e35f9c-2aca-4144-8130-314d4604c5d5` | Published as v0.1.1           |
 | 0.1.2 (4)  | `239a67e` | `aa446aa3-ba2e-486b-9ef3-ad5651ec6948` | Published as v0.1.2           |
+| 0.2.0 (5)  | `6eef870` | `678f1bcd-04bc-4c3d-a2d2-f2fad6ffdc29` | Superseded, not published     |
+| 0.2.0 (6)  | `5d930d7` | `7dcc4ec3-0956-4be4-9e4b-972c2e29abca` | Published as v0.2.0           |
 
 For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
 assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
@@ -121,6 +123,17 @@ a fresh expansion of its ZIP matched the checksum, validated its stapled ticket,
 `codesign --verify --deep --strict`, was accepted by `spctl` as `Notarized Developer ID`, and
 holds the licence text and both shader bundles. Its ZIP, checksum and manifest are attached to
 the GitHub release `v0.1.2`, tagged on `239a67e`.
+
+Build 6 (0.2.0) went the same way on 2026-10-11, after build 5 from an earlier commit was made
+and superseded without being published. Its `make check` twice stopped on the app suite's timing
+tests while other sessions' long runs held the GPU (each passing alone); in a window with every
+other GPU job suspended, all 278 app and 868 core tests passed, Apple accepted it, and a fresh
+expansion of its ZIP matched the checksum
+(`4bbf08e2e2151b2754d913c028085eb501eda9f40f5ca497ee7e72fc37e6b9af`), validated its stapled
+ticket, passed `codesign --verify --deep --strict`, was accepted by `spctl` as
+`Notarized Developer ID`, and holds the licence text and both shader bundles; `make release-smoke`
+passed. Its notes, reviewed independently, are in `docs/release-notes/0.2.0.md`. Its ZIP,
+checksum and manifest are attached to the GitHub release `v0.2.0`, tagged on `5d930d7`.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.

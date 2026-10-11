@@ -2,7 +2,7 @@
 
 Each result BombCAD produces carries its evidential standing: what it rests on, how close that
 came, and what the scene's settings do to it. The [long-term vision](long-term-vision.md#credibility-as-a-product-feature)
-asks that users can tell measured agreement from mathematical verification, an approximation and
+asks that users can tell a comparison with measurement from mathematical verification, an approximation and
 an illustration, and that assumptions, resolution sensitivity and unsupported effects stay with
 the scene and its exported results. This is the first step towards that. It summarises the
 [validation record](validation.md) and the [roadmap's limitations](roadmap.md#limitations-most-important-first),
@@ -12,10 +12,17 @@ which remain the authority.
 
 | Level | Meaning | Example |
 |---|---|---|
-| Measured agreement | Compared with measurements, and how close it came | Reflected impulse on a wall within 6% of Kingery–Bulmash on fine enough air |
+| Compared with measurement | Compared with measurements, and how close it came, which way and how far it errs; not that it agrees | Reflected impulse on a wall within 6% either way of Kingery–Bulmash on fine enough air; a close-in slab left a third to a half as far down as measured |
 | Verified against theory | The equations are solved correctly against exact or textbook solutions; no measurement | A steel structure: wave speed, deflection and period within 5% of theory |
 | Approximation | A recognised approximation with stated assumptions; nothing says how close it comes here | Structural damage and failure; building surface exposure |
 | Illustrative | Plausible-looking, or compared too loosely to rely on | Thermal radiation, the cloud, fragments, ground shock, simplified cars |
+
+Until 11 October 2026 the top level's name spoke of agreement; it names a kind of evidence, not
+agreement, and a result compared with measurement can be far off it. Standings saved with the old
+value, `measured`, read as the new, `compared`. Wherever a standing is summarised, in the popover, the headless summary,
+the [validation record's summary](validation.md#summary), the README and the roadmap, the
+direction of the error comes first, and the unsafe side (too little damage, too much strength) is
+named.
 
 Results with a standing of their own: peak overpressure, impulse, structural deflection,
 structural damage and failure, building surface exposure, freestanding objects' motion, thermal
@@ -43,7 +50,7 @@ The standing is worked out from the scene's actual settings each time they chang
 - **Afterburning.** Off, the incident impulse is 13–22% low; on, it is within 4% (6% with hot
   air), with the burning time fitted to it. Reflecting domain faces bring in the closed-room
   comparison, whose agreement depends on both options.
-- **Materials.** Reinforced concrete has measured agreement; plain concrete, steel and masonry
+- **Materials.** Reinforced concrete has been compared with measurement; plain concrete, steel and masonry
   are verified against theory; glass is an approximation. A structure takes its weakest material.
 - **Model options.** Each option that changes a result's standing has one entry: what it does,
   which results it touches and the strongest level they keep with it. Pressed interlock, other
@@ -71,7 +78,7 @@ and fingerprint are otherwise unchanged.
 
 [Comparison](run-comparison.md) badges each selected run beside its name and warns when the
 selected runs differ in standing from the reference, by result: two runs whose peaks differ by
-10% mean something different when one's impulse is measured agreement and the other's an
+10% mean something different when one's impulse was compared with measurement and the other's an
 approximation.
 
 ## Headless runs and exports
@@ -104,8 +111,9 @@ standing says why.
   gauges on a surface. With afterburning and hot air their own tables apply. Gauges beyond
   6 m/kg^(1/3), closer than 0.3, shielded from the charge, over terrain, or on cells coarser than
   any compared grid get none.
-- **Structures** take the slab test's 105–115% on 4 to 32 solid elements through (125% on
-  shells) in the far field; close in, Wu's slabs (40–70% under charges to 0.8 kg, −20% to +7% to
+- **Structures** take the slab test's 79–114% on 4 to 32 solid elements through in the far
+  field, either way by load (104–114% under the contest's load, 79–88% under its lower shot), with
+  the contest's repeat, 3%, as the tests' scatter (124% on shells); close in, Wu's slabs (40–70% under charges to 0.8 kg, −20% to +7% to
   2 kg) and, from 2 kg, Chiquito's deflection left (a third to a half); confined, the chamber's
   wall pressures (0.9 to 1.6 times). Strength in shear is 37% strong on 12 elements through and
   11–15% on 24 or more, interpolated between. Any structural option the tests were not run with
@@ -125,6 +133,18 @@ wall's peak and impulse. The expected range adds the inputs' 5–95% range (1.64
 variation) to the band's half-width in quadrature, since the model's error and its spread from
 uncertain inputs are separate, and comparison uses the combined width. Elsewhere the band stands
 alone.
+
+**The reference's own scatter.** A band compares the model with a reference's mean; a single test
+scatters about it. Where the record gives that scatter, the band carries it, one standard
+deviation: Kingery's tests about Kingery–Bulmash's fit, 6.4% in incident peak and 6.7% in incident
+impulse; for reflected values, which Kingery and Bulmash calculated rather than fitted, modern
+repeats' 6–8% (8% taken); UFC 3-340-02's rooms, 11%. Each band says plainly whether the model's
+error lies inside that scatter, where it cannot be told apart from the tests (the reflected
+impulse within 6%, a closed room's 98–108% with afterburning and hot air), or outside it, where
+the difference is the model's (the incident impulse 13–22% low, peaks under-resolved, a room's
+default gas; arrival times, 2–10% early against about ±2%, have no band). The expected range adds
+the scatter at 5–95% as it does the inputs' spread, and comparison uses the combined width. Close in, where repeats differed
+by up to 40%, the band says so instead of carrying a figure; Kinney–Graham has none known.
 
 **Regimes.** The scene is placed as in contact (under 0.15 m/kg^(1/3) from a structure), close
 in (under 0.75), far field, or confined (a closed room or a charge inside a structure), and the

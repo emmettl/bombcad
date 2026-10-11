@@ -217,11 +217,12 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
         public var axis: Int?
         public var minimumSize: Float?
         public var partIDs: [Int]? = nil
+        public var betweenElements: Bool? = nil
         public var id: Self { self }
         public var title: String {
             switch kind {
             case .thin: "Thin feature"
-            case .gap: "Narrow gap"
+            case .gap: betweenElements == true ? "Gap between IFC elements" : "Narrow gap"
             case .missing: "Potentially missing surface"
             }
         }
@@ -252,6 +253,8 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
         public var boxPartIDs: [Int]? = nil
         public var sourceNotes: [String]? = nil
         public var buildingSampling: [BuildingSampling]? = nil
+        public var crossElementGapSamples: Int? = nil
+        public var crossElementChecksIncomplete: Bool? = nil
         public var warnings: [String] {
             var messages = [
                 "Geometry is sampled at cell centres. Highlighted regions are approximate diagnostics, not a mesh convergence check. Inspect the overlay and compare finer grids."
@@ -290,6 +293,12 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
         if buildingElements != nil {
             return try buildingPreview(cellSize: h, domain: domain, allowEmpty: allowEmpty)
         }
+        return try sampledPreview(cellSize: h, domain: domain, allowEmpty: allowEmpty)
+    }
+    func sampledPreview(
+        cellSize h: Float, domain: SIMD3<Float>, allowEmpty: Bool,
+        onRay: ((Int, Int, Int, [SIMD2<Float>]) -> Void)? = nil
+    ) throws -> Preview {
         let bounds = self.bounds
         guard h.isFinite, h > 0,
             (0..<3).allSatisfy({
@@ -448,6 +457,11 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
                     let crossings = try intersections(
                         axis: axis, first: (Float(j) + 0.5) * h, second: (Float(k) + 0.5) * h)
                     let hits = crossings.hits
+                    if let onRay, !hits.isEmpty {
+                        onRay(
+                            axis, j, k,
+                            stride(from: 0, to: hits.count, by: 2).map { SIMD2(hits[$0], hits[$0 + 1]) })
+                    }
                     func region(_ a: Float, _ b: Float) -> Box {
                         var min = SIMD3<Float>.zero
                         var max = SIMD3<Float>.zero

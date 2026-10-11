@@ -75,7 +75,9 @@ shared-air implementation used `blast-solver-3`; local coupling uses `blast-solv
 Historical records retain their provenance. Single-body records and numerical fingerprints
 retain their previous semantics. No ContinuumKit package changes are required.
 
-Inter-object contact and moving-component connections remain unsupported. Initial touching
+Moving-component connections remain unsupported, and so, until October 2026, did contact
+between bodies (see [contact between bodies](#implemented-contact-between-bodies), which replaces
+the stop described here when bodies come close). Initial touching
 or intersecting body envelopes are rejected. During a run, GPU checks collect node envelopes
 at the start of the fluid step and after mechanical substeps, including loose nodes and
 conservative section/debris radii. They also detect overlapping resolved boundary cells.
@@ -114,6 +116,117 @@ The [street-interaction study](street-interaction.md) compares isolated, paired 
 layouts with matched sources, physical observation points and structural meshes. Spatial
 recording and diagnostic stage profiling remain in BlastCore; this introduces no new
 ContinuumKit contracts or release.
+
+## Implemented contact between bodies
+
+Independent deformable bodies now meet through contact, so debris of one building can strike
+another and a wall pushed into its neighbour bears on it. The envelope check above still runs,
+with a margin of one of the bodies' widest elements; when it fires, the batch stops as before,
+but the solver then switches contact on and carries on. From then on every body is encoded a
+substep at a time, side by side, on the shortest of their steps: each body fills its own contact
+table and finds its own contacts, each pair of bodies meets through the other's table
+(`BodyContact.metal`), and only then does any body move. The pair force is the mixed body's
+cross-part contact (the spring, damper and friction of contact within a body), the same from
+both sides and capped by the lighter node, so it is equal and opposite. The solid and mixed
+encoders gained a range of substeps for this, as the shell encoder already had. Bodies apart
+are encoded exactly as before, one after another, so a single body and bodies that never meet
+run as they did (`blastbench digest` unchanged). `SolverConfiguration.interBodyContact` off
+restores the stop. Freestanding rigid objects strike any of several structures in
+`ExperimentalRigidStructureSimulation` (without air; see [freestanding objects](freestanding-objects.md)).
+
+Acceptance, against the list below:
+
+- *One-body path:* `blastbench digest` gives the same hashes as before, including the
+  deformable wall.
+- *Prescribed loads independent of another body:* the existing test, unchanged.
+- *Stationary multi-body boundary against fixed geometry:* the existing test, unchanged.
+- *Coupled exchange accounted:* two free bodies under one blast each take what they take alone,
+  to 1 part in 10⁶, and the air loses to them together what it loses to each alone. Each takes
+  3–6% less than the air loses to it on 0.25 m cells: a body's load is read from the pressure at
+  its faces, not from the momentum the air puts through them. That shortfall is the coupling's
+  own, with one body as with several.
+- *Contact:* a block thrown into another, solid or shell either side, pushes it off, keeping
+  their momentum to 1 part in 10³ and adding no energy, contact switching on of itself before
+  they meet; with contact off, the run stops as before.
+- *Histories after reorder:* the existing reorder test, unchanged.
+
+Multi-body runs saved from now on carry `blast-solver-5`; `blast-solver-4` and `-3` records keep
+their provenance. Scene encoding is unchanged.
+
+### Three buildings across a street
+
+`blastbench buildings` runs the layout "Three buildings across a street" (single-storey
+reinforced concrete shells, 8 m square and 4 m high, 0.5 m elements; one either side of a 10 m
+street with the charge 4 m from the near one's front, the third 6 m behind the far one) together
+and with each building alone, on 0.5 m air. Outputs are on the study volume
+(`multi-structure/buildings-*.json`). The Mac was shared with other work, so times are rough.
+
+| 50 kg, 0.15 s | Together | Alone |
+| --- | ---: | ---: |
+| Near building: front impulse, peak displacement | 2,139 kPa ms, 23.9 mm | 1,931 kPa ms, 23.9 mm |
+| Far building: front peak, peak displacement | 610 kPa, 21.3 mm | 617 kPa, 19.6 mm |
+| Sheltered building: front peak and impulse, peak displacement | 34.5 kPa, 319 kPa ms, 6.0 mm | 52.9 kPa, 385 kPa ms, 5.4 mm |
+| Wall time | 9 s, 626 steps | 4 s each, 593–646 steps |
+
+| 500 kg, 0.25 s | Together | Alone |
+| --- | ---: | ---: |
+| Near building: front impulse, peak displacement | 12,079 kPa ms, 782 mm | 12,462 kPa ms, 778 mm |
+| Far building: front impulse, peak displacement | 8,460 kPa ms, 429 mm | 8,630 kPa ms, 414 mm |
+| Sheltered building: front peak and impulse, peak displacement | 205 kPa, 1,286 kPa ms, 40.5 mm | 376 kPa, 2,198 kPa ms, 33.4 mm |
+| Wall time | 24 s, 1,132 steps | 7–62 s, 1,056–1,147 steps |
+
+The far building reflects the blast back onto the near one (its front's impulse 11% more at
+50 kg, though 3% less at 500 kg) and is itself pushed 4–9% further for the near one's reflections; the far building
+shelters the one behind it, whose front sees 35–45% less peak and 17–42% less impulse. Yet the
+sheltered building's largest displacement rises with the shelter (6.0 against 5.4 mm, 40.5
+against 33.4 mm): the front's load does not account for it, and what does was not traced. The
+buildings bulge but do not break apart at either charge, so no debris crosses the street; they
+never come within reach of each other.
+
+Contact is shown instead by two terraced buildings 0.1 m apart (shells of 0.25 m, 6 m square, 3
+m high, 200 mm walls) with 20 kg inside one, 1 m from the party wall (`--terraced`, 0.25 m air,
+0.1 s):
+
+| | Together, in contact | Without the neighbour | Contact off |
+| --- | --- | --- | --- |
+| Building with the charge | 2.18 m, 291 elements broken | 2.14 m, 308 broken | stops at 8 ms |
+| Neighbour | 1.99 m, 78 broken | — | — |
+| Wall time | 18 s | 8 s | — |
+
+The party wall breaks up and is driven into the neighbour, which loses 78 elements; the
+neighbour holds back a little of the wall (17 fewer elements broken). Contact on from the
+start (the buildings begin within an element of each other) took the run from 8 to 18 s.
+
+Cost: at 50 kg, the three buildings sharing one air grid ran in 9 s against 12 s for the three
+alone (at 500 kg one lone run was slowed by other work). The two terraced buildings in contact,
+encoded a substep at a time with the extra passes, took 18 s against 8 s for one alone.
+
+## Decisions
+
+The open questions below were settled as follows.
+
+- **Batching or separate instances.** Separate solver instances, one per body (`StructuralBody`),
+  encoded into one command encoder: apart, one after another; in contact, a substep at a time.
+  The GPU layout is not part of the scene. The [scaling benchmark](multi-object-scaling.md)
+  measured the shared coupling; the buildings study above, the whole.
+- **Component ID granularity.** An ID per object (structure, block, import) and per authored
+  component that edits or results refer to: solid region, opening and support. Elements, nodes,
+  contact-table entries and GPU indices are run-time mappings, regenerated each run, never
+  saved. Results are attributed per object. An imported building is one object (IFC and
+  deformable OBJ imports alike); its source-part IDs are its provenance, and a resampled region
+  may take a new component ID.
+- **Migration.** As implemented: one structure, scene version 3; several, version 4 with
+  `additionalStructures`; older readers reject newer versions. Contact changed no scene encoding,
+  only the saved run's solver provenance. Presets give every structure they author a
+  deterministic ID by its place among them.
+- **Overlap.** Bodies that start touching or overlapping are rejected: contact never infers a
+  bond. During a run, bodies within an element switch to contact; air cells two bodies claim
+  average their wall speeds. Coupling storage running out still stops the run.
+
+Shared contracts that may later belong in ContinuumKit, once independently verified: the pair
+force between independently meshed bodies' nodes (equal and opposite, shared parameters, the
+lighter node's cap), and the rule that a moving body's face takes the load beyond it. Both stay
+in BlastCore for now; no ContinuumKit change was made.
 
 ## Implemented stationary envelopes
 
@@ -331,7 +444,7 @@ BombCAD to the tested version. Keep extraction separate from numerical changes.
 The first implementation proposal should settle object/component ID granularity, the exact
 legacy migration rules, source-to-object ownership and unsupported overlap handling. It
 should also measure whether multiple structural instances fit the current resource and
-dispatch design.
+dispatch design. These are now [decided](#decisions).
 
 Keep thermal physics, deformable terrain, general moving-body contact and reusable building
 response models as separate proposals. Their future presence should not require changing

@@ -15,7 +15,33 @@ public struct ImportedModel: Sendable, Hashable, Codable, Identifiable {
     public var regenerationEnabled: Bool?
     /// Source-shell IDs, never generated region indices. Nil means every part uses the body default.
     public var partMaterials: [Int: StructureMaterial]?
+    /// For an IFC building imported as a structure of shells and beams (`IFCStructure`): how it
+    /// was converted, and what the conversion did. Nil for every other import.
+    public var structuralOptions: IFCStructure.Options?
+    public var structuralReport: IFCStructure.Report?
     public var isAttached: Bool { regenerationEnabled ?? true }
+    /// Whether this is an IFC building meshed as shells and beams rather than solid elements.
+    public var isStructural: Bool { behavior == .deformable && source.buildingElements != nil }
+    /// The structure of shells and beams this IFC building converts to.
+    public func structure() throws -> IFCStructure {
+        guard let elements = try transformedSource().buildingElements else {
+            throw ImportedMesh.ImportError.invalid("Only IFC buildings convert to shells and beams.")
+        }
+        return try IFCStructure(
+            elements: elements, chosen: partMaterials ?? [:],
+            options: structuralOptions ?? IFCStructure.Options(),
+            modelID: id)
+    }
+    /// The preview's boxes of the parts that are rigid obstacles: all of them, or for a structure
+    /// of shells and beams those of the elements it keeps rigid.
+    public var rigidBoxes: [Box] {
+        guard isAttached else { return [] }
+        if behavior == .rigid { return preview.boxes }
+        guard isStructural, let rigid = structuralReport.map({ Set($0.rigidParts) }),
+            let owners = preview.boxPartIDs
+        else { return [] }
+        return zip(preview.boxes, owners).filter { rigid.contains($0.1) }.map(\.0)
+    }
     public init(
         id: UUID = UUID(), name: String, source: ImportedMesh, scale: Float, yUp: Bool, corner: SIMD3<Float>,
         behavior: Behavior, preview: ImportedMesh.Preview, partMaterials: [Int: StructureMaterial]? = nil
@@ -29,6 +55,11 @@ public struct ImportedModel: Sendable, Hashable, Codable, Identifiable {
         self.behavior = behavior
         self.preview = preview
         self.partMaterials = partMaterials
+    }
+    public func needsSampling(cellSize: Float) -> Bool {
+        isAttached
+            && (preview.cellSize != cellSize
+                || (source.buildingElements != nil && preview.crossElementGapSamples == nil))
     }
     public func transformedSource() throws -> ImportedMesh {
         try source.transformed(scale: scale, yUp: yUp, corner: corner)
@@ -75,6 +106,10 @@ public struct ImportedModel: Sendable, Hashable, Codable, Identifiable {
     /// Regeneration must never discard local region edits, reinforcement or custom supports.
     public func canRegenerate(_ body: StructureModel?) -> Bool {
         guard isAttached else { return false }
+        if isStructural {
+            guard let body else { return true }
+            return (try? structure().model) == body
+        }
         guard behavior == .deformable, let body, !preview.boxes.isEmpty else { return behavior == .rigid }
         guard body.solids == preview.boxes, let expected = try? regionMaterials() else { return false }
         let materialsMatch = body.solids.indices.allSatisfy { n in
@@ -96,14 +131,21 @@ public struct ImportedModel: Sendable, Hashable, Codable, Identifiable {
 extension Scenario {
     public var rigidBoxes: [Box] {
         boxes + envelopeObjects.flatMap { $0.envelope!.blocks }
-            + (importedModels ?? []).filter { $0.isAttached && $0.behavior == .rigid }.flatMap {
-                $0.preview.boxes
-            }
+            + (importedModels ?? []).flatMap(\.rigidBoxes)
     }
     public func resamplingImports(cellSize: Float) throws -> Self {
         var copy = self
         for original in importedModels ?? []
-        where original.isAttached && original.preview.cellSize != cellSize {
+        where original.needsSampling(cellSize: cellSize) {
+            // A structure of shells and beams does not depend on the grid: only its preview, and
+            // the rigid obstacles it keeps, are sampled again.
+            if original.isStructural {
+                let updated = try original.sampled(cellSize: cellSize, domain: domainSize)
+                if let index = copy.importedModels?.firstIndex(where: { $0.id == original.id }) {
+                    copy.importedModels?[index] = updated
+                }
+                continue
+            }
             let owner = copy.structuralObject(sourceID: original.id)
             guard original.canRegenerate(owner?.structure) else {
                 throw ImportedMesh.ImportError.invalid(
@@ -141,15 +183,15 @@ extension Scenario {
     public mutating func installImport(
         _ imported: ImportedModel, material: StructureMaterial, fixedBase: Bool
     ) throws {
-        guard imported.source.buildingElements == nil || imported.behavior == .rigid else {
-            throw ImportedMesh.ImportError.invalid(
-                "IFC building imports currently support rigid obstacles only.")
-        }
+        var imported = imported
+        // An IFC building, deformable, is a structure of shells and beams.
+        let converted = imported.isStructural ? try imported.structure() : nil
+        imported.structuralReport = converted?.report
         guard imported.preview.occupiedCells > 0 else {
             throw ImportedMesh.ImportError.invalid(
                 "No occupied cells remain. Choose a finer grid before importing.")
         }
-        let materials = try imported.regionMaterials()
+        let materials = imported.isStructural ? [] : try imported.regionMaterials()
         let old = importedModels?.first { $0.id == imported.id }
         guard old?.isAttached != false else {
             throw ImportedMesh.ImportError.invalid(
@@ -165,12 +207,7 @@ extension Scenario {
         } else {
             models.append(imported)
         }
-        guard
-            boxes.count
-                + models.filter({ $0.isAttached && $0.behavior == .rigid }).reduce(
-                    0, { $0 + $1.preview.boxes.count })
-                <= 2048
-        else {
+        guard boxes.count + models.reduce(0, { $0 + $1.rigidBoxes.count }) <= 2048 else {
             throw ImportedMesh.ImportError.invalid(
                 "The combined layout exceeds the 2,048 rigid region limit.")
         }
@@ -180,6 +217,16 @@ extension Scenario {
                 throw ImportedMesh.ImportError.invalid(
                     "The structure contains local edits. Detach its geometry before replacing it from the source."
                 )
+            }
+            if let converted {
+                if let owner {
+                    try updateStructureObject(id: owner.id, model: converted.model)
+                } else {
+                    let id = try addStructureObject(converted.model, name: imported.name)
+                    bindStructuralSource(imported.id, objectID: id)
+                }
+                importedModels = models
+                return
             }
             var body =
                 owner?.structure
@@ -213,7 +260,8 @@ extension Scenario {
         guard let index = importedModels?.firstIndex(where: { $0.id == id }),
             let model = importedModels?[index], model.isAttached
         else { return }
-        if model.behavior == .rigid { boxes.append(contentsOf: model.preview.boxes) }
+        // Its rigid obstacles stay where they are, as plain boxes.
+        boxes.append(contentsOf: model.rigidBoxes)
         importedModels?[index].regenerationEnabled = false
         importNotes =
             (importNotes ?? []) + [

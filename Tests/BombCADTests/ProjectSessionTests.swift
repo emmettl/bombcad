@@ -5,7 +5,7 @@ import Testing
 @testable import BombCAD
 
 @MainActor
-@Suite("Document sessions", .serialized)
+@Suite("Document sessions", .serialized, .hangLimit)
 struct ProjectSessionTests {
     private func document() -> ProjectDocument {
         var document = ProjectDocument(scenario: ScenarioPreset.openGround.scenario)
@@ -31,9 +31,7 @@ struct ProjectSessionTests {
         let beforeRun = session.snapshot
         model.speed = .unlimited
         model.run()
-        let deadline = ContinuousClock.now + .seconds(10)
         while model.isRunning {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(5))
         }
         #expect(model.time > 0)

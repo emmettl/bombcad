@@ -231,13 +231,20 @@ public enum ContactSlabTest {
             let sorted = values.sorted()
             return sorted[sorted.count / 2]
         }
-        func faceVelocities() -> [Float] {
-            rings.map { nodes in median(nodes.map { -structure.node($0.i, $0.j, 0).velocity.z }) }
+        // With rubble, a face node whose elements have all become particles is out of the body, and
+        // the particles made of the face's layer of elements move for it.
+        let rubble = structure.model.rubbleParticles
+        func velocities(_ ring: [(i: Int, j: Int)]) -> [Float] {
+            ring.flatMap { point -> [Float] in
+                let node = structure.node(point.i, point.j, 0)
+                var values: [Float] = !rubble || node.mass > 0 ? [-node.velocity.z] : []
+                if rubble, let p = structure.rubbleParticle(point.i, point.j, 0) { values.append(-p.vz) }
+                return values
+            }
         }
+        func faceVelocities() -> [Float] { rings.map { median(velocities($0)) } }
         // The face within two rings of the axis: a dozen nodes or more.
-        func tip() -> Float {
-            median((rings[0] + rings[1]).map { -structure.node($0.i, $0.j, 0).velocity.z })
-        }
+        func tip() -> Float { median(velocities(rings[0] + rings[1])) }
         let start = ContinuousClock.now
         var momentum: [SIMD2<Double>] = []
         var tipVelocity: Float = 0
@@ -323,6 +330,7 @@ public enum ContactSlabTest {
                 }
             }
         }
+        kinetic += structure.rubbleParticles().reduce(0) { $0 + Double($1.particle.kineticEnergy) }
         return Result(
             momentum: momentum, faceProfiles: profiles, ring: ring, tipVelocity: tipVelocity,
             tipVelocityAtEnd: tip(), separatedRadius: separated, spallRadiusByDamage: byDamage,

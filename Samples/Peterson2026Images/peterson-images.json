@@ -1,0 +1,1574 @@
+{
+ "source": "V. Peterson, High-speed camera dataset from impact tests on reinforced concrete beams, Mendeley Data, doi:10.17632/kn28g6dbj5.3 (CC BY 4.0); camera set-up from Peterson's KTH thesis (2026)",
+ "licence": "CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/); derived from the frames by Scripts/peterson2026/images",
+ "camera": "Photron APX-RS, 6000 frames/s (0.167 ms), 1024 x 512 px; scale from each beam's 150 mm depth in the frame",
+ "uncertainty": {
+  "time_ms": 0.25,
+  "inclination_deg_automatic": 5,
+  "inclination_deg_by_hand": 8,
+  "opening_slip_mm": "0.05 below 1 mm; a lower bound beyond about 3 mm, where the speckle across a wide crack no longer correlates"
+ },
+ "beams": [
+  {
+   "beam": "D-04d-NoS-1",
+   "scale_mm_per_px": 0.54,
+   "recorded_ms_after_impact": 18.5,
+   "first_crack": {
+    "ms": 0.83,
+    "inclination_deg": 79,
+    "x_mm_from_support": 31,
+    "length_mm": 26
+   },
+   "first_inclined_crack": {
+    "ms": 1.0,
+    "inclination_deg": 47,
+    "rises": "away from the load",
+    "x_mm_from_support": 50,
+    "length_mm": 20
+   },
+   "main_crack": {
+    "inclination_deg": 78,
+    "rises": "towards the load",
+    "span": "short",
+    "read": "by hand",
+    "note": "from under the load to the support, the support's corner broken"
+   },
+   "spalled_at_load_ms": null,
+   "spalled_at_support_ms": null
+  },
+  {
+   "beam": "D-04d-NoS-2",
+   "scale_mm_per_px": 0.536,
+   "recorded_ms_after_impact": 17.0,
+   "first_crack": {
+    "ms": 1.5,
+    "inclination_deg": 79,
+    "x_mm_from_support": 18,
+    "length_mm": 84
+   },
+   "first_inclined_crack": {
+    "ms": 1.5,
+    "inclination_deg": 74,
+    "rises": "towards the load",
+    "x_mm_from_support": 40,
+    "length_mm": 34
+   },
+   "main_crack": {
+    "inclination_deg": 76,
+    "rises": "towards the load",
+    "span": "short",
+    "read": "by hand",
+    "note": "from under the load to near the support"
+   },
+   "spalled_at_load_ms": null,
+   "spalled_at_support_ms": null
+  },
+  {
+   "beam": "D-04d-S45-1",
+   "scale_mm_per_px": 0.54,
+   "recorded_ms_after_impact": 22.8,
+   "first_crack": {
+    "ms": 1.33,
+    "inclination_deg": 79,
+    "x_mm_from_support": 0,
+    "length_mm": 50
+   },
+   "first_inclined_crack": {
+    "ms": 2.0,
+    "inclination_deg": 66,
+    "rises": "towards the load",
+    "x_mm_from_support": 52,
+    "length_mm": 23
+   },
+   "main_crack": {
+    "inclination_deg": 80,
+    "rises": "towards the load",
+    "span": "short",
+    "read": "by hand",
+    "note": "from under the load to the support, the concrete round the support broken out"
+   },
+   "spalled_at_load_ms": null,
+   "spalled_at_support_ms": null
+  },
+  {
+   "beam": "D-04d-S45-2",
+   "scale_mm_per_px": 0.556,
+   "recorded_ms_after_impact": 14.0,
+   "first_crack": {
+    "ms": 1.0,
+    "inclination_deg": 68,
+    "x_mm_from_support": 20,
+    "length_mm": 72
+   },
+   "first_inclined_crack": {
+    "ms": 1.0,
+    "inclination_deg": 68,
+    "rises": "towards the load",
+    "x_mm_from_support": 20,
+    "length_mm": 72
+   },
+   "main_crack": {
+    "inclination_deg": 77,
+    "span": "short",
+    "read": "automatic",
+    "x_mm_from_support": -1,
+    "length_mm": 164,
+    "appeared_ms": 1.17,
+    "opening_slip_at": {
+     "x_mm_from_support": -1,
+     "height_mm": 74,
+     "along": 0.5
+    },
+    "opening_slip": [
+     {
+      "ms": 0.0,
+      "opening_mm": 0.0,
+      "slip_mm": 0.0
+     },
+     {
+      "ms": 0.5,
+      "opening_mm": 0.01,
+      "slip_mm": 0.01
+     },
+     {
+      "ms": 1.0,
+      "opening_mm": 0.01,
+      "slip_mm": 0.03
+     },
+     {
+      "ms": 1.5,
+      "opening_mm": 0.02,
+      "slip_mm": 0.16
+     },
+     {
+      "ms": 2.0,
+      "opening_mm": 0.02,
+      "slip_mm": 0.4
+     },
+     {
+      "ms": 2.5,
+      "opening_mm": 0.0,
+      "slip_mm": 0.59
+     },
+     {
+      "ms": 3.0,
+      "opening_mm": 0.01,
+      "slip_mm": 0.8
+     },
+     {
+      "ms": 3.5,
+      "opening_mm": 0.01,
+      "slip_mm": 0.96
+     },
+     {
+      "ms": 4.0,
+      "opening_mm": 0.01,
+      "slip_mm": 1.03
+     },
+     {
+      "ms": 4.5,
+      "opening_mm": 0.02,
+      "slip_mm": 1.08
+     },
+     {
+      "ms": 5.0,
+      "opening_mm": 0.04,
+      "slip_mm": 1.12
+     },
+     {
+      "ms": 5.5,
+      "opening_mm": 0.07,
+      "slip_mm": 1.19
+     },
+     {
+      "ms": 6.0,
+      "opening_mm": 0.09,
+      "slip_mm": 1.22
+     },
+     {
+      "ms": 6.5,
+      "opening_mm": 0.12,
+      "slip_mm": 1.3
+     },
+     {
+      "ms": 7.0,
+      "opening_mm": 0.16,
+      "slip_mm": 1.36
+     },
+     {
+      "ms": 7.5,
+      "opening_mm": 0.18,
+      "slip_mm": 1.44
+     },
+     {
+      "ms": 8.0,
+      "opening_mm": 0.22,
+      "slip_mm": 1.47
+     },
+     {
+      "ms": 8.5,
+      "opening_mm": 0.22,
+      "slip_mm": 1.48
+     },
+     {
+      "ms": 9.0,
+      "opening_mm": 0.25,
+      "slip_mm": 1.53
+     },
+     {
+      "ms": 9.5,
+      "opening_mm": 0.28,
+      "slip_mm": 1.54
+     },
+     {
+      "ms": 10.0,
+      "opening_mm": 0.31,
+      "slip_mm": 1.55
+     }
+    ],
+    "note": "the station sits on the end block, which slides along the crack"
+   },
+   "spalled_at_load_ms": null,
+   "spalled_at_support_ms": null
+  },
+  {
+   "beam": "D-04d-S90-1",
+   "scale_mm_per_px": 0.54,
+   "recorded_ms_after_impact": 17.3,
+   "first_crack": {
+    "ms": 0.0,
+    "inclination_deg": 1,
+    "x_mm_from_support": 68,
+    "length_mm": 24
+   },
+   "first_inclined_crack": {
+    "ms": 0.67,
+    "inclination_deg": 73,
+    "rises": "towards the load",
+    "x_mm_from_support": 15,
+    "length_mm": 108
+   },
+   "main_crack": {
+    "inclination_deg": 75,
+    "rises": "towards the load",
+    "span": "short",
+    "read": "by hand",
+    "note": "the end block torn off from under the load to the support, crushed round the support"
+   },
+   "spalled_at_load_ms": 5.83,
+   "spalled_at_support_ms": 3.83
+  },
+  {
+   "beam": "D-04d-S90-2",
+   "scale_mm_per_px": 0.543,
+   "recorded_ms_after_impact": 13.0,
+   "first_crack": {
+    "ms": 0.83,
+    "inclination_deg": 56,
+    "x_mm_from_support": 15,
+    "length_mm": 22
+   },
+   "first_inclined_crack": {
+    "ms": 0.83,
+    "inclination_deg": 56,
+    "rises": "towards the load",
+    "x_mm_from_support": 15,
+    "length_mm": 22
+   },
+   "main_crack": {
+    "inclination_deg": 57,
+    "span": "short",
+    "read": "automatic",
+    "x_mm_from_support": 5,
+    "length_mm": 190,
+    "appeared_ms": 1.0,
+    "opening_slip_at": {
+     "x_mm_from_support": -16,
+     "height_mm": 31,
+     "along": 0.75
+    },
+    "opening_slip": [
+     {
+      "ms": 0.0,
+      "opening_mm": 0.01,
+      "slip_mm": 0.0
+     },
+     {
+      "ms": 0.5,
+      "opening_mm": 0.01,
+      "slip_mm": 0.03
+     },
+     {
+      "ms": 1.0,
+      "opening_mm": 0.0,
+      "slip_mm": 0.01
+     },
+     {
+      "ms": 1.5,
+      "opening_mm": 0.02,
+      "slip_mm": 0.26
+     },
+     {
+      "ms": 2.0,
+      "opening_mm": 0.04,
+      "slip_mm": 0.49
+     },
+     {
+      "ms": 2.5,
+      "opening_mm": 0.03,
+      "slip_mm": 0.64
+     },
+     {
+      "ms": 3.0,
+      "opening_mm": 0.08,
+      "slip_mm": 0.78
+     },
+     {
+      "ms": 3.5,
+      "opening_mm": 0.08,
+      "slip_mm": 0.89
+     },
+     {
+      "ms": 4.0,
+      "opening_mm": 0.05,
+      "slip_mm": 0.99
+     },
+     {
+      "ms": 4.5,
+      "opening_mm": 4.37,
+      "slip_mm": 3.86
+     },
+     {
+      "ms": 5.0,
+      "opening_mm": 1.15,
+      "slip_mm": 2.03
+     },
+     {
+      "ms": 5.5,
+      "opening_mm": 3.18,
+      "slip_mm": 0.52
+     },
+     {
+      "ms": 6.0,
+      "opening_mm": 1.84,
+      "slip_mm": 2.87
+     },
+     {
+      "ms": 6.5,
+      "opening_mm": 1.75,
+      "slip_mm": 3.07
+     },
+     {
+      "ms": 7.0,
+      "opening_mm": 2.86,
+      "slip_mm": 1.75
+     },
+     {
+      "ms": 7.5,
+      "opening_mm": 0.63,
+      "slip_mm": 1.82
+     },
+     {
+      "ms": 8.0,
+      "opening_mm": 0.22,
+      "slip_mm": 1.81
+     },
+     {
+      "ms": 8.5,
+      "opening_mm": 0.98,
+      "slip_mm": 2.2
+     },
+     {
+      "ms": 9.0,
+      "opening_mm": 2.63,
+      "slip_mm": 3.21
+     },
+     {
+      "ms": 9.5,
+      "opening_mm": 3.5,
+      "slip_mm": 2.89
+     },
+     {
+      "ms": 10.0,
+      "opening_mm": 3.47,
+      "slip_mm": 3.38
+     }
+    ],
+    "note": "the station sits on the end block, which slides along the crack"
+   },
+   "spalled_at_load_ms": null,
+   "spalled_at_support_ms": 4.33
+  },
+  {
+   "beam": "D-1d-NoS-1",
+   "scale_mm_per_px": 0.545,
+   "recorded_ms_after_impact": 15.0,
+   "first_crack": {
+    "ms": 0.5,
+    "inclination_deg": 1,
+    "x_mm_from_support": 144,
+    "length_mm": 17
+   },
+   "first_inclined_crack": {
+    "ms": 1.0,
+    "inclination_deg": 75,
+    "rises": "away from the load",
+    "x_mm_from_support": 125,
+    "length_mm": 63
+   },
+   "main_crack": {
+    "inclination_deg": 50,
+    "span": "short",
+    "read": "automatic",
+    "x_mm_from_support": 46,
+    "length_mm": 178,
+    "appeared_ms": 1.33,
+    "opening_slip_at": {
+     "x_mm_from_support": 21,
+     "height_mm": 32,
+     "along": 0.75
+    },
+    "opening_slip": [
+     {
+      "ms": 0.0,
+      "opening_mm": 0.01,
+      "slip_mm": 0.0
+     },
+     {
+      "ms": 0.5,
+      "opening_mm": 0.01,
+      "slip_mm": 0.01
+     },
+     {
+      "ms": 1.0,
+      "opening_mm": 0.0,
+      "slip_mm": 0.03
+     },
+     {
+      "ms": 1.5,
+      "opening_mm": 0.24,
+      "slip_mm": 0.07
+     },
+     {
+      "ms": 2.0,
+      "opening_mm": 1.07,
+      "slip_mm": 0.08
+     },
+     {
+      "ms": 2.5,
+      "opening_mm": 1.4,
+      "slip_mm": 0.09
+     },
+     {
+      "ms": 3.0,
+      "opening_mm": 1.6,
+      "slip_mm": 0.02
+     },
+     {
+      "ms": 3.5,
+      "opening_mm": 1.54,
+      "slip_mm": 0.18
+     },
+     {
+      "ms": 4.0,
+      "opening_mm": 1.58,
+      "slip_mm": 0.29
+     },
+     {
+      "ms": 4.5,
+      "opening_mm": 1.61,
+      "slip_mm": 0.31
+     },
+     {
+      "ms": 5.0,
+      "opening_mm": 1.58,
+      "slip_mm": 0.37
+     },
+     {
+      "ms": 5.5,
+      "opening_mm": 1.65,
+      "slip_mm": 0.4
+     },
+     {
+      "ms": 6.0,
+      "opening_mm": 1.64,
+      "slip_mm": 0.4
+     },
+     {
+      "ms": 6.5,
+      "opening_mm": 1.67,
+      "slip_mm": 0.4
+     },
+     {
+      "ms": 7.0,
+      "opening_mm": 1.71,
+      "slip_mm": 0.4
+     },
+     {
+      "ms": 7.5,
+      "opening_mm": 1.77,
+      "slip_mm": 0.38
+     },
+     {
+      "ms": 8.0,
+      "opening_mm": 1.83,
+      "slip_mm": 0.34
+     },
+     {
+      "ms": 8.5,
+      "opening_mm": 1.87,
+      "slip_mm": 0.29
+     },
+     {
+      "ms": 9.0,
+      "opening_mm": 1.85,
+      "slip_mm": 0.28
+     },
+     {
+      "ms": 9.5,
+      "opening_mm": 1.89,
+      "slip_mm": 0.29
+     },
+     {
+      "ms": 10.0,
+      "opening_mm": 1.89,
+      "slip_mm": 0.23
+     }
+    ]
+   },
+   "spalled_at_load_ms": null,
+   "spalled_at_support_ms": null
+  },
+  {
+   "beam": "D-1d-NoS-2",
+   "scale_mm_per_px": 0.536,
+   "recorded_ms_after_impact": 22.2,
+   "first_crack": {
+    "ms": 0.67,
+    "inclination_deg": 0,
+    "x_mm_from_support": 150,
+    "length_mm": 19
+   },
+   "first_inclined_crack": {
+    "ms": 1.33,
+    "inclination_deg": 56,
+    "rises": "towards the load",
+    "x_mm_from_support": 29,
+    "length_mm": 70
+   },
+   "main_crack": {
+    "inclination_deg": 51,
+    "span": "short",
+    "read": "automatic",
+    "x_mm_from_support": 48,
+    "length_mm": 205,
+    "appeared_ms": 1.33,
+    "opening_slip_at": {
+     "x_mm_from_support": 19,
+     "height_mm": 22,
+     "along": 0.75
+    },
+    "opening_slip": [
+     {
+      "ms": 0.0,
+      "opening_mm": 0.03,
+      "slip_mm": 0.01
+     },
+     {
+      "ms": 0.5,
+      "opening_mm": 0.0,
+      "slip_mm": 0.03
+     },
+     {
+      "ms": 1.0,
+      "opening_mm": 0.02,
+      "slip_mm": 0.03
+     },
+     {
+      "ms": 1.5,
+      "opening_mm": 0.76,
+      "slip_mm": 0.04
+     },
+     {
+      "ms": 2.0,
+      "opening_mm": 3.39,
+      "slip_mm": 0.27
+     },
+     {
+      "ms": 2.5,
+      "opening_mm": 0.56,
+      "slip_mm": 0.62
+     },
+     {
+      "ms": 3.0,
+      "opening_mm": 0.18,
+      "slip_mm": 0.99
+     },
+     {
+      "ms": 3.5,
+      "opening_mm": 0.44,
+      "slip_mm": 1.17
+     },
+     {
+      "ms": 4.0,
+      "opening_mm": 0.9,
+      "slip_mm": 1.52
+     },
+     {
+      "ms": 4.5,
+      "opening_mm": 0.58,
+      "slip_mm": 2.63
+     },
+     {
+      "ms": 5.0,
+      "opening_mm": 7.11,
+      "slip_mm": 1.03
+     },
+     {
+      "ms": 5.5,
+      "opening_mm": 6.09,
+      "slip_mm": 0.12
+     },
+     {
+      "ms": 6.0,
+      "opening_mm": 5.39,
+      "slip_mm": 0.64
+     },
+     {
+      "ms": 6.5,
+      "opening_mm": 4.89,
+      "slip_mm": 0.5
+     },
+     {
+      "ms": 7.0,
+      "opening_mm": 4.65,
+      "slip_mm": 0.66
+     },
+     {
+      "ms": 7.5,
+      "opening_mm": 5.3,
+      "slip_mm": 1.11
+     },
+     {
+      "ms": 8.0,
+      "opening_mm": 5.74,
+      "slip_mm": 1.1
+     },
+     {
+      "ms": 8.5,
+      "opening_mm": 5.92,
+      "slip_mm": 1.25
+     },
+     {
+      "ms": 9.0,
+      "opening_mm": 5.91,
+      "slip_mm": 0.98
+     },
+     {
+      "ms": 9.5,
+      "opening_mm": 5.98,
+      "slip_mm": 0.49
+     },
+     {
+      "ms": 10.0,
+      "opening_mm": 6.25,
+      "slip_mm": 0.26
+     }
+    ]
+   },
+   "spalled_at_load_ms": null,
+   "spalled_at_support_ms": null
+  },
+  {
+   "beam": "D-1d-S45-1",
+   "scale_mm_per_px": 0.532,
+   "recorded_ms_after_impact": 15.3,
+   "first_crack": {
+    "ms": 1.0,
+    "inclination_deg": 83,
+    "x_mm_from_support": 95,
+    "length_mm": 23
+   },
+   "first_inclined_crack": {
+    "ms": 1.17,
+    "inclination_deg": 74,
+    "rises": "away from the load",
+    "x_mm_from_support": 132,
+    "length_mm": 33
+   },
+   "main_crack": {
+    "inclination_deg": 54,
+    "span": "short",
+    "read": "automatic",
+    "x_mm_from_support": 52,
+    "length_mm": 166,
+    "appeared_ms": 1.83,
+    "opening_slip_at": {
+     "x_mm_from_support": 71,
+     "height_mm": 86,
+     "along": 0.25
+    },
+    "opening_slip": [
+     {
+      "ms": 0.0,
+      "opening_mm": 0.02,
+      "slip_mm": 0.0
+     },
+     {
+      "ms": 0.5,
+      "opening_mm": 0.02,
+      "slip_mm": 0.01
+     },
+     {
+      "ms": 1.0,
+      "opening_mm": 0.01,
+      "slip_mm": 0.01
+     },
+     {
+      "ms": 1.5,
+      "opening_mm": 0.01,
+      "slip_mm": 0.11
+     },
+     {
+      "ms": 2.0,
+      "opening_mm": 0.44,
+      "slip_mm": 0.31
+     },
+     {
+      "ms": 2.5,
+      "opening_mm": 0.46,
+      "slip_mm": 0.42
+     },
+     {
+      "ms": 3.0,
+      "opening_mm": 0.83,
+      "slip_mm": 0.43
+     },
+     {
+      "ms": 3.5,
+      "opening_mm": 1.27,
+      "slip_mm": 0.4
+     },
+     {
+      "ms": 4.0,
+      "opening_mm": 1.85,
+      "slip_mm": 0.38
+     },
+     {
+      "ms": 4.5,
+      "opening_mm": 2.09,
+      "slip_mm": 0.33
+     },
+     {
+      "ms": 5.0,
+      "opening_mm": 2.46,
+      "slip_mm": 0.2
+     },
+     {
+      "ms": 5.5,
+      "opening_mm": 2.48,
+      "slip_mm": 0.17
+     },
+     {
+      "ms": 6.0,
+      "opening_mm": 2.48,
+      "slip_mm": 0.05
+     },
+     {
+      "ms": 6.5,
+      "opening_mm": 2.41,
+      "slip_mm": 0.14
+     },
+     {
+      "ms": 7.0,
+      "opening_mm": 2.13,
+      "slip_mm": 0.34
+     },
+     {
+      "ms": 7.5,
+      "opening_mm": 2.1,
+      "slip_mm": 0.25
+     },
+     {
+      "ms": 8.0,
+      "opening_mm": 2.02,
+      "slip_mm": 0.03
+     },
+     {
+      "ms": 8.5,
+      "opening_mm": 1.94,
+      "slip_mm": 0.08
+     },
+     {
+      "ms": 9.0,
+      "opening_mm": 1.83,
+      "slip_mm": 0.16
+     },
+     {
+      "ms": 9.5,
+      "opening_mm": 1.74,
+      "slip_mm": 0.08
+     },
+     {
+      "ms": 10.0,
+      "opening_mm": 1.65,
+      "slip_mm": 0.17
+     }
+    ]
+   },
+   "spalled_at_load_ms": null,
+   "spalled_at_support_ms": null
+  },
+  {
+   "beam": "D-1d-S45-2",
+   "scale_mm_per_px": 0.526,
+   "recorded_ms_after_impact": 19.7,
+   "first_crack": {
+    "ms": 0.67,
+    "inclination_deg": 82,
+    "x_mm_from_support": 127,
+    "length_mm": 19
+   },
+   "first_inclined_crack": {
+    "ms": 1.0,
+    "inclination_deg": 74,
+    "rises": "towards the load",
+    "x_mm_from_support": 240,
+    "length_mm": 27
+   },
+   "main_crack": {
+    "inclination_deg": 57,
+    "span": "short",
+    "read": "automatic",
+    "x_mm_from_support": 45,
+    "length_mm": 171,
+    "appeared_ms": 1.17,
+    "opening_slip_at": {
+     "x_mm_from_support": 24,
+     "height_mm": 29,
+     "along": 0.75
+    },
+    "opening_slip": [
+     {
+      "ms": 0.0,
+      "opening_mm": 0.01,
+      "slip_mm": 0.01
+     },
+     {
+      "ms": 0.5,
+      "opening_mm": 0.03,
+      "slip_mm": 0.0
+     },
+     {
+      "ms": 1.0,
+      "opening_mm": 0.06,
+      "slip_mm": 0.05
+     },
+     {
+      "ms": 1.5,
+      "opening_mm": 1.4,
+      "slip_mm": 0.44
+     },
+     {
+      "ms": 2.0,
+      "opening_mm": 2.49,
+      "slip_mm": 0.53
+     },
+     {
+      "ms": 2.5,
+      "opening_mm": 3.98,
+      "slip_mm": 0.46
+     },
+     {
+      "ms": 3.0,
+      "opening_mm": 5.01,
+      "slip_mm": 0.4
+     },
+     {
+      "ms": 3.5,
+      "opening_mm": 5.59,
+      "slip_mm": 0.28
+     },
+     {
+      "ms": 4.0,
+      "opening_mm": 4.89,
+      "slip_mm": 0.58
+     },
+     {
+      "ms": 4.5,
+      "opening_mm": 4.87,
+      "slip_mm": 0.59
+     },
+     {
+      "ms": 5.0,
+      "opening_mm": 5.13,
+      "slip_mm": 0.53
+     },
+     {
+      "ms": 5.5,
+      "opening_mm": 5.11,
+      "slip_mm": 0.51
+     },
+     {
+      "ms": 6.0,
+      "opening_mm": 5.1,
+      "slip_mm": 0.48
+     },
+     {
+      "ms": 6.5,
+      "opening_mm": 5.14,
+      "slip_mm": 0.44
+     },
+     {
+      "ms": 7.0,
+      "opening_mm": 5.8,
+      "slip_mm": 0.07
+     },
+     {
+      "ms": 7.5,
+      "opening_mm": 5.74,
+      "slip_mm": 0.07
+     },
+     {
+      "ms": 8.0,
+      "opening_mm": 5.48,
+      "slip_mm": 0.13
+     },
+     {
+      "ms": 8.5,
+      "opening_mm": 4.85,
+      "slip_mm": 0.08
+     },
+     {
+      "ms": 9.0,
+      "opening_mm": 4.4,
+      "slip_mm": 0.06
+     },
+     {
+      "ms": 9.5,
+      "opening_mm": 4.08,
+      "slip_mm": 0.05
+     },
+     {
+      "ms": 10.0,
+      "opening_mm": 3.92,
+      "slip_mm": 0.06
+     }
+    ]
+   },
+   "spalled_at_load_ms": null,
+   "spalled_at_support_ms": null
+  },
+  {
+   "beam": "D-1d-S90-1",
+   "scale_mm_per_px": 0.536,
+   "recorded_ms_after_impact": 16.8,
+   "first_crack": {
+    "ms": 0.83,
+    "inclination_deg": 74,
+    "x_mm_from_support": 148,
+    "length_mm": 17
+   },
+   "first_inclined_crack": {
+    "ms": 1.67,
+    "inclination_deg": 56,
+    "rises": "towards the load",
+    "x_mm_from_support": 38,
+    "length_mm": 189
+   },
+   "main_crack": {
+    "inclination_deg": 61,
+    "span": "short",
+    "read": "automatic",
+    "x_mm_from_support": 38,
+    "length_mm": 183,
+    "appeared_ms": 1.67,
+    "opening_slip_at": {
+     "x_mm_from_support": 36,
+     "height_mm": 64,
+     "along": 0.5
+    },
+    "opening_slip": [
+     {
+      "ms": 0.0,
+      "opening_mm": 0.0,
+      "slip_mm": 0.01
+     },
+     {
+      "ms": 0.5,
+      "opening_mm": 0.01,
+      "slip_mm": 0.0
+     },
+     {
+      "ms": 1.0,
+      "opening_mm": 0.0,
+      "slip_mm": 0.01
+     },
+     {
+      "ms": 1.5,
+      "opening_mm": 0.08,
+      "slip_mm": 0.12
+     },
+     {
+      "ms": 2.0,
+      "opening_mm": 0.45,
+      "slip_mm": 0.28
+     },
+     {
+      "ms": 2.5,
+      "opening_mm": 1.01,
+      "slip_mm": 0.4
+     },
+     {
+      "ms": 3.0,
+      "opening_mm": 1.68,
+      "slip_mm": 0.5
+     },
+     {
+      "ms": 3.5,
+      "opening_mm": 2.47,
+      "slip_mm": 0.51
+     },
+     {
+      "ms": 4.0,
+      "opening_mm": 2.79,
+      "slip_mm": 0.51
+     },
+     {
+      "ms": 4.5,
+      "opening_mm": 3.27,
+      "slip_mm": 0.82
+     },
+     {
+      "ms": 5.0,
+      "opening_mm": 3.45,
+      "slip_mm": 0.94
+     },
+     {
+      "ms": 5.5,
+      "opening_mm": 3.46,
+      "slip_mm": 1.12
+     },
+     {
+      "ms": 6.0,
+      "opening_mm": 3.69,
+      "slip_mm": 1.28
+     },
+     {
+      "ms": 6.5,
+      "opening_mm": 3.69,
+      "slip_mm": 1.33
+     },
+     {
+      "ms": 7.0,
+      "opening_mm": 3.77,
+      "slip_mm": 1.35
+     },
+     {
+      "ms": 7.5,
+      "opening_mm": 3.69,
+      "slip_mm": 1.23
+     },
+     {
+      "ms": 8.0,
+      "opening_mm": 3.73,
+      "slip_mm": 1.15
+     },
+     {
+      "ms": 8.5,
+      "opening_mm": 4.15,
+      "slip_mm": 1.39
+     },
+     {
+      "ms": 9.0,
+      "opening_mm": 4.11,
+      "slip_mm": 1.39
+     },
+     {
+      "ms": 9.5,
+      "opening_mm": 4.22,
+      "slip_mm": 1.56
+     },
+     {
+      "ms": 10.0,
+      "opening_mm": 4.26,
+      "slip_mm": 1.64
+     }
+    ]
+   },
+   "spalled_at_load_ms": 5.67,
+   "spalled_at_support_ms": null
+  },
+  {
+   "beam": "D-1d-S90-2",
+   "scale_mm_per_px": 0.536,
+   "recorded_ms_after_impact": 17.8,
+   "first_crack": {
+    "ms": 1.0,
+    "inclination_deg": 89,
+    "x_mm_from_support": 137,
+    "length_mm": 22
+   },
+   "first_inclined_crack": {
+    "ms": 1.33,
+    "inclination_deg": 65,
+    "rises": "towards the load",
+    "x_mm_from_support": 108,
+    "length_mm": 20
+   },
+   "main_crack": {
+    "inclination_deg": 74,
+    "span": "short",
+    "read": "automatic",
+    "x_mm_from_support": 34,
+    "length_mm": 165,
+    "appeared_ms": 1.5,
+    "opening_slip_at": {
+     "x_mm_from_support": 24,
+     "height_mm": 32,
+     "along": 0.75
+    },
+    "opening_slip": [
+     {
+      "ms": 0.0,
+      "opening_mm": 0.01,
+      "slip_mm": 0.01
+     },
+     {
+      "ms": 0.5,
+      "opening_mm": 0.02,
+      "slip_mm": 0.01
+     },
+     {
+      "ms": 1.0,
+      "opening_mm": 0.02,
+      "slip_mm": 0.01
+     },
+     {
+      "ms": 1.5,
+      "opening_mm": 0.27,
+      "slip_mm": 0.29
+     },
+     {
+      "ms": 2.0,
+      "opening_mm": 1.09,
+      "slip_mm": 0.7
+     },
+     {
+      "ms": 2.5,
+      "opening_mm": 2.77,
+      "slip_mm": 1.1
+     },
+     {
+      "ms": 3.0,
+      "opening_mm": 4.18,
+      "slip_mm": 1.17
+     },
+     {
+      "ms": 3.5,
+      "opening_mm": 4.95,
+      "slip_mm": 0.97
+     },
+     {
+      "ms": 4.0,
+      "opening_mm": 5.79,
+      "slip_mm": 0.96
+     },
+     {
+      "ms": 4.5,
+      "opening_mm": 6.32,
+      "slip_mm": 0.86
+     },
+     {
+      "ms": 5.0,
+      "opening_mm": 7.02,
+      "slip_mm": 0.89
+     },
+     {
+      "ms": 5.5,
+      "opening_mm": 7.53,
+      "slip_mm": 0.87
+     },
+     {
+      "ms": 6.0,
+      "opening_mm": 7.96,
+      "slip_mm": 0.93
+     },
+     {
+      "ms": 6.5,
+      "opening_mm": 7.92,
+      "slip_mm": 0.92
+     },
+     {
+      "ms": 7.0,
+      "opening_mm": 7.91,
+      "slip_mm": 0.88
+     },
+     {
+      "ms": 7.5,
+      "opening_mm": 8.06,
+      "slip_mm": 0.8
+     },
+     {
+      "ms": 8.0,
+      "opening_mm": 8.04,
+      "slip_mm": 0.72
+     },
+     {
+      "ms": 8.5,
+      "opening_mm": 8.04,
+      "slip_mm": 0.81
+     },
+     {
+      "ms": 9.0,
+      "opening_mm": 7.74,
+      "slip_mm": 0.94
+     },
+     {
+      "ms": 9.5,
+      "opening_mm": 7.91,
+      "slip_mm": 0.76
+     },
+     {
+      "ms": 10.0,
+      "opening_mm": 2.06,
+      "slip_mm": 0.23
+     }
+    ]
+   },
+   "spalled_at_load_ms": null,
+   "spalled_at_support_ms": null
+  },
+  {
+   "beam": "D-2d-NoS-1",
+   "scale_mm_per_px": 0.554,
+   "recorded_ms_after_impact": 16.7,
+   "first_crack": {
+    "ms": 0.0,
+    "inclination_deg": 11,
+    "x_mm_from_support": 352,
+    "length_mm": 20
+   },
+   "first_inclined_crack": {
+    "ms": 1.0,
+    "inclination_deg": 30,
+    "rises": "towards the load",
+    "x_mm_from_support": 353,
+    "length_mm": 20
+   },
+   "main_crack": {
+    "inclination_deg": 37,
+    "rises": "towards the load",
+    "span": "long",
+    "read": "by hand",
+    "note": "from beside the load down into the long span, curving (flexural-shear)"
+   },
+   "spalled_at_load_ms": null,
+   "spalled_at_support_ms": null
+  },
+  {
+   "beam": "D-2d-NoS-2",
+   "note": "the recording ends about 1 ms after the impact; not read"
+  },
+  {
+   "beam": "D-2d-S45-1",
+   "scale_mm_per_px": 0.56,
+   "recorded_ms_after_impact": 13.7,
+   "first_crack": {
+    "ms": 0.83,
+    "inclination_deg": 80,
+    "x_mm_from_support": 266,
+    "length_mm": 33
+   },
+   "first_inclined_crack": {
+    "ms": 1.5,
+    "inclination_deg": 75,
+    "rises": "towards the load",
+    "x_mm_from_support": 260,
+    "length_mm": 97
+   },
+   "spalled_at_load_ms": null,
+   "spalled_at_support_ms": null
+  },
+  {
+   "beam": "D-2d-S45-2",
+   "scale_mm_per_px": 0.562,
+   "recorded_ms_after_impact": 20.5,
+   "first_crack": {
+    "ms": 0.83,
+    "inclination_deg": 86,
+    "x_mm_from_support": 249,
+    "length_mm": 15
+   },
+   "first_inclined_crack": {
+    "ms": 2.0,
+    "inclination_deg": 70,
+    "rises": "away from the load",
+    "x_mm_from_support": 457,
+    "length_mm": 26
+   },
+   "main_crack": {
+    "inclination_deg": 77,
+    "span": "short",
+    "read": "automatic",
+    "x_mm_from_support": 210,
+    "length_mm": 97,
+    "appeared_ms": 1.0,
+    "opening_slip_at": {
+     "x_mm_from_support": 205,
+     "height_mm": 22,
+     "along": 0.75
+    },
+    "opening_slip": [
+     {
+      "ms": 0.0,
+      "opening_mm": 0.0,
+      "slip_mm": 0.01
+     },
+     {
+      "ms": 0.5,
+      "opening_mm": 0.0,
+      "slip_mm": 0.02
+     },
+     {
+      "ms": 1.0,
+      "opening_mm": 0.24,
+      "slip_mm": 0.03
+     },
+     {
+      "ms": 1.5,
+      "opening_mm": 0.89,
+      "slip_mm": 0.08
+     },
+     {
+      "ms": 2.0,
+      "opening_mm": 1.27,
+      "slip_mm": 0.22
+     },
+     {
+      "ms": 2.5,
+      "opening_mm": 1.44,
+      "slip_mm": 0.32
+     },
+     {
+      "ms": 3.0,
+      "opening_mm": 1.62,
+      "slip_mm": 0.41
+     },
+     {
+      "ms": 3.5,
+      "opening_mm": 1.82,
+      "slip_mm": 0.57
+     },
+     {
+      "ms": 4.0,
+      "opening_mm": 1.9,
+      "slip_mm": 0.6
+     },
+     {
+      "ms": 4.5,
+      "opening_mm": 2.01,
+      "slip_mm": 0.7
+     },
+     {
+      "ms": 5.0,
+      "opening_mm": 2.11,
+      "slip_mm": 0.75
+     },
+     {
+      "ms": 5.5,
+      "opening_mm": 2.09,
+      "slip_mm": 0.73
+     },
+     {
+      "ms": 6.0,
+      "opening_mm": 2.1,
+      "slip_mm": 0.76
+     },
+     {
+      "ms": 6.5,
+      "opening_mm": 2.01,
+      "slip_mm": 0.73
+     },
+     {
+      "ms": 7.0,
+      "opening_mm": 1.96,
+      "slip_mm": 0.75
+     },
+     {
+      "ms": 7.5,
+      "opening_mm": 1.83,
+      "slip_mm": 0.71
+     },
+     {
+      "ms": 8.0,
+      "opening_mm": 1.7,
+      "slip_mm": 0.63
+     },
+     {
+      "ms": 8.5,
+      "opening_mm": 1.58,
+      "slip_mm": 0.6
+     },
+     {
+      "ms": 9.0,
+      "opening_mm": 1.49,
+      "slip_mm": 0.53
+     },
+     {
+      "ms": 9.5,
+      "opening_mm": 1.46,
+      "slip_mm": 0.5
+     },
+     {
+      "ms": 10.0,
+      "opening_mm": 1.48,
+      "slip_mm": 0.51
+     }
+    ]
+   },
+   "spalled_at_load_ms": null,
+   "spalled_at_support_ms": null
+  },
+  {
+   "beam": "D-2d-S90-2",
+   "scale_mm_per_px": 0.562,
+   "recorded_ms_after_impact": 19.0,
+   "first_crack": {
+    "ms": 0.67,
+    "inclination_deg": 6,
+    "x_mm_from_support": 219,
+    "length_mm": 35
+   },
+   "first_inclined_crack": {
+    "ms": 0.83,
+    "inclination_deg": 70,
+    "rises": "away from the load",
+    "x_mm_from_support": 250,
+    "length_mm": 32
+   },
+   "main_crack": {
+    "inclination_deg": 58,
+    "span": "long",
+    "read": "automatic",
+    "x_mm_from_support": 247,
+    "length_mm": 181,
+    "appeared_ms": 0.83,
+    "opening_slip_at": {
+     "x_mm_from_support": 228,
+     "height_mm": 53,
+     "along": 0.75
+    },
+    "opening_slip": [
+     {
+      "ms": 0.0,
+      "opening_mm": 0.01,
+      "slip_mm": 0.01
+     },
+     {
+      "ms": 0.5,
+      "opening_mm": 0.03,
+      "slip_mm": 0.01
+     },
+     {
+      "ms": 1.0,
+      "opening_mm": 0.01,
+      "slip_mm": 0.0
+     },
+     {
+      "ms": 1.5,
+      "opening_mm": 0.0,
+      "slip_mm": 0.04
+     },
+     {
+      "ms": 2.0,
+      "opening_mm": 0.03,
+      "slip_mm": 0.1
+     },
+     {
+      "ms": 2.5,
+      "opening_mm": 0.03,
+      "slip_mm": 0.14
+     },
+     {
+      "ms": 3.0,
+      "opening_mm": 0.01,
+      "slip_mm": 0.17
+     },
+     {
+      "ms": 3.5,
+      "opening_mm": 0.0,
+      "slip_mm": 0.18
+     },
+     {
+      "ms": 4.0,
+      "opening_mm": 0.0,
+      "slip_mm": 0.2
+     },
+     {
+      "ms": 4.5,
+      "opening_mm": 0.01,
+      "slip_mm": 0.22
+     },
+     {
+      "ms": 5.0,
+      "opening_mm": 0.01,
+      "slip_mm": 0.23
+     },
+     {
+      "ms": 5.5,
+      "opening_mm": 0.0,
+      "slip_mm": 0.23
+     },
+     {
+      "ms": 6.0,
+      "opening_mm": 0.01,
+      "slip_mm": 0.23
+     },
+     {
+      "ms": 6.5,
+      "opening_mm": 0.0,
+      "slip_mm": 0.21
+     },
+     {
+      "ms": 7.0,
+      "opening_mm": 0.02,
+      "slip_mm": 0.21
+     },
+     {
+      "ms": 7.5,
+      "opening_mm": 0.02,
+      "slip_mm": 0.19
+     },
+     {
+      "ms": 8.0,
+      "opening_mm": 0.03,
+      "slip_mm": 0.19
+     },
+     {
+      "ms": 8.5,
+      "opening_mm": 0.01,
+      "slip_mm": 0.17
+     },
+     {
+      "ms": 9.0,
+      "opening_mm": 0.02,
+      "slip_mm": 0.18
+     },
+     {
+      "ms": 9.5,
+      "opening_mm": 0.0,
+      "slip_mm": 0.15
+     },
+     {
+      "ms": 10.0,
+      "opening_mm": 0.01,
+      "slip_mm": 0.18
+     }
+    ]
+   },
+   "spalled_at_load_ms": 6.17,
+   "spalled_at_support_ms": null
+  }
+ ]
+}

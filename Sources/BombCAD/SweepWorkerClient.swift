@@ -264,11 +264,14 @@ enum RemoteSweepWorker {
     /// Connects to `host`, an SSH host name or alias, sending this build first if it is not
     /// there yet.
     @MainActor
-    static func connect(host: String) async throws -> SweepWorkerClient {
+    /// With `gate`, the worker first decides there whether its Mac should take work now (see
+    /// `RemoteGate`), and the connection fails, saying why, if not.
+    static func connect(host: String, gate: RemoteGate? = nil) async throws -> SweepWorkerClient {
         try validate(host)
         let directory = try await Task.detached(priority: .userInitiated) { try install(on: host) }.value
+        let arguments = gate.map { " --gate \($0.argument)" } ?? ""
         return try await launch(
-            URL(filePath: ssh), options + [host, "exec \(directory)/BombCAD worker"], name: host)
+            URL(filePath: ssh), options + [host, "exec \(directory)/BombCAD worker\(arguments)"], name: host)
     }
 
     /// Starts `BombCAD worker` on this Mac, as a separate process sharing its GPU: a stand-in for

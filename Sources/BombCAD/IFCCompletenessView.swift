@@ -58,6 +58,12 @@ enum IFCCompleteness {
             text +=
                 "\n\(samples.filter { $0.sampledCells == 0 }.count) with no grid cells · \(samples.filter { $0.sampledCells > 0 && $0.assignedCells == 0 }.count) fully covered"
         }
+        if let hits = preview?.crossElementGapSamples {
+            text +=
+                preview?.crossElementChecksIncomplete == true
+                ? "\nCross-element gap check incomplete"
+                : "\n\(hits) cross-element narrow-gap ray samples"
+        }
         return text
     }
     static func report(mesh: ImportedMesh, preview: ImportedMesh.Preview?) -> String {
