@@ -10,7 +10,9 @@ as fast; on finer cells the air takes most of the time (see [Performance](perfor
 The code is `Sources/BlastCore/ShellMesh.swift`, `ShellSolver.swift` and
 `Shaders/Shell.metal`. Choose them with `StructureModel.elementKind = .shell`; `elementSize` is
 then the elements' size along the members, and `shellLayers` (8 by default) the number of layers
-through a shell's thickness. In the app, the structure section has an **Elements** picker.
+through a shell's thickness. In the app, the structure section has an **Elements** picker. IFC
+buildings import as shells and beams too (`IFCStructure`; see [structures from
+IFC](structural-editing.md#structures-from-ifc)).
 
 ## Mesh
 
@@ -443,6 +445,12 @@ the bars' dowel action and slab–column joints a punching check, the shell fram
 7. **Rotational inertia is scaled up**, which slightly slows rotation of short members.
 8. **Damage reads higher on larger elements** for the same crack, since the removal strain is
    the removal width over the element size.
+9. **Structures from IFC are only as square as their boxes.** Each wall, slab and member is
+   one box square to the axes: inclined and curved elements stay rigid, a wall's layers become
+   its one structural layer, flanged steel a rectangle of equal bending stiffness (about twice
+   as stiff axially), and members that meet are tied rigidly. Slabs a little apart in level
+   are moved onto one midsurface (by up to a quarter of an element), as the mesh's levels run
+   through the whole building and two near ones leave slivers that shorten the time step.
 
 ## Future work
 

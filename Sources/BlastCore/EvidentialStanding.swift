@@ -133,7 +133,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-4"
+    public static let currentTable = "standing-table-5"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -286,6 +286,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case footings
     case cyclicSand
     case freeBase
+    case importedStructure
     // Materials.
     case rateIndependent
     case designIncreaseFactors
@@ -368,6 +369,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
                     || s.supportAnchorages.contains { $0?.footing?.soil.cyclic != nil }
             }
         case .freeBase: return any { !$0.fixedBase }
+        case .importedStructure:
+            return inputs.scenario.importedModels?.contains(where: \.isStructural) == true
         case .rateIndependent: return structural.contains { !$0.rateDependent }
         case .designIncreaseFactors:
             return materials.contains { $0.concreteRateFactor != 1 || $0.steelRateFactor != 1 }
@@ -648,6 +651,14 @@ public enum StandingTable {
                 title: "Base resting on the ground", affects: structure, limit: .verified,
                 note: "Nodes on the ground are held up, not held down (verified); no test.",
                 document: "validation.md#verification-against-theory")
+        case .importedStructure:
+            return Entry(
+                title: "Structure from IFC", affects: structure, limit: nil,
+                note:
+                    "Its shells and beams, their materials, the connections where they meet and the supports "
+                    + "were inferred from an IFC building and are listed in its report; the shell model's bands "
+                    + "apply only where all of them match what was compared, and the standing says where they do not.",
+                document: "structural-editing.md#structures-from-ifc")
         case .rateIndependent:
             return Entry(
                 title: "Rate-independent concrete", affects: structure, limit: .approximation,
@@ -739,7 +750,7 @@ public enum StandingTable {
         "Scenario.rigidObjects": .option([.freestandingBoxes]),
         "Scenario.rigidCars": .option([.freestandingCars]),
         "Scenario.importNotes": .input,
-        "Scenario.importedModels": .input,
+        "Scenario.importedModels": .option([.importedStructure]),
         "Scenario.charge": .input,
         "Scenario.additionalCharges": .input,
         "Scenario.gauges": .input,

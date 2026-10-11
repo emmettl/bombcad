@@ -424,8 +424,7 @@ extension StandingScene {
         let scenario = inputs.scenario
         return scenario.boxes + structures.flatMap(\.solids)
             + scenario.envelopeObjects.compactMap(\.envelope).flatMap(\.solids)
-            + (scenario.importedModels ?? []).filter { $0.isAttached && $0.behavior == .rigid }
-            .flatMap { $0.preview.boxes }
+            + (scenario.importedModels ?? []).flatMap(\.rigidBoxes)
     }
 
     func gaugeBands() -> [GaugeBands] {
@@ -676,13 +675,70 @@ extension StandingScene {
     /// Options set whose effect no band was measured with.
     private var unmeasuredStructuralOptions: [String] {
         let measured: Set<ModelOption> = [
-            .shellElements, .footings, .cyclicSand, .inclinedBars, .interfaceBond,
+            .shellElements, .footings, .cyclicSand, .inclinedBars, .interfaceBond, .importedStructure,
         ]
         return options.filter { option in
             let entry = StandingTable.entry(for: option)
             return entry.affects.contains(.structuralResponse) && !measured.contains(option)
                 && !entry.affects.contains(.peakOverpressure)
         }.map { StandingTable.entry(for: $0).title }
+    }
+
+    /// How structures meshed from IFC buildings differ from what the shell model was compared on
+    /// (reinforced concrete walls and slabs, every load-bearing element in the structure, of a
+    /// material chosen rather than assumed); empty where they do not.
+    var importedStructureDifferences: [String] {
+        var differences: [String] = []
+        for imported in inputs.scenario.importedModels ?? [] where imported.isStructural {
+            guard let report = imported.structuralReport else {
+                differences.append("\(imported.name) has no conversion report")
+                continue
+            }
+            let assumed = report.assumedMaterials
+            if !assumed.isEmpty {
+                differences.append(
+                    "\(imported.name): \(assumed.count) element\(assumed.count == 1 ? "" : "s") of an assumed material"
+                )
+            }
+            let frame = report.members.filter {
+                $0.role == .rigid && $0.notes.contains { note in note.hasPrefix("Not ") }
+            }
+            if !frame.isEmpty {
+                differences.append(
+                    "\(imported.name): \(frame.count) wall, slab or member\(frame.count == 1 ? "" : "s") kept rigid "
+                        + "(inclined or not plate- or member-like)")
+            }
+            let beams = report.members.filter { $0.role == .beam }
+            if !beams.isEmpty {
+                differences.append("\(imported.name): beams from IFC sections, not compared")
+            }
+            let materials = Set(report.members.compactMap(\.material))
+            let unlike = materials.filter { name in
+                !(name.hasPrefix("Reinforced concrete") || name.hasPrefix("Concrete C"))
+            }
+            if !unlike.isEmpty {
+                differences.append(
+                    "\(imported.name): \(unlike.sorted().joined(separator: ", ")), not compared")
+            }
+            let untied = report.connections.filter { $0.kind.contains("untied") }
+            if !untied.isEmpty {
+                differences.append(
+                    "\(imported.name): \(untied.count) pair\(untied.count == 1 ? "" : "s") of members left untied"
+                )
+            }
+            let unfounded = report.supports.filter { $0.contains("foundation left out") }
+            if !unfounded.isEmpty {
+                differences.append(
+                    "\(imported.name): \(unfounded.count) wall\(unfounded.count == 1 ? "" : "s") or column"
+                        + "\(unfounded.count == 1 ? "" : "s") tied to the ground where the IFC has no foundation"
+                )
+            }
+            let reinforced = imported.structuralOptions?.reinforcement != nil
+            if !reinforced {
+                differences.append("\(imported.name): its concrete unreinforced")
+            }
+        }
+        return differences
     }
 
     func bands(for kind: ResultKind) -> (bands: [ErrorBand]?, unbanded: [String]?) {
@@ -730,7 +786,11 @@ extension StandingScene {
         case .structuralResponse:
             let unmeasured = unmeasuredStructuralOptions
             let reinforced = materialClasses.contains(.reinforcedConcrete)
-            if !unmeasured.isEmpty {
+            let imported = importedStructureDifferences
+            if !imported.isEmpty {
+                unbanded.append(
+                    "Structure from IFC unlike what was compared: \(imported.joined(separator: "; ")).")
+            } else if !unmeasured.isEmpty {
                 unbanded.append(
                     "The comparisons were made with the defaults; set here: \(unmeasured.joined(separator: ", "))."
                 )

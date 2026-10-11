@@ -116,12 +116,19 @@ extension ImportedMesh {
         public var ifcClass: String
         public var storey: String?
         public var mesh: ImportedMesh
-        public init(globalID: String, name: String, ifcClass: String, storey: String?, mesh: ImportedMesh) {
+        /// Its material layers as the IFC gives them (for meshing it as a structure,
+        /// `IFCStructure`); nil where none were read.
+        public var materials: [IFCStructure.Layer]?
+        public init(
+            globalID: String, name: String, ifcClass: String, storey: String?, mesh: ImportedMesh,
+            materials: [IFCStructure.Layer]? = nil
+        ) {
             self.globalID = globalID
             self.name = name
             self.ifcClass = ifcClass
             self.storey = storey
             self.mesh = mesh
+            self.materials = materials
         }
         /// Stable across ordering and tessellation changes; explicitly check collisions on construction.
         public var partID: Int {

@@ -315,8 +315,7 @@ public final class USDSceneWriter {
         if let terrain = scenario.terrain, !terrain.isFlat { appendTerrain(terrain, to: &text) }
         let fixed =
             scenario.boxes
-            + (scenario.importedModels ?? [])
-            .filter { $0.isAttached && $0.behavior == .rigid }.flatMap { $0.preview.boxes }
+            + (scenario.importedModels ?? []).flatMap(\.rigidBoxes)
         if !fixed.isEmpty {
             appendMesh(
                 "Blocks", boxes: fixed, quad: [], colour: SIMD3(0.80, 0.79, 0.76), to: &text)

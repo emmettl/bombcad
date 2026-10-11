@@ -29,8 +29,13 @@ struct EditorView: View {
                                 systemImage: model.selection == .imported(imported.id) ? "scope" : "cube.box"
                             ).font(.headline)
                             Text(
-                                "\(imported.isAttached ? imported.behavior.rawValue.capitalized : "Detached") · \(imported.preview.cellSize, format:.number) m sampling"
+                                "\(imported.isAttached ? (imported.isStructural ? "Shells and beams" : imported.behavior.rawValue.capitalized) : "Detached") · \(imported.preview.cellSize, format:.number) m sampling"
                             ).font(.caption)
+                            if let report = imported.structuralReport {
+                                DisclosureGroup("Structure from IFC") {
+                                    IFCStructureReportView(report: report)
+                                }
+                            }
                             HStack {
                                 Button("Inspect / edit source…") { model.inspectImport(id: imported.id) }
                                 if imported.isAttached {
