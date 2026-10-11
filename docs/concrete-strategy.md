@@ -406,7 +406,7 @@ no default unless a regime's cases support it:
    but are not shed, held in the width's middle by confinement and on the face by removal coming
    only at 27% crushing. Neither crack-holding by the longitudinal bars, removal at the end of
    softening, a tenth of the crushing energy, nor cover that spalls at Mander's strain gives all six
-   kinds their failures. What would: a compression zone whose softening is set by a length of its
+   kinds their failures. Untried: a compression zone whose softening is set by a length of its
    own rather than the element's, judged with bond that slips; that waits for the user's decision.
 3. **Masonry that breaks too late and too coarsely.** Against Keys's trials the Windrush walls on
    their mortar bed break at one joint and topple whole about 1.5 s after 41 kg of TNT, two of them
