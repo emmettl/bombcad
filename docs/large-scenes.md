@@ -83,6 +83,11 @@ to Z = 40**, and the peaks 75–87% out to Z = 20. The arrival time is within 2%
 every grid, within 5% beyond Z = 5 on 8 m cells or finer, and 3–27% early at Z = 1, where the
 charge is spread over cells larger than itself (12% early at Z = 3 on 16 m cells).
 
+The standing's error bands read these tables for gauges beyond 6 m/kg^(1/3), and for every gauge
+of a refined run take the cells the shock is on as it passes: the coarse cells where it is weaker
+than the threshold's reach (see [standing](standing.md) and, for choosing settings by them,
+[performance](performance.md#choosing-settings)).
+
 Reading these:
 
 - **The peak's share is set by the scaled cell where the shock is, not by how far it has

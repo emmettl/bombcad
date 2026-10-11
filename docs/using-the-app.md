@@ -52,6 +52,15 @@ m/kg^(1/3), centres the charge in it and chooses a grid scaled to it. Under Gaug
 Line** lays gauges outward from the charge at the Kingery–Bulmash scaled distances that fit; up to
 64 gauges are recorded. The Thermal section sets how far apart its ground receivers stand, at
 most 250,000 of them. See [Large scenes](large-scenes.md) for which grid to choose.
+Under Sharpen shocks, **Follow the shock** sets how weak a shock the refined air still follows
+(above 20, 5 or 1 kPa).
+
+**Advisor.** In the Run tab, choose a target (peaks, impulse or deflection within a percentage,
+or a run under so many minutes) and **Suggest**: the advisor weighs grids, refinement and
+afterburning, reads each one's expected error from the standing's error bands and its cost from
+the measured throughput, and offers the cheapest settings that meet the target, or the best within
+the time, with what it could not meet; **Apply** takes them. `BombCAD run --advise peak:20%` does
+the same from the command line. See [Performance](performance.md#choosing-settings).
 The More menu offers Save As and Import Layout JSON. Export Layout JSON saves just the scene. See [Save files](save-files.md).
 
 **Import Model…** reads watertight OBJ/STL geometry and IFC buildings. Confirm source units, up axis and

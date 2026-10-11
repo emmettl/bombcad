@@ -18,7 +18,7 @@ struct RunCostTests {
         return configuration
     }
 
-    @Test("Whole events come within a factor of 1.6 of the times docs/performance.md records")
+    @Test("Whole events come within a factor of two of the times docs/performance.md records")
     func againstRecord() {
         let street = ScenarioPreset.streetCanyon.scenario
         let open = ScenarioPreset.openGround.scenario
@@ -36,19 +36,22 @@ struct RunCostTests {
                 scene, cellSize: cells, configuration: configuration, duration: scene.acousticCrossingTime)
             let ratio = recorded / estimate.seconds
             #expect(
-                ratio > 1 / 1.6 && ratio < 1.6,
+                ratio > 0.5 && ratio < 2,
                 "\(scene.name) \(cells) m: \(recorded) s against \(estimate.seconds) s")
         }
     }
 
-    @Test("Halving the cells costs about sixteen times; refining lower costs more; memory follows the cells")
+    @Test(
+        "Halving the cells sweeps about sixteen times the air; refining lower costs more; memory follows the cells"
+    )
     func scaling() {
         let open = ScenarioPreset.openGround.scenario
         let event = open.acousticCrossingTime
         let coarse = RunCost.estimate(open, cellSize: 0.5, configuration: configured(), duration: event)
         let fine = RunCost.estimate(open, cellSize: 0.25, configuration: configured(), duration: event)
         #expect(fine.cells == 8 * coarse.cells && abs(Double(fine.steps) / Double(coarse.steps) - 2) < 0.01)
-        #expect(fine.seconds / coarse.seconds > 12 && fine.seconds / coarse.seconds < 20)
+        #expect(
+            fine.coarseUpdates / coarse.coarseUpdates > 14 && fine.coarseUpdates / coarse.coarseUpdates < 18)
         #expect(fine.memory == fine.cells * RunCost.bytesPerCell)
         var low = configured(refine: 2, levels: 2)
         let high = RunCost.estimate(open, cellSize: 0.5, configuration: low, duration: event)

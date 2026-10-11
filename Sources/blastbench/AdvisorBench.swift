@@ -130,7 +130,7 @@ private func runCostCalibration(device: MTLDevice, out: URL, time: Bool) throws 
     print(
         pad("case", 34) + pad("cells", 9) + pad("steps", 8) + pad("estimate", 10) + pad("recorded", 10)
             + pad("ratio", 8) + "now")
-    var csv = "case,cells,steps,estimate_s,recorded_s,measured_s,source\n"
+    var csv = "case,cells,steps,coarse_updates,fine_updates,levels,estimate_s,recorded_s,measured_s,source\n"
     var ratios: [Double] = []
     for item in timedCases() where wanted.map({ set in set.contains { item.name.hasPrefix($0) } }) ?? true {
         let estimate = RunCost.estimate(
@@ -142,8 +142,14 @@ private func runCostCalibration(device: MTLDevice, out: URL, time: Bool) throws 
                 device: device, scenario: item.scenario, cellSize: item.cellSize,
                 configuration: item.configuration)
             let clock = ContinuousClock.now
-            _ = solver.advance(until: item.duration)
+            let result = solver.advance(until: item.duration)
             let elapsed = ContinuousClock.now - clock
+            let modelled = estimate.coarseUpdates / (Double(estimate.cells) * Double(estimate.steps))
+            print(
+                String(
+                    format: "  %@: %d steps, %.0f%% of the air swept (the model: %.0f%%)", item.name,
+                    result.steps,
+                    100 * result.sweptFraction, 100 * modelled))
             measured = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18
         }
         let reference = measured ?? item.recorded
@@ -158,7 +164,10 @@ private func runCostCalibration(device: MTLDevice, out: URL, time: Bool) throws 
         print(line)
         let recordedField: String = item.recorded.map { "\($0)" } ?? ""
         let measuredField: String = measured.map { "\($0)" } ?? ""
-        csv += "\(item.name),\(estimate.cells),\(estimate.steps),\(estimate.seconds),\(recordedField),"
+        let levels = item.configuration.refinement > 1 ? item.configuration.refinementLevels : 0
+        csv +=
+            "\(item.name),\(estimate.cells),\(estimate.steps),\(estimate.coarseUpdates),\(estimate.fineUpdates),"
+        csv += "\(levels),\(estimate.seconds),\(recordedField),"
         csv += "\(measuredField),\(item.source)\n"
     }
     if !ratios.isEmpty {

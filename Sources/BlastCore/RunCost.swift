@@ -45,6 +45,14 @@ public enum RunCost {
     /// to 3.4 times what that shell alone would cost: patches flagged behind the shock, kept
     /// where outlines differ, and their ghost cells; 18 matches them.
     public static let shellCells: Float = 18
+    /// Seconds a step costs whatever the grid (launching its kernels, the tiles' list, the
+    /// gauges), and more with two levels of refinement (their patches' bookkeeping): from the 500 t
+    /// runs on 2.2 million cells, timed beside the street and scaled by its slowdown that session,
+    /// and the street's and open ground's two-level runs.
+    public static let stepOverhead = 0.0004
+    public static let twoLevelStepOverhead = 0.0015
+    /// GPU memory a block of refined air takes, ratio 2 (`SolverConfiguration.refinementMemory`).
+    public static let blockBytes = 63_000.0
     /// Air bytes a cell: 57, with the fuel and oxygen 73 (docs/large-scenes.md).
     public static let bytesPerCell = 57
     public static let burningBytesPerCell = 73
@@ -81,8 +89,20 @@ public enum RunCost {
                 threshold: configuration.refinementFinerThreshold ?? configuration.refinementThreshold)
             : .infinity
         var swept = 0.0
-        var refinedSeconds = 0.0
-        var finerSeconds = 0.0
+        // The refined air over the run, in bins of time: how many samples each level holds on
+        // average through each bin.
+        let bins = 256
+        let binWidth = duration / Double(bins)
+        var held = [[Double]](repeating: [Double](repeating: 0, count: bins), count: 2)
+        func hold(_ level: Int, from start: Double, for length: Double) {
+            let low = max(start, 0)
+            let high = min(start + length, duration)
+            guard high > low else { return }
+            for bin in max(Int(low / binWidth), 0)...min(Int(high / binWidth), bins - 1) {
+                let overlap = min(high, Double(bin + 1) * binWidth) - max(low, Double(bin) * binWidth)
+                if overlap > 0 { held[level][bin] += overlap / binWidth }
+            }
+        }
         let count = samples.x * samples.y * samples.z
         for k in 0..<samples.z {
             for j in 0..<samples.y {
@@ -100,10 +120,12 @@ public enum RunCost {
                     guard arrival < duration else { continue }
                     swept += 1 - arrival / duration
                     if Float(overpressure) >= reach && configuration.refinement > 1 {
-                        refinedSeconds += Double(shellCells * cellSize / soundSpeed)
+                        hold(0, from: arrival, for: Double(shellCells * cellSize / soundSpeed))
                         if Float(overpressure) >= finerReach {
-                            finerSeconds += Double(
-                                shellCells * cellSize / Float(configuration.refinement) / soundSpeed)
+                            hold(
+                                1, from: arrival,
+                                for: Double(
+                                    shellCells * cellSize / Float(configuration.refinement) / soundSpeed))
                         }
                     }
                 }
@@ -111,15 +133,25 @@ public enum RunCost {
         }
         let cells = Double(grid.cellCount)
         let coarseUpdates = cells * Double(steps) * swept / Double(count)
-        // A refined cell's share of the domain, times its level's cells to a coarse cell and the
-        // steps it takes to each coarse one.
+        // The refined coarse cells each bin, no more than the pool of blocks holds (a third of it
+        // for the first level and two thirds for the second when there are two), times each
+        // level's cells to a coarse cell and the steps it takes to each coarse one.
         let r = Double(configuration.refinement)
         var fineUpdates = 0.0
         if configuration.refinement > 1 {
-            let perCoarse = r * r * r * r
-            fineUpdates += cells * refinedSeconds / Double(count) / dt * perCoarse
-            if configuration.refinementLevels > 1 {
-                fineUpdates += cells * finerSeconds / Double(count) / dt * perCoarse * perCoarse
+            let levels = configuration.refinementLevels > 1 ? 2 : 1
+            let blocks = Double(configuration.refinementMemory) / blockBytes
+            let block = Double(AirRefinement.patchSize)
+            let capacity = [
+                (levels == 2 ? blocks / 3 : blocks) * block * block * block,
+                blocks * 2 / 3 * block * block * block / (r * r * r),
+            ]
+            let perCoarse = [r * r * r * r, r * r * r * r * r * r * r * r]
+            for level in 0..<levels {
+                for bin in 0..<bins {
+                    let refined = min(cells * held[level][bin] / Double(count), capacity[level])
+                    fineUpdates += refined * perCoarse[level] * binWidth / dt
+                }
             }
         }
 
@@ -148,10 +180,11 @@ public enum RunCost {
         let memory =
             grid.cellCount * perCell + (configuration.refinement > 1 ? configuration.refinementMemory : 0)
         let updateCost = burning ? afterburningUpdateCost : 1
+        let twoLevels = configuration.refinement > 1 && configuration.refinementLevels > 1
+        let overhead = Double(steps) * (stepOverhead + (twoLevels ? twoLevelStepOverhead : 0))
         let seconds =
             (coarseUpdates + fineUpdates * fineUpdateCost) * updateCost / cellUpdatesPerSecond
-            + elementUpdates
-            / elementUpdatesPerSecond
+            + elementUpdates / elementUpdatesPerSecond + overhead
         return RunCostEstimate(
             cells: grid.cellCount, steps: steps, coarseUpdates: coarseUpdates, fineUpdates: fineUpdates,
             elementUpdates: elementUpdates, memory: memory, seconds: seconds)
