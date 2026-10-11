@@ -5,7 +5,7 @@ import Testing
 
 @testable import BombCAD
 
-@Suite("Saved simulation runs")
+@Suite("Saved simulation runs", .hangLimit)
 struct SavedRunTests {
     func fixture(name: String = "Baseline") throws -> SavedSimulationRun {
         var scenario = try StructureEditingTests().layout()
@@ -131,7 +131,7 @@ struct SavedRunTests {
     }
 }
 
-@MainActor @Suite("Completed run capture", .serialized)
+@MainActor @Suite("Completed run capture", .serialized, .hangLimit)
 struct CompletedRunCaptureTests {
     private func document() -> ProjectDocument {
         var scenario = Scenario(
@@ -144,9 +144,7 @@ struct CompletedRunCaptureTests {
         return document
     }
     private func waitUntil(_ condition: () -> Bool) async throws {
-        let deadline = ContinuousClock.now + .seconds(15)
         while !condition() {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(5))
         }
     }

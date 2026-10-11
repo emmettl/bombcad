@@ -7,7 +7,7 @@ import Testing
 
 /// Exercises the app's non-blocking run loop end to end, without a window.
 @MainActor
-@Suite("Simulation model", .serialized)
+@Suite("Simulation model", .serialized, .hangLimit)
 struct SimulationModelTests {
     private func makeModel() async throws -> SimulationModel {
         var document = ProjectDocument()
@@ -19,9 +19,7 @@ struct SimulationModelTests {
     }
 
     private func waitUntil(timeout: Duration = .seconds(30), _ condition: () -> Bool) async throws {
-        let deadline = ContinuousClock.now + timeout
         while !condition() {
-            try #require(ContinuousClock.now < deadline, "Timed out")
             try await Task.sleep(for: .milliseconds(5))
         }
     }
@@ -189,21 +187,50 @@ struct SimulationModelTests {
         #expect(near.points.count > 20)
     }
 
-    @Test("Paced playback holds the requested slow-motion factor")
+    /// A playback clock the test moves by hand.
+    private final class PlaybackClock {
+        var now = ContinuousClock.now
+    }
+
+    @Test("Paced playback follows its clock: never ahead of it, and catching up whenever it moves")
     func pacedPlayback() async throws {
+        // On a clock the test drives, not the wall's: how fast the GPU gets through a batch, with
+        // other work on it, is no part of the pacing.
         let model = try await makeModel()
+        let clock = PlaybackClock()
+        model.playbackNow = { clock.now }
         model.speed = .x25
         model.duration = 0.02
-        let start = ContinuousClock.now
         model.run()
+        /// Waits until the run has reached the clock and stopped there, and checks it went no
+        /// further: a batch is cut to end at the first step past it (with steps a little longer
+        /// than the last batch's, one more at most), so long as the clock moves by about a step at
+        /// a time, as the wall's does.
+        func caughtUp(to target: Double, standing: Bool) async throws {
+            try await waitUntil {
+                !model.isRunning || (model.time >= target - 1e-9 && !model.hasPendingGPUWork)
+            }
+            let reached = model.time
+            #expect(
+                reached >= target - 1e-9 && reached < target + 2 * model.stats.timeStep + 1e-9,
+                "at \(reached * 1000) ms against \(target * 1000) ms")
+            guard standing else { return }
+            // Standing still on a clock that stands still.
+            try await Task.sleep(for: .milliseconds(30))
+            #expect(model.time == reached && model.isRunning)
+        }
+        // With the clock at the start, nothing runs.
+        try await Task.sleep(for: .milliseconds(30))
+        #expect(model.time == 0 && model.isRunning)
+        // Each 2.5 ms of playback is 0.1 ms of simulation at 25 times slower, about a step.
+        for tick in 1..<200 {
+            clock.now += .microseconds(2500)
+            try await caughtUp(to: Double(tick) * 0.0025 / 25, standing: tick % 50 == 0)
+        }
+        // At the end, it finishes there.
+        clock.now += .microseconds(2500)
         try await waitUntil { !model.isRunning }
-        let wall = ContinuousClock.now - start
-        let seconds = Double(wall.components.seconds) + Double(wall.components.attoseconds) * 1e-18
-
-        // 20 ms of simulation at 25x slow motion should take about half a second: never less, and
-        // not much more, though other suites running at once on the main actor can delay it.
-        #expect(seconds > 0.45 && seconds < 2.0, "took \(seconds) s")
-        #expect(abs(model.time - 0.02) < 1e-6)
+        #expect(abs(model.time - 0.02) < 1e-6 && model.errorMessage == nil)
     }
 
     @Test("Paced playback takes the same steps as a run as fast as possible")
@@ -256,9 +283,8 @@ struct SimulationModelTests {
         model.run()
         try await waitUntil { model.time > 0.005 }
         model.toggleRun()
-        try await waitUntil { !model.isRunning }
         // A batch already on the GPU still lands; after that, time stands still.
-        try await Task.sleep(for: .milliseconds(50))
+        try await waitUntil { !model.isRunning && !model.hasPendingGPUWork }
         let paused = model.time
         try await Task.sleep(for: .milliseconds(50))
         #expect(model.time == paused)
@@ -283,7 +309,7 @@ struct SimulationModelTests {
         model.duration = 0.06
         model.run()
         // 7 s on an M4 Max, 20 s on the CI mini's M4, and longer when other tests share the GPU.
-        try await waitUntil(timeout: .seconds(120)) { !model.isRunning && model.time > 0.05 }
+        try await waitUntil { !model.isRunning && model.time > 0.05 }
         let summary = try #require(model.structureSummary)
         #expect(model.errorMessage == nil)
         #expect(!summary.hasBlownUp)

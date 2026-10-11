@@ -7,7 +7,7 @@ import simd
 
 @testable import BombCAD
 
-@MainActor @Suite("The fireball's cloud followed after a run in the app", .serialized)
+@MainActor @Suite("The fireball's cloud followed after a run in the app", .serialized, .hangLimit)
 struct CloudOverlayTests {
     /// Low enough to hand over the charge's gas, spread over the coarse grid's half-metre cells.
     private var spec: CloudSpec {
@@ -29,9 +29,9 @@ struct CloudOverlayTests {
         return document
     }
 
-    private func ready(_ model: SimulationModel, by deadline: ContinuousClock.Instant) async throws {
+    private func ready(_ model: SimulationModel) async throws {
         while !model.experimentIsReady {
-            try #require(ContinuousClock.now < deadline && model.errorMessage == nil)
+            try #require(model.errorMessage == nil)
             try await Task.sleep(for: .milliseconds(5))
         }
     }
@@ -43,11 +43,10 @@ struct CloudOverlayTests {
         var document = document
         document.cloud = cloud
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
-        let deadline = ContinuousClock.now + .seconds(120)
-        try await ready(model, by: deadline)
+        try await ready(model)
         model.run()
         while model.isRunning || model.hasPendingGPUWork || !model.companionsCaughtUp {
-            try #require(ContinuousClock.now < deadline && model.errorMessage == nil)
+            try #require(model.errorMessage == nil)
             try await Task.sleep(for: .milliseconds(5))
         }
         try model.keepRun(named: "Run")
@@ -78,8 +77,10 @@ struct CloudOverlayTests {
         #expect(try ProjectDocument(archive: document.makeArchive()).cloud == nil)
 
         // Using a run's inputs brings its cloud back, as one step to undo.
+        let steps = model.undoStack.count
         model.cloudSpec = nil
-        try await Task.sleep(for: .milliseconds(300))
+        // The edit settles into a step to undo a moment later, however busy the Mac.
+        while model.undoStack.count == steps { try await Task.sleep(for: .milliseconds(5)) }
         try model.useRunInputs(id: kept.id)
         #expect(model.cloudSpec == spec)
         model.undo()
@@ -95,7 +96,7 @@ struct CloudOverlayTests {
         #expect(throws: ProjectFileError.self) { try broken.validate() }
 
         model.reset()
-        try await ready(model, by: ContinuousClock.now + .seconds(10))
+        try await ready(model)
         #expect(model.cloud == nil && !model.followingCloud)
     }
 
