@@ -370,7 +370,7 @@ extension StandingScene {
             }!
             let root = cbrt(Double(max(nearest.mass, 1e-6)))
             let distance = Double(simd_distance(nearest.position, gauge.position)) / root
-            let cell = Double(fineCell) / root
+            let (cell, reach) = shockCell(distance: distance, root: root)
             let onBox = boxes.contains {
                 simd_distance(gauge.position, simd_clamp(gauge.position, $0.min, $0.max)) <= inputs.cellSize
             }
@@ -384,9 +384,11 @@ extension StandingScene {
                 bands.note = "Shielded from the charge, which no comparison was."
                 return bands
             }
-            let validity = String(
-                format: "%.2f m/kg^(1/3) from the charge, cells of %.3f m/kg^(1/3) near the shock", distance,
-                cell)
+            let validity =
+                String(
+                    format: "%.2f m/kg^(1/3) from the charge, cells of %.3f m/kg^(1/3) near the shock",
+                    distance,
+                    cell) + reach
             func band(
                 _ table: ValidationTables.Table, _ grids: [Double], _ distances: [Double],
                 measure: BandMeasure,
@@ -429,7 +431,39 @@ extension StandingScene {
                     bands.note = "Cells coarser than the close-in comparison's 40 mm per kg^(1/3)."
                 }
             } else if distance > 6 * 1.02 {
-                bands.note = "Beyond the open-air comparison, which stopped at 6 m/kg^(1/3)."
+                // Beyond the record's Kingery–Bulmash comparison, the large-scene one's, in the open.
+                if distance > 40 * 1.02 {
+                    bands.note = "Beyond the large-scene comparison, which stopped at 40 m/kg^(1/3)."
+                } else if onBox {
+                    bands.note =
+                        "Reflected loads beyond 6 m/kg^(1/3) were not compared; the large scenes' were in the open."
+                } else {
+                    let check =
+                        burning
+                        ? "500 t surface burst with afterburning and hot air, 16 m cells refined twice (blastbench landscape --afterburn)"
+                        : "500 t surface burst on uniform grids to 40 m/kg^(1/3) (blastbench landscape)"
+                    let document = "large-scenes.md#against-kingerybulmash-to-40-mkg13"
+                    if !burning {
+                        bands.peak = band(
+                            ValidationTables.farIncidentPeak, ValidationTables.farGrids,
+                            ValidationTables.farDistances,
+                            measure: .peakOverpressure, quantity: "Incident peak overpressure", check: check,
+                            document: document, low: "peaks smeared over cells")
+                    }
+                    bands.impulse = band(
+                        burning
+                            ? ValidationTables.farBurningIncidentImpulse
+                            : ValidationTables.farIncidentImpulse,
+                        ValidationTables.farGrids, ValidationTables.farDistances, measure: .impulse,
+                        quantity: "Incident impulse", check: check, document: document,
+                        low: burning ? "under-read" : "under-read without afterburning")
+                    if bands.peak == nil || bands.impulse == nil {
+                        bands.note =
+                            burning && bands.impulse != nil
+                            ? "With afterburning, peaks beyond 6 m/kg^(1/3) were compared only where the refinement no longer followed the shock."
+                            : "Cells coarser than any grid of the large-scene comparison (16 m for 500 t)."
+                    }
+                }
             } else {
                 let check =
                     burning
@@ -478,6 +512,35 @@ extension StandingScene {
             }
             return bands
         }
+    }
+
+    /// The cells, per cube root of the charge (`root`), that resolve the shock as it passes
+    /// `distance` m/kg^(1/3) out, and a note when it is too weak there to be refined: each level
+    /// follows the shock only while its incident overpressure, by Kingery–Bulmash, exceeds the
+    /// level's reach (`ValidationTables.refinementReach`); beyond it the peaks fall to the coarser
+    /// cells' share (docs/large-scenes.md).
+    private func shockCell(distance: Double, root: Double) -> (cell: Double, note: String) {
+        let configuration = inputs.configuration
+        let coarse = Double(inputs.cellSize)
+        guard configuration.refinement > 1 else { return (coarse / root, "") }
+        let overpressure = RunCost.blast(range: distance * root, mass: root * root * root).overpressure
+        let ratio = Double(configuration.refinement)
+        let first = ValidationTables.refinementReach(threshold: Double(configuration.refinementThreshold))
+        guard overpressure >= first else {
+            return (
+                coarse / root,
+                String(
+                    format: "; the shock, %.1f kPa here, too weak to be refined (above %.0f kPa)",
+                    overpressure / 1000,
+                    first / 1000)
+            )
+        }
+        guard configuration.refinementLevels > 1 else { return (coarse / ratio / root, "") }
+        let finer = ValidationTables.refinementReach(
+            threshold: Double(configuration.refinementFinerThreshold ?? configuration.refinementThreshold))
+        return overpressure >= finer
+            ? (coarse / ratio / ratio / root, "")
+            : (coarse / ratio / root, "; the shock too weak here for the second level")
     }
 
     /// Whether the straight path from `a` to `b` passes through `box`.
@@ -844,10 +907,10 @@ extension StandingScene {
             }
             if has(.alternativeRateLaws) {
                 add(
-                    "Other strain-rate laws", nil,
-                    "Malvar and Ross's tension law brings the slab to 93–99% but leaves heavy drops a quarter too stiff "
-                        + "and the close-in slab far short.",
-                    nil, "validation.md#beams-struck-by-a-falling-weight")
+                    "Bars without their strain-rate law", nil,
+                    "The bars' strength was compared under a blast only with the CEB's strain-rate law; without "
+                        + "it they were not.",
+                    nil, "concrete-model.md#strain-rate-effects")
             }
             if place == "in contact" {
                 add(

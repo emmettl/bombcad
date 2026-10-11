@@ -95,6 +95,10 @@ class of problem and wrong in another. Code sizes are in `Structure.metal` unles
 | Inclined bars, interface bond | Chamber detailing; masonry on concrete | Chamber | Supported | Keep |
 | `--hourglass`, `--interlock`, `--dowel`, `--work`, `--stiffening` | Study knobs and traces | — | Diagnostic | Keep |
 
+**Done on 11 October 2026**: the seven are retired (see the roadmap's things set aside), with
+`blastbench digest` and the case matrix unchanged; old files read with today's behaviour and a
+note (`StructureModel.retiredOptions`).
+
 **What retiring buys.** It drops about 120 shader lines and seven flags:
 
 - the two old crack-axis models;
@@ -229,7 +233,7 @@ a point to stop at.
 
 **Stage 0: clear the ground (days).**
 
-1. Retire what section 1 names.
+1. Retire what section 1 names (done).
 2. Fix the `--bond` clash, and save `pressedInterlock` (done).
 3. Make the beams' sectional shear check and pressed interlock regime-selected (done).
 4. Turn the sweep used for bars that slip (`/Volumes/StudioData/bombcad/tension-stiffening/sweep.sh`) into a checked-in case matrix that every concrete change runs. The matrix covers:

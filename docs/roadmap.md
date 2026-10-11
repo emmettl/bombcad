@@ -287,6 +287,10 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    threshold, 16 m cells give 4 m cells' peaks in a quarter of the time; see [Large
    scenes](large-scenes.md); the app sets cells, domains and charges of that scale. Next: a refinement
    criterion that follows weak shocks.)
+18. **Cost against fidelity**: the cheapest settings for a target, or the best within a budget. (Started:
+   an advisor in the Run tab and `--advise`, its fidelity the standing's error bands and its cost a model
+   within a factor of two of the timed runs; see [Performance](performance.md#choosing-settings). Next:
+   costs measured on an unloaded Mac at kilometre scale, and more results weighed.)
 
 ### Freestanding objects and supports
 
@@ -2133,9 +2137,27 @@ two collapsing over several seconds.
   bands were each tried before tracing one element through the collapse found the two real
   errors (Poisson swelling counted as cracking; a missing normalisation in the compressive
   rate law). Nonlocal crushing and a reduced form of the hourglass cap were kept, the first
-  switched off by default; the rest were removed. The lesson: trace a failing element before
+  switched off by default (and retired in 2026); the rest were removed. The lesson: trace a failing element before
   changing the model.
 
+- **Options retired on 11 October 2026**, after the [case matrix](concrete-strategy.md) found no
+  case each served and removing them changed no default result (`blastbench digest` and the
+  matrix bit-identical). A model saved with one reads with today's behaviour and a note of what
+  was dropped (`StructureModel.retiredOptions`):
+  - cracks on the lattice planes and cracks fixed at first cracking (`crackAxes`), which the
+    turning cracks superseded; the lattice planes mishandle inclined cracks;
+  - keeping a crack's slide out of its opening (`slipWidensCracks`, `--slide-apart`; below);
+  - a crack's shear stiffness falling with its width (`crackShearStiffness`, `--crack-shear`),
+    which moved no case;
+  - nonlocal crushing and a shortest crushing band (`crushLength`, `crushBand`), under 1% on the
+    slab;
+  - bars taking the strain rate of the element they run through (`barRateAlongBars`,
+    `--element-bar-rate`), which ran the fine slab's hinge away;
+  - Malvar and Ross's tensile strain-rate law and Malvar and Crawford's for bars
+    (`tensionRateLaw`, `steelRateLaw`, `--tension-law`, `--steel-law`): a quarter too stiff on
+    Saatci's beams, the spall needing 17–21 MPa, and bars a fifth too strong at these rates;
+  - bars spread through the concrete about them (`impact --spread`): mesh-independent, but
+    beams too stiff.
 - **Keeping a crack's slide out of its opening** (`--slide-apart`): right for one crack, which
   read a 1 mm crack slid 2 mm as 1.9 mm open, but on its own it stiffens every beam that
   depends on sliding cracks, Ando's without stirrups far too much. Kept as an option.

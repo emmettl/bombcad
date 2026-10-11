@@ -60,9 +60,6 @@ struct StructureUniforms {
     int exchangeNy;
     int exchangeNz;
     uint fluidAirModel;  // the air's equation of state (`AirModel`)
-    // How concrete's crack axes are chosen: 0 the lattice's; 1 the principal axes it first
-    // cracked on; 2 the principal axes, followed until the crack has opened, then fixed.
-    uint orientedCracks;
     uint interfaceLinks;  // shell nodes tied into this body's elements (see `InterfaceLink`)
     // The air's refinement (see Refine.metal): its ratio (0 when not refined) and the size of
     // its grid of blocks.
@@ -92,16 +89,10 @@ struct StructureUniforms {
     float bondS2;
     float bondS3;
     float bondAlpha;
-    // 1: a crack's shear stiffness falls as it opens, as Walraven and Reinhardt measured, instead
-    // of keeping `shearRetention` of the concrete's.
-    uint crackShearStiffness;
     // Bond lost where bars have yielded (Model Code 2010): the plastic strain at the bars'
     // ultimate strength, and the exponent b = (2 - f_u / f_y)^2. Zero range: no reduction.
     float bondYieldRange;
     float bondYieldExponent;
-    // 1: bars take their strain rate as their own stretching rate averaged over their debonded
-    // length, not the element's (see `StructureModel.barRateAlongBars`).
-    uint barRateAlongBars;
     uint couplingMapCount;
     uint footings;  // rigid footings under connected bases (`FootingSystem`); 0: none
     // A second level of the air's refinement (ratio 0 when there is none): its cells along a
@@ -240,16 +231,14 @@ struct MaterialParameters {
     float steelStrain[8];   // plastic strain ...
     float steelStress[8];   // ... against stress
     float concreteRateCompression;
-    float concreteRateTension;
-    float steelRateYield;     // the bars' rate exponents (Malvar and Crawford), or with
-    float steelRateUltimate;  // `steelRateLog` the coefficients of the CEB's logarithmic law
-    uint steelRateLog;
+    float concreteRateTension;  // positive when the tensile strength follows the strain rate
+    float steelRateYield;     // the coefficients of the CEB's logarithmic law for the bars, at
+    float steelRateUltimate;  // yield and at ultimate
     float crackBand;            // length a crack's opening is smeared over
     float interlockStrength;    // aggregate-interlock shear capacity of a closed crack
     float interlockWidthScale;  // its decay with crack width, per metre
     float shearRetention;       // fraction of the shear stiffness a cracked plane keeps
     float crackResidual;        // fraction of a crack's opening left when its stress is released
-    uint crushRadius;           // elements either side over which crushing is averaged; 0 = local
     float steelHardeningRatio;  // slope of the reinforcement's yield asymptotes over its modulus
     float barReach;             // half the debonded length, in elements; 0 = judged locally
     // Mortar joints (masonry meshed as units): the bond's tensile strength over the unit's, the
@@ -263,7 +252,6 @@ struct MaterialParameters {
     float crackSofteningAlone;  // decay strain of a crack no bar crosses: one element's band
     float dowelFactor;          // multiplier on the bars' dowel action
     float fractureRateExponent; // fracture energy grows as the tensile rate factor to this power
-    uint tensionRateLaw;        // 0: Malvar and Ross (1998); 1: fib Model Code 2010
     float crackDilatancy;       // a crack slid by s cannot close below this times s
 };
 
@@ -768,17 +756,11 @@ static inline float tensionIncrease(float rate, constant MaterialParameters &m) 
     if (m.concreteRateTension <= 0.0f) {
         return 1.0f;
     }
-    if (m.tensionRateLaw == 1u) {
-        // fib Model Code 2010 (5.1.11.1): the same for every strength, gentler past 10 per second.
-        if (rate <= 10.0f) {
-            return pow(max(rate, 1e-6f) / 1e-6f, 0.018f);
-        }
-        return 0.0062f * pow(rate / 1e-6f, 1.0f / 3.0f);
+    // fib Model Code 2010 (5.1.11.1): the same for every strength, gentler past 10 per second.
+    if (rate <= 10.0f) {
+        return pow(max(rate, 1e-6f) / 1e-6f, 0.018f);
     }
-    if (rate <= 1.0f) {
-        return pow(max(rate, 1e-6f) / 1e-6f, m.concreteRateTension);
-    }
-    return pow(10.0f, 6.0f * m.concreteRateTension - 2.0f) * pow(rate / 1e-6f, 1.0f / 3.0f);
+    return 0.0062f * pow(rate / 1e-6f, 1.0f / 3.0f);
 }
 
 // Pressure of the applied-load table at time `time`, interpolated linearly.
@@ -802,12 +784,9 @@ static inline float tablePressure(const device float2 *table, uint count, float 
 // the bars' stretch, and `yield` their current yield stress.
 // The bars' strain-rate factors at yield (x) and at ultimate (y).
 static inline float2 steelRateFactors(float strainRate, constant MaterialParameters &m) {
-    if (m.steelRateLog != 0u) {
-        float logarithm = log(max(strainRate, 5e-5f) / 5e-5f);
-        return 1.0f + float2(m.steelRateYield, m.steelRateUltimate) * logarithm;
-    }
-    float rate = max(strainRate, 1e-4f) / 1e-4f;
-    return float2(pow(rate, m.steelRateYield), pow(rate, m.steelRateUltimate));
+    // The CEB's law (Bulletin 187), as the fib Model Code 2010 re-adopted it.
+    float logarithm = log(max(strainRate, 5e-5f) / 5e-5f);
+    return 1.0f + float2(m.steelRateYield, m.steelRateUltimate) * logarithm;
 }
 
 static inline float smearedBar(float green, thread float &plastic, device BarHistory &bar, float strainRate,
@@ -854,8 +833,6 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                               const device ElementSteel *steel [[buffer(10)]],
                               const device float2 *loadTable [[buffer(11)]],
                               device BarHistory *bars [[buffer(12)]],
-                              device float4 *crushOut [[buffer(13)]],
-                              const device float4 *crushBefore [[buffer(14)]],
                               constant MaterialParameters *materials [[buffer(15)]],
                               const device uchar *materialIndex [[buffer(16)]],
                               device float4 *plasticOut [[buffer(17)]],
@@ -1057,12 +1034,12 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float3x3 frame = float3x3(1.0f);
         bool framed = false;
         bool turning = false;
-        if (u.orientedCracks != 0) {
+        {
             float4 stored = float4(state.crackFrame);
             if (any(stored != 0.0f)) {
                 frame = rotationOf(normalize(stored));
                 framed = true;
-                turning = u.orientedCracks == 2 && signbit(stored.w);
+                turning = signbit(stored.w);
             }
         }
         // A mortar joint lies on a lattice plane, so an element that holds one cracks across the
@@ -1088,7 +1065,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // The stretching rate along each lattice axis, averaged as the effective rate is: what a
         // bar along that axis strains at here.
         float3 axisRate = float3(0.0f);
-        if (u.barRateAlongBars != 0 && m.barReach > 0.0f) {
+        if (m.barReach > 0.0f) {
             float3 before = barRateBefore[compact].xyz;
             axisRate = before + clamp(dt * u.rateFilter, 0.0f, 1.0f) * (abs(float3(dxx, dyy, dzz)) - before);
             barRateOut[compact] = float4(axisRate, 0.0f);
@@ -1147,21 +1124,9 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // strain itself would count the sideways swelling of squeezed concrete as cracking.)
         // It is shared between the planes it cuts across, in proportion to the squared direction
         // cosines.
-        // What a crack has slid by (`crackSlip`) is already the crack's: with `crackSlip` at 2
-        // it is taken out, as a second crack's opening is, so that sliding along a crack does not
-        // also open it and the plane across the slide. (Counted, a crack 1 mm open slid by 2 mm
-        // on 50 mm elements read as 1.9 mm open; see `StructureModel.slipWidensCracks`.)
-        float3x3 opens = strain;
-        if (u.crackSlip == 2u && framed && !turning && joints == 0u) {
-            float3 slid = 0.5f * float3(state.jointSlip);  // xy, yz, zx
-            opens[0][1] -= slid.x;
-            opens[1][0] -= slid.x;
-            opens[1][2] -= slid.y;
-            opens[2][1] -= slid.y;
-            opens[2][0] -= slid.z;
-            opens[0][2] -= slid.z;
-        }
-        float3x3 effective = opens * (1.0f / (1.0f + poisson));
+        // What a crack has slid by (`crackSlip`) counts in the strain that opens cracks: sliding
+        // along a crack also opens it, and the plane across the slide.
+        float3x3 effective = strain * (1.0f / (1.0f + poisson));
         float dilation = poisson * (strain[0][0] + strain[1][1] + strain[2][2])
             / ((1.0f + poisson) * (1.0f - 2.0f * poisson));
         effective[0][0] += dilation;
@@ -1171,7 +1136,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float3x3 axes;
         symmetricEigen(effective, principal, axes);
         bool cracking = max(principal.x, max(principal.y, principal.z)) > onset;
-        if (u.orientedCracks != 0 && ((!framed && cracking) || turning)) {
+        if ((!framed && cracking) || turning) {
             // The crack axes become the principal axes of this strain: at the first crack, and
             // every step while they still turn. Turning, each axis takes the principal direction
             // nearest to it, so that each plane's history stays with its own direction.
@@ -1208,7 +1173,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             // in a slab held down at its supports followed the stress round in the rebound
             // until no axis carried tension, and the slab came apart.
             float3 crushed = float3(state.crushStrain);
-            bool fix = u.orientedCracks == 1 || worst > onset + 0.1f * m.crackSoftening
+            bool fix = worst > onset + 0.1f * m.crackSoftening
                 || max(crushed.x, max(crushed.y, crushed.z)) > m.crushPeak;
             float4 q = quaternionOf(frame);
             q = (q.w < 0.0f) == fix ? -q : q;
@@ -1275,51 +1240,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         state.crackResidual = residual;
         float3 squeeze = residual - uniaxial;  // compressive strain, past any crack's residual
         float3 crush = max(float3(state.crushStrain), squeeze);
-        // Softening past the peak follows the crushing averaged over the intact elements within
-        // `crushRadius` (as of the previous substep), so that it cannot collapse into one layer
-        // of elements. Only elements already past the unconfined peak need the average.
         float3 softening = crush;
-        if (m.crushRadius > 0) {
-            crushOut[compact] = float4(crush, 0.0f);
-            if (any(crush > m.crushPeak)) {
-                // The neighbourhood is sampled at no more than nine points along each axis, so
-                // the cost does not grow with refinement; up to a radius of four elements every
-                // element is visited.
-                int r = int(m.crushRadius);
-                int samples = min(r, 4);
-                int3 dims = int3(u.ex, u.ey, u.ez);
-                float3 sum = float3(0.0f);
-                float count = 0.0f;
-                for (int c = -samples; c <= samples; ++c) {
-                    int z = int(tid.z) + (c * r) / samples;
-                    if (z < 0 || z >= dims.z) {
-                        continue;
-                    }
-                    for (int b = -samples; b <= samples; ++b) {
-                        int y = int(tid.y) + (b * r) / samples;
-                        if (y < 0 || y >= dims.y) {
-                            continue;
-                        }
-                        for (int a = -samples; a <= samples; ++a) {
-                            int x = int(tid.x) + (a * r) / samples;
-                            if (x < 0 || x >= dims.x) {
-                                continue;
-                            }
-                            int other = x + dims.x * (y + dims.y * z);
-                            uchar flag = flags[other];
-                            uint neighbour = cellElement[other];
-                            // Crushing is averaged within one material only.
-                            if (wholeThisPass(flag)
-                                && (singleMaterial || (materialIndex[neighbour] & uchar(15)) == own)) {
-                                sum += crushBefore[neighbour].xyz;
-                                count += 1.0f;
-                            }
-                        }
-                    }
-                }
-                softening = count > 0.0f ? sum / count : crush;
-            }
-        }
         state.crushStrain = crush;
         state.plasticStrain = max(crush.x, max(crush.y, crush.z));
 
@@ -1349,7 +1270,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             normalStress[j] = concreteCompression(squeeze[j], crush[j], softening[j], compressionFactor,
                                                   confinement[j], m);
             float2 limits = crushStrains(compressionFactor, confinement[j], m);
-            float driving = m.crushRadius > 0 ? min(squeeze[j], softening[j]) : squeeze[j];
+            float driving = squeeze[j];
             crushed = max(crushed, clamp((driving - limits.x) / (limits.y - limits.x), 0.0f, 1.0f));
             pulverised = pulverised || driving >= limits.y + m.crushErosion * (limits.y - limits.x);
         }
@@ -1438,18 +1359,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                     interlock = min(interlock + slopes.x / slopes.y * pressure, max(interlock, 0.5f * unconfined));
                 }
                 capParts.x = interlock;
-                // The crack's shear stiffness: a fixed share of the concrete's, or, measured on
-                // cracks in plain concrete by Walraven and Reinhardt (1981), k = 1.8 w^-0.8 +
-                // (0.234 w^-0.707 - 0.20) f_cc MPa per mm of slip for a crack w mm wide in concrete
-                // of cube strength f_cc MPa, acting in series with the concrete across the band.
+                // The crack's shear stiffness: a fixed share of the concrete's.
                 float retention = m.shearRetention;
-                if (u.crackShearStiffness != 0) {
-                    float millimetres = max(width * 1000.0f, 0.01f);
-                    float cube = m.compressiveStrength / 0.8e6f;
-                    float stiffness = 1e9f * (1.8f * pow(millimetres, -0.8f)
-                                              + max(0.234f * pow(millimetres, -0.707f) - 0.20f, 0.0f) * cube);
-                    retention = 1.0f / (1.0f + m.mu / (stiffness * band));
-                }
                 // The wider-open of the two planes is the crack that slides; the bars along its
                 // normal cross it.
                 int across = opening[a] >= opening[b] ? a : b;
@@ -1684,7 +1595,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             // A bar strains at the rate of its debonded length, not of the one element a crack
             // runs through, whose rate grows as the mesh is refined.
             float barRate = state.strainRate;
-            if (u.barRateAlongBars != 0 && m.barReach > 0.0f) {
+            if (m.barReach > 0.0f) {
                 int3 dims = int3(u.ex, u.ey, u.ez);
                 int r = int(ceil(m.barReach - 0.5f));
                 float sum = axisRate[j];

@@ -94,8 +94,8 @@ tenth. A crack that turns only while it is barely open is, in practice, close to
 crack whose direction is chosen a little later; what it removes is the error of the very
 first, hairline cracking.
 
-`StructureModel.crackAxes` chooses between this (`.turningUntilOpen`, the default) and the two
-models it replaced:
+`StructureModel.crackAxes` chose between this and the two models it replaced, both since
+retired: no case was better with either, and the lattice planes mishandle inclined cracks (retired in October 2026, with the other options the [case matrix](concrete-strategy.md#every-option-and-default-and-what-each-does) found no case for; old files read with today's behaviour and a note):
 
 - **Lattice planes** (`.lattice`): the axes are always the lattice's, and an inclined crack is
   shared between the planes it cuts. It is wrong both ways at once. A crack at 45° gives each
@@ -213,8 +213,8 @@ Compression follows, for a compressive strain ε with peak strain ε_c and stren
   never more steeply than elastic unloading. Below ε_p the concrete carries nothing, and
   reloading retraces the line. Each crack axis keeps its own compressive history.
 
-  Past the peak, the softening can optionally be made **nonlocal** (`crushLength`, off by
-  default): it then follows the crushing averaged over the intact elements of the same
+  Past the peak, the softening could be made **nonlocal** (`crushLength`, an option since
+  retired, which moved the slab by under 1%): it then followed the crushing averaged over the intact elements of the same
   material within that radius, as in the nonlocal damage models of Pijaudier-Cabot and Bažant;
   three aggregate sizes, 48 mm, is the usual radius. Only elements already past the unconfined
   peak strain gather the average, from the previous substep's values, sampling at most nine
@@ -288,7 +288,8 @@ where a is the largest aggregate size (16 mm by default) and w is the crack widt
 crack strain times its plane's band width ℓ (see [Cracking](#cracking)). A hairline crack carries about 0.58 √f_c, close to the
 tensile strength; a 1 mm crack carries about 30% of that.
 
-**A crack's shear stiffness** (an option, `StructureModel.crackShearStiffness`). A quarter of
+**A crack's shear stiffness** (an option, `StructureModel.crackShearStiffness`, since retired:
+it moved no case). A quarter of
 the concrete's shear stiffness, kept however wide the crack, suits a crack smeared over many
 elements. A crack in one element (in plain concrete, or with bars that slip) is a discrete
 crack, and Walraven and Reinhardt measured how stiff those are in shear: k = 1.8 w^−0.8 +
@@ -349,8 +350,9 @@ and the push-off paths too, and stiffens Saatci's heavy drops by a tenth. Neithe
 element's strain, and the slide stored by `crackSlip` is part of that strain: a crack 1.05 mm
 open slid by 2 mm on 50 mm elements read as about 1.9 mm open and carried 57% of its cap, and
 the plane across the slide opened as well. `StructureModel.slipWidensCracks = false`
-(`--slide-apart` in `blastbench`) takes the stored slide out of that strain, as a second crack's
-opening is, and the crack then carries its cap at its measured width. It is not the default:
+(`--slide-apart`, an option since retired) took the stored slide out of that strain, as a
+second crack's opening is, and the crack then carried its cap at its measured width. It was not
+the default:
 on its own it makes every member that depends on sliding cracks stronger, Vecchio and Shim's
 OA1 120% instead of 111% on 24 elements and Ando's beams without stirrups far too stiff (at
 5 m/s A36 peaks at 25 mm against 66 measured, and 50 by default), and the slab and chamber do
@@ -626,11 +628,11 @@ the bars of their own stretching rate along their debonded length (below):
 |----------------------|-------------------------------------------------------------|---------------------------|
 | Concrete compression | (ε̇ / 30×10⁻⁶)^(1.026 α), α = 1 / (5 + 9 f_c / 10 MPa), below 30 /s; cube-root law above | CEB-FIP Model Code 1990 |
 | Concrete tension     | (ε̇ / 10⁻⁶)^0.018 below 10 /s; 0.0062 (ε̇ / 10⁻⁶)^(1/3) above | fib Model Code 2010 (default) |
-| Concrete tension, as an option | (ε̇ / 10⁻⁶)^δ, δ = 1 / (1 + 8 f_c / 10 MPa), below 1 /s; cube-root law above | Malvar and Ross, 1998 |
+| Concrete tension, retired | (ε̇ / 10⁻⁶)^δ, δ = 1 / (1 + 8 f_c / 10 MPa), below 1 /s; cube-root law above | Malvar and Ross, 1998 |
 | Steel yield          | 1 + (6 / f_y) ln(ε̇ / 5×10⁻⁵), f_y in MPa                   | CEB Bulletin 187, 1988; fib Model Code 2010 (default) |
 | Steel ultimate       | 1 + (7 / f_u) ln(ε̇ / 5×10⁻⁵), f_u in MPa                   | the same |
-| Steel yield, as an option | (ε̇ / 10⁻⁴)^α, α = 0.074 − 0.040 f_y / 414 MPa        | Malvar and Crawford, 1998 |
-| Steel ultimate, as an option | (ε̇ / 10⁻⁴)^α, α = 0.019 − 0.009 f_y / 414 MPa     | Malvar and Crawford, 1998 |
+| Steel yield, retired | (ε̇ / 10⁻⁴)^α, α = 0.074 − 0.040 f_y / 414 MPa        | Malvar and Crawford, 1998 |
+| Steel ultimate, retired | (ε̇ / 10⁻⁴)^α, α = 0.019 − 0.009 f_y / 414 MPa     | Malvar and Crawford, 1998 |
 
 The factor raises strength without changing stiffness. Two details matter:
 
@@ -646,7 +648,8 @@ The factor raises strength without changing stiffness. Two details matter:
   its static strength, was held on by eight times the fracture energy and never flew; the
   contest slab, the chamber and the beams struck by a falling weight move by under 1 mm either
   way.
-- The **tensile law** (`tensionRateLaw`) decides Saatci's drop-weight impacts. Malvar and
+- The **tensile law** decides Saatci's drop-weight impacts (`tensionRateLaw` chose between the
+  two below; Malvar and Ross's is retired). Malvar and
   Ross's law, steeper above 1 per second and the steeper the weaker the concrete (2.7 times at
   7 per second for 47 MPa concrete, 9 times at 100 per second for 25 MPa), left the beams with
   stirrups a quarter too stiff on every mesh and the close-in slabs' spall needing 17–21 MPa,
@@ -655,8 +658,8 @@ The factor raises strength without changing stiffness. Two details matter:
   the close-in slab further down; but under it a beam without stirrups loses elements, and on
   fine meshes splits along its bars, under a drop the test beam survived (see
   [Validation](validation.md#beams-struck-by-a-falling-weight)). The Model Code's is the
-  default; it errs, there, towards damage.
-- The **steel law** (`steelRateLaw`) sets how much of a struck beam's deflection is the bars'
+  only law now; it errs, there, towards damage.
+- The **steel law** (`steelRateLaw` chose it; Malvar and Crawford's is retired) sets how much of a struck beam's deflection is the bars'
   yielding, and so how much it keeps. Malvar and Crawford's raises a 400 MPa bar's yield 1.39
   times at 1 per second and 1.49 at 9; the CEB's, which the fib Model Code 2010 re-adopted,
   1.15 and 1.18. Tension tests of HRB400 bars (F. Lin, Y. Dong, X. Kuang and L. Lu,
@@ -671,7 +674,8 @@ The factor raises strength without changing stiffness. Two details matter:
   its record more closely (4–8 mm root-mean-square, against 9–12), and its shells go a
   quarter too far (15%).
 - The **bars' strain rate is their own, over their debonded length**
-  (`StructureModel.barRateAlongBars`, on by default): each element keeps a running average of
+  (always; `StructureModel.barRateAlongBars`, which could take the element's rate instead, is
+  retired): each element keeps a running average of
   its stretching rate along each lattice axis, and a bar along that axis takes the mean of it
   over the window its rupture is judged over, half the crack spacing either side. Taken
   instead from the effective strain rate of the element a crack runs through, which grows as
@@ -784,7 +788,6 @@ compressive strength f_c (in MPa):
 | Tensile strength   | 0.3 f_c^(2/3) MPa          | Eurocode 2 (mean)     |
 | Fracture energy    | 73 f_c^0.18 N/m            | fib Model Code 2010   |
 | Crushing energy    | 250 × fracture energy      | Common practice       |
-| Crushing length    | 0 (local); 48 mm when nonlocal crushing is wanted | Bažant and Pijaudier-Cabot (about 2.7 aggregate sizes) |
 | Poisson's ratio    | 0.2                        |                       |
 | Density            | 2400 kg/m³                 |                       |
 
