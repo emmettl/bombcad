@@ -46,6 +46,9 @@ public struct ErrorBand: Codable, Hashable, Sendable {
     /// The model's own spread from uncertain inputs in the case behind the band, as a coefficient
     /// of variation (validation.md, "The model's spread from uncertain inputs"); nil where not run.
     public var inputSpread: Double? = nil
+    /// The reference's own scatter about its mean, one standard deviation as a fraction (the tests
+    /// behind Kingery–Bulmash, repeats against it, UFC 3-340-02's rooms); nil where none is known.
+    public var referenceScatter: Double? = nil
 
     /// Which way the model errs.
     public var reads: String {
@@ -81,12 +84,29 @@ public struct ErrorBand: Codable, Hashable, Sendable {
     /// added in quadrature: the model's error and its spread from uncertain inputs are separate.
     public var combinedHalfWidth: Double {
         let inputs = 1.645 * (inputSpread ?? 0)
-        return (relativeHalfWidth * relativeHalfWidth + inputs * inputs).squareRoot()
+        let reference = 1.645 * (referenceScatter ?? 0)
+        return (relativeHalfWidth * relativeHalfWidth + inputs * inputs + reference * reference).squareRoot()
     }
 
-    /// Where the measured value would lie for a model value, with the inputs' spread as well.
+    /// Whether the model's error lies within the reference's own scatter (one standard deviation),
+    /// so that it cannot be told apart from the tests'; nil where the scatter is not known.
+    public var withinReference: Bool? {
+        referenceScatter.map { max(abs(low - 1), abs(high - 1)) <= $0 + 1e-9 }
+    }
+
+    /// The model's error against the reference's scatter, in words; nil where it is not known.
+    public var againstReference: String? {
+        guard let scatter = referenceScatter, let within = withinReference else { return nil }
+        let tests = String(format: "the tests' own scatter, %.1f%%", scatter * 100)
+        return within
+            ? "Inside \(tests): the model cannot be told apart from the tests here."
+            : "Outside \(tests): the difference is the model's."
+    }
+
+    /// Where a measured value would lie for a model value: the band, with the inputs' spread and
+    /// the reference's own scatter (each at 5–95%) added in quadrature.
     public func expectedWithInputs(_ value: Double) -> ClosedRange<Double> {
-        guard inputSpread != nil else { return expected(value) }
+        guard inputSpread != nil || referenceScatter != nil else { return expected(value) }
         let centre = value / ((low + high) / 2)
         return centre * (1 - combinedHalfWidth)...centre * (1 + combinedHalfWidth)
     }
@@ -328,6 +348,36 @@ public enum ValidationTables {
     ]
 
     public static func spread(_ id: String) -> Double { spreads.first { $0.id == id }!.coefficient }
+
+    /// A reference's own scatter, one standard deviation, read from the record.
+    public struct Scatter: Sendable {
+        public var id: String
+        public var sigma: Double
+        public var document: String
+        /// Must lie under `document`'s heading and hold the figure.
+        public var quote: String
+    }
+
+    public static let scatters: [Scatter] = [
+        Scatter(
+            id: "incidentPeak", sigma: 0.064,
+            document: "validation.md#kingerybulmash-the-design-practice-standard",
+            quote: "±6.4% of the peak overpressure"),
+        Scatter(
+            id: "incidentImpulse", sigma: 0.067,
+            document: "validation.md#kingerybulmash-the-design-practice-standard",
+            quote: "±6.7% of the positive impulse"),
+        // Reflected values are calculated, not fitted; modern repeats' ±6–8%, the upper end taken.
+        Scatter(
+            id: "reflected", sigma: 0.08,
+            document: "validation.md#kingerybulmash-the-design-practice-standard",
+            quote: "Repeats lie within ±6–8% of their mean for the peak, the impulse and the duration"),
+        Scatter(
+            id: "room", sigma: 0.11, document: "validation.md#gas-pressure-in-a-closed-room",
+            quote: "with a standard deviation of 11%"),
+    ]
+
+    public static func scatter(_ id: String) -> Double { scatters.first { $0.id == id }!.sigma }
 }
 
 // MARK: - Reading a band from a table
@@ -587,6 +637,20 @@ extension StandingScene {
             if bands.impulse?.quantity == "Reflected impulse", !closeIn {
                 bands.impulse?.inputSpread = ValidationTables.spread("wallImpulse")
             }
+            // The reference's own scatter: Kingery's tests about their fit, repeats for the reflected
+            // values, which were calculated; close in, repeats differed by far more.
+            for (path, incident) in [
+                (\GaugeBands.peak, "incidentPeak"), (\GaugeBands.impulse, "incidentImpulse"),
+            ] {
+                guard let band = bands[keyPath: path] else { continue }
+                if band.document == "validation.md#close-in" {
+                    bands[keyPath: path]?.validity +=
+                        "; repeats this close differed by up to 40% in peak (Rae and McAfee)"
+                } else {
+                    bands[keyPath: path]?.referenceScatter = ValidationTables.scatter(
+                        band.quantity.hasPrefix("Reflected") ? "reflected" : incident)
+                }
+            }
             // The burning time was fitted to the open blast's incident impulse: agreement there is
             // by construction.
             if burning, bands.impulse?.quantity == "Incident impulse" {
@@ -652,11 +716,14 @@ extension StandingScene {
         let figure = ValidationTables.figure(id)
         // The cases the ensemble ran, by the figure they share.
         let spreads = ["slabSolid": "slab", "wuSmall": "wuPeak", "wuLarge": "wuPeak"]
+        // References whose own scatter is known: UFC 3-340-02's rooms.
+        let scatters = ["roomDefault": "room", "roomBurning": "room", "roomBurningHot": "room"]
         return ErrorBand(
             measure: measure, quantity: quantity, low: figure.low, high: figure.high,
             lowIsUnsafe: lowIsUnsafe,
             meaningLow: low, meaningHigh: high, validity: validity, check: check, document: figure.document,
-            scaled: false, inputSpread: spreads[id].map(ValidationTables.spread))
+            scaled: false, inputSpread: spreads[id].map(ValidationTables.spread),
+            referenceScatter: scatters[id].map(ValidationTables.scatter))
     }
 
     /// Several bands spanned as one: the lowest low and the highest high.
@@ -935,7 +1002,7 @@ extension StandingScene {
                                 format: "a rigid wall facing the charge at %.2f m/kg^(1/3)", distance),
                             check: "Kingery–Bulmash, 100 kg",
                             document: "validation.md#kingerybulmash-the-design-practice-standard",
-                            scaled: read.scaled))
+                            scaled: read.scaled, referenceScatter: ValidationTables.scatter("reflected")))
                 } else {
                     unbanded.append("The nearest face lies outside the compared distances or cells.")
                 }
