@@ -280,7 +280,10 @@ keeps the result as a saved run, for scripts and other Macs; see
 write the scene, the structure and the blast over time for rendering elsewhere
 ([USD export](usd-export.md)). Sweeps can share their cases with other Macs over SSH,
 in the app or with `BombCAD sweep`; see
-[sharing a sweep](run-comparison.md#sharing-a-sweep-with-another-mac).
+[sharing a sweep](run-comparison.md#sharing-a-sweep-with-another-mac). With another Mac named in
+`~/.config/bombcad/remote.json`, `BombCAD sweep` and `BombCAD ensemble` take it whenever it is
+free, without `--worker`, and `make check-anywhere` runs the checks on whichever Mac is quieter;
+see [checks on the mini](continuous-integration.md#checks-on-the-mini-instead-of-this-mac).
 
 For the isolated rigid-object mechanics demo, run `swift run rigidboxdemo`, then open
 `.build/rigid-box-demo.html` in a browser. The self-contained replay shows resting, friction
