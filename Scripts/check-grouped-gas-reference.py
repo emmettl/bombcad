@@ -2,6 +2,7 @@
 """Verify bounded gas references in a temporary CPU-only package, without app imports."""
 from pathlib import Path
 import argparse
+import json
 import shutil
 import subprocess
 import tempfile
@@ -53,12 +54,20 @@ def main():
         package = Path(directory)
         for folder in ["Sources/BlastCore", "Tests/BlastCoreTests"]:
             (package / folder).mkdir(parents=True)
-        (package / "Package.swift").write_text('''// swift-tools-version: 6.4
+        pin = json.loads((ROOT / "Package.resolved").read_text())["pins"][0]
+        assert pin["identity"] == "continuumkit"
+        version = pin["state"]["version"]
+        products = ['.product(name: "CompressibleFlow", package: "continuumkit")']
+        if "import Numerics" in (ROOT / "Sources/BlastCore/FiniteVolumePressureFit.swift").read_text():
+            products.append('.product(name: "Numerics", package: "continuumkit")')
+        (package / "Package.swift").write_text(f'''// swift-tools-version: 6.4
 import PackageDescription
-let package = Package(name: "GroupedReference", platforms: [.macOS(.v15)], targets: [
-    .target(name: "BlastCore"),
-    .testTarget(name: "BlastCoreTests", dependencies: ["BlastCore"])
-])
+let package = Package(name: "GroupedReference", platforms: [.macOS(.v15)],
+    dependencies: [.package(url: "https://github.com/emmettl/ContinuumKit.git", exact: "{version}")],
+    targets: [
+        .target(name: "BlastCore", dependencies: [{', '.join(products)}]),
+        .testTarget(name: "BlastCoreTests", dependencies: ["BlastCore"])
+    ])
 ''')
         for names, folder in [(SOURCES, "Sources/BlastCore"), (TESTS, "Tests/BlastCoreTests")]:
             for name in names:

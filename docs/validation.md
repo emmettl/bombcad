@@ -77,6 +77,7 @@ swift run -c release blastbench perimeter --study wall
 | Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; laminar rise times within 1–3% at 48 cells across the radius, the turbulent flame's 4–8% ahead; K_G 35, 41 and 51 on 12, 24 and 48 cells against 76, rising but not shown to converge. Vented rooms: a thirtieth to a sixtieth of Molkov's correlation. FM Global's six tests (digitised): lit at the back wall, 55–60% of the measured peaks, the flame speeds half the measured over the first 2 m and within a fifth beyond 3 m; lit in the middle, a sixth to a seventh, the flame stalling towards the back wall | Verified for a laminar flame in a closed vessel; illustrative for vented rooms |
 | Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 11% to 14 mrad of rotation (against the larger of its two directions), 6–17% low beyond; settlement 1.7–2.3 times that measured. The same footing shaken (FoRDy, eight events on three structures): settlement 0.6–1.5 times, the surface footing's peak rotation within 22% where the test did not lurch one way (the embedded footing's first event a third), a sixth to a half of the energy dissipated. Both on sand of 80 MPa, an estimate, twice the default's | Moderate for rocking moment and settlement; low for energy and for a footing that lurches |
 | Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.2–1.9 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own; collapse nothing | Low for debris; none for collapse |
+| Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 1–2%, structural responses 4–20%, residual deflections and failure 17–28%; the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
 
 Read with the table:
 
@@ -2537,6 +2538,95 @@ bond splits a beam along its bars under a light drop. But it is too stiff nearly
 else: the slab 11% short, OA1 half as strong again, the heavy drops 8–14% short, Ando's beams a
 quarter short, the close-in slab P7 further from the test, and Janney's beam broken at 163% on
 24 elements. Perfect bond remains the default; slip remains an option.
+
+## The model's spread from uncertain inputs
+
+Most of the tests above were one shot a specimen, so there is no measured scatter to set the
+model's error against, only what the model itself does when its inputs move within what is
+known of them. `BombCAD ensemble` reruns the cases with their uncertain inputs sampled from stated
+distributions (a Latin hypercube, seeded, so the same seed gives the same samples), once with
+every input at its middle value and once a sample, sharing the runs among Macs as a sweep does
+(see [Distributed computing](distributed-computing.md#better-first)):
+
+```bash
+swift run -c release BombCAD ensemble contest-slab,janney,oa1,saatci,peterson-d-1d-nos,peterson-d-2d-s90,wu-s8,chiquito-s1,kb-wall --samples 16 --worker <ssh host> --out ensemble
+```
+
+`BombCAD ensemble --list` gives each case's inputs and where their spread comes from. In short:
+
+| Input | Spread | Source |
+|---|---|---|
+| Concrete strength, stated as a class or one value | normal, 4.9 MPa | fib Model Code 2010 (fcm − fck = 8 MPa) |
+| Concrete strength measured on the cast's cylinders | normal, 5% | assumed, typical within a batch; Wu's six cubes: 1.9%, and 0.75–0.85 of them on cylinders |
+| Tensile strength, on its correlation with strength | log-normal, 18% | fib Model Code 2010 (0.7 to 1.3 times the mean at 5% and 95%); Saatci's measured 3.1–3.4 MPa |
+| Fracture energy, on its correlation | log-normal, 30% | assumed |
+| Bars' yield and ultimate | normal, 3% from the specimens' coupons, 6% nominal | JCSS Probabilistic Model Code; assumed |
+| Charge mass with its TNT equivalence; standoff | 2% for TNT, 8% for Chiquito's PG2 and dynamite; 5 to 50 mm | assumed |
+| The contest slab's pressure record | normal, 3% | two readings of it differ by 4% in impulse |
+| Supports and contact where the papers leave them unclear | the contest slab on lines of nodes or on bearings free to lift, equally likely; Peterson's fibreboard, log-normal 50% on its fitted stiffness | assumed |
+| Drop speed | 1–2% | assumed |
+
+The stiffness, tensile strength and fracture energy follow a sampled strength by the model's own
+correlations before their own factors apply, so that a case's measured tensile strength moves
+with it. Chiquito's concrete is sampled about 33 MPa, a C25/30's mean, rather than the 25 MPa
+the model takes elsewhere, which leaves its gauges, all that is compared there, as they were.
+
+Sixteen samples a case, October 2026, 153 runs in 1 h 55 min on the Studio and the CI mini
+together (the mini ran 53), against 4.5 hours of runs: the 5th to 95th percentiles of the
+samples, against the measurement; the tests' scatter where repeats give one (from their range,
+so roughly); and the inputs the output follows, by rank correlation (with sixteen samples, below
+about 0.5 it is chance).
+
+| Case, output | Measured | Middle inputs | Samples: mean, spread | 5–95% | Measured within? | Tests' scatter | Follows |
+|---|---|---|---|---|---|---|---|
+| Contest slab, peak (mm) | 108 | 113 | 107, 12% | 89–126 | yes | one test | yield, load, ultimate; supports 115 on lines against 98 on bearings |
+| Janney, peak moment (kN m) | 41.5 | 42.0 | 43.9, 7% | 39.7–48.3 | yes | one test | yield |
+| Janney, deflection at failure (mm) | 42 | 53 | 42.6, 20% | 30–54 | yes, 14 of 16 failed | one test | |
+| OA1, peak load (kN) | 332 | 380 | 371, 7% | 338–408 | no, below | one test | fracture energy |
+| OA1, deflection at peak (mm) | 9.2 | 8.9 | 8.5, 7% | 7.6–9.1 | no, just above | one test | |
+| Saatci SS2b-1, peak (mm) | 37.9 | 36.6 | 37.6, 6% | 35.7–41.8 | yes | none | fracture energy |
+| Saatci SS2b-1, residual (mm) | 18.5 | 16.5 | 17.7, 28% | 13–26 | yes | none | fracture energy |
+| Saatci SS2b-1, reaction (kN) | 592 | 559 | 504, 10% | 415–557 | no, above | none | |
+| Peterson D-1d-NoS, impact (kN) | 289 | 269 | 264, 15% | 185–315 | yes | 4% | fibreboard |
+| Peterson D-1d-NoS, near reaction (kN) | 170 | 171 | 166, 14% | 122–190 | yes | 9% | fibreboard |
+| Peterson D-1d-NoS, far reaction (kN) | 46.5 | 60.9 | 62, 14% | 51–72 | no, below | 10% | fibreboard, speed |
+| Peterson D-2d-S90, impact (kN) | 238 | 202 | 206, 14% | 168–250 | yes | 18% | fibreboard |
+| Peterson D-2d-S90, near reaction (kN) | 116 | 72 | 71, 3% | 67–75 | no, above | 8% | speed, fibreboard |
+| Peterson D-2d-S90, far reaction (kN) | 83.5 | 56 | 60, 19% | 51–80 | no, above | 5% | fibreboard |
+| Wu S8, peak (mm) | 18.0 | 14.4 | 14.3, 4% | 13.6–15.2 | no, above | one test | standoff, tensile strength |
+| Wu S8, residual (mm) | 5.6 | 6.7 | 6.2, 17% | 4.5–7.4 | yes | one test | |
+| Chiquito S1–S3, gauge at 1 m (MPa) | 2.5 | 1.48 | 1.48, 8% | 1.32–1.66 | no, above | 5% | charge, yield |
+| Chiquito S1–S3, gauge at 2 m (MPa) | 0.5 | 0.36 | 0.36, 7% | 0.32–0.39 | no, above | 12% | charge |
+| Kingery–Bulmash wall, reflected peak (kPa) | 1,060 (K–B) | 691 | 697, 2% | 672–715 | no, above | | charge, standoff |
+| Kingery–Bulmash wall, reflected impulse (Pa s) | 1,690 (K–B) | 1,710 | 1,710, 1% | 1,670–1,740 | yes | | charge |
+
+The Kingery–Bulmash curves themselves, for the same inputs (`kb-curve`, 200 samples, no solver),
+spread 2% in both: the solver adds nothing to that spread.
+
+Reading this table:
+
+- **The measurement falls within the model's spread in 10 of 20 outputs.** Where it does not,
+  the gap is the model's, not its inputs': the loads near a close-in charge and the reflected
+  peak are the grid's under-resolution ([Close in](#close-in)), OA1 the coarse shear
+  ([A beam failing in shear](#a-beam-failing-in-shear)), and the short beams' reactions and
+  Saatci's the supports and the beams' stiffness ([Beams struck by a falling
+  weight](#beams-struck-by-a-falling-weight)). An error band for these should add the validation
+  error to this spread, not replace it.
+- **Where the tests were repeated, the model's spread is comparable with theirs**: wider in five
+  of eight outputs (Peterson's D-1d-NoS 14–15% against 4–10%, mostly the fibreboard's unknown
+  stiffness), narrower in three. Two or three repeats give a poor estimate of the tests' own
+  scatter, so neither is clearly wider.
+- **Input uncertainty is 1–2% of a load and 4–20% of a structural response**, more for a
+  residual deflection (17–28%) and for where a member fails (20%). The middle inputs and the
+  samples' median can differ by more than that (Janney's failure at 53 against 45 mm, Saatci's
+  reaction at 559 against 514 kN): the responses are not linear in their inputs.
+- **What decides it varies by case**: the bars' strength and the load for the contest slab, the
+  fracture energy for OA1 and Saatci's beam, the contact's stiffness for Peterson's, the charge
+  for the gauges. The supports, where unknown, move the contest slab's peak by 17 mm, as much as
+  everything else together.
+
+The samples and results are kept as JSON (`--out`), each result as it arrives, so an ensemble
+cut short carries on from where it was.
 
 ## Consistency across air grids
 
