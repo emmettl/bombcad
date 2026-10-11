@@ -69,6 +69,8 @@ import simd
 //   blastbench landscape [--mass 500000] [--dx 8] ...   (large surface bursts; see LandscapeBench.swift)
 //   blastbench advise --calibrate [--time]   (the cost-against-fidelity advisor; see AdvisorBench.swift)
 //   blastbench hrynyk [--slabs TH2,TH6,TH7] [--layers 16] [--impacts 4] [--ensemble 16]   (blind test 1; see HrynykBench.swift)
+//   blastbench buildings [--dx 0.5] [--duration 0.12] [--mass 50] [--out f.json]
+//                        (three buildings across a street, together and each alone; see BuildingsBench.swift)
 //   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80] [--terrain flat]   (hashes of short runs, to compare builds)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
@@ -3176,6 +3178,8 @@ func runSlab() throws {
         let result = try SlabBenchmark.run(
             device: device, elementsThroughThickness: layers, rate: rate,
             loadScale: option("load-scale").flatMap { Float($0) } ?? 1, supports: supports, width: width,
+            // `--span 58`: the supports that many inches apart (52 by default).
+            span: option("span").flatMap { Float($0) }.map { $0 * 0.0254 } ?? SlabBenchmark.span,
             bondSlip: chosenBondSlip(diameter: 0.0095),
             adjust: { applyRateOptions(&$0) },
             adjustModel: {
@@ -4361,6 +4365,7 @@ func runSoilColumn() throws {
 do {
     switch command {
     case "digest": try runDigest()
+    case "buildings": try runBuildings()
     case "slab": try runSlab()
     case "tie": try runTie()
     case "beam": try runBeam()

@@ -16,10 +16,18 @@ the air field without sharing structural nodes or automatically bonding. The edi
 Overall deflection is the maximum across intact bodies, with individual histories also kept.
 See [shared air mechanics](multiple-object-scene.md#implemented-shared-air-mechanics).
 
-Inter-object contact and moving connections are excluded. Touching initial envelopes are
-rejected, and conservative GPU envelope/cell checks stop a run when independent bodies may
-interact. This includes loose nodes and can stop before actual detailed surfaces touch.
-Existing contact within one body, including between its solid and shell parts, is unchanged.
+Independent bodies meet through contact. Once any two come within one of their widest elements
+of each other (the envelope check that used to stop the run), every body is encoded a substep at
+a time, side by side, on the shortest of their steps: each fills its own contact table and finds
+its own contacts, then each node of each body is pushed by the nodes of every other within half
+the sum of their spheres' widths, through that body's table, with the spring, damper and
+friction of [contact](#contact) within a body, and only then does any body move. Both sides of a
+pair work out the same force, capped by the lighter node, so the forces are equal and opposite;
+debris of one body striking another is caught the same way. A test throws a block into another,
+solid or shell either side, keeping their momentum to 1 part in 10³ and adding no energy.
+Bodies must still start apart and never bond where they touch; moving connections between them
+are excluded. `SolverConfiguration.interBodyContact` off restores the old behaviour: the run
+stops where bodies come close. See [contact between bodies](multiple-object-scene.md#implemented-contact-between-bodies).
 
 ## Mesh
 
@@ -834,8 +842,8 @@ shock, and the drag and pressure-gradient push on loose debris.
    mortar joints are meshed on fine enough elements; pieces of one body meshed apart can be
    tied by a support region's joint between parts, which can separate, slide and fail, but
    pieces that touch are bonded. Rigid blocks never
-   respond. Independent bodies have no mutual contact or moving connections; conservative
-   interaction checks stop the run when their envelopes or resolved cells overlap.
+   respond. Independent bodies meet through contact between their nodes, never compared with a
+   test, and have no moving connections.
 2. **Debris is pushed crudely.** Loose nodes feel the air's pressure gradient and a drag with a
    fixed coefficient, as cubes of their share of the elements around them. The air feels
    the reaction, so packed rubble slows the gas through it, but only through drag spread over

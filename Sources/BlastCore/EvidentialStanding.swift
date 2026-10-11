@@ -133,7 +133,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-5"
+    public static let currentTable = "standing-table-6"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -812,6 +812,8 @@ public enum StandingTable {
         // The air solver.
         "SolverConfiguration.bodyCouplingLayout": .numerical,
         "SolverConfiguration.bodyCouplingTileCapacity": .numerical,
+        // Off, a run stops where independent bodies come close; what it gives up to there is the same.
+        "SolverConfiguration.interBodyContact": .numerical,
         "SolverConfiguration.gamma": .input,
         "SolverConfiguration.cfl": .numerical,
         "SolverConfiguration.ambientPressure": .input,
@@ -1604,7 +1606,9 @@ struct StandingScene {
         }
         if structures.count > 1 {
             resolution.append(
-                "Independent bodies have no contact with each other; overlapping ones stop the run.")
+                "Independent bodies meet through contact between their nodes, the spring and damper of contact "
+                    + "within a body, checked for momentum and energy but never against a test; they must start "
+                    + "apart and never bond.")
         }
         // Options a saved structure set that have since been retired, and what applies instead.
         for note in Set(structures.flatMap(\.retiredOptions)).sorted() { resolution.append(note) }
@@ -1849,7 +1853,7 @@ struct StandingScene {
             effects.append(
                 "Collapse has never been compared with anything, and debris only once, off slabs under contact "
                     + "charges.")
-            if structures.count > 1 { effects.append("Contact between independent structures.") }
+            if structures.count > 1 { effects.append("Bonds or connections between independent structures.") }
         }
         if inputs.thermal == nil {
             effects.append("Radiant heat from the fireball (not reckoned in this scene).")

@@ -96,4 +96,56 @@ public final class StructuralBody: Identifiable {
             }
         }
     }
+
+    /// Contact between two bodies' parts, as `BodyContact` in BodyContact.metal.
+    struct ContactParameters {
+        var reach: Float
+        var stiffness: Float
+        var damping: Float
+        var friction: Float
+        var own: UInt32
+        var other: UInt32
+    }
+
+    /// One part of a body as a substep sees it once the part has found its own contacts and
+    /// before it moves: its solver and the substep's uniforms.
+    enum ContactPart {
+        case solid(StructureSolver, StructureUniforms)
+        case shell(ShellSolver, ShellUniforms)
+    }
+
+    /// Encodes the substeps in `substeps`, with the once-per-batch work first if `prelude`, its
+    /// contact on in every part. `beforeNodes` runs in each substep once every part has found its
+    /// own contacts and before any moves, for contact with other bodies.
+    func encodeSubsteps(
+        _ encoder: MTLComputeCommandEncoder, substeps: Range<Int>, prelude: Bool,
+        fluid: StructureSolver.FluidBinding, beforeNodes: @escaping ([ContactPart]) -> Void,
+        afterSubstep: ((Int) -> Void)?
+    ) {
+        // Contact with other bodies needs every part's own table, so each part's contact is on.
+        let modes = (solids?.contactMode, shells?.contactMode)
+        solids?.contactMode = .always
+        shells?.contactMode = .always
+        defer {
+            if let mode = modes.0 { solids?.contactMode = mode }
+            if let mode = modes.1 { shells?.contactMode = mode }
+        }
+        if let mixed {
+            mixed.encodeSubsteps(
+                encoder, substeps: substeps, prelude: prelude, fluid: fluid,
+                beforeNodes: { [mixed] solid, shell in
+                    beforeNodes([.solid(mixed.solids, solid), .shell(mixed.shells, shell)])
+                }, afterSubstep: afterSubstep)
+        } else if let solids {
+            solids.encodeSubsteps(
+                encoder, substeps: substeps, prelude: prelude, fluid: fluid, interface: nil,
+                beforeNodes: { [solids] _, uniforms in beforeNodes([.solid(solids, uniforms)]) },
+                afterNodes: afterSubstep)
+        } else if let shells {
+            shells.encodeSubsteps(
+                encoder, substeps: substeps, fluid: fluid, prelude: prelude, interface: nil,
+                beforeNodes: { [shells] uniforms in beforeNodes([.shell(shells, uniforms)]) },
+                afterNodes: afterSubstep)
+        }
+    }
 }

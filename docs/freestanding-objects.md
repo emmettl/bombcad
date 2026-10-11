@@ -172,8 +172,9 @@ with the Mac's load, so only the coupling and contact figures separate cleanly.
 
 ## Striking a deformable structure
 
-`ExperimentalRigidStructureSimulation` steps the objects with a structure of solid elements or
-shells, without air, at the structure's own time step. After each structure step the nodes
+`ExperimentalRigidStructureSimulation` steps the objects with the scene's structures, of solid
+elements, shells or both, without air, all at the shortest of their time steps (a box thrown
+between two walls strikes the one it is thrown at, which alone takes the reaction). After each structure step the nodes
 near an object are handed to `RigidBodyWorld` as point masses (a shell's as spheres of half its
 thickness); the object's faces strike them with the same inelastic, frictional impulses as
 everything else, equal and opposite, and the nodes' new velocities go back to the structure.

@@ -122,11 +122,16 @@ struct MultiBodyTests {
         }
     }
 
-    @Test("A body entering another envelope stops further steps and cannot restart silently")
+    @Test(
+        "Without contact between bodies, one entering another's envelope stops further steps and cannot restart silently"
+    )
     func unsupportedInteraction() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let scene = try scene(clamped: false)
-        let solver = try BlastSolver(device: device, scenario: scene, cellSize: 0.5)
+        var configuration = SolverConfiguration()
+        configuration.interBodyContact = false
+        let solver = try BlastSolver(
+            device: device, scenario: scene, cellSize: 0.5, configuration: configuration)
         let first = try #require(solver.body(id: scene.structuralObjects[0].id)?.solids)
         first.mutateNodes { nodes in
             for index in nodes.indices { nodes[index].displacement.x += 6 }

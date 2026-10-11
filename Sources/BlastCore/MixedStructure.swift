@@ -199,6 +199,19 @@ public final class MixedStructure {
         _ encoder: MTLComputeCommandEncoder, count: Int, fluid: StructureSolver.FluidBinding?,
         afterSubstep: ((Int) -> Void)? = nil
     ) {
+        encodeSubsteps(
+            encoder, substeps: 0..<count, prelude: true, fluid: fluid, beforeNodes: nil,
+            afterSubstep: afterSubstep)
+    }
+
+    /// Encodes the substeps in `substeps` of both parts, tied, with the once-per-batch work first
+    /// if `prelude`. `beforeNodes` runs in each substep once both parts have found their contacts
+    /// and before either moves, with both parts' uniforms.
+    func encodeSubsteps(
+        _ encoder: MTLComputeCommandEncoder, substeps: Range<Int>, prelude: Bool,
+        fluid: StructureSolver.FluidBinding?,
+        beforeNodes: ((StructureUniforms, ShellUniforms) -> Void)?, afterSubstep: ((Int) -> Void)?
+    ) {
         let tie = (link: shellLink, loads: interface.loads)
         // Contact between the parts needs both parts' tables, so once either part would collide,
         // both do, for this batch (coupled to the air, from its first checkpoint after either
@@ -218,15 +231,18 @@ public final class MixedStructure {
         var cross = SIMD2<Float>(
             0.5 * (solids.model.elementSize + shells.model.elementSize),
             1.5 * max(solids.model.elementSize, shells.model.elementSize))
-        var first = true
+        var first = prelude
         solids.encodeSubsteps(
-            encoder, count: count, fluid: fluid, interface: links.isEmpty ? nil : interface,
+            encoder, substeps: substeps, prelude: prelude, fluid: fluid,
+            interface: links.isEmpty ? nil : interface,
             beforeNodes: { [self] substep, solidUniforms in
                 shells.encodeSubsteps(
                     encoder, substeps: substep..<(substep + 1), fluid: fluid, prelude: first, interface: tie,
                     beforeNodes: { [self] shellUniforms in
-                        guard touching else { return }
-                        encodeCrossContact(encoder, solidUniforms, shellUniforms, &cross, fluid: fluid)
+                        if touching {
+                            encodeCrossContact(encoder, solidUniforms, shellUniforms, &cross, fluid: fluid)
+                        }
+                        beforeNodes?(solidUniforms, shellUniforms)
                     })
                 first = false
             },

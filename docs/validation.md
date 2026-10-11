@@ -343,7 +343,29 @@ one to six times the tests' scatter. (The plot's slab 2 record drops out over 33
 | Bars' yield | 72 ksi, the measured curve | 68 ksi (469 MPa), "Grade 60" | the sources disagree; the whole curve scaled to 68 ksi takes the peak from 113 to 123 mm on 8 elements and 114 to 124 on 4, **+9%**, about four times the tests' scatter. The measured curve is kept |
 | Concrete | 5,400 psi measured | 5 ksi nominal | not a disagreement |
 | Load | 50 psi and 1,020 psi·ms stated; Shetye's thesis gives slab 2's as 53.1 psi and 976 psi·ms | about 7.04 MPa·ms (1,021 psi·ms) | the thesis's 4% lower impulse is inside the ensemble's 3% load spread; a 5% load change moves the peak 13–14% ([sensitivity](#sensitivity)) |
-| Span | 52 in between supports (Kewaisy et al.'s drawing) | not given | Shetye's thesis gives the clear span as 58 in; not run (the benchmark fixes the supports), and a longer span would bend the slab further |
+| Span | 52 in between supports (Kewaisy et al.'s drawing) | not given; his photographs show the slab's ends held by the frame | Shetye's thesis gives the clear span as 58 in; on 58 in the model's slab collapses under load 1a ([below](#the-contests-repeat-its-lower-shot-and-its-other-entries)), and the photographs support 52 |
+
+**The span** (`blastbench slab --span 58`). The record's 52 in between supports (centre to
+centre, from Kewaisy et al.'s reproduction of the contest's drawing) and Shetye's 58 in clear span
+cannot both hold. On 58 in centre to centre, with everything else as before:
+
+| Span | Load 1a, 4 / 8 elements through | The lower shot (0.764), 4 / 8 | Measured |
+|---|---|---|---|
+| 52 in | 114 / 113 mm, standing | 57 / 59 mm | 109 and 113 mm; about 72 |
+| 58 in | 675 / 675 mm at 80 ms and still going, 149 / 591 elements failed: the slab breaks at mid-span and falls through | 112 / 113 mm, left 82 / 86 | |
+
+The 16-element runs on 58 in were stopped, the machine being loaded and 4 and 8 elements agreeing.
+A 58 in clear span would put the supports' centres further apart still. Which the sources support:
+Schwer's photograph of the slab in its frame after the shot (his Figure 3, left), scaled by the
+slab's 33.75 in width, shows a clear window of about 47–48 in between the frame's end members, and
+the crack positions marked on the rear face in his other photograph (20¼ in, a crushed band of
+about 4½ in, and 21¾ in) add up to about 46½ in. Both fit supports 52 in apart on bearings about
+4–5 in wide; neither fits a 58 in clear span. So the drawing's 52 in stands, and Shetye's figure is
+probably of something else (his own panels or model). The window also says the bearings are
+several inches wide, not the model's single lines of nodes: 1 in bearings already lowered the peak
+15–25% ([sensitivity](#sensitivity)), and wider ones would lower it further, which the record's
+agreement under load 1a does not allow for. The case matrix's support input (lines or 1 in
+bearings) covers part of this.
 
 **The lower shot** (`blastbench slab --load-scale 0.764`). The contest's slab 6 is the same design
 under its load 1b, of impulse about 5.38 MPa·ms against load 1a's 7.04. Its pressure record is not
@@ -382,7 +404,8 @@ wavy and branching but not fanning towards the corners, about 2–4 in (50–100
 near the supports. One crack near mid-span is wider than the rest, spalled at the edge. That is
 a reading of a small photograph; no widths are given. (The thesis gives the panels' clear
 span as 58 in, where the contest's drawing, as Kewaisy et al. reproduce it, puts the supports
-52 in apart.)
+52 in apart; the photographs support 52, and on 58 the model's slab collapses: see
+[the span](#the-contests-repeat-its-lower-shot-and-its-other-entries).)
 
 `blastbench slab --plan` draws the model's unloaded face at 80 ms in plan, marking cracks wider
 than 0.1 mm, read over each crack's band (the crack spacing with perfect bond, the element with
