@@ -106,6 +106,13 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
     public var options: [String]
     /// Pages under docs/, with anchors.
     public var documents: [String]
+    /// How far it has been from measurement, where the scene lies within a comparison's range
+    /// (see `ErrorBand`); nil in standings recorded before bands were.
+    public var bands: [ErrorBand]? = nil
+    /// Why no band applies, where none does.
+    public var unbanded: [String]? = nil
+    /// Whether the chosen options suit the scene's regime.
+    public var regimes: [RegimeAdvice]? = nil
 
     public var id: ResultKind { kind }
 }
@@ -115,7 +122,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-1"
+    public static let currentTable = "standing-table-3"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -123,6 +130,8 @@ public struct SceneStanding: Codable, Hashable, Sendable {
     public var resolution: [String]
     /// Effects this scene could involve that no model here represents.
     public var unsupported: [String]
+    /// Each gauge's bands; nil in standings recorded before bands were.
+    public var gauges: [GaugeBands]? = nil
 
     public subscript(kind: ResultKind) -> ResultStanding? { results.first { $0.kind == kind } }
 
@@ -163,7 +172,23 @@ public struct SceneStanding: Codable, Hashable, Sendable {
         var text = ["Standing (\(table)):"]
         for result in results {
             text.append("  \(result.kind.title): \(result.level.title). \(result.summary)")
+            for band in result.bands ?? [] { text.append("    Band: \(band.summary), for \(band.validity)") }
+            for note in result.unbanded ?? [] { text.append("    No band: \(note)") }
+            for advice in result.regimes ?? [] {
+                let verdict = advice.suits.map { $0 ? "suits it" : "does not suit it" } ?? "note"
+                text.append(
+                    "    Regime (\(advice.regime)): \(advice.option), \(verdict). \(advice.note)"
+                        + (advice.suggestion.map { " \($0)" } ?? ""))
+            }
             for note in result.resolution { text.append("    Resolution: \(note)") }
+        }
+        for gauge in gauges ?? [] {
+            let bands = [gauge.peak, gauge.impulse].compactMap {
+                $0.map { "\($0.quantity.lowercased()) \($0.ratio)" }
+            }
+            text.append(
+                String(format: "  Gauge %@ at %.2f m/kg^(1/3): ", gauge.name, gauge.scaledDistance)
+                    + (bands.isEmpty ? "no band. \(gauge.note ?? "")" : bands.joined(separator: ", ")))
         }
         for note in resolution { text.append("  Resolution: \(note)") }
         for effect in unsupported { text.append("  Not modelled: \(effect)") }
@@ -178,7 +203,7 @@ public struct SceneStanding: Codable, Hashable, Sendable {
 
 /// What a scene's standing is derived from: its inputs, the air's resolution and solver
 /// configuration, and the models run alongside it.
-public struct StandingInputs: Sendable {
+public struct StandingInputs: Sendable, Equatable {
     public var scenario: Scenario
     /// The coarse air cell, in metres.
     public var cellSize: Float
@@ -231,17 +256,14 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     // The structure.
     case shellElements
     case shellSectionShear
-    case latticeCrackAxes
-    case fixedCrackAxes
     case noSecondCracks
     case noBareBars
     case removesFragments
     case noCrackSlip
-    case slipKeepsCracksClosed
     case bondSlip
-    case crackShearStiffness
     case pressedInterlock
-    case barRateInElements
+    case hourglassSecant
+    case hourglassWithoutSteel
     case interfaceBond
     case smearedMasonry
     case inclinedBars
@@ -254,7 +276,6 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case rateIndependent
     case designIncreaseFactors
     case alternativeRateLaws
-    case nonlocalCrushing
     case studyMultipliers
     case barRuptureInElements
     // Models run alongside.
@@ -299,18 +320,14 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .shellElements:
             return any { $0.elementKind == .shell || $0.solidElementKind.contains(.shell) }
         case .shellSectionShear: return any { $0.shellSectionShear }
-        case .latticeCrackAxes: return !concrete.isEmpty && any { $0.crackAxes == .lattice }
-        case .fixedCrackAxes: return !concrete.isEmpty && any { $0.crackAxes == .fixedAtFirstCrack }
-        case .noSecondCracks:
-            return !concrete.isEmpty && any { $0.crackAxes != .turningUntilOpen && !$0.secondCracks }
+        case .noSecondCracks: return !concrete.isEmpty && any { !$0.secondCracks }
         case .noBareBars: return any { !$0.bareBars }
         case .removesFragments: return !concrete.isEmpty && any { $0.removesFragments }
         case .noCrackSlip: return !concrete.isEmpty && any { !$0.crackSlip }
-        case .slipKeepsCracksClosed: return !concrete.isEmpty && any { $0.crackSlip && !$0.slipWidensCracks }
         case .bondSlip: return any { $0.bondSlip != nil }
-        case .crackShearStiffness: return any { $0.crackShearStiffness }
         case .pressedInterlock: return any { $0.pressedInterlock }
-        case .barRateInElements: return any { !$0.barRateAlongBars }
+        case .hourglassSecant: return !concrete.isEmpty && any { $0.hourglassFollowsCracking }
+        case .hourglassWithoutSteel: return !concrete.isEmpty && any { !$0.hourglassCapsSteel }
         case .interfaceBond: return any { $0.interfaceBond != nil }
         case .smearedMasonry: return materials.contains { $0.units != nil } && any { !$0.unitJoints }
         case .inclinedBars: return any { !$0.inclinedBars.isEmpty }
@@ -339,12 +356,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .designIncreaseFactors:
             return materials.contains { $0.concreteRateFactor != 1 || $0.steelRateFactor != 1 }
         case .alternativeRateLaws:
-            return structural.contains {
-                $0.rateDependent
-                    && ($0.tensionRateLaw != .modelCode2010 || $0.steelRateLaw != .ceb
-                        || !$0.steelRateDependent)
-            }
-        case .nonlocalCrushing: return structural.contains { $0.crushLength > 0 }
+            return structural.contains { $0.rateDependent && !$0.steelRateDependent }
         case .studyMultipliers: return structural.contains { $0.dowelFactor != 1 || $0.interlockFactor != 1 }
         case .barRuptureInElements: return structural.contains { $0.steel != nil && !$0.bondSpreading }
         case .thermalVolume: return inputs.thermal?.fireball == .volume
@@ -432,7 +444,7 @@ public enum StandingTable {
             return Entry(
                 title: "Afterburning's extinction limit", affects: air + [.thermal, .cloud], limit: nil,
                 note: "Products burn only above 800 K and where they could reach 1,500 K; closed rooms are "
-                    + "unchanged but the open incident impulse falls 8 to 9% below Kingery-Bulmash's fit, and "
+                    + "unchanged but the open incident impulse falls by 8 to 9%, to 86–91% of Kingery-Bulmash's, and "
                     + "Dial Pack's fireball is no cooler.",
                 document: "air-blast-model.md#an-extinction-limit-for-afterburning")
         case .shockRefinement:
@@ -487,8 +499,9 @@ public enum StandingTable {
                 title: "Gas deflagration", affects: air + structure + [.envelopeExposure],
                 limit: .illustrative,
                 note: "A methane or propane cloud's flame: checked against the thin-flame model in a closed "
-                    + "vessel, but its acceleration by turbulence and instabilities is an uncalibrated factor, and "
-                    + "vented rooms' pressures come out far below the venting correlations and FM Global's tests.",
+                    + "vessel and wrinkled by sub-grid turbulence after FM Global's LES; in their vented chamber it "
+                    + "reaches 55–60% of the tests' peaks lit at the back wall, a sixth to a seventh lit in the "
+                    + "middle, and far below the venting correlations.",
                 document: "deflagration.md#limitations")
         case .ventPanels:
             return Entry(
@@ -507,18 +520,6 @@ public enum StandingTable {
                 note: "Off by default: under a blast the slab test's shells carried shears near their "
                     + "supports that this static method says they cannot.",
                 document: "shell-model.md")
-        case .latticeCrackAxes:
-            return Entry(
-                title: "Cracks on the lattice planes", affects: structure, limit: .approximation,
-                note: "This crack model mishandled inclined cracks; the comparisons used cracks that turn "
-                    + "until they open.",
-                document: "concrete-model.md#cracking")
-        case .fixedCrackAxes:
-            return Entry(
-                title: "Cracks fixed at first cracking", affects: structure, limit: .approximation,
-                note: "Stress locks across a crack whose principal directions turn; the comparisons used "
-                    + "cracks that turn until they open.",
-                document: "concrete-model.md#cracking")
         case .noSecondCracks:
             return Entry(
                 title: "No second cracks", affects: structure, limit: .approximation,
@@ -533,9 +534,10 @@ public enum StandingTable {
         case .removesFragments:
             return Entry(
                 title: "Fragments removed", affects: [.structuralDamage], limit: .approximation,
-                note: "Concrete cracked open two ways is removed; under close-in and contact charges it "
-                    + "holed Hupfauf's and Wu's slabs near size but also slabs that held, not "
-                    + "Chiquito's, and damaged struck beams.",
+                note:
+                    "Concrete cracked open two ways is removed; under contact charges it holed Wu's slabs at "
+                    + "two thirds and 1.6 times the measured size and Hupfauf's 20 cm slabs, but also his 30 cm "
+                    + "slabs that held; it did not hole Chiquito's, and damaged struck beams.",
                 document: "validation.md#holes-under-close-in-and-contact-charges")
         case .noCrackSlip:
             return Entry(
@@ -543,35 +545,30 @@ public enum StandingTable {
                 note: "Shear beyond interlock and dowels springs back instead of sliding for good; the "
                     + "comparisons let cracks slide.",
                 document: "concrete-model.md#shear-across-cracks")
-        case .slipKeepsCracksClosed:
-            return Entry(
-                title: "Slip does not widen cracks", affects: structure, limit: .approximation,
-                note: "A crack's slide no longer opens it or the plane across it; not compared with a test.",
-                document: "concrete-model.md#shear-across-cracks")
         case .bondSlip:
             return Entry(
                 title: "Bars that slip", affects: structure, limit: nil,
                 note: "The Model Code's bond-slip law; run against the slab, shear-beam and impact tests "
                     + "too (on the slab, 95 mm on 8 elements through).",
                 document: "concrete-model.md#bars-that-slip-an-option")
-        case .crackShearStiffness:
-            return Entry(
-                title: "Crack shear stiffness falling with width", affects: structure, limit: .approximation,
-                note: "Walraven and Reinhardt's measurements on plain concrete; not compared with a "
-                    + "structural test here.",
-                document: "concrete-model.md#shear-across-cracks")
         case .pressedInterlock:
             return Entry(
                 title: "Pressed interlock", affects: structure, limit: .approximation,
                 note: "Brings the chamber's roof edge to 25 mm against 95 mm measured, but breaks beams "
                     + "under impact that the tests saw survive.",
                 document: "concrete-model.md#shear-across-cracks")
-        case .barRateInElements:
+        case .hourglassSecant:
             return Entry(
-                title: "Bar strain rate in elements", affects: structure, limit: .approximation,
-                note: "A bar's strain rate is taken from the element it runs through, which grows as the "
-                    + "mesh is refined where a crack localises.",
-                document: "concrete-model.md#strain-rate-effects")
+                title: "Hourglass control softening with cracking", affects: structure, limit: .approximation,
+                note: "Brings the shear beam OA1 within 4% and the contest slab's residual within 1%, but "
+                    + "makes struck beams go too far.",
+                document: "validation.md#hourglass-control")
+        case .hourglassWithoutSteel:
+            return Entry(
+                title: "Hourglass cap without the bars", affects: structure, limit: .approximation,
+                note: "Halves the hourglass work in the contest slab and leaves the shear beam as it was; "
+                    + "not run against the impact tests.",
+                document: "validation.md#hourglass-control")
         case .interfaceBond:
             return Entry(
                 title: "Bonded material joints", affects: structure, limit: nil,
@@ -606,8 +603,8 @@ public enum StandingTable {
             return Entry(
                 title: "Footings on soil", affects: structure, limit: nil,
                 note:
-                    "One footing rocked slowly on dry sand: moment within 11% to 14 mrad and 5–16% low beyond. "
-                    + "With the sand that settles under cycles (the default), settlement 1.7–2.2 times that "
+                    "One footing rocked slowly on dry sand: moment within 11% to 14 mrad and 6–17% low beyond. "
+                    + "With the sand that settles under cycles (the default), settlement 1.7–2.3 times that "
                     + "measured, and 0.6–1.5 times in eight shaken events; a tenth on the elastic bed.",
                 document: "validation.md#a-footing-rocked-on-dry-sand")
         case .cyclicSand:
@@ -615,7 +612,7 @@ public enum StandingTable {
                 title: "Sand that settles under cycles", affects: structure, limit: nil,
                 note:
                     "Settlement under rocking 0.6–1.5 times that of eight shaken centrifuge events (FoRDy) and "
-                    + "1.7–2.2 times a slowly rocked one's (FoRCy), against a tenth on the elastic bed; a sixth to "
+                    + "1.7–2.3 times a slowly rocked one's (FoRCy), against a tenth on the elastic bed; a sixth to "
                     + "a half of the energy the shaken footings dissipated.",
                 document: "validation.md#a-footing-shaken-on-dry-sand")
         case .freeBase:
@@ -637,15 +634,10 @@ public enum StandingTable {
                 document: "concrete-model.md#strain-rate-effects")
         case .alternativeRateLaws:
             return Entry(
-                title: "Other strain-rate laws", affects: structure, limit: .approximation,
+                title: "Bars without their strain-rate law", affects: structure, limit: .approximation,
                 note: "The impacts are decided by the strain-rate laws, and were compared with the Model "
                     + "Code's in tension and CEB's for bars.",
                 document: "concrete-model.md#strain-rate-effects")
-        case .nonlocalCrushing:
-            return Entry(
-                title: "Nonlocal crushing", affects: structure, limit: .approximation,
-                note: "Tried for a collapsing fine mesh whose cause lay elsewhere; not compared since.",
-                document: "roadmap.md#things-tried-and-set-aside")
         case .studyMultipliers:
             return Entry(
                 title: "Interlock or dowel multipliers", affects: structure, limit: .approximation,
@@ -735,7 +727,8 @@ public enum StandingTable {
         "Deflagration.acceleration": .option([.deflagration]),
         "FlameAcceleration.factor": .option([.deflagration]),
         "FlameAcceleration.wrinklingRadius": .option([.deflagration]),
-        "FlameAcceleration.subgridCoefficient": .option([.deflagration]),
+        "FlameAcceleration.turbulence": .option([.deflagration]),
+        "FlameTurbulence.scale": .option([.deflagration]),
         "VentPanel.box": .input,
         "VentPanel.releasePressure": .input,
         "Terrain.origin": .input,
@@ -800,16 +793,22 @@ public enum StandingTable {
         "StructureModel.interfaceBond": .option([.interfaceBond]),
         "StructureModel.unitJoints": .option([.smearedMasonry]),
         "StructureModel.shellSectionShear": .option([.shellSectionShear]),
-        "StructureModel.crackAxes": .option([.latticeCrackAxes, .fixedCrackAxes]),
         "StructureModel.secondCracks": .option([.noSecondCracks]),
         "StructureModel.bareBars": .option([.noBareBars]),
         "StructureModel.removesFragments": .option([.removesFragments]),
         "StructureModel.crackSlip": .option([.noCrackSlip]),
-        "StructureModel.slipWidensCracks": .option([.slipKeepsCracksClosed]),
         "StructureModel.bondSlip": .option([.bondSlip]),
-        "StructureModel.crackShearStiffness": .option([.crackShearStiffness]),
         "StructureModel.pressedInterlock": .option([.pressedInterlock]),
-        "StructureModel.barRateAlongBars": .option([.barRateInElements]),
+        "StructureModel.hourglassFollowsCracking": .option([.hourglassSecant]),
+        "StructureModel.hourglassCapsSteel": .option([.hourglassWithoutSteel]),
+        "StructureModel.retiredOptions": .input,
+        // The regime picks defaults for the options above (`StructuralRegime`); what it turns on
+        // is read through those options, so the regime itself is an input of the scene.
+        "StructureModel.regimeOverride": .input,
+        "StructureModel.loadingOverride": .input,
+        "StructureModel.regimeDefaults": .input,
+        "StructureModel.detectedRegime": .input,
+        "StructureModel.detectedLoading": .input,
         // Materials: properties are inputs; the switches between laws are options.
         "StructureMaterial.name": .input,
         "StructureMaterial.model": .input,
@@ -826,8 +825,6 @@ public enum StandingTable {
         "StructureMaterial.erosionOpening": .input,
         "StructureMaterial.steel": .input,
         "StructureMaterial.crackSpacing": .input,
-        "StructureMaterial.crushBand": .input,
-        "StructureMaterial.crushLength": .option([.nonlocalCrushing]),
         "StructureMaterial.bondSpreading": .option([.barRuptureInElements]),
         "StructureMaterial.confinementCoefficient": .input,
         "StructureMaterial.aggregateSize": .input,
@@ -835,13 +832,11 @@ public enum StandingTable {
         "StructureMaterial.dowelFactor": .option([.studyMultipliers]),
         "StructureMaterial.interlockFactor": .option([.studyMultipliers]),
         "StructureMaterial.fractureRateExponent": .input,
-        "StructureMaterial.tensionRateLaw": .option([.alternativeRateLaws]),
         "StructureMaterial.crackDilatancy": .input,
         "StructureMaterial.concreteRateFactor": .option([.designIncreaseFactors]),
         "StructureMaterial.steelRateFactor": .option([.designIncreaseFactors]),
         "StructureMaterial.rateDependent": .option([.rateIndependent]),
         "StructureMaterial.steelRateDependent": .option([.alternativeRateLaws]),
-        "StructureMaterial.steelRateLaw": .option([.alternativeRateLaws]),
         "StructureMaterial.units": .option([.smearedMasonry]),
         "StructureMaterial.isTransparent": .input,
         // Connections.
@@ -973,12 +968,19 @@ extension SceneStanding {
                 }
             }
         }
+        for index in results.indices {
+            let (bands, unbanded) = scene.bands(for: results[index].kind)
+            results[index].bands = bands
+            results[index].unbanded = unbanded
+            results[index].regimes = scene.regimes(for: results[index].kind)
+        }
         self.init(results: results, resolution: scene.resolutionNotes(), unsupported: scene.unsupported())
+        gauges = scene.gaugeBands()
     }
 }
 
 /// The scene's numbers the table needs, worked out once.
-private struct StandingScene {
+struct StandingScene {
     let inputs: StandingInputs
     let options: [ModelOption]
     let structures: [StructureModel]
@@ -1022,7 +1024,7 @@ private struct StandingScene {
             }.min()
     }
 
-    private func has(_ option: ModelOption) -> Bool { options.contains(option) }
+    func has(_ option: ModelOption) -> Bool { options.contains(option) }
 
     // MARK: Resolution
 
@@ -1100,7 +1102,9 @@ private struct StandingScene {
             notes.append(
                 String(
                     format: "Gauges as far as %.1f m/kg^(1/3) lie beyond the open-air comparison, which "
-                        + "stopped at 6.", far))
+                        + "stopped at 6; the large-scene comparison, to 40, found the peaks' share the same "
+                        + "there on the same scaled cells, but falling to the coarse cells' share where "
+                        + "the shock is too weak to be refined.", far))
         }
         let near = nearOpenFace
         if !near.isEmpty {
@@ -1196,21 +1200,23 @@ private struct StandingScene {
             StandingEvidence(
                 "A closed sphere of stoichiometric methane against the thin-flame model (blastbench "
                     + "deflagration vessel)",
-                "Burns out at the AICC pressure the heat was fitted to, energy conserved to 1e-5; rise times "
-                    + "within 1–3% on 48 cells across the radius; K_G 51 bar m/s against 76, converging from "
-                    + "below (verified)", "deflagration.md#a-closed-sphere"),
+                "Burns out at the AICC pressure the heat was fitted to, energy conserved to 1e-5; laminar rise "
+                    + "times within 1–3% on 48 cells across the radius, the turbulent flame's 4–8% ahead; K_G "
+                    + "35, 41 and 51 bar m/s on 12, 24 and 48 cells against 76, rising but not converged (verified)",
+                "deflagration.md#a-closed-sphere"),
             StandingEvidence(
                 "A laminar flame lit at a tube's closed end",
                 "Runs at the expansion ratio times the burning velocity within 10% (verified)",
                 "deflagration.md#a-closed-sphere"),
             StandingEvidence(
                 "Vented rooms against EN 14994, NFPA 68 and Molkov (blastbench deflagration vented)",
-                "A thirtieth to a fiftieth of Molkov's best fit with the default flame, a fifth to an eighth "
-                    + "with the burning velocity tripled",
+                "A thirtieth to a sixtieth of Molkov's best fit; trend with vent area A^-1.4 against A^-2",
                 "deflagration.md#vented-rooms-against-the-correlations"),
             StandingEvidence(
-                "FM Global's 63.7 m³ chamber, Bauwens et al. 2008 (six tests, peaks only plotted)",
-                "A tenth (lit in the middle) to a half (at the back wall) of the plots' axes",
+                "FM Global's 63.7 m³ chamber, Bauwens et al. 2008 (six tests, digitised)",
+                "Lit at the back wall, 55–60% of the measured peaks, the flame speeds within a fifth beyond 3 m "
+                    + "(half over the first 2 m); lit in the middle, a sixth to a seventh, the flame stalling "
+                    + "towards the back wall",
                 "deflagration.md#bauwens-chaffee-and-dorofeev-2008"),
         ]
     }
@@ -1223,15 +1229,16 @@ private struct StandingScene {
         }
         return result(
             kind, .illustrative,
-            "A gas deflagration: its flame converges on the thin-flame model in a closed vessel, but its "
-                + "acceleration by turbulence and instabilities is an uncalibrated factor, and vented rooms' "
-                + "pressures fall far below EN 14994, NFPA 68 and FM Global's tests.",
+            "A gas deflagration: its flame converges on the thin-flame model in a closed vessel and is "
+                + "wrinkled by sub-grid turbulence, but its instabilities are not modelled, and vented rooms' "
+                + "pressures fall below FM Global's tests and far below EN 14994 and NFPA 68.",
             evidence: deflagrationEvidence + terrainEvidence,
             assumptions: [
                 "Burnt and unburnt gas are treated as air; the heat released is the share of the heat of "
                     + "combustion that reaches the stoichiometric AICC pressure.",
-                "The flame's acceleration is a constant factor, wrinkling with radius and a vorticity estimate "
-                    + "of sub-grid turbulence; none is calibrated.",
+                "The flame is wrinkled by sub-grid turbulence from the air's σ-model mixing through Bradley's "
+                    + "correlation, scaled as Bauwens et al. fitted it in FM Global's chamber; instabilities are "
+                    + "not modelled, and a young flame is slow until it is about seventeen cells across.",
             ], resolution: resolution, documents: ["deflagration.md#checks", "deflagration.md#limitations"])
     }
 
@@ -1384,7 +1391,7 @@ private struct StandingScene {
     }
 
     /// The kinds of material in the scene's structures, weakest standing last.
-    private enum MaterialClass: Int, Comparable {
+    enum MaterialClass: Int, Comparable {
         case reinforcedConcrete, plainConcrete, steel, masonry, glass
         static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
 
@@ -1401,7 +1408,7 @@ private struct StandingScene {
         }
     }
 
-    private var materialClasses: [MaterialClass] {
+    var materialClasses: [MaterialClass] {
         Set(structures.flatMap { [$0.material] + $0.solidMaterial.compactMap { $0 } }.map(MaterialClass.init))
             .sorted()
     }
@@ -1420,7 +1427,7 @@ private struct StandingScene {
                     "validation.md#structural-response-against-a-real-test"),
                 StandingEvidence(
                     "A reinforced beam bent to failure",
-                    "Peak moment 97–99%; failure at 38–52 mm against 42 mm",
+                    "Peak moment 98–101%; failing at 53–57 mm on 12 elements and holding to 60 mm on 24, against 42 mm",
                     "validation.md#a-reinforced-beam-bent-to-failure"),
                 StandingEvidence(
                     "A beam without stirrups failing in shear",
@@ -1438,8 +1445,9 @@ private struct StandingScene {
                     "validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber"),
             ]
             parts.append(
-                "reinforced concrete within 5–15% of one slab test and close to beam tests, but too stiff "
-                    + "in a full-scale chamber and springing back too far")
+                "reinforced concrete within 5–15% of one slab test and of beams in bending and struck on 16 "
+                    + "elements, but too strong in shear, too stiff in a full-scale chamber and close in, and "
+                    + "springing back too far")
         }
         if classes.contains(.plainConcrete) {
             level = max(level, .verified)
@@ -1498,6 +1506,8 @@ private struct StandingScene {
             resolution.append(
                 "Independent bodies have no contact with each other; overlapping ones stop the run.")
         }
+        // Options a saved structure set that have since been retired, and what applies instead.
+        for note in Set(structures.flatMap(\.retiredOptions)).sorted() { resolution.append(note) }
         let summary =
             (parts.first.map { $0.prefix(1).uppercased() + $0.dropFirst() } ?? "No structure")
             + (parts.count > 1 ? "; " + parts.dropFirst().joined(separator: "; ") : "") + "."
@@ -1620,15 +1630,24 @@ private struct StandingScene {
         }
         return result(
             .thermal, .illustrative,
-            "Set against one measurement of a TNT fireball's radiation, which it exceeds "
-                + (cooling ? "two to three times, the gas cooling as it radiates." : "three to five times."),
+            "Set against two TNT fireballs measured by one group: a 100 kg run, scaled, exceeds the 100 t "
+                + "shot's total "
+                + (cooling
+                    ? "two to three and a half times, the gas cooling as it radiates"
+                    : "three to five and a half times")
+                + ", and Dial Pack's 500 t pulse comes out far too faint early and two to five times too bright "
+                + "after a second.",
             evidence: [
                 StandingEvidence(
-                    "A TNT fireball's measured radiation",
+                    "The 100 t TNT shot's measured radiation, against a 100 kg run scaled by the cube root",
                     cooling
-                        ? "Exceeded two to three times, with the gas cooling"
-                        : "Exceeded three to five times",
-                    "thermal-radiation.md#the-volume-against-the-shape")
+                        ? "Exceeded two to three and a half times, with the gas cooling"
+                        : "Exceeded three to five and a half times",
+                    "thermal-radiation.md#the-volume-against-the-shape"),
+                StandingEvidence(
+                    "Dial Pack, 500 t of TNT, at full size on 2 to 8 m cells",
+                    "A sixth as bright at the first maximum, dark from 40 to 350 ms, two to five times too "
+                        + "bright after 1 s", "validation.md#the-fireballs-radiation-against-dial-pack"),
             ], assumptions: assumptions, resolution: resolution,
             documents: ["thermal-radiation.md#limitations"])
     }
@@ -1727,7 +1746,8 @@ private struct StandingScene {
         if inputs.fragments == nil { effects.append("Casing fragments: the charge is bare.") }
         if has(.deflagration) {
             effects.append(
-                "Flame acceleration is modelled but uncalibrated; there is no transition to detonation.")
+                "Flame acceleration is modelled, its one constant fitted in the chamber it is compared in; "
+                    + "there is no transition to detonation.")
         }
         if has(.terrain) {
             effects.append(

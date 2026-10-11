@@ -37,6 +37,12 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         self.init(settings: model.settings, duration: model.duration)
     }
 
+    /// The grid as people say it: a preset's name ("medium") or its cells ("4 m").
+    var gridName: String {
+        guard let grid = Resolution(rawValue: resolution), !grid.isPreset else { return resolution }
+        return Resolution.metres(grid.cellSize)
+    }
+
     func validate() throws {
         guard Resolution(rawValue: resolution) != nil, solidElementSize.isFinite, solidElementSize > 0,
             duration.isFinite, duration > 0, shockLevels.map({ $0 == 2 }) ?? true

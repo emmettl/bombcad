@@ -135,30 +135,61 @@ public enum FlammableGas: String, Sendable, Hashable, Codable, CaseIterable {
     }
 }
 
-/// How the flame's burning velocity grows beyond the laminar value. None of this is resolved
-/// by the grid; see docs/deflagration.md for what each part stands for.
+/// How the flame's burning velocity grows beyond the laminar value: S_T = f Ξ_r Ξ_t S_L. See
+/// docs/deflagration.md for what each part stands for.
 public struct FlameAcceleration: Sendable, Hashable, Codable {
     /// A constant multiple of the burning velocity: the venting literature's turbulence factor
     /// (Bradley and Mitcheson's β, Molkov's χ), for turbulence and instabilities not otherwise
-    /// represented. 1 leaves it laminar.
+    /// represented. 1 leaves it as the other parts make it.
     public var factor: Float = 1
     /// Wrinkling by the flame's own instabilities as it grows: the burning velocity rises as
     /// (r / r₀)^(1/3) beyond `wrinklingRadius` from the ignition point (Gostintsev et al. 1988's
-    /// self-similar regime, as used by Molkov's fractal model). nil for none.
-    public var wrinklingRadius: Float? = 1
-    /// Turbulence the grid cannot resolve, estimated from the resolved flow's vorticity: u′ =
-    /// C Δ |ω|, adding u′ to the burning velocity (Peters' corrugated-flamelet limit, S_T − S_L ≈
-    /// b₃ u′ with b₃ = 1). nil for none. Shear behind obstacles and through openings raises it.
-    public var subgridCoefficient: Float? = 0.2
+    /// self-similar regime, as used by Molkov's fractal model). The exponent is cited, the onset
+    /// radius is not, so it is off by default. nil for none.
+    public var wrinklingRadius: Float?
+    /// Wrinkling by the turbulence the grid cannot resolve, Ξ_t, from the air's sub-grid mixing
+    /// (see `FlameTurbulence`). nil for none.
+    public var turbulence: FlameTurbulence? = FlameTurbulence()
 
-    public init(factor: Float = 1, wrinklingRadius: Float? = 1, subgridCoefficient: Float? = 0.2) {
+    public init(
+        factor: Float = 1, wrinklingRadius: Float? = nil, turbulence: FlameTurbulence? = FlameTurbulence()
+    ) {
         self.factor = factor
         self.wrinklingRadius = wrinklingRadius
-        self.subgridCoefficient = subgridCoefficient
+        self.turbulence = turbulence
     }
 
     /// A laminar flame: no factor, wrinkling or sub-grid turbulence.
-    public static let laminar = FlameAcceleration(factor: 1, wrinklingRadius: nil, subgridCoefficient: nil)
+    public static let laminar = FlameAcceleration(factor: 1, wrinklingRadius: nil, turbulence: nil)
+}
+
+/// The flame's wrinkling by sub-grid turbulence, as Bauwens, Chaffee and Dorofeev (2008, eq. 5)
+/// modelled FM Global's vented chamber: Ξ_t = max(1, 1.48 a (u′/S_L)^(1/2) (Δ/δ)^(1/6)), Bradley,
+/// Lau and Lawes's (1992) turbulent burning velocity scaled by a, with the grid's cell Δ as the
+/// turbulence's length scale and δ = ν/S_L the laminar flame's thickness.
+///
+/// u′ is the air's sub-grid velocity, from the same eddy viscosity ν_t that its sub-grid mixing
+/// (`SubgridMixing`) diffuses momentum, heat and the mixture with: the turbulent kinetic energy of a
+/// one-equation model, k = (ν_t / (C_k Δ))² with C_k = 0.094 (Yoshizawa; Fureby et al. 1997, the
+/// sub-grid model Bauwens et al. used), and u′ = √(2k/3) as OpenFOAM's XiFoam takes it. A
+/// deflagration with flame turbulence therefore turns the air's sub-grid mixing on.
+public struct FlameTurbulence: Sendable, Hashable, Codable {
+    /// Bauwens et al.'s scaling a on Bradley's correlation: 0.7, which they fitted to the initial
+    /// flame speed in FM Global's chamber; 1 is Bradley's own.
+    public var scale: Float = 0.7
+
+    public init(scale: Float = 0.7) {
+        self.scale = scale
+    }
+
+    /// Bradley, Lau and Lawes's coefficient (as Bauwens et al. give it).
+    public static let bradleyCoefficient: Float = 1.48
+    /// The one-equation sub-grid model's C_k, relating ν_t = C_k Δ √k.
+    public static let energyCoefficient: Float = 0.094
+    /// The unburnt mixture's kinematic viscosity at 1 atm and room temperature, m²/s (as air's,
+    /// which a methane or propane mixture's is within a few percent of); under compression it
+    /// falls as the density rises.
+    public static let kinematicViscosity: Float = 1.5e-5
 }
 
 /// A premixed cloud of flammable gas and air filling a box, ignited at a point: the second kind

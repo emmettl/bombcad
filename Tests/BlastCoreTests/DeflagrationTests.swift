@@ -84,8 +84,10 @@ struct DeflagrationTests {
             "half rise at \(result.halfRise) s, thin flame \(result.referenceHalfRise) s")
     }
 
-    @Test("A flame lit at the closed end of a tube runs at the expansion ratio times the burning velocity")
-    func tubeFlameSpeed() throws {
+    @Test(
+        "A flame lit at the closed end of a tube runs at the expansion ratio times the burning velocity",
+        arguments: [FlameAcceleration.laminar, FlameAcceleration()])
+    func tubeFlameSpeed(acceleration: FlameAcceleration) throws {
         let dx: Float = 0.02
         let length: Float = 1.2
         let width = 4 * dx
@@ -95,7 +97,8 @@ struct DeflagrationTests {
         scenario.reflectiveFaces = BoundaryFaces.all.subtracting(.xMax)
         scenario.deflagration = Deflagration(
             gas: .methane, region: Box(min: .zero, max: SIMD3(length, width, width)),
-            ignition: SIMD3(0, width / 2, width / 2), acceleration: .laminar)
+            ignition: SIMD3(0, width / 2, width / 2), acceleration: acceleration)
+        // A flame in a narrow tube is one-dimensional, where the σ-model sees no turbulence.
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: dx)
         let grid = solver.grid
         func front() throws -> Float {
@@ -132,6 +135,8 @@ struct DeflagrationTests {
         try solver.load(scenario)
         #expect(solver.hasFlame)
         #expect(!solver.configuration.afterburning)
+        // The default flame's sub-grid turbulence comes from the air's mixing, by the σ-model.
+        #expect(solver.configuration.mixing?.model == .sigma)
         #expect(!solver.speciesHoldDetonationProducts)
         // Half the room is filled, at the air's density; no charge is fired.
         let state = try #require(solver.deflagrationState())
@@ -150,7 +155,8 @@ struct DeflagrationTests {
         scenario.deflagration = Deflagration(
             gas: .propane, concentration: 0.05, region: Box(min: .zero, max: SIMD3(4, 4, 1)),
             ignition: SIMD3(2, 2, 0.5),
-            acceleration: FlameAcceleration(factor: 2, wrinklingRadius: nil, subgridCoefficient: 0.1))
+            acceleration: FlameAcceleration(
+                factor: 2, wrinklingRadius: 1, turbulence: FlameTurbulence(scale: 1)))
         scenario.ventPanels = [
             VentPanel(box: Box(min: SIMD3(3.9, 1, 1), max: SIMD3(4, 2, 2)), releasePressure: 5000)
         ]

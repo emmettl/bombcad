@@ -13,6 +13,8 @@ public struct ClosedVesselStudy: Sendable {
     public var cellsPerRadius: Int = 20
     public var airModel: AirModel = .idealGas
     public var acceleration: FlameAcceleration = .laminar
+    /// The air's sub-grid mixing, which flame turbulence turns on in any case.
+    public var mixing: SubgridMixing?
 
     public init(
         gas: FlammableGas = .methane, concentration: Float? = nil, radius: Float = 0.5,
@@ -87,6 +89,7 @@ public struct ClosedVesselStudy: Sendable {
         scenario.deflagration = cloud
         var configuration = SolverConfiguration()
         configuration.airModel = airModel
+        configuration.mixing = mixing
         let solver = try BlastSolver(
             device: device, scenario: scenario, cellSize: dx, configuration: configuration)
         // The sphere: every cell whose centre lies outside it is solid.
@@ -235,6 +238,9 @@ public struct VentedRoomStudy: Sendable {
     public var wallThickness: Float = 0.2
     /// The longest the run may go on, s.
     public var maximumTime: Double = 4
+    /// Obstacles: square posts this wide (m) from floor to ceiling, on a 1 m grid centred on the
+    /// room, leaving out any within 0.5 m of the ignition point. nil for an empty room.
+    public var postWidth: Float?
 
     public init() {}
 
@@ -256,6 +262,40 @@ public struct VentedRoomStudy: Sendable {
         public var correlations: VentCorrelations
         public var cellSize: Float
         public var steps: Int
+        /// When the flame reached each point on the line through the ignition point along the vent's
+        /// axis, 1.4 m above the floor (where Bauwens et al.'s thermocouples were), every half metre:
+        /// the distance from the ignition point, positive towards the vent, and the time, s, at
+        /// which the share of the cloud's gas still unburnt there first fell below a half. Points the
+        /// flame never reached are left out.
+        public var arrivals: [(position: Double, time: Double)]
+
+        /// The flame's speed between neighbouring points of `arrivals`, at their midpoint: (m, m/s),
+        /// negative towards the back wall, as Bauwens et al. plot theirs.
+        public var flameSpeeds: [(position: Double, speed: Double)] {
+            zip(arrivals, arrivals.dropFirst()).compactMap { a, b in
+                let dt = b.time - a.time
+                let dx = b.position - a.position
+                guard dt != 0, a.position * b.position > 0 else { return nil }
+                // Away from the ignition point on either side: the later point is the farther.
+                let speed = abs(dx / dt) * (a.position + b.position < 0 ? -1 : 1)
+                return ((a.position + b.position) / 2, speed)
+            }
+        }
+    }
+
+    /// The points `Result.arrivals` follows: their distances from the ignition point and positions.
+    func arrivalProbes(_ scenario: Scenario) -> [(distance: Double, point: SIMD3<Float>)] {
+        let ignition = scenario.deflagration?.ignition ?? .zero
+        let spacing: Float = 0.5
+        var probes: [(Double, SIMD3<Float>)] = []
+        let first = Int((-ignition.x / spacing).rounded(.up))
+        let last = Int(((scenario.domainSize.x - ignition.x) / spacing).rounded(.down))
+        for n in first...last where n != 0 {
+            let point = SIMD3(ignition.x + Float(n) * spacing, ignition.y, 1.4)
+            guard point.x > 0, point.x < scenario.domainSize.x else { continue }
+            probes.append((Double(Float(n) * spacing), point))
+        }
+        return probes
     }
 
     /// The scenario: the room's walls as blocks, the vent's cover as a panel, the room full of
@@ -294,6 +334,19 @@ public struct VentedRoomStudy: Sendable {
         ]
         let middle = SIMD3(0.5 * (x0 + x1), 0.5 * (y0 + y1), 0.5 * z1)
         let lit = ignition == .centre ? middle : SIMD3(x0 + 0.25, middle.y, middle.z)
+        if let width = postWidth {
+            let across = Int((room.x - 0.5) / 1)
+            let along = Int((room.y - 0.5) / 1)
+            for a in 0...across {
+                for b in 0...along {
+                    let x = middle.x + (Float(a) - Float(across) / 2)
+                    let y = middle.y + (Float(b) - Float(along) / 2)
+                    guard simd_distance(SIMD2(x, y), SIMD2(lit.x, lit.y)) > 0.5 + width / 2 else { continue }
+                    let half = width / 2
+                    blocks.append(Box(min: SIMD3(x - half, y - half, 0), max: SIMD3(x + half, y + half, z1)))
+                }
+            }
+        }
         var scenario = Scenario(
             name: "Vented room", domainSize: size, boxes: blocks, charge: Charge(mass: 0, position: lit),
             gauges: [
@@ -326,21 +379,52 @@ public struct VentedRoomStudy: Sendable {
 
     public func run(
         device: MTLDevice, progress: ((Double, Double) -> Void)? = nil,
-        inspect: ((BlastSolver) -> Void)? = nil
+        inspect: ((BlastSolver) -> Void)? = nil, monitor: ((BlastSolver) -> Void)? = nil
     ) throws -> Result {
         let scenario = scenario()
         var configuration = SolverConfiguration()
         configuration.airModel = airModel
         let solver = try BlastSolver(
             device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
+        // The flame's arrival at points along the vent's axis, from the unburnt share there every
+        // 5 ms, interpolated to where it crosses a half; probes in walls are left out.
+        let grid = solver.grid
+        let probes = arrivalProbes(scenario).compactMap { probe -> (Double, Int)? in
+            let cell = grid.cell(containing: probe.point)
+            return solver.isSolid(cell.i, cell.j, cell.k)
+                ? nil : (probe.distance, grid.index(cell.i, cell.j, cell.k))
+        }
+        var previous = [Float](repeating: 1, count: probes.count)
+        var arrived = [Double?](repeating: nil, count: probes.count)
+        var previousTime = 0.0
+        func checkArrivals() {
+            solver.readSpecies { species in
+                guard let species else { return }
+                for (n, probe) in probes.enumerated() where arrived[n] == nil {
+                    let s = species[probe.1]
+                    let b = s.y > 1e-6 ? min(max(s.x / s.y, 0), 1) : 1
+                    if b < 0.5 {
+                        let share = Double((previous[n] - 0.5) / max(previous[n] - b, 1e-6))
+                        arrived[n] = previousTime + share * (solver.time - previousTime)
+                    }
+                    previous[n] = b
+                }
+            }
+            previousTime = solver.time
+        }
         // Until most of the mixture has gone (burnt, or blown out of the domain unburnt) and no more
         // than half a percent of it has gone in the last fifth of a second.
         var steps = 0
         var gone: [Double] = []
         while solver.time < maximumTime {
-            steps += solver.advance(until: solver.time + 0.05).steps
+            let target = solver.time + 0.05
+            for n in 1...10 {
+                steps += solver.advance(until: target - 0.05 + 0.005 * Double(n)).steps
+                checkArrivals()
+            }
             let burnt = solver.deflagrationState()?.burntFraction ?? 1
             progress?(solver.time, burnt)
+            monitor?(solver)
             gone.append(burnt)
             if burnt > 0.5, gone.count > 4, burnt - gone[gone.count - 5] < 0.005 { break }
         }
@@ -357,6 +441,7 @@ public struct VentedRoomStudy: Sendable {
             ventOpened: state.panelOpenTimes.first ?? nil, burntFraction: state.burntFraction,
             duration: solver.time,
             times: times, overpressures: overpressures, correlations: correlations, cellSize: cellSize,
-            steps: steps)
+            steps: steps,
+            arrivals: zip(probes, arrived).compactMap { probe, time in time.map { (probe.0, $0) } })
     }
 }

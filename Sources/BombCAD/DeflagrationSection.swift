@@ -104,6 +104,18 @@ struct GasCloudSection: View {
                     "Multiplies the burning velocity for turbulence and instabilities the grid does not "
                         + "resolve: the venting literature's turbulence factor, often 2 to 5 in rooms.")
                 Toggle(
+                    "Turbulence from the flow",
+                    isOn: Binding(
+                        get: { cloud.acceleration.turbulence != nil },
+                        set: {
+                            model.settings.scenario.deflagration?.acceleration.turbulence =
+                                $0 ? FlameTurbulence() : nil
+                        })
+                )
+                .help(
+                    "Wrinkles the flame by the turbulence the grid cannot resolve, taken from the air's sub-grid "
+                        + "mixing (turned on with it): shear behind obstacles, jets through openings.")
+                Toggle(
                     "Wrinkling as it grows",
                     isOn: Binding(
                         get: { cloud.acceleration.wrinklingRadius != nil },
@@ -111,19 +123,9 @@ struct GasCloudSection: View {
                             model.settings.scenario.deflagration?.acceleration.wrinklingRadius = $0 ? 1 : nil
                         })
                 )
-                .help("The burning velocity rises as the cube root of the flame's radius beyond 1 m.")
-                Toggle(
-                    "Turbulence from the flow",
-                    isOn: Binding(
-                        get: { cloud.acceleration.subgridCoefficient != nil },
-                        set: {
-                            model.settings.scenario.deflagration?.acceleration.subgridCoefficient =
-                                $0 ? 0.2 : nil
-                        })
-                )
                 .help(
-                    "Adds turbulence estimated from the resolved flow's shear, as behind obstacles and through "
-                        + "openings.")
+                    "The burning velocity rises as the cube root of the flame's radius beyond 1 m, a radius "
+                        + "that is a guess, not a measurement.")
                 Text(
                     "Illustrative: the flame's acceleration is modelled, not resolved. See the deflagration "
                         + "page of the documentation for what has been checked."

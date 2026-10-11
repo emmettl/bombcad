@@ -64,6 +64,18 @@ public struct ThermalSpec: Codable, Sendable, Equatable {
     }
 }
 
+extension ThermalSpec {
+    /// The most receivers the ground is given: over a larger floor they stand further apart than
+    /// `groundSpacing` (a square kilometre at 2 m has 250,000).
+    public static let maximumGroundReceivers = 250_000
+
+    /// The ground receivers' spacing over a floor of `domain`: `groundSpacing`, or wider where
+    /// that would give more than `maximumGroundReceivers`.
+    public func groundSpacing(over domain: SIMD3<Float>) -> Float {
+        max(groundSpacing, (max(domain.x * domain.y, 0) / Float(Self.maximumGroundReceivers)).squareRoot())
+    }
+}
+
 /// The fireball at one moment as the blast sees it: the luminous gas, reduced to the volume,
 /// centre and temperature of an equivalent sphere, and its shape in blocks. A few numbers and a
 /// few kilobytes a frame, so the radiation can be worked out anywhere.
@@ -517,8 +529,9 @@ public struct ThermalExposure: Sendable {
         let lift: Float = 0.001
         var grids: [ThermalSurfaceGrid] = []
         var first = 0
-        let columns = max(1, Int((scene.domain.x / spec.groundSpacing).rounded(.up)))
-        let rows = max(1, Int((scene.domain.y / spec.groundSpacing).rounded(.up)))
+        let spacing = spec.groundSpacing(over: scene.domain)
+        let columns = max(1, Int((scene.domain.x / spacing).rounded(.up)))
+        let rows = max(1, Int((scene.domain.y / spacing).rounded(.up)))
         var ground = ThermalSurfaceGrid(
             surface: "ground", origin: .zero, u: SIMD3(scene.domain.x, 0, 0), v: SIMD3(0, scene.domain.y, 0),
             normal: SIMD3(0, 0, 1), columns: columns, rows: rows)

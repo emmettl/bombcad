@@ -77,7 +77,7 @@ private func runWedgeStudy(device: MTLDevice, out: URL) throws {
 
 /// One run of a surface burst over a terrain, read along the centreline: the surface's peak and
 /// impulse in every column, and the arrival time at gauges on the surface.
-private struct ProfileRun {
+struct ProfileRun {
     var x: [Float] = []
     var surface: [Float] = []
     var peak: [Float] = []
@@ -93,15 +93,16 @@ private struct ProfileRun {
     var maskSeconds = 0.0
 }
 
-/// A surface burst of `mass` at x = 5 m on the centreline, the y = 0 face a mirror (so half the
-/// charge is laid down), over `terrain` or flat ground, with `blocks`.
-private func profileRun(
+/// A surface burst of `mass` at x = `chargeAt` (5 m) on the centreline, the y = 0 face a mirror
+/// (so half the charge is laid down), over `terrain` or flat ground, with `blocks`; with gravity
+/// in the air under `--gravity`.
+func profileRun(
     device: MTLDevice, mass: Float, domain: SIMD3<Float>, terrain: Terrain?, blocks: [Box] = [], dx: Float,
-    duration: Double, gauges: [Float]
+    duration: Double, gauges: [Float], chargeAt: Float = 5
 ) throws -> ProfileRun {
     var scenario = Scenario(
         name: "Shielding", domainSize: domain, boxes: blocks,
-        charge: Charge(mass: mass / 2, position: SIMD3(5, 0, 0)))
+        charge: Charge(mass: mass / 2, position: SIMD3(chargeAt, 0, 0)))
     scenario.reflectiveFaces = [.zMin, .yMin]
     scenario.terrain = terrain
     scenario.gauges = gauges.map { x in
@@ -111,6 +112,7 @@ private func profileRun(
     }
     var configuration = SolverConfiguration()
     configureRefinement(&configuration)
+    configuration.gravity = chosenGravity()
     let maskClock = Date()
     let solver = try BlastSolver(
         device: device, scenario: scenario, cellSize: dx, configuration: configuration)

@@ -21,17 +21,21 @@ below.
 
 BombCAD answers its original question: blast on simple structures can be simulated on a laptop
 GPU at tens to a hundred times slower than real time, with physics that is verified against
-theory. Against measurements it is close on one test (a slab) and too stiff on another (a
-full-scale internal explosion). It is not validated for engineering decisions, and nothing in
-it should be used to judge the safety of a real structure.
+theory. Against measurements, eleven structural tests give a mixed picture: bending within
+5–15% (a slab, a beam), impacts on beams with stirrups within a quarter on one mesh but not on a
+finer one, shear 11–15% too strong on fine meshes, and full-scale slabs close in and an internal
+explosion's roof far too stiff, a third to a sixth of the measured deflection. The defaults were
+chosen with these tests in view and none was run blind (see the
+[independent review](validation-review.md)). It is not validated for engineering decisions, and
+nothing in it should be used to judge the safety of a real structure.
 
 ## Limitations, most important first
 
 | # | Limitation                                                              | Consequence                                                   | Detail |
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
-| 1 | The structural model has been compared with eight tests, and springs back too far | On a slab test the peak converges at about 124 mm against 108 measured; a beam bent to failure carries 97–99% of its measured moment; a beam failing in shear carries 111–115% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements, and Ando's beams without stirrups peak within 15% on average on 16 elements (53% too far on 24) and break at the speed the tests did, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; Peterson's short beams struck to a shear failure (2026) give the forces at a shear span of one depth, the deep ones too stiff, and fail without stirrups, but by splitting along their bars, while those with stirrups that crushed their strut in the test hold; full-scale slabs under close-in charges are left a third to a half as far down as measured, barely spalled and not holed; 2 m slabs with steel in one face or both bend within −20% to +7% under 1.6 kg at 0.5 m but 40–70% as far under smaller charges, and are holed by contact charges, though not to size; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 15 mm up against 95 mm measured (49 and 25 mm with cracks that press as they slide, an option that breaks beams under impact); on the finest mesh the answer has not converged. Bars that slip converge on every mesh but are too stiff nearly everywhere | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
+| 1 | The structural model has been compared with eleven member tests, and springs back too far | On a slab test the peak rises to 124 mm on 32 elements against 108 measured, not converged (a strip of it runs away on 32); a beam bent to failure carries 98–101% of its measured moment; a beam failing in shear carries 111–115% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements, and Ando's beams without stirrups peak within 15% on average on 16 elements (53% too far on 24), and A36 breaks at the speed its test did where B36 holds, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; Peterson's short beams struck to a shear failure (2026) give the forces at a shear span of one depth, the deep ones too stiff, and fail without stirrups, but by splitting along their bars, while those with stirrups that crushed their strut in the test hold; full-scale slabs under close-in charges are left a third to a half as far down as measured, barely spalled and not holed; 2 m slabs with steel in one face or both bend within −20% to +7% under 1.6 kg at 0.5 m but 40–70% as far under smaller charges, and are holed by contact charges at a stable step to a half and a third of the measured size; in a full-scale internal explosion, with the chamber's detailing modelled, the roof's edge peaks at 49 mm against 87 mm in the test paper's own model and is left 25 mm up against 95 mm measured, with cracks that press as they slide, now the confined regime's default (38 and 15 mm without); on the finest mesh the answer has not converged. Bars that slip converge on every mesh but are too stiff nearly everywhere; hourglass control does 7–18% of the work at the slabs' peaks, where an element's own bending would be under 2% | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
 | 2 | Shear failure and joints are the least reliable predictions             | Breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
-| 3 | The default gas has no afterburning and treats hot air as cold          | Incident impulse 13–22% low and rooms' gas half the design value, unless afterburning and hot air (2 times slower) are switched on; the gas loses its radiated heat only with radiative cooling on | [Air-blast model](air-blast-model.md#hot-air) |
+| 3 | The default gas has no afterburning and treats hot air as cold          | Incident impulse 13–22% low and rooms' gas 48–114% of the design value (half for light charges), unless afterburning and hot air (2 times slower) are switched on; the gas loses its radiated heat only with radiative cooling on | [Air-blast model](air-blast-model.md#hot-air) |
 | 4 | Peak pressure is under-resolved near the charge                         | Close-in loading needs fine or twice-refined air; spall needs cells of 0.005 W^(1/3) and 12 elements through a slab | [Validation](validation.md#what-stops-the-spall-and-the-breach) |
 | 5 | Collapse has never been compared with anything; debris once, off slabs under contact charges | Collapse looks plausible, that is all; loose concrete is held back rather than thrown | [Validation](validation.md#slabs-under-contact-charges) |
 | 6 | Moving solids are a staircase of whole cells                            | Wall positions are good to a cell; small fragments are crude  | [Structural model](structural-model.md#coupling-to-the-air) |
@@ -81,10 +85,11 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    splitting cracks along the bars softened over too wide a band, now fixed. See
    [Validation](validation.md#a-reinforced-beam-bent-to-failure). And Vecchio and Shim's beam
    OA1 without stirrups, via Bernardi et al. (2016), which fails in diagonal tension as the
-   test did, 11–12% strong on fine meshes and 37% strong on coarse ones; see
+   test did, 11–15% strong on fine meshes and 37% strong on coarse ones; see
    [Validation](validation.md#a-beam-failing-in-shear). And Saatci's drop-weight impacts on
-   beams with and without stirrups (2007): light drops within 10%, heavy ones within −8% to
-   +16% with the Model Code's tensile strain-rate law, the beam without stirrups broken by the
+   beams with and without stirrups (2007): with stirrups, light drops within 12–24% and heavy
+   ones within −5% to +3% on 16 elements (+2% to +18% on 24) with the Model Code's tensile
+   strain-rate law, chosen on these beams, the beam without stirrups broken by the
    heavy drop as in the tests and damaged by the light one, which it survived; beams' sectional shear check fails every beam under impact; see
    [Validation](validation.md#beams-struck-by-a-falling-weight). And Chiquito et al.'s
    full-scale slabs under 2–15 kg at 0.5 and 1 m (2023): the load within about a tenth of the
@@ -95,7 +100,11 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    the peak, but 40–70% under smaller charges, where the tests spalled; one layer and two barely
    told apart; contact charges hole the slabs, though not to size; Wang's slabs several times too
    stiff as supported, its aluminised charge's impulse three quarters as 10 kg of TNT; see
-   [Validation](validation.md#slabs-with-steel-in-both-faces).) (And Peterson, Magnusson, Hallgren and Ansell's eighteen short beams struck by 70 kg at
+   [Validation](validation.md#slabs-with-steel-in-both-faces). Traced, one layer and two come out
+   alike because the compression layer is fully engaged and the bars do a quarter of the work;
+   hourglass control does several times an element's own bending (7–18% at the peaks), and
+   softened with cracking, an option, it fixes OA1 and Janney's beam but folds the struck beams;
+   see [Validation](validation.md#hourglass-control).) (And Peterson, Magnusson, Hallgren and Ansell's eighteen short beams struck by 70 kg at
    6.86 m/s, with and without stirrups, at shear spans of 0.4, 1 and 2 depths (2026), from their
    own records: the forces at a shear span of one depth within the scatter, the deep beams half
    as much again to twice as stiff; see
@@ -113,7 +122,8 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    within 6% of Kingery–Bulmash; and the air's dissociation, as an option, which moves those
    by under 1% in the open and up to 6% in the densest rooms, at 3.6 times the cost; see the
    [air-blast model](air-blast-model.md#dissociating-air).)
-4. **Shear in concrete.** A member that failed in shear under a blast, to judge a sectional
+4. **Shear in concrete.** (The [concrete strategy](concrete-strategy.md) proposes discrete bars,
+   then embedded cracks where members fail in shear.) A member that failed in shear under a blast, to judge a sectional
    check for shells; a sectional check that works under impact, where the present one breaks
    every beam; and solid elements that fail in shear on coarse meshes, which cannot separate
    cracks 100 mm apart on 46 mm elements; crack tracking did not help without bond slip (see
@@ -165,7 +175,9 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    and which the specimen's inertia, already in the model, needs evidence from tests built to
    separate them.
 6. **Close-in damage**: spalling of the faces, and a breach under the charge, which the
-   close-in slabs show and the model does not produce on any mesh. (Done: bars that outlive
+   close-in slabs show and the model does not produce on any mesh. (The
+   [concrete strategy](concrete-strategy.md) proposes failed concrete turned to particles, not
+   deleted, then a peridynamic zone if needed.) (Done: bars that outlive
    the concrete around them, as bare elements, so that a holed member hangs on its bars; see
    [Removal](concrete-model.md#removal). And a fracture energy that grows more slowly with
    strain rate than the strength, after which the reflected wave spalls the far face under a
@@ -260,11 +272,19 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    points, objects and the thermal paint; see [Terrain](terrain.md). Next: cut cells for its
    slopes, and footings and the ground's connection on a slope.)
 16. **Gas deflagrations**, beside the charge. (Started, illustrative: a methane or propane cloud lit
-   at a point, burning by Weller's regress variable, and vent panels that release at a pressure;
-   closed vessels converge on the thin-flame model, but vented rooms fall well short of the venting
-   correlations and of FM Global's tests, the flame's acceleration being a factor, not a model. See
-   [Gas deflagrations](deflagration.md). Next: a turbulence model for the flame.)
-17. **The model's spread from uncertain inputs.** (Done: `BombCAD ensemble` reruns nine
+   at a point, burning by Weller's regress variable and wrinkled by sub-grid turbulence from the
+   air's σ-model mixing, and vent panels that release at a pressure. Closed vessels converge on the
+   thin-flame model. In FM Global's chamber, lit at the back wall, the flame comes within a fifth
+   of the tests' speeds beyond 3 m and peaks at 55–60% of their pressure; lit in the middle, at a
+   sixth to a seventh, its back
+   half stalling. See [Gas deflagrations](deflagration.md). Next: why it stalls, a young flame's
+   speed on coarse cells, and the instabilities.)
+17. **Large scenes**: surface bursts of hundreds of tonnes to kilotonnes over kilometres. (Started:
+   checked against Kingery–Bulmash to 40 m/kg^(1/3) and over terrain at 500 t; refined twice at a low
+   threshold, 16 m cells give 4 m cells' peaks in a quarter of the time; see [Large
+   scenes](large-scenes.md); the app sets cells, domains and charges of that scale. Next: a refinement
+   criterion that follows weak shocks.)
+18. **The model's spread from uncertain inputs.** (Done: `BombCAD ensemble` reruns nine
    validation cases over sampled strengths, bars, charges, standoffs and unclear supports, shared
    among Macs; see [Validation](validation.md#the-models-spread-from-uncertain-inputs).)
 
@@ -2026,7 +2046,7 @@ of finite plan whose heel lifts and whose contact shifts as it turns, on soil wi
 for its mass and radiation damping and a layer's echoes, checked against statics and the cones'
 impedance ([footings](structural-model.md#footings)); and support joints can face up or
 sideways for solid elements. Against a measured footing rocked on dry sand (FoRCy, SSG02_03)
-the moment follows within 11% to 14 mrad and levels off 5–16% low; on sand that settles under
+the moment follows within 11% to 14 mrad and levels off 6–17% low; on sand that settles under
 cycles, now the default, the footing settles twice as much as that test and 0.6–1.5 times as
 much as eight shaken ones (FoRDy, `blastbench shaking`), where the elastic bed settled a tenth. Joints can lie at any angle, on solids and shells, and tie two moving parts of a
 body (a beam seated on a corbel slides off and drops its span: `blastbench seat`); footings can
@@ -2102,6 +2122,9 @@ two collapsing over several seconds.
 - **Show each result's standing** (done): a badge beside each result, from measured agreement to
   illustrative, derived from the scene's settings, with its evidence a click away, and carried
   with kept runs, comparisons and exports. See [Standing of results](standing.md).
+- **Give standings numeric error bands** (done): model/measured bands from the validation record,
+  scaled to the scene's resolution, with which options suit its regime. See
+  [Error bands](standing.md#error-bands).
 
 ## Things tried and set aside
 
@@ -2110,9 +2133,27 @@ two collapsing over several seconds.
   bands were each tried before tracing one element through the collapse found the two real
   errors (Poisson swelling counted as cracking; a missing normalisation in the compressive
   rate law). Nonlocal crushing and a reduced form of the hourglass cap were kept, the first
-  switched off by default; the rest were removed. The lesson: trace a failing element before
+  switched off by default (and retired in 2026); the rest were removed. The lesson: trace a failing element before
   changing the model.
 
+- **Options retired on 11 October 2026**, after the [case matrix](concrete-strategy.md) found no
+  case each served and removing them changed no default result (`blastbench digest` and the
+  matrix bit-identical). A model saved with one reads with today's behaviour and a note of what
+  was dropped (`StructureModel.retiredOptions`):
+  - cracks on the lattice planes and cracks fixed at first cracking (`crackAxes`), which the
+    turning cracks superseded; the lattice planes mishandle inclined cracks;
+  - keeping a crack's slide out of its opening (`slipWidensCracks`, `--slide-apart`; below);
+  - a crack's shear stiffness falling with its width (`crackShearStiffness`, `--crack-shear`),
+    which moved no case;
+  - nonlocal crushing and a shortest crushing band (`crushLength`, `crushBand`), under 1% on the
+    slab;
+  - bars taking the strain rate of the element they run through (`barRateAlongBars`,
+    `--element-bar-rate`), which ran the fine slab's hinge away;
+  - Malvar and Ross's tensile strain-rate law and Malvar and Crawford's for bars
+    (`tensionRateLaw`, `steelRateLaw`, `--tension-law`, `--steel-law`): a quarter too stiff on
+    Saatci's beams, the spall needing 17–21 MPa, and bars a fifth too strong at these rates;
+  - bars spread through the concrete about them (`impact --spread`): mesh-independent, but
+    beams too stiff.
 - **Keeping a crack's slide out of its opening** (`--slide-apart`): right for one crack, which
   read a 1 mm crack slid 2 mm as 1.9 mm open, but on its own it stiffens every beam that
   depends on sliding cracks, Ando's without stirrups far too much. Kept as an option.

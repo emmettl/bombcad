@@ -6,6 +6,12 @@ import simd
 public typealias OrbitCamera = SceneView.OrbitCamera
 
 extension OrbitCamera {
+    /// `zoom(by:)` as far out as `farthest`, or the 600 m SceneView's own allows if that is
+    /// further: a domain kilometres across must be seen whole.
+    public mutating func zoom(by factor: Float, farthest: Float) {
+        distance = min(max(distance * factor, 3), max(farthest, 600))
+    }
+
     /// A three-quarter view that frames the whole scenario.
     public static func framing(_ scenario: Scenario) -> OrbitCamera {
         if let structure = scenario.structuralObjects.first?.structure {

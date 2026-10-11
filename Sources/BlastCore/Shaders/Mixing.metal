@@ -5,6 +5,37 @@
 // the sensor of Ducros and others, near 1 in a shock (compression without rotation), where the
 // scheme's own dissipation is what is wanted, and near 0 in a shear layer or a vortex. A solid
 // neighbour, or one beyond the domain, counts as the cell itself.
+//
+// As an option, |S| gives way to the sigma model's differential operator (Nicoud, Baya Toda,
+// Cabrit, Bose and Lee 2011, Phys. Fluids 23, 085106): sigma3 (sigma1 - sigma2) (sigma2 - sigma3) /
+// sigma1^2, from the singular values sigma1 >= sigma2 >= sigma3 of the velocity gradient. It
+// vanishes wherever the resolved flow is one- or two-dimensional, axisymmetric, a pure shear or a
+// solid rotation, so the laminar flow round a growing flame (a spherical expansion, with its
+// irrotational strain ahead) is not taken for turbulence, as Smagorinsky's |S| takes it.
+
+// The sigma model's operator for velocity gradient `g` (column a: d(velocity)/d(x_a)): the
+// eigenvalues of g^T g in closed form (Nicoud et al. 2011, appendix), their roots the singular values.
+static inline float sigmaOperator(float3x3 g) {
+    float3x3 G = transpose(g) * g;
+    float i1 = G[0][0] + G[1][1] + G[2][2];
+    float3x3 GG = G * G;
+    float i2 = 0.5f * (i1 * i1 - (GG[0][0] + GG[1][1] + GG[2][2]));
+    float i3 = determinant(G);
+    float a1 = i1 * i1 / 9.0f - i2 / 3.0f;
+    if (a1 <= 1e-30f) {
+        return 0.0f;  // all three equal: an isotropic expansion or none at all
+    }
+    float a2 = i1 * i1 * i1 / 27.0f - i1 * i2 / 6.0f + i3 / 2.0f;
+    float a3 = acos(clamp(a2 / (a1 * sqrt(a1)), -1.0f, 1.0f)) / 3.0f;
+    float r = 2.0f * sqrt(a1);
+    float s1 = sqrt(max(i1 / 3.0f + r * cos(a3), 0.0f));
+    float s2 = sqrt(max(i1 / 3.0f - r * cos(M_PI_F / 3.0f + a3), 0.0f));
+    float s3 = sqrt(max(i1 / 3.0f - r * cos(M_PI_F / 3.0f - a3), 0.0f));
+    if (s1 <= 0.0f) {
+        return 0.0f;
+    }
+    return max(s3 * (s1 - s2) * (s2 - s3) / (s1 * s1), 0.0f);
+}
 kernel void eddyViscosity(const device Cell *state [[buffer(0)]],
                           const device uchar *mask [[buffer(1)]],
                           device float *viscosity [[buffer(2)]],
@@ -48,7 +79,7 @@ kernel void eddyViscosity(const device Cell *state [[buffer(0)]],
             strain += s * s;
         }
     }
-    float rate = sqrt(2.0f * strain);
+    float rate = u.mixingModel == 1u ? sigmaOperator(gradient) : sqrt(2.0f * strain);
     float divergence = gradient[0][0] + gradient[1][1] + gradient[2][2];
     float3 curl = float3(gradient[1][2] - gradient[2][1], gradient[2][0] - gradient[0][2],
                          gradient[0][1] - gradient[1][0]);

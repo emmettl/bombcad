@@ -67,6 +67,36 @@ struct FrameExtractionTests {
         #expect(differing <= shape.fills.count / 100, "\(differing) of \(shape.fills.count)")
     }
 
+    @Test("Where the air is refined the fireball's cells come from its finest cells, as a fine grid's would")
+    func refinedCells() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
+        let scenario = Scenario(
+            name: "Cells", domainSize: SIMD3(8, 8, 8), boxes: [],
+            charge: Charge(mass: 1, position: SIMD3(4, 4, 1)))
+        var spec = ThermalSpec()
+        spec.luminousTemperature = 1500
+        func cells(cellSize: Float, refinement: Int, gpu: Bool) throws -> LuminousCells {
+            var configuration = SolverConfiguration()
+            configuration.afterburning = true
+            configuration.airModel = .thermallyPerfect
+            configuration.refinement = refinement
+            let solver = try BlastSolver(
+                device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
+            solver.frameRequest = FrameRequest(thermal: spec)
+            solver.advance(until: 0.0005)
+            if !gpu { solver.frameExtractor?.invalidate() }
+            return try #require(solver.fireball(for: spec).cells)
+        }
+        let refined = try cells(cellSize: 0.25, refinement: 2, gpu: true)
+        let fine = try cells(cellSize: 0.125, refinement: 1, gpu: true)
+        #expect(refined.voxelSize == 0.125 && fine.voxelSize == 0.125)
+        #expect(abs(refined.volume / fine.volume - 1) < 0.25, "\(refined.volume) against \(fine.volume)")
+        // The coarse cells alone, as before, and the CPU's reading of the same state.
+        #expect(try cells(cellSize: 0.25, refinement: 1, gpu: true).voxelSize == 0.25)
+        let cpu = try cells(cellSize: 0.25, refinement: 2, gpu: false)
+        #expect(cpu == refined)
+    }
+
     @Test("The GPU's cells of the fireball, with its unburnt products, agree with the CPU's")
     func cells() throws {
         let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")

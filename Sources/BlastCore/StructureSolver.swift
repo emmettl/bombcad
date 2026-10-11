@@ -112,15 +112,12 @@ public final class StructureSolver {
     private let steelBuffer: MTLBuffer
     /// Cyclic history of the reinforcement, 96 bytes per element (a placeholder without steel).
     private let barHistoryBuffer: MTLBuffer
-    /// Nonlocal crushing: each element's crushing history, written in alternate substeps to one
-    /// buffer while the other, from the substep before, is read. 16 bytes per element each
-    /// (placeholders when crushing is local).
-    private let crushBuffers: [MTLBuffer]
-    /// Bar plastic strains along each axis, written in alternate substeps like `crushBuffers`, so
-    /// that rupture can be judged over a debonded length.
+    /// Bar plastic strains along each axis, written in alternate substeps to one buffer while the
+    /// other, from the substep before, is read, so that rupture can be judged over a debonded
+    /// length.
     private let barPlasticBuffers: [MTLBuffer]
     /// Each element's stretching rate along the lattice axes, for bars that take their rate
-    /// over their debonded length (`StructureModel.barRateAlongBars`), even and odd substeps.
+    /// over their debonded length, even and odd substeps.
     private let barRateBuffers: [MTLBuffer]
     /// The structure's materials, `model.material` first; each element names one.
     public let materials: [StructureMaterial]
@@ -222,13 +219,21 @@ public final class StructureSolver {
         constants.setConstantValue(&single, type: .bool, index: 0)
         var traced = false
         constants.setConstantValue(&traced, type: .bool, index: 3)
+        var secant = model.hourglassFollowsCracking
+        var withoutSteel = !model.hourglassCapsSteel
+        constants.setConstantValue(&secant, type: .bool, index: 8)
+        constants.setConstantValue(&withoutSteel, type: .bool, index: 9)
         elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
         traceElementPipeline = {
             let tracing = MTLFunctionConstantValues()
             var single = single
             var traced = true
+            var secant = secant
+            var withoutSteel = withoutSteel
             tracing.setConstantValue(&single, type: .bool, index: 0)
             tracing.setConstantValue(&traced, type: .bool, index: 3)
+            tracing.setConstantValue(&secant, type: .bool, index: 8)
+            tracing.setConstantValue(&withoutSteel, type: .bool, index: 9)
             return try? ShaderLibrary.pipeline("structureElements", in: library, constants: tracing)
         }
         // Keep the general connection law out of kernels for ordinary clamped/free bodies.
@@ -353,19 +358,16 @@ public final class StructureSolver {
         steelBuffer = try buffer(elements * 16, "structure reinforcement")
         let hasSteel = materials.contains { $0.steel != nil }
         barHistoryBuffer = try buffer(hasSteel ? elements * 128 : 128, "structure reinforcement history")
-        let averagesCrushing = materials.contains { Self.crushRadius(of: $0, elementSize: h) > 0 }
-        let crushLength = averagesCrushing ? elements * 16 : 16
         let materialIndex = try buffer(elements, "structure material indices")
         materialIndex.copy(elementMaterials)
         materialIndexBuffer = materialIndex
-        crushBuffers = [try buffer(crushLength, "crushing, even"), try buffer(crushLength, "crushing, odd")]
         let spreadsRupture = materials.contains { Self.barReach(of: $0, elementSize: h) > 0 }
         let barPlasticLength = spreadsRupture ? elements * 16 : 16
         barPlasticBuffers = [
             try buffer(barPlasticLength, "bar plastic strain, even"),
             try buffer(barPlasticLength, "bar plastic strain, odd"),
         ]
-        let barRateLength = spreadsRupture && model.barRateAlongBars ? elements * 16 : 16
+        let barRateLength = spreadsRupture ? elements * 16 : 16
         barRateBuffers = [
             try buffer(barRateLength, "bar strain rate, even"),
             try buffer(barRateLength, "bar strain rate, odd"),
@@ -718,8 +720,8 @@ public final class StructureSolver {
         memset(barForceBuffer.contents(), 0, barForceBuffer.length)
         memset(forceBuffer.contents(), 0, forceBuffer.length)
         memset(barHistoryBuffer.contents(), 0, barHistoryBuffer.length)
-        for crushBuffer in crushBuffers + barPlasticBuffers + barRateBuffers {
-            memset(crushBuffer.contents(), 0, crushBuffer.length)
+        for buffer in barPlasticBuffers + barRateBuffers {
+            memset(buffer.contents(), 0, buffer.length)
         }
 
         footings?.reset()
@@ -841,20 +843,22 @@ public final class StructureSolver {
         /// `tensionNormal` on planes cracked, but by less than 0.1 mm: the concrete between
         /// cracks, as far as the mesh separates it.
         case tensionHairline
+        /// Hourglass control held at its cap, where it dissipates: not counted in `hourglass`.
+        case hourglassCapped
 
         public var label: String {
             [
                 "tension", "compression", "uncracked shear", "interlock", "dowel", "kinking", "bars", "bond",
                 "hourglass", "other", "viscosity", "crack shear", "interlock, pressed",
                 "crack shear, pressed",
-                "tension, cracked", "compression, crushed", "tension, hairline",
+                "tension, cracked", "compression, crushed", "tension, hairline", "hourglass, capped",
             ][rawValue]
         }
     }
 
     /// Adds each element's work by mechanism to a trace (`workTotals`), as a diagnostic of where
     /// a structure's stiffness and strength come from. Off by default; it costs a buffer of
-    /// seventeen floats per element.
+    /// eighteen floats per element.
     public var tracesWork = false {
         didSet {
             guard tracesWork, workBuffer == nil else { return }
@@ -1410,8 +1414,6 @@ public final class StructureSolver {
             encoder.setBytes(
                 &parameters, length: parameters.count * MemoryLayout<MaterialParameters>.stride, index: 15)
             encoder.setBuffer(materialIndexBuffer, offset: 0, index: 16)
-            encoder.setBuffer(crushBuffers[substep % 2], offset: 0, index: 13)
-            encoder.setBuffer(crushBuffers[1 - substep % 2], offset: 0, index: 14)
             encoder.setBuffer(barPlasticBuffers[substep % 2], offset: 0, index: 17)
             encoder.setBuffer(barPlasticBuffers[1 - substep % 2], offset: 0, index: 18)
             encoder.setBuffer(cellElementBuffer, offset: 0, index: 19)
@@ -1560,15 +1562,12 @@ public final class StructureSolver {
         }
         // Time constant of the running averages of strain rate and confinement: 50 steps.
         uniforms.rateFilter = 1 / (50 * criticalTimeStep)
-        uniforms.orientedCracks = model.crackAxes.uniform
         uniforms.secondCracks = model.secondCracks ? 1 : 0
         uniforms.bareBars = model.bareBars ? 1 : 0
         uniforms.removesFragments = model.removesFragments ? 1 : 0
-        uniforms.crackSlip = model.crackSlip ? (model.slipWidensCracks ? 1 : 2) : 0
+        uniforms.crackSlip = model.crackSlip ? 1 : 0
         uniforms.barAxes = barAxes
-        uniforms.crackShearStiffness = model.crackShearStiffness ? 1 : 0
-        uniforms.pressedInterlock = model.pressedInterlock ? 1 : 0
-        uniforms.barRateAlongBars = model.barRateAlongBars ? 1 : 0
+        uniforms.pressedInterlock = model.appliesPressedInterlock ? 1 : 0
         if let bond = model.bondSlip, materials.contains(where: { $0.steel != nil }) {
             let law = bond.law(compressiveStrength: model.material.compressiveStrength)
             uniforms.bondSlip = 1
@@ -1644,11 +1643,6 @@ public final class StructureSolver {
         return uniforms
     }
 
-    /// Elements either side over which a material's crushing is averaged; zero when it is local.
-    static func crushRadius(of material: StructureMaterial, elementSize h: Float) -> Int {
-        material.model == .concrete ? Int((material.crushLength / h).rounded()) : 0
-    }
-
     /// Half the debonded length over which a bar's rupture is judged, in elements; the debonded
     /// length is taken as the material's crack spacing. Zero below one element.
     static func barReach(of material: StructureMaterial, elementSize h: Float) -> Float {
@@ -1690,7 +1684,7 @@ public final class StructureSolver {
         let ft = (units?.tensileStrength ?? material.tensileStrength) * material.concreteRateFactor
         let onset = ft / material.youngsModulus
         let peak = 2 * fc / material.youngsModulus
-        let end = peak + 2 * material.crushingEnergy / (max(h, material.crushBand) * 0.8 * fc)
+        let end = peak + 2 * material.crushingEnergy / (h * 0.8 * fc)
         parameters.materialModel = MaterialModel.concrete.rawValue
         parameters.compressiveStrength = fc
         parameters.tensileStrength = ft
@@ -1723,9 +1717,7 @@ public final class StructureSolver {
         parameters.crackResidual = material.crackResidual
         parameters.dowelFactor = material.dowelFactor
         parameters.fractureRateExponent = material.fractureRateExponent
-        parameters.tensionRateLaw = material.tensionRateLaw == .modelCode2010 ? 1 : 0
         parameters.crackDilatancy = material.crackDilatancy
-        parameters.crushRadius = UInt32(Self.crushRadius(of: material, elementSize: h))
         parameters.barReach = bondSlip ? 0 : Self.barReach(of: material, elementSize: h)
         parameters.crushPeak = peak
         parameters.crushEnd = end
@@ -1763,15 +1755,9 @@ public final class StructureSolver {
             parameters.concreteRateCompression = 1 / (5 + 9 * megapascals / 10)
             parameters.concreteRateTension = 1 / (1 + 8 * megapascals / 10)
             if let steel = material.steel, material.steelRateDependent {
-                switch material.steelRateLaw {
-                case .malvarCrawford:
-                    parameters.steelRateYield = 0.074 - 0.040 * steel.yieldStress / 414e6
-                    parameters.steelRateUltimate = 0.019 - 0.009 * steel.yieldStress / 414e6
-                case .ceb:
-                    parameters.steelRateLog = 1
-                    parameters.steelRateYield = 6 / (steel.yieldStress / 1e6)
-                    parameters.steelRateUltimate = 7 / (steel.ultimateStress / 1e6)
-                }
+                // The CEB's law (Bulletin 187), as the Model Code 2010 re-adopted it.
+                parameters.steelRateYield = 6 / (steel.yieldStress / 1e6)
+                parameters.steelRateUltimate = 7 / (steel.ultimateStress / 1e6)
             }
         }
         return parameters

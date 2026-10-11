@@ -307,6 +307,12 @@ struct EditorView: View {
                 }
                 Button("Add Gauge", systemImage: "plus") { model.addGauge() }
                     .disabled(!model.canAddGauge)
+                Button("Add Gauge Line", systemImage: "ruler") { model.addGaugeLine() }
+                    .disabled(!model.canAddGauge)
+                    .help(
+                        "Adds gauges on a line from the charge, where the domain gives it the most room, "
+                            + "at the scaled distances of the Kingery–Bulmash curves (1 to 40 m/kg^(1/3)) "
+                            + "that fit.")
             } header: {
                 Text("Gauges")
             } footer: {

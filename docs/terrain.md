@@ -323,8 +323,8 @@ surface cross a cell a metre. The GPU and the CPU agree on every receiver.
   with slope factors on a footing's soil.
 - **DEM reprojection** (UTM from geographic) and area-averaged downsampling.
 - **Measured terrain shielding** or blast over hills, to validate rather than check.
-- **Landscape scale**: kilometres of terrain need the domain, refinement and source models of that
-  scale, which are not yet in the solver.
+- **Landscape scale**: the shielding study holds at 500 t, scaled (see [Large
+  scenes](large-scenes.md#over-terrain-at-scale)); the app cannot yet make such a scene.
 
 ## Sources
 

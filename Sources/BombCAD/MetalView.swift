@@ -20,11 +20,16 @@ struct MetalView: NSViewRepresentable {
         view.framebufferOnly = true
         view.preferredFramesPerSecond = Coordinator.frameRates.upperBound
         context.coordinator.updateDrawing(view)
+        context.coordinator.watchZoom(view)
         view.needsDisplay = true
         return view
     }
 
     func updateNSView(_ view: OrbitControlView, context: Context) {}
+
+    static func dismantleNSView(_ view: OrbitControlView, coordinator: Coordinator) {
+        coordinator.stopWatchingZoom()
+    }
 
     @MainActor
     final class Coordinator: NSObject, MTKViewDelegate {
@@ -43,6 +48,39 @@ struct MetalView: NSViewRepresentable {
 
         init(model: SimulationModel) {
             self.model = model
+        }
+
+        /// The event monitor that zooms the view in place of `OrbitControlView`'s own.
+        private var zoomMonitor: Any?
+
+        /// Zooms the view by the mouse wheel and pinches itself, as `OrbitControlView` does but
+        /// out to `SimulationModel.farthestZoom` rather than its 600 m, which a domain kilometres
+        /// across needs; the events go no further.
+        func watchZoom(_ view: OrbitControlView) {
+            zoomMonitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .magnify]) {
+                [weak self, weak view] event in
+                let zoomed = MainActor.assumeIsolated { () -> Bool in
+                    guard let self, let view, event.window === view.window,
+                        view.bounds.contains(view.convert(event.locationInWindow, from: nil))
+                    else { return false }
+                    let factor: Float
+                    switch event.type {
+                    case .magnify: factor = 1 / (1 + Float(event.magnification))
+                    case .scrollWheel where !event.hasPreciseScrollingDeltas:
+                        factor = exp(-Float(event.scrollingDeltaY) * 0.05)
+                    default: return false
+                    }
+                    self.model.camera.zoom(by: factor, farthest: self.model.farthestZoom)
+                    if view.isPaused { view.needsDisplay = true }
+                    return true
+                }
+                return zoomed ? nil : event
+            }
+        }
+
+        func stopWatchingZoom() {
+            if let zoomMonitor { NSEvent.removeMonitor(zoomMonitor) }
+            zoomMonitor = nil
         }
 
         /// As many frames a second as the GPU can spare during a run as fast as possible.

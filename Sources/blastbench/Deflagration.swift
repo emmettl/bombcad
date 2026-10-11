@@ -30,7 +30,7 @@ private func runClosedVessel(device: MTLDevice, gas: FlammableGas, concentration
     let air = chosenAirModel() ?? .idealGas
     print(
         "\(gas.displayName)–air in a closed sphere, ignited at the centre, "
-            + (flag("accelerated") ? "the default flame (wrinkling, sub-grid)" : "laminar flame")
+            + (flag("accelerated") ? "the default flame (sub-grid turbulence)" : "laminar flame")
             + ", \(air) air:"
             + " against the thin-flame model with the same burning velocity and the model's AICC pressure")
     print(
@@ -40,9 +40,15 @@ private func runClosedVessel(device: MTLDevice, gas: FlammableGas, concentration
             + pad("burnt", 7) + pad("energy", 9) + "run s")
     for radius in radii {
         for count in cells {
-            let study = ClosedVesselStudy(
+            var study = ClosedVesselStudy(
                 gas: gas, concentration: concentration, radius: radius, cellsPerRadius: count, airModel: air,
                 acceleration: flag("accelerated") ? FlameAcceleration() : .laminar)
+            if let scale = option("turbulence").flatMap({ Float($0) }) {
+                study.acceleration.turbulence = scale > 0 ? FlameTurbulence(scale: scale) : nil
+            }
+            if flag("mixing") {
+                study.mixing = option("mixing-model") == "smagorinsky" ? SubgridMixing() : .sigma
+            }
             let clock = Date()
             let r = try study.run(
                 device: device,
@@ -88,12 +94,12 @@ private func runClosedVessel(device: MTLDevice, gas: FlammableGas, concentration
 /// run at the expansion ratio times the burning velocity. Prints profiles along the tube.
 private func runTube(device: MTLDevice, gas: FlammableGas, ball: Bool) throws {
     let dx = option("dx").flatMap { Float($0) } ?? 0.02
-    let length: Float = ball ? 1.2 : 2
+    let length: Float = option("length").flatMap { Float($0) } ?? (ball ? 1.2 : 2)
     let width = ball ? length : 4 * dx
     var scenario = Scenario(
         name: "Tube", domainSize: SIMD3(length, width, width), boxes: [],
         charge: Charge(mass: 0, position: .zero))
-    scenario.reflectiveFaces = ball ? [] : BoundaryFaces.all.subtracting(.xMax)
+    scenario.reflectiveFaces = ball ? (flag("closed") ? .all : []) : BoundaryFaces.all.subtracting(.xMax)
     let ignition =
         ball
         ? SIMD3<Float>(repeating: length / 2 + (option("offset").flatMap { Float($0) } ?? 0) * dx)
@@ -101,15 +107,25 @@ private func runTube(device: MTLDevice, gas: FlammableGas, ball: Bool) throws {
     scenario.deflagration = Deflagration(
         gas: gas, region: Box(min: .zero, max: SIMD3(length, width, width)),
         ignition: ignition, acceleration: .laminar)
-    let solver = try BlastSolver(device: device, scenario: scenario, cellSize: dx)
+    if let scale = option("turbulence").flatMap({ Float($0) }), scale > 0 {
+        scenario.deflagration?.acceleration.turbulence = FlameTurbulence(scale: scale)
+    }
+    var configuration = SolverConfiguration()
+    if flag("mixing") {
+        configuration.mixing = option("mixing-model") == "smagorinsky" ? SubgridMixing() : .sigma
+    }
+    let solver = try BlastSolver(
+        device: device, scenario: scenario, cellSize: dx, configuration: configuration)
     let grid = solver.grid
     let row = grid.cell(containing: ignition)
     let step = option("every").flatMap { Double($0) } ?? 0.05
+    var lastRadius = 0.0
     for n in 1...(option("count").flatMap { Int($0) } ?? 6) {
         solver.advance(until: step * Double(n))
         guard let front = solver.unburntShare() else { return }
         print("t = \(format(solver.time * 1000, 0)) ms")
         var line = ""
+        let viscosity = solver.eddyViscosities()
         solver.readSpecies { species in
             for i in Swift.stride(from: ball ? row.i : 0, to: grid.nx, by: ball ? 1 : max(grid.nx / 40, 1)) {
                 let (j, k) = ball ? (row.j, row.k) : (1, 1)
@@ -119,10 +135,76 @@ private func runTube(device: MTLDevice, gas: FlammableGas, ball: Bool) throws {
                 line +=
                     "  x \(format(Double(grid.cellCentre(i, j, k).x), 3)) b \(format(Double(front[index]), 2))"
                     + " u \(format(Double(p.velocity.x), 2)) rho \(format(Double(p.density), 3))"
-                    + " share \(format(Double(share), 2)) p \(format(Double(p.pressure / 1e5), 4))\n"
+                    + " share \(format(Double(share), 2)) p \(format(Double(p.pressure / 1e5), 4))"
+                    + (viscosity.map {
+                        " u' \(format(Double($0[index]) * (2.0 / 3).squareRoot() / (0.094 * Double(dx)), 3))"
+                    } ?? "") + "\n"
             }
         }
         print(line, terminator: "")
+        if let viscosity {
+            // u' over the grid, by the unburnt share: mean and largest, and where the largest is.
+            var sums = [Double](repeating: 0, count: 5)
+            var counts = [Int](repeating: 0, count: 5)
+            var largest = [(Double, Int)](repeating: (0, 0), count: 5)
+            for index in 0..<grid.cellCount where front[index] < 1 - 1e-4 || viscosity[index] > 0 {
+                let bin = min(Int(front[index] * 5), 4)
+                let up = Double(viscosity[index]) * (2.0 / 3).squareRoot() / (0.094 * Double(dx))
+                sums[bin] += up
+                counts[bin] += 1
+                if up > largest[bin].0 { largest[bin] = (up, index) }
+            }
+            if flag("shells") {
+                // u' and the speed by distance from the ignition point, in shells a cell thick.
+                let shells = Int(Float(grid.nx) / 2)
+                var maxima = [Double](repeating: 0, count: shells)
+                var sums = [Double](repeating: 0, count: shells)
+                var bs = [Double](repeating: 0, count: shells)
+                var counts = [Int](repeating: 0, count: shells)
+                for kk in 0..<grid.nz {
+                    for jj in 0..<grid.ny {
+                        for ii in 0..<grid.nx {
+                            let index = grid.index(ii, jj, kk)
+                            let shell = Int(simd_distance(grid.cellCentre(ii, jj, kk), ignition) / dx)
+                            guard shell < shells else { continue }
+                            let up = Double(viscosity[index]) * (2.0 / 3).squareRoot() / (0.094 * Double(dx))
+                            maxima[shell] = max(maxima[shell], up)
+                            sums[shell] += up
+                            bs[shell] += Double(front[index])
+                            counts[shell] += 1
+                        }
+                    }
+                }
+                for n in 0..<shells where counts[n] > 0 {
+                    print(
+                        "  shell \(n): b \(format(bs[n] / Double(counts[n]), 3)) u' mean "
+                            + "\(format(sums[n] / Double(counts[n]), 4)) max \(format(maxima[n], 4))")
+                }
+            }
+            for bin in 0..<5 where counts[bin] > 0 {
+                let at = largest[bin].1
+                let c = grid.cellCentre(at % grid.nx, (at / grid.nx) % grid.ny, at / (grid.nx * grid.ny))
+                print(
+                    "  b \(format(Double(bin) / 5, 1))–\(format(Double(bin + 1) / 5, 1)): \(counts[bin]) cells, u' mean "
+                        + "\(format(sums[bin] / Double(counts[bin]), 4)) max \(format(largest[bin].0, 4)) m/s at "
+                        + "\(format(Double(simd_distance(c, ignition)), 3)) m from ignition")
+            }
+        }
+        if let state = solver.deflagrationState(), ball, flag("closed") {
+            // The radius of a sphere of the mixture burnt so far, burnt at constant pressure, and the
+            // rate it has grown at since the last print against the expansion ratio times the
+            // burning velocity.
+            let sigma = Double(
+                scenario.deflagration!.modelExpansionRatio(
+                    atmosphere: scenario.atmosphere, airModel: .idealGas, gamma: 1.4))
+            let burnt = state.initialUnburnt - state.unburnt
+            let radius = cbrt(3 * burnt * sigma / (Double(scenario.atmosphere.density) * 4 * Double.pi))
+            print(
+                "  burnt-mass radius \(format(radius, 3)) m = \(format(radius / Double(dx), 1)) cells, growing at "
+                    + "\(format((radius - lastRadius) / step, 2)) m/s against "
+                    + "\(format(sigma * Double(scenario.deflagration!.laminarBurningVelocity), 2))")
+            lastRadius = radius
+        }
         if let state = solver.deflagrationState() {
             print(
                 "  burnt volume radius \(format(cbrt(3 * state.burntVolume / (4 * Double.pi)), 3)) m, burnt mass "
@@ -141,7 +223,13 @@ private func runVented(device: MTLDevice, gas: FlammableGas, concentration: Floa
     base.ignition = option("ignition") == "back" ? .backWall : .centre
     base.airModel = chosenAirModel() ?? .idealGas
     if flag("laminar") { base.acceleration = .laminar }
+    if let scale = option("turbulence").flatMap({ Float($0) }) {
+        base.acceleration.turbulence = scale > 0 ? FlameTurbulence(scale: scale) : nil
+    }
+    if let radius = option("wrinkling").flatMap({ Float($0) }) { base.acceleration.wrinklingRadius = radius }
     if let wall = option("wall").flatMap({ Float($0) }) { base.wallThickness = wall }
+    if let until = option("until").flatMap({ Double($0) }) { base.maximumTime = until }
+    base.postWidth = option("posts").flatMap { Float($0) }
     if let factor = option("factor").flatMap({ Float($0) }) { base.acceleration.factor = factor }
     if let room = option("room") {
         let parts = room.split(separator: "x").compactMap { Float($0) }
@@ -153,7 +241,7 @@ private func runVented(device: MTLDevice, gas: FlammableGas, concentration: Floa
             + " × \(format(Double(base.room.z), 1)) m room, lit at the \(base.ignition == .centre ? "middle" : "back wall"),"
             + " vent release \(format(Double(base.releasePressure) / 1000, 1)) kPa; flame: factor \(a.factor),"
             + " wrinkling \(a.wrinklingRadius.map { "from \($0) m" } ?? "off"),"
-            + " sub-grid \(a.subgridCoefficient.map { "\($0)" } ?? "off")")
+            + " sub-grid turbulence \(a.turbulence.map { "a = \($0.scale)" } ?? "off")")
     print(
         pad("A_v m2", 8) + pad("dx m", 7) + pad("P_red kPa", 11) + pad("raw", 8) + pad("at ms", 8)
             + pad("vent ms", 9) + pad("burnt", 8) + pad("Molkov", 8) + pad("Bartk.", 8) + pad("NFPA 68", 9)
@@ -171,7 +259,12 @@ private func runVented(device: MTLDevice, gas: FlammableGas, concentration: Floa
                 : nil
             var inspect: ((BlastSolver) -> Void)?
             if flag("inspect") { inspect = { solver in inspectHottest(solver) } }
-            let r = try study.run(device: device, progress: progress, inspect: inspect)
+            if flag("axis") {
+                inspect = { solver in printAxis(solver, ignition: study.scenario().deflagration!.ignition) }
+            }
+            var monitor: ((BlastSolver) -> Void)?
+            if flag("front") { monitor = { solver in frontStatistics(solver) } }
+            let r = try study.run(device: device, progress: progress, inspect: inspect, monitor: monitor)
             let c = r.correlations
             print(
                 pad(format(Double(area), 2), 8) + pad(format(Double(dx), 3), 7)
@@ -188,7 +281,76 @@ private func runVented(device: MTLDevice, gas: FlammableGas, concentration: Floa
                 for (t, p) in zip(r.times, r.overpressures) { csv += "\(t),\(p / 1000)\n" }
                 try csv.write(toFile: file, atomically: true, encoding: .utf8)
             }
+            if flag("speeds") {
+                print(
+                    "    flame speed, m/s at m from ignition: "
+                        + r.flameSpeeds.map { "\(format($0.position, 2)): \(format($0.speed, 1))" }.joined(
+                            separator: ", "))
+            }
+            if let path = option("arrivals") {
+                let file = path.replacingOccurrences(of: "%", with: "\(area)-\(dx)")
+                var csv = "position_m,arrival_s\n"
+                for a in r.arrivals { csv += "\(a.position),\(a.time)\n" }
+                try csv.write(toFile: file, atomically: true, encoding: .utf8)
+            }
         }
+    }
+}
+
+/// The sub-grid velocity u' at the flame (cells a tenth to nine tenths unburnt), inside the room and
+/// outside it, and the share of the front's cells it wrinkles.
+private func frontStatistics(_ solver: BlastSolver) {
+    guard let viscosity = solver.eddyViscosities(), let share = solver.unburntShare() else { return }
+    let grid = solver.grid
+    let dx = Double(grid.cellSize)
+    var line = "  t \(format(solver.time * 1000, 0)) ms:"
+    for outside in [false, true] {
+        var count = 0
+        var sum = 0.0
+        var largest = 0.0
+        var wrinkled = 0
+        var speed = 0.0
+        for k in 0..<grid.nz {
+            for j in 0..<grid.ny {
+                for i in 0..<grid.nx {
+                    let index = grid.index(i, j, k)
+                    guard share[index] > 0.1, share[index] < 0.9, !solver.isSolid(i, j, k) else { continue }
+                    // The room's vent wall is at x = 2 + 0.2 + 4.6 = 6.8 m.
+                    guard (grid.cellCentre(i, j, k).x > 6.8) == outside else { continue }
+                    let up = Double(viscosity[index]) * (2.0 / 3).squareRoot() / (0.094 * dx)
+                    let xi = 1.036 * (up / 0.41).squareRoot() * pow(dx / (1.5e-5 / 0.41), 1.0 / 6)
+                    count += 1
+                    sum += up
+                    largest = max(largest, up)
+                    if xi > 1 { wrinkled += 1 }
+                    speed += Double(simd_length(solver.primitive(i, j, k).velocity))
+                }
+            }
+        }
+        guard count > 0 else { continue }
+        line +=
+            (outside ? "  outside" : "  inside")
+            + " \(count) front cells, u' mean \(format(sum / Double(count), 3))"
+            + " max \(format(largest, 2)), wrinkled \(format(100 * Double(wrinkled) / Double(count), 0))%,"
+            + " |u| mean \(format(speed / Double(count), 2))"
+    }
+    print(line)
+}
+
+/// Prints the unburnt share, velocity and overpressure along the line through the ignition point
+/// along x.
+private func printAxis(_ solver: BlastSolver, ignition: SIMD3<Float>) {
+    let grid = solver.grid
+    let cell = grid.cell(containing: ignition)
+    guard let share = solver.unburntShare() else { return }
+    print("  t \(format(solver.time * 1000, 0)) ms along x through the ignition point:")
+    for i in 0..<grid.nx where !solver.isSolid(i, cell.j, cell.k) {
+        let p = solver.primitive(i, cell.j, cell.k)
+        print(
+            "    x \(format(Double(grid.cellCentre(i, cell.j, cell.k).x - ignition.x), 2)) b "
+                + "\(format(Double(share[grid.index(i, cell.j, cell.k)]), 3)) u \(format(Double(p.velocity.x), 2)) "
+                + "\(format(Double(p.velocity.y), 2)) \(format(Double(p.velocity.z), 2)) dp "
+                + "\(format(Double(p.pressure - 101_325), 1))")
     }
 }
 
