@@ -703,6 +703,53 @@ densification under shaking (the free field settled a fifth to a quarter as much
 footing in SSG04), nor by soil pushed back under the heel, and a shaken footing does not lurch
 one way as the tests' did. Its share given back is one sand's.
 
+## Supports and connections, as they were built
+
+How the supports grew from ideal clamps (moved from the
+[roadmap](roadmap.md#structures-and-supports) on 11 October 2026; the details are in
+[base connections](#base-connections) and [footings](#footings) above).
+
+Structural anchorage is a separate extension: retain ideal fixed supports as an explicit
+option, then add connections that can deform, open and fail under tension or shear, with
+contact and friction after separation. Compare fixed and finite-strength supports on a
+freestanding wall or column before pursuing detailed footing and soil behaviour. Rigid-body
+motion alone does not address foundation failure or deformable-object breakup.
+
+Started: a solid body's base can now be tied to the ground by a connection that deforms, opens
+and slides, and fails in tension and shear, with contact and Coulomb friction after separation
+(`StructureModel.baseAnchorage`; ideal clamping stays the default). Resting, construction-joint
+and dowelled connections are provided, checked against statics, and compared on a freestanding
+wall under a Kingery–Bulmash pulse (`blastbench anchorage`): on starter bars the wall sways
+within 10% of the clamped one at a distance and up to 39% more close in; on a plain joint or
+resting on the ground, a pulse that sways the clamped wall 11 mm tips it over. See the
+[structural model](structural-model.md#base-connections). Shells and columns of beam elements
+have them too, at points across their footprint, and give the wall the same answers. A base
+can also stand on soil, as a Winkler bed that settles, turns and yields past its bearing
+capacity, checked against settlement, rotation and the overturning moment of a footing whose
+toe crushes the soil.
+
+The app now edits base and per-support horizontal bearing connections, including custom
+strength, opening, slip, friction, bearing capacity and stiffness. Independent raised-bearing
+reactions, lift-off, clamp precedence, imported-source refinement, save/reopen and undo are
+checked. Finite support regions select initial lower-face/footprint points and use stationary
+horizontal bearing planes; they do not model a footing's finite contact extents. See
+[structural editing](structural-editing.md#restraints). A base can now stand on a rigid footing
+of finite plan whose heel lifts and whose contact shifts as it turns, on soil with Wolf's cones
+for its mass and radiation damping and a layer's echoes, checked against statics and the cones'
+impedance ([footings](structural-model.md#footings)); and support joints can face up or
+sideways for solid elements. Against a measured footing rocked on dry sand (FoRCy, SSG02_03)
+the moment follows within 11% to 14 mrad and levels off 6–17% low; on sand that settles under
+cycles, now the default, the footing settles twice as much as that test and 0.6–1.5 times as
+much as eight shaken ones (FoRDy, `blastbench shaking`), where the elastic bed settled a tenth. Joints can lie at any angle, on solids and shells, and tie two moving parts of a
+body (a beam seated on a corbel slides off and drops its span: `blastbench seat`); footings can
+be set into the soil, as stiff as Gazetas's embedded footing; and a seat resting with Eurocode
+2's 0.7 dissipates within 4% of three measured precast seats' energy over their whole cycling
+(`blastbench precast`; neoprene pads and dowels are not followed). Still open: a shaken footing's
+lurch and the energy it dissipates (a sixth to a half); pads' and dowels' laws. Loaded by the air instead of a pulse
+(`blastbench anchorage --air`), the freestanding wall sways about a third as far: the wave
+wraps over and round it and loads its back face, so at 25 m walls without bars stand that the
+pulse throws over.
+
 ## Failure and removal
 
 An element stops carrying stress and is removed ("eroded") when its material says it has
