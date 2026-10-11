@@ -106,6 +106,13 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
     public var options: [String]
     /// Pages under docs/, with anchors.
     public var documents: [String]
+    /// How far it has been from measurement, where the scene lies within a comparison's range
+    /// (see `ErrorBand`); nil in standings recorded before bands were.
+    public var bands: [ErrorBand]? = nil
+    /// Why no band applies, where none does.
+    public var unbanded: [String]? = nil
+    /// Whether the chosen options suit the scene's regime.
+    public var regimes: [RegimeAdvice]? = nil
 
     public var id: ResultKind { kind }
 }
@@ -115,7 +122,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-2"
+    public static let currentTable = "standing-table-3"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -123,6 +130,8 @@ public struct SceneStanding: Codable, Hashable, Sendable {
     public var resolution: [String]
     /// Effects this scene could involve that no model here represents.
     public var unsupported: [String]
+    /// Each gauge's bands; nil in standings recorded before bands were.
+    public var gauges: [GaugeBands]? = nil
 
     public subscript(kind: ResultKind) -> ResultStanding? { results.first { $0.kind == kind } }
 
@@ -163,7 +172,23 @@ public struct SceneStanding: Codable, Hashable, Sendable {
         var text = ["Standing (\(table)):"]
         for result in results {
             text.append("  \(result.kind.title): \(result.level.title). \(result.summary)")
+            for band in result.bands ?? [] { text.append("    Band: \(band.summary), for \(band.validity)") }
+            for note in result.unbanded ?? [] { text.append("    No band: \(note)") }
+            for advice in result.regimes ?? [] {
+                let verdict = advice.suits.map { $0 ? "suits it" : "does not suit it" } ?? "note"
+                text.append(
+                    "    Regime (\(advice.regime)): \(advice.option), \(verdict). \(advice.note)"
+                        + (advice.suggestion.map { " \($0)" } ?? ""))
+            }
             for note in result.resolution { text.append("    Resolution: \(note)") }
+        }
+        for gauge in gauges ?? [] {
+            let bands = [gauge.peak, gauge.impulse].compactMap {
+                $0.map { "\($0.quantity.lowercased()) \($0.ratio)" }
+            }
+            text.append(
+                String(format: "  Gauge %@ at %.2f m/kg^(1/3): ", gauge.name, gauge.scaledDistance)
+                    + (bands.isEmpty ? "no band. \(gauge.note ?? "")" : bands.joined(separator: ", ")))
         }
         for note in resolution { text.append("  Resolution: \(note)") }
         for effect in unsupported { text.append("  Not modelled: \(effect)") }
@@ -178,7 +203,7 @@ public struct SceneStanding: Codable, Hashable, Sendable {
 
 /// What a scene's standing is derived from: its inputs, the air's resolution and solver
 /// configuration, and the models run alongside it.
-public struct StandingInputs: Sendable {
+public struct StandingInputs: Sendable, Equatable {
     public var scenario: Scenario
     /// The coarse air cell, in metres.
     public var cellSize: Float
@@ -231,19 +256,14 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     // The structure.
     case shellElements
     case shellSectionShear
-    case latticeCrackAxes
-    case fixedCrackAxes
     case noSecondCracks
     case noBareBars
     case removesFragments
     case noCrackSlip
-    case slipKeepsCracksClosed
     case bondSlip
-    case crackShearStiffness
     case pressedInterlock
     case hourglassSecant
     case hourglassWithoutSteel
-    case barRateInElements
     case interfaceBond
     case smearedMasonry
     case inclinedBars
@@ -256,7 +276,6 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case rateIndependent
     case designIncreaseFactors
     case alternativeRateLaws
-    case nonlocalCrushing
     case studyMultipliers
     case barRuptureInElements
     // Models run alongside.
@@ -301,20 +320,14 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .shellElements:
             return any { $0.elementKind == .shell || $0.solidElementKind.contains(.shell) }
         case .shellSectionShear: return any { $0.shellSectionShear }
-        case .latticeCrackAxes: return !concrete.isEmpty && any { $0.crackAxes == .lattice }
-        case .fixedCrackAxes: return !concrete.isEmpty && any { $0.crackAxes == .fixedAtFirstCrack }
-        case .noSecondCracks:
-            return !concrete.isEmpty && any { $0.crackAxes != .turningUntilOpen && !$0.secondCracks }
+        case .noSecondCracks: return !concrete.isEmpty && any { !$0.secondCracks }
         case .noBareBars: return any { !$0.bareBars }
         case .removesFragments: return !concrete.isEmpty && any { $0.removesFragments }
         case .noCrackSlip: return !concrete.isEmpty && any { !$0.crackSlip }
-        case .slipKeepsCracksClosed: return !concrete.isEmpty && any { $0.crackSlip && !$0.slipWidensCracks }
         case .bondSlip: return any { $0.bondSlip != nil }
-        case .crackShearStiffness: return any { $0.crackShearStiffness }
         case .pressedInterlock: return any { $0.pressedInterlock }
         case .hourglassSecant: return !concrete.isEmpty && any { $0.hourglassFollowsCracking }
         case .hourglassWithoutSteel: return !concrete.isEmpty && any { !$0.hourglassCapsSteel }
-        case .barRateInElements: return any { !$0.barRateAlongBars }
         case .interfaceBond: return any { $0.interfaceBond != nil }
         case .smearedMasonry: return materials.contains { $0.units != nil } && any { !$0.unitJoints }
         case .inclinedBars: return any { !$0.inclinedBars.isEmpty }
@@ -343,12 +356,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .designIncreaseFactors:
             return materials.contains { $0.concreteRateFactor != 1 || $0.steelRateFactor != 1 }
         case .alternativeRateLaws:
-            return structural.contains {
-                $0.rateDependent
-                    && ($0.tensionRateLaw != .modelCode2010 || $0.steelRateLaw != .ceb
-                        || !$0.steelRateDependent)
-            }
-        case .nonlocalCrushing: return structural.contains { $0.crushLength > 0 }
+            return structural.contains { $0.rateDependent && !$0.steelRateDependent }
         case .studyMultipliers: return structural.contains { $0.dowelFactor != 1 || $0.interlockFactor != 1 }
         case .barRuptureInElements: return structural.contains { $0.steel != nil && !$0.bondSpreading }
         case .thermalVolume: return inputs.thermal?.fireball == .volume
@@ -512,18 +520,6 @@ public enum StandingTable {
                 note: "Off by default: under a blast the slab test's shells carried shears near their "
                     + "supports that this static method says they cannot.",
                 document: "shell-model.md")
-        case .latticeCrackAxes:
-            return Entry(
-                title: "Cracks on the lattice planes", affects: structure, limit: .approximation,
-                note: "This crack model mishandled inclined cracks; the comparisons used cracks that turn "
-                    + "until they open.",
-                document: "concrete-model.md#cracking")
-        case .fixedCrackAxes:
-            return Entry(
-                title: "Cracks fixed at first cracking", affects: structure, limit: .approximation,
-                note: "Stress locks across a crack whose principal directions turn; the comparisons used "
-                    + "cracks that turn until they open.",
-                document: "concrete-model.md#cracking")
         case .noSecondCracks:
             return Entry(
                 title: "No second cracks", affects: structure, limit: .approximation,
@@ -549,23 +545,12 @@ public enum StandingTable {
                 note: "Shear beyond interlock and dowels springs back instead of sliding for good; the "
                     + "comparisons let cracks slide.",
                 document: "concrete-model.md#shear-across-cracks")
-        case .slipKeepsCracksClosed:
-            return Entry(
-                title: "Slip does not widen cracks", affects: structure, limit: .approximation,
-                note: "A crack's slide no longer opens it or the plane across it; not compared with a test.",
-                document: "concrete-model.md#shear-across-cracks")
         case .bondSlip:
             return Entry(
                 title: "Bars that slip", affects: structure, limit: nil,
                 note: "The Model Code's bond-slip law; run against the slab, shear-beam and impact tests "
                     + "too (on the slab, 95 mm on 8 elements through).",
                 document: "concrete-model.md#bars-that-slip-an-option")
-        case .crackShearStiffness:
-            return Entry(
-                title: "Crack shear stiffness falling with width", affects: structure, limit: .approximation,
-                note: "Walraven and Reinhardt's measurements on plain concrete; not compared with a "
-                    + "structural test here.",
-                document: "concrete-model.md#shear-across-cracks")
         case .pressedInterlock:
             return Entry(
                 title: "Pressed interlock", affects: structure, limit: .approximation,
@@ -584,12 +569,6 @@ public enum StandingTable {
                 note: "Halves the hourglass work in the contest slab and leaves the shear beam as it was; "
                     + "not run against the impact tests.",
                 document: "validation.md#hourglass-control")
-        case .barRateInElements:
-            return Entry(
-                title: "Bar strain rate in elements", affects: structure, limit: .approximation,
-                note: "A bar's strain rate is taken from the element it runs through, which grows as the "
-                    + "mesh is refined where a crack localises.",
-                document: "concrete-model.md#strain-rate-effects")
         case .interfaceBond:
             return Entry(
                 title: "Bonded material joints", affects: structure, limit: nil,
@@ -655,15 +634,10 @@ public enum StandingTable {
                 document: "concrete-model.md#strain-rate-effects")
         case .alternativeRateLaws:
             return Entry(
-                title: "Other strain-rate laws", affects: structure, limit: .approximation,
+                title: "Bars without their strain-rate law", affects: structure, limit: .approximation,
                 note: "The impacts are decided by the strain-rate laws, and were compared with the Model "
                     + "Code's in tension and CEB's for bars.",
                 document: "concrete-model.md#strain-rate-effects")
-        case .nonlocalCrushing:
-            return Entry(
-                title: "Nonlocal crushing", affects: structure, limit: .approximation,
-                note: "Tried for a collapsing fine mesh whose cause lay elsewhere; not compared since.",
-                document: "roadmap.md#things-tried-and-set-aside")
         case .studyMultipliers:
             return Entry(
                 title: "Interlock or dowel multipliers", affects: structure, limit: .approximation,
@@ -819,18 +793,22 @@ public enum StandingTable {
         "StructureModel.interfaceBond": .option([.interfaceBond]),
         "StructureModel.unitJoints": .option([.smearedMasonry]),
         "StructureModel.shellSectionShear": .option([.shellSectionShear]),
-        "StructureModel.crackAxes": .option([.latticeCrackAxes, .fixedCrackAxes]),
         "StructureModel.secondCracks": .option([.noSecondCracks]),
         "StructureModel.bareBars": .option([.noBareBars]),
         "StructureModel.removesFragments": .option([.removesFragments]),
         "StructureModel.crackSlip": .option([.noCrackSlip]),
-        "StructureModel.slipWidensCracks": .option([.slipKeepsCracksClosed]),
         "StructureModel.bondSlip": .option([.bondSlip]),
-        "StructureModel.crackShearStiffness": .option([.crackShearStiffness]),
         "StructureModel.pressedInterlock": .option([.pressedInterlock]),
         "StructureModel.hourglassFollowsCracking": .option([.hourglassSecant]),
         "StructureModel.hourglassCapsSteel": .option([.hourglassWithoutSteel]),
-        "StructureModel.barRateAlongBars": .option([.barRateInElements]),
+        "StructureModel.retiredOptions": .input,
+        // The regime picks defaults for the options above (`StructuralRegime`); what it turns on
+        // is read through those options, so the regime itself is an input of the scene.
+        "StructureModel.regimeOverride": .input,
+        "StructureModel.loadingOverride": .input,
+        "StructureModel.regimeDefaults": .input,
+        "StructureModel.detectedRegime": .input,
+        "StructureModel.detectedLoading": .input,
         // Materials: properties are inputs; the switches between laws are options.
         "StructureMaterial.name": .input,
         "StructureMaterial.model": .input,
@@ -847,8 +825,6 @@ public enum StandingTable {
         "StructureMaterial.erosionOpening": .input,
         "StructureMaterial.steel": .input,
         "StructureMaterial.crackSpacing": .input,
-        "StructureMaterial.crushBand": .input,
-        "StructureMaterial.crushLength": .option([.nonlocalCrushing]),
         "StructureMaterial.bondSpreading": .option([.barRuptureInElements]),
         "StructureMaterial.confinementCoefficient": .input,
         "StructureMaterial.aggregateSize": .input,
@@ -856,13 +832,11 @@ public enum StandingTable {
         "StructureMaterial.dowelFactor": .option([.studyMultipliers]),
         "StructureMaterial.interlockFactor": .option([.studyMultipliers]),
         "StructureMaterial.fractureRateExponent": .input,
-        "StructureMaterial.tensionRateLaw": .option([.alternativeRateLaws]),
         "StructureMaterial.crackDilatancy": .input,
         "StructureMaterial.concreteRateFactor": .option([.designIncreaseFactors]),
         "StructureMaterial.steelRateFactor": .option([.designIncreaseFactors]),
         "StructureMaterial.rateDependent": .option([.rateIndependent]),
         "StructureMaterial.steelRateDependent": .option([.alternativeRateLaws]),
-        "StructureMaterial.steelRateLaw": .option([.alternativeRateLaws]),
         "StructureMaterial.units": .option([.smearedMasonry]),
         "StructureMaterial.isTransparent": .input,
         // Connections.
@@ -994,12 +968,19 @@ extension SceneStanding {
                 }
             }
         }
+        for index in results.indices {
+            let (bands, unbanded) = scene.bands(for: results[index].kind)
+            results[index].bands = bands
+            results[index].unbanded = unbanded
+            results[index].regimes = scene.regimes(for: results[index].kind)
+        }
         self.init(results: results, resolution: scene.resolutionNotes(), unsupported: scene.unsupported())
+        gauges = scene.gaugeBands()
     }
 }
 
 /// The scene's numbers the table needs, worked out once.
-private struct StandingScene {
+struct StandingScene {
     let inputs: StandingInputs
     let options: [ModelOption]
     let structures: [StructureModel]
@@ -1043,7 +1024,7 @@ private struct StandingScene {
             }.min()
     }
 
-    private func has(_ option: ModelOption) -> Bool { options.contains(option) }
+    func has(_ option: ModelOption) -> Bool { options.contains(option) }
 
     // MARK: Resolution
 
@@ -1410,7 +1391,7 @@ private struct StandingScene {
     }
 
     /// The kinds of material in the scene's structures, weakest standing last.
-    private enum MaterialClass: Int, Comparable {
+    enum MaterialClass: Int, Comparable {
         case reinforcedConcrete, plainConcrete, steel, masonry, glass
         static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
 
@@ -1427,7 +1408,7 @@ private struct StandingScene {
         }
     }
 
-    private var materialClasses: [MaterialClass] {
+    var materialClasses: [MaterialClass] {
         Set(structures.flatMap { [$0.material] + $0.solidMaterial.compactMap { $0 } }.map(MaterialClass.init))
             .sorted()
     }
@@ -1525,6 +1506,8 @@ private struct StandingScene {
             resolution.append(
                 "Independent bodies have no contact with each other; overlapping ones stop the run.")
         }
+        // Options a saved structure set that have since been retired, and what applies instead.
+        for note in Set(structures.flatMap(\.retiredOptions)).sorted() { resolution.append(note) }
         let summary =
             (parts.first.map { $0.prefix(1).uppercased() + $0.dropFirst() } ?? "No structure")
             + (parts.count > 1 ? "; " + parts.dropFirst().joined(separator: "; ") : "") + "."

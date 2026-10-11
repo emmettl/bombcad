@@ -33,7 +33,7 @@ nothing in it should be used to judge the safety of a real structure.
 
 | # | Limitation                                                              | Consequence                                                   | Detail |
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
-| 1 | The structural model has been compared with eleven member tests, and springs back too far | On a slab test the peak rises to 124 mm on 32 elements against 108 measured, not converged (a strip of it runs away on 32); a beam bent to failure carries 98–101% of its measured moment; a beam failing in shear carries 111–115% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements, and Ando's beams without stirrups peak within 15% on average on 16 elements (53% too far on 24), and A36 breaks at the speed its test did where B36 holds, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; Peterson's short beams struck to a shear failure (2026) give the forces at a shear span of one depth, the deep ones too stiff, and fail without stirrups, but by splitting along their bars, while those with stirrups that crushed their strut in the test hold; full-scale slabs under close-in charges are left a third to a half as far down as measured, barely spalled and not holed; 2 m slabs with steel in one face or both bend within −20% to +7% under 1.6 kg at 0.5 m but 40–70% as far under smaller charges, and are holed by contact charges at a stable step to a half and a third of the measured size; in a full-scale internal explosion, with the chamber's detailing modelled, the roof peaks at 38 mm against 87 mm in the test paper's own model, and its edge is left 15 mm up against 95 mm measured (49 and 25 mm with cracks that press as they slide, an option that breaks beams under impact); on the finest mesh the answer has not converged. Bars that slip converge on every mesh but are too stiff nearly everywhere; hourglass control does 7–18% of the work at the slabs' peaks, where an element's own bending would be under 2% | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
+| 1 | The structural model has been compared with eleven member tests, and springs back too far | On a slab test the peak rises to 124 mm on 32 elements against 108 measured, not converged (a strip of it runs away on 32); a beam bent to failure carries 98–101% of its measured moment; a beam failing in shear carries 111–115% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements, and Ando's beams without stirrups peak within 15% on average on 16 elements (53% too far on 24), and A36 breaks at the speed its test did where B36 holds, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; Peterson's short beams struck to a shear failure (2026) give the forces at a shear span of one depth, the deep ones too stiff, and fail without stirrups, but by splitting along their bars, while those with stirrups that crushed their strut in the test hold; full-scale slabs under close-in charges are left a third to a half as far down as measured, barely spalled and not holed; 2 m slabs with steel in one face or both bend within −20% to +7% under 1.6 kg at 0.5 m but 40–70% as far under smaller charges, and are holed by contact charges at a stable step to a half and a third of the measured size; in a full-scale internal explosion, with the chamber's detailing modelled, the roof's edge peaks at 49 mm against 87 mm in the test paper's own model and is left 25 mm up against 95 mm measured, with cracks that press as they slide, now the confined regime's default (38 and 15 mm without); on the finest mesh the answer has not converged. Bars that slip converge on every mesh but are too stiff nearly everywhere; hourglass control does 7–18% of the work at the slabs' peaks, where an element's own bending would be under 2% | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
 | 2 | Shear failure and joints are the least reliable predictions             | Breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | The default gas has no afterburning and treats hot air as cold          | Incident impulse 13–22% low and rooms' gas 48–114% of the design value (half for light charges), unless afterburning and hot air (2 times slower) are switched on; the gas loses its radiated heat only with radiative cooling on | [Air-blast model](air-blast-model.md#hot-air) |
 | 4 | Peak pressure is under-resolved near the charge                         | Close-in loading needs fine or twice-refined air; spall needs cells of 0.005 W^(1/3) and 12 elements through a slab | [Validation](validation.md#what-stops-the-spall-and-the-breach) |
@@ -2119,6 +2119,9 @@ two collapsing over several seconds.
 - **Show each result's standing** (done): a badge beside each result, from measured agreement to
   illustrative, derived from the scene's settings, with its evidence a click away, and carried
   with kept runs, comparisons and exports. See [Standing of results](standing.md).
+- **Give standings numeric error bands** (done): model/measured bands from the validation record,
+  scaled to the scene's resolution, with which options suit its regime. See
+  [Error bands](standing.md#error-bands).
 
 ## Things tried and set aside
 
@@ -2127,9 +2130,27 @@ two collapsing over several seconds.
   bands were each tried before tracing one element through the collapse found the two real
   errors (Poisson swelling counted as cracking; a missing normalisation in the compressive
   rate law). Nonlocal crushing and a reduced form of the hourglass cap were kept, the first
-  switched off by default; the rest were removed. The lesson: trace a failing element before
+  switched off by default (and retired in 2026); the rest were removed. The lesson: trace a failing element before
   changing the model.
 
+- **Options retired on 11 October 2026**, after the [case matrix](concrete-strategy.md) found no
+  case each served and removing them changed no default result (`blastbench digest` and the
+  matrix bit-identical). A model saved with one reads with today's behaviour and a note of what
+  was dropped (`StructureModel.retiredOptions`):
+  - cracks on the lattice planes and cracks fixed at first cracking (`crackAxes`), which the
+    turning cracks superseded; the lattice planes mishandle inclined cracks;
+  - keeping a crack's slide out of its opening (`slipWidensCracks`, `--slide-apart`; below);
+  - a crack's shear stiffness falling with its width (`crackShearStiffness`, `--crack-shear`),
+    which moved no case;
+  - nonlocal crushing and a shortest crushing band (`crushLength`, `crushBand`), under 1% on the
+    slab;
+  - bars taking the strain rate of the element they run through (`barRateAlongBars`,
+    `--element-bar-rate`), which ran the fine slab's hinge away;
+  - Malvar and Ross's tensile strain-rate law and Malvar and Crawford's for bars
+    (`tensionRateLaw`, `steelRateLaw`, `--tension-law`, `--steel-law`): a quarter too stiff on
+    Saatci's beams, the spall needing 17–21 MPa, and bars a fifth too strong at these rates;
+  - bars spread through the concrete about them (`impact --spread`): mesh-independent, but
+    beams too stiff.
 - **Keeping a crack's slide out of its opening** (`--slide-apart`): right for one crack, which
   read a 1 mm crack slid 2 mm as 1.9 mm open, but on its own it stiffens every beam that
   depends on sliding cracks, Ando's without stirrups far too much. Kept as an option.
