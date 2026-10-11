@@ -1,6 +1,7 @@
 import BlastCore
 import DocumentKit
 import Foundation
+import Metal
 
 /// `BombCAD run`: runs a saved project to completion without a window and keeps the result as a
 /// saved run. It drives the same `SimulationModel` as the app and its sweeps, so a run here gives
@@ -10,6 +11,7 @@ enum HeadlessRun {
     static let usage = """
         Usage: BombCAD run <project.bombcad | layout.json> [--name <name>] [--out <new.bombcad>]
                            [--csv <file.csv>] [--resolution coarse|medium|fine|<metres>] [--mass <kg TNT>]
+                           [--advise peak:20%|impulse:15%|deflection:30%|time:10m]
                            [--duration <seconds>] [--usd <scene.usda>] [--vdb <folder>
                            [--vdb-fields overpressure,shock,peak,impulse]] [--frame-interval <ms>]
                            [--fragments <spec.json> [--fragment-results <file.json>]]
@@ -45,6 +47,8 @@ enum HeadlessRun {
         Mac's cost a frame is probed before the run and the run's own taken from the last run
         of the same inputs (until there is one, a model goes elsewhere only if that Mac is quicker
         at it than the time it would take from the blast here).
+        --advise prints the cheapest settings of the air that meet a fidelity target, or the best
+        within a time, by the standing's error bands and the cost model, and does not run.
         --resolution and --mass change the inputs as a sweep case would; the project itself is
         never modified. The summary ends with the standing of each result (docs/standing.md), which
         --standing writes as JSON and the USD scene, the volumes and the results files carry too.
@@ -85,6 +89,8 @@ enum HeadlessRun {
         var standing: URL?
         /// Whole milliseconds of simulated time between frames of `usd` and `vdb`.
         var frameInterval = 1
+        /// With `--advise`, the target to advise settings for; the project is then not run.
+        var advise: AdvisorTarget?
 
         /// The consumers `--consumer` can place.
         static let consumerNames = ["fragments", "thermal", "ground"]
@@ -107,7 +113,7 @@ enum HeadlessRun {
                             "vdb-fields", "fragments",
                             "consumer", "fragment-results", "thermal", "thermal-results", "cloud",
                             "cloud-results", "sounding", "ground-shock", "ground-results", "envelope-results",
-                            "frame-interval", "worker", "standing",
+                            "frame-interval", "worker", "standing", "advise",
                         ]
                         .contains(key)
                     else {
@@ -131,6 +137,13 @@ enum HeadlessRun {
             options.csv = values["csv"].map { URL(filePath: $0) }
             options.envelopeResults = values["envelope-results"].map { URL(filePath: $0) }
             options.standing = values["standing"].map { URL(filePath: $0) }
+            if let text = values["advise"] {
+                guard let target = AdvisorTarget(text: text) else {
+                    throw ProjectFileError.invalid(
+                        "--advise takes peak:20%, impulse:15%, deflection:30% or time:10m.")
+                }
+                options.advise = target
+            }
             if let text = values["resolution"] {
                 guard let resolution = Resolution(text: text) else {
                     throw ProjectFileError.invalid(
@@ -833,6 +846,58 @@ enum HeadlessRun {
         return lines.joined(separator: "\n")
     }
 
+    /// The advice for `target` on the project's inputs (as `--resolution` and `--mass` change
+    /// them), in lines: what was chosen and why, what could not be met, and the candidates nearest it.
+    nonisolated static func advise(_ options: Options, target: AdvisorTarget) throws -> [String] {
+        let document = try ProjectDocument.read(from: options.project)
+        let inputs = try inputs(for: document, options: options)
+        let memory = Int(
+            min(MTLCreateSystemDefaultDevice()?.recommendedMaxWorkingSetSize ?? 16 << 30, UInt64(Int.max))
+                / 10 * 7)
+        let advice = inputs.advice(for: target, memory: memory)
+        var lines = [advice.summary]
+        lines += advice.unmet.map { "  " + $0 }
+        let factor = RunCostStore.standard.factor
+        func describe(_ candidate: AdvisorCandidate) -> String {
+            var parts = AdvisorQuantity.allCases.compactMap { quantity in
+                candidate.error[quantity].map { String(format: "%@ %.0f%%", quantity.rawValue, $0 * 100) }
+            }
+            parts.append(
+                String(
+                    format: "%.1fM cells, %.1f GB", Double(candidate.cost.cells) / 1e6,
+                    Double(candidate.cost.memory) / 1e9))
+            parts.append(
+                RunAdvisor.duration(candidate.cost.seconds)
+                    + (factor.map { ", " + RunAdvisor.duration(candidate.cost.seconds * $0) + " here lately" }
+                        ?? ""))
+            return candidate.setting.summary + ": " + parts.joined(separator: "; ")
+        }
+        if let chosen = advice.chosen {
+            lines.append("  Chosen: " + describe(chosen))
+            for quantity in AdvisorQuantity.allCases {
+                if chosen.error[quantity] != nil, let reason = chosen.unbanded[quantity] {
+                    lines.append("  Not counted in \(quantity.title): \(reason).")
+                }
+            }
+        }
+        let current = inputs.settings.advisorSetting
+        if let now = advice.candidates.first(where: { $0.setting == current }) {
+            lines.append("  Now: " + describe(now))
+        }
+        // The cheapest that do better on the target, for comparison.
+        let better = advice.candidates.filter { candidate in
+            guard candidate.setting != advice.chosen?.setting else { return false }
+            switch target {
+            case .fidelity(let quantity, _):
+                return (candidate.error[quantity] ?? .infinity)
+                    < (advice.chosen?.error[quantity] ?? .infinity)
+            case .seconds: return candidate.cost.seconds < (advice.chosen?.cost.seconds ?? 0)
+            }
+        }.prefix(3)
+        for candidate in better { lines.append("  Also: " + describe(candidate)) }
+        return lines
+    }
+
     /// The command's entry point; returns the process's exit status.
     static func main(_ arguments: [String]) async -> Int32 {
         if arguments.contains("--help") || arguments.contains("-h") {
@@ -846,16 +911,25 @@ enum HeadlessRun {
             FileHandle.standardError.write(Data("\(error.localizedDescription)\n\n\(usage)\n".utf8))
             return 2
         }
+        if let target = options.advise {
+            do {
+                for line in try advise(options, target: target) { print(line) }
+                return 0
+            } catch {
+                FileHandle.standardError.write(Data("Advice failed: \(error.localizedDescription)\n".utf8))
+                return 1
+            }
+        }
         let start = ContinuousClock.now
         do {
             let result = try await execute(options, costs: .standard)
             let wall = start.duration(to: .now)
-            print(
-                summary(
-                    result.run,
-                    wallSeconds: Double(wall.components.seconds) + Double(wall.components.attoseconds)
-                        * 1e-18,
-                    blastGPUSeconds: result.blastGPUSeconds))
+            let wallSeconds = Double(wall.components.seconds) + Double(wall.components.attoseconds) * 1e-18
+            // How this run compared with the cost model, for the advisor to scale by.
+            RunCostStore.standard.record(
+                estimate: result.run.settings.costEstimate(result.run.scenario).seconds, measured: wallSeconds
+            )
+            print(summary(result.run, wallSeconds: wallSeconds, blastGPUSeconds: result.blastGPUSeconds))
             if let fragments = result.fragments { print("  " + fragments.summary) }
             for stream in result.streams { print("  " + stream) }
             for line in result.thermal?.summary ?? [] { print("  " + line) }
