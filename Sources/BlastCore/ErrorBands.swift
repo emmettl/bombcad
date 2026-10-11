@@ -291,17 +291,17 @@ public enum ValidationTables {
             id: "rockingMoment", low: 0.89, high: 1.11, document: "validation.md#summary",
             quote: "moment within 11% to 14 mrad of rotation"),
         Figure(
-            id: "rockingMomentLarge", low: 0.83, high: 0.94, document: "validation.md#summary",
-            quote: "6–17% low beyond"),
+            id: "rockingMomentLarge", low: 0.86, high: 0.95, document: "validation.md#summary",
+            quote: "5–14% low beyond"),
         Figure(
-            id: "rockingSettlement", low: 1.7, high: 2.3, document: "validation.md#summary",
-            quote: "settlement 1.7–2.3 times that measured"),
+            id: "rockingSettlement", low: 1.3, high: 1.7, document: "validation.md#summary",
+            quote: "settlement 1.3–1.7 times that measured"),
         Figure(
-            id: "shakenSettlement", low: 0.6, high: 1.5, document: "validation.md#summary",
-            quote: "settlement 0.6–1.5 times"),
+            id: "shakenSettlement", low: 0.4, high: 1.3, document: "validation.md#summary",
+            quote: "settlement 0.4–1.3 times"),
         Figure(
-            id: "shakenRotation", low: 0.78, high: 1.22, document: "validation.md#summary",
-            quote: "peak rotation within 22% where the test did not lurch one way"),
+            id: "shakenRotation", low: 0.9, high: 1.1, document: "validation.md#summary",
+            quote: "peak rotation within 10% where the test did not lurch one way"),
         Figure(
             id: "fireballTotal", low: 3, high: 5.5, document: "validation.md#summary",
             quote: "exceeds three to five and a half times"),

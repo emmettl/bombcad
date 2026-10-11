@@ -668,17 +668,18 @@ public enum StandingTable {
             return Entry(
                 title: "Footings on soil", affects: structure, limit: nil,
                 note:
-                    "One footing rocked slowly on dry sand: moment within 11% to 14 mrad and 6–17% low beyond. "
-                    + "With the sand that settles under cycles (the default), settlement 1.7–2.3 times that "
-                    + "measured, and 0.6–1.5 times in eight shaken events; a tenth on the elastic bed.",
+                    "One footing rocked slowly on dry sand: moment within 11% to 14 mrad and 5–14% low beyond. "
+                    + "With the sand that settles under cycles (the default), settlement 1.3–1.7 times that "
+                    + "measured, and 0.4–1.3 times in eight shaken events; a tenth on the elastic bed.",
                 document: "validation.md#a-footing-rocked-on-dry-sand")
         case .cyclicSand:
             return Entry(
                 title: "Sand that settles under cycles", affects: structure, limit: nil,
                 note:
-                    "Settlement under rocking 0.6–1.5 times that of eight shaken centrifuge events (FoRDy) and "
-                    + "1.7–2.3 times a slowly rocked one's (FoRCy), against a tenth on the elastic bed; a sixth to "
-                    + "a half of the energy the shaken footings dissipated.",
+                    "Settlement under rocking 0.4–1.3 times that of eight shaken centrifuge events (FoRDy) and "
+                    + "1.3–1.7 times a slowly rocked one's (FoRCy), its heave fitted on the latter, against a tenth "
+                    + "on the elastic bed; a sixth to two thirds of the energy the shaken footings dissipated, "
+                    + "damping ratios 10–27% against 17–32%.",
                 document: "validation.md#a-footing-shaken-on-dry-sand")
         case .freeBase:
             return Entry(
