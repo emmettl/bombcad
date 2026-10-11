@@ -126,6 +126,7 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [Large scenes](docs/large-scenes.md) | Bursts of hundreds of tonnes to kilotonnes over kilometres: accuracy, cost and grids against Kingery–Bulmash, terrain at scale |
 | [Validation](docs/validation.md)            | Every comparison with measurements and theory, with a summary   |
 | [Validation review](docs/validation-review.md) | An independent review of the record's claims, ranked by severity |
+| [Blind tests](docs/blind-tests.md) | The protocol and register of tests predicted on frozen defaults before their measurements are unsealed |
 | [Standing of results](docs/standing.md)     | Each result's evidential standing, derived from the scene and carried with runs and exports |
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |
 | [Street interactions](docs/street-interaction.md) | Matched neighbourhood comparisons, spatial exposure maps and resolution sensitivity |

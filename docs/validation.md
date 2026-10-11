@@ -2773,7 +2773,8 @@ In rough order of value:
    test bending, shear without stirrups statically, and shear with and without stirrups under
    impact.
 3. A structural test run blind on frozen defaults: every default here was chosen with the
-   comparisons above in view.
+   comparisons above in view. The first, Hrynyk's slabs struck by a falling weight, is set up
+   under the [blind-test protocol](blind-tests.md).
 4. The concrete's tensile strain-rate law at 1 to 10 per second, which decides the heavy
    impacts above: tests that separate the material's strengthening from the specimen's
    inertia, or a second impact programme to test a change against.
