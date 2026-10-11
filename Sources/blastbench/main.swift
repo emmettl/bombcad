@@ -1961,6 +1961,70 @@ func removalCensus(_ structure: StructureSolver, i i0: Int, j j0: Int) {
 
 /// Hupfauf's slabs under contact charges: the debris's velocity off the protective face, the
 /// spall crater and the breach, against the thesis's measurements and fits.
+func runMasonryDebris() throws {
+    let names = option("tests").map { $0.split(separator: ",").map(String.init) }
+    let cellSize = option("dx").flatMap { Float($0) } ?? 0.05
+    let elementSize = option("element").flatMap { Float($0) } ?? 0.025
+    let duration = option("time").flatMap { Double($0) } ?? 1.5
+    print("Masonry walls under long-duration blast (Keys and Clubley, 2017)")
+    print(
+        "Air cells \(format(Double(cellSize), 3)) m, elements \(format(Double(elementSize) * 1000, 1)) mm; "
+            + "\(format(duration * 1000, 0)) ms\n")
+    func shares(_ values: [Float]) -> String {
+        values.map { String(format: "%3.0f%%", $0 * 100) }.joined(separator: " ")
+    }
+    for test in MasonryDebrisTest.tests where names?.contains(test.name) ?? true {
+        let result = try MasonryDebrisTest.run(
+            device: device, test: test, cellSize: cellSize, elementSize: elementSize, duration: duration,
+            adjust: { scenario in
+                if var structure = scenario.structure {
+                    applyRateOptions(&structure)
+                    scenario.structure = structure
+                }
+            },
+            progress: flag("progress")
+                ? { line in
+                    print("  " + line)
+                    fflush(stdout)
+                } : nil,
+            inspect: { structure in
+                if flag("no-debris-drag") { structure.debrisDrag = false }
+            })
+        let bands = test.bands.map {
+            "\(format(Double($0.range.lowerBound), 0))-\(format(Double($0.range.upperBound), 0)) m"
+        }
+        print(
+            "\(test.name): \(format(Double(test.width), 1)) m wide, \(format(Double(test.overpressure) / 1000, 0)) kPa "
+                + "for \(format(Double(test.duration) * 1000, 0)) ms; \(test.remark)")
+        print(
+            "  incident peak \(format(Double(result.incidentPeak) / 1000, 1)) kPa, impulse "
+                + "\(format(Double(result.incidentImpulse), 0)) Pa s (measured \(format(Double(test.impulse), 0))); "
+                + "front face peak \(format(Double(result.reflectedPeak) / 1000, 1)) kPa")
+        print(
+            "  bands             "
+                + bands.map { $0.padding(toLength: 9, withPad: " ", startingAt: 0) }.joined(separator: " "))
+        print("  measured          " + shares(test.bands.map(\.share)))
+        print("  model, landed     " + shares(result.landedShares))
+        print("  model, at rest    " + shares(result.finalShares))
+        print(
+            "  farthest: measured \(format(Double(test.farthest), 0)) m; model \(format(Double(result.farthestLanded), 1)) m landed, "
+                + "\(format(Double(result.farthestFinal), 1)) m at rest")
+        print(
+            "  cracks at 50 ms: measured \(test.crackHeights.map { format(Double($0), 1) }.joined(separator: ", ")) m; "
+                + "model \(result.crackHeights.map { format(Double($0), 2) }.joined(separator: ", ")) m")
+        print(
+            "  mass by metre at rest (kg): "
+                + result.final.prefix(20).map { format(Double($0), 0) }.joined(separator: " "))
+        print(
+            "  mass by metre landed (kg):  "
+                + result.landed.prefix(20).map { format(Double($0), 0) }.joined(separator: " "))
+        print(
+            "  \(format(Double(result.totalMass), 0)) kg; \(result.summary.erodedElements) elements failed; "
+                + "\(format(result.wallSeconds, 0)) s\n")
+        fflush(stdout)
+    }
+}
+
 func runContact() throws {
     let names = option("tests").map { $0.split(separator: ",").map(String.init) }
     let cellSize = option("dx").flatMap { Float($0) } ?? 0.02
@@ -4375,6 +4439,7 @@ do {
     case "closein": try runCloseIn()
     case "twoface": try runTwoFace()
     case "contact": try runContact()
+    case "keys": try runMasonryDebris()
     case "closeair": try runCloseAir()
     case "gas": try runGasPressure()
     case "chamber": try runChamber()
