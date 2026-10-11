@@ -2110,7 +2110,8 @@ final class SimulationModel {
     private func configureAir(_ solver: BlastSolver) {
         ProjectRunSettings.configureAir(
             &solver.configuration, detailedCharge: settings.detailedCharge, sharpShocks: settings.sharpShocks,
-            shockLevels: settings.shockLevels, gravity: settings.gravity)
+            shockLevels: settings.shockLevels, gravity: settings.gravity,
+            shockThreshold: settings.shockThreshold)
     }
 
     private func rebuild() {

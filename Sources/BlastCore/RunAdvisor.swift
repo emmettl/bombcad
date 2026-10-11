@@ -135,9 +135,10 @@ public struct Advice: Sendable, Equatable {
 
     public var summary: String {
         guard let chosen else { return "No setting fits this Mac's memory." }
-        let cost = RunAdvisor.duration(chosen.cost.seconds)
+        let seconds = chosen.cost.seconds
+        let cost = seconds < 1 ? "under a second" : "about " + RunAdvisor.duration(seconds)
         let verb = kind == .cheapestMeeting ? (met ? "Cheapest for" : "Nearest to") : "Best within"
-        return "\(verb) \(target.summary): \(chosen.setting.summary), about \(cost)."
+        return "\(verb) \(target.summary): \(chosen.setting.summary), \(cost)."
     }
 }
 
@@ -150,11 +151,14 @@ public enum RunAdvisor {
 
     /// The settings worth weighing for `scenario`: cells scaled to its charge and the presets,
     /// unrefined or refined once or twice at each threshold, with and without afterburning, and
-    /// no grid larger than `maximumCells` or 2,048 cells a side.
+    /// no grid larger than `maximumCells` or 2,048 cells a side. A scene with blocks, structures or
+    /// other contents keeps to cells no coarser than the coarse preset, which they were built for.
     public static func candidates(_ scenario: Scenario, maximumCells: Int) -> [AdvisorSetting] {
         let scale = cbrt(max(scenario.charge.mass, 1e-6))
         var sizes = Set(scaledCells.map { round2(scale * $0) } + presetCells)
+        let coarsest = scenario.contentBounds == nil ? Float.infinity : presetCells[0]
         sizes = sizes.filter { size in
+            guard size <= coarsest else { return false }
             let grid = scenario.grid(cellSize: size)
             return grid.cellCount <= maximumCells && max(grid.nx, grid.ny, grid.nz) <= 2048 && size >= 0.01
         }
@@ -226,9 +230,10 @@ public enum RunAdvisor {
                     ?? "no comparison on record covers this scene"
                 unmet.append("No setting has an expected error for \(quantity.title): \(reason).")
             }
+            // With nothing to aim by, the settings as they are.
+            let fallback = weighed.first { $0.setting == current } ?? weighed.first
             return Advice(
-                target: target, kind: .cheapestMeeting, chosen: nearest ?? weighed.first, met: false,
-                unmet: unmet,
+                target: target, kind: .cheapestMeeting, chosen: nearest ?? fallback, met: false, unmet: unmet,
                 candidates: weighed)
         case .seconds(let budget):
             let affordable = weighed.filter { $0.cost.seconds <= budget }
@@ -241,12 +246,14 @@ public enum RunAdvisor {
                     candidates: weighed)
             }
             // The best of the peaks, impulse and deflection the scene has bands for, the worst of them
-            // weighed first.
+            // weighed first; where none has one, or they tie, the finest cells near the shock.
             func score(_ c: AdvisorCandidate) -> Double { c.error.values.max() ?? .infinity }
+            func finest(_ c: AdvisorCandidate) -> Float {
+                let levels = c.setting.refinement > 1 ? c.setting.levels : 0
+                return c.setting.cellSize / pow(Float(c.setting.refinement), Float(levels))
+            }
             let best = affordable.min {
-                (score($0), $0.cost.seconds, closeness($0.setting)) < (
-                    score($1), $1.cost.seconds, closeness($1.setting)
-                )
+                (score($0), finest($0), $0.cost.seconds) < (score($1), finest($1), $1.cost.seconds)
             }!
             return Advice(
                 target: target, kind: .bestWithinBudget, chosen: best, met: true, unmet: [],

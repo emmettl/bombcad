@@ -68,13 +68,15 @@ The domains are 3.3 km square and 0.83 km high. The times are this Mac's (an M4 
 other work, so ±30%).
 
 Positive impulse is 82–90% of Kingery–Bulmash's beyond Z = 2 on every grid (76–101% at Z = 1),
-as in the open-air record without afterburning. On the uniform grids, along the mirrored side:
+as in the open-air record without afterburning. Along the mirrored side, on the uniform grids and
+with afterburning:
 
 | Grid | Scaled cell | Z = 1 | 2 | 5 | 10 | 14 | 20 | 28 | 40 |
 |---|---|---|---|---|---|---|---|---|---|
 | 16 m | 0.20 | 101% | 89% | 86% | 85% | 85% | 84% | 84% | 84% |
 | 8 m | 0.10 | 85% | 82% | 85% | 84% | 83% | 82% | 82% | 83% |
 | 4 m | 0.05 | 79% | 81% | 86% | 84% | 83% | 83% | 82% | 83% |
+| 16 m refined twice at 0.02, afterburning | 0.05 | 90% | 91% | 107% | 106% | 102% | 107% | 101% | 102% |
 
 With afterburning and hot air (the app's "Afterburning and hot air"), on 16 m cells refined twice at threshold 0.02, it is **90–108% out
 to Z = 40**, and the peaks 75–87% out to Z = 20. The arrival time is within 2% beyond Z = 10 on

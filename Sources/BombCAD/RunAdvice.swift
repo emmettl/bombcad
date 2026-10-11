@@ -35,10 +35,10 @@ extension ProjectRunSettings {
         var configuration = SolverConfiguration()
         Self.configureAir(
             &configuration, detailedCharge: detailedCharge, sharpShocks: sharpShocks,
-            shockLevels: shockLevels ?? 1, gravity: gravity ?? false)
-        configuration.refinementThreshold = shockThreshold ?? 0.1
+            shockLevels: shockLevels ?? 1, gravity: gravity ?? false, shockThreshold: shockThreshold ?? 0.1)
         return RunCost.estimate(
-            scenario, cellSize: (Resolution(rawValue: resolution) ?? .medium).cellSize, configuration: configuration,
+            scenario, cellSize: (Resolution(rawValue: resolution) ?? .medium).cellSize,
+            configuration: configuration,
             duration: duration)
     }
 }
@@ -50,7 +50,8 @@ extension SimulationInputs {
         var configuration = SolverConfiguration()
         ProjectRunSettings.configureAir(
             &configuration, detailedCharge: settings.detailedCharge, sharpShocks: settings.sharpShocks,
-            shockLevels: settings.shockLevels ?? 1, gravity: settings.gravity ?? false)
+            shockLevels: settings.shockLevels ?? 1, gravity: settings.gravity ?? false,
+            shockThreshold: settings.shockThreshold ?? 0.1)
         return RunAdvisor.advise(
             scenario, configuration: configuration, duration: settings.duration, target: target,
             current: settings.advisorSetting, memory: memory, maximumCells: ProjectDocument.maximumCells
@@ -74,16 +75,23 @@ extension SimulationInputs {
                 unbanded[quantity] = "the scene has no gauges"
                 continue
             }
-            if let missing = gauges.first(where: { $0[keyPath: path] == nil }) {
-                unbanded[quantity] = "\(missing.name): \(missing.note ?? "no comparison on record covers it")"
-                continue
+            let banded = gauges.compactMap { $0[keyPath: path] }
+            let missing = gauges.filter { $0[keyPath: path] == nil }
+            if let first = missing.first {
+                let reason = (first.note ?? "no comparison on record covers it").trimmingCharacters(
+                    in: CharacterSet(charactersIn: "."))
+                unbanded[quantity] =
+                    missing.count == 1
+                    ? "\(first.name): \(reason)" : "\(first.name) and \(missing.count - 1) more: \(reason)"
             }
-            error[quantity] = gauges.map { deviation($0[keyPath: path]!) }.max()
+            // The worst of the gauges that have a band; those without one are said so.
+            if !banded.isEmpty { error[quantity] = banded.map(deviation).max() }
         }
         if let band = standing.band(.peakDeflection) {
             error[.deflection] = deviation(band)
         } else if !scenario.structuralObjects.isEmpty {
-            unbanded[.deflection] = standing[.structuralResponse]?.unbanded?.first ?? "no comparison on record covers it"
+            unbanded[.deflection] =
+                standing[.structuralResponse]?.unbanded?.first ?? "no comparison on record covers it"
         } else {
             unbanded[.deflection] = "the scene has no structure"
         }
@@ -146,12 +154,16 @@ struct AdvisorSection: View {
                 }
                 .labelsHidden()
                 if quantity == .time {
-                    TextField("Minutes", value: $minutes, format: .number.precision(.significantDigits(1...3)))
-                        .frame(maxWidth: 56).multilineTextAlignment(.trailing)
+                    TextField(
+                        "Minutes", value: $minutes, format: .number.precision(.significantDigits(1...3))
+                    )
+                    .frame(maxWidth: 56).multilineTextAlignment(.trailing)
                     Text("min")
                 } else {
-                    TextField("Percent", value: $percent, format: .number.precision(.significantDigits(1...3)))
-                        .frame(maxWidth: 56).multilineTextAlignment(.trailing)
+                    TextField(
+                        "Percent", value: $percent, format: .number.precision(.significantDigits(1...3))
+                    )
+                    .frame(maxWidth: 56).multilineTextAlignment(.trailing)
                     Text("%")
                 }
                 Spacer()
@@ -166,9 +178,22 @@ struct AdvisorSection: View {
                 if let chosen = advice.chosen {
                     Text(details(chosen)).font(.caption).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    ForEach(
+                        AdvisorQuantity.allCases.filter {
+                            chosen.error[$0] != nil && chosen.unbanded[$0] != nil
+                        }, id: \.self
+                    ) {
+                        quantity in
+                        Text("Not counted in \(quantity.title): \(chosen.unbanded[quantity]!).").font(
+                            .caption
+                        )
+                        .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    }
                     ForEach(advice.unmet, id: \.self) { line in
-                        Label(line, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
-                            .fixedSize(horizontal: false, vertical: true)
+                        Label(line, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(
+                            .orange
+                        )
+                        .fixedSize(horizontal: false, vertical: true)
                     }
                     Button("Apply") { model.apply(chosen.setting) }
                         .disabled(chosen.setting == ProjectRunSettings(model: model).advisorSetting)
@@ -195,7 +220,8 @@ struct AdvisorSection: View {
 
     private func suggest() {
         let inputs = SimulationInputs(
-            scenario: model.settings.scenario, settings: ProjectRunSettings(model: model), thermal: model.thermalSpec)
+            scenario: model.settings.scenario, settings: ProjectRunSettings(model: model),
+            thermal: model.thermalSpec)
         let target = target
         let memory = model.advisorMemory
         working = true

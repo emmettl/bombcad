@@ -50,10 +50,9 @@ public enum RunCost {
     public static let burningBytesPerCell = 73
 
     /// The overpressure, in pascals, above which the refined cells follow a shock flagged at
-    /// `threshold`: about 20 kPa at 0.1 and 5 kPa at 0.02 (docs/large-scenes.md), twice the
-    /// threshold's share of ambient pressure.
+    /// `threshold`, as `ValidationTables.refinementReach` has it.
     public static func refinementReach(threshold: Float, ambient: Float = 101_325) -> Float {
-        2 * threshold * ambient
+        Float(ValidationTables.refinementReach(threshold: Double(threshold), ambient: Double(ambient)))
     }
 
     /// The expected cost of running `scenario` on cells of `cellSize` under `configuration` for

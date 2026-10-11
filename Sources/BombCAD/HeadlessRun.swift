@@ -851,7 +851,9 @@ enum HeadlessRun {
     nonisolated static func advise(_ options: Options, target: AdvisorTarget) throws -> [String] {
         let document = try ProjectDocument.read(from: options.project)
         let inputs = try inputs(for: document, options: options)
-        let memory = Int(min(MTLCreateSystemDefaultDevice()?.recommendedMaxWorkingSetSize ?? 16 << 30, UInt64(Int.max)) / 10 * 7)
+        let memory = Int(
+            min(MTLCreateSystemDefaultDevice()?.recommendedMaxWorkingSetSize ?? 16 << 30, UInt64(Int.max))
+                / 10 * 7)
         let advice = inputs.advice(for: target, memory: memory)
         var lines = [advice.summary]
         lines += advice.unmet.map { "  " + $0 }
@@ -860,11 +862,24 @@ enum HeadlessRun {
             var parts = AdvisorQuantity.allCases.compactMap { quantity in
                 candidate.error[quantity].map { String(format: "%@ %.0f%%", quantity.rawValue, $0 * 100) }
             }
-            parts.append(String(format: "%.1fM cells, %.1f GB", Double(candidate.cost.cells) / 1e6, Double(candidate.cost.memory) / 1e9))
-            parts.append(RunAdvisor.duration(candidate.cost.seconds) + (factor.map { ", " + RunAdvisor.duration(candidate.cost.seconds * $0) + " here lately" } ?? ""))
+            parts.append(
+                String(
+                    format: "%.1fM cells, %.1f GB", Double(candidate.cost.cells) / 1e6,
+                    Double(candidate.cost.memory) / 1e9))
+            parts.append(
+                RunAdvisor.duration(candidate.cost.seconds)
+                    + (factor.map { ", " + RunAdvisor.duration(candidate.cost.seconds * $0) + " here lately" }
+                        ?? ""))
             return candidate.setting.summary + ": " + parts.joined(separator: "; ")
         }
-        if let chosen = advice.chosen { lines.append("  Chosen: " + describe(chosen)) }
+        if let chosen = advice.chosen {
+            lines.append("  Chosen: " + describe(chosen))
+            for quantity in AdvisorQuantity.allCases {
+                if chosen.error[quantity] != nil, let reason = chosen.unbanded[quantity] {
+                    lines.append("  Not counted in \(quantity.title): \(reason).")
+                }
+            }
+        }
         let current = inputs.settings.advisorSetting
         if let now = advice.candidates.first(where: { $0.setting == current }) {
             lines.append("  Now: " + describe(now))
@@ -874,7 +889,8 @@ enum HeadlessRun {
             guard candidate.setting != advice.chosen?.setting else { return false }
             switch target {
             case .fidelity(let quantity, _):
-                return (candidate.error[quantity] ?? .infinity) < (advice.chosen?.error[quantity] ?? .infinity)
+                return (candidate.error[quantity] ?? .infinity)
+                    < (advice.chosen?.error[quantity] ?? .infinity)
             case .seconds: return candidate.cost.seconds < (advice.chosen?.cost.seconds ?? 0)
             }
         }.prefix(3)
@@ -911,7 +927,8 @@ enum HeadlessRun {
             let wallSeconds = Double(wall.components.seconds) + Double(wall.components.attoseconds) * 1e-18
             // How this run compared with the cost model, for the advisor to scale by.
             RunCostStore.standard.record(
-                estimate: result.run.settings.costEstimate(result.run.scenario).seconds, measured: wallSeconds)
+                estimate: result.run.settings.costEstimate(result.run.scenario).seconds, measured: wallSeconds
+            )
             print(summary(result.run, wallSeconds: wallSeconds, blastGPUSeconds: result.blastGPUSeconds))
             if let fragments = result.fragments { print("  " + fragments.summary) }
             for stream in result.streams { print("  " + stream) }
