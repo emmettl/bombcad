@@ -236,17 +236,21 @@ down against rebound).
 - The 2015 paper (*International Journal of Impact Engineering* 75, 162–173) and *ACI SP-306*
   are paywalled: an accepted manuscript can be asked of the authors, or read through a library.
 
-The theses probably answer most of the details; download them first (MOspace refuses automated
-access but opens in a browser). The request is for what they plot but do not tabulate: the
-digital histories and the rig.
+**Both theses are now reserved for blind test 3** ([Blind tests](blind-tests.md)): downloaded,
+sealed unread in `/Volumes/StudioData/bombcad/blind/reynolds-sealed/` and `vasudevan-sealed/`,
+and no session opens them, or the contest's high-strength results anywhere, until the judge has
+assessed them. So this request should wait for that assessment, or be sent with whatever comes
+back going straight into the sealed folder unread. It asks for what the theses plot but do not
+tabulate: the digital histories and the rig.
 
 **Who holds it.** Ganesh Thiagarajan, Professor of Civil Engineering at UMKC, the NSF CAREER
 project's principal investigator (CMMI 0748085) and organiser of the ACI 447/370 Blast Blind
 Simulation Contest; the tests were run in ERDC's Blast Load Simulator, Vicksburg. His address
 is on UMKC's directory (a 2010s article gives a umkc.edu address; check it is current).
 
-**Status.** Theses open. The digital records are the group's; NSF-funded, so a polite request
-has a fair chance. Some may be ERDC's to release.
+**Status.** Theses open, and sealed for blind test 3. The digital records are the group's;
+NSF-funded, so a polite request has a fair chance. Some may be ERDC's to release. Ask the
+blind-test judge before sending.
 
 **Draft.**
 
