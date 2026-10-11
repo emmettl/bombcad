@@ -149,4 +149,54 @@ struct BodyContactTests {
         #expect(solver.interObjectContactDetected)
         #expect(!solver.bodiesInContact)
     }
+
+    @Test(
+        "Two bodies loaded by one blast exchange with the air what each does alone, neither duplicated nor misattributed"
+    )
+    func exchangeAccounting() throws {
+        var first = StructureModel(
+            solids: [Box(min: SIMD3(4, 5, 1), max: SIMD3(4.5, 7, 3))], material: material, elementSize: 0.25,
+            fixedBase: false)
+        first.elementKind = .solid
+        var second = StructureModel(
+            solids: [Box(min: SIMD3(9.5, 4.5, 1), max: SIMD3(10, 7.5, 3))], material: material,
+            elementSize: 0.5,
+            fixedBase: false)
+        second.elementKind = .shell
+        /// What the bodies gained and the air lost (horizontal, N s), with the bodies given.
+        func exchange(_ models: [StructureModel]) throws -> (bodies: [Double], air: Double) {
+            var scene = Scenario(
+                name: "Bodies", domainSize: SIMD3(14, 12, 6), boxes: [],
+                charge: Charge(mass: 0.5, position: SIMD3(7, 6, 2)), structure: models[0])
+            for model in models.dropFirst() { try scene.addStructureObject(model, name: "Second") }
+            var configuration = configuration()
+            configuration.twoWayCoupling = true
+            let solver = try BlastSolver(
+                device: device, scenario: scene, cellSize: 0.25, configuration: configuration)
+            setUp(solver, speed: 0)
+            let air = solver.momentum()
+            // The wave is still inside the domain, so nothing has left through its open faces.
+            solver.advance(until: 0.005)
+            // In the scene's order.
+            let gained = scene.structuralObjects.map { object in
+                motion(solver)[solver.bodies.firstIndex { $0.id == object.id }!].momentum.x
+            }
+            return (gained, (air - solver.momentum()).x)
+        }
+        let together = try exchange([first, second])
+        let alone = [try exchange([first]), try exchange([second])]
+        // Each body takes what it takes alone; the air loses what it loses to each alone.
+        for n in 0..<2 {
+            #expect(abs(together.bodies[n]) > 10)
+            #expect(abs(together.bodies[n] - alone[n].bodies[0]) < 0.02 * abs(alone[n].bodies[0]))
+        }
+        let air = alone[0].air + alone[1].air
+        #expect(abs(together.air - air) < 0.02 * abs(alone[0].air - alone[1].air))
+        // A body's load is read from the pressure at its faces, not from the momentum the air puts
+        // through them, so it takes a few per cent less than the air loses to it (3 and 6% here).
+        for n in 0..<2 {
+            #expect(abs(alone[n].bodies[0]) < abs(alone[n].air))
+            #expect(abs(alone[n].bodies[0] - alone[n].air) < 0.1 * abs(alone[n].air))
+        }
+    }
 }
