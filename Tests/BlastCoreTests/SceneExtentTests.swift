@@ -5,7 +5,7 @@ import simd
 @testable import BlastCore
 
 /// The domain's extent: what it must hold, its headroom, and open scenes fitted to their charge.
-@Suite("Scene extent")
+@Suite("Scene extent", .timeLimit(.minutes(120)))
 struct SceneExtentTests {
     @Test("An open scene holds nothing but its charge; blocks and further charges are content")
     func contentBounds() {

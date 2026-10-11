@@ -7,7 +7,7 @@ import simd
 
 /// A precast beam's seat cycled along its corbel, against Batalha et al.'s tests
 /// (`PrecastSeatTest`, data in `Samples/PrecastSeat`).
-@Suite("Precast seat")
+@Suite("Precast seat", .gpuThreads)
 struct PrecastSeatTests {
     let samples = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         .deletingLastPathComponent().appendingPathComponent("Samples/PrecastSeat")

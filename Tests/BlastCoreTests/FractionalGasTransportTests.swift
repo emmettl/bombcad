@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Fractional gas transport reference")
+@Suite("Fractional gas transport reference", .timeLimit(.minutes(120)))
 struct FractionalGasTransportTests {
     @Test("Transport uses frozen donor states independently of face traversal order")
     func faceOrder() throws {

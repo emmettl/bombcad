@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// Cracks that soften by their strain averaged across their band (`crackAveraging`).
-@Suite("Nonlocal cracking")
+@Suite("Nonlocal cracking", .gpuThreads)
 struct NonlocalCrackingTests {
     let device: MTLDevice
 

@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// Checks that the air loads shells correctly and that their solid mask follows them.
-@Suite("Shell coupling")
+@Suite("Shell coupling", .gpuThreads)
 struct ShellCouplingTests {
     let device: MTLDevice
 

@@ -50,7 +50,7 @@ private func elasticColumn(
     return (peak, peakTime, displacement)
 }
 
-@Suite("Ground shock")
+@Suite("Ground shock", .gpuThreads)
 struct GroundShockTests {
     @Test("The response is the plane-wave relation, shaved with depth by 1/(1 + z/(c t_d))")
     func response() {

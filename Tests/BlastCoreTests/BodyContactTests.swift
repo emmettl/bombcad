@@ -7,7 +7,7 @@ import simd
 
 /// Independent deformable bodies meeting through contact. Mechanical checks, with the air
 /// unaware of the bodies so that only contact moves momentum between them.
-@Suite("Contact between independent bodies", .serialized)
+@Suite("Contact between independent bodies", .serialized, .gpuThreads)
 struct BodyContactTests {
     let device: MTLDevice
     init() throws { device = try #require(MTLCreateSystemDefaultDevice()) }

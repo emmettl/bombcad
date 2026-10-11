@@ -5,7 +5,7 @@ import simd
 @testable import BlastCore
 
 /// The cost model against the runs timed on an unloaded Mac in docs/performance.md.
-@Suite("Run cost")
+@Suite("Run cost", .timeLimit(.minutes(120)))
 struct RunCostTests {
     private func configured(refine: Int = 1, levels: Int = 1, burning: Bool = false) -> SolverConfiguration {
         var configuration = SolverConfiguration()

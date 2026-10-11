@@ -7,7 +7,7 @@ import simd
 
 @Suite(
     "The receivers' view of the fireball on the GPU's ray-tracing hardware",
-    .enabled(if: MTLCreateSystemDefaultDevice()?.supportsRaytracing == true))
+    .enabled(if: MTLCreateSystemDefaultDevice()?.supportsRaytracing == true), .gpuThreads)
 struct ThermalVisibilityTests {
     private func scene(_ blocks: [Box], domain: SIMD3<Float> = SIMD3(100, 100, 50)) -> FragmentScene {
         var scenario = Scenario(

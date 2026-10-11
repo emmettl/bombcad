@@ -3,7 +3,7 @@ import Testing
 
 @testable import BlastCore
 
-@Suite("Sampling uncertain inputs for an ensemble")
+@Suite("Sampling uncertain inputs for an ensemble", .timeLimit(.minutes(120)))
 struct EnsembleSamplingTests {
     @Test("A Latin hypercube uses each stratum once in every dimension, the same for the same seed")
     func hypercube() {
@@ -94,7 +94,7 @@ struct EnsembleSamplingTests {
     }
 }
 
-@Suite("Rank correlation of an output with an input")
+@Suite("Rank correlation of an output with an input", .timeLimit(.minutes(120)))
 struct RankCorrelationTests {
     @Test("Spearman's coefficient follows the order, not the shape, and ties share their rank")
     func spearman() {

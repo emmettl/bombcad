@@ -7,7 +7,7 @@ import simd
 
 /// IFC elements meshed as a structure of shells and beams (`IFCStructure`), from elements built
 /// of boxes here so that the converter is not needed.
-@Suite("IFC structure")
+@Suite("IFC structure", .gpuThreads)
 struct IFCStructureTests {
     /// An element of closed boxes, each turned by `turn` radians about y through its own centre.
     /// Boxes that would touch are drawn 1 mm apart, as one element's mesh cannot hold touching

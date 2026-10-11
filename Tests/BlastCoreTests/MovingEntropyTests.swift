@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Analytical nonuniform moving-gas transport")
+@Suite("Analytical nonuniform moving-gas transport", .timeLimit(.minutes(120)))
 struct MovingEntropyTests {
     private let velocity = SIMD3<Double>(300, 100, -40)
 

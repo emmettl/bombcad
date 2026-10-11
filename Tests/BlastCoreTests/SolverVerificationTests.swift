@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// Verification of the Euler solver against problems with known solutions.
-@Suite("Solver verification")
+@Suite("Solver verification", .gpuThreads)
 struct SolverVerificationTests {
     let device: MTLDevice
 

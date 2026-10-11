@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Prescribed translating box space/time geometry")
+@Suite("Prescribed translating box space/time geometry", .timeLimit(.minutes(120)))
 struct TranslatingBoxSpaceTimeTests {
     @Test("A moving slab integrates area, first moment, volume and signed pressure work")
     func slab() throws {

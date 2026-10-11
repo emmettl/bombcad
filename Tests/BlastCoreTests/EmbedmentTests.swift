@@ -8,7 +8,7 @@ import simd
 /// Footings set into the soil (`Embedment`, `FootingSides`) against the standard embedment
 /// factors: Gazetas's for static stiffness, Brinch Hansen's for bearing, Rankine's passive and
 /// active pressures for sliding.
-@Suite("Embedded footings")
+@Suite("Embedded footings", .gpuThreads)
 struct EmbedmentTests {
     let device: MTLDevice
     let material = StructureMaterial.elastic(density: 2400, youngsModulus: 30e9, poissonRatio: 0.2)

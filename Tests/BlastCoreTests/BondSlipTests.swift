@@ -7,7 +7,7 @@ import simd
 
 /// Bars that slip in their concrete (`BondSlip`), against the fib Model Code 2010's crack
 /// spacing and tension stiffening for a reinforced tie.
-@Suite("Bond slip")
+@Suite("Bond slip", .gpuThreads)
 struct BondSlipTests {
     let device: MTLDevice
 

@@ -27,7 +27,7 @@ private func uniform(
     return (a, b)
 }
 
-@Suite("Fragments and air slices")
+@Suite("Fragments and air slices", .gpuThreads)
 struct FragmentCloudTests {
     @Test("Fragment scenes include every structural owner and preserve legacy decoding")
     func structuralOwners() throws {

@@ -8,7 +8,7 @@ import simd
 /// Rigid footings on soil (`Footing`, `FootingBed`, `FootingImpedance`) against theory: the
 /// half-space's static stiffness, a footing's heel lifting and its toe bearing, the cones'
 /// dynamic stiffness, and a layer's.
-@Suite("Footings")
+@Suite("Footings", .gpuThreads)
 struct FootingTests {
     let device: MTLDevice
     /// Stiff and elastic, so that the body's own deformation stays out of the way.

@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Sustained prescribed moving gas")
+@Suite("Sustained prescribed moving gas", .timeLimit(.minutes(120)))
 struct MovingTrajectoryTests {
     @Test("Prescribed translation preserves the exact orientation and mechanical state")
     func poseCopy() throws {

@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// Joints between materials, and glass.
-@Suite("Interfaces and glass")
+@Suite("Interfaces and glass", .gpuThreads)
 struct InterfaceTests {
     let device: MTLDevice
 

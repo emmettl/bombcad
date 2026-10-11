@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// The blast's first moments solved in one dimension and mapped onto the grid.
-@Suite("Mapped charge")
+@Suite("Mapped charge", .gpuThreads)
 struct MappedChargeTests {
     @Test("The one-dimensional blast keeps its energy and spreads as Sedov and Taylor say")
     func sphericalBlast() {

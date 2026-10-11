@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Limited tube reconstruction")
+@Suite("Limited tube reconstruction", .timeLimit(.minutes(120)))
 struct LimitedTubeFluxTests {
     @Test("Stronger analytical waves improve with refinement across merge policies")
     func strongAccuracy() throws {

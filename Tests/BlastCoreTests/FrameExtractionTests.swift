@@ -5,7 +5,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Cutting the air out on the GPU at a frame")
+@Suite("Cutting the air out on the GPU at a frame", .gpuThreads)
 struct FrameExtractionTests {
     private let region = Box(min: SIMD3(1, 1, 0), max: SIMD3(7, 7, 4))
 

@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Connected gas control volumes")
+@Suite("Connected gas control volumes", .timeLimit(.minutes(120)))
 struct ConnectedGasGroupsTests {
     @Test("Clipped axis-aligned and rotated boxes preserve uniform gas on two grids")
     func clippedGeometry() throws {

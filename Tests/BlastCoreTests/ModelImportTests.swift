@@ -5,7 +5,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Model import")
+@Suite("Model import", .gpuThreads)
 struct ModelImportTests {
     private func cube(_ size: SIMD3<Float> = SIMD3(repeating: 1), offset: SIMD3<Float> = .zero) -> String {
         let vertices: [SIMD3<Float>] = [
