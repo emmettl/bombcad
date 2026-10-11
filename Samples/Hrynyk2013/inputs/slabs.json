@@ -1,0 +1,64 @@
+{
+  "about": "Inputs only for the blind test of docs/blind-tests.md: three plain reinforced concrete slabs of T. D. Hrynyk's drop-weight programme (PhD thesis, University of Toronto, 2013, TSpace 1807/35851, CC BY 2.5 Canada), transcribed from its chapter 3, Tables 3.1, 3.2, 3.5, 4.1 and 4.2 (material properties only) and Figures 3.2, 3.4, 3.7, 3.8, 3.10, 3.13 and 3.17. No measured response of any slab is here. Lengths in mm, stresses in MPa, masses in kg, unless named otherwise.",
+  "units": {"length": "mm", "stress": "MPa", "mass": "kg", "speed": "m/s"},
+  "slab": {
+    "plan": [1800, 1800],
+    "thickness": 130,
+    "notes": "Square, cast flat. Its edges are called x and y below; in the test frame the slab sat turned 45 degrees in plan, its corners pointing north, east, south and west."
+  },
+  "reinforcement": {
+    "layout": "Four layers: an orthogonal mat near each face, the same bars and spacing in both directions and in both mats, placed symmetrically through the depth. In each mat one direction's bars lie outside the other's (the outer layer and the inner layer).",
+    "centre_to_centre_of_outer_layers": {"#3 bars": 89, "10M bars": 91},
+    "centre_to_centre_of_inner_layers": {"#3 bars": 70, "10M bars": 68},
+    "derived_clear_cover": {"#3 bars": 16, "10M bars": 14, "note": "(130 - outer centre-to-centre) / 2 minus half a bar diameter; derived here from Figure 3.2, not stated in the thesis"},
+    "anchorage": "Every bar has hooked ends: 180-degree hooks on the inner layers and 135-degree bends on the outer layers (Figure 3.4: hook legs about 80-100 mm). Bars run to about the slab's edges.",
+    "links": "Bent #3 links tie the two mats together in the corner regions beneath the bearings and in the slab's midpoint region (number and spacing not given). They are not shear reinforcement for the impact region; slab TH1, not in this test, had extra links there.",
+    "bars": {
+      "#3": {"diameter": 9.5, "area_mm2": 71, "E": 193000, "fy": 489, "yield_strain": 0.00254, "strain_at_hardening": 0.0267, "fu": 597, "strain_at_fu": 0.124},
+      "10M": {"diameter": 11.3, "area_mm2": 100, "E": 201700, "fy": 439, "yield_strain": 0.00219, "strain_at_hardening": 0.0266, "fu": 564, "strain_at_fu": 0.158},
+      "source": "Table 3.2, means of three coupon tests per bar type; rupture strain not given"
+    }
+  },
+  "concrete_common": {
+    "aggregate": "crushed limestone, 13 mm nominal maximum (16 mm stone sieved to 13 mm)",
+    "mix_per_m3": {"cement_GU_kg": 375, "sand_kg": 847, "water_kg": 139, "limestone_13mm_kg": 1080, "water_reducer_mL": 1000, "superplasticizer_mL": 3500, "retarder_mL": 488},
+    "fibres": "none in these three slabs",
+    "cylinders": "150 x 300 mm; test-age values are means of five match-cured cylinders tested at the time of the slab tests; secant modulus per ASTM C469",
+    "flexural": "152 x 152 x 533 mm prisms in third-point bending (ASTM C1609), tested after the slab tests; ft_star is the thesis's derived tensile strength from fr"
+  },
+  "specimens": {
+    "TH2": {"bars": "#3", "spacing": 130, "rho_per_layer_percent": 0.420, "fc_28_day": 58.0, "fc_test_age": 69.4, "strain_at_fc": 0.002554, "Ec_secant": 36800, "fr_flexural": 8.51, "ft_star": 4.68, "cylinder_test_age_days": 318},
+    "TH6": {"bars": "#3", "spacing": 200, "rho_per_layer_percent": 0.273, "fc_28_day": 55.5, "fc_test_age": 59.0, "strain_at_fc": 0.002670, "Ec_secant": 32000, "fr_flexural": 7.92, "ft_star": 4.35, "cylinder_test_age_days": 284},
+    "TH7": {"bars": "10M", "spacing": 130, "rho_per_layer_percent": 0.592, "fc_28_day": 54.9, "fc_test_age": 60.3, "strain_at_fc": 0.002635, "Ec_secant": 34600, "fr_flexural": 8.09, "ft_star": 4.45, "cylinder_test_age_days": 319}
+  },
+  "supports": {
+    "positions": "One at each corner, on the diagonal, 145 mm in from both edges: 1510 mm centre to centre along each edge.",
+    "vertical": "Held both ways: a spherical pin assembly and 20 mm bearing plate beneath (on a 200 kN load cell), and a 50 mm steel ball bearing in a socketed plate reacting against a stiff steel section above, tied down to the strong floor. The slab may rotate freely at each corner. Plan size of the bearing plates not given.",
+    "lateral": {
+      "east": "pin: no horizontal movement",
+      "west": "two-way roller: free horizontally",
+      "north": "one-way roller: free only along the north-east edge's direction (towards and away from the east corner)",
+      "south": "one-way roller: free only along the south-east edge's direction (towards and away from the east corner)"
+    },
+    "notes": "The top ball bearings let the slab slide and rotate under them; about 5 kN per tie rod reaches the slab. The thesis intends negligible rotational restraint and minimal axial (membrane) restraint."
+  },
+  "impactor": {
+    "construction": "A 300 mm square steel hollow section filled with concrete, with steel plates top and bottom and extra plates bolted to its sides for added mass; a vertical guide tube through its centre.",
+    "striking_face": "300 x 300 mm, flat, steel; strikes the slab's centre directly (no pad)",
+    "guide": "Runs on a vertical 64 mm steel rail ending 150 mm above the slab",
+    "drop_height_m": 3.26,
+    "impact_speed": 8.0,
+    "speed_note": "Nominal; high-speed video (3,000 frames/s) found little deviation in any event."
+  },
+  "loading_protocol": {
+    "sequence": "Repeated impacts on the same slab at its centre, the mass rising each time; the slab is left to come to rest between impacts (impacts on different days or the next day).",
+    "masses_kg_by_impact": [150, 180, 210, 240, 240, 270, 270, 300, 300, 300],
+    "termination": "Testing of a slab stopped when the protocol was complete, when the support reactions fell markedly from the previous impact's, or when damage made further impacts likely to destroy the instruments."
+  },
+  "measured_quantities_to_predict": {
+    "midpoint_displacement": "Potentiometers under the bottom face at the slab's centre, sampled at 2.4 kHz and (one of them) 96 kHz; the event's peak and its residual, from the event's start.",
+    "support_reactions": "The four corner load cells (upward reactions) at 96 kHz; the peak of their sum.",
+    "impact_force": "Drop-weight mass times its deceleration from two accelerometers on the weight, low-pass filtered (tenth-order Butterworth at 1.2 kHz, forward and backward).",
+    "damage": "Crack widths on both faces, scabbing of the bottom face, penetration of the weight into the top face, and whether the slab punched."
+  }
+}

@@ -9,8 +9,9 @@ import simd
 
 /// How far a result has been established, strongest first.
 public enum EvidenceLevel: String, Codable, CaseIterable, Sendable, Comparable {
-    /// Compared with measurements, and the comparison says how close it came.
-    case measured
+    /// Compared with measurements, and the comparison says how close it came (not that it
+    /// agrees: its bands say how far and which way).
+    case compared
     /// Shown to solve its equations correctly against exact or textbook solutions; not compared
     /// with measurements.
     case verified
@@ -22,7 +23,7 @@ public enum EvidenceLevel: String, Codable, CaseIterable, Sendable, Comparable {
 
     public var title: String {
         switch self {
-        case .measured: "Measured agreement"
+        case .compared: "Compared with measurement"
         case .verified: "Verified against theory"
         case .approximation: "Approximation"
         case .illustrative: "Illustrative"
@@ -32,7 +33,7 @@ public enum EvidenceLevel: String, Codable, CaseIterable, Sendable, Comparable {
     /// One word for a badge.
     public var badge: String {
         switch self {
-        case .measured: "Measured"
+        case .compared: "Compared"
         case .verified: "Verified"
         case .approximation: "Approximate"
         case .illustrative: "Illustrative"
@@ -40,6 +41,16 @@ public enum EvidenceLevel: String, Codable, CaseIterable, Sendable, Comparable {
     }
 
     private var rank: Int { Self.allCases.firstIndex(of: self)! }
+
+    /// Reads "measured", the level's name in standings recorded before 11 October 2026.
+    public init(from decoder: any Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        guard let level = Self(rawValue: raw == "measured" ? "compared" : raw) else {
+            throw DecodingError.dataCorrupted(
+                .init(codingPath: decoder.codingPath, debugDescription: "Unknown evidence level \(raw)"))
+        }
+        self = level
+    }
 
     /// Stronger evidence sorts first.
     public static func < (a: Self, b: Self) -> Bool { a.rank < b.rank }
@@ -122,7 +133,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-3"
+    public static let currentTable = "standing-table-5"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -172,7 +183,11 @@ public struct SceneStanding: Codable, Hashable, Sendable {
         var text = ["Standing (\(table)):"]
         for result in results {
             text.append("  \(result.kind.title): \(result.level.title). \(result.summary)")
-            for band in result.bands ?? [] { text.append("    Band: \(band.summary), for \(band.validity)") }
+            if let direction = result.direction { text.append("    \(direction)") }
+            for band in result.bands ?? [] {
+                text.append("    Band: \(band.summary), for \(band.validity)")
+                if let verdict = band.againstReference { text.append("      \(verdict)") }
+            }
             for note in result.unbanded ?? [] { text.append("    No band: \(note)") }
             for advice in result.regimes ?? [] {
                 let verdict = advice.suits.map { $0 ? "suits it" : "does not suit it" } ?? "note"
@@ -253,6 +268,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case terrain
     case deflagration
     case ventPanels
+    case importedEnvelopes
+    case mapBuildings
     // The structure.
     case shellElements
     case shellSectionShear
@@ -275,6 +292,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case footings
     case cyclicSand
     case freeBase
+    case importedStructure
     // Materials.
     case rateIndependent
     case designIncreaseFactors
@@ -320,6 +338,10 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .terrain: return inputs.scenario.terrain.map { !$0.isFlat } ?? false
         case .deflagration: return inputs.scenario.deflagration != nil
         case .ventPanels: return !(inputs.scenario.ventPanels ?? []).isEmpty
+        case .importedEnvelopes:
+            return !inputs.scenario.envelopeSources(.ifc).isEmpty
+                || !inputs.scenario.envelopeSources(.mesh).isEmpty
+        case .mapBuildings: return !inputs.scenario.envelopeSources(.map).isEmpty
         case .shellElements:
             return any { $0.elementKind == .shell || $0.solidElementKind.contains(.shell) }
         case .shellSectionShear: return any { $0.shellSectionShear }
@@ -358,6 +380,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
                     || s.supportAnchorages.contains { $0?.footing?.soil.cyclic != nil }
             }
         case .freeBase: return any { !$0.fixedBase }
+        case .importedStructure:
+            return inputs.scenario.importedModels?.contains(where: \.isStructural) == true
         case .rateIndependent: return structural.contains { !$0.rateDependent }
         case .designIncreaseFactors:
             return materials.contains { $0.concreteRateFactor != 1 || $0.steelRateFactor != 1 }
@@ -509,6 +533,23 @@ public enum StandingTable {
                     + "reaches 55–60% of the tests' peaks lit at the back wall, a sixth to a seventh lit in the "
                     + "middle, and far below the venting correlations.",
                 document: "deflagration.md#limitations")
+        case .importedEnvelopes:
+            return Entry(
+                title: "Envelopes from imports", affects: air + [.envelopeExposure], limit: .approximation,
+                note:
+                    "An import's sampled boxes kept as a stationary envelope, which on the IFC fixtures is the "
+                    + "rigid import to the bit; windows and doors are cut as their bounding boxes (under 0.6% on "
+                    + "the maps and 0.8% on the surface loading of the duplex); element identities and materials "
+                    + "are lost, and nothing deforms or fails.",
+                document: "building-envelopes.md#envelopes-from-imports-and-map-data")
+        case .mapBuildings:
+            return Entry(
+                title: "Buildings from map data", affects: air + [.envelopeExposure], limit: .illustrative,
+                note:
+                    "Footprints from map data extruded as solid blocks to a tagged height, or levels at 3 m, or an "
+                    + "assumed two levels: no openings, interiors or roof shapes, and positions and heights as "
+                    + "accurate as the map.",
+                document: "building-envelopes.md#buildings-from-map-data")
         case .ventPanels:
             return Entry(
                 title: "Vent panels", affects: air + structure + [.envelopeExposure], limit: .approximation,
@@ -644,6 +685,14 @@ public enum StandingTable {
                 title: "Base resting on the ground", affects: structure, limit: .verified,
                 note: "Nodes on the ground are held up, not held down (verified); no test.",
                 document: "validation.md#verification-against-theory")
+        case .importedStructure:
+            return Entry(
+                title: "Structure from IFC", affects: structure, limit: nil,
+                note:
+                    "Its shells and beams, their materials, the connections where they meet and the supports "
+                    + "were inferred from an IFC building and are listed in its report; the shell model's bands "
+                    + "apply only where all of them match what was compared, and the standing says where they do not.",
+                document: "structural-editing.md#structures-from-ifc")
         case .rateIndependent:
             return Entry(
                 title: "Rate-independent concrete", affects: structure, limit: .approximation,
@@ -735,13 +784,18 @@ public enum StandingTable {
         "Scenario.rigidObjects": .option([.freestandingBoxes]),
         "Scenario.rigidCars": .option([.freestandingCars]),
         "Scenario.importNotes": .input,
-        "Scenario.importedModels": .input,
+        "Scenario.importedModels": .option([.importedStructure]),
         "Scenario.charge": .input,
         "Scenario.additionalCharges": .input,
         "Scenario.gauges": .input,
         "Scenario.atmosphere": .input,
         "Scenario.reflectiveFaces": .option([.closedBoundaries]),
         "Scenario.terrain": .option([.terrain]),
+        "Scenario.attributions": .input,
+        "Scenario.envelopeSources": .option([.importedEnvelopes, .mapBuildings]),
+        "EnvelopeSource.objectID": .input,
+        "EnvelopeSource.kind": .option([.importedEnvelopes, .mapBuildings]),
+        "EnvelopeSource.detail": .input,
         "Scenario.deflagration": .option([.deflagration]),
         "Scenario.ventPanels": .option([.ventPanels]),
         "Deflagration.gas": .input,
@@ -1258,9 +1312,11 @@ struct StandingScene {
         }
         return result(
             kind, .illustrative,
-            "A gas deflagration: its flame converges on the thin-flame model in a closed vessel and is "
-                + "wrinkled by sub-grid turbulence, but its instabilities are not modelled, and vented rooms' "
-                + "pressures fall below FM Global's tests and far below EN 14994 and NFPA 68.",
+            "Reads low, the unsafe side: vented rooms' peaks fall below FM Global's tests (55–60% lit at the "
+                + "back wall, a sixth to a seventh in the middle) and far below EN 14994 and NFPA 68, and do not "
+                + "converge (about ±40%); the wrinkling's one constant was fitted in that chamber. In a closed "
+                + "vessel its rise times come within 1–3% of the thin-flame model, partly two errors cancelling, "
+                + "and its K_G is still rising with the grid.",
             evidence: deflagrationEvidence + terrainEvidence,
             assumptions: [
                 "Burnt and unburnt gas are treated as air; the heat released is the share of the heat of "
@@ -1276,23 +1332,24 @@ struct StandingScene {
         let incident = ["0.125": "86–97%", "0.25": "76–82%", "0.5": "57–69%"]
         let reflected = ["0.125": "67–92%", "0.25": "37–82%", "0.5": "20–69%"]
         var evidence: [StandingEvidence] = []
-        var level = EvidenceLevel.measured
+        var level = EvidenceLevel.compared
         var summary: String
         switch grid {
         case .coarser:
             level = .approximation
             summary =
-                "Under-resolved: the cells are coarser than any compared with Kingery–Bulmash, whose "
-                + "coarsest grid gave 57–69% of the incident peak."
+                "Reads low, the unsafe side: the cells are coarser than any compared with Kingery–Bulmash, "
+                + "whose coarsest grid gave 57–69% of the incident peak."
         default:
             let key = grid == .fine ? "0.125" : grid == .medium ? "0.25" : "0.5"
             summary =
-                "Kingery–Bulmash's incident peak \(incident[key]!), reflected \(reflected[key]!), on air as "
-                + "fine for this charge as the comparison's \(grid.cells) were for 100 kg; peaks read low as "
-                + "shocks are smeared."
+                "Reads low, the unsafe side, as shocks are smeared: Kingery–Bulmash's incident peak "
+                + "\(incident[key]!), reflected \(reflected[key]!), on air as fine for this charge as the "
+                + "comparison's \(grid.cells) were for 100 kg."
             evidence.append(
                 StandingEvidence(
-                    "Kingery–Bulmash, 100 kg surface burst from 0.75 to 6 m/kg^(1/3) (blastbench validate)",
+                    "Kingery–Bulmash, a fit to many surface bursts whose scatter is not given; 100 kg from 0.75 to "
+                        + "6 m/kg^(1/3) (blastbench validate)",
                     "Incident peak \(incident[key]!) and reflected \(reflected[key]!) on \(grid.cells)",
                     "validation.md#kingerybulmash-the-design-practice-standard"))
         }
@@ -1336,7 +1393,7 @@ struct StandingScene {
         if has(.deflagration) { return deflagrationResult(.impulse) }
         let reflected = ["0.125": "94–105%", "0.25": "84–102%", "0.5": "73–99%"]
         var evidence: [StandingEvidence] = []
-        var level = EvidenceLevel.measured
+        var level = EvidenceLevel.compared
         var summary: String
         let burns = has(.afterburning)
         let hot = has(.hotAir) || has(.dissociatingAir)
@@ -1345,21 +1402,23 @@ struct StandingScene {
             ? (hot
                 ? "incident impulse 94–99% beyond 1 m/kg^(1/3) (the burning time fitted to it)"
                 : "incident impulse 96–101% beyond 1 m/kg^(1/3) (the burning time fitted to it)")
-            : "incident impulse 13–22% low on every grid, for want of afterburning"
+            : "incident impulse 13–22% low on every grid (the unsafe side for what the wave passes over), "
+                + "for want of afterburning"
         switch grid {
         case .coarser:
             level = .approximation
             summary =
-                "Cells coarser than any compared; on the coarsest compared Kingery–Bulmash's reflected impulse "
-                + "was 73–99%, and its \(incident)."
+                "Reads low on cells coarser than any compared: on the coarsest compared Kingery–Bulmash's "
+                + "reflected impulse was 73–99%, and its \(incident)."
         default:
             let key = grid == .fine ? "0.125" : grid == .medium ? "0.25" : "0.5"
             summary =
-                "Kingery–Bulmash's reflected impulse \(reflected[key]!) on the comparison's \(grid.cells) for 100 kg "
-                + "(within 6% beyond 1.5 m/kg^(1/3) on 0.25 m or finer); \(incident)."
+                "On walls, either way: Kingery–Bulmash's reflected impulse \(reflected[key]!) on the comparison's "
+                + "\(grid.cells) for 100 kg (within 6% beyond 1.5 m/kg^(1/3) on 0.25 m or finer); \(incident)."
             evidence.append(
                 StandingEvidence(
-                    "Kingery–Bulmash, 100 kg surface burst from 0.75 to 6 m/kg^(1/3) (blastbench validate)",
+                    "Kingery–Bulmash, a fit to many surface bursts whose scatter is not given; 100 kg from 0.75 to "
+                        + "6 m/kg^(1/3) (blastbench validate)",
                     "Reflected impulse \(reflected[key]!) on \(grid.cells)",
                     "validation.md#kingerybulmash-the-design-practice-standard"))
         }
@@ -1382,10 +1441,13 @@ struct StandingScene {
         if has(.closedBoundaries) {
             let room =
                 burns && hot
-                ? "98–108% of the design curve, nothing fitted"
+                ? "98–108% of the design curve, read by hand and its scatter not given; the burning time, fitted "
+                    + "to the open blast, hardly matters here (with the extinction limit 104–117%)"
                 : burns
                     ? "124–131% of the design curve"
-                    : hot ? "43–91% of the design curve" : "48–114% of the design curve"
+                    : hot
+                        ? "43–91% of the design curve, low for light charges (the unsafe side)"
+                        : "48–114% of the design curve, half for light charges (the unsafe side)"
             evidence.append(
                 StandingEvidence(
                     "Gas pressure in a closed room against UFC 3-340-02 (blastbench gas)", room,
@@ -1444,39 +1506,44 @@ struct StandingScene {
 
     func structuralResponse() -> ResultStanding {
         var evidence: [StandingEvidence] = []
-        var level = EvidenceLevel.measured
+        var level = EvidenceLevel.compared
         var parts: [String] = []
         let classes = materialClasses
         if classes.contains(.reinforcedConcrete) {
             evidence += [
                 StandingEvidence(
                     "A reinforced slab under a blast",
-                    "Peak 113–124 mm against 108 mm measured (105–115%) on 4 to "
-                        + "32 solid elements through; shells 135 mm (125%)",
+                    "Reads high (safe side): 113–124 mm against 108 mm measured (105–115%) on 4 to 32 solid "
+                        + "elements through, rising with the mesh and not converged, a strip of it running away on "
+                        + "32; shells 135 mm (125%); a 5% change in its hand-read load moves it 13–14%",
                     "validation.md#structural-response-against-a-real-test"),
                 StandingEvidence(
                     "A reinforced beam bent to failure",
-                    "Peak moment 98–101%; failing at 53–57 mm on 12 elements and holding to 60 mm on 24, against 42 mm",
+                    "Peak moment 98–101% (17% strong, the unsafe side, on 6 elements through); failing at "
+                        + "53–57 mm on 12 elements and holding to 60 mm on 24, against 42 mm",
                     "validation.md#a-reinforced-beam-bent-to-failure"),
                 StandingEvidence(
                     "A beam without stirrups failing in shear",
-                    "11–15% strong on fine meshes; coarse meshes far "
-                        + "too strong", "validation.md#a-beam-failing-in-shear"),
+                    "Unsafe side: 11–15% too strong on fine meshes, 37% on 12 elements through",
+                    "validation.md#a-beam-failing-in-shear"),
                 StandingEvidence(
                     "Beams struck by a falling weight",
-                    "With stirrups within 12–24% under light drops and −5% to "
-                        + "+3% under heavy ones on 16 elements",
+                    "Either way on 16 elements, with stirrups: 12–24% high under light drops, −5% to +3% under "
+                        + "heavy; on 24, +17% to +28% and −1% to +17%; struck about twice as hard as measured, the "
+                        + "reactions up to 40% low; the rate laws were chosen on these tests",
                     "validation.md#beams-struck-by-a-falling-weight"),
                 StandingEvidence(
                     "An internal explosion in a reinforced concrete chamber",
-                    "Roof about twice as stiff; its edge "
-                        + "left 15 mm up against 95 mm",
+                    "Unsafe side, too stiff: its roof's edge left 25 mm up against 95 mm measured (a quarter) "
+                        + "with the confined regime's pressed interlock, 15 mm without; not converged on 25 mm "
+                        + "elements",
                     "validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber"),
             ]
             parts.append(
-                "reinforced concrete within 5–15% of one slab test and of beams in bending and struck on 16 "
-                    + "elements, but too strong in shear, too stiff in a full-scale chamber and close in, and "
-                    + "springing back too far")
+                "reinforced concrete errs mostly on the unsafe side, towards too little damage: too strong in "
+                    + "shear, too stiff in a full-scale chamber and close in. In bending it reads 5–15% high on "
+                    + "one slab, not converged, and its beams struck on 16 elements come within 12–24%; it "
+                    + "springs back too far")
         }
         if classes.contains(.plainConcrete) {
             level = max(level, .verified)
@@ -1514,6 +1581,11 @@ struct StandingScene {
             parts.append("glass a brittle concrete, checked only to break and survive")
         }
         var resolution: [String] = []
+        if let through = elementsThrough, through <= 6, through >= 4, classes.contains(.reinforcedConcrete) {
+            resolution.append(
+                "\(through) solid elements through the thinnest member: a beam on 6 through was 17% strong in "
+                    + "bending, the unsafe side.")
+        }
         if let through = elementsThrough, through < 4, classes.contains(where: { $0 <= .plainConcrete }) {
             resolution.append(
                 "\(through) solid element\(through == 1 ? "" : "s") through the thinnest member; the slab test "
@@ -1524,8 +1596,14 @@ struct StandingScene {
             evidence.append(
                 StandingEvidence(
                     "Full-scale slabs under close-in charges",
-                    "Left a third to a half as far down as measured",
+                    "Unsafe side, too stiff: left a third to a half as far down as measured",
                     "validation.md#slabs-under-close-in-charges"))
+            evidence.append(
+                StandingEvidence(
+                    "Wu et al.'s slabs with steel in both faces",
+                    "Unsafe side under 0.2–0.8 kg, too stiff: 40–70% of the measured peak; within −20% to +7% under "
+                        + "1.6 kg, two shots on one mesh",
+                    "validation.md#slabs-with-steel-in-both-faces"))
             resolution.append(
                 String(
                     format: "The structure is %.2f m/kg^(1/3) from a charge, close in, where slabs bend too "
@@ -1543,6 +1621,10 @@ struct StandingScene {
         return result(
             .structuralResponse, level, summary, evidence: evidence,
             assumptions: [
+                "The defaults were chosen with these tests in view: a calibration set as much as a validation "
+                    + "set, none run blind.",
+                "Supports are assumed in every structural test, and move the results by 15–25% or more.",
+                "Most tests are single specimens.",
                 "Lattice-aligned geometry, a staircase of whole cells to the air.",
                 "No structural damping beyond the material's own: ringing lasts too long.",
                 "Not validated for engineering decisions or the safety of a real structure.",
@@ -1553,8 +1635,14 @@ struct StandingScene {
     func structuralDamage() -> ResultStanding {
         var evidence = [
             StandingEvidence(
-                "A beam without stirrups failing in shear", "Fails suddenly, as the test did, 11–15% strong",
+                "A beam without stirrups failing in shear",
+                "Unsafe side: fails suddenly, as the test did, but 11–15% too strong (37% on coarse meshes)",
                 "validation.md#a-beam-failing-in-shear"),
+            StandingEvidence(
+                "Short beams struck to a shear failure (Peterson et al., 2026)",
+                "Unsafe side: those with stirrups hold where the tests crushed their strut; the impact force is "
+                    + "set by a pad fitted to it, so only the reactions are a comparison",
+                "validation.md#short-beams-struck-to-a-shear-failure"),
             StandingEvidence(
                 "Beams struck by a falling weight",
                 "The beam without stirrups broken by the heavy drop as in the "
@@ -1563,21 +1651,24 @@ struct StandingScene {
         ]
         var level = EvidenceLevel.approximation
         var summary =
-            "Indicative: shear failure, breach and joints are the least reliable predictions; debris has been "
-            + "compared once, and collapse never."
+            "Errs on the unsafe side, towards too little damage: too strong in shear, struck beams holding "
+            + "where the tests crushed their strut. Breach and joints are the least reliable predictions; debris "
+            + "has been compared once, and collapse never."
         if let distance = structureDistance, distance < 0.75 {
             evidence.append(
                 StandingEvidence(
                     "Full-scale slabs under close-in charges",
-                    "Spalled only under the charge, on fine air and 12 "
-                        + "elements through, and never holed", "validation.md#slabs-under-close-in-charges"))
+                    "Unsafe side: spalled only under the charge, on fine air and 12 elements through, and never "
+                        + "holed", "validation.md#slabs-under-close-in-charges"))
             evidence.append(
                 StandingEvidence(
                     "Slabs under contact charges (Hupfauf, 2024)",
                     "The far face thrown 1.2–1.9 times as fast as the debris at first; the loose layer held back "
                         + "rather than thrown, and no slab holed where four were",
                     "validation.md#slabs-under-contact-charges"))
-            summary += " Close in, slabs spall too little, hold their debris back and are never holed."
+            summary +=
+                " Close in, unsafe again: slabs spall too little, hold their debris back and are holed only by "
+                + "an option, at a stable step to a half and a third of the measured size."
         }
         if materialClasses.contains(.glass) || materialClasses.contains(.masonry) {
             level = .illustrative
@@ -1708,8 +1799,10 @@ struct StandingScene {
         }
         return result(
             .cloud, .illustrative,
-            "Its top within 4% on average (21% shot by shot) of 22 TNT clouds Church measured, for their first two "
-                + "minutes; it falls behind them later.",
+            "Either way: its top within 4% on average of 22 TNT clouds Church measured, for their first two "
+                + "minutes, a geometric spread of 21% shot by shot, not a bound; it falls behind them later. It "
+                + "needs afterburning, whose burning time was fitted to the open blast, and the entrainment "
+                + "coefficient's plausible range moves the tops −9% to +13%.",
             evidence: [
                 StandingEvidence(
                     "Church's 22 detonations of 54 to 1,270 kg of TNT",

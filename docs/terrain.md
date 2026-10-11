@@ -239,6 +239,9 @@ history) over flat ground's on the same cells:
   judges tilt from the ground's normal. Laying a terrain, or adding, duplicating or editing an
   object, sets it on the ground with its lowest corner or tyre on it.
 - **Fragments** land where their path meets the surface, found by bisection along each step.
+- **Map buildings** stand on the lowest point of the terrain under their footprint (see
+  [building envelopes](building-envelopes.md#buildings-from-map-data)); uphill, the terrain
+  fills in under them.
 - **Footings** sit wherever the nodes they tie are, so a body over a step is connected by a
   support region a level, each with its own connection and footing at its height. The ground's
   own connection and clamp still hold only the nodes at z = 0.

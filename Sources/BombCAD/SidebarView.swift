@@ -95,7 +95,16 @@ struct SidebarView: View {
                                 ).font(.caption)
                             }
                             Button("Inspect source and warnings…") { model.inspectImport(id: imported.id) }
+                            if imported.isAttached && imported.behavior == .rigid {
+                                ImportEnvelopeButton(
+                                    model: model, ids: [imported.id], title: "Use as Exposure-only Envelope")
+                            }
                         }
+                    }
+                    let rigid = imports.filter { $0.isAttached && $0.behavior == .rigid }.map(\.id)
+                    if rigid.count > 1 {
+                        ImportEnvelopeButton(
+                            model: model, ids: rigid, title: "Use All as Exposure-only Envelopes")
                     }
                 }
             }
@@ -109,6 +118,7 @@ struct SidebarView: View {
             VentPanelSection(model: model)
 
             TerrainSection(model: model)
+            MapBuildingsSection(model: model)
             FragmentSection(model: model)
             ThermalSection(model: model)
             CloudSection(model: model)

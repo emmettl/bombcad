@@ -45,6 +45,13 @@ public final class MetalThermalVisibility: ThermalVisibility, @unchecked Sendabl
         set { lock.withLock { stall = newValue ? shared.device.makeSharedEvent() : nil } }
     }
     private var stall: MTLSharedEvent?
+    /// For tests: whether a GPU slow to answer is raced by the CPU (as in use), or waited for, so
+    /// that the GPU's own answer is what comes back however busy it is.
+    var racesCPU: Bool {
+        get { lock.withLock { races } }
+        set { lock.withLock { races = newValue } }
+    }
+    private var races = true
 
     /// Nil where there is no GPU with ray tracing, or nothing to block the view but flat ground,
     /// which the CPU tests as quickly.
@@ -176,7 +183,7 @@ public final class MetalThermalVisibility: ThermalVisibility, @unchecked Sendabl
         let committed = ContinuousClock.now
         commandBuffer.commit()
         let grace = stall != nil ? 0 : min(0.05, max(0.004, 3 * typicalWait))
-        if done.wait(timeout: .now() + grace) == .timedOut {
+        if races, done.wait(timeout: .now() + grace) == .timedOut {
             // The GPU is slow to get to them: test them on the CPU meanwhile, and take whichever
             // answer comes first. The GPU's buffers stay its own until it is done with them.
             if let answer = cpu.visible(rays, until: { finished.isSet }) {
@@ -185,6 +192,7 @@ public final class MetalThermalVisibility: ThermalVisibility, @unchecked Sendabl
             }
             done.wait()
         }
+        if !races { done.wait() }
         guard commandBuffer.status == .completed else {
             counts.cpuFrames += 1
             return cpu.visible(rays)

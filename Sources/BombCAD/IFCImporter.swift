@@ -33,6 +33,8 @@ enum IFCImporter {
         var data: Data
         var inventory: [Element]
         var metadataLog: String
+        /// Each element's material layers, by GlobalId, where the IFC gives them.
+        var materials: [String: [IFCStructure.Layer]] = [:]
         var defaultIDs: Set<String> { Set(inventory.filter(\.supported).map(\.id)) }
     }
     static func prepare(_ data: Data, converter: URL? = converterURL) async throws -> Prepared {
@@ -48,13 +50,17 @@ enum IFCImporter {
         try data.write(to: input)
         let log = try await run(converter, arguments: [input.path, xml.path, "-y"], folder: folder)
         try Task.checkCancellation()
-        let inventory = try decodeMetadata(try boundedData(xml))
+        let metadata = try boundedData(xml)
+        let inventory = try decodeMetadata(metadata)
+        // Materials are only for meshing the building as a structure: an unreadable set leaves
+        // them out rather than the import.
+        let materials = (try? IFCMaterials.decode(metadata)) ?? [:]
         try Task.checkCancellation()
         guard inventory.contains(where: \.supported) else {
             throw ImportedMesh.ImportError.invalid(
                 "No supported physical elements were found in the IFC decomposition tree.")
         }
-        return Prepared(data: data, inventory: inventory, metadataLog: log)
+        return Prepared(data: data, inventory: inventory, metadataLog: log, materials: materials)
     }
     static func convert(_ data: Data, converter: URL? = converterURL) async throws -> ImportedMesh {
         let prepared = try await prepare(data, converter: converter)
@@ -128,13 +134,18 @@ enum IFCImporter {
         notes.append(
             "IFC converted to metres, Z up. Only explicitly chosen supported elements were converted. Spaces, furnishings, site/proxy markers and other unsupported types are excluded. Material properties are not mapped."
         )
+        let elements = geometry.elements.map { element in
+            var copy = element
+            copy.materials = prepared.materials[element.globalID]
+            return copy
+        }
         return try ImportedMesh(
-            buildingElements: geometry.elements, notes: notes, origin: geometry.origin,
+            buildingElements: elements, notes: notes, origin: geometry.origin,
             sourceData: prepared.data,
             selection: .init(inventory: prepared.inventory, includedIDs: includedIDs))
     }
 
-    private static func boundedData(_ url: URL) throws -> Data {
+    static func boundedData(_ url: URL) throws -> Data {
         let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
         guard size <= 20_000_000 else {
             throw ImportedMesh.ImportError.invalid(
@@ -146,7 +157,7 @@ enum IFCImporter {
         }
         return data
     }
-    private static func run(_ executable: URL, arguments: [String], folder: URL) async throws -> String {
+    static func run(_ executable: URL, arguments: [String], folder: URL) async throws -> String {
         try Task.checkCancellation()
         let log = folder.appendingPathComponent(UUID().uuidString + ".log")
         FileManager.default.createFile(atPath: log.path, contents: nil)
@@ -185,7 +196,7 @@ enum IFCImporter {
         return text
     }
 
-    private static func requireConverter(_ converter: URL?) throws -> URL {
+    static func requireConverter(_ converter: URL?) throws -> URL {
         guard let converter else {
             throw ImportedMesh.ImportError.invalid(
                 "The IFC converter is unavailable. Build BombCAD.app with Scripts/build-app.sh, or run python3 Scripts/prepare-ifc-converter.py before swift run."
@@ -193,7 +204,7 @@ enum IFCImporter {
         }
         return converter
     }
-    private static func temporaryFolder() throws -> URL {
+    static func temporaryFolder() throws -> URL {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(
             "bombcad-ifc-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -282,15 +293,38 @@ enum IFCImporter {
             parser.abortParsing()
         }
     }
-    struct ElementFailure: LocalizedError {
+    struct ElementFailure: Sendable, Hashable, Identifiable {
         var id: String
         var name: String
         var reason: String
-        var errorDescription: String? { "IFC element \(name) (\(id)) is not a valid closed solid: \(reason)" }
+    }
+    struct ElementFailures: LocalizedError {
+        var failures: [ElementFailure]
+        var inspectedElements: Int
+        var errorDescription: String? {
+            "\(failures.count) of \(inspectedElements) converted IFC element meshes do not form valid closed solids. Review all failures, repair the source, or explicitly exclude reviewed elements."
+        }
+        var report: String {
+            (errorDescription ?? "IFC geometry review") + "\n\n"
+                + failures.map { "\($0.name) · \($0.id)\n\($0.reason)" }.joined(separator: "\n\n")
+        }
+    }
+    struct GeometryReview {
+        var elements: [ImportedMesh.BuildingElement]
+        var origin: SIMD3<Double>
+        var failures: [ElementFailure]
+        var inspectedElements: Int
     }
     static func decodeOBJ(_ data: Data, metadata: [String: Element]) throws -> (
         elements: [ImportedMesh.BuildingElement], origin: SIMD3<Double>
     ) {
+        let review = try inspectOBJ(data, metadata: metadata)
+        if !review.failures.isEmpty {
+            throw ElementFailures(failures: review.failures, inspectedElements: review.inspectedElements)
+        }
+        return (review.elements, review.origin)
+    }
+    static func inspectOBJ(_ data: Data, metadata: [String: Element]) throws -> GeometryReview {
         guard let text = String(data: data, encoding: .utf8) else {
             throw ImportedMesh.ImportError.invalid("IFC converter output is not UTF-8.")
         }
@@ -330,33 +364,37 @@ enum IFCImporter {
         let used = Set(faces.values.flatMap { $0.flatMap { $0 } })
         let origin = used.reduce(SIMD3<Double>(repeating: .infinity)) { simd_min($0, vertices[$1]) }
         var elements: [ImportedMesh.BuildingElement] = []
+        var failures: [ElementFailure] = []
         for id in faces.keys.sorted() {
             try Task.checkCancellation()
             let info = metadata[id]!
-            let originalTriangles = faces[id]!
-            let triangles = try conformingFaces(originalTriangles, vertices: vertices, origin: origin)
-            let indices = Set(triangles.flatMap { $0 }).sorted()
-            let mapping = Dictionary(
-                uniqueKeysWithValues: indices.enumerated().map { ($0.element, $0.offset + 1) })
-            var obj = ""
-            for n in indices {
-                // IFC meshing can emit coincident face vertices with floating-point roundoff.
-                // Canonicalise at 0.1 micrometre, then strictly revalidate every resulting solid.
-                let v = ((vertices[n] - origin) / 0.0000001).rounded(.toNearestOrAwayFromZero) * 0.0000001
-                obj += "v \(v.x) \(v.y) \(v.z)\n"
-            }
-            for f in triangles { obj += "f \(mapping[f[0]]!) \(mapping[f[1]]!) \(mapping[f[2]]!)\n" }
             do {
+                let originalTriangles = faces[id]!
+                let triangles = try conformingFaces(originalTriangles, vertices: vertices, origin: origin)
+                let indices = Set(triangles.flatMap { $0 }).sorted()
+                let mapping = Dictionary(
+                    uniqueKeysWithValues: indices.enumerated().map { ($0.element, $0.offset + 1) })
+                var obj = ""
+                for n in indices {
+                    // IFC meshing can emit coincident face vertices with floating-point roundoff.
+                    // Canonicalise at 0.1 micrometre, then strictly revalidate every resulting solid.
+                    let v = ((vertices[n] - origin) / 0.0000001).rounded(.toNearestOrAwayFromZero) * 0.0000001
+                    obj += "v \(v.x) \(v.y) \(v.z)\n"
+                }
+                for f in triangles { obj += "f \(mapping[f[0]]!) \(mapping[f[1]]!) \(mapping[f[2]]!)\n" }
                 let mesh = try ImportedMesh(data: Data(obj.utf8), fileExtension: "obj")
                 elements.append(
                     .init(
                         globalID: id, name: info.name, ifcClass: info.ifcClass, storey: info.storey,
                         mesh: mesh))
             } catch is CancellationError { throw CancellationError() } catch {
-                throw ElementFailure(id: id, name: info.name, reason: error.localizedDescription)
+                failures.append(
+                    ElementFailure(
+                        id: id, name: info.name, reason: String(error.localizedDescription.prefix(2000))))
             }
         }
-        return (elements, origin)
+        return GeometryReview(
+            elements: elements, origin: origin, failures: failures, inspectedElements: faces.count)
     }
     /// Split a triangle edge at an existing boundary vertex. This changes triangulation only:
     /// no missing face is created, and the original surface is strictly validated afterwards.

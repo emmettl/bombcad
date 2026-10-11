@@ -46,6 +46,9 @@ public struct ErrorBand: Codable, Hashable, Sendable {
     /// The model's own spread from uncertain inputs in the case behind the band, as a coefficient
     /// of variation (validation.md, "The model's spread from uncertain inputs"); nil where not run.
     public var inputSpread: Double? = nil
+    /// The reference's own scatter about its mean, one standard deviation as a fraction (the tests
+    /// behind Kingery–Bulmash, repeats against it, UFC 3-340-02's rooms); nil where none is known.
+    public var referenceScatter: Double? = nil
 
     /// Which way the model errs.
     public var reads: String {
@@ -81,12 +84,29 @@ public struct ErrorBand: Codable, Hashable, Sendable {
     /// added in quadrature: the model's error and its spread from uncertain inputs are separate.
     public var combinedHalfWidth: Double {
         let inputs = 1.645 * (inputSpread ?? 0)
-        return (relativeHalfWidth * relativeHalfWidth + inputs * inputs).squareRoot()
+        let reference = 1.645 * (referenceScatter ?? 0)
+        return (relativeHalfWidth * relativeHalfWidth + inputs * inputs + reference * reference).squareRoot()
     }
 
-    /// Where the measured value would lie for a model value, with the inputs' spread as well.
+    /// Whether the model's error lies within the reference's own scatter (one standard deviation),
+    /// so that it cannot be told apart from the tests'; nil where the scatter is not known.
+    public var withinReference: Bool? {
+        referenceScatter.map { max(abs(low - 1), abs(high - 1)) <= $0 + 1e-9 }
+    }
+
+    /// The model's error against the reference's scatter, in words; nil where it is not known.
+    public var againstReference: String? {
+        guard let scatter = referenceScatter, let within = withinReference else { return nil }
+        let tests = String(format: "the tests' own scatter, %.1f%%", scatter * 100)
+        return within
+            ? "Inside \(tests): the model cannot be told apart from the tests here."
+            : "Outside \(tests): the difference is the model's."
+    }
+
+    /// Where a measured value would lie for a model value: the band, with the inputs' spread and
+    /// the reference's own scatter (each at 5–95%) added in quadrature.
     public func expectedWithInputs(_ value: Double) -> ClosedRange<Double> {
-        guard inputSpread != nil else { return expected(value) }
+        guard inputSpread != nil || referenceScatter != nil else { return expected(value) }
         let centre = value / ((low + high) / 2)
         return centre * (1 - combinedHalfWidth)...centre * (1 + combinedHalfWidth)
     }
@@ -115,6 +135,27 @@ public struct RegimeAdvice: Codable, Hashable, Sendable {
     public var note: String
     public var suggestion: String?
     public var document: String
+}
+
+extension ResultStanding {
+    /// Which way the result errs, first, by its bands: the unsafe side named when any band lies on
+    /// it (a load or deflection under-read, a strength over-read); nil without bands.
+    public var direction: String? {
+        guard let bands, !bands.isEmpty else { return nil }
+        let unsafe = bands.filter { $0.side == "unsafe side" }
+        if let worst = unsafe.first {
+            return
+                "Errs on the unsafe side: \(worst.quantity.lowercased()) \(worst.reads) (\(worst.ratio) of measured)"
+                + (unsafe.count > 1 ? ", and \(unsafe.count - 1) more" : "") + "."
+        }
+        if bands.allSatisfy({ $0.side == "safe side" }) {
+            return "Errs on the safe side: \(bands[0].quantity.lowercased()) \(bands[0].reads)."
+        }
+        return "Errs either way: \(bands[0].quantity.lowercased()) \(bands[0].ratio) of measured."
+    }
+
+    /// Whether any band lies on the unsafe side.
+    public var errsUnsafe: Bool { bands?.contains { $0.side == "unsafe side" } ?? false }
 }
 
 extension SceneStanding {
@@ -307,6 +348,36 @@ public enum ValidationTables {
     ]
 
     public static func spread(_ id: String) -> Double { spreads.first { $0.id == id }!.coefficient }
+
+    /// A reference's own scatter, one standard deviation, read from the record.
+    public struct Scatter: Sendable {
+        public var id: String
+        public var sigma: Double
+        public var document: String
+        /// Must lie under `document`'s heading and hold the figure.
+        public var quote: String
+    }
+
+    public static let scatters: [Scatter] = [
+        Scatter(
+            id: "incidentPeak", sigma: 0.064,
+            document: "validation.md#kingerybulmash-the-design-practice-standard",
+            quote: "±6.4% of the peak overpressure"),
+        Scatter(
+            id: "incidentImpulse", sigma: 0.067,
+            document: "validation.md#kingerybulmash-the-design-practice-standard",
+            quote: "±6.7% of the positive impulse"),
+        // Reflected values are calculated, not fitted; modern repeats' ±6–8%, the upper end taken.
+        Scatter(
+            id: "reflected", sigma: 0.08,
+            document: "validation.md#kingerybulmash-the-design-practice-standard",
+            quote: "Repeats lie within ±6–8% of their mean for the peak, the impulse and the duration"),
+        Scatter(
+            id: "room", sigma: 0.11, document: "validation.md#gas-pressure-in-a-closed-room",
+            quote: "with a standard deviation of 11%"),
+    ]
+
+    public static func scatter(_ id: String) -> Double { scatters.first { $0.id == id }!.sigma }
 }
 
 // MARK: - Reading a band from a table
@@ -403,8 +474,7 @@ extension StandingScene {
         let scenario = inputs.scenario
         return scenario.boxes + structures.flatMap(\.solids)
             + scenario.envelopeObjects.compactMap(\.envelope).flatMap(\.solids)
-            + (scenario.importedModels ?? []).filter { $0.isAttached && $0.behavior == .rigid }
-            .flatMap { $0.preview.boxes }
+            + (scenario.importedModels ?? []).flatMap(\.rigidBoxes)
     }
 
     func gaugeBands() -> [GaugeBands] {
@@ -567,6 +637,25 @@ extension StandingScene {
             if bands.impulse?.quantity == "Reflected impulse", !closeIn {
                 bands.impulse?.inputSpread = ValidationTables.spread("wallImpulse")
             }
+            // The reference's own scatter: Kingery's tests about their fit, repeats for the reflected
+            // values, which were calculated; close in, repeats differed by far more.
+            for (path, incident) in [
+                (\GaugeBands.peak, "incidentPeak"), (\GaugeBands.impulse, "incidentImpulse"),
+            ] {
+                guard let band = bands[keyPath: path] else { continue }
+                if band.document == "validation.md#close-in" {
+                    bands[keyPath: path]?.validity +=
+                        "; repeats this close differed by up to 40% in peak (Rae and McAfee)"
+                } else {
+                    bands[keyPath: path]?.referenceScatter = ValidationTables.scatter(
+                        band.quantity.hasPrefix("Reflected") ? "reflected" : incident)
+                }
+            }
+            // The burning time was fitted to the open blast's incident impulse: agreement there is
+            // by construction.
+            if burning, bands.impulse?.quantity == "Incident impulse" {
+                bands.impulse?.validity += "; fitted: the burning time was chosen to match it"
+            }
             return bands
         }
     }
@@ -627,11 +716,14 @@ extension StandingScene {
         let figure = ValidationTables.figure(id)
         // The cases the ensemble ran, by the figure they share.
         let spreads = ["slabSolid": "slab", "wuSmall": "wuPeak", "wuLarge": "wuPeak"]
+        // References whose own scatter is known: UFC 3-340-02's rooms.
+        let scatters = ["roomDefault": "room", "roomBurning": "room", "roomBurningHot": "room"]
         return ErrorBand(
             measure: measure, quantity: quantity, low: figure.low, high: figure.high,
             lowIsUnsafe: lowIsUnsafe,
             meaningLow: low, meaningHigh: high, validity: validity, check: check, document: figure.document,
-            scaled: false, inputSpread: spreads[id].map(ValidationTables.spread))
+            scaled: false, inputSpread: spreads[id].map(ValidationTables.spread),
+            referenceScatter: scatters[id].map(ValidationTables.scatter))
     }
 
     /// Several bands spanned as one: the lowest low and the highest high.
@@ -650,13 +742,70 @@ extension StandingScene {
     /// Options set whose effect no band was measured with.
     private var unmeasuredStructuralOptions: [String] {
         let measured: Set<ModelOption> = [
-            .shellElements, .footings, .cyclicSand, .inclinedBars, .interfaceBond,
+            .shellElements, .footings, .cyclicSand, .inclinedBars, .interfaceBond, .importedStructure,
         ]
         return options.filter { option in
             let entry = StandingTable.entry(for: option)
             return entry.affects.contains(.structuralResponse) && !measured.contains(option)
                 && !entry.affects.contains(.peakOverpressure)
         }.map { StandingTable.entry(for: $0).title }
+    }
+
+    /// How structures meshed from IFC buildings differ from what the shell model was compared on
+    /// (reinforced concrete walls and slabs, every load-bearing element in the structure, of a
+    /// material chosen rather than assumed); empty where they do not.
+    var importedStructureDifferences: [String] {
+        var differences: [String] = []
+        for imported in inputs.scenario.importedModels ?? [] where imported.isStructural {
+            guard let report = imported.structuralReport else {
+                differences.append("\(imported.name) has no conversion report")
+                continue
+            }
+            let assumed = report.assumedMaterials
+            if !assumed.isEmpty {
+                differences.append(
+                    "\(imported.name): \(assumed.count) element\(assumed.count == 1 ? "" : "s") of an assumed material"
+                )
+            }
+            let frame = report.members.filter {
+                $0.role == .rigid && $0.notes.contains { note in note.hasPrefix("Not ") }
+            }
+            if !frame.isEmpty {
+                differences.append(
+                    "\(imported.name): \(frame.count) wall, slab or member\(frame.count == 1 ? "" : "s") kept rigid "
+                        + "(inclined or not plate- or member-like)")
+            }
+            let beams = report.members.filter { $0.role == .beam }
+            if !beams.isEmpty {
+                differences.append("\(imported.name): beams from IFC sections, not compared")
+            }
+            let materials = Set(report.members.compactMap(\.material))
+            let unlike = materials.filter { name in
+                !(name.hasPrefix("Reinforced concrete") || name.hasPrefix("Concrete C"))
+            }
+            if !unlike.isEmpty {
+                differences.append(
+                    "\(imported.name): \(unlike.sorted().joined(separator: ", ")), not compared")
+            }
+            let untied = report.connections.filter { $0.kind.contains("untied") }
+            if !untied.isEmpty {
+                differences.append(
+                    "\(imported.name): \(untied.count) pair\(untied.count == 1 ? "" : "s") of members left untied"
+                )
+            }
+            let unfounded = report.supports.filter { $0.contains("foundation left out") }
+            if !unfounded.isEmpty {
+                differences.append(
+                    "\(imported.name): \(unfounded.count) wall\(unfounded.count == 1 ? "" : "s") or column"
+                        + "\(unfounded.count == 1 ? "" : "s") tied to the ground where the IFC has no foundation"
+                )
+            }
+            let reinforced = imported.structuralOptions?.reinforcement != nil
+            if !reinforced {
+                differences.append("\(imported.name): its concrete unreinforced")
+            }
+        }
+        return differences
     }
 
     func bands(for kind: ResultKind) -> (bands: [ErrorBand]?, unbanded: [String]?) {
@@ -690,7 +839,9 @@ extension StandingScene {
                         "ventedBackWall", .ventedPressure,
                         "Peak pressure in a vented room, lit at the back wall",
                         low: "flame too slow", high: "over-read",
-                        validity: "FM Global's 63.7 m³ chamber, digitised",
+                        validity:
+                            "FM Global's 63.7 m³ chamber, digitised; the wrinkling constant fitted by Bauwens "
+                            + "et al. in this chamber, and the peak not converged (about ±40%)",
                         check: "Bauwens et al.'s vented deflagrations"),
                     figure(
                         "ventedMiddle", .ventedPressure, "Peak pressure in a vented room, lit in the middle",
@@ -702,7 +853,11 @@ extension StandingScene {
         case .structuralResponse:
             let unmeasured = unmeasuredStructuralOptions
             let reinforced = materialClasses.contains(.reinforcedConcrete)
-            if !unmeasured.isEmpty {
+            let imported = importedStructureDifferences
+            if !imported.isEmpty {
+                unbanded.append(
+                    "Structure from IFC unlike what was compared: \(imported.joined(separator: "; ")).")
+            } else if !unmeasured.isEmpty {
                 unbanded.append(
                     "The comparisons were made with the defaults; set here: \(unmeasured.joined(separator: ", "))."
                 )
@@ -731,7 +886,9 @@ extension StandingScene {
                     bands.append(
                         figure(
                             "wuLarge", .peakDeflection, "Peak deflection close in", low: "too stiff",
-                            high: "too flexible", validity: "1.6 kg at 0.43 m/kg^(1/3), 8 elements through",
+                            high: "too flexible",
+                            validity:
+                                "1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh (8 through), held at one edge",
                             check: "Wu et al.'s slabs with steel in both faces"))
                 } else {
                     unbanded.append("Peak deflection under charges over 2 kg close in was not measured.")
@@ -771,12 +928,16 @@ extension StandingScene {
                     figure(
                         "rockingMoment", .footingMoment, "Footing moment to 14 mrad", lowIsUnsafe: false,
                         low: "too weak", high: "too strong",
-                        validity: "a surface footing rocked slowly on dry sand",
+                        validity:
+                            "a surface footing rocked slowly on dry sand of 80 MPa, an estimate twice the "
+                            + "default's",
                         check: "FoRCy SSG02_03"),
                     figure(
                         has(.cyclicSand) ? "rockingSettlement" : "shakenSettlement", .footingSettlement,
                         "Footing settlement", low: "too little", high: "too much",
-                        validity: "a surface footing on dry sand, rocked or shaken",
+                        validity:
+                            "a surface footing on dry sand of 80 MPa, twice the default's; the cyclic sand "
+                            + "was made the default after the shaken tests",
                         check: has(.cyclicSand) ? "FoRCy SSG02_03" : "FoRDy, eight events"),
                 ]
             }
@@ -841,7 +1002,7 @@ extension StandingScene {
                                 format: "a rigid wall facing the charge at %.2f m/kg^(1/3)", distance),
                             check: "Kingery–Bulmash, 100 kg",
                             document: "validation.md#kingerybulmash-the-design-practice-standard",
-                            scaled: read.scaled))
+                            scaled: read.scaled, referenceScatter: ValidationTables.scatter("reflected")))
                 } else {
                     unbanded.append("The nearest face lies outside the compared distances or cells.")
                 }
@@ -865,7 +1026,8 @@ extension StandingScene {
                     figure(
                         "cloudTop", .cloudTop, "Cloud's top", lowIsUnsafe: true, low: "too low",
                         high: "too high",
-                        validity: "54 to 1,270 kg of TNT, half a minute to two minutes, shot by shot",
+                        validity: "54 to 1,270 kg of TNT, half a minute to two minutes; 21% is a geometric "
+                            + "spread, not a bound, with afterburning whose burning time was fitted to the open blast",
                         check: "Church's 22 detonations"))
             } else {
                 unbanded.append("The comparison with Church's clouds was made with afterburning on.")
