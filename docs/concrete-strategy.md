@@ -242,7 +242,8 @@ a point to stop at.
    - Ando and Peterson on 16;
    - Chiquito, Wu, Hupfauf and the chamber.
 
-   It reports each result against the measurement and its regime.
+   It reports each result against the measurement and its regime. (Done: `Scripts/concrete-matrix.py`,
+   its table on the defaults of 11 October 2026 in `Benchmarks/ConcreteMatrix/defaults.md`.)
 
 Decided by: nothing new; it changes no result.
 
