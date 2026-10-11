@@ -249,6 +249,16 @@ func prepareTrace(_ solver: StructureSolver) {
     if let divisor = option("step-divisor").flatMap({ Float($0) }) {
         solver.stepOverride = solver.stableTimeStep / divisor
     }
+    applyFragmentThresholds(solver)
+}
+
+/// `--fragment-opening 1` (mm) and `--fragment-strain 0.1`: with `--fragments`, the openings that
+/// make concrete fragments (`StructureSolver.fragmentOpening`, `fragmentStrain`).
+func applyFragmentThresholds(_ solver: StructureSolver) {
+    if let opening = option("fragment-opening").flatMap({ Float($0) }) {
+        solver.fragmentOpening = opening / 1000
+    }
+    if let strain = option("fragment-strain").flatMap({ Float($0) }) { solver.fragmentStrain = strain }
 }
 
 /// Where hourglass control's work goes (with `--work`): through the whole body, by layer up its
@@ -460,9 +470,52 @@ func workRow(_ label: String, _ width: Int, _ totals: [Double]) -> String {
         + pad(format(totals.reduce(0, +), 1), 10)
 }
 
+/// `--rubble-trace`: every 0.05 ms, the rubble's count and fastest particle, and where it is.
+nonisolated(unsafe) var nextRubbleTrace = 0.0
+func rubbleTrace(_ solver: StructureSolver, _ time: Double) {
+    guard time >= nextRubbleTrace else { return }
+    // `--rubble-trace-from 1.8` (ms): every 2 µs from then on.
+    let fine = option("rubble-trace-from").flatMap { Double($0) }.map { time >= $0 / 1000 } ?? false
+    nextRubbleTrace = time + (fine ? 0.000002 : 0.00005)
+    let particles = solver.rubbleParticles()
+    guard
+        let fastest = particles.max(by: {
+            !(simd_length($1.particle.velocity) <= simd_length($0.particle.velocity))
+        })
+    else { return }
+    let p = fastest.particle
+    let (i, j, k) = solver.elementCoordinates(fastest.element)
+    let broken = particles.filter { !simd_length($0.particle.velocity).isFinite }.count
+    var brokenNodes = 0
+    var fastestNode: Float = 0
+    solver.mutateNodes { nodes in
+        for node in nodes where node.mass > 0 {
+            let speed = simd_length(node.velocity)
+            if !speed.isFinite { brokenNodes += 1 } else { fastestNode = max(fastestNode, speed) }
+        }
+    }
+    print(
+        "  \(format(time * 1000, 3)) ms: \(particles.count) particles, \(broken) not finite, nodes \(brokenNodes) not finite, fastest node \(format(Double(fastestNode), 1)); fastest \(format(Double(simd_length(p.velocity)), 1)) m/s from (\(i), \(j), \(k)) at \(p.position), mass \(p.mass), reach \(p.reach), volume \(p.volume)"
+    )
+    fflush(stdout)
+}
+
+/// With rubble (`--rubble`): how many particles, their mass, and how fast they move.
+func printRubble(_ solver: StructureSolver) {
+    let particles = solver.rubbleParticles().map(\.particle)
+    guard !particles.isEmpty else { return }
+    let speeds = particles.map { simd_length($0.velocity) }.sorted()
+    let mass = particles.reduce(0) { $0 + $1.mass }
+    print(
+        "  rubble: \(particles.count) particles, \(format(Double(mass), 1)) kg, speed median \(format(Double(speeds[speeds.count / 2]), 1)) m/s, fastest \(format(Double(speeds.last ?? 0), 1)) m/s"
+    )
+}
+
 func applyRateOptions(_ model: inout StructureModel) {
     // `--fragments`: concrete broken into fragments is removed (`removesFragments`).
     if flag("fragments") { model.removesFragments = true }
+    // `--rubble`: failed concrete becomes particles that keep its mass (`rubbleParticles`).
+    if flag("rubble") { model.rubbleParticles = true }
     // `--no-crack-slip`: cracks spring back from sliding, as before slip was stored.
     if flag("no-crack-slip") { model.crackSlip = false }
     // `--pressed-interlock`: cracks press as they slide, and carry more shear pressed.
@@ -2006,7 +2059,10 @@ func runContact() throws {
                     fflush(stdout)
                 } : nil,
             inspect: { structure, time in
+                lastStructure = structure
                 if flag("no-debris-drag") { structure.debrisDrag = false }
+                applyFragmentThresholds(structure)
+                if flag("rubble-trace") { rubbleTrace(structure, time) }
                 if flag("no-contact") { structure.contactMode = .off }
                 if flag("report") || flag("census"), time >= duration * 0.995, !reported {
                     reported = true
@@ -2069,6 +2125,7 @@ func runContact() throws {
                 "    " + pad(format(time * 1000, 1) + " ms", 8)
                     + radii.map { pad(format(Double(velocity[$0]), 1), 6) }.joined())
         }
+        if let structure = lastStructure { printRubble(structure) }
         print("  \(result.summary.erodedElements) elements failed; \(format(result.wallSeconds, 0)) s\n")
         fflush(stdout)
     }
@@ -2083,6 +2140,60 @@ func runContact() throws {
 /// record there as CSV; for Wang's, `--edges hinged|sliding` (or `--hinged`) holds the edges
 /// otherwise than fixed (see `TwoFaceSlabTests.WangEdges`), and `--afterburn` lets the products
 /// burn on.
+/// `blastbench rubblecost [--h 0.0125] [--radius 0.15] [--steps 400]`: what rubble costs a step.
+/// Wu's slab on its own, a disc of elements through its thickness about the centre failed at
+/// once and given a spread of speeds, then the structure stepped with and without rubble: wall
+/// time per step, the particles' count, and the structure's step for scale.
+func runRubbleCost() throws {
+    let h = option("h").flatMap { Float($0) } ?? 0.0125
+    let radius = option("radius").flatMap { Float($0) } ?? 0.15
+    let steps = option("steps").flatMap { Int($0) } ?? 400
+    print(
+        "Wu's slab alone, \(format(Double(h) * 1000, 1)) mm elements, a disc \(format(Double(radius) * 200, 0)) cm across failed"
+    )
+    for rubble in [false, true] {
+        var model = TwoFaceSlabTests.scenario(TwoFaceSlabTests.wuTests[7], elementSize: h).structure!
+        model.rubbleParticles = rubble
+        let solver = try StructureSolver(device: device, model: model)
+        let c = TwoFaceSlabTests.wuCentre
+        var failed = 0
+        for k in 0..<solver.ez {
+            for j in 0..<solver.ey {
+                for i in 0..<solver.ex {
+                    let p = solver.origin + SIMD3(Float(i) + 0.5, Float(j) + 0.5, 0) * h
+                    guard solver.flag(i, j, k) == .active, simd_length(SIMD2(p.x - c.x, p.y - c.y)) < radius
+                    else { continue }
+                    solver.failElement(i, j, k)
+                    failed += 1
+                }
+            }
+        }
+        // Thrown down and outwards, as a crater's rubble is, so that it meets the slab and itself.
+        solver.mutateNodes { nodes in
+            for k in 0...solver.ez {
+                for j in 0...solver.ey {
+                    for i in 0...solver.ex {
+                        guard let n = solver.storedNode(i, j, k) else { continue }
+                        let p = solver.referencePosition(i, j, k)
+                        let r = SIMD2(p.x - c.x, p.y - c.y)
+                        guard simd_length(r) < radius + h else { continue }
+                        nodes[n].velocity = SIMD3(
+                            30 * r.x / radius, 30 * r.y / radius, -100 + 50 * (p.z - 0.6) / 0.1)
+                    }
+                }
+            }
+        }
+        solver.advance(steps: 20)
+        let start = ContinuousClock.now
+        solver.advance(steps: steps)
+        let elapsed = ContinuousClock.now - start
+        let seconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18
+        print(
+            "  \(rubble ? "rubble   " : "no rubble") \(solver.elementCount) elements, \(failed) failed, \(solver.rubbleParticles().count) particles: \(format(seconds / Double(steps) * 1e6, 1)) µs a step (step \(format(Double(solver.criticalTimeStep) * 1e6, 2)) µs)"
+        )
+    }
+}
+
 func runTwoFace() throws {
     let breakdownAt = option("breakdown").flatMap { Double($0) }.map { $0 / 1000 }
     var shownBreakdown = false
@@ -2188,6 +2299,7 @@ func runTwoFace() throws {
                         11)
                     + pad("\(result.summary.erodedElements)", 8) + pad(format(result.wallSeconds, 0), 6))
             try report(result, label: "wu-\(test.name)")
+            if let structure = lastStructure { printRubble(structure) }
             if let structure = lastStructure {
                 let h = structure.model.elementSize
                 let c = TwoFaceSlabTests.wuCentre
@@ -2325,7 +2437,11 @@ func runCloseIn() throws {
                     print("  " + line)
                     fflush(stdout)
                 } : nil,
-            inspect: inspect)
+            inspect: { structure, time in
+                lastStructure = structure
+                applyFragmentThresholds(structure)
+                inspect?(structure, time)
+            })
         if let path = option("trace") {
             let centre = result.gaugeHistories[5]
             let text = centre.map { "\($0.time),\($0.pressure)" }.joined(separator: "\n")
@@ -2367,6 +2483,7 @@ func runCloseIn() throws {
                 "  impulse, \(result.gaugePeaks[n].name): \(format(Double(result.gaugeImpulses[n]), 0)) Pa s")
         }
         print("  slab's momentum at 5 ms: \(format(Double(result.impulse), 0)) N s")
+        if let structure = lastStructure { printRubble(structure) }
         print("  \(result.summary.erodedElements) elements failed; \(format(result.wallSeconds, 0)) s\n")
     }
 }
@@ -4374,6 +4491,7 @@ do {
     case "impact": try runImpact()
     case "closein": try runCloseIn()
     case "twoface": try runTwoFace()
+    case "rubblecost": try runRubbleCost()
     case "contact": try runContact()
     case "closeair": try runCloseAir()
     case "gas": try runGasPressure()

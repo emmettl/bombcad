@@ -40,10 +40,10 @@ nothing in it should be used to judge the safety of a real structure.
 | 2 | Shear failure and joints are the least reliable predictions             | The unsafe side where they err, shear too strong: breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | The default gas has no afterburning and treats hot air as cold          | Low, the unsafe side, without the options: incident impulse 13–22% low and rooms' gas 48–114% of the design value (half for light charges), unless afterburning and hot air (2 times slower) are switched on; the gas loses its radiated heat only with radiative cooling on | [Air-blast model](air-blast-model.md#hot-air) |
 | 4 | Peak pressure is under-resolved near the charge                         | Peaks read low, the unsafe side: close-in loading needs fine or twice-refined air; spall needs cells of 0.005 W^(1/3) and 12 elements through a slab | [Validation](validation.md#what-stops-the-spall-and-the-breach) |
-| 5 | Collapse has never been compared with anything; debris once, off slabs under contact charges | Debris held back rather than thrown, the unsafe side for a hazard; collapse looks plausible, that is all | [Validation](validation.md#slabs-under-contact-charges) |
+| 5 | Collapse has never been compared with anything; debris once, off slabs under contact charges | Debris held back rather than thrown, the unsafe side for a hazard (as rubble particles, an option, thrown at nearer the measured speed); collapse looks plausible, that is all | [Validation](validation.md#slabs-under-contact-charges) |
 | 6 | Moving solids are a staircase of whole cells                            | Either way, to a cell: wall positions are good to a cell; small fragments are crude | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | Up to sixteen bodies of up to eight materials each, bonded within and meeting each other only by contact, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly (IFC buildings import as shells and beams where square to the axes, their materials, ties and supports inferred and listed); thrown debris and contact between buildings are approximate | [Structural model](structural-model.md#limitations) |
-| 8 | The rebound after a slab's peak is too large; concrete broken under a close-in charge is never removed by default | Too stiff close in, the unsafe side: no hole under a close-in charge, and rebound too large (strength with pressure, and cracks pressed shut, checked: not the cause); removing fragments, an option, holes slabs both ways | [Validation](validation.md#holes-under-close-in-and-contact-charges) |
+| 8 | The rebound after a slab's peak is too large; concrete broken under a close-in charge is never removed by default | Too stiff close in, the unsafe side: no hole under a close-in charge, and rebound too large (strength with pressure, and cracks pressed shut, checked: not the cause); removing fragments, an option, holes slabs both ways; rubble kept as particles, an option, holes none | [Validation](validation.md#holes-under-close-in-and-contact-charges) |
 | 9 | Supports and freestanding objects are checked against statics and theory, and footings against nine centrifuge events on one sand (FoRCy, FoRDy) | Either way for a footing's rocking moment, settlement too much and energy too little; footings on soil and connections that open and slide are in, as are boxes and cars that slide, lift and overturn; every object takes the air's load, but late flow is not converged and the cars and furniture are illustrative | [Freestanding objects and supports](#freestanding-objects-and-supports) |
 | 10 | Only selected panels and document workflows have had visual review      | Other layouts and native interactions may still have problems | Below |
 
@@ -88,9 +88,9 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
   ([selecting by regime](concrete-strategy.md#selecting-by-regime-instead-of-waiting-for-agreement));
   stage 0's case matrix; stage 1, discrete bars, and stage 2's first step, nonlocal cracking, both
   options ([staged plan](concrete-strategy.md#4-a-staged-plan)); hourglass control traced
-  ([validation](validation.md#hourglass-control)).
-- **Now:** stage 3, failed concrete turned to rubble particles rather than deleted, built and
-  being judged on Wu's, Hupfauf's and Chiquito's slabs before it lands as an option.
+  ([validation](validation.md#hourglass-control)); stage 3, failed concrete kept as rubble
+  particles, an option for debris: speeds nearer the tests', no holes
+  ([rubble](validation.md#rubble-kept-as-particles-stage-3)).
 - **Next:** Peterson's short beams under impact: bond splitting along the bars and the strut's
   crushing ([Peterson](validation.md#short-beams-struck-to-a-shear-failure)); then stage 2's
   embedded cracks where members fail in shear, if Peterson's and OA1's modes call for them.
@@ -222,6 +222,9 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
 - **Removing concrete cracked open every way, as rubble**, to let a close-in charge hole the
   slab, as the test authors' own model eroded fully damaged elements: it took the lower half of
   the slab over a circle 1.8 m across within 12 ms, made no hole and did not move the slab.
+- **Rubble as particles, by default under close-in and contact charges** (stage 3): alone it
+  holes less than removal did; with fragments removed it holes Hupfauf's slabs that held too, and
+  Wu's S4 at 38, 38 or 14 cm as the threshold moves from 0.5 to 1 mm. Kept as an option, for debris.
 - **Closing the space under the close-in slab**, to keep the wave from wrapping under it: the
   trapped air cushions the slab (126 mm peak against 161, and it springs back), so it says
   nothing about the open test.

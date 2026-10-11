@@ -147,7 +147,9 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    [Validation](validation.md#slabs-under-contact-charges). Removing fragments, concrete
    cracked open two ways, is now an option: it holes the slabs that were holed and those that
    held alike, so it is not the default; Wu's contact holes had been the step running away.
-   See [holes](validation.md#holes-under-close-in-and-contact-charges).)
+   See [holes](validation.md#holes-under-close-in-and-contact-charges). Failed concrete kept as
+   particles is an option too: debris speeds nearer the tests', no holes; see
+   [rubble](validation.md#rubble-kept-as-particles-stage-3).)
 7. **The rebound.** The slab's mid-span hinge springs back twice as far as the specimen did on
    every mesh. (Done for beams: cracks that slide for good and ride up on their aggregate,
    after which beams struck by a falling weight keep their deflection as the tests did; the
