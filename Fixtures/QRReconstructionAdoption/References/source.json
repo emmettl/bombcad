@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/emmettl/ContinuumKit",
+  "revision": "00eac5537843c85c3c25a7ecef1120f49e8aa469",
+  "sha256": {
+    "verify-pivoted-qr-output.py": "6ae04659c96687a353a3a0640667d51854a951bfceefacb25635d060ff0f44bc",
+    "verify-weighted-qr-audit.py": "8a62066c57b6fa980a84ba847db699e46e2203865665c375a47162999baffaf6"
+  },
+  "version": "0.1.0-alpha.19"
+}
