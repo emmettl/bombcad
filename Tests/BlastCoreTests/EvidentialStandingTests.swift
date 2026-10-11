@@ -74,7 +74,7 @@ private func anchor(_ heading: String) -> String {
 private let docs = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
     .deletingLastPathComponent().appending(path: "docs")
 
-@Suite struct EvidentialStandingTests {
+@Suite(.timeLimit(.minutes(120))) struct EvidentialStandingTests {
     @Test func everyInputHasAStandingEntry() {
         let names = inputSamples.flatMap(StandingTable.fieldNames(of:))
         let missing = names.filter { StandingTable.fields[$0] == nil }
