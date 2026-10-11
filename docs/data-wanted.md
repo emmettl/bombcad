@@ -810,11 +810,11 @@ their licence, as `Samples/FoRCy` does.
 | `Wang2022` | The same for Wang et al. | 1.6 MB | CC BY 4.0 |
 | `Peterson2026` | 3,537 files: load cells and accelerometers (.mat) for 16 beams, high-speed frames (.tif) for 18, each checked against its SHA-256 | 2.5 GB | CC BY 4.0 |
 | `Hupfauf` | The 2022 paper and the 2024 thesis | 3.5 and 59.7 MB | CC BY 4.0; open access |
-| `Hrynyk2013` | `Experimental Data.zip`, 39 spreadsheets for slabs TH2 and TH4 to TH8, unpacked | 183 MB (474 MB unpacked) | Not stated |
+| `Hrynyk2013` | `Experimental Data.zip`, the slab records; now sealed for blind test 1 (see [blind tests](blind-tests.md)) | 183 MB | Not stated |
 | `DialPack1971` | Pattman's DREO Report 642, now compared (see [3e](#3e-fireball-radiation)) | 1.52 MB | Government of Canada |
 | `Bauwens2008` | The *Fire Safety Science* 9 paper, a text extract and its plots digitised (`digitised/`) | 1.3 MB | Free to read (IAFSS) |
 | `Alsubaei2015` | The Western University thesis | 8.4 MB | Not stated |
-| `Reynolds2015`, `Vasudevan2012` | The two UMKC theses on the contest's slabs, through MOspace's public API, MD5s matching the repository's | 6.6 and 3.1 MB | No rights statement in the records |
+| `Reynolds2015`, `Vasudevan2012` | The two UMKC theses on the contest's slabs, through MOspace's public API, MD5s matching the repository's; held unread as candidates for blind test 3: ask the orchestrating session before opening them | 6.6 and 3.1 MB | No rights statement in the records |
 | `KeysClubley2017` | Keys and Clubley's accepted manuscript, from Loughborough (figshare 9443321) | 7.9 MB | CC BY-NC-ND 4.0 |
 | `USGS-OFR77-143` | Hoffman and Harding, *Strong ground motion in the Tularosa Basin* | 2.2 MB | Public domain |
 | `DRDC2013` | DRDC TR 2013-056, the 2012 field trials with lidar | 2.75 MB | Government of Canada |

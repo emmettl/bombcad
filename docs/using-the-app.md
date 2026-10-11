@@ -67,7 +67,7 @@ The More menu offers Save As and Import Layout JSON. Export Layout JSON saves ju
 placement, then prepare a preview of the actual occupied simulation volumes. Imports can be
 rigid obstacles, or a new deformable solid body with a material preset and editable density,
 stiffness and strength. Deformable imports require a layout without an existing structure,
-use solid elements at the air cell size, and start without reinforcement. Fixing the base
+use solid elements at the air cell size (IFC buildings: shells and beams), and start without reinforcement. Fixing the base
 holds nodes at the imported body's lowest plane; review that assumption before running.
 
 **Help → Importing models** provides an offline walkthrough of scale, placement, feature-size
@@ -79,7 +79,10 @@ They are not bundled with the app. The [real CAD fixtures](../Samples/Importer/R
 add unchanged FreeCAD library exports, pinned provenance and current acceptance/resolution expectations;
 their STEP counterparts are references for future support.
 
-IFC imports use the bundled IfcOpenShell converter locally and create **rigid obstacles**.
+IFC imports use the bundled IfcOpenShell converter locally and create **rigid obstacles**, or,
+with **Deformable shells and beams**, a structure of shells and beams whose materials,
+connections and supports are read or inferred and listed (see
+[structures from IFC](structural-editing.md#structures-from-ifc)).
 Physical walls, slabs/roofs, columns, beams, members, plates, footings, stairs, railings, doors
 and windows can be chosen; spaces, furnishings, proxy/site markers and other types are excluded.
 Before geometry conversion, choose exact elements using building, storey, type and text filters
@@ -106,7 +109,7 @@ separately. Inventory follows the decomposition tree; uncontained products may b
 selected solids are collected into one review with names, GlobalIds and repair reasons. Select
 reviewed failures to exclude and retry, or export the complete geometry review. No partial geometry
 result can be applied while invalid meshes remain. Exclusion is an explicit action.
-Undetermined converter units block import to prevent incorrect scale. Structural materials, supports and connections are not inferred.
+Undetermined converter units block import to prevent incorrect scale. Rigid imports infer no materials, supports or connections.
 
 An attached rigid import can become an **exposure-only envelope** (Run ▸ Imported geometry ▸ Use
 as Exposure-only Envelope, or Use All for a group): its sampled boxes as walls and roofs, IFC windows
@@ -123,8 +126,7 @@ gap diagnostics on their existing grid; detached scene geometry remains authorit
 while OBJ/STL assets retain version 1. See the repository-only
 [whole-building IFC fixture](../Samples/Importer/Buildings/README.md) for a small house, matching
 raw OBJ reference, a two-storey duplex, structural beams, an imperial column, a unit-failure case,
-expected behaviour and reproducible provenance. IFCZIP/IFCXML and
-conversion to deformable shells or beams are outside this first milestone.
+expected behaviour and reproducible provenance. IFCZIP/IFCXML are not read.
 
 The importer retains each source mesh, its units/orientation and placement in the saved layout.
 **Inspect / edit source…** in Edit layout reopens an import without its original file. Changing

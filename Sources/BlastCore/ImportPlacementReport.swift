@@ -104,8 +104,8 @@ public struct ImportPlacementReport: Sendable, Hashable {
         addEnvironment(scenario.boxes)
         addEnvironment(scenario.envelopeObjects.flatMap { $0.envelope!.blocks })
         for model in scenario.importedModels ?? []
-        where model.isAttached && model.behavior == .rigid && model.id != editingID {
-            addEnvironment(model.preview.boxes)
+        where model.id != editingID {
+            addEnvironment(model.rigidBoxes)
         }
         for object in scenario.structuralObjects
         where object.sourceModelID == nil || object.sourceModelID != editingID {

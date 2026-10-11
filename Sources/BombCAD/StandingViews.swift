@@ -139,7 +139,8 @@ struct ShownValue: Equatable {
     /// where the case was run with uncertain inputs.
     func expectation(_ band: ErrorBand) -> String {
         let inputs = band.inputSpread.map { String(format: "; inputs ±%.0f%%", 164.5 * $0) } ?? ""
-        return "expect \(range(band.expectedWithInputs(value))) (model \(band.reads)\(inputs))"
+        let reference = band.referenceScatter.map { String(format: "; tests ±%.0f%%", 164.5 * $0) } ?? ""
+        return "expect \(range(band.expectedWithInputs(value))) (model \(band.reads)\(inputs)\(reference))"
     }
 }
 
@@ -340,6 +341,15 @@ struct StandingDetail: View {
                                 spread * 100, spread * 164.5)
                         )
                         .foregroundStyle(.secondary)
+                    }
+                    if let verdict = band.againstReference {
+                        Label(
+                            verdict + " (One standard deviation; added to the range below.)",
+                            systemImage: band.withinReference == true
+                                ? "equal.circle" : "arrow.up.and.down.circle"
+                        )
+                        .foregroundStyle(band.withinReference == true ? .secondary : .primary)
+                        .fixedSize(horizontal: false, vertical: true)
                     }
                     if let value, value.measure == band.measure {
                         Text(

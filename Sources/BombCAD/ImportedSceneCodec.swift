@@ -15,17 +15,22 @@ enum ImportedSceneCodec {
             self.imports = imports
             // Older readers must not silently discard durable object/component ownership, nor
             // stand a base on the ground that stands on a footing, nor turn a joint face down, nor
-            // read a joint at an angle as one under the body, nor lay flat ground over a terrain.
+            // read a joint at an angle as one under the body, nor lay flat ground over a terrain, nor
+            // lose the rigid obstacles an IFC structure of shells and beams keeps.
             encodingVersion =
-                scenario.terrain != nil
-                ? 8
-                : scenario.hasLaterConnections
-                    ? 7
-                    : !scenario.envelopeObjects.isEmpty
-                        ? 6
-                        : scenario.hasFootingsOrTurnedJoints
-                            ? 5
-                            : scenario.structuralObjects.count > 1 ? 4 : 3
+                scenario.importedModels?.contains(where: \.isStructural) == true
+                    || imports?.contains(where: { $0.behavior == .deformable && $0.structuralReport != nil })
+                        == true
+                ? 9
+                : scenario.terrain != nil
+                    ? 8
+                    : scenario.hasLaterConnections
+                        ? 7
+                        : !scenario.envelopeObjects.isEmpty
+                            ? 6
+                            : scenario.hasFootingsOrTurnedJoints
+                                ? 5
+                                : scenario.structuralObjects.count > 1 ? 4 : 3
         }
     }
 
@@ -94,6 +99,8 @@ enum ImportedSceneCodec {
         var previewKey: PreviewKey
         var regenerationEnabled: Bool?
         var partMaterials: [Int: StructureMaterial]?
+        var structuralOptions: IFCStructure.Options?
+        var structuralReport: IFCStructure.Report?
 
         init(_ model: ImportedModel, asset: ProjectManifest.Asset, domainSize: SIMD3<Float>) {
             id = model.id
@@ -107,6 +114,8 @@ enum ImportedSceneCodec {
             previewKey = PreviewKey(model, sourceSHA256: asset.sha256, domainSize: domainSize)
             regenerationEnabled = model.regenerationEnabled
             partMaterials = model.partMaterials
+            structuralOptions = model.structuralOptions
+            structuralReport = model.structuralReport
         }
 
         func model(source: ImportedMesh) -> ImportedModel {
@@ -114,6 +123,8 @@ enum ImportedSceneCodec {
                 id: id, name: name, source: source, scale: scale, yUp: yUp, corner: corner,
                 behavior: behavior, preview: preview, partMaterials: partMaterials)
             model.regenerationEnabled = regenerationEnabled
+            model.structuralOptions = structuralOptions
+            model.structuralReport = structuralReport
             return model
         }
     }
@@ -170,7 +181,7 @@ enum ImportedSceneCodec {
             var encodingVersion: Int
         }
         let header = try JSONDecoder().decode(Header.self, from: data)
-        guard header.format == "dev.bombcad.scene", (1...8).contains(header.encodingVersion) else {
+        guard header.format == "dev.bombcad.scene", (1...9).contains(header.encodingVersion) else {
             throw ProjectFileError.invalid(
                 "Unsupported scene encoding: \(header.format), version \(header.encodingVersion).")
         }
@@ -182,17 +193,23 @@ enum ImportedSceneCodec {
         }
         let hasEnvelopes = !payload.scenario.envelopeObjects.isEmpty
         let hasFootings = payload.scenario.hasFootingsOrTurnedJoints
+        let structural =
+            payload.imports?.contains { $0.behavior == .deformable && $0.structuralReport != nil } == true
         let expected =
-            payload.scenario.terrain != nil
-            ? 8
-            : payload.scenario.hasLaterConnections
-                ? 7
-                : hasEnvelopes ? 6 : hasFootings ? 5 : payload.scenario.structuralObjects.count > 1 ? 4 : 3
+            structural
+            ? 9
+            : payload.scenario.terrain != nil
+                ? 8
+                : payload.scenario.hasLaterConnections
+                    ? 7
+                    : hasEnvelopes
+                        ? 6 : hasFootings ? 5 : payload.scenario.structuralObjects.count > 1 ? 4 : 3
         // The unmerged envelope prototype also wrote v5 before footing support landed on main.
         // Its geometry is explicit and can migrate to v6 without discarding either feature.
         let prototypeEnvelope = header.encodingVersion == 5 && hasEnvelopes
         let legacy =
             header.encodingVersion < 3 && !hasEnvelopes && !hasFootings && payload.scenario.terrain == nil
+            && !structural
             && !payload.scenario.hasLaterConnections
             && payload.scenario.structuralObjects.count <= 1
         guard header.encodingVersion == expected || prototypeEnvelope || legacy else {
@@ -245,8 +262,13 @@ enum ImportedSceneCodec {
             throw ProjectFileError.invalid("Imported model instance IDs must be unique.")
         }
         for model in models {
-            guard model.source.buildingElements == nil || model.behavior == .rigid else {
-                throw ProjectFileError.invalid("IFC building instances must use rigid behavior.")
+            guard
+                model.source.buildingElements == nil || model.behavior == .rigid
+                    || model.structuralReport != nil
+            else {
+                throw ProjectFileError.invalid(
+                    "IFC building instances must be rigid, or a structure of shells and beams with its report."
+                )
             }
             let p = model.preview
             guard model.scale.isFinite, model.scale > 0,
