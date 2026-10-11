@@ -31,6 +31,12 @@ fails or times out. The pipeline preserves `make test`'s failure status. Build a
 checks run before the tests, so their results remain visible if tests stall. `make check`
 remains the equivalent local set of required checks.
 
+The application tests wait for the state they are about (a run finished, a consumer caught up,
+an edit settled), with no deadline of their own: a run that takes a second alone has taken
+minutes at load averages of 50–140, so a deadline failed for load rather than a fault. A test
+that never gets there is failed as hung after ten minutes (`hangLimit`). Paced playback is
+checked on a clock the test drives, not the wall's.
+
 On 9 October, Check runs [37965308304](https://github.com/emmettl/bombcad/actions/runs/37965308304)
 and [37975918140](https://github.com/emmettl/bombcad/actions/runs/37975918140) hit the job limit
 in the core test target.

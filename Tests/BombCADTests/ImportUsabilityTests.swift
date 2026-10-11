@@ -5,7 +5,7 @@ import simd
 
 @testable import BombCAD
 
-@MainActor @Suite("Import usability", .serialized)
+@MainActor @Suite("Import usability", .serialized, .hangLimit)
 struct ImportUsabilityTests {
     private func cube(_ name: String = "Block", x: Float = 0, width: Float = 1, offset: Int = 0) -> String {
         let points: [SIMD3<Float>] = [
@@ -25,9 +25,7 @@ struct ImportUsabilityTests {
         try ImportedMesh(data: Data(text.utf8), fileExtension: "obj")
     }
     private func waitUntil(_ condition: () -> Bool) async throws {
-        let end = ContinuousClock.now + .seconds(10)
         while !condition() {
-            try #require(ContinuousClock.now < end)
             try await Task.sleep(for: .milliseconds(5))
         }
     }
@@ -146,8 +144,8 @@ struct ImportUsabilityTests {
         let study = ImportResolutionStudy()
         study.compare(mesh: source, baseline: baseline, domain: SIMD3(repeating: 4))
         study.cancel(clear: true)
-        try await Task.sleep(for: .milliseconds(30))
-        #expect(study.rows.isEmpty && !study.isRunning)
+        try await waitUntil { !study.isRunning }
+        #expect(study.rows.isEmpty)
         study.compare(mesh: source, baseline: baseline, domain: SIMD3(repeating: 4))
         try await waitUntil { !study.isRunning }
         #expect(study.rows.count == 3)
@@ -208,8 +206,8 @@ struct ImportUsabilityTests {
         let loader = ImportFileLoader()
         loader.load(file)
         loader.cancel()
-        try await Task.sleep(for: .milliseconds(30))
-        #expect(loader.result == nil && !loader.isLoading)
+        try await waitUntil { !loader.isLoading }
+        #expect(loader.result == nil)
         let unsupported = file.deletingPathExtension().appendingPathExtension("step")
         loader.load(unsupported)
         let first = loader.failureID

@@ -6,7 +6,7 @@ import Testing
 
 @testable import BombCAD
 
-@MainActor @Suite("Thermal radiation reckoned over a run in the app", .serialized)
+@MainActor @Suite("Thermal radiation reckoned over a run in the app", .serialized, .hangLimit)
 struct ThermalOverlayTests {
     /// Low enough that the charge's gas, spread over the coarse grid's half-metre cells, is
     /// luminous through the run.
@@ -36,9 +36,9 @@ struct ThermalOverlayTests {
         return document
     }
 
-    private func ready(_ model: SimulationModel, by deadline: ContinuousClock.Instant) async throws {
+    private func ready(_ model: SimulationModel) async throws {
         while !model.experimentIsReady {
-            try #require(ContinuousClock.now < deadline && model.errorMessage == nil)
+            try #require(model.errorMessage == nil)
             try await Task.sleep(for: .milliseconds(5))
         }
     }
@@ -47,16 +47,14 @@ struct ThermalOverlayTests {
     private func runAndKeep(_ model: SimulationModel, named name: String = "Run") async throws
         -> SavedSimulationRun
     {
-        let deadline = ContinuousClock.now + .seconds(120)
-        try await ready(model, by: deadline)
+        try await ready(model)
         model.run()
         while model.isRunning || model.hasPendingGPUWork {
-            try #require(ContinuousClock.now < deadline && model.errorMessage == nil)
+            try #require(model.errorMessage == nil)
             try await Task.sleep(for: .milliseconds(5))
         }
         while let thermal = model.thermal, !thermal.caughtUp {
             #expect(throws: ProjectFileError.self) { try model.keepRun(named: name) }
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(5))
         }
         try model.keepRun(named: name)
@@ -111,8 +109,10 @@ struct ThermalOverlayTests {
         #expect(try ProjectDocument(archive: document.makeArchive()).thermal == nil)
 
         // Using a run's inputs brings its thermal radiation back, as one step to undo.
+        let steps = model.undoStack.count
         model.thermalSpec = nil
-        try await Task.sleep(for: .milliseconds(300))
+        // The edit settles into a step to undo a moment later, however busy the Mac.
+        while model.undoStack.count == steps { try await Task.sleep(for: .milliseconds(5)) }
         try model.useRunInputs(id: kept.id)
         #expect(model.thermalSpec == spec)
         model.undo()
@@ -144,11 +144,9 @@ struct ThermalOverlayTests {
         slow.fireball = .sphere
         document.thermal = slow
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
-        try await ready(model, by: ContinuousClock.now + .seconds(60))
+        try await ready(model)
         try model.sweep.start(.init(prefix: "Mass", parameter: .chargeMass([1, 2])))
-        let deadline = ContinuousClock.now + .seconds(300)
         while model.sweep.isActive {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(20))
         }
         #expect(model.sweep.completed == 2, "\(model.sweep.message)")
@@ -159,13 +157,11 @@ struct ThermalOverlayTests {
     @Test("Each edit to the section settles into a step to undo")
     func undo() async throws {
         let model = SimulationModel(document: airOnly(), playbackSpeed: .unlimited)
-        try await ready(model, by: ContinuousClock.now + .seconds(60))
+        try await ready(model)
         let steps = model.undoStack.count
         // Each edit settles into its step a moment later, however busy the Mac.
         func settled(_ count: Int) async throws {
-            let deadline = ContinuousClock.now + .seconds(30)
             while model.undoStack.count < steps + count {
-                try #require(ContinuousClock.now < deadline)
                 try await Task.sleep(for: .milliseconds(10))
             }
         }
@@ -209,14 +205,12 @@ struct ThermalOverlayTests {
         #expect(ThermalQuantity.shade(1e6) == 1 && abs(ThermalQuantity.shade(1e4) - 0.5) < 1e-6)
         #expect(model.thermalStatus.contains("Fireball up to") && model.thermalStatus.contains("kJ/m²"))
         // The view, drawing only on change between runs, sees the last frames come in.
-        let deadline = ContinuousClock.now + .seconds(10)
         while model.thermalReckoned < thermal.fireball.count {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(5))
         }
         #expect(model.thermalReckoned == thermal.fireball.count)
         model.reset()
-        try await ready(model, by: ContinuousClock.now + .seconds(10))
+        try await ready(model)
         #expect(
             model.thermalPaint(.fluence) == nil && model.thermalStatus.isEmpty && model.thermalReckoned == 0)
     }
