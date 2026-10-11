@@ -399,6 +399,13 @@ no default unless a regime's cases support it:
    3.8–4.3 ms after impact and under the load 5.7–6.2 ms; the model's do not. Trace the
    compression law's strength and softening at these rates and the removal rule for crushed
    concrete.
+3. **Masonry that breaks too late and too coarsely.** Against Keys's trials the Windrush walls on
+   their mortar bed break at one joint and topple whole about 1.5 s after 41 kg of TNT, two of them
+   towards the charge, where the trials' broke in three within 20 ms and folded near the base; the
+   debris lands 1.9 m out on average against 0.23 m. Trace the mortar joints' strength and
+   fracture energy at these rates, the units' and joints' tension and shear under fast loading,
+   and the bed joint's friction, with the Coulomb ground friction for debris added for Keys.
+   Judged by Keys's fixture and the matrix's masonry cases.
 
 **Stage 4, only if stage 3 cannot hole the right slabs: a peridynamic zone (months).** Bonds
 between the existing nodes within a horizon of three elements, in a zone around a close-in or
