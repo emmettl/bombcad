@@ -42,6 +42,40 @@ struct DeflagrationTests {
         #expect(abs(ideal - 6.64) < 0.05, "\(ideal)")
     }
 
+    @Test("Methane's critical radius follows Bauwens et al.'s measurements; propane has none")
+    func criticalRadius() {
+        let methane = FlammableGas.methane
+        // Their Table 1: 0.225 m at φ 1.00, 0.204 m at 0.81 and 0.324 m at 1.22.
+        let stoichiometric = methane.criticalRadius(fraction: methane.fraction(equivalenceRatio: 1)) ?? 0
+        #expect(abs(stoichiometric - 0.225) < 0.001)
+        #expect(methane.criticalRadius(fraction: methane.fraction(equivalenceRatio: 0.7)) == 0.204)
+        #expect(methane.criticalRadius(fraction: methane.fraction(equivalenceRatio: 1.3)) == 0.324)
+        #expect(FlammableGas.propane.criticalRadius(fraction: 0.04) == nil)
+        #expect(FlameInstability.measured.radius(gas: .propane, fraction: 0.04) == nil)
+        #expect(FlameInstability.onset(0.5).radius(gas: .propane, fraction: 0.04) == 0.5)
+    }
+
+    @Test("An ignition point on a cell's corner lights one cell, whichever way the float rounds")
+    func ignitionOnACorner() throws {
+        // On 5 cm cells the middle of a 1 m box is a corner of eight cells.
+        func burnt(length: Float) throws -> Double {
+            var scenario = Scenario(
+                name: "Ball", domainSize: SIMD3(repeating: length), boxes: [],
+                charge: Charge(mass: 0, position: .zero))
+            scenario.reflectiveFaces = .all
+            scenario.deflagration = Deflagration(
+                gas: .methane, region: Box(min: .zero, max: SIMD3(repeating: length)),
+                ignition: SIMD3(repeating: length / 2), acceleration: .laminar)
+            let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.05)
+            solver.advance(until: 0.05)
+            return try #require(solver.deflagrationState()).burntFraction * Double(length * length * length)
+        }
+        let small = try burnt(length: 1)
+        let large = try burnt(length: 2)
+        #expect(small > 0, "nothing burnt")
+        #expect(abs(small / large - 1) < 0.02, "\(small) m³ against \(large) m³ of mixture burnt")
+    }
+
     @Test("The thin-flame model's steepest rise is the deflagration index's formula")
     func thinFlameIndex() {
         let r = 0.5
@@ -86,7 +120,7 @@ struct DeflagrationTests {
 
     @Test(
         "A flame lit at the closed end of a tube runs at the expansion ratio times the burning velocity",
-        arguments: [FlameAcceleration.laminar, FlameAcceleration()])
+        arguments: [FlameAcceleration.laminar, FlameAcceleration(instability: nil)])
     func tubeFlameSpeed(acceleration: FlameAcceleration) throws {
         let dx: Float = 0.02
         let length: Float = 1.2
@@ -98,7 +132,8 @@ struct DeflagrationTests {
         scenario.deflagration = Deflagration(
             gas: .methane, region: Box(min: .zero, max: SIMD3(length, width, width)),
             ignition: SIMD3(0, width / 2, width / 2), acceleration: acceleration)
-        // A flame in a narrow tube is one-dimensional, where the σ-model sees no turbulence.
+        // A flame in a narrow tube is one-dimensional, where the σ-model sees no turbulence (the
+        // cellular instability, of a spherical flame, is left out).
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: dx)
         let grid = solver.grid
         func front() throws -> Float {
@@ -156,7 +191,7 @@ struct DeflagrationTests {
             gas: .propane, concentration: 0.05, region: Box(min: .zero, max: SIMD3(4, 4, 1)),
             ignition: SIMD3(2, 2, 0.5),
             acceleration: FlameAcceleration(
-                factor: 2, wrinklingRadius: 1, turbulence: FlameTurbulence(scale: 1)))
+                factor: 2, instability: .onset(1), turbulence: FlameTurbulence(scale: 1)))
         scenario.ventPanels = [
             VentPanel(box: Box(min: SIMD3(3.9, 1, 1), max: SIMD3(4, 2, 2)), releasePressure: 5000)
         ]
