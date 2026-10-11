@@ -37,8 +37,10 @@ retains readable names, types, storey labels when supplied, and exact GlobalIds.
 
 At a zero corner, Medium produces **2,181 occupied cells and 38 regions**. Review
 thin-feature, gap and missing-surface warnings, then Compare grids. The entrance
-recess in the floor and the interior room air remain empty; supports and materials
-are not inferred. IFC imports currently create rigid obstacles only. Ordinary
+recess in the floor and the interior room air remain empty; as rigid obstacles, supports and
+materials are not inferred. With **Deformable shells and beams** its four walls become shells
+standing on the ground, and the inclined roof and the floor stay rigid (see
+[structures from IFC](../../../docs/structural-editing.md#structures-from-ifc)). Ordinary
 placement warnings depend on the surrounding scene and charge position.
 
 Save as `.bombcad` and reopen: original IFC bytes, converted element sources,

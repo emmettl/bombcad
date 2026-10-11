@@ -76,6 +76,60 @@ Ideal clamps override finite connections wherever they overlap. Among overlappin
 
 `StructureModel.supportAnchorages` is aligned with `supports`. Missing/null entries mean ideal clamps; removing a support removes its law at the same index. Empty arrays are omitted from JSON to preserve historical input fingerprints. Project scene payloads with finite support-region laws use encoding version 2, so older apps reject them instead of silently treating the connections as clamps; version 1 scenes remain readable. Invalid law values and references are rejected on editing, project loading and solver construction. Solver provenance advances to `blast-solver-2` for these connections; existing saved results remain readable.
 
+## Structures from IFC
+
+An IFC building imported with **Deformable shells and beams** becomes a structure of shells
+and beams (`IFCStructure`), not one of sampled solid regions. The import sheet's **Structure
+from IFC** section reports what the conversion did before anything is applied, and the same
+report stays under **Edit layout → Structure from IFC**.
+
+- **Elements.** Walls, slabs and roofs square to the axes become shells: as thick as their
+  structural layer where the IFC gives a material layer set (the block of a brick-on-block
+  wall), else as their geometry. Columns, beams and members become beams of their section's
+  depth and width; a flanged section (under half its bounds filled) is a rectangle 0.6 of its
+  depth wide whose material is scaled to the bending stiffness, strength and mass of a
+  wide-flange shape of its area and depth. Footings become footings under the members on
+  them, set into the soil by their depth. Holes through a shell, openings, doors and unglazed
+  windows become openings; a window whose materials or name say glass becomes a 6 mm pane of
+  annealed glass on its wall's midsurface. Inclined, curved and irregular elements, finishes
+  (stud partitions, flooring, tiles) and slabs on grade that walls pass through stay rigid
+  obstacles, each with its reason.
+- **Materials.** Read from the IFC's material names where they name one the solver has
+  (concrete, with its grade if given, block, masonry, steel, glass). Elsewhere the stated
+  default, flagged in the report, the standing and the parts list; choose a part's material
+  under Parts to replace it. Reinforcement is never read: none, or the offered 0.3% in each
+  face both ways, marked as assumed.
+- **Connections.** Members that meet are tied rigidly (their shells share nodes) after gaps
+  up to the chosen tolerance (100 mm by default) are closed, measured to a wall's whole
+  thickness where only its structural layer is meshed. Every tie is listed; untick one in the
+  import sheet to leave that pair untied, the second member drawn back 10 mm.
+- **Supports.** Members on a footing stand on their own footing over the default sand, tied
+  by the chosen base connection (starter bars by default; a construction joint or resting on
+  the ground). Without footings the base is tied to the ground by it. Members standing on a
+  slab on grade, and walls and columns of the lowest storey with nothing under them in the IFC
+  (their foundation left out), are tied to the ground at their foot the same way; slabs on the
+  ground rest on it. Each is listed. Change them under **Restraints** once imported; that
+  detaches the structure from its source.
+
+**Checks.** The small house, the structural house and the duplex's first storey import,
+mesh and stand under gravity: the duplex (6,201 shells and 120 beams) sags 1.2 mm at its
+longest steel beam after 1 s, its supports carrying its weight to 0.1% (the houses in
+`IFCStructureImportTests` and boxes in `IFCStructureTests`; the duplex in a one-off run). Under 10 kg of TNT 6 m from the small house,
+its walls as imported (sand-lime masonry from the IFC, 200 mm) peak within 0.3% of the same
+walls built by hand in the editor, and under 50 kg, where the struck wall breaks, within 0.7%
+with 63 against 64 elements removed; the hand-built walls were typed to the centimetre (their
+tops 4 mm higher) with the materials the report gives. Over 0.1 s on 0.25 m cells the house as
+shells takes 6.9 s against 3.0 s as rigid obstacles, 2.3 times as long
+(`IFCStructureStudyTests`, with `BOMBCAD_IFC_STUDY` set to a folder for its report).
+
+Changing the options, the element subset or a part's material in the import sheet converts
+the building again; saved projects keep the options and report (scene encoding version 9).
+The shell model's bands apply only where the structure is like what was compared: reinforced
+concrete walls and slabs, read from the IFC, all tied and on a modelled base. Otherwise the
+standing names what differs (assumed materials, beams from IFC sections, other materials,
+unreinforced concrete, untied pairs, walls tied where the IFC has no foundation) and gives no
+band.
+
 ## Persisted ownership
 
 `StructureModel.solidSourceParts` is an optional-length array aligned with `solids`. Each

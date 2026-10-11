@@ -1144,6 +1144,55 @@ without stirrups test elsewhere. With bars that slip (`--bond splitting`) the fo
 under 6%, but four of the six kinds fail wrongly: the beams of shear span d and 2d without
 stirrups hold, and those with stirrups at 45 mm fail, where their companions at 90 mm hold.
 
+### Read from the high-speed images
+
+Peterson's high-speed frames (6,000 a second, 1024 × 512 px, about 0.53 mm a pixel, the side of
+each beam's shear span painted with a speckle pattern) were read for all eighteen beams but two:
+D-2d-S90-1 has no frames, and D-2d-NoS-2's end about 1 ms after the impact. Dense optical flow
+(OpenCV's Farnebäck, with numpy, scipy, scikit-image and Pillow) from the frame before impact gives
+the displacement field, and its major principal strain the cracks: regions strained 3% or more
+(the noise is under 1%), 15 mm long or more, their angle by principal axes. Pairs of points either
+side of the main crack, 6 mm off it, give its opening and slip. Times are from the first frame in
+which the top of the beam under the load moves (±0.25 ms); angles within about 5° (by hand,
+where the automatic reading cannot follow the deep beams' short steep cracks and broken ends,
+about 8°). Crushing was sought both as spalling (the frame no longer matching the reference) and
+as compressive strain, but the strain at this resolution cannot tell crushing from the noise
+under the loading cylinder and beside cracks, so only visible spalling or bursting is reported.
+The values are in `Samples/Peterson2026Images` (CC BY 4.0), the scripts in
+`Scripts/peterson2026/images`. The model's cracks through the middle of its width are read the same
+way (`blastbench impact --peterson --crack-trace`): elements cracked open by 1% or more, the
+first inclined crack (20–75°, three elements), and the longest run of inclined cracks in the
+short span.
+
+| Beams | First inclined crack, test / model | Main crack's inclination, test / model (2–5 ms) | Spalled or burst, test | Model |
+|---|---|---|---|---|
+| 0.4 d, none | 1.0, 1.5 / 1.3 ms | 78°, 76° / 80–83° | not within 25 ms | removed under the load and at the support from 2.2 ms |
+| 0.4 d, 90 mm | 0.7, 0.8 / 1.3 ms | 75°, 57° / 83° | support 3.8, 4.3 ms; load 5.8 | holds |
+| 0.4 d, 45 mm | 2.0, 1.0 / 1.3 ms | 80°, 77° / 84–85° | not within 25 ms | holds |
+| 1 d, none | 1.0, 1.3 / 1.1 ms | 50°, 51° / 52–56° | not within 25 ms | split along its bars, removed under the load at 4.8 ms |
+| 1 d, 90 mm | 1.7, 1.3 / 1.2 ms | 61°, 74° / 35–41° | load 5.7 ms (one) | holds |
+| 1 d, 45 mm | 1.2, 1.0 / 1.2 ms | 54°, 57° / 33–35° | not within 25 ms | holds |
+| 2 d, none | 1.0 / 0.9 ms | 37° in the long span, curving / 9–25° in the short | not within 25 ms | split along its bars |
+| 2 d, 90 mm | 0.8 / 1.3 ms | 58° / 23° | load 6.2 ms | bends |
+| 2 d, 45 mm | 1.5, 2.0 / 1.2 ms | flexural, 77° / 47–49° | not within 25 ms | bends |
+
+The first inclined crack comes in the model when it came in the tests: 0.7–2.0 ms after impact in
+the tests, 0.9–1.3 in the model. And where the model forms the deep and short beams' diagonal crack without
+stirrups its angle is the tests': 52–56° against 50–51° at a shear span of one depth, 80–83°
+against 76–78° at 0.4. In the tests every main crack ran from the support to the load: steeply
+in the deep beams (75–80°, along the direct strut), at 50–60° in the short ones, from beside the
+load into the long span in the slender beam without stirrups. The model differs in three ways.
+Its main crack in the short beams with stirrups lies 20–35° flatter than the tests'. Its slender
+and short beams without stirrups fail by a split along the bottom bars: the crack map shows the
+row of elements just above them removed along most of the beam, which no test image shows (with
+discrete bars, `--discrete`, the slender beam's split remains, 7–12° and 240 mm long at 5 ms). And
+its struts do not fail where the tests' were seen to burst at the support or spall under the load,
+3.8–6.2 ms after impact.
+
+The tests' shear cracks open far more than they slide. At a shear span of one depth they opened
+0.4–3.4 mm by 2 ms and 1.6–7 mm by 5 ms, sliding 0.1–0.7 and 0.2–1.0 mm: a tenth to a third
+of the opening. The deep beams' end blocks slide along the crack as a plug instead, by 1–3 mm.
+
 ## Slabs under close-in charges
 
 The first structural test in the open air with the air solver loading the
