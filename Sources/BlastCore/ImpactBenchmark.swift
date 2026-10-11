@@ -247,7 +247,8 @@ public enum ImpactBenchmark {
         device: MTLDevice, specimen: Specimen, weight: Float, speed impact: Float,
         elementsThroughDepth: Int = 16,
         duration: Double = 0.2, bounce: Bool = true, push: Float? = nil,
-        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in }
+        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in },
+        sample: ((StructureSolver) -> Void)? = nil
     ) throws -> Result {
         let length = specimen.length
         let depth = specimen.depth
@@ -355,6 +356,7 @@ public enum ImpactBenchmark {
         var pushForce: Float = 0
         while solver.time < (push.map { Double(3 * $0 / pushRate) } ?? duration), solver.time < settled {
             solver.advance(steps: stepsPerSample)
+            sample?(solver)
             history.append(
                 SIMD2(Float(solver.time), -solver.displacement(middle, solver.ey / 2, beamBottom).z))
             if let push {
@@ -741,12 +743,14 @@ public enum ImpactBenchmark {
     public static func run(
         device: MTLDevice, test: PetersonTest, elementsThroughDepth: Int = 16, duration: Double = 0.03,
         specimen change: (inout Specimen) -> Void = { _ in },
-        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in }
+        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in },
+        sample: ((StructureSolver) -> Void)? = nil
     ) throws -> Result {
         var specimen = specimen(test)
         change(&specimen)
         return try run(
             device: device, specimen: specimen, weight: petersonWeight, speed: petersonSpeed,
-            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust, inspect: inspect)
+            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust, inspect: inspect,
+            sample: sample)
     }
 }
