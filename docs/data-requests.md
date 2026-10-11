@@ -300,16 +300,27 @@ refuses automated access but opens in a browser:
   [eprint 381618](https://eprints.soton.ac.uk/id/eprint/381618/), 7 MB, under the University's
   Accepted Manuscript Licence; also on Loughborough's repository.
 
-No dataset DOI was found on either record. Read the thesis first: its debris plots may be
-enough to digitise. The request is for the underlying maps.
+Both are now on StudioData (`Keys2016`, `KeysClubley2017`). No dataset DOI was found on either
+record. The thesis plots each structure's debris mass distribution in bins of 0.5 to 1 m
+(Figures 4.11 to 4.74) but does not tabulate them; each piece was logged by mass, position and
+material over a 0.5 m grid. The plots can be digitised for a first comparison; the request is
+for the logged data behind them.
 
-**Who holds it.** Simon K. Clubley, University of Southampton (ORCID 0000-0003-3779-242X),
-Keys's supervisor; his current address is on Southampton's people directory. Where the trials
-were run, and whether a test house or government sponsor owns the records, is not known here;
-the draft asks.
+**Who holds it.** The thesis's acknowledgements settle it: the trials were run at MoD
+Shoeburyness (the Windrush Arena and the Air Blast Tunnel) with Spurpark Ltd's trials division,
+and all data obtained there "remains the property of the UK MoD". So the records are the
+Ministry of Defence's to release, not the university's. Simon K. Clubley, University of
+Southampton (ORCID 0000-0003-3779-242X), Keys's supervisor, is still the right first contact:
+he will know whether MoD has cleared any of it and whom to ask; his address is on
+Southampton's people directory.
 
-**Status.** Documents open; the records' holder and terms unknown. If the trials were run at a
-government range, release may be the sponsor's decision.
+**Route.** Ask Clubley first. If MoD's permission is needed and he cannot obtain it, the public
+route is a request under the UK Freedom of Information Act 2000 to the Ministry of Defence
+(through its FOI request page on gov.uk), naming the trials, the years and the thesis. MoD may
+withhold trial data on defence or commercial grounds; that is the answer if so.
+
+**Status.** Documents open and downloaded; the logged data is UK MoD property, release
+uncertain.
 
 **Draft.**
 
@@ -331,10 +342,11 @@ government range, release may be the sponsor's decision.
 > 2. the panels' as-built dimensions, brick and mortar properties, and how they were fixed;
 > 3. the overpressure records at or near the panels.
 >
-> I would publish only derived comparisons, not the data, unless you agree otherwise, and would
-> cite Keys and Clubley (2017) and Keys (2016), with any acknowledgement you prefer. If the
-> records belong to a sponsor or test facility, I would be grateful to know whom to ask, and
-> would of course respect any restriction.
+> I understand from the thesis that the trial data remains the property of the UK Ministry of
+> Defence. If you are not able to share it, I would be grateful to know whether MoD has cleared
+> any of it for release, or whom there I should ask; I would of course respect any restriction.
+> I would publish only derived comparisons, not the data, unless agreed otherwise, and would
+> cite Keys and Clubley (2017) and Keys (2016), with any acknowledgement you prefer.
 >
 > With thanks and kind regards,
 > [Your name]
