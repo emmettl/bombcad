@@ -1348,6 +1348,13 @@ public final class StructureSolver {
                 total += SIMD3<Double>(node.velocity) * Double(node.mass)
             }
         }
+        if let rubble = rubbleSystem {
+            let particles = rubble.particles.contents().bindMemory(
+                to: RubbleParticle.self, capacity: rubble.count)
+            for n in 0..<rubble.count where particles[n].alive != 0 {
+                total += SIMD3<Double>(particles[n].velocity) * Double(particles[n].mass)
+            }
+        }
         return total
     }
 

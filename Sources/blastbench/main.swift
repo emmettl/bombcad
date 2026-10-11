@@ -1869,6 +1869,7 @@ func runContact() throws {
                     fflush(stdout)
                 } : nil,
             inspect: { structure, time in
+                lastStructure = structure
                 if flag("no-debris-drag") { structure.debrisDrag = false }
                 if flag("no-contact") { structure.contactMode = .off }
                 if flag("report") || flag("census"), time >= duration * 0.995, !reported {
@@ -1932,6 +1933,7 @@ func runContact() throws {
                 "    " + pad(format(time * 1000, 1) + " ms", 8)
                     + radii.map { pad(format(Double(velocity[$0]), 1), 6) }.joined())
         }
+        if let structure = lastStructure { printRubble(structure) }
         print("  \(result.summary.erodedElements) elements failed; \(format(result.wallSeconds, 0)) s\n")
         fflush(stdout)
     }
@@ -1946,6 +1948,60 @@ func runContact() throws {
 /// record there as CSV; for Wang's, `--edges hinged|sliding` (or `--hinged`) holds the edges
 /// otherwise than fixed (see `TwoFaceSlabTests.WangEdges`), and `--afterburn` lets the products
 /// burn on.
+/// `blastbench rubblecost [--h 0.0125] [--radius 0.15] [--steps 400]`: what rubble costs a step.
+/// Wu's slab on its own, a disc of elements through its thickness about the centre failed at
+/// once and given a spread of speeds, then the structure stepped with and without rubble: wall
+/// time per step, the particles' count, and the structure's step for scale.
+func runRubbleCost() throws {
+    let h = option("h").flatMap { Float($0) } ?? 0.0125
+    let radius = option("radius").flatMap { Float($0) } ?? 0.15
+    let steps = option("steps").flatMap { Int($0) } ?? 400
+    print(
+        "Wu's slab alone, \(format(Double(h) * 1000, 1)) mm elements, a disc \(format(Double(radius) * 200, 0)) cm across failed"
+    )
+    for rubble in [false, true] {
+        var model = TwoFaceSlabTests.scenario(TwoFaceSlabTests.wuTests[7], elementSize: h).structure!
+        model.rubbleParticles = rubble
+        let solver = try StructureSolver(device: device, model: model)
+        let c = TwoFaceSlabTests.wuCentre
+        var failed = 0
+        for k in 0..<solver.ez {
+            for j in 0..<solver.ey {
+                for i in 0..<solver.ex {
+                    let p = solver.origin + SIMD3(Float(i) + 0.5, Float(j) + 0.5, 0) * h
+                    guard solver.flag(i, j, k) == .active, simd_length(SIMD2(p.x - c.x, p.y - c.y)) < radius
+                    else { continue }
+                    solver.failElement(i, j, k)
+                    failed += 1
+                }
+            }
+        }
+        // Thrown down and outwards, as a crater's rubble is, so that it meets the slab and itself.
+        solver.mutateNodes { nodes in
+            for k in 0...solver.ez {
+                for j in 0...solver.ey {
+                    for i in 0...solver.ex {
+                        guard let n = solver.storedNode(i, j, k) else { continue }
+                        let p = solver.referencePosition(i, j, k)
+                        let r = SIMD2(p.x - c.x, p.y - c.y)
+                        guard simd_length(r) < radius + h else { continue }
+                        nodes[n].velocity = SIMD3(
+                            30 * r.x / radius, 30 * r.y / radius, -100 + 50 * (p.z - 0.6) / 0.1)
+                    }
+                }
+            }
+        }
+        solver.advance(steps: 20)
+        let start = ContinuousClock.now
+        solver.advance(steps: steps)
+        let elapsed = ContinuousClock.now - start
+        let seconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18
+        print(
+            "  \(rubble ? "rubble   " : "no rubble") \(solver.elementCount) elements, \(failed) failed, \(solver.rubbleParticles().count) particles: \(format(seconds / Double(steps) * 1e6, 1)) µs a step (step \(format(Double(solver.criticalTimeStep) * 1e6, 2)) µs)"
+        )
+    }
+}
+
 func runTwoFace() throws {
     let breakdownAt = option("breakdown").flatMap { Double($0) }.map { $0 / 1000 }
     var shownBreakdown = false
@@ -2189,7 +2245,10 @@ func runCloseIn() throws {
                     print("  " + line)
                     fflush(stdout)
                 } : nil,
-            inspect: inspect)
+            inspect: { structure, time in
+                lastStructure = structure
+                inspect?(structure, time)
+            })
         if let path = option("trace") {
             let centre = result.gaugeHistories[5]
             let text = centre.map { "\($0.time),\($0.pressure)" }.joined(separator: "\n")
@@ -2231,6 +2290,7 @@ func runCloseIn() throws {
                 "  impulse, \(result.gaugePeaks[n].name): \(format(Double(result.gaugeImpulses[n]), 0)) Pa s")
         }
         print("  slab's momentum at 5 ms: \(format(Double(result.impulse), 0)) N s")
+        if let structure = lastStructure { printRubble(structure) }
         print("  \(result.summary.erodedElements) elements failed; \(format(result.wallSeconds, 0)) s\n")
     }
 }
@@ -4228,6 +4288,7 @@ do {
     case "impact": try runImpact()
     case "closein": try runCloseIn()
     case "twoface": try runTwoFace()
+    case "rubblecost": try runRubbleCost()
     case "contact": try runContact()
     case "closeair": try runCloseAir()
     case "gas": try runGasPressure()

@@ -102,6 +102,14 @@ extension StructureSolver {
         }
     }
 
+    /// The particle the element at lattice cell (i, j, k) became, if it has.
+    public func rubbleParticle(_ i: Int, _ j: Int, _ k: Int) -> RubbleParticle? {
+        guard let rubble = rubbleSystem, let n = compactIndex(i, j, k) else { return nil }
+        let p = rubble.particles.contents().load(
+            fromByteOffset: n * MemoryLayout<RubbleParticle>.stride, as: RubbleParticle.self)
+        return p.alive != 0 ? p : nil
+    }
+
     /// Totals over the body's nodes and its rubble: mass, momentum, kinetic energy and the rubble's
     /// internal energy, for checking what passes across when elements turn to rubble.
     public func massMomentumEnergy() -> (
@@ -134,7 +142,7 @@ extension StructureSolver {
     /// Marks the element at lattice cell (i, j, k) as failing (3 in Structure.metal), as the
     /// element pass marks one, so that the next substep removes it, and with rubble turns it into
     /// a particle.
-    func failElement(_ i: Int, _ j: Int, _ k: Int) {
+    public func failElement(_ i: Int, _ j: Int, _ k: Int) {
         flagBuffer.contents().storeBytes(of: UInt8(3), toByteOffset: elementIndex(i, j, k), as: UInt8.self)
         failureGateBuffer.contents().storeBytes(of: 1, as: UInt32.self)
     }
