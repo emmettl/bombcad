@@ -322,6 +322,25 @@ a band three times the crack spacing does OA1 come within 8% on both meshes, and
 Saatci's struck beams go further from the tests. Peterson's modes do not move, nor is the slab
 with discrete bars held together. The embedded crack is the next step.
 
+**Peterson's images, read (11 October 2026).** The high-speed frames were read for every beam
+recorded (see [Validation](validation.md#read-from-the-high-speed-images)): when the first
+inclined crack forms, the main crack's angle, its opening and slip, and when the strut spalled or
+burst. They do not decide for the embedded crack. Where the model forms the diagonal crack it
+forms it when and at the angle the tests did: 52–56° against 50–51° in the short beams, 80–83°
+against 76–78° in the deep ones, the first inclined crack 0.9–1.3 ms after impact against
+0.7–2.0. The tests' shear cracks opened far more than they slid (slip a tenth to a third of the
+opening), so a discontinuity's slip, which an embedded crack adds, carried little. What the model
+gets wrong is elsewhere: its short and slender beams split along their bottom bars, the row of
+elements above the bars removed along the beam, which no test image shows and which discrete bars
+do not remove from the slender beam; its struts do not burst or spall where the tests' did (at
+the support 3.8–4.3 ms after impact in the deep beams with stirrups, under the load 5.7–6.2 ms in
+others); and its main crack lies 20–35° flatter than the tests' in the short beams with
+stirrups. So before the embedded crack, the data point to the split along the bars (the bars'
+splitting of their cover, and whether the row above them should be removable at all) and to the
+strut's crushing under impact (the compression law's strength and softening at these rates, and
+the removal rule for crushed concrete). The embedded crack stays the step for OA1 on 12 elements,
+which these images do not test.
+
 **Stage 3: failed concrete to particles, for breach and debris (one to two months).**
 
 - An element past an erosion rule is converted into particles carrying its mass and velocity,
