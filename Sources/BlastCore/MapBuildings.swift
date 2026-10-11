@@ -489,6 +489,14 @@ extension Scenario {
             let id = try copy.addEnvelopeObject(
                 try BuildingEnvelope(solids: boxes), name: building.name ?? "\(building.kind) \(building.id)")
             taken.formUnion(cells)
+            copy.envelopeSources =
+                (copy.envelopeSources ?? []) + [
+                    EnvelopeSource(
+                        objectID: id, kind: .map,
+                        detail:
+                            "\(building.id), \(heights.source.rawValue) \(heights.top) m, \(cells.count) cells of \(r) m"
+                    )
+                ]
             report.placed.append(
                 .init(
                     id: building.id, objectID: id, heightSource: heights.source, base: ground, top: top,

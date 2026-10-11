@@ -150,6 +150,11 @@ func chosenScenario() -> Scenario {
     }
     // `--terrain hill|ridge|slope|flat|dem.asc` lays a terrain under the scene (TerrainBench.swift).
     if let terrain = option("terrain") { applyTerrain(terrain, to: &scenario) }
+    // `--buildings map.geojson` places map buildings on it, on `--dx`'s first cells.
+    if let buildings = option("buildings"), option("study") == nil {
+        let cell = option("dx").flatMap { $0.split(separator: ",").first.flatMap { Float($0) } } ?? 0.5
+        applyMapBuildings(buildings, to: &scenario, resolution: cell)
+    }
     return scenario
 }
 

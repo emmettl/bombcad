@@ -1,6 +1,37 @@
 import Foundation
 import simd
 
+/// Where a stationary envelope came from, when it was not drawn in BombCAD: what its standing
+/// rests on.
+public struct EnvelopeSource: Sendable, Hashable, Codable {
+    public enum Kind: String, Sendable, Codable {
+        /// An IFC import's sampled elements, windows and doors cut as openings.
+        case ifc
+        /// An OBJ or STL import's sampled boxes.
+        case mesh
+        /// A footprint from map data, extruded to a height from its tags.
+        case map
+    }
+    public var objectID: UUID
+    public var kind: Kind
+    /// The file, the element counts or the height's source, as the import's note gives them.
+    public var detail: String
+
+    public init(objectID: UUID, kind: Kind, detail: String) {
+        self.objectID = objectID
+        self.kind = kind
+        self.detail = detail
+    }
+}
+
+extension Scenario {
+    /// The envelopes made from imports or map data, of `kind`, still in the scene.
+    public func envelopeSources(_ kind: EnvelopeSource.Kind) -> [EnvelopeSource] {
+        let present = Set(envelopeObjects.map(\.id))
+        return (envelopeSources ?? []).filter { $0.kind == kind && present.contains($0.objectID) }
+    }
+}
+
 /// What became of an imported model made into a stationary envelope.
 public struct EnvelopeConversionReport: Sendable, Equatable {
     public var name: String
@@ -134,7 +165,13 @@ extension Scenario {
                 throw SceneObjectError.unsupportedRepresentation
             }
             let (envelope, report) = try model.buildingEnvelope(openings: openings[id] ?? [])
-            try copy.addEnvelopeObject(envelope, name: model.name)
+            let object = try copy.addEnvelopeObject(envelope, name: model.name)
+            copy.envelopeSources =
+                (copy.envelopeSources ?? []) + [
+                    EnvelopeSource(
+                        objectID: object, kind: model.source.buildingElements == nil ? .mesh : .ifc,
+                        detail: report.note)
+                ]
             copy.importedModels?.removeAll { $0.id == id }
             reports.append(report)
         }

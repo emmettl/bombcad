@@ -258,4 +258,37 @@ struct EnvelopeImportTests {
         encoder.userInfo[Scenario.physicsInputEncoding] = true
         #expect(!String(decoding: try encoder.encode(scene), as: UTF8.self).contains("OpenStreetMap"))
     }
+
+    @Test("Envelopes from imports and map data carry their source into the standing and the USD")
+    func provenance() throws {
+        var scene = Scenario(
+            name: "Street", domainSize: SIMD3(12, 10, 6), boxes: [],
+            charge: Charge(mass: 1, position: SIMD3(1, 8, 0.5)))
+        #expect(!StandingInputs(scenario: scene, cellSize: 0.25).options.contains(.importedEnvelopes))
+        let model = try building()
+        scene.importedModels = [model]
+        try scene.useEnvelopes(importIDs: [model.id])
+        #expect(scene.envelopeSources(.ifc).count == 1)
+        let square = [SIMD2<Double>(0.5, 0.5), SIMD2(2, 0.5), SIMD2(2, 1.5), SIMD2(0.5, 1.5)].map {
+            $0 / ElevationGrid.metresPerDegree
+        }
+        try scene.addMapBuildings(
+            [MapBuilding(id: "way/1", rings: [square])], placement: .init(origin: .zero, resolution: 0.25))
+        let options = StandingInputs(scenario: scene, cellSize: 0.25).options
+        #expect(options.contains(.importedEnvelopes) && options.contains(.mapBuildings))
+        // Removing the buildings removes the options.
+        var bare = scene
+        for object in bare.envelopeObjects { try bare.removeObject(id: object.id) }
+        #expect(!StandingInputs(scenario: bare, cellSize: 0.25).options.contains(.mapBuildings))
+
+        let folder = FileManager.default.temporaryDirectory.appending(path: "map-usd-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let writer = try USDSceneWriter(
+            url: folder.appending(path: "scene.usda"), scenario: scene, frameInterval: 0.001)
+        try writer.append(nil)
+        try writer.finish()
+        let text = try String(contentsOf: folder.appending(path: "scene.usda"), encoding: .utf8)
+        #expect(text.contains("string[] attributions = [\"Buildings © OpenStreetMap contributors"))
+    }
 }

@@ -265,6 +265,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case terrain
     case deflagration
     case ventPanels
+    case importedEnvelopes
+    case mapBuildings
     // The structure.
     case shellElements
     case shellSectionShear
@@ -331,6 +333,10 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .terrain: return inputs.scenario.terrain.map { !$0.isFlat } ?? false
         case .deflagration: return inputs.scenario.deflagration != nil
         case .ventPanels: return !(inputs.scenario.ventPanels ?? []).isEmpty
+        case .importedEnvelopes:
+            return !inputs.scenario.envelopeSources(.ifc).isEmpty
+                || !inputs.scenario.envelopeSources(.mesh).isEmpty
+        case .mapBuildings: return !inputs.scenario.envelopeSources(.map).isEmpty
         case .shellElements:
             return any { $0.elementKind == .shell || $0.solidElementKind.contains(.shell) }
         case .shellSectionShear: return any { $0.shellSectionShear }
@@ -519,6 +525,23 @@ public enum StandingTable {
                     + "reaches 55–60% of the tests' peaks lit at the back wall, a sixth to a seventh lit in the "
                     + "middle, and far below the venting correlations.",
                 document: "deflagration.md#limitations")
+        case .importedEnvelopes:
+            return Entry(
+                title: "Envelopes from imports", affects: air + [.envelopeExposure], limit: .approximation,
+                note:
+                    "An import's sampled boxes kept as a stationary envelope, which on the IFC fixtures is the "
+                    + "rigid import to the bit; windows and doors are cut as their bounding boxes (under 0.6% on "
+                    + "the maps and 0.8% on the surface loading of the duplex); element identities and materials "
+                    + "are lost, and nothing deforms or fails.",
+                document: "building-envelopes.md#envelopes-from-imports-and-map-data")
+        case .mapBuildings:
+            return Entry(
+                title: "Buildings from map data", affects: air + [.envelopeExposure], limit: .illustrative,
+                note:
+                    "Footprints from map data extruded as solid blocks to a tagged height, or levels at 3 m, or an "
+                    + "assumed two levels: no openings, interiors or roof shapes, and positions and heights as "
+                    + "accurate as the map.",
+                document: "building-envelopes.md#buildings-from-map-data")
         case .ventPanels:
             return Entry(
                 title: "Vent panels", affects: air + structure + [.envelopeExposure], limit: .approximation,
@@ -747,6 +770,10 @@ public enum StandingTable {
         "Scenario.reflectiveFaces": .option([.closedBoundaries]),
         "Scenario.terrain": .option([.terrain]),
         "Scenario.attributions": .input,
+        "Scenario.envelopeSources": .option([.importedEnvelopes, .mapBuildings]),
+        "EnvelopeSource.objectID": .input,
+        "EnvelopeSource.kind": .option([.importedEnvelopes, .mapBuildings]),
+        "EnvelopeSource.detail": .input,
         "Scenario.deflagration": .option([.deflagration]),
         "Scenario.ventPanels": .option([.ventPanels]),
         "Deflagration.gas": .input,

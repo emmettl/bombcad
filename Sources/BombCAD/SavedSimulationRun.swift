@@ -406,6 +406,10 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
             lines.append(
                 "\(field(name)),\"Fireball temperature\",\(frame.time * 1000),\(frame.temperature),K")
         }
+        // The credits the scene's data asks for, without a time or a value.
+        for credit in scenario.attributions ?? [] {
+            lines.append("\(field(name)),\(field("Attribution: " + credit)),,,")
+        }
         return lines.joined(separator: "\n") + "\n"
     }
 }
