@@ -460,6 +460,9 @@ final class SimulationModel {
     @ObservationIgnored private var rebuildTask: Task<Void, Never>?
     @ObservationIgnored private var batchSize = 4
     @ObservationIgnored private var paceOriginWall = ContinuousClock.now
+    /// The playback clock, which says how far a paced run may have got: the wall clock, unless a
+    /// test drives it, to check the pacing whatever else keeps the GPU busy.
+    @ObservationIgnored var playbackNow: @MainActor () -> ContinuousClock.Instant = { ContinuousClock.now }
     @ObservationIgnored private var paceOriginTime: Double = 0
     @ObservationIgnored private var lastBatchCompletion = ContinuousClock.now
     @ObservationIgnored private var lastTracePublication = ContinuousClock.now
@@ -2223,7 +2226,7 @@ final class SimulationModel {
     // MARK: - Stepping
 
     private func restartPacing() {
-        paceOriginWall = .now
+        paceOriginWall = playbackNow()
         paceOriginTime = solver?.time ?? time
         lastBatchCompletion = .now
     }
@@ -2252,7 +2255,7 @@ final class SimulationModel {
         if samples { limit = min(limit, nextStructureSampleTime) }
         var target = limit
         if speed != .unlimited {
-            let wall = (ContinuousClock.now - paceOriginWall).seconds
+            let wall = (playbackNow() - paceOriginWall).seconds
             target = min(limit, paceOriginTime + wall / speed.rawValue)
         }
         let remaining = target - solver.time

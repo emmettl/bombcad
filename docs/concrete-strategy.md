@@ -320,7 +320,16 @@ the user to obtain it).
 barely moves OA1 on 12 elements (134%) and breaks the slab on 16 and Janney's beam early; only over
 a band three times the crack spacing does OA1 come within 8% on both meshes, and there Ando's and
 Saatci's struck beams go further from the tests. Peterson's modes do not move, nor is the slab
-with discrete bars held together. The embedded crack is the next step.
+with discrete bars held together.
+
+**The embedded crack: deferred, not abandoned (11 October 2026).** In one-point elements a crack
+embedded in each element mostly changes the crack's statics, which the second crack already
+solves; what cures stress locking is a crack path continuous between elements, and tracking one
+did not help here before. No data at hand could tell such a model from today's: it waits for
+measurements of a crack's own opening and slip under impact, such as digital image correlation
+of Peterson's high-speed images ([Data wanted](data-wanted.md), rank 2). Meanwhile shear in
+members stays bounded honestly, by the standing's error bands (OA1's 111–137% by mesh) and
+the ensembles that spread a result over the model's options, rather than corrected.
 
 **Peterson's images, read (11 October 2026).** The high-speed frames were read for every beam
 recorded (see [Validation](validation.md#read-from-the-high-speed-images)): when the first
@@ -363,6 +372,40 @@ Decided by:
 Stop when the holes are within about a quarter of their measured size, and which slabs hole is
 right. Fragment sizes and their spread need Kasun-III's mapped debris (rank 12, needs the user);
 without it the data cannot judge a finer model of fragmentation.
+
+**Stage 3, as far as it went (11 October 2026).** Rubble is in, as an option
+(`rubbleParticles`; see the [concrete model](concrete-model.md#removal) and
+[Validation](validation.md#rubble-kept-as-particles-stage-3)). Mass, momentum and energy pass to
+the particles exactly. Alone, rubble throws Hupfauf's debris at nearer the measured speed (about
+22% off against 45%) but holes less than today, no slab the tests holed; with fragments removed it
+holes every slab tried, those that held too, at sizes its threshold sets (Wu's S4 at 38, 38 and
+14 cm as the opening goes from 0.5 to 0.7 to 1 mm, D4 at 28, 12 and 10), and not robustly (a node
+of S4 went to NaN). Chiquito's slabs lose no
+element at all. So the erosion rule was not made less critical: which concrete fails decides the
+holes, and the present elements do not fail the right concrete. No regime's cases support a
+default; rubble stays an option, for debris. Stage 4 stays in reserve for the user's decision,
+after the next two.
+
+**Next, before stage 4: what Peterson's images found (from 11 October 2026).** Judged by
+Peterson's image fixture (`Samples/Peterson2026Images`) and the case matrix, regime by regime, with
+no default unless a regime's cases support it:
+
+1. **Splitting along the bars under impact.** The model's short and slender beams without stirrups
+   split along their bottom bars, the row of elements above the bars removed along the beam, which
+   no test image shows. Trace why: the splitting stress the bars' bond puts on their cover (the
+   Model Code's bond and splitting, fib MC2010 6.1), the cover's tensile capacity and its rate
+   law, and the removal rule that takes the row.
+2. **Strut crushing and spall under impact.** The tests' struts crushed or spalled at the support
+   3.8–4.3 ms after impact and under the load 5.7–6.2 ms; the model's do not. Trace the
+   compression law's strength and softening at these rates and the removal rule for crushed
+   concrete.
+3. **Masonry that breaks too late and too coarsely.** Against Keys's trials the Windrush walls on
+   their mortar bed break at one joint and topple whole about 1.5 s after 41 kg of TNT, two of them
+   towards the charge, where the trials' broke in three within 20 ms and folded near the base; the
+   debris lands 1.9 m out on average against 0.23 m. Trace the mortar joints' strength and
+   fracture energy at these rates, the units' and joints' tension and shear under fast loading,
+   and the bed joint's friction, with the Coulomb ground friction for debris added for Keys.
+   Judged by Keys's fixture and the matrix's masonry cases.
 
 **Stage 4, only if stage 3 cannot hole the right slabs: a peridynamic zone (months).** Bonds
 between the existing nodes within a horizon of three elements, in a zone around a close-in or

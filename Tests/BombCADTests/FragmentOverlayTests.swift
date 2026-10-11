@@ -5,7 +5,7 @@ import Testing
 
 @testable import BombCAD
 
-@MainActor @Suite("Fragments drawn over a run in the app", .serialized)
+@MainActor @Suite("Fragments drawn over a run in the app", .serialized, .hangLimit)
 struct FragmentOverlayTests {
     private func spec() -> FragmentSpec {
         var spec = FragmentSpec()
@@ -42,20 +42,17 @@ struct FragmentOverlayTests {
         var document = document
         document.fragments = fragments
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
-        let deadline = ContinuousClock.now + .seconds(120)
         while !model.experimentIsReady {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(5))
         }
         model.run()
         while model.isRunning || model.hasPendingGPUWork {
-            try #require(ContinuousClock.now < deadline && model.errorMessage == nil)
+            try #require(model.errorMessage == nil)
             try await Task.sleep(for: .milliseconds(5))
         }
         // The last frames may still be in flight; a run is kept with its fragments landed.
         while let fragments = model.fragments, fragments.report.frame < fragments.sent - 1 {
             #expect(throws: ProjectFileError.self) { try model.keepRun(named: "Run") }
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(5))
         }
         try model.keepRun(named: "Run")
@@ -97,8 +94,10 @@ struct FragmentOverlayTests {
         #expect(try ProjectDocument(archive: document.makeArchive()).savedRuns.first?.fragments == nil)
 
         // Using a run's inputs brings its fragments back, as one step to undo.
+        let steps = model.undoStack.count
         model.fragmentSpec = nil
-        try await Task.sleep(for: .milliseconds(300))
+        // The edit settles into a step to undo a moment later, however busy the Mac.
+        while model.undoStack.count == steps { try await Task.sleep(for: .milliseconds(5)) }
         try model.useRunInputs(id: kept.id)
         #expect(model.fragmentSpec == spec())
         model.undo()
@@ -117,9 +116,7 @@ struct FragmentOverlayTests {
     func dots() async throws {
         let (model, _) = try await run(airOnly(), fragments: spec())
         // The last frames may still be in flight.
-        let deadline = ContinuousClock.now + .seconds(10)
         while let fragments = model.fragments, fragments.report.frame < fragments.sent - 1 {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(5))
         }
         let live = try #require(model.fragments?.fragmentLive)
@@ -136,9 +133,7 @@ struct FragmentOverlayTests {
         #expect(model.fragmentDots(showFragments: false, showTracers: false).isEmpty)
         #expect(model.fragmentStatus.contains("landed"))
         model.reset()
-        let cleared = ContinuousClock.now + .seconds(10)
         while !model.experimentIsReady {
-            try #require(ContinuousClock.now < cleared)
             try await Task.sleep(for: .milliseconds(5))
         }
         #expect(model.fragmentDots(showFragments: true, showTracers: true).isEmpty)
@@ -154,19 +149,16 @@ struct FragmentOverlayTests {
         model.useWorker(worker, host: "the mini")
         model.fragmentsHost = "the mini"
         for _ in 0..<2 {
-            let deadline = ContinuousClock.now + .seconds(60)
             while !model.experimentIsReady {
-                try #require(ContinuousClock.now < deadline)
                 try await Task.sleep(for: .milliseconds(5))
             }
             model.run()
             while model.isRunning || model.hasPendingGPUWork {
-                try #require(ContinuousClock.now < deadline && model.errorMessage == nil)
+                try #require(model.errorMessage == nil)
                 try await Task.sleep(for: .milliseconds(5))
             }
             let consumer = try #require(model.fragments as? ResilientFrameConsumer)
             while consumer.fragmentLive.map({ abs($0.time - 0.01) > 1e-6 }) ?? true {
-                try #require(ContinuousClock.now < deadline)
                 try await Task.sleep(for: .milliseconds(5))
             }
             let live = try #require(consumer.fragmentLive)

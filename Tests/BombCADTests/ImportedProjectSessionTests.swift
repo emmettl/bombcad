@@ -5,7 +5,7 @@ import Testing
 @testable import BombCAD
 
 @MainActor
-@Suite("Imported document sessions", .serialized)
+@Suite("Imported document sessions", .serialized, .hangLimit)
 struct ImportedProjectSessionTests {
     private func document(behavior: ImportedModel.Behavior = .deformable) throws -> ProjectDocument {
         let samples = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
@@ -33,9 +33,7 @@ struct ImportedProjectSessionTests {
     }
 
     private func waitUntil(_ condition: () -> Bool) async throws {
-        let deadline = ContinuousClock.now + .seconds(20)
         while !condition() {
-            try #require(ContinuousClock.now < deadline, "Timed out waiting for import regeneration")
             try await Task.sleep(for: .milliseconds(10))
         }
     }
