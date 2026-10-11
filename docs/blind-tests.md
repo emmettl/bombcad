@@ -30,6 +30,11 @@ any prediction is made, and the register of blind tests.
    abstracts, anyone's simulation of the test, or other sessions' transcripts and memory notes
    about it (the judge's session handled the measurements). Where the inputs leave something open, it
    decides, and writes the decision and its reason down before running.
+   Its working folder lies outside `/Volumes/StudioData/bombcad/blind/`, which holds the
+   sealed folders (for example `/Volumes/StudioData/bombcad/<source>-prediction/`), and it
+   never lists or opens anything under `blind/`. (Test 1's predictor was started with its
+   folder at `blind/predictor/`, before this rule; it was told not to list or open anything
+   else under `blind/`, and to say in its `assumptions.md` if it had.)
 3. **Declared before running.** Before its first run the predictor commits an
    `assumptions.md`: each assumption, the mesh (elements through the thickness) and air or
    contact settings of the primary prediction, and any secondary runs it will make (another
