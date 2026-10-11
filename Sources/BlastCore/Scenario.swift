@@ -130,6 +130,9 @@ public struct Scenario: Sendable, Hashable, Codable {
     /// The ground's shape, over the reflecting floor at z = 0; nil (the default) is flat ground.
     /// A scene-level property, beside the objects rather than one of them.
     public var terrain: Terrain?
+    /// Credits the scene's data asks for (OpenStreetMap's for map buildings), shown in the app and
+    /// written with its exports. Not part of the numerical input.
+    public var attributions: [String]?
     /// A premixed gas cloud ignited at a point: when set, it is the scene's source and the
     /// charges are not fired. (Optional so that layouts saved before it existed still open.)
     public var deflagration: Deflagration?
@@ -190,7 +193,7 @@ extension Scenario {
     private enum CodingKeys: String, CodingKey {
         case name, domainSize, boxes, rigidObjects, rigidCars, importNotes, importedModels, charge,
             additionalCharges, gauges, structure, atmosphere, reflectiveFaces, objectOwnership,
-            additionalStructures, buildingEnvelopes, terrain, deflagration, ventPanels
+            additionalStructures, buildingEnvelopes, terrain, deflagration, ventPanels, attributions
     }
 
     private struct Ownership: Codable {
@@ -227,6 +230,7 @@ extension Scenario {
         atmosphere = try c.decode(Atmosphere.self, forKey: .atmosphere)
         reflectiveFaces = try c.decode(BoundaryFaces.self, forKey: .reflectiveFaces)
         terrain = try c.decodeIfPresent(Terrain.self, forKey: .terrain)
+        attributions = try c.decodeIfPresent([String].self, forKey: .attributions)
         deflagration = try c.decodeIfPresent(Deflagration.self, forKey: .deflagration)
         ventPanels = try c.decodeIfPresent([VentPanel].self, forKey: .ventPanels)
         let additional =
@@ -286,6 +290,7 @@ extension Scenario {
         try c.encodeIfPresent(deflagration, forKey: .deflagration)
         if let ventPanels, !ventPanels.isEmpty { try c.encode(ventPanels, forKey: .ventPanels) }
         let physicsOnly = encoder.userInfo[Self.physicsInputEncoding] as? Bool == true
+        if !physicsOnly { try c.encodeIfPresent(attributions, forKey: .attributions) }
         if !envelopeObjects.isEmpty {
             try c.encode(
                 envelopeObjects.map {
