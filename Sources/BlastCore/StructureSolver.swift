@@ -79,6 +79,10 @@ public final class StructureSolver {
     /// Contact damping as a fraction of critical.
     public var contactDamping: Float = 0.3
     public var contactFriction: Float = 0.5
+    /// With `StructureModel.removesFragments`: concrete cracked open across two planes by
+    /// `fragmentOpening` (m) and with a crack strain of `fragmentStrain` across one is fragments.
+    public var fragmentOpening: Float = 0.5e-3
+    public var fragmentStrain: Float = 0.05
 
     /// Let the air push loose debris (nodes no longer attached to any intact element) by its
     /// pressure gradient and drag, when coupled to the air.
@@ -1866,6 +1870,8 @@ public final class StructureSolver {
         uniforms.secondCracks = model.secondCracks ? 1 : 0
         uniforms.bareBars = model.bareBars ? 1 : 0
         uniforms.removesFragments = model.removesFragments ? 1 : 0
+        uniforms.fragmentOpening = fragmentOpening
+        uniforms.fragmentStrain = fragmentStrain
         uniforms.crackSlip = model.crackSlip ? 1 : 0
         uniforms.barAxes = barAxes
         uniforms.pressedInterlock = model.appliesPressedInterlock ? 1 : 0

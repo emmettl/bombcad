@@ -233,6 +233,16 @@ func prepareTrace(_ solver: StructureSolver) {
     if let divisor = option("step-divisor").flatMap({ Float($0) }) {
         solver.stepOverride = solver.stableTimeStep / divisor
     }
+    applyFragmentThresholds(solver)
+}
+
+/// `--fragment-opening 1` (mm) and `--fragment-strain 0.1`: with `--fragments`, the openings that
+/// make concrete fragments (`StructureSolver.fragmentOpening`, `fragmentStrain`).
+func applyFragmentThresholds(_ solver: StructureSolver) {
+    if let opening = option("fragment-opening").flatMap({ Float($0) }) {
+        solver.fragmentOpening = opening / 1000
+    }
+    if let strain = option("fragment-strain").flatMap({ Float($0) }) { solver.fragmentStrain = strain }
 }
 
 /// Where hourglass control's work goes (with `--work`): through the whole body, by layer up its
@@ -1871,6 +1881,7 @@ func runContact() throws {
             inspect: { structure, time in
                 lastStructure = structure
                 if flag("no-debris-drag") { structure.debrisDrag = false }
+                applyFragmentThresholds(structure)
                 if flag("no-contact") { structure.contactMode = .off }
                 if flag("report") || flag("census"), time >= duration * 0.995, !reported {
                     reported = true
@@ -2247,6 +2258,7 @@ func runCloseIn() throws {
                 } : nil,
             inspect: { structure, time in
                 lastStructure = structure
+                applyFragmentThresholds(structure)
                 inspect?(structure, time)
             })
         if let path = option("trace") {
