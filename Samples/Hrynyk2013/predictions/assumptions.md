@@ -188,3 +188,16 @@ top (the highest node in each column still held by concrete) at the face's edge,
 face is bonded is what it was. Nothing else changed. The first runs' numbers are kept on the
 predictor's folder and are not the prediction; no run state was kept between impacts, so all the
 runs (primary, 8-element and ensemble) are made again from the start.
+
+## Interruptions
+
+- **2026-10-11 23:50**: the Studio's GPU faulted and the window server's restart killed every
+  process there. The first full runs had all finished minutes before (TH7's at 23:50); the
+  ensemble and 8-element runs had finished on the mini. Nothing was lost, and change 4 above
+  was made afterwards for its own reason.
+- **2026-10-12 00:08**: the window server was killed again (too many GPU jobs at once). The
+  re-runs with change 4, started at 00:06, survived, but were stopped at 00:15 to keep to the
+  Studio's new three-slot GPU limit: the TH2 and TH6 primaries moved to the CI Mac mini, under
+  its BombCAD lock and paused in Scrimply's nightly window (01:30–04:30 UTC), and TH7's runs on
+  the Studio in a `gpu-slot`. Same commit (418b9b4), same settings; the 8-element runs and the
+  ensemble follow once the primaries are done.
