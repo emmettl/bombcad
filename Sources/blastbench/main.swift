@@ -210,6 +210,8 @@ func applyRateOptions(_ material: inout StructureMaterial) {
 func applyHourglassOptions(_ model: inout StructureModel) {
     if flag("hourglass-secant") { model.hourglassFollowsCracking = true }
     if flag("hourglass-no-steel") { model.hourglassCapsSteel = false }
+    // `--nonlocal 0.05`: cracks soften by their strain averaged over that length either side.
+    if let length = option("nonlocal").flatMap({ Float($0) }) { model.crackAveraging = length }
     // `--discrete [mm]`: the layers' bars as discrete trusses (`barsAsTrusses`), of that diameter,
     // or the bond's (`--bond`), or 12 mm; they slip by `--bond` or are bonded perfectly.
     if flag("discrete") {

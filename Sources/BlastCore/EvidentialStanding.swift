@@ -262,6 +262,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case noCrackSlip
     case bondSlip
     case discreteBars
+    case nonlocalCracking
     case pressedInterlock
     case hourglassSecant
     case hourglassWithoutSteel
@@ -327,6 +328,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .noCrackSlip: return !concrete.isEmpty && any { !$0.crackSlip }
         case .bondSlip: return any { $0.bondSlip != nil }
         case .discreteBars: return any { !$0.allDiscreteBars.isEmpty }
+        case .nonlocalCracking: return !concrete.isEmpty && any { $0.crackAveraging != nil }
         case .pressedInterlock: return any { $0.pressedInterlock }
         case .hourglassSecant: return !concrete.isEmpty && any { $0.hourglassFollowsCracking }
         case .hourglassWithoutSteel: return !concrete.isEmpty && any { !$0.hourglassCapsSteel }
@@ -559,6 +561,12 @@ public enum StandingTable {
                 note: "Bars as trusses embedded in the elements, with the Model Code's bond; a tie cracks "
                     + "and stiffens as the Model Code says on two meshes, but no member test has judged them.",
                 document: "concrete-model.md#discrete-bars")
+        case .nonlocalCracking:
+            return Entry(
+                title: "Nonlocal cracking", affects: structure, limit: .approximation,
+                note:
+                    "Cracks soften by their strain averaged across their band; being judged on the case matrix.",
+                document: "concrete-model.md#nonlocal-cracking")
         case .pressedInterlock:
             return Entry(
                 title: "Pressed interlock", affects: structure, limit: .approximation,
@@ -809,6 +817,7 @@ public enum StandingTable {
         "StructureModel.discreteBars": .option([.discreteBars]),
         "StructureModel.barsAsTrusses": .option([.discreteBars]),
         "StructureModel.trussDiameter": .option([.discreteBars]),
+        "StructureModel.crackAveraging": .option([.nonlocalCracking]),
         "StructureModel.pressedInterlock": .option([.pressedInterlock]),
         "StructureModel.hourglassFollowsCracking": .option([.hourglassSecant]),
         "StructureModel.hourglassCapsSteel": .option([.hourglassWithoutSteel]),

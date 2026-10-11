@@ -112,6 +112,7 @@ struct StructureUniforms {
     uint pairs;  // connections between two parts of the body (`structurePairs`)
     uint removesFragments;  // 1: concrete broken into fragments is removed (`StructureModel`)
     uint discreteBond;      // 1: discrete bars slip by the bond law in the `bond...` fields above
+    uint crackReach;        // elements either side a crack's band reaches (`crackAveraging`)
 };
 
 // Gravity's pull per unit mass, when it has been turned.
@@ -268,6 +269,10 @@ constant bool workTraced [[function_constant(3)]];
 // trusses' bond acts on the nodes. Undefined, as for every body without them, the kernels are as
 // they always were.
 constant bool discreteBarsConstant [[function_constant(10)]];
+// Cracking averaged across each crack's band (`StructureModel.crackAveraging`); undefined, as for
+// every body without it, the kernel is as it always was.
+constant bool nonlocalCrackingConstant [[function_constant(11)]];
+constant bool nonlocalCracking = is_function_constant_defined(nonlocalCrackingConstant) && nonlocalCrackingConstant;
 constant bool discreteBars = is_function_constant_defined(discreteBarsConstant) && discreteBarsConstant;
 // Hourglass control's options (`StructureModel.hourglassFollowsCracking`, `hourglassCapsSteel`),
 // compiled in only when chosen, so that without them the element kernel is unchanged.
@@ -840,6 +845,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                               const device ElementSteel *steel [[buffer(10)]],
                               const device float2 *loadTable [[buffer(11)]],
                               device BarHistory *bars [[buffer(12)]],
+                              device float4 *crackOut [[buffer(13)]],
+                              const device float4 *crackBefore [[buffer(14)]],
                               constant MaterialParameters *materials [[buffer(15)]],
                               const device uchar *materialIndex [[buffer(16)]],
                               device float4 *plasticOut [[buffer(17)]],
@@ -1222,6 +1229,50 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             / ((1.0f + poisson) * (1.0f - 2.0f * poisson));
         history = max(history, uniaxial);
         state.crackStrain = history;
+        if (nonlocalCracking && joints == 0u) {
+            // A crack softens by its inelastic strain averaged over the 2r + 1 elements across its
+            // band, along the lattice axis nearest its normal (as of the previous substep), its
+            // fracture energy spread over that band: the same per crack whether the opening is
+            // spread over the band or gathered in one element, which then softens no faster than
+            // the band would (a nonlocal crack band, after Bazant and Jirasek, 2002).
+            float3 opened = float3(0.0f);
+            int nearest[3];
+            for (int i = 0; i < 3; ++i) {
+                float3 n = abs(frame[i]);
+                nearest[i] = n.x >= n.y && n.x >= n.z ? 0 : (n.y >= n.z ? 1 : 2);
+                opened[nearest[i]] = max(opened[nearest[i]], max(history[i] - planeOnset[i], 0.0f));
+            }
+            crackOut[compact] = float4(opened, 0.0f);
+            int3 dims = int3(u.ex, u.ey, u.ez);
+            int r = int(u.crackReach);
+            for (int i = 0; i < 3; ++i) {
+                float inelastic = max(history[i] - planeOnset[i], 0.0f);
+                if (inelastic <= 0.0f) {
+                    continue;
+                }
+                int a = nearest[i];
+                float sum = opened[a];
+                float count = 1.0f;
+                for (int offset = -r; offset <= r; ++offset) {
+                    int3 cell = int3(tid);
+                    cell[a] += offset;
+                    if (offset == 0 || cell[a] < 0 || cell[a] >= dims[a]) {
+                        continue;
+                    }
+                    int other = cell.x + dims.x * (cell.y + dims.y * cell.z);
+                    uint neighbour = cellElement[other];
+                    if (wholeThisPass(flags[other])
+                        && (singleMaterial || (materialIndex[neighbour] & uchar(15)) == own)) {
+                        sum += crackBefore[neighbour][a];
+                        count += 1.0f;
+                    }
+                }
+                // G_f / f_t, from the plane's own band and decay strain, spread over the band.
+                float energy = (planeSoftening[i] + 0.5f * m.crackOnset) * planeBand[i];
+                float decay = max(energy / (count * u.h) - 0.5f * m.crackOnset, 0.5f * m.crackOnset);
+                planeSoftening[i] = decay * inelastic / max(sum / count, 1e-12f);
+            }
+        }
         float crack = max(history.x, max(history.y, history.z));
         // A crack keeps a residual opening, and compression develops only once that has closed.
         float3 stored = float3(state.crackResidual);

@@ -116,6 +116,9 @@ public final class StructureSolver {
     /// other, from the substep before, is read, so that rupture can be judged over a debonded
     /// length.
     private let barPlasticBuffers: [MTLBuffer]
+    /// With nonlocal cracking, each element's inelastic crack strain across the planes nearest
+    /// each lattice axis, written in alternate substeps like `barPlasticBuffers`.
+    private let crackBuffers: [MTLBuffer]
     /// Each element's stretching rate along the lattice axes, for bars that take their rate
     /// over their debonded length, even and odd substeps.
     private let barRateBuffers: [MTLBuffer]
@@ -233,6 +236,8 @@ public final class StructureSolver {
         let trusses = model.allDiscreteBars
         var discrete = !trusses.isEmpty
         if discrete { constants.setConstantValue(&discrete, type: .bool, index: 10) }
+        var nonlocal = model.crackAveraging != nil
+        if nonlocal { constants.setConstantValue(&nonlocal, type: .bool, index: 11) }
         elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
         traceElementPipeline = {
             let tracing = MTLFunctionConstantValues()
@@ -246,6 +251,8 @@ public final class StructureSolver {
             tracing.setConstantValue(&withoutSteel, type: .bool, index: 9)
             var discrete = discrete
             if discrete { tracing.setConstantValue(&discrete, type: .bool, index: 10) }
+            var nonlocal = nonlocal
+            if nonlocal { tracing.setConstantValue(&nonlocal, type: .bool, index: 11) }
             return try? ShaderLibrary.pipeline("structureElements", in: library, constants: tracing)
         }
         // Keep the general connection law out of kernels for ordinary clamped/free bodies.
@@ -379,6 +386,10 @@ public final class StructureSolver {
         barPlasticBuffers = [
             try buffer(barPlasticLength, "bar plastic strain, even"),
             try buffer(barPlasticLength, "bar plastic strain, odd"),
+        ]
+        let crackLength = model.crackAveraging != nil ? elements * 16 : 16
+        crackBuffers = [
+            try buffer(crackLength, "crack strain, even"), try buffer(crackLength, "crack strain, odd"),
         ]
         let barRateLength = spreadsRupture ? elements * 16 : 16
         barRateBuffers = [
@@ -790,7 +801,7 @@ public final class StructureSolver {
         memset(barForceBuffer.contents(), 0, barForceBuffer.length)
         memset(forceBuffer.contents(), 0, forceBuffer.length)
         memset(barHistoryBuffer.contents(), 0, barHistoryBuffer.length)
-        for buffer in barPlasticBuffers + barRateBuffers {
+        for buffer in barPlasticBuffers + barRateBuffers + crackBuffers {
             memset(buffer.contents(), 0, buffer.length)
         }
 
@@ -1517,6 +1528,8 @@ public final class StructureSolver {
             encoder.setBuffer(steelBuffer, offset: 0, index: 10)
             encoder.setBuffer(loadTableBuffer, offset: 0, index: 11)
             encoder.setBuffer(barHistoryBuffer, offset: 0, index: 12)
+            encoder.setBuffer(crackBuffers[substep % 2], offset: 0, index: 13)
+            encoder.setBuffer(crackBuffers[1 - substep % 2], offset: 0, index: 14)
             encoder.setBytes(
                 &parameters, length: parameters.count * MemoryLayout<MaterialParameters>.stride, index: 15)
             encoder.setBuffer(materialIndexBuffer, offset: 0, index: 16)
@@ -1722,6 +1735,9 @@ public final class StructureSolver {
         uniforms.crackSlip = model.crackSlip ? 1 : 0
         uniforms.barAxes = barAxes
         uniforms.pressedInterlock = model.appliesPressedInterlock ? 1 : 0
+        if let length = model.crackAveraging {
+            uniforms.crackReach = UInt32(max(0, Int((length / model.elementSize).rounded())))
+        }
         if let bond = model.bondSlip, materials.contains(where: { $0.steel != nil }), discreteBarSystem == nil
         {
             let law = bond.law(compressiveStrength: model.material.compressiveStrength)

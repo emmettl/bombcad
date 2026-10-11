@@ -512,6 +512,11 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// (`barsFromLayers`), of `trussDiameter`, or failing that `bondSlip`'s, or 12 mm.
     public var barsAsTrusses = false
     public var trussDiameter: Float?
+    /// With a length (m), cracks soften by their inelastic strain averaged over the elements
+    /// within it either side across their band, along the lattice axis nearest their normal,
+    /// their fracture energy spread over that band: nonlocal cracking, which keeps a crack from
+    /// gathering into one element. Solid elements only; nil, cracks soften element by element.
+    public var crackAveraging: Float?
     /// Whether a crack's faces, riding up on their aggregate as it slides, press on whatever holds
     /// it from opening, and pressed, carry more shear: Walraven and Reinhardt's relations between
     /// a crack's opening, slip, shear and the stress across it (HERON 26(1A), 1981, eqs. 1a and
@@ -977,6 +982,7 @@ struct StructureUniforms {
     var pairs: UInt32 = 0
     var removesFragments: UInt32 = 0
     var discreteBond: UInt32 = 0
+    var crackReach: UInt32 = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -1205,6 +1211,7 @@ extension StructureModel {
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
         case pressedInterlock, regimeOverride, loadingOverride, regimeDefaults
         case hourglassFollowsCracking, hourglassCapsSteel, discreteBars, barsAsTrusses, trussDiameter
+        case crackAveraging
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -1239,6 +1246,7 @@ extension StructureModel {
         if !discreteBars.isEmpty { try container.encode(discreteBars, forKey: .discreteBars) }
         if barsAsTrusses { try container.encode(barsAsTrusses, forKey: .barsAsTrusses) }
         try container.encodeIfPresent(trussDiameter, forKey: .trussDiameter)
+        try container.encodeIfPresent(crackAveraging, forKey: .crackAveraging)
         try container.encodeIfPresent(bondSlip, forKey: .bondSlip)
         try container.encode(solidElementKind, forKey: .solidElementKind)
         try container.encodeIfPresent(shellElementSize, forKey: .shellElementSize)
@@ -1283,6 +1291,7 @@ extension StructureModel {
         discreteBars = try container.decodeIfPresent([DiscreteBar].self, forKey: .discreteBars) ?? []
         barsAsTrusses = try container.decodeIfPresent(Bool.self, forKey: .barsAsTrusses) ?? false
         trussDiameter = try container.decodeIfPresent(Float.self, forKey: .trussDiameter)
+        crackAveraging = try container.decodeIfPresent(Float.self, forKey: .crackAveraging)
         bondSlip = try container.decodeIfPresent(BondSlip.self, forKey: .bondSlip)
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)

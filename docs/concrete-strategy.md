@@ -315,6 +315,13 @@ representation of shear is exhausted. LDPM in the shear span is then the next st
 with a second shear-under-impact programme to judge it (Zhao, Yi and Kunnath 2017, which needs
 the user to obtain it).
 
+**Stage 2, its first step (11 October 2026).** Nonlocal cracking is in, as an option (see the
+[concrete model](concrete-model.md#nonlocal-cracking)). At the length the literature supports it
+barely moves OA1 on 12 elements (134%) and breaks the slab on 16 and Janney's beam early; only over
+a band three times the crack spacing does OA1 come within 8% on both meshes, and there Ando's and
+Saatci's struck beams go further from the tests. Peterson's modes do not move, nor is the slab
+with discrete bars held together. The embedded crack is the next step.
+
 **Stage 3: failed concrete to particles, for breach and debris (one to two months).**
 
 - An element past an erosion rule is converted into particles carrying its mass and velocity,

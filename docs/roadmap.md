@@ -127,7 +127,8 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    [air-blast model](air-blast-model.md#dissociating-air).)
 4. **Shear in concrete.** (The [concrete strategy](concrete-strategy.md) proposes discrete bars,
    now an option that does not tell Wu's one layer of steel from two, then embedded cracks where
-   members fail in shear.) A member that failed in shear under a blast, to judge a sectional
+   members fail in shear; nonlocal cracking, also an option, brings OA1 within 8% only over a
+   fitted length.) A member that failed in shear under a blast, to judge a sectional
    check for shells; a sectional check that works under impact, where the present one breaks
    every beam; and solid elements that fail in shear on coarse meshes, which cannot separate
    cracks 100 mm apart on 46 mm elements; crack tracking did not help without bond slip (see

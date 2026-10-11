@@ -686,6 +686,37 @@ not tell one layer of steel from two, so that is not where the smeared bars fail
 Not yet: bars across a hole, and rupture written back to the elements' bridging; inclined bars,
 shells and beams.
 
+### Nonlocal cracking
+
+Stage 2's first step in the [concrete strategy](concrete-strategy.md#4-a-staged-plan), an option
+(`StructureModel.crackAveraging`, a length; `blastbench ... --nonlocal 0.05`). A cracked plane
+softens by its inelastic strain averaged over the 2r + 1 elements across its band, along the
+lattice axis nearest its normal, as of the previous substep, r the length over the element
+size; and its fracture energy is spread over that band, so that a crack dissipates it once
+whether its opening is spread across the band or gathered in one element, which then softens no
+faster than the band would (a nonlocal crack band, after Bažant and Jirásek, 2002). A plain
+prism pulled apart dissipates its fracture energy within 25%, averaged or not
+(`NonlocalCrackingTests`). It is behind function constant 11, so bodies without it are unchanged.
+
+Across the case matrix, with the regimes' defaults:
+
+| Case | Default | Averaged over 0.05 m | Over 0.15 m |
+|---|---|---|---|
+| OA1, 12 / 24 elements | 437 / 344 kN (132% / 104%) | 444 / 343 kN | 359 / 309 kN (108% / 93%) |
+| Janney's beam, 12 elements | 43.0 kN m, failing at 40 mm | 40.7, failing at 11 mm | 40.4, failing at 52 mm |
+| Contest slab, 4 / 8 / 16 elements | 114 / 113 / 121 mm | 116 / 133 / 427 mm | 115 / 117 / 125 mm |
+| Saatci's SS0a-1; heavy drops | 17.0 mm; 98–103% | 21.2 mm; 92–98% | 24.1 mm; 95–106% |
+| Ando's beams, mean error | 16% | 26% | 37% |
+| Peterson's failure modes | as before | unchanged | unchanged |
+| The tie, the push-off tests | | unchanged | unchanged |
+
+At the length the nonlocal literature ties to the aggregate (two to three aggregate sizes, about
+0.05 m here) it barely moves OA1 and breaks the slab on 16 elements and Janney's beam early. Only
+over 0.15 m, a band three times the crack spacing, does OA1 come within 8% on both meshes, and
+there the struck beams go further from their tests. A length chosen to fit OA1 is not supported;
+it stays an option. Nor does it hold the contest slab with discrete bars together (still apart
+by 24 ms at 0.05 m).
+
 ## Strain-rate effects
 
 Blast loads strain materials at 0.1 to 100 per second, and both concrete and steel are stronger
