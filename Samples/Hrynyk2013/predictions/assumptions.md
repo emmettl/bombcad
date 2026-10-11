@@ -152,3 +152,10 @@ turned, the lower seat pressed up on one edge and the upper seat down on the oth
 plates are elastic steel because one node now carries each corner's reaction, which would
 yield structural steel locally where the real pin's seat spreads it. This was a harness error,
 judged on the model's own consistency; no measurement was seen.
+
+**2. 2026-10-11, at the ensemble's start, before any of its results: the 8-element mesh run is
+made on its own.** The ensemble's middle sample takes each input at its median, which for the
+two uniform inputs is not the primary's value (bearing plates 112.5 mm against 100 mm, rupture
+1.35 against 1.3 times the strain at fu), so it is not the 8-element run on the primary's
+settings that the secondary runs promised. That run is made separately; the ensemble's spread
+is taken, as declared, as ratios of its samples to its own middle.
