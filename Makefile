@@ -1,4 +1,4 @@
-.PHONY: build app run test release-smoke lint format icons ifc-converter ci-test check release-check release
+.PHONY: build app run test release-smoke lint format icons ifc-converter ci-test check check-remote check-anywhere release-check release
 
 CONFIGURATION ?= release
 
@@ -45,8 +45,19 @@ format:
 ci-test:
 	python3 Scripts/test-release.py
 	python3 Scripts/test-nightly.py
+	python3 Scripts/test-remote.py
 
 check: lint test ci-test build
+
+# The same checks on the shared CI Mac, or on whichever of the two is quieter; TARGET picks
+# another target. See docs/continuous-integration.md.
+TARGET ?= check
+
+check-remote:
+	python3 Scripts/remote.py check $(TARGET)
+
+check-anywhere:
+	python3 Scripts/remote.py anywhere $(TARGET)
 
 release-check:
 	python3 Scripts/release.py check

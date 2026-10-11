@@ -38,7 +38,7 @@ struct HeadlessEnsembleTests {
         // Slow here, so that the worker takes some of the samples.
         let there = try await HeadlessEnsemble.run(
             options, log: { lines.append($0) },
-            connect: { _ in worker },
+            connect: { _, _ in worker },
             runHere: { sample in
                 Thread.sleep(forTimeInterval: 0.05)
                 return try ValidationEnsemble.run(sample)

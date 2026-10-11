@@ -14,7 +14,9 @@ reached as `scrimply-ci-tb`. The runner is `mac-mini-bombcad`, installed in
 | [Nightly](../.github/workflows/nightly.yml) | 19:00 UTC by GitHub's schedule and 19:20 UTC from the mini, whichever comes first; or by hand | `Scripts/nightly.py`: the benchmarks and the validation suite, compared with earlier nights |
 
 A Check run is never cancelled by a newer push: the newest push waits behind it and older waiting
-ones are dropped, so at most one waits. A failed check or timeout still stops a run. Both run
+ones are dropped, so at most one waits. A run started by hand has a queue of its own, by its suite
+for a bounded comparison and by its branch or tag for the full checks, so a push to `main` never
+drops it while it waits, nor it a push. A failed check or timeout still stops a run. Both run
 only on a runner labelled `metal`. The mini also runs Scrimply's two runners and one
 for hellomini-builds, so a BombCAD job can share the GPU with theirs; the nightly run is timed
 to miss Scrimply's, which takes the mini from about 01:30 to 04:30 UTC. A time flagged slower
@@ -42,6 +44,72 @@ In the latter, all 220 application tests passed in 123 seconds; output from the 
 stopped well before cancellation with several tests still unfinished. The core-test stall is
 unresolved. The passing nightly on the same commit covers a different suite and does not
 replace Check.
+
+## Checks on the mini instead of this Mac
+
+Many sessions each running `make check` on the development Studio pile up (load averages of 30 to
+60, an hour a check). The mini can take them:
+
+```bash
+make check-remote
+```
+
+```bash
+make check-anywhere
+```
+
+`check-remote` copies the worktree to the mini (rsync, leaving out `.build`), waits its turn, runs
+`make check` there and streams its output back, returning its exit status; `TARGET=lint` (or any
+other target) runs that instead. `check-anywhere` looks at both Macs first, their load averages
+and how busy their GPUs are (each process's GPU time from `ioreg`), and runs where it should
+finish sooner, saying where and why; the mini counts as three times slower than a quiet Studio, as measured below.
+`python3 Scripts/remote.py status` shows both Macs and what `check-anywhere` would do.
+
+A pass on the mini counts as a pass here for pushing: the same `make check`, on the same commit,
+on a Mac that runs Check itself. The push rules are otherwise unchanged (merge `origin/main`,
+check, push as a fast-forward).
+
+**Sharing the mini politely.** It runs Scrimply's two runners, hellomini-builds' and BombCAD's,
+and Scrimply's nightly takes it from about 01:30 to 04:30 UTC. A check there waits, saying why,
+while one of the Scrimply runners or BombCAD's has a job, in that window, or while another BombCAD
+job holds its lock, `~/bombcad-remote/lock` (a directory, with its owner's process, start and
+purpose; a lock whose process has gone, or six hours old, is taken over). `check-anywhere` does not
+wait: if the mini is not free it runs here. Everything runs in one folder on the mini,
+`~/bombcad-remote/check`, so that its paths, and with them SwiftPM's build cache, are the same
+every time; after a check only the cache is kept, and it is cleared when it passes 20 GB.
+
+**The mini as a worker.** `BombCAD sweep` and `BombCAD ensemble` take the Macs named as `workers`
+below when no `--worker` is given (`--no-default-workers` stops them). Such a worker decides on its
+own Mac, before it greets, whether to take work (the same runners, window and lock, and a load
+average under one a core), and holds the lock while it runs; a sweep or ensemble that finds the
+mini busy runs without it, and says so.
+
+**Settings** are in `~/.config/bombcad/remote.json`, read by `Scripts/remote.py` and by BombCAD,
+so every session and worktree shares them:
+
+```json
+{
+  "host": "scrimply-ci-tb",
+  "workers": ["scrimply-ci-tb"],
+  "runners": ["Developer/bombcad-runner", "Developer/actions-runner", "Developer/actions-runner-2"],
+  "quietUTC": ["01:30-04:30"],
+  "maxLoadPerCore": 1.0,
+  "cacheGB": 20,
+  "remoteRatio": 3.0
+}
+```
+
+Without the file nothing goes to another Mac. **When to use which:** `make check` here when the
+Studio is quiet or the change needs this Mac (the M4 Max's timings, the app's window);
+`make check-anywhere` otherwise, which is most of the time; `make check-remote` to keep this Mac
+free for a measurement.
+
+Measured on 11 October: `make check` on the mini took 46 minutes from a cold build cache, every
+test passing (278 core and 868 application tests), after waiting its turn behind a Check run; on
+the Studio it took about 30 minutes at load averages near 20. **The catch:** BombCAD's own Check
+keeps the mini's runner busy much of the day, 45 to 70 minutes for each push to `main`, and pushes
+come about hourly, so a check sent there often waits for a gap. `check-anywhere` does not wait,
+and so runs here then.
 
 ### The nightly comparison
 
