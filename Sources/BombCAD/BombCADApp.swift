@@ -28,7 +28,7 @@ enum BombCADMain {
             exit(HeadlessCloud.main(Array(arguments.dropFirst())))
         case "worker":
             Task { @MainActor in
-                exit(await SweepWorker.main())
+                exit(await SweepWorker.main(Array(arguments.dropFirst())))
             }
         default:
             AppPreferences.migrate()

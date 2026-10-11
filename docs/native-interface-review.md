@@ -92,6 +92,51 @@ resizing, scrolling, keyboard focus or interactive render behaviour. Passing the
 the artifacts were captured and the checked invariants held; it does not automatically certify
 their visual layout.
 
+## Review log
+
+What the on-screen review has covered so far (moved from the
+[roadmap](roadmap.md#usability-in-parallel) on 11 October 2026).
+
+On the last point: the app's logic is covered by tests that drive its model without a window,
+and its rendering is checked through offscreen snapshots. An initial static panel review now
+covers the Run sidebar, saved-run comparison, Export for Rendering sheet, linked-part layout
+editor, import loading state, Settings and Help content in light and dark appearances. The
+Help sidebar's selected labels and dark contrast have also been checked in a native window;
+the earlier offscreen rendering problem was a capture artifact. An isolated release app has
+passed a zero-charge layout JSON import, native package save, close and reopen at time zero.
+A completed OBJ import preview has also been reviewed in a native window, including display
+toggles, part search, scrolling and cancellation of a staged domain expansion. See the
+[native interface review](native-interface-review.md) for the procedure and its limits.
+Keyboard focus, scrolling at minimum window sizes and the other panels still need broader
+interactive review.
+
+Review the app on screen and fix what is found. Started: isolated offscreen captures exposed
+a misleading layout selector, which displayed the last preset choice after opening another
+project. The menu now shows the actual scene name and offers built-in layouts as replacement
+actions. The review also covers linked-part editing, import loading, Settings and Help content
+in both appearances. During loading, the import sheet no longer reports that its preview is
+unavailable while also saying it is updating. Native dark-appearance checks now confirm Help
+topic selection and readable sidebar labels without a styling change. A temporary zero-charge
+layout imported as a separate document, saved through the native panel and reopened with its
+inputs intact at time zero. Import errors now identify missing JSON fields, wrong value types
+and null values by path; malformed JSON has a separate syntax message.
+Reproduce these static captures with
+`BOMBCAD_INTERFACE_REVIEW=/tmp/bombcad-ui-review swift test --filter InterfaceSnapshotTests`.
+The opt-in helper creates hidden windows in the test process, writes PNGs under `light` and
+`dark`, and checks that capture leaves saved inputs unchanged. Settings captures use and remove
+a temporary defaults suite. The import capture records the initial loading state rather than
+waiting for asynchronous preview completion. The helper expands the requested size
+to the view's fitting size, so these captures do not verify scrolling at the minimum window
+size. A separate [native import review](native-interface-review.md#completed-obj-preview)
+covers a completed small OBJ preview, its display controls, part search and cancellation;
+this is not a check of every importer or window size. The helper also writes fixed viewport
+captures of the main content at its 1000 × 640 point minimum and a short editing form;
+these show clipping without fitting-size expansion, and have been reviewed in both
+appearances. They exclude native chrome and toolbar, and do not check scrolling or focus.
+See the [capture procedure and limits](native-interface-review.md#constrained-offscreen-captures).
+Animated run rendering and broader
+native interaction remain separate checks; the helper is skipped during ordinary test runs.
+
 ## Remaining checks
 
 - Broader tab order, keyboard-only workflows and focus restoration after sheets close.
