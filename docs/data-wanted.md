@@ -34,8 +34,8 @@ no comparison at all its first one, and open sources ahead of those that need th
 | 6 | Wang et al. 2022, *Materials* 15, 6449: two slabs, steel in both faces, 10 kg at 1.2 m ([1a](#1a-a-slab-with-steel-in-both-faces-under-an-open-air-charge)) | Air and structure together | Open, CC BY 4.0; used ([Validation](validation.md#slabs-with-steel-in-both-faces)) | Reflected pressures and deflection histories from one open-air shot; but an aluminised charge and nominal materials |
 | 7 | Prairie Flat (WES TR N-72-2), the Watching Hill soil data, and Pre-Dice Throw II ([3a](#3a-air-induced-ground-shock)) | Ground shock | Reports open in a browser (ERDC, DTIC); digital records and the soil report by request ([draft](data-requests.md#2-prairie-flat-the-watching-hill-soil-data-and-pre-dice-throw-ii)) | Gauges at depth either side of the superseismic limit under a 500-ton surface burst, with the site's soil; Pre-Dice Throw II adds published blind predictions |
 | 8 | Pattman 1971, Dial Pack thermal measurements, DREO Report 642 ([3e](#3e-fireball-radiation)) | Fireball radiation | Open (Government of Canada), 1.45 MB; used ([Validation](validation.md#the-fireballs-radiation-against-dial-pack)) | A second 500-ton TNT shot measured by the group behind the 100-ton comparison |
-| 9 | Keys and Clubley 2017, and Keys's 2016 thesis: masonry panels and small buildings under long-duration blast ([3c](#3c-collapse-and-debris)) | Collapse and debris | Thesis and accepted manuscript open in a browser; debris maps by request ([draft](data-requests.md#4-masonry-debris-under-long-duration-blast-keys-and-clubley-2017-keys-2016)) | Debris distributions on the ground from walls broken by drag, the loading the model's debris feels |
-| 10 | Reynolds 2015 (UMKC thesis) and ACI SP-306 (2016) ([1](#1-a-second-structural-test-from-the-same-contest)) | The contest's high-strength slab | Reynolds's thesis open in a browser; digital records by request ([draft](data-requests.md#3-the-contests-high-strength-slab-thiagarajan-et-al-2015-reynolds-2015)) | Likely the high-strength slabs' details and histories; nothing open has them |
+| 9 | Keys and Clubley 2017, and Keys's 2016 thesis: masonry panels and small buildings under long-duration blast ([3c](#3c-collapse-and-debris)) | Collapse and debris | Accepted manuscript downloaded; thesis open in a browser; debris maps by request ([draft](data-requests.md#4-masonry-debris-under-long-duration-blast-keys-and-clubley-2017-keys-2016)) | Debris distributions on the ground from walls broken by drag, the loading the model's debris feels |
+| 10 | Reynolds 2015 (UMKC thesis) and ACI SP-306 (2016) ([1](#1-a-second-structural-test-from-the-same-contest)) | The contest's high-strength slab | The theses downloaded; SP-306 needs the user; digital records by request ([draft](data-requests.md#3-the-contests-high-strength-slab-thiagarajan-et-al-2015-reynolds-2015)) | Likely the high-strength slabs' details and histories; nothing open has them |
 | 11 | Alsubaei 2015, Western University thesis: perimeter walls under field blasts ([2b](#2b-a-freestanding-wall-under-an-open-air-charge)) | A wall in the open | Open, 8.42 MB, terms not stated | Used: column peaks with and without walls, a blockwork deflection, damage; the wing walls' length is not given |
 | 12 | Kasun-III, KLOTZ Group, 2008: debris of five internal shots in small concrete cubes ([3c](#3c-collapse-and-debris)) | Debris | Paper open (DTIC); the database by request, release uncertain ([draft](data-requests.md#1-kasun-iii-debris-database-klotz-group-2008)) | Over 21,500 pieces of debris, mapped; the best debris benchmark known, but not open |
 | 13 | Sharon et al. 2012, and the DRDC field trials of 2012 ([3d](#3d-an-he-clouds-growth-after-two-minutes)) | The cloud after two minutes | Paywalled; the DRDC report open, 2.62 MB | Cloud heights against time below Church's charges; lidar extents of small clouds |
@@ -86,13 +86,13 @@ the user's agreement (see [Downloaded, not yet in use](#downloaded-not-yet-in-us
     loading*, MS thesis, UMKC, 2015,
     [MOspace 10355/48353](https://mospace.umsystem.edu/xmlui/handle/10355/48353): by search
     summaries, pressure, impulse and deflection histories of high-strength slabs at two steel
-    ratios. Open, 6.29 MB (MOspace refuses automated access but opens in a browser, checked
-    11 October 2026). Whether each slab was shot once is not known.
+    ratios. Downloaded 11 October 2026 through MOspace's public API (its web pages refuse
+    automated reading; the files do not). Whether each slab was shot once is not known.
   - A. K. Vasudevan, *FE analysis and experimental comparison of doubly reinforced concrete
     slabs subjected to blast loads*, MS thesis, UMKC, 2012,
     [MOspace 10355/14606](https://mospace.umsystem.edu/xmlui/handle/10355/14606): probably the
-    series behind the 2015 paper. Open, 2.96 MB, in a browser. MOspace items 10355/33223 and
-    10355/67037 also came up, contents unknown.
+    series behind the 2015 paper. Downloaded 11 October 2026, as Reynolds's. MOspace items
+    10355/33223 and 10355/67037 also came up, contents unknown.
   - T. H. Kewaisy's SP-306 paper (doi:10.14359/51688871), his NDIA 2018 paper
     (`ndia.dtic.mil/wp-content/uploads/2018/intexpsafety/Kewaisy2Paper.pdf`) and his ACI
     webinar slides (`concrete.org/portals/0/files/pdf/webinars/ws_S18_AdvancedModelingBlastResponses_Kewaisy.pdf`):
@@ -442,8 +442,11 @@ Ten values in the code were written from memory and should be checked against th
     near the surface. The layered column the gauge reports need.
   - **Pre-Dice Throw II**, White Sands, 1976: a 100-ton TNT sphere on the ground and a 120-ton
     ANFO charge on one site, with the ground motion measured and compared with the predictions
-    four agencies made before the shots (DTIC ADA048003); the USGS's report on the site's
-    motion, OFR 77-143, doi:10.3133/ofr77143, is open, 2.2 MB. A blind benchmark ready made.
+    four agencies made before the shots (DNA 4363F, DTIC ADA048003; DTIC answered "request is
+    blocked" on 11 October 2026). J. P. Hoffman and S. T. Harding, *Strong ground motion in the
+    Tularosa Basin, New Mexico*, USGS OFR 77-143 (1977), doi:10.3133/ofr77143, public domain,
+    2.2 MB, downloaded; its link to the shots is from a search summary, not confirmed. A blind
+    benchmark ready made, if ADA048003 is obtained.
   - **Dial Pack**, 500 tons, Suffield, 1970: WES TR N-73-4, gauges at 645 and 840 ft at 1.5 to
     20 ft deep; nearly a repeat of Prairie Flat where the ground motion outruns the blast.
   - **Distant Plain**, Suffield, 1966–67: J. K. Ingram, WES TR N-71-3, five events in the top
@@ -566,14 +569,18 @@ Ten values in the code were written from memory and should be checked against th
     Loughborough); and R. Keys, PhD thesis, University of Southampton, 2016 (eprint 413951):
     ten masonry panels at about 55 and 110 kPa for 150 to 200 ms, all destroyed, their debris
     mapped; the thesis adds 22 structures in five trials, two of nine small masonry buildings
-    under 41 kg TNT equivalent. Both open at Southampton (thesis 14 MB, accepted manuscript
-    7 MB), in a browser; the debris maps as data are not, and would have to be asked for. **Gives:** debris on the ground from walls broken by drag-dominated loading, with
+    under 41 kg TNT equivalent. The accepted manuscript was downloaded on 11 October 2026 from
+    Loughborough's copy (figshare article 9443321, CC BY-NC-ND 4.0, 7.9 MB); the thesis,
+    14 MB under Southampton's thesis licence, is behind a bot check but opens in a browser; the debris maps as data
+    are not open and are asked for in a [draft request](data-requests.md#4-masonry-debris-under-long-duration-blast-keys-and-clubley-2017-keys-2016). **Gives:** debris on the ground from walls broken by drag-dominated loading, with
     several panels a trial.
   - Kasun-III, KLOTZ Group, Norway and Sweden, 2008: five internal shots in reinforced concrete
     cubes 2 m inside, one to sixteen 155 mm shells or 6.9 and 110 kg of bare explosive, with
     over 21,500 pieces of concrete, steel and casing logged by mass and position, and external
-    pressures. Described in DDESB Explosives Safety Seminar papers of 2010 (DTIC ADA532249,
-    title not confirmed); M. M. van der Voort and J. Weerheijm, "A statistical description of
+    pressures. Described in R. Forsén et al., "The effects of cased ammunition explosions
+    confined in concrete cubicles: KASUN-III", 34th DDESB Explosives Safety Seminar (2010), DTIC
+    ADA532249, and a companion, ADA532261 (DTIC answered "request is blocked" on 11 October 2026;
+    needs the user to obtain); M. M. van der Voort and J. Weerheijm, "A statistical description of
     explosion produced debris dispersion", *International Journal of Impact Engineering* 59
     (2013) 29–37, paywalled. The database itself would have to be asked of KLOTZ or TNO. Needs
     the user to obtain. **Gives:** the best debris benchmark known, a series in charge mass.
@@ -621,7 +628,7 @@ Ten values in the code were written from memory and should be checked against th
   - L. S. Erhardt, D. Quayle and S. Noel, *Completion report for CRTI 07-0103RD: full-scale RDD
     experiments and models*, DRDC TR 2013-056,
     [publications.gc.ca](https://publications.gc.ca/site/eng/9.821120/publication.html), open,
-    52 pages, 2.62 MB: three shots of 0.2 kg in 2012 watched by lidar and video, with balloons
+    52 pages, 2.62 MB (downloaded 11 October 2026): three shots of 0.2 kg in 2012 watched by lidar and video, with balloons
     for the sounding; and S. J. Neuscamman, LLNL-TR-745534 (2018), doi:10.2172/1424634, open,
     a summary for modellers. Lidar gives the cloud's extent; the charge is tiny.
   - Sandia and DRDC Valcartier's lidar of debris plumes, Sandia's 9920 site, 2006: fifty shots
@@ -725,6 +732,57 @@ Ten values in the code were written from memory and should be checked against th
     CC BY-NC-ND 4.0.
 - **Not searched** (allowance spent): Cooper, Fairweather and Tite (1986); Kasmani.
 
+## 3g. The reference curves' own scatter
+
+- **Needed:** the scatter of the tests behind Kingery–Bulmash, UFC 3-340-02's gas pressure and
+  Kinney–Graham, so that agreement with them can be weighed (the independent review's finding
+  11, [validation-review](validation-review.md)).
+- **Found, 11 October 2026** (written into [Validation](validation.md#kingerybulmash-the-design-practice-standard)
+  beside each comparison):
+  - Kingery–Bulmash, hemispherical: two-thirds of the 1966 data within ±1.8% of the arrival
+    time, ±6.4% of the peak overpressure, ±6.7% of the impulse and ±9.6% of the duration; four
+    TNT shots of 5 to 500 tons; the 1984 reflected curves calculated, not measured. From M. M.
+    Swisdak, *Simplified Kingery airblast calculations*, 26th DoD Explosives Safety Seminar
+    (1994), Charts 2 and 3, the copy supplied by hand.
+  - Modern repeats, reflected, far field: S. E. Rigby, A. Tyas, S. D. Fay, S. D. Clarke and
+    J. A. Warren, "Validation of semi-empirical blast pressure predictions for far field
+    explosions – is there inherent variability in blast wave parameters?", 6th International
+    Conference on Protection of Structures against Hazards (2014),
+    [White Rose 81237](https://eprints.whiterose.ac.uk/81237/), 0.7 MB; and D. G. Farrimond,
+    S. Woolford, A. Tyas, S. E. Rigby, S. D. Clarke, A. Barr, M. Whittaker and D. J. Pope,
+    "Far-field positive phase blast parameter characterisation of RDX and PETN based
+    explosives", *International Journal of Protective Structures* 15(1) (2024) 141–165,
+    doi:10.1177/20414196221149752, CC BY 4.0,
+    [White Rose 195373](https://eprints.whiterose.ac.uk/195373), 2.9 MB.
+  - Close in: P. J. Rae and J. M. McAfee, "The blast parameters spanning the fireball from large
+    hemispherical detonations of C-4", *Propellants, Explosives, Pyrotechnics* 43(7) (2018),
+    doi:10.1002/prep.201800071, accepted manuscript on DOE PAGES (OSTI 1469550, LA-UR-18-21835),
+    0.8 MB; compared with Kinney and Graham's table.
+  - Kinney–Graham: G. F. Kinney and K. J. Graham, *Explosive Shocks in Air*, 2nd ed., Springer
+    (1985), chapter 6, from a copy the user supplied: no scatter is given; the peak
+    overpressure is computed (Brode; Shear and Wright) and described as checked against
+    measurements including Kingery's, equation 6-2 fitted to it, and the impulse (equation
+    6-12) fitted to independent data.
+  - Closed rooms: C. Oswald, "An improved method to calculate the gas pressure history from
+    partially confined detonations", NDIA International Explosives Safety Symposium (2018),
+    `ndia.dtic.mil/wp-content/uploads/2018/intexpsafety/OswaldPaper.pdf`, 1.7 MB, Table 1; and
+    his two IESSE 2025 papers on DENIX (2.5 and 1.8 MB), on the DDESB's vented-room tests.
+- **Still wanted** (needs the user to obtain; DTIC or paywalled):
+  - C. N. Kingery, *Air blast parameters versus scaled distance for hemispherical TNT surface
+    bursts*, BRL Report 1344 (1966), DTIC AD0811673: the data themselves, to see how the
+    scatter varies with distance rather than pooled.
+  - C. N. Kingery and G. Bulmash, ARBRL-TR-02555 (1984): the spherical air-burst curves'
+    sources and scatter, which Swisdak does not cover.
+  - D. Bogosian, J. Ferritto and Y. Shi, "Measuring uncertainty and conservatism in simplified
+    blast models", 30th DoD Explosives Safety Seminar (2002), DTIC ADA526954; and M. Netherton
+    and M. G. Stewart, "Blast load variability and accuracy of blast load prediction models",
+    *International Journal of Protective Structures* 1(4) (2010) 543–570: model error of
+    ConWep against many tests, as a mean and coefficient of variation.
+  - C. Oswald, "Comparison of measured and calculated gas pressure histories", 17th ISIEMS
+    (2017): the gas pressure database's own statistics. And the tests behind Figure 2-152:
+    W. A. Keenan and J. F. Tancreto, *Blast environment from fully and partially vented
+    explosions in cubicles*, NCEL TR-828 (1975), on DTIC; and Weibull's chamber pressures (1968).
+
 ## 4. Set aside, for completeness
 
 - A paper on modified shock-wave parameter equations on MDPI, which returned HTTP 403. It is
@@ -734,7 +792,7 @@ Ten values in the code were written from memory and should be checked against th
 
 ## Downloaded, not yet in use
 
-Fetched on 10 October 2026 with the user's agreement, to `/Volumes/StudioData/bombcad/data/`,
+Fetched on 10 and 11 October 2026 with the user's agreement, to `/Volumes/StudioData/bombcad/data/`,
 one folder a source, each with a `SOURCE.md` giving the citation, terms and how it was fetched.
 Nothing here is in the repository; a comparison would commit only small derived fixtures, with
 their licence, as `Samples/FoRCy` does.
@@ -749,13 +807,31 @@ their licence, as `Samples/FoRCy` does.
 | `DialPack1971` | Pattman's DREO Report 642, now compared (see [3e](#3e-fireball-radiation)) | 1.52 MB | Government of Canada |
 | `Bauwens2008` | The *Fire Safety Science* 9 paper, a text extract and its plots digitised (`digitised/`) | 1.3 MB | Free to read (IAFSS) |
 | `Alsubaei2015` | The Western University thesis | 8.4 MB | Not stated |
+| `Reynolds2015`, `Vasudevan2012` | The two UMKC theses on the contest's slabs, through MOspace's public API, MD5s matching the repository's | 6.6 and 3.1 MB | No rights statement in the records |
+| `KeysClubley2017` | Keys and Clubley's accepted manuscript, from Loughborough (figshare 9443321) | 7.9 MB | CC BY-NC-ND 4.0 |
+| `USGS-OFR77-143` | Hoffman and Harding, *Strong ground motion in the Tularosa Basin* | 2.2 MB | Public domain |
+| `DRDC2013` | DRDC TR 2013-056, the 2012 field trials with lidar | 2.75 MB | Government of Canada |
+| `Peterson2026` (added) | Peterson's KTH thesis | 18.4 MB | Open access |
+| `Swisdak1994`, `Cooper1996`, `UFC-3-340-02`, `XuLu2016`, `KinneyGraham1985` | Copies the user supplied of sources already in use (see Obtained), placed here on 11 October 2026 | 0.5, 15.5, 18.0, 5.3 and 9.0 MB | The user's own copies, private reference only; Kinney and Graham's is an unofficial copy of a book in copyright: never commit it, its text or its figures |
+| `Schwer2015` | L. E. Schwer, "Blind blast simulation: a validation effort assessment", SMiRT-23 (2015), on the slab contest; supplied by the user | 1.5 MB | The user's own copy; not yet read (a candidate for blind test 2) |
+| `reference-scatter` | Farrimond et al. 2024, Rigby et al. 2014, Rae and McAfee 2018, Oswald 2018 and 2025 (two), with text extracts; fetched 11 October 2026 (see [3g](#3g-the-reference-curves-own-scatter)), and now in use | 10.4 MB | CC BY 4.0 (Farrimond); free to read (the rest) |
 
 PMC's own PDFs of the two *Materials* papers sit behind a proof-of-work check and were not
 fetched; the XML and figures carry the same content.
 
+Open but not fetchable automatically on 11 October 2026, for the user to download in a browser:
+DTIC ADA532249 and ADA532261 (Kasun-III) and ADA048003 (Pre-Dice Throw II), which answered
+"request is blocked" on a retry after DTIC's maintenance; WES TR N-72-2 (Prairie Flat, 3.17 MB,
+[ERDC 11681/6813](https://erdc-library.erdc.dren.mil/jspui/handle/11681/6813)), behind ERDC's
+browser check; and Keys's 2016 thesis (14 MB,
+[Southampton eprint 413951](https://eprints.soton.ac.uk/id/eprint/413951/)), behind a bot check.
+
 ## Obtained
 
-Supplied by hand during development, and now in use:
+Supplied by hand during development, and now in use. Copies of Cooper, Swisdak, Kinney and
+Graham, UFC 3-340-02 and Xu and Lu are in `/Volumes/StudioData/bombcad/data/` (see
+[Downloaded, not yet in use](#downloaded-not-yet-in-use)), for private reference only.
+
 
 - P. W. Cooper, *Explosives Engineering*, Wiley-VCH, 1996 (supplied as a scan): TNT's heat of
   combustion, 821 kcal/mol with the water liquid (Table 9.3, p. 130), 15.1 MJ/kg; its heat of

@@ -1954,6 +1954,44 @@ Reading these:
 
 `blastbench validate` prints these tables; `--z` chooses other scaled distances.
 
+**Against the reference's own scatter.** Kingery–Bulmash is a fit, so agreement with it is
+worth only as much as the fit's own scatter about the tests behind it. For the hemispherical
+burst those tests are four Canadian TNT shots of 5 to 500 tons, 1959 to 1964; two-thirds of
+their points lie within ±1.8% of the fitted arrival time, ±6.4% of the peak overpressure, ±6.7%
+of the positive impulse and ±9.6% of the duration (Kingery, BRL Report 1344, 1966, as Swisdak
+1994 tabulates it in his Chart 2), roughly one standard deviation, pooled over all distances.
+Kingery and Bulmash (1984) refitted the same data without adding any, and their reflected
+pressure and reflected impulse are calculated, not fitted to measurements (Swisdak's Chart 3),
+so the wall's curves carry no measured scatter of their own. Swisdak's polynomials, used here,
+reproduce Kingery and Bulmash's curves to better than 1% on average. Later tests:
+
+- S. E. Rigby et al. (6th International Conference on Protection of Structures against
+  Hazards, 2014): 180 to 350 g hemispheres of PE4 at 5.4 to 10 m/kg^(1/3), normally reflected,
+  within 7% of ConWep (Kingery–Bulmash), the mean ratio 1.00 for the peak and 1.01 for the
+  impulse, taking PE4 as 1.2 times TNT.
+- D. G. Farrimond et al., *International Journal of Protective Structures* 15(1) (2024)
+  141–165: 61 shots of 250 g hemispheres of PE4, PE8 and PE10 at 3 to 12 m/kg^(1/3),
+  reflected. Repeats lie within ±6–8% of their mean for the peak, the impulse and the
+  duration, and arrival times within ±2% beyond 3 m/kg^(1/3); the spread grows inside it.
+  Against Kingery–Bulmash, with TNT equivalences of 1.22 to 1.24, they agree closely, but the
+  durations run up to 15% short.
+- Close in, P. J. Rae and J. M. McAfee, *Propellants, Explosives, Pyrotechnics* 43(7) (2018):
+  45 kg hemispheres of C-4 at 0.53 to 1.78 m/kg^(1/3) against Kinney and Graham's table. Gauges
+  at the same distance in one shot differed by up to 40% in peak pressure and 6% in arrival
+  time, worst where the fireball reaches, 0.7 to 1.5 m/kg^(1/3).
+- Taken more widely, D. Bogosian, J. Ferritto and Y. Shi (DoD Explosives Safety Seminar, 2002)
+  found 70% to 150% of Kingery–Bulmash's peak and 50% to 130% of its impulse over 303
+  measurements of mixed explosives and shapes at 1 to 40 m/kg^(1/3), as Farrimond et al. quote
+  them; the later work above puts most of that down to mixing charges and reading the records,
+  not to the explosions.
+
+So the reflected impulse's agreement within 6% from 1.5 m/kg^(1/3) outwards is about one
+standard deviation of the reference's own scatter (±6.7% in Kingery's impulses, ±6–8% between
+repeats now), and cannot be told from agreement with the tests themselves; closer in, where the
+scatter grows, it says less. The incident impulse 13% to 22% low, the arrival times 2% to 10%
+early against a band of about ±2%, and the peaks are outside it: those differences are the
+model's.
+
 ### With refinement
 
 With the air [refined near the shock](air-blast-model.md#refining-near-the-shock) by 2
@@ -2096,6 +2134,16 @@ in free air rather than 2. At 10 m the Kinney–Graham peak is about a quarter h
 Kingery–Bulmash one. Both formulae (the book's equations 6-2 and 6-12) have been checked
 against the book.
 
+Kinney and Graham give no scatter for either formula (*Explosive Shocks in Air*, 2nd ed., 1985,
+chapter 6). Their peak overpressure is a computed curve (Brode's calculations, and Shear and
+Wright's), which they describe as verified against measurements, among them Kingery's (1966);
+equation 6-2 is a network-type fit to that curve. Their impulse, equation 6-12, is an
+empirical fit to independent data for chemical explosions, with no stated scatter either. So
+the band for Kinney–Graham can be no narrower than Kingery's. The one open comparison of their
+table with tests near a charge, Rae and McAfee's (above), found it broadly
+right for 45 kg of C-4 at 0.53 to 1.78 m/kg^(1/3), with neighbouring gauges differing by up to
+40% where the fireball reaches.
+
 ### Gas pressure in a closed room
 
 A charge fired in a closed room leaves, once the shocks have died down, hot gas at a steady
@@ -2149,6 +2197,19 @@ Within 8% of the design curve at every density, from the energies of detonation 
 combustion, the oxygen in air and the vibration of its molecules, with nothing fitted to it
 (the burning time hardly matters in a closed room). Hot air without afterburning gives 43% to
 91%.
+
+**Against the curve's own scatter.** UFC 3-340-02 calls Figure 2-152 a curve fitted to tests of
+partly vented chambers with A/V^(2/3) up to 0.022, and gives no scatter. C. Oswald, "An improved
+method to calculate the gas pressure history from partially confined detonations" (NDIA, 2018),
+gathered over 100 confined and partly confined tests for the DoD Explosives Safety Board: the
+peak gas pressure read at different gauges in one test varied with a coefficient of variation of
+5% to 20%, 12% on average, over four series; and a method that takes its peak from Figure 2-152
+(with a TNT equivalence and a term for afterburning) came within 1.7% on average of the peaks
+measured in nearly closed rooms (scaled vent area under 0.015), with a standard deviation of
+11%. The model's 98% to 108% with afterburning and hot air is inside that scatter, so it agrees
+with the curve about as well as the tests do; the default's 48% at the lightest charge is far
+outside it. The tests behind the curve are still wanted
+([Data wanted](data-wanted.md#3g-the-reference-curves-own-scatter)).
 
 Cooper (*Explosives Engineering*, pp. 153–158) works a closed vessel through by hand: 2 kg of
 TNT burnt completely in 14.1 m³ of air (0.14 kg/m³) leaves 7.35 atm of overpressure, 0.745 MPa.

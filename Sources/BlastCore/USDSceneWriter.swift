@@ -290,7 +290,7 @@ public final class USDSceneWriter {
                 customLayerData = {
                     string creator = "BombCAD"
                     string scenario = \(quoted(scenario.name))
-                    double simulatedSecondsPerFrame = \(frameInterval)\(cloudTiming)\(standingData)
+                    double simulatedSecondsPerFrame = \(frameInterval)\(cloudTiming)\(standingData)\(attributionData)
                 }
                 defaultPrim = "Scene"
                 startTimeCode = 0
@@ -644,6 +644,13 @@ public final class USDSceneWriter {
             text.append(n == 3 ? ", 1)" : ", 0)")
         }
         text.append(" )\n        uniform token[] xformOpOrder = [\"xformOp:transform\"]\n    }\n\n")
+    }
+
+    /// The credits the scene's data asks for (OpenStreetMap's, for map buildings), in the layer's
+    /// metadata.
+    private var attributionData: String {
+        guard let credits = scenario.attributions, !credits.isEmpty else { return "" }
+        return "\n        string[] attributions = [" + credits.map(quoted).joined(separator: ", ") + "]"
     }
 
     /// The standing as a dictionary of the layer's metadata: each result's level and summary, the
