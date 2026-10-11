@@ -1504,11 +1504,11 @@ struct StandingScene {
             evidence += [
                 StandingEvidence(
                     "A reinforced slab under a blast",
-                    "Reads high (safe side) under the test's load: 113–124 mm against 109 mm measured, and 113 "
+                    "Either way by load. Reads high under the test's load: 113–124 mm against 109 mm measured, and 113 "
                         + "in its repeat (104–114% of the first), on 4 to 32 solid elements through, rising with the "
                         + "mesh and not converged, a strip of it running away on 32; shells 135 mm (124%); a 5% "
                         + "change in its hand-read load moves it 13–14%, a source's 68 ksi bar yield 9%. Under the "
-                        + "contest's lower shot (a scaled record) about 80% of the peak: too stiff",
+                        + "contest's lower shot (a scaled record) 79–88% of the peak: too stiff, the unsafe side",
                     "validation.md#structural-response-against-a-real-test"),
                 StandingEvidence(
                     "A reinforced beam bent to failure",
@@ -1534,8 +1534,8 @@ struct StandingScene {
             ]
             parts.append(
                 "reinforced concrete errs mostly on the unsafe side, towards too little damage: too strong in "
-                    + "shear, too stiff in a full-scale chamber and close in. In bending it reads 5–15% high on "
-                    + "one slab, not converged, and its beams struck on 16 elements come within 12–24%; it "
+                    + "shear, too stiff in a full-scale chamber and close in. In bending one slab reads either way, "
+                    + "4–14% high under the contest's load and 12–21% low under its lower shot, not converged, and its beams struck on 16 elements come within 12–24%; it "
                     + "springs back too far")
         }
         if classes.contains(.plainConcrete) {

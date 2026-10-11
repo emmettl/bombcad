@@ -265,9 +265,11 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
         let wall = SceneStanding(StandingInputs(scenario: ScenarioPreset.blastWall.scenario, cellSize: 0.25))
         let deflection = try #require(wall.band(.peakDeflection))
         #expect(deflection.inputSpread == 0.12)
-        #expect(deflection.ratio == "104–114%" && deflection.reads == "reads high: too flexible")
+        // Too flexible under the contest's load, too stiff under its lower shot: either way.
+        #expect(deflection.ratio == "79–114%" && deflection.reads == "reads either way")
+        #expect(deflection.referenceScatter == 0.03)
         let expected = deflection.expected(115)
-        #expect(abs(expected.lowerBound - 115 / 1.14) < 1e-9 && abs(expected.upperBound - 115 / 1.04) < 1e-9)
+        #expect(abs(expected.lowerBound - 115 / 1.14) < 1e-9 && abs(expected.upperBound - 115 / 0.79) < 1e-9)
         #expect(wall[.structuralResponse]?.regimes?.isEmpty == false)
 
         // An option the slab was not compared with leaves it without a band.
