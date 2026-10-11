@@ -1300,6 +1300,15 @@ beam's under the load at 4.5 ms, as in the tests if early, but leaves the beam o
 it is not a fix, the energy being in range. What the images saw, spalling, is concrete on the
 face leaving once crushed, which nothing in the model does before it is crushed 27%.
 
+Letting concrete on a free face spall once crushed to Mander, Priestley and Park's spalling
+strain (0.005; tried, not kept) takes the faces under the load and at the supports 0.6–1.3 ms
+after impact in every beam, including those that showed no spalling within 25 ms; it brings the
+deep beams' near reaction to the measured (199–214 kN against 206, from 335), but their strain is
+read over a column's hinge, and over one 9.4 mm element it is 0.05 mm of shortening. Neither bond
+that slips nor any removal of crushed concrete tried here gives all six kinds their failures:
+splitting bond gives the cracks' angles but no failures, perfect bond fails the beams without
+stirrups by the wrong mode, and none fails the beam of span d with stirrups.
+
 ## Slabs under close-in charges
 
 The first structural test in the open air with the air solver loading the
