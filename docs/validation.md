@@ -352,14 +352,15 @@ assumption about the pulse's shape; a lower driver pressure in the simulator nee
 scaled copy. Measured (Schwer's Figure 4, read by hand): about 72 mm at 21–29 ms, with spikes to
 80 mm that look like the laser's noise, and about 54 mm by 65 ms. Model, at 22 ms:
 
-| Load | 4 elements through | 8 | Measured |
-|---|---|---|---|
-| 0.726 (5% less) | | 52 mm | |
-| 0.764 | 57 mm, left 42 | 59 mm, left 30 | about 72 mm, left about 54 |
-| 0.802 (5% more) | | 66 mm | |
+| Load | 4 elements through | 8 | 16 | Measured |
+|---|---|---|---|---|
+| 0.726 (5% less) | | 52 mm | | |
+| 0.764 | 57 mm, left 42 | 59 mm, left 30 | 63 mm, left 30 | about 72 mm, left about 54 |
+| 0.802 (5% more) | | 66 mm | | |
 
-So at the lower shot the model reaches about 80% of the measured peak (72–92% across ±5% of the
-load) and keeps 55–80% of the residual: too stiff, where under load 1a it is too flexible. Its
+So at the lower shot the model reaches 79–88% of the measured peak on 4 to 16 elements, rising
+with the mesh as under load 1a (72–92% across ±5% of the load on 8), and keeps 55–80% of the
+residual: too stiff, where under load 1a it is too flexible. Its
 response rises more steeply with the load than the slab's did: 76% of the impulse gives 52% of
 the peak in the model (59 of 113 mm on 8 elements) and 65% in the tests (72 of 111).
 
