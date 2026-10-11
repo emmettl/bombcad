@@ -3176,6 +3176,8 @@ func runSlab() throws {
         let result = try SlabBenchmark.run(
             device: device, elementsThroughThickness: layers, rate: rate,
             loadScale: option("load-scale").flatMap { Float($0) } ?? 1, supports: supports, width: width,
+            // `--span 58`: the supports that many inches apart (52 by default).
+            span: option("span").flatMap { Float($0) }.map { $0 * 0.0254 } ?? SlabBenchmark.span,
             bondSlip: chosenBondSlip(diameter: 0.0095),
             adjust: { applyRateOptions(&$0) },
             adjustModel: {

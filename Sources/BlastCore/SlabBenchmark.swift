@@ -184,10 +184,15 @@ public enum SlabBenchmark {
         case bearings(width: Float, holdDown: Bool)
     }
 
-    /// Runs the slab under the recorded pressure for 80 ms.
+    /// The distance between the supports, centre to centre: 52 in, as Kewaisy et al. reproduce the
+    /// contest's drawing. G. A. Shetye's thesis gives the panels' clear span as 58 in.
+    public static let span: Float = 52 * inch
+
+    /// Runs the slab under the recorded pressure for 80 ms, its supports `span` apart about its
+    /// middle.
     public static func run(
         device: MTLDevice, elementsThroughThickness: Int = 8, rate: RateTreatment = .strainRate,
-        loadScale: Float = 1, supports: Supports = .lines, width: Float = fullWidth,
+        loadScale: Float = 1, supports: Supports = .lines, width: Float = fullWidth, span: Float = span,
         bondSlip: BondSlip? = nil,
         adjust: (inout StructureMaterial) -> Void = { _ in },
         adjustModel: (inout StructureModel) -> Void = { _ in },
@@ -207,11 +212,11 @@ public enum SlabBenchmark {
         solver.appliedLoad = load
         prepare?(solver)
 
-        // Simple supports 52 in apart on the unloaded face. The source does not describe the rig,
-        // so how they are modelled is an assumption; see `Supports`.
+        // Simple supports `span` apart (52 in by default) on the unloaded face. The source does not
+        // describe the rig, so how they are modelled is an assumption; see `Supports`.
         let h = model.elementSize
-        let first = Int((6 * inch / h).rounded())
-        let second = Int((58 * inch / h).rounded())
+        let first = Int(((64 * inch - span) / 2 / h).rounded())
+        let second = Int(((64 * inch + span) / 2 / h).rounded())
         solver.mutateNodes { nodes in
             // The slab's width need not be a whole number of elements, so the lattice's last
             // row of nodes may be unused; only nodes that exist are held.
