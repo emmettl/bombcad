@@ -88,7 +88,23 @@ public struct ErrorBand: Codable, Hashable, Sendable {
         return (relativeHalfWidth * relativeHalfWidth + inputs * inputs + reference * reference).squareRoot()
     }
 
-    /// Where the measured value would lie for a model value, with the inputs' spread as well.
+    /// Whether the model's error lies within the reference's own scatter (one standard deviation),
+    /// so that it cannot be told apart from the tests'; nil where the scatter is not known.
+    public var withinReference: Bool? {
+        referenceScatter.map { max(abs(low - 1), abs(high - 1)) <= $0 + 1e-9 }
+    }
+
+    /// The model's error against the reference's scatter, in words; nil where it is not known.
+    public var againstReference: String? {
+        guard let scatter = referenceScatter, let within = withinReference else { return nil }
+        let tests = String(format: "the tests' own scatter, %.1f%%", scatter * 100)
+        return within
+            ? "Inside \(tests): the model cannot be told apart from the tests here."
+            : "Outside \(tests): the difference is the model's."
+    }
+
+    /// Where a measured value would lie for a model value: the band, with the inputs' spread and
+    /// the reference's own scatter (each at 5–95%) added in quadrature.
     public func expectedWithInputs(_ value: Double) -> ClosedRange<Double> {
         guard inputSpread != nil || referenceScatter != nil else { return expected(value) }
         let centre = value / ((low + high) / 2)

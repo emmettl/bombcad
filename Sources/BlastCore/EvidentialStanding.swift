@@ -184,7 +184,10 @@ public struct SceneStanding: Codable, Hashable, Sendable {
         for result in results {
             text.append("  \(result.kind.title): \(result.level.title). \(result.summary)")
             if let direction = result.direction { text.append("    \(direction)") }
-            for band in result.bands ?? [] { text.append("    Band: \(band.summary), for \(band.validity)") }
+            for band in result.bands ?? [] {
+                text.append("    Band: \(band.summary), for \(band.validity)")
+                if let verdict = band.againstReference { text.append("      \(verdict)") }
+            }
             for note in result.unbanded ?? [] { text.append("    No band: \(note)") }
             for advice in result.regimes ?? [] {
                 let verdict = advice.suits.map { $0 ? "suits it" : "does not suit it" } ?? "note"

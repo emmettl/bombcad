@@ -342,15 +342,14 @@ struct StandingDetail: View {
                         )
                         .foregroundStyle(.secondary)
                     }
-                    if let scatter = band.referenceScatter {
-                        Text(
-                            String(
-                                format:
-                                    "The reference's own tests scatter %.1f%% (one standard deviation), added "
-                                    + "too: within it the model cannot be told from the tests.",
-                                scatter * 100)
+                    if let verdict = band.againstReference {
+                        Label(
+                            verdict + " (One standard deviation; added to the range below.)",
+                            systemImage: band.withinReference == true
+                                ? "equal.circle" : "arrow.up.and.down.circle"
                         )
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(band.withinReference == true ? .secondary : .primary)
+                        .fixedSize(horizontal: false, vertical: true)
                     }
                     if let value, value.measure == band.measure {
                         Text(

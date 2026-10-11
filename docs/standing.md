@@ -137,8 +137,12 @@ alone.
 scatters about it. Where the record gives that scatter, the band carries it, one standard
 deviation: Kingery's tests about Kingery–Bulmash's fit, 6.4% in incident peak and 6.7% in incident
 impulse; for reflected values, which Kingery and Bulmash calculated rather than fitted, modern
-repeats' 6–8% (8% taken); UFC 3-340-02's rooms, 11%. The expected range adds it at 5–95% as it
-does the inputs' spread, and comparison uses the combined width. Close in, where repeats differed
+repeats' 6–8% (8% taken); UFC 3-340-02's rooms, 11%. Each band says plainly whether the model's
+error lies inside that scatter, where it cannot be told apart from the tests (the reflected
+impulse within 6%, a closed room's 98–108% with afterburning and hot air), or outside it, where
+the difference is the model's (the incident impulse 13–22% low, peaks under-resolved, a room's
+default gas; arrival times, 2–10% early against about ±2%, have no band). The expected range adds
+the scatter at 5–95% as it does the inputs' spread, and comparison uses the combined width. Close in, where repeats differed
 by up to 40%, the band says so instead of carrying a figure; Kinney–Graham has none known.
 
 **Regimes.** The scene is placed as in contact (under 0.15 m/kg^(1/3) from a structure), close
