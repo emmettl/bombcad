@@ -6,12 +6,14 @@ its rows are read, and the results are set against what the tests measured, with
 case lies in. Every change to the concrete model should be judged on the whole table; compare two
 tables (`--compare old.json`) to see what a change moved.
 
-    Scripts/concrete-matrix.py [--quick] [--cases slab,oa1] [--extra "--bond splitting"]
+    Scripts/concrete-matrix.py [--quick] [--cases slab,oa1] [--extra="--bond splitting"]
                                [--label slip] [--out DIR] [--blastbench PATH] [--compare OLD.json]
 
 Writes DIR/matrix.md, DIR/matrix.json and each command's raw output. DIR defaults to
 /Volumes/StudioData/bombcad/concrete-matrix/LABEL when that volume is mounted. The full matrix
-takes some hours on one Mac; `--quick` runs the coarser mesh of each case only.
+takes some hours on one Mac; `--quick` runs the coarser mesh of each case only. The table on
+today's defaults is kept in Benchmarks/ConcreteMatrix/defaults.md; pass its .json to `--compare`.
+(`--extra` takes its value after an equals sign, since it begins with dashes.)
 """
 import argparse
 import json

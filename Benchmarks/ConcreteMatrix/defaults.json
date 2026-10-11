@@ -1,0 +1,711 @@
+{
+ "label": "defaults",
+ "extra": "",
+ "quick": false,
+ "cases": [
+  {
+   "key": "slab",
+   "title": "Contest slab",
+   "regime": "far field, bending",
+   "command": "slab --layers 4,8,16",
+   "seconds": 297,
+   "exit": 0,
+   "rows": [
+    {
+     "label": "peak, 4 through",
+     "measured": 108.0,
+     "model": 114.0,
+     "unit": "mm",
+     "note": ""
+    },
+    {
+     "label": "peak, 8 through",
+     "measured": 108.0,
+     "model": 113.0,
+     "unit": "mm",
+     "note": ""
+    },
+    {
+     "label": "peak, 16 through",
+     "measured": 108.0,
+     "model": 121.0,
+     "unit": "mm",
+     "note": ""
+    }
+   ]
+  },
+  {
+   "key": "janney",
+   "title": "Janney's beam",
+   "regime": "quasi-static, bending",
+   "command": "beam --layers 12,24",
+   "seconds": 543,
+   "exit": 0,
+   "rows": [
+    {
+     "label": "moment, 12 through",
+     "measured": 41.5,
+     "model": 42.0,
+     "unit": "kN m",
+     "note": "fails at 53 mm (test 42 mm)"
+    },
+    {
+     "label": "moment, 24 through",
+     "measured": 41.5,
+     "model": 41.2,
+     "unit": "kN m",
+     "note": "holds"
+    }
+   ]
+  },
+  {
+   "key": "oa1",
+   "title": "OA1",
+   "regime": "quasi-static, shear",
+   "command": "shear --layers 12,24",
+   "seconds": 172,
+   "exit": 0,
+   "rows": [
+    {
+     "label": "peak, 12 through",
+     "measured": 332.0,
+     "model": 456.0,
+     "unit": "kN",
+     "note": "at 10.4 mm"
+    },
+    {
+     "label": "peak, 24 through",
+     "measured": 332.0,
+     "model": 368.0,
+     "unit": "kN",
+     "note": "at 8.8 mm"
+    }
+   ]
+  },
+  {
+   "key": "pushoff",
+   "title": "Push-off tests",
+   "regime": "quasi-static, restrained crack",
+   "command": "pushoff",
+   "seconds": 39,
+   "exit": 0,
+   "rows": [
+    {
+     "label": "1/.0/6.8 shear at 2.0 mm slip",
+     "measured": 9.9,
+     "model": 0.58,
+     "unit": "MPa",
+     "note": ""
+    },
+    {
+     "label": "1/.0/3.6 shear at 2.0 mm slip",
+     "measured": 7.01,
+     "model": 0.56,
+     "unit": "MPa",
+     "note": ""
+    },
+    {
+     "label": "1/.2/1.6 shear at 2.0 mm slip",
+     "measured": 5.45,
+     "model": 0.55,
+     "unit": "MPa",
+     "note": ""
+    },
+    {
+     "label": "1/.2/.4 shear at 2.0 mm slip",
+     "measured": 3.97,
+     "model": 0.51,
+     "unit": "MPa",
+     "note": ""
+    },
+    {
+     "label": "1/.4/1.0 shear at 2.0 mm slip",
+     "measured": 6.4,
+     "model": 0.52,
+     "unit": "MPa",
+     "note": ""
+    },
+    {
+     "label": "1/.2/1.4 shear at 2.0 mm slip",
+     "measured": 4.6,
+     "model": 0.5,
+     "unit": "MPa",
+     "note": ""
+    },
+    {
+     "label": "1/.4/.3 shear at 2.0 mm slip",
+     "measured": 2.55,
+     "model": 0.5,
+     "unit": "MPa",
+     "note": ""
+    }
+   ]
+  },
+  {
+   "key": "tie",
+   "title": "Tie (Model Code)",
+   "regime": "quasi-static, tension",
+   "command": "tie",
+   "seconds": 10,
+   "exit": 0,
+   "rows": [
+    {
+     "label": "pull, 20.0 mm elements",
+     "measured": 73.4,
+     "model": 71.2,
+     "unit": "kN",
+     "note": "8 cracks; Model Code, beta 0.4"
+    },
+    {
+     "label": "pull, 10.0 mm elements",
+     "measured": 73.4,
+     "model": 72.8,
+     "unit": "kN",
+     "note": "8 cracks; Model Code, beta 0.4"
+    }
+   ]
+  },
+  {
+   "key": "saatci",
+   "title": "Saatci's beams",
+   "regime": "impulsive, flexure and shear",
+   "command": "impact --layers 16",
+   "seconds": 608,
+   "exit": 0,
+   "rows": [
+    {
+     "label": "SS0a-1 peak",
+     "measured": 9.3,
+     "model": 17.0,
+     "unit": "mm",
+     "note": "left 2.4 mm, 246 removed"
+    },
+    {
+     "label": "SS1a-1 peak",
+     "measured": 12.1,
+     "model": 13.6,
+     "unit": "mm",
+     "note": "left 1.7 mm, 0 removed"
+    },
+    {
+     "label": "SS2a-1 peak",
+     "measured": 10.0,
+     "model": 12.4,
+     "unit": "mm",
+     "note": "left 1.3 mm, 0 removed"
+    },
+    {
+     "label": "SS0b-1 peak",
+     "measured": null,
+     "model": 66.5,
+     "unit": "mm",
+     "note": "left 32.9 mm, 2359 removed (test failed)"
+    },
+    {
+     "label": "SS1b-1 peak",
+     "measured": 39.5,
+     "model": 40.5,
+     "unit": "mm",
+     "note": "left 20.9 mm, 0 removed"
+    },
+    {
+     "label": "SS2b-1 peak",
+     "measured": 37.9,
+     "model": 37.1,
+     "unit": "mm",
+     "note": "left 17.5 mm, 0 removed"
+    },
+    {
+     "label": "SS3b-1 peak",
+     "measured": 35.3,
+     "model": 33.6,
+     "unit": "mm",
+     "note": "left 14.8 mm, 0 removed"
+    }
+   ]
+  },
+  {
+   "key": "ando",
+   "title": "Ando's beams",
+   "regime": "impulsive, shear",
+   "command": "impact --ando --layers 16",
+   "seconds": 1831,
+   "exit": 0,
+   "rows": [
+    {
+     "label": "A24-1 at 1 m/s",
+     "measured": 2.0,
+     "model": 1.4,
+     "unit": "mm",
+     "note": "0 removed"
+    },
+    {
+     "label": "A24-3 at 3 m/s",
+     "measured": 11.0,
+     "model": 11.2,
+     "unit": "mm",
+     "note": "106 removed"
+    },
+    {
+     "label": "A24-4 at 4 m/s",
+     "measured": 16.0,
+     "model": 22.9,
+     "unit": "mm",
+     "note": "440 removed"
+    },
+    {
+     "label": "A24-5 at 5 m/s",
+     "measured": 29.0,
+     "model": 30.6,
+     "unit": "mm",
+     "note": "604 removed, broken in the test"
+    },
+    {
+     "label": "A24-6 at 6 m/s",
+     "measured": 54.0,
+     "model": 78.8,
+     "unit": "mm",
+     "note": "1655 removed, broken in the test"
+    },
+    {
+     "label": "A36-1 at 1 m/s",
+     "measured": 1.5,
+     "model": 2.2,
+     "unit": "mm",
+     "note": "0 removed"
+    },
+    {
+     "label": "A36-3 at 3 m/s",
+     "measured": 13.5,
+     "model": 11.7,
+     "unit": "mm",
+     "note": "11 removed"
+    },
+    {
+     "label": "A36-4 at 4 m/s",
+     "measured": 28.0,
+     "model": 25.8,
+     "unit": "mm",
+     "note": "441 removed"
+    },
+    {
+     "label": "A36-5 at 5 m/s",
+     "measured": 66.0,
+     "model": 55.9,
+     "unit": "mm",
+     "note": "493 removed, broken in the test"
+    },
+    {
+     "label": "A48-4 at 4 m/s",
+     "measured": null,
+     "model": 36.7,
+     "unit": "mm",
+     "note": "213 removed"
+    },
+    {
+     "label": "B36-1 at 1 m/s",
+     "measured": 2.7,
+     "model": 2.6,
+     "unit": "mm",
+     "note": "0 removed"
+    },
+    {
+     "label": "B36-3 at 3 m/s",
+     "measured": 16.0,
+     "model": 15.6,
+     "unit": "mm",
+     "note": "0 removed"
+    },
+    {
+     "label": "B36-4 at 4 m/s",
+     "measured": 26.0,
+     "model": 27.2,
+     "unit": "mm",
+     "note": "12 removed"
+    },
+    {
+     "label": "B36-5 at 5 m/s",
+     "measured": 105.0,
+     "model": 41.8,
+     "unit": "mm",
+     "note": "91 removed, broken in the test"
+    },
+    {
+     "label": "B48-1 at 1 m/s",
+     "measured": 4.0,
+     "model": 3.9,
+     "unit": "mm",
+     "note": "0 removed"
+    },
+    {
+     "label": "B48-3 at 3 m/s",
+     "measured": 21.0,
+     "model": 20.6,
+     "unit": "mm",
+     "note": "0 removed"
+    },
+    {
+     "label": "B48-4 at 4 m/s",
+     "measured": 36.0,
+     "model": 36.0,
+     "unit": "mm",
+     "note": "104 removed"
+    },
+    {
+     "label": "B48-5 at 5 m/s",
+     "measured": 55.0,
+     "model": 54.0,
+     "unit": "mm",
+     "note": "59 removed"
+    },
+    {
+     "label": "B48-6 at 6 m/s",
+     "measured": 73.0,
+     "model": 72.7,
+     "unit": "mm",
+     "note": "143 removed"
+    },
+    {
+     "label": "mean error, all beams",
+     "measured": null,
+     "model": 15.954999412233835,
+     "unit": "%",
+     "note": ""
+    }
+   ]
+  },
+  {
+   "key": "peterson",
+   "title": "Peterson's beams",
+   "regime": "impulsive, shear",
+   "command": "impact --peterson",
+   "seconds": 599,
+   "exit": 0,
+   "rows": [
+    {
+     "label": "D-04d-NoS-1 (SC in the test)",
+     "measured": null,
+     "model": 2.7,
+     "unit": "mm under the load",
+     "note": "221 elements lost"
+    },
+    {
+     "label": "D-04d-S90-1 (SCS in the test)",
+     "measured": null,
+     "model": 1.3,
+     "unit": "mm under the load",
+     "note": "30 elements lost"
+    },
+    {
+     "label": "D-04d-S45-1 (SCS in the test)",
+     "measured": null,
+     "model": 1.2,
+     "unit": "mm under the load",
+     "note": "30 elements lost"
+    },
+    {
+     "label": "D-1d-NoS-1 (SC in the test)",
+     "measured": null,
+     "model": 21.2,
+     "unit": "mm under the load",
+     "note": "1224 elements lost"
+    },
+    {
+     "label": "D-1d-S90-1 (SC in the test)",
+     "measured": null,
+     "model": 8.9,
+     "unit": "mm under the load",
+     "note": "0 elements lost"
+    },
+    {
+     "label": "D-1d-S45-1 (SC in the test)",
+     "measured": null,
+     "model": 8.6,
+     "unit": "mm under the load",
+     "note": "0 elements lost"
+    },
+    {
+     "label": "D-2d-NoS-1 (FS in the test)",
+     "measured": null,
+     "model": 50.4,
+     "unit": "mm under the load",
+     "note": "1289 elements lost"
+    },
+    {
+     "label": "D-2d-S90-1 (F in the test)",
+     "measured": null,
+     "model": 16.1,
+     "unit": "mm under the load",
+     "note": "0 elements lost"
+    },
+    {
+     "label": "D-2d-S45-1 (F in the test)",
+     "measured": null,
+     "model": 15.4,
+     "unit": "mm under the load",
+     "note": "0 elements lost"
+    }
+   ]
+  },
+  {
+   "key": "chiquito",
+   "title": "Chiquito's slabs",
+   "regime": "close in",
+   "command": "closein --tests P1,P7,S5,P2",
+   "seconds": 1097,
+   "exit": 0,
+   "rows": [
+    {
+     "label": "P1 left down",
+     "measured": 0.0,
+     "model": 3.0,
+     "unit": "mm",
+     "note": "peak 12"
+    },
+    {
+     "label": "P7 left down",
+     "measured": 340.0,
+     "model": 113.0,
+     "unit": "mm",
+     "note": "peak 161"
+    },
+    {
+     "label": "S5 left down",
+     "measured": null,
+     "model": 206.0,
+     "unit": "mm",
+     "note": "peak 262"
+    },
+    {
+     "label": "P2 left down",
+     "measured": 510.0,
+     "model": 210.0,
+     "unit": "mm",
+     "note": "peak 262"
+    },
+    {
+     "label": "P1 holed",
+     "measured": null,
+     "model": null,
+     "unit": "",
+     "note": "test no, model no"
+    },
+    {
+     "label": "P7 holed",
+     "measured": null,
+     "model": null,
+     "unit": "",
+     "note": "test no, model no"
+    },
+    {
+     "label": "S5 holed",
+     "measured": null,
+     "model": null,
+     "unit": "",
+     "note": "test yes, model no"
+    },
+    {
+     "label": "P2 holed",
+     "measured": null,
+     "model": null,
+     "unit": "",
+     "note": "test yes, model no"
+    }
+   ]
+  },
+  {
+   "key": "hupfauf",
+   "title": "Hupfauf's slabs",
+   "regime": "in contact",
+   "command": "contact",
+   "seconds": 1025,
+   "exit": 0,
+   "rows": [
+    {
+     "label": "SN174 far face's speed",
+     "measured": 80.9,
+     "model": 101.0,
+     "unit": "m/s",
+     "note": "against the fit"
+    },
+    {
+     "label": "SN174 holed",
+     "measured": null,
+     "model": null,
+     "unit": "",
+     "note": "test yes, model no"
+    },
+    {
+     "label": "SN142 far face's speed",
+     "measured": 71.0,
+     "model": 145.4,
+     "unit": "m/s",
+     "note": "against the fit"
+    },
+    {
+     "label": "SN142 holed",
+     "measured": null,
+     "model": null,
+     "unit": "",
+     "note": "test yes, model no"
+    },
+    {
+     "label": "SN144 far face's speed",
+     "measured": 50.6,
+     "model": 70.1,
+     "unit": "m/s",
+     "note": "against the fit"
+    },
+    {
+     "label": "SN144 holed",
+     "measured": null,
+     "model": null,
+     "unit": "",
+     "note": "test yes, model no"
+    },
+    {
+     "label": "SN128 far face's speed",
+     "measured": 45.2,
+     "model": 61.4,
+     "unit": "m/s",
+     "note": "against the fit"
+    },
+    {
+     "label": "SN128 holed",
+     "measured": null,
+     "model": null,
+     "unit": "",
+     "note": "test yes, model no"
+    },
+    {
+     "label": "SN175 holed",
+     "measured": null,
+     "model": null,
+     "unit": "",
+     "note": "test no, model no"
+    },
+    {
+     "label": "SN147 far face's speed",
+     "measured": 25.8,
+     "model": 26.6,
+     "unit": "m/s",
+     "note": "against the fit"
+    },
+    {
+     "label": "SN147 holed",
+     "measured": null,
+     "model": null,
+     "unit": "",
+     "note": "test no, model no"
+    },
+    {
+     "label": "SN145 far face's speed",
+     "measured": 21.3,
+     "model": 33.9,
+     "unit": "m/s",
+     "note": "against the fit"
+    },
+    {
+     "label": "SN145 holed",
+     "measured": null,
+     "model": null,
+     "unit": "",
+     "note": "test no, model no"
+    },
+    {
+     "label": "SN131 far face's speed",
+     "measured": 14.6,
+     "model": 21.7,
+     "unit": "m/s",
+     "note": "against the fit"
+    },
+    {
+     "label": "SN131 holed",
+     "measured": null,
+     "model": null,
+     "unit": "",
+     "note": "test no, model no"
+    }
+   ]
+  },
+  {
+   "key": "wu",
+   "title": "Wu's slabs",
+   "regime": "close in",
+   "command": "twoface --wu S8,D8,S6,D6",
+   "seconds": 1199,
+   "exit": 0,
+   "rows": [
+    {
+     "label": "S6 peak",
+     "measured": 8.2,
+     "model": 3.9,
+     "unit": "mm",
+     "note": "hole - / 0.0 cm"
+    },
+    {
+     "label": "S8 peak",
+     "measured": 18.0,
+     "model": 14.4,
+     "unit": "mm",
+     "note": "hole - / 0.0 cm"
+    },
+    {
+     "label": "D6 peak",
+     "measured": 10.1,
+     "model": 3.9,
+     "unit": "mm",
+     "note": "hole - / 0.0 cm"
+    },
+    {
+     "label": "D8 peak",
+     "measured": 13.9,
+     "model": 14.9,
+     "unit": "mm",
+     "note": "hole - / 0.0 cm"
+    }
+   ]
+  },
+  {
+   "key": "wang",
+   "title": "Wang's slabs",
+   "regime": "far field",
+   "command": "twoface --wang A,B",
+   "seconds": 192,
+   "exit": 0,
+   "rows": [
+    {
+     "label": "A centre peak",
+     "measured": 19.7,
+     "model": 2.7,
+     "unit": "mm",
+     "note": "dominated by the supports"
+    },
+    {
+     "label": "B centre peak",
+     "measured": 14.1,
+     "model": 2.9,
+     "unit": "mm",
+     "note": "dominated by the supports"
+    }
+   ]
+  },
+  {
+   "key": "chamber",
+   "title": "Chamber",
+   "regime": "confined",
+   "command": "chamber",
+   "seconds": 100,
+   "exit": 0,
+   "rows": [
+    {
+     "label": "roof edge left up",
+     "measured": 95.0,
+     "model": 25.0,
+     "unit": "mm",
+     "note": "peak 49 (paper's model 87)"
+    }
+   ]
+  }
+ ]
+}

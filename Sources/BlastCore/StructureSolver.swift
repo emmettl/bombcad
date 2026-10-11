@@ -182,6 +182,12 @@ public final class StructureSolver {
     private(set) var footings: FootingSystem?
     /// Connections between two parts of the body (`Anchorage.betweenParts`), when it has any.
     private var pairs: PartPairs?
+    /// The discrete bars (`StructureModel.discreteBars`), when the body has any.
+    private(set) var discreteBarSystem: DiscreteBarSystem?
+    private var barSegmentPipeline: MTLComputePipelineState?
+    private var barNodePipeline: MTLComputePipelineState?
+    private var barGatherPipeline: MTLComputePipelineState?
+    private var barRupturePipeline: MTLComputePipelineState?
     private let pairPipeline: MTLComputePipelineState
     private var stamp: UInt32 = 0
 
@@ -223,6 +229,10 @@ public final class StructureSolver {
         var withoutSteel = !model.hourglassCapsSteel
         constants.setConstantValue(&secant, type: .bool, index: 8)
         constants.setConstantValue(&withoutSteel, type: .bool, index: 9)
+        // Bodies without discrete bars leave the constant undefined, so their kernels are as before.
+        let trusses = model.allDiscreteBars
+        var discrete = !trusses.isEmpty
+        if discrete { constants.setConstantValue(&discrete, type: .bool, index: 10) }
         elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
         traceElementPipeline = {
             let tracing = MTLFunctionConstantValues()
@@ -234,12 +244,15 @@ public final class StructureSolver {
             tracing.setConstantValue(&traced, type: .bool, index: 3)
             tracing.setConstantValue(&secant, type: .bool, index: 8)
             tracing.setConstantValue(&withoutSteel, type: .bool, index: 9)
+            var discrete = discrete
+            if discrete { tracing.setConstantValue(&discrete, type: .bool, index: 10) }
             return try? ShaderLibrary.pipeline("structureElements", in: library, constants: tracing)
         }
         // Keep the general connection law out of kernels for ordinary clamped/free bodies.
         let nodeConstants = MTLFunctionConstantValues()
         var connected = model.connectionStiffness != nil
         nodeConstants.setConstantValue(&connected, type: .bool, index: 1)
+        if discrete { nodeConstants.setConstantValue(&discrete, type: .bool, index: 10) }
         nodePipeline = try ShaderLibrary.pipeline("structureNodes", in: library, constants: nodeConstants)
         var turned = true
         nodeConstants.setConstantValue(&turned, type: .bool, index: 4)
@@ -493,6 +506,7 @@ public final class StructureSolver {
             (anchorStiffness != nil ? max(nodeList.count, 1) : 1) * MemoryLayout<AnchorageParameters>.stride,
             "connection laws")
         try setUpBondSlip()
+        try setUpDiscreteBars(trusses, library: library)
         reset()
         if let anchorStiffness {
             let stiffest = max(anchorStiffness.normal, anchorStiffness.shear)
@@ -658,7 +672,9 @@ public final class StructureSolver {
     /// without settling. (Done after the initialiser has set everything else up: written inline
     /// there, the loop made the optimised build trap, as one did in `ShellSolver`'s.)
     private func setUpBondSlip() throws {
-        guard let bond = model.bondSlip, materials.contains(where: { $0.steel != nil }) else { return }
+        guard let bond = model.bondSlip, materials.contains(where: { $0.steel != nil }),
+            model.allDiscreteBars.isEmpty
+        else { return }
         let h = model.elementSize
         let law = bond.law(compressiveStrength: model.material.compressiveStrength)
         let bondStiffness = law.peak * pow(0.02, law.alpha) / (0.02 * law.s1)
@@ -696,6 +712,60 @@ public final class StructureSolver {
         barForceBuffer = try buffer(max(elementCount, 1) * 32, "bar forces")
     }
 
+    /// Cuts the discrete bars into segments about an element long and embeds their nodes in the
+    /// elements they lie in (see `DiscreteBar`).
+    private func setUpDiscreteBars(_ trusses: [DiscreteBar], library: MTLLibrary) throws {
+        guard !trusses.isEmpty else { return }
+        let h = model.elementSize
+        let materialIndices = materialIndexBuffer.contents().bindMemory(
+            to: UInt8.self, capacity: max(elementCount, 1))
+        let dims = SIMD3(ex, ey, ez)
+        func embed(_ point: SIMD3<Float>) -> DiscreteBarSystem.Embedding? {
+            let local = (point - origin) / h
+            let cell = SIMD3<Int>(local.rounded(.down))
+            // A point on an element's face may lie in the element on either side of it; one just
+            // outside the mesh, where a solid's size is not a whole number of elements, is taken
+            // onto the nearest element within half an element.
+            for tolerance: Float in [1e-4, 0.5] {
+                for dx in [0, -1, 1] {
+                    for dy in [0, -1, 1] {
+                        for dz in [0, -1, 1] {
+                            let c = cell &+ SIMD3(dx, dy, dz)
+                            guard all(c .>= 0), all(c .< dims), let compact = compactIndex(c.x, c.y, c.z)
+                            else { continue }
+                            let xi = local - SIMD3<Float>(c)
+                            guard all(xi .>= -tolerance), all(xi .<= 1 + tolerance) else { continue }
+                            let t = simd_clamp(xi, .zero, .one)
+                            var corners: [Int] = []
+                            var weights: [Float] = []
+                            for a in 0..<8 {
+                                let bit = SIMD3(a & 1, (a >> 1) & 1, (a >> 2) & 1)
+                                guard let node = storedNode(c.x + bit.x, c.y + bit.y, c.z + bit.z) else {
+                                    return nil
+                                }
+                                corners.append(node)
+                                var w: Float = 1
+                                for axis in 0..<3 { w *= bit[axis] == 1 ? t[axis] : 1 - t[axis] }
+                                weights.append(w)
+                            }
+                            return .init(
+                                corners: corners, weights: weights,
+                                material: Int(materialIndices[compact] & 15))
+                        }
+                    }
+                }
+            }
+            return nil
+        }
+        discreteBarSystem = try DiscreteBarSystem(
+            device: device, bars: trusses, elementSize: h, bodyNodeCount: nodeCount,
+            crackSpacing: model.material.crackSpacing, embed: embed)
+        barSegmentPipeline = try ShaderLibrary.pipeline("discreteBarSegments", in: library)
+        barNodePipeline = try ShaderLibrary.pipeline("discreteBarNodes", in: library)
+        barGatherPipeline = try ShaderLibrary.pipeline("discreteBarGather", in: library)
+        barRupturePipeline = try ShaderLibrary.pipeline("discreteBarRupture", in: library)
+    }
+
     // MARK: - State
 
     /// Restores the undeformed, stress-free, stationary body.
@@ -726,6 +796,7 @@ public final class StructureSolver {
 
         footings?.reset()
         pairs?.reset()
+        discreteBarSystem?.reset()
         let materialIndices = materialIndexBuffer.contents().bindMemory(
             to: UInt8.self, capacity: max(elementCount, 1))
         let onGround = model.fixedBase && abs(origin.z) < 0.5 * h
@@ -1005,7 +1076,8 @@ public final class StructureSolver {
         stateValue(i, j, k, offset: 144)
     }
 
-    /// Net force (N) that the elements around a node exerted on it in the last step. At a
+    /// Net force (N) that the elements around a node, and any discrete bars, exerted on it in the
+    /// last step. At a
     /// restrained or prescribed node this is minus the reaction.
     public func nodalForce(_ i: Int, _ j: Int, _ k: Int) -> SIMD3<Float> {
         var total = SIMD3<Float>.zero
@@ -1020,6 +1092,11 @@ public final class StructureSolver {
                 base.load(as: Float.self), base.load(fromByteOffset: 4, as: Float.self),
                 base.load(fromByteOffset: 8, as: Float.self))
         }
+        // And the discrete bars' bond on it.
+        if let bars = discreteBarSystem, let node = storedNode(i, j, k) {
+            let force = bars.nodeForce.contents().load(fromByteOffset: node * 16, as: SIMD4<Float>.self)
+            total += SIMD3(force.x, force.y, force.z)
+        }
         return total
     }
 
@@ -1032,6 +1109,32 @@ public final class StructureSolver {
     /// ruptured set reads 1e9).
     public func barPlasticStrain(_ i: Int, _ j: Int, _ k: Int) -> SIMD3<Float> {
         SIMD3((0..<3).map { stateValue(i, j, k, offset: 92 + 4 * $0) })
+    }
+
+    /// The discrete bars' segments, and how many have ruptured.
+    public var discreteBarRuptures: (segments: Int, ruptured: Int) {
+        guard let bars = discreteBarSystem else { return (0, 0) }
+        return (
+            bars.segmentCount, (0..<bars.segmentCount).filter { abs(bars.segment($0).plastic) > 1e8 }.count
+        )
+    }
+
+    /// Discrete bar `bar`'s segments' plastic strains (1e9 once ruptured).
+    public func discreteBarPlastic(_ bar: Int) -> [Float] {
+        guard let bars = discreteBarSystem, bars.segmentsOfBar.indices.contains(bar) else { return [] }
+        return bars.segmentsOfBar[bar].map { bars.segment($0).plastic }
+    }
+
+    /// Discrete bar `bar`'s segments' forces (N; zero once ruptured) and its nodes' slips (m), in
+    /// order along it; empty without discrete bars.
+    public func discreteBar(_ bar: Int) -> (forces: [Float], slips: [Float]) {
+        guard let bars = discreteBarSystem, bars.segmentsOfBar.indices.contains(bar) else { return ([], []) }
+        let range = bars.segmentsOfBar[bar]
+        let forces = range.map { bars.segment($0).force }
+        // A bar's nodes run from its first segment's first node, one more than its segments.
+        let firstNode = range.lowerBound + bar
+        let slips = (0...range.count).map { bars.slip(firstNode + $0) }
+        return (forces, slips)
     }
 
     /// With bars that slip, the slip of node (i, j, k)'s bars along each lattice axis relative to
@@ -1302,11 +1405,14 @@ public final class StructureSolver {
     /// to cross an element, its speed raised by the bars where they are densest.
     public var stableTimeStep: Float {
         let speeds = materials.enumerated().map { n, material -> Float in
-            guard let steel = material.steel, n < densestSteel.count, densestSteel[n] > 0 else {
+            guard let steel = material.steel, n < densestSteel.count,
+                max(densestSteel[n], discreteBarSystem?.densestRatio ?? 0) > 0
+            else {
                 return material.dilatationalWaveSpeed
             }
-            let modulus =
-                material.lameLambda + 2 * material.shearModulus + steel.youngsModulus * densestSteel[n]
+            // Discrete bars stiffen the elements they run through as their share of its section.
+            let ratio = max(densestSteel[n], discreteBarSystem?.densestRatio ?? 0)
+            let modulus = material.lameLambda + 2 * material.shearModulus + steel.youngsModulus * ratio
             return (modulus / material.density).squareRoot()
         }
         let step = timeStepSafety * model.elementSize / (speeds.max() ?? 1)
@@ -1453,6 +1559,53 @@ public final class StructureSolver {
                 }
             }
 
+            if let bars = discreteBarSystem, let barSegmentPipeline, let barNodePipeline,
+                let barGatherPipeline, let barRupturePipeline
+            {
+                encoder.setComputePipelineState(barSegmentPipeline)
+                encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
+                encoder.setBuffer(bars.nodes, offset: 0, index: 1)
+                encoder.setBuffer(bars.segments, offset: 0, index: 2)
+                encoder.setBuffer(bars.segmentState, offset: 0, index: 3)
+                encoder.setBuffer(bars.histories, offset: 0, index: 4)
+                encoder.setBuffer(bars.slips, offset: 0, index: 5)
+                encoder.setBytes(
+                    &parameters, length: parameters.count * MemoryLayout<MaterialParameters>.stride, index: 6)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 7)
+                encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 8)
+                encoder.dispatchThreads(
+                    MTLSize(width: bars.segmentCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+                encoder.setComputePipelineState(barRupturePipeline)
+                encoder.setBuffer(bars.segmentState, offset: 0, index: 0)
+                encoder.setBuffer(bars.segments, offset: 0, index: 1)
+                encoder.setBytes(
+                    &parameters, length: parameters.count * MemoryLayout<MaterialParameters>.stride, index: 2)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 3)
+                encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 4)
+                encoder.dispatchThreads(
+                    MTLSize(width: bars.segmentCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+                encoder.setComputePipelineState(barNodePipeline)
+                encoder.setBuffer(bars.nodes, offset: 0, index: 0)
+                encoder.setBuffer(bars.segmentState, offset: 0, index: 1)
+                encoder.setBuffer(bars.slips, offset: 0, index: 2)
+                encoder.setBuffer(bars.transfer, offset: 0, index: 3)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 4)
+                encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 5)
+                encoder.setBuffer(bars.segments, offset: 0, index: 6)
+                encoder.setBytes(
+                    &parameters, length: parameters.count * MemoryLayout<MaterialParameters>.stride, index: 7)
+                encoder.dispatchThreads(
+                    MTLSize(width: bars.nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+                encoder.setComputePipelineState(barGatherPipeline)
+                encoder.setBuffer(bars.gatherStart, offset: 0, index: 0)
+                encoder.setBuffer(bars.gatherEntries, offset: 0, index: 1)
+                encoder.setBuffer(bars.transfer, offset: 0, index: 2)
+                encoder.setBuffer(bars.nodeForce, offset: 0, index: 3)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 4)
+                encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 5)
+                encoder.dispatchThreads(
+                    MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            }
             beforeNodes?(substep, uniforms)
             if let pairs {
                 uniforms.pairs = UInt32(pairs.count)
@@ -1501,6 +1654,7 @@ public final class StructureSolver {
             encoder.setBuffer(pairs?.state ?? placeholderBuffer, offset: 0, index: 27)
             encoder.setBuffer(pairs?.nodeStart ?? placeholderBuffer, offset: 0, index: 28)
             encoder.setBuffer(pairs?.nodeEntries ?? placeholderBuffer, offset: 0, index: 29)
+            encoder.setBuffer(discreteBarSystem?.nodeForce ?? placeholderBuffer, offset: 0, index: 30)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
             footings?.encode(
@@ -1568,7 +1722,8 @@ public final class StructureSolver {
         uniforms.crackSlip = model.crackSlip ? 1 : 0
         uniforms.barAxes = barAxes
         uniforms.pressedInterlock = model.appliesPressedInterlock ? 1 : 0
-        if let bond = model.bondSlip, materials.contains(where: { $0.steel != nil }) {
+        if let bond = model.bondSlip, materials.contains(where: { $0.steel != nil }), discreteBarSystem == nil
+        {
             let law = bond.law(compressiveStrength: model.material.compressiveStrength)
             uniforms.bondSlip = 1
             uniforms.bondPeak = law.peak
@@ -1586,6 +1741,17 @@ public final class StructureSolver {
                 let excess = 2 - top.y / steel.curve[0].y
                 uniforms.bondYieldExponent = max(excess * excess, 0.1)
             }
+        }
+        if let bond = model.bondSlip, discreteBarSystem != nil {
+            // The discrete bars' bond, in the same fields the smeared bars' slip uses.
+            let law = bond.law(compressiveStrength: model.material.compressiveStrength)
+            uniforms.discreteBond = 1
+            uniforms.bondPeak = law.peak
+            uniforms.bondResidual = law.residual
+            uniforms.bondS1 = law.s1
+            uniforms.bondS2 = law.s2
+            uniforms.bondS3 = law.s3
+            uniforms.bondAlpha = law.alpha
         }
         if anchorStiffness != nil {
             uniforms.anchored = 1

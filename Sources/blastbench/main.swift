@@ -200,6 +200,12 @@ func applyRateOptions(_ material: inout StructureMaterial) {
 func applyHourglassOptions(_ model: inout StructureModel) {
     if flag("hourglass-secant") { model.hourglassFollowsCracking = true }
     if flag("hourglass-no-steel") { model.hourglassCapsSteel = false }
+    // `--discrete [mm]`: the layers' bars as discrete trusses (`barsAsTrusses`), of that diameter,
+    // or the bond's (`--bond`), or 12 mm; they slip by `--bond` or are bonded perfectly.
+    if flag("discrete") {
+        model.barsAsTrusses = true
+        if let diameter = option("discrete").flatMap({ Float($0) }) { model.trussDiameter = diameter / 1000 }
+    }
 }
 
 /// `--work`: the work trace (`StructureSolver.tracesWork`), and `--hourglass 0.5` scales the
@@ -2856,8 +2862,10 @@ func runTie() throws {
             + "bare bars \(format(Double(TieBenchmark.expectedLoad(strain: strain, beta: 0, strength: strength)) / 1000, 1)) kN"
     )
     for h in sizes {
-        let result = try TieBenchmark.run(device: device, elementSize: h, bond: bond, strain: strain) {
-            material in
+        // `--discrete`: the bars as discrete trusses with the same bond.
+        let result = try TieBenchmark.run(
+            device: device, elementSize: h, bond: bond, strain: strain, discrete: flag("discrete")
+        ) { material in
             material.concreteRateFactor = factor
             material.fractureEnergy *= factor.squareRoot()
             applyRateOptions(&material)
@@ -2869,6 +2877,19 @@ func runTie() throws {
                 + "\(format(Double(spacings.min() ?? 0) * 1000, 0))-\(format(Double(spacings.max() ?? 0) * 1000, 0)) mm apart "
                 + "(mean \(format(Double(mean) * 1000, 0))); pull \(format(Double(result.load) / 1000, 1)) kN"
         )
+        if flag("discrete") {
+            let every = max(1, result.bar.forces.count / 20)
+            print(
+                "    bar 0 forces (kN): "
+                    + stride(from: 0, to: result.bar.forces.count, by: every).map {
+                        format(Double(result.bar.forces[$0]) / 1000, 1)
+                    }.joined(separator: " "))
+            print(
+                "    bar 0 slips (mm):  "
+                    + stride(from: 0, to: result.bar.slips.count, by: every).map {
+                        format(Double(result.bar.slips[$0]) * 1000, 3)
+                    }.joined(separator: " "))
+        }
     }
 }
 
@@ -2995,66 +3016,99 @@ func runSlab() throws {
                 applyHourglassOptions(&$0)
             },
             prepare: prepareTrace,
-            sample: flag("stiffening")
+            sample: flag("discrete-trace")
                 ? { solver in
-                    // `--stiffening`: where the tension is carried over the 600 mm about mid-span,
-                    // every 20 mm on the way down.
-                    let deflection = -solver.displacement(solver.ex / 2, solver.ey / 2, 0).z
-                    let step = 0.02 * Float(milestones.count + 1)
-                    guard deflection >= step, solver.time < 0.03 else { return }
+                    // `--discrete-trace`: the discrete bars' ruptures every millisecond, and the
+                    // largest plastic strain and force of any segment.
+                    let millisecond = Int((solver.time * 1000).rounded(.down))
+                    guard millisecond > (milestones.count - 1), millisecond % 1 == 0 else { return }
                     milestones.append(("", []))
-                    let reach = Int((0.3 / solver.model.elementSize).rounded())
-                    tensionStiffening(
-                        solver, columns: (solver.ex / 2 - reach)..<(solver.ex / 2 + reach),
-                        label: "\(Int((step * 1000).rounded())) mm, \(format(solver.time * 1000, 1)) ms",
-                        profile: flag("profile") && step >= 0.08)
+                    let bars = solver.discreteBarRuptures
+                    var worst: Float = 0
+                    var strongest: Float = 0
+                    for b in 0..<64 {
+                        let bar = solver.discreteBar(b)
+                        guard !bar.forces.isEmpty else { break }
+                        strongest = max(strongest, bar.forces.map(abs).max() ?? 0)
+                        worst = max(worst, solver.discreteBarPlastic(b).filter { $0 < 1e8 }.max() ?? 0)
+                    }
+                    let deflection = -solver.displacement(solver.ex / 2, solver.ey / 2, 0).z
+                    print(
+                        "  \(millisecond) ms: \(format(Double(deflection) * 1000, 1)) mm, \(bars.ruptured) ruptured, "
+                            + "largest plastic \(format(Double(worst) * 100, 2))%, force \(format(Double(strongest) / 1000, 1)) kN"
+                    )
                 }
-                : flag("work")
+                : flag("stiffening")
                     ? { solver in
+                        // `--stiffening`: where the tension is carried over the 600 mm about mid-span,
+                        // every 20 mm on the way down.
                         let deflection = -solver.displacement(solver.ex / 2, solver.ey / 2, 0).z
                         let step = 0.02 * Float(milestones.count + 1)
-                        let crossed = deflection >= step && atPeak.map { deflection >= $0.deflection } ?? true
-                        let peak = deflection > (atPeak?.deflection ?? 0)
-                        let end = solver.time >= 0.08
-                        if let at = option("breakdown").flatMap({ Double($0) }).map({ $0 / 1000 }),
-                            solver.time >= at, !shownBreakdown
-                        {
-                            shownBreakdown = true
-                            printHourglassBreakdown(solver, label: "at \(format(solver.time * 1000, 1)) ms")
-                        }
-                        if end, option("breakdown") != nil {
-                            printHourglassBreakdown(solver, label: "at 80 ms")
-                        }
-                        guard crossed || peak || end else { return }
-                        let totals = solver.workTotals()
-                        if crossed { milestones.append(("\(Int((step * 1000).rounded())) mm", totals)) }
-                        if peak {
-                            atPeak = (
-                                deflection, totals,
-                                regions.map { region in solver.workTotals { region.1($0, $1, $2, solver) } }
-                            )
-                        }
-                        if end {
-                            milestones.append(("80 ms, \(format(Double(deflection) * 1000, 0)) mm", totals))
-                        }
-                    } : nil,
-            inspect: flag("hinge")
-                ? { solver in
-                    for offset in [Float(0), 0.15] {
-                        print("  at 80 ms, \(Int(offset * 1000)) mm from mid-span:")
-                        for row in SlabBenchmark.sectionRows(solver, offset: offset) { print("    " + row) }
+                        guard deflection >= step, solver.time < 0.03 else { return }
+                        milestones.append(("", []))
+                        let reach = Int((0.3 / solver.model.elementSize).rounded())
+                        tensionStiffening(
+                            solver, columns: (solver.ex / 2 - reach)..<(solver.ex / 2 + reach),
+                            label: "\(Int((step * 1000).rounded())) mm, \(format(solver.time * 1000, 1)) ms",
+                            profile: flag("profile") && step >= 0.08)
                     }
+                    : flag("work")
+                        ? { solver in
+                            let deflection = -solver.displacement(solver.ex / 2, solver.ey / 2, 0).z
+                            let step = 0.02 * Float(milestones.count + 1)
+                            let crossed =
+                                deflection >= step && atPeak.map { deflection >= $0.deflection } ?? true
+                            let peak = deflection > (atPeak?.deflection ?? 0)
+                            let end = solver.time >= 0.08
+                            if let at = option("breakdown").flatMap({ Double($0) }).map({ $0 / 1000 }),
+                                solver.time >= at, !shownBreakdown
+                            {
+                                shownBreakdown = true
+                                printHourglassBreakdown(
+                                    solver, label: "at \(format(solver.time * 1000, 1)) ms")
+                            }
+                            if end, option("breakdown") != nil {
+                                printHourglassBreakdown(solver, label: "at 80 ms")
+                            }
+                            guard crossed || peak || end else { return }
+                            let totals = solver.workTotals()
+                            if crossed { milestones.append(("\(Int((step * 1000).rounded())) mm", totals)) }
+                            if peak {
+                                atPeak = (
+                                    deflection, totals,
+                                    regions.map { region in solver.workTotals { region.1($0, $1, $2, solver) }
+                                    }
+                                )
+                            }
+                            if end {
+                                milestones.append(
+                                    ("80 ms, \(format(Double(deflection) * 1000, 0)) mm", totals))
+                            }
+                        } : nil,
+            inspect: flag("discrete")
+                ? { solver in
+                    let bars = solver.discreteBarRuptures
+                    print("  discrete bars: \(bars.ruptured) of \(bars.segments) segments ruptured")
                 }
-                // `--map`: the cracks through the middle of the width at 80 ms; `--plan`, on the
-                // unloaded face, and where the cracks across the span lie.
-                : flag("map") || flag("plan")
+                : flag("hinge")
                     ? { solver in
-                        if flag("map") {
-                            print("  cracks open past 0.1% strain at 80 ms, half the span from mid-span:")
-                            for row in solver.crackMap(row: solver.ey / 2) { print("    " + row) }
+                        for offset in [Float(0), 0.15] {
+                            print("  at 80 ms, \(Int(offset * 1000)) mm from mid-span:")
+                            for row in SlabBenchmark.sectionRows(solver, offset: offset) {
+                                print("    " + row)
+                            }
                         }
-                        if flag("plan") { printSlabCrackPlan(solver) }
-                    } : nil)
+                    }
+                    // `--map`: the cracks through the middle of the width at 80 ms; `--plan`, on the
+                    // unloaded face, and where the cracks across the span lie.
+                    : flag("map") || flag("plan")
+                        ? { solver in
+                            if flag("map") {
+                                print("  cracks open past 0.1% strain at 80 ms, half the span from mid-span:")
+                                for row in solver.crackMap(row: solver.ey / 2) { print("    " + row) }
+                            }
+                            if flag("plan") { printSlabCrackPlan(solver) }
+                        } : nil)
         if rate == .strainRate { meshes.append((layers, result)) }
         let label =
             ["none": "static", "designFactors": "UFC fixed", "strainRate": "rate laws"][rate.rawValue] ?? ""
