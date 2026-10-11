@@ -320,7 +320,7 @@ def check_remote(host, settings, target, wait):
     # Under a terminal, so that the other Mac's end is hung up on if this one stops, rather than
     # waiting on and running for nobody; the copy's own script runs there. The terminal's line
     # endings are put back as they were.
-    command = SSH + ["-tt", host, "python3 %s/worktrees/%s/Scripts/remote.py serve-check --config %s --worktree %s "
+    command = SSH + ["-tt", "-q", host, "python3 %s/worktrees/%s/Scripts/remote.py serve-check --config %s --worktree %s "
                      "--target %s --wait %d" % (ROOT, worktree, quote(json.dumps(settings)), worktree, target,
                                                 int(wait))]
     process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE)
