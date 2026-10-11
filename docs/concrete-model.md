@@ -860,7 +860,13 @@ and is pushed by the air as loose nodes are. Its reach to a node is the distance
 to its nearest corner when it was made (half the diagonal of an undeformed element), so it
 starts touching next to nothing. A node all of whose elements have become rubble has no mass left and
 leaves the body. A bare element's nodes then hold only its bars' mass, so its hourglass control
-stiffens them only in that share. The particles are not drawn in the app yet.
+stiffens them only in that share. Rubble's push from the air's pressure gradient is limited to
+its share of half its air cell's volume: packed, it took more momentum from the cell than the
+pressure gave the cell's air, and reversed the flow. The particles are not drawn in the app yet.
+On the close-in and contact slabs it throws Hupfauf's debris at nearer the measured speed but
+holes no slab the tests holed, and with fragments removed it holes those that held as well, so it
+is no regime's default (see
+[Validation](validation.md#rubble-kept-as-particles-stage-3)).
 
 The crack strain used to be capped at 0.5, and any element stretched past 100% removed. On
 elements smaller than 10 mm both removed concrete at narrower cracks than intended, 1.6 mm on

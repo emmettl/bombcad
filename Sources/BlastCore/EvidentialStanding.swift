@@ -133,7 +133,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-5"
+    public static let currentTable = "standing-table-6"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -613,9 +613,9 @@ public enum StandingTable {
         case .rubbleParticles:
             return Entry(
                 title: "Rubble particles", affects: [.structuralDamage], limit: .approximation,
-                note: "Failed concrete keeps its mass as particles in contact; being judged on the contact "
-                    + "and close-in slabs.",
-                document: "concrete-model.md#removal")
+                note: "Failed concrete keeps its mass as particles in contact: Hupfauf's debris thrown at "
+                    + "about 22% from the measured speed against 45%, but no slab holed that the tests holed.",
+                document: "validation.md#rubble-kept-as-particles-stage-3")
         case .pressedInterlock:
             return Entry(
                 title: "Pressed interlock", affects: structure, limit: .approximation,

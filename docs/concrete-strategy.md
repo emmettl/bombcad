@@ -373,6 +373,33 @@ Stop when the holes are within about a quarter of their measured size, and which
 right. Fragment sizes and their spread need Kasun-III's mapped debris (rank 12, needs the user);
 without it the data cannot judge a finer model of fragmentation.
 
+**Stage 3, as far as it went (11 October 2026).** Rubble is in, as an option
+(`rubbleParticles`; see the [concrete model](concrete-model.md#removal) and
+[Validation](validation.md#rubble-kept-as-particles-stage-3)). Mass, momentum and energy pass to
+the particles exactly. Alone, rubble throws Hupfauf's debris at nearer the measured speed (about
+22% off against 45%) but holes less than today, no slab the tests holed; with fragments removed it
+holes every slab tried, those that held too, at sizes its threshold sets (Wu's S4 at 38, 38 and
+14 cm as the opening goes from 0.5 to 0.7 to 1 mm, D4 at 28, 12 and 10), and not robustly (a node
+of S4 went to NaN). Chiquito's slabs lose no
+element at all. So the erosion rule was not made less critical: which concrete fails decides the
+holes, and the present elements do not fail the right concrete. No regime's cases support a
+default; rubble stays an option, for debris. Stage 4 stays in reserve for the user's decision,
+after the next two.
+
+**Next, before stage 4: what Peterson's images found (from 11 October 2026).** Judged by
+Peterson's image fixture (`Samples/Peterson2026Images`) and the case matrix, regime by regime, with
+no default unless a regime's cases support it:
+
+1. **Splitting along the bars under impact.** The model's short and slender beams without stirrups
+   split along their bottom bars, the row of elements above the bars removed along the beam, which
+   no test image shows. Trace why: the splitting stress the bars' bond puts on their cover (the
+   Model Code's bond and splitting, fib MC2010 6.1), the cover's tensile capacity and its rate
+   law, and the removal rule that takes the row.
+2. **Strut crushing and spall under impact.** The tests' struts crushed or spalled at the support
+   3.8–4.3 ms after impact and under the load 5.7–6.2 ms; the model's do not. Trace the
+   compression law's strength and softening at these rates and the removal rule for crushed
+   concrete.
+
 **Stage 4, only if stage 3 cannot hole the right slabs: a peridynamic zone (months).** Bonds
 between the existing nodes within a horizon of three elements, in a zone around a close-in or
 contact charge. A correspondence law carries the present concrete's compression and crushing.
