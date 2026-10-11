@@ -67,7 +67,7 @@ swift run -c release blastbench perimeter --study wall
 | Gas in a closed room | UFC 3-340-02's design curve (read off its chart by hand): 48% to 114% by default; 98% to 108% with afterburning and hot air; 90% of Cooper's closed vessel, burnt out | Either way within 8% with afterburning and hot air, good, the fitted burning time hardly mattering, against a design curve whose scatter is not given; by default low for light charges (half, the unsafe side) |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
-| Structural response  | One slab test: solid elements 113–124 mm (105–115%) on 4 to 32 elements through, rising with refinement and not converged, a strip of it running away on 32 (93–99% under the earlier strain-rate laws), shells 135 mm (125%); a 5% change in its hand-read load moves the peak 13–14%. One beam bent to failure: peak moment 98–101%, failing at 53–57 mm on 12 elements and holding to 60 mm on 24 against 42 mm, 17% strong on 6. One beam without stirrups failing in shear: 11–15% strong on fine meshes, 37% on coarse, failing suddenly as the test did. Seven drop-weight impacts on beams: with stirrups within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements (+2% to +18% and +17% to +28% on 24), struck about twice as hard as measured, the reactions up to 40% low under the heavy drops and 48% high under the light; the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived. Nineteen on beams without stirrups at rising speeds: within the 2 mm reading at 1 m/s and 15% at 3 m/s, 15% on average beyond on 16 elements but 53% on 24, springing back too far, and decided by how the ends were held (clamped, stiffer than the test's static stiffness). Eighteen short beams struck to shear failure (Peterson et al., 2026): forces as measured at a shear span of one depth (the impact force set by a pad fitted to it), the deep beams too stiff; the beams with stirrups that crushed their strut in the tests hold | Unsafe side in shear: 11–15% too strong, 37% on coarse meshes, struck beams failing by the wrong mechanism and Peterson's struts holding where the tests crushed (low: one static test); 6 elements through 17% strong in bending. Bending of one slab reads 5–15% high, the safe side, not converged (moderate); impact either way on 16 elements but not on 24, where the strain-rate laws, chosen among published laws on these tests, decide it (moderate on one mesh) |
+| Structural response  | One slab test: solid elements 113–124 mm (104–114%) on 4 to 32 elements through, rising with refinement and not converged, a strip of it running away on 32 (92–98% under the earlier strain-rate laws), shells 135 mm (124%), against 109 mm; the test's repeat peaked at 113 mm, a scatter of about ±2%; a 5% change in its hand-read load moves the peak 13–14%, and a source's 68 ksi yield for the bars, against the measured curve's 72, 9%. The contest's lower shot, run openly with a scaled record, reached about 80% of its peak. One beam bent to failure: peak moment 98–101%, failing at 53–57 mm on 12 elements and holding to 60 mm on 24 against 42 mm, 17% strong on 6. One beam without stirrups failing in shear: 11–15% strong on fine meshes, 37% on coarse, failing suddenly as the test did. Seven drop-weight impacts on beams: with stirrups within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements (+2% to +18% and +17% to +28% on 24), struck about twice as hard as measured, the reactions up to 40% low under the heavy drops and 48% high under the light; the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived. Nineteen on beams without stirrups at rising speeds: within the 2 mm reading at 1 m/s and 15% at 3 m/s, 15% on average beyond on 16 elements but 53% on 24, springing back too far, and decided by how the ends were held (clamped, stiffer than the test's static stiffness). Eighteen short beams struck to shear failure (Peterson et al., 2026): forces as measured at a shear span of one depth (the impact force set by a pad fitted to it), the deep beams too stiff; the beams with stirrups that crushed their strut in the tests hold | Unsafe side in shear: 11–15% too strong, 37% on coarse meshes, struck beams failing by the wrong mechanism and Peterson's struts holding where the tests crushed (low: one static test); 6 elements through 17% strong in bending. Bending of one slab either way by load: 4–14% high under the contest's load, 12–21% low (too stiff, the unsafe side) under its lower shot, not converged (moderate); impact either way on 16 elements but not on 24, where the strain-rate laws, chosen among published laws on these tests, decide it (moderate on one mesh) |
 | Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of the paper's text (55–60% of its Figure 9), the impulse under the charge 84–95% of Kingery–Bulmash's, for charges given as TNT equivalents; the slab left a third to a half as far down as measured, spalled only under the charge (on fine air and 12 elements through), and not holed | Unsafe side for damage: the slab bends a third to a half as far, spalls too little and is never holed (low); the load either way within 8%, good |
 | Steel in both faces | Wu et al. (2023): 2 m slabs, one layer or two, within −20% to +7% at the peak under 1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh, 40–70% (too stiff) in the six under 0.2–0.8 kg where the tests spalled; contact charges hole them at a stable step to a half and a third of the measured size (the larger holes at the default step were the step running away). Wang et al. (2022): an aluminised charge's impulse 75–82% as its stated 10 kg of TNT, 94–104% with afterburning; the slabs several times too stiff as supported | Unsafe side under the small charges: 40–70%, too stiff (low); either way under the larger, −20% to +7% (moderate, two shots); holes a half and a third of the size; low for one layer against two and spall |
 | Walls in the open    | Alsubaei (2015), ANFO before perimeter walls: column peaks with no wall within about 10% from 9 m out (a quarter to two thirds high at 8.2 m, where the measured are low); the wall's shielding bracketed, not tested, as the wing walls' length is unknown; walls crack where seen but more widely, rock or slide on their footings in sand; reinforced blockwork top 31 mm against 28 mm as one material, running away as units and joints | Moderate for peaks in the open; low for shielding and for the walls
@@ -119,7 +119,7 @@ a large shock tube that applies a uniform, measured pressure history to one face
 | Cross bars      | No. 3 at 12 in                                                                 |
 | Steel           | Yield 72 ksi (496 MPa), 118 ksi (814 MPa) at 8% strain, rupture near 15%       |
 | Load            | Peak 50 psi (345 kPa), impulse 1,020 psi·ms (7.0 kPa·s), over 80 ms            |
-| Measured        | Peak mid-span deflection about 4.25 in (108 mm) at 30 ms; about 3.55 in (90 mm) at 70 ms |
+| Measured        | Peak mid-span deflection 4.29 in (109 mm) at 29.94 ms, as stated (the plot reads about 4.25 in, 108 mm); about 3.55 in (90 mm) at 70 ms. A repeat, the same slab under the nominally same load, 4.45 in (113 mm) at 32.73 ms ([below](#the-contests-repeat-its-lower-shot-and-its-other-entries)) |
 
 **Source of the data.** T. H. Kewaisy, A. A. Khalil and A. ElFouly, *Advanced Modeling of Blast
 Response of Reinforced Concrete Walls with and without FRP Retrofit*, ACI Spring Convention,
@@ -265,6 +265,9 @@ For comparison, the source reports these peaks from other tools on the same slab
 | RCBlast (single degree of freedom)                         | 117 mm (108%)   |
 | SBEDS (single degree of freedom, flexure)                  | 239 mm (221%)   |
 
+The percentages in this section's tables are of 108 mm, the peak as read off the plot; against
+the 109 mm the contest states, each is about one point lower (113–124 mm is 104–114%).
+
 ### Sensitivity
 
 Eight elements through the thickness, strain-rate laws, one thing changed at a time:
@@ -313,6 +316,82 @@ Reading this table:
   nodes. Bearings one inch wide lower the peak to 79–87 mm. The source does not
   describe the rig; [Data wanted](data-wanted.md) lists it.
 
+### The contest's repeat, its lower shot and its other entries
+
+*Open, calibrated evidence.* L. E. Schwer, "Blind blast simulation: a validation effort
+assessment", *Transactions of SMiRT-23*, Manchester, 2015, Division III, paper 015 (supplied by
+the user), looks back at the contest and reproduces its measured histories and its comparison
+plot. It was considered as a blind test and set aside, since this slab is the model's
+development benchmark; what follows was read with the model already calibrated against the slab.
+
+**The repeat.** The contest shot the same slab design twice under the nominally same load:
+its slabs 2 (load 1a, the record used here) and 4 (load 1aa). The contest's plot states
+4.29 in (109 mm) at 29.94 ms and 4.45 in (113 mm) at 32.73 ms, residuals 3.36 and 3.32 in (85
+and 84 mm). So the test's own scatter at the peak is 4 mm on a mean of 111, about ±2% (a
+coefficient of variation of about 3% from the range of two). The model's 113–124 mm on 4 to 32
+elements runs from the repeat's upper value to 12% above the two shots' mean: 2–12% beyond it,
+one to six times the tests' scatter. (The plot's slab 2 record drops out over 33–35,
+43–46 and 57–61 ms, bridged by straight lines; the stated residuals sit below the record's
+90 mm at 70 ms, so they are taken later or another way.)
+
+**The inputs, checked against Schwer's drawing and text.**
+
+| Input | This record | Schwer 2015 | Effect |
+|---|---|---|---|
+| Width | 33.75 in (Kewaisy et al.'s drawing) | 33.75 in in his Figure 2; 958.85 mm (37.75 in) in his text | none: the text is a slip against its own figure |
+| Main bars | Nine No. 3 at 4 in, 1 in from the unloaded face | Nine No. 3: from one edge 2.8, 2, six at 4, 2 and 2.875 in; ½ in cover with the cross bars outermost, so the main bars' centres about 1.06 in from the face | none for the full slab, which smears the same steel over its width |
+| Bars' yield | 72 ksi, the measured curve | 68 ksi (469 MPa), "Grade 60" | the sources disagree; the whole curve scaled to 68 ksi takes the peak from 113 to 123 mm on 8 elements and 114 to 124 on 4, **+9%**, about four times the tests' scatter. The measured curve is kept |
+| Concrete | 5,400 psi measured | 5 ksi nominal | not a disagreement |
+| Load | 50 psi and 1,020 psi·ms stated; Shetye's thesis gives slab 2's as 53.1 psi and 976 psi·ms | about 7.04 MPa·ms (1,021 psi·ms) | the thesis's 4% lower impulse is inside the ensemble's 3% load spread; a 5% load change moves the peak 13–14% ([sensitivity](#sensitivity)) |
+| Span | 52 in between supports (Kewaisy et al.'s drawing) | not given; his photographs show the slab's ends held by the frame | Shetye's thesis gives the clear span as 58 in; on 58 in the model's slab collapses under load 1a ([below](#the-contests-repeat-its-lower-shot-and-its-other-entries)), and the photographs support 52 |
+
+**The span** (`blastbench slab --span 58`). The record's 52 in between supports (centre to
+centre, from Kewaisy et al.'s reproduction of the contest's drawing) and Shetye's 58 in clear span
+cannot both hold. On 58 in centre to centre, with everything else as before:
+
+| Span | Load 1a, 4 / 8 elements through | The lower shot (0.764), 4 / 8 | Measured |
+|---|---|---|---|
+| 52 in | 114 / 113 mm, standing | 57 / 59 mm | 109 and 113 mm; about 72 |
+| 58 in | 675 / 675 mm at 80 ms and still going, 149 / 591 elements failed: the slab breaks at mid-span and falls through | 112 / 113 mm, left 82 / 86 | |
+
+The 16-element runs on 58 in were stopped, the machine being loaded and 4 and 8 elements agreeing.
+A 58 in clear span would put the supports' centres further apart still. Which the sources support:
+Schwer's photograph of the slab in its frame after the shot (his Figure 3, left), scaled by the
+slab's 33.75 in width, shows a clear window of about 47–48 in between the frame's end members, and
+the crack positions marked on the rear face in his other photograph (20¼ in, a crushed band of
+about 4½ in, and 21¾ in) add up to about 46½ in. Both fit supports 52 in apart on bearings about
+4–5 in wide; neither fits a 58 in clear span. So the drawing's 52 in stands, and Shetye's figure is
+probably of something else (his own panels or model). The window also says the bearings are
+several inches wide, not the model's single lines of nodes: 1 in bearings already lowered the peak
+15–25% ([sensitivity](#sensitivity)), and wider ones would lower it further, which the record's
+agreement under load 1a does not allow for. The case matrix's support input (lines or 1 in
+bearings) covers part of this.
+
+**The lower shot** (`blastbench slab --load-scale 0.764`). The contest's slab 6 is the same design
+under its load 1b, of impulse about 5.38 MPa·ms against load 1a's 7.04. Its pressure record is not
+published there, so the model takes load 1a's record scaled to that impulse (0.764), an
+assumption about the pulse's shape; a lower driver pressure in the simulator need not give a
+scaled copy. Measured (Schwer's Figure 4, read by hand): about 72 mm at 21–29 ms, with spikes to
+80 mm that look like the laser's noise, and about 54 mm by 65 ms. Model, at 22 ms:
+
+| Load | 4 elements through | 8 | 16 | Measured |
+|---|---|---|---|---|
+| 0.726 (5% less) | | 52 mm | | |
+| 0.764 | 57 mm, left 42 | 59 mm, left 30 | 63 mm, left 30 | about 72 mm, left about 54 |
+| 0.802 (5% more) | | 66 mm | | |
+
+So at the lower shot the model reaches 79–88% of the measured peak on 4 to 16 elements, rising
+with the mesh as under load 1a (72–92% across ±5% of the load on 8), and keeps 55–80% of the
+residual: too stiff, where under load 1a it is too flexible. Its
+response rises more steeply with the load than the slab's did: 76% of the impulse gives 52% of
+the peak in the model (59 of 113 mm on 8 elements) and 65% in the tests (72 of 111).
+
+**The contest's other entries.** Schwer reports that the blind finite-element predictions of the
+repeated shot ranged from 38% short to 99% beyond the measured peaks, and suspects that the
+better ones were tuned to their authors' single-degree-of-freedom results. BombCAD's 104–114%
+would sit among the better entries, but it is not comparable with them: they were blind, and this
+model has been developed against this very slab.
+
 ### Its cracks
 
 A photograph of the test slab's unloaded face after the shot is in G. A. Shetye's thesis
@@ -325,7 +404,8 @@ wavy and branching but not fanning towards the corners, about 2–4 in (50–100
 near the supports. One crack near mid-span is wider than the rest, spalled at the edge. That is
 a reading of a small photograph; no widths are given. (The thesis gives the panels' clear
 span as 58 in, where the contest's drawing, as Kewaisy et al. reproduce it, puts the supports
-52 in apart.)
+52 in apart; the photographs support 52, and on 58 the model's slab collapses: see
+[the span](#the-contests-repeat-its-lower-shot-and-its-other-entries).)
 
 `blastbench slab --plan` draws the model's unloaded face at 80 ms in plan, marking cracks wider
 than 0.1 mm, read over each crack's band (the crack spacing with perfect bond, the element with
@@ -1143,6 +1223,55 @@ effective: the strut's crushing at these rates, and its splitting, are not what 
 without stirrups test elsewhere. With bars that slip (`--bond splitting`) the forces move by
 under 6%, but four of the six kinds fail wrongly: the beams of shear span d and 2d without
 stirrups hold, and those with stirrups at 45 mm fail, where their companions at 90 mm hold.
+
+### Read from the high-speed images
+
+Peterson's high-speed frames (6,000 a second, 1024 × 512 px, about 0.53 mm a pixel, the side of
+each beam's shear span painted with a speckle pattern) were read for all eighteen beams but two:
+D-2d-S90-1 has no frames, and D-2d-NoS-2's end about 1 ms after the impact. Dense optical flow
+(OpenCV's Farnebäck, with numpy, scipy, scikit-image and Pillow) from the frame before impact gives
+the displacement field, and its major principal strain the cracks: regions strained 3% or more
+(the noise is under 1%), 15 mm long or more, their angle by principal axes. Pairs of points either
+side of the main crack, 6 mm off it, give its opening and slip. Times are from the first frame in
+which the top of the beam under the load moves (±0.25 ms); angles within about 5° (by hand,
+where the automatic reading cannot follow the deep beams' short steep cracks and broken ends,
+about 8°). Crushing was sought both as spalling (the frame no longer matching the reference) and
+as compressive strain, but the strain at this resolution cannot tell crushing from the noise
+under the loading cylinder and beside cracks, so only visible spalling or bursting is reported.
+The values are in `Samples/Peterson2026Images` (CC BY 4.0), the scripts in
+`Scripts/peterson2026/images`. The model's cracks through the middle of its width are read the same
+way (`blastbench impact --peterson --crack-trace`): elements cracked open by 1% or more, the
+first inclined crack (20–75°, three elements), and the longest run of inclined cracks in the
+short span.
+
+| Beams | First inclined crack, test / model | Main crack's inclination, test / model (2–5 ms) | Spalled or burst, test | Model |
+|---|---|---|---|---|
+| 0.4 d, none | 1.0, 1.5 / 1.3 ms | 78°, 76° / 80–83° | not within 25 ms | removed under the load and at the support from 2.2 ms |
+| 0.4 d, 90 mm | 0.7, 0.8 / 1.3 ms | 75°, 57° / 83° | support 3.8, 4.3 ms; load 5.8 | holds |
+| 0.4 d, 45 mm | 2.0, 1.0 / 1.3 ms | 80°, 77° / 84–85° | not within 25 ms | holds |
+| 1 d, none | 1.0, 1.3 / 1.1 ms | 50°, 51° / 52–56° | not within 25 ms | split along its bars, removed under the load at 4.8 ms |
+| 1 d, 90 mm | 1.7, 1.3 / 1.2 ms | 61°, 74° / 35–41° | load 5.7 ms (one) | holds |
+| 1 d, 45 mm | 1.2, 1.0 / 1.2 ms | 54°, 57° / 33–35° | not within 25 ms | holds |
+| 2 d, none | 1.0 / 0.9 ms | 37° in the long span, curving / 9–25° in the short | not within 25 ms | split along its bars |
+| 2 d, 90 mm | 0.8 / 1.3 ms | 58° / 23° | load 6.2 ms | bends |
+| 2 d, 45 mm | 1.5, 2.0 / 1.2 ms | flexural, 77° / 47–49° | not within 25 ms | bends |
+
+The first inclined crack comes in the model when it came in the tests: 0.7–2.0 ms after impact in
+the tests, 0.9–1.3 in the model. And where the model forms the deep and short beams' diagonal crack without
+stirrups its angle is the tests': 52–56° against 50–51° at a shear span of one depth, 80–83°
+against 76–78° at 0.4. In the tests every main crack ran from the support to the load: steeply
+in the deep beams (75–80°, along the direct strut), at 50–60° in the short ones, from beside the
+load into the long span in the slender beam without stirrups. The model differs in three ways.
+Its main crack in the short beams with stirrups lies 20–35° flatter than the tests'. Its slender
+and short beams without stirrups fail by a split along the bottom bars: the crack map shows the
+row of elements just above them removed along most of the beam, which no test image shows (with
+discrete bars, `--discrete`, the slender beam's split remains, 7–12° and 240 mm long at 5 ms). And
+its struts do not fail where the tests' were seen to burst at the support or spall under the load,
+3.8–6.2 ms after impact.
+
+The tests' shear cracks open far more than they slide. At a shear span of one depth they opened
+0.4–3.4 mm by 2 ms and 1.6–7 mm by 5 ms, sliding 0.1–0.7 and 0.2–1.0 mm: a tenth to a third
+of the opening. The deep beams' end blocks slide along the crack as a plug instead, by 1–3 mm.
 
 ## Slabs under close-in charges
 
@@ -2785,6 +2914,9 @@ about 0.5 it is chance).
 | Chiquito S1–S3, gauge at 2 m (MPa) | 0.5 | 0.36 | 0.36, 7% | 0.32–0.39 | no, above | 12% | charge |
 | Kingery–Bulmash wall, reflected peak (kPa) | 1,060 (K–B) | 691 | 697, 2% | 672–715 | no, above | | charge, standoff |
 | Kingery–Bulmash wall, reflected impulse (Pa s) | 1,690 (K–B) | 1,710 | 1,710, 1% | 1,670–1,740 | yes | | charge |
+
+(Since this run, the contest slab's measured peak is taken as the stated 109 mm, and its repeat
+gives the tests' scatter, about 3%; see [the contest's repeat](#the-contests-repeat-its-lower-shot-and-its-other-entries).)
 
 The Kingery–Bulmash curves themselves, for the same inputs (`kb-curve`, 200 samples, no solver),
 spread 2% in both: the solver adds nothing to that spread.

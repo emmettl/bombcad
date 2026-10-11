@@ -133,7 +133,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-4"
+    public static let currentTable = "standing-table-6"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -184,7 +184,10 @@ public struct SceneStanding: Codable, Hashable, Sendable {
         for result in results {
             text.append("  \(result.kind.title): \(result.level.title). \(result.summary)")
             if let direction = result.direction { text.append("    \(direction)") }
-            for band in result.bands ?? [] { text.append("    Band: \(band.summary), for \(band.validity)") }
+            for band in result.bands ?? [] {
+                text.append("    Band: \(band.summary), for \(band.validity)")
+                if let verdict = band.againstReference { text.append("      \(verdict)") }
+            }
             for note in result.unbanded ?? [] { text.append("    No band: \(note)") }
             for advice in result.regimes ?? [] {
                 let verdict = advice.suits.map { $0 ? "suits it" : "does not suit it" } ?? "note"
@@ -288,6 +291,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case footings
     case cyclicSand
     case freeBase
+    case importedStructure
     // Materials.
     case rateIndependent
     case designIncreaseFactors
@@ -374,6 +378,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
                     || s.supportAnchorages.contains { $0?.footing?.soil.cyclic != nil }
             }
         case .freeBase: return any { !$0.fixedBase }
+        case .importedStructure:
+            return inputs.scenario.importedModels?.contains(where: \.isStructural) == true
         case .rateIndependent: return structural.contains { !$0.rateDependent }
         case .designIncreaseFactors:
             return materials.contains { $0.concreteRateFactor != 1 || $0.steelRateFactor != 1 }
@@ -550,7 +556,7 @@ public enum StandingTable {
         case .shellElements:
             return Entry(
                 title: "Shell elements", affects: structure, limit: nil,
-                note: "On the slab test shells peaked at 135 mm, 125% of that measured, against 105–115% "
+                note: "On the slab test shells peaked at 135 mm, 124% of that measured, against 104–114% "
                     + "for solid elements.",
                 document: "validation.md#structural-response-against-a-real-test")
         case .shellSectionShear:
@@ -671,6 +677,14 @@ public enum StandingTable {
                 title: "Base resting on the ground", affects: structure, limit: .verified,
                 note: "Nodes on the ground are held up, not held down (verified); no test.",
                 document: "validation.md#verification-against-theory")
+        case .importedStructure:
+            return Entry(
+                title: "Structure from IFC", affects: structure, limit: nil,
+                note:
+                    "Its shells and beams, their materials, the connections where they meet and the supports "
+                    + "were inferred from an IFC building and are listed in its report; the shell model's bands "
+                    + "apply only where all of them match what was compared, and the standing says where they do not.",
+                document: "structural-editing.md#structures-from-ifc")
         case .rateIndependent:
             return Entry(
                 title: "Rate-independent concrete", affects: structure, limit: .approximation,
@@ -762,7 +776,7 @@ public enum StandingTable {
         "Scenario.rigidObjects": .option([.freestandingBoxes]),
         "Scenario.rigidCars": .option([.freestandingCars]),
         "Scenario.importNotes": .input,
-        "Scenario.importedModels": .input,
+        "Scenario.importedModels": .option([.importedStructure]),
         "Scenario.charge": .input,
         "Scenario.additionalCharges": .input,
         "Scenario.gauges": .input,
@@ -798,6 +812,8 @@ public enum StandingTable {
         // The air solver.
         "SolverConfiguration.bodyCouplingLayout": .numerical,
         "SolverConfiguration.bodyCouplingTileCapacity": .numerical,
+        // Off, a run stops where independent bodies come close; what it gives up to there is the same.
+        "SolverConfiguration.interBodyContact": .numerical,
         "SolverConfiguration.gamma": .input,
         "SolverConfiguration.cfl": .numerical,
         "SolverConfiguration.ambientPressure": .input,
@@ -1491,9 +1507,11 @@ struct StandingScene {
             evidence += [
                 StandingEvidence(
                     "A reinforced slab under a blast",
-                    "Reads high (safe side): 113–124 mm against 108 mm measured (105–115%) on 4 to 32 solid "
-                        + "elements through, rising with the mesh and not converged, a strip of it running away on "
-                        + "32; shells 135 mm (125%); a 5% change in its hand-read load moves it 13–14%",
+                    "Either way by load. Reads high under the test's load: 113–124 mm against 109 mm measured, and 113 "
+                        + "in its repeat (104–114% of the first), on 4 to 32 solid elements through, rising with the "
+                        + "mesh and not converged, a strip of it running away on 32; shells 135 mm (124%); a 5% "
+                        + "change in its hand-read load moves it 13–14%, a source's 68 ksi bar yield 9%. Under the "
+                        + "contest's lower shot (a scaled record) 79–88% of the peak: too stiff, the unsafe side",
                     "validation.md#structural-response-against-a-real-test"),
                 StandingEvidence(
                     "A reinforced beam bent to failure",
@@ -1519,8 +1537,8 @@ struct StandingScene {
             ]
             parts.append(
                 "reinforced concrete errs mostly on the unsafe side, towards too little damage: too strong in "
-                    + "shear, too stiff in a full-scale chamber and close in. In bending it reads 5–15% high on "
-                    + "one slab, not converged, and its beams struck on 16 elements come within 12–24%; it "
+                    + "shear, too stiff in a full-scale chamber and close in. In bending one slab reads either way, "
+                    + "4–14% high under the contest's load and 12–21% low under its lower shot, not converged, and its beams struck on 16 elements come within 12–24%; it "
                     + "springs back too far")
         }
         if classes.contains(.plainConcrete) {
@@ -1595,7 +1613,9 @@ struct StandingScene {
         }
         if structures.count > 1 {
             resolution.append(
-                "Independent bodies have no contact with each other; overlapping ones stop the run.")
+                "Independent bodies meet through contact between their nodes, the spring and damper of contact "
+                    + "within a body, checked for momentum and energy but never against a test; they must start "
+                    + "apart and never bond.")
         }
         // Options a saved structure set that have since been retired, and what applies instead.
         for note in Set(structures.flatMap(\.retiredOptions)).sorted() { resolution.append(note) }
@@ -1842,7 +1862,7 @@ struct StandingScene {
             effects.append(
                 "Collapse has never been compared with anything, and debris only off slabs under contact "
                     + "charges and brick walls under blasts, neither well.")
-            if structures.count > 1 { effects.append("Contact between independent structures.") }
+            if structures.count > 1 { effects.append("Bonds or connections between independent structures.") }
         }
         if inputs.thermal == nil {
             effects.append("Radiant heat from the fireball (not reckoned in this scene).")

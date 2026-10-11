@@ -111,8 +111,9 @@ standing says why.
   gauges on a surface. With afterburning and hot air their own tables apply. Gauges beyond
   6 m/kg^(1/3), closer than 0.3, shielded from the charge, over terrain, or on cells coarser than
   any compared grid get none.
-- **Structures** take the slab test's 105–115% on 4 to 32 solid elements through (125% on
-  shells) in the far field; close in, Wu's slabs (40–70% under charges to 0.8 kg, −20% to +7% to
+- **Structures** take the slab test's 79–114% on 4 to 32 solid elements through in the far
+  field, either way by load (104–114% under the contest's load, 79–88% under its lower shot), with
+  the contest's repeat, 3%, as the tests' scatter (124% on shells); close in, Wu's slabs (40–70% under charges to 0.8 kg, −20% to +7% to
   2 kg) and, from 2 kg, Chiquito's deflection left (a third to a half); confined, the chamber's
   wall pressures (0.9 to 1.6 times). Strength in shear is 37% strong on 12 elements through and
   11–15% on 24 or more, interpolated between. Any structural option the tests were not run with
@@ -132,6 +133,18 @@ wall's peak and impulse. The expected range adds the inputs' 5–95% range (1.64
 variation) to the band's half-width in quadrature, since the model's error and its spread from
 uncertain inputs are separate, and comparison uses the combined width. Elsewhere the band stands
 alone.
+
+**The reference's own scatter.** A band compares the model with a reference's mean; a single test
+scatters about it. Where the record gives that scatter, the band carries it, one standard
+deviation: Kingery's tests about Kingery–Bulmash's fit, 6.4% in incident peak and 6.7% in incident
+impulse; for reflected values, which Kingery and Bulmash calculated rather than fitted, modern
+repeats' 6–8% (8% taken); UFC 3-340-02's rooms, 11%. Each band says plainly whether the model's
+error lies inside that scatter, where it cannot be told apart from the tests (the reflected
+impulse within 6%, a closed room's 98–108% with afterburning and hot air), or outside it, where
+the difference is the model's (the incident impulse 13–22% low, peaks under-resolved, a room's
+default gas; arrival times, 2–10% early against about ±2%, have no band). The expected range adds
+the scatter at 5–95% as it does the inputs' spread, and comparison uses the combined width. Close in, where repeats differed
+by up to 40%, the band says so instead of carrying a figure; Kinney–Graham has none known.
 
 **Regimes.** The scene is placed as in contact (under 0.15 m/kg^(1/3) from a structure), close
 in (under 0.75), far field, or confined (a closed room or a charge inside a structure), and the

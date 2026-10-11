@@ -6,7 +6,10 @@ import simd
 
 struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
     static let solverVersion = "blast-solver-2"
-    static let multiBodySolverVersion = "blast-solver-4"
+    /// Several bodies, meeting through contact when they come close.
+    static let multiBodySolverVersion = "blast-solver-5"
+    /// Several bodies, a run stopping where they came close; and the first shared-air solver.
+    static let contactlessMultiBodySolverVersion = "blast-solver-4"
     static let previousMultiBodySolverVersion = "blast-solver-3"
     static let maximumRuns = 16
     static let maximumSamples = 500_000
@@ -192,8 +195,10 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                         && entry.response.maximumDamage.isFinite && entry.response.maximumDamage >= 0
                 }),
                 scenario.structuralObjects.count <= 1
-                    || [Self.multiBodySolverVersion, Self.previousMultiBodySolverVersion].contains(
-                        solverVersion)
+                    || [
+                        Self.multiBodySolverVersion, Self.contactlessMultiBodySolverVersion,
+                        Self.previousMultiBodySolverVersion,
+                    ].contains(solverVersion)
             else { throw ProjectFileError.invalid("Invalid per-object response ownership or history.") }
         }
         if let fragments {

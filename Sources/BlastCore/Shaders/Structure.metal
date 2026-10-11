@@ -3451,10 +3451,13 @@ kernel void publishFineBodyOccupancy(device uint *scratch [[buffer(0)]],
     }
 }
 
+// Stops the run on the interactions in `halting`: the bodies' envelopes or cells overlapping
+// (1) unless they are in contact, and the coupling's storage running out (2).
 kernel void haltBodyInteraction(const device uint *interaction [[buffer(0)]],
                                 device StepControl &control [[buffer(1)]],
+                                constant uint &halting [[buffer(2)]],
                                 uint tid [[thread_position_in_grid]]) {
-    if (tid == 0 && interaction[0] != 0u) { control.stopped = 3u; }
+    if (tid == 0 && (interaction[0] & halting) != 0u) { control.stopped = 3u; }
 }
 
 static inline uint bodyOrderedFloat(float value) {
@@ -3495,9 +3498,12 @@ kernel void solidBodyEnvelope(const device StructureNode *nodes [[buffer(0)]],
     float3 reference = origin.xyz + origin.w * float3(n % layout.y, (n / layout.y) % layout.z, n / (layout.y * layout.z));
     bodyEnvelopePoint(reference + float3(nodes[tid].displacement), 0.5f * origin.w, layout.x, bounds);
 }
+// Envelopes closer than `margin` count as overlapping: with contact between bodies, contact is
+// switched on before their nodes' spheres can touch.
 kernel void validateBodyEnvelopes(const device uint *bounds [[buffer(0)]],
                                   constant uint &count [[buffer(1)]],
                                   device atomic_uint *interaction [[buffer(2)]],
+                                  constant float &margin [[buffer(3)]],
                                   uint tid [[thread_position_in_grid]]) {
     if (tid >= count) { return; }
     for (uint other = tid + 1u; other < count; ++other) {
@@ -3507,7 +3513,7 @@ kernel void validateBodyEnvelopes(const device uint *bounds [[buffer(0)]],
             uint blo = bounds[6u * other + axis], bhi = bounds[6u * other + 3u + axis];
             if (alo > ahi || blo > bhi) { overlap = false; break; }
             overlap = overlap && min(bodyFloatFromOrder(ahi), bodyFloatFromOrder(bhi))
-                >= max(bodyFloatFromOrder(alo), bodyFloatFromOrder(blo)) - 1e-5f;
+                >= max(bodyFloatFromOrder(alo), bodyFloatFromOrder(blo)) - 1e-5f - margin;
         }
         if (overlap) { atomic_fetch_or_explicit(interaction, 1u, memory_order_relaxed); }
     }

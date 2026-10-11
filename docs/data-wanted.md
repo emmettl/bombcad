@@ -35,7 +35,7 @@ no comparison at all its first one, and open sources ahead of those that need th
 | 7 | Prairie Flat (WES TR N-72-2), the Watching Hill soil data, and Pre-Dice Throw II ([3a](#3a-air-induced-ground-shock)) | Ground shock | Reports open in a browser (ERDC, DTIC); digital records and the soil report by request ([draft](data-requests.md#2-prairie-flat-the-watching-hill-soil-data-and-pre-dice-throw-ii)) | Gauges at depth either side of the superseismic limit under a 500-ton surface burst, with the site's soil; Pre-Dice Throw II adds published blind predictions |
 | 8 | Pattman 1971, Dial Pack thermal measurements, DREO Report 642 ([3e](#3e-fireball-radiation)) | Fireball radiation | Open (Government of Canada), 1.45 MB; used ([Validation](validation.md#the-fireballs-radiation-against-dial-pack)) | A second 500-ton TNT shot measured by the group behind the 100-ton comparison |
 | 9 | Keys and Clubley 2017, and Keys's 2016 thesis: masonry panels and small buildings under long-duration blast ([3c](#3c-collapse-and-debris)) | Collapse and debris | Thesis and accepted manuscript downloaded; used ([Validation](validation.md#brick-walls-debris)); the logged debris data is UK MoD property, by request ([draft](data-requests.md#4-masonry-debris-under-long-duration-blast-keys-and-clubley-2017-keys-2016)) | Debris distributions on the ground from walls broken by drag, the loading the model's debris feels |
-| 10 | Reynolds 2015 (UMKC thesis) and ACI SP-306 (2016) ([1](#1-a-second-structural-test-from-the-same-contest)) | The contest's high-strength slab | The theses downloaded; SP-306 needs the user; digital records by request ([draft](data-requests.md#3-the-contests-high-strength-slab-thiagarajan-et-al-2015-reynolds-2015)) | Likely the high-strength slabs' details and histories; nothing open has them |
+| 10 | Reynolds 2015 (UMKC thesis) and ACI SP-306 (2016) ([1](#1-a-second-structural-test-from-the-same-contest)) | The contest's high-strength slab | The theses downloaded, reserved for a blind test, not to be read; SP-306 needs the user; digital records by request ([draft](data-requests.md#3-the-contests-high-strength-slab-thiagarajan-et-al-2015-reynolds-2015)) | Likely the high-strength slabs' details and histories; nothing open has them |
 | 11 | Alsubaei 2015, Western University thesis: perimeter walls under field blasts ([2b](#2b-a-freestanding-wall-under-an-open-air-charge)) | A wall in the open | Open, 8.42 MB, terms not stated | Used: column peaks with and without walls, a blockwork deflection, damage; the wing walls' length is not given |
 | 12 | Kasun-III, KLOTZ Group, 2008: debris of five internal shots in small concrete cubes ([3c](#3c-collapse-and-debris)) | Debris | Paper open (DTIC); the database by request, release uncertain ([draft](data-requests.md#1-kasun-iii-debris-database-klotz-group-2008)) | Over 21,500 pieces of debris, mapped; the best debris benchmark known, but not open |
 | 13 | Sharon et al. 2012, and the DRDC field trials of 2012 ([3d](#3d-an-he-clouds-growth-after-two-minutes)) | The cloud after two minutes | Paywalled; the DRDC report open, 2.62 MB | Cloud heights against time below Church's charges; lidar extents of small clouds |
@@ -87,11 +87,12 @@ the user's agreement (see [Downloaded, not yet in use](#downloaded-not-yet-in-us
     [MOspace 10355/48353](https://mospace.umsystem.edu/xmlui/handle/10355/48353): by search
     summaries, pressure, impulse and deflection histories of high-strength slabs at two steel
     ratios. Downloaded 11 October 2026 through MOspace's public API (its web pages refuse
-    automated reading; the files do not). Whether each slab was shot once is not known.
+    automated reading; the files do not). Reserved for a blind test, not to be read.
   - A. K. Vasudevan, *FE analysis and experimental comparison of doubly reinforced concrete
     slabs subjected to blast loads*, MS thesis, UMKC, 2012,
     [MOspace 10355/14606](https://mospace.umsystem.edu/xmlui/handle/10355/14606): probably the
-    series behind the 2015 paper. Downloaded 11 October 2026, as Reynolds's. MOspace items
+    series behind the 2015 paper. Downloaded 11 October 2026, as Reynolds's; reserved for a
+    blind test, not to be read. MOspace items
     10355/33223 and 10355/67037 also came up, contents unknown.
   - T. H. Kewaisy's SP-306 paper (doi:10.14359/51688871), his NDIA 2018 paper
     (`ndia.dtic.mil/wp-content/uploads/2018/intexpsafety/Kewaisy2Paper.pdf`) and his ACI
@@ -443,10 +444,24 @@ Ten values in the code were written from memory and should be checked against th
   - **Pre-Dice Throw II**, White Sands, 1976: a 100-ton TNT sphere on the ground and a 120-ton
     ANFO charge on one site, with the ground motion measured and compared with the predictions
     four agencies made before the shots (DNA 4363F, DTIC ADA048003; DTIC answered "request is
-    blocked" on 11 October 2026). J. P. Hoffman and S. T. Harding, *Strong ground motion in the
-    Tularosa Basin, New Mexico*, USGS OFR 77-143 (1977), doi:10.3133/ofr77143, public domain,
-    2.2 MB, downloaded; its link to the shots is from a search summary, not confirmed. A blind
-    benchmark ready made, if ADA048003 is obtained.
+    blocked" on 11 October 2026). A blind benchmark ready made, if ADA048003 is obtained. The
+    Air Force Weapons Laboratory's strong-motion gauges at 305 to 1,220 m from the shot point,
+    the ranges the soil column is for, are reported there, not in the USGS report below.
+    - J. P. Hoffman and S. T. Harding, *Strong ground motion in the Tularosa Basin, New
+      Mexico*, USGS OFR 77-143 (1977), doi:10.3133/ofr77143, public domain, 2.2 MB, downloaded
+      and read 11 October 2026. It appears to be these shots: its Figure 21 is headed "Pre Dice
+      Throw 100 and 120 ton GZ's", and its two shots, of different explosives, each equal to
+      100 tons of TNT on the ground, match the pair, though it dates them 12 August and
+      22 September 1975, not 1976. **It does not suit the soil column**, and was not
+      used. It holds only seismograph records 2.7 to 18.6 km from the shot points, on the
+      surface, with peaks of the P, Rayleigh and later "X" phases tabulated in microns of
+      ground motion and spectra of pseudo relative velocity. That is motion coupled into the
+      ground at the charge, which outruns the air blast by kilometres; the air wave was not
+      analysed, no overpressure was recorded, and there are no gauges below the surface. It
+      does give the site: a water table about 2 m down at the shot points, and a refraction
+      profile (its Figure 21, from AFWL) of about 1.5 to 1.8 km/s near the surface, 2.1 to
+      2.6 km/s below, and over 3 km/s deeper. That is a profile to pair with ADA048003's
+      near gauges, if it is obtained.
   - **Dial Pack**, 500 tons, Suffield, 1970: WES TR N-73-4, gauges at 645 and 840 ft at 1.5 to
     20 ft deep; nearly a repeat of Prairie Flat where the ground motion outruns the blast.
   - **Distant Plain**, Suffield, 1966–67: J. K. Ingram, WES TR N-71-3, five events in the top
@@ -812,11 +827,11 @@ their licence, as `Samples/FoRCy` does.
 | `Wang2022` | The same for Wang et al. | 1.6 MB | CC BY 4.0 |
 | `Peterson2026` | 3,537 files: load cells and accelerometers (.mat) for 16 beams, high-speed frames (.tif) for 18, each checked against its SHA-256 | 2.5 GB | CC BY 4.0 |
 | `Hupfauf` | The 2022 paper and the 2024 thesis | 3.5 and 59.7 MB | CC BY 4.0; open access |
-| `Hrynyk2013` | `Experimental Data.zip`, 39 spreadsheets for slabs TH2 and TH4 to TH8, unpacked | 183 MB (474 MB unpacked) | Not stated |
+| `Hrynyk2013` | `Experimental Data.zip`, the slab records; now sealed for blind test 1 (see [blind tests](blind-tests.md)) | 183 MB | Not stated |
 | `DialPack1971` | Pattman's DREO Report 642, now compared (see [3e](#3e-fireball-radiation)) | 1.52 MB | Government of Canada |
 | `Bauwens2008` | The *Fire Safety Science* 9 paper, a text extract and its plots digitised (`digitised/`) | 1.3 MB | Free to read (IAFSS) |
 | `Alsubaei2015` | The Western University thesis | 8.4 MB | Not stated |
-| `Reynolds2015`, `Vasudevan2012` | The two UMKC theses on the contest's slabs, through MOspace's public API, MD5s matching the repository's | 6.6 and 3.1 MB | No rights statement in the records |
+| `Reynolds2015`, `Vasudevan2012` | The two UMKC theses on the contest's slabs, through MOspace's public API, MD5s matching the repository's; reserved for a blind test, not to be read (the review session decides). Both moved unread to the sealed area, Reynolds's as blind test 3's candidate and Vasudevan's as its possible companion ([register](blind-tests.md#register)) | 6.6 and 3.1 MB | No rights statement in the records |
 | `KeysClubley2017` | Keys and Clubley's accepted manuscript, from Loughborough (figshare 9443321) | 7.9 MB | CC BY-NC-ND 4.0 |
 | `USGS-OFR77-143` | Hoffman and Harding, *Strong ground motion in the Tularosa Basin* | 2.2 MB | Public domain |
 | `DRDC2013` | DRDC TR 2013-056, the 2012 field trials with lidar | 2.75 MB | Government of Canada |
@@ -824,7 +839,7 @@ their licence, as `Samples/FoRCy` does.
 | `Swisdak1994`, `Cooper1996`, `UFC-3-340-02`, `XuLu2016`, `KinneyGraham1985` | Copies the user supplied of sources already in use (see Obtained), placed here on 11 October 2026 | 0.5, 15.5, 18.0, 5.3 and 9.0 MB | The user's own copies, private reference only; Kinney and Graham's is an unofficial copy of a book in copyright: never commit it, its text or its figures |
 | `Keys2016` | Keys's PhD thesis, saved by the user from Southampton's repository, with a text extract: the masonry trials, at MoD Shoeburyness, whose data remains MoD property | 14.3 MB | University of Southampton Thesis Licence |
 | `KlotzGroup2018` | Weerheijm and Conway's 2018 paper on the KLOTZ Group (two versions) and slides, from `ndia.dtic.mil`: the Kasun cubes' design and the Kasun reports' numbers | 5.9 MB | Public proceedings, terms not stated |
-| `Schwer2015` | L. E. Schwer, "Blind blast simulation: a validation effort assessment", SMiRT-23 (2015), on the slab contest; supplied by the user | 1.5 MB | The user's own copy; not yet read (a candidate for blind test 2) |
+| `Schwer2015` | L. E. Schwer, "Blind blast simulation: a validation effort assessment", SMiRT-23 (2015), on the slab contest; supplied by the user | 1.5 MB | The user's own copy; used openly, as calibrated evidence ([Validation](validation.md#the-contests-repeat-its-lower-shot-and-its-other-entries)) |
 | `reference-scatter` | Farrimond et al. 2024, Rigby et al. 2014, Rae and McAfee 2018, Oswald 2018 and 2025 (two), with text extracts; fetched 11 October 2026 (see [3g](#3g-the-reference-curves-own-scatter)), and now in use | 10.4 MB | CC BY 4.0 (Farrimond); free to read (the rest) |
 
 PMC's own PDFs of the two *Materials* papers sit behind a proof-of-work check and were not

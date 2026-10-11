@@ -26,6 +26,9 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// Coarse boundary storage for multiple structures, read by `setStructures`.
     /// Automatic keeps dense storage when smaller; a single body retains its dense path.
     public var bodyCouplingLayout: BodyCouplingLayout = .automatic
+    /// Independent bodies that come close meet through contact (see `BlastSolver`); without it,
+    /// their envelopes or cells overlapping stops the run as an unsupported interaction.
+    public var interBodyContact = true
     /// Zero reserves twice the initial padded tile footprint. Positive values set a bounded pool.
     public var bodyCouplingTileCapacity = 0
     /// Ratio of specific heats of the (ideal) gas.
@@ -398,6 +401,9 @@ public struct BatchResult: Sendable {
     public var reachedLimit = false
     /// A conservative independent-body overlap was detected; this run cannot continue.
     public var unsupportedInteraction = false
+    /// Independent bodies came close in this batch, which stopped early so that the next could
+    /// encode them in contact.
+    public var contactStarted = false
     /// Local boundary storage could not cover the current geometry; no completed result is valid.
     public var couplingCapacityExceeded = false
 }

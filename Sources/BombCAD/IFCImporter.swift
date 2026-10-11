@@ -33,6 +33,8 @@ enum IFCImporter {
         var data: Data
         var inventory: [Element]
         var metadataLog: String
+        /// Each element's material layers, by GlobalId, where the IFC gives them.
+        var materials: [String: [IFCStructure.Layer]] = [:]
         var defaultIDs: Set<String> { Set(inventory.filter(\.supported).map(\.id)) }
     }
     static func prepare(_ data: Data, converter: URL? = converterURL) async throws -> Prepared {
@@ -48,13 +50,17 @@ enum IFCImporter {
         try data.write(to: input)
         let log = try await run(converter, arguments: [input.path, xml.path, "-y"], folder: folder)
         try Task.checkCancellation()
-        let inventory = try decodeMetadata(try boundedData(xml))
+        let metadata = try boundedData(xml)
+        let inventory = try decodeMetadata(metadata)
+        // Materials are only for meshing the building as a structure: an unreadable set leaves
+        // them out rather than the import.
+        let materials = (try? IFCMaterials.decode(metadata)) ?? [:]
         try Task.checkCancellation()
         guard inventory.contains(where: \.supported) else {
             throw ImportedMesh.ImportError.invalid(
                 "No supported physical elements were found in the IFC decomposition tree.")
         }
-        return Prepared(data: data, inventory: inventory, metadataLog: log)
+        return Prepared(data: data, inventory: inventory, metadataLog: log, materials: materials)
     }
     static func convert(_ data: Data, converter: URL? = converterURL) async throws -> ImportedMesh {
         let prepared = try await prepare(data, converter: converter)
@@ -128,8 +134,13 @@ enum IFCImporter {
         notes.append(
             "IFC converted to metres, Z up. Only explicitly chosen supported elements were converted. Spaces, furnishings, site/proxy markers and other unsupported types are excluded. Material properties are not mapped."
         )
+        let elements = geometry.elements.map { element in
+            var copy = element
+            copy.materials = prepared.materials[element.globalID]
+            return copy
+        }
         return try ImportedMesh(
-            buildingElements: geometry.elements, notes: notes, origin: geometry.origin,
+            buildingElements: elements, notes: notes, origin: geometry.origin,
             sourceData: prepared.data,
             selection: .init(inventory: prepared.inventory, includedIDs: includedIDs))
     }
