@@ -137,7 +137,38 @@ public enum FootingShakingTest {
                 s.energy += 0.5 * (moment[i] + moment[i - 1]) * turn
                 s.travel += abs(turn)
             }
+            let loops = cycles.filter { $0.amplitude > 1e-3 }
+            if !loops.isEmpty {
+                s.cycleEnergy = loops.map(\.energy).reduce(0, +) / Float(loops.count)
+                s.cycleAmplitude = loops.map(\.amplitude).reduce(0, +) / Float(loops.count)
+                s.damping = loops.map(\.damping).sorted()[loops.count / 2]
+            }
             return s
+        }
+
+        /// Each cycle of the moment, from one upward crossing of its median to the next: its
+        /// half-range of rotation (rad), the work ∮ M dθ in it, and the equivalent damping ratio
+        /// that work gives, W / (4π × ½ M₀ θ₀) with M₀ the moment's half-range.
+        public var cycles: [(amplitude: Float, energy: Float, damping: Float)] {
+            guard moment.count > 2 else { return [] }
+            let middle = moment.sorted()[moment.count / 2]
+            var starts: [Int] = []
+            for i in 1..<moment.count where moment[i - 1] < middle && moment[i] >= middle {
+                starts.append(i)
+            }
+            return zip(starts, starts.dropFirst()).map { a, b in
+                var energy: Float = 0
+                for i in (a + 1)...b {
+                    energy += 0.5 * (moment[i] + moment[i - 1]) * (rotation[i] - rotation[i - 1])
+                }
+                let turn = rotation[a...b]
+                let push = moment[a...b]
+                let amplitude = 0.5 * (turn.max()! - turn.min()!)
+                let force = 0.5 * (push.max()! - push.min()!)
+                return (
+                    amplitude, energy, amplitude > 0 && force > 0 ? energy / (2 * .pi * force * amplitude) : 0
+                )
+            }
         }
     }
 
@@ -156,6 +187,11 @@ public enum FootingShakingTest {
         /// the rotation's whole travel, ∫ |dθ|.
         public var energy: Float = 0
         public var travel: Float = 0
+        /// Over the cycles past 1 mrad: the mean work a cycle, their mean half-range of rotation
+        /// (rad), and the median equivalent damping ratio.
+        public var cycleEnergy: Float = 0
+        public var cycleAmplitude: Float = 0
+        public var damping: Float = 0
     }
 
     public struct Result: Sendable {
@@ -163,6 +199,9 @@ public enum FootingShakingTest {
         /// The static pressure under the footing, P / A, once settled under gravity (Pa).
         public var pressure: Float = 0
         public var wallSeconds: Double = 0
+        /// After each packet or event: how far the soil under the footing has sunk for good
+        /// (m), against x along the footing, averaged across it.
+        public var profiles: [[SIMD2<Float>]] = []
     }
 
     /// The wall's stem and top: the height (above the footing's top) where the top begins, the
@@ -200,7 +239,8 @@ public enum FootingShakingTest {
     public static func run(
         device: MTLDevice, test: Test, series: [Series], shearModulus: Float = 80e6,
         bearingCapacity: Float = Self.bearingCapacity, friction: Float = 0.6, damping: Float = 0.2,
-        cyclic: CyclicSand? = CyclicSand(), interval: Double = 1e-3, progress: ((String) -> Void)? = nil
+        cyclic: CyclicSand? = CyclicSand(), radiationDamping: Bool = true, interval: Double = 1e-3,
+        progress: ((String) -> Void)? = nil
     ) throws -> Result {
         let started = ContinuousClock.now
         let h: Float = 0.2
@@ -220,6 +260,7 @@ public enum FootingShakingTest {
             material: SoilMaterial(shearModulus: shearModulus, poissonRatio: 0.3, density: 1657),
             bearingCapacity: bearingCapacity, friction: friction)
         soil.cyclic = cyclic
+        soil.radiationDamping = radiationDamping
         joint.footing = Footing(
             overhang: SIMD2(0, (width - 0.6) / 2), thickness: thickness,
             density: footingMass / (length * width * thickness), soil: soil,
@@ -272,6 +313,7 @@ public enum FootingShakingTest {
             }
             solver.groundAcceleration = .zero
             result.events.append(modelled)
+            result.profiles.append(FootingRockingTest.profile(solver))
             let s = modelled.summary
             progress?(
                 String(
