@@ -443,10 +443,24 @@ Ten values in the code were written from memory and should be checked against th
   - **Pre-Dice Throw II**, White Sands, 1976: a 100-ton TNT sphere on the ground and a 120-ton
     ANFO charge on one site, with the ground motion measured and compared with the predictions
     four agencies made before the shots (DNA 4363F, DTIC ADA048003; DTIC answered "request is
-    blocked" on 11 October 2026). J. P. Hoffman and S. T. Harding, *Strong ground motion in the
-    Tularosa Basin, New Mexico*, USGS OFR 77-143 (1977), doi:10.3133/ofr77143, public domain,
-    2.2 MB, downloaded; its link to the shots is from a search summary, not confirmed. A blind
-    benchmark ready made, if ADA048003 is obtained.
+    blocked" on 11 October 2026). A blind benchmark ready made, if ADA048003 is obtained. The
+    Air Force Weapons Laboratory's strong-motion gauges at 305 to 1,220 m from the shot point,
+    the ranges the soil column is for, are reported there, not in the USGS report below.
+    - J. P. Hoffman and S. T. Harding, *Strong ground motion in the Tularosa Basin, New
+      Mexico*, USGS OFR 77-143 (1977), doi:10.3133/ofr77143, public domain, 2.2 MB, downloaded
+      and read 11 October 2026. It appears to be these shots: its Figure 21 is headed "Pre Dice
+      Throw 100 and 120 ton GZ's", and its two shots, of different explosives, each equal to
+      100 tons of TNT on the ground, match the pair, though it dates them 12 August and
+      22 September 1975, not 1976. **It does not suit the soil column**, and was not
+      used. It holds only seismograph records 2.7 to 18.6 km from the shot points, on the
+      surface, with peaks of the P, Rayleigh and later "X" phases tabulated in microns of
+      ground motion and spectra of pseudo relative velocity. That is motion coupled into the
+      ground at the charge, which outruns the air blast by kilometres; the air wave was not
+      analysed, no overpressure was recorded, and there are no gauges below the surface. It
+      does give the site: a water table about 2 m down at the shot points, and a refraction
+      profile (its Figure 21, from AFWL) of about 1.5 to 1.8 km/s near the surface, 2.1 to
+      2.6 km/s below, and over 3 km/s deeper. That is a profile to pair with ADA048003's
+      near gauges, if it is obtained.
   - **Dial Pack**, 500 tons, Suffield, 1970: WES TR N-73-4, gauges at 645 and 840 ft at 1.5 to
     20 ft deep; nearly a repeat of Prairie Flat where the ground motion outruns the blast.
   - **Distant Plain**, Suffield, 1966–67: J. K. Ingram, WES TR N-71-3, five events in the top
