@@ -166,7 +166,7 @@ private func runCostCalibration(device: MTLDevice, out: URL, time: Bool) throws 
         let measuredField: String = measured.map { "\($0)" } ?? ""
         let levels = item.configuration.refinement > 1 ? item.configuration.refinementLevels : 0
         csv +=
-            "\(item.name),\(estimate.cells),\(estimate.steps),\(estimate.coarseUpdates),\(estimate.fineUpdates),"
+            "\"\(item.name)\",\(estimate.cells),\(estimate.steps),\(estimate.coarseUpdates),\(estimate.fineUpdates),"
         csv += "\(levels),\(estimate.seconds),\(recordedField),"
         csv += "\(measuredField),\(item.source)\n"
     }
