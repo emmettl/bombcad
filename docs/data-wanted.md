@@ -582,8 +582,12 @@ Ten values in the code were written from memory and should be checked against th
     ADA532249, and a companion, ADA532261 (DTIC answered "request is blocked" on 11 October 2026;
     needs the user to obtain); M. M. van der Voort and J. Weerheijm, "A statistical description of
     explosion produced debris dispersion", *International Journal of Impact Engineering* 59
-    (2013) 29–37, paywalled. The database itself would have to be asked of KLOTZ or TNO. Needs
-    the user to obtain. **Gives:** the best debris benchmark known, a series in charge mass.
+    (2013) 29–37, paywalled. The full test report, FOI-R--2749--SE (2009, 169 pp., English), is
+    orderable from FOI's report search, not downloadable; by its summary it compiles the
+    fragments' sizes and throw distances. The database itself would have to be asked of FOI,
+    Forsvarsbygg or the KLOTZ Group's chairman (see the
+    [draft request](data-requests.md#1-kasun-iii-debris-database-klotz-group-2008)). Needs the
+    user to obtain. **Gives:** the best debris benchmark known, a series in charge mass.
   - S. Saburi, S. Kubota, K. Katoh and Y. Ogata, "Experimental studies on debris hazards from
     explosions in subsurface magazines", *Science and Technology of Energetic Materials* 74(3)
     (2013) 53–60, [JES](https://jes.or.jp/mag_eng/stem/Vol.74/No.3.01.html), open: scale
@@ -813,6 +817,7 @@ their licence, as `Samples/FoRCy` does.
 | `DRDC2013` | DRDC TR 2013-056, the 2012 field trials with lidar | 2.75 MB | Government of Canada |
 | `Peterson2026` (added) | Peterson's KTH thesis | 18.4 MB | Open access |
 | `Swisdak1994`, `Cooper1996`, `UFC-3-340-02`, `XuLu2016`, `KinneyGraham1985` | Copies the user supplied of sources already in use (see Obtained), placed here on 11 October 2026 | 0.5, 15.5, 18.0, 5.3 and 9.0 MB | The user's own copies, private reference only; Kinney and Graham's is an unofficial copy of a book in copyright: never commit it, its text or its figures |
+| `KlotzGroup2018` | Weerheijm and Conway's 2018 paper on the KLOTZ Group (two versions) and slides, from `ndia.dtic.mil`: the Kasun cubes' design and the Kasun reports' numbers | 5.9 MB | Public proceedings, terms not stated |
 | `Schwer2015` | L. E. Schwer, "Blind blast simulation: a validation effort assessment", SMiRT-23 (2015), on the slab contest; supplied by the user | 1.5 MB | The user's own copy; not yet read (a candidate for blind test 2) |
 | `reference-scatter` | Farrimond et al. 2024, Rigby et al. 2014, Rae and McAfee 2018, Oswald 2018 and 2025 (two), with text extracts; fetched 11 October 2026 (see [3g](#3g-the-reference-curves-own-scatter)), and now in use | 10.4 MB | CC BY 4.0 (Farrimond); free to read (the rest) |
 

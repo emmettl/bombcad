@@ -46,19 +46,36 @@ likewise. J. Weerheijm's slides and papers for the 2018 International Explosives
 Symposium on debris are open on `ndia.dtic.mil`. M. M. van der Voort and J. Weerheijm,
 *International Journal of Impact Engineering* 59 (2013) 29–37, is paywalled.
 
+**Order first: the test report.** R. Berglund, A. Carlberg, R. Forsén and G. A. Grönsten,
+*Break up tests with small "ammunition houses" using cased charges: Kasun III*, FOI-R--2749--SE,
+October 2009, 169 pp., in English, listed in
+[FOI's report search](https://www.foi.se/rapportsammanfattning?reportNo=FOI-R--2749--SE) with a
+"Beställ rapport" (order report) button, not a download. By its summary it holds the
+compilation of fragment sizes and throw distances, the high-speed films' findings and the
+blast pressures around the cubes: much of what the database request asks for. Ordering takes a
+name and address in FOI's form, so it is the user's to place. The Kasun II report, FOI-R-2202-SE
+(2006), is likely ordered the same way. If the report has the tables, the request below can
+shrink to the database file only, or be dropped.
+
+The 2018 KLOTZ Group paper (J. Weerheijm and R. Conway, International Explosives Safety
+Symposium, `ndia.dtic.mil`, downloaded to `KlotzGroup2018`) gives the cubes' design: 2 m inside,
+0.15 m walls and roof of B35 concrete, 12 mm FeB400 bars at 100 mm both ways in both faces,
+covers 25 mm outside and 20 mm inside.
+
 **Who holds it.** The tests were a joint effort of the Swedish Defence Research Agency (FOI) and
 the Norwegian Defence Estates Agency (Forsvarsbygg), funded by the KLOTZ Group with the two
 countries' authorities. The KLOTZ Group is an international working group of explosives safety
 experts from eight countries (Germany, Norway, the Netherlands, Singapore, Sweden, Switzerland,
 the United Kingdom and the United States); it has no public contact point found, and its
-databases are built for its members.
+databases are built for its members. By the 2018 paper, its permanent chairman, in Norway, is
+the group's official point of contact, with a technical chairman in the Netherlands (TNO).
 
 **Route.** Write to FOI's registry, which receives requests for official documents
 (registrator@foi.se, FOI, 164 90 Stockholm), asking it to pass the request to the Kasun-III
 project's holder, and copy Forsvarsbygg (post@forsvarsbygg.no). Sweden's principle of public
 access covers FOI's official documents, but defence material can be classified, and a database
 built for the KLOTZ Group may be the group's to release rather than FOI's alone; the request
-asks, and does not press.
+asks, and does not press. Forsvarsbygg can forward it to the KLOTZ Group's chairman.
 
 **Status.** Not public. Release by request is possible but uncertain; expect a refusal or a
 partial release (aggregated tables). If the holders say it is for members only, that is the
@@ -76,9 +93,9 @@ answer.
 > predictions beside published measurements.
 >
 > The Kasun-III tests of 2008, described by R. Forsén et al. at the 34th DDESB Explosives Safety
-> Seminar (DTIC ADA532249), would be the best test I know of for how the model's concrete breaks
-> up and throws debris. I would be grateful to know whether any of the following could be
-> released, in whole or in part:
+> Seminar (DTIC ADA532249) and in FOI-R--2749--SE, would be the best test I know of for how the
+> model's concrete breaks up and throws debris. Beyond what that report gives, I would be
+> grateful to know whether any of the following could be released, in whole or in part:
 >
 > 1. the debris database for the two shots with bare plastic explosive (and, if possible, the
 >    three with shells): each piece's mass, material and position;
