@@ -244,6 +244,10 @@ public enum ValidationTables {
             id: "slabSolid", low: 1.04, high: 1.14, document: "validation.md#summary",
             quote: "solid elements 113–124 mm (104–114%) on 4 to 32 elements through"),
         Figure(
+            id: "slabLowerShot", low: 0.79, high: 0.88,
+            document: "validation.md#the-contests-repeat-its-lower-shot-and-its-other-entries",
+            quote: "the model reaches 79–88% of the measured peak on 4 to 16 elements"),
+        Figure(
             id: "slabShell", low: 1.24, high: 1.24, document: "validation.md#summary",
             quote: "shells 135 mm (124%)"),
         Figure(
@@ -372,6 +376,11 @@ public enum ValidationTables {
             id: "reflected", sigma: 0.08,
             document: "validation.md#kingerybulmash-the-design-practice-standard",
             quote: "Repeats lie within ±6–8% of their mean for the peak, the impulse and the duration"),
+        // The contest shot the slab twice: 109 and 113 mm.
+        Scatter(
+            id: "slabRepeat", sigma: 0.03,
+            document: "validation.md#the-contests-repeat-its-lower-shot-and-its-other-entries",
+            quote: "a coefficient of variation of about 3% from the range of two"),
         Scatter(
             id: "room", sigma: 0.11, document: "validation.md#gas-pressure-in-a-closed-room",
             quote: "with a standard deviation of 11%"),
@@ -909,15 +918,21 @@ extension StandingScene {
                         high: "too flexible",
                         validity: "one slab under a blast, shells", check: "A reinforced slab under a blast"))
             } else if let through = elementsThrough, (4...32).contains(through) {
-                bands.append(
-                    figure(
-                        "slabSolid", .peakDeflection, "Peak deflection", low: "too stiff",
-                        high: "too flexible",
-                        validity:
-                            "one slab under a blast, 4 to 32 solid elements through (\(through) here); not "
-                            + "converged (113, 121, 124 mm on 8, 16, 32; a strip of it runs away on 32), and 93–99% under "
-                            + "the earlier rate laws",
-                        check: "A reinforced slab under a blast"))
+                // Either way by load: too flexible under the contest's load, too stiff under its lower
+                // shot; the band spans both, with the contest's repeat as the tests' own scatter.
+                var band = figure(
+                    "slabSolid", .peakDeflection, "Peak deflection", low: "too stiff",
+                    high: "too flexible",
+                    validity:
+                        "one slab under a blast, 4 to 32 solid elements through (\(through) here): 104–114% under "
+                        + "the contest's load, 79–88% (too stiff) under its lower shot, a scaled record; not "
+                        + "converged (113, 121, 124 mm on 8, 16, 32; a strip of it runs away on 32), and 93–99% under "
+                        + "the earlier rate laws. Not allowed for: the test's bearings were 4–5 in wide where the "
+                        + "model holds lines of nodes, and 1 in bearings already lower the peak 15–25%",
+                    check: "A reinforced slab under a blast, and its lower shot")
+                band.low = ValidationTables.figure("slabLowerShot").low
+                band.referenceScatter = ValidationTables.scatter("slabRepeat")
+                bands.append(band)
             } else {
                 unbanded.append(
                     "\(elementsThrough ?? 0) solid elements through the thinnest member, outside the 4 to 32 compared."
