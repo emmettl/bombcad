@@ -2,36 +2,52 @@ import Foundation
 import Metal
 import simd
 
-/// Explicit opt-in, synchronous reference for freestanding objects striking a deformable
-/// structure, without air: the scenario's rigid objects and cars move in `RigidBodyWorld` and
-/// strike the structure's solid elements or shells, stepped together at the structure's own
-/// time step.
+/// Explicit opt-in, synchronous reference for freestanding objects striking deformable
+/// structures, without air: the scenario's rigid objects and cars move in `RigidBodyWorld` and
+/// strike the solid elements or shells of any of its structures, all stepped together at the
+/// shortest of the structures' time steps.
 ///
 /// After each structure step the nodes near a member are handed to the world as point masses
 /// (a shell's as spheres of half its thickness); the members' faces strike them with inelastic,
 /// frictional impulses, equal and opposite, and the nodes' new velocities go back to the
-/// structure. Contact so conserves the momentum of members and structure together and cannot add
+/// structure. Contact so conserves the momentum of members and structures together and cannot add
 /// kinetic energy; positional corrections move only the members. Nodes held along any axis, or
 /// moved as set, are immovable. A solid's interior nodes (all eight elements around them intact)
 /// are left out, as in the structure's own contact. A member's corner pressed into a face between
-/// nodes is not found: the structure's elements should be smaller than the members' faces.
+/// nodes is not found: the structures' elements should be smaller than the members' faces. The
+/// structures do not meet each other here; they do through the air solver's contact.
 public final class ExperimentalRigidStructureSimulation {
     public enum Structure {
         case solid(StructureSolver)
         case shell(ShellSolver)
+        case mixed(MixedStructure)
     }
 
     public enum Failure: Error {
         case noStructure, noObjects
     }
 
-    public let structure: Structure
+    /// The scenario's structures, in its order.
+    public let structures: [Structure]
+    /// The first structure.
+    public var structure: Structure { structures[0] }
     public let names: [String]
     public var gravity = SIMD3<Double>(0, 0, -9.81) {
         didSet { setStructureGravity() }
     }
-    /// Whether the members touch the ground (the structure has its own `groundContact`).
+    /// Whether the members touch the ground.
     public var ground = true
+    /// Whether the structures touch the ground.
+    public var structuresTouchGround = true {
+        didSet {
+            for part in parts {
+                switch part.part {
+                case .solid(let solver): solver.groundContact = structuresTouchGround
+                case .shell(let solver): solver.groundContact = structuresTouchGround
+                }
+            }
+        }
+    }
     public private(set) var time = 0.0
     public private(set) var stepCount = 0
     /// Impulse the members gave the structure over the last step and since the start (N s).
@@ -45,25 +61,32 @@ public final class ExperimentalRigidStructureSimulation {
 
     private var world: RigidBodyWorld
     private let carCount: Int
-    private let references: [SIMD3<Double>]
-    private let radii: [Double]
+    /// The structures' parts that have nodes: their solvers, and each node's reference position
+    /// and radius.
+    private enum Part {
+        case solid(StructureSolver)
+        case shell(ShellSolver)
+    }
+    private let parts: [(part: Part, references: [SIMD3<Double>], radii: [Double])]
+    /// The step every structure takes.
+    public let timeStep: Double
 
-    /// `friction` is the structure's against the members, static and sliding; a pair takes the
+    /// `friction` is the structures' against the members, static and sliding; a pair takes the
     /// smaller coefficients.
     public init(
         device: MTLDevice, scenario: Scenario, friction: (static: Double, sliding: Double) = (0.6, 0.5)
     ) throws {
-        guard let model = scenario.structure else { throw Failure.noStructure }
+        let models = scenario.structuralObjects.compactMap(\.structure)
+        guard !models.isEmpty else { throw Failure.noStructure }
         world = try RigidBodyWorld(scenario: scenario)
         guard !world.members.isEmpty else { throw Failure.noObjects }
         world.nodeFriction = RigidBoxBody.Ground(
             staticFriction: friction.static, slidingFriction: friction.sliding)
         names = (scenario.rigidObjects ?? []).map(\.name) + (scenario.rigidCars ?? []).map(\.name)
         carCount = scenario.rigidCars?.count ?? 0
-        if model.elementKind == .shell {
-            let solver = try ShellSolver(device: device, model: model)
-            structure = .shell(solver)
-            references = solver.mesh.positions.map(SIMD3<Double>.init)
+        var structures: [Structure] = []
+        var parts: [(part: Part, references: [SIMD3<Double>], radii: [Double])] = []
+        func shellPart(_ solver: ShellSolver) {
             var radius = [Double](repeating: 0, count: solver.nodeCount)
             for element in solver.mesh.elements {
                 for a in 0..<4 {
@@ -77,10 +100,9 @@ public final class ExperimentalRigidStructureSimulation {
                     radius[n] = max(radius[n], Double(beam.section.max()) / 2)
                 }
             }
-            radii = radius
-        } else {
-            let solver = try StructureSolver(device: device, model: model)
-            structure = .solid(solver)
+            parts.append((.shell(solver), solver.mesh.positions.map(SIMD3<Double>.init), radius))
+        }
+        func solidPart(_ solver: StructureSolver) {
             var positions = [SIMD3<Double>](repeating: .zero, count: solver.nodeCount)
             for k in 0...solver.ez {
                 for j in 0...solver.ey {
@@ -91,23 +113,49 @@ public final class ExperimentalRigidStructureSimulation {
                     }
                 }
             }
-            references = positions
-            radii = Array(repeating: 0, count: solver.nodeCount)
+            parts.append((.solid(solver), positions, Array(repeating: 0, count: solver.nodeCount)))
         }
+        for model in models {
+            if model.isMixed {
+                let mixed = try MixedStructure(device: device, model: model)
+                structures.append(.mixed(mixed))
+                solidPart(mixed.solids)
+                shellPart(mixed.shells)
+            } else if model.elementKind == .shell {
+                let solver = try ShellSolver(device: device, model: model)
+                structures.append(.shell(solver))
+                shellPart(solver)
+            } else {
+                let solver = try StructureSolver(device: device, model: model)
+                structures.append(.solid(solver))
+                solidPart(solver)
+            }
+        }
+        self.structures = structures
+        self.parts = parts
+        // Every structure takes the shortest of their steps, so that they keep time together.
+        let step = parts.map { part -> Float in
+            switch part.part {
+            case .solid(let solver): solver.criticalTimeStep
+            case .shell(let solver): solver.criticalTimeStep
+            }
+        }.min()!
+        for part in parts {
+            switch part.part {
+            case .solid(let solver): solver.stepOverride = step
+            case .shell(let solver): solver.stepOverride = step
+            }
+        }
+        timeStep = Double(step)
         setStructureGravity()
     }
 
     private func setStructureGravity() {
-        switch structure {
-        case .solid(let solver): solver.gravity = Float(-gravity.z)
-        case .shell(let solver): solver.gravity = Float(-gravity.z)
-        }
-    }
-
-    public var timeStep: Double {
-        switch structure {
-        case .solid(let solver): Double(solver.criticalTimeStep)
-        case .shell(let solver): Double(solver.criticalTimeStep)
+        for part in parts {
+            switch part.part {
+            case .solid(let solver): solver.gravity = Float(-gravity.z)
+            case .shell(let solver): solver.gravity = Float(-gravity.z)
+            }
         }
     }
 
@@ -125,38 +173,45 @@ public final class ExperimentalRigidStructureSimulation {
     public var linearMomentum: SIMD3<Double> { world.linearMomentum }
     public var kineticEnergy: Double { world.kineticEnergy }
 
+    /// The momentum of all the structures together (kg m/s).
     public var structureMomentum: SIMD3<Double> {
-        switch structure {
-        case .solid(let solver): solver.momentum()
-        case .shell(let solver): solver.momentum()
+        parts.reduce(.zero) { total, part in
+            switch part.part {
+            case .solid(let solver): total + solver.momentum()
+            case .shell(let solver): total + solver.momentum()
+            }
         }
     }
 
     public var structureKineticEnergy: Double {
-        switch structure {
-        case .solid(let solver):
-            var total = 0.0
-            solver.mutateNodes { nodes in
-                for node in nodes where node.mass > 0 {
-                    total += 0.5 * Double(node.mass) * Double(simd_length_squared(node.velocity))
+        parts.reduce(0) { total, part in
+            switch part.part {
+            case .solid(let solver):
+                var energy = 0.0
+                solver.mutateNodes { nodes in
+                    for node in nodes where node.mass > 0 {
+                        energy += 0.5 * Double(node.mass) * Double(simd_length_squared(node.velocity))
+                    }
                 }
+                return total + energy
+            case .shell(let solver): return total + solver.kineticEnergy()
             }
-            return total
-        case .shell(let solver): return solver.kineticEnergy()
         }
     }
 
-    /// The largest displacement of any node of the structure (m).
+    /// The largest displacement of any node of any structure (m).
     public var largestDisplacement: Double {
         var largest: Float = 0
-        switch structure {
-        case .solid(let solver):
-            solver.mutateNodes { nodes in
-                for node in nodes { largest = max(largest, simd_length(node.displacement)) }
-            }
-        case .shell(let solver):
-            solver.mutateNodes { nodes in
-                for node in nodes { largest = max(largest, simd_length(node.displacement)) }
+        for part in parts {
+            switch part.part {
+            case .solid(let solver):
+                solver.mutateNodes { nodes in
+                    for node in nodes { largest = max(largest, simd_length(node.displacement)) }
+                }
+            case .shell(let solver):
+                solver.mutateNodes { nodes in
+                    for node in nodes { largest = max(largest, simd_length(node.displacement)) }
+                }
             }
         }
         return Double(largest)
@@ -180,12 +235,15 @@ public final class ExperimentalRigidStructureSimulation {
                 clock = now
             }
             let dt = timeStep
-            switch structure {
-            case .solid(let solver): solver.advance(steps: 1)
-            case .shell(let solver): solver.advance(steps: 1)
+            for structure in structures {
+                switch structure {
+                case .solid(let solver): solver.advance(steps: 1)
+                case .shell(let solver): solver.advance(steps: 1)
+                case .mixed(let mixed): mixed.advance(steps: 1)
+                }
             }
             lap(\.structure)
-            let margin = 2 * (radii.max() ?? 0) + 1e-3
+            let margin = 2 * (parts.flatMap(\.radii).max() ?? 0) + 1e-3
             let boxes = world.members.map { member -> (low: SIMD3<Double>, high: SIMD3<Double>) in
                 let body = member.body
                 let corners = body.corners
@@ -198,37 +256,38 @@ public final class ExperimentalRigidStructureSimulation {
                     corners.reduce(SIMD3(repeating: -.infinity), simd_max) + reach
                 )
             }
-            var indices: [Int] = []
+            // Each node handed over: its part and index there.
+            var indices: [(part: Int, node: Int)] = []
             var nodes: [RigidBodyWorld.Node] = []
-            func gather(
-                _ n: Int, displacement: SIMD3<Float>, velocity: SIMD3<Float>, mass: Float, flags: UInt32
-            ) {
-                let position = references[n] + SIMD3<Double>(displacement)
-                guard near(position, boxes) else { return }
-                let immovable = flags & 0b1111 != 0 || mass <= 0
-                indices.append(n)
-                nodes.append(
-                    RigidBodyWorld.Node(
-                        position: position, velocity: SIMD3<Double>(velocity),
-                        inverseMass: immovable ? 0 : 1 / Double(mass), radius: radii[n]))
-            }
-            switch structure {
-            case .solid(let solver):
-                solver.mutateNodes { all in
-                    for n in all.indices where all[n].flags & 32 == 0 {
-                        gather(
-                            n, displacement: all[n].displacement, velocity: all[n].velocity,
-                            mass: all[n].mass,
-                            flags: all[n].flags)
-                    }
+            for (p, part) in parts.enumerated() {
+                func gather(
+                    _ n: Int, displacement: SIMD3<Float>, velocity: SIMD3<Float>, mass: Float, flags: UInt32
+                ) {
+                    let position = part.references[n] + SIMD3<Double>(displacement)
+                    guard near(position, boxes) else { return }
+                    let immovable = flags & 0b1111 != 0 || mass <= 0
+                    indices.append((p, n))
+                    nodes.append(
+                        RigidBodyWorld.Node(
+                            position: position, velocity: SIMD3<Double>(velocity),
+                            inverseMass: immovable ? 0 : 1 / Double(mass), radius: part.radii[n]))
                 }
-            case .shell(let solver):
-                solver.mutateNodes { all in
-                    for n in all.indices where all[n].flags & 128 == 0 {
-                        gather(
-                            n, displacement: all[n].displacement, velocity: all[n].velocity,
-                            mass: all[n].mass,
-                            flags: all[n].flags)
+                switch part.part {
+                case .solid(let solver):
+                    solver.mutateNodes { all in
+                        for n in all.indices where all[n].flags & 32 == 0 {
+                            gather(
+                                n, displacement: all[n].displacement, velocity: all[n].velocity,
+                                mass: all[n].mass, flags: all[n].flags)
+                        }
+                    }
+                case .shell(let solver):
+                    solver.mutateNodes { all in
+                        for n in all.indices where all[n].flags & 128 == 0 {
+                            gather(
+                                n, displacement: all[n].displacement, velocity: all[n].velocity,
+                                mass: all[n].mass, flags: all[n].flags)
+                        }
                     }
                 }
             }
@@ -248,14 +307,20 @@ public final class ExperimentalRigidStructureSimulation {
                     velocity = SIMD3<Float>(struck[k].velocity)
                 }
             }
-            switch structure {
-            case .solid(let solver):
-                solver.mutateNodes { all in
-                    for (k, n) in indices.enumerated() { write(&all[n].velocity, k) }
-                }
-            case .shell(let solver):
-                solver.mutateNodes { all in
-                    for (k, n) in indices.enumerated() { write(&all[n].velocity, k) }
+            for (p, part) in parts.enumerated() {
+                switch part.part {
+                case .solid(let solver):
+                    solver.mutateNodes { all in
+                        for (k, at) in indices.enumerated() where at.part == p {
+                            write(&all[at.node].velocity, k)
+                        }
+                    }
+                case .shell(let solver):
+                    solver.mutateNodes { all in
+                        for (k, at) in indices.enumerated() where at.part == p {
+                            write(&all[at.node].velocity, k)
+                        }
+                    }
                 }
             }
             world.nodes = []
