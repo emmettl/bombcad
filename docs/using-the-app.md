@@ -111,6 +111,15 @@ reviewed failures to exclude and retry, or export the complete geometry review. 
 result can be applied while invalid meshes remain. Exclusion is an explicit action.
 Undetermined converter units block import to prevent incorrect scale. Rigid imports infer no materials, supports or connections.
 
+An attached rigid import can become an **exposure-only envelope** (Run ▸ Imported geometry ▸ Use
+as Exposure-only Envelope, or Use All for a group): its sampled boxes as walls and roofs, IFC windows
+and doors as openings, including those left out as open meshes, read back from the retained IFC.
+The import is replaced; Undo restores it. **Map buildings** in the Run tab reads building
+footprints and heights from an OpenStreetMap extract (.osm) or GeoJSON you supply, and places them
+as envelopes from a corner longitude and latitude, on the terrain if there is one; it credits
+OpenStreetMap in the scene and its exports. See [building
+envelopes](building-envelopes.md#envelopes-from-imports-and-map-data).
+
 Projects retain original IFC bytes and converted sources; reopening and grid resampling need
 neither the original file nor the converter. Attached older IFC previews refresh missing cross-element
 gap diagnostics on their existing grid; detached scene geometry remains authoritative. Version 2 source assets hold IFC element metadata, inclusion choices and source inventories,

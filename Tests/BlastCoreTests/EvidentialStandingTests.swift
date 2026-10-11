@@ -25,6 +25,7 @@ private var inputSamples: [Any] {
         FlameAcceleration(),
         FlameTurbulence(),
         VentPanel(box: Box(min: .zero, max: .one), releasePressure: 1000),
+        EnvelopeSource(objectID: UUID(), kind: .map, detail: ""),
     ]
 }
 

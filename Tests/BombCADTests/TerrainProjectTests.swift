@@ -130,4 +130,46 @@ struct TerrainProjectTests {
         try #require(bitmap.representation(using: .png, properties: [:]))
             .write(to: folder.appending(path: "terrain.png"))
     }
+
+    @MainActor
+    @Test(
+        "Render the window with map buildings and a rigid import for layout review",
+        .enabled(if: ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"] != nil))
+    func reviewBuildings() throws {
+        let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent()
+        var scene = ScenarioPreset.openGround.scenario
+        let buildings = try MapBuilding.read(
+            contentsOf: root.appending(path: "Samples/MapBuildings/synthetic-neighbourhood.geojson"))
+        try scene.addMapBuildings(
+            buildings, placement: MapBuildingPlacement(origin: SIMD2(0, 51.5), resolution: 0.5))
+        let mesh = try ImportedMesh(
+            data: Data(contentsOf: root.appending(path: "Samples/Importer/unit-cube.obj")),
+            fileExtension: "obj"
+        ).transformed(scale: 3, yUp: false, corner: SIMD3(50, 50, 0))
+        scene.importedModels = [
+            ImportedModel(
+                name: "Kiosk", source: mesh, scale: 1, yUp: false, corner: SIMD3(50, 50, 0), behavior: .rigid,
+                preview: try mesh.preview(cellSize: 0.5, domain: scene.domainSize))
+        ]
+        var document = ProjectDocument(scenario: scene)
+        document.runSettings?.resolution = "coarse"
+        let model = SimulationModel(document: document)
+        let host = NSHostingView(
+            rootView: SidebarView(model: model).frame(width: 420, height: 2400)
+                .background(Color(nsColor: .windowBackgroundColor)))
+        host.frame = CGRect(x: 0, y: 0, width: 420, height: 2400)
+        let window = NSWindow(
+            contentRect: host.frame, styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        defer { window.close() }
+        host.layoutSubtreeIfNeeded()
+        let bitmap = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: bitmap)
+        try #require(bitmap.representation(using: .png, properties: [:]))
+            .write(
+                to: URL(filePath: output, directoryHint: .isDirectory).appending(path: "map-buildings.png"))
+    }
 }

@@ -296,6 +296,9 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
 19. **The model's spread from uncertain inputs.** (Done: `BombCAD ensemble` reruns nine
    validation cases over sampled strengths, bars, charges, standoffs and unclear supports, shared
    among Macs; see [Validation](validation.md#the-models-spread-from-uncertain-inputs).)
+20. **Neighbourhoods of real buildings**, as exposure-only envelopes. (Started: rigid IFC and mesh
+   imports, and OpenStreetMap footprints, as envelopes; see [building
+   envelopes](building-envelopes.md#envelopes-from-imports-and-map-data).)
 
 ### Freestanding objects and supports
 

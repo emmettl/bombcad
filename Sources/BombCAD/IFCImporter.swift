@@ -145,7 +145,7 @@ enum IFCImporter {
             selection: .init(inventory: prepared.inventory, includedIDs: includedIDs))
     }
 
-    private static func boundedData(_ url: URL) throws -> Data {
+    static func boundedData(_ url: URL) throws -> Data {
         let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
         guard size <= 20_000_000 else {
             throw ImportedMesh.ImportError.invalid(
@@ -157,7 +157,7 @@ enum IFCImporter {
         }
         return data
     }
-    private static func run(_ executable: URL, arguments: [String], folder: URL) async throws -> String {
+    static func run(_ executable: URL, arguments: [String], folder: URL) async throws -> String {
         try Task.checkCancellation()
         let log = folder.appendingPathComponent(UUID().uuidString + ".log")
         FileManager.default.createFile(atPath: log.path, contents: nil)
@@ -196,7 +196,7 @@ enum IFCImporter {
         return text
     }
 
-    private static func requireConverter(_ converter: URL?) throws -> URL {
+    static func requireConverter(_ converter: URL?) throws -> URL {
         guard let converter else {
             throw ImportedMesh.ImportError.invalid(
                 "The IFC converter is unavailable. Build BombCAD.app with Scripts/build-app.sh, or run python3 Scripts/prepare-ifc-converter.py before swift run."
@@ -204,7 +204,7 @@ enum IFCImporter {
         }
         return converter
     }
-    private static func temporaryFolder() throws -> URL {
+    static func temporaryFolder() throws -> URL {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(
             "bombcad-ifc-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
