@@ -1273,6 +1273,33 @@ The tests' shear cracks open far more than they slide. At a shear span of one de
 0.4–3.4 mm by 2 ms and 1.6–7 mm by 5 ms, sliding 0.1–0.7 and 0.2–1.0 mm: a tenth to a third
 of the opening. The deep beams' end blocks slide along the crack as a plug instead, by 1–3 mm.
 
+**The split, traced** (`--removal-trace`, 11 October 2026). On the beams of shear span d and 2d
+without stirrups, the first plain row above the bottom bars goes along the whole shear span
+within 0.3 ms, 2.6–2.9 ms after impact: every element of it cracked at about 45° (its crack's
+normal 37–44° from vertical) and open 5 mm, crushed under 0.1%. It is a shear band: with the bars
+perfectly bonded, the beam's longitudinal shear between the stiff row of bars and the plain
+concrete above gathers in one row, and with no stirrup in the section to hold its cracks, the
+removal width takes it. Holding those cracks by the longitudinal bars as well (bars along any
+axis within 60° of a crack's normal) only delays it by a millisecond, at 15 mm. With bars that
+slip by the Model Code's splitting law (`--bond splitting`) there is no split, and the main
+cracks come out at the tests' angles (54–55° against 50–74° at d, 46–50° against 37–58° at
+2d): the bars slipping lets the load go to the support as a tied arch. But then the beams
+without stirrups hold, where the tests' failed.
+
+**The struts, traced** (`--strut-trace`). The model's struts crush, in that they pass the peak
+strain, 0.6–1.6 ms after impact under the load and at the support, earlier than the tests' were
+seen to spall (3.8–6.2 ms). They are not removed: crushing removes concrete only far down its
+softening, which on 9.4 mm elements runs to about 27% strain (36 N/mm of crushing energy, 250
+times the fracture energy, in the range Nakamura and Higai's 8.8 √f_c gives), and the most
+crushed reach 0.3–2%. Through the middle of the width they bear 1.3–3.3 f_c, held by
+confinement (up to 3.2 times the strength) from the stresses the other two axes carry, at strain
+rates of 3–20 per second, where the rate factor is only 1.3–1.45; on the side face, which the
+images show, they bear 0.2–0.6 f_c with no confinement, crushed 1–1.7% but not removed. A tenth
+of the crushing energy removes the deep beam's strut at the support at 1.9 ms and the slender
+beam's under the load at 4.5 ms, as in the tests if early, but leaves the beam of span d whole;
+it is not a fix, the energy being in range. What the images saw, spalling, is concrete on the
+face leaving once crushed, which nothing in the model does before it is crushed 27%.
+
 ## Slabs under close-in charges
 
 The first structural test in the open air with the air solver loading the
