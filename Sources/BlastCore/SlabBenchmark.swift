@@ -14,9 +14,12 @@ public enum SlabBenchmark {
     static let inch: Float = 0.0254
     static let psi: Float = 6894.76
 
-    /// Peak mid-span displacement measured in the test, in metres (about 4.25 in at 30 ms).
-    public static let measuredPeak: Float = 4.25 * inch
-    public static let measuredPeakTime: Float = 0.030
+    /// Peak mid-span displacement measured in the test, in metres: 4.29 in at 29.94 ms, as G. A.
+    /// Shetye's thesis (UMKC, 2013) and the contest's own comparison plot (reproduced by L. E.
+    /// Schwer, SMiRT-23, 2015) state it; the plot below reads about 4.25 in. The contest's repeat
+    /// of this slab under the nominally same load (its slab 4) peaked at 4.45 in at 32.73 ms.
+    public static let measuredPeak: Float = 4.29 * inch
+    public static let measuredPeakTime: Float = 0.02994
     /// Displacement at the end of the record, in metres (about 3.6 in at 70 ms).
     public static let measuredResidual: Float = 3.6 * inch
 
