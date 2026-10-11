@@ -164,3 +164,9 @@ two uniform inputs is not the primary's value (bearing plates 112.5 mm against 1
 1.35 against 1.3 times the strain at fu), so it is not the 8-element run on the primary's
 settings that the secondary runs promised. That run is made separately; the ensemble's spread
 is taken, as declared, as ratios of its samples to its own middle.
+
+**3. 2026-10-11 13:40, before any ensemble sample but the middle had finished: the ensemble cut
+to 4 samples and the middle.** Each sample took about 3.5 hours on the CI Mac mini sharing its
+GPU six ways, so 8 would have run into the next day. A fresh Latin hypercube of 4 (seed 1) is
+used rather than the first 4 of the 8, whose strata would not be balanced; the middle is the
+same in both and was kept.
