@@ -617,6 +617,65 @@ stiffening gives, which the tie reproduces. Whether tension stiffening survives 
 hinge at blast rates, or something else in the slab is too stiff, needs tests that separate
 them.
 
+### Discrete bars
+
+Stage 1 of the [concrete strategy](concrete-strategy.md#4-a-staged-plan): bars given as their own
+trusses (`StructureModel.discreteBars`, `DiscreteBar`; `addBarMat` lays a mat of them), in place
+of the smeared bars' stress along them. Each bar is cut into segments about an element long,
+whose nodes are embedded in the elements they lie in: a node moves as its element does there,
+interpolated by the element's shape functions, plus its slip along the bar. So a bar is
+strained where it lies, not at its elements' centres, and a crack's opening is shared along it
+by its bond, not smeared over a crack spacing.
+
+- A segment's force follows the bars' law (the measured curve, the cyclic law, the CEB's
+  strain-rate law over a running average of its own rate), and it ruptures for good past the
+  curve's last point.
+- They slip by the model's `bondSlip` (the smeared bars then never slip), or are bonded
+  perfectly without it. Each node's slip relaxes towards the Model Code's bond law's balance
+  with the segments either side, as the smeared bars' slip does, with its stiffness for that
+  counting each segment twice. A bar's ends are anchored and do not slip.
+- A segment ruptures, for good, when the plastic strain averaged over the segments within half
+  a crack spacing either side passes the curve's last point, as the smeared bars' rupture is
+  judged over a debonded length: the elongation at rupture is measured over a gauge length.
+  Judged segment by segment, the contest slab's nine bars ruptured at its mid-span crack at
+  100 mm.
+- `barsAsTrusses` lays the reinforcement layers' bars along the lattice axes as discrete bars
+  (`barsFromLayers`): each layer's steel along an axis as bars at its mid-depth, spread evenly
+  across its width, as many as keep their diameter nearest `trussDiameter` (or the bond's)
+  while keeping the layer's area. `blastbench ... --discrete 9.5` does so on any bench. A point
+  just outside the mesh, where a solid is not a whole number of elements, is taken onto the
+  nearest element within half an element.
+- The concrete feels the bars' own forces either side of each node, spread to the element's
+  nodes by the shape functions, in a fixed order. Given the bond's force instead, it lagged the
+  bar it had already moved, and a tie rang with bar forces alternating ±30 kN along the bar.
+- The elements' smeared bars stay, for dowel action, bridging cracks for removal and the
+  hourglass cap, but carry no stress along them.
+- The time step allows for the bar's share of an element's section, which on fine meshes can be
+  large: a 9.5 mm bar takes 44% of a 12.7 mm element's.
+
+**The tie** (`blastbench tie --discrete`, `DiscreteBarTests`), the same as above but as two
+discrete bars of 11.3 mm. Uncracked, the bars carry E_s A ε within 10%, slipping or bonded.
+Pulled to 1.5e-3 with the pull-out bond, it cracks 8 and 7 times on 20 and 10 mm elements, 100
+to 200 mm apart, and carries 70.1 and 71.9 kN against the Model Code's 73.4 kN (β = 0.4), as
+the smeared bars that slip do (71.2 and 72.8 kN). The bars' force peaks at each crack and
+dips between them, by a third. Bonded perfectly they carry 64–66 kN, little more than the bare
+bars' 60 kN.
+
+**The structural tests, first runs.** Janney's beam on 12 elements, bonded perfectly, carries
+39.7 kN m (96%), its curve within a few per cent of the measured one, and holds to 60 mm (the
+test failed at 42 mm; smeared, 42.0 kN m, failing at 53). The contest slab on 4 elements is too
+soft: 77 mm at 15 ms against 70 smeared and 66 measured, and its hinge gathers into one crack,
+whose segment's plastic strain reaches 42% before its bars rupture at 23 ms, with pull-out bond
+as bonded; on 8 elements it comes apart too. Why it is softer than the smeared bars, though its
+bars carry more (63 kN each at 80 mm against about 53), is open. Wu's slabs under 1.6 kg at
+0.5 m (`blastbench twoface --wu S8,D8 --discrete 8`): 14.5 and 15.1 mm bonded, 11.4 and 12.0 mm
+with pull-out bond, against 18.0 and 13.9 measured and 14.4 and 14.9 smeared: discrete bars do
+not tell one layer of steel from two, so that is not where the smeared bars fail (see the
+[concrete strategy](concrete-strategy.md#4-a-staged-plan)). They stay an option.
+
+Not yet: bars across a hole, and rupture written back to the elements' bridging; inclined bars,
+shells and beams.
+
 ## Strain-rate effects
 
 Blast loads strain materials at 0.1 to 100 per second, and both concrete and steel are stronger
