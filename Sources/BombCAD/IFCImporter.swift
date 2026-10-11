@@ -282,15 +282,38 @@ enum IFCImporter {
             parser.abortParsing()
         }
     }
-    struct ElementFailure: LocalizedError {
+    struct ElementFailure: Sendable, Hashable, Identifiable {
         var id: String
         var name: String
         var reason: String
-        var errorDescription: String? { "IFC element \(name) (\(id)) is not a valid closed solid: \(reason)" }
+    }
+    struct ElementFailures: LocalizedError {
+        var failures: [ElementFailure]
+        var inspectedElements: Int
+        var errorDescription: String? {
+            "\(failures.count) of \(inspectedElements) converted IFC element meshes do not form valid closed solids. Review all failures, repair the source, or explicitly exclude reviewed elements."
+        }
+        var report: String {
+            (errorDescription ?? "IFC geometry review") + "\n\n"
+                + failures.map { "\($0.name) · \($0.id)\n\($0.reason)" }.joined(separator: "\n\n")
+        }
+    }
+    struct GeometryReview {
+        var elements: [ImportedMesh.BuildingElement]
+        var origin: SIMD3<Double>
+        var failures: [ElementFailure]
+        var inspectedElements: Int
     }
     static func decodeOBJ(_ data: Data, metadata: [String: Element]) throws -> (
         elements: [ImportedMesh.BuildingElement], origin: SIMD3<Double>
     ) {
+        let review = try inspectOBJ(data, metadata: metadata)
+        if !review.failures.isEmpty {
+            throw ElementFailures(failures: review.failures, inspectedElements: review.inspectedElements)
+        }
+        return (review.elements, review.origin)
+    }
+    static func inspectOBJ(_ data: Data, metadata: [String: Element]) throws -> GeometryReview {
         guard let text = String(data: data, encoding: .utf8) else {
             throw ImportedMesh.ImportError.invalid("IFC converter output is not UTF-8.")
         }
@@ -330,33 +353,37 @@ enum IFCImporter {
         let used = Set(faces.values.flatMap { $0.flatMap { $0 } })
         let origin = used.reduce(SIMD3<Double>(repeating: .infinity)) { simd_min($0, vertices[$1]) }
         var elements: [ImportedMesh.BuildingElement] = []
+        var failures: [ElementFailure] = []
         for id in faces.keys.sorted() {
             try Task.checkCancellation()
             let info = metadata[id]!
-            let originalTriangles = faces[id]!
-            let triangles = try conformingFaces(originalTriangles, vertices: vertices, origin: origin)
-            let indices = Set(triangles.flatMap { $0 }).sorted()
-            let mapping = Dictionary(
-                uniqueKeysWithValues: indices.enumerated().map { ($0.element, $0.offset + 1) })
-            var obj = ""
-            for n in indices {
-                // IFC meshing can emit coincident face vertices with floating-point roundoff.
-                // Canonicalise at 0.1 micrometre, then strictly revalidate every resulting solid.
-                let v = ((vertices[n] - origin) / 0.0000001).rounded(.toNearestOrAwayFromZero) * 0.0000001
-                obj += "v \(v.x) \(v.y) \(v.z)\n"
-            }
-            for f in triangles { obj += "f \(mapping[f[0]]!) \(mapping[f[1]]!) \(mapping[f[2]]!)\n" }
             do {
+                let originalTriangles = faces[id]!
+                let triangles = try conformingFaces(originalTriangles, vertices: vertices, origin: origin)
+                let indices = Set(triangles.flatMap { $0 }).sorted()
+                let mapping = Dictionary(
+                    uniqueKeysWithValues: indices.enumerated().map { ($0.element, $0.offset + 1) })
+                var obj = ""
+                for n in indices {
+                    // IFC meshing can emit coincident face vertices with floating-point roundoff.
+                    // Canonicalise at 0.1 micrometre, then strictly revalidate every resulting solid.
+                    let v = ((vertices[n] - origin) / 0.0000001).rounded(.toNearestOrAwayFromZero) * 0.0000001
+                    obj += "v \(v.x) \(v.y) \(v.z)\n"
+                }
+                for f in triangles { obj += "f \(mapping[f[0]]!) \(mapping[f[1]]!) \(mapping[f[2]]!)\n" }
                 let mesh = try ImportedMesh(data: Data(obj.utf8), fileExtension: "obj")
                 elements.append(
                     .init(
                         globalID: id, name: info.name, ifcClass: info.ifcClass, storey: info.storey,
                         mesh: mesh))
             } catch is CancellationError { throw CancellationError() } catch {
-                throw ElementFailure(id: id, name: info.name, reason: error.localizedDescription)
+                failures.append(
+                    ElementFailure(
+                        id: id, name: info.name, reason: String(error.localizedDescription.prefix(2000))))
             }
         }
-        return (elements, origin)
+        return GeometryReview(
+            elements: elements, origin: origin, failures: failures, inspectedElements: faces.count)
     }
     /// Split a triangle edge at an existing boundary vertex. This changes triangulation only:
     /// no missing face is created, and the original surface is strictly validated afterwards.

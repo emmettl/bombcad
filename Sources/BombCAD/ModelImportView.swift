@@ -90,6 +90,10 @@ struct ModelImportView: View {
             return
                 "This source is detached or has local geometry/support edits. Detach from the sidebar to keep independent edits, or undo them before applying."
         }
+        if isBuilding && (0..<3).contains(where: { corner[$0] < 0 }) {
+            return
+                "The changed selection extends outside the domain or below ground. Its building position was preserved. Adjust the corner explicitly before applying."
+        }
         if let placementError = previewModel.placementError {
             return "Placement checks unavailable for the staged layout: \(placementError)"
         }

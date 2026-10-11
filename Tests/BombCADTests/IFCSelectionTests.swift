@@ -159,13 +159,17 @@ struct IFCSelectionTests {
         do {
             _ = try await IFCImporter.convert(duplex, includedIDs: [door.id])
             Issue.record("Open exported door was accepted")
-        } catch let failure as IFCImporter.ElementFailure { #expect(failure.id == door.id) }
+        } catch let failure as IFCImporter.ElementFailures {
+            #expect(failure.failures.map(\.id) == [door.id])
+        }
         let window = try #require(
             duplex.inventory.first { $0.ifcClass == "IfcWindow" && $0.storey == "Level 1" })
         do {
             _ = try await IFCImporter.convert(duplex, includedIDs: [window.id])
             Issue.record("Open exported window was accepted")
-        } catch let failure as IFCImporter.ElementFailure { #expect(failure.id == window.id) }
+        } catch let failure as IFCImporter.ElementFailures {
+            #expect(failure.failures.map(\.id) == [window.id])
+        }
 
     }
     @Test(

@@ -89,7 +89,7 @@ struct IFCImportTests {
     func openSurface() {
         let id = "0OfZwWc8j9QP5uX8xPTxDH"
         let obj = "g \(id)\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"
-        #expect(throws: IFCImporter.ElementFailure.self) {
+        #expect(throws: IFCImporter.ElementFailures.self) {
             try IFCImporter.decodeOBJ(
                 Data(obj.utf8),
                 metadata: [id: .init(id: id, name: "Open wall", ifcClass: "IfcWall", storey: "Ground")])

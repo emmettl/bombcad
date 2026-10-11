@@ -44,7 +44,12 @@ placement warnings depend on the surrounding scene and charge position.
 Save as `.bombcad` and reopen: original IFC bytes, converted element sources,
 GlobalIds, names, storeys, source coordinate origin, exact inclusion choices, full decomposition inventory and warnings remain available.
 **Choose IFC elements…** revisits the retained source. Placement and grid choices
-stay staged; each new subset is rebased to its own bounds, so review placement again.
+stay staged. When the subset changes, its retained IFC coordinate origin adjusts the
+corner so surviving elements stay in the same simulation position. Newly included
+geometry outside the domain or below ground is blocked until you explicitly adjust
+placement. Removing and re-adding elements does not silently move the building. For an
+earlier source without an origin, retain at least one shared element while changing
+choices so its relative frame can be recovered.
 The **IFC completeness** section and exported report distinguish deliberate
 exclusions, unsupported types, selected elements without converted geometry,
 converted elements with no sampled cells, and cells covered by other elements.
@@ -70,9 +75,10 @@ licence notices in [manifest.json](manifest.json). They remain repository-only.
   about **8.8 × 26.57 × 6.14 m**. Some Level 1 elements span more than one floor;
   storey selection follows source containment, not a geometric height cut.
   Door `1hOSvn6df7F8_7GcBWlRGQ` and window `1hOSvn6df7F8_7GcBWlR72`
-  produce open/non-manifold converter meshes and remain blocked. Their names
-  and GUIDs identify the failure; explicitly exclude a failed element and retry,
-  or re-export closed solids. Choosing every supported entry does not guarantee
+  produce open/non-manifold converter meshes and remain blocked. All invalid
+  exported meshes are listed together with names, GUIDs and repair reasons.
+  Select the failures to exclude and explicitly retry, or export a geometry
+  review and re-export closed solids. No partial result is silently applied. Choosing every supported entry does not guarantee
   a complete valid import.
 - [building-structural.ifc](building-structural.ifc): buildingSMART International
   Ltd., the structural version of the house. It has **12 supported entries**,
@@ -94,7 +100,12 @@ licence notices in [manifest.json](manifest.json). They remain repository-only.
 The latter three files use [LICENSE-buildingSMART.txt](LICENSE-buildingSMART.txt)
 (CC-BY-4.0). No fixture is silently repaired or rescaled. The grid sampler reports
 complete element losses separately from partial surface and gap diagnostics;
-those feature checks remain approximate and require finer-grid comparisons.
+cross-element clearances are checked along grid-centre rays after unioning all
+solid intervals on each ray. A narrow gap diagnostic identifies both bounding
+products and can expose an opening lost on a coarse grid. Touching or overlapping
+products and intervening solids do not invent an opening. Off-ray and oblique
+features can still be missed. The 500,000-interval work limit is reported explicitly
+if reached; partial inventories do not produce gap claims. Compare finer grids.
 
 ## Why the matching OBJ is a reference
 
@@ -108,8 +119,9 @@ missing faces or fills source openings. Coordinates are canonicalised at
 
 The converter also reports unsupported material metadata for this model; these
 are surfaced as an import note. Structural properties are not mapped in this
-rigid-geometry milestone. Per-element diagnostics can miss gaps between elements,
-so inspect Source against Simulation and compare grids before applying.
+rigid-geometry milestone. Cross-element gap checks are approximate; inspect Source
+against Simulation and compare grids before applying. Older attached IFC projects
+refresh these diagnostics at their existing grid when opened.
 
 ## Reproduce the reference mesh
 
