@@ -231,13 +231,15 @@ public enum ImpactBenchmark {
     public static func run(
         device: MTLDevice, test: Test, elementsThroughDepth: Int = 16, duration: Double = 0.2,
         specimen change: (inout Specimen) -> Void = { _ in },
-        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in }
+        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in },
+        prepare: (StructureSolver) -> Void = { _ in }
     ) throws -> Result {
         var specimen = specimen(test)
         change(&specimen)
         return try run(
             device: device, specimen: specimen, weight: test.weight, speed: impactSpeed,
-            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust, inspect: inspect)
+            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust, inspect: inspect,
+            prepare: prepare)
     }
 
     /// Strikes `specimen` at mid-span with `weight` kilograms at `speed` metres per second, as
@@ -247,7 +249,8 @@ public enum ImpactBenchmark {
         device: MTLDevice, specimen: Specimen, weight: Float, speed impact: Float,
         elementsThroughDepth: Int = 16,
         duration: Double = 0.2, bounce: Bool = true, push: Float? = nil,
-        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in }
+        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in },
+        prepare: (StructureSolver) -> Void = { _ in }
     ) throws -> Result {
         let length = specimen.length
         let depth = specimen.depth
@@ -258,6 +261,8 @@ public enum ImpactBenchmark {
         adjust(&model)
         let solver = try StructureSolver(device: device, model: model)
         solver.groundContact = false
+        // For benchmarks: a hook before the run, such as a shorter step.
+        prepare(solver)
         let h = model.elementSize
         let middle = Int(((specimen.strike.map { (length - span) / 2 + $0 } ?? length / 2) / h).rounded())
         // With support plates the lattice starts at their undersides, this many rows below the beam.
@@ -629,13 +634,15 @@ public enum ImpactBenchmark {
     public static func run(
         device: MTLDevice, test: ShearTest, elementsThroughDepth: Int = 16, duration: Double = 0.15,
         specimen change: (inout Specimen) -> Void = { _ in },
-        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in }
+        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in },
+        prepare: (StructureSolver) -> Void = { _ in }
     ) throws -> Result {
         var specimen = specimen(test)
         change(&specimen)
         return try run(
             device: device, specimen: specimen, weight: 300, speed: test.speed,
-            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust, inspect: inspect)
+            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust, inspect: inspect,
+            prepare: prepare)
     }
 
     // MARK: - Peterson et al. (KTH, 2026): short beams struck to a shear failure
@@ -741,12 +748,14 @@ public enum ImpactBenchmark {
     public static func run(
         device: MTLDevice, test: PetersonTest, elementsThroughDepth: Int = 16, duration: Double = 0.03,
         specimen change: (inout Specimen) -> Void = { _ in },
-        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in }
+        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in },
+        prepare: (StructureSolver) -> Void = { _ in }
     ) throws -> Result {
         var specimen = specimen(test)
         change(&specimen)
         return try run(
             device: device, specimen: specimen, weight: petersonWeight, speed: petersonSpeed,
-            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust, inspect: inspect)
+            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust, inspect: inspect,
+            prepare: prepare)
     }
 }
