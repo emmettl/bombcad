@@ -31,6 +31,8 @@ import simd
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
 //   blastbench perimeter [--study air] [--layout half|street|canopied] [--dx 0.05] [--refine 2] [--columns 0.2] [--wing 6] [--out dir]
 //                        (Alsubaei's perimeter walls; see PerimeterBench.swift)
+//   blastbench keys [--trials WR1A,WR1B,WR2C] [--dx 0.1] [--h 0.0375] [--time 3]
+//                        (Keys's brick walls' debris under 41 kg; see KeysBench.swift)
 //   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
 //                        [--bases clamped,resting] [--air [--cell 0.25] [--margin 12] [--height 18] [--progress]]
 //                        [--massless] [--layer 3 [--beneath rock|sand|clay]] [--embed 1] [--elastic]   (the footing's soil)
@@ -4656,6 +4658,7 @@ do {
     case "hrynyk": try runHrynyk(device: device)
     case "deflagration": try runDeflagration()
     case "perimeter": try runPerimeter(device: device)
+    case "keys": try runKeys(device: device)
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
         exit(2)
