@@ -242,7 +242,8 @@ comparison, and the standing's bands carry it ([standing](standing.md#error-band
 is now "compared with measurement". Still needing the user ([data wanted 3g](data-wanted.md#3g-the-reference-curves-own-scatter)):
 Kingery's BRL 1344 data by distance, Kingery and Bulmash's 1984 air-burst sources, Bogosian et
 al. (2002) and Netherton and Stewart (2010) on ConWep's error, Oswald (2017) and Keenan and
-Tancreto's NCEL TR-828 behind Figure 2-152, and what Kinney and Graham fitted.
+Tancreto's NCEL TR-828 behind Figure 2-152. Kinney and Graham give no scatter of their own
+(d52244d); their band is taken as no narrower than Kingery's.
 
 ### 12. Peterson's beams: impact force fitted, then reported as agreement; missing from the summary
 
