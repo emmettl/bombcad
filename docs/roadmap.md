@@ -11,6 +11,8 @@ remain the immediate focus.
 The [multiple-object scene architecture](multiple-object-scene.md) defines the first scene
 requirements and minimum candidate ContinuumKit contracts supporting that vision. It keeps
 application ownership, shared extraction and new numerical capabilities as separate steps.
+Several deformable structures now share one scene's air and meet through contact, with each
+building's results its own; see [contact between bodies](multiple-object-scene.md#implemented-contact-between-bodies).
 
 A separate [RoomCAD and convolution reverb roadmap](https://github.com/emmettl/RoomCAD/blob/main/docs/roomcad-roadmap.md) covers shared SwiftPM
 modules, acoustic impulse-response generation, WAV export and potential Driftbox rack
@@ -39,7 +41,7 @@ nothing in it should be used to judge the safety of a real structure.
 | 4 | Peak pressure is under-resolved near the charge                         | Close-in loading needs fine or twice-refined air; spall needs cells of 0.005 W^(1/3) and 12 elements through a slab | [Validation](validation.md#what-stops-the-spall-and-the-breach) |
 | 5 | Collapse has never been compared with anything; debris once, off slabs under contact charges | Collapse looks plausible, that is all; loose concrete is held back rather than thrown | [Validation](validation.md#slabs-under-contact-charges) |
 | 6 | Moving solids are a staircase of whole cells                            | Wall positions are good to a cell; small fragments are crude  | [Structural model](structural-model.md#coupling-to-the-air) |
-| 7 | One bonded body of up to eight materials, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris is approximate | [Structural model](structural-model.md#limitations) |
+| 7 | Up to sixteen bodies of up to eight materials each, bonded within and meeting each other only by contact, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly; thrown debris and contact between buildings are approximate | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak is too large; concrete broken under a close-in charge is never removed by default | Rebound is too large; no hole under a close-in charge (strength with pressure, and cracks pressed shut, checked: not the cause); removing fragments, an option, holes slabs both ways | [Validation](validation.md#holes-under-close-in-and-contact-charges) |
 | 9 | Supports and freestanding objects are checked against statics and theory, and footings against nine centrifuge events on one sand (FoRCy, FoRDy) | Footings on soil and connections that open and slide are in, as are boxes and cars that slide, lift and overturn; every object takes the air's load, but late flow is not converged and the cars and furniture are illustrative | [Freestanding objects and supports](#freestanding-objects-and-supports) |
 | 10 | Only selected panels and document workflows have had visual review      | Other layouts and native interactions may still have problems | Below |

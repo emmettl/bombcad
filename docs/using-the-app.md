@@ -28,14 +28,18 @@ a cantilever wall, a single-storey building, the same building behind a blast wa
 frame (bare, infilled with masonry, or glazed with glass panes), a three-storey clad building,
 an eight-storey frame and a twelve-storey tower with a concrete core (both shells and beams,
 for collapse over several seconds), an
-open-sided car park with a charge inside, an underpass, a column close to a charge, a
+open-sided car park with a charge inside, three buildings across a street (each its own
+structure, one sheltered behind another), an underpass, a column close to a charge, a
 two-storey house of concrete blockwork meshed with shells, a blockwork boundary wall meshed
 block by block with its mortar joints, and the internal-explosion test
 (deformable). The close-in column wants the fine grid: on coarser air it
 is less than a cell or two across. The sidebar shows a structure's deflection now and the
 largest it has reached.
 **Edit layout** adds, moves, resizes and removes rigid blocks, deformable walls, openings and
-pressure gauges, sets each wall's material and reinforcement, and has undo (⌘Z). You can move
+pressure gauges, sets each wall's material and reinforcement, and has undo (⌘Z). **Add
+Independent Structure** adds another structure, up to sixteen, each with its own materials,
+supports, mesh and results (**Editing structure** picks which one the edits go to; imports make
+one each); they share the air, and meet through contact if they come close. You can move
 the charge, or the selected gauge, by clicking the ground. Save Project writes a `.bombcad`
 document containing the scene, simulation settings, camera and embedded import sources. Projects
 reopen without the original OBJ/STL files. Named projects autosave; each
