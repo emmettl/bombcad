@@ -1,6 +1,11 @@
 # Lint, tests and build on the self-hosted Mac mini, which has the Metal device the solver tests
 # need. Only pushes to main and manual runs trigger it: the repository is public, and a
 # self-hosted runner must never run code from other people's pull requests.
+#
+# A push to main runs the light check (`make check-light`: lint, script tests, build, the core
+# tests and the release-build smoke runs, about ten minutes), a backstop to the full check every
+# session runs before pushing. The full check runs by hand (suite `all`) and every night (see
+# nightly.yml). See docs/continuous-integration.md.
 name: Check
 
 on:
@@ -17,17 +22,52 @@ on:
 # Let a run finish: several sessions push to main, often faster than a run takes, and cancelling
 # left no run complete. GitHub keeps only the newest waiting push queued behind it.
 concurrency:
-  # A bounded manual comparison must survive unrelated pushes to main. The
-  # physical runner still serializes jobs; ordinary app checks keep their group.
-  group: ${{ github.event_name == 'workflow_dispatch' && inputs.suite != 'all' && inputs.suite || 'check' }}
+  # Pushes to main share "check", so only the newest waits. A manual run has a group of its
+  # own: a bounded comparison by its suite, a full one by its ref, so that neither a push to
+  # main nor a run on another branch replaces it while it waits. The physical runner still
+  # serializes jobs.
+  group: ${{ github.event_name == 'workflow_dispatch' && (inputs.suite != 'all' && inputs.suite || format('check-{0}', github.ref)) || 'check' }}
   cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
+  light:
+    if: github.event_name == 'push'
+    runs-on: [self-hosted, macOS, ARM64, metal]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Lint
+        run: make lint
+      - name: Test release and nightly scripts
+        run: make ci-test
+      - name: Build
+        run: make build
+      - name: Core tests
+        timeout-minutes: 20
+        shell: bash
+        run: |
+          set -o pipefail
+          log_dir="${{ runner.temp }}/light-${{ github.run_id }}-${{ github.run_attempt }}"
+          mkdir -p "$log_dir"
+          make test-core 2>&1 | tee "$log_dir/tests.log"
+      - name: Release-build smoke runs
+        run: make release-smoke
+      - name: Retain test log
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: light-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/light-${{ github.run_id }}-${{ github.run_attempt }}/tests.log
+          if-no-files-found: warn
+          retention-days: 14
+
   check:
-    if: github.event_name != 'workflow_dispatch' || (inputs.suite != 'adiabatic' && inputs.suite != 'wall-adoption' && inputs.suite != 'packet-adoption' && inputs.suite != 'euler-adoption' && inputs.suite != 'qr-reconstruction-adoption' && inputs.suite != 'qr-coupled-adoption')
+    if: github.event_name == 'workflow_dispatch' && (inputs.suite != 'adiabatic' && inputs.suite != 'wall-adoption' && inputs.suite != 'packet-adoption' && inputs.suite != 'euler-adoption' && inputs.suite != 'qr-reconstruction-adoption' && inputs.suite != 'qr-coupled-adoption')
     runs-on: [self-hosted, macOS, ARM64, metal]
     timeout-minutes: 60
     steps:

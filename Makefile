@@ -1,4 +1,4 @@
-.PHONY: build app run test release-smoke lint format icons ifc-converter ci-test check release-check release
+.PHONY: build app run test test-core release-smoke lint format icons ifc-converter ci-test check check-light check-remote check-anywhere release-check release
 
 CONFIGURATION ?= release
 
@@ -25,6 +25,11 @@ test: ifc-converter
 	swift test --filter '$(PLAYBACK_TIMING_TEST)'
 	swift test --skip '$(PLAYBACK_TIMING_TEST)'
 
+# The core target alone: the solvers' tests, a few minutes on the CI mini. The application's
+# tests, which take most of `make test`, are left to the full check.
+test-core: ifc-converter
+	swift test --filter 'BlastCoreTests\.'
+
 # The solvers built as a release is, run for a few seconds each: solid and shell elements, bars
 # that slip and base connections. `swift test` builds for debugging, and the optimiser has
 # miscompiled code that ran correctly there.
@@ -45,8 +50,25 @@ format:
 ci-test:
 	python3 Scripts/test-release.py
 	python3 Scripts/test-nightly.py
+	python3 Scripts/test-remote.py
+	python3 Scripts/test-nightly-suspects.py
 
 check: lint test ci-test build
+
+# What CI runs on each push to main, as a backstop to the full check run before pushing: about
+# ten minutes on the mini. The full check runs nightly and by hand (see
+# docs/continuous-integration.md).
+check-light: lint ci-test build test-core release-smoke
+
+# The same checks on the shared CI Mac, or on whichever of the two is quieter; TARGET picks
+# another target. See docs/continuous-integration.md.
+TARGET ?= check
+
+check-remote:
+	python3 Scripts/remote.py check $(TARGET)
+
+check-anywhere:
+	python3 Scripts/remote.py anywhere $(TARGET)
 
 release-check:
 	python3 Scripts/release.py check

@@ -9,13 +9,16 @@ import Foundation
 enum HeadlessEnsemble {
     static let usage = """
         Usage: BombCAD ensemble <case>[,<case>…] [--samples <n>] [--seed <n>] [--worker <ssh host>]…
-                                [--local-workers <n>] [--ratio <times slower>] [--out <folder>]
+                                [--local-workers <n>] [--no-default-workers] [--ratio <times slower>]
+                                [--out <folder>]
                BombCAD ensemble --list
 
         Samples each case's uncertain inputs by a Latin hypercube, seeded so that the same seed
         gives the same samples, and runs the case once with every input at its middle value and
         once for each sample (16 by default; 0 runs the middle alone), here and, with --worker (once per host), on other
-        Macs reached over SSH; --local-workers adds workers on this Mac. Prints each output's
+        Macs reached over SSH; --local-workers adds workers on this Mac. Without --worker, the Macs
+        named as "workers" in ~/.config/bombcad/remote.json are taken when free, unless
+        --no-default-workers. Prints each output's
         mean, spread and percentiles, and whether the measurement falls within the 5th to 95th
         percentiles; --out writes each case's samples and results as JSON into a new folder, each
         result as it comes in, and given a folder an ensemble cut short was writing, carries on
@@ -33,7 +36,10 @@ enum HeadlessEnsemble {
             return 0
         }
         do {
-            let options = try Options.parse(arguments)
+            var options = try Options.parse(arguments.filter { $0 != "--no-default-workers" })
+            if options.workers.isEmpty, !arguments.contains("--no-default-workers") {
+                options.defaultWorkers = RemoteConfig.load().workers
+            }
             // Unbuffered, so that each case shows as it finishes, also when written to a file.
             let report = try await run(options) { line in
                 FileHandle.standardOutput.write(Data((line + "\n").utf8))
@@ -55,6 +61,8 @@ enum HeadlessEnsemble {
         var samples = 16
         var seed: UInt64 = 1
         var workers: [String] = []
+        /// Macs taken only if free when the ensemble starts (see `RemoteGate`).
+        var defaultWorkers: [String] = []
         var localWorkers = 0
         var ratio: Double?
         var out: URL?
@@ -152,6 +160,8 @@ enum HeadlessEnsemble {
         var seed: UInt64
         var cases: [Case]
         var failures: [String] = []
+        /// Default workers that were not free.
+        var notes: [String] = []
         var seconds = 0.0
     }
 
@@ -159,8 +169,8 @@ enum HeadlessEnsemble {
     /// in-process workers in), and reports each case as it finishes to `log`.
     static func run(
         _ options: Options, log: @escaping (String) -> Void = { _ in },
-        connect: @escaping @MainActor @Sendable (String) async throws -> SweepWorkerClient = {
-            try await RemoteSweepWorker.connect(host: $0)
+        connect: @escaping @MainActor @Sendable (String, RemoteGate?) async throws -> SweepWorkerClient = {
+            try await RemoteSweepWorker.connect(host: $0, gate: $1)
         },
         runHere: @escaping @Sendable (EnsembleSample) throws -> EnsembleOutcome = {
             try ValidationEnsemble.run($0)
@@ -187,7 +197,9 @@ enum HeadlessEnsemble {
             report.cases.append(item)
         }
         let costs = jobs.map { ValidationEnsemble.estimatedSeconds(case: report.cases[$0.caseIndex].id) }
-        var schedule = SweepSchedule(costs: costs, workers: options.workers.count + options.localWorkers)
+        var schedule = SweepSchedule(
+            costs: costs, workers: options.workers.count + options.defaultWorkers.count + options.localWorkers
+        )
         if let ratio = options.ratio { schedule.ratio = ratio }
         let shared = Shared(schedule, report: report)
         let start = ContinuousClock.now
@@ -212,21 +224,31 @@ enum HeadlessEnsemble {
             }
         }
 
-        // Each worker: a host, or nil for one on this Mac.
-        let places: [String?] = options.workers + Array(repeating: nil, count: options.localWorkers)
-        let remotes = places.enumerated().map { number, host in
+        // Each worker: a host, gated if taken by default, or none for one on this Mac.
+        let gate = RemoteConfig.load().gate("BombCAD ensemble from \(ProcessInfo.processInfo.hostName)")
+        let places: [(host: String?, gate: RemoteGate?)] =
+            options.workers.map { ($0, nil) } + options.defaultWorkers.map { ($0, gate) }
+            + Array(repeating: (nil, nil), count: options.localWorkers)
+        let remotes = places.enumerated().map { number, place in
             Task { @MainActor in
                 let worker: SweepWorkerClient
                 do {
-                    if let host {
-                        worker = try await connect(host)
+                    if let host = place.host {
+                        worker = try await connect(host, place.gate)
                     } else {
                         worker = try await RemoteSweepWorker.connectHere(
-                            name: "local worker \(number - options.workers.count + 1)")
+                            name:
+                                "local worker \(number - options.workers.count - options.defaultWorkers.count + 1)"
+                        )
                     }
                     _ = try await worker.start()
                 } catch {
-                    shared.report.failures.append("A worker did not start: \(error.localizedDescription)")
+                    if let host = place.host, place.gate != nil {
+                        shared.report.notes.append("\(host) not used: \(error.localizedDescription)")
+                        log("\(host) not used: \(error.localizedDescription)")
+                    } else {
+                        shared.report.failures.append("A worker did not start: \(error.localizedDescription)")
+                    }
                     return
                 }
                 defer { worker.close() }
