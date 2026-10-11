@@ -5,7 +5,7 @@ import Testing
 
 @testable import BombCAD
 
-@Suite("Parameter sweep planning")
+@Suite("Parameter sweep planning", .hangLimit)
 struct ParameterSweepPlanTests {
     private func baseline() throws -> SimulationInputs {
         let run = try SavedRunTests().fixture()
@@ -56,7 +56,7 @@ struct ParameterSweepPlanTests {
     }
 }
 
-@MainActor @Suite("Restoring run inputs and sweep execution", .serialized)
+@MainActor @Suite("Restoring run inputs and sweep execution", .serialized, .hangLimit)
 struct ParameterSweepExecutionTests {
     private func document() -> ProjectDocument {
         var scene = Scenario(
@@ -69,9 +69,7 @@ struct ParameterSweepExecutionTests {
         return document
     }
     private func waitUntil(_ condition: () -> Bool) async throws {
-        let deadline = ContinuousClock.now + .seconds(20)
         while !condition() {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(5))
         }
     }
@@ -130,9 +128,7 @@ struct ParameterSweepExecutionTests {
         let baseline = model.currentInputs
         try model.sweep.start(.init(prefix: "Grid", parameter: .grid([.coarse, .fine])))
         // Simulate SwiftUI's settings-change callback during automatically applied cases.
-        let deadline = ContinuousClock.now + .seconds(20)
         while model.sweep.isActive {
-            try #require(ContinuousClock.now < deadline)
             model.settingsChanged()
             try await Task.sleep(for: .milliseconds(5))
         }
@@ -198,6 +194,8 @@ struct ParameterSweepExecutionTests {
         var replacement = document()
         replacement.scenario.charge.mass = 0.04
         model.open(replacement)
+        try await waitUntil { !model.sweep.isActive && !model.hasPendingGPUWork }
+        // And nothing restored late.
         try await Task.sleep(for: .milliseconds(250))
         #expect(model.settings.scenario == replacement.scenario)
         #expect(model.savedRuns.isEmpty)

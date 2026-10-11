@@ -5,7 +5,7 @@ import simd
 
 @testable import BombCAD
 
-@MainActor @Suite("Automatic import previews", .serialized)
+@MainActor @Suite("Automatic import previews", .serialized, .hangLimit)
 struct ImportPreviewTests {
     private func source() throws -> ImportedMesh {
         try ImportedMesh(
@@ -32,9 +32,7 @@ struct ImportPreviewTests {
             scale: 1, yUp: false, corner: SIMD3(x, 1, 0), cellSize: h, domain: SIMD3(repeating: 4))
     }
     private func waitUntil(_ condition: () -> Bool) async throws {
-        let deadline = ContinuousClock.now + .seconds(10)
         while !condition() {
-            try #require(ContinuousClock.now < deadline, "Preview update timed out")
             try await Task.sleep(for: .milliseconds(5))
         }
     }

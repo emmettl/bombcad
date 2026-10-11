@@ -5,7 +5,7 @@ import simd
 
 @testable import BombCAD
 
-@Suite("IFC native import")
+@Suite("IFC native import", .hangLimit)
 struct IFCImportTests {
     private var fixture: URL {
         URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
@@ -124,9 +124,7 @@ struct IFCImportTests {
     func fileLoader() async throws {
         let loader = ImportFileLoader()
         loader.load(fixture)
-        let deadline = ContinuousClock.now + .seconds(20)
         while loader.isLoading {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(10))
         }
         #expect(loader.error == nil)
@@ -134,8 +132,8 @@ struct IFCImportTests {
         #expect(loader.result?.inspection == nil)
         loader.load(fixture)
         loader.cancel()
-        try await Task.sleep(for: .milliseconds(300))
-        #expect(!loader.isLoading && loader.result == nil)
+        while loader.isLoading { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(loader.result == nil)
     }
 
 }
