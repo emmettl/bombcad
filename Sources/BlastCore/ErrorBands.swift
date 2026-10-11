@@ -117,6 +117,27 @@ public struct RegimeAdvice: Codable, Hashable, Sendable {
     public var document: String
 }
 
+extension ResultStanding {
+    /// Which way the result errs, first, by its bands: the unsafe side named when any band lies on
+    /// it (a load or deflection under-read, a strength over-read); nil without bands.
+    public var direction: String? {
+        guard let bands, !bands.isEmpty else { return nil }
+        let unsafe = bands.filter { $0.side == "unsafe side" }
+        if let worst = unsafe.first {
+            return
+                "Errs on the unsafe side: \(worst.quantity.lowercased()) \(worst.reads) (\(worst.ratio) of measured)"
+                + (unsafe.count > 1 ? ", and \(unsafe.count - 1) more" : "") + "."
+        }
+        if bands.allSatisfy({ $0.side == "safe side" }) {
+            return "Errs on the safe side: \(bands[0].quantity.lowercased()) \(bands[0].reads)."
+        }
+        return "Errs either way: \(bands[0].quantity.lowercased()) \(bands[0].ratio) of measured."
+    }
+
+    /// Whether any band lies on the unsafe side.
+    public var errsUnsafe: Bool { bands?.contains { $0.side == "unsafe side" } ?? false }
+}
+
 extension SceneStanding {
     /// The band for `measure`, among the results that carry one.
     public func band(_ measure: BandMeasure) -> ErrorBand? {
@@ -567,6 +588,11 @@ extension StandingScene {
             if bands.impulse?.quantity == "Reflected impulse", !closeIn {
                 bands.impulse?.inputSpread = ValidationTables.spread("wallImpulse")
             }
+            // The burning time was fitted to the open blast's incident impulse: agreement there is
+            // by construction.
+            if burning, bands.impulse?.quantity == "Incident impulse" {
+                bands.impulse?.validity += "; fitted: the burning time was chosen to match it"
+            }
             return bands
         }
     }
@@ -690,7 +716,9 @@ extension StandingScene {
                         "ventedBackWall", .ventedPressure,
                         "Peak pressure in a vented room, lit at the back wall",
                         low: "flame too slow", high: "over-read",
-                        validity: "FM Global's 63.7 m³ chamber, digitised",
+                        validity:
+                            "FM Global's 63.7 m³ chamber, digitised; the wrinkling constant fitted by Bauwens "
+                            + "et al. in this chamber, and the peak not converged (about ±40%)",
                         check: "Bauwens et al.'s vented deflagrations"),
                     figure(
                         "ventedMiddle", .ventedPressure, "Peak pressure in a vented room, lit in the middle",
@@ -731,7 +759,9 @@ extension StandingScene {
                     bands.append(
                         figure(
                             "wuLarge", .peakDeflection, "Peak deflection close in", low: "too stiff",
-                            high: "too flexible", validity: "1.6 kg at 0.43 m/kg^(1/3), 8 elements through",
+                            high: "too flexible",
+                            validity:
+                                "1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh (8 through), held at one edge",
                             check: "Wu et al.'s slabs with steel in both faces"))
                 } else {
                     unbanded.append("Peak deflection under charges over 2 kg close in was not measured.")
@@ -771,12 +801,16 @@ extension StandingScene {
                     figure(
                         "rockingMoment", .footingMoment, "Footing moment to 14 mrad", lowIsUnsafe: false,
                         low: "too weak", high: "too strong",
-                        validity: "a surface footing rocked slowly on dry sand",
+                        validity:
+                            "a surface footing rocked slowly on dry sand of 80 MPa, an estimate twice the "
+                            + "default's",
                         check: "FoRCy SSG02_03"),
                     figure(
                         has(.cyclicSand) ? "rockingSettlement" : "shakenSettlement", .footingSettlement,
                         "Footing settlement", low: "too little", high: "too much",
-                        validity: "a surface footing on dry sand, rocked or shaken",
+                        validity:
+                            "a surface footing on dry sand of 80 MPa, twice the default's; the cyclic sand "
+                            + "was made the default after the shaken tests",
                         check: has(.cyclicSand) ? "FoRCy SSG02_03" : "FoRDy, eight events"),
                 ]
             }
@@ -865,7 +899,8 @@ extension StandingScene {
                     figure(
                         "cloudTop", .cloudTop, "Cloud's top", lowIsUnsafe: true, low: "too low",
                         high: "too high",
-                        validity: "54 to 1,270 kg of TNT, half a minute to two minutes, shot by shot",
+                        validity: "54 to 1,270 kg of TNT, half a minute to two minutes; 21% is a geometric "
+                            + "spread, not a bound, with afterburning whose burning time was fitted to the open blast",
                         check: "Church's 22 detonations"))
             } else {
                 unbanded.append("The comparison with Church's clouds was made with afterburning on.")

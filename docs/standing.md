@@ -2,7 +2,7 @@
 
 Each result BombCAD produces carries its evidential standing: what it rests on, how close that
 came, and what the scene's settings do to it. The [long-term vision](long-term-vision.md#credibility-as-a-product-feature)
-asks that users can tell measured agreement from mathematical verification, an approximation and
+asks that users can tell a comparison with measurement from mathematical verification, an approximation and
 an illustration, and that assumptions, resolution sensitivity and unsupported effects stay with
 the scene and its exported results. This is the first step towards that. It summarises the
 [validation record](validation.md) and the [roadmap's limitations](roadmap.md#limitations-most-important-first),
@@ -12,10 +12,17 @@ which remain the authority.
 
 | Level | Meaning | Example |
 |---|---|---|
-| Measured agreement | Compared with measurements, and how close it came | Reflected impulse on a wall within 6% of Kingery–Bulmash on fine enough air |
+| Compared with measurement | Compared with measurements, and how close it came, which way and how far it errs; not that it agrees | Reflected impulse on a wall within 6% either way of Kingery–Bulmash on fine enough air; a close-in slab left a third to a half as far down as measured |
 | Verified against theory | The equations are solved correctly against exact or textbook solutions; no measurement | A steel structure: wave speed, deflection and period within 5% of theory |
 | Approximation | A recognised approximation with stated assumptions; nothing says how close it comes here | Structural damage and failure; building surface exposure |
 | Illustrative | Plausible-looking, or compared too loosely to rely on | Thermal radiation, the cloud, fragments, ground shock, simplified cars |
+
+Until 11 October 2026 the top level's name spoke of agreement; it names a kind of evidence, not
+agreement, and a result compared with measurement can be far off it. Standings saved with the old
+value, `measured`, read as the new, `compared`. Wherever a standing is summarised, in the popover, the headless summary,
+the [validation record's summary](validation.md#summary), the README and the roadmap, the
+direction of the error comes first, and the unsafe side (too little damage, too much strength) is
+named.
 
 Results with a standing of their own: peak overpressure, impulse, structural deflection,
 structural damage and failure, building surface exposure, freestanding objects' motion, thermal
@@ -43,7 +50,7 @@ The standing is worked out from the scene's actual settings each time they chang
 - **Afterburning.** Off, the incident impulse is 13–22% low; on, it is within 4% (6% with hot
   air), with the burning time fitted to it. Reflecting domain faces bring in the closed-room
   comparison, whose agreement depends on both options.
-- **Materials.** Reinforced concrete has measured agreement; plain concrete, steel and masonry
+- **Materials.** Reinforced concrete has been compared with measurement; plain concrete, steel and masonry
   are verified against theory; glass is an approximation. A structure takes its weakest material.
 - **Model options.** Each option that changes a result's standing has one entry: what it does,
   which results it touches and the strongest level they keep with it. Pressed interlock, other
@@ -71,7 +78,7 @@ and fingerprint are otherwise unchanged.
 
 [Comparison](run-comparison.md) badges each selected run beside its name and warns when the
 selected runs differ in standing from the reference, by result: two runs whose peaks differ by
-10% mean something different when one's impulse is measured agreement and the other's an
+10% mean something different when one's impulse was compared with measurement and the other's an
 approximation.
 
 ## Headless runs and exports

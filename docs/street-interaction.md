@@ -110,7 +110,7 @@ changes substantially.
 
 All values use the same 120 ms window and gauge convention. Shielding the initial pulse
 does not ensure a lower accumulated load after reflections. These outputs demonstrate
-interactions within the model; they do not establish measured agreement or justify adding
+interactions within the model; they are not a comparison with measurement and do not justify adding
 independent building-response profiles to predict a street.
 
 ## Resolution and timestep sensitivity

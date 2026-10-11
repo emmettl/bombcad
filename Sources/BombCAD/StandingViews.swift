@@ -83,7 +83,8 @@ extension SimulationModel {
 extension EvidenceLevel {
     var colour: Color {
         switch self {
-        case .measured: .green
+        // Not green: compared is a kind of evidence, not a verdict; the bands say how far and which way.
+        case .compared: .teal
         case .verified: .blue
         case .approximation: .orange
         case .illustrative: .purple
@@ -92,7 +93,7 @@ extension EvidenceLevel {
 
     var symbol: String {
         switch self {
-        case .measured: "checkmark.seal"
+        case .compared: "ruler"
         case .verified: "function"
         case .approximation: "plusminus.circle"
         case .illustrative: "paintbrush.pointed"
@@ -221,7 +222,10 @@ struct StandingBadge: View {
                 StandingLabel(level: weakest.level)
             }
             .buttonStyle(.plain)
-            .help("\(weakest.level.title). \(weakest.summary) Click for the evidence.")
+            .help(
+                "\(weakest.level.title). " + (weakest.direction.map { $0 + " " } ?? "") + weakest.summary
+                    + " Click for the evidence."
+            )
             .accessibilityLabel("Standing: \(weakest.level.title)")
             .popover(isPresented: $showsDetail, arrowEdge: .trailing) {
                 StandingDetail(standing: standing, kinds: kinds, value: value)
@@ -268,6 +272,16 @@ struct StandingDetail: View {
                             Text(result.kind.title).font(.headline)
                             Spacer()
                             StandingLabel(level: result.level)
+                        }
+                        if let direction = result.direction {
+                            Label(
+                                direction,
+                                systemImage: result.errsUnsafe
+                                    ? "exclamationmark.triangle" : "arrow.left.and.right"
+                            )
+                            .fontWeight(.medium)
+                            .foregroundStyle(result.errsUnsafe ? .orange : .primary)
+                            .fixedSize(horizontal: false, vertical: true)
                         }
                         Text(result.summary)
                         if !result.evidence.isEmpty {
@@ -406,7 +420,7 @@ struct SceneStandingSection: View {
             }
             DisclosureGroup("Not modelled (\(standing.unsupported.count))") { bullets(standing.unsupported) }
             Text(
-                "What each result rests on for these settings: measured agreement, verification against "
+                "What each result rests on for these settings: comparison with measurement, verification against "
                     + "theory, an approximation or an illustration. Click a badge for the evidence."
             )
             .font(.caption)
