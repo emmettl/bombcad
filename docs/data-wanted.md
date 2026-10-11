@@ -829,7 +829,7 @@ their licence, as `Samples/FoRCy` does.
 | `DialPack1971` | Pattman's DREO Report 642, now compared (see [3e](#3e-fireball-radiation)) | 1.52 MB | Government of Canada |
 | `Bauwens2008` | The *Fire Safety Science* 9 paper, a text extract and its plots digitised (`digitised/`) | 1.3 MB | Free to read (IAFSS) |
 | `Alsubaei2015` | The Western University thesis | 8.4 MB | Not stated |
-| `Reynolds2015`, `Vasudevan2012` | The two UMKC theses on the contest's slabs, through MOspace's public API, MD5s matching the repository's; reserved for a blind test, not to be read (the review session decides) | 6.6 and 3.1 MB | No rights statement in the records |
+| `Reynolds2015`, `Vasudevan2012` | The two UMKC theses on the contest's slabs, through MOspace's public API, MD5s matching the repository's; reserved for a blind test, not to be read (the review session decides). Reynolds's moved unread to the sealed area as blind test 3's candidate ([register](blind-tests.md#register)) | 6.6 and 3.1 MB | No rights statement in the records |
 | `KeysClubley2017` | Keys and Clubley's accepted manuscript, from Loughborough (figshare 9443321) | 7.9 MB | CC BY-NC-ND 4.0 |
 | `USGS-OFR77-143` | Hoffman and Harding, *Strong ground motion in the Tularosa Basin* | 2.2 MB | Public domain |
 | `DRDC2013` | DRDC TR 2013-056, the 2012 field trials with lidar | 2.75 MB | Government of Canada |
