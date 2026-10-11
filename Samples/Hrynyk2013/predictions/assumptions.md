@@ -21,6 +21,11 @@ asks (rule 3). Frozen commit: `1c857744802e8cfd2d536f8379d68dad1a85e743`. The ha
 - Per the orchestrator's addendum (rule 2, b651c20): no other Claude session's transcript was
   searched or read, with the session-management tools or otherwise, and no memory note about
   this test was read. The orchestrator's message said it held no results, and it held none.
+- Per the orchestrator's later tightening: nothing in `/Volumes/StudioData/bombcad/blind/`
+  outside `predictor/` has been listed, opened or read. The only commands to touch that tree
+  were `mkdir -p .../blind/predictor`, runs writing by full path into `predictor/`, and one
+  `ls -la` of `.../blind/predictor/smoke`. The second blind test (docs/blind-tests.md's
+  "Test 2", `Samples/Mendonca2020/`) has not been read.
 
 ## The model
 
