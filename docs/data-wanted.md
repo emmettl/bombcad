@@ -35,7 +35,7 @@ no comparison at all its first one, and open sources ahead of those that need th
 | 7 | Prairie Flat (WES TR N-72-2), the Watching Hill soil data, and Pre-Dice Throw II ([3a](#3a-air-induced-ground-shock)) | Ground shock | Needs the user to obtain (ERDC, DTIC) | Gauges at depth either side of the superseismic limit under a 500-ton surface burst, with the site's soil; Pre-Dice Throw II adds published blind predictions |
 | 8 | Pattman 1971, Dial Pack thermal measurements, DREO Report 642 ([3e](#3e-fireball-radiation)) | Fireball radiation | Open (Government of Canada), 1.45 MB; used ([Validation](validation.md#the-fireballs-radiation-against-dial-pack)) | A second 500-ton TNT shot measured by the group behind the 100-ton comparison |
 | 9 | Keys and Clubley 2017, and Keys's 2016 thesis: masonry panels and small buildings under long-duration blast ([3c](#3c-collapse-and-debris)) | Collapse and debris | Needs the user to obtain | Debris distributions on the ground from walls broken by drag, the loading the model's debris feels |
-| 10 | Reynolds 2015 (UMKC thesis) and ACI SP-306 (2016) ([1](#1-a-second-structural-test-from-the-same-contest)) | The contest's high-strength slab | Needs the user to obtain | Likely the high-strength slabs' details and histories; nothing open has them |
+| 10 | Reynolds 2015 (UMKC thesis) and ACI SP-306 (2016) ([1](#1-a-second-structural-test-from-the-same-contest)) | The contest's high-strength slab | The theses downloaded; SP-306 needs the user | Likely the high-strength slabs' details and histories; nothing open has them |
 | 11 | Alsubaei 2015, Western University thesis: perimeter walls under field blasts ([2b](#2b-a-freestanding-wall-under-an-open-air-charge)) | A wall in the open | Open, 8.42 MB, terms not stated | Used: column peaks with and without walls, a blockwork deflection, damage; the wing walls' length is not given |
 | 12 | Kasun-III, KLOTZ Group, 2008: debris of five internal shots in small concrete cubes ([3c](#3c-collapse-and-debris)) | Debris | Needs the user to obtain (DTIC; the database by request) | Over 21,500 pieces of debris, mapped; the best debris benchmark known, but not open |
 | 13 | Sharon et al. 2012, and the DRDC field trials of 2012 ([3d](#3d-an-he-clouds-growth-after-two-minutes)) | The cloud after two minutes | Paywalled; the DRDC report open, 2.62 MB | Cloud heights against time below Church's charges; lidar extents of small clouds |
@@ -81,13 +81,13 @@ the user's agreement (see [Downloaded, not yet in use](#downloaded-not-yet-in-us
     loading*, MS thesis, UMKC, 2015,
     [MOspace 10355/48353](https://mospace.umsystem.edu/xmlui/handle/10355/48353): by search
     summaries, pressure, impulse and deflection histories of high-strength slabs at two steel
-    ratios. MOspace refused automated access; needs the user to obtain. Whether each slab was
-    shot once is not known.
+    ratios. Downloaded 11 October 2026 through MOspace's public API (its web pages refuse
+    automated reading; the files do not). Whether each slab was shot once is not known.
   - A. K. Vasudevan, *FE analysis and experimental comparison of doubly reinforced concrete
     slabs subjected to blast loads*, MS thesis, UMKC, 2012,
     [MOspace 10355/14606](https://mospace.umsystem.edu/xmlui/handle/10355/14606): probably the
-    series behind the 2015 paper. Needs the user to obtain. MOspace items 10355/33223 and
-    10355/67037 also came up, contents unknown.
+    series behind the 2015 paper. Downloaded 11 October 2026, as Reynolds's. MOspace items
+    10355/33223 and 10355/67037 also came up, contents unknown.
   - T. H. Kewaisy's SP-306 paper (doi:10.14359/51688871), his NDIA 2018 paper
     (`ndia.dtic.mil/wp-content/uploads/2018/intexpsafety/Kewaisy2Paper.pdf`) and his ACI
     webinar slides (`concrete.org/portals/0/files/pdf/webinars/ws_S18_AdvancedModelingBlastResponses_Kewaisy.pdf`):
@@ -435,8 +435,11 @@ Ten values in the code were written from memory and should be checked against th
     near the surface. The layered column the gauge reports need.
   - **Pre-Dice Throw II**, White Sands, 1976: a 100-ton TNT sphere on the ground and a 120-ton
     ANFO charge on one site, with the ground motion measured and compared with the predictions
-    four agencies made before the shots (DTIC ADA048003); the USGS's report on the site's
-    motion, OFR 77-143, doi:10.3133/ofr77143, is open, 2.2 MB. A blind benchmark ready made.
+    four agencies made before the shots (DNA 4363F, DTIC ADA048003; DTIC answered "request is
+    blocked" on 11 October 2026). J. P. Hoffman and S. T. Harding, *Strong ground motion in the
+    Tularosa Basin, New Mexico*, USGS OFR 77-143 (1977), doi:10.3133/ofr77143, public domain,
+    2.2 MB, downloaded; its link to the shots is from a search summary, not confirmed. A blind
+    benchmark ready made, if ADA048003 is obtained.
   - **Dial Pack**, 500 tons, Suffield, 1970: WES TR N-73-4, gauges at 645 and 840 ft at 1.5 to
     20 ft deep; nearly a repeat of Prairie Flat where the ground motion outruns the blast.
   - **Distant Plain**, Suffield, 1966–67: J. K. Ingram, WES TR N-71-3, five events in the top
@@ -559,14 +562,18 @@ Ten values in the code were written from memory and should be checked against th
     Loughborough); and R. Keys, PhD thesis, University of Southampton, 2016 (eprint 413951):
     ten masonry panels at about 55 and 110 kPa for 150 to 200 ms, all destroyed, their debris
     mapped; the thesis adds 22 structures in five trials, two of nine small masonry buildings
-    under 41 kg TNT equivalent. Both repositories refused automated access; needs the user to
+    under 41 kg TNT equivalent. The accepted manuscript was downloaded on 11 October 2026 from
+    Loughborough's copy (figshare article 9443321, CC BY-NC-ND 4.0, 7.9 MB); the thesis,
+    14 MB under Southampton's thesis licence, is behind a bot check and needs the user to
     obtain. **Gives:** debris on the ground from walls broken by drag-dominated loading, with
     several panels a trial.
   - Kasun-III, KLOTZ Group, Norway and Sweden, 2008: five internal shots in reinforced concrete
     cubes 2 m inside, one to sixteen 155 mm shells or 6.9 and 110 kg of bare explosive, with
     over 21,500 pieces of concrete, steel and casing logged by mass and position, and external
-    pressures. Described in DDESB Explosives Safety Seminar papers of 2010 (DTIC ADA532249,
-    title not confirmed); M. M. van der Voort and J. Weerheijm, "A statistical description of
+    pressures. Described in R. Forsén et al., "The effects of cased ammunition explosions
+    confined in concrete cubicles: KASUN-III", 34th DDESB Explosives Safety Seminar (2010), DTIC
+    ADA532249, and a companion, ADA532261 (DTIC answered "request is blocked" on 11 October 2026;
+    needs the user to obtain); M. M. van der Voort and J. Weerheijm, "A statistical description of
     explosion produced debris dispersion", *International Journal of Impact Engineering* 59
     (2013) 29–37, paywalled. The database itself would have to be asked of KLOTZ or TNO. Needs
     the user to obtain. **Gives:** the best debris benchmark known, a series in charge mass.
@@ -614,7 +621,7 @@ Ten values in the code were written from memory and should be checked against th
   - L. S. Erhardt, D. Quayle and S. Noel, *Completion report for CRTI 07-0103RD: full-scale RDD
     experiments and models*, DRDC TR 2013-056,
     [publications.gc.ca](https://publications.gc.ca/site/eng/9.821120/publication.html), open,
-    52 pages, 2.62 MB: three shots of 0.2 kg in 2012 watched by lidar and video, with balloons
+    52 pages, 2.62 MB (downloaded 11 October 2026): three shots of 0.2 kg in 2012 watched by lidar and video, with balloons
     for the sounding; and S. J. Neuscamman, LLNL-TR-745534 (2018), doi:10.2172/1424634, open,
     a summary for modellers. Lidar gives the cloud's extent; the charge is tiny.
   - Sandia and DRDC Valcartier's lidar of debris plumes, Sandia's 9920 site, 2006: fifty shots
@@ -775,7 +782,7 @@ Ten values in the code were written from memory and should be checked against th
 
 ## Downloaded, not yet in use
 
-Fetched on 10 October 2026 with the user's agreement, to `/Volumes/StudioData/bombcad/data/`,
+Fetched on 10 and 11 October 2026 with the user's agreement, to `/Volumes/StudioData/bombcad/data/`,
 one folder a source, each with a `SOURCE.md` giving the citation, terms and how it was fetched.
 Nothing here is in the repository; a comparison would commit only small derived fixtures, with
 their licence, as `Samples/FoRCy` does.
@@ -790,10 +797,22 @@ their licence, as `Samples/FoRCy` does.
 | `DialPack1971` | Pattman's DREO Report 642, now compared (see [3e](#3e-fireball-radiation)) | 1.52 MB | Government of Canada |
 | `Bauwens2008` | The *Fire Safety Science* 9 paper, a text extract and its plots digitised (`digitised/`) | 1.3 MB | Free to read (IAFSS) |
 | `Alsubaei2015` | The Western University thesis | 8.4 MB | Not stated |
+| `Reynolds2015`, `Vasudevan2012` | The two UMKC theses on the contest's slabs, through MOspace's public API, MD5s matching the repository's | 6.6 and 3.1 MB | No rights statement in the records |
+| `KeysClubley2017` | Keys and Clubley's accepted manuscript, from Loughborough (figshare 9443321) | 7.9 MB | CC BY-NC-ND 4.0 |
+| `USGS-OFR77-143` | Hoffman and Harding, *Strong ground motion in the Tularosa Basin* | 2.2 MB | Public domain |
+| `DRDC2013` | DRDC TR 2013-056, the 2012 field trials with lidar | 2.75 MB | Government of Canada |
+| `Peterson2026` (added) | Peterson's KTH thesis | 18.4 MB | Open access |
 | `reference-scatter` | Farrimond et al. 2024, Rigby et al. 2014, Rae and McAfee 2018, Oswald 2018 and 2025 (two), with text extracts; fetched 11 October 2026 (see [3g](#3g-the-reference-curves-own-scatter)), and now in use | 10.4 MB | CC BY 4.0 (Farrimond); free to read (the rest) |
 
 PMC's own PDFs of the two *Materials* papers sit behind a proof-of-work check and were not
 fetched; the XML and figures carry the same content.
+
+Open but not fetchable automatically on 11 October 2026, for the user to download in a browser:
+DTIC ADA532249 and ADA532261 (Kasun-III) and ADA048003 (Pre-Dice Throw II), which answered
+"request is blocked" on a retry after DTIC's maintenance; WES TR N-72-2 (Prairie Flat, 3.17 MB,
+[ERDC 11681/6813](https://erdc-library.erdc.dren.mil/jspui/handle/11681/6813)), behind ERDC's
+browser check; and Keys's 2016 thesis (14 MB,
+[Southampton eprint 413951](https://eprints.soton.ac.uk/id/eprint/413951/)), behind a bot check.
 
 ## Obtained
 
