@@ -927,7 +927,8 @@ extension StandingScene {
                         "one slab under a blast, 4 to 32 solid elements through (\(through) here): 104–114% under "
                         + "the contest's load, 79–88% (too stiff) under its lower shot, a scaled record; not "
                         + "converged (113, 121, 124 mm on 8, 16, 32; a strip of it runs away on 32), and 93–99% under "
-                        + "the earlier rate laws",
+                        + "the earlier rate laws. Not allowed for: the test's bearings were 4–5 in wide where the "
+                        + "model holds lines of nodes, and 1 in bearings already lower the peak 15–25%",
                     check: "A reinforced slab under a blast, and its lower shot")
                 band.low = ValidationTables.figure("slabLowerShot").low
                 band.referenceScatter = ValidationTables.scatter("slabRepeat")
