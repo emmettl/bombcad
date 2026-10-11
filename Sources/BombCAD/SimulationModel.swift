@@ -430,6 +430,9 @@ final class SimulationModel {
     @ObservationIgnored private var structureRecord: [StructureSample] = []
     @ObservationIgnored private var bodyRecords: [UUID: [StructureSample]] = [:]
     private(set) var bodySummaries: [UUID: StructureSummary] = [:]
+    /// The run's time when its independent structures came close and began to meet through
+    /// contact, in seconds; nil while they are apart.
+    private(set) var structuresInContactFrom: Double?
     /// Largest deflection recorded so far, in millimetres.
     var peakDeflection: Double { structureHistory.map(\.deflection).max() ?? 0 }
     private(set) var memoryFootprint = 0
@@ -2195,6 +2198,7 @@ final class SimulationModel {
         bodyHistories = [:]
         structureRecord = []
         bodyRecords = [:]
+        structuresInContactFrom = nil
         bodySummaries = Dictionary(
             uniqueKeysWithValues: (solver?.bodies ?? []).compactMap { body in
                 body.summary().map { (body.id, $0) }
@@ -2473,6 +2477,7 @@ final class SimulationModel {
         bodySummaries = Dictionary(
             uniqueKeysWithValues: solver.bodies.compactMap { body in body.summary().map { (body.id, $0) } })
         stopIfSolverFailed(solver, summary: structureSummary)
+        if structuresInContactFrom == nil, solver.bodiesInContact { structuresInContactFrom = solver.time }
         structureHistory = structureRecord
         bodyHistories = bodyRecords
         updateFragmentStatus()
