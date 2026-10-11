@@ -50,6 +50,14 @@ swift run -c release blastbench validate
 swift run -c release blastbench chamber
 ```
 
+```bash
+swift run -c release blastbench perimeter --study air
+```
+
+```bash
+swift run -c release blastbench perimeter --study wall
+```
+
 ## Summary
 
 | Area                 | Evidence                                             | Confidence                         |
@@ -62,6 +70,7 @@ swift run -c release blastbench chamber
 | Structural response  | One slab test: solid elements 113–124 mm (105–115%) on 4 to 32 elements through, rising with refinement and not converged, a strip of it running away on 32 (93–99% under the earlier strain-rate laws), shells 135 mm (125%); a 5% change in its hand-read load moves the peak 13–14%. One beam bent to failure: peak moment 98–101%, failing at 53–57 mm on 12 elements and holding to 60 mm on 24 against 42 mm, 17% strong on 6. One beam without stirrups failing in shear: 11–15% strong on fine meshes, 37% on coarse, failing suddenly as the test did. Seven drop-weight impacts on beams: with stirrups within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements (+2% to +18% and +17% to +28% on 24), struck about twice as hard as measured, the reactions up to 40% low under the heavy drops and 48% high under the light; the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived. Nineteen on beams without stirrups at rising speeds: within the 2 mm reading at 1 m/s and 15% at 3 m/s, 15% on average beyond on 16 elements but 53% on 24, springing back too far, and decided by how the ends were held (clamped, stiffer than the test's static stiffness). Eighteen short beams struck to shear failure (Peterson et al., 2026): forces as measured at a shear span of one depth (the impact force set by a pad fitted to it), the deep beams too stiff; the beams with stirrups that crushed their strut in the tests hold | Moderate for bending; low for shear: one static test, coarse meshes far too strong, and struck beams failing by the wrong mechanism; moderate for impact on 16 elements but not on 24, where the strain-rate laws, chosen among published laws on these tests, decide it |
 | Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of the paper's text (55–60% of its Figure 9), the impulse under the charge 84–95% of Kingery–Bulmash's, for charges given as TNT equivalents; the slab left a third to a half as far down as measured, spalled only under the charge (on fine air and 12 elements through), and not holed | Good for the load; low for close-in damage: the slab bends too little, spalls too little and is never holed |
 | Steel in both faces | Wu et al. (2023): 2 m slabs, one layer or two, within −20% to +7% at the peak under 1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh, 40–70% (too stiff) in the six under 0.2–0.8 kg where the tests spalled; contact charges hole them at a stable step to a half and a third of the measured size (the larger holes at the default step were the step running away). Wang et al. (2022): an aluminised charge's impulse 75–82% as its stated 10 kg of TNT, 94–104% with afterburning; the slabs several times too stiff as supported | Moderate for bending under the larger charges (two shots); low for one layer against two, spall and holes |
+| Walls in the open    | Alsubaei (2015), ANFO before perimeter walls: column peaks with no wall within about 10% from 9 m out (a quarter to two thirds high at 8.2 m, where the measured are low); the wall's shielding bracketed, not tested, as the wing walls' length is unknown; walls crack where seen but more widely, rock or slide on their footings in sand; reinforced blockwork top 31 mm against 28 mm as one material, running away as units and joints | Moderate for peaks in the open; low for shielding and for the walls
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof's edge is left 25 mm up against 95 mm measured, a quarter, and peaks at 49 mm against 87 mm in the paper's own model, with the confined regime's pressed interlock (15 and 38 mm without); on 25 mm elements the peak rises to 65 mm and the wall tops tear, so it has not converged | Low: too stiff, on the unsafe side; the joints' inclined cracking decides it, and the crack models disagree |
 | Fireball radiation   | Two TNT shots by one group (DREO): 100 t, whose total a 100 kg run scaled by the cube root exceeds three to five and a half times; Dial Pack, 500 t, against which the pulse is a sixth as bright at its first maximum, dark from 40 to 350 ms and two to five times too bright after 1 s, 3.9% radiated by 2 s against 2.4%; with gravity it rises but stays as hot, with or without sub-grid mixing | Low: illustrative; afterburning keeps the fireball near the flame temperature |
 | Cloud               | Church's tops of 22 TNT clouds of 54 to 1,270 kg: within 4% on average for the first two minutes (a geometric spread of 21% shot by shot), falling behind later; with afterburning, whose burning time was fitted to the open blast, and an entrainment coefficient whose plausible range moves the tops by −9% to +13% | Illustrative; see [the fireball's rise](fireball-rise.md#against-churchs-measured-clouds) |
@@ -1664,6 +1673,194 @@ twice the impulse of a proper equation of state for its products
 charges are under-resolved on practical cells; and at 0.5 m Chiquito's slabs are neither
 crushed through nor spalled through by the model, whatever removes them.
 
+## Perimeter walls under field blasts
+
+The first walls in the open air: reinforced concrete and blockwork perimeter walls on their
+footings, ANFO charges a few metres in front of them, and pressure gauges on columns standing for
+a building behind. The air is checked first with the wall rigid, which tests how the wave
+diffracts over a wall and how much the wall shields what is behind it; then the walls themselves.
+`blastbench perimeter --study air` and `--study wall` run them (`PerimeterWallTests.swift`).
+
+### The tests
+
+F. C. F. Alsubaei, *Performance of protective perimeter walls subjected to explosions in reducing
+the blast resultants on buildings*, Master's thesis, Western University, 2015
+(hdl:20.500.14721/35930), fired at the SSF range in Riyadh. The repository states no terms, so
+only derived numbers are kept, in `Fixtures/Alsubaei2015` (see its README for what each comes
+from and what is not known).
+
+| Property | Value |
+|----------|-------|
+| Charges | ANFO in cubic wooden boxes on a table, 0.82 of TNT (the thesis's factor); over a concrete slab with a steel plate under the charge |
+| Half-scale wall (chapters 4–6) | 2 m long, 1 m high, 0.2 m thick, 40 MPa, 10 mm bars at 200 mm in both faces; cast on starter bars from a footing set in a backfilled trench, which a photograph shows about 1 m across and half a metre deep with the wall at one edge; charge 2 m (chapter 6: 3 m) in front at 0.5 m up; twelve shots on each wall, rising from 0.45 to 14 kg |
+| Full-scale wall with a canopy (chapter 7) | 4 m long, a stem 2 m high and 0.4 m thick under a flange 1.2 m wide and 0.4 m deep, 20 mm bars at 200 mm in both faces, on a footing 2.2 m wide and 0.6 m deep in backfill; 125 kg at 4 m, 1 m up, one shot on each wall; three of the four walls faced with aluminium foam |
+| Full-scale blockwork (chapter 8) | 4 m long, 2 m high, two leaves of 200 mm hollow blocks (0.4 m), a 20 mm bar in every cell and the cells filled with polyurethane foam; base not described; 25 kg and 125 kg at 4 m, 1 m up |
+| Either side | Wing walls "to prevent the air blast pressure from wrapping around the wall", of unstated length |
+| Measured | Peak pressure on steel pipe columns 4.2 to 16.4 m from the charge, four gauges up each, with and without the wall; damage seen; deflections double-integrated from accelerometers (the foam-faced canopied walls, the blockwork at 25 kg) |
+
+The gauges face the charge on narrow pipes, so the reflection clears within about a millisecond:
+the peaks can be compared, the impulses (a quarter to a half of a building face's) cannot. The
+thesis gives the peaks behind the half-scale wall as a factor on those without it (its Tables
+5.8–5.10), and those behind the canopied wall in a figure, read here to about 2 kPa.
+
+### The model
+
+The air in 50 mm cells (100 mm for the full-scale air, where 50 mm gave the same factors within
+0.01), the charge started from the one-dimensional solution, the wall a rigid block across the
+whole domain unless said otherwise, nothing fitted. The gauges are in the open where the columns'
+faces would be, and their peak is reflected square-on by the Rankine–Hugoniot relations (with
+rigid columns 0.2 m square in the air instead, the no-wall peaks are 15–20% lower and the wall's
+factors within 0.08 of these). Refining the air by 2 near the shock raises the no-wall
+peaks by 5–7% more at 8.2 m and less further out, and moves the wall's factors by 0.04 at most.
+
+For the walls themselves, the wall is deformable (solid elements of 50 mm; the concrete at 40
+MPa with Grade 60 bars smeared at their depths, the strain-rate laws on), the wing walls rigid
+beyond its ends with a 50 mm gap, and the air in 50 mm cells reaching three wall heights behind
+and above it (six gave the same sway within 0.4 mm). The concrete walls stand on the thesis's
+footing (the half-scale wall's taken as half the full-scale's, then as the photograph's 1.0 ×
+0.5 m), cast on starter bars as many as the wall's vertical bars, set flush in medium dense sand
+that bears on its base and sides (`Footing`, `Embedment`); or clamped, or on the starter bars
+over ground that does not move, as brackets. The canopied walls' foam is left out.
+
+### Results
+
+**No wall.** The columns' peaks against those measured, kPa, model / measured, gauges from the
+lowest up:
+
+| Charge, column | Model | Measured | Model / measured |
+|---|---|---|---|
+| 2.44 kg at 8.2 m | 54, 51, 46, 41 | 35, 30, 28, 37 | 1.11–1.68 |
+| 6.46 kg at 8.2 m | 103, 96, 86, 75 | 69, 68, 64, 70 | 1.07–1.49 |
+| 14 kg at 8.2 m | 187, 173, 151, 129 | 149, 131, 120, 124 | 1.04–1.32 |
+| 7.25 kg at 9.2 m | 89, 85, 77, 69 | 77, 71, 71, 73 | 0.94–1.19 |
+| 15.05 kg at 9.2 m | 153, 143, 129, 114 | 141, 131, 125, 131 | 0.87–1.10 |
+| 2.44 kg at 11.85 m | 29, 29, 28, 26 | 29, 31, 17, 26 | 0.94–1.64 |
+| 6.46 kg at 11.85 m | 52, 51, 48, 45 | 50, 54, 36, 46 | 0.94–1.32 |
+| 14 kg at 11.85 m | 85, 83, 78, 73 | 82, 83, 66, 90 | 0.81–1.19 |
+| 7.25 kg at 12.85 m | 48, 47, 46, 43 | 53, 51, 43, 58 | 0.74–1.06 |
+| 15.05 kg at 12.85 m | 77, 75, 71, 67 | 82, 78, 73, 89 | 0.75–0.98 |
+| 125 kg at 16.4 m | 221, 203, 176, 149 | 233, 150, 141, 159 | 0.94–1.35 |
+
+From 9 m out the model is within about 10% of most gauges; the outliers are single gauges that
+read low (the third gauge at 11.85 m on every shot) or high (the top gauge at 12.85 m). At 8.2
+m it is a quarter to two thirds high, but the measured peaks there are themselves low: 6.46 kg
+at 8.2 m read 64 to 70 kPa where 7.25 kg at 9.2 m, a larger scaled distance, read 71 to 77. The
+measured peaks fall less with height than the model's, as a narrow pipe's would.
+
+**Behind the wall.** The wall's factor on the peaks, behind it over without it, model (the wall
+across the domain) / measured, gauges from the lowest up, the two charges together:
+
+| Wall, column | Model, endless wall | Model, 3–4 m in all | Measured |
+|---|---|---|---|
+| Half scale, 4.2 m | 0.19–0.22, 0.51–0.54, 0.79–0.82, 0.92–0.95 | the same, the lowest 0.25–0.30 at 3 m | –, 0.43–0.48, 0.57–0.80, – |
+| Half scale, 8.2 m | 0.56–0.58, 0.46–0.47, 0.56–0.58, 0.66–0.67 | 0.78–0.84, 0.47–0.59, 0.56–0.62, 0.66–0.69 | –, 0.59–0.61, 0.66–0.67, 0.80–0.81 |
+| Half scale, 11.85 m | 0.78–0.79, 0.56–0.57, 0.55, 0.61 | 0.97–1.06, 0.77–1.00, 0.57–0.76, 0.72–0.79 | 0.83–0.89, 0.66–0.67, 0.77, 0.68–0.88 |
+| Half scale, charge 3 m in front, 9.2 m | 0.65–0.68 | 0.88–0.91 (4 m) | 0.48–0.50 |
+| Half scale, charge 3 m in front, 12.85 m | 0.84–0.86 | 1.05–1.07 (4 m) | 0.73–0.87 |
+
+(The last two rows are the lowest gauge only, the only one the thesis gives.) Behind the
+canopied wall at 16.4 m, kPa:
+
+| | 1.5 m | 4.5 m | 7.5 m | 10.5 m |
+|---|---|---|---|---|
+| Model, endless wall (factor) | 79 (0.38) | 66 (0.34) | 73 (0.43) | 74 (0.52) |
+| Model, 10 m in all | 91 (0.44) | 81 (0.42) | 73 (0.43) | 74 (0.52) |
+| Model, 8 m in all | 179 (0.86) | 86 (0.45) | 73 (0.43) | 74 (0.52) |
+| Model, 6 m in all | 195 (0.93) | 122 (0.63) | 100 (0.60) | 88 (0.62) |
+| Measured, three foam-faced walls (factor) | 127–169 (0.55–0.73) | 116–125 (0.78–0.84) | 102–126 (0.72–0.89) | 99–120 (0.62–0.76) |
+
+The model's shielding by a wall without ends is converged on the grid, and it shields more than
+chapters 5 and 7 measured: the factors are 0.05 to 0.3 lower, and behind the canopied wall about
+half the measured peaks. A wall 6 m long behaves as an endless one at the half-scale columns,
+but shorter walls let the wave round their ends along the ground, which arrives first at the
+lower gauges further back and raises them to and past the measured. The measured factors lie
+within the range the unknown length of the wing walls spans, so they neither confirm nor refute
+the diffraction over the top. Chapter 6's single gauge, behind the same wall with the charge 3 m
+in front, goes the other way: it shields more than even the endless wall (0.48–0.50 against
+0.65–0.68 at 9.2 m). The measurements disagree among themselves by more than the model's spread.
+Without the wing walls' length nothing firmer can be drawn; a test with the wall's whole length
+known would settle it.
+
+**The walls' load.** On the face at mid-height the model gives the half-scale wall 10.3 MPa and
+2,563 Pa s under 14 kg (Kingery–Bulmash's surface burst at that distance: 11.2 MPa and 2,351
+Pa s), and the canopied wall 12.8 MPa and 6,046 Pa s under 125 kg (12.2 MPa and 5,128 Pa s):
+within a tenth to a fifth of the design curves, which are for TNT, where ANFO this close in may
+well give less.
+
+**The half-scale wall,** 14 kg at 2 m (its twelfth shot; the model takes it alone):
+
+| Base | Top, peak / left | Crack at the foot of the front face | Back face |
+|---|---|---|---|
+| Footing 1.0 × 0.5 m in sand (the photograph's) | 196 mm / −44 mm at 0.6 s, still rocking; the footing turned 121 mrad and slid 15 mm | 0.2 mm along the length | horizontal cracks 0.2–0.3 mm across it at 0.45–0.7 m |
+| Footing 1.1 × 0.3 m in sand | 200 mm at 0.15 s and going on; turned 79 mrad, slid 94 mm | 0.2 mm | 0.2–0.4 mm at 0.4–0.7 m |
+| Starter bars on rigid ground | 67 mm / 46 mm; the joint opened 12 mm | 0.7 mm | 0.3–0.4 mm at 0.4–0.7 m |
+| Clamped | 37 mm / 25 mm | 2.2 mm, horizontal cracks up to 0.5 m | 0.2–0.5 mm at 0.5–0.65 m |
+
+Seen: after the twelve shots, light cracking at the foot of the front face and no significant
+deformation; nothing measured. Clamped or on starter bars over rigid ground, the wall is left
+25–45 mm out at the top with a crack 0.7–2 mm wide at its foot, more than "light". On the
+footing, the wall and footing rock together on the sand: the wall itself barely cracks, as seen,
+but the footing turns by 0.08 to 0.12 rad (the top moves 0.2 m), which would hardly have gone
+unremarked over twelve shots. In the test a concrete slab was cast against the wall's front (the
+"street" under the charge), and the backfill was compacted; neither is in the model, and either
+would hold the footing.
+
+**The canopied wall,** 125 kg at 4 m:
+
+| Base | Mid-height, peak / left | Top, peak / left | Cracks |
+|---|---|---|---|
+| Footing 2.2 × 0.6 m in sand (the thesis's) | 249 mm / 249 mm at 0.3 s, nearly at rest | 320 mm / 320 mm; turned 69 mrad, slid 133 mm | front 0.1 mm at the foot, 0.4 mm under the canopy; back 0.1–0.4 mm across most of the length at all heights |
+| Clamped | 25 mm / 10 mm | 54 mm / 17 mm | front 1.5 mm at the foot, horizontal cracks up its whole height; back 0.2–0.5 mm across most of it |
+
+Seen on the unfaced wall: a crack along the foot of the front face, three flexural cracks across
+the back at mid-height, no significant deformation; on the three foam-faced walls, 7.3, 12.3 and
+34.8 mm at mid-height (double-integrated, the records' velocities of 6–12 m/s implausibly high).
+Clamped, the stem's 25 mm lies within the foam-faced walls' range, and its cracks are where the
+test's were, at the foot of the front face and across the back, though spread over the whole
+face rather than three. On its footing the wall and its 13 t footing are pushed back as one:
+the momentum the face gives the wall, some 38 kN s on 25 t, would slide it about 0.2 m against
+friction alone, so the model's 133 mm and 69 mrad follow from the load, and either the load in
+the test was well below the design curves' or the movement was not reported.
+
+**The blockwork,** 25 and 125 kg at 4 m, on starter bars as many as its vertical bars (its base
+is not described) or on a mortar joint, the model's concrete blockwork in the thesis's 400 × 200
+mm units:
+
+| Blockwork | 25 kg | 125 kg |
+|---|---|---|
+| Units and joints, bars bonded | runs away numerically on either base: nodes at 10⁵ m/s, everything removed | not run |
+| Units and joints, no bars | punched through at mid-height: 335 mm out and still going at 0.3 s, 14% removed | blown apart: 82% removed, its middle thrown at about 10 m/s |
+| One material, bars bonded | top 31 mm, left 14 mm; mid-height 16 mm; the back cracked 0.5–1.8 mm across most of its length, mostly vertically; 5.5% of the front removed under the charge | breached at mid-height: 89% removed, its middle thrown at about 13 m/s |
+| Seen | top 28 mm (double-integrated); bed joints cracked on the front at courses 1, 4–6 and 10 and on the back at 4–6, the top course slid; no spalling | collapsed, debris about 15 m away |
+
+The face's load at 25 kg is 2.5 MPa and 1,614 Pa s (Kingery–Bulmash: 2.7 MPa and 1,473 Pa s). The only stable
+reinforced wall, the blockwork treated as one material with its bars bonded as though grouted,
+peaks within 3 mm of the measured top deflection, though it cracks across rather than along the
+bed joints and loses some of its front, which the test did not. Without bars it is punched
+through, which the test's wall, with bars in foam-filled cells, was not. At 125 kg every version
+comes apart, as the test's did; its pieces fly at 10–13 m/s, which from a metre or two up
+carries them 5–7 m, short of the 15 m reported.
+
+### What this does and does not show
+
+It shows that the air solver's peaks on the columns are within about 10% of most measured ones
+from 9 m out with nothing fitted, and that the loads on the walls are those of the design curves.
+It does not test the shielding: the model's endless wall shields more than chapters 5 and 7
+measured and less than chapter 6, and the wing walls' unknown length moves the model's factors
+by as much as the gap. Of the walls, the concrete ones crack where the tests' did, but more
+widely; clamped, the canopied wall's deflection lies within the foam-faced walls' range, while
+the half-scale wall is left more damaged than seen. On the footings in sand the walls rock or
+slide as bodies by amounts the thesis does not mention: either the model's sand is too soft and
+weak, the slab cast against the walls held them, or the test's load was lower. Blockwork with
+bars is not usable as units and joints: it runs away. Treated as one material it gives the
+measured deflection at 25 kg and comes apart at 125 kg, as the test's did.
+
+For later, without changing the concrete model now: reinforced blockwork meshed as units and
+joints running away within 30 ms (`blastbench perimeter --study wall --wall masonry --charges
+25`), bars smeared through elements that hold a joint being the difference from the stable runs;
+nodes of broken blockwork leaving at 10³ m/s; cracks smeared over a whole face where the tests
+showed a few; and a footing that cannot be held by a slab cast against it.
+
 ## Blast loads against empirical references
 
 `blastbench validate` puts a 100 kg charge on rigid ground and compares the air solver with two
@@ -2569,8 +2766,10 @@ In rough order of value:
 1. The chamber's joints, which the model keeps whole where the test's were cut through, and
    its 25 mm mesh, on which the peak has not converged (see
    [above](#an-internal-explosion-in-a-reinforced-concrete-chamber)).
-2. A wall loaded in the open air, or a member with stirrups that failed in shear statically
-   (see the [concrete model's future work](concrete-model.md#future-work)). The beams above
+2. A wall in the open whose whole length (with any wing walls) and deflection are recorded
+   (Alsubaei's lack the first; see [above](#perimeter-walls-under-field-blasts)), or a member
+   with stirrups that failed in shear statically (see the
+   [concrete model's future work](concrete-model.md#future-work)). The beams above
    test bending, shear without stirrups statically, and shear with and without stirrups under
    impact.
 3. A structural test run blind on frozen defaults: every default here was chosen with the

@@ -29,6 +29,8 @@ import simd
 //                   [--stiffening [--profile [--line] [--column -44]]]   (where the tension along the span is carried)
 //   blastbench tie [--h 0.02,0.01] [--bond none|splitting] [--factor 1.25]   (a tie against the Model Code)
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
+//   blastbench perimeter [--study air] [--layout half|street|canopied] [--dx 0.05] [--refine 2] [--columns 0.2] [--wing 6] [--out dir]
+//                        (Alsubaei's perimeter walls; see PerimeterBench.swift)
 //   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
 //                        [--bases clamped,resting] [--air [--cell 0.25] [--margin 12] [--height 18] [--progress]]
 //                        [--massless] [--layer 3 [--beneath rock|sand|clay]] [--embed 1] [--elastic]   (the footing's soil)
@@ -4153,6 +4155,7 @@ do {
     case "landscape": try runLandscape(device: device)
     case "advise": try runAdvise(device: device)
     case "deflagration": try runDeflagration()
+    case "perimeter": try runPerimeter(device: device)
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
         exit(2)

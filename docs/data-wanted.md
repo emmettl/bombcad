@@ -36,7 +36,7 @@ no comparison at all its first one, and open sources ahead of those that need th
 | 8 | Pattman 1971, Dial Pack thermal measurements, DREO Report 642 ([3e](#3e-fireball-radiation)) | Fireball radiation | Open (Government of Canada), 1.45 MB; used ([Validation](validation.md#the-fireballs-radiation-against-dial-pack)) | A second 500-ton TNT shot measured by the group behind the 100-ton comparison |
 | 9 | Keys and Clubley 2017, and Keys's 2016 thesis: masonry panels and small buildings under long-duration blast ([3c](#3c-collapse-and-debris)) | Collapse and debris | Needs the user to obtain | Debris distributions on the ground from walls broken by drag, the loading the model's debris feels |
 | 10 | Reynolds 2015 (UMKC thesis) and ACI SP-306 (2016) ([1](#1-a-second-structural-test-from-the-same-contest)) | The contest's high-strength slab | Needs the user to obtain | Likely the high-strength slabs' details and histories; nothing open has them |
-| 11 | Alsubaei 2015, Western University thesis: perimeter walls under field blasts ([2b](#2b-a-freestanding-wall-under-an-open-air-charge)) | A wall in the open | Open, 8.42 MB, terms not stated | Pressures behind walls; whether it gives the walls' own deflection is unknown |
+| 11 | Alsubaei 2015, Western University thesis: perimeter walls under field blasts ([2b](#2b-a-freestanding-wall-under-an-open-air-charge)) | A wall in the open | Open, 8.42 MB, terms not stated | Used: column peaks with and without walls, a blockwork deflection, damage; the wing walls' length is not given |
 | 12 | Kasun-III, KLOTZ Group, 2008: debris of five internal shots in small concrete cubes ([3c](#3c-collapse-and-debris)) | Debris | Needs the user to obtain (DTIC; the database by request) | Over 21,500 pieces of debris, mapped; the best debris benchmark known, but not open |
 | 13 | Sharon et al. 2012, and the DRDC field trials of 2012 ([3d](#3d-an-he-clouds-growth-after-two-minutes)) | The cloud after two minutes | Paywalled; the DRDC report open, 2.62 MB | Cloud heights against time below Church's charges; lidar extents of small clouds |
 
@@ -196,7 +196,10 @@ the user's agreement (see [Downloaded, not yet in use](#downloaded-not-yet-in-us
     8.42 MB, terms not stated. Half-scale and full-scale field blasts on plain and canopied
     concrete walls and grouted masonry walls, with the blast measured on a building behind them
     and the walls' damage assessed. Not known: the walls' footing, deflection records, and
-    whether walls were shot more than once.
+    whether walls were shot more than once. **Used, 11 October 2026** (`Fixtures/Alsubaei2015`; see
+    [Validation](validation.md#perimeter-walls-under-field-blasts)): the canopied wall's footing
+    is drawn, the half-scale walls took twelve shots each, and only foam-faced walls and the
+    blockwork have (double-integrated) deflections; the wing walls' length is nowhere stated.
   - A. S. Mazlan, S. M. Syed Mohsin, A. M. A. Zaidi, M. F. S. Koslan and Z. M. Jaini,
     "Experimental of inverted-T shape RC wall subjected to blast load" (Trans Tech
     Publications, 2021), [UMPSA eprint 30661](http://umpir.ump.edu.my/id/eprint/30661/): a
