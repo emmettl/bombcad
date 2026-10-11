@@ -237,7 +237,9 @@ fits too. The standing's top level, "Measured agreement", and the README's "Good
 earned against these, but neither the record nor the standing gives the references' own
 scatter, so "within 6%" cannot be weighed against it. The agreement may well be inside the
 reference's own uncertainty, which would make the match less informative than it looks.
-**Not fixed** (needs the scatter from the sources); listed below.
+*Fixed* afterwards: the references' own scatter is now in validation.md beside each comparison
+([data wanted 3g](data-wanted.md#3g-the-reference-curves-own-scatter)), and the standing's bands
+carry it ([standing](standing.md#error-bands)); the top level is now "compared with measurement".
 
 ### 12. Peterson's beams: impact force fitted, then reported as agreement; missing from the summary
 

@@ -156,6 +156,16 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
             }
         }
         #expect(Set(ValidationTables.figures.map(\.id)).count == ValidationTables.figures.count)
+        // The references' own scatter: each quote under its heading, holding the figure.
+        for scatter in ValidationTables.scatters {
+            let text = try section(scatter.document)
+            #expect(
+                text.contains(normalised(scatter.quote)), "\(scatter.id): quote not under \(scatter.document)"
+            )
+            #expect(
+                numbers(scatter.quote).contains { abs($0 - scatter.sigma * 100) < 0.05 },
+                "\(scatter.id): \(scatter.sigma) is not in \"\(scatter.quote)\"")
+        }
         // The ensemble's spreads: each row under its heading, holding "mean, coefficient%".
         let spreads = try section(ValidationTables.spreadDocument)
         for spread in ValidationTables.spreads {
@@ -240,6 +250,7 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
         #expect(face.onSurface)
         #expect(face.peak?.quantity == "Reflected peak overpressure")
         #expect(face.peak?.inputSpread == 0.02 && face.impulse?.inputSpread == 0.01)
+        #expect(face.peak?.referenceScatter == 0.08 && face.impulse?.referenceScatter == 0.08)
         // Behind the wall, shielded: not compared.
         scenario.gauges = [Gauge("Behind", at: SIMD3(wall.max.x + 0.1, (wall.min.y + wall.max.y) / 2, 1))]
         let behind = try #require(
