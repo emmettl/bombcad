@@ -320,7 +320,16 @@ the user to obtain it).
 barely moves OA1 on 12 elements (134%) and breaks the slab on 16 and Janney's beam early; only over
 a band three times the crack spacing does OA1 come within 8% on both meshes, and there Ando's and
 Saatci's struck beams go further from the tests. Peterson's modes do not move, nor is the slab
-with discrete bars held together. The embedded crack is the next step.
+with discrete bars held together.
+
+**The embedded crack: deferred, not abandoned (11 October 2026).** In one-point elements a crack
+embedded in each element mostly changes the crack's statics, which the second crack already
+solves; what cures stress locking is a crack path continuous between elements, and tracking one
+did not help here before. No data at hand could tell such a model from today's: it waits for
+measurements of a crack's own opening and slip under impact, such as digital image correlation
+of Peterson's high-speed images ([Data wanted](data-wanted.md), rank 2). Meanwhile shear in
+members stays bounded honestly, by the standing's error bands (OA1's 111–137% by mesh) and
+the ensembles that spread a result over the model's options, rather than corrected.
 
 **Stage 3: failed concrete to particles, for breach and debris (one to two months).**
 
