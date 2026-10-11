@@ -336,9 +336,8 @@ on 2 and 1 in elements, both with the converged answer.
 `blastbench slab` runs 80 ms of the validation slab in 9 s with eight elements through the
 thickness (68,608 elements of 12.7 mm, time step 1.7 µs) and in under a second with four. With
 sixteen (553,000 elements) it takes about two minutes. Cracks that turn with the stress cost
-about 1% against cracks on the lattice planes. Nonlocal crushing, when switched on,
-adds about 3 s to the eight-layer time: each element past its peak strain averages a
-neighbourhood of up to nine points along each axis.
+about 1% against cracks on the lattice planes (since retired). Nonlocal crushing, when it
+was an option, added about 3 s to the eight-layer time.
 
 ## Display
 
