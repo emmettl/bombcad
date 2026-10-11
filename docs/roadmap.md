@@ -264,6 +264,9 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    closed vessels converge on the thin-flame model, but vented rooms fall well short of the venting
    correlations and of FM Global's tests, the flame's acceleration being a factor, not a model. See
    [Gas deflagrations](deflagration.md). Next: a turbulence model for the flame.)
+17. **The model's spread from uncertain inputs.** (Done: `BombCAD ensemble` reruns nine
+   validation cases over sampled strengths, bars, charges, standoffs and unclear supports, shared
+   among Macs; see [Validation](validation.md#the-models-spread-from-uncertain-inputs).)
 
 ### Freestanding objects and supports
 

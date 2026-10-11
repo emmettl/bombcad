@@ -371,14 +371,15 @@ enum HeadlessEnsemble {
                 let inside = measured >= stats.p5 && measured <= stats.p95
                 line += String(
                     format: "; measured %.3g, %@", measured,
-                    inside ? "within" : measured < stats.p5 ? "below" : "above")
+                    inside ? "within the spread" : measured < stats.p5 ? "below it" : "above it")
                 if let scatter = output.measuredVariation {
                     line += String(
                         format: "; the tests' scatter %.0f%% against the model's %.0f%%", 100 * scatter,
                         100 * stats.variation)
                 }
             }
-            // The inputs the output follows most closely, by rank.
+            // The inputs the output follows most closely, by rank; with tens of samples, weaker
+            // correlations than 0.5 are within chance.
             let pairs = zip(item.samples.dropFirst(), item.outcomes.dropFirst()).compactMap {
                 sample, outcome in
                 outcome?.outputs[output.key].flatMap { $0.isFinite ? (sample, $0) : nil }
@@ -388,7 +389,7 @@ enum HeadlessEnsemble {
                     (input.key, $0)
                 }
             }
-            .filter { abs($0.1) >= 0.3 }.sorted { abs($0.1) > abs($1.1) }.prefix(3)
+            .filter { abs($0.1) >= 0.5 }.sorted { abs($0.1) > abs($1.1) }.prefix(3)
             if !drivers.isEmpty {
                 line +=
                     "; follows "
