@@ -60,7 +60,7 @@ extension ErrorBand {
     /// Whether two values differ by less than this band's width, so that against measurement they
     /// cannot be told apart.
     func cannotSeparate(_ value: Double, from reference: Double) -> Bool {
-        abs(value - reference) < relativeHalfWidth * 2 * max(abs(value), abs(reference))
+        abs(value - reference) < combinedHalfWidth * 2 * max(abs(value), abs(reference))
     }
 }
 
@@ -134,9 +134,11 @@ struct ShownValue: Equatable {
         return "\(rounded(range.lowerBound))–\(rounded(range.upperBound)) \(unit)"
     }
 
-    /// "expect 100–110 mm (reads high: too flexible)", by `band`.
+    /// "expect 100–110 mm (reads high: too flexible)", by `band`, widened by the inputs' spread
+    /// where the case was run with uncertain inputs.
     func expectation(_ band: ErrorBand) -> String {
-        "expect \(range(band.expected(value))) (model \(band.reads))"
+        let inputs = band.inputSpread.map { String(format: "; inputs ±%.0f%%", 164.5 * $0) } ?? ""
+        return "expect \(range(band.expectedWithInputs(value))) (model \(band.reads)\(inputs))"
     }
 }
 
@@ -316,10 +318,19 @@ struct StandingDetail: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("\(band.quantity): model \(band.ratio) of measured").fontWeight(.medium)
                     Text("Model \(band.reads), on the \(band.side).").foregroundStyle(.secondary)
+                    if let spread = band.inputSpread {
+                        Text(
+                            String(
+                                format:
+                                    "Uncertain inputs spread the model by %.0f%% (5–95%%: ±%.0f%%), added to the band.",
+                                spread * 100, spread * 164.5)
+                        )
+                        .foregroundStyle(.secondary)
+                    }
                     if let value, value.measure == band.measure {
                         Text(
                             "This run's \(value.formatted(value.value)) puts the measurement at "
-                                + value.range(band.expected(value.value)) + ".")
+                                + value.range(band.expectedWithInputs(value.value)) + ".")
                     }
                     Text("Holds for \(band.validity)\(band.scaled ? ", scaled to this resolution" : "").")
                         .font(.caption).foregroundStyle(.secondary)

@@ -117,6 +117,14 @@ standing says why.
   measurement. Kept runs, `BombCAD run --standing` and the USD layer carry the bands; standings
   recorded before them open with "not recorded".
 
+**Uncertain inputs.** Where the ensemble ran a band's case with its inputs sampled (see
+[the model's spread from uncertain inputs](validation.md#the-models-spread-from-uncertain-inputs)),
+the band carries that spread: the slab's 12%, Wu's 4%, the close-in gauges' 8%, and 2% and 1% for a
+wall's peak and impulse. The expected range adds the inputs' 5–95% range (1.645 coefficients of
+variation) to the band's half-width in quadrature, since the model's error and its spread from
+uncertain inputs are separate, and comparison uses the combined width. Elsewhere the band stands
+alone.
+
 **Regimes.** The scene is placed as in contact (under 0.15 m/kg^(1/3) from a structure), close
 in (under 0.75), far field, or confined (a closed room or a charge inside a structure), and the
 options the record shows to be right in one regime and wrong in another are checked against it:
