@@ -111,6 +111,7 @@ struct StructureUniforms {
     float gravityZ;
     uint pairs;  // connections between two parts of the body (`structurePairs`)
     uint removesFragments;  // 1: concrete broken into fragments is removed (`StructureModel`)
+    uint discreteBond;      // 1: discrete bars slip by the bond law in the `bond...` fields above
 };
 
 // Gravity's pull per unit mass, when it has been turned.
@@ -262,6 +263,12 @@ constant uint maxMaterials = 8;
 constant bool singleMaterial [[function_constant(0)]];
 constant bool finiteConnections [[function_constant(1)]];
 constant bool workTraced [[function_constant(3)]];
+// Bars given as their own trusses (`StructureModel.discreteBars`): the elements' smeared bars then
+// stand only for dowel action, bridging and the hourglass cap, and carry no stress along them; the
+// trusses' bond acts on the nodes. Undefined, as for every body without them, the kernels are as
+// they always were.
+constant bool discreteBarsConstant [[function_constant(10)]];
+constant bool discreteBars = is_function_constant_defined(discreteBarsConstant) && discreteBarsConstant;
 // Hourglass control's options (`StructureModel.hourglassFollowsCracking`, `hourglassCapsSteel`),
 // compiled in only when chosen, so that without them the element kernel is unchanged.
 constant bool hourglassSecant [[function_constant(8)]];
@@ -1655,9 +1662,12 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             }
             intact[j] = 1.0f;
             steelCapacity += ratio[j] * yield;
-            // Bar force per unit reference area, as a second Piola-Kirchhoff stress.
-            material[j][j] += ratio[j] * stress / root;
-            barForce[j] = ratio[j] * stress / root * u.h * u.h;
+            // Bar force per unit reference area, as a second Piola-Kirchhoff stress. (With discrete
+            // bars the trusses carry it.)
+            if (!discreteBars) {
+                material[j][j] += ratio[j] * stress / root;
+                barForce[j] = ratio[j] * stress / root * u.h * u.h;
+            }
             // Bars that have yielded hold less well (Model Code 2010, 6.1.1.3):
             // 1 - 0.85 (1 - exp(-5 a^b)), a the plastic strain over that at ultimate,
             // b = (2 - f_u / f_y)^2.
@@ -2771,6 +2781,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
                            const device float4 *pairState [[buffer(27)]],
                            const device uint *nodePairStart [[buffer(28)]],
                            const device int *nodePairs [[buffer(29)]],
+                           const device float4 *barNodeForce [[buffer(30)]],
                            uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -2843,6 +2854,9 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
 
     if (contactEnabled(u, failureGate)) {
         force += float3(contact[threadIndex]);
+    }
+    if (discreteBars) {
+        force += barNodeForce[threadIndex].xyz;  // the discrete bars' bond (`discreteBarGather`)
     }
     if (u.bondSlip != 0) {
         relaxSlip(threadIndex, tid, node.flags, slips, slipSupport, barForces, flags, cellElement, dt, u);
@@ -3503,4 +3517,193 @@ kernel void wakeCouplingTiles(const device uint *map [[buffer(0)]],
             }
         }
     }
+}
+
+// MARK: - Discrete bars
+
+// A node of a bar given as its own truss (`StructureModel.discreteBars`), embedded in the element
+// it lies in: its displacement is that element's, interpolated at it, plus its slip along the bar.
+struct DiscreteBarNode {
+    uint corners[8];      // the host element's nodes, as indices into the body's nodes
+    float weights[8];     // their shape functions at the bar node
+    packed_float3 rest;   // where it lies at rest
+    packed_float3 axis;   // the bar's unit direction
+    float length;         // the bar it stands for: half of each segment beside it
+    float perimeter;      // the bar's surface per unit length
+    int previous;         // the segment before it along the bar, or -1
+    int next;             // the segment after it, or -1
+};
+
+struct DiscreteBarSegment {
+    uint first;           // its nodes are `first` and `first + 1`
+    float length;         // at rest
+    float area;
+    uint material;        // whose steel it is
+    uint barFirst;        // its bar's first and last segments
+    uint barLast;
+    uint reach;           // segments either side over which its rupture is judged
+};
+
+// Each segment's force from its stretch, by the bars' law (`smearedBar`, with a ratio of one).
+// `segmentState` holds (force N, plastic strain, running strain rate, ruptured); a ruptured
+// segment (see `discreteBarRupture`) carries nothing for good.
+kernel void discreteBarSegments(const device StructureNode *nodes [[buffer(0)]],
+                                const device DiscreteBarNode *barNodesDevice [[buffer(1)]],
+                                const device DiscreteBarSegment *segments [[buffer(2)]],
+                                device float4 *segmentState [[buffer(3)]],
+                                device BarHistory *histories [[buffer(4)]],
+                                const device float4 *barSlips [[buffer(5)]],
+                                constant MaterialParameters *materials [[buffer(6)]],
+                                const device StepControl &control [[buffer(7)]],
+                                constant StructureUniforms &u [[buffer(8)]],
+                                uint id [[thread_position_in_grid]]) {
+    bool active;
+    float dt = structureStep(u, control, active);
+    if (!active) {
+        return;
+    }
+    DiscreteBarSegment segment = segments[id];
+    float4 state = segmentState[id];
+    if (state.w != 0.0f) {
+        segmentState[id] = float4(0.0f, state.y, state.z, 1.0f);
+        return;
+    }
+    DiscreteBarNode a = barNodesDevice[segment.first];
+    DiscreteBarNode b = barNodesDevice[segment.first + 1];
+    float3 da = float3(0.0f);
+    float3 db = float3(0.0f);
+    float3 va = float3(0.0f);
+    float3 vb = float3(0.0f);
+    for (uint c = 0; c < 8; ++c) {
+        da += a.weights[c] * float3(nodes[a.corners[c]].displacement);
+        db += b.weights[c] * float3(nodes[b.corners[c]].displacement);
+        va += a.weights[c] * float3(nodes[a.corners[c]].velocity);
+        vb += b.weights[c] * float3(nodes[b.corners[c]].velocity);
+    }
+    float4 sa = barSlips[segment.first];
+    float4 sb = barSlips[segment.first + 1];
+    float3 xa = float3(a.rest) + da + sa.x * float3(a.axis);
+    float3 xb = float3(b.rest) + db + sb.x * float3(b.axis);
+    float3 along = xb - xa;
+    float current = length(along);
+    float stretch = current / segment.length;
+    float green = 0.5f * (stretch * stretch - 1.0f);
+    float3 unit = along / max(current, 1e-12f);
+    float rate = (dot(vb - va, unit) + sb.y - sa.y) / segment.length;
+    float averaged = state.z + clamp(dt * u.rateFilter, 0.0f, 1.0f) * (fabs(rate) - state.z);
+    constant MaterialParameters &m = materials[segment.material];
+    float plastic = state.y;
+    float root;
+    float yield;
+    float stress = smearedBar(green, plastic, histories[id], averaged, m, root, yield);
+    // `stress` is the force over the bar's area at rest.
+    segmentState[id] = float4(stress * segment.area, plastic, averaged, 0.0f);
+}
+
+// A segment ruptures, for good, when its bar's plastic strain averaged over the segments within
+// half a crack spacing either side passes the rupture strain: the curve's elongation at rupture is
+// measured over a gauge length, and a crack's opening is shared by a length of bar, not by the
+// one segment it crosses (as the smeared bars' `bondSpreading`). Judged segment by segment, the
+// contest slab's bars ruptured at its mid-span crack at 100 mm. Writes only its own `w`.
+kernel void discreteBarRupture(device float4 *segmentState [[buffer(0)]],
+                               const device DiscreteBarSegment *segments [[buffer(1)]],
+                               constant MaterialParameters *materials [[buffer(2)]],
+                               const device StepControl &control [[buffer(3)]],
+                               constant StructureUniforms &u [[buffer(4)]],
+                               uint id [[thread_position_in_grid]]) {
+    bool active;
+    structureStep(u, control, active);
+    if (!active) {
+        return;
+    }
+    DiscreteBarSegment segment = segments[id];
+    uint low = uint(max(int(id) - int(segment.reach), int(segment.barFirst)));
+    uint high = min(id + segment.reach, segment.barLast);
+    float sum = 0.0f;
+    for (uint k = low; k <= high; ++k) {
+        sum += segmentState[k].w != 0.0f ? 0.0f : fabs(segmentState[k].y);
+    }
+    constant MaterialParameters &m = materials[segment.material];
+    if (sum / float(high - low + 1) > m.steelStrain[m.steelPoints - 1]) {
+        segmentState[id].w = 1.0f;
+    }
+}
+
+// Each bar node: what its segments' forces leave over passes to the concrete, as a vector in
+// `barTransfer`. Bonded perfectly (no bond law), and at a bar's anchored ends, the node does not
+// slip; otherwise its slip relaxes towards the bond law's balance with it, as the smeared bars'
+// slip does (`relaxSlip`).
+kernel void discreteBarNodes(const device DiscreteBarNode *barNodesDevice [[buffer(0)]],
+                             const device float4 *segmentState [[buffer(1)]],
+                             device float4 *barSlips [[buffer(2)]],
+                             device float4 *barTransfer [[buffer(3)]],
+                             const device StepControl &control [[buffer(4)]],
+                             constant StructureUniforms &u [[buffer(5)]],
+                             const device DiscreteBarSegment *segments [[buffer(6)]],
+                             constant MaterialParameters *materials [[buffer(7)]],
+                             uint id [[thread_position_in_grid]]) {
+    bool active;
+    float dt = structureStep(u, control, active);
+    if (!active) {
+        return;
+    }
+    DiscreteBarNode n = barNodesDevice[id];
+    float before = n.previous >= 0 ? segmentState[n.previous].x : 0.0f;
+    float after = n.next >= 0 ? segmentState[n.next].x : 0.0f;
+    float left = after - before;  // along the bar: the segment after pulls it forward
+    float3 axis = float3(n.axis);
+    // A bar's ends are anchored, as by hooks or plates: they do not slip.
+    if (u.discreteBond == 0u || n.previous < 0 || n.next < 0) {
+        barTransfer[id] = float4(left * axis, 0.0f);
+        return;
+    }
+    float4 state = barSlips[id];
+    float plastic = state.z;
+    float largest = state.w;
+    float area = n.perimeter * n.length;
+    float bond = bondStress(state.x, plastic, largest, 1.0f, u) * area;
+    // The slip's stiffness: the bond's at the start of its law, and the bars' either side, each
+    // counted twice, since a segment ties this node's slip to its neighbour's (a Gershgorin
+    // bound): counted once, the slip rang along the bar, as the smeared bars' slip once did.
+    float s0 = 0.02f * u.bondS1;
+    float stiffness = u.bondPeak * pow(0.02f, u.bondAlpha) / s0 * area;
+    for (int side = 0; side < 2; ++side) {
+        int k = side == 0 ? n.previous : n.next;
+        if (k >= 0) {
+            DiscreteBarSegment s = segments[k];
+            stiffness += 2.0f * materials[s.material].steelModulus * s.area / s.length;
+        }
+    }
+    float step = u.criticalStep;
+    float mass = stiffness * step * step;
+    float damping = 1.4f * stiffness * step;
+    float rate = (state.y + dt * (left - bond) / mass) / (1.0f + dt * damping / mass);
+    barSlips[id] = float4(state.x + dt * rate, rate, plastic, largest);
+    // The slip is the bar's motion relative to the concrete, so the concrete feels the bar's own
+    // forces either side, as it would bonded: the bond only balances them in the slip. (Given
+    // the bond's force instead, the concrete lagged the bar it had already moved, and the tie
+    // rang.)
+    barTransfer[id] = float4(left * axis, 0.0f);
+}
+
+// What the bars' bond passes to the concrete at the bar nodes embedded beside each body node, in
+// proportion to its shape function there, gathered in a fixed order: (bar node, weight) entries.
+kernel void discreteBarGather(const device uint *gatherStart [[buffer(0)]],
+                              const device float2 *gatherEntries [[buffer(1)]],
+                              const device float4 *barTransfer [[buffer(2)]],
+                              device float4 *barNodeForce [[buffer(3)]],
+                              const device StepControl &control [[buffer(4)]],
+                              constant StructureUniforms &u [[buffer(5)]],
+                              uint id [[thread_position_in_grid]]) {
+    bool active;
+    structureStep(u, control, active);
+    if (!active) {
+        return;
+    }
+    float3 force = float3(0.0f);
+    for (uint e = gatherStart[id]; e < gatherStart[id + 1]; ++e) {
+        float2 entry = gatherEntries[e];
+        force += entry.y * barTransfer[as_type<uint>(entry.x)].xyz;
+    }
+    barNodeForce[id] = float4(force, 0.0f);
 }

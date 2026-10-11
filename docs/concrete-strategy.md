@@ -271,6 +271,18 @@ carries.
 Stop if Wu's one and two layers are still told apart no better than now. Then the cause is the
 element's depth resolution, not the bars, and stage 2's elements, not more bar physics, are next.
 
+**Stage 1, as far as it went (11 October 2026).** Discrete bars are in, as an option (see the
+[concrete model](concrete-model.md#discrete-bars)). A tie with them cracks at the Model Code's
+spacing and carries its tension stiffening within 5% on two meshes, and Janney's beam is within
+4%. But they do not tell Wu's one layer of steel from two: 14.5 and 15.1 mm bonded, 11.4 and
+12.0 mm with pull-out bond, where the tests gave 18.0 and 13.9 and the smeared bars 14.4 and
+14.9. That is the stopping point above: the cause is the element's depth resolution, as the
+hourglass session also found (the two-layer slab's compression layer is fully engaged, and its
+bars do a quarter of the work). And the contest slab comes apart with them on 4 and 8 elements:
+its hinge gathers into one crack and its bars rupture there at 23 ms, softer from 15 ms than with
+smeared bars though its bars carry more. Stage 2 is next; discrete bars stay an option, for the
+holes of stage 3 to hang on.
+
 **Stage 2: embedded cracks for members failing in shear (one to two months).**
 
 - First the cheap step: nonlocal averaging of the crack driving strain within the failure zone,

@@ -502,6 +502,16 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// Bars that slip in their concrete, by the Model Code's bond-slip law (see `BondSlip`); nil
     /// bonds them perfectly. Solid elements' bars along the lattice axes only.
     public var bondSlip: BondSlip?
+    /// Bars given as their own trusses (`DiscreteBar`), embedded in the elements, in place of the
+    /// smeared bars' stress along them: the elements' smeared bars then stand only for dowel
+    /// action, bridging cracks and the hourglass cap. They slip by `bondSlip`, or are bonded
+    /// perfectly without it (smeared bars never slip beside them). Solid elements only; none by
+    /// default.
+    public var discreteBars: [DiscreteBar] = []
+    /// Whether the reinforcement layers' bars along the lattice axes are laid as discrete bars too
+    /// (`barsFromLayers`), of `trussDiameter`, or failing that `bondSlip`'s, or 12 mm.
+    public var barsAsTrusses = false
+    public var trussDiameter: Float?
     /// Whether a crack's faces, riding up on their aggregate as it slides, press on whatever holds
     /// it from opening, and pressed, carry more shear: Walraven and Reinhardt's relations between
     /// a crack's opening, slip, shear and the stress across it (HERON 26(1A), 1981, eqs. 1a and
@@ -966,6 +976,7 @@ struct StructureUniforms {
     var gravityZ: Float = -1
     var pairs: UInt32 = 0
     var removesFragments: UInt32 = 0
+    var discreteBond: UInt32 = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -1193,7 +1204,7 @@ extension StructureModel {
             solidElementKind
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
         case pressedInterlock, regimeOverride, loadingOverride, regimeDefaults
-        case hourglassFollowsCracking, hourglassCapsSteel
+        case hourglassFollowsCracking, hourglassCapsSteel, discreteBars, barsAsTrusses, trussDiameter
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -1225,6 +1236,9 @@ extension StructureModel {
             try container.encode(hourglassFollowsCracking, forKey: .hourglassFollowsCracking)
         }
         if !hourglassCapsSteel { try container.encode(hourglassCapsSteel, forKey: .hourglassCapsSteel) }
+        if !discreteBars.isEmpty { try container.encode(discreteBars, forKey: .discreteBars) }
+        if barsAsTrusses { try container.encode(barsAsTrusses, forKey: .barsAsTrusses) }
+        try container.encodeIfPresent(trussDiameter, forKey: .trussDiameter)
         try container.encodeIfPresent(bondSlip, forKey: .bondSlip)
         try container.encode(solidElementKind, forKey: .solidElementKind)
         try container.encodeIfPresent(shellElementSize, forKey: .shellElementSize)
@@ -1266,6 +1280,9 @@ extension StructureModel {
         hourglassFollowsCracking =
             try container.decodeIfPresent(Bool.self, forKey: .hourglassFollowsCracking) ?? false
         hourglassCapsSteel = try container.decodeIfPresent(Bool.self, forKey: .hourglassCapsSteel) ?? true
+        discreteBars = try container.decodeIfPresent([DiscreteBar].self, forKey: .discreteBars) ?? []
+        barsAsTrusses = try container.decodeIfPresent(Bool.self, forKey: .barsAsTrusses) ?? false
+        trussDiameter = try container.decodeIfPresent(Float.self, forKey: .trussDiameter)
         bondSlip = try container.decodeIfPresent(BondSlip.self, forKey: .bondSlip)
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)

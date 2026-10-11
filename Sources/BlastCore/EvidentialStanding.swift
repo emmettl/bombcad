@@ -261,6 +261,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case removesFragments
     case noCrackSlip
     case bondSlip
+    case discreteBars
     case pressedInterlock
     case hourglassSecant
     case hourglassWithoutSteel
@@ -325,6 +326,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .removesFragments: return !concrete.isEmpty && any { $0.removesFragments }
         case .noCrackSlip: return !concrete.isEmpty && any { !$0.crackSlip }
         case .bondSlip: return any { $0.bondSlip != nil }
+        case .discreteBars: return any { !$0.allDiscreteBars.isEmpty }
         case .pressedInterlock: return any { $0.pressedInterlock }
         case .hourglassSecant: return !concrete.isEmpty && any { $0.hourglassFollowsCracking }
         case .hourglassWithoutSteel: return !concrete.isEmpty && any { !$0.hourglassCapsSteel }
@@ -551,6 +553,12 @@ public enum StandingTable {
                 note: "The Model Code's bond-slip law; run against the slab, shear-beam and impact tests "
                     + "too (on the slab, 95 mm on 8 elements through).",
                 document: "concrete-model.md#bars-that-slip-an-option")
+        case .discreteBars:
+            return Entry(
+                title: "Discrete bars", affects: structure, limit: .approximation,
+                note: "Bars as trusses embedded in the elements, with the Model Code's bond; a tie cracks "
+                    + "and stiffens as the Model Code says on two meshes, but no member test has judged them.",
+                document: "concrete-model.md#discrete-bars")
         case .pressedInterlock:
             return Entry(
                 title: "Pressed interlock", affects: structure, limit: .approximation,
@@ -798,6 +806,9 @@ public enum StandingTable {
         "StructureModel.removesFragments": .option([.removesFragments]),
         "StructureModel.crackSlip": .option([.noCrackSlip]),
         "StructureModel.bondSlip": .option([.bondSlip]),
+        "StructureModel.discreteBars": .option([.discreteBars]),
+        "StructureModel.barsAsTrusses": .option([.discreteBars]),
+        "StructureModel.trussDiameter": .option([.discreteBars]),
         "StructureModel.pressedInterlock": .option([.pressedInterlock]),
         "StructureModel.hourglassFollowsCracking": .option([.hourglassSecant]),
         "StructureModel.hourglassCapsSteel": .option([.hourglassWithoutSteel]),
