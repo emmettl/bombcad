@@ -17,8 +17,13 @@ run: app
 ifc-converter:
 	python3 Scripts/prepare-ifc-converter.py
 
+# Keep the wall-clock playback bound unchanged and measure it without unrelated
+# main-actor/GPU test work. The second invocation runs every other test exactly once.
+PLAYBACK_TIMING_TEST := BombCADTests[.]SimulationModelTests/pacedPlayback
+
 test: ifc-converter
-	swift test
+	swift test --filter '$(PLAYBACK_TIMING_TEST)'
+	swift test --skip '$(PLAYBACK_TIMING_TEST)'
 
 # The solvers built as a release is, run for a few seconds each: solid and shell elements, bars
 # that slip and base connections. `swift test` builds for debugging, and the optimiser has
