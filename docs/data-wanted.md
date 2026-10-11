@@ -751,6 +751,11 @@ Ten values in the code were written from memory and should be checked against th
     hemispherical detonations of C-4", *Propellants, Explosives, Pyrotechnics* 43(7) (2018),
     doi:10.1002/prep.201800071, accepted manuscript on DOE PAGES (OSTI 1469550, LA-UR-18-21835),
     0.8 MB; compared with Kinney and Graham's table.
+  - Kinney–Graham: G. F. Kinney and K. J. Graham, *Explosive Shocks in Air*, 2nd ed., Springer
+    (1985), chapter 6, from a copy the user supplied: no scatter is given; the peak
+    overpressure is computed (Brode; Shear and Wright) and described as checked against
+    measurements including Kingery's, equation 6-2 fitted to it, and the impulse (equation
+    6-12) fitted to independent data.
   - Closed rooms: C. Oswald, "An improved method to calculate the gas pressure history from
     partially confined detonations", NDIA International Explosives Safety Symposium (2018),
     `ndia.dtic.mil/wp-content/uploads/2018/intexpsafety/OswaldPaper.pdf`, 1.7 MB, Table 1; and
@@ -770,8 +775,6 @@ Ten values in the code were written from memory and should be checked against th
     (2017): the gas pressure database's own statistics. And the tests behind Figure 2-152:
     W. A. Keenan and J. F. Tancreto, *Blast environment from fully and partially vented
     explosions in cubicles*, NCEL TR-828 (1975), on DTIC; and Weibull's chamber pressures (1968).
-  - G. F. Kinney and K. J. Graham, *Explosive Shocks in Air* (1985): what their formulae were
-    fitted to. The copy used for the formulae is not on this Mac.
 
 ## 4. Set aside, for completeness
 
@@ -802,6 +805,8 @@ their licence, as `Samples/FoRCy` does.
 | `USGS-OFR77-143` | Hoffman and Harding, *Strong ground motion in the Tularosa Basin* | 2.2 MB | Public domain |
 | `DRDC2013` | DRDC TR 2013-056, the 2012 field trials with lidar | 2.75 MB | Government of Canada |
 | `Peterson2026` (added) | Peterson's KTH thesis | 18.4 MB | Open access |
+| `Swisdak1994`, `Cooper1996`, `UFC-3-340-02`, `XuLu2016`, `KinneyGraham1985` | Copies the user supplied of sources already in use (see Obtained), placed here on 11 October 2026 | 0.5, 15.5, 18.0, 5.3 and 9.0 MB | The user's own copies, private reference only; Kinney and Graham's is an unofficial copy of a book in copyright: never commit it, its text or its figures |
+| `Schwer2015` | L. E. Schwer, "Blind blast simulation: a validation effort assessment", SMiRT-23 (2015), on the slab contest; supplied by the user | 1.5 MB | The user's own copy; not yet read (a candidate for blind test 2) |
 | `reference-scatter` | Farrimond et al. 2024, Rigby et al. 2014, Rae and McAfee 2018, Oswald 2018 and 2025 (two), with text extracts; fetched 11 October 2026 (see [3g](#3g-the-reference-curves-own-scatter)), and now in use | 10.4 MB | CC BY 4.0 (Farrimond); free to read (the rest) |
 
 PMC's own PDFs of the two *Materials* papers sit behind a proof-of-work check and were not
@@ -816,7 +821,10 @@ browser check; and Keys's 2016 thesis (14 MB,
 
 ## Obtained
 
-Supplied by hand during development, and now in use:
+Supplied by hand during development, and now in use. Copies of Cooper, Swisdak, Kinney and
+Graham, UFC 3-340-02 and Xu and Lu are in `/Volumes/StudioData/bombcad/data/` (see
+[Downloaded, not yet in use](#downloaded-not-yet-in-use)), for private reference only.
+
 
 - P. W. Cooper, *Explosives Engineering*, Wiley-VCH, 1996 (supplied as a scan): TNT's heat of
   combustion, 821 kcal/mol with the water liquid (Table 9.3, p. 130), 15.1 MJ/kg; its heat of

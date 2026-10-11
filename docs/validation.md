@@ -2134,8 +2134,13 @@ in free air rather than 2. At 10 m the Kinney–Graham peak is about a quarter h
 Kingery–Bulmash one. Both formulae (the book's equations 6-2 and 6-12) have been checked
 against the book.
 
-No scatter for Kinney and Graham's formulae was found in an open source. The one open
-comparison of their table with tests near a charge, Rae and McAfee's (above), found it broadly
+Kinney and Graham give no scatter for either formula (*Explosive Shocks in Air*, 2nd ed., 1985,
+chapter 6). Their peak overpressure is a computed curve (Brode's calculations, and Shear and
+Wright's), which they describe as verified against measurements, among them Kingery's (1966);
+equation 6-2 is a network-type fit to that curve. Their impulse, equation 6-12, is an
+empirical fit to independent data for chemical explosions, with no stated scatter either. So
+the band for Kinney–Graham can be no narrower than Kingery's. The one open comparison of their
+table with tests near a charge, Rae and McAfee's (above), found it broadly
 right for 45 kg of C-4 at 0.53 to 1.78 m/kg^(1/3), with neighbouring gauges differing by up to
 40% where the fireball reaches.
 
