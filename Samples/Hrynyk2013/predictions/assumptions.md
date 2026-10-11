@@ -70,7 +70,8 @@ the slab, and one alike over it (the socketed plate's size and thickness not giv
 the slab. The spherical pin beneath is a 5 × 5 patch of nodes (32 mm square) at the centre of
 the lower plate's underside that rests on its support (pushes up, lifts off freely); the ball
 above is a 5 × 5 patch at the centre of the upper plate's top that is held down (cannot rise,
-falls away freely). The patches let the corner turn freely in both directions. Sideways, the
+falls away freely). The patches let the corner turn freely in both directions. *(Changed after
+the smoke run to one node each, with elastic plates: see change 1 below.)* Sideways, the
 lower patch is held as the inputs' lateral restraints say, with the slab's corners south (0, 0),
 east (1.8, 0), north (1.8, 1.8) and west (0, 1.8): east pinned (x and y), north held in x (free
 along the north-east edge, y), south held in y (free along the south-east edge, x), west free.
@@ -141,4 +142,13 @@ crash), the fix and its reason will be added below, dated, before the prediction
 
 ## Changes after the first run
 
-None yet.
+**1. 2026-10-11, after a 5 ms smoke run (TH2, impact 1, 8 and 16 elements, cut short): each
+corner seated on one node above and one below, and the bearing plates elastic** (commit
+87ff5a7). The 5 × 5 seats under and over each corner clamped it between them: as the corner
+turned, the lower seat pressed up on one edge and the upper seat down on the other, a couple
+32 mm long. In 5 ms the load cells' sum rose to 1.3 MN while the seats above pulled down by
+0.85 MN, more than the weight's momentum could give, and against the inputs' corners that
+"rotate freely". Seated on one node each, on one vertical line, the corner turns freely; the
+plates are elastic steel because one node now carries each corner's reaction, which would
+yield structural steel locally where the real pin's seat spreads it. This was a harness error,
+judged on the model's own consistency; no measurement was seen.
