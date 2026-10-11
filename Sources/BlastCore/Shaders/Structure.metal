@@ -113,6 +113,7 @@ struct StructureUniforms {
     uint removesFragments;  // 1: concrete broken into fragments is removed (`StructureModel`)
     uint discreteBond;      // 1: discrete bars slip by the bond law in the `bond...` fields above
     uint crackReach;        // elements either side a crack's band reaches (`crackAveraging`)
+    float groundCoulomb;    // > 0: the ground's Coulomb friction coefficient (else `groundFriction`'s decay)
 };
 
 // Gravity's pull per unit mass, when it has been turned.
@@ -2963,10 +2964,19 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     }
     float referenceHeight = u.originZ + float(tid.z) * u.h;
     if (referenceHeight + displacement.z < 0.0f && u.groundFriction >= 0.0f && !anchoredNode) {
-        // Debris landing on the ground: stop the fall and shed horizontal speed.
+        // Debris landing on the ground: stop the fall and shed horizontal speed. By Coulomb, the
+        // sliding speed lost is the friction coefficient times the speed the ground took off the
+        // fall, so that over time the ground holds back the coefficient times what bears on it
+        // however much the node chatters on and off it; otherwise the speed decays at a set rate.
+        float stopped = max(-velocity.z, 0.0f);
         displacement.z = -referenceHeight;
         velocity.z = max(velocity.z, 0.0f);
-        velocity.xy *= max(0.0f, 1.0f - u.groundFriction * dt);
+        if (u.groundCoulomb > 0.0f) {
+            float sliding = length(velocity.xy);
+            velocity.xy *= sliding > 0.0f ? max(0.0f, 1.0f - u.groundCoulomb * stopped / sliding) : 0.0f;
+        } else {
+            velocity.xy *= max(0.0f, 1.0f - u.groundFriction * dt);
+        }
     }
     if (exchangeCell >= 0) {
         recordExchange(exchange, exchangeCell, airForce, 0.5f * (float3(node.velocity) + velocity), dt,

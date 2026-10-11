@@ -983,6 +983,7 @@ struct StructureUniforms {
     var removesFragments: UInt32 = 0
     var discreteBond: UInt32 = 0
     var crackReach: UInt32 = 0
+    var groundCoulomb: Float = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in

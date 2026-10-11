@@ -817,6 +817,7 @@ public enum StandingTable {
         "SolverConfiguration.mappedCharge": .option([.mappedCharge]),
         "SolverConfiguration.airSleepThreshold": .numerical,
         "SolverConfiguration.airSleepCrossings": .numerical,
+        "SolverConfiguration.debrisReach": .numerical,
         "SolverConfiguration.minimumBalloonCells": .numerical,
         "SolverConfiguration.refinement": .option([.shockRefinement, .twoLevelRefinement]),
         "SolverConfiguration.refinementThreshold": .numerical,
@@ -1547,7 +1548,13 @@ struct StandingScene {
                     "Blockwork pulled and sheared along its joints",
                     "Parts at the bond within 5%; slides at "
                         + "cohesion and friction within 10%", "validation.md#verification-against-theory"))
-            parts.append("masonry's joints verified, no wall compared under a blast")
+            evidence.append(
+                StandingEvidence(
+                    "Brick walls' debris (Keys, 2016)",
+                    "Loads within 15%; the walls break into too few pieces, falling at full length in the open and "
+                        + "thrown half as far as measured in a shock tube", "validation.md#brick-walls-debris"
+                ))
+            parts.append("masonry's joints verified; brick walls under blasts break into too few pieces")
         }
         if classes.contains(.glass) {
             level = max(level, .approximation)
@@ -1630,7 +1637,7 @@ struct StandingScene {
         var summary =
             "Errs on the unsafe side, towards too little damage: too strong in shear, struck beams holding "
             + "where the tests crushed their strut. Breach and joints are the least reliable predictions; debris "
-            + "has been compared once, and collapse never."
+            + "has been compared off slabs and brick walls, and collapse never."
         if let distance = structureDistance, distance < 0.75 {
             evidence.append(
                 StandingEvidence(
@@ -1649,7 +1656,9 @@ struct StandingScene {
         }
         if materialClasses.contains(.glass) || materialClasses.contains(.masonry) {
             level = .illustrative
-            summary += " Masonry and glass breaking up has no comparison."
+            summary +=
+                " Masonry breaks into too few pieces: brick walls fall at full length in the open and are thrown "
+                + "half as far as measured in a shock tube. Glass breaking up has no comparison."
         }
         return result(
             .structuralDamage, level, summary, evidence: evidence,
@@ -1831,8 +1840,8 @@ struct StandingScene {
         ]
         if !structures.isEmpty {
             effects.append(
-                "Collapse has never been compared with anything, and debris only once, off slabs under contact "
-                    + "charges.")
+                "Collapse has never been compared with anything, and debris only off slabs under contact "
+                    + "charges and brick walls under blasts, neither well.")
             if structures.count > 1 { effects.append("Contact between independent structures.") }
         }
         if inputs.thermal == nil {

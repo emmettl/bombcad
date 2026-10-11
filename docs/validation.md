@@ -76,7 +76,7 @@ swift run -c release blastbench perimeter --study wall
 | Cloud               | Church's tops of 22 TNT clouds of 54 to 1,270 kg: within 4% on average for the first two minutes (a geometric spread of 21% shot by shot), falling behind later; with afterburning, whose burning time was fitted to the open blast, and an entrainment coefficient whose plausible range moves the tops by −9% to +13% | Either way, within 4% on average (21% shot by shot): illustrative; see [the fireball's rise](fireball-rise.md#against-churchs-measured-clouds) |
 | Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; laminar rise times within 1–3% at 48 cells across the radius, the turbulent flame's 4–8% ahead; K_G 35, 41 and 51 on 12, 24 and 48 cells against 76, rising but not shown to converge. Vented rooms: a thirtieth to a sixtieth of Molkov's correlation. FM Global's six tests (digitised): lit at the back wall, 55–60% of the measured peaks, the flame speeds half the measured over the first 2 m and within a fifth beyond 3 m; lit in the middle, a sixth to a seventh, the flame stalling towards the back wall | Vented peaks read low, the unsafe side (a sixth to 60% of measured): illustrative; verified for a laminar flame in a closed vessel |
 | Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 11% to 14 mrad of rotation (against the larger of its two directions), 6–17% low beyond; settlement 1.7–2.3 times that measured. The same footing shaken (FoRDy, eight events on three structures): settlement 0.6–1.5 times, the surface footing's peak rotation within 22% where the test did not lurch one way (the embedded footing's first event a third), a sixth to a half of the energy dissipated. Both on sand of 80 MPa, an estimate, twice the default's | Rocking moment either way to 14 mrad and 6–17% low beyond (moderate); settlement too much, 1.7–2.3 times (moderate); energy too little, a sixth to a half (low), as for a footing that lurches; on a sand twice the default's |
-| Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.2–1.9 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own; collapse nothing | Unsafe side for debris: held back rather than thrown, and slabs never holed (low); collapse never compared |
+| Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.2–1.9 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own. [Brick walls](#brick-walls-debris) (Keys, 2016): loads within 15%, but the walls break into too few pieces, falling at full length in the open (means of −2 to +2 m against +0.2 to +0.6 m) and thrown half as far as measured in a shock tube; collapse nothing | Unsafe side for debris: held back rather than thrown, slabs never holed, brick walls thrown short (low); collapse never compared |
 | Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 1–2%, structural responses 4–20%, residual deflections and failure 17–28%; the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
 
 Read with the table:
@@ -1860,6 +1860,118 @@ joints running away within 30 ms (`blastbench perimeter --study wall --wall maso
 25`), bars smeared through elements that hold a joint being the difference from the stable runs;
 nodes of broken blockwork leaving at 10³ m/s; cracks smeared over a whole face where the tests
 showed a few; and a footing that cannot be held by a slab cast against it.
+
+## Brick walls' debris
+
+Where a brick wall's debris lands: single-leaf brick walls broken by a blast, every brick
+numbered and the debris weighed where it lay. The model's first comparison of debris on the
+ground, and of masonry breaking up. `blastbench keys` runs them (`MasonryDebrisTest.swift`).
+
+### The tests
+
+R. A. Keys, *Experimental & computational structural analysis of masonry panels subject to long
+duration blast loading*, PhD thesis, University of Southampton, 2016 (eprint 413951), and R. Keys
+and S. K. Clubley, *Engineering Structures* 130 (2017) 229–241. The trials were at MoD
+Shoeburyness, and their data remain the Ministry of Defence's; the debris here is read off the
+thesis's and the paper's published figures (`Fixtures/Keys2016`, where the reading and its checks
+are described), and the logged data have been asked for (see [Data requests](data-requests.md)).
+
+| Property | Value |
+|----------|-------|
+| Walls ("A panels") | Solid frogged London brick in running bond, one brick (102.5 mm) thick, 1 m long, 2 m (26 courses) high, class (ii) mortar of 8–10 MPa; BWL3B two panels side by side; stood free on the ground, the tunnel's mortared to its floor |
+| Windrush Arena (WR1A, WR1B, WR2C) | 41 kg TNT on the ground, the walls side-on to it at 10.6, 13 and 15 m: 115, 73 and 53 kPa, 263, 241 and 234 kPa ms recorded beside them, positive phases of 10–12 ms |
+| Air Blast Tunnel (BWL2C, BWL3B) | A shock tube; in its 10.2 m section 60 and 57 kPa for 179 and 152 ms, 3,952 and 3,362 kPa ms, dynamic pressure 24 kPa |
+| Measured | Debris mass in 0.5 m bins along the radial or the tunnel; cracks from high-speed film (WR1A: along bed joints at 0.5 m within 5 ms and at mid-height by 20 ms, three pieces by 100 ms; BWL2C: at 0.5 and 1.5 m by 50 ms) |
+
+Not compared: WR1C (rebuilt in weaker mortar a week before, repeated as WR2C); MW1 (unmortared)
+and MW2, BWL1A, in the tunnel's 4.9 m section, thrown 20–50 m (a tunnel of over 50 m to model);
+the corner panels. Camera lights about 7 m behind BWL2C and BWL3B, and columns 30 m behind
+BWL1A, piled debris against them; the authors expect BWL2C's spread over 6–12 m without them.
+
+### The model
+
+The wall is the model's own brickwork (`StructureMaterial.masonry`, its bricks and mortar joints
+meshed on 37.5 mm elements: two to a course, six to a brick), three elements (112.5 mm) thick,
+its density cut to keep the wall's 390 kg; on a mortar bed of its joints' own bond, cohesion and
+friction (how the Windrush walls were based is not described). Nothing is fitted. The debris's
+mass is binned by where each node of the mesh lies at the end (3 s, or 2 s in the tunnel),
+broken off or not. Three things had to be put right first, each found by these walls:
+
+- **The air must reach well beyond the wall.** With 1.5 m of air behind the charge, 3.5 m either
+  side and 5 m above, the air drained out through its open faces and stayed 15–20 kPa below
+  ambient for as long as it was run, a few kPa lower before the wall than behind it, which
+  pushed the wall over towards the charge (1,300 N s, 3.4 m/s for the wall). The air here
+  reaches 6 m beyond the charge, the wall and either side, and 8 m up; it still settles about
+  5 kPa below ambient, the same on both faces. The tunnel's floor, roof and sides reflect.
+- **Debris on the ground must stop.** With the ground's default friction, a decay of the
+  sliding speed at 8/s while a node is pressed into the ground, the toppled walls crept on at
+  0.3–0.7 m/s for seconds: debris lying on the ground rings, and its lowest nodes are pressed in
+  only now and then. These walls are run with Coulomb friction, μ = 0.6
+  (`StructureSolver.groundFrictionCoefficient`, an option; see
+  [On the ground](structural-model.md#on-the-ground)).
+- **The tunnel's air must load the debris all the way down it.** Debris was loaded only within
+  4 m of the structure's starting bounds; `SolverConfiguration.debrisReach` now sets it, here
+  to the whole tunnel. The tunnel is a box 8 m wide and 6 m high, the measured wave driven in at
+  its inlet (its Friedlander curve fitted to the measured peak, positive phase and impulse, the
+  gas behind the shock by Rankine–Hugoniot, a simple wave behind that), 14 m of tunnel behind
+  the wall, air in 100 mm cells. The driver is the close-in breach session's draft.
+
+### Results
+
+The blast beside the walls, model / measured: 97.5 / 115 kPa and 278 / 263 kPa ms at 10.6 m,
+64.5 / 73 and 237 / 241 at 13 m, 49.1 / 53 and 222 / 234 at 15 m; in the tunnel, an impulse of
+4,171 / 3,952 and 3,702 / 3,362 kPa ms at the inlet and a face peak of 149 / 131 and 141 /
+124 kPa (the inlet gauges' peaks, 80 and 99 kPa against 60 and 57, catch the wall's reflection).
+
+The debris, distances along the radial or tunnel from the wall's upstream face, mass-weighted
+(the 90% figure is the bin by which nine tenths of the mass has been counted):
+
+| Wall | Mean, model / measured | 90% within | Furthest |
+|------|------------------------|------------|----------|
+| WR1A, 10.6 m | 1.90 / 0.23 m | 5.25 / 1.25 m | 7.5 / 3.0 m |
+| WR1B, 13 m | −1.95 / 0.64 m | −0.25 / 2.25 m | 0.5 / 6.0 m |
+| WR2C, 15 m | −1.41 / 0.42 m | 0.75 / 1.75 m | 1.0 / 3.5 m |
+| BWL2C, tunnel | 3.99 / 6.34 m | 7.25 / 8.25 m | 10 / 13 m |
+| BWL3B, tunnel | 3.19 / 5.99 m | 6.75 / 9.75 m | 15 / 15 m |
+
+**In the open the walls break the wrong way.** WR1A cracked along bed joints at 0.5 m and
+mid-height within 20 ms and folded into three pieces about the base and the upper crack, landing
+mostly within a metre of where it stood. The model's walls ride out the 10 ms blast leaning by
+centimetres, their foot cracked, and topple as one piece over 1.5 s: WR1A away from the charge,
+WR1B and WR2C towards it, so that the whole wall lies at full length on one side. On a stronger
+base (a concrete construction joint, or clamped) WR1A cracks one bed joint low down within
+100 ms and the rest topples downstream in one piece: a mean of 1.0–1.3 m and 90% within
+2.75–3.25 m, nearer; WR1B on that base still falls towards the charge (−1.76 m), and WR2C is
+not broken at all, standing still by 0.7 s where the test's wall broke. The breakage, not the
+blast, sets these distances, and the model makes too few cracks: one joint opens and the wall
+turns about it as a body, or none does.
+
+**In the tunnel the walls are thrown 50–60% as far.** BWL2C is pushed downstream at about
+4.5 m/s, opens bed joints at 0.62–0.69 m by 50 ms (measured 0.5 and 1.5 m), falls flat by 0.6 s
+and spreads from 1 to 9 m, where the measured debris lay mostly from 4.5 to 8 m (and would have
+gone further but for the lights). BWL3B, twice as wide, likewise. The loads match within 6–14%,
+so the shortfall is in what the debris feels in flight or how it breaks: the model's debris is
+mostly large intact pieces loaded on their faces, and loose nodes pushed as cubes, while 80% of
+the measured bricks stayed whole in pieces the wind carried on.
+
+### What this does and does not show
+
+It shows the loads are right beside these walls and in the tunnel (peaks within 15%, impulses
+within 10%), and that the model's masonry breaks into too few pieces: one or two joints open
+and the wall moves as a body, so in the open it falls at full length one way or the other, and
+in the tunnel it is thrown about half as far. Three faults in general use came to light and
+have options or fixes: open faces near a structure drain the air (keep them several metres
+away), debris did not come to rest on the ground (Coulomb friction, an option), and debris was
+loaded only within 4 m of where its structure stood (`debrisReach`). Two faults remain: a node
+of BWL3B's debris was flung at 1.1 km/s from 0.6 s (as broken blockwork's nodes are, under
+[perimeter walls](#perimeter-walls-under-field-blasts)), and the toppled walls ring on the
+ground with 100–200 J that nothing damps. Single tests of each wall; which way the open-air
+walls fall is decided by centimetres of lean, so a small change of input may turn it.
+
+For later: why the model's brickwork opens one joint where the walls opened two or three (the
+joints' bond, 0.25 MPa from Lourenço and Rots, against mortar a few days old; the base's
+strength; the element size); the tunnel walls of the 4.9 m section, thrown 20–50 m; the drag
+on broken pieces in flight.
 
 ## Blast loads against empirical references
 
