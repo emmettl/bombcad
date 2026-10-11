@@ -138,7 +138,7 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
             }
         }
         let wall = standing(ScenarioPreset.blastWall.scenario)
-        #expect(wall[.structuralResponse]?.level == .measured)
+        #expect(wall[.structuralResponse]?.level == .compared)
         #expect(wall[.structuralDamage]?.level == .approximation)
         #expect(wall.unsupported.contains { $0.contains("Collapse has never been compared") })
         #expect(standing(ScenarioPreset.openGround.scenario)[.structuralResponse] == nil)
@@ -151,7 +151,7 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
                 $0.configuration.afterburning = true
                 $0.configuration.airModel = .thermallyPerfect
             }[.impulse])
-        #expect(plain.level == .measured && burning.level == .measured)
+        #expect(plain.level == .compared && burning.level == .compared)
         #expect(plain.summary.contains("13–22% low"))
         #expect(burning.summary.contains("94–99%") && burning.summary.contains("fitted"))
         #expect(burning.options == ["Afterburning", "Hot air"])
@@ -192,18 +192,18 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
         let pressed = standing(scenario)
         #expect(pressed[.structuralResponse]?.level == .approximation)
         #expect(pressed[.structuralResponse]?.options == ["Pressed interlock"])
-        #expect(pressed[.impulse]?.level == .measured)
+        #expect(pressed[.impulse]?.level == .compared)
 
         scenario = ScenarioPreset.blastWall.scenario
         scenario.structure?.elementKind = .shell
-        #expect(standing(scenario)[.structuralResponse]?.level == .measured)
+        #expect(standing(scenario)[.structuralResponse]?.level == .compared)
 
         scenario = ScenarioPreset.openGround.scenario
         let flat = standing(scenario)
         scenario.terrain = Terrain.hill(
             domain: scenario.domainSize, spacing: 1, centre: SIMD2(20, 32), height: 4, radius: 6)
         let hilly = standing(scenario)
-        #expect(flat[.impulse]?.level == .measured && hilly[.impulse]?.level == .approximation)
+        #expect(flat[.impulse]?.level == .compared && hilly[.impulse]?.level == .approximation)
         #expect(hilly[.impulse]?.evidence.contains { $0.document.hasPrefix("terrain.md") } == true)
         scenario.terrain = Terrain.flat(domain: scenario.domainSize, spacing: 1)
         #expect(standing(scenario) == flat)
@@ -237,7 +237,40 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
         let coarse = standing(cellSize: 2)
         #expect(
             plain.differences(from: coarse).contains {
-                $0.contains("measured agreement against approximation")
+                $0.contains("compared with measurement against approximation")
             })
+    }
+
+    @Test func levelsRecordedAsMeasuredStillRead() throws {
+        // Standings recorded before 11 October 2026 call the top level "measured".
+        let old = try JSONDecoder().decode(
+            [EvidenceLevel].self, from: Data(#"["measured", "verified"]"#.utf8))
+        #expect(old == [.compared, .verified])
+        #expect(
+            String(decoding: try JSONEncoder().encode(EvidenceLevel.compared), as: UTF8.self)
+                == #""compared""#)
+        #expect(throws: DecodingError.self) {
+            try JSONDecoder().decode(EvidenceLevel.self, from: Data(#""agreed""#.utf8))
+        }
+    }
+
+    /// The levels' names as the code gives them are the docs': the standing page lists each, and
+    /// no document but the review that asked for the change still says "measured agreement".
+    @Test func theDocsNameTheLevelsAsTheCodeDoes() throws {
+        let root = docs.deletingLastPathComponent()
+        let standingPage = try String(contentsOf: docs.appending(path: "standing.md"), encoding: .utf8)
+        for level in EvidenceLevel.allCases {
+            #expect(standingPage.contains("| \(level.title) |"), "standing.md does not list \(level.title)")
+        }
+        let pages = try FileManager.default.contentsOfDirectory(atPath: docs.path)
+            .filter { $0.hasSuffix(".md") && $0 != "validation-review.md" }.map { docs.appending(path: $0) }
+        for page in pages + [
+            root.appending(path: "README.md"), root.appending(path: "Sources/BombCAD/StandingViews.swift"),
+        ] {
+            let text = try String(contentsOf: page, encoding: .utf8).lowercased()
+            #expect(
+                !text.contains("measured agreement"),
+                "\(page.lastPathComponent) still says measured agreement")
+        }
     }
 }

@@ -68,6 +68,7 @@ import simd
 //   blastbench terrain --study wedge|shield|hill ...   (the terrain's checks; see TerrainBench.swift)
 //   blastbench landscape [--mass 500000] [--dx 8] ...   (large surface bursts; see LandscapeBench.swift)
 //   blastbench advise --calibrate [--time]   (the cost-against-fidelity advisor; see AdvisorBench.swift)
+//   blastbench hrynyk [--slabs TH2,TH6,TH7] [--layers 16] [--impacts 4] [--ensemble 16]   (blind test 1; see HrynykBench.swift)
 //   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80] [--terrain flat]   (hashes of short runs, to compare builds)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
@@ -4236,6 +4237,7 @@ do {
     case "terrain": try runTerrain(device: device)
     case "landscape": try runLandscape(device: device)
     case "advise": try runAdvise(device: device)
+    case "hrynyk": try runHrynyk(device: device)
     case "deflagration": try runDeflagration()
     case "perimeter": try runPerimeter(device: device)
     default:
