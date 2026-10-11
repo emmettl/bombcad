@@ -718,6 +718,54 @@ Ten values in the code were written from memory and should be checked against th
     CC BY-NC-ND 4.0.
 - **Not searched** (allowance spent): Cooper, Fairweather and Tite (1986); Kasmani.
 
+## 3g. The reference curves' own scatter
+
+- **Needed:** the scatter of the tests behind Kingery–Bulmash, UFC 3-340-02's gas pressure and
+  Kinney–Graham, so that agreement with them can be weighed (the independent review's finding
+  11, [validation-review](validation-review.md)).
+- **Found, 11 October 2026** (written into [Validation](validation.md#kingerybulmash-the-design-practice-standard)
+  beside each comparison):
+  - Kingery–Bulmash, hemispherical: two-thirds of the 1966 data within ±1.8% of the arrival
+    time, ±6.4% of the peak overpressure, ±6.7% of the impulse and ±9.6% of the duration; four
+    TNT shots of 5 to 500 tons; the 1984 reflected curves calculated, not measured. From M. M.
+    Swisdak, *Simplified Kingery airblast calculations*, 26th DoD Explosives Safety Seminar
+    (1994), Charts 2 and 3, the copy supplied by hand.
+  - Modern repeats, reflected, far field: S. E. Rigby, A. Tyas, S. D. Fay, S. D. Clarke and
+    J. A. Warren, "Validation of semi-empirical blast pressure predictions for far field
+    explosions – is there inherent variability in blast wave parameters?", 6th International
+    Conference on Protection of Structures against Hazards (2014),
+    [White Rose 81237](https://eprints.whiterose.ac.uk/81237/), 0.7 MB; and D. G. Farrimond,
+    S. Woolford, A. Tyas, S. E. Rigby, S. D. Clarke, A. Barr, M. Whittaker and D. J. Pope,
+    "Far-field positive phase blast parameter characterisation of RDX and PETN based
+    explosives", *International Journal of Protective Structures* 15(1) (2024) 141–165,
+    doi:10.1177/20414196221149752, CC BY 4.0,
+    [White Rose 195373](https://eprints.whiterose.ac.uk/195373), 2.9 MB.
+  - Close in: P. J. Rae and J. M. McAfee, "The blast parameters spanning the fireball from large
+    hemispherical detonations of C-4", *Propellants, Explosives, Pyrotechnics* 43(7) (2018),
+    doi:10.1002/prep.201800071, accepted manuscript on DOE PAGES (OSTI 1469550, LA-UR-18-21835),
+    0.8 MB; compared with Kinney and Graham's table.
+  - Closed rooms: C. Oswald, "An improved method to calculate the gas pressure history from
+    partially confined detonations", NDIA International Explosives Safety Symposium (2018),
+    `ndia.dtic.mil/wp-content/uploads/2018/intexpsafety/OswaldPaper.pdf`, 1.7 MB, Table 1; and
+    his two IESSE 2025 papers on DENIX (2.5 and 1.8 MB), on the DDESB's vented-room tests.
+- **Still wanted** (needs the user to obtain; DTIC or paywalled):
+  - C. N. Kingery, *Air blast parameters versus scaled distance for hemispherical TNT surface
+    bursts*, BRL Report 1344 (1966), DTIC AD0811673: the data themselves, to see how the
+    scatter varies with distance rather than pooled.
+  - C. N. Kingery and G. Bulmash, ARBRL-TR-02555 (1984): the spherical air-burst curves'
+    sources and scatter, which Swisdak does not cover.
+  - D. Bogosian, J. Ferritto and Y. Shi, "Measuring uncertainty and conservatism in simplified
+    blast models", 30th DoD Explosives Safety Seminar (2002), DTIC ADA526954; and M. Netherton
+    and M. G. Stewart, "Blast load variability and accuracy of blast load prediction models",
+    *International Journal of Protective Structures* 1(4) (2010) 543–570: model error of
+    ConWep against many tests, as a mean and coefficient of variation.
+  - C. Oswald, "Comparison of measured and calculated gas pressure histories", 17th ISIEMS
+    (2017): the gas pressure database's own statistics. And the tests behind Figure 2-152:
+    W. A. Keenan and J. F. Tancreto, *Blast environment from fully and partially vented
+    explosions in cubicles*, NCEL TR-828 (1975), on DTIC; and Weibull's chamber pressures (1968).
+  - G. F. Kinney and K. J. Graham, *Explosive Shocks in Air* (1985): what their formulae were
+    fitted to. The copy used for the formulae is not on this Mac.
+
 ## 4. Set aside, for completeness
 
 - A paper on modified shock-wave parameter equations on MDPI, which returned HTTP 403. It is
@@ -742,6 +790,7 @@ their licence, as `Samples/FoRCy` does.
 | `DialPack1971` | Pattman's DREO Report 642, now compared (see [3e](#3e-fireball-radiation)) | 1.52 MB | Government of Canada |
 | `Bauwens2008` | The *Fire Safety Science* 9 paper, a text extract and its plots digitised (`digitised/`) | 1.3 MB | Free to read (IAFSS) |
 | `Alsubaei2015` | The Western University thesis | 8.4 MB | Not stated |
+| `reference-scatter` | Farrimond et al. 2024, Rigby et al. 2014, Rae and McAfee 2018, Oswald 2018 and 2025 (two), with text extracts; fetched 11 October 2026 (see [3g](#3g-the-reference-curves-own-scatter)), and now in use | 10.4 MB | CC BY 4.0 (Farrimond); free to read (the rest) |
 
 PMC's own PDFs of the two *Materials* papers sit behind a proof-of-work check and were not
 fetched; the XML and figures carry the same content.
