@@ -7,10 +7,10 @@ Flags: `(defaults)`
 | Contest slab | far field, bending | peak, 4 through | 108 mm | 114 mm | 106% |  |
 | Contest slab | far field, bending | peak, 8 through | 108 mm | 113 mm | 105% |  |
 | Contest slab | far field, bending | peak, 16 through | 108 mm | 121 mm | 112% |  |
-| Janney's beam | quasi-static, bending | moment, 12 through | 41.5 kN m | 42 kN m | 101% | fails at 53 mm (test 42 mm) |
-| Janney's beam | quasi-static, bending | moment, 24 through | 41.5 kN m | 41.2 kN m | 99% | holds |
-| OA1 | quasi-static, shear | peak, 12 through | 332 kN | 456 kN | 137% | at 10.4 mm |
-| OA1 | quasi-static, shear | peak, 24 through | 332 kN | 368 kN | 111% | at 8.8 mm |
+| Janney's beam | quasi-static, bending | moment, 12 through | 41.5 kN m | 43 kN m | 104% | fails at 40 mm (test 42 mm) |
+| Janney's beam | quasi-static, bending | moment, 24 through | 41.5 kN m | 39.4 kN m | 95% | holds |
+| OA1 | quasi-static, shear | peak, 12 through | 332 kN | 437 kN | 132% | at 9.6 mm |
+| OA1 | quasi-static, shear | peak, 24 through | 332 kN | 344 kN | 104% | at 11.8 mm |
 | Push-off tests | quasi-static, restrained crack | 1/.0/6.8 shear at 2.0 mm slip | 9.9 MPa | 0.58 MPa | 6% |  |
 | Push-off tests | quasi-static, restrained crack | 1/.0/3.6 shear at 2.0 mm slip | 7.01 MPa | 0.56 MPa | 8% |  |
 | Push-off tests | quasi-static, restrained crack | 1/.2/1.6 shear at 2.0 mm slip | 5.45 MPa | 0.55 MPa | 10% |  |

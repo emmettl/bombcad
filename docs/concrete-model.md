@@ -821,7 +821,7 @@ that charge's cube root: in contact within 0.15 m/kg^(1/3), close in within 0.75
 beyond; confined when a charge lies inside its outline or the room is closed. A run in a scene
 detects it, with the loading impulsive; a model built outside a scene is quasi-static. The user
 can set either (`regimeOverride`, `loadingOverride`), or turn the regime's defaults off
-(`regimeDefaults`). Today the regimes set two things:
+(`regimeDefaults`). Today the regimes set three things:
 
 - **Confined: interlock that grows with pressure** (`appliesPressedInterlock`). The chamber is
   the one member it moves the right way: its roof's edge rises 49 mm and is left 25 mm up,
@@ -832,6 +832,17 @@ can set either (`regimeOverride`, `loadingOverride`), or turn the regime's defau
   struck within half a millisecond. Without it, Saatci's beams as beam elements peak at 13.6–13.8 mm
   under the light drops (9.3–12.1 measured) and 41 mm under the heavy ones (35–40), but SS0b-1,
   which broke in the test, survives, and the reactions are two to three times those measured.
+
+- **Quasi-static loading: a cracked element's hourglass control softens with its cracking**
+  (`appliesHourglassFollowsCracking`; the option the hourglass session added). Pushed slowly,
+  every case is the closer for it: OA1 carries 344 kN on 24 elements (104%) and 437 kN on 12
+  (132%), against 368 and 456; Janney's beam 43.0 kN m on 12, failing at 40 mm as the test did at
+  42, and 39.4 on 24; the tie and the push-off tests are unchanged. Under a blow or a blast every
+  case is the further for it: Ando's beams 66% off on average against 16%, Saatci's heavy drops
+  up to 14% further, the contest slab 114–119%, and the chamber's roof thrown (the case matrix,
+  `--extra="--hourglass-secant"`). The static benches (`BeamBenchmark`, `ShearBeamBenchmark`,
+  `PushOffTest`, `TieBenchmark`) load their models slowly (`loadedSlowly`); a model outside any
+  scene or bench has no loading, and no loading's defaults.
 
 Bending and shear in members are not told apart yet: no option is better in one than the other
 (see the strategy's stage 2).

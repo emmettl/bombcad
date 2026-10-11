@@ -53,7 +53,8 @@ struct StructuralRegimeTests {
     @Test("Beams check their sections' shear when pushed slowly, not under a blast or a blow")
     func beamSectionShear() {
         let (model, scenario) = scene(distance: 2)
-        #expect(model.loading == .quasiStatic && model.appliesBeamSectionShear)
+        #expect(model.loading == nil && model.appliesBeamSectionShear)
+        #expect(model.loadedSlowly().appliesBeamSectionShear)
         var run = model.detectingRegime(in: scenario)
         #expect(run.loading == .impulsive && !run.appliesBeamSectionShear)
         run.loadingOverride = .quasiStatic
@@ -61,6 +62,18 @@ struct StructuralRegimeTests {
         run.loadingOverride = nil
         run.regimeDefaults = false
         #expect(run.appliesBeamSectionShear)
+    }
+
+    @Test("Loaded slowly, a cracked element's hourglass control softens with it; under a blast it does not")
+    func hourglassFollowsCracking() {
+        let (model, scenario) = scene(distance: 2)
+        #expect(!model.appliesHourglassFollowsCracking)
+        #expect(
+            model.loadedSlowly().appliesHourglassFollowsCracking && model.loadedSlowly().hourglassFromRegime)
+        #expect(!model.detectingRegime(in: scenario).appliesHourglassFollowsCracking)
+        var chosen = model.loadedSlowly()
+        chosen.regimeDefaults = false
+        #expect(!chosen.appliesHourglassFollowsCracking)
     }
 
     @Test("The user's regime is saved; the detected one is not")

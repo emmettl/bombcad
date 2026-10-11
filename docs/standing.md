@@ -37,8 +37,9 @@ The standing is worked out from the scene's actual settings each time they chang
 - **Regime.** Each structure's regime (far field, close in, in contact or confined;
   `StructuralRegime`) and its loading pick some of the concrete model's defaults (see the
   [concrete model](concrete-model.md#defaults-by-regime)): pressed interlock in a confined scene,
-  and no sectional shear check in beams under a blast or a blow. An option the regime set is a
-  default, not the user's choice (`pressedInterlockFromRegime`).
+  and no sectional shear check in beams under a blast or a blow, and, loaded slowly, hourglass
+  control that softens with cracking. An option the regime set is a default, not the user's
+  choice (`pressedInterlockFromRegime`, `hourglassFromRegime`).
 - **Afterburning.** Off, the incident impulse is 13–22% low; on, it is within 4% (6% with hot
   air), with the burning time fitted to it. Reflecting domain faces bring in the closed-room
   comparison, whose agreement depends on both options.

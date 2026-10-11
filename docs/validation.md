@@ -469,6 +469,13 @@ reported, and strain rate is off. `blastbench beam` runs it.
 | 12 elements through         | 41.0 kN m (99%)     | 57 mm     | 2.3 kN m                    | 30 of 8,640      |
 | 12, plates at half the speed | 41.7 kN m (101%)   | holds to 60 mm | 2.3 kN m               | 0 of 8,640       |
 | 6 elements through          | 48.5 kN m (117%)    | 45 mm     | 5.2 kN m                    | 18 of 1,080      |
+| Quasi-static regime's defaults (11 October 2026): 24 through | 39.4 kN m (95%) | holds to 60 mm | | |
+| 12 through                   | 43.0 kN m (104%)    | 40 mm     |                             |                  |
+
+The last two rows are the bench as it runs now: pushed slowly, a cracked element's hourglass
+control softens with its cracking by the quasi-static regime's defaults (see the
+[concrete model](concrete-model.md#defaults-by-regime)); the rows above are without it, as in any
+blast scene.
 
 "Fails at" is where the moment first falls below 85% of its peak; the RMS is taken every
 millimetre up to 42 mm. (On 12 elements the reaction spikes to 48 kN m for an instant at 41 mm,
@@ -562,6 +569,12 @@ and cracks the same way, for fine meshes.
 | 24 elements through           | 368 kN (111%)   | 8.8 mm  | Falls to 39 kN by 10 mm              |
 | 36 elements through           | 383 kN (115%)   | 8.5 mm  | Falls                                |
 | 92 mm slice, 24 / 36 through  | 383 / 354 kN    | 8.9 / 8.2 mm |                                 |
+| Quasi-static regime's defaults (11 October 2026): 12 / 24 through | 437 / 344 kN (132% / 104%) | 9.6 / 11.8 mm | |
+
+The last row is the bench as it runs now: pushed slowly, a cracked element's hourglass control
+softens with its cracking by the quasi-static regime's defaults (see the
+[concrete model](concrete-model.md#defaults-by-regime)); the rows above are without it, as in
+any blast scene, whose shear strength they bound.
 
 Load against mid-span deflection, in kN:
 

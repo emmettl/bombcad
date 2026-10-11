@@ -204,7 +204,7 @@ public enum PushOffTest {
         var model = StructureModel(
             solids: [cube], material: material(for: specimen), elementSize: size, fixedBase: false)
         adjust(&model)
-        let solver = try StructureSolver(device: device, model: model)
+        let solver = try StructureSolver(device: device, model: model.loadedSlowly())
         solver.gravity = 0
         solver.groundContact = false
 

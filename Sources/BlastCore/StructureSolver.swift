@@ -225,7 +225,7 @@ public final class StructureSolver {
         constants.setConstantValue(&single, type: .bool, index: 0)
         var traced = false
         constants.setConstantValue(&traced, type: .bool, index: 3)
-        var secant = model.hourglassFollowsCracking
+        var secant = model.appliesHourglassFollowsCracking
         var withoutSteel = !model.hourglassCapsSteel
         constants.setConstantValue(&secant, type: .bool, index: 8)
         constants.setConstantValue(&withoutSteel, type: .bool, index: 9)

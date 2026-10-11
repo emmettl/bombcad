@@ -144,7 +144,8 @@ Proposed instead:
 - `EvidentialStanding` reports which regime each result was judged in.
 
 Two candidates today: the beams' sectional shear check (static only), and pressed interlock
-(statically restrained cracks only). Both are now done (see the
+(statically restrained cracks only). A third came since: hourglass control that softens with
+cracking, quasi-static only. All three are now done (see the
 [concrete model](concrete-model.md#defaults-by-regime)): `StructuralRegime` uses the standing's
 own placement by scaled distance and enclosure, with the loading static or impulsive. Bending and
 shear in members are not told apart yet, since no option differs between them.

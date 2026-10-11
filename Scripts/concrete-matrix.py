@@ -8,6 +8,7 @@ tables (`--compare old.json`) to see what a change moved.
 
     Scripts/concrete-matrix.py [--quick] [--cases slab,oa1] [--extra="--bond splitting"]
                                [--label slip] [--out DIR] [--blastbench PATH] [--compare OLD.json]
+                               [--update OLD.json]   (rerun some cases and keep the rest)
 
 Writes DIR/matrix.md, DIR/matrix.json and each command's raw output. DIR defaults to
 /Volumes/StudioData/bombcad/concrete-matrix/LABEL when that volume is mounted. The full matrix
@@ -194,6 +195,8 @@ def main():
     parser.add_argument("--out")
     parser.add_argument("--blastbench", default=str(ROOT / ".build/release/blastbench"))
     parser.add_argument("--compare", help="an earlier matrix.json to set beside this one")
+    parser.add_argument(
+        "--update", help="an earlier matrix.json whose cases this run replaces, the rest kept, written as one table")
     args = parser.parse_args()
 
     studio = Path("/Volumes/StudioData")
@@ -225,6 +228,14 @@ def main():
             "rows": [{"label": l, "measured": m, "model": v, "unit": u, "note": n} for l, m, v, u, n in rows],
         })
         print(f"{title}: {len(rows)} rows in {round(time.time() - start)} s", flush=True)
+
+    if args.update:
+        earlier = json.loads(Path(args.update).read_text())
+        fresh = {case["key"]: case for case in report["cases"]}
+        order = [key for key, *_ in CASES]
+        merged = {case["key"]: case for case in earlier["cases"]}
+        merged.update(fresh)
+        report["cases"] = [merged[key] for key in order if key in merged]
 
     lines = [f"# Concrete case matrix: {args.label}", "",
              f"Flags: `{args.extra or '(defaults)'}`" + (", quick" if args.quick else ""), "",

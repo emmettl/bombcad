@@ -39,20 +39,20 @@
    "title": "Janney's beam",
    "regime": "quasi-static, bending",
    "command": "beam --layers 12,24",
-   "seconds": 543,
+   "seconds": 175,
    "exit": 0,
    "rows": [
     {
      "label": "moment, 12 through",
      "measured": 41.5,
-     "model": 42.0,
+     "model": 43.0,
      "unit": "kN m",
-     "note": "fails at 53 mm (test 42 mm)"
+     "note": "fails at 40 mm (test 42 mm)"
     },
     {
      "label": "moment, 24 through",
      "measured": 41.5,
-     "model": 41.2,
+     "model": 39.4,
      "unit": "kN m",
      "note": "holds"
     }
@@ -63,22 +63,22 @@
    "title": "OA1",
    "regime": "quasi-static, shear",
    "command": "shear --layers 12,24",
-   "seconds": 172,
+   "seconds": 34,
    "exit": 0,
    "rows": [
     {
      "label": "peak, 12 through",
      "measured": 332.0,
-     "model": 456.0,
+     "model": 437.0,
      "unit": "kN",
-     "note": "at 10.4 mm"
+     "note": "at 9.6 mm"
     },
     {
      "label": "peak, 24 through",
      "measured": 332.0,
-     "model": 368.0,
+     "model": 344.0,
      "unit": "kN",
-     "note": "at 8.8 mm"
+     "note": "at 11.8 mm"
     }
    ]
   },

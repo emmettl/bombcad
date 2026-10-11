@@ -54,9 +54,9 @@ extension StructureModel {
     /// the one the scene detected.
     public var regime: StructuralRegime? { regimeOverride ?? detectedRegime }
 
-    /// The loading the defaults are chosen for: the user's or the scene's; quasi-static when
-    /// neither says, as a model built outside a scene is.
-    public var loading: StructuralLoading { loadingOverride ?? detectedLoading ?? .quasiStatic }
+    /// The loading the defaults are chosen for: the user's, or the scene's (impulsive), or the static
+    /// tests' (quasi-static); nil when nothing says, and then no loading's defaults apply.
+    public var loading: StructuralLoading? { loadingOverride ?? detectedLoading }
 
     /// Interlock that grows with pressure, as the solver applies it: set by the user, or by the
     /// confined regime's defaults, the one regime whose case (the chamber) it moves the right way.
@@ -71,6 +71,25 @@ extension StructureModel {
     /// but under a blow it failed every beam struck, so under impulsive loading the regime's
     /// defaults turn it off.
     public var appliesBeamSectionShear: Bool { !(regimeDefaults && loading == .impulsive) }
+
+    /// Whether a cracked element's hourglass control softens with its cracking, as the user set or
+    /// as the quasi-static regime's defaults have it. Pushed slowly, every case is the closer for it
+    /// (OA1 on 24 elements 104% against 111%, Janney's beam failing at 40 mm against 42), but under
+    /// a blow or a blast every case is the further (Ando's beams 66% off on average against 16%,
+    /// the chamber's roof thrown), so only quasi-static loading has it by default.
+    public var appliesHourglassFollowsCracking: Bool { hourglassFollowsCracking || hourglassFromRegime }
+
+    /// Whether the hourglass control softens with cracking only because the regime's defaults have it.
+    public var hourglassFromRegime: Bool {
+        !hourglassFollowsCracking && regimeDefaults && loading == .quasiStatic
+    }
+
+    /// This model as the static tests load it, slowly: quasi-static unless the user chose.
+    public func loadedSlowly() -> Self {
+        var model = self
+        model.detectedLoading = .quasiStatic
+        return model
+    }
 
     /// This model with the regime and loading `scenario` gives it, for a run in that scene.
     public func detectingRegime(in scenario: Scenario) -> Self {

@@ -106,7 +106,7 @@ public enum ShearBeamBenchmark {
         adjust(&model.material)
         model.pressedInterlock = pressedInterlock
         adjustModel(&model)
-        let solver = try StructureSolver(device: device, model: model)
+        let solver = try StructureSolver(device: device, model: model.loadedSlowly())
         solver.gravity = 0
         solver.groundContact = false
         solver.damping = 100
