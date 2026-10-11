@@ -27,7 +27,8 @@ any prediction is made, and the register of blind tests.
 2. **Inputs only.** The predictor reads the test's `inputs/` folder in the repository, the
    BombCAD documents (including the validation record) and its code. It does not open the
    sealed folder, the test's data anywhere else, the source's publications or their
-   abstracts, or anyone's simulation of the test. Where the inputs leave something open, it
+   abstracts, anyone's simulation of the test, or other sessions' transcripts and memory notes
+   about it (the judge's session handled the measurements). Where the inputs leave something open, it
    decides, and writes the decision and its reason down before running.
 3. **Declared before running.** Before its first run the predictor commits an
    `assumptions.md`: each assumption, the mesh (elements through the thickness) and air or
@@ -116,4 +117,4 @@ cells beneath ball-jointed supports, whose own compliance the model may not have
 
 | # | Test | Frozen commit | Predictions committed | Revealed | Result |
 |---|---|---|---|---|---|
-| 1 | Hrynyk 2013, plain slabs TH2, TH6, TH7 | see `Samples/Hrynyk2013/FROZEN` | | | |
+| 1 | Hrynyk 2013, plain slabs TH2, TH6, TH7 | `1c85774` (2026-10-11) | | | |
