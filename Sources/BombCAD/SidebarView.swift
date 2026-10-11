@@ -72,6 +72,7 @@ struct SidebarView: View {
             }
 
             domainSection
+            AdvisorSection(model: model)
 
             if let imports = model.settings.scenario.importedModels, !imports.isEmpty {
                 Section("Imported geometry") {
@@ -329,6 +330,16 @@ struct SidebarView: View {
                 .help(
                     "Refines the refined air twice over again where the shock is, so that peaks come out "
                         + "close to those of a grid four times as fine. Slower than refining once.")
+                Picker("Follow the shock", selection: $model.settings.shockThreshold) {
+                    Text("While above 20 kPa").tag(Float(0.1))
+                    Text("While above 5 kPa").tag(Float(0.02))
+                    Text("While above 1 kPa").tag(Float(0.005))
+                }
+                .padding(.leading, 20)
+                .help(
+                    "How weak a shock the refined air still follows: a jump of 10%, 2% or 0.5% of the pressure "
+                        + "across a cell. Beyond it the peaks fall to the coarse cells' share; following further "
+                        + "costs more (see Large scenes).")
             }
             LabeledSlider(
                 title: "X", value: axisBinding(\.x), range: 1...Double(model.domainSize.x - 1),

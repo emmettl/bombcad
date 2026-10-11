@@ -284,6 +284,13 @@ them on 10 October 2026 are ranked at the [top of that page](data-wanted.md#wher
    threshold, 16 m cells give 4 m cells' peaks in a quarter of the time; see [Large
    scenes](large-scenes.md); the app sets cells, domains and charges of that scale. Next: a refinement
    criterion that follows weak shocks.)
+18. **Cost against fidelity**: the cheapest settings for a target, or the best within a budget. (Started:
+   an advisor in the Run tab and `--advise`, its fidelity the standing's error bands and its cost a model
+   within a factor of two of the timed runs; see [Performance](performance.md#choosing-settings). Next:
+   costs measured on an unloaded Mac at kilometre scale, and more results weighed.)
+19. **The model's spread from uncertain inputs.** (Done: `BombCAD ensemble` reruns nine
+   validation cases over sampled strengths, bars, charges, standoffs and unclear supports, shared
+   among Macs; see [Validation](validation.md#the-models-spread-from-uncertain-inputs).)
 
 ### Freestanding objects and supports
 

@@ -65,6 +65,7 @@ import simd
 //                            gas-room preset as a layout for `BombCAD run`)
 //   blastbench terrain --study wedge|shield|hill ...   (the terrain's checks; see TerrainBench.swift)
 //   blastbench landscape [--mass 500000] [--dx 8] ...   (large surface bursts; see LandscapeBench.swift)
+//   blastbench advise --calibrate [--time]   (the cost-against-fidelity advisor; see AdvisorBench.swift)
 //   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80] [--terrain flat]   (hashes of short runs, to compare builds)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
@@ -4096,6 +4097,7 @@ do {
     case "heating": try runHeating()
     case "terrain": try runTerrain(device: device)
     case "landscape": try runLandscape(device: device)
+    case "advise": try runAdvise(device: device)
     case "deflagration": try runDeflagration()
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")

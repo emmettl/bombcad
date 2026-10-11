@@ -33,6 +33,18 @@ enum SweepWorker {
                             if jobs.current?.id == job.id { jobs.current = nil }
                         }
                     )
+                case .ensemble(let job):
+                    if let running = jobs.current {
+                        try? writer.send(.failed(job.id, "The worker is already running \(running.id)."))
+                        continue
+                    }
+                    jobs.current = (
+                        job.id,
+                        Task {
+                            await runEnsemble(job, writer: writer)
+                            if jobs.current?.id == job.id { jobs.current = nil }
+                        }
+                    )
                 case .cancel(let id):
                     if let running = jobs.current, running.id == id { running.task.cancel() }
                     jobs.sessions.removeValue(forKey: id)?.cancel()
@@ -67,6 +79,29 @@ enum SweepWorker {
             guard let task = current?.task else { return }
             task.cancel()
             await task.value
+        }
+    }
+
+    /// Runs one sample of a validation case away from the main actor, which keeps reading
+    /// messages; a cancelled one still finishes, but its result is not sent.
+    private static func runEnsemble(_ job: EnsembleJob, writer: SweepWorkerWriter) async {
+        let sample = job.sample
+        let result = await Task.detached(priority: .userInitiated) {
+            Result { try ValidationEnsemble.run(sample) }
+        }.value
+        guard !Task.isCancelled else {
+            try? writer.send(.failed(job.id, SweepWorkerMessage.cancelled))
+            return
+        }
+        switch result {
+        case .success(let outcome):
+            do {
+                try writer.send(.ensembleFinished(job.id, outcome))
+            } catch {
+                try? writer.send(
+                    .failed(job.id, "The result could not be sent: \(error.localizedDescription)"))
+            }
+        case .failure(let error): try? writer.send(.failed(job.id, error.localizedDescription))
         }
     }
 

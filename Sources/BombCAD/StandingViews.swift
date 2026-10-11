@@ -9,12 +9,13 @@ extension ProjectRunSettings {
     /// the standing both take them from here.
     static func configureAir(
         _ configuration: inout SolverConfiguration, detailedCharge: Bool, sharpShocks: Bool, shockLevels: Int,
-        gravity: Bool = false
+        gravity: Bool = false, shockThreshold: Float = 0.1
     ) {
         configuration.afterburning = detailedCharge
         configuration.airModel = detailedCharge ? .thermallyPerfect : .idealGas
         configuration.refinement = sharpShocks ? 2 : 1
         configuration.refinementLevels = sharpShocks ? shockLevels : 1
+        configuration.refinementThreshold = shockThreshold
         configuration.gravity = gravity ? AirGravity() : nil
     }
 
@@ -26,7 +27,7 @@ extension ProjectRunSettings {
         var configuration = SolverConfiguration()
         Self.configureAir(
             &configuration, detailedCharge: detailedCharge, sharpShocks: sharpShocks,
-            shockLevels: shockLevels ?? 1, gravity: gravity ?? false)
+            shockLevels: shockLevels ?? 1, gravity: gravity ?? false, shockThreshold: shockThreshold ?? 0.1)
         return StandingInputs(
             scenario: scenario, cellSize: (Resolution(rawValue: resolution) ?? .medium).cellSize,
             configuration: configuration, thermal: thermal, cloud: cloud, fragments: fragments,
