@@ -269,6 +269,9 @@ constant bool workTraced [[function_constant(3)]];
 // trusses' bond acts on the nodes. Undefined, as for every body without them, the kernels are as
 // they always were.
 constant bool discreteBarsConstant [[function_constant(10)]];
+// Failed concrete becomes particles (`StructureModel.rubbleParticles`, Rubble.metal).
+constant bool rubbleParticlesConstant [[function_constant(12)]];
+constant bool rubbleParticles = is_function_constant_defined(rubbleParticlesConstant) && rubbleParticlesConstant;
 // Cracking averaged across each crack's band (`StructureModel.crackAveraging`); undefined, as for
 // every body without it, the kernel is as it always was.
 constant bool nonlocalCrackingConstant [[function_constant(11)]];
@@ -2288,7 +2291,7 @@ kernel void contactClear(const device uint *nodeList [[buffer(0)]],
     if (!active || !contactEnabled(u, failureGate)) {
         return;
     }
-    if ((nodes[threadIndex].flags & nodeBuried) != 0) {
+    if ((nodes[threadIndex].flags & nodeBuried) != 0 || (rubbleParticles && nodes[threadIndex].mass <= 0.0f)) {
         return;
     }
     float3 position = nodePosition(threadIndex, nodeList, nodes, u);
@@ -2317,7 +2320,7 @@ kernel void contactHash(const device uint *nodeList [[buffer(0)]],
     if (!active || !contactEnabled(u, failureGate)) {
         return;
     }
-    if ((nodes[threadIndex].flags & nodeBuried) != 0) {
+    if ((nodes[threadIndex].flags & nodeBuried) != 0 || (rubbleParticles && nodes[threadIndex].mass <= 0.0f)) {
         return;
     }
     float3 position = nodePosition(threadIndex, nodeList, nodes, u);
@@ -2331,6 +2334,89 @@ kernel void contactHash(const device uint *nodeList [[buffer(0)]],
     }
 }
 
+// Rubble's particles (see Rubble.metal) and their contact with each other and with nodes.
+struct RubbleParticle {
+    packed_float3 position;  // world position (m)
+    float mass;              // kg; zero for a slot not in use
+    packed_float3 velocity;
+    float reach;     // m: how near a node's centre it comes before it touches it
+    float internal;  // J: the energy of the nodes' motion about its centre, when it was made
+    float volume;    // m³ of the material it stands for
+    uint alive;      // 1 once made
+    float spare;
+};
+
+// How near two particles come before they touch: an element apart, while they keep the reach of
+// an undeformed element's centre to its corners (sqrt(3)/2 of an element).
+static inline float rubblePairReach(float a, float b) {
+    return (a + b) * 0.57735027f;
+}
+
+// The contact force on one of two touching things (a particle or a node) at `offset` from the
+// other, moving at `relative` to it, touching within `reach`: a penalty spring on the overlap,
+// damped, with Coulomb friction regularised as a damper at low sliding speed, as nodes push each
+// other in `contactForces`. Swapping the two negates it exactly.
+static inline float3 rubbleContact(float3 offset, float reach, float3 relative, float mass,
+                                   constant StructureUniforms &u) {
+    float distance = length(offset);
+    if (distance >= reach || distance < 1e-9f) {
+        return float3(0.0f);
+    }
+    float3 normal = offset / distance;
+    float stiffness = u.contactStiffness * mass;
+    float damping = 2.0f * u.contactDamping * sqrt(stiffness * mass);
+    float approach = dot(relative, normal);
+    float push = approach > separationLimit ? 0.0f : max(stiffness * (reach - distance) - damping * approach, 0.0f);
+    float3 force = push * normal;
+    float3 sliding = relative - approach * normal;
+    float speed = length(sliding);
+    if (speed > 1e-6f) {
+        force -= min(u.contactFriction * push, damping * speed) * (sliding / speed);
+    }
+    return force;
+}
+
+// Whether `index` is among the entries a table's cell `target` keeps: one its crowded cell left
+// out is invisible to every other, and pushes none of them.
+static inline bool rubbleListed(const device uint *slots, uint target, uint index) {
+    bool listed = false;
+    for (uint slot = 0; slot < contactSlots; ++slot) {
+        listed = listed || slots[target * contactSlots + slot] == index;
+    }
+    return listed;
+}
+
+// The contact force on a node at `position` from the particles around it (`contactForces`).
+static inline float3 rubbleOnNode(float3 position, float3 velocity, float mass, const device RubbleParticle *particles,
+                                  const device uint *heads, const device uint *slots, constant StructureUniforms &u) {
+    int3 cell = contactCell(position, u);
+    float3 force = float3(0.0f);
+    for (int dz = -1; dz <= 1; ++dz) {
+        for (int dy = -1; dy <= 1; ++dy) {
+            for (int dx = -1; dx <= 1; ++dx) {
+                int3 c = cell + int3(dx, dy, dz);
+                uint target = contactBucket(c, u);
+                if (heads[target] != u.stamp) {
+                    continue;
+                }
+                for (uint slot = 0; slot < contactSlots; ++slot) {
+                    uint other = slots[target * contactSlots + slot];
+                    if (other == emptySlot) {
+                        break;
+                    }
+                    RubbleParticle p = particles[other];
+                    float3 at = float3(p.position);
+                    if (any(contactCell(at, u) != c)) {
+                        continue;
+                    }
+                    force += rubbleContact(position - at, p.reach, velocity - float3(p.velocity), min(mass, p.mass), u);
+                }
+            }
+        }
+    }
+    return force;
+}
+
 kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                           const device StructureNode *nodes [[buffer(1)]],
                           const device uint *heads [[buffer(2)]],
@@ -2339,6 +2425,9 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                           constant StructureUniforms &u [[buffer(5)]],
                           device packed_float3 *contact [[buffer(7)]],
                           const device uint *slots [[buffer(8)]],
+                          const device RubbleParticle *particles [[buffer(9)]],
+                          const device uint *rubbleHeads [[buffer(10)]],
+                          const device uint *rubbleSlots [[buffer(11)]],
                           uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -2424,6 +2513,9 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                 }
             }
         }
+    }
+    if (rubbleParticles) {
+        force += rubbleOnNode(position, float3(node.velocity), node.mass, particles, rubbleHeads, rubbleSlots, u);
     }
     float largest = node.mass * contactKick / max(dt, 1e-12f);
     float size = length(force);
@@ -2852,6 +2944,9 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         } else if (flags[own] == elementBaring) {
             flags[own] = elementBare;
         }
+    }
+    if (rubbleParticles && node.mass <= 0.0f) {
+        return;  // all its elements have become rubble
     }
     float3 force = float3(0.0f);
     uint intact = 0;

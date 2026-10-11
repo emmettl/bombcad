@@ -310,9 +310,22 @@ func workRow(_ label: String, _ width: Int, _ totals: [Double]) -> String {
         + pad(format(totals.reduce(0, +), 1), 10)
 }
 
+/// With rubble (`--rubble`): how many particles, their mass, and how fast they move.
+func printRubble(_ solver: StructureSolver) {
+    let particles = solver.rubbleParticles().map(\.particle)
+    guard !particles.isEmpty else { return }
+    let speeds = particles.map { simd_length($0.velocity) }.sorted()
+    let mass = particles.reduce(0) { $0 + $1.mass }
+    print(
+        "  rubble: \(particles.count) particles, \(format(Double(mass), 1)) kg, speed median \(format(Double(speeds[speeds.count / 2]), 1)) m/s, fastest \(format(Double(speeds.last ?? 0), 1)) m/s"
+    )
+}
+
 func applyRateOptions(_ model: inout StructureModel) {
     // `--fragments`: concrete broken into fragments is removed (`removesFragments`).
     if flag("fragments") { model.removesFragments = true }
+    // `--rubble`: failed concrete becomes particles that keep its mass (`rubbleParticles`).
+    if flag("rubble") { model.rubbleParticles = true }
     // `--no-crack-slip`: cracks spring back from sliding, as before slip was stored.
     if flag("no-crack-slip") { model.crackSlip = false }
     // `--pressed-interlock`: cracks press as they slide, and carry more shear pressed.
@@ -2038,6 +2051,7 @@ func runTwoFace() throws {
                         11)
                     + pad("\(result.summary.erodedElements)", 8) + pad(format(result.wallSeconds, 0), 6))
             try report(result, label: "wu-\(test.name)")
+            if let structure = lastStructure { printRubble(structure) }
             if let structure = lastStructure {
                 let h = structure.model.elementSize
                 let c = TwoFaceSlabTests.wuCentre
