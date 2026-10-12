@@ -251,11 +251,11 @@ public enum ValidationTables {
             id: "slabShell", low: 1.24, high: 1.24, document: "validation.md#summary",
             quote: "shells 135 mm (124%)"),
         Figure(
-            id: "beamMoment", low: 0.98, high: 1.01, document: "validation.md#summary",
-            quote: "peak moment 98–101%, failing at 53–57 mm on 12 elements"),
+            id: "beamMoment", low: 0.95, high: 1.04, document: "validation.md#summary",
+            quote: "peak moment 104% on 12 elements, failing at 40 mm against 42 mm, 95% on 24"),
         Figure(
-            id: "shearFine", low: 1.11, high: 1.15, document: "validation.md#summary",
-            quote: "11–15% strong on fine meshes"),
+            id: "shearFine", low: 1.04, high: 1.11, document: "validation.md#summary",
+            quote: "104–111% on 24 to 48 elements"),
         Figure(
             id: "shearCoarse", low: 1.37, high: 1.37, document: "validation.md#a-beam-failing-in-shear",
             quote: "| 12 elements through           | 456 kN (137%)   | 10.4 mm |"),
