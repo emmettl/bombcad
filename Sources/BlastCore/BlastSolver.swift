@@ -727,7 +727,7 @@ public final class BlastSolver {
         let cells = gaugeCellBuffer.contents().bindMemory(to: UInt32.self, capacity: Self.maxGauges)
         for n in 0..<Self.maxGauges {
             pointer[n] = .max
-            guard let refinement, n < gaugePoints.count, let point = gaugePoints[n] else { continue }
+            guard refinement != nil, n < gaugePoints.count, let point = gaugePoints[n] else { continue }
             let index = Int(cells[n])
             let cell = SIMD3(index % grid.nx, (index / grid.nx) % grid.ny, index / (grid.nx * grid.ny))
             let r = refinementLevels.reduce(1) { $0 * $1.ratio }
@@ -2603,7 +2603,7 @@ extension BlastSolver {
             if groups.count > 1 && !refinement.measureBoxRemap {
                 prepared.withUnsafeMutableBufferPointer { results in
                     let slots = results
-                    DispatchQueue.concurrentPerform(iterations: groups.count) { slots[$0] = prepare($0) }
+                    concurrently(iterations: groups.count) { slots[$0] = prepare($0) }
                 }
             } else {
                 for g in groups.indices { prepared[g] = prepare(g) }

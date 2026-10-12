@@ -326,7 +326,7 @@ private func failingWorker() -> SweepWorkerClient {
     let fromWorker = Pipe()
     let writer = SweepWorkerWriter(fromWorker.fileHandleForWriting)
     try? writer.send(.hello(SweepWorkerHello(device: "Broken GPU")))
-    Task {
+    _ = Task {
         for try await message in SweepWorkerFrame.messages(from: toWorker.fileHandleForReading) {
             if case .run(let job) = message { try? writer.send(.failed(job.id, "out of memory")) }
         }

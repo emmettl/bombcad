@@ -1,9 +1,14 @@
-.PHONY: build app run test test-core release-smoke lint format icons ifc-converter ci-test check check-light check-remote check-anywhere release-check release
+.PHONY: build build-strict app run test test-core release-smoke lint format icons ifc-converter ci-test check check-light check-remote check-anywhere release-check release
 
 CONFIGURATION ?= release
 
 build:
 	swift build
+
+# The package and its tests built, failing on any compiler warning in its own code (see
+# Scripts/build-strict.py); what the checks build with.
+build-strict:
+	python3 Scripts/build-strict.py
 
 icons:
 	swift Scripts/make-icon.swift
@@ -52,13 +57,14 @@ ci-test:
 	python3 Scripts/test-nightly.py
 	python3 Scripts/test-remote.py
 	python3 Scripts/test-nightly-suspects.py
+	python3 Scripts/test-build-strict.py
 
-check: lint test ci-test build
+check: lint build-strict test ci-test
 
 # What CI runs on each push to main, as a backstop to the full check run before pushing: about
 # ten minutes on the mini. The full check runs nightly and by hand (see
 # docs/continuous-integration.md).
-check-light: lint ci-test build test-core release-smoke
+check-light: lint ci-test build-strict test-core release-smoke
 
 # The same checks on the shared CI Mac, or on whichever of the two is quieter; TARGET picks
 # another target. See docs/continuous-integration.md.

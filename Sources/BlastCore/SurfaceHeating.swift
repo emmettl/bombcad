@@ -515,7 +515,7 @@ public struct SurfaceHeating: Sendable {
                         temperature.withUnsafeMutableBufferPointer { temperature in
                             heated.withUnsafeMutableBufferPointer { heated in
                                 peakTemperature.withUnsafeMutableBufferPointer { peak in
-                                    DispatchQueue.concurrentPerform(iterations: (count + chunk - 1) / chunk) {
+                                    concurrently(iterations: (count + chunk - 1) / chunk) {
                                         c in
                                         let work = Column.Work(nodes: nodes)
                                         for n in c * chunk..<min((c + 1) * chunk, count) {

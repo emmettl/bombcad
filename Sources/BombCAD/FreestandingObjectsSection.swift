@@ -33,7 +33,7 @@ final class FreestandingMotionState {
         errorMessage = nil
         progress = 0
         let duration = duration
-        task = Task {
+        task = Task { [self] in
             let result = await Task.detached(priority: .userInitiated) {
                 [weak self] () -> Result<FreestandingMotion, Error> in
                 guard let device = MTLCreateSystemDefaultDevice() else {
