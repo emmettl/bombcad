@@ -3401,6 +3401,36 @@ for later, not shown here: the strain rate the rate laws see is a running averag
 (`StructureSolver`'s rate filter), so its window, and the strength it gives, changes with the
 step.
 
+**A strain-rate window in time.** The lead above was then tested: the
+[option](concrete-model.md#a-strain-rate-window-in-time-an-option) that averages the strain rate
+over a fixed time instead of 50 steps, at 100 µs, between the 50-step windows of the meshes the
+defaults were chosen on (80 µs for the slab on 8 elements, 107 µs for Saatci's beams on 16, 131
+and 53 µs for Janney's on 12 and 24). The same pinned base plus the option (`fdf920e`), the same
+benches with `--rate-window 100`; outputs in `convergence/window/`:
+
+| Case | Default (from the table) | 100 µs window | Step halved on the finest |
+|---|---|---|---|
+| Contest slab, peak / left (108 / 91 mm) | 114/91, 113/76, 121/90, 124/98 on 4–32; 15,067 failed on 32 | 113/90, 113/76, 121/91, 125/91; none failed | 124/91, none failed (default: 312 mm, runs away) |
+| Janney's beam (41.5 kN m, 42 mm) | 43.0 at 40 mm, 39.4 holds, 34.2 at 11 mm, 24.3 at 7 mm | 41.7 at 44 mm, 41.5 holds, 34.4 at 11 mm, 23.8 at 7 mm | |
+| Saatci SS0a-1, SS1b-1, SS3b-1 (9.3, 39.5, 35.3 mm) | 17.0/16.5/16.3, 40.5/46.4/47.6, 33.6/35.0/37.0 | 16.8/17.4/21.1 (3,974 removed on 32), 39.3/45.3/47.6, 33.5/35.3/36.4 | |
+| Chiquito P7, left (340 mm) | 135, 130, holed (8, 12, 16) | 146, 131, holed (the same 1,085 elements failed) | |
+| The chamber, roof edge on 50 mm | 56 / 39 mm, 61,094 failed (47 mm and 43,189 with half the step) | 57 / 39 mm, 44,869 failed | |
+| The chamber on 25 mm | breaks down by 31 ms | breaks down by 30 ms | |
+
+The window takes away the slab's dependence on the step: on 32 elements it gives the same
+answer on half the step, where the default ran away, its peak now rising by 8 then 4 mm a halving
+(order 1.0, extrapolated 129 mm, 119%) and its residual settled at 91 mm, the measured value. It
+leaves the meshes that agreed nearly as they were (the slab on 8 the same; Saatci's beams on 16
+within 0.1–1.2 mm; Janney's within 1% of the measured moment on 12 and 24, against 4–5% at default), and the chamber's damage on 50 mm near the default's on
+half the step. It does not make refinement converge where a failure decides the answer: Janney
+still breaks on 36 and 48 elements, P7 is still holed on 16, the chamber still breaks down on
+25 mm, and Saatci's SS0a-1, which settled at default, now grows on 32 elements as its concrete is
+removed. Those failures come from elsewhere, the crack and removal laws that regularise over one
+element being the next suspect. **Proposed as a default** at 100 µs, for the user to decide (blind
+test 2 is still to freeze): it removes a dependence on the step that has no physical basis and
+changes the agreeing meshes by a few per cent, but it is not a cure for the mesh dependence of
+failure.
+
 **What it means.** No structural result has been shown to converge on today's defaults with
 the measurements inside the change. Where a result settles it does so above the measurement,
 and the meshes quoted elsewhere in this document as agreeing are the coarse ones: 8 for the

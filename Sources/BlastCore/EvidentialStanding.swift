@@ -618,8 +618,8 @@ public enum StandingTable {
         case .rateWindowInTime:
             return Entry(
                 title: "Strain-rate window in time", affects: structure, limit: .approximation,
-                note: "The rate laws see the strain rate averaged over a fixed time rather than 50 steps; "
-                    + "tested for convergence on the diverging cases, not adopted.",
+                note: "The rate laws see the strain rate averaged over a fixed time rather than 50 steps: at "
+                    + "100 µs the contest slab no longer depends on the step, but failures still depend on the mesh.",
                 document: "concrete-model.md#a-strain-rate-window-in-time-an-option")
         case .rubbleParticles:
             return Entry(
