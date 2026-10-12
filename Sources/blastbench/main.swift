@@ -12,7 +12,7 @@ import simd
 //   blastbench [throughput] [--preset open|single|street|courtyard|wall|box|frame|infill|storeys|tall|tower|column|
 //               protected|glass|carpark|underpass|house|blockwall|chamber|gasroom] [--full] [--dx 0.5,0.25]
 //   blastbench structure [--preset wall|box] [--contact] [--elastic]
-//   blastbench validate [--dx 0.25]
+//   blastbench validate [--dx 0.25] [--histories dir --until 0.25]
 //   blastbench beam [--layers 12,24] [--rate 0.1]
 //   blastbench shear [--layers 12,24] [--rate 0.05] [--slice 92] [--dowel 1] [--map 9]
 //               [--bond pullout|splitting|confined]   (also on beam and slab)
@@ -25,7 +25,7 @@ import simd
 //   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress] [--bond ...]
 //                      [--trace out-%.csv [--trace-until 0.001]] [--faces] [--energy] [--under] [--skirts]
 //   blastbench contact [--tests SN142,SN131] [--dx 0.02] [--refine 2] [--levels 2] [--layers 12] [--time 0.003] [--step-divisor 4] [--charge 1.64] [--progress] [--fastest] [--column] [--no-debris-drag] [--no-contact]
-//   blastbench slab [--history] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map] [--plan [0.1]]
+//   blastbench slab [--history] [--history-csv dir] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map] [--plan [0.1]]
 //                   [--stiffening [--profile [--line] [--column -44]]]   (where the tension along the span is carried)
 //   blastbench tie [--h 0.02,0.01] [--bond none|splitting] [--factor 1.25]   (a tie against the Model Code)
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
@@ -1063,7 +1063,18 @@ func runValidation() throws {
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
         configure(solver)
         try solver.load(scenario)
-        solver.advance(until: 0.1)
+        solver.advance(until: option("until").flatMap { Double($0) } ?? 0.1)
+        if let directory = option("histories") {
+            // Each gauge's whole history (`--until` past the positive phase for the negative one).
+            for (gauge, history) in zip(scenario.gauges, solver.gaugeHistories) {
+                let rows = history.map { "\($0.time * 1000),\($0.pressure - scenario.atmosphere.pressure)" }
+                let name = gauge.name.replacingOccurrences(of: " ", with: "")
+                try? (["time_ms,overpressure_pa"] + rows).joined(separator: "\n")
+                    .write(
+                        toFile: "\(directory)/validate-dx\(cellSize)-\(name).csv", atomically: true,
+                        encoding: .utf8)
+            }
+        }
         incident.append(
             zip(scenario.gauges, solver.gaugeHistories).map { gauge, history in
                 let cell = solver.nearestFluidCell(to: gauge.position)
@@ -1095,6 +1106,9 @@ func runValidation() throws {
                 "\(format(point.range(mass: mass))) m", point.arrival(mass: mass) * 1000,
                 incident.map { $0[n].arrival }))
     }
+
+    // With `--histories` the incident histories are what is wanted; the rest is skipped.
+    if option("histories") != nil { return }
 
     // 2. Reflected: the far x face of the domain becomes a rigid wall at each stand-off.
     var reflected: [[(peak: Double, impulse: Double)]] = []
@@ -3631,6 +3645,13 @@ func runSlab() throws {
             print("  " + workRow("peak \(format(Double(atPeak.deflection) * 1000, 1)) mm", 22, atPeak.totals))
             print("  at the peak, by part of the slab:")
             for (region, totals) in zip(regions, atPeak.parts) { print("  " + workRow(region.0, 22, totals)) }
+        }
+        if let directory = option("history-csv") {
+            // Every sample of the mid-span history, for scoring against a digitised record.
+            let name = "slab-\(layers)-\(rate.rawValue)-load\(option("load-scale") ?? "1").csv"
+            let rows = result.history.map { "\($0.x * 1000),\($0.y * 1000)" }
+            try? (["time_ms,displacement_mm"] + rows).joined(separator: "\n")
+                .write(toFile: directory + "/" + name, atomically: true, encoding: .utf8)
         }
         if flag("history") {
             for sample in result.history where Int((sample.x * 1000).rounded()) % 5 == 0 {
