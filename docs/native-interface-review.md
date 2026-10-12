@@ -137,11 +137,55 @@ See the [capture procedure and limits](native-interface-review.md#constrained-of
 Animated run rendering and broader
 native interaction remain separate checks; the helper is skipped during ordinary test runs.
 
+## Panels at the sidebar's width
+
+On 12 October 2026 the offscreen helper captured the panels not reviewed before, in light and dark
+appearances, each at the sidebar's 310-point width: whole (6,000 or 3,200 points tall, written also in
+overlapping parts of 900 points to read) and at a short 580 points to see clipping. A blast wall on a
+hill, with a block, a crate, a car, fragments, thermal radiation, the cloud and a soil column of ground
+points, shows every Run section with its settings; a vented methane room shows the gas and vent
+sections. The Edit tab was captured with a gauge and with a block open, and the sweep and import
+repair sheets on their own. Reproduce with
+`BOMBCAD_INTERFACE_REVIEW=/tmp/bombcad-ui-review swift test --filter InterfaceSnapshotTests.remainingPanels`.
+
+Found and fixed:
+
+- **Cell size** showed the field's own title again, wrapped in two lines, inside the row; the field's
+  title is now hidden (it remains its accessible name).
+- **Advisor**: the target was cut to "Pea…" and the per-cent field's title wrapped a letter at a time.
+  The target is a row of its own and the field's title is hidden.
+- **Fragments, tracers and ground points** showed an empty picker for a count not among its choices,
+  as a saved project can hold; the held value is now offered too (tested).
+- **Freestanding objects**: the three add buttons were all cut to "Add…"; they stack when they do
+  not fit side by side.
+- **Main material** cut "Reinforced concrete" short; the picker is labelled "Material", as in the
+  Run tab.
+- The resolution warning read "1 regions have…".
+
+Passed without change: the terrain, map buildings, vent panels, gas cloud, thermal, cloud, ground
+shock, structure and standing sections, Playback, Display and Solver; the gauge and block editors;
+the sweep sheet; and the short captures, which clip at the scroll viewport with the rest reachable.
+The repair sheet gives nearly the same advice twice, in its banner and below it; left as it is.
+Switches that are on show grey, not blue, because the hidden window is never active.
+
+Keyboard focus and tab order cannot be checked offscreen: in the test process the app is not
+active, so SwiftUI's focus system takes no Tab keystrokes and its accessibility tree stays empty, and
+making the window key would mean activating it on screen. They are listed below for a person.
+
 ## Remaining checks
 
-- Broader tab order, keyboard-only workflows and focus restoration after sheets close.
-- Scrolling and text clipping at minimum window sizes and other display scales.
-- Native light appearance and completed STL/IFC previews.
+For a person at a real screen (with Full Keyboard Access on, in System Settings ▸ Keyboard):
+
+- Tab from the sidebar's first field through Cell size, the Advisor's per-cent field, the gauge and
+  block editors' X/Y/Z fields and the freestanding objects' fields: order follows reading order and
+  every control is reached.
+- Open and close each sheet (Import, Export for Rendering, Parameter sweep, Compare runs) by
+  keyboard; focus returns to the control that opened it.
+- VoiceOver reads the fields named above by their titles, now hidden visually.
+- Resize the window to its minimum and scroll the sidebar to its end in both tabs; nothing is cut
+  that the offscreen captures did not show, and at other display scales.
+- Native light appearance and completed STL/IFC previews (the IFC panels need the converter, not
+  installed in the test process).
 - Imported-project save/reopen, multiple document windows and their independent state.
 - Interactive saved-run comparison and render-export panels.
 - Animated run rendering; the checks above cover static layout and import views only.

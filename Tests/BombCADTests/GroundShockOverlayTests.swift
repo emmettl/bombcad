@@ -232,3 +232,13 @@ struct GroundShockOverlayTests {
         await server.value
     }
 }
+
+@Suite("Pickers that offer a fixed list")
+struct PickerChoiceTests {
+    @Test("A value a project holds outside the choices is offered too, so that the picker shows it")
+    func held() {
+        #expect(pickerChoices([8, 16, 32], holding: 16) == [8, 16, 32])
+        #expect(pickerChoices([8, 16, 32], holding: 12) == [8, 12, 16, 32])
+        #expect(pickerChoices([200, 500], holding: 0) == [0, 200, 500])
+    }
+}

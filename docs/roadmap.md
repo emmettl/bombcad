@@ -174,9 +174,10 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
 - **Done:** each result's [standing and error bands](standing.md); export for rendering as USD
   and OpenVDB, from the command line and the app ([USD export](usd-export.md)); saved runs and
   comparison ([run comparison](run-comparison.md)); an offscreen review of the panels in both
-  appearances ([review log](native-interface-review.md#review-log)); release 0.2.0.
-- **Next:** keyboard focus, scrolling at the minimum window size and the panels not yet reviewed
-  ([remaining checks](native-interface-review.md#remaining-checks)).
+  appearances ([review log](native-interface-review.md#review-log)), and of every sidebar section and
+  editor at the sidebar's width, with six layout fixes; release 0.2.0.
+- **Next:** keyboard focus, VoiceOver and the window at its minimum on a real screen, which offscreen
+  tests cannot reach ([remaining checks](native-interface-review.md#remaining-checks)).
 
 ## Things tried and set aside
 
