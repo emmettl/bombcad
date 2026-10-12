@@ -239,10 +239,11 @@ enum IFCReinforcementReader {
     /// The reinforcement the IFC gives `elements`: its reinforcing elements converted and
     /// measured, given to the elements they lie in (`IFCReinforcement.host`), and its concrete
     /// elements' reinforcement properties. Returns the elements and notes for the import's report.
-    /// Never fails the import: what cannot be read is said in the notes.
+    /// Never fails the import: what cannot be read is said in the notes. `lengthUnit` (metres)
+    /// scales the bars' shapes where the converter cannot find the IFC's units, as the import does.
     static func attach(
         _ metadata: Metadata, to elements: [ImportedMesh.BuildingElement], ifc: Data, origin: SIMD3<Double>,
-        converter: URL?
+        converter: URL?, lengthUnit: Double? = nil
     ) async -> ([ImportedMesh.BuildingElement], [String]) {
         var result = elements
         var notes: [String] = []
@@ -269,7 +270,7 @@ enum IFCReinforcementReader {
         var unmeasured = 0
         var unsized = 0
         do {
-            let shapes = try await convert(ifc, converter: converter, origin: origin)
+            let shapes = try await convert(ifc, converter: converter, origin: origin, lengthUnit: lengthUnit)
             for (id, element) in metadata.elements.sorted(by: { $0.key < $1.key }) {
                 guard let triangles = shapes[id],
                     var bar = IFCReinforcement.Bar(
@@ -321,8 +322,10 @@ enum IFCReinforcementReader {
     }
 
     /// The reinforcing elements' shapes, converted alone, by GlobalId, in the building's
-    /// coordinates (`origin` taken off, as the import does).
-    static func convert(_ ifc: Data, converter: URL?, origin: SIMD3<Double>) async throws
+    /// coordinates (`origin` taken off, as the import does; in `lengthUnit` metres where the
+    /// converter finds no units, as the import scales them then).
+    static func convert(_ ifc: Data, converter: URL?, origin: SIMD3<Double>, lengthUnit: Double? = nil)
+        async throws
         -> [String: [ImportedMesh.Triangle]]
     {
         let converter = try IFCImporter.requireConverter(converter)
@@ -333,18 +336,21 @@ enum IFCReinforcementReader {
         let input = folder.appendingPathComponent("source.ifc")
         let obj = folder.appendingPathComponent("reinforcement.obj")
         try ifc.write(to: input)
-        _ = try await IFCImporter.run(
+        let log = try await IFCImporter.run(
             converter,
             arguments: [
                 input.path, obj.path, "-y", "--use-element-guids", "--weld-vertices", "--include", "entities",
             ]
                 + classes, folder: folder)
         guard FileManager.default.fileExists(atPath: obj.path) else { return [:] }
-        return try parseOBJ(try IFCImporter.boundedData(obj), origin: origin)
+        let scale = log.contains("Unable to detect unit information") ? lengthUnit ?? 1 : 1
+        return try parseOBJ(try IFCImporter.boundedData(obj), origin: origin, scale: scale)
     }
 
-    /// Triangles by group from the converter's OBJ, less `origin`.
-    static func parseOBJ(_ data: Data, origin: SIMD3<Double>) throws -> [String: [ImportedMesh.Triangle]] {
+    /// Triangles by group from the converter's OBJ, scaled by `scale`, less `origin`.
+    static func parseOBJ(_ data: Data, origin: SIMD3<Double>, scale: Double = 1) throws -> [String:
+        [ImportedMesh.Triangle]]
+    {
         guard let text = String(data: data, encoding: .utf8) else {
             throw ImportedMesh.ImportError.invalid("Reinforcement geometry is not UTF-8.")
         }
@@ -360,7 +366,7 @@ enum IFCReinforcementReader {
                 guard vertices.count < 2_000_000 else {
                     throw ImportedMesh.ImportError.invalid("Reinforcement geometry exceeds its limits.")
                 }
-                vertices.append(SIMD3<Float>(SIMD3(x, y, z) - origin))
+                vertices.append(SIMD3<Float>(SIMD3(x, y, z) * scale - origin))
             }
             if tag == "f", let group, f.count == 4 {
                 let indices = f.dropFirst().compactMap { $0.split(separator: "/").first.flatMap { Int($0) } }

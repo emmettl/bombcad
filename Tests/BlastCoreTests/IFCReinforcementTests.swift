@@ -156,6 +156,26 @@ struct IFCReinforcementTests {
         #expect(abs((1 - faces[1].x) * half - 0.040) < 1e-3)
     }
 
+    @Test("A wall built of parts takes the bars of every part, not just its first")
+    func partsGathered() throws {
+        let all = reinforcedWall()
+        var parts: [ImportedMesh.BuildingElement] = []
+        for (n, range) in [(Float(0), Float(2)), (2, 4)].enumerated() {
+            var part = try element(
+                3 + n, "Block \(n)", "IfcBuildingElementPart",
+                Box(min: SIMD3(range.0, 0, 0), max: SIMD3(range.1, 0.2, 3)),
+                // The horizontal bars, which run through both, with the first.
+                reinforcement: .init(
+                    bars: all.bars.filter { (abs($0.axis.z) < 0.5 || $0.centre.x < 2) == (n == 0) }))
+            part.assembly = .init(id: String(format: "%022d", 1), name: "Wall", ifcClass: "IfcWall")
+            parts.append(part)
+        }
+        #expect(parts.map { $0.reinforcement?.bars.count ?? 0 } == [35, 20])
+        let structure = try IFCStructure(elements: parts, options: .init(elementSize: 0.25))
+        let wall = try #require(structure.members.first { $0.name == "Wall" })
+        #expect(wall.reinforcementSource?.contains("From the IFC: 55 bars") == true)
+    }
+
     @Test("A column's bars along it become bars at its corners and sides; its stirrups, ties")
     func columnBars() throws {
         // A 0.3 m square column 3 m high: four 20 mm bars at its corners and four 16 mm at the
