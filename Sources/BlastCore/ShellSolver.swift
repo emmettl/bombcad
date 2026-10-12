@@ -1250,7 +1250,7 @@ public final class ShellSolver {
         (uniforms.gravityX, uniforms.gravityY, uniforms.gravityZ) = (down.x, down.y, down.z)
         uniforms.damping = damping
         uniforms.groundFriction = groundContact ? 8 : -1
-        uniforms.rateFilter = 1 / (50 * criticalTimeStep)
+        uniforms.rateFilter = 1 / (model.strainRateWindow ?? 50 * criticalTimeStep)
         uniforms.contactMode = contactMode.rawValue
         uniforms.contactNx = UInt32(contactPeriod.x)
         uniforms.contactNy = UInt32(contactPeriod.y)

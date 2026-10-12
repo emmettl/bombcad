@@ -283,6 +283,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case bondSlip
     case discreteBars
     case nonlocalCracking
+    case rateWindowInTime
     case rubbleParticles
     case pressedInterlock
     case hourglassSecant
@@ -355,6 +356,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .bondSlip: return any { $0.bondSlip != nil }
         case .discreteBars: return any { !$0.allDiscreteBars.isEmpty }
         case .nonlocalCracking: return !concrete.isEmpty && any { $0.crackAveraging != nil }
+        case .rateWindowInTime: return any { $0.strainRateWindow != nil }
         case .rubbleParticles: return !concrete.isEmpty && any { $0.rubbleParticles }
         case .pressedInterlock: return any { $0.pressedInterlock }
         case .hourglassSecant: return !concrete.isEmpty && any { $0.hourglassFollowsCracking }
@@ -613,6 +615,12 @@ public enum StandingTable {
                 note:
                     "Cracks soften by their strain averaged across their band; being judged on the case matrix.",
                 document: "concrete-model.md#nonlocal-cracking")
+        case .rateWindowInTime:
+            return Entry(
+                title: "Strain-rate window in time", affects: structure, limit: .approximation,
+                note: "The rate laws see the strain rate averaged over a fixed time rather than 50 steps: at "
+                    + "100 µs the contest slab no longer depends on the step, but failures still depend on the mesh.",
+                document: "concrete-model.md#a-strain-rate-window-in-time-an-option")
         case .rubbleParticles:
             return Entry(
                 title: "Rubble particles", affects: [.structuralDamage], limit: .approximation,
@@ -890,6 +898,7 @@ public enum StandingTable {
         "StructureModel.barsAsTrusses": .option([.discreteBars]),
         "StructureModel.trussDiameter": .option([.discreteBars]),
         "StructureModel.crackAveraging": .option([.nonlocalCracking]),
+        "StructureModel.strainRateWindow": .option([.rateWindowInTime]),
         "StructureModel.rubbleParticles": .option([.rubbleParticles]),
         "StructureModel.pressedInterlock": .option([.pressedInterlock]),
         "StructureModel.hourglassFollowsCracking": .option([.hourglassSecant]),

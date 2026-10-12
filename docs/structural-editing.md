@@ -106,8 +106,8 @@ report stays under **Edit layout → Structure from IFC**.
   measured from its shape (a swept tube's diameter is 4V/S, its length S/πd, whatever its
   path), its size taken from the IFC (its own or its type's, read in the project's unit,
   millimetres or centimetres, whichever fits the shape) where it gives one. A bar goes to the
-  element the IFC nests it in, else to the concrete element holding its middle or most of it.
-  In a shell, its bars become a mat in each face, their steel per metre each way at their
+  element the IFC nests it in, else to the concrete element holding its middle or most of it;
+  an element built of parts takes the bars of all its parts. In a shell, its bars become a mat in each face, their steel per metre each way at their
   weighted depth (links through the thickness are left out). Along a beam, they become at
   most eight bars, merged at its corners and the middles of its sides, and the rest are ties.
   An element with only `Pset_ConcreteElementGeneral` takes its area or mass ratio at its

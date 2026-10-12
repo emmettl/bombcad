@@ -872,7 +872,10 @@ was not digitised. What each enables (none run yet):
 Swisdak's tables are already in use (`KingeryBulmash.swift`, its Table 3 in `ScenarioTests`);
 his Table 7 adds only the safety standards' distances.
 
-**The two to run first.**
+**The two to run first**, both done on 12 October 2026 (see
+[the negative phase](validation.md#the-negative-phase-against-ufc-3-340-02) and
+[the slab's whole histories](validation.md#the-contests-repeat-its-lower-shot-and-its-other-entries)); each needed its
+runs repeated, since the earlier ones kept no histories.
 1. **The negative phase** (UFC Figs 2-8 and 2-16), against the existing `blastbench validate`
    gauges. It costs no new run beyond a clear enough domain, it has never been compared, and the
    Keys walls showed what an air domain wrongly below ambient does to light structures; Fig
