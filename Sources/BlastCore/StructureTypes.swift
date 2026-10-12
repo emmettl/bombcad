@@ -155,13 +155,6 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     /// so in reinforced concrete the energy is spread over this distance instead (when it is
     /// larger than an element), which keeps the response independent of the mesh.
     public var crackSpacing: Float = 0.1
-    /// Shortest length, in metres, over which crushing is taken to spread. Zero spreads it over
-    /// one element.
-    public var crushBand: Float = 0
-    /// Radius, in metres, over which crushing is averaged before it softens the concrete
-    /// (nonlocal crushing). Zero, the default, or less than half an element keeps it local;
-    /// three aggregate sizes (48 mm) is the usual choice when it is wanted.
-    public var crushLength: Float = 0
     /// Judge a bar's rupture by its plastic strain averaged over a debonded length (the crack
     /// spacing) rather than in the one element a crack runs through.
     public var bondSpreading = true
@@ -182,8 +175,6 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     /// this power: 1 scales the whole tension-softening curve with the strength, 0 keeps the
     /// static fracture energy.
     public var fractureRateExponent: Float = 0.5
-    /// With `rateDependent`, the law that raises the tensile strength with strain rate.
-    public var tensionRateLaw: TensionRateLaw = .modelCode2010
     /// A crack that has slid (see `StructureModel.crackSlip`) keeps at least this times its slip
     /// open: its faces ride up on the aggregate and cannot close (dilatancy).
     public var crackDilatancy: Float = 0.5
@@ -191,13 +182,12 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     /// UFC 3-340-02. They apply on top of `rateDependent`, so normally use one or the other.
     public var concreteRateFactor: Float = 1
     public var steelRateFactor: Float = 1
-    /// Raise strength with the local strain rate: CEB-FIP 1990 for concrete in compression,
-    /// `tensionRateLaw` in tension and `steelRateLaw` for reinforcement.
+    /// Raise strength with the local strain rate: CEB-FIP 1990 for concrete in compression, the
+    /// fib Model Code 2010 in tension, and for reinforcement the CEB's law (Bulletin 187, 1988),
+    /// which the Model Code 2010 re-adopted.
     public var rateDependent = false
     /// With `rateDependent`, raise the bars' strength too; off, they keep their static curve.
     public var steelRateDependent = true
-    /// With `rateDependent`, the law that raises the bars' strength with strain rate.
-    public var steelRateLaw: SteelRateLaw = .ceb
     /// Masonry: the units it is laid in and the joints between them (see `MasonryUnits`). The
     /// strengths above are then the wall's as a whole, used where the elements are too coarse
     /// to show the joints.
@@ -328,28 +318,6 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     /// Speed of in-plane compression waves in a thin plate, which is in plane stress.
     public var plateWaveSpeed: Float {
         (youngsModulus / (density * (1 - poissonRatio * poissonRatio))).squareRoot()
-    }
-}
-
-/// The axes concrete cracks across.
-public enum CrackAxes: String, Sendable, Hashable, Codable, CaseIterable {
-    /// The lattice's planes: an inclined crack is shared between them, each given its full
-    /// strain, while interlock on them still carries tension across it.
-    case lattice
-    /// The principal axes of the strain when the concrete first cracks, kept from then on, so
-    /// that an inclined crack opens and slides as one plane; but stress locks across it if the
-    /// principal directions turn afterwards.
-    case fixedAtFirstCrack
-    /// The principal axes, followed while a crack is still forming and fixed once it has
-    /// softened through a tenth of its softening strain.
-    case turningUntilOpen
-
-    var uniform: UInt32 {
-        switch self {
-        case .lattice: 0
-        case .fixedAtFirstCrack: 1
-        case .turningUntilOpen: 2
-        }
     }
 }
 
@@ -515,8 +483,6 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// carried shears near their supports that the method, which is static, says they cannot.
     public var shellSectionShear = false
 
-    /// The axes concrete cracks across (see `CrackAxes`).
-    public var crackAxes: CrackAxes = .turningUntilOpen
     /// Whether concrete whose crack axes are fixed opens a second crack where the tension turns
     /// more than 30 degrees away from them, instead of carrying it across the first by shear.
     public var secondCracks = true
@@ -533,29 +499,61 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// Whether shear that a crack's interlock and dowels cannot hold slides it for good, as a
     /// masonry joint slides, instead of springing back when the load comes off.
     public var crackSlip = true
-    /// With `crackSlip`, whether what a crack has slid by still counts in the strain whose
-    /// principal values open cracks, as it always has: sliding along a crack then also opens it,
-    /// and the plane across the slide. Off, the slide is the crack's alone, as a second crack's
-    /// opening is. Solid elements only.
-    public var slipWidensCracks = true
     /// Bars that slip in their concrete, by the Model Code's bond-slip law (see `BondSlip`); nil
     /// bonds them perfectly. Solid elements' bars along the lattice axes only.
     public var bondSlip: BondSlip?
-    /// Whether a crack's shear stiffness falls as it opens, by Walraven and Reinhardt's
-    /// measurements on cracks in plain concrete (1981), instead of keeping a quarter of the
-    /// concrete's whatever its width. Solid elements only.
-    public var crackShearStiffness = false
+    /// Bars given as their own trusses (`DiscreteBar`), embedded in the elements, in place of the
+    /// smeared bars' stress along them: the elements' smeared bars then stand only for dowel
+    /// action, bridging cracks and the hourglass cap. They slip by `bondSlip`, or are bonded
+    /// perfectly without it (smeared bars never slip beside them). Solid elements only; none by
+    /// default.
+    public var discreteBars: [DiscreteBar] = []
+    /// Whether the reinforcement layers' bars along the lattice axes are laid as discrete bars too
+    /// (`barsFromLayers`), of `trussDiameter`, or failing that `bondSlip`'s, or 12 mm.
+    public var barsAsTrusses = false
+    public var trussDiameter: Float?
+    /// With a length (m), cracks soften by their inelastic strain averaged over the elements
+    /// within it either side across their band, along the lattice axis nearest their normal,
+    /// their fracture energy spread over that band: nonlocal cracking, which keeps a crack from
+    /// gathering into one element. Solid elements only; nil, cracks soften element by element.
+    public var crackAveraging: Float?
+    /// Whether concrete that fails becomes particles that keep its mass (`RubbleParticle`), each
+    /// taking its element's mass, momentum and energy from the element's nodes and pushing, in
+    /// contact only, on the other particles and on what is left of the body: rubble that carries
+    /// compression but no tension, and leaves the body's nodes. Off, a failed element's mass stays
+    /// on its nodes. Solid elements only; off by default.
+    public var rubbleParticles = false
     /// Whether a crack's faces, riding up on their aggregate as it slides, press on whatever holds
     /// it from opening, and pressed, carry more shear: Walraven and Reinhardt's relations between
     /// a crack's opening, slip, shear and the stress across it (HERON 26(1A), 1981, eqs. 1a and
     /// 1b), which their push-off tests with restraint follow. Off, a crack carries the interlock
-    /// of an unpressed crack whatever presses it. Solid elements only; not saved.
+    /// of an unpressed crack whatever presses it. Solid elements only. The confined regime's
+    /// defaults turn it on as well (`appliesPressedInterlock`).
     public var pressedInterlock = false
-    /// Bars take their strain rate, for their strain-rate law, as their stretching rate averaged
-    /// over their debonded length (the window their rupture is judged over), instead of the
-    /// effective strain rate of the element they run through, which grows as the mesh is
-    /// refined where a crack localises.
-    public var barRateAlongBars = true
+    /// The regime the user chose the defaults for (`StructuralRegime`); nil to take the one the
+    /// scene detects.
+    public var regimeOverride: StructuralRegime?
+    /// The loading the user chose the defaults for; nil to take the scene's.
+    public var loadingOverride: StructuralLoading?
+    /// Whether the regime's defaults apply (see `appliesPressedInterlock` and
+    /// `appliesBeamSectionShear`); off, every option is as set. On by default.
+    public var regimeDefaults = true
+    /// The regime and loading the scene the model runs in gives it (`detectingRegime(in:)`); not
+    /// saved.
+    public internal(set) var detectedRegime: StructuralRegime?
+    public internal(set) var detectedLoading: StructuralLoading?
+    /// Whether a cracked solid element's hourglass control (the bending its one integration point
+    /// cannot feel) stiffens only as its most opened crack's secant share of the elastic, instead
+    /// of as an uncracked element whatever its cracking, up to the cap.
+    public var hourglassFollowsCracking = false
+    /// Whether the bars' strength counts in the cap on a solid element's hourglass control, as if
+    /// they were spread through its depth and so could bend it; off, only the concrete's
+    /// remaining strength does.
+    public var hourglassCapsSteel = true
+    /// Options retired since the model was saved, which it set away from what is now the only
+    /// behaviour, each with a note of what it did and what applies instead (see
+    /// docs/concrete-strategy.md); not saved.
+    public internal(set) var retiredOptions: [String] = []
 
     /// Most materials one structure can hold.
     public static let maxMaterials = 8
@@ -857,28 +855,6 @@ public struct StructureNode: Sendable {
     }
 }
 
-/// How concrete's tensile strength rises with strain rate ε̇ (1/s).
-public enum TensionRateLaw: String, Codable, Sendable, CaseIterable {
-    /// L. J. Malvar and C. A. Ross (1998): (ε̇ / 10⁻⁶)^δ to 1 per second, δ = 1 / (1 + 8 f_c / 10
-    /// MPa), then steeper as the cube root; steeper for weaker concrete.
-    case malvarRoss
-    /// fib Model Code 2010: (ε̇ / 10⁻⁶)^0.018 to 10 per second, then 0.0062 (ε̇ / 10⁻⁶)^(1/3),
-    /// the same for every strength.
-    case modelCode2010
-}
-
-public enum SteelRateLaw: String, Codable, Sendable, CaseIterable {
-    /// L. J. Malvar and J. E. Crawford (1998): (ε̇ / 10⁻⁴)^α, α = 0.074 − 0.040 f_y / 414 MPa at
-    /// yield and 0.019 − 0.009 f_y / 414 MPa at ultimate: 1.39 at yield at 1 per second for
-    /// 400 MPa bars.
-    case malvarCrawford
-    /// CEB Bulletin 187 (1988), re-adopted by the fib Model Code 2010: 1 + (6 / f_y)
-    /// ln(ε̇ / 5 × 10⁻⁵) at yield and 1 + (7 / f_u) ln(ε̇ / 5 × 10⁻⁵) at ultimate, strengths in
-    /// MPa: 1.15 at yield at 1 per second for 400 MPa bars. Within 7% of tension tests of bars
-    /// at 3 to 9 per second (docs/concrete-model.md).
-    case ceb
-}
-
 public enum ElementFlag: UInt8, Sendable {
     case empty = 0
     case active = 1
@@ -972,7 +948,6 @@ struct StructureUniforms {
     var exchangeNy: Int32 = 0
     var exchangeNz: Int32 = 0
     var fluidAirModel: UInt32 = 0
-    var orientedCracks: UInt32 = 0
     var interfaceLinks: UInt32 = 0
     var fluidRefine: UInt32 = 0
     var fluidBlocksX: UInt32 = 0
@@ -997,10 +972,8 @@ struct StructureUniforms {
     var bondS2: Float = 0
     var bondS3: Float = 0
     var bondAlpha: Float = 0
-    var crackShearStiffness: UInt32 = 0
     var bondYieldRange: Float = 0
     var bondYieldExponent: Float = 0
-    var barRateAlongBars: UInt32 = 0
     var couplingMapCount: UInt32 = 0
     var footings: UInt32 = 0
     var fluidDeepRatio: UInt32 = 0
@@ -1014,6 +987,11 @@ struct StructureUniforms {
     var gravityZ: Float = -1
     var pairs: UInt32 = 0
     var removesFragments: UInt32 = 0
+    var discreteBond: UInt32 = 0
+    var crackReach: UInt32 = 0
+    var fragmentOpening: Float = 0.5e-3
+    var fragmentStrain: Float = 0.05
+    var groundCoulomb: Float = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -1046,13 +1024,11 @@ struct MaterialParameters {
     var concreteRateTension: Float = 0
     var steelRateYield: Float = 0
     var steelRateUltimate: Float = 0
-    var steelRateLog: UInt32 = 0
     var crackBand: Float = 1
     var interlockStrength: Float = 0
     var interlockWidthScale: Float = 0
     var shearRetention: Float = 0.25
     var crackResidual: Float = 0
-    var crushRadius: UInt32 = 0
     var steelHardeningRatio: Float = 0.01
     var barReach: Float = 0
     /// Mortar joints: the bond's tensile strength over the unit's, the decay strain of its
@@ -1066,7 +1042,6 @@ struct MaterialParameters {
     var crackSofteningAlone: Float = 1
     var dowelFactor: Float = 1
     var fractureRateExponent: Float = 1
-    var tensionRateLaw: UInt32 = 0
     var crackDilatancy: Float = 0
 }
 
@@ -1127,7 +1102,9 @@ public enum ContactMode: UInt32, Sendable {
 enum ShaderLibrary {
     static func make(device: MTLDevice) throws -> MTLLibrary {
         let files = [
-            "Solver", "Refine", "Structure", "Shell", "Footing", "Extract", "Radiation", "Gravity",
+            "Solver", "Refine", "Structure", "Rubble", "Shell", "BodyContact", "Footing", "Extract",
+            "Radiation",
+            "Gravity",
             "Deflagration", "Mixing",
         ]
         let source = try files.map { name in
@@ -1217,22 +1194,18 @@ extension StructureMaterial {
         erosionOpening = try value(.erosionOpening, erosionOpening)
         steel = try container.decodeIfPresent(SteelProperties.self, forKey: .steel)
         crackSpacing = try value(.crackSpacing, crackSpacing)
-        crushBand = try value(.crushBand, crushBand)
         aggregateSize = try value(.aggregateSize, aggregateSize)
-        crushLength = try value(.crushLength, crushLength)
         bondSpreading = try value(.bondSpreading, bondSpreading)
         confinementCoefficient = try value(.confinementCoefficient, confinementCoefficient)
         crackResidual = try value(.crackResidual, crackResidual)
         dowelFactor = try value(.dowelFactor, dowelFactor)
         interlockFactor = try value(.interlockFactor, interlockFactor)
         fractureRateExponent = try value(.fractureRateExponent, fractureRateExponent)
-        tensionRateLaw = try value(.tensionRateLaw, tensionRateLaw)
         crackDilatancy = try value(.crackDilatancy, crackDilatancy)
         concreteRateFactor = try value(.concreteRateFactor, concreteRateFactor)
         steelRateFactor = try value(.steelRateFactor, steelRateFactor)
         rateDependent = try value(.rateDependent, rateDependent)
         steelRateDependent = try value(.steelRateDependent, steelRateDependent)
-        steelRateLaw = try value(.steelRateLaw, steelRateLaw)
         units = try container.decodeIfPresent(MasonryUnits.self, forKey: .units)
         // Glass saved before this property existed is still drawn as glass.
         isTransparent = try value(.isTransparent, name.localizedCaseInsensitiveContains("glass"))
@@ -1243,10 +1216,13 @@ extension StructureModel {
     private enum CodingKeys: String, CodingKey {
         case solids, openings, material, elementSize, fixedBase, baseAnchorage
         case reinforcement, inclinedBars, solidReinforcement, solidMaterial, solidSourceParts
-        case elementKind, shellLayers, supports, supportAnchorages, crackAxes, secondCracks
-        case bareBars, removesFragments, crackSlip, bondSlip, crackShearStiffness, barRateAlongBars,
+        case elementKind, shellLayers, supports, supportAnchorages, secondCracks
+        case bareBars, removesFragments, crackSlip, bondSlip,
             solidElementKind
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
+        case pressedInterlock, regimeOverride, loadingOverride, regimeDefaults
+        case hourglassFollowsCracking, hourglassCapsSteel, discreteBars, barsAsTrusses, trussDiameter
+        case crackAveraging, rubbleParticles
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -1265,14 +1241,25 @@ extension StructureModel {
         try container.encode(elementKind, forKey: .elementKind)
         try container.encode(shellLayers, forKey: .shellLayers)
         try container.encode(supports, forKey: .supports)
-        try container.encode(crackAxes, forKey: .crackAxes)
         try container.encode(secondCracks, forKey: .secondCracks)
         try container.encode(bareBars, forKey: .bareBars)
         if removesFragments { try container.encode(removesFragments, forKey: .removesFragments) }
         try container.encode(crackSlip, forKey: .crackSlip)
+        // Saved only where they differ from the standard, so files without them read as before.
+        if pressedInterlock { try container.encode(pressedInterlock, forKey: .pressedInterlock) }
+        try container.encodeIfPresent(regimeOverride, forKey: .regimeOverride)
+        try container.encodeIfPresent(loadingOverride, forKey: .loadingOverride)
+        if !regimeDefaults { try container.encode(regimeDefaults, forKey: .regimeDefaults) }
+        if hourglassFollowsCracking {
+            try container.encode(hourglassFollowsCracking, forKey: .hourglassFollowsCracking)
+        }
+        if !hourglassCapsSteel { try container.encode(hourglassCapsSteel, forKey: .hourglassCapsSteel) }
+        if !discreteBars.isEmpty { try container.encode(discreteBars, forKey: .discreteBars) }
+        if barsAsTrusses { try container.encode(barsAsTrusses, forKey: .barsAsTrusses) }
+        try container.encodeIfPresent(trussDiameter, forKey: .trussDiameter)
+        try container.encodeIfPresent(crackAveraging, forKey: .crackAveraging)
+        if rubbleParticles { try container.encode(rubbleParticles, forKey: .rubbleParticles) }
         try container.encodeIfPresent(bondSlip, forKey: .bondSlip)
-        try container.encode(crackShearStiffness, forKey: .crackShearStiffness)
-        try container.encode(barRateAlongBars, forKey: .barRateAlongBars)
         try container.encode(solidElementKind, forKey: .solidElementKind)
         try container.encodeIfPresent(shellElementSize, forKey: .shellElementSize)
         try container.encodeIfPresent(interfaceBond, forKey: .interfaceBond)
@@ -1302,19 +1289,107 @@ extension StructureModel {
         shellLayers = try container.decodeIfPresent(Int.self, forKey: .shellLayers) ?? 8
         supports = try container.decodeIfPresent([Box].self, forKey: .supports) ?? []
         supportAnchorages = try container.decodeIfPresent([Anchorage?].self, forKey: .supportAnchorages) ?? []
-        crackAxes = try container.decodeIfPresent(CrackAxes.self, forKey: .crackAxes) ?? .turningUntilOpen
         secondCracks = try container.decodeIfPresent(Bool.self, forKey: .secondCracks) ?? true
         bareBars = try container.decodeIfPresent(Bool.self, forKey: .bareBars) ?? true
         removesFragments = try container.decodeIfPresent(Bool.self, forKey: .removesFragments) ?? false
         crackSlip = try container.decodeIfPresent(Bool.self, forKey: .crackSlip) ?? true
+        pressedInterlock = try container.decodeIfPresent(Bool.self, forKey: .pressedInterlock) ?? false
+        regimeOverride = try container.decodeIfPresent(StructuralRegime.self, forKey: .regimeOverride)
+        loadingOverride = try container.decodeIfPresent(StructuralLoading.self, forKey: .loadingOverride)
+        regimeDefaults = try container.decodeIfPresent(Bool.self, forKey: .regimeDefaults) ?? true
+        hourglassFollowsCracking =
+            try container.decodeIfPresent(Bool.self, forKey: .hourglassFollowsCracking) ?? false
+        hourglassCapsSteel = try container.decodeIfPresent(Bool.self, forKey: .hourglassCapsSteel) ?? true
+        discreteBars = try container.decodeIfPresent([DiscreteBar].self, forKey: .discreteBars) ?? []
+        barsAsTrusses = try container.decodeIfPresent(Bool.self, forKey: .barsAsTrusses) ?? false
+        trussDiameter = try container.decodeIfPresent(Float.self, forKey: .trussDiameter)
+        crackAveraging = try container.decodeIfPresent(Float.self, forKey: .crackAveraging)
+        rubbleParticles = try container.decodeIfPresent(Bool.self, forKey: .rubbleParticles) ?? false
         bondSlip = try container.decodeIfPresent(BondSlip.self, forKey: .bondSlip)
-        crackShearStiffness = try container.decodeIfPresent(Bool.self, forKey: .crackShearStiffness) ?? false
-        barRateAlongBars = try container.decodeIfPresent(Bool.self, forKey: .barRateAlongBars) ?? true
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)
         interfaceBond = try container.decodeIfPresent(SIMD2<Float>.self, forKey: .interfaceBond)
         unitJoints = try container.decodeIfPresent(Bool.self, forKey: .unitJoints) ?? true
         shellSectionShear = try container.decodeIfPresent(Bool.self, forKey: .shellSectionShear) ?? false
+        retiredOptions = try Self.retiredOptions(in: decoder)
         try validateAnchorages()
+    }
+}
+
+/// Options retired after the case matrix found no case they served (docs/concrete-strategy.md,
+/// stage 0). A model saved with one set away from what is now the only behaviour reads with
+/// that behaviour, and a note of what was dropped (`StructureModel.retiredOptions`).
+private enum RetiredKey: String, CodingKey, CaseIterable {
+    // The model's.
+    case crackAxes, slipWidensCracks, crackShearStiffness, barRateAlongBars
+    // A material's.
+    case crushBand, crushLength, tensionRateLaw, steelRateLaw
+    // Where the model keeps its materials.
+    case material, solidMaterial
+}
+
+extension StructureModel {
+    /// Notes for the retired options `decoder`'s model and its materials set away from what now
+    /// applies.
+    fileprivate static func retiredOptions(in decoder: any Decoder) throws -> [String] {
+        let container = try decoder.container(keyedBy: RetiredKey.self)
+        var notes: [String] = []
+        if let axes = try container.decodeIfPresent(String.self, forKey: .crackAxes),
+            axes != "turningUntilOpen"
+        {
+            notes.append(
+                "Crack axes '\(axes)' were retired: cracks turn with the stress until they open, then stay fixed."
+            )
+        }
+        if try container.decodeIfPresent(Bool.self, forKey: .slipWidensCracks) == false {
+            notes.append(
+                "Keeping a crack's slide out of its opening was retired: what a crack slides opens it too.")
+        }
+        if try container.decodeIfPresent(Bool.self, forKey: .crackShearStiffness) == true {
+            notes.append(
+                "A crack's shear stiffness falling with its width was retired: a cracked plane keeps a quarter "
+                    + "of the concrete's.")
+        }
+        if try container.decodeIfPresent(Bool.self, forKey: .barRateAlongBars) == false {
+            notes.append(
+                "Bars taking the strain rate of the element they run through was retired: they take it along "
+                    + "their debonded length.")
+        }
+        var materials: [KeyedDecodingContainer<RetiredKey>] = []
+        if container.contains(.material) {
+            materials.append(try container.nestedContainer(keyedBy: RetiredKey.self, forKey: .material))
+        }
+        if container.contains(.solidMaterial),
+            var list = try? container.nestedUnkeyedContainer(forKey: .solidMaterial)
+        {
+            while !list.isAtEnd {
+                if try list.decodeNil() { continue }
+                materials.append(try list.nestedContainer(keyedBy: RetiredKey.self))
+            }
+        }
+        var seen = Set<String>()
+        for material in materials {
+            var found: [String] = []
+            if let band = try material.decodeIfPresent(Float.self, forKey: .crushBand), band > 0 {
+                found.append("A shortest crushing band was retired: crushing spreads over one element.")
+            }
+            if let length = try material.decodeIfPresent(Float.self, forKey: .crushLength), length > 0 {
+                found.append("Nonlocal crushing was retired: crushing is the element's own.")
+            }
+            if let law = try material.decodeIfPresent(String.self, forKey: .tensionRateLaw),
+                law != "modelCode2010"
+            {
+                found.append(
+                    "Malvar and Ross's tensile strain-rate law was retired: the fib Model Code 2010's applies."
+                )
+            }
+            if let law = try material.decodeIfPresent(String.self, forKey: .steelRateLaw), law != "ceb" {
+                found.append(
+                    "Malvar and Crawford's strain-rate law for bars was retired: the CEB's, as the Model Code 2010 "
+                        + "re-adopted it, applies.")
+            }
+            for note in found where seen.insert(note).inserted { notes.append(note) }
+        }
+        return notes
     }
 }

@@ -111,9 +111,6 @@ public enum ImpactBenchmark {
         /// holds the beam's own faces over the bearing length instead, which resists its ends'
         /// turning.
         public var supportPlates: Float?
-        /// Each bar's steel spread through the concrete about it, out to the nearest face and as
-        /// far the other way, rather than through the one row of elements at its height.
-        public var spreadBars = false
         /// An elastic pad between the weight and the plate, of this stiffness per unit area
         /// (Pa/m): the compliance of the weight's contact with a plate seated loose on the beam.
         /// It is one element thick, its modulus the stiffness times the element size. Nil strikes
@@ -187,7 +184,7 @@ public enum ImpactBenchmark {
         }
         var bands: [ReinforcementLayer] = []
         for bar in s.bars {
-            let reach = s.spreadBars ? max(min(bar.height, s.depth - bar.height), h / 2) : h / 2
+            let reach = h / 2
             var band = beam
             band.min.z = base + bar.height - reach
             band.max.z = base + bar.height + reach
@@ -233,11 +230,10 @@ public enum ImpactBenchmark {
     /// back up. Gravity is on. Runs for `duration`; the residual is the mean over its last 30 ms.
     public static func run(
         device: MTLDevice, test: Test, elementsThroughDepth: Int = 16, duration: Double = 0.2,
-        spreadBars: Bool = false, specimen change: (inout Specimen) -> Void = { _ in },
+        specimen change: (inout Specimen) -> Void = { _ in },
         adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in }
     ) throws -> Result {
         var specimen = specimen(test)
-        specimen.spreadBars = spreadBars
         change(&specimen)
         return try run(
             device: device, specimen: specimen, weight: test.weight, speed: impactSpeed,
@@ -251,7 +247,8 @@ public enum ImpactBenchmark {
         device: MTLDevice, specimen: Specimen, weight: Float, speed impact: Float,
         elementsThroughDepth: Int = 16,
         duration: Double = 0.2, bounce: Bool = true, push: Float? = nil,
-        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in }
+        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in },
+        sample: ((StructureSolver) -> Void)? = nil
     ) throws -> Result {
         let length = specimen.length
         let depth = specimen.depth
@@ -359,6 +356,7 @@ public enum ImpactBenchmark {
         var pushForce: Float = 0
         while solver.time < (push.map { Double(3 * $0 / pushRate) } ?? duration), solver.time < settled {
             solver.advance(steps: stepsPerSample)
+            sample?(solver)
             history.append(
                 SIMD2(Float(solver.time), -solver.displacement(middle, solver.ey / 2, beamBottom).z))
             if let push {
@@ -483,19 +481,23 @@ public enum ImpactBenchmark {
 
     /// The same beam meshed with beam elements of `size`, stirrups as their tie ratio, struck
     /// through the nodes under the plate; supported at the nodes over each bearing, on the
-    /// beam's axis. With the sectional shear check (`sectionShear`), the sections beside the
-    /// plate fail in the first half millisecond under every drop: see docs/validation.md.
+    /// beam's axis. The blow is impulsive loading, under whose defaults beams do not check each
+    /// section's shear; with the check (`sectionShear` true), the sections beside the plate fail
+    /// in the first half millisecond under every drop: see docs/validation.md. Nil follows the
+    /// regime.
     public static func runBeams(
-        device: MTLDevice, test: Test, size: Float = 0.1, duration: Double = 0.2, sectionShear: Bool = true
+        device: MTLDevice, test: Test, size: Float = 0.1, duration: Double = 0.2, sectionShear: Bool? = nil
     ) throws -> BeamResult {
         var model = model(test, elementsThroughDepth: 12)
         model.solids.removeLast()
         model.solidMaterial = []
         model.elementSize = size
         model.elementKind = .shell
+        model.detectedLoading = .impulsive
+        if sectionShear == true { model.regimeDefaults = false }
         let solver = try ShellSolver(device: device, model: model)
         solver.groundContact = false
-        if !sectionShear { solver.disableSectionShear() }
+        if sectionShear == false { solver.disableSectionShear() }
         let axis = solver.referencePositions[solver.nearestNode(to: SIMD3(length / 2, width / 2, 0))]
         func nodes(within half: Float, of x: Float) -> [Int] {
             let at = solver.referencePositions[solver.nearestNode(to: SIMD3(x, axis.y, axis.z))].x
@@ -628,11 +630,10 @@ public enum ImpactBenchmark {
 
     public static func run(
         device: MTLDevice, test: ShearTest, elementsThroughDepth: Int = 16, duration: Double = 0.15,
-        spreadBars: Bool = false, specimen change: (inout Specimen) -> Void = { _ in },
+        specimen change: (inout Specimen) -> Void = { _ in },
         adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in }
     ) throws -> Result {
         var specimen = specimen(test)
-        specimen.spreadBars = spreadBars
         change(&specimen)
         return try run(
             device: device, specimen: specimen, weight: 300, speed: test.speed,
@@ -742,12 +743,14 @@ public enum ImpactBenchmark {
     public static func run(
         device: MTLDevice, test: PetersonTest, elementsThroughDepth: Int = 16, duration: Double = 0.03,
         specimen change: (inout Specimen) -> Void = { _ in },
-        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in }
+        adjust: (inout StructureModel) -> Void = { _ in }, inspect: (StructureSolver) -> Void = { _ in },
+        sample: ((StructureSolver) -> Void)? = nil
     ) throws -> Result {
         var specimen = specimen(test)
         change(&specimen)
         return try run(
             device: device, specimen: specimen, weight: petersonWeight, speed: petersonSpeed,
-            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust, inspect: inspect)
+            elementsThroughDepth: elementsThroughDepth, duration: duration, adjust: adjust, inspect: inspect,
+            sample: sample)
     }
 }

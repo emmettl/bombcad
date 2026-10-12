@@ -31,6 +31,45 @@ public struct Gauge: Sendable, Hashable, Identifiable, Codable {
     public var id: String { name }
 }
 
+extension Scenario {
+    /// The scaled distances (m/kg^(1/3)) a line of gauges stands at unless told otherwise: the span
+    /// of the Kingery-Bulmash curves, from close in to where the overpressure is a few kPa.
+    public static let gaugeLineScaledDistances: [Double] = [1, 1.5, 2, 3, 4, 5, 7, 10, 14, 20, 28, 40]
+
+    /// Gauges `height` above the ground (or the terrain) on a line from the charge along the
+    /// horizontal `direction`, one at each of `scaledDistances` (m/kg^(1/3) of the charge) that
+    /// falls inside the domain, named by scaled distance and range.
+    public func gaugeLine(
+        direction: SIMD2<Float>, scaledDistances: [Double] = gaugeLineScaledDistances, height: Float = 1.5
+    ) -> [Gauge] {
+        let length = simd_length(direction)
+        guard length > 0, charge.mass > 0 else { return [] }
+        let unit = direction / length
+        let scale = Float(cbrt(Double(charge.mass)))
+        let start = SIMD2(charge.position.x, charge.position.y)
+        return scaledDistances.compactMap { z in
+            let range = Float(z) * scale
+            let p = start + range * unit
+            guard p.x >= 0, p.y >= 0, p.x <= domainSize.x, p.y <= domainSize.y else { return nil }
+            let ground = terrain?.height(at: p) ?? 0
+            guard ground + height < domainSize.z else { return nil }
+            let distance = range >= 10 ? String(format: "%.0f m", range) : String(format: "%.1f m", range)
+            return Gauge("Z \(String(format: "%g", z)) · \(distance)", at: SIMD3(p.x, p.y, ground + height))
+        }
+    }
+
+    /// The horizontal direction along a domain axis in which the charge has the most room, for a
+    /// line of gauges.
+    public var roomiestGaugeLineDirection: SIMD2<Float> {
+        let c = charge.position
+        let room: [(SIMD2<Float>, Float)] = [
+            (SIMD2(1, 0), domainSize.x - c.x), (SIMD2(-1, 0), c.x), (SIMD2(0, 1), domainSize.y - c.y),
+            (SIMD2(0, -1), c.y),
+        ]
+        return room.max { $0.1 < $1.1 }!.0
+    }
+}
+
 public struct Atmosphere: Sendable, Hashable, Codable {
     public var pressure: Float = 101_325
     public var density: Float = 1.225
@@ -91,6 +130,11 @@ public struct Scenario: Sendable, Hashable, Codable {
     /// The ground's shape, over the reflecting floor at z = 0; nil (the default) is flat ground.
     /// A scene-level property, beside the objects rather than one of them.
     public var terrain: Terrain?
+    /// Credits the scene's data asks for (OpenStreetMap's for map buildings), shown in the app and
+    /// written with its exports. Not part of the numerical input.
+    public var attributions: [String]?
+    /// Which envelopes were made from imports or map data, and how. Not part of the numerical input.
+    public var envelopeSources: [EnvelopeSource]?
     /// A premixed gas cloud ignited at a point: when set, it is the scene's source and the
     /// charges are not fired. (Optional so that layouts saved before it existed still open.)
     public var deflagration: Deflagration?
@@ -151,7 +195,8 @@ extension Scenario {
     private enum CodingKeys: String, CodingKey {
         case name, domainSize, boxes, rigidObjects, rigidCars, importNotes, importedModels, charge,
             additionalCharges, gauges, structure, atmosphere, reflectiveFaces, objectOwnership,
-            additionalStructures, buildingEnvelopes, terrain, deflagration, ventPanels
+            additionalStructures, buildingEnvelopes, terrain, deflagration, ventPanels, attributions,
+            envelopeSources
     }
 
     private struct Ownership: Codable {
@@ -188,6 +233,8 @@ extension Scenario {
         atmosphere = try c.decode(Atmosphere.self, forKey: .atmosphere)
         reflectiveFaces = try c.decode(BoundaryFaces.self, forKey: .reflectiveFaces)
         terrain = try c.decodeIfPresent(Terrain.self, forKey: .terrain)
+        attributions = try c.decodeIfPresent([String].self, forKey: .attributions)
+        envelopeSources = try c.decodeIfPresent([EnvelopeSource].self, forKey: .envelopeSources)
         deflagration = try c.decodeIfPresent(Deflagration.self, forKey: .deflagration)
         ventPanels = try c.decodeIfPresent([VentPanel].self, forKey: .ventPanels)
         let additional =
@@ -247,6 +294,10 @@ extension Scenario {
         try c.encodeIfPresent(deflagration, forKey: .deflagration)
         if let ventPanels, !ventPanels.isEmpty { try c.encode(ventPanels, forKey: .ventPanels) }
         let physicsOnly = encoder.userInfo[Self.physicsInputEncoding] as? Bool == true
+        if !physicsOnly {
+            try c.encodeIfPresent(attributions, forKey: .attributions)
+            try c.encodeIfPresent(envelopeSources, forKey: .envelopeSources)
+        }
         if !envelopeObjects.isEmpty {
             try c.encode(
                 envelopeObjects.map {
@@ -334,7 +385,13 @@ extension BlastSolver {
         terrain = scenario.terrain
         // The structure is added to the mask on the GPU, by the same rule that later tracks it.
         try scenario.validateStructuralSeparation()
-        try setStructures(scenario.structuralObjects)
+        // Each structure runs with the regime and loading the scene gives it, for its defaults.
+        try setStructures(
+            scenario.structuralObjects.map { object in
+                var object = object
+                if let model = object.structure { object.setStructure(model.detectingRegime(in: scenario)) }
+                return object
+            })
 
         try loadDeflagration(scenario)
         fill(
@@ -354,7 +411,8 @@ extension BlastSolver {
         }
         setGauges(cells: gaugeCells, points: scenario.gauges.map(\.position))
         restart()
-        if interObjectContactDetected { throw SceneObjectError.interObjectContact }
+        // Bodies must start apart: contact between them is no reason to bond them.
+        if bodyEnvelopesOverlap { throw SceneObjectError.interObjectContact }
         if couplingCapacityExceeded {
             throw BlastError.allocationFailed("local coupling tiles for the current geometry")
         }

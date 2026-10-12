@@ -15,12 +15,12 @@ import simd
 //   blastbench validate [--dx 0.25]
 //   blastbench beam [--layers 12,24] [--rate 0.1]
 //   blastbench shear [--layers 12,24] [--rate 0.05] [--slice 92] [--dowel 1] [--map 9]
-//               [--bond pullout|splitting|confined] [--crack-shear] [--slide-apart]   (also on beam and slab)
+//               [--bond pullout|splitting|confined]   (also on beam and slab)
 //               [--pressed-interlock]   (also on beam, slab, pushoff, impact, chamber and closein)
 //               [--work] [--hourglass 0.5] [--interlock 0.2] [--dowel 0] [--confinement 0]
 //               [--fracture-energy 0.5] [--tensile-strength 0.8]   (work trace on slab too; knobs everywhere)
-//   blastbench pushoff [--specimens 1/.2/.4,1/.4/.3] [--size 50] [--crack-shear] [--dilatancy 0.5] [--slide-apart] [--close]
-//   blastbench impact [--tests SS0a-1,SS0b-1] [--layers 16] [--time 0.2] [--beams 0.1] [--map] [--bond ...] [--spread]
+//   blastbench pushoff [--specimens 1/.2/.4,1/.4/.3] [--size 50] [--dilatancy 0.5] [--close]
+//   blastbench impact [--tests SS0a-1,SS0b-1] [--layers 16] [--time 0.2] [--beams 0.1] [--map] [--bond ...]
 //   blastbench closeair [--z 0.3,0.5,0.75,1] [--dx 0.02] [--mapped] [--refine 2] [--refine-levels 2]
 //   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress] [--bond ...]
 //                      [--trace out-%.csv [--trace-until 0.001]] [--faces] [--energy] [--under] [--skirts]
@@ -29,6 +29,10 @@ import simd
 //                   [--stiffening [--profile [--line] [--column -44]]]   (where the tension along the span is carried)
 //   blastbench tie [--h 0.02,0.01] [--bond none|splitting] [--factor 1.25]   (a tie against the Model Code)
 //                   [--shells 2,1 [--shell-layers 8] [--shell-rate none|designFactors|strainRate]]
+//   blastbench perimeter [--study air] [--layout half|street|canopied] [--dx 0.05] [--refine 2] [--columns 0.2] [--wing 6] [--out dir]
+//                        (Alsubaei's perimeter walls; see PerimeterBench.swift)
+//   blastbench keys [--trials WR1A,WR1B,WR2C] [--dx 0.1] [--h 0.0375] [--time 3]
+//                        (Keys's brick walls' debris under 41 kg; see KeysBench.swift)
 //   blastbench anchorage [--mass 50] [--standoff 6,10,15,25] [--time 0.5] [--h 0.0625] [--shells]
 //                        [--bases clamped,resting] [--air [--cell 0.25] [--margin 12] [--height 18] [--progress]]
 //                        [--massless] [--layer 3 [--beneath rock|sand|clay]] [--embed 1] [--elastic]   (the footing's soil)
@@ -40,8 +44,8 @@ import simd
 //   blastbench rocking [--shear 40] [--bearing 814] [--packets a,b,c,d,e] [--speed 0.2] [--history out.csv]
 //                      [--elastic | --elastic-share 0.12 --memory 0 --heave 0]   (the sand's settling; also for shaking)
 //   blastbench shaking [--tests ssg04-dsw,ssg04-shw,ssg03-dsw] [--shear 80] [--bearing 814] [--samples Samples/FoRDy]
-//                      [--history out-%.csv]   (a wall on a footing shaken at its base, against FoRDy's SSG03/SSG04)
-//   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03]
+//                      [--history out-%.csv] [--massless] [--damping 0.2]   (a wall on a footing shaken at its base, against FoRDy's SSG03/SSG04)
+//   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mass kg] [--fit-reach Z]
 //                       [--mode peak|now|impulse|fluence|irradiance]
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
 //                       [--thermal spec.json [--thermal-compare [--thermal-compare-with shape]]
@@ -64,6 +68,11 @@ import simd
 //                            a tube's and a free sphere's flame profiles; layout --out f.json writes the
 //                            gas-room preset as a layout for `BombCAD run`)
 //   blastbench terrain --study wedge|shield|hill ...   (the terrain's checks; see TerrainBench.swift)
+//   blastbench landscape [--mass 500000] [--dx 8] ...   (large surface bursts; see LandscapeBench.swift)
+//   blastbench advise --calibrate [--time]   (the cost-against-fidelity advisor; see AdvisorBench.swift)
+//   blastbench hrynyk [--slabs TH2,TH6,TH7] [--layers 16] [--impacts 4] [--ensemble 16]   (blind test 1; see HrynykBench.swift)
+//   blastbench buildings [--dx 0.5] [--duration 0.12] [--mass 50] [--out f.json]
+//                        (three buildings across a street, together and each alone; see BuildingsBench.swift)
 //   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80] [--terrain flat]   (hashes of short runs, to compare builds)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
@@ -111,10 +120,6 @@ func chosenScenario() -> Scenario {
         if let layers = option("shell-layers").flatMap({ Int($0) }) { structure.shellLayers = layers }
         scenario.structure = structure
     }
-    if option("cracks") != nil || flag("oriented"), var structure = scenario.structure {
-        structure.crackAxes = chosenCrackAxes()
-        scenario.structure = structure
-    }
     // `--no-second-crack` carries tension that turns away from fixed crack axes across them.
     if flag("no-second-crack") { scenario.structure?.secondCracks = false }
     // `--dowel 0.3` scales the bars' dowel action in every material of the structure.
@@ -135,11 +140,13 @@ func chosenScenario() -> Scenario {
     }
     // `--no-units` gives masonry its wall's strength throughout, without units and joints.
     if flag("no-units") { scenario.structure?.unitJoints = false }
-    // `--bond` lets masonry come away from concrete at the bond of mortar to concrete.
-    if flag("bond"), var structure = scenario.structure {
+    // `--bond` (or `--bond mortar`) lets masonry come away from concrete at the bond of mortar
+    // to concrete; `--bond pullout` and the like make the bars slip instead.
+    if chosenBond == .mortar, var structure = scenario.structure {
         structure.interfaceBond = StructureModel.masonryBond
         scenario.structure = structure
     }
+    if let bond = chosenBondSlip(diameter: 0.016) { scenario.structure?.bondSlip = bond }
     // `--solid-near 4` meshes the pieces within 4 m of the charge with solid elements and the
     // rest with shells.
     if let distance = option("solid-near").flatMap({ Float($0) }), let structure = scenario.structure {
@@ -147,16 +154,12 @@ func chosenScenario() -> Scenario {
     }
     // `--terrain hill|ridge|slope|flat|dem.asc` lays a terrain under the scene (TerrainBench.swift).
     if let terrain = option("terrain") { applyTerrain(terrain, to: &scenario) }
-    return scenario
-}
-
-/// `--cracks lattice` or `--cracks fixed` (or `--oriented`, the same as fixed); turning by default.
-func chosenCrackAxes() -> CrackAxes {
-    switch option("cracks") {
-    case "lattice": .lattice
-    case "fixed": .fixedAtFirstCrack
-    default: flag("oriented") ? .fixedAtFirstCrack : .turningUntilOpen
+    // `--buildings map.geojson` places map buildings on it, on `--dx`'s first cells.
+    if let buildings = option("buildings"), option("study") == nil {
+        let cell = option("dx").flatMap { $0.split(separator: ",").first.flatMap { Float($0) } } ?? 0.5
+        applyMapBuildings(buildings, to: &scenario, resolution: cell)
     }
+    return scenario
 }
 
 /// `--bond pullout`, `--bond splitting` or `--bond confined`: bars that slip in their concrete
@@ -165,14 +168,12 @@ func chosenCrackAxes() -> CrackAxes {
 func chosenBondSlip(diameter: Float) -> BondSlip? {
     let bar = option("bar").flatMap { Float($0) }.map { $0 / 1000 } ?? diameter
     // `--keep-yielded-bond`: bars hold as well after yielding as before.
-    let loss = !flag("keep-yielded-bond")
-    switch option("bond") {
-    case "pullout": return BondSlip(condition: .pullOut, barDiameter: bar, yieldedBondLoss: loss)
-    case "splitting": return BondSlip(condition: .splitting, barDiameter: bar, yieldedBondLoss: loss)
-    case "confined": return BondSlip(condition: .confinedSplitting, barDiameter: bar, yieldedBondLoss: loss)
-    default: return nil
-    }
+    return chosenBond.bondSlip(diameter: bar, yieldedBondLoss: !flag("keep-yielded-bond"))
 }
+
+/// What `--bond` asks for: bars that slip (`pullout`, `splitting`, `confined`), perfect bond
+/// (`none`), or, alone or as `--bond mortar`, the joint where masonry meets concrete.
+let chosenBond = BondArgument(present: flag("bond"), value: option("bond"))
 
 /// The air model `--air thermal` or `--air dissociating` asks for, or nil for the default.
 func chosenAirModel() -> AirModel? {
@@ -183,18 +184,31 @@ func chosenAirModel() -> AirModel? {
     }
 }
 
-/// `--tension-law mc2010` and `--fracture-rate 0.5`: the tensile strain-rate law and how the
-/// fracture energy follows it, for any command that builds concrete.
+/// `--fracture-rate 0.5`: how the fracture energy follows the tensile strain-rate law, and the
+/// like, for any command that builds concrete.
 func applyRateOptions(_ material: inout StructureMaterial) {
     if let residual = option("crack-residual").flatMap({ Float($0) }) { material.crackResidual = residual }
     if let dilatancy = option("dilatancy").flatMap({ Float($0) }) { material.crackDilatancy = dilatancy }
+    // `--steel-plateau`: the bars' measured curve held at its peak instead of falling after it
+    // (a study: the fall is the test bar's necking over its gauge length).
+    if flag("steel-plateau"), var steel = material.steel, let curve = steel.measuredCurve,
+        let peak = curve.firstIndex(where: { $0.y == curve.map(\.y).max() })
+    {
+        steel.measuredCurve = curve.enumerated().map {
+            $0.offset > peak ? SIMD2($0.element.x, curve[peak].y) : $0.element
+        }
+        material.steel = steel
+    }
     // `--static-steel`: the bars without their strain-rate law.
     if flag("static-steel") { material.steelRateDependent = false }
-    // `--steel-law ceb|malvar`: the bars' strain-rate law.
-    if option("steel-law") == "ceb" { material.steelRateLaw = .ceb }
-    if option("steel-law") == "malvar" { material.steelRateLaw = .malvarCrawford }
-    if option("tension-law") == "mc2010" { material.tensionRateLaw = .modelCode2010 }
-    if option("tension-law") == "malvar" { material.tensionRateLaw = .malvarRoss }
+    // `--steel-strength 0.944`: the bars' whole stress-strain curve scaled, to see what a source's
+    // different yield (68 ksi against the measured curve's 72 for the contest slab) does.
+    if let factor = option("steel-strength").flatMap({ Float($0) }), var steel = material.steel {
+        steel.yieldStress *= factor
+        steel.ultimateStress *= factor
+        steel.measuredCurve = steel.measuredCurve?.map { SIMD2($0.x, $0.y * factor) }
+        material.steel = steel
+    }
     if let exponent = option("fracture-rate").flatMap({ Float($0) }) {
         material.fractureRateExponent = exponent
     }
@@ -206,6 +220,22 @@ func applyRateOptions(_ material: inout StructureMaterial) {
     if let factor = option("confinement").flatMap({ Float($0) }) { material.confinementCoefficient *= factor }
     if let factor = option("fracture-energy").flatMap({ Float($0) }) { material.fractureEnergy *= factor }
     if let factor = option("tensile-strength").flatMap({ Float($0) }) { material.tensileStrength *= factor }
+}
+
+/// `--hourglass-secant` and `--hourglass-no-steel`: hourglass control that softens with cracking,
+/// and a cap on it without the bars' strength (`StructureModel.hourglassFollowsCracking` and
+/// `hourglassCapsSteel`).
+func applyHourglassOptions(_ model: inout StructureModel) {
+    if flag("hourglass-secant") { model.hourglassFollowsCracking = true }
+    if flag("hourglass-no-steel") { model.hourglassCapsSteel = false }
+    // `--nonlocal 0.05`: cracks soften by their strain averaged over that length either side.
+    if let length = option("nonlocal").flatMap({ Float($0) }) { model.crackAveraging = length }
+    // `--discrete [mm]`: the layers' bars as discrete trusses (`barsAsTrusses`), of that diameter,
+    // or the bond's (`--bond`), or 12 mm; they slip by `--bond` or are bonded perfectly.
+    if flag("discrete") {
+        model.barsAsTrusses = true
+        if let diameter = option("discrete").flatMap({ Float($0) }) { model.trussDiameter = diameter / 1000 }
+    }
 }
 
 /// `--work`: the work trace (`StructureSolver.tracesWork`), and `--hourglass 0.5` scales the
@@ -221,21 +251,217 @@ func prepareTrace(_ solver: StructureSolver) {
     if let divisor = option("step-divisor").flatMap({ Float($0) }) {
         solver.stepOverride = solver.stableTimeStep / divisor
     }
+    applyFragmentThresholds(solver)
+}
+
+/// `--fragment-opening 1` (mm) and `--fragment-strain 0.1`: with `--fragments`, the openings that
+/// make concrete fragments (`StructureSolver.fragmentOpening`, `fragmentStrain`).
+func applyFragmentThresholds(_ solver: StructureSolver) {
+    if let opening = option("fragment-opening").flatMap({ Float($0) }) {
+        solver.fragmentOpening = opening / 1000
+    }
+    if let strain = option("fragment-strain").flatMap({ Float($0) }) { solver.fragmentStrain = strain }
+}
+
+/// Where hourglass control's work goes (with `--work`): through the whole body, by layer up its
+/// depth (z), and by the elements' state, each part's hourglass work (held below the cap, and at
+/// it) against all the work done in it. `centre` picks out elements near a charge, if given.
+func printHourglassBreakdown(_ s: StructureSolver, label: String, near: ((Int, Int, Int) -> Bool)? = nil) {
+    let hourglass = StructureSolver.WorkChannel.hourglass.rawValue
+    let capped = StructureSolver.WorkChannel.hourglassCapped.rawValue
+    let all = s.workTotals()
+    let allHourglass = all[hourglass] + all[capped]
+    var parts: [(String, (Int, Int, Int) -> Bool)] = [("all", { _, _, _ in true })]
+    // Layers through the depth, among the layers the body has elements in.
+    let layers = (0..<s.ez).filter { k in (0..<s.ex).contains { i in s.flag(i, s.ey / 2, k) != .empty } }
+    for k in layers { parts.append(("layer \(k - (layers.first ?? 0) + 1)", { _, _, kk in kk == k })) }
+    parts += [
+        ("uncracked", { i, j, k in s.crackStrain(i, j, k) < 2e-4 }),
+        ("cracked < 0.2%", { i, j, k in s.crackStrain(i, j, k) >= 2e-4 && s.crackStrain(i, j, k) < 2e-3 }),
+        ("cracked >= 0.2%", { i, j, k in s.crackStrain(i, j, k) >= 2e-3 }),
+        ("crushed", { i, j, k in s.plasticStrain(i, j, k) > 0.003 }),
+        ("with bars", { i, j, k in simd_reduce_max(s.steelRatio(i, j, k)) > 0 }),
+        ("without bars", { i, j, k in simd_reduce_max(s.steelRatio(i, j, k)) <= 0 }),
+    ]
+    // Fifths of the body's length (x), the end ones holding any supports.
+    let occupied = (0..<s.ex).filter { i in (0..<s.ez).contains { k in s.flag(i, s.ey / 2, k) != .empty } }
+    if let first = occupied.first, let last = occupied.last {
+        for f in 0..<5 {
+            let from = first + (last - first + 1) * f / 5
+            let to = first + (last - first + 1) * (f + 1) / 5
+            parts.append(("length \(f + 1)/5", { i, _, _ in i >= from && i < to }))
+        }
+    }
+    if let near {
+        parts.append(("near the charge", near))
+        parts.append(("away from it", { !near($0, $1, $2) }))
+    }
+    print(
+        "  hourglass control's work, \(label) (J): held below its cap, at it, all work there, its share there, of all hourglass work; the bars' and bond's work there"
+    )
+    for (name, include) in parts {
+        let t = s.workTotals(where: include)
+        let mine = t[hourglass] + t[capped]
+        let total = t.reduce(0, +)
+        print(
+            "    " + pad(name, 18) + pad(format(t[hourglass], 1), 10) + pad(format(t[capped], 1), 10)
+                + pad(format(total, 1), 10) + pad("\(format(total != 0 ? 100 * mine / total : 0, 1))%", 9)
+                + pad("\(format(allHourglass != 0 ? 100 * mine / allHourglass : 0, 1))%", 9)
+                + pad(
+                    format(
+                        t[StructureSolver.WorkChannel.bars.rawValue]
+                            + t[StructureSolver.WorkChannel.bond.rawValue], 1), 10))
+    }
+}
+
+/// Peterson's beams through time, as his high-speed images show them: every 0.1 ms, the elements
+/// through the middle of the width cracked open by 1% or more across their widest crack plane, and
+/// the crack's line on the side face (its inclination from the beam's axis, and which way it rises);
+/// when the first inclined crack (20-75 degrees, three elements or more) opens in the short shear
+/// span; the longest inclined crack there (elements in touch, its line by principal axes) at 1, 2
+/// and 5 ms; and when concrete within 30 mm of the load (in the top three rows) or of the near
+/// support (in the bottom three) first crushes past its peak (0.35%), and first is removed.
+final class PetersonCrackTrace {
+    let name: String
+    let strike: Float
+    var nextSample = 0.0
+    var firstInclined: (ms: Double, inclination: Float)?
+    var crushLoad: Double?
+    var crushSupport: Double?
+    var removedLoad: Double?
+    var removedSupport: Double?
+    var longest: [(ms: Double, inclination: Float, length: Float, rises: String)] = []
+
+    init(name: String, strike: Float) {
+        self.name = name
+        self.strike = strike
+    }
+
+    lazy var sample: (StructureSolver) -> Void = { [unowned self] solver in
+        guard solver.time >= nextSample - 1e-9, solver.time <= 0.0052 else { return }
+        nextSample += 0.0001
+        let h = solver.model.elementSize
+        let j = solver.ey / 2
+        let rows = Int((0.15 / h).rounded())
+        let support = 0.05 - solver.origin.x  // the near support, from the lattice's origin
+        func x(_ i: Int) -> Float { (Float(i) + 0.5) * h - support }  // from the near support
+        // Open elements: (i, k, inclination, rises right).
+        var open: [(i: Int, k: Int, inclination: Float, right: Bool)] = []
+        for k in 0..<min(rows, solver.ez) {
+            for i in 0..<solver.ex where solver.flag(i, j, k) != .empty {
+                let planes = solver.crackPlanes(i, j, k)
+                let p =
+                    planes.history.x >= planes.history.y
+                    ? (planes.history.x >= planes.history.z ? 0 : 2)
+                    : (planes.history.y >= planes.history.z ? 1 : 2)
+                if planes.history[p] >= 0.01, planes.normals.count == 3 {
+                    let n = planes.normals[p]
+                    let inclination = atan2(abs(n.x), abs(n.z)) * 180 / .pi
+                    open.append((i, k, inclination, n.x * n.z < 0))
+                }
+                let near = (abs(x(i) - strike) < 0.03 && k >= rows - 3) || (abs(x(i)) < 0.03 && k < 3)
+                if near, solver.flag(i, j, k) == .eroded || solver.plasticStrain(i, j, k) > 0.0035 {
+                    if abs(x(i)) < 0.03 {
+                        crushSupport = crushSupport ?? solver.time
+                    } else {
+                        crushLoad = crushLoad ?? solver.time
+                    }
+                }
+                if near, solver.flag(i, j, k) == .eroded || solver.flag(i, j, k) == .bare {
+                    if abs(x(i)) < 0.03 {
+                        removedSupport = removedSupport ?? solver.time
+                    } else {
+                        removedLoad = removedLoad ?? solver.time
+                    }
+                }
+            }
+        }
+        let inSpan = open.filter { x($0.i) > 0 && x($0.i) < strike }
+        let inclined = inSpan.filter { $0.inclination >= 20 && $0.inclination <= 75 }
+        if firstInclined == nil, inclined.count >= 3 {
+            firstInclined = (
+                solver.time * 1000, inclined.map(\.inclination).reduce(0, +) / Float(inclined.count)
+            )
+        }
+        let ms = (solver.time * 1000).rounded()
+        if [1, 2, 5].contains(ms), !longest.contains(where: { $0.ms == ms }),
+            abs(solver.time * 1000 - ms) < 0.06
+        {
+            // Elements in touch (8-connected) among the inclined open ones in the short span.
+            var left = Set(inclined.map { [$0.i, $0.k] })
+            var best: [[Int]] = []
+            while let seed = left.first {
+                var group = [seed]
+                left.remove(seed)
+                var head = 0
+                while head < group.count {
+                    let c = group[head]
+                    head += 1
+                    for di in -1...1 {
+                        for dk in -1...1 where left.contains([c[0] + di, c[1] + dk]) {
+                            left.remove([c[0] + di, c[1] + dk])
+                            group.append([c[0] + di, c[1] + dk])
+                        }
+                    }
+                }
+                if group.count > best.count { best = group }
+            }
+            if best.count >= 3 {
+                let pts = best.map { SIMD2(Float($0[0]) * h, Float($0[1]) * h) }
+                let mean = pts.reduce(.zero, +) / Float(pts.count)
+                var sxx: Float = 0
+                var szz: Float = 0
+                var sxz: Float = 0
+                for p in pts {
+                    let d = p - mean
+                    sxx += d.x * d.x
+                    szz += d.y * d.y
+                    sxz += d.x * d.y
+                }
+                let theta = 0.5 * atan2(2 * sxz, sxx - szz)
+                let along = SIMD2(cos(theta), sin(theta))
+                let spread = pts.map { simd_dot($0 - mean, along) }
+                let inclination = abs(atan2(along.y, along.x) * 180 / .pi)
+                longest.append(
+                    (
+                        ms, inclination > 90 ? 180 - inclination : inclination,
+                        ((spread.max() ?? 0) - (spread.min() ?? 0) + h) * 1000,
+                        along.x * along.y > 0 ? "right" : "left"
+                    ))
+            } else {
+                longest.append((ms, 0, 0, "-"))
+            }
+        }
+    }
+
+    func report() {
+        func t(_ v: Double?) -> String { v.map { format($0 * 1000, 2) + " ms" } ?? "none" }
+        let first =
+            firstInclined.map { "\(format($0.ms, 2)) ms at \(format(Double($0.inclination), 0)) deg" }
+            ?? "none"
+        let main = longest.map {
+            "\(format($0.ms, 0)) ms: \($0.length > 0 ? "\(format(Double($0.inclination), 0)) deg, \(format(Double($0.length), 0)) mm, rising \($0.rises)" : "none")"
+        }.joined(separator: "; ")
+        print(
+            "  \(name): first inclined crack \(first); longest inclined crack \(main); crushed near the load \(t(crushLoad)), near the support \(t(crushSupport)); removed near the load \(t(removedLoad)), near the support \(t(removedSupport))"
+        )
+    }
 }
 
 /// The work trace's channels in the order printed.
 let workOrder: [StructureSolver.WorkChannel] = [
     .tensionNormal, .tensionHairline, .tensionCracked, .compressionNormal, .compressionCrushed,
     .uncrackedShear, .crackShear,
-    .crackShearPressed, .interlock, .interlockPressed, .dowel, .kink, .bars, .bond, .hourglass, .other,
-    .viscosity,
+    .crackShearPressed, .interlock, .interlockPressed, .dowel, .kink, .bars, .bond, .hourglass,
+    .hourglassCapped,
+    .other, .viscosity,
 ]
 
 func workHeader(_ first: String, _ width: Int) -> String {
     let short = [
         "tension", "hairline", "cracked", "compr.", "crushed", "uncr. sh.", "crack sh.", "pressed",
         "interlock", "pressed",
-        "dowel", "kinking", "bars", "bond", "hourglass", "other", "viscous",
+        "dowel", "kinking", "bars", "bond", "hourglass", "capped", "other", "viscous",
     ]
     return pad(first, width) + short.map { pad($0, 10) }.joined() + pad("total", 10)
 }
@@ -246,17 +472,57 @@ func workRow(_ label: String, _ width: Int, _ totals: [Double]) -> String {
         + pad(format(totals.reduce(0, +), 1), 10)
 }
 
+/// `--rubble-trace`: every 0.05 ms, the rubble's count and fastest particle, and where it is.
+nonisolated(unsafe) var nextRubbleTrace = 0.0
+func rubbleTrace(_ solver: StructureSolver, _ time: Double) {
+    guard time >= nextRubbleTrace else { return }
+    // `--rubble-trace-from 1.8` (ms): every 2 µs from then on.
+    let fine = option("rubble-trace-from").flatMap { Double($0) }.map { time >= $0 / 1000 } ?? false
+    nextRubbleTrace = time + (fine ? 0.000002 : 0.00005)
+    let particles = solver.rubbleParticles()
+    guard
+        let fastest = particles.max(by: {
+            !(simd_length($1.particle.velocity) <= simd_length($0.particle.velocity))
+        })
+    else { return }
+    let p = fastest.particle
+    let (i, j, k) = solver.elementCoordinates(fastest.element)
+    let broken = particles.filter { !simd_length($0.particle.velocity).isFinite }.count
+    var brokenNodes = 0
+    var fastestNode: Float = 0
+    solver.mutateNodes { nodes in
+        for node in nodes where node.mass > 0 {
+            let speed = simd_length(node.velocity)
+            if !speed.isFinite { brokenNodes += 1 } else { fastestNode = max(fastestNode, speed) }
+        }
+    }
+    print(
+        "  \(format(time * 1000, 3)) ms: \(particles.count) particles, \(broken) not finite, nodes \(brokenNodes) not finite, fastest node \(format(Double(fastestNode), 1)); fastest \(format(Double(simd_length(p.velocity)), 1)) m/s from (\(i), \(j), \(k)) at \(p.position), mass \(p.mass), reach \(p.reach), volume \(p.volume)"
+    )
+    fflush(stdout)
+}
+
+/// With rubble (`--rubble`): how many particles, their mass, and how fast they move.
+func printRubble(_ solver: StructureSolver) {
+    let particles = solver.rubbleParticles().map(\.particle)
+    guard !particles.isEmpty else { return }
+    let speeds = particles.map { simd_length($0.velocity) }.sorted()
+    let mass = particles.reduce(0) { $0 + $1.mass }
+    print(
+        "  rubble: \(particles.count) particles, \(format(Double(mass), 1)) kg, speed median \(format(Double(speeds[speeds.count / 2]), 1)) m/s, fastest \(format(Double(speeds.last ?? 0), 1)) m/s"
+    )
+}
+
 func applyRateOptions(_ model: inout StructureModel) {
     // `--fragments`: concrete broken into fragments is removed (`removesFragments`).
     if flag("fragments") { model.removesFragments = true }
-    // `--element-bar-rate`: bars take the strain rate of the element they run through.
-    if flag("element-bar-rate") { model.barRateAlongBars = false }
+    // `--rubble`: failed concrete becomes particles that keep its mass (`rubbleParticles`).
+    if flag("rubble") { model.rubbleParticles = true }
     // `--no-crack-slip`: cracks spring back from sliding, as before slip was stored.
     if flag("no-crack-slip") { model.crackSlip = false }
-    // `--slide-apart`: what a crack has slid by no longer counts as opening it.
-    if flag("slide-apart") { model.slipWidensCracks = false }
     // `--pressed-interlock`: cracks press as they slide, and carry more shear pressed.
     if flag("pressed-interlock") { model.pressedInterlock = true }
+    applyHourglassOptions(&model)
     applyRateOptions(&model.material)
     model.solidMaterial = model.solidMaterial.map {
         $0.map {
@@ -412,7 +678,7 @@ func runChamber() throws {
             + (downstand ? "" : ", no down-stand"))
     var scenario = ChamberTest.scenario(
         elementSize: elementSize, downstand: downstand, ties: !flag("no-ties"), elastic: flag("elastic"),
-        chargeScale: chargeScale, crackAxes: chosenCrackAxes())
+        chargeScale: chargeScale)
     if let residual = option("crack-residual").flatMap({ Float($0) }) {
         scenario.structure?.material.crackResidual = residual
         print("Residual crack opening \(format(Double(residual) * 100, 0))%")
@@ -786,6 +1052,13 @@ func runValidation() throws {
 func runSnapshot() throws {
     var scenario = chosenScenario()
     if let mass = option("mass").flatMap({ Float($0) }) { scenario.charge.mass = mass }
+    // `--fit-reach 10` fits an open scene to its charge as the app's Domain section does; a
+    // `--terrain` is laid again over the domain it fits.
+    if let reach = option("fit-reach").flatMap({ Float($0) }) {
+        scenario.terrain = nil
+        try scenario.fitOpenScene(scaledReach: reach)
+        if let terrain = option("terrain") { applyTerrain(terrain, to: &scenario) }
+    }
     let cellSize = option("dx").flatMap { Float($0) } ?? 0.25
     let time = option("time").flatMap { Double($0) } ?? 0.03
     let output = option("out") ?? "snapshot.png"
@@ -1202,6 +1475,7 @@ func runBeam() throws {
     print(
         pad("layers", 8) + pad("elements", 10) + pad("peak", 12) + pad("vs test", 9) + pad("fails at", 10)
             + pad("rms", 10) + pad("failed", 8) + pad("run time", 10))
+    var shownBreakdown = false
     for layers in meshes {
         // `--crack-spacing 25` sets the distance, in millimetres, a crack's energy is spread over.
         let spacing = option("crack-spacing").flatMap { Float($0) }
@@ -1209,14 +1483,28 @@ func runBeam() throws {
         let result = try BeamBenchmark.run(
             device: device, elementsThroughDepth: layers,
             deflection: option("to").flatMap { Float($0) }.map { $0 / 1000 } ?? 0.06, rate: rate,
-            unload: flag("unload"), crackSlip: !flag("no-crack-slip"), crackAxes: chosenCrackAxes(),
-            bondSlip: chosenBondSlip(diameter: 0.019), crackShearStiffness: flag("crack-shear"),
-            slipWidensCracks: !flag("slide-apart"), pressedInterlock: flag("pressed-interlock")
-        ) { material in
-            applyRateOptions(&material)
-            if let spacing { material.crackSpacing = spacing / 1000 }
-            if let dowel { material.dowelFactor = dowel }
-        }
+            unload: flag("unload"), crackSlip: !flag("no-crack-slip"),
+            bondSlip: chosenBondSlip(diameter: 0.019), pressedInterlock: flag("pressed-interlock"),
+            adjustModel: applyHourglassOptions,
+            adjust: { material in
+                applyRateOptions(&material)
+                if let spacing { material.crackSpacing = spacing / 1000 }
+                if let dowel { material.dowelFactor = dowel }
+            },
+            prepare: prepareTrace,
+            sample: { solver, deflection, _ in
+                // `--work --breakdown 40`: where hourglass control's work has gone by 40 mm.
+                guard solver.tracesWork,
+                    let at = option("breakdown").flatMap({ Float($0) }).map({ $0 / 1000 }),
+                    deflection >= at, !shownBreakdown
+                else { return }
+                shownBreakdown = true
+                printHourglassBreakdown(
+                    solver, label: "\(layers) layers at \(format(Double(deflection) * 1000, 1)) mm")
+                print("  " + workHeader("", 8))
+                print("  " + workRow("", 8, solver.workTotals()))
+            })
+        shownBreakdown = false
         results.append((layers, result))
         if let residual = result.residual {
             print(
@@ -1773,7 +2061,10 @@ func runContact() throws {
                     fflush(stdout)
                 } : nil,
             inspect: { structure, time in
+                lastStructure = structure
                 if flag("no-debris-drag") { structure.debrisDrag = false }
+                applyFragmentThresholds(structure)
+                if flag("rubble-trace") { rubbleTrace(structure, time) }
                 if flag("no-contact") { structure.contactMode = .off }
                 if flag("report") || flag("census"), time >= duration * 0.995, !reported {
                     reported = true
@@ -1836,6 +2127,7 @@ func runContact() throws {
                 "    " + pad(format(time * 1000, 1) + " ms", 8)
                     + radii.map { pad(format(Double(velocity[$0]), 1), 6) }.joined())
         }
+        if let structure = lastStructure { printRubble(structure) }
         print("  \(result.summary.erodedElements) elements failed; \(format(result.wallSeconds, 0)) s\n")
         fflush(stdout)
     }
@@ -1850,7 +2142,72 @@ func runContact() throws {
 /// record there as CSV; for Wang's, `--edges hinged|sliding` (or `--hinged`) holds the edges
 /// otherwise than fixed (see `TwoFaceSlabTests.WangEdges`), and `--afterburn` lets the products
 /// burn on.
+/// `blastbench rubblecost [--h 0.0125] [--radius 0.15] [--steps 400]`: what rubble costs a step.
+/// Wu's slab on its own, a disc of elements through its thickness about the centre failed at
+/// once and given a spread of speeds, then the structure stepped with and without rubble: wall
+/// time per step, the particles' count, and the structure's step for scale.
+func runRubbleCost() throws {
+    let h = option("h").flatMap { Float($0) } ?? 0.0125
+    let radius = option("radius").flatMap { Float($0) } ?? 0.15
+    let steps = option("steps").flatMap { Int($0) } ?? 400
+    print(
+        "Wu's slab alone, \(format(Double(h) * 1000, 1)) mm elements, a disc \(format(Double(radius) * 200, 0)) cm across failed"
+    )
+    for rubble in [false, true] {
+        var model = TwoFaceSlabTests.scenario(TwoFaceSlabTests.wuTests[7], elementSize: h).structure!
+        model.rubbleParticles = rubble
+        let solver = try StructureSolver(device: device, model: model)
+        let c = TwoFaceSlabTests.wuCentre
+        var failed = 0
+        for k in 0..<solver.ez {
+            for j in 0..<solver.ey {
+                for i in 0..<solver.ex {
+                    let p = solver.origin + SIMD3(Float(i) + 0.5, Float(j) + 0.5, 0) * h
+                    guard solver.flag(i, j, k) == .active, simd_length(SIMD2(p.x - c.x, p.y - c.y)) < radius
+                    else { continue }
+                    solver.failElement(i, j, k)
+                    failed += 1
+                }
+            }
+        }
+        // Thrown down and outwards, as a crater's rubble is, so that it meets the slab and itself.
+        solver.mutateNodes { nodes in
+            for k in 0...solver.ez {
+                for j in 0...solver.ey {
+                    for i in 0...solver.ex {
+                        guard let n = solver.storedNode(i, j, k) else { continue }
+                        let p = solver.referencePosition(i, j, k)
+                        let r = SIMD2(p.x - c.x, p.y - c.y)
+                        guard simd_length(r) < radius + h else { continue }
+                        nodes[n].velocity = SIMD3(
+                            30 * r.x / radius, 30 * r.y / radius, -100 + 50 * (p.z - 0.6) / 0.1)
+                    }
+                }
+            }
+        }
+        solver.advance(steps: 20)
+        let start = ContinuousClock.now
+        solver.advance(steps: steps)
+        let elapsed = ContinuousClock.now - start
+        let seconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18
+        print(
+            "  \(rubble ? "rubble   " : "no rubble") \(solver.elementCount) elements, \(failed) failed, \(solver.rubbleParticles().count) particles: \(format(seconds / Double(steps) * 1e6, 1)) µs a step (step \(format(Double(solver.criticalTimeStep) * 1e6, 2)) µs)"
+        )
+    }
+}
+
 func runTwoFace() throws {
+    let breakdownAt = option("breakdown").flatMap { Double($0) }.map { $0 / 1000 }
+    var shownBreakdown = false
+    /// Elements within 0.3 m of the centre of Wu's slab, in plan.
+    func wuNear(_ solver: StructureSolver) -> (Int, Int, Int) -> Bool {
+        let h = solver.model.elementSize
+        let c = TwoFaceSlabTests.wuCentre
+        return { i, j, _ in
+            let p = solver.origin + SIMD3(Float(i) + 0.5, Float(j) + 0.5, 0) * h
+            return simd_length(SIMD2(p.x - c.x, p.y - c.y)) < 0.3
+        }
+    }
     let cellSize = option("dx").flatMap { Float($0) } ?? 0.025
     let elementSize = option("h").flatMap { Float($0) } ?? 0.0125
     let duration = option("time").flatMap { Double($0) } ?? 0.1
@@ -1917,7 +2274,18 @@ func runTwoFace() throws {
                     ? {
                         print("  " + $0)
                         fflush(stdout)
-                    } : nil)
+                    } : nil,
+                inspect: { solver, time in
+                    // `--work --breakdown 6`: where hourglass control's work has gone by 6 ms.
+                    guard solver.tracesWork, let at = breakdownAt, !shownBreakdown, time >= at else { return }
+                    shownBreakdown = true
+                    printHourglassBreakdown(
+                        solver, label: "\(test.name) at \(format(time * 1000, 1)) ms", near: wuNear(solver))
+                })
+            shownBreakdown = false
+            if let structure = lastStructure, structure.tracesWork, breakdownAt != nil {
+                printHourglassBreakdown(structure, label: "\(test.name) at the end", near: wuNear(structure))
+            }
             let charge =
                 "\(format(Double(test.charge), 1)) kg "
                 + (test.standoff.map { "@\(format(Double($0), 2))" } ?? "contact")
@@ -1933,6 +2301,7 @@ func runTwoFace() throws {
                         11)
                     + pad("\(result.summary.erodedElements)", 8) + pad(format(result.wallSeconds, 0), 6))
             try report(result, label: "wu-\(test.name)")
+            if let structure = lastStructure { printRubble(structure) }
             if let structure = lastStructure {
                 let h = structure.model.elementSize
                 let c = TwoFaceSlabTests.wuCentre
@@ -2070,7 +2439,11 @@ func runCloseIn() throws {
                     print("  " + line)
                     fflush(stdout)
                 } : nil,
-            inspect: inspect)
+            inspect: { structure, time in
+                lastStructure = structure
+                applyFragmentThresholds(structure)
+                inspect?(structure, time)
+            })
         if let path = option("trace") {
             let centre = result.gaugeHistories[5]
             let text = centre.map { "\($0.time),\($0.pressure)" }.joined(separator: "\n")
@@ -2112,6 +2485,7 @@ func runCloseIn() throws {
                 "  impulse, \(result.gaugePeaks[n].name): \(format(Double(result.gaugeImpulses[n]), 0)) Pa s")
         }
         print("  slab's momentum at 5 ms: \(format(Double(result.impulse), 0)) N s")
+        if let structure = lastStructure { printRubble(structure) }
         print("  \(result.summary.erodedElements) elements failed; \(format(result.wallSeconds, 0)) s\n")
     }
 }
@@ -2138,11 +2512,13 @@ func runImpact() throws {
                 + (time.map { " (\(format(Double($0) * 1000, 2)))" } ?? "")
         }
         for test in ImpactBenchmark.petersonTests where names?.contains(test.name) ?? true {
+            // `--crack-trace`: the cracks and crushing through the middle of the width every 0.1 ms,
+            // as Peterson's high-speed images show them (see `PetersonCrackTrace`).
+            let trace = PetersonCrackTrace(name: test.name, strike: test.strike)
             let result = try ImpactBenchmark.run(
                 device: device, test: test, elementsThroughDepth: layers, duration: min(duration, 0.03),
                 specimen: { specimen in
                     chooseSupports(&specimen)
-                    if flag("spread") { specimen.spreadBars = true }
                 },
                 adjust: { model in
                     if flag("no-rate") { model.material.rateDependent = false }
@@ -2152,7 +2528,9 @@ func runImpact() throws {
                 },
                 inspect: { solver in
                     if flag("map") { for line in solver.crackMap(row: solver.ey / 2) { print(line) } }
-                })
+                },
+                sample: flag("crack-trace") ? trace.sample : nil)
+            if flag("crack-trace") { trace.report() }
             print(
                 pad(test.name, 13) + pad(test.damage, 7)
                     + pad(force(test.impact, nil) + " / " + force(result.peakImpactForce, nil), 16)
@@ -2179,7 +2557,6 @@ func runImpact() throws {
             // `--push 0.026`: each beam pushed slowly through its plate to that deflection and let go.
             for test in ImpactBenchmark.shearTests where names?.contains(test.name) ?? true {
                 var specimen = ImpactBenchmark.specimen(test)
-                specimen.spreadBars = flag("spread")
                 chooseSupports(&specimen)
                 let result = try ImpactBenchmark.run(
                     device: device, specimen: specimen, weight: 0, speed: 0, elementsThroughDepth: layers,
@@ -2202,7 +2579,7 @@ func runImpact() throws {
         for test in ImpactBenchmark.shearTests where names?.contains(test.name) ?? true {
             let result = try ImpactBenchmark.run(
                 device: device, test: test, elementsThroughDepth: layers, duration: min(duration, 0.15),
-                spreadBars: flag("spread"), specimen: chooseSupports
+                specimen: chooseSupports
             ) { model in
                 if flag("no-rate") { model.material.rateDependent = false }
                 // `--bond`: the D19 or D13 bars slip.
@@ -2243,7 +2620,7 @@ func runImpact() throws {
         for test in ImpactBenchmark.tests where names?.contains(test.name) ?? true {
             let result = try ImpactBenchmark.runBeams(
                 device: device, test: test, size: size, duration: duration,
-                sectionShear: !flag("no-section-shear"))
+                sectionShear: flag("section-shear") ? true : flag("no-section-shear") ? false : nil)
             let measured =
                 test.peak.map {
                     "\(format(Double($0) * 1000)) / \(format(Double(test.residual ?? 0) * 1000)) mm"
@@ -2264,7 +2641,7 @@ func runImpact() throws {
     for test in ImpactBenchmark.tests where names?.contains(test.name) ?? true {
         let result = try ImpactBenchmark.run(
             device: device, test: test, elementsThroughDepth: layers, duration: duration,
-            spreadBars: flag("spread"), specimen: chooseSupports
+            specimen: chooseSupports
         ) { model in
             if flag("no-rate") { model.material.rateDependent = false }
             // `--bond`: the No. 30 bars slip.
@@ -2356,6 +2733,7 @@ func runShearBeam() throws {
         // `--work`: the work each mechanism has done at every millimetre and at the peak, through
         // the whole beam, and at the peak by part of the beam. Scaled to the whole beam.
         var milestones: [(deflection: Float, load: Float, external: Double, totals: [Double])] = []
+        var shownBreakdown = false
         var atPeak: (deflection: Float, load: Float, external: Double, totals: [Double], parts: [[Double]])?
         var external = 0.0
         var last = SIMD2<Float>.zero
@@ -2375,11 +2753,10 @@ func runShearBeam() throws {
         let scale = Double(ShearBeamBenchmark.width / (slice ?? ShearBeamBenchmark.width))
         let result = try ShearBeamBenchmark.run(
             device: device, elementsThroughDepth: layers, slice: slice, rate: rate,
-            crackAxes: chosenCrackAxes(), bondSlip: chosenBondSlip(diameter: 0.028),
-            crackShearStiffness: flag("crack-shear"),
+            bondSlip: chosenBondSlip(diameter: 0.028),
             mapAt: option("map").flatMap { Float($0) }.map { $0 / 1000 },
-            slipWidensCracks: !flag("slide-apart"),
             pressedInterlock: flag("pressed-interlock"),
+            adjustModel: applyHourglassOptions,
             adjust: { material in
                 applyRateOptions(&material)
                 if let dowel { material.dowelFactor = dowel }
@@ -2394,6 +2771,14 @@ func runShearBeam() throws {
             prepare: prepareTrace,
             sample: flag("work")
                 ? { solver, deflection, load in
+                    if let at = option("breakdown").flatMap({ Float($0) }).map({ $0 / 1000 }),
+                        deflection >= at,
+                        !shownBreakdown
+                    {
+                        shownBreakdown = true
+                        printHourglassBreakdown(
+                            solver, label: "\(layers) layers at \(format(Double(deflection) * 1000, 1)) mm")
+                    }
                     external += Double(0.5 * (load + last.y) * (deflection - last.x))
                     last = SIMD2(deflection, load)
                     let crossed =
@@ -2469,7 +2854,7 @@ func runPushOff() throws {
         let end = SIMD2(specimen.finalSlip, 0.00005)
         let beyond = flag("close") ? [end, end + SIMD2(0.0005, 0)] : []
         let result = try PushOffTest.run(
-            device: device, specimen: specimen, size: size, crackShearStiffness: flag("crack-shear"),
+            device: device, specimen: specimen, size: size,
             beyond: beyond
         ) { model in applyRateOptions(&model) }
         if flag("close") {
@@ -2763,8 +3148,10 @@ func runTie() throws {
             + "bare bars \(format(Double(TieBenchmark.expectedLoad(strain: strain, beta: 0, strength: strength)) / 1000, 1)) kN"
     )
     for h in sizes {
-        let result = try TieBenchmark.run(device: device, elementSize: h, bond: bond, strain: strain) {
-            material in
+        // `--discrete`: the bars as discrete trusses with the same bond.
+        let result = try TieBenchmark.run(
+            device: device, elementSize: h, bond: bond, strain: strain, discrete: flag("discrete")
+        ) { material in
             material.concreteRateFactor = factor
             material.fractureEnergy *= factor.squareRoot()
             applyRateOptions(&material)
@@ -2776,6 +3163,19 @@ func runTie() throws {
                 + "\(format(Double(spacings.min() ?? 0) * 1000, 0))-\(format(Double(spacings.max() ?? 0) * 1000, 0)) mm apart "
                 + "(mean \(format(Double(mean) * 1000, 0))); pull \(format(Double(result.load) / 1000, 1)) kN"
         )
+        if flag("discrete") {
+            let every = max(1, result.bar.forces.count / 20)
+            print(
+                "    bar 0 forces (kN): "
+                    + stride(from: 0, to: result.bar.forces.count, by: every).map {
+                        format(Double(result.bar.forces[$0]) / 1000, 1)
+                    }.joined(separator: " "))
+            print(
+                "    bar 0 slips (mm):  "
+                    + stride(from: 0, to: result.bar.slips.count, by: every).map {
+                        format(Double(result.bar.slips[$0]) * 1000, 3)
+                    }.joined(separator: " "))
+        }
     }
 }
 
@@ -2874,6 +3274,7 @@ func runSlab() throws {
         // at the end, through the whole slab, and at the peak by part of it.
         var milestones: [(label: String, totals: [Double])] = []
         var atPeak: (deflection: Float, totals: [Double], parts: [[Double]])?
+        var shownBreakdown = false
         let regions: [(String, (Int, Int, Int, StructureSolver) -> Bool)] = [
             ("loaded half", { _, _, k, s in 2 * k >= s.ez }),
             ("unloaded half", { _, _, k, s in 2 * k < s.ez }),
@@ -2892,68 +3293,182 @@ func runSlab() throws {
                 }
             ),
         ]
+        // `--load-scale 0.764`: the pressure record scaled, as for the contest's lower-impulse shot.
         let result = try SlabBenchmark.run(
-            device: device, elementsThroughThickness: layers, rate: rate, supports: supports, width: width,
-            crackAxes: chosenCrackAxes(), bondSlip: chosenBondSlip(diameter: 0.0095),
-            crackShearStiffness: flag("crack-shear"),
+            device: device, elementsThroughThickness: layers, rate: rate,
+            loadScale: option("load-scale").flatMap { Float($0) } ?? 1, supports: supports, width: width,
+            // `--span 58`: the supports that many inches apart (52 by default).
+            span: option("span").flatMap { Float($0) }.map { $0 * 0.0254 } ?? SlabBenchmark.span,
+            bondSlip: chosenBondSlip(diameter: 0.0095),
             adjust: { applyRateOptions(&$0) },
             adjustModel: {
-                if flag("element-bar-rate") { $0.barRateAlongBars = false }
-                if flag("slide-apart") { $0.slipWidensCracks = false }
                 if flag("pressed-interlock") { $0.pressedInterlock = true }
+                applyHourglassOptions(&$0)
             },
             prepare: prepareTrace,
-            sample: flag("stiffening")
+            sample: flag("discrete-trace")
                 ? { solver in
-                    // `--stiffening`: where the tension is carried over the 600 mm about mid-span,
-                    // every 20 mm on the way down.
-                    let deflection = -solver.displacement(solver.ex / 2, solver.ey / 2, 0).z
-                    let step = 0.02 * Float(milestones.count + 1)
-                    guard deflection >= step, solver.time < 0.03 else { return }
+                    // `--discrete-trace`: the discrete bars' ruptures every millisecond, and the
+                    // largest plastic strain and force of any segment.
+                    let millisecond = Int((solver.time * 1000).rounded(.down))
+                    guard millisecond > (milestones.count - 1), millisecond % 1 == 0 else { return }
                     milestones.append(("", []))
-                    let reach = Int((0.3 / solver.model.elementSize).rounded())
-                    tensionStiffening(
-                        solver, columns: (solver.ex / 2 - reach)..<(solver.ex / 2 + reach),
-                        label: "\(Int((step * 1000).rounded())) mm, \(format(solver.time * 1000, 1)) ms",
-                        profile: flag("profile") && step >= 0.08)
-                }
-                : flag("work")
-                    ? { solver in
-                        let deflection = -solver.displacement(solver.ex / 2, solver.ey / 2, 0).z
-                        let step = 0.02 * Float(milestones.count + 1)
-                        let crossed = deflection >= step && atPeak.map { deflection >= $0.deflection } ?? true
-                        let peak = deflection > (atPeak?.deflection ?? 0)
-                        let end = solver.time >= 0.08
-                        guard crossed || peak || end else { return }
-                        let totals = solver.workTotals()
-                        if crossed { milestones.append(("\(Int((step * 1000).rounded())) mm", totals)) }
-                        if peak {
-                            atPeak = (
-                                deflection, totals,
-                                regions.map { region in solver.workTotals { region.1($0, $1, $2, solver) } }
+                    let bars = solver.discreteBarRuptures
+                    var worst: Float = 0
+                    var strongest: Float = 0
+                    for b in 0..<64 {
+                        let bar = solver.discreteBar(b)
+                        guard !bar.forces.isEmpty else { break }
+                        strongest = max(strongest, bar.forces.map(abs).max() ?? 0)
+                        worst = max(worst, solver.discreteBarPlastic(b).filter { $0 < 1e8 }.max() ?? 0)
+                    }
+                    let deflection = -solver.displacement(solver.ex / 2, solver.ey / 2, 0).z
+                    if millisecond % 5 == 0, solver.discreteBarRuptures.segments == 0 {
+                        // Smeared: the bars' plastic strain along the span at mid-width, in the
+                        // layer of elements they lie in, every element.
+                        let layer =
+                            (0..<solver.ez).first {
+                                solver.steelRatio(solver.ex / 2, solver.ey / 2, $0).x > 0
+                            } ?? 0
+                        print(
+                            "    smeared bars' plastic strain (%): "
+                                + (0..<solver.ex).map {
+                                    format(
+                                        Double(solver.barPlasticStrain($0, solver.ey / 2, layer).x) * 100, 1)
+                                }.joined(separator: " "))
+                    }
+                    if millisecond % 5 == 0, solver.discreteBarRuptures.segments > 0 {
+                        var each: [String] = []
+                        for b in 0..<64 {
+                            let plastic = solver.discreteBarPlastic(b)
+                            guard !plastic.isEmpty else { break }
+                            let worst = plastic.enumerated().max { $0.element < $1.element }!
+                            each.append(
+                                "\(b):\(format(Double(min(worst.element, 9.99)) * 100, 1))@\(worst.offset)/\(plastic.count)"
                             )
                         }
-                        if end {
-                            milestones.append(("80 ms, \(format(Double(deflection) * 1000, 0)) mm", totals))
-                        }
-                    } : nil,
-            inspect: flag("hinge")
-                ? { solver in
-                    for offset in [Float(0), 0.15] {
-                        print("  at 80 ms, \(Int(offset * 1000)) mm from mid-span:")
-                        for row in SlabBenchmark.sectionRows(solver, offset: offset) { print("    " + row) }
+                        print(
+                            "    each bar's largest plastic strain (%) at segment: "
+                                + each.joined(separator: " "))
                     }
+                    if millisecond % 5 == 0, let bar = Optional(solver.discreteBarPlastic(4)), !bar.isEmpty {
+                        print(
+                            "    discrete bar 4's plastic strain (%): "
+                                + bar.map { format(Double(min($0, 9.99)) * 100, 1) }.joined(separator: " "))
+                    }
+                    if millisecond % 5 == 0 {
+                        // The compression zone: the largest crushing strain in the top layer, and
+                        // the crack strain in the bottom layer, near mid-span.
+                        let middle = solver.ex / 2
+                        let near = (middle - 6)...(middle + 6)
+                        print(
+                            "    top crushing (%): "
+                                + near.map {
+                                    format(
+                                        Double(solver.plasticStrain($0, solver.ey / 2, solver.ez - 1)) * 100,
+                                        2)
+                                }
+                                .joined(separator: " "))
+                        print(
+                            "    bottom crack strain (%): "
+                                + near.map {
+                                    format(Double(solver.crackStrain($0, solver.ey / 2, 0)) * 100, 1)
+                                }
+                                .joined(separator: " "))
+                    }
+                    if millisecond % 5 == 0 {
+                        // The deflected shape along the span at mid-width, bottom and top faces.
+                        let columns = stride(from: 0, through: solver.ex, by: max(1, solver.ex / 16))
+                        print(
+                            "    shape, bottom (mm): "
+                                + columns.map {
+                                    format(Double(-solver.displacement($0, solver.ey / 2, 0).z) * 1000, 1)
+                                }
+                                .joined(separator: " "))
+                        print(
+                            "    shape, top (mm):    "
+                                + columns.map {
+                                    format(
+                                        Double(-solver.displacement($0, solver.ey / 2, solver.ez).z) * 1000, 1
+                                    )
+                                }.joined(separator: " "))
+                    }
+                    print(
+                        "  \(millisecond) ms: \(format(Double(deflection) * 1000, 1)) mm, \(bars.ruptured) ruptured, "
+                            + "largest plastic \(format(Double(worst) * 100, 2))%, force \(format(Double(strongest) / 1000, 1)) kN"
+                    )
                 }
-                // `--map`: the cracks through the middle of the width at 80 ms; `--plan`, on the
-                // unloaded face, and where the cracks across the span lie.
-                : flag("map") || flag("plan")
+                : flag("stiffening")
                     ? { solver in
-                        if flag("map") {
-                            print("  cracks open past 0.1% strain at 80 ms, half the span from mid-span:")
-                            for row in solver.crackMap(row: solver.ey / 2) { print("    " + row) }
+                        // `--stiffening`: where the tension is carried over the 600 mm about mid-span,
+                        // every 20 mm on the way down.
+                        let deflection = -solver.displacement(solver.ex / 2, solver.ey / 2, 0).z
+                        let step = 0.02 * Float(milestones.count + 1)
+                        guard deflection >= step, solver.time < 0.03 else { return }
+                        milestones.append(("", []))
+                        let reach = Int((0.3 / solver.model.elementSize).rounded())
+                        tensionStiffening(
+                            solver, columns: (solver.ex / 2 - reach)..<(solver.ex / 2 + reach),
+                            label: "\(Int((step * 1000).rounded())) mm, \(format(solver.time * 1000, 1)) ms",
+                            profile: flag("profile") && step >= 0.08)
+                    }
+                    : flag("work")
+                        ? { solver in
+                            let deflection = -solver.displacement(solver.ex / 2, solver.ey / 2, 0).z
+                            let step = 0.02 * Float(milestones.count + 1)
+                            let crossed =
+                                deflection >= step && atPeak.map { deflection >= $0.deflection } ?? true
+                            let peak = deflection > (atPeak?.deflection ?? 0)
+                            let end = solver.time >= 0.08
+                            if let at = option("breakdown").flatMap({ Double($0) }).map({ $0 / 1000 }),
+                                solver.time >= at, !shownBreakdown
+                            {
+                                shownBreakdown = true
+                                printHourglassBreakdown(
+                                    solver, label: "at \(format(solver.time * 1000, 1)) ms")
+                            }
+                            if end, option("breakdown") != nil {
+                                printHourglassBreakdown(solver, label: "at 80 ms")
+                            }
+                            guard crossed || peak || end else { return }
+                            let totals = solver.workTotals()
+                            if crossed { milestones.append(("\(Int((step * 1000).rounded())) mm", totals)) }
+                            if peak {
+                                atPeak = (
+                                    deflection, totals,
+                                    regions.map { region in solver.workTotals { region.1($0, $1, $2, solver) }
+                                    }
+                                )
+                            }
+                            if end {
+                                milestones.append(
+                                    ("80 ms, \(format(Double(deflection) * 1000, 0)) mm", totals))
+                            }
+                        } : nil,
+            inspect: flag("discrete") && !flag("plan")
+                ? { solver in
+                    let bars = solver.discreteBarRuptures
+                    print("  discrete bars: \(bars.ruptured) of \(bars.segments) segments ruptured")
+                }
+                : flag("hinge")
+                    ? { solver in
+                        for offset in [Float(0), 0.15] {
+                            print("  at 80 ms, \(Int(offset * 1000)) mm from mid-span:")
+                            for row in SlabBenchmark.sectionRows(solver, offset: offset) {
+                                print("    " + row)
+                            }
                         }
-                        if flag("plan") { printSlabCrackPlan(solver) }
-                    } : nil)
+                    }
+                    // `--map`: the cracks through the middle of the width at 80 ms; `--plan`, on the
+                    // unloaded face, and where the cracks across the span lie.
+                    : flag("map") || flag("plan")
+                        ? { solver in
+                            if flag("map") {
+                                print("  cracks open past 0.1% strain at 80 ms, half the span from mid-span:")
+                                for row in solver.crackMap(row: solver.ey / 2) { print("    " + row) }
+                            }
+                            if flag("plan") { printSlabCrackPlan(solver) }
+                        } : nil)
         if rate == .strainRate { meshes.append((layers, result)) }
         let label =
             ["none": "static", "designFactors": "UFC fixed", "strainRate": "rate laws"][rate.rawValue] ?? ""
@@ -3017,8 +3532,6 @@ func runSlab() throws {
         ("residual crack opening 20%", 1, { $0.crackResidual = 0.2 }),
         ("residual crack opening 30%", 1, { $0.crackResidual = 0.3 }),
         ("residual crack opening 50%", 1, { $0.crackResidual = 0.5 }),
-        ("crushing spread over at least 50 mm", 1, { $0.crushBand = 0.05 }),
-        ("crushing averaged over 48 mm (nonlocal)", 1, { $0.crushLength = 0.048 }),
     ]
     var runs: [(String, () throws -> SlabBenchmark.Result)] = variants.map { label, scale, adjust in
         (label, { try SlabBenchmark.run(device: device, loadScale: scale, adjust: adjust) })
@@ -3759,6 +4272,12 @@ func runRocking() throws {
         String(
             format: "Largest actuator lag %.1f mm; %.0f s", (result.packets.map(\.lag).max() ?? 0) * 1000,
             result.wallSeconds))
+    print("The soil sunk for good under the footing (mm), along it, after each packet:")
+    for (packet, profile) in zip(result.packets, result.profiles) {
+        print(
+            pad(packet.name, 4) + "  "
+                + profile.map { String(format: "%5.1f", $0.y * 1000) }.joined(separator: " "))
+    }
     if let path = option("history") {
         let lines = ["rotation,moment,settlement"] + result.history.map { "\($0.x),\($0.y),\($0.z)" }
         try lines.joined(separator: "\n").write(toFile: path, atomically: true, encoding: .utf8)
@@ -3793,7 +4312,8 @@ func runShaking() throws {
         )
         let result = try FootingShakingTest.run(
             device: device, test: test, series: measured, shearModulus: shear, bearingCapacity: bearing,
-            cyclic: cyclicSandOption(), progress: { print("  " + $0) })
+            damping: option("damping").flatMap { Float($0) } ?? 0.2, cyclic: cyclicSandOption(),
+            radiationDamping: !flag("massless"), progress: { print("  " + $0) })
         print(String(format: "  static pressure %.0f kPa; %.0f s", result.pressure / 1e3, result.wallSeconds))
         print(
             pad("event", 15) + pad("peak g", 8) + pad("rotation + / − (mrad)", 26) + pad("moment + / −", 26)
@@ -3814,6 +4334,24 @@ func runShaking() throws {
                     + pad(String(format: "%.4f  %.4f", a.settlement, b.settlement), 18)
                     + pad(String(format: "%.4f  %.4f", a.energy, b.energy), 18)
                     + pad(String(format: "%.3f  %.3f", a.travel, b.travel), 16))
+        }
+        print("  the soil sunk for good under the footing (mm), along it, after each event:")
+        for (name, profile) in zip(test.events, result.profiles) {
+            print(
+                pad(name, 15) + "  "
+                    + profile.map { String(format: "%5.1f", $0.y * 1000) }.joined(separator: " "))
+        }
+        print(
+            pad("event", 15) + pad("cycles past 1 mrad: rotation (mrad), ∮M dθ a cycle, damping ratio", 70))
+        print(pad("", 15) + pad("measured", 34) + pad("model", 34))
+        for (index, name) in test.events.enumerated() {
+            func cycles(_ s: FootingShakingTest.Summary) -> String {
+                pad(
+                    String(
+                        format: "%.1f  %.4f  %.0f%%", s.cycleAmplitude * 1000, s.cycleEnergy, s.damping * 100),
+                    34)
+            }
+            print(pad(name, 15) + cycles(measured[index].summary) + cycles(result.events[index].summary))
         }
         if let pattern = option("history") {
             for (index, name) in test.events.enumerated() {
@@ -3971,6 +4509,7 @@ func runSoilColumn() throws {
 do {
     switch command {
     case "digest": try runDigest()
+    case "buildings": try runBuildings()
     case "slab": try runSlab()
     case "tie": try runTie()
     case "beam": try runBeam()
@@ -3979,6 +4518,7 @@ do {
     case "impact": try runImpact()
     case "closein": try runCloseIn()
     case "twoface": try runTwoFace()
+    case "rubblecost": try runRubbleCost()
     case "contact": try runContact()
     case "closeair": try runCloseAir()
     case "gas": try runGasPressure()
@@ -3999,7 +4539,12 @@ do {
     case "soilcolumn": try runSoilColumn()
     case "heating": try runHeating()
     case "terrain": try runTerrain(device: device)
+    case "landscape": try runLandscape(device: device)
+    case "advise": try runAdvise(device: device)
+    case "hrynyk": try runHrynyk(device: device)
     case "deflagration": try runDeflagration()
+    case "perimeter": try runPerimeter(device: device)
+    case "keys": try runKeys(device: device)
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
         exit(2)

@@ -29,8 +29,13 @@ struct EditorView: View {
                                 systemImage: model.selection == .imported(imported.id) ? "scope" : "cube.box"
                             ).font(.headline)
                             Text(
-                                "\(imported.isAttached ? imported.behavior.rawValue.capitalized : "Detached") · \(imported.preview.cellSize, format:.number) m sampling"
+                                "\(imported.isAttached ? (imported.isStructural ? "Shells and beams" : imported.behavior.rawValue.capitalized) : "Detached") · \(imported.preview.cellSize, format:.number) m sampling"
                             ).font(.caption)
+                            if let report = imported.structuralReport {
+                                DisclosureGroup("Structure from IFC") {
+                                    IFCStructureReportView(report: report)
+                                }
+                            }
                             HStack {
                                 Button("Inspect / edit source…") { model.inspectImport(id: imported.id) }
                                 if imported.isAttached {
@@ -307,6 +312,12 @@ struct EditorView: View {
                 }
                 Button("Add Gauge", systemImage: "plus") { model.addGauge() }
                     .disabled(!model.canAddGauge)
+                Button("Add Gauge Line", systemImage: "ruler") { model.addGaugeLine() }
+                    .disabled(!model.canAddGauge)
+                    .help(
+                        "Adds gauges on a line from the charge, where the domain gives it the most room, "
+                            + "at the scaled distances of the Kingery–Bulmash curves (1 to 40 m/kg^(1/3)) "
+                            + "that fit.")
             } header: {
                 Text("Gauges")
             } footer: {

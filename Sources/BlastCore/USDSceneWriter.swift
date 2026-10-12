@@ -290,7 +290,7 @@ public final class USDSceneWriter {
                 customLayerData = {
                     string creator = "BombCAD"
                     string scenario = \(quoted(scenario.name))
-                    double simulatedSecondsPerFrame = \(frameInterval)\(cloudTiming)\(standingData)
+                    double simulatedSecondsPerFrame = \(frameInterval)\(cloudTiming)\(standingData)\(attributionData)
                 }
                 defaultPrim = "Scene"
                 startTimeCode = 0
@@ -315,8 +315,7 @@ public final class USDSceneWriter {
         if let terrain = scenario.terrain, !terrain.isFlat { appendTerrain(terrain, to: &text) }
         let fixed =
             scenario.boxes
-            + (scenario.importedModels ?? [])
-            .filter { $0.isAttached && $0.behavior == .rigid }.flatMap { $0.preview.boxes }
+            + (scenario.importedModels ?? []).flatMap(\.rigidBoxes)
         if !fixed.isEmpty {
             appendMesh(
                 "Blocks", boxes: fixed, quad: [], colour: SIMD3(0.80, 0.79, 0.76), to: &text)
@@ -646,6 +645,13 @@ public final class USDSceneWriter {
         text.append(" )\n        uniform token[] xformOpOrder = [\"xformOp:transform\"]\n    }\n\n")
     }
 
+    /// The credits the scene's data asks for (OpenStreetMap's, for map buildings), in the layer's
+    /// metadata.
+    private var attributionData: String {
+        guard let credits = scenario.attributions, !credits.isEmpty else { return "" }
+        return "\n        string[] attributions = [" + credits.map(quoted).joined(separator: ", ") + "]"
+    }
+
     /// The standing as a dictionary of the layer's metadata: each result's level and summary, the
     /// notes on resolution and what the scene leaves out.
     private var standingData: String {
@@ -655,6 +661,12 @@ public final class USDSceneWriter {
         for result in standing.results {
             lines.append(
                 "string \(result.kind.rawValue) = \(quoted("\(result.level.rawValue): \(result.summary)"))")
+            if let bands = result.bands, !bands.isEmpty {
+                lines.append(
+                    "string[] \(result.kind.rawValue)Bands = ["
+                        + bands.map { quoted("\($0.summary), for \($0.validity)") }
+                        .joined(separator: ", ") + "]")
+            }
         }
         lines.append(
             "string[] resolution = \(list(standing.resolution + standing.results.flatMap(\.resolution)))")

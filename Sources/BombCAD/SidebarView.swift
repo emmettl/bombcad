@@ -45,7 +45,24 @@ struct SidebarView: View {
                     .help("\(model.settings.scenario.name). Choose a built-in layout to replace this scene.")
                 }
                 Picker("Grid", selection: $model.settings.resolution) {
-                    ForEach(Resolution.allCases) { Text($0.title).tag($0) }
+                    ForEach(
+                        Resolution.choices(
+                            mass: model.settings.chargeMass, current: model.settings.resolution)
+                    ) {
+                        Text($0.title(mass: model.settings.chargeMass)).tag($0)
+                    }
+                }
+                .help(
+                    "The air's cell size. For a large charge the coarser choices are scaled to it: 0.2 m/kg^(1/3) "
+                        + "for impulse and arrival in the open, 0.1 and 0.05 for peaks (see Large scenes).")
+                LabeledContent("Cell size") {
+                    TextField(
+                        "Cell size", value: cellSizeBinding,
+                        format: .number.precision(.significantDigits(1...4))
+                    )
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: 80)
+                    Text("m")
                 }
                 if let grid = model.grid {
                     LabeledContent("Cells", value: cellSummary(grid))
@@ -53,6 +70,9 @@ struct SidebarView: View {
                         "GPU memory", value: String(format: "%.2f GB", Double(model.memoryFootprint) / 1e9))
                 }
             }
+
+            domainSection
+            AdvisorSection(model: model)
 
             if let imports = model.settings.scenario.importedModels, !imports.isEmpty {
                 Section("Imported geometry") {
@@ -75,7 +95,16 @@ struct SidebarView: View {
                                 ).font(.caption)
                             }
                             Button("Inspect source and warnings…") { model.inspectImport(id: imported.id) }
+                            if imported.isAttached && imported.behavior == .rigid {
+                                ImportEnvelopeButton(
+                                    model: model, ids: [imported.id], title: "Use as Exposure-only Envelope")
+                            }
                         }
+                    }
+                    let rigid = imports.filter { $0.isAttached && $0.behavior == .rigid }.map(\.id)
+                    if rigid.count > 1 {
+                        ImportEnvelopeButton(
+                            model: model, ids: rigid, title: "Use All as Exposure-only Envelopes")
                     }
                 }
             }
@@ -89,6 +118,7 @@ struct SidebarView: View {
             VentPanelSection(model: model)
 
             TerrainSection(model: model)
+            MapBuildingsSection(model: model)
             FragmentSection(model: model)
             ThermalSection(model: model)
             CloudSection(model: model)
@@ -138,6 +168,9 @@ struct SidebarView: View {
                     LabeledContent(
                         "Deflection now", value: String(format: "%.0f mm", summary.maxDisplacement * 1000))
                     LabeledContent("Largest so far", value: String(format: "%.0f mm", model.peakDeflection))
+                    ExpectedRangeLine(
+                        model: model,
+                        value: ShownValue(measure: .peakDeflection, value: model.peakDeflection, unit: "mm"))
                     LabeledContent(
                         "Worst damage", value: String(format: "%.0f%%", min(summary.maxDamage, 1) * 100))
                     LabeledContent("Substeps per air step", value: "up to \(model.structureSubsteps)")
@@ -211,16 +244,76 @@ struct SidebarView: View {
         .formStyle(.grouped)
     }
 
+    private var domainSection: some View {
+        Section("Domain") {
+            LabeledContent("Extent") {
+                HStack(spacing: 4) {
+                    domainField(0)
+                    Text("×")
+                    domainField(1)
+                    Text("×")
+                    domainField(2)
+                    Text("m")
+                }
+            }
+            .help(
+                "The air's box from its origin, in metres: east, north and up. Everything in the scene stays where it is."
+            )
+            let suggested = model.settings.scenario.suggestedHeight
+            Button(String(format: "Height for the far ground · %.0f m", suggested)) {
+                var size = model.domainSize
+                size.z = suggested.rounded(.up)
+                model.resizeDomain(to: size)
+            }
+            .disabled(abs(suggested.rounded(.up) - model.domainSize.z) < 0.5)
+            .help(
+                "The open top reflects a little of each wave; this height, 1.5 √(R W^(1/3)) above the "
+                    + "charge for the farthest ground R, keeps what it sends down out of the gauges' positive phase."
+            )
+            Menu("Fit to the charge") {
+                ForEach([10, 20, 40] as [Float], id: \.self) { reach in
+                    Button(
+                        String(
+                            format: "To %.0f m/kg^(1/3) · %.0f m", reach,
+                            reach * cbrt(model.settings.chargeMass))
+                    ) { model.fitOpenScene(scaledReach: reach) }
+                }
+            }
+            .disabled(!model.canFitOpenScene)
+            .help(
+                "For an open scene: a square domain reaching this far from the charge along the ground, as "
+                    + "high as the open top needs, the charge in its middle, and a grid scaled to the charge."
+            )
+        }
+    }
+
+    /// One side of the domain, applied when it is committed.
+    private func domainField(_ axis: Int) -> some View {
+        TextField(
+            ["X", "Y", "Z"][axis],
+            value: Binding(
+                get: { Double(model.domainSize[axis]) },
+                set: { value in
+                    var size = model.domainSize
+                    size[axis] = Float(value)
+                    if size != model.domainSize { model.resizeDomain(to: size) }
+                }),
+            format: .number.precision(.fractionLength(0...1))
+        )
+        .multilineTextAlignment(.trailing)
+        .frame(maxWidth: 64)
+    }
+
     private var chargeSection: some View {
         Section("Charge") {
-            // Logarithmic slider: 1 kg to 2 tonnes.
+            // Logarithmic slider: 1 kg to 10 kilotonnes, to two significant figures.
             LabeledSlider(
                 title: "TNT equivalent",
                 value: Binding(
                     get: { log10(Double(model.settings.chargeMass)) },
-                    set: { model.settings.chargeMass = Float(pow(10, $0).rounded()) }),
-                range: 0...3.3,
-                text: "\(Int(model.settings.chargeMass)) kg")
+                    set: { model.settings.chargeMass = SimulationSettings.roundedMass(pow(10, $0)) }),
+                range: 0...7,
+                text: SimulationSettings.massText(model.settings.chargeMass))
             Toggle("Afterburning and hot air", isOn: $model.settings.detailedCharge)
                 .help(
                     "Burns the charge's products in the air they mix with, and lets hot air store energy "
@@ -247,6 +340,16 @@ struct SidebarView: View {
                 .help(
                     "Refines the refined air twice over again where the shock is, so that peaks come out "
                         + "close to those of a grid four times as fine. Slower than refining once.")
+                Picker("Follow the shock", selection: $model.settings.shockThreshold) {
+                    Text("While above 20 kPa").tag(Float(0.1))
+                    Text("While above 5 kPa").tag(Float(0.02))
+                    Text("While above 1 kPa").tag(Float(0.005))
+                }
+                .padding(.leading, 20)
+                .help(
+                    "How weak a shock the refined air still follows: a jump of 10%, 2% or 0.5% of the pressure "
+                        + "across a cell. Beyond it the peaks fall to the coarse cells' share; following further "
+                        + "costs more (see Large scenes).")
             }
             LabeledSlider(
                 title: "X", value: axisBinding(\.x), range: 1...Double(model.domainSize.x - 1),
@@ -308,6 +411,17 @@ struct SidebarView: View {
     }
 
     private func metres(_ value: Float) -> String { String(format: "%.2f m", value) }
+
+    /// The cell size in metres; a size outside 0.01–200 m is ignored.
+    private var cellSizeBinding: Binding<Double> {
+        Binding(
+            get: { Double(model.settings.resolution.cellSize) },
+            set: { value in
+                if let resolution = Resolution(cellSize: Float(value)) {
+                    model.settings.resolution = resolution
+                }
+            })
+    }
 
     private func cellSummary(_ grid: BlastCore.Grid) -> String {
         String(format: "%d × %d × %d = %.1f M", grid.nx, grid.ny, grid.nz, Double(grid.cellCount) / 1e6)

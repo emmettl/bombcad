@@ -1,0 +1,145 @@
+{
+  "source": "F. C. F. Alsubaei, Performance of protective perimeter walls subjected to explosions in reducing the blast resultants on buildings, Master's thesis, Western University, 2015, hdl:20.500.14721/35930",
+  "terms": "Not stated by the repository. Derived numbers only: values transcribed from the thesis's tables and text, and a few read off its figures where noted; see README.md.",
+  "explosive": {
+    "kind": "ANFO in non-fragmenting cubic wooden boxes",
+    "tntFactor": 0.82,
+    "tntFactorSource": "Table 4.1 (pressure and impulse alike); Tables 7.2 and 8.2 give 125 kg as 102.5 kg TNT and 25 kg as 20.5 kg",
+    "bulkDensity_kg_m3": 850,
+    "halfScaleInitiation": "top of the charge, 10-20 g PETN booster",
+    "fullScaleInitiation": "centre of the charge, 0.4 kg pentolite booster",
+    "massesNote": "Charge masses below are of ANFO, as the thesis gives them."
+  },
+  "site": {
+    "ground": "reinforced concrete slab in front of the wall, a 20 mm steel plate under the charge: 'fully reflective'",
+    "wingWalls": "concrete block (chapters 5-7) or reinforced concrete (chapter 8) wing walls each side of the wall 'to prevent the air blast pressure from wrapping around the wall'; their length is not stated",
+    "targets": "galvanised steel pipe columns ('non-responding'), anchored to concrete foundations, standing for the building; diameter not stated",
+    "gauges": "PCB 102B, 102B03, 102B04 piezoelectric gauges screwed onto the columns facing the charge, sampled at up to 100 kS/s; called reflected pressures",
+    "gaugesNote": "The columns are narrow, so a gauge sees the reflected peak but the reflection clears in about a millisecond: the measured impulses are a quarter to a half of A.T.BLAST's for a building face (Tables 4.6-4.8, 4.12-4.14). Peaks are the usable measure."
+  },
+  "halfScale": {
+    "chapter": "4 and 5",
+    "wall": {
+      "name": "PWS (plane vertical wall, solid)",
+      "length_m": 2.0, "height_m": 1.0, "thickness_m": 0.2,
+      "concrete_MPa": 40, "maximumAggregate_m": 0.010,
+      "bars": "10 mm at 200 mm both ways in both faces, 20 mm clear cover; 10 mm links at 200 mm; Grade 60, 420 MPa",
+      "base": "cast on bars projecting from a footing cast first; the footing set in a pit, backfilled and compacted; footing size not stated"
+    },
+    "chargeToWall_m": 2.0,
+    "heightOfBurst_m": 0.5,
+    "columnsBehindWall_m": [2.0, 6.0, 9.65],
+    "chargeToColumn_m": [4.2, 8.2, 11.85],
+    "columnHeight_m": 6.0,
+    "gaugeHeights_m": [0.75, 2.25, 3.75, 5.25],
+    "noWall": {
+      "note": "Tables 4.3-4.5 and 4.9-4.11: peak reflected pressure on the columns with no wall, kPa, gauges P1-P4. Table 5.6 repeats the 14 kg row at 8.2 m.",
+      "shots": [
+        { "anfo_kg": 2.44, "chargeToColumn_m": 8.2, "peak_kPa": [35.10, 30.34, 27.72, 37.03], "impulse_kPa_ms": [22.68, 10.62, 13.45, 34.96] },
+        { "anfo_kg": 6.46, "chargeToColumn_m": 8.2, "peak_kPa": [69.02, 67.85, 63.85, 69.64], "impulse_kPa_ms": [62.95, 51.16, 36.40, 64.40] },
+        { "anfo_kg": 14.0, "chargeToColumn_m": 8.2, "peak_kPa": [148.86, 131.21, 120.04, 124.11], "impulse_kPa_ms": [114.18, 99.15, 52.20, 109.89] },
+        { "anfo_kg": 2.44, "chargeToColumn_m": 11.85, "peak_kPa": [28.68, 30.75, 16.82, 26.34], "impulse_kPa_ms": [29.71, 45.01, null, 20.75] },
+        { "anfo_kg": 6.46, "chargeToColumn_m": 11.85, "peak_kPa": [49.64, 53.92, 36.48, 46.40], "impulse_kPa_ms": [48.40, 95.56, 42.26, 36.68] },
+        { "anfo_kg": 14.0, "chargeToColumn_m": 11.85, "peak_kPa": [82.19, 83.43, 65.92, 89.64], "impulse_kPa_ms": [93.57, 108.25, 50.95, 35.44] }
+      ]
+    },
+    "behindPlaneWall": {
+      "note": "Tables 5.8-5.13, wall PWS: the adjustment factor, the measured peak (AFp) or impulse (AFi) behind the wall over that with no wall, gauges P1-P4; null where the thesis marks the gauge failed. The charges are 6.46 and 10 (10.05) kg.",
+      "factors": [
+        { "chargeToColumn_m": 4.2, "anfo_kg": 6.46, "pressure": [null, 0.48, 0.57, null], "impulse": [null, 0.73, 0.90, null] },
+        { "chargeToColumn_m": 4.2, "anfo_kg": 10.05, "pressure": [null, 0.43, 0.80, null], "impulse": [null, 0.82, 0.75, null] },
+        { "chargeToColumn_m": 8.2, "anfo_kg": 6.46, "pressure": [null, 0.61, 0.67, 0.81], "impulse": [null, 0.63, 0.62, 0.79] },
+        { "chargeToColumn_m": 8.2, "anfo_kg": 10.05, "pressure": [null, 0.59, 0.66, 0.80], "impulse": [null, 0.69, 0.48, 0.89] },
+        { "chargeToColumn_m": 11.85, "anfo_kg": 6.46, "pressure": [0.83, 0.66, 0.77, 0.88], "impulse": [0.83, 0.74, 0.82, 0.63] },
+        { "chargeToColumn_m": 11.85, "anfo_kg": 10.05, "pressure": [0.89, 0.67, 0.77, 0.68], "impulse": [0.63, 0.80, 1.09, 0.96] }
+      ]
+    },
+    "shots": "Each wall took twelve successive shots rising from 0.45 to 14 kg (Table 5.4; scaled distances to the wall 2.79 to 0.89 m/kg^1/3 of TNT)",
+    "damage": "Plane walls with and without an opening: light shear cracking at the base of the front face at 0.86 m/kg^1/3 (the 14 kg shot), no significant deformation or local failure; 'Superficial' (ASCE 59-11). No deflection was measured."
+  },
+  "halfScaleStreet": {
+    "chapter": "6",
+    "wall": "as halfScale.wall, average cube strength 37 MPa",
+    "chargeToWall_m": 3.0,
+    "heightOfBurst_m": 0.5,
+    "columnsBehindWall_m": [2.0, 6.0, 9.65],
+    "chargeToColumn_m": [5.2, 9.2, 12.85],
+    "gaugeHeights_m": [0.75, 2.25, 3.75, 5.25],
+    "noWall": {
+      "note": "Tables 6.3-6.10, no wall, gauges P1-P4.",
+      "shots": [
+        { "anfo_kg": 7.248, "chargeToColumn_m": 9.2, "peak_kPa": [76.6, 71.4, 71.0, 73.2], "impulse_kPa_ms": [58.9, 56.5, 36.8, 42.5] },
+        { "anfo_kg": 15.05, "chargeToColumn_m": 9.2, "peak_kPa": [140.8, 130.8, 125.4, 130.8], "impulse_kPa_ms": [107.7, 104.5, 60.3, 110.0] },
+        { "anfo_kg": 7.248, "chargeToColumn_m": 12.85, "peak_kPa": [53.2, 51.2, 42.8, 58.0], "impulse_kPa_ms": [18.6, 63.0, 39.3, 45.4] },
+        { "anfo_kg": 15.05, "chargeToColumn_m": 12.85, "peak_kPa": [82.3, 78.0, 72.6, 89.2], "impulse_kPa_ms": [null, 98.0, 78.6, 78.74] }
+      ]
+    },
+    "planeWallReductionAtP1": {
+      "note": "Legends of Figures 6.10-6.13: reduction of the peak at P1 (0.75 m) by the plane wall with the street level (WL-0.0), and with the street lowered 0.5 and 1.0 m in front of it. The plotted no-wall histories in those figures peak near 10, 20, 8 and 12 kPa, a seventh of the tables' values for the same shots; which is right is not stated.",
+      "cases": [
+        { "anfo_kg": 7.248, "chargeToColumn_m": 9.2, "level": 0.50, "lowered0p5": 0.55, "lowered1p0": 0.57 },
+        { "anfo_kg": 15.052, "chargeToColumn_m": 9.2, "level": 0.52, "lowered0p5": 0.56, "lowered1p0": 0.68 },
+        { "anfo_kg": 7.248, "chargeToColumn_m": 12.85, "level": 0.27, "lowered0p5": 0.34, "lowered1p0": 0.52 },
+        { "anfo_kg": 15.052, "chargeToColumn_m": 12.85, "level": 0.13, "lowered0p5": 0.37, "lowered1p0": 0.39 }
+      ]
+    },
+    "damage": "No significant deformation or local failure in any test (up to 15.052 kg at 3 m, after twelve shots)."
+  },
+  "fullScaleCanopied": {
+    "chapter": "7",
+    "wall": {
+      "name": "T-RC-W (wall with a canopy)",
+      "length_m": 4.0, "stemHeight_m": 2.0, "thickness_m": 0.4,
+      "canopy": "a flange 1.2 m wide (0.4 m beyond each face) and 0.4 m deep on top of the stem (Figure 7.2): top 2.4 m above the footing",
+      "footing": "2.2 m wide (0.6 m and 1.2 m beyond the stem's faces; which way the longer heel faces is not stated) and 0.6 m deep, 12 mm bars at 100 mm; set in a backfilled pit (Figure 7.2)",
+      "concrete_MPa": 40,
+      "bars": "20 mm at 200 mm both ways in both faces, 40 mm clear cover; 10 mm links at 200 mm; 12 mm horizontal bars at 200 mm (Figure 7.2); Grade 60, 420 MPa",
+      "base": "cast on vertical bars projecting from the footing, cast first"
+    },
+    "chargeToWall_m": 4.0,
+    "heightOfBurst_m": 1.0,
+    "anfo_kg": 125,
+    "tnt_kg": 102.5,
+    "columnBehindWall_m": 12.0,
+    "chargeToColumn_m": 16.4,
+    "columnHeight_m": 12.0,
+    "gaugeHeights_m": [1.5, 4.5, 7.5, 10.5],
+    "noWallPeak_kPa": [232.6, 149.6, 141.2, 158.6],
+    "noWallNote": "Table 7.4. The lower two gauges' records were interrupted, so no impulses there.",
+    "behindWallPeak_kPa": {
+      "note": "Read off Figure 7.33 to about 2 kPa (the no-wall points read back within 2 kPa of Table 7.4). The walls differ only by aluminium foam panels (40 mm, 420 kg/m^3) on their faces; the unfaced control wall T-RC-W1 is not plotted.",
+      "T-RC-W2 (one foam layer in front)": [142, 124, 112, 108],
+      "T-RC-W3 (one layer each face)": [127, 116, 102, 99],
+      "T-RC-W4 (two layers in front, one behind)": [169, 125, 126, 120]
+    },
+    "midHeightDeflection_mm": {
+      "note": "Table 7.3: peak deflection at mid-height on the back (point A) from double-integrated accelerometer records, and the rotation the thesis takes from it (the arctangent over 0.8 m). Not given for the unfaced wall T-RC-W1. The plotted velocities reach 6-12 m/s within 4 ms and the displacements are still rising at the plots' end, so the integration probably drifts.",
+      "T-RC-W2": 12.31, "T-RC-W3": 7.31, "T-RC-W4": 34.77,
+      "rotation_deg": { "T-RC-W2": 0.88, "T-RC-W3": 0.53, "T-RC-W4": 2.49 }
+    },
+    "damage": "T-RC-W1 (no foam): a crack along the full length at the foot of the front face, three horizontal flexural cracks across the full width of the back face at mid-height, no significant deformation or local failure; 'Superficial to Moderate'. Foam-faced walls: flexural cracks on the back only, minor."
+  },
+  "fullScaleMasonry": {
+    "chapter": "8",
+    "wall": {
+      "length_m": 4.0, "height_m": 2.0, "thickness_m": 0.4,
+      "units": "two leaves of 400 x 200 x 200 mm two-cell hollow concrete blocks, running bond, face-shell bedded on 10 mm mortar joints, head joints staggered between the leaves",
+      "bars": "a 20 mm vertical bar in the centre of every cell (200 mm apart in each leaf) and 12 mm horizontal joint reinforcement",
+      "cells": "filled with expanding polyurethane foam, 62 kg/m^3 free-rise; the text also calls the walls 'fully grouted'",
+      "base": "not described"
+    },
+    "chargeToWall_m": 4.0,
+    "heightOfBurst_m": 1.0,
+    "chargeToColumn_m": 16.4,
+    "gaugeHeights_m": "four, on the column behind; heights not given in this chapter",
+    "shots": [
+      { "wall": "RMW-1-NP", "anfo_kg": 25, "tnt_kg": 20.5, "topDeflection_mm": 28, "rotation_deg": 0.80,
+        "damage": "Front: bed-joint cracks (bond lost) at courses 1, 4, 5, 6 and 10. Back: minor bed-joint cracks at courses 4-6; the top (10th) course offset sideways, an out-of-plane sliding shear failure. No spalling. 'Superficial to Moderate'." },
+      { "wall": "RMW-P1 (one foam layer in front)", "anfo_kg": 25, "tnt_kg": 20.5, "topDeflection_mm": 23, "rotation_deg": 0.66 },
+      { "wall": "RMW-P2 (two in front, one behind)", "anfo_kg": 25, "tnt_kg": 20.5, "topDeflection_mm": 18, "rotation_deg": 0.52 },
+      { "wall": "unfaced (RMW-4-NP in Table 8.2, RMW-2-NP in the text)", "anfo_kg": 125, "tnt_kg": 102.5, "topDeflection_mm": null,
+        "damage": "Collapsed completely; debris found about 15 m away. 'Hazardous'." }
+    ],
+    "deflectionNote": "Table 8.3: top deflection from double-integrated accelerometer records (the mid-height accelerometer failed); rotation = arctan(deflection / 2 m). Each wall took one shot."
+  }
+}

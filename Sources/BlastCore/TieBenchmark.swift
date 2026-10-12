@@ -22,6 +22,8 @@ public enum TieBenchmark {
         public var strain: Float
         /// The elements' size, in metres.
         public var elementSize: Float
+        /// With discrete bars, the first bar's segments' forces and nodes' slips at the end.
+        public var bar: (forces: [Float], slips: [Float]) = ([], [])
 
         /// The distances between neighbouring cracks, in metres, counting a run of neighbouring
         /// cracked elements as one crack.
@@ -44,15 +46,26 @@ public enum TieBenchmark {
     /// pulled at `speed` (m/s) to a mean strain of `strain`. `adjust` changes the concrete.
     public static func run(
         device: MTLDevice, elementSize h: Float, bond: BondSlip?, strain: Float = 1.5e-3, speed: Float = 0.05,
-        adjust: (inout StructureMaterial) -> Void = { _ in }
+        discrete: Bool = false, adjust: (inout StructureMaterial) -> Void = { _ in }
     ) throws -> Result {
         let tie = Box(min: SIMD3(0, 0, 1), max: SIMD3(length, side, 1 + side))
         var concrete = material
         adjust(&concrete)
         var model = StructureModel(solids: [tie], material: concrete, elementSize: h, fixedBase: false)
         model.reinforcement = [ReinforcementLayer(region: tie, ratio: SIMD3(ratio, 0, 0))]
+        if discrete {
+            // Two bars of the same steel, as discrete trusses through the tie's length, anchored
+            // in its end elements; the smeared bars stand only for dowel action and bridging.
+            let diameter = (2 * ratio * side * side / .pi).squareRoot()
+            model.discreteBars = [0.3, 0.7].map { y in
+                DiscreteBar(
+                    start: SIMD3(0.0005, y * side, 1 + side / 2),
+                    end: SIMD3(length - 0.0005, y * side, 1 + side / 2),
+                    diameter: diameter)
+            }
+        }
         model.bondSlip = bond
-        let solver = try StructureSolver(device: device, model: model)
+        let solver = try StructureSolver(device: device, model: model.loadedSlowly())
         solver.gravity = 0
         solver.groundContact = false
         solver.damping = 200
@@ -80,7 +93,9 @@ public enum TieBenchmark {
             load += force / Float(samples)
         }
         let cracks = (0..<solver.ex).filter { solver.crackStrain($0, solver.ey / 2, solver.ez / 2) > 1e-3 }
-        return Result(cracks: cracks, load: load, strain: strain, elementSize: h)
+        var result = Result(cracks: cracks, load: load, strain: strain, elementSize: h)
+        result.bar = solver.discreteBar(0)
+        return result
     }
 
     /// The Model Code's transfer length, l_t = f_ctm d / (4 τ_bms ρ) with the mean bond stress

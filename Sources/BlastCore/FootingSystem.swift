@@ -479,6 +479,7 @@ final class FootingSystem {
             let area = size.x * size.y
             // Cyclic sand unloads and reloads stiffer than it is first loaded.
             let unloading = footing.soil.cyclic.map { 1 / $0.elasticShare } ?? 1
+            func vertical(_ point: FootingBed.Point) -> Float { unloading * point.vertical }
             let bearingMass = mass + bodyMass
             for point in soilBed.points {
                 // Each point's dashpots in proportion to its springs, so that a point's dashpot
@@ -497,7 +498,7 @@ final class FootingSystem {
                 bed.append(
                     BedPoint(
                         placeAndBearing: SIMD4(
-                            point.place.x, point.place.y, point.vertical * unloading,
+                            point.place.x, point.place.y, vertical(point),
                             (capacity ?? 0) * point.area),
                         shearAndDamping: SIMD4(
                             point.horizontal.x, point.horizontal.y, dashpots.x, dashpots.y),
@@ -537,7 +538,7 @@ final class FootingSystem {
                 rockingStiffness.x > 0 ? 3 * rockingDashpot.x * rockingDashpot.x / rockingStiffness.x : 0,
                 rockingStiffness.y > 0 ? 3 * rockingDashpot.y * rockingDashpot.y / rockingStiffness.y : 0)
             let sums = soilBed.points.reduce(SIMD3<Float>.zero) {
-                $0 + unloading * $1.vertical * SIMD3(1, $1.place.x * $1.place.x, $1.place.y * $1.place.y)
+                $0 + vertical($1) * SIMD3(1, $1.place.x * $1.place.x, $1.place.y * $1.place.y)
             }
             // Cyclic sand: on, its memory, and its heave by Gajan's 1 − 1/FS.
             var cyclic = SIMD4<Float>.zero
@@ -580,10 +581,10 @@ final class FootingSystem {
             // spring alone against the mass or the least moment of inertia, and the dashpots'
             // rate.
             var translation: Float = soilBed.points.reduce(0) {
-                $0 + max(unloading * $1.vertical, $1.horizontal.max())
+                $0 + max(vertical($1), $1.horizontal.max())
             }
             var rotation: Float = soilBed.points.reduce(0) {
-                $0 + max(unloading * $1.vertical, $1.horizontal.max())
+                $0 + max(vertical($1), $1.horizontal.max())
                     * (simd_length_squared($1.place) + thickness * thickness / 4)
             }
             for point in sides?.points ?? [] {
@@ -616,7 +617,7 @@ final class FootingSystem {
         constantBuffer.copy(constants)
         bedBuffer = try buffer(bed.count * MemoryLayout<BedPoint>.stride, "footing beds")
         bedBuffer.copy(bed)
-        bedStateBuffer = try buffer(bed.count * 16, "footing bed states")
+        bedStateBuffer = try buffer(bed.count * 32, "footing bed states")
         sideBuffer = try buffer(sidePoints.count * MemoryLayout<SidePoint>.stride, "footing sides")
         sideBuffer.copy(sidePoints)
         sideStateBuffer = try buffer(sidePoints.count * 16, "footing side states")
@@ -664,6 +665,19 @@ final class FootingSystem {
     }
 
     /// Each footing's state after the last step; read while the GPU is idle.
+    /// The first footing's bed: each point's place from the base centre and how far the soil's
+    /// surface under it has sunk for good (m, positive down); read while the GPU is idle.
+    func bedSurface() -> [(place: SIMD2<Float>, sunk: Float)] {
+        guard let c = constants.first else { return [] }
+        let points = bedBuffer.contents().bindMemory(
+            to: BedPoint.self, capacity: bedBuffer.length / MemoryLayout<BedPoint>.stride)
+        let states = bedStateBuffer.contents().bindMemory(
+            to: SIMD4<Float>.self, capacity: bedStateBuffer.length / 16)
+        return (Int(c.ranges.x)..<Int(c.ranges.x + c.ranges.y)).map { p in
+            (SIMD2(points[p].placeAndBearing.x, points[p].placeAndBearing.y), -states[2 * p].z)
+        }
+    }
+
     func summaries() -> [FootingSummary] {
         let states = stateBuffer.contents().bindMemory(to: State.self, capacity: count)
         return (0..<count).map { n in

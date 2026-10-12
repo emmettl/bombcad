@@ -72,6 +72,13 @@ public final class StructureSolver {
     public var timeStepSafety: Float = 0.5
     /// Let nodes that fall to z = 0 land instead of passing through.
     public var groundContact = true
+    /// The ground's Coulomb friction coefficient against debris on it: each step a node pressed
+    /// into the ground loses this times the speed the ground stopped of its fall, from its
+    /// sliding speed. Zero (the default) instead lets the sliding speed decay at 8/s while the
+    /// node is pressed in, which a node chattering on and off the ground mostly escapes, so
+    /// debris on the ground can creep on for seconds (see docs/structural-model.md). An option
+    /// until the debris comparisons decide it; Keys's walls use 0.6.
+    public var groundFrictionCoefficient: Float = 0
     /// Whether separate pieces of the structure, and loose debris, collide with each other.
     public var contactMode = ContactMode.afterFailure
     /// Contact spring stiffness as a fraction of the stiffest spring the time step allows.
@@ -79,6 +86,10 @@ public final class StructureSolver {
     /// Contact damping as a fraction of critical.
     public var contactDamping: Float = 0.3
     public var contactFriction: Float = 0.5
+    /// With `StructureModel.removesFragments`: concrete cracked open across two planes by
+    /// `fragmentOpening` (m) and with a crack strain of `fragmentStrain` across one is fragments.
+    public var fragmentOpening: Float = 0.5e-3
+    public var fragmentStrain: Float = 0.05
 
     /// Let the air push loose debris (nodes no longer attached to any intact element) by its
     /// pressure gradient and drag, when coupled to the air.
@@ -112,15 +123,15 @@ public final class StructureSolver {
     private let steelBuffer: MTLBuffer
     /// Cyclic history of the reinforcement, 96 bytes per element (a placeholder without steel).
     private let barHistoryBuffer: MTLBuffer
-    /// Nonlocal crushing: each element's crushing history, written in alternate substeps to one
-    /// buffer while the other, from the substep before, is read. 16 bytes per element each
-    /// (placeholders when crushing is local).
-    private let crushBuffers: [MTLBuffer]
-    /// Bar plastic strains along each axis, written in alternate substeps like `crushBuffers`, so
-    /// that rupture can be judged over a debonded length.
+    /// Bar plastic strains along each axis, written in alternate substeps to one buffer while the
+    /// other, from the substep before, is read, so that rupture can be judged over a debonded
+    /// length.
     private let barPlasticBuffers: [MTLBuffer]
+    /// With nonlocal cracking, each element's inelastic crack strain across the planes nearest
+    /// each lattice axis, written in alternate substeps like `barPlasticBuffers`.
+    private let crackBuffers: [MTLBuffer]
     /// Each element's stretching rate along the lattice axes, for bars that take their rate
-    /// over their debonded length (`StructureModel.barRateAlongBars`), even and odd substeps.
+    /// over their debonded length, even and odd substeps.
     private let barRateBuffers: [MTLBuffer]
     /// The structure's materials, `model.material` first; each element names one.
     public let materials: [StructureMaterial]
@@ -161,7 +172,7 @@ public final class StructureSolver {
     /// Contact force on each listed node.
     let contactForceBuffer: MTLBuffer
     /// Non-zero once any element has failed.
-    private let failureGateBuffer: MTLBuffer
+    let failureGateBuffer: MTLBuffer
     /// Bars that slip (`StructureModel.bondSlip`): each node's slip state along each axis (three
     /// `SIMD4<Float>`: slip, its rate, plastic slip, largest slip); the bond's area and the slip's
     /// stiffness at each node along each axis (two `SIMD4<Float>`); and each element's bar force
@@ -185,6 +196,14 @@ public final class StructureSolver {
     private(set) var footings: FootingSystem?
     /// Connections between two parts of the body (`Anchorage.betweenParts`), when it has any.
     private var pairs: PartPairs?
+    /// The discrete bars (`StructureModel.discreteBars`), when the body has any.
+    private(set) var discreteBarSystem: DiscreteBarSystem?
+    private var barSegmentPipeline: MTLComputePipelineState?
+    private var barNodePipeline: MTLComputePipelineState?
+    private var barGatherPipeline: MTLComputePipelineState?
+    private var barRupturePipeline: MTLComputePipelineState?
+    /// Failed concrete as particles (`StructureModel.rubbleParticles`), when the body has them.
+    private(set) var rubbleSystem: RubbleSystem?
     private let pairPipeline: MTLComputePipelineState
     private var stamp: UInt32 = 0
 
@@ -222,19 +241,44 @@ public final class StructureSolver {
         constants.setConstantValue(&single, type: .bool, index: 0)
         var traced = false
         constants.setConstantValue(&traced, type: .bool, index: 3)
+        var secant = model.appliesHourglassFollowsCracking
+        var withoutSteel = !model.hourglassCapsSteel
+        constants.setConstantValue(&secant, type: .bool, index: 8)
+        constants.setConstantValue(&withoutSteel, type: .bool, index: 9)
+        // Bodies without discrete bars leave the constant undefined, so their kernels are as before.
+        let trusses = model.allDiscreteBars
+        var discrete = !trusses.isEmpty
+        if discrete { constants.setConstantValue(&discrete, type: .bool, index: 10) }
+        var nonlocal = model.crackAveraging != nil
+        if nonlocal { constants.setConstantValue(&nonlocal, type: .bool, index: 11) }
+        // Without rubble the constant stays undefined, so the kernels are as before.
+        var rubble = model.rubbleParticles
+        if rubble { constants.setConstantValue(&rubble, type: .bool, index: 12) }
         elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
         traceElementPipeline = {
             let tracing = MTLFunctionConstantValues()
             var single = single
             var traced = true
+            var secant = secant
+            var withoutSteel = withoutSteel
             tracing.setConstantValue(&single, type: .bool, index: 0)
             tracing.setConstantValue(&traced, type: .bool, index: 3)
+            tracing.setConstantValue(&secant, type: .bool, index: 8)
+            tracing.setConstantValue(&withoutSteel, type: .bool, index: 9)
+            var discrete = discrete
+            if discrete { tracing.setConstantValue(&discrete, type: .bool, index: 10) }
+            var nonlocal = nonlocal
+            if nonlocal { tracing.setConstantValue(&nonlocal, type: .bool, index: 11) }
+            var rubble = rubble
+            if rubble { tracing.setConstantValue(&rubble, type: .bool, index: 12) }
             return try? ShaderLibrary.pipeline("structureElements", in: library, constants: tracing)
         }
         // Keep the general connection law out of kernels for ordinary clamped/free bodies.
         let nodeConstants = MTLFunctionConstantValues()
         var connected = model.connectionStiffness != nil
         nodeConstants.setConstantValue(&connected, type: .bool, index: 1)
+        if discrete { nodeConstants.setConstantValue(&discrete, type: .bool, index: 10) }
+        if rubble { nodeConstants.setConstantValue(&rubble, type: .bool, index: 12) }
         nodePipeline = try ShaderLibrary.pipeline("structureNodes", in: library, constants: nodeConstants)
         var turned = true
         nodeConstants.setConstantValue(&turned, type: .bool, index: 4)
@@ -242,9 +286,14 @@ public final class StructureSolver {
             try? ShaderLibrary.pipeline("structureNodes", in: library, constants: nodeConstants)
         }
         pairPipeline = try pipeline("structurePairs")
-        contactClearPipeline = try pipeline("contactClear")
-        contactHashPipeline = try pipeline("contactHash")
-        contactForcePipeline = try pipeline("contactForces")
+        let contactConstants = MTLFunctionConstantValues()
+        if rubble { contactConstants.setConstantValue(&rubble, type: .bool, index: 12) }
+        contactClearPipeline = try ShaderLibrary.pipeline(
+            "contactClear", in: library, constants: contactConstants)
+        contactHashPipeline = try ShaderLibrary.pipeline(
+            "contactHash", in: library, constants: contactConstants)
+        contactForcePipeline = try ShaderLibrary.pipeline(
+            "contactForces", in: library, constants: contactConstants)
         debrisAreaPipeline = try pipeline("debrisAreas")
 
         func buffer(_ length: Int, _ label: String) throws -> MTLBuffer {
@@ -353,19 +402,20 @@ public final class StructureSolver {
         steelBuffer = try buffer(elements * 16, "structure reinforcement")
         let hasSteel = materials.contains { $0.steel != nil }
         barHistoryBuffer = try buffer(hasSteel ? elements * 128 : 128, "structure reinforcement history")
-        let averagesCrushing = materials.contains { Self.crushRadius(of: $0, elementSize: h) > 0 }
-        let crushLength = averagesCrushing ? elements * 16 : 16
         let materialIndex = try buffer(elements, "structure material indices")
         materialIndex.copy(elementMaterials)
         materialIndexBuffer = materialIndex
-        crushBuffers = [try buffer(crushLength, "crushing, even"), try buffer(crushLength, "crushing, odd")]
         let spreadsRupture = materials.contains { Self.barReach(of: $0, elementSize: h) > 0 }
         let barPlasticLength = spreadsRupture ? elements * 16 : 16
         barPlasticBuffers = [
             try buffer(barPlasticLength, "bar plastic strain, even"),
             try buffer(barPlasticLength, "bar plastic strain, odd"),
         ]
-        let barRateLength = spreadsRupture && model.barRateAlongBars ? elements * 16 : 16
+        let crackLength = model.crackAveraging != nil ? elements * 16 : 16
+        crackBuffers = [
+            try buffer(crackLength, "crack strain, even"), try buffer(crackLength, "crack strain, odd"),
+        ]
+        let barRateLength = spreadsRupture ? elements * 16 : 16
         barRateBuffers = [
             try buffer(barRateLength, "bar strain rate, even"),
             try buffer(barRateLength, "bar strain rate, odd"),
@@ -491,6 +541,20 @@ public final class StructureSolver {
             (anchorStiffness != nil ? max(nodeList.count, 1) : 1) * MemoryLayout<AnchorageParameters>.stride,
             "connection laws")
         try setUpBondSlip()
+        try setUpDiscreteBars(trusses, library: library)
+        if model.rubbleParticles {
+            // Each concrete element's mass on its nodes, and the share of it its smeared bars are,
+            // which stays on the nodes while the bars stand bare.
+            let ratios = steelBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: elements)
+            let masses = (0..<elementCount).map { n -> SIMD2<Float> in
+                let material = materials[Int(elementMaterials[n] & 15)]
+                guard material.model == .concrete else { return .zero }
+                let steel = material.steel != nil ? ratios[n].x + ratios[n].y + ratios[n].z : 0
+                return SIMD2(material.density * h * h * h, min(steel * 7850 / material.density, 1))
+            }
+            rubbleSystem = try RubbleSystem(
+                device: device, library: library, masses: masses, gridCells: gridCells)
+        }
         reset()
         if let anchorStiffness {
             let stiffest = max(anchorStiffness.normal, anchorStiffness.shear)
@@ -646,6 +710,8 @@ public final class StructureSolver {
     /// The footings under the base after the last step, in the order of their connections (the
     /// ground's, then the support regions'); empty without any.
     public func footingSummaries() -> [FootingSummary] { footings?.summaries() ?? [] }
+    /// The first footing's bed points and how far the soil under each has sunk for good.
+    public func footingBedSurface() -> [(place: SIMD2<Float>, sunk: Float)] { footings?.bedSurface() ?? [] }
 
     /// With bars that slip, makes their buffers: the slip state, each element's bar forces, and
     /// the bond's area at each node along each axis, a share of the bars' surface in the elements
@@ -656,7 +722,9 @@ public final class StructureSolver {
     /// without settling. (Done after the initialiser has set everything else up: written inline
     /// there, the loop made the optimised build trap, as one did in `ShellSolver`'s.)
     private func setUpBondSlip() throws {
-        guard let bond = model.bondSlip, materials.contains(where: { $0.steel != nil }) else { return }
+        guard let bond = model.bondSlip, materials.contains(where: { $0.steel != nil }),
+            model.allDiscreteBars.isEmpty
+        else { return }
         let h = model.elementSize
         let law = bond.law(compressiveStrength: model.material.compressiveStrength)
         let bondStiffness = law.peak * pow(0.02, law.alpha) / (0.02 * law.s1)
@@ -694,6 +762,60 @@ public final class StructureSolver {
         barForceBuffer = try buffer(max(elementCount, 1) * 32, "bar forces")
     }
 
+    /// Cuts the discrete bars into segments about an element long and embeds their nodes in the
+    /// elements they lie in (see `DiscreteBar`).
+    private func setUpDiscreteBars(_ trusses: [DiscreteBar], library: MTLLibrary) throws {
+        guard !trusses.isEmpty else { return }
+        let h = model.elementSize
+        let materialIndices = materialIndexBuffer.contents().bindMemory(
+            to: UInt8.self, capacity: max(elementCount, 1))
+        let dims = SIMD3(ex, ey, ez)
+        func embed(_ point: SIMD3<Float>) -> DiscreteBarSystem.Embedding? {
+            let local = (point - origin) / h
+            let cell = SIMD3<Int>(local.rounded(.down))
+            // A point on an element's face may lie in the element on either side of it; one just
+            // outside the mesh, where a solid's size is not a whole number of elements, is taken
+            // onto the nearest element within half an element.
+            for tolerance: Float in [1e-4, 0.5] {
+                for dx in [0, -1, 1] {
+                    for dy in [0, -1, 1] {
+                        for dz in [0, -1, 1] {
+                            let c = cell &+ SIMD3(dx, dy, dz)
+                            guard all(c .>= 0), all(c .< dims), let compact = compactIndex(c.x, c.y, c.z)
+                            else { continue }
+                            let xi = local - SIMD3<Float>(c)
+                            guard all(xi .>= -tolerance), all(xi .<= 1 + tolerance) else { continue }
+                            let t = simd_clamp(xi, .zero, .one)
+                            var corners: [Int] = []
+                            var weights: [Float] = []
+                            for a in 0..<8 {
+                                let bit = SIMD3(a & 1, (a >> 1) & 1, (a >> 2) & 1)
+                                guard let node = storedNode(c.x + bit.x, c.y + bit.y, c.z + bit.z) else {
+                                    return nil
+                                }
+                                corners.append(node)
+                                var w: Float = 1
+                                for axis in 0..<3 { w *= bit[axis] == 1 ? t[axis] : 1 - t[axis] }
+                                weights.append(w)
+                            }
+                            return .init(
+                                corners: corners, weights: weights,
+                                material: Int(materialIndices[compact] & 15))
+                        }
+                    }
+                }
+            }
+            return nil
+        }
+        discreteBarSystem = try DiscreteBarSystem(
+            device: device, bars: trusses, elementSize: h, bodyNodeCount: nodeCount,
+            crackSpacing: model.material.crackSpacing, embed: embed)
+        barSegmentPipeline = try ShaderLibrary.pipeline("discreteBarSegments", in: library)
+        barNodePipeline = try ShaderLibrary.pipeline("discreteBarNodes", in: library)
+        barGatherPipeline = try ShaderLibrary.pipeline("discreteBarGather", in: library)
+        barRupturePipeline = try ShaderLibrary.pipeline("discreteBarRupture", in: library)
+    }
+
     // MARK: - State
 
     /// Restores the undeformed, stress-free, stationary body.
@@ -718,12 +840,14 @@ public final class StructureSolver {
         memset(barForceBuffer.contents(), 0, barForceBuffer.length)
         memset(forceBuffer.contents(), 0, forceBuffer.length)
         memset(barHistoryBuffer.contents(), 0, barHistoryBuffer.length)
-        for crushBuffer in crushBuffers + barPlasticBuffers + barRateBuffers {
-            memset(crushBuffer.contents(), 0, crushBuffer.length)
+        for buffer in barPlasticBuffers + barRateBuffers + crackBuffers {
+            memset(buffer.contents(), 0, buffer.length)
         }
 
         footings?.reset()
         pairs?.reset()
+        discreteBarSystem?.reset()
+        rubbleSystem?.reset()
         let materialIndices = materialIndexBuffer.contents().bindMemory(
             to: UInt8.self, capacity: max(elementCount, 1))
         let onGround = model.fixedBase && abs(origin.z) < 0.5 * h
@@ -841,20 +965,22 @@ public final class StructureSolver {
         /// `tensionNormal` on planes cracked, but by less than 0.1 mm: the concrete between
         /// cracks, as far as the mesh separates it.
         case tensionHairline
+        /// Hourglass control held at its cap, where it dissipates: not counted in `hourglass`.
+        case hourglassCapped
 
         public var label: String {
             [
                 "tension", "compression", "uncracked shear", "interlock", "dowel", "kinking", "bars", "bond",
                 "hourglass", "other", "viscosity", "crack shear", "interlock, pressed",
                 "crack shear, pressed",
-                "tension, cracked", "compression, crushed", "tension, hairline",
+                "tension, cracked", "compression, crushed", "tension, hairline", "hourglass, capped",
             ][rawValue]
         }
     }
 
     /// Adds each element's work by mechanism to a trace (`workTotals`), as a diagnostic of where
     /// a structure's stiffness and strength come from. Off by default; it costs a buffer of
-    /// seventeen floats per element.
+    /// eighteen floats per element.
     public var tracesWork = false {
         didSet {
             guard tracesWork, workBuffer == nil else { return }
@@ -1001,7 +1127,8 @@ public final class StructureSolver {
         stateValue(i, j, k, offset: 144)
     }
 
-    /// Net force (N) that the elements around a node exerted on it in the last step. At a
+    /// Net force (N) that the elements around a node, and any discrete bars, exerted on it in the
+    /// last step. At a
     /// restrained or prescribed node this is minus the reaction.
     public func nodalForce(_ i: Int, _ j: Int, _ k: Int) -> SIMD3<Float> {
         var total = SIMD3<Float>.zero
@@ -1016,6 +1143,11 @@ public final class StructureSolver {
                 base.load(as: Float.self), base.load(fromByteOffset: 4, as: Float.self),
                 base.load(fromByteOffset: 8, as: Float.self))
         }
+        // And the discrete bars' bond on it.
+        if let bars = discreteBarSystem, let node = storedNode(i, j, k) {
+            let force = bars.nodeForce.contents().load(fromByteOffset: node * 16, as: SIMD4<Float>.self)
+            total += SIMD3(force.x, force.y, force.z)
+        }
         return total
     }
 
@@ -1028,6 +1160,32 @@ public final class StructureSolver {
     /// ruptured set reads 1e9).
     public func barPlasticStrain(_ i: Int, _ j: Int, _ k: Int) -> SIMD3<Float> {
         SIMD3((0..<3).map { stateValue(i, j, k, offset: 92 + 4 * $0) })
+    }
+
+    /// The discrete bars' segments, and how many have ruptured.
+    public var discreteBarRuptures: (segments: Int, ruptured: Int) {
+        guard let bars = discreteBarSystem else { return (0, 0) }
+        return (
+            bars.segmentCount, (0..<bars.segmentCount).filter { abs(bars.segment($0).plastic) > 1e8 }.count
+        )
+    }
+
+    /// Discrete bar `bar`'s segments' plastic strains (1e9 once ruptured).
+    public func discreteBarPlastic(_ bar: Int) -> [Float] {
+        guard let bars = discreteBarSystem, bars.segmentsOfBar.indices.contains(bar) else { return [] }
+        return bars.segmentsOfBar[bar].map { bars.segment($0).plastic }
+    }
+
+    /// Discrete bar `bar`'s segments' forces (N; zero once ruptured) and its nodes' slips (m), in
+    /// order along it; empty without discrete bars.
+    public func discreteBar(_ bar: Int) -> (forces: [Float], slips: [Float]) {
+        guard let bars = discreteBarSystem, bars.segmentsOfBar.indices.contains(bar) else { return ([], []) }
+        let range = bars.segmentsOfBar[bar]
+        let forces = range.map { bars.segment($0).force }
+        // A bar's nodes run from its first segment's first node, one more than its segments.
+        let firstNode = range.lowerBound + bar
+        let slips = (0...range.count).map { bars.slip(firstNode + $0) }
+        return (forces, slips)
     }
 
     /// With bars that slip, the slip of node (i, j, k)'s bars along each lattice axis relative to
@@ -1206,6 +1364,13 @@ public final class StructureSolver {
                 total += SIMD3<Double>(node.velocity) * Double(node.mass)
             }
         }
+        if let rubble = rubbleSystem {
+            let particles = rubble.particles.contents().bindMemory(
+                to: RubbleParticle.self, capacity: rubble.count)
+            for n in 0..<rubble.count where particles[n].alive != 0 {
+                total += SIMD3<Double>(particles[n].velocity) * Double(particles[n].mass)
+            }
+        }
         return total
     }
 
@@ -1298,11 +1463,14 @@ public final class StructureSolver {
     /// to cross an element, its speed raised by the bars where they are densest.
     public var stableTimeStep: Float {
         let speeds = materials.enumerated().map { n, material -> Float in
-            guard let steel = material.steel, n < densestSteel.count, densestSteel[n] > 0 else {
+            guard let steel = material.steel, n < densestSteel.count,
+                max(densestSteel[n], discreteBarSystem?.densestRatio ?? 0) > 0
+            else {
                 return material.dilatationalWaveSpeed
             }
-            let modulus =
-                material.lameLambda + 2 * material.shearModulus + steel.youngsModulus * densestSteel[n]
+            // Discrete bars stiffen the elements they run through as their share of its section.
+            let ratio = max(densestSteel[n], discreteBarSystem?.densestRatio ?? 0)
+            let modulus = material.lameLambda + 2 * material.shearModulus + steel.youngsModulus * ratio
             return (modulus / material.density).squareRoot()
         }
         let step = timeStepSafety * model.elementSize / (speeds.max() ?? 1)
@@ -1347,6 +1515,19 @@ public final class StructureSolver {
             encoder.setBuffer(fluid.couplingMap ?? placeholderBuffer, offset: 0, index: 8)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            if let rubble = rubbleSystem {
+                encoder.setComputePipelineState(rubble.areas)
+                encoder.setBuffer(rubble.particles, offset: 0, index: 0)
+                encoder.setBuffer(fluid.control, offset: 0, index: 1)
+                encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 2)
+                encoder.setBuffer(fluid.mask, offset: 0, index: 3)
+                encoder.setBuffer(area, offset: 0, index: 4)
+                encoder.setBuffer(failureGateBuffer, offset: 0, index: 5)
+                encoder.setBuffer(fluid.couplingMap ?? placeholderBuffer, offset: 0, index: 6)
+                encoder.setBuffer(rubble.state, offset: 0, index: 7)
+                encoder.dispatchThreads(
+                    MTLSize(width: rubble.count, height: 1, depth: 1), threadsPerThreadgroup: group)
+            }
         }
     }
 
@@ -1368,6 +1549,18 @@ public final class StructureSolver {
         _ encoder: MTLComputeCommandEncoder, count: Int, fluid: FluidBinding?, interface: InterfaceBuffers?,
         beforeNodes: ((Int, StructureUniforms) -> Void)?, afterNodes: ((Int) -> Void)?
     ) {
+        encodeSubsteps(
+            encoder, substeps: 0..<count, prelude: true, fluid: fluid, interface: interface,
+            beforeNodes: beforeNodes, afterNodes: afterNodes)
+    }
+
+    /// Encodes the substeps in `substeps`, with the once-per-batch work first if `prelude`, so
+    /// that several bodies can be encoded a substep at a time, side by side.
+    func encodeSubsteps(
+        _ encoder: MTLComputeCommandEncoder, substeps: Range<Int>, prelude: Bool, fluid: FluidBinding?,
+        interface: InterfaceBuffers?, beforeNodes: ((Int, StructureUniforms) -> Void)?,
+        afterNodes: ((Int) -> Void)?
+    ) {
         var uniforms = makeUniforms(fluid: fluid)
         uniforms.interfaceLinks = UInt32(interface?.count ?? 0)
         var parameters = zip(materials, jointed).map { material, jointed in
@@ -1384,13 +1577,17 @@ public final class StructureSolver {
         // Until something has failed there is nothing to collide, so the contact kernels are
         // left out; they join in from the first batch encoded after a failure (coupled to the
         // air, from its first checkpoint after one).
-        let encodeContact = contactMode == .always || (contactMode == .afterFailure && encodesAsFailed)
+        // Rubble is made within a batch, as elements fail, and pushes on what it meets from then
+        // on: with it the contact kernels are always encoded, and wait in the GPU for a failure.
+        let encodeContact =
+            contactMode == .always
+            || (contactMode == .afterFailure && (encodesAsFailed || rubbleSystem != nil))
 
         // Loose debris adds up its frontal area in each air cell before the substeps, for the
         // implicit form of its drag. There is none until something has failed.
-        if let fluid, !fluid.debrisAreasPrepared { encodeDebrisAreas(encoder, fluid: fluid) }
+        if prelude, let fluid, !fluid.debrisAreasPrepared { encodeDebrisAreas(encoder, fluid: fluid) }
 
-        for substep in 0..<count {
+        for substep in substeps {
             uniforms.substep = UInt32(substep)
             uniforms.loadTime = Float(time + Double(substep) * Double(criticalTimeStep))
             encoder.setComputePipelineState(tracesWork ? tracingPipeline ?? elementPipeline : elementPipeline)
@@ -1407,11 +1604,11 @@ public final class StructureSolver {
             encoder.setBuffer(steelBuffer, offset: 0, index: 10)
             encoder.setBuffer(loadTableBuffer, offset: 0, index: 11)
             encoder.setBuffer(barHistoryBuffer, offset: 0, index: 12)
+            encoder.setBuffer(crackBuffers[substep % 2], offset: 0, index: 13)
+            encoder.setBuffer(crackBuffers[1 - substep % 2], offset: 0, index: 14)
             encoder.setBytes(
                 &parameters, length: parameters.count * MemoryLayout<MaterialParameters>.stride, index: 15)
             encoder.setBuffer(materialIndexBuffer, offset: 0, index: 16)
-            encoder.setBuffer(crushBuffers[substep % 2], offset: 0, index: 13)
-            encoder.setBuffer(crushBuffers[1 - substep % 2], offset: 0, index: 14)
             encoder.setBuffer(barPlasticBuffers[substep % 2], offset: 0, index: 17)
             encoder.setBuffer(barPlasticBuffers[1 - substep % 2], offset: 0, index: 18)
             encoder.setBuffer(cellElementBuffer, offset: 0, index: 19)
@@ -1428,12 +1625,58 @@ public final class StructureSolver {
             encoder.dispatchThreads(
                 MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
 
+            if let rubble = rubbleSystem {
+                encoder.setComputePipelineState(rubble.convert)
+                encoder.setBuffer(rubble.particles, offset: 0, index: 0)
+                encoder.setBuffer(nodeBuffer, offset: 0, index: 1)
+                encoder.setBuffer(flagBuffer, offset: 0, index: 2)
+                encoder.setBuffer(instanceBuffer, offset: 0, index: 3)
+                encoder.setBuffer(nodeMapBuffer, offset: 0, index: 4)
+                encoder.setBuffer(rubble.masses, offset: 0, index: 5)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 6)
+                encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 7)
+                encoder.setBuffer(failureGateBuffer, offset: 0, index: 8)
+                encoder.setBuffer(nodeListBuffer, offset: 0, index: 9)
+                encoder.setBuffer(rubble.state, offset: 0, index: 10)
+                encoder.dispatchThreads(
+                    MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+                encoder.setComputePipelineState(rubble.nodes)
+                encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
+                encoder.setBuffer(flagBuffer, offset: 0, index: 1)
+                encoder.setBuffer(rubble.particles, offset: 0, index: 2)
+                encoder.setBuffer(cellElementBuffer, offset: 0, index: 3)
+                encoder.setBuffer(nodeListBuffer, offset: 0, index: 4)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 5)
+                encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 6)
+                encoder.setBuffer(failureGateBuffer, offset: 0, index: 7)
+                encoder.setBuffer(rubble.state, offset: 0, index: 8)
+                encoder.dispatchThreads(
+                    MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            }
+
             if encodeContact {
                 // The stamp distinguishes this substep's grid entries from stale ones.
                 stamp = stamp % 0x1FFF_FFF0 + 1
                 uniforms.stamp = stamp
                 let nodes = MTLSize(width: nodeCount, height: 1, depth: 1)
                 for pipeline in [contactClearPipeline, contactHashPipeline, contactForcePipeline] {
+                    if pipeline === contactForcePipeline, let rubble = rubbleSystem {
+                        // The particles' table, before the nodes read it.
+                        for kernel in [rubble.clear, rubble.hash] {
+                            encoder.setComputePipelineState(kernel)
+                            encoder.setBuffer(rubble.particles, offset: 0, index: 0)
+                            encoder.setBuffer(rubble.heads, offset: 0, index: 1)
+                            encoder.setBuffer(rubble.slots, offset: 0, index: 2)
+                            encoder.setBuffer(failureGateBuffer, offset: 0, index: 3)
+                            encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 4)
+                            encoder.setBytes(
+                                &uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 5)
+                            encoder.setBuffer(rubble.state, offset: 0, index: 6)
+                            encoder.dispatchThreads(
+                                MTLSize(width: rubble.count, height: 1, depth: 1),
+                                threadsPerThreadgroup: group)
+                        }
+                    }
                     encoder.setComputePipelineState(pipeline)
                     encoder.setBuffer(nodeListBuffer, offset: 0, index: 0)
                     encoder.setBuffer(nodeBuffer, offset: 0, index: 1)
@@ -1444,13 +1687,81 @@ public final class StructureSolver {
                     if pipeline === contactForcePipeline {
                         encoder.setBuffer(contactForceBuffer, offset: 0, index: 7)
                         encoder.setBuffer(contactSlotBuffer, offset: 0, index: 8)
+                        encoder.setBuffer(rubbleSystem?.particles ?? placeholderBuffer, offset: 0, index: 9)
+                        encoder.setBuffer(rubbleSystem?.heads ?? placeholderBuffer, offset: 0, index: 10)
+                        encoder.setBuffer(rubbleSystem?.slots ?? placeholderBuffer, offset: 0, index: 11)
+                        encoder.setBuffer(rubbleSystem?.state ?? placeholderBuffer, offset: 0, index: 12)
                     } else {
                         encoder.setBuffer(contactSlotBuffer, offset: 0, index: 6)
                     }
                     encoder.dispatchThreads(nodes, threadsPerThreadgroup: group)
                 }
+                if let rubble = rubbleSystem {
+                    encoder.setComputePipelineState(rubble.force)
+                    encoder.setBuffer(rubble.particles, offset: 0, index: 0)
+                    encoder.setBuffer(rubble.heads, offset: 0, index: 1)
+                    encoder.setBuffer(rubble.slots, offset: 0, index: 2)
+                    encoder.setBuffer(failureGateBuffer, offset: 0, index: 3)
+                    encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 4)
+                    encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 5)
+                    encoder.setBuffer(rubble.forces, offset: 0, index: 6)
+                    encoder.setBuffer(nodeBuffer, offset: 0, index: 7)
+                    encoder.setBuffer(nodeListBuffer, offset: 0, index: 8)
+                    encoder.setBuffer(contactHeadBuffer, offset: 0, index: 9)
+                    encoder.setBuffer(contactSlotBuffer, offset: 0, index: 10)
+                    encoder.setBuffer(rubble.state, offset: 0, index: 11)
+                    encoder.dispatchThreads(
+                        MTLSize(width: rubble.count, height: 1, depth: 1), threadsPerThreadgroup: group)
+                }
             }
 
+            if let bars = discreteBarSystem, let barSegmentPipeline, let barNodePipeline,
+                let barGatherPipeline, let barRupturePipeline
+            {
+                encoder.setComputePipelineState(barSegmentPipeline)
+                encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
+                encoder.setBuffer(bars.nodes, offset: 0, index: 1)
+                encoder.setBuffer(bars.segments, offset: 0, index: 2)
+                encoder.setBuffer(bars.segmentState, offset: 0, index: 3)
+                encoder.setBuffer(bars.histories, offset: 0, index: 4)
+                encoder.setBuffer(bars.slips, offset: 0, index: 5)
+                encoder.setBytes(
+                    &parameters, length: parameters.count * MemoryLayout<MaterialParameters>.stride, index: 6)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 7)
+                encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 8)
+                encoder.dispatchThreads(
+                    MTLSize(width: bars.segmentCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+                encoder.setComputePipelineState(barRupturePipeline)
+                encoder.setBuffer(bars.segmentState, offset: 0, index: 0)
+                encoder.setBuffer(bars.segments, offset: 0, index: 1)
+                encoder.setBytes(
+                    &parameters, length: parameters.count * MemoryLayout<MaterialParameters>.stride, index: 2)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 3)
+                encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 4)
+                encoder.dispatchThreads(
+                    MTLSize(width: bars.segmentCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+                encoder.setComputePipelineState(barNodePipeline)
+                encoder.setBuffer(bars.nodes, offset: 0, index: 0)
+                encoder.setBuffer(bars.segmentState, offset: 0, index: 1)
+                encoder.setBuffer(bars.slips, offset: 0, index: 2)
+                encoder.setBuffer(bars.transfer, offset: 0, index: 3)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 4)
+                encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 5)
+                encoder.setBuffer(bars.segments, offset: 0, index: 6)
+                encoder.setBytes(
+                    &parameters, length: parameters.count * MemoryLayout<MaterialParameters>.stride, index: 7)
+                encoder.dispatchThreads(
+                    MTLSize(width: bars.nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+                encoder.setComputePipelineState(barGatherPipeline)
+                encoder.setBuffer(bars.gatherStart, offset: 0, index: 0)
+                encoder.setBuffer(bars.gatherEntries, offset: 0, index: 1)
+                encoder.setBuffer(bars.transfer, offset: 0, index: 2)
+                encoder.setBuffer(bars.nodeForce, offset: 0, index: 3)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 4)
+                encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 5)
+                encoder.dispatchThreads(
+                    MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            }
             beforeNodes?(substep, uniforms)
             if let pairs {
                 uniforms.pairs = UInt32(pairs.count)
@@ -1499,8 +1810,25 @@ public final class StructureSolver {
             encoder.setBuffer(pairs?.state ?? placeholderBuffer, offset: 0, index: 27)
             encoder.setBuffer(pairs?.nodeStart ?? placeholderBuffer, offset: 0, index: 28)
             encoder.setBuffer(pairs?.nodeEntries ?? placeholderBuffer, offset: 0, index: 29)
+            encoder.setBuffer(discreteBarSystem?.nodeForce ?? placeholderBuffer, offset: 0, index: 30)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            if let rubble = rubbleSystem {
+                encoder.setComputePipelineState(rubble.move)
+                encoder.setBuffer(rubble.particles, offset: 0, index: 0)
+                encoder.setBuffer(rubble.forces, offset: 0, index: 1)
+                encoder.setBuffer(failureGateBuffer, offset: 0, index: 2)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 3)
+                encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 4)
+                encoder.setBuffer(fluid?.state ?? placeholderBuffer, offset: 0, index: 5)
+                encoder.setBuffer(fluid?.mask ?? placeholderBuffer, offset: 0, index: 6)
+                encoder.setBuffer(fluid?.exchange ?? placeholderBuffer, offset: 0, index: 7)
+                encoder.setBuffer(fluid?.debrisArea ?? placeholderBuffer, offset: 0, index: 8)
+                encoder.setBuffer(fluid?.couplingMap ?? placeholderBuffer, offset: 0, index: 9)
+                encoder.setBuffer(rubble.state, offset: 0, index: 10)
+                encoder.dispatchThreads(
+                    MTLSize(width: rubble.count, height: 1, depth: 1), threadsPerThreadgroup: group)
+            }
             footings?.encode(
                 encoder,
                 uniforms: FootingSystem.Uniforms(
@@ -1549,6 +1877,7 @@ public final class StructureSolver {
             contactStiffness: contactStiffness / (criticalTimeStep * criticalTimeStep),
             contactDamping: contactDamping,
             contactFriction: contactFriction)
+        uniforms.groundCoulomb = groundContact ? groundFrictionCoefficient : 0
         let down = simd_normalize(gravityDirection)
         (uniforms.gravityX, uniforms.gravityY, uniforms.gravityZ) = (down.x, down.y, down.z)
         if groundAcceleration != .zero {
@@ -1560,16 +1889,19 @@ public final class StructureSolver {
         }
         // Time constant of the running averages of strain rate and confinement: 50 steps.
         uniforms.rateFilter = 1 / (50 * criticalTimeStep)
-        uniforms.orientedCracks = model.crackAxes.uniform
         uniforms.secondCracks = model.secondCracks ? 1 : 0
         uniforms.bareBars = model.bareBars ? 1 : 0
         uniforms.removesFragments = model.removesFragments ? 1 : 0
-        uniforms.crackSlip = model.crackSlip ? (model.slipWidensCracks ? 1 : 2) : 0
+        uniforms.fragmentOpening = fragmentOpening
+        uniforms.fragmentStrain = fragmentStrain
+        uniforms.crackSlip = model.crackSlip ? 1 : 0
         uniforms.barAxes = barAxes
-        uniforms.crackShearStiffness = model.crackShearStiffness ? 1 : 0
-        uniforms.pressedInterlock = model.pressedInterlock ? 1 : 0
-        uniforms.barRateAlongBars = model.barRateAlongBars ? 1 : 0
-        if let bond = model.bondSlip, materials.contains(where: { $0.steel != nil }) {
+        uniforms.pressedInterlock = model.appliesPressedInterlock ? 1 : 0
+        if let length = model.crackAveraging {
+            uniforms.crackReach = UInt32(max(0, Int((length / model.elementSize).rounded())))
+        }
+        if let bond = model.bondSlip, materials.contains(where: { $0.steel != nil }), discreteBarSystem == nil
+        {
             let law = bond.law(compressiveStrength: model.material.compressiveStrength)
             uniforms.bondSlip = 1
             uniforms.bondPeak = law.peak
@@ -1580,6 +1912,24 @@ public final class StructureSolver {
             uniforms.bondAlpha = law.alpha
             // Bond lost where bars have yielded, from their curve: the plastic strain at their
             // ultimate strength, and b = (2 - f_u / f_y)^2.
+            if bond.yieldedBondLoss, let steel = model.material.steel,
+                let top = steel.curve.max(by: { $0.y < $1.y }), top.x > 0
+            {
+                uniforms.bondYieldRange = top.x
+                let excess = 2 - top.y / steel.curve[0].y
+                uniforms.bondYieldExponent = max(excess * excess, 0.1)
+            }
+        }
+        if let bond = model.bondSlip, discreteBarSystem != nil {
+            // The discrete bars' bond, in the same fields the smeared bars' slip uses.
+            let law = bond.law(compressiveStrength: model.material.compressiveStrength)
+            uniforms.discreteBond = 1
+            uniforms.bondPeak = law.peak
+            uniforms.bondResidual = law.residual
+            uniforms.bondS1 = law.s1
+            uniforms.bondS2 = law.s2
+            uniforms.bondS3 = law.s3
+            uniforms.bondAlpha = law.alpha
             if bond.yieldedBondLoss, let steel = model.material.steel,
                 let top = steel.curve.max(by: { $0.y < $1.y }), top.x > 0
             {
@@ -1644,11 +1994,6 @@ public final class StructureSolver {
         return uniforms
     }
 
-    /// Elements either side over which a material's crushing is averaged; zero when it is local.
-    static func crushRadius(of material: StructureMaterial, elementSize h: Float) -> Int {
-        material.model == .concrete ? Int((material.crushLength / h).rounded()) : 0
-    }
-
     /// Half the debonded length over which a bar's rupture is judged, in elements; the debonded
     /// length is taken as the material's crack spacing. Zero below one element.
     static func barReach(of material: StructureMaterial, elementSize h: Float) -> Float {
@@ -1690,7 +2035,7 @@ public final class StructureSolver {
         let ft = (units?.tensileStrength ?? material.tensileStrength) * material.concreteRateFactor
         let onset = ft / material.youngsModulus
         let peak = 2 * fc / material.youngsModulus
-        let end = peak + 2 * material.crushingEnergy / (max(h, material.crushBand) * 0.8 * fc)
+        let end = peak + 2 * material.crushingEnergy / (h * 0.8 * fc)
         parameters.materialModel = MaterialModel.concrete.rawValue
         parameters.compressiveStrength = fc
         parameters.tensileStrength = ft
@@ -1723,9 +2068,7 @@ public final class StructureSolver {
         parameters.crackResidual = material.crackResidual
         parameters.dowelFactor = material.dowelFactor
         parameters.fractureRateExponent = material.fractureRateExponent
-        parameters.tensionRateLaw = material.tensionRateLaw == .modelCode2010 ? 1 : 0
         parameters.crackDilatancy = material.crackDilatancy
-        parameters.crushRadius = UInt32(Self.crushRadius(of: material, elementSize: h))
         parameters.barReach = bondSlip ? 0 : Self.barReach(of: material, elementSize: h)
         parameters.crushPeak = peak
         parameters.crushEnd = end
@@ -1763,15 +2106,9 @@ public final class StructureSolver {
             parameters.concreteRateCompression = 1 / (5 + 9 * megapascals / 10)
             parameters.concreteRateTension = 1 / (1 + 8 * megapascals / 10)
             if let steel = material.steel, material.steelRateDependent {
-                switch material.steelRateLaw {
-                case .malvarCrawford:
-                    parameters.steelRateYield = 0.074 - 0.040 * steel.yieldStress / 414e6
-                    parameters.steelRateUltimate = 0.019 - 0.009 * steel.yieldStress / 414e6
-                case .ceb:
-                    parameters.steelRateLog = 1
-                    parameters.steelRateYield = 6 / (steel.yieldStress / 1e6)
-                    parameters.steelRateUltimate = 7 / (steel.ultimateStress / 1e6)
-                }
+                // The CEB's law (Bulletin 187), as the Model Code 2010 re-adopted it.
+                parameters.steelRateYield = 6 / (steel.yieldStress / 1e6)
+                parameters.steelRateUltimate = 7 / (steel.ultimateStress / 1e6)
             }
         }
         return parameters

@@ -6,7 +6,10 @@ import simd
 
 struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
     static let solverVersion = "blast-solver-2"
-    static let multiBodySolverVersion = "blast-solver-4"
+    /// Several bodies, meeting through contact when they come close.
+    static let multiBodySolverVersion = "blast-solver-5"
+    /// Several bodies, a run stopping where they came close; and the first shared-air solver.
+    static let contactlessMultiBodySolverVersion = "blast-solver-4"
     static let previousMultiBodySolverVersion = "blast-solver-3"
     static let maximumRuns = 16
     static let maximumSamples = 500_000
@@ -192,8 +195,10 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                         && entry.response.maximumDamage.isFinite && entry.response.maximumDamage >= 0
                 }),
                 scenario.structuralObjects.count <= 1
-                    || [Self.multiBodySolverVersion, Self.previousMultiBodySolverVersion].contains(
-                        solverVersion)
+                    || [
+                        Self.multiBodySolverVersion, Self.contactlessMultiBodySolverVersion,
+                        Self.previousMultiBodySolverVersion,
+                    ].contains(solverVersion)
             else { throw ProjectFileError.invalid("Invalid per-object response ownership or history.") }
         }
         if let fragments {
@@ -406,6 +411,10 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
             lines.append(
                 "\(field(name)),\"Fireball temperature\",\(frame.time * 1000),\(frame.temperature),K")
         }
+        // The credits the scene's data asks for, without a time or a value.
+        for credit in scenario.attributions ?? [] {
+            lines.append("\(field(name)),\(field("Attribution: " + credit)),,,")
+        }
         return lines.joined(separator: "\n") + "\n"
     }
 }
@@ -451,19 +460,30 @@ extension ThermalResult {
 }
 
 enum SavedRunStore {
+    private static func hash(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
     private static let indexPath = "results/runs.json"
     private struct Index: Codable {
         var format = "dev.bombcad.runs"
         var encodingVersion = 1
         var runs: [UUID]
     }
+    /// A run as saved. Version 4 holds its terrain by reference to `terrain`, a file of the
+    /// project's kept once for every run over the same ground, so that readers from before it
+    /// refuse the run rather than open it on flat ground; versions 1 to 3 hold it inline.
     private struct Record: Codable {
         var format = "dev.bombcad.run"
         var encodingVersion = 1
         var result: SavedSimulationRun
         var scene: ImportedSceneCodec.ScenePayload
+        /// The SHA-256 of the run's terrain, in `terrainPath(_:)`, from version 4.
+        var terrain: String?
     }
     private static func path(_ id: UUID) -> String { "results/runs/\(id.uuidString.lowercased()).json" }
+    private static let terrainFolder = "results/terrain/"
+    private static func terrainPath(_ hash: String) -> String { terrainFolder + hash + ".json" }
 
     static func read(_ archive: ProjectArchive) throws -> [SavedSimulationRun] {
         guard let data = archive.files[indexPath] else { return [] }
@@ -476,17 +496,27 @@ enum SavedRunStore {
                 throw ProjectFileError.invalid("Missing saved run \(id).")
             }
             let record = try JSONDecoder().decode(Record.self, from: data)
-            guard record.format == "dev.bombcad.run", [1, 2, 3].contains(record.encodingVersion),
+            let byReference = record.encodingVersion == 4
+            guard record.format == "dev.bombcad.run", (1...4).contains(record.encodingVersion),
                 record.result.id == id,
-                (record.result.envelopeExposure != nil) == (record.encodingVersion == 3),
-                record.encodingVersion == 3
+                byReference || (record.result.envelopeExposure != nil) == (record.encodingVersion == 3),
+                byReference || record.encodingVersion == 3
                     || (record.result.scenario.structuralObjects.count > 1) == (record.encodingVersion == 2),
+                (record.terrain != nil) == byReference,
+                !byReference
+                    || (record.result.scenario.terrain == nil && record.scene.scenario.terrain == nil),
                 record.result.scenario.importedModels == nil, record.result.scenario == record.scene.scenario
             else { throw ProjectFileError.invalid("Unsupported or conflicting saved run payload.") }
             var input = archive
             input.files["scene.json"] = try ProjectArchive.encodeJSON(record.scene)
             var run = record.result
             run.scenario = try ImportedSceneCodec.decode(input)
+            if let hash = record.terrain {
+                guard let data = archive.files[terrainPath(hash)], Self.hash(data) == hash else {
+                    throw ProjectFileError.invalid("Missing or corrupt terrain for saved run \(run.name).")
+                }
+                run.scenario.terrain = try JSONDecoder().decode(Terrain.self, from: data)
+            }
             try run.validate()
             return run
         }
@@ -496,8 +526,11 @@ enum SavedRunStore {
         return runs
     }
 
+    /// Writes `runs`, each one's terrain by reference to a file kept once for all runs over the
+    /// same ground; `terrainByReference` false writes it inline, as before version 4, for tests.
     static func write(
-        _ runs: [SavedSimulationRun], manifest: inout ProjectManifest, files: inout [String: Data]
+        _ runs: [SavedSimulationRun], manifest: inout ProjectManifest, files: inout [String: Data],
+        terrainByReference: Bool = true
     ) throws {
         guard runs.count <= SavedSimulationRun.maximumRuns, Set(runs.map(\.id)).count == runs.count,
             Set(runs.map { $0.name.lowercased() }).count == runs.count
@@ -515,17 +548,29 @@ enum SavedRunStore {
             for id in index.runs { files.removeValue(forKey: path(id)) }
         }
         files.removeValue(forKey: indexPath)
+        for path in files.keys where path.hasPrefix(terrainFolder) { files.removeValue(forKey: path) }
         guard !runs.isEmpty else { return }
         for run in runs {
             try run.validate()
+            var stripped = run.scenario
+            var terrainHash: String?
+            if terrainByReference, let terrain = stripped.terrain {
+                let data = try ProjectArchive.encodeJSON(terrain)
+                let hash = Self.hash(data)
+                files[terrainPath(hash)] = data
+                terrainHash = hash
+                stripped.terrain = nil
+            }
             let scene = try JSONDecoder().decode(
                 ImportedSceneCodec.ScenePayload.self,
-                from: ImportedSceneCodec.encode(run.scenario, manifest: &manifest, files: &files))
+                from: ImportedSceneCodec.encode(stripped, manifest: &manifest, files: &files))
             var stored = run
+            stored.scenario = stripped
             stored.scenario.importedModels = nil
-            var record = Record(result: stored, scene: scene)
+            var record = Record(result: stored, scene: scene, terrain: terrainHash)
             record.encodingVersion =
-                run.envelopeExposure != nil ? 3 : run.scenario.structuralObjects.count > 1 ? 2 : 1
+                terrainHash != nil
+                ? 4 : run.envelopeExposure != nil ? 3 : run.scenario.structuralObjects.count > 1 ? 2 : 1
             files[path(run.id)] = try ProjectArchive.encodeJSON(record)
         }
         files[indexPath] = try ProjectArchive.encodeJSON(Index(runs: runs.map(\.id)))

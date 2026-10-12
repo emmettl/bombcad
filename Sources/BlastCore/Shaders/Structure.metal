@@ -60,9 +60,6 @@ struct StructureUniforms {
     int exchangeNy;
     int exchangeNz;
     uint fluidAirModel;  // the air's equation of state (`AirModel`)
-    // How concrete's crack axes are chosen: 0 the lattice's; 1 the principal axes it first
-    // cracked on; 2 the principal axes, followed until the crack has opened, then fixed.
-    uint orientedCracks;
     uint interfaceLinks;  // shell nodes tied into this body's elements (see `InterfaceLink`)
     // The air's refinement (see Refine.metal): its ratio (0 when not refined) and the size of
     // its grid of blocks.
@@ -92,16 +89,10 @@ struct StructureUniforms {
     float bondS2;
     float bondS3;
     float bondAlpha;
-    // 1: a crack's shear stiffness falls as it opens, as Walraven and Reinhardt measured, instead
-    // of keeping `shearRetention` of the concrete's.
-    uint crackShearStiffness;
     // Bond lost where bars have yielded (Model Code 2010): the plastic strain at the bars'
     // ultimate strength, and the exponent b = (2 - f_u / f_y)^2. Zero range: no reduction.
     float bondYieldRange;
     float bondYieldExponent;
-    // 1: bars take their strain rate as their own stretching rate averaged over their debonded
-    // length, not the element's (see `StructureModel.barRateAlongBars`).
-    uint barRateAlongBars;
     uint couplingMapCount;
     uint footings;  // rigid footings under connected bases (`FootingSystem`); 0: none
     // A second level of the air's refinement (ratio 0 when there is none): its cells along a
@@ -120,6 +111,11 @@ struct StructureUniforms {
     float gravityZ;
     uint pairs;  // connections between two parts of the body (`structurePairs`)
     uint removesFragments;  // 1: concrete broken into fragments is removed (`StructureModel`)
+    uint discreteBond;      // 1: discrete bars slip by the bond law in the `bond...` fields above
+    uint crackReach;        // elements either side a crack's band reaches (`crackAveraging`)
+    float fragmentOpening;  // m: with `removesFragments`, the opening across two planes...
+    float fragmentStrain;   // ...and the crack strain across one that make concrete fragments
+    float groundCoulomb;    // > 0: the ground's Coulomb friction coefficient (else `groundFriction`'s decay)
 };
 
 // Gravity's pull per unit mass, when it has been turned.
@@ -131,7 +127,7 @@ float3 gravityPull(constant StructureUniforms &u) {
 // each mechanism has done on the element's deformation. Concrete's stresses are split in its
 // crack axes. Matches `StructureSolver.WorkChannel`. The trace is compiled in only into the
 // pipeline built for it (`workTraced`), so that without it the element kernel is unchanged.
-constant uint workChannels = 17;
+constant uint workChannels = 18;
 constant uint workTensionNormal = 0;     // concrete's normal stresses, where tensile
 constant uint workCompressionNormal = 1; // where compressive
 constant uint workUncrackedShear = 2;    // shear on planes no crack has opened
@@ -148,6 +144,7 @@ constant uint workInterlockPressed = 12; // interlock's share, where the crack i
 constant uint workCrackShearPressed = 13; // shear below the cap, where the crack is pressed shut
 constant uint workTensionCracked = 14;   // concrete's normal stresses in tension, on planes cracked 0.1 mm or more
 constant uint workTensionHairline = 16;  // on planes cracked less than 0.1 mm open
+constant uint workHourglassCapped = 17;  // hourglass control held at its cap (dissipated), not in workHourglass
 constant uint workCompressionCrushed = 15; // in compression, on axes crushed past their peak
 
 // A shell node tied to a solid body: a rigid link to the line of the solid's nodes that spans
@@ -239,16 +236,14 @@ struct MaterialParameters {
     float steelStrain[8];   // plastic strain ...
     float steelStress[8];   // ... against stress
     float concreteRateCompression;
-    float concreteRateTension;
-    float steelRateYield;     // the bars' rate exponents (Malvar and Crawford), or with
-    float steelRateUltimate;  // `steelRateLog` the coefficients of the CEB's logarithmic law
-    uint steelRateLog;
+    float concreteRateTension;  // positive when the tensile strength follows the strain rate
+    float steelRateYield;     // the coefficients of the CEB's logarithmic law for the bars, at
+    float steelRateUltimate;  // yield and at ultimate
     float crackBand;            // length a crack's opening is smeared over
     float interlockStrength;    // aggregate-interlock shear capacity of a closed crack
     float interlockWidthScale;  // its decay with crack width, per metre
     float shearRetention;       // fraction of the shear stiffness a cracked plane keeps
     float crackResidual;        // fraction of a crack's opening left when its stress is released
-    uint crushRadius;           // elements either side over which crushing is averaged; 0 = local
     float steelHardeningRatio;  // slope of the reinforcement's yield asymptotes over its modulus
     float barReach;             // half the debonded length, in elements; 0 = judged locally
     // Mortar joints (masonry meshed as units): the bond's tensile strength over the unit's, the
@@ -262,7 +257,6 @@ struct MaterialParameters {
     float crackSofteningAlone;  // decay strain of a crack no bar crosses: one element's band
     float dowelFactor;          // multiplier on the bars' dowel action
     float fractureRateExponent; // fracture energy grows as the tensile rate factor to this power
-    uint tensionRateLaw;        // 0: Malvar and Ross (1998); 1: fib Model Code 2010
     float crackDilatancy;       // a crack slid by s cannot close below this times s
 };
 
@@ -273,6 +267,23 @@ constant uint maxMaterials = 8;
 constant bool singleMaterial [[function_constant(0)]];
 constant bool finiteConnections [[function_constant(1)]];
 constant bool workTraced [[function_constant(3)]];
+// Bars given as their own trusses (`StructureModel.discreteBars`): the elements' smeared bars then
+// stand only for dowel action, bridging and the hourglass cap, and carry no stress along them; the
+// trusses' bond acts on the nodes. Undefined, as for every body without them, the kernels are as
+// they always were.
+constant bool discreteBarsConstant [[function_constant(10)]];
+// Failed concrete becomes particles (`StructureModel.rubbleParticles`, Rubble.metal).
+constant bool rubbleParticlesConstant [[function_constant(12)]];
+constant bool rubbleParticles = is_function_constant_defined(rubbleParticlesConstant) && rubbleParticlesConstant;
+// Cracking averaged across each crack's band (`StructureModel.crackAveraging`); undefined, as for
+// every body without it, the kernel is as it always was.
+constant bool nonlocalCrackingConstant [[function_constant(11)]];
+constant bool nonlocalCracking = is_function_constant_defined(nonlocalCrackingConstant) && nonlocalCrackingConstant;
+constant bool discreteBars = is_function_constant_defined(discreteBarsConstant) && discreteBarsConstant;
+// Hourglass control's options (`StructureModel.hourglassFollowsCracking`, `hourglassCapsSteel`),
+// compiled in only when chosen, so that without them the element kernel is unchanged.
+constant bool hourglassSecant [[function_constant(8)]];
+constant bool hourglassWithoutSteel [[function_constant(9)]];
 // Gravity turned from straight down (`gravityDirection`); otherwise the node kernels pull down
 // exactly as they always have, since the fast-math compiler can round another expression differently.
 constant bool turnedGravityConstant [[function_constant(4)]];
@@ -763,17 +774,11 @@ static inline float tensionIncrease(float rate, constant MaterialParameters &m) 
     if (m.concreteRateTension <= 0.0f) {
         return 1.0f;
     }
-    if (m.tensionRateLaw == 1u) {
-        // fib Model Code 2010 (5.1.11.1): the same for every strength, gentler past 10 per second.
-        if (rate <= 10.0f) {
-            return pow(max(rate, 1e-6f) / 1e-6f, 0.018f);
-        }
-        return 0.0062f * pow(rate / 1e-6f, 1.0f / 3.0f);
+    // fib Model Code 2010 (5.1.11.1): the same for every strength, gentler past 10 per second.
+    if (rate <= 10.0f) {
+        return pow(max(rate, 1e-6f) / 1e-6f, 0.018f);
     }
-    if (rate <= 1.0f) {
-        return pow(max(rate, 1e-6f) / 1e-6f, m.concreteRateTension);
-    }
-    return pow(10.0f, 6.0f * m.concreteRateTension - 2.0f) * pow(rate / 1e-6f, 1.0f / 3.0f);
+    return 0.0062f * pow(rate / 1e-6f, 1.0f / 3.0f);
 }
 
 // Pressure of the applied-load table at time `time`, interpolated linearly.
@@ -797,12 +802,9 @@ static inline float tablePressure(const device float2 *table, uint count, float 
 // the bars' stretch, and `yield` their current yield stress.
 // The bars' strain-rate factors at yield (x) and at ultimate (y).
 static inline float2 steelRateFactors(float strainRate, constant MaterialParameters &m) {
-    if (m.steelRateLog != 0u) {
-        float logarithm = log(max(strainRate, 5e-5f) / 5e-5f);
-        return 1.0f + float2(m.steelRateYield, m.steelRateUltimate) * logarithm;
-    }
-    float rate = max(strainRate, 1e-4f) / 1e-4f;
-    return float2(pow(rate, m.steelRateYield), pow(rate, m.steelRateUltimate));
+    // The CEB's law (Bulletin 187), as the fib Model Code 2010 re-adopted it.
+    float logarithm = log(max(strainRate, 5e-5f) / 5e-5f);
+    return 1.0f + float2(m.steelRateYield, m.steelRateUltimate) * logarithm;
 }
 
 static inline float smearedBar(float green, thread float &plastic, device BarHistory &bar, float strainRate,
@@ -849,8 +851,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                               const device ElementSteel *steel [[buffer(10)]],
                               const device float2 *loadTable [[buffer(11)]],
                               device BarHistory *bars [[buffer(12)]],
-                              device float4 *crushOut [[buffer(13)]],
-                              const device float4 *crushBefore [[buffer(14)]],
+                              device float4 *crackOut [[buffer(13)]],
+                              const device float4 *crackBefore [[buffer(14)]],
                               constant MaterialParameters *materials [[buffer(15)]],
                               const device uchar *materialIndex [[buffer(16)]],
                               device float4 *plasticOut [[buffer(17)]],
@@ -980,6 +982,9 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     float szx;
     // Tensile stress the element can still carry, which caps its hourglass (bending) forces.
     float capacity;
+    // With `hourglassSecant`, the share of the elastic stiffness the hourglass control keeps,
+    // along each lattice axis (the displacement components of its modes).
+    float3 hourglassScale = float3(1.0f);
     // The work trace: each mechanism's power per unit reference volume (see `workChannels`).
     float power[workChannels];
     for (uint c = 0; c < workChannels; ++c) {
@@ -1049,12 +1054,12 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float3x3 frame = float3x3(1.0f);
         bool framed = false;
         bool turning = false;
-        if (u.orientedCracks != 0) {
+        {
             float4 stored = float4(state.crackFrame);
             if (any(stored != 0.0f)) {
                 frame = rotationOf(normalize(stored));
                 framed = true;
-                turning = u.orientedCracks == 2 && signbit(stored.w);
+                turning = signbit(stored.w);
             }
         }
         // A mortar joint lies on a lattice plane, so an element that holds one cracks across the
@@ -1080,7 +1085,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // The stretching rate along each lattice axis, averaged as the effective rate is: what a
         // bar along that axis strains at here.
         float3 axisRate = float3(0.0f);
-        if (u.barRateAlongBars != 0 && m.barReach > 0.0f) {
+        if (m.barReach > 0.0f) {
             float3 before = barRateBefore[compact].xyz;
             axisRate = before + clamp(dt * u.rateFilter, 0.0f, 1.0f) * (abs(float3(dxx, dyy, dzz)) - before);
             barRateOut[compact] = float4(axisRate, 0.0f);
@@ -1139,21 +1144,9 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // strain itself would count the sideways swelling of squeezed concrete as cracking.)
         // It is shared between the planes it cuts across, in proportion to the squared direction
         // cosines.
-        // What a crack has slid by (`crackSlip`) is already the crack's: with `crackSlip` at 2
-        // it is taken out, as a second crack's opening is, so that sliding along a crack does not
-        // also open it and the plane across the slide. (Counted, a crack 1 mm open slid by 2 mm
-        // on 50 mm elements read as 1.9 mm open; see `StructureModel.slipWidensCracks`.)
-        float3x3 opens = strain;
-        if (u.crackSlip == 2u && framed && !turning && joints == 0u) {
-            float3 slid = 0.5f * float3(state.jointSlip);  // xy, yz, zx
-            opens[0][1] -= slid.x;
-            opens[1][0] -= slid.x;
-            opens[1][2] -= slid.y;
-            opens[2][1] -= slid.y;
-            opens[2][0] -= slid.z;
-            opens[0][2] -= slid.z;
-        }
-        float3x3 effective = opens * (1.0f / (1.0f + poisson));
+        // What a crack has slid by (`crackSlip`) counts in the strain that opens cracks: sliding
+        // along a crack also opens it, and the plane across the slide.
+        float3x3 effective = strain * (1.0f / (1.0f + poisson));
         float dilation = poisson * (strain[0][0] + strain[1][1] + strain[2][2])
             / ((1.0f + poisson) * (1.0f - 2.0f * poisson));
         effective[0][0] += dilation;
@@ -1163,7 +1156,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float3x3 axes;
         symmetricEigen(effective, principal, axes);
         bool cracking = max(principal.x, max(principal.y, principal.z)) > onset;
-        if (u.orientedCracks != 0 && ((!framed && cracking) || turning)) {
+        if ((!framed && cracking) || turning) {
             // The crack axes become the principal axes of this strain: at the first crack, and
             // every step while they still turn. Turning, each axis takes the principal direction
             // nearest to it, so that each plane's history stays with its own direction.
@@ -1200,7 +1193,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             // in a slab held down at its supports followed the stress round in the rebound
             // until no axis carried tension, and the slab came apart.
             float3 crushed = float3(state.crushStrain);
-            bool fix = u.orientedCracks == 1 || worst > onset + 0.1f * m.crackSoftening
+            bool fix = worst > onset + 0.1f * m.crackSoftening
                 || max(crushed.x, max(crushed.y, crushed.z)) > m.crushPeak;
             float4 q = quaternionOf(frame);
             q = (q.w < 0.0f) == fix ? -q : q;
@@ -1242,6 +1235,50 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             / ((1.0f + poisson) * (1.0f - 2.0f * poisson));
         history = max(history, uniaxial);
         state.crackStrain = history;
+        if (nonlocalCracking && joints == 0u) {
+            // A crack softens by its inelastic strain averaged over the 2r + 1 elements across its
+            // band, along the lattice axis nearest its normal (as of the previous substep), its
+            // fracture energy spread over that band: the same per crack whether the opening is
+            // spread over the band or gathered in one element, which then softens no faster than
+            // the band would (a nonlocal crack band, after Bazant and Jirasek, 2002).
+            float3 opened = float3(0.0f);
+            int nearest[3];
+            for (int i = 0; i < 3; ++i) {
+                float3 n = abs(frame[i]);
+                nearest[i] = n.x >= n.y && n.x >= n.z ? 0 : (n.y >= n.z ? 1 : 2);
+                opened[nearest[i]] = max(opened[nearest[i]], max(history[i] - planeOnset[i], 0.0f));
+            }
+            crackOut[compact] = float4(opened, 0.0f);
+            int3 dims = int3(u.ex, u.ey, u.ez);
+            int r = int(u.crackReach);
+            for (int i = 0; i < 3; ++i) {
+                float inelastic = max(history[i] - planeOnset[i], 0.0f);
+                if (inelastic <= 0.0f) {
+                    continue;
+                }
+                int a = nearest[i];
+                float sum = opened[a];
+                float count = 1.0f;
+                for (int offset = -r; offset <= r; ++offset) {
+                    int3 cell = int3(tid);
+                    cell[a] += offset;
+                    if (offset == 0 || cell[a] < 0 || cell[a] >= dims[a]) {
+                        continue;
+                    }
+                    int other = cell.x + dims.x * (cell.y + dims.y * cell.z);
+                    uint neighbour = cellElement[other];
+                    if (wholeThisPass(flags[other])
+                        && (singleMaterial || (materialIndex[neighbour] & uchar(15)) == own)) {
+                        sum += crackBefore[neighbour][a];
+                        count += 1.0f;
+                    }
+                }
+                // G_f / f_t, from the plane's own band and decay strain, spread over the band.
+                float energy = (planeSoftening[i] + 0.5f * m.crackOnset) * planeBand[i];
+                float decay = max(energy / (count * u.h) - 0.5f * m.crackOnset, 0.5f * m.crackOnset);
+                planeSoftening[i] = decay * inelastic / max(sum / count, 1e-12f);
+            }
+        }
         float crack = max(history.x, max(history.y, history.z));
         // A crack keeps a residual opening, and compression develops only once that has closed.
         float3 stored = float3(state.crackResidual);
@@ -1267,51 +1304,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         state.crackResidual = residual;
         float3 squeeze = residual - uniaxial;  // compressive strain, past any crack's residual
         float3 crush = max(float3(state.crushStrain), squeeze);
-        // Softening past the peak follows the crushing averaged over the intact elements within
-        // `crushRadius` (as of the previous substep), so that it cannot collapse into one layer
-        // of elements. Only elements already past the unconfined peak need the average.
         float3 softening = crush;
-        if (m.crushRadius > 0) {
-            crushOut[compact] = float4(crush, 0.0f);
-            if (any(crush > m.crushPeak)) {
-                // The neighbourhood is sampled at no more than nine points along each axis, so
-                // the cost does not grow with refinement; up to a radius of four elements every
-                // element is visited.
-                int r = int(m.crushRadius);
-                int samples = min(r, 4);
-                int3 dims = int3(u.ex, u.ey, u.ez);
-                float3 sum = float3(0.0f);
-                float count = 0.0f;
-                for (int c = -samples; c <= samples; ++c) {
-                    int z = int(tid.z) + (c * r) / samples;
-                    if (z < 0 || z >= dims.z) {
-                        continue;
-                    }
-                    for (int b = -samples; b <= samples; ++b) {
-                        int y = int(tid.y) + (b * r) / samples;
-                        if (y < 0 || y >= dims.y) {
-                            continue;
-                        }
-                        for (int a = -samples; a <= samples; ++a) {
-                            int x = int(tid.x) + (a * r) / samples;
-                            if (x < 0 || x >= dims.x) {
-                                continue;
-                            }
-                            int other = x + dims.x * (y + dims.y * z);
-                            uchar flag = flags[other];
-                            uint neighbour = cellElement[other];
-                            // Crushing is averaged within one material only.
-                            if (wholeThisPass(flag)
-                                && (singleMaterial || (materialIndex[neighbour] & uchar(15)) == own)) {
-                                sum += crushBefore[neighbour].xyz;
-                                count += 1.0f;
-                            }
-                        }
-                    }
-                }
-                softening = count > 0.0f ? sum / count : crush;
-            }
-        }
         state.crushStrain = crush;
         state.plasticStrain = max(crush.x, max(crush.y, crush.z));
 
@@ -1341,7 +1334,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             normalStress[j] = concreteCompression(squeeze[j], crush[j], softening[j], compressionFactor,
                                                   confinement[j], m);
             float2 limits = crushStrains(compressionFactor, confinement[j], m);
-            float driving = m.crushRadius > 0 ? min(squeeze[j], softening[j]) : squeeze[j];
+            float driving = squeeze[j];
             crushed = max(crushed, clamp((driving - limits.x) / (limits.y - limits.x), 0.0f, 1.0f));
             pulverised = pulverised || driving >= limits.y + m.crushErosion * (limits.y - limits.x);
         }
@@ -1430,18 +1423,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                     interlock = min(interlock + slopes.x / slopes.y * pressure, max(interlock, 0.5f * unconfined));
                 }
                 capParts.x = interlock;
-                // The crack's shear stiffness: a fixed share of the concrete's, or, measured on
-                // cracks in plain concrete by Walraven and Reinhardt (1981), k = 1.8 w^-0.8 +
-                // (0.234 w^-0.707 - 0.20) f_cc MPa per mm of slip for a crack w mm wide in concrete
-                // of cube strength f_cc MPa, acting in series with the concrete across the band.
+                // The crack's shear stiffness: a fixed share of the concrete's.
                 float retention = m.shearRetention;
-                if (u.crackShearStiffness != 0) {
-                    float millimetres = max(width * 1000.0f, 0.01f);
-                    float cube = m.compressiveStrength / 0.8e6f;
-                    float stiffness = 1e9f * (1.8f * pow(millimetres, -0.8f)
-                                              + max(0.234f * pow(millimetres, -0.707f) - 0.20f, 0.0f) * cube);
-                    retention = 1.0f / (1.0f + m.mu / (stiffness * band));
-                }
                 // The wider-open of the two planes is the crack that slides; the bars along its
                 // normal cross it.
                 int across = opening[a] >= opening[b] ? a : b;
@@ -1676,7 +1659,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             // A bar strains at the rate of its debonded length, not of the one element a crack
             // runs through, whose rate grows as the mesh is refined.
             float barRate = state.strainRate;
-            if (u.barRateAlongBars != 0 && m.barReach > 0.0f) {
+            if (m.barReach > 0.0f) {
                 int3 dims = int3(u.ex, u.ey, u.ez);
                 int r = int(ceil(m.barReach - 0.5f));
                 float sum = axisRate[j];
@@ -1736,9 +1719,12 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             }
             intact[j] = 1.0f;
             steelCapacity += ratio[j] * yield;
-            // Bar force per unit reference area, as a second Piola-Kirchhoff stress.
-            material[j][j] += ratio[j] * stress / root;
-            barForce[j] = ratio[j] * stress / root * u.h * u.h;
+            // Bar force per unit reference area, as a second Piola-Kirchhoff stress. (With discrete
+            // bars the trusses carry it.)
+            if (!discreteBars) {
+                material[j][j] += ratio[j] * stress / root;
+                barForce[j] = ratio[j] * stress / root * u.h * u.h;
+            }
             // Bars that have yielded hold less well (Model Code 2010, 6.1.1.3):
             // 1 - 0.85 (1 - exp(-5 a^b)), a the plastic strain over that at ultimate,
             // b = (2 - f_u / f_y)^2.
@@ -1893,13 +1879,14 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // 100%, on large elements) is gone. Bars bridging a single crack rupture before that.
         eroded = eroded || torn || pulverised || crack > max(1.0f, 3.0f * m.erosionStrain);
         // Optionally, concrete broken into fragments, whatever bridges it: cracked open across two
-        // planes or more by 0.5 mm and across one by 5% of its size (`removesFragments`).
+        // planes or more by 0.5 mm and across one by 5% of its size (`removesFragments`; the two
+        // thresholds are the solver's `fragmentOpening` and `fragmentStrain`).
         if (u.removesFragments != 0 && joints == 0u) {
             int open = 0;
             for (int j = 0; j < 3; ++j) {
-                open += history[j] * u.h >= 0.5e-3f ? 1 : 0;
+                open += history[j] * u.h >= u.fragmentOpening ? 1 : 0;
             }
-            eroded = eroded || (crack >= 0.05f && open >= 2);
+            eroded = eroded || (crack >= u.fragmentStrain && open >= 2);
         }
         // Concrete removed while some of its bars are intact leaves them: the element carries on
         // as those bars alone, from the next step, until they too have ruptured.
@@ -1923,7 +1910,25 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                                                            planeSoftening[j], m));
             }
         }
-        capacity = max(max(tension + steelCapacity, bending), 0.02f * m.tensileStrength);
+        capacity = max(max(tension + (hourglassWithoutSteel ? 0.0f : steelCapacity), bending), 0.02f * m.tensileStrength);
+        // A cracked element bends as softly as its cracks carry tension: along each lattice axis
+        // its hourglass stiffness takes the secant share of the elastic of the crack planes
+        // across that axis, weighted by how squarely they cross it, instead of the uncracked
+        // element's. (A crack across x softens the modes that stretch x, not the others.)
+        if (hourglassSecant) {
+            float3 secant = float3(1.0f);
+            for (int p = 0; p < 3; ++p) {
+                if (history[p] > planeOnset[p]) {
+                    secant[p] = max(tensionEnvelopeOver(history[p], planeFactor[p], planeSoftening[p], m)
+                                        / (m.youngsModulus * history[p]),
+                                    0.02f);
+                }
+            }
+            for (int i = 0; i < 3; ++i) {
+                float3 across = float3(frame[0][i], frame[1][i], frame[2][i]);
+                hourglassScale[i] = dot(across * across, secant);
+            }
+        }
         state.display = max(crack / (anySteel ? m.steelStrain[m.steelPoints - 1] : m.erosionStrain), crushed);
         if (bare) {
             capacity = max(steelCapacity, 1.0f);
@@ -1993,12 +1998,23 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     // The hourglass forces act as the element's bending moments, so they are capped at its
     // fully plastic moment (strength * h^2 / 8 in these units) just as the stress is capped.
     float limit = 0.125f * capacity * u.h * u.h;
+    bool atCap[4] = {false, false, false, false};
+    // With rubble, a bare element's concrete has left its nodes as particles, and they hold the
+    // bars' mass alone: its hourglass control stiffens them only in proportion, or it would ring
+    // far faster than the step allows.
+    float hourglassStiffness = m.hourglassStiffness;
+    if (rubbleParticles && bare) {
+        float3 ratio = float3(steel[compact].ratio);
+        float share = (ratio.x + ratio.y + ratio.z + float(steel[compact].inclined)) * 7850.0f / m.density;
+        hourglassStiffness *= min(share, 1.0f);
+    }
     for (uint mode = 0; mode < 4; ++mode) {
         float3 q = state.hourglass[mode];
-        q += dt * (m.hourglassStiffness * rate[mode] + spin * q);
+        q += dt * (hourglassStiffness * (hourglassSecant ? hourglassScale * rate[mode] : rate[mode]) + spin * q);
         float magnitude = length(q);
         if (magnitude > limit) {
             q *= limit / magnitude;
+            atCap[mode] = true;
         }
         state.hourglass[mode] = q;
     }
@@ -2012,14 +2028,21 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     }
     if (workTraced) {
         float hourglassPower = 0.0f;
+        float cappedPower = 0.0f;
         for (uint mode = 0; mode < 4; ++mode) {
-            hourglassPower += dot(float3(state.hourglass[mode]), rate[mode]);
+            float modePower = dot(float3(state.hourglass[mode]), rate[mode]);
+            if (atCap[mode]) {
+                cappedPower += modePower;
+            } else {
+                hourglassPower += modePower;
+            }
         }
         device float *own = work + workChannels * compact;
         for (uint c = 0; c < workChannels; ++c) {
             own[c] += power[c] * referenceVolume * dt;
         }
         own[workHourglass] += hourglassPower * dt;
+        own[workHourglassCapped] += cappedPower * dt;
         own[workViscosity] -= viscous * trace * volume * dt;
     }
 
@@ -2182,10 +2205,13 @@ kernel void debrisAreas(const device StructureNode *nodes [[buffer(0)]],
                               memory_order_relaxed);
 }
 
+// `packed`, for rubble: the pressure gradient pushes the debris in a cell only up to half the air's
+// own volume there (see `rubbleMove`).
 template <typename Uniforms>
 static inline float3 debrisAirForce(float3 position, float3 velocity, float volume, const device Cell *fluid,
                                     const device uchar *fluidMask, const device int *area, float airStep,
-                                    constant Uniforms &u, device atomic_uint *couplingMap, thread int &exchangeCell) {
+                                    constant Uniforms &u, device atomic_uint *couplingMap, thread int &exchangeCell,
+                                    bool packed = false) {
     exchangeCell = debrisCell(position, fluidMask, u, couplingMap);
     if (exchangeCell < 0) {
         return float3(0.0f);
@@ -2245,6 +2271,12 @@ static inline float3 debrisAirForce(float3 position, float3 velocity, float volu
     float speed = length(wind);
     float cellArea = max(float(area[exchangeCell]) / exchangeAreaScale, 0.0f);
     float factor = 1.0f / (1.0f + 0.5f * speed * cellArea * airStep);
+    if (packed) {
+        // The debris's share of the cell's volume, from its frontal area there (per unit of the
+        // cell's volume) times this body's size: like bodies packed into a cell together.
+        float share = max(cellArea * pow(volume, 1.0f / 3.0f), volume / (u.fluidCell * u.fluidCell * u.fluidCell));
+        return -gradient * volume * min(1.0f, 0.5f / max(share, 1e-6f)) + factor * 0.5f * rho * frontal * speed * wind;
+    }
     return -gradient * volume + factor * 0.5f * rho * frontal * speed * wind;
 }
 
@@ -2281,7 +2313,7 @@ kernel void contactClear(const device uint *nodeList [[buffer(0)]],
     if (!active || !contactEnabled(u, failureGate)) {
         return;
     }
-    if ((nodes[threadIndex].flags & nodeBuried) != 0) {
+    if ((nodes[threadIndex].flags & nodeBuried) != 0 || (rubbleParticles && nodes[threadIndex].mass <= 0.0f)) {
         return;
     }
     float3 position = nodePosition(threadIndex, nodeList, nodes, u);
@@ -2310,7 +2342,7 @@ kernel void contactHash(const device uint *nodeList [[buffer(0)]],
     if (!active || !contactEnabled(u, failureGate)) {
         return;
     }
-    if ((nodes[threadIndex].flags & nodeBuried) != 0) {
+    if ((nodes[threadIndex].flags & nodeBuried) != 0 || (rubbleParticles && nodes[threadIndex].mass <= 0.0f)) {
         return;
     }
     float3 position = nodePosition(threadIndex, nodeList, nodes, u);
@@ -2324,6 +2356,93 @@ kernel void contactHash(const device uint *nodeList [[buffer(0)]],
     }
 }
 
+// Rubble's particles (see Rubble.metal) and their contact with each other and with nodes.
+// The rubble's state starts with four words (any particle made; one made this substep; two spare)
+// before the bits marking the slots in use.
+constant uint rubbleBits = 4;
+
+struct RubbleParticle {
+    packed_float3 position;  // world position (m)
+    float mass;              // kg; zero for a slot not in use
+    packed_float3 velocity;
+    float reach;     // m: how near a node's centre it comes before it touches it
+    float internal;  // J: the energy of the nodes' motion about its centre, when it was made
+    float volume;    // m³ of the material it stands for
+    uint alive;      // 1 once made
+    float spare;
+};
+
+// How near two particles come before they touch: an element apart, while they keep the reach of
+// an undeformed element's centre to its corners (sqrt(3)/2 of an element).
+static inline float rubblePairReach(float a, float b) {
+    return (a + b) * 0.57735027f;
+}
+
+// The contact force on one of two touching things (a particle or a node) at `offset` from the
+// other, moving at `relative` to it, touching within `reach`: a penalty spring on the overlap,
+// damped, with Coulomb friction regularised as a damper at low sliding speed, as nodes push each
+// other in `contactForces`. Swapping the two negates it exactly.
+static inline float3 rubbleContact(float3 offset, float reach, float3 relative, float mass,
+                                   constant StructureUniforms &u) {
+    float distance = length(offset);
+    if (distance >= reach || distance < 1e-9f) {
+        return float3(0.0f);
+    }
+    float3 normal = offset / distance;
+    float stiffness = u.contactStiffness * mass;
+    float damping = 2.0f * u.contactDamping * sqrt(stiffness * mass);
+    float approach = dot(relative, normal);
+    float push = approach > separationLimit ? 0.0f : max(stiffness * (reach - distance) - damping * approach, 0.0f);
+    float3 force = push * normal;
+    float3 sliding = relative - approach * normal;
+    float speed = length(sliding);
+    if (speed > 1e-6f) {
+        force -= min(u.contactFriction * push, damping * speed) * (sliding / speed);
+    }
+    return force;
+}
+
+// Whether `index` is among the entries a table's cell `target` keeps: one its crowded cell left
+// out is invisible to every other, and pushes none of them.
+static inline bool rubbleListed(const device uint *slots, uint target, uint index) {
+    bool listed = false;
+    for (uint slot = 0; slot < contactSlots; ++slot) {
+        listed = listed || slots[target * contactSlots + slot] == index;
+    }
+    return listed;
+}
+
+// The contact force on a node at `position` from the particles around it (`contactForces`).
+static inline float3 rubbleOnNode(float3 position, float3 velocity, float mass, const device RubbleParticle *particles,
+                                  const device uint *heads, const device uint *slots, constant StructureUniforms &u) {
+    int3 cell = contactCell(position, u);
+    float3 force = float3(0.0f);
+    for (int dz = -1; dz <= 1; ++dz) {
+        for (int dy = -1; dy <= 1; ++dy) {
+            for (int dx = -1; dx <= 1; ++dx) {
+                int3 c = cell + int3(dx, dy, dz);
+                uint target = contactBucket(c, u);
+                if (heads[target] != u.stamp) {
+                    continue;
+                }
+                for (uint slot = 0; slot < contactSlots; ++slot) {
+                    uint other = slots[target * contactSlots + slot];
+                    if (other == emptySlot) {
+                        break;
+                    }
+                    RubbleParticle p = particles[other];
+                    float3 at = float3(p.position);
+                    if (any(contactCell(at, u) != c)) {
+                        continue;
+                    }
+                    force += rubbleContact(position - at, p.reach, velocity - float3(p.velocity), min(mass, p.mass), u);
+                }
+            }
+        }
+    }
+    return force;
+}
+
 kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                           const device StructureNode *nodes [[buffer(1)]],
                           const device uint *heads [[buffer(2)]],
@@ -2332,6 +2451,10 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                           constant StructureUniforms &u [[buffer(5)]],
                           device packed_float3 *contact [[buffer(7)]],
                           const device uint *slots [[buffer(8)]],
+                          const device RubbleParticle *particles [[buffer(9)]],
+                          const device uint *rubbleHeads [[buffer(10)]],
+                          const device uint *rubbleSlots [[buffer(11)]],
+                          const device uint *rubbleState [[buffer(12)]],
                           uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -2417,6 +2540,9 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                 }
             }
         }
+    }
+    if (rubbleParticles && rubbleState[0] != 0) {
+        force += rubbleOnNode(position, float3(node.velocity), node.mass, particles, rubbleHeads, rubbleSlots, u);
     }
     float largest = node.mass * contactKick / max(dt, 1e-12f);
     float size = length(force);
@@ -2825,6 +2951,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
                            const device float4 *pairState [[buffer(27)]],
                            const device uint *nodePairStart [[buffer(28)]],
                            const device int *nodePairs [[buffer(29)]],
+                           const device float4 *barNodeForce [[buffer(30)]],
                            uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -2844,6 +2971,9 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         } else if (flags[own] == elementBaring) {
             flags[own] = elementBare;
         }
+    }
+    if (rubbleParticles && node.mass <= 0.0f) {
+        return;  // all its elements have become rubble
     }
     float3 force = float3(0.0f);
     uint intact = 0;
@@ -2897,6 +3027,9 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
 
     if (contactEnabled(u, failureGate)) {
         force += float3(contact[threadIndex]);
+    }
+    if (discreteBars) {
+        force += barNodeForce[threadIndex].xyz;  // the discrete bars' bond (`discreteBarGather`)
     }
     if (u.bondSlip != 0) {
         relaxSlip(threadIndex, tid, node.flags, slips, slipSupport, barForces, flags, cellElement, dt, u);
@@ -2952,10 +3085,19 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     }
     float referenceHeight = u.originZ + float(tid.z) * u.h;
     if (referenceHeight + displacement.z < 0.0f && u.groundFriction >= 0.0f && !anchoredNode) {
-        // Debris landing on the ground: stop the fall and shed horizontal speed.
+        // Debris landing on the ground: stop the fall and shed horizontal speed. By Coulomb, the
+        // sliding speed lost is the friction coefficient times the speed the ground took off the
+        // fall, so that over time the ground holds back the coefficient times what bears on it
+        // however much the node chatters on and off it; otherwise the speed decays at a set rate.
+        float stopped = max(-velocity.z, 0.0f);
         displacement.z = -referenceHeight;
         velocity.z = max(velocity.z, 0.0f);
-        velocity.xy *= max(0.0f, 1.0f - u.groundFriction * dt);
+        if (u.groundCoulomb > 0.0f) {
+            float sliding = length(velocity.xy);
+            velocity.xy *= sliding > 0.0f ? max(0.0f, 1.0f - u.groundCoulomb * stopped / sliding) : 0.0f;
+        } else {
+            velocity.xy *= max(0.0f, 1.0f - u.groundFriction * dt);
+        }
     }
     if (exchangeCell >= 0) {
         recordExchange(exchange, exchangeCell, airForce, 0.5f * (float3(node.velocity) + velocity), dt,
@@ -3430,10 +3572,13 @@ kernel void publishFineBodyOccupancy(device uint *scratch [[buffer(0)]],
     }
 }
 
+// Stops the run on the interactions in `halting`: the bodies' envelopes or cells overlapping
+// (1) unless they are in contact, and the coupling's storage running out (2).
 kernel void haltBodyInteraction(const device uint *interaction [[buffer(0)]],
                                 device StepControl &control [[buffer(1)]],
+                                constant uint &halting [[buffer(2)]],
                                 uint tid [[thread_position_in_grid]]) {
-    if (tid == 0 && interaction[0] != 0u) { control.stopped = 3u; }
+    if (tid == 0 && (interaction[0] & halting) != 0u) { control.stopped = 3u; }
 }
 
 static inline uint bodyOrderedFloat(float value) {
@@ -3474,9 +3619,12 @@ kernel void solidBodyEnvelope(const device StructureNode *nodes [[buffer(0)]],
     float3 reference = origin.xyz + origin.w * float3(n % layout.y, (n / layout.y) % layout.z, n / (layout.y * layout.z));
     bodyEnvelopePoint(reference + float3(nodes[tid].displacement), 0.5f * origin.w, layout.x, bounds);
 }
+// Envelopes closer than `margin` count as overlapping: with contact between bodies, contact is
+// switched on before their nodes' spheres can touch.
 kernel void validateBodyEnvelopes(const device uint *bounds [[buffer(0)]],
                                   constant uint &count [[buffer(1)]],
                                   device atomic_uint *interaction [[buffer(2)]],
+                                  constant float &margin [[buffer(3)]],
                                   uint tid [[thread_position_in_grid]]) {
     if (tid >= count) { return; }
     for (uint other = tid + 1u; other < count; ++other) {
@@ -3486,7 +3634,7 @@ kernel void validateBodyEnvelopes(const device uint *bounds [[buffer(0)]],
             uint blo = bounds[6u * other + axis], bhi = bounds[6u * other + 3u + axis];
             if (alo > ahi || blo > bhi) { overlap = false; break; }
             overlap = overlap && min(bodyFloatFromOrder(ahi), bodyFloatFromOrder(bhi))
-                >= max(bodyFloatFromOrder(alo), bodyFloatFromOrder(blo)) - 1e-5f;
+                >= max(bodyFloatFromOrder(alo), bodyFloatFromOrder(blo)) - 1e-5f - margin;
         }
         if (overlap) { atomic_fetch_or_explicit(interaction, 1u, memory_order_relaxed); }
     }
@@ -3557,4 +3705,211 @@ kernel void wakeCouplingTiles(const device uint *map [[buffer(0)]],
             }
         }
     }
+}
+
+// MARK: - Discrete bars
+
+// A node of a bar given as its own truss (`StructureModel.discreteBars`), embedded in the element
+// it lies in: its displacement is that element's, interpolated at it, plus its slip along the bar.
+struct DiscreteBarNode {
+    uint corners[8];      // the host element's nodes, as indices into the body's nodes
+    float weights[8];     // their shape functions at the bar node
+    packed_float3 rest;   // where it lies at rest
+    packed_float3 axis;   // the bar's unit direction
+    float length;         // the bar it stands for: half of each segment beside it
+    float perimeter;      // the bar's surface per unit length
+    int previous;         // the segment before it along the bar, or -1
+    int next;             // the segment after it, or -1
+};
+
+struct DiscreteBarSegment {
+    uint first;           // its nodes are `first` and `first + 1`
+    float length;         // at rest
+    float area;
+    uint material;        // whose steel it is
+    uint barFirst;        // its bar's first and last segments
+    uint barLast;
+    uint reach;           // segments either side over which its rupture is judged
+};
+
+// Each segment's force from its stretch, by the bars' law (`smearedBar`, with a ratio of one).
+// `segmentState` holds (force N, plastic strain, running strain rate, ruptured); a ruptured
+// segment (see `discreteBarRupture`) carries nothing for good.
+kernel void discreteBarSegments(const device StructureNode *nodes [[buffer(0)]],
+                                const device DiscreteBarNode *barNodesDevice [[buffer(1)]],
+                                const device DiscreteBarSegment *segments [[buffer(2)]],
+                                device float4 *segmentState [[buffer(3)]],
+                                device BarHistory *histories [[buffer(4)]],
+                                const device float4 *barSlips [[buffer(5)]],
+                                constant MaterialParameters *materials [[buffer(6)]],
+                                const device StepControl &control [[buffer(7)]],
+                                constant StructureUniforms &u [[buffer(8)]],
+                                uint id [[thread_position_in_grid]]) {
+    bool active;
+    float dt = structureStep(u, control, active);
+    if (!active) {
+        return;
+    }
+    DiscreteBarSegment segment = segments[id];
+    float4 state = segmentState[id];
+    if (state.w != 0.0f) {
+        segmentState[id] = float4(0.0f, state.y, state.z, 1.0f);
+        return;
+    }
+    DiscreteBarNode a = barNodesDevice[segment.first];
+    DiscreteBarNode b = barNodesDevice[segment.first + 1];
+    float3 da = float3(0.0f);
+    float3 db = float3(0.0f);
+    float3 va = float3(0.0f);
+    float3 vb = float3(0.0f);
+    for (uint c = 0; c < 8; ++c) {
+        da += a.weights[c] * float3(nodes[a.corners[c]].displacement);
+        db += b.weights[c] * float3(nodes[b.corners[c]].displacement);
+        va += a.weights[c] * float3(nodes[a.corners[c]].velocity);
+        vb += b.weights[c] * float3(nodes[b.corners[c]].velocity);
+    }
+    float4 sa = barSlips[segment.first];
+    float4 sb = barSlips[segment.first + 1];
+    float3 xa = float3(a.rest) + da + sa.x * float3(a.axis);
+    float3 xb = float3(b.rest) + db + sb.x * float3(b.axis);
+    float3 along = xb - xa;
+    float current = length(along);
+    float stretch = current / segment.length;
+    float green = 0.5f * (stretch * stretch - 1.0f);
+    float3 unit = along / max(current, 1e-12f);
+    float rate = (dot(vb - va, unit) + sb.y - sa.y) / segment.length;
+    float averaged = state.z + clamp(dt * u.rateFilter, 0.0f, 1.0f) * (fabs(rate) - state.z);
+    constant MaterialParameters &m = materials[segment.material];
+    float plastic = state.y;
+    float root;
+    float yield;
+    float stress = smearedBar(green, plastic, histories[id], averaged, m, root, yield);
+    // `stress` is the force over the bar's area at rest.
+    segmentState[id] = float4(stress * segment.area, plastic, averaged, 0.0f);
+}
+
+// A segment ruptures, for good, when its bar's plastic strain averaged over the segments within
+// half a crack spacing either side passes the rupture strain: the curve's elongation at rupture is
+// measured over a gauge length, and a crack's opening is shared by a length of bar, not by the
+// one segment it crosses (as the smeared bars' `bondSpreading`). Judged segment by segment, the
+// contest slab's bars ruptured at its mid-span crack at 100 mm. Writes only its own `w`.
+kernel void discreteBarRupture(device float4 *segmentState [[buffer(0)]],
+                               const device DiscreteBarSegment *segments [[buffer(1)]],
+                               constant MaterialParameters *materials [[buffer(2)]],
+                               const device StepControl &control [[buffer(3)]],
+                               constant StructureUniforms &u [[buffer(4)]],
+                               uint id [[thread_position_in_grid]]) {
+    bool active;
+    structureStep(u, control, active);
+    if (!active) {
+        return;
+    }
+    DiscreteBarSegment segment = segments[id];
+    uint low = uint(max(int(id) - int(segment.reach), int(segment.barFirst)));
+    uint high = min(id + segment.reach, segment.barLast);
+    float sum = 0.0f;
+    for (uint k = low; k <= high; ++k) {
+        sum += segmentState[k].w != 0.0f ? 0.0f : fabs(segmentState[k].y);
+    }
+    constant MaterialParameters &m = materials[segment.material];
+    if (sum / float(high - low + 1) > m.steelStrain[m.steelPoints - 1]) {
+        segmentState[id].w = 1.0f;
+    }
+}
+
+// Each bar node: what its segments' forces leave over passes to the concrete, as a vector in
+// `barTransfer`. Bonded perfectly (no bond law), and at a bar's anchored ends, the node does not
+// slip; otherwise its slip relaxes towards the bond law's balance with it, as the smeared bars'
+// slip does (`relaxSlip`).
+kernel void discreteBarNodes(const device DiscreteBarNode *barNodesDevice [[buffer(0)]],
+                             const device float4 *segmentState [[buffer(1)]],
+                             device float4 *barSlips [[buffer(2)]],
+                             device float4 *barTransfer [[buffer(3)]],
+                             const device StepControl &control [[buffer(4)]],
+                             constant StructureUniforms &u [[buffer(5)]],
+                             const device DiscreteBarSegment *segments [[buffer(6)]],
+                             constant MaterialParameters *materials [[buffer(7)]],
+                             uint id [[thread_position_in_grid]]) {
+    bool active;
+    float dt = structureStep(u, control, active);
+    if (!active) {
+        return;
+    }
+    DiscreteBarNode n = barNodesDevice[id];
+    float before = n.previous >= 0 ? segmentState[n.previous].x : 0.0f;
+    float after = n.next >= 0 ? segmentState[n.next].x : 0.0f;
+    float leftOver = after - before;  // along the bar: the segment after pulls it forward
+    float3 axis = float3(n.axis);
+    // A bar's ends are anchored, as by hooks or plates: they do not slip.
+    if (u.discreteBond == 0u || n.previous < 0 || n.next < 0) {
+        barTransfer[id] = float4(leftOver * axis, 0.0f);
+        return;
+    }
+    float4 state = barSlips[id];
+    float plastic = state.z;
+    float largest = state.w;
+    float area = n.perimeter * n.length;
+    // Where the bar has yielded it holds less well, by the Model Code's Omega_y, from the plastic
+    // strain of the segments either side (as the smeared bars' slip has it).
+    float left = 1.0f;
+    if (u.bondYieldRange > 0.0f) {
+        float yielded = 0.0f;
+        int counted = 0;
+        for (int side = 0; side < 2; ++side) {
+            int k = side == 0 ? n.previous : n.next;
+            if (k >= 0 && segmentState[k].w == 0.0f) {
+                yielded += max(segmentState[k].y, 0.0f);
+                counted += 1;
+            }
+        }
+        if (counted > 0 && yielded > 0.0f) {
+            float a = min(yielded / float(counted) / u.bondYieldRange, 1.0f);
+            left = 1.0f - 0.85f * (1.0f - exp(-5.0f * pow(a, u.bondYieldExponent)));
+        }
+    }
+    float bond = bondStress(state.x, plastic, largest, left, u) * area;
+    // The slip's stiffness: the bond's at the start of its law, and the bars' either side, each
+    // counted twice, since a segment ties this node's slip to its neighbour's (a Gershgorin
+    // bound): counted once, the slip rang along the bar, as the smeared bars' slip once did.
+    float s0 = 0.02f * u.bondS1;
+    float stiffness = u.bondPeak * pow(0.02f, u.bondAlpha) / s0 * area;
+    for (int side = 0; side < 2; ++side) {
+        int k = side == 0 ? n.previous : n.next;
+        if (k >= 0) {
+            DiscreteBarSegment s = segments[k];
+            stiffness += 2.0f * materials[s.material].steelModulus * s.area / s.length;
+        }
+    }
+    float step = u.criticalStep;
+    float mass = stiffness * step * step;
+    float damping = 1.4f * stiffness * step;
+    float rate = (state.y + dt * (leftOver - bond) / mass) / (1.0f + dt * damping / mass);
+    barSlips[id] = float4(state.x + dt * rate, rate, plastic, largest);
+    // The slip is the bar's motion relative to the concrete, so the concrete feels the bar's own
+    // forces either side, as it would bonded: the bond only balances them in the slip. (Given
+    // the bond's force instead, the concrete lagged the bar it had already moved, and the tie
+    // rang.)
+    barTransfer[id] = float4(leftOver * axis, 0.0f);
+}
+
+// What the bars' bond passes to the concrete at the bar nodes embedded beside each body node, in
+// proportion to its shape function there, gathered in a fixed order: (bar node, weight) entries.
+kernel void discreteBarGather(const device uint *gatherStart [[buffer(0)]],
+                              const device float2 *gatherEntries [[buffer(1)]],
+                              const device float4 *barTransfer [[buffer(2)]],
+                              device float4 *barNodeForce [[buffer(3)]],
+                              const device StepControl &control [[buffer(4)]],
+                              constant StructureUniforms &u [[buffer(5)]],
+                              uint id [[thread_position_in_grid]]) {
+    bool active;
+    structureStep(u, control, active);
+    if (!active) {
+        return;
+    }
+    float3 force = float3(0.0f);
+    for (uint e = gatherStart[id]; e < gatherStart[id + 1]; ++e) {
+        float2 entry = gatherEntries[e];
+        force += entry.y * barTransfer[as_type<uint>(entry.x)].xyz;
+    }
+    barNodeForce[id] = float4(force, 0.0f);
 }

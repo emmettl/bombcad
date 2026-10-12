@@ -8,13 +8,15 @@ enum HeadlessSweep {
     static let usage = """
         Usage: BombCAD sweep <project.bombcad> (--masses <kg,kg,…> | --grids <coarse,medium,fine>)
                              [--prefix <name>] [--worker <ssh host>]… [--ratio <times slower>]
-                             [--local-workers <n>] [--out <new.bombcad>]
+                             [--local-workers <n>] [--no-default-workers] [--out <new.bombcad>]
 
         Runs each case to the project's duration, here and, with --worker (once per host), on other
         Macs reached over SSH (see docs/run-comparison.md), and prints each result and where it ran.
         --remote is the same as --worker. --local-workers adds workers on this Mac, sharing its GPU,
-        to try the scheduling without another Mac. --out writes a copy of the project with the
-        results added to its saved runs.
+        to try the scheduling without another Mac. Without --worker, the Macs named as "workers" in
+        ~/.config/bombcad/remote.json are taken when free (no CI job, outside their quiet window,
+        not loaded, not held by another BombCAD job), unless --no-default-workers. --out writes a
+        copy of the project with the results added to its saved runs.
         """
 
     static func main(_ arguments: [String]) async -> Int32 {
@@ -27,6 +29,9 @@ enum HeadlessSweep {
         var hosts: [String] = []
         var repeated = false
         var index = 0
+        let noDefaults = arguments.contains("--no-default-workers")
+        let arguments = arguments.filter { $0 != "--no-default-workers" }
+        let defaults = !noDefaults && !arguments.contains("--worker") && !arguments.contains("--remote")
         while index < arguments.count {
             let argument = arguments[index]
             if argument.hasPrefix("--"), index + 1 < arguments.count {
@@ -82,6 +87,15 @@ enum HeadlessSweep {
             try await waitUntil(model) { model.experimentIsReady }
             for host in hosts {
                 model.sweep.remoteWorkers.append { try await RemoteSweepWorker.connect(host: host) }
+            }
+            if defaults {
+                let settings = RemoteConfig.load()
+                let gate = settings.gate("BombCAD sweep from \(ProcessInfo.processInfo.hostName)")
+                for host in settings.workers {
+                    model.sweep.remoteWorkers.append {
+                        try await RemoteSweepWorker.connect(host: host, gate: gate)
+                    }
+                }
             }
             for number in 0..<localWorkers {
                 model.sweep.remoteWorkers.append {

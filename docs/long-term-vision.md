@@ -113,7 +113,7 @@ sorts them.
 ## Credibility as a product feature
 
 BombCAD should make the standing of a result as accessible as the result itself. Users
-should be able to distinguish measured agreement, mathematical verification, an approximation
+should be able to distinguish comparison with measurement, mathematical verification, an approximation
 and an illustrative output. Model assumptions, resolution sensitivity and unsupported
 effects should remain attached to the scene and its exported results.
 

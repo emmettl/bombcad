@@ -405,7 +405,7 @@ floor, as their thermocouples were; m/s, against distance from the ignition poin
   speeds match the measured ones to 2 m, run a third fast at 3 m, and are too fast leaving through
   the vent (96 m/s against 45 in test 4).
 - **Lit in the middle it is low**, 0.37–0.44 of the measured peaks, where their LES came within
-  20%. Its flame speeds inside the room are within a fifth of the measured ones, but the back of
+  a third. Its flame speeds inside the room are within a fifth of the measured ones, but the back of
   the flame still stalls between 0.5 and 1 m from the ignition point (see the trace above), before
   running at the tests' speed beyond. Their measured maxima for tests 2 and 5 are the acoustically
   driven second peaks, which the model does not reproduce.
@@ -451,7 +451,8 @@ floor, as their thermocouples were; m/s, against distance from the ignition poin
    how fast the flame burns when the vent is open. In tests that comes from the turbulence the
    outflow makes, cellular and Taylor instabilities (the second amplified by Helmholtz
    oscillation), and the external explosion. The model wrinkles the flame by its sub-grid
-   turbulence, after Bauwens et al.'s LES, and by its cellular instability from a measured onset.
+   turbulence, after Bauwens et al.'s LES, whose one constant they fitted in this chamber, and by
+   its cellular instability from an onset measured there too.
    - The instability is held beyond four onset radii, where the measurements end; larger flames
      may accelerate further.
    - The Taylor instability and the external vortex's extra wrinkling are not modelled; the

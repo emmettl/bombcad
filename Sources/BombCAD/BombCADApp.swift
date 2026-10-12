@@ -2,7 +2,8 @@ import AppKit
 import SwiftUI
 
 /// `BombCAD run …` runs a project without a window (see `HeadlessRun`), `BombCAD sweep …` runs a
-/// sweep (see `HeadlessSweep`), `BombCAD cloud …` follows a run's cloud again (see `HeadlessCloud`), `BombCAD worker` serves sweep cases over its standard input and output (see `SweepWorker`); anything else opens the app.
+/// sweep (see `HeadlessSweep`), `BombCAD ensemble …` reruns validation cases over their uncertain
+/// inputs (see `HeadlessEnsemble`), `BombCAD cloud …` follows a run's cloud again (see `HeadlessCloud`), `BombCAD worker` serves sweep cases over its standard input and output (see `SweepWorker`); anything else opens the app.
 @main
 enum BombCADMain {
     static func main() {
@@ -19,11 +20,15 @@ enum BombCADMain {
             Task { @MainActor in
                 exit(await HeadlessSweep.main(Array(arguments.dropFirst())))
             }
+        case "ensemble":
+            Task { @MainActor in
+                exit(await HeadlessEnsemble.main(Array(arguments.dropFirst())))
+            }
         case "cloud":
             exit(HeadlessCloud.main(Array(arguments.dropFirst())))
         case "worker":
             Task { @MainActor in
-                exit(await SweepWorker.main())
+                exit(await SweepWorker.main(Array(arguments.dropFirst())))
             }
         default:
             AppPreferences.migrate()

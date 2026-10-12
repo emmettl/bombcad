@@ -336,9 +336,8 @@ on 2 and 1 in elements, both with the converged answer.
 `blastbench slab` runs 80 ms of the validation slab in 9 s with eight elements through the
 thickness (68,608 elements of 12.7 mm, time step 1.7 µs) and in under a second with four. With
 sixteen (553,000 elements) it takes about two minutes. Cracks that turn with the stress cost
-about 1% against cracks on the lattice planes. Nonlocal crushing, when switched on,
-adds about 3 s to the eight-layer time: each element past its peak strain averages a
-neighbourhood of up to nine points along each axis.
+about 1% against cracks on the lattice planes (since retired). Nonlocal crushing, when it
+was an option, added about 3 s to the eight-layer time.
 
 ## Display
 
@@ -379,6 +378,56 @@ on an M4 Max shared with other sessions' tests, the window took 16% of a GPU's t
 core at 1440 × 920; it now takes none (the process's GPU time from `ioreg`'s
 `accumulatedGPUTime`, over 30 s). During a run the view still draws on its timer, within the
 budget above.
+
+## Choosing settings
+
+The advisor finds, for a scene and a target, the cheapest settings of the air that meet it, or the
+best fidelity a budget buys: in the Run tab beside the Grid and Domain sections, and as
+`BombCAD run <project> --advise peak:20%` (or `impulse:15%`, `deflection:30%`, `time:10m`), which
+prints the advice and does not run. It weighs cells scaled to the charge (0.4, 0.2, 0.1, 0.05 and
+0.025 m/kg^(1/3)) and the presets, unrefined or refined once or twice by 2 at thresholds of 0.1,
+0.02 and 0.005, with and without afterburning; a scene with blocks or structures keeps to cells of
+0.5 m or finer. It says which it did (the cheapest that meets the target, the nearest if none
+does, or the best within the time) and what it could not meet, and the app applies the choice
+with a click.
+
+**Fidelity** is the standing's: each candidate's expected error is read from the error bands the
+[standing](standing.md) would give that run, the worst over the gauges of the farther end of each
+band from 1 (gauges without a band, such as those shielded from the charge, are named and left
+out), and the structure's deflection band. So the advisor and the standing cannot disagree: both
+read `ValidationTables`, the validation record's tables and the
+[large scenes'](large-scenes.md#against-kingerybulmash-to-40-mkg13). Where nothing compared covers
+a candidate (cells finer than any grid compared count as the finest compared), it has no band.
+
+**Cost** is `RunCost`'s estimate for an unloaded M4 Max:
+
+- steps from the hot gas's time step (about a third of still air's, 0.31 with afterburning);
+- coarse cell-updates swept from when the blast reaches each part of the domain (Kingery–Bulmash's
+  arrival, sampled over the domain), at 1.8 billion a second (the swept share it predicts, 27% for
+  the 500 t burst, was 35% in the run);
+- refined updates over a shell 18 cells thick about the shock while it is stronger than the
+  threshold's reach (`ValidationTables.refinementReach`, 2 × threshold × ambient), no more at a time
+  than the pool of refined blocks holds (a third of it for the first level and two thirds for the
+  second), each fine update 1.6 times a coarse one;
+- 0.4 ms a step whatever the grid, and 1.5 ms more with two levels of refinement;
+- the structure's element-updates at 300 million a second;
+- 57 bytes a cell (73 with afterburning), plus the refined blocks' pool.
+
+`blastbench advise --calibrate` sets it against the runs timed above: every whole event in the
+tables of this page comes within a factor of two (0.53 to 1.46, street and open ground, uniform,
+refined once and twice, with and without afterburning; the pool's cap is what brings the two-level
+runs in). The large scenes' runs read 2 to 6 times the estimate, but they were timed while the Mac
+was loaded with other work: timed again in one session beside the street on 0.25 m cells, and
+scaled by that run's slowdown, the 500 t runs on 2.2 million cells came 1.7 to 2.5 times the
+estimate, which is the error to expect at kilometre scale until they are timed on a quiet Mac.
+Every finished `BombCAD run` records its wall time against its estimate in
+`~/Library/Caches/BombCAD/run-costs.json`, and the advisor shows, beside the unloaded estimate,
+what the median of this Mac's recent runs makes of it.
+
+Limitations: only peaks, impulse and deflection are weighed; the cost of a structure is rough
+(elements from its solids' volumes, a critical step of the element's size over 7,000 m/s); the
+refined shell's thickness is one figure for every scene; and wall times on a shared Mac vary by a
+factor of four whatever the model says.
 
 ## Other Macs
 

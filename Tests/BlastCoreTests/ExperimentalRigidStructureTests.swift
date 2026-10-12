@@ -36,10 +36,7 @@ struct ExperimentalRigidStructureTests {
                 wall: Box(min: SIMD3(2, 0.4, 1), max: SIMD3(2.2, 1.6, 2)), fixedBase: false, shells: shells))
         simulation.gravity = .zero
         simulation.ground = false
-        switch simulation.structure {
-        case .solid(let solver): solver.groundContact = false
-        case .shell(let solver): solver.groundContact = false
-        }
+        simulation.structuresTouchGround = false
         simulation.applyImpulse(SIMD3(250, 0, 0), to: 0)
         let momentum = simulation.linearMomentum + simulation.structureMomentum
         let energy = simulation.kineticEnergy
@@ -87,5 +84,43 @@ struct ExperimentalRigidStructureTests {
         // The wall's face gives, a little; the box does not pass into it.
         #expect(deepest < 0.03)
         #expect(simulation.contactWork.members + simulation.contactWork.structure <= 0)
+    }
+
+    @Test("A box between two structures strikes the one it is thrown at, which alone takes the reaction")
+    func twoStructures() throws {
+        var first = StructureModel(
+            solids: [Box(min: SIMD3(1, 0.4, 1), max: SIMD3(1.2, 1.6, 2))], material: material,
+            elementSize: 0.1,
+            fixedBase: false)
+        first.elementKind = .solid
+        var second = StructureModel(
+            solids: [Box(min: SIMD3(2.5, 0.4, 1), max: SIMD3(2.7, 1.6, 2))], material: material,
+            elementSize: 0.1, fixedBase: false)
+        second.elementKind = .shell
+        var scene = Scenario(
+            name: "Box between walls", domainSize: SIMD3(4, 2, 3), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(0.5, 1, 0.3)), structure: first,
+            rigidObjects: [
+                try RigidObjectDefinition(
+                    name: "Box", shape: .box(size: SIMD3(repeating: 0.4)), position: SIMD3(2.295, 1, 1.5),
+                    mass: 50)
+            ])
+        try scene.addStructureObject(second, name: "Second wall")
+        let simulation = try ExperimentalRigidStructureSimulation(device: device, scenario: scene)
+        #expect(simulation.structures.count == 2)
+        simulation.gravity = .zero
+        simulation.ground = false
+        simulation.structuresTouchGround = false
+        simulation.applyImpulse(SIMD3(250, 0, 0), to: 0)
+        let momentum = simulation.linearMomentum + simulation.structureMomentum
+        simulation.advance(steps: Int((0.02 / simulation.timeStep).rounded(.up)))
+        #expect(simulation.reaction.x > 50)
+        #expect(simd_length(simulation.linearMomentum + simulation.structureMomentum - momentum) < 1e-4 * 250)
+        // The first wall, behind the box, is not touched.
+        guard case .solid(let behind) = simulation.structures[0] else {
+            Issue.record("the first structure is solid")
+            return
+        }
+        #expect(simd_length(behind.momentum()) < 1e-9)
     }
 }

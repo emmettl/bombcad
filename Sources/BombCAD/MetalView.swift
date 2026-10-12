@@ -154,4 +154,7 @@ struct MetalView: NSViewRepresentable {
 }
 
 /// The model steers the shared viewport's camera, and clicks select what lies under them.
-extension SimulationModel: OrbitControlling {}
+extension SimulationModel: OrbitControlling {
+    /// The view zooms out as far as `farthestZoom`, so that a domain kilometres across is seen whole.
+    var zoomLimits: ClosedRange<Float> { OrbitCamera.defaultZoomLimits.lowerBound...farthestZoom }
+}

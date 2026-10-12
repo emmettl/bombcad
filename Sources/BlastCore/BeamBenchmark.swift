@@ -104,24 +104,24 @@ public enum BeamBenchmark {
     public static func run(
         device: MTLDevice, elementsThroughDepth: Int = 12, deflection: Float = 0.06, rate: Float = 0.1,
         unload: Bool = false, crackSlip: Bool = true,
-        crackAxes: CrackAxes = .turningUntilOpen, bondSlip: BondSlip? = nil,
-        crackShearStiffness: Bool = false,
-        slipWidensCracks: Bool = true,
+        bondSlip: BondSlip? = nil,
         pressedInterlock: Bool = false,
-        adjust: (inout StructureMaterial) -> Void = { _ in }
+        adjustModel: (inout StructureModel) -> Void = { _ in },
+        adjust: (inout StructureMaterial) -> Void = { _ in },
+        prepare: ((StructureSolver) -> Void)? = nil,
+        sample: ((_ solver: StructureSolver, _ deflection: Float, _ moment: Float) -> Void)? = nil
     ) throws -> Result {
         var model = model(elementsThroughDepth: elementsThroughDepth)
         model.pressedInterlock = pressedInterlock
-        model.crackAxes = crackAxes
+        adjustModel(&model)
         model.bondSlip = bondSlip
-        model.crackShearStiffness = crackShearStiffness
         model.crackSlip = crackSlip
         adjust(&model.material)
-        model.slipWidensCracks = slipWidensCracks
-        let solver = try StructureSolver(device: device, model: model)
+        let solver = try StructureSolver(device: device, model: model.loadedSlowly())
         solver.gravity = 0
         solver.groundContact = false
         solver.damping = 100
+        prepare?(solver)
 
         let h = model.elementSize
         let overhang = (length - span) / 2
@@ -160,6 +160,7 @@ public enum BeamBenchmark {
             }
             let centre = -solver.displacement(middle, solver.ey / 2, 0).z
             curve.append(SIMD2(centre, 0.5 * reaction * shearSpan))
+            sample?(solver, centre, 0.5 * reaction * shearSpan)
             if !centre.isFinite { break }
         }
         var residual: Float?

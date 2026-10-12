@@ -20,7 +20,7 @@ run `python3 Scripts/prepare-ifc-converter.py` first to enable IFC import.
 [Releasing](releasing.md) describes signed, notarized builds for other Macs.
 
 In the view: drag or two-finger scroll to orbit, shift-drag or right-drag to pan, pinch or mouse
-wheel to zoom. Space runs and pauses, ⌘R resets.
+wheel to zoom (out to three times the domain's longest side). Space runs and pauses, ⌘R resets.
 
 The sidebar has two tabs. **Run** picks a built-in layout, the grid, the charge and the display.
 The layouts are open ground, a single building, a street canyon and a courtyard (rigid blocks);
@@ -28,26 +28,50 @@ a cantilever wall, a single-storey building, the same building behind a blast wa
 frame (bare, infilled with masonry, or glazed with glass panes), a three-storey clad building,
 an eight-storey frame and a twelve-storey tower with a concrete core (both shells and beams,
 for collapse over several seconds), an
-open-sided car park with a charge inside, an underpass, a column close to a charge, a
+open-sided car park with a charge inside, three buildings across a street (each its own
+structure, one sheltered behind another), an underpass, a column close to a charge, a
 two-storey house of concrete blockwork meshed with shells, a blockwork boundary wall meshed
 block by block with its mortar joints, and the internal-explosion test
 (deformable). The close-in column wants the fine grid: on coarser air it
 is less than a cell or two across. The sidebar shows a structure's deflection now and the
 largest it has reached.
 **Edit layout** adds, moves, resizes and removes rigid blocks, deformable walls, openings and
-pressure gauges, sets each wall's material and reinforcement, and has undo (⌘Z). You can move
+pressure gauges, sets each wall's material and reinforcement, and has undo (⌘Z). **Add
+Independent Structure** adds another structure, up to sixteen, each with its own materials,
+supports, mesh and results (**Editing structure** picks which one the edits go to; imports make
+one each); they share the air, and meet through contact if they come close. You can move
 the charge, or the selected gauge, by clicking the ground. Save Project writes a `.bombcad`
 document containing the scene, simulation settings, camera and embedded import sources. Projects
 reopen without the original OBJ/STL files. Named projects autosave; each
 project has its own window, and closing an edited untitled project asks whether to save.
 BombCAD → Settings (⌘,) sets defaults for new projects and playback windows.
+
+**Large scenes.** The charge's slider runs from 1 kg to 10 kt. The **Grid** offers, beside the
+0.5, 0.25 and 0.125 m presets, cells scaled to a large charge (0.2, 0.1 and 0.05 m/kg^(1/3)), and
+**Cell size** takes any size from 0.01 to 200 m. **Domain** sets the air's extent from its origin,
+keeping everything where it is; **Height for the far ground** raises the open top to what the
+farthest ground needs (1.5 √(R W^(1/3))); and for an open scene, with nothing in it but the
+charge, gauges and terrain, **Fit to the charge** makes a square domain reaching 10, 20 or 40
+m/kg^(1/3), centres the charge in it and chooses a grid scaled to it. Under Gauges, **Add Gauge
+Line** lays gauges outward from the charge at the Kingery–Bulmash scaled distances that fit; up to
+64 gauges are recorded. The Thermal section sets how far apart its ground receivers stand, at
+most 250,000 of them. See [Large scenes](large-scenes.md) for which grid to choose.
+Under Sharpen shocks, **Follow the shock** sets how weak a shock the refined air still follows
+(above 20, 5 or 1 kPa).
+
+**Advisor.** In the Run tab, choose a target (peaks, impulse or deflection within a percentage,
+or a run under so many minutes) and **Suggest**: the advisor weighs grids, refinement and
+afterburning, reads each one's expected error from the standing's error bands and its cost from
+the measured throughput, and offers the cheapest settings that meet the target, or the best within
+the time, with what it could not meet; **Apply** takes them. `BombCAD run --advise peak:20%` does
+the same from the command line. See [Performance](performance.md#choosing-settings).
 The More menu offers Save As and Import Layout JSON. Export Layout JSON saves just the scene. See [Save files](save-files.md).
 
 **Import Model…** reads watertight OBJ/STL geometry and IFC buildings. Confirm source units, up axis and
 placement, then prepare a preview of the actual occupied simulation volumes. Imports can be
 rigid obstacles, or a new deformable solid body with a material preset and editable density,
 stiffness and strength. Deformable imports require a layout without an existing structure,
-use solid elements at the air cell size, and start without reinforcement. Fixing the base
+use solid elements at the air cell size (IFC buildings: shells and beams), and start without reinforcement. Fixing the base
 holds nodes at the imported body's lowest plane; review that assumption before running.
 
 **Help → Importing models** provides an offline walkthrough of scale, placement, feature-size
@@ -59,14 +83,18 @@ They are not bundled with the app. The [real CAD fixtures](../Samples/Importer/R
 add unchanged FreeCAD library exports, pinned provenance and current acceptance/resolution expectations;
 their STEP counterparts are references for future support.
 
-IFC imports use the bundled IfcOpenShell converter locally and create **rigid obstacles**.
+IFC imports use the bundled IfcOpenShell converter locally and create **rigid obstacles**, or,
+with **Deformable shells and beams**, a structure of shells and beams whose materials,
+connections and supports are read or inferred and listed (see
+[structures from IFC](structural-editing.md#structures-from-ifc)).
 Physical walls, slabs/roofs, columns, beams, members, plates, footings, stairs, railings, doors
 and windows can be chosen; spaces, furnishings, proxy/site markers and other types are excluded.
 Before geometry conversion, choose exact elements using building, storey, type and text filters
 and inclusion checkboxes. Filters only change the list; Include/Exclude matching changes the
 import. Up to 1,024 supported elements can be chosen from a 20,000-entry decomposition inventory.
 Choose IFC elements in the preview or source inspector to revise choices from retained IFC bytes.
-Each subset is rebased to its own bounds; review placement after changing choices.
+Changing the subset preserves surviving elements’ simulation positions using the retained IFC coordinate origin.
+Newly included geometry outside the domain or below ground stays blocked until placement is adjusted explicitly.
 The Parts browser retains element names, types, storey labels and GlobalIds, searchable by any
 of these. Source units and world placements are converted to metres, Z up, then rebased from
 large coordinates before Float conversion. The original coordinate origin remains recorded.
@@ -74,21 +102,35 @@ large coordinates before Float conversion. The original coordinate origin remain
 Each IFC element is validated independently. Existing segmented edge junctions are made
 conforming without creating faces, and coordinates are canonicalised at 0.1 micrometre.
 Touching and overlapping elements produce a union of occupied cells; overlaps count once and
-use the first sorted GlobalId for selection. Element diagnostics do not certify gaps between
-separate elements. Geometry omissions, converter diagnostics and unsupported material metadata
+use the first sorted GlobalId for selection. Cross-element gap checks union each product’s continuous solid intervals along X/Y/Z grid-centre
+rays, warn below two cells, and identify both bounding products. Touches, overlaps and intervening
+solids do not create a clearance. Off-ray and oblique gaps can still be missed; the checks are
+approximate. The interval inventory is bounded at 500,000 records; incomplete checks are reported
+without inferring gaps from partial data. Localized regions remain bounded at 128. Geometry omissions, converter diagnostics and unsupported material metadata
 remain explicit import notes. IFC completeness and exported reports list intentional exclusions,
 unsupported types, missing converted geometry, complete grid losses and overlapping cell ownership
 separately. Inventory follows the decomposition tree; uncontained products may be absent. Invalid
-selected solids block conversion with their name and GlobalId; excluding one is an explicit action.
-Undetermined converter units block import to prevent incorrect scale. Structural materials, supports and connections are not inferred.
+selected solids are collected into one review with names, GlobalIds and repair reasons. Select
+reviewed failures to exclude and retry, or export the complete geometry review. No partial geometry
+result can be applied while invalid meshes remain. Exclusion is an explicit action.
+Undetermined converter units block import to prevent incorrect scale. Rigid imports infer no materials, supports or connections.
+
+An attached rigid import can become an **exposure-only envelope** (Run ▸ Imported geometry ▸ Use
+as Exposure-only Envelope, or Use All for a group): its sampled boxes as walls and roofs, IFC windows
+and doors as openings, including those left out as open meshes, read back from the retained IFC.
+The import is replaced; Undo restores it. **Map buildings** in the Run tab reads building
+footprints and heights from an OpenStreetMap extract (.osm) or GeoJSON you supply, and places them
+as envelopes from a corner longitude and latitude, on the terrain if there is one; it credits
+OpenStreetMap in the scene and its exports. See [building
+envelopes](building-envelopes.md#envelopes-from-imports-and-map-data).
 
 Projects retain original IFC bytes and converted sources; reopening and grid resampling need
-neither the original file nor the converter. Version 2 source assets hold IFC element metadata, inclusion choices and source inventories,
+neither the original file nor the converter. Attached older IFC previews refresh missing cross-element
+gap diagnostics on their existing grid; detached scene geometry remains authoritative. Version 2 source assets hold IFC element metadata, inclusion choices and source inventories,
 while OBJ/STL assets retain version 1. See the repository-only
 [whole-building IFC fixture](../Samples/Importer/Buildings/README.md) for a small house, matching
 raw OBJ reference, a two-storey duplex, structural beams, an imperial column, a unit-failure case,
-expected behaviour and reproducible provenance. IFCZIP/IFCXML and
-conversion to deformable shells or beams are outside this first milestone.
+expected behaviour and reproducible provenance. IFCZIP/IFCXML are not read.
 
 The importer retains each source mesh, its units/orientation and placement in the saved layout.
 **Inspect / edit source…** in Edit layout reopens an import without its original file. Changing
@@ -238,7 +280,10 @@ keeps the result as a saved run, for scripts and other Macs; see
 write the scene, the structure and the blast over time for rendering elsewhere
 ([USD export](usd-export.md)). Sweeps can share their cases with other Macs over SSH,
 in the app or with `BombCAD sweep`; see
-[sharing a sweep](run-comparison.md#sharing-a-sweep-with-another-mac).
+[sharing a sweep](run-comparison.md#sharing-a-sweep-with-another-mac). With another Mac named in
+`~/.config/bombcad/remote.json`, `BombCAD sweep` and `BombCAD ensemble` take it whenever it is
+free, without `--worker`, and `make check-anywhere` runs the checks on whichever Mac is quieter;
+see [checks on the mini](continuous-integration.md#checks-on-the-mini-instead-of-this-mac).
 
 For the isolated rigid-object mechanics demo, run `swift run rigidboxdemo`, then open
 `.build/rigid-box-demo.html` in a browser. The self-contained replay shows resting, friction

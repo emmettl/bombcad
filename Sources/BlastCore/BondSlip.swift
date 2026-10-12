@@ -91,3 +91,36 @@ public struct BondSlip: Sendable, Hashable, Codable {
         }
     }
 }
+
+/// What `blastbench --bond` asks for. `--bond pullout`, `splitting` or `confined` are bars that
+/// slip, and `--bond none` perfect bond; `--bond` alone (followed by nothing or by another
+/// option), or `--bond mortar`, is the weak joint where masonry meets concrete
+/// (`StructureModel.interfaceBond`), which the presets' commands took it for. Once any `--bond`
+/// turned the joint on, so bars asked to slip on a preset brought the joint with them.
+public enum BondArgument: Equatable, Sendable {
+    case absent
+    case perfect
+    case bars(BondSlip.Condition)
+    case mortar
+
+    /// `present` when `--bond` appears; `value` the argument after it, if any.
+    public init(present: Bool, value: String?) {
+        guard present else {
+            self = .absent
+            return
+        }
+        switch value {
+        case "pullout": self = .bars(.pullOut)
+        case "splitting": self = .bars(.splitting)
+        case "confined": self = .bars(.confinedSplitting)
+        case "none": self = .perfect
+        default: self = .mortar
+        }
+    }
+
+    /// Bars that slip, of diameter `diameter`, when asked for.
+    public func bondSlip(diameter: Float, yieldedBondLoss: Bool = true) -> BondSlip? {
+        guard case .bars(let condition) = self else { return nil }
+        return BondSlip(condition: condition, barDiameter: diameter, yieldedBondLoss: yieldedBondLoss)
+    }
+}

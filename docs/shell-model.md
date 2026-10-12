@@ -10,7 +10,9 @@ as fast; on finer cells the air takes most of the time (see [Performance](perfor
 The code is `Sources/BlastCore/ShellMesh.swift`, `ShellSolver.swift` and
 `Shaders/Shell.metal`. Choose them with `StructureModel.elementKind = .shell`; `elementSize` is
 then the elements' size along the members, and `shellLayers` (8 by default) the number of layers
-through a shell's thickness. In the app, the structure section has an **Elements** picker.
+through a shell's thickness. In the app, the structure section has an **Elements** picker. IFC
+buildings import as shells and beams too (`IFCStructure`; see [structures from
+IFC](structural-editing.md#structures-from-ifc)).
 
 ## Mesh
 
@@ -355,11 +357,11 @@ The contest slab of the [validation notes](validation.md) with shells, through
 | 1 in (25 mm) | 135 mm (125%) | 30 ms | 113 mm (124%) | 17.0 mm | 0.9 s |
 | 2 in, bars under Malvar and Crawford's rate law | 124 mm (115%) | 29 ms | 96 mm (105%) | 10.3 mm | |
 | Measured | 108 mm | 30 ms | 91 mm | | |
-| Solid elements, 16 through | 108 mm (100%) | 27 ms | 80 mm (88%) | 9.8 mm | minutes |
+| Solid elements, 16 through (Malvar and Crawford's law; 121 mm, 112%, under the CEB's) | 108 mm (100%) | 27 ms | 80 mm (88%) | 9.8 mm | minutes |
 
 Since the bars' strain-rate law became the CEB's (see the
 [concrete model](concrete-model.md#strain-rate-effects)), which tension tests of bars support,
-the shells go a quarter too far, where the solid elements come within 5%: under Malvar and
+the shells go a quarter too far, where the solid elements go 5–15% too far: under Malvar and
 Crawford's steeper law the shells peaked at 124 mm. Under that law, with 4, 8, 16 and 32 layers
 the peak was 121, 124, 124 and 124 mm, so the shells' answer has converged, and it was 18%
 above the solid elements' converged 105 mm. Part of the gap is known:
@@ -433,8 +435,8 @@ the bars' dowel action and slab–column joints a punching check, the shell fram
    punched, its bottom bars, recovers about the punching load by 50 mm of drop in the one
    check made, which may be high; no punching test, before or after punching, has been run.
    The column heads are rigid patches the size of the column.
-5. **More flexible than measured** on the one test: 15% over the measured peak, against 4% for
-   the solid elements.
+5. **More flexible than measured** on the one test: 25% over the measured peak, against 5–15%
+   for the solid elements.
 6. **Debris is crude.** Contact spheres are as large as the elements, 250 mm by default, and the
    contact safeguards above are numerical, not physical. Loose shell nodes are pushed by the air
    as solid debris is, each standing for its share of the elements it belonged to; being larger,
@@ -443,6 +445,12 @@ the bars' dowel action and slab–column joints a punching check, the shell fram
 7. **Rotational inertia is scaled up**, which slightly slows rotation of short members.
 8. **Damage reads higher on larger elements** for the same crack, since the removal strain is
    the removal width over the element size.
+9. **Structures from IFC are only as square as their boxes.** Each wall, slab and member is
+   one box square to the axes: inclined and curved elements stay rigid, a wall's layers become
+   its one structural layer, flanged steel a rectangle of equal bending stiffness (about twice
+   as stiff axially), and members that meet are tied rigidly. Slabs a little apart in level
+   are moved onto one midsurface (by up to a quarter of an element), as the mesh's levels run
+   through the whole building and two near ones leave slivers that shorten the time step.
 
 ## Future work
 

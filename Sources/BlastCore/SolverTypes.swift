@@ -26,6 +26,9 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// Coarse boundary storage for multiple structures, read by `setStructures`.
     /// Automatic keeps dense storage when smaller; a single body retains its dense path.
     public var bodyCouplingLayout: BodyCouplingLayout = .automatic
+    /// Independent bodies that come close meet through contact (see `BlastSolver`); without it,
+    /// their envelopes or cells overlapping stops the run as an unsupported interaction.
+    public var interBodyContact = true
     /// Zero reserves twice the initial padded tile footprint. Positive values set a bounded pool.
     public var bodyCouplingTileCapacity = 0
     /// Ratio of specific heats of the (ideal) gas.
@@ -80,6 +83,10 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// by when the blast has long gone. A collapsing structure keeps stirring the air near it,
     /// so the pressure test alone may never be met. Zero disables this.
     public var airSleepCrossings: Float = 5
+    /// How far beyond the structure's starting bounds (m, along x, y and z) the air's mask
+    /// follows it and loads its loose debris. Debris that flies further keeps flying but feels no
+    /// air; walls thrown tens of metres down a shock tube need it larger.
+    public var debrisReach = SIMD3<Float>(4, 4, 3)
     /// Smallest radius, in cells, of the sphere a charge's energy is deposited into.
     public var minimumBalloonCells: Float = 2
     /// Refine the air where the blast's shock is by this ratio, 2 or 4: each block of 4 x 4 x 4
@@ -394,6 +401,9 @@ public struct BatchResult: Sendable {
     public var reachedLimit = false
     /// A conservative independent-body overlap was detected; this run cannot continue.
     public var unsupportedInteraction = false
+    /// Independent bodies came close in this batch, which stopped early so that the next could
+    /// encode them in contact.
+    public var contactStarted = false
     /// Local boundary storage could not cover the current geometry; no completed result is valid.
     public var couplingCapacityExceeded = false
 }
@@ -409,6 +419,8 @@ public enum BlastError: Error, CustomStringConvertible {
     case supportsMissNodes
     /// A scaled distance (m/kg^(1/3)) outside the Kingery–Bulmash curves.
     case outsideBlastCurves(Double)
+    /// A discrete bar that does not lie wholly within the body's concrete.
+    case barOutsideConcrete(Int, SIMD3<Float>)
 
     public var description: String {
         switch self {
@@ -421,6 +433,8 @@ public enum BlastError: Error, CustomStringConvertible {
             "The supports do not fall on nodes of the mesh; choose an element size that divides 6 inches"
         case .outsideBlastCurves(let z):
             "A scaled distance of \(String(format: "%.2f", z)) m/kg^(1/3) is outside the Kingery–Bulmash curves (0.2 to 40)"
+        case .barOutsideConcrete(let index, let point):
+            "Discrete bar \(index + 1) does not lie wholly within the structure's elements: at \(point)"
         case .notPlateLike(let index):
             "Solid \(index + 1) is neither a wall or slab nor a column, so it cannot be meshed with shells and beams"
         }

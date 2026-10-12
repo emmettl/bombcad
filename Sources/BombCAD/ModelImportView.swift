@@ -17,6 +17,7 @@ struct ModelImportView: View {
         var fixedBase: Bool
         var material: StructureMaterial
         var partMaterials: [Int: StructureMaterial]
+        var structural: IFCStructure.Options? = nil
     }
     var draft: Draft?
     var chooseBuildingElements: ((Draft) -> Void)?
@@ -49,6 +50,12 @@ struct ModelImportView: View {
     @State private var geometryExpanded = true
     @State private var behaviorExpanded = true
     @State private var partsExpanded = true
+    /// An IFC building, deformable: how it is meshed as shells and beams, and what that gives.
+    @State private var structural = IFCStructure.Options()
+    @State private var structureReport: IFCStructure.Report?
+    @State private var structureError: String?
+    /// The stated default reinforcement offered: 0.3% of the section in each face, both ways.
+    static let offeredReinforcement: Float = 0.003
     init(
         mesh: ImportedMesh, filename: String, existing: ImportedModel? = nil, model: SimulationModel,
         draft: Draft? = nil, chooseBuildingElements: ((Draft) -> Void)? = nil
@@ -90,6 +97,10 @@ struct ModelImportView: View {
             return
                 "This source is detached or has local geometry/support edits. Detach from the sidebar to keep independent edits, or undo them before applying."
         }
+        if isBuilding && (0..<3).contains(where: { corner[$0] < 0 }) {
+            return
+                "The changed selection extends outside the domain or below ground. Its building position was preserved. Adjust the corner explicitly before applying."
+        }
         if let placementError = previewModel.placementError {
             return "Placement checks unavailable for the staged layout: \(placementError)"
         }
@@ -117,7 +128,8 @@ struct ModelImportView: View {
                             Draft(
                                 scale: scale, yUp: yUp, corner: corner,
                                 resolution: resolution, domain: domainSize, deformable: deformable,
-                                fixedBase: fixedBase, material: material, partMaterials: partMaterials))
+                                fixedBase: fixedBase, material: material, partMaterials: partMaterials,
+                                structural: structural))
                     }.disabled(!canApply)
                 }
                 Button("Export import report…") { exporting = true }.disabled(!isPreviewCurrent)
@@ -143,6 +155,21 @@ struct ModelImportView: View {
                                     focusedID: $selectedPartID, selectedIDs: $selectedPartIDs,
                                     assignments: $partMaterials,
                                     isolate: $isolate, colourByMaterial: $colourByMaterial)
+                            }
+                        }
+                        if isBuilding && deformable {
+                            Section {
+                                DisclosureGroup("Structure from IFC", isExpanded: .constant(true)) {
+                                    if let structureReport {
+                                        IFCStructureReportView(
+                                            report: structureReport, untied: $structural.untied)
+                                    } else if let structureError {
+                                        Label(structureError, systemImage: "exclamationmark.triangle")
+                                            .font(.caption).foregroundStyle(.red)
+                                    } else {
+                                        ProgressView().controlSize(.small)
+                                    }
+                                }
                             }
                         }
                         if isBuilding {
@@ -205,11 +232,9 @@ struct ModelImportView: View {
                             detailed: model.settings.detailedCharge, refined: model.settings.sharpShocks,
                             memoryBudget: memory.budget,
                             chooseGrid: { value in
-                                if let r = Resolution.allCases.first(where: { $0.cellSize == value }) {
-                                    resolution = r
-                                }
+                                if let r = Resolution(cellSize: value) { resolution = r }
                             },
-                            canRefine: resolution != .fine, refine: { previewFiner() }
+                            canRefine: resolution.finer != nil, refine: { previewFiner() }
                         )
                         .opacity(isPreviewCurrent ? 1 : 0.4).allowsHitTesting(isPreviewCurrent)
                     } else if !busy {
@@ -244,6 +269,13 @@ struct ModelImportView: View {
             .onChange(of: fixedBase) { schedulePreview() }.onChange(of: model.settings.scenario) {
                 schedulePreview()
             }
+            .task(
+                id: StructureKey(
+                    mesh: previewModel.transformedMesh, options: structural, chosen: partMaterials,
+                    deformable: deformable)
+            ) {
+                await convertStructure()
+            }
             .onAppear {
                 sourceBounds = mesh.bounds
                 domainSize = model.settings.scenario.domainSize
@@ -256,6 +288,7 @@ struct ModelImportView: View {
                     corner = SIMD3<Double>(existing.corner)
                     deformable = existing.behavior == .deformable
                     partMaterials = existing.partMaterials ?? [:]
+                    if let options = existing.structuralOptions { structural = options }
                     if deformable,
                         let body = model.settings.scenario.structuralObject(sourceID: existing.id)?.structure
                     {
@@ -272,6 +305,7 @@ struct ModelImportView: View {
                     deformable = draft.deformable
                     fixedBase = draft.fixedBase
                     material = draft.material
+                    if let options = draft.structural { structural = options }
                     partMaterials = draft.partMaterials.filter { key, _ in
                         mesh.parts.contains { $0.id == key }
                     }
@@ -353,14 +387,82 @@ struct ModelImportView: View {
             Button("Undo expansion") { domainSize = model.settings.scenario.domainSize }
         }
     }
+    /// What the structure's conversion depends on.
+    private struct StructureKey: Equatable {
+        var mesh: ImportedMesh?
+        var options: IFCStructure.Options
+        var chosen: [Int: StructureMaterial]
+        var deformable: Bool
+    }
+    private func convertStructure() async {
+        guard isBuilding, deformable, let mesh = previewModel.transformedMesh,
+            let elements = mesh.buildingElements
+        else {
+            structureReport = nil
+            structureError = nil
+            return
+        }
+        let (options, chosen) = (structural, partMaterials)
+        let result = await Task.detached(priority: .userInitiated) {
+            Result { try IFCStructure(elements: elements, chosen: chosen, options: options).report }
+        }.value
+        guard !Task.isCancelled else { return }
+        switch result {
+        case .success(let report):
+            structureReport = report
+            structureError = nil
+        case .failure(let failure):
+            structureReport = nil
+            structureError = failure.localizedDescription
+        }
+    }
+    @ViewBuilder private var structuralControls: some View {
+        Picker("Shell and beam size", selection: $structural.elementSize) {
+            ForEach([Float(0.125), 0.25, 0.5], id: \.self) { Text("\($0, format: .number) m").tag($0) }
+        }
+        Picker("Default material", selection: $structural.defaultMaterial) {
+            ForEach(StructureMaterial.presets, id: \.self) { Text($0.name).tag($0) }
+            if !StructureMaterial.presets.contains(structural.defaultMaterial) {
+                Text("Custom: \(structural.defaultMaterial.name)").tag(structural.defaultMaterial)
+            }
+        }
+        Toggle(
+            "Reinforce concrete shells, \(Double(Self.offeredReinforcement) * 100, format: .number)% each face (assumed)",
+            isOn: Binding(
+                get: { structural.reinforcement != nil },
+                set: { structural.reinforcement = $0 ? Self.offeredReinforcement : nil }))
+        Picker("Close gaps between members up to", selection: $structural.gap) {
+            ForEach([Float(0), 0.05, 0.1, 0.2], id: \.self) {
+                Text("\(Int(($0 * 1000).rounded())) mm").tag($0)
+            }
+        }
+        Picker(
+            "Base and footing connection",
+            selection: Binding(
+                get: { BaseConnection(structural.base) },
+                set: {
+                    if let law = $0.anchorage, law.footing == nil, law.bearingCapacity == nil {
+                        structural.base = law
+                    }
+                }
+            )
+        ) {
+            ForEach([BaseConnection.dowelled, .joint, .resting], id: \.self) { Text($0.title).tag($0) }
+        }
+        Text(
+            "Walls, slabs and members square to the axes become shells and beams; anything else stays a rigid obstacle. Materials come from the IFC where it names one the solver has; the default is used, and flagged, elsewhere. Reinforcement is never read from IFC. Connections where members meet, and supports at footings or the base, are inferred and listed below."
+        ).font(.caption)
+    }
     @ViewBuilder private var behaviorControls: some View {
-        Toggle("Deformable solid", isOn: $deformable).disabled(
-            isBuilding || existing != nil
+        Toggle(isBuilding ? "Deformable shells and beams" : "Deformable solid", isOn: $deformable).disabled(
+            existing != nil
                 || model.settings.scenario.structuralObjects.count >= Scenario.maximumStructures)
         if model.settings.scenario.structuralObjects.count >= Scenario.maximumStructures {
             Text("The scene has reached its independent structure limit.").font(.caption)
         }
-        if deformable {
+        if deformable && isBuilding {
+            structuralControls
+        } else if deformable {
             Picker("Default material", selection: $material) {
                 ForEach(StructureMaterial.presets, id: \.self) { Text($0.name).tag($0) }
                 if !StructureMaterial.presets.contains(material) {
@@ -475,11 +577,7 @@ struct ModelImportView: View {
         previewModel.update(currentRequest, delay: immediately ? .zero : .milliseconds(350))
     }
     private func previewFiner() {
-        switch resolution {
-        case .coarse: resolution = .medium
-        case .medium: resolution = .fine
-        case .fine: break
-        }
+        if let finer = resolution.finer { resolution = finer }
     }
     private enum Placement { case center, ground, expand }
     private func place(_ action: Placement) {
@@ -512,13 +610,14 @@ struct ModelImportView: View {
     private func commit() {
         guard let preview, canApply, isPreviewCurrent, acknowledged, !busy, blocker == nil else { return }
         do {
-            guard !isBuilding || (!deformable && scale == 1 && !yUp) else {
-                throw ImportedMesh.ImportError.invalid("IFC imports require metres, Z up and rigid behavior.")
+            guard !isBuilding || (scale == 1 && !yUp) else {
+                throw ImportedMesh.ImportError.invalid("IFC imports require metres and Z up.")
             }
-            let imported = ImportedModel(
+            var imported = ImportedModel(
                 id: existing?.id ?? UUID(), name: filename, source: mesh, scale: Float(scale), yUp: yUp,
                 corner: SIMD3<Float>(corner), behavior: deformable ? .deformable : .rigid, preview: preview,
                 partMaterials: partMaterials.isEmpty ? nil : partMaterials)
+            if isBuilding && deformable { imported.structuralOptions = structural }
             var candidate = model.settings.scenario
             candidate.domainSize = domainSize
             try candidate.installImport(imported, material: material, fixedBase: fixedBase)
@@ -529,7 +628,7 @@ struct ModelImportView: View {
             model.settings.scenario = candidate
             model.selection = .imported(imported.id)
             if domainExpanded { model.camera = .framing(candidate) }
-            if deformable { model.settings.solidElementSize = h }
+            if deformable && !isBuilding { model.settings.solidElementSize = h }
             dismiss()
         } catch { self.error = error.localizedDescription }
     }

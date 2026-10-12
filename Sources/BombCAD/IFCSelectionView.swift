@@ -43,9 +43,14 @@ struct IFCImportFlow: View {
                     prepared: prepared, filename: filename,
                     initialIDs: previousMesh?.buildingSelection.map { Set($0.includedIDs) },
                     cancel: { if let previousMesh { mesh = previousMesh } else { dismiss() } },
-                    converted: {
-                        mesh = $0
-                        previousMesh = $0
+                    converted: { replacement in
+                        if let previousMesh, var staged = draft {
+                            staged.corner = try ImportedMesh.preservingBuildingPlacement(
+                                from: previousMesh, to: replacement, corner: staged.corner)
+                            draft = staged
+                        }
+                        mesh = replacement
+                        previousMesh = replacement
                         revision = UUID()
                     })
             } else {
@@ -80,7 +85,7 @@ struct IFCSelectionView: View {
     let prepared: IFCImporter.Prepared
     let filename: String
     let cancel: () -> Void
-    let converted: (ImportedMesh) -> Void
+    let converted: (ImportedMesh) throws -> Void
     @State private var included: Set<String>
     @State private var search = ""
     @State private var building = "*"
@@ -88,11 +93,13 @@ struct IFCSelectionView: View {
     @State private var type = "*"
     @State private var error: String?
     @State private var busy = false
-    @State private var failedElement: String?
+    @State private var failures: IFCImporter.ElementFailures?
+    @State private var reviewedFailures: Set<String> = []
+    @State private var exportingReview = false
     @State private var conversion: Task<Void, Never>?
     init(
         prepared: IFCImporter.Prepared, filename: String, initialIDs: Set<String>? = nil,
-        cancel: @escaping () -> Void, converted: @escaping (ImportedMesh) -> Void
+        cancel: @escaping () -> Void, converted: @escaping (ImportedMesh) throws -> Void
     ) {
         self.prepared = prepared
         self.filename = filename
@@ -100,6 +107,7 @@ struct IFCSelectionView: View {
         self.converted = converted
         self._included = State(initialValue: initialIDs ?? prepared.defaultIDs)
     }
+    private var activeReviewed: Set<String> { reviewedFailures.intersection(included) }
     private var filtered: [IFCImporter.Element] {
         prepared.inventory.filter { e in
             (building == "*" || (e.buildingID ?? "") == building)
@@ -192,16 +200,48 @@ struct IFCSelectionView: View {
                     }.padding(8)
                 }.frame(maxHeight: .infinity)
                 Text(
-                    "Inventory follows the IFC decomposition tree. Uncontained products may be absent; compare with the source CAD model. Choose up to 1,024 supported elements. Choices and the original IFC file are saved with the project. Each subset starts at its own bounds; review placement after changing choices."
+                    "Inventory follows the IFC decomposition tree. Uncontained products may be absent; compare with the source CAD model. Choose up to 1,024 supported elements. Choices and the original IFC file are saved with the project. Changing the subset preserves the building’s position. Newly included geometry outside the domain remains blocked until you adjust placement or the domain."
                 ).font(.caption).foregroundStyle(.secondary)
                 if let error { Text(error).font(.caption).foregroundStyle(.red).textSelection(.enabled) }
-                if let failedElement {
-                    Button("Exclude invalid element and retry") {
-                        included.remove(failedElement)
-                        convert()
-                    }.disabled(included.subtracting([failedElement]).isEmpty)
+                if let failures {
+                    HStack {
+                        Text("\(failures.failures.count) invalid element meshes").font(.headline)
+                        Spacer()
+                        Button("Export geometry review…") { exportingReview = true }
+                    }
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 8) {
+                            ForEach(failures.failures) { failure in
+                                Toggle(
+                                    isOn: Binding(
+                                        get: { reviewedFailures.contains(failure.id) },
+                                        set: {
+                                            if $0 {
+                                                reviewedFailures.insert(failure.id)
+                                            } else {
+                                                reviewedFailures.remove(failure.id)
+                                            }
+                                        })
+                                ) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(failure.name).font(.caption.bold())
+                                        Text(failure.id).font(.caption).textSelection(.enabled)
+                                        Text(failure.reason).font(.caption).foregroundStyle(.red)
+                                    }
+                                }.toggleStyle(.checkbox)
+                            }
+                        }
+                    }.frame(height: 140)
+                    HStack {
+                        Button("Select all failures") { reviewedFailures = Set(failures.failures.map(\.id)) }
+                        Button("Clear review selection") { reviewedFailures = [] }
+                        Button("Exclude \(activeReviewed.count) reviewed elements and retry") {
+                            included.subtract(activeReviewed)
+                            convert()
+                        }.disabled(activeReviewed.isEmpty || included.subtracting(activeReviewed).isEmpty)
+                    }.controlSize(.small)
                     Text(
-                        "This removes only the named failed element. The import remains staged until you review the preview and apply."
+                        "Only the checked failures are excluded by this action. Geometry remains staged until you review the preview and apply."
                     ).font(.caption).foregroundStyle(.secondary)
                 }
                 if busy { ProgressView("Converting chosen elements…") }
@@ -218,11 +258,18 @@ struct IFCSelectionView: View {
         }.padding(24).frame(width: 1040, height: 740)
             .onChange(of: building) { storey = "*" }
             .onDisappear { conversion?.cancel() }
+            .fileExporter(
+                isPresented: $exportingReview, document: ImportReportDocument(text: failures?.report ?? ""),
+                contentType: .plainText, defaultFilename: "\(filename)-geometry-review.txt"
+            ) { result in
+                if case .failure(let failure) = result { error = failure.localizedDescription }
+            }
     }
     private func convert() {
         busy = true
         error = nil
-        failedElement = nil
+        failures = nil
+        reviewedFailures = []
         let choices = included
         conversion = Task {
             do {
@@ -233,11 +280,12 @@ struct IFCSelectionView: View {
                     operation: { try await work.value }, onCancel: { work.cancel() })
                 try Task.checkCancellation()
                 busy = false
-                converted(mesh)
-            } catch is CancellationError { busy = false } catch let failure as IFCImporter.ElementFailure {
+                try converted(mesh)
+            } catch is CancellationError { busy = false } catch let failure as IFCImporter.ElementFailures {
                 busy = false
                 error = failure.localizedDescription
-                failedElement = failure.id
+                failures = failure
+                reviewedFailures = Set(failure.failures.map(\.id))
             } catch {
                 busy = false
                 self.error = error.localizedDescription

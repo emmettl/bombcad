@@ -14,9 +14,12 @@ public enum SlabBenchmark {
     static let inch: Float = 0.0254
     static let psi: Float = 6894.76
 
-    /// Peak mid-span displacement measured in the test, in metres (about 4.25 in at 30 ms).
-    public static let measuredPeak: Float = 4.25 * inch
-    public static let measuredPeakTime: Float = 0.030
+    /// Peak mid-span displacement measured in the test, in metres: 4.29 in at 29.94 ms, as G. A.
+    /// Shetye's thesis (UMKC, 2013) and the contest's own comparison plot (reproduced by L. E.
+    /// Schwer, SMiRT-23, 2015) state it; the plot below reads about 4.25 in. The contest's repeat
+    /// of this slab under the nominally same load (its slab 4) peaked at 4.45 in at 32.73 ms.
+    public static let measuredPeak: Float = 4.29 * inch
+    public static let measuredPeakTime: Float = 0.02994
     /// Displacement at the end of the record, in metres (about 3.6 in at 70 ms).
     public static let measuredResidual: Float = 3.6 * inch
 
@@ -181,12 +184,16 @@ public enum SlabBenchmark {
         case bearings(width: Float, holdDown: Bool)
     }
 
-    /// Runs the slab under the recorded pressure for 80 ms.
+    /// The distance between the supports, centre to centre: 52 in, as Kewaisy et al. reproduce the
+    /// contest's drawing. G. A. Shetye's thesis gives the panels' clear span as 58 in.
+    public static let span: Float = 52 * inch
+
+    /// Runs the slab under the recorded pressure for 80 ms, its supports `span` apart about its
+    /// middle.
     public static func run(
         device: MTLDevice, elementsThroughThickness: Int = 8, rate: RateTreatment = .strainRate,
-        loadScale: Float = 1, supports: Supports = .lines, width: Float = fullWidth,
-        crackAxes: CrackAxes = .turningUntilOpen, bondSlip: BondSlip? = nil,
-        crackShearStiffness: Bool = false,
+        loadScale: Float = 1, supports: Supports = .lines, width: Float = fullWidth, span: Float = span,
+        bondSlip: BondSlip? = nil,
         adjust: (inout StructureMaterial) -> Void = { _ in },
         adjustModel: (inout StructureModel) -> Void = { _ in },
         prepare: ((StructureSolver) -> Void)? = nil,
@@ -194,9 +201,7 @@ public enum SlabBenchmark {
         inspect: ((StructureSolver) -> Void)? = nil
     ) throws -> Result {
         var model = model(elementsThroughThickness: elementsThroughThickness, rate: rate, width: width)
-        model.crackAxes = crackAxes
         model.bondSlip = bondSlip
-        model.crackShearStiffness = crackShearStiffness
         adjust(&model.material)
         adjustModel(&model)
         let solver = try StructureSolver(device: device, model: model)
@@ -207,11 +212,11 @@ public enum SlabBenchmark {
         solver.appliedLoad = load
         prepare?(solver)
 
-        // Simple supports 52 in apart on the unloaded face. The source does not describe the rig,
-        // so how they are modelled is an assumption; see `Supports`.
+        // Simple supports `span` apart (52 in by default) on the unloaded face. The source does not
+        // describe the rig, so how they are modelled is an assumption; see `Supports`.
         let h = model.elementSize
-        let first = Int((6 * inch / h).rounded())
-        let second = Int((58 * inch / h).rounded())
+        let first = Int(((64 * inch - span) / 2 / h).rounded())
+        let second = Int(((64 * inch + span) / 2 / h).rounded())
         solver.mutateNodes { nodes in
             // The slab's width need not be a whole number of elements, so the lattice's last
             // row of nodes may be unused; only nodes that exist are held.

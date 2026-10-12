@@ -5,7 +5,7 @@ import Testing
 
 @testable import BombCAD
 
-@MainActor @Suite("Exporting for rendering from the app", .serialized)
+@MainActor @Suite("Exporting for rendering from the app", .serialized, .hangLimit)
 struct RenderExportTests {
     private func document(duration: Double = 0.004) -> ProjectDocument {
         var scene = Scenario(
@@ -34,9 +34,7 @@ struct RenderExportTests {
     }
 
     private func wait(_ export: RenderExport) async throws {
-        let deadline = ContinuousClock.now + .seconds(120)
         while export.isRunning {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(10))
         }
     }
@@ -103,9 +101,7 @@ struct RenderExportTests {
         let export = RenderExport()
         export.frameInterval = 1
         export.start(document(duration: 0.5), to: scene)
-        let deadline = ContinuousClock.now + .seconds(60)
         while case .running(let fraction) = export.state, fraction == 0 {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(10))
         }
         #expect(try Data(contentsOf: scene) == previous)

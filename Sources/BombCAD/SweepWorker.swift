@@ -8,10 +8,40 @@ import Metal
 /// when the SSH connection that started it drops. Nothing else may be written to standard output.
 @MainActor
 enum SweepWorker {
-    static func main() async -> Int32 {
+    /// With `--gate <argument>` (see `RemoteGate`), it first decides whether this Mac should
+    /// take work now, and says why not on standard error, exiting 75, before greeting; if it
+    /// should, it holds this Mac's lock until it ends.
+    static func main(_ arguments: [String] = []) async -> Int32 {
+        if let index = arguments.firstIndex(of: "--gate") {
+            guard index + 1 < arguments.count, let gate = RemoteGate(argument: arguments[index + 1]) else {
+                FileHandle.standardError.write(Data("The worker's gate could not be read.\n".utf8))
+                return 2
+            }
+            if let reason = gate.refusal() ?? (gate.acquire() ? nil : "another BombCAD job took it first") {
+                FileHandle.standardError.write(Data("Not taking work: \(reason).\n".utf8))
+                return 75
+            }
+            // Let the lock go however the worker ends: its input closing ends `serve`; a signal
+            // ends the process.
+            for number in [SIGTERM, SIGHUP, SIGINT] {
+                signal(number, SIG_IGN)
+                let source = DispatchSource.makeSignalSource(signal: number, queue: .main)
+                source.setEventHandler {
+                    RemoteGate.release()
+                    exit(128 + number)
+                }
+                source.resume()
+                signalSources.append(source)
+            }
+            defer { RemoteGate.release() }
+            await serve(input: .standardInput, output: .standardOutput)
+            return 0
+        }
         await serve(input: .standardInput, output: .standardOutput)
         return 0
     }
+
+    private static var signalSources: [DispatchSourceSignal] = []
 
     static func serve(input: FileHandle, output: FileHandle) async {
         let writer = SweepWorkerWriter(output)
@@ -30,6 +60,18 @@ enum SweepWorker {
                         job.id,
                         Task {
                             await run(job, writer: writer)
+                            if jobs.current?.id == job.id { jobs.current = nil }
+                        }
+                    )
+                case .ensemble(let job):
+                    if let running = jobs.current {
+                        try? writer.send(.failed(job.id, "The worker is already running \(running.id)."))
+                        continue
+                    }
+                    jobs.current = (
+                        job.id,
+                        Task {
+                            await runEnsemble(job, writer: writer)
                             if jobs.current?.id == job.id { jobs.current = nil }
                         }
                     )
@@ -67,6 +109,29 @@ enum SweepWorker {
             guard let task = current?.task else { return }
             task.cancel()
             await task.value
+        }
+    }
+
+    /// Runs one sample of a validation case away from the main actor, which keeps reading
+    /// messages; a cancelled one still finishes, but its result is not sent.
+    private static func runEnsemble(_ job: EnsembleJob, writer: SweepWorkerWriter) async {
+        let sample = job.sample
+        let result = await Task.detached(priority: .userInitiated) {
+            Result { try ValidationEnsemble.run(sample) }
+        }.value
+        guard !Task.isCancelled else {
+            try? writer.send(.failed(job.id, SweepWorkerMessage.cancelled))
+            return
+        }
+        switch result {
+        case .success(let outcome):
+            do {
+                try writer.send(.ensembleFinished(job.id, outcome))
+            } catch {
+                try? writer.send(
+                    .failed(job.id, "The result could not be sent: \(error.localizedDescription)"))
+            }
+        case .failure(let error): try? writer.send(.failed(job.id, error.localizedDescription))
         }
     }
 

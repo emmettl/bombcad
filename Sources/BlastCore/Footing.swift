@@ -117,22 +117,24 @@ public struct Soil: Sendable, Hashable, Codable {
 /// elastically, `1 / elasticShare` times as stiff. Unloaded to nothing, it keeps `memory` of the
 /// force (Gajan's bearing pressure falls to nothing where the footing lifts, and builds again
 /// only as the footing presses deeper). Lifted clear of the soil, further than the soil springs
-/// back, the soil heaves back by `heave` of how far it has been pressed down, times 1 − 1/FS for
-/// the footing's static factor of safety (Gajan's rebounding ratio, Rv = Rv₀ (1 − 1/FS),
-/// Rv₀ = 0.1 for all his tests), loosened: the point forgets the force.
+/// back, the sand pressed out from under the point while it bore heaves back by `heave` of that
+/// compression, times 1 − 1/FS for the footing's static factor of safety, loosened: the point
+/// forgets the force (Gajan's rebounding, §6.5.2.2, soil pushed back under the lifting side).
 ///
 /// The defaults: no memory, as Gajan's; for the share given back, his vertical push on the Nevada
 /// sand at 80% relative density, which first loaded it at about 11 MN/m³ and unloaded and
-/// reloaded it at 80–100 (§4.2, Figs. 4.1–4.3), about an eighth; and no heave. In his model the
-/// heave raises only a second surface, which bears weakly; here it raises the one surface the
-/// point bears on, and any Rv₀ from 0.01 to 0.1 stopped a footing rocked slowly settling after
-/// its first packet of cycles (docs/validation.md#a-footing-shaken-on-dry-sand).
+/// reloaded it at 80–100 (§4.2, Figs. 4.1–4.3), about an eighth; and a heave of 0.7, set so that
+/// the slowly rocked SSG02_03 settles about as much as measured and checked against the shaken
+/// SSG03 and SSG04 (docs/validation.md#a-footing-shaken-on-dry-sand). Gajan's own rebounding
+/// ratio, Rv₀ = 0.1 of the whole settlement, raises a second surface that bears weakly in his
+/// model; on the one surface a point bears on here it stopped SSG02_03 settling after its first
+/// packet.
 public struct CyclicSand: Sendable, Hashable, Codable {
     public var elasticShare: Float
     public var memory: Float
     public var heave: Float
 
-    public init(elasticShare: Float = 0.12, memory: Float = 0, heave: Float = 0) {
+    public init(elasticShare: Float = 0.12, memory: Float = 0, heave: Float = 0.7) {
         self.elasticShare = elasticShare
         self.memory = memory
         self.heave = heave

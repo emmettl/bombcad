@@ -2,7 +2,7 @@
 
 Each result BombCAD produces carries its evidential standing: what it rests on, how close that
 came, and what the scene's settings do to it. The [long-term vision](long-term-vision.md#credibility-as-a-product-feature)
-asks that users can tell measured agreement from mathematical verification, an approximation and
+asks that users can tell a comparison with measurement from mathematical verification, an approximation and
 an illustration, and that assumptions, resolution sensitivity and unsupported effects stay with
 the scene and its exported results. This is the first step towards that. It summarises the
 [validation record](validation.md) and the [roadmap's limitations](roadmap.md#limitations-most-important-first),
@@ -12,10 +12,17 @@ which remain the authority.
 
 | Level | Meaning | Example |
 |---|---|---|
-| Measured agreement | Compared with measurements, and how close it came | Reflected impulse on a wall within 6% of Kingery–Bulmash on fine enough air |
+| Compared with measurement | Compared with measurements, and how close it came, which way and how far it errs; not that it agrees | Reflected impulse on a wall within 6% either way of Kingery–Bulmash on fine enough air; a close-in slab left a third to a half as far down as measured |
 | Verified against theory | The equations are solved correctly against exact or textbook solutions; no measurement | A steel structure: wave speed, deflection and period within 5% of theory |
 | Approximation | A recognised approximation with stated assumptions; nothing says how close it comes here | Structural damage and failure; building surface exposure |
 | Illustrative | Plausible-looking, or compared too loosely to rely on | Thermal radiation, the cloud, fragments, ground shock, simplified cars |
+
+Until 11 October 2026 the top level's name spoke of agreement; it names a kind of evidence, not
+agreement, and a result compared with measurement can be far off it. Standings saved with the old
+value, `measured`, read as the new, `compared`. Wherever a standing is summarised, in the popover, the headless summary,
+the [validation record's summary](validation.md#summary), the README and the roadmap, the
+direction of the error comes first, and the unsafe side (too little damage, too much strength) is
+named.
 
 Results with a standing of their own: peak overpressure, impulse, structural deflection,
 structural damage and failure, building surface exposure, freestanding objects' motion, thermal
@@ -34,10 +41,16 @@ The standing is worked out from the scene's actual settings each time they chang
 - **Close in.** A gauge or structure within 0.75 m/kg^(1/3) of a charge brings in the close-in
   comparison and a note that close-in loading needs cells of about 0.01 W^(1/3), or twice that
   refined by 2, and that spall needs 0.005 W^(1/3) and 12 elements through a slab.
+- **Regime.** Each structure's regime (far field, close in, in contact or confined;
+  `StructuralRegime`) and its loading pick some of the concrete model's defaults (see the
+  [concrete model](concrete-model.md#defaults-by-regime)): pressed interlock in a confined scene,
+  and no sectional shear check in beams under a blast or a blow, and, loaded slowly, hourglass
+  control that softens with cracking. An option the regime set is a default, not the user's
+  choice (`pressedInterlockFromRegime`, `hourglassFromRegime`).
 - **Afterburning.** Off, the incident impulse is 13–22% low; on, it is within 4% (6% with hot
   air), with the burning time fitted to it. Reflecting domain faces bring in the closed-room
   comparison, whose agreement depends on both options.
-- **Materials.** Reinforced concrete has measured agreement; plain concrete, steel and masonry
+- **Materials.** Reinforced concrete has been compared with measurement; plain concrete, steel and masonry
   are verified against theory; glass is an approximation. A structure takes its weakest material.
 - **Model options.** Each option that changes a result's standing has one entry: what it does,
   which results it touches and the strongest level they keep with it. Pressed interlock, other
@@ -65,7 +78,7 @@ and fingerprint are otherwise unchanged.
 
 [Comparison](run-comparison.md) badges each selected run beside its name and warns when the
 selected runs differ in standing from the reference, by result: two runs whose peaks differ by
-10% mean something different when one's impulse is measured agreement and the other's an
+10% mean something different when one's impulse was compared with measurement and the other's an
 approximation.
 
 ## Headless runs and exports
@@ -81,6 +94,71 @@ level and summary, the resolution notes and what is not modelled), and each Open
 
 The headless standing covers the models fed alongside the run; the run it keeps covers what that
 run keeps, which does not include those models' results.
+
+## Error bands
+
+Where the validation record supports it, a result also carries a numeric band: model over
+measured (or over the reference), the way the model errs and whether that is the safe or the
+unsafe side, where the band holds, and the section it comes from (`ErrorBand` in
+`Sources/BlastCore/ErrorBands.swift`). Outside what was compared there is no band, and the
+standing says why.
+
+- **Each gauge** has its own band, from its scaled distance and whether it sits on a face (the
+  reflected comparison) or in the open (the incident one). Kingery–Bulmash's tables give the
+  ratio per distance and grid; the band spans the compared distances either side of the gauge,
+  and between grids it is interpolated in the logarithm of the scene's scaled cell, refinement
+  counted as the finer grid. Close in (0.3 to 0.75 m/kg^(1/3)) the close-in table is used, for
+  gauges on a surface. With afterburning and hot air their own tables apply. Gauges beyond
+  6 m/kg^(1/3), closer than 0.3, shielded from the charge, over terrain, or on cells coarser than
+  any compared grid get none.
+- **Structures** take the slab test's 79–114% on 4 to 32 solid elements through in the far
+  field, either way by load (104–114% under the contest's load, 79–88% under its lower shot), with
+  the contest's repeat, 3%, as the tests' scatter (124% on shells); close in, Wu's slabs (40–70% under charges to 0.8 kg, −20% to +7% to
+  2 kg) and, from 2 kg, Chiquito's deflection left (a third to a half); confined, the chamber's
+  wall pressures (0.9 to 1.6 times). Strength in shear is 37% strong on 12 elements through and
+  11–15% on 24 or more, interpolated between. Any structural option the tests were not run with
+  removes the band. Footings, debris under contact charges, a closed room's gas, the fireball's
+  radiated energy and the cloud's top have bands of their own.
+- **In the app** the popover gives each band and, for the value shown, where the measurement
+  would lie; under each gauge's peak and the structure's largest deflection a line says what to
+  expect, rounded to two figures: "68 mm: expect 59–65 mm (model reads high: too flexible)".
+  Comparison marks a difference narrower than the band, which cannot be told apart against
+  measurement. Kept runs, `BombCAD run --standing` and the USD layer carry the bands; standings
+  recorded before them open with "not recorded".
+
+**Uncertain inputs.** Where the ensemble ran a band's case with its inputs sampled (see
+[the model's spread from uncertain inputs](validation.md#the-models-spread-from-uncertain-inputs)),
+the band carries that spread: the slab's 12%, Wu's 4%, the close-in gauges' 8%, and 2% and 1% for a
+wall's peak and impulse. The expected range adds the inputs' 5–95% range (1.645 coefficients of
+variation) to the band's half-width in quadrature, since the model's error and its spread from
+uncertain inputs are separate, and comparison uses the combined width. Elsewhere the band stands
+alone.
+
+**The reference's own scatter.** A band compares the model with a reference's mean; a single test
+scatters about it. Where the record gives that scatter, the band carries it, one standard
+deviation: Kingery's tests about Kingery–Bulmash's fit, 6.4% in incident peak and 6.7% in incident
+impulse; for reflected values, which Kingery and Bulmash calculated rather than fitted, modern
+repeats' 6–8% (8% taken); UFC 3-340-02's rooms, 11%. Each band says plainly whether the model's
+error lies inside that scatter, where it cannot be told apart from the tests (the reflected
+impulse within 6%, a closed room's 98–108% with afterburning and hot air), or outside it, where
+the difference is the model's (the incident impulse 13–22% low, peaks under-resolved, a room's
+default gas; arrival times, 2–10% early against about ±2%, have no band). The expected range adds
+the scatter at 5–95% as it does the inputs' spread, and comparison uses the combined width. Close in, where repeats differed
+by up to 40%, the band says so instead of carrying a figure; Kinney–Graham has none known.
+
+**Regimes.** The scene is placed as in contact (under 0.15 m/kg^(1/3) from a structure), close
+in (under 0.75), far field, or confined (a closed room or a charge inside a structure), and the
+options the record shows to be right in one regime and wrong in another are checked against it:
+bars that slip (right only for a beam split under a light drop), pressed interlock (right only for
+the chamber), fragment removal (holes slabs that held as well as those that did not), elements
+through (8 enough for bending, about 24 for shear, 6 for the close-in slab), afterburning and hot
+air (needed in a closed room), the shells' shear check and other rate laws. Each gives a
+suggestion; no default changes.
+
+**Kept in step.** `ErrorBandTests` parses the record's Kingery–Bulmash, afterburning and close-in
+tables and checks them cell for cell against the code's; every other figure is hand-mirrored with
+the quote it is read from, which must lie under its heading and hold the figure's numbers. A
+change to the record fails the test until the table follows.
 
 ## The table and keeping it current
 
@@ -101,8 +179,10 @@ changes, change the table with it and advance `SceneStanding.currentTable`.
 
 ## Limitations
 
-- **A summary, not the evidence.** The standing quotes the validation record's ranges; it does
-  not rerun or interpolate them, and the documents remain the authority.
+- **A summary, not the evidence.** The standing quotes the validation record's ranges and
+  interpolates only between its compared grids; the documents remain the authority.
+- **Bands from few tests.** Most bands rest on one test or one series; a band is where the model
+  has been, not a confidence interval.
 - **Scaled by the primary charge.** Resolution is judged against the comparisons' grids by the
   first charge's mass; several charges are noted, not judged separately.
 - **One standing per result per scene,** not per gauge or per element. A gauge close in and one
