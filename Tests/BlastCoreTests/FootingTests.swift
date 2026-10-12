@@ -571,6 +571,12 @@ struct FootingTests {
         let steps = zip(gajan.settlement, [0] + gajan.settlement).map { $0 - $1 }
         #expect(steps.allSatisfy { $0 > 0.2 * abs(gajan.rest) }, "\(gajan.settlement)")
         #expect(steps[3] > 0.3 * steps[1], "\(steps)")
+        // The sand pressed out from under the toe heaves back under the lifted heel: without it
+        // the footing settles further.
+        let unheaved = try rocked(CyclicSand(heave: 0))
+        #expect(
+            gajan.settlement[3] < unheaved.settlement[3], "\(gajan.settlement) against \(unheaved.settlement)"
+        )
         // Remembering the force each point bore, it shakes down after the first cycle.
         let remembering = try rocked(CyclicSand(memory: 1, heave: 0))
         #expect(
@@ -618,7 +624,9 @@ struct FootingTests {
             abs(b.settlement / a.settlement - 1) < 0.5, "settlement \(b.settlement) against \(a.settlement)")
         let peak = { (s: FootingShakingTest.Summary) in max(s.rotation.x, -s.rotation.y) }
         #expect(abs(peak(b) / peak(a) - 1) < 0.5, "rotation \(peak(b)) against \(peak(a))")
-        // It dissipates energy in the sand, if less than the test did.
+        // It dissipates energy in the sand, if less than the test did: per cycle, at least 0.4 of
+        // the test's equivalent damping ratio.
         #expect(b.energy > 0.3 * a.energy, "energy \(b.energy) against \(a.energy)")
+        #expect(b.damping > 0.4 * a.damping, "damping \(b.damping) against \(a.damping)")
     }
 }

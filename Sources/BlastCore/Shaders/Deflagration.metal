@@ -26,7 +26,7 @@ struct DeflagrationUniforms {
     uint ny;
     uint nz;
     float dx;
-    float ignitionRadius;          // the mixture within this of the ignition point is lit, m
+    uint ignitionCell;             // the cell the ignition point lights, as an index
     float heat;                    // J per kg of unburnt mixture burnt
     float cloudFraction;           // fuel volume fraction of the cloud's mixture
     float stoichiometricFraction;
@@ -38,6 +38,7 @@ struct DeflagrationUniforms {
     float speedFactor;             // constant turbulence factor
     float wrinklingRadius;         // 0: no wrinkling with radius
     float wrinklingPower;
+    float wrinklingLimit;          // the radius, in onset radii, beyond which the wrinkling holds
     float turbulenceScale;         // 1.48 a in Bradley's correlation; 0: no sub-grid turbulence
     float velocityPerViscosity;    // u' over the eddy viscosity: sqrt(2/3) / (C_k dx)
     float ignitionX;
@@ -52,6 +53,13 @@ struct DeflagrationUniforms {
     float unburntGamma;
     float expansionRatio;          // the burnt gas's volume over the unburnt's, at constant pressure
     float kinematicViscosity;      // the unburnt mixture's, ambient
+    float externalFactor;          // multiplies the burning velocity outside the cloud's region
+    float regionMinX;
+    float regionMinY;
+    float regionMinZ;
+    float regionMaxX;
+    float regionMaxY;
+    float regionMaxZ;
 };
 
 static inline float laminarBurningSpeed(float fraction, constant DeflagrationUniforms &d) {
@@ -139,14 +147,14 @@ kernel void advanceFlame(const device Cell *state [[buffer(0)]],
         gradient += behind * behind + ahead * ahead;
     }
     gradient = sqrt(gradient) / dx;
-    // The ignition point lights the cell holding it (or the cells, on their faces) as a spherical
-    // flame kernel: the cell's burnt gas taken as a sphere, the flame its surface, so that it burns
+    // The ignition point lights the cell holding it (chosen on the host, so that a point on a face
+    // lights one cell whichever way a float rounds) as a spherical flame kernel: the cell's burnt gas taken as a sphere, the flame its surface, so that it burns
     // at rho_u S_T times that area, (36 pi)^(1/3) sigma^(2/3) (1 - b)^(2/3) / dx per volume for
     // expansion ratio sigma. A seed of a thousandth starts it, and the burning grows from nothing
     // as a real kernel's does, without the pressure pulse a sudden start would send out.
     float3 centreOfCell = (float3(cell) + 0.5f) * dx;
     float3 ignition = float3(d.ignitionX, d.ignitionY, d.ignitionZ);
-    if (all(fabs(centreOfCell - ignition) <= 0.5f * dx + d.ignitionRadius)) {
+    if (uint(index) == d.ignitionCell) {
         float burnt = max(1.0f - b, 1e-3f);
         gradient = max(gradient, 4.836f * pow(d.expansionRatio * burnt, 2.0f / 3.0f) / dx);
     }
@@ -167,7 +175,7 @@ kernel void advanceFlame(const device Cell *state [[buffer(0)]],
     float speed = laminar * d.speedFactor;
     if (d.wrinklingRadius > 0.0f) {
         float radius = length(centreOfCell - ignition);
-        speed *= max(pow(radius / d.wrinklingRadius, d.wrinklingPower), 1.0f);
+        speed *= pow(clamp(radius / d.wrinklingRadius, 1.0f, d.wrinklingLimit), d.wrinklingPower);
     }
     if (d.turbulenceScale > 0.0f) {
         // Wrinkling by sub-grid turbulence (Bauwens et al. 2008, eq. 5, after Bradley, Lau and
@@ -178,6 +186,16 @@ kernel void advanceFlame(const device Cell *state [[buffer(0)]],
         float thickness = d.kinematicViscosity / (compression * laminar);
         float wrinkling = d.turbulenceScale * sqrt(turbulent / laminar) * pow(dx / thickness, 1.0f / 6.0f);
         speed *= max(wrinkling, 1.0f);
+    }
+
+    if (d.externalFactor != 1.0f) {
+        // The external explosion (Molkov and Makarov 2004): outside the cloud's region the vented
+        // mixture burns in the vortex it rolls up into, faster than isotropic turbulence gives.
+        float3 low = float3(d.regionMinX, d.regionMinY, d.regionMinZ);
+        float3 high = float3(d.regionMaxX, d.regionMaxY, d.regionMaxZ);
+        if (any(centreOfCell < low) || any(centreOfCell > high)) {
+            speed *= d.externalFactor;
+        }
     }
 
     // The unburnt gas's density: the ambient mixture's, compressed, and only the cloud's share of it.

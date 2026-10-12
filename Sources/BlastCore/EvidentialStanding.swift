@@ -529,9 +529,9 @@ public enum StandingTable {
                 title: "Gas deflagration", affects: air + structure + [.envelopeExposure],
                 limit: .illustrative,
                 note: "A methane or propane cloud's flame: checked against the thin-flame model in a closed "
-                    + "vessel and wrinkled by sub-grid turbulence after FM Global's LES; in their vented chamber it "
-                    + "reaches 55–60% of the tests' peaks lit at the back wall, a sixth to a seventh lit in the "
-                    + "middle, and far below the venting correlations.",
+                    + "vessel and wrinkled by sub-grid turbulence and its measured cellular instability; in FM "
+                    + "Global's vented chamber it reaches 0.8–1.6 times the tests' peaks lit at the back wall, "
+                    + "about 0.4 lit in the middle, and below the (conservative) venting correlations.",
                 document: "deflagration.md#limitations")
         case .importedEnvelopes:
             return Entry(
@@ -668,17 +668,18 @@ public enum StandingTable {
             return Entry(
                 title: "Footings on soil", affects: structure, limit: nil,
                 note:
-                    "One footing rocked slowly on dry sand: moment within 11% to 14 mrad and 6–17% low beyond. "
-                    + "With the sand that settles under cycles (the default), settlement 1.7–2.3 times that "
-                    + "measured, and 0.6–1.5 times in eight shaken events; a tenth on the elastic bed.",
+                    "One footing rocked slowly on dry sand: moment within 11% to 14 mrad and 5–14% low beyond. "
+                    + "With the sand that settles under cycles (the default), settlement 1.3–1.7 times that "
+                    + "measured, and 0.4–1.3 times in eight shaken events; a tenth on the elastic bed.",
                 document: "validation.md#a-footing-rocked-on-dry-sand")
         case .cyclicSand:
             return Entry(
                 title: "Sand that settles under cycles", affects: structure, limit: nil,
                 note:
-                    "Settlement under rocking 0.6–1.5 times that of eight shaken centrifuge events (FoRDy) and "
-                    + "1.7–2.3 times a slowly rocked one's (FoRCy), against a tenth on the elastic bed; a sixth to "
-                    + "a half of the energy the shaken footings dissipated.",
+                    "Settlement under rocking 0.4–1.3 times that of eight shaken centrifuge events (FoRDy) and "
+                    + "1.3–1.7 times a slowly rocked one's (FoRCy), its heave fitted on the latter, against a tenth "
+                    + "on the elastic bed; a sixth to two thirds of the energy the shaken footings dissipated, "
+                    + "damping ratios 10–27% against 17–32%.",
                 document: "validation.md#a-footing-shaken-on-dry-sand")
         case .freeBase:
             return Entry(
@@ -804,7 +805,8 @@ public enum StandingTable {
         "Deflagration.ignition": .input,
         "Deflagration.acceleration": .option([.deflagration]),
         "FlameAcceleration.factor": .option([.deflagration]),
-        "FlameAcceleration.wrinklingRadius": .option([.deflagration]),
+        "FlameAcceleration.instability": .option([.deflagration]),
+        "FlameAcceleration.externalFactor": .option([.deflagration]),
         "FlameAcceleration.turbulence": .option([.deflagration]),
         "FlameTurbulence.scale": .option([.deflagration]),
         "VentPanel.box": .input,
@@ -841,6 +843,7 @@ public enum StandingTable {
         "SolverConfiguration.mappedCharge": .option([.mappedCharge]),
         "SolverConfiguration.airSleepThreshold": .numerical,
         "SolverConfiguration.airSleepCrossings": .numerical,
+        "SolverConfiguration.debrisReach": .numerical,
         "SolverConfiguration.minimumBalloonCells": .numerical,
         "SolverConfiguration.refinement": .option([.shockRefinement, .twoLevelRefinement]),
         "SolverConfiguration.refinementThreshold": .numerical,
@@ -1286,8 +1289,9 @@ struct StandingScene {
                 "A closed sphere of stoichiometric methane against the thin-flame model (blastbench "
                     + "deflagration vessel)",
                 "Burns out at the AICC pressure the heat was fitted to, energy conserved to 1e-5; laminar rise "
-                    + "times within 1–3% on 48 cells across the radius, the turbulent flame's 4–8% ahead; K_G "
-                    + "35, 41 and 51 bar m/s on 12, 24 and 48 cells against 76, rising but not converged (verified)",
+                    + "times within 1–3% on 48 cells across the radius, the default (cellular) flame's 13–14% "
+                    + "ahead; K_G 60 bar m/s against 76 on 96 cells, which a four-cell front cannot resolve "
+                    + "(verified)",
                 "deflagration.md#a-closed-sphere"),
             StandingEvidence(
                 "A laminar flame lit at a tube's closed end",
@@ -1295,13 +1299,13 @@ struct StandingScene {
                 "deflagration.md#a-closed-sphere"),
             StandingEvidence(
                 "Vented rooms against EN 14994, NFPA 68 and Molkov (blastbench deflagration vented)",
-                "A thirtieth to a sixtieth of Molkov's best fit; trend with vent area A^-1.4 against A^-2",
+                "A ninth to a twenty-fifth of Molkov's best fit, which FM Global's tests show conservative; "
+                    + "trend with vent area A^-1.1 against A^-2",
                 "deflagration.md#vented-rooms-against-the-correlations"),
             StandingEvidence(
                 "FM Global's 63.7 m³ chamber, Bauwens et al. 2008 (six tests, digitised)",
-                "Lit at the back wall, 55–60% of the measured peaks, the flame speeds within a fifth beyond 3 m "
-                    + "(half over the first 2 m); lit in the middle, a sixth to a seventh, the flame stalling "
-                    + "towards the back wall",
+                "Lit at the back wall, 0.8–1.6 times the measured peaks; lit in the middle, about 0.4, the "
+                    + "flame stalling towards the back wall; geometric mean 0.65",
                 "deflagration.md#bauwens-chaffee-and-dorofeev-2008"),
         ]
     }
@@ -1314,18 +1318,20 @@ struct StandingScene {
         }
         return result(
             kind, .illustrative,
-            "Reads low, the unsafe side: vented rooms' peaks fall below FM Global's tests (55–60% lit at the "
-                + "back wall, a sixth to a seventh in the middle) and far below EN 14994 and NFPA 68, and do not "
-                + "converge (about ±40%); the wrinkling's one constant was fitted in that chamber. In a closed "
-                + "vessel its rise times come within 1–3% of the thin-flame model, partly two errors cancelling, "
-                + "and its K_G is still rising with the grid.",
+            "Reads low, the unsafe side, where a vented room is lit in the middle: about 0.4 of FM Global's "
+                + "tests (0.8–1.6 lit at the back wall), the back of the flame stalling; all fall below EN 14994 "
+                + "and NFPA 68, and a peak is uncertain by about ±20% on 0.1 m cells. The wrinkling's one "
+                + "constant was fitted, and the instability's onset measured, in that chamber. In a closed "
+                + "vessel the laminar rise times come within 1–3% of the thin-flame model, partly two errors "
+                + "crossing, and K_G cannot converge on the four-cell front.",
             evidence: deflagrationEvidence + terrainEvidence,
             assumptions: [
                 "Burnt and unburnt gas are treated as air; the heat released is the share of the heat of "
                     + "combustion that reaches the stoichiometric AICC pressure.",
                 "The flame is wrinkled by sub-grid turbulence from the air's σ-model mixing through Bradley's "
-                    + "correlation, scaled as Bauwens et al. fitted it in FM Global's chamber; instabilities are "
-                    + "not modelled, and a young flame is slow until it is about seventeen cells across.",
+                    + "correlation, and by its cellular instability from the onset radius measured in FM Global's "
+                    + "chamber, held beyond four onset radii; a young flame is slow until it is about seventeen "
+                    + "cells across.",
             ], resolution: resolution, documents: ["deflagration.md#checks", "deflagration.md#limitations"])
     }
 
@@ -1574,7 +1580,13 @@ struct StandingScene {
                     "Blockwork pulled and sheared along its joints",
                     "Parts at the bond within 5%; slides at "
                         + "cohesion and friction within 10%", "validation.md#verification-against-theory"))
-            parts.append("masonry's joints verified, no wall compared under a blast")
+            evidence.append(
+                StandingEvidence(
+                    "Brick walls' debris (Keys, 2016)",
+                    "Loads within 15%; the walls break into too few pieces, falling at full length in the open and "
+                        + "thrown half as far as measured in a shock tube", "validation.md#brick-walls-debris"
+                ))
+            parts.append("masonry's joints verified; brick walls under blasts break into too few pieces")
         }
         if classes.contains(.glass) {
             level = max(level, .approximation)
@@ -1659,7 +1671,7 @@ struct StandingScene {
         var summary =
             "Errs on the unsafe side, towards too little damage: too strong in shear, struck beams holding "
             + "where the tests crushed their strut. Breach and joints are the least reliable predictions; debris "
-            + "has been compared once, and collapse never."
+            + "has been compared off slabs and brick walls, and collapse never."
         if let distance = structureDistance, distance < 0.75 {
             evidence.append(
                 StandingEvidence(
@@ -1678,7 +1690,9 @@ struct StandingScene {
         }
         if materialClasses.contains(.glass) || materialClasses.contains(.masonry) {
             level = .illustrative
-            summary += " Masonry and glass breaking up has no comparison."
+            summary +=
+                " Masonry breaks into too few pieces: brick walls fall at full length in the open and are thrown "
+                + "half as far as measured in a shock tube. Glass breaking up has no comparison."
         }
         return result(
             .structuralDamage, level, summary, evidence: evidence,
@@ -1860,8 +1874,8 @@ struct StandingScene {
         ]
         if !structures.isEmpty {
             effects.append(
-                "Collapse has never been compared with anything, and debris only once, off slabs under contact "
-                    + "charges.")
+                "Collapse has never been compared with anything, and debris only off slabs under contact "
+                    + "charges and brick walls under blasts, neither well.")
             if structures.count > 1 { effects.append("Bonds or connections between independent structures.") }
         }
         if inputs.thermal == nil {

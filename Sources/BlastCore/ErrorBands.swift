@@ -291,17 +291,17 @@ public enum ValidationTables {
             id: "rockingMoment", low: 0.89, high: 1.11, document: "validation.md#summary",
             quote: "moment within 11% to 14 mrad of rotation"),
         Figure(
-            id: "rockingMomentLarge", low: 0.83, high: 0.94, document: "validation.md#summary",
-            quote: "6–17% low beyond"),
+            id: "rockingMomentLarge", low: 0.86, high: 0.95, document: "validation.md#summary",
+            quote: "5–14% low beyond"),
         Figure(
-            id: "rockingSettlement", low: 1.7, high: 2.3, document: "validation.md#summary",
-            quote: "settlement 1.7–2.3 times that measured"),
+            id: "rockingSettlement", low: 1.3, high: 1.7, document: "validation.md#summary",
+            quote: "settlement 1.3–1.7 times that measured"),
         Figure(
-            id: "shakenSettlement", low: 0.6, high: 1.5, document: "validation.md#summary",
-            quote: "settlement 0.6–1.5 times"),
+            id: "shakenSettlement", low: 0.4, high: 1.3, document: "validation.md#summary",
+            quote: "settlement 0.4–1.3 times"),
         Figure(
-            id: "shakenRotation", low: 0.78, high: 1.22, document: "validation.md#summary",
-            quote: "peak rotation within 22% where the test did not lurch one way"),
+            id: "shakenRotation", low: 0.9, high: 1.1, document: "validation.md#summary",
+            quote: "peak rotation within 10% where the test did not lurch one way"),
         Figure(
             id: "fireballTotal", low: 3, high: 5.5, document: "validation.md#summary",
             quote: "exceeds three to five and a half times"),
@@ -312,11 +312,11 @@ public enum ValidationTables {
             id: "cloudTop", low: 0.79, high: 1.21, document: "fireball-rise.md",
             quote: "to 4% on average and 21% shot by shot"),
         Figure(
-            id: "ventedBackWall", low: 0.55, high: 0.6, document: "validation.md#summary",
-            quote: "lit at the back wall, 55–60% of the measured peaks"),
+            id: "ventedBackWall", low: 0.8, high: 1.6, document: "validation.md#summary",
+            quote: "lit at the back wall, 0.8–1.6 times the measured peaks"),
         Figure(
-            id: "ventedMiddle", low: 0.143, high: 0.167, document: "validation.md#summary",
-            quote: "lit in the middle, a sixth to a seventh"),
+            id: "ventedMiddle", low: 0.4, high: 0.4, document: "validation.md#summary",
+            quote: "lit in the middle, about 0.4"),
     ]
 
     public static func figure(_ id: String) -> Figure { figures.first { $0.id == id }! }
@@ -849,8 +849,9 @@ extension StandingScene {
                         "Peak pressure in a vented room, lit at the back wall",
                         low: "flame too slow", high: "over-read",
                         validity:
-                            "FM Global's 63.7 m³ chamber, digitised; the wrinkling constant fitted by Bauwens "
-                            + "et al. in this chamber, and the peak not converged (about ±40%)",
+                            "FM Global's 63.7 m³ chamber, digitised; the wrinkling constant fitted, and the "
+                            + "instability's onset measured, by Bauwens et al. in this chamber; the peak uncertain by "
+                            + "about ±20% on 0.1 m cells",
                         check: "Bauwens et al.'s vented deflagrations"),
                     figure(
                         "ventedMiddle", .ventedPressure, "Peak pressure in a vented room, lit in the middle",
@@ -952,7 +953,8 @@ extension StandingScene {
                         "Footing settlement", low: "too little", high: "too much",
                         validity:
                             "a surface footing on dry sand of 80 MPa, twice the default's; the cyclic sand "
-                            + "was made the default after the shaken tests",
+                            + "was made the default after the shaken tests, and its heave under the heel fitted "
+                            + "on one test's settlement (FoRCy)",
                         check: has(.cyclicSand) ? "FoRCy SSG02_03" : "FoRDy, eight events"),
                 ]
             }

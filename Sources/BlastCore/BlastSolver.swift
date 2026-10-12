@@ -781,7 +781,7 @@ public final class BlastSolver {
                 min: simd_min(bounds.min, body.model.bounds.min),
                 max: simd_max(bounds.max, body.model.bounds.max))
         }
-        let margin = SIMD3<Float>(4, 4, 3)
+        let margin = configuration.debrisReach
         let low = grid.cell(containing: bounds.min - margin)
         let high = grid.cell(containing: bounds.max + margin)
         var origin = SIMD3(low.i, low.j, low.k)
