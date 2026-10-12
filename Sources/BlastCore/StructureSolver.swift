@@ -72,6 +72,13 @@ public final class StructureSolver {
     public var timeStepSafety: Float = 0.5
     /// Let nodes that fall to z = 0 land instead of passing through.
     public var groundContact = true
+    /// The ground's Coulomb friction coefficient against debris on it: each step a node pressed
+    /// into the ground loses this times the speed the ground stopped of its fall, from its
+    /// sliding speed. Zero (the default) instead lets the sliding speed decay at 8/s while the
+    /// node is pressed in, which a node chattering on and off the ground mostly escapes, so
+    /// debris on the ground can creep on for seconds (see docs/structural-model.md). An option
+    /// until the debris comparisons decide it; Keys's walls use 0.6.
+    public var groundFrictionCoefficient: Float = 0
     /// Whether separate pieces of the structure, and loose debris, collide with each other.
     public var contactMode = ContactMode.afterFailure
     /// Contact spring stiffness as a fraction of the stiffest spring the time step allows.
@@ -83,6 +90,9 @@ public final class StructureSolver {
     /// `fragmentOpening` (m) and with a crack strain of `fragmentStrain` across one is fragments.
     public var fragmentOpening: Float = 0.5e-3
     public var fragmentStrain: Float = 0.05
+    /// Concrete is removed once crushed past the end of its softening by this many softening
+    /// ranges (one: twice the strain at which softening ends, roughly).
+    public var crushErosion: Float = 1
 
     /// Let the air push loose debris (nodes no longer attached to any intact element) by its
     /// pressure gradient and drag, when coupled to the air.
@@ -703,6 +713,8 @@ public final class StructureSolver {
     /// The footings under the base after the last step, in the order of their connections (the
     /// ground's, then the support regions'); empty without any.
     public func footingSummaries() -> [FootingSummary] { footings?.summaries() ?? [] }
+    /// The first footing's bed points and how far the soil under each has sunk for good.
+    public func footingBedSurface() -> [(place: SIMD2<Float>, sunk: Float)] { footings?.bedSurface() ?? [] }
 
     /// With bars that slip, makes their buffers: the slip state, each element's bar forces, and
     /// the bond's area at each node along each axis, a share of the bars' surface in the elements
@@ -1069,6 +1081,11 @@ public final class StructureSolver {
     /// cracked (zero until then).
     public func crackingFactor(_ i: Int, _ j: Int, _ k: Int) -> Float {
         stateValue(i, j, k, offset: 108)
+    }
+
+    /// Concrete: each axis's confinement factor, less one, as the element's running average.
+    public func confinementGain(_ i: Int, _ j: Int, _ k: Int) -> SIMD3<Float> {
+        SIMD3((0..<3).map { stateValue(i, j, k, offset: 112 + 4 * $0) })
     }
 
     /// Running average of the element's effective strain rate (1/s).
@@ -1557,7 +1574,7 @@ public final class StructureSolver {
         var parameters = zip(materials, jointed).map { material, jointed in
             Self.parameters(
                 for: material, elementSize: model.elementSize, hourglassCoefficient: hourglassCoefficient,
-                jointed: jointed, bondSlip: model.bondSlip != nil)
+                jointed: jointed, bondSlip: model.bondSlip != nil, crushErosion: crushErosion)
         }
         guard elementCount > 0 else { return }
         // One SIMD group per threadgroup. The element kernel needs many registers, and groups of
@@ -1835,17 +1852,42 @@ public final class StructureSolver {
     public func advance(steps: Int) {
         var remaining = steps
         while remaining > 0 {
+            // Up to 2,000 substeps at a time, each at its time from the start of the 2,000 and
+            // with what to encode decided there, as when the 2,000 were one command buffer; they
+            // go to the GPU in buffers of about `BlastSolver.commandBufferTarget` of its time, so
+            // that none starves the window server. The substeps are the same however they are cut.
             let count = min(remaining, 2000)
-            guard let commandBuffer = commandQueue.makeCommandBuffer(),
-                let encoder = commandBuffer.makeComputeCommandEncoder()
-            else { return }
-            encodeSubsteps(encoder, count: count, fluid: nil)
-            encoder.endEncoding()
-            commandBuffer.commit()
-            commandBuffer.waitUntilCompleted()
+            let checkpoint = failedAtCheckpoint
+            failedAtCheckpoint = encodesAsFailed
+            defer { failedAtCheckpoint = checkpoint }
+            var done = 0
+            while done < count {
+                let part = gpuSubsteps.part(count - done)
+                guard let commandBuffer = commandQueue.makeCommandBuffer(),
+                    let encoder = commandBuffer.makeComputeCommandEncoder()
+                else { return }
+                encodeSubsteps(
+                    encoder, substeps: done..<(done + part), prelude: done == 0, fluid: nil, interface: nil,
+                    beforeNodes: nil, afterNodes: nil)
+                encoder.endEncoding()
+                commandBuffer.commit()
+                commandBuffer.waitUntilCompleted()
+                gpuSubsteps.measure(commandBuffer, steps: part)
+                done += part
+            }
             time += Double(count) * Double(criticalTimeStep)
             remaining -= count
         }
+    }
+
+    /// The GPU's time for a substep lately, to size `advance`'s command buffers.
+    private var gpuSubsteps = GPUStepRate()
+
+    /// The GPU time each of `advance`'s command buffers aims at, `BlastSolver.commandBufferTarget`
+    /// unless set; the substeps are the same whatever it is.
+    public var commandBufferSeconds: Double {
+        get { gpuSubsteps.target }
+        set { gpuSubsteps.target = newValue }
     }
 
     private func makeUniforms(fluid: FluidBinding?) -> StructureUniforms {
@@ -1868,6 +1910,7 @@ public final class StructureSolver {
             contactStiffness: contactStiffness / (criticalTimeStep * criticalTimeStep),
             contactDamping: contactDamping,
             contactFriction: contactFriction)
+        uniforms.groundCoulomb = groundContact ? groundFrictionCoefficient : 0
         let down = simd_normalize(gravityDirection)
         (uniforms.gravityX, uniforms.gravityY, uniforms.gravityZ) = (down.x, down.y, down.z)
         if groundAcceleration != .zero {
@@ -2003,7 +2046,7 @@ public final class StructureSolver {
     /// its masonry is meshed as units and mortar joints.
     static func parameters(
         for material: StructureMaterial, elementSize h: Float, hourglassCoefficient: Float = 1,
-        jointed: Bool = false, bondSlip: Bool = false
+        jointed: Bool = false, bondSlip: Bool = false, crushErosion: Float = 1
     ) -> MaterialParameters {
         var parameters = MaterialParameters(
             density: material.density,
@@ -2065,8 +2108,8 @@ public final class StructureSolver {
         // The crack strain at which the removal width is reached in one element. (It was once
         // capped at 0.5, which on elements under 10 mm removed them at narrower cracks.)
         parameters.erosionStrain = material.erosionOpening / h
-        // Removed once crushed to twice the strain at which softening ends.
-        parameters.crushErosion = 1
+        // Removed once crushed past the end of softening by `crushErosion` softening ranges.
+        parameters.crushErosion = crushErosion
         parameters.confinement = material.confinementCoefficient
         if let steel = material.steel {
             // The fixed rate factor is applied at yield and fades out towards ultimate

@@ -1,3 +1,4 @@
+import CompressibleFlow
 import simd
 
 /// Static connected control-volume aggregation. Exterior patches retain their original

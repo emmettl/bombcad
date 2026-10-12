@@ -4,7 +4,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("IFC gaps between independent products")
+@Suite("IFC gaps between independent products", .timeLimit(.minutes(120)))
 struct BuildingGapTests {
     private func cube(_ n: Int, corner: SIMD3<Float> = .zero) throws -> ImportedMesh.BuildingElement {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()

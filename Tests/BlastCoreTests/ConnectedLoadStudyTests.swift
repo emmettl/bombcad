@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Grouped held-box pressure loads")
+@Suite("Grouped held-box pressure loads", .timeLimit(.minutes(120)))
 struct ConnectedLoadStudyTests {
     @Test("Matched-energy initialization is identical across timestep settings and grids")
     func matchedEnergy() throws {

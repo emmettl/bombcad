@@ -7,7 +7,7 @@ import simd
 /// Reading DEMs and cropping them into a scene's terrain. The fixtures in Samples/Terrain are
 /// synthetic (a hill on a gentle slope, one cell missing), written by numpy and tifffile; the
 /// LZW and Deflate copies were recompressed by libtiff's tiffcp, which drops the geotags.
-@Suite("Elevation grids")
+@Suite("Elevation grids", .timeLimit(.minutes(120)))
 struct ElevationGridTests {
     private static let samples = URL(filePath: #filePath).deletingLastPathComponent()
         .deletingLastPathComponent().deletingLastPathComponent().appending(path: "Samples/Terrain")

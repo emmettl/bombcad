@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Shared spatial query adapters")
+@Suite("Shared spatial query adapters", .timeLimit(.minutes(120)))
 struct SpatialQueryAdapterTests {
     let unit = Box(min: .zero, max: SIMD3(repeating: 1))
 

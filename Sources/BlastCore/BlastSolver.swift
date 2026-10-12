@@ -285,6 +285,8 @@ public final class BlastSolver {
     private var lastFluidStep: Float = 0
     /// Structural substeps encoded per air step until the next checkpoint.
     private var checkpointSubsteps = 0
+    /// The substeps each step of the batch being encoded may take, set with its first part.
+    private var batchSubsteps = 0
     /// The finer level of the air, while it is refined (see `SolverConfiguration.refinement`).
     private(set) var refinement: AirRefinement?
     /// The second finer level, refining the first, with `SolverConfiguration.refinementLevels` 2.
@@ -725,7 +727,7 @@ public final class BlastSolver {
         let cells = gaugeCellBuffer.contents().bindMemory(to: UInt32.self, capacity: Self.maxGauges)
         for n in 0..<Self.maxGauges {
             pointer[n] = .max
-            guard let refinement, n < gaugePoints.count, let point = gaugePoints[n] else { continue }
+            guard refinement != nil, n < gaugePoints.count, let point = gaugePoints[n] else { continue }
             let index = Int(cells[n])
             let cell = SIMD3(index % grid.nx, (index / grid.nx) % grid.ny, index / (grid.nx * grid.ny))
             let r = refinementLevels.reduce(1) { $0 * $1.ratio }
@@ -779,7 +781,7 @@ public final class BlastSolver {
                 min: simd_min(bounds.min, body.model.bounds.min),
                 max: simd_max(bounds.max, body.model.bounds.max))
         }
-        let margin = SIMD3<Float>(4, 4, 3)
+        let margin = configuration.debrisReach
         let low = grid.cell(containing: bounds.min - margin)
         let high = grid.cell(containing: bounds.max + margin)
         var origin = SIMD3(low.i, low.j, low.k)
@@ -1628,11 +1630,27 @@ public final class BlastSolver {
     public func encodeBatch(
         steps: Int, timeLimit: Double? = nil, updateVisualization: Bool = false
     ) -> MTLCommandBuffer? {
-        precondition(!batchInFlight, "completeBatch() must be called before encoding another batch")
-        guard !interObjectContactDetected && !couplingCapacityExceeded else { return nil }
         let steps = batchSteps(steps)
-        assignGravityTables()
-        gpuProfiler?.beginBatch()
+        return encodeBatchPart(
+            steps: steps, range: 0..<steps, timeLimit: timeLimit, updateVisualization: updateVisualization)
+    }
+
+    /// Encodes steps `range` of a batch of `steps` into a new, uncommitted command buffer: the
+    /// batch's setup with its first part, its sampling and drawing with its last, as `encodeBatch`
+    /// does all at once. The parts share the batch's state on the GPU (its clock and its time
+    /// limit among it), so the steps are the same however the batch is cut; commit each and wait
+    /// for it before encoding the next, and call `completeBatch()` after the last.
+    func encodeBatchPart(
+        steps: Int, range: Range<Int>, timeLimit: Double?, updateVisualization: Bool
+    ) -> MTLCommandBuffer? {
+        let first = range.lowerBound == 0
+        let last = range.upperBound == steps
+        if first {
+            precondition(!batchInFlight, "completeBatch() must be called before encoding another batch")
+            guard !interObjectContactDetected && !couplingCapacityExceeded else { return nil }
+            assignGravityTables()
+            gpuProfiler?.beginBatch()
+        }
         guard let kernels = try? cellKernels(),
             let commandBuffer = commandQueue.makeCommandBuffer(),
             let initialEncoder = gpuProfiler?.encoder(command: commandBuffer, phase: "observation")
@@ -1644,33 +1662,40 @@ public final class BlastSolver {
             encoder.endEncoding()
             encoder = gpuProfiler.encoder(command: commandBuffer, phase: name)!
         }
+        // In flight from the first part's encoding until `completeBatch()`.
+        defer { if first { batchInFlight = true } }
 
-        var control = StepControl()
-        if let timeLimit {
-            control.timeLimit = Float(max(timeLimit - time, 0))
-        }
-        controlBuffer.contents().storeBytes(of: control, as: StepControl.self)
-        if exposureNeedsInitialSample {
-            encodeExposure(encoder, initial: true)
-            exposureNeedsInitialSample = false
-        }
-        if envelopeNeedsInitialSample {
-            encodeEnvelopeExposure(encoder, initial: true)
-            envelopeNeedsInitialSample = false
+        if first {
+            var control = StepControl()
+            if let timeLimit {
+                control.timeLimit = Float(max(timeLimit - time, 0))
+            }
+            controlBuffer.contents().storeBytes(of: control, as: StepControl.self)
+            if exposureNeedsInitialSample {
+                encodeExposure(encoder, initial: true)
+                exposureNeedsInitialSample = false
+            }
+            if envelopeNeedsInitialSample {
+                encodeEnvelopeExposure(encoder, initial: true)
+                envelopeNeedsInitialSample = false
+            }
         }
 
         let extents = [grid.nx, grid.ny, grid.nz]
         let tileThreads = Self.tileThreads(for: kernels.sweepTiles)
-        if stepCount % Self.checkpointInterval == 0 || checkpointSubsteps == 0 {
-            checkpointSubsteps = structureSubsteps
-            if let bodyStep, lastFluidStep > 0 {
-                let likely = Int((1.25 * lastFluidStep / bodyStep).rounded(.up)) + 1
-                checkpointSubsteps = max(likely, 1)
+        if first {
+            if stepCount % Self.checkpointInterval == 0 || checkpointSubsteps == 0 {
+                checkpointSubsteps = structureSubsteps
+                if let bodyStep, lastFluidStep > 0 {
+                    let likely = Int((1.25 * lastFluidStep / bodyStep).rounded(.up)) + 1
+                    checkpointSubsteps = max(likely, 1)
+                }
+                for body in bodies { body.checkpoint() }
             }
-            for body in bodies { body.checkpoint() }
+            batchSubsteps = min(checkpointSubsteps, structureSubsteps)
         }
-        let substeps = min(checkpointSubsteps, structureSubsteps)
-        for step in 0..<steps {
+        let substeps = batchSubsteps
+        for step in range {
             phase("coupling")
             encodeBodyEnvelopes(encoder, clear: true)
             if !airIsAsleep { encodeAllocateCoupling(encoder) }
@@ -1893,6 +1918,10 @@ public final class BlastSolver {
             encodeExposure(encoder, initial: false)
             encodeEnvelopeExposure(encoder, initial: false)
         }
+        guard last else {
+            encoder.endEncoding()
+            return commandBuffer
+        }
         if gaugeCount > 0 {
             var uniforms = makeUniforms()
             encoder.setComputePipelineState(gravityVariant(sampleGaugesPipeline, "sampleGauges"))
@@ -1923,7 +1952,6 @@ public final class BlastSolver {
             encodeVisualization(encoder)
         }
         encoder.endEncoding()
-        batchInFlight = true
         return commandBuffer
     }
 
@@ -2023,16 +2051,36 @@ public final class BlastSolver {
         while remaining > 0 {
             // A batch that stopped just short of the limit is nearly always one step from it.
             let count = batchSteps(stoppedShort ? 1 : remaining)
-            guard let commandBuffer = encodeBatch(steps: count, timeLimit: timeLimit) else { break }
-            commandBuffer.commit()
-            commandBuffer.waitUntilCompleted()
+            // The batch in command buffers of about `commandBufferTarget` of the GPU's time each,
+            // so that none holds the GPU long enough to starve the window server; the steps are
+            // the same however it is cut (`encodeBatchPart`).
+            var encoded = 0
+            var failed = false
+            while encoded < count {
+                let part = gpuProfiler == nil ? gpuSteps.part(count - encoded) : count - encoded
+                guard
+                    let commandBuffer = encodeBatchPart(
+                        steps: count, range: encoded..<(encoded + part), timeLimit: timeLimit,
+                        updateVisualization: false)
+                else {
+                    failed = true
+                    break
+                }
+                commandBuffer.commit()
+                commandBuffer.waitUntilCompleted()
+                failed = failed || commandBuffer.error != nil
+                gpuSteps.measure(commandBuffer, steps: part)
+                encoded += part
+            }
+            // Nothing encoded: no batch to complete.
+            if encoded == 0 { break }
             let result = completeBatch()
             total.sweptFraction = Self.mergeSwept(total, result)
             total.steps += result.steps
             total.elapsed += result.elapsed
             total.lastTimeStep = result.lastTimeStep
             total.maxOverpressure = result.maxOverpressure
-            total.isStable = total.isStable && result.isStable && commandBuffer.error == nil
+            total.isStable = total.isStable && result.isStable && !failed
             total.refinedTiles = result.refinedTiles
             total.finerRefinedTiles = result.finerRefinedTiles
             remaining -= result.steps
@@ -2047,6 +2095,24 @@ public final class BlastSolver {
         total.unsupportedInteraction = interObjectContactDetected
         total.couplingCapacityExceeded = couplingCapacityExceeded
         return total
+    }
+
+    /// The GPU time a command buffer of `advance` aims at, in seconds: well under the second or
+    /// so after which the window server, starved of the GPU, is killed by the system's watchdog,
+    /// and long enough that committing and waiting cost a fraction of a percent.
+    /// `BOMBCAD_COMMAND_BUFFER_SECONDS` in the environment sets another, to check that the steps
+    /// are the same however they are cut.
+    public static let commandBufferTarget =
+        ProcessInfo.processInfo.environment["BOMBCAD_COMMAND_BUFFER_SECONDS"].flatMap(Double.init) ?? 0.075
+
+    /// The GPU's time for a step lately, from the buffers `advance` has waited for.
+    private var gpuSteps = GPUStepRate()
+
+    /// The GPU time each of `advance`'s command buffers aims at, `commandBufferTarget` unless
+    /// set; the steps are the same whatever it is.
+    public var commandBufferSeconds: Double {
+        get { gpuSteps.target }
+        set { gpuSteps.target = newValue }
     }
 
     /// Advances until simulation time reaches `endTime`, blocking until the GPU has finished.
@@ -2537,7 +2603,7 @@ extension BlastSolver {
             if groups.count > 1 && !refinement.measureBoxRemap {
                 prepared.withUnsafeMutableBufferPointer { results in
                     let slots = results
-                    DispatchQueue.concurrentPerform(iterations: groups.count) { slots[$0] = prepare($0) }
+                    concurrently(iterations: groups.count) { slots[$0] = prepare($0) }
                 }
             } else {
                 for g in groups.indices { prepared[g] = prepare(g) }
@@ -2726,5 +2792,31 @@ extension BlastSolver {
         guard refinement.hasBoxCells(in: experimentalBoxPatches(refinement)) else {
             throw ExperimentalRigidBoxSimulation.Failure.unresolvedBox
         }
+    }
+}
+
+/// How long the GPU has lately taken for a step, from the command buffers waited for, to size
+/// the next so that it takes about `target` of the GPU's time.
+struct GPUStepRate {
+    /// The GPU time a buffer aims at, in seconds.
+    var target = BlastSolver.commandBufferTarget
+    /// Seconds a step, smoothed over the buffers; nil until the first.
+    private(set) var seconds: Double?
+
+    /// How many of `remaining` steps the next buffer takes: at least one, and four to begin
+    /// with, to measure the rate.
+    func part(_ remaining: Int) -> Int {
+        guard let seconds, seconds > 0 else { return min(remaining, 4) }
+        return min(max(Int(min(target / seconds, Double(Int.max / 2))), 1), remaining)
+    }
+
+    mutating func measure(_ commandBuffer: MTLCommandBuffer, steps: Int) {
+        measure(gpuSeconds: commandBuffer.gpuEndTime - commandBuffer.gpuStartTime, steps: steps)
+    }
+
+    mutating func measure(gpuSeconds: Double, steps: Int) {
+        guard gpuSeconds > 0, steps > 0 else { return }
+        let rate = gpuSeconds / Double(steps)
+        seconds = seconds.map { 0.7 * $0 + 0.3 * rate } ?? rate
     }
 }

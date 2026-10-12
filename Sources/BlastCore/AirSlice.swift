@@ -144,7 +144,7 @@ extension BlastSolver {
         let airModel = configuration.airModel
         withState { cells in
             values.withUnsafeMutableBufferPointer { values in
-                DispatchQueue.concurrentPerform(iterations: ny * nz) { row in
+                concurrently(iterations: ny * nz) { row in
                     let (j, k) = (row % ny, row / ny)
                     var n = 5 * nx * row
                     for i in 0..<nx {

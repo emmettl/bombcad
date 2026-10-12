@@ -3,7 +3,7 @@ import Testing
 
 @testable import BlastCore
 
-@Suite("Released shared wall reference compatibility")
+@Suite("Released shared wall reference compatibility", .timeLimit(.minutes(120)))
 struct SharedWallReferenceTests {
     @Test("App bridge adopts the independently verified near-isothermal limit")
     func nearIsothermal() throws {

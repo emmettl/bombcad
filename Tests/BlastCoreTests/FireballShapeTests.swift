@@ -5,7 +5,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("The fireball's shape and its radiation")
+@Suite("The fireball's shape and its radiation", .gpuThreads)
 struct FireballShapeTests {
     private func scene(blocks: [Box] = []) -> FragmentScene {
         var scenario = Scenario(

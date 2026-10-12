@@ -12,13 +12,12 @@ it gives are checked against the thin-flame model (see [Checks](#checks)). What 
 explosions damaging is the flame speeding up through turbulence, instabilities and obstacles. The
 flame here is wrinkled by the turbulence the grid cannot resolve, through the correlation and
 sub-grid model of FM Global's own LES of these rooms, and by the flow round obstacles the grid
-does resolve. Its instabilities are not modelled.
-- Lit at the back wall of FM Global's chamber, the flame runs at about half the tests' measured
-  speeds over the first 2 m and within a fifth of them beyond 3 m, and the peak pressure is 55–60%
-  of theirs.
-- Lit in the middle, the peak is a sixth to a seventh of theirs, and the half of the flame facing
-  the back wall stalls.
-- Every result is far below the venting correlations of EN 14994 and NFPA 68.
+does resolve, and by its own cellular instability from the onset radius measured in that chamber.
+- Lit at the back wall of FM Global's chamber, the peak pressure is 0.8–1.6 times the tests'.
+- Lit in the middle, it is about 0.4 times theirs: the half of the flame facing the back wall
+  stalls, and the acoustically driven peaks are not reproduced.
+- Every result is below the venting correlations of EN 14994 and NFPA 68, which are conservative
+  for this room (the tests measured a tenth to a quarter of them).
 
 Nothing here supports judging the safety of a real room, vent or structure.
 
@@ -116,7 +115,9 @@ mass flux through each is ρ_u S_T.
   differences. The front is then about four cells thick.
 - ρ_u is the ambient mixture's density compressed adiabatically (γ = 1.4) to the cell's pressure.
   This is how a closed vessel's flame burns faster as the pressure rises.
-- The ignition point lights the cell holding it as a spherical flame kernel: the cell's burnt gas
+- The ignition point lights the one cell holding it (chosen on the host: a point on a face was a
+  float tie, which lit one cell, all of them or none, as the shader happened to compile) as a
+  spherical flame kernel: the cell's burnt gas
   taken as a sphere, expanded by σ, the flame its surface. It burns at ρ_u S_T times that area,
   (36π)^(1/3) (σ(1 − b))^(2/3)/Δ per volume, from a seed of a thousandth. So the burning grows from
   nothing, as a real kernel's does; started at full rate, it sent out a pressure pulse that opened a
@@ -157,16 +158,34 @@ S_T = f Ξ_r Ξ_t S_L. Each factor is optional:
   the grid's scale there is nothing (see [Limitations](#limitations)).
 - **f, a constant factor** (1 by default): the venting literature's turbulence factor (Bradley
   and Mitcheson's β, Molkov's χ), for what is not otherwise represented.
-- **Ξ_r = (r/r₀)^(1/3)** beyond r₀ from the ignition point (off by default), for the flame's
-  self-acceleration by its own cellular instabilities. Gostintsev et al. (1988) found large flames'
-  radii growing as t^(3/2), so their speed as r^(1/3), and Molkov's fractal model uses the same
-  exponent. No onset radius r₀ was found for methane or propane, and the app's 1 m is a choice.
-  Bauwens et al. left the instabilities out too, finding them weak for this mixture.
+- **Ξ_r, wrinkling by the flame's cellular instability** (on by default, `instability:
+  .measured`). A spherical flame turns cellular, Darrieus and Landau's hydrodynamic instability,
+  at a critical radius r₀, and then speeds up as its cells split.
+  - *The onset is measured.* Bauwens, Bergthorson and Dorofeev (2015) measured r₀ on methane
+    flames up to 2 m across in FM Global's 64 m³ chamber, the one compared with below: 0.225 m at
+    φ = 1.00, from 0.204 m at φ = 0.81 to 0.32 m at 1.2 (their Table 1). r₀ is interpolated in φ.
+    Their flames ran at 1.3 σS_L by 1.4 r₀ and about 1.45 by 4 r₀ (their Fig. 5).
+  - *The growth is Gostintsev's.* Gostintsev et al. (1988) found large flames' radii growing as
+    t^(3/2), so their speed as r^(1/3), the form Bauwens et al. use. Ξ_r = (r/r₀)^(1/3), r the
+    distance from the ignition point; between 2 and 4 r₀ it is within about a tenth of their
+    measurements, below them nearer r₀.
+  - *It holds beyond 4 r₀* (0.9 m), where their measurements end, at 4^(1/3) = 1.59. Left to grow,
+    it sent the flame through the vent at three times the tests' speed (see the trace below).
+  - *Propane has no measured r₀* here (their propane paper was not found), so its instability is
+    off unless an onset is given (`.onset(r₀)`).
+  - Once a flame is thirty or more cells in radius its front corrugates on the grid itself (a
+    to an eighth more area than a sphere's in the 48-cell closed sphere below), and the two then partly
+    count the same wrinkling twice.
+- **The external explosion, an option** (`externalFactor`, off by default). Molkov and Makarov
+  (2004) needed a factor of 2 on the wrinkling of the flame outside the vent of a 547 m³ enclosure
+  (SOLVEX), for the anisotropic turbulence of the vortex the vented cloud rolls into, which
+  isotropic sub-grid models miss. Here it multiplies the burning velocity outside the cloud's
+  region (their 100 ms ramp left out).
 
 The flame's u′ is the step's own: the eddy viscosity is worked out from the flow at the start of
 each step, and the flame burns after the step's sweeps. Earlier, the default flame had a
-vorticity term (S_T − S_L = C Δ|ω|, after Peters) and wrinkling from 1 m. The first is replaced,
-and the second turned off for want of a source.
+vorticity term (S_T − S_L = C Δ|ω|, after Peters) and wrinkling from a guessed 1 m. The first is
+replaced; the second now starts at the measured radius.
 
 **What was tried first.** The front was first a level set G, a signed distance carried by the
 gas and advanced at S_T (the G-equation), with the mixture burnt as the front passed. It ran at
@@ -198,14 +217,14 @@ pressure (Lewis and von Elbe; Dahoe et al. 1996): p = p₀ + (p_max − p₀) x 
 x, the unburnt gas compressed adiabatically, and dx/dt = 3 r_f² S_u (p/p₀)^(1/γ)/R³. Its steepest
 rise gives the deflagration index K_G = (36π)^(1/3) (p_max − p₀) (p_max/p₀)^(1/γ) S_u. For one
 ideal gas burning to another with the same γ, as here, the linear rise is exact. `blastbench
-deflagration vessel --cells 12,24,48`, a laminar flame and (`--accelerated`) the default,
-turbulent one:
+deflagration vessel --cells 12,24,48,96`, a laminar flame and (`--accelerated`) the default one:
 
 | Cells across the radius | Peak, bar | Half the rise, ms | Nine tenths, ms | K_G, bar m/s | Energy |
 |---|---|---|---|---|---|
-| 12 | 9.02 | 326 / 299 | 412 / 376 | 35 / 41 | conserved to 10⁻⁵ |
-| 24 | 9.02 | 281 / 269 | 359 / 331 | 41 / 49 | |
-| 48 | 9.02 | 250 / 236 | 308 / 291 | 51 / 57 | |
+| 12 | 9.02 | 326 / 276 | 412 / 335 | 35 / 55 | conserved to 10⁻⁵ |
+| 24 | 9.02 | 281 / 248 | 359 / 297 | 41 / 63 | |
+| 48 | 9.02 | 250 / 217 | 308 / 259 | 51 / 74 | |
+| 96 | 9.02 | 219 / | 271 / | 60 / | |
 | Thin-flame model | 9.02 | 253 | 299 | 76 | |
 
 - **Peak.** The whole mixture burns and the peak is the AICC pressure. That is by construction, as
@@ -213,36 +232,94 @@ turbulent one:
   the heat released to within 10⁻⁵. The measured peaks, 7.1–7.5 bar g in standard vessels
   (8.1–8.5 bar absolute), are lower for the heat lost to the walls, which the model does not
   represent.
-- **Times, laminar.** The laminar flame's rise times close in on the thin-flame model's: within 1%
-  and 3% at 48 cells, 11% and 20% late at 24. That agreement is partly two errors cancelling.
+- **Times, laminar: two errors that cross.** The laminar rise times pass through the thin-flame
+  model's at 48 cells (within 1% and 3%) and go on past it: 13% and 9% early on 96. `--area`
+  traces the front's area, the integral of |∇b|, against the thin-flame model's 4π r_f²:
   - *Early, the flame is slow.* A front four cells thick burns over too small an area while the
-    flame is only a few cells across (see [Grid convergence](#grid-convergence)). At 48 cells,
-    the first 1% of the rise comes at 90 ms against 74.
-  - *Later, it is fast.* From 3% to half the rise it takes 130 ms against 147. The front's area is
-    within 2% of a smooth sphere's by then, so it is not wrinkling; the cause was not found.
-- **Times, turbulent.** The default flame runs 4–8% ahead of the laminar one at every resolution,
-  and 7% and 3% ahead of the thin-flame model at 48 cells. In a quiescent sphere the σ-model's u′
-  should be nothing. It is not, because the grid's own three-dimensional flow at the front's leading
-  edge (u′ ≈ 0.1 m/s on average there, in a ball on 5 cm cells) wrinkles the flame, by up to 1.7
-  where it exceeds Bradley's threshold. With Smagorinsky's model instead (`--mixing-model
-  smagorinsky`) it ran 14% ahead at 24 cells (241 ms). This is the laminar limit's error, and it
-  does not shrink with the cell, since the front is always four cells thick.
-- **K_G** converges slowly, from below: 51 against 76 at 48 cells (laminar). The steepest rise comes
-  as the flame reaches the wall, when the last unburnt gas is a layer a few millimetres thick, far
-  thinner than a cell. A front four cells thick burns it as a smeared tail. Measured K_G (55 in
-  Bartknecht's vessels, 66 in a 20-litre sphere, 92 at 120 litres; Cashdollar et al. 2000) lies
-  between, so the model's agreement with them at any one resolution means little.
+    flame is a few cells across: 0.49 of the sphere's at two and a half cells' radius, 0.78 at
+    eight and 0.92 at fourteen (see
+    [Grid convergence](#grid-convergence)). On 48 cells the first 1% of the rise comes at 90 ms
+    against 74.
+  - *In mid-burn, on fine cells, the front corrugates.* Once it is thirty or more cells in radius
+    its area runs 9–13% above a sphere's on 48 cells (4% on 24), and the burn is that much fast.
+    The flow the front makes is hydrodynamically unstable on the grid, as a real flame's is.
+- **Times, default.** The default flame adds the σ-model's sub-grid wrinkling and the cellular
+  instability from r₀ = 0.225 m, which a 0.5 m sphere passes at half its radius. It runs 12–15%
+  ahead of the laminar one, and on 48 cells 14% and 13% ahead of the thin-flame model.
+  - *Turbulence alone* ran 4–8% ahead of the laminar flame. In a quiescent sphere the σ-model's u′
+    should be nothing; the grid's own flow at the front's leading edge gives it about 0.1 m/s
+    there. With Smagorinsky's model instead (`--mixing-model smagorinsky`) turbulence alone ran
+    14% ahead at 24 cells.
+  - So the thin-flame comparison is the laminar flame's, and the default flame is expected to beat
+    it, as real flames of this size do once cellular.
+- **K_G cannot converge on this front.** Laminar, it rises by about 9 bar m/s a doubling: 35, 41,
+  51, 60 on 12 to 96 cells, against 76. The thin-flame model's steepest rise comes at the very end,
+  x → 1, at 9 bar, where the unburnt gas is compressed 4.8-fold. When the front is k cells from the
+  wall, about 3 k × 4.8/N of the mass is still unburnt: on 48 cells, two cells out, 60% of it. The
+  last tenth of the mass burns in a layer under 1% of the radius thick. A front four cells thick
+  meets the wall long before then: its area falls to 0.96 of a sphere's at x = 0.6, 0.61 at 0.81
+  and 0.25 at 0.94 (48 cells). So K_G reaches the thin-flame model's only once the front fits
+  inside that layer, many hundreds of cells across the radius; at about 9 a doubling, two or three
+  more doublings than run here.
+  - The default flame's K_G, 74 on 48 cells, is near 76 only because its instability makes up for
+    the thick front.
+  - Measured K_G (55 in Bartknecht's vessels, 66 in a 20-litre sphere, 92 at 120 litres;
+    Cashdollar et al. 2000) lies between, with heat loss to the walls lowering it, so agreement
+    with them at any one resolution means little.
 - **Cube-root law.** At 16 cells across the radius, laminar spheres of 0.25, 0.5 and 1 m give the
-  same K_G (37 bar m/s), and their times scale with the radius. The turbulent flame gives 44, 49
-  and 56: on the same number of cells a larger sphere has larger cells, and Bradley's (Δ/δ)^(1/6)
-  wrinkles it a little more. Real flames break the law too, though not for this reason:
-  Cashdollar's methane K_G rises from 66 at 20 litres to 110 at 25.5 m³.
+  same K_G (37 bar m/s), and their times scale with the radius. With sub-grid turbulence alone,
+  44, 49 and 56: on the same number of cells a larger sphere has larger cells, and Bradley's
+  (Δ/δ)^(1/6) wrinkles it a little more. The instability's fixed r₀ breaks the law too, as real
+  flames do: Cashdollar's methane K_G rises from 66 at 20 litres to 110 at 25.5 m³.
 - **Propane** (24 cells): peak 9.52 bar, the model's AICC; half rise at 260 ms laminar and 246
-  turbulent against 230; K_G 46 and 59 against 89. **Hot air**: as the ideal gas, the times within
-  4%.
-- **A tube** (DeflagrationTests): a flame lit at the closed end of a narrow tube runs at the model's
-  expansion ratio times the burning velocity, 2.7 m/s, to within 10%, laminar or turbulent: the
-  flow is one-dimensional and the σ-model sees no turbulence in it.
+  with sub-grid turbulence against 230; K_G 46 and 59 against 89. No measured r₀, so no
+  instability. **Hot air**: as the ideal gas, the times within 4%.
+- **A tube** (DeflagrationTests): a flame lit at the closed end of a narrow tube runs at the
+  model's expansion ratio times the burning velocity, 2.7 m/s, to within 10%, laminar or with
+  sub-grid turbulence: the flow is one-dimensional and the σ-model sees no turbulence in it.
+
+### Where a vented room's pressure was lost
+
+Before the cellular instability was added, FM Global's chamber reached a seventh of test 1's
+measured peak and the correlations' were thirty to fifty times the model's. Traced, item by item:
+
+- **Early pressure goes as the flame's speed to about the sixth power.** Before the burnt gas
+  reaches the vent, the overpressure is set by the volume the flame makes, which goes as S r² with
+  r growing as S t. At 0.3–0.45 s test 1's back wall read 0.45–1.3 kPa, the model's 0.03–0.07 kPa,
+  and Bauwens et al.'s LES 0.2–0.7.
+  - *The tests' young flame was fast.* Their thermocouples put the flame at 1 m by about 0.26 s,
+    and their burnt gas reached the vent by 0.45 s. The model's flame reached the vent at 0.73 s.
+  - *Lit in the middle, the back of the model's flame stalled* between 0.5 and 1 m from the
+    ignition point. The vent drew the unburnt gas behind it through the flame at 1–2.5 m/s, faster
+    than it burnt, while the tests' flame ran at 3 m/s.
+- **The vent's cover is not it.** The tests' polypropylene sheet went at 0.2–0.3 s. A 0.3 kPa panel
+  standing for it went at 0.20 s, as the sheet did, and test 1 gave 0.33 kPa against 0.30 open.
+- **The flame's speed and wrinkling near the vent are about right once it is grown.** Lit at the
+  back wall, the flame ran at the tests' speeds from 3 m on. At the vent and outside, the σ-model's
+  u′ is 0.1–0.25 m/s and Bradley's correlation wrinkles 70–95% of the front, so turbulence made at
+  the vent is not missing.
+- **The young flame is short on two counts.**
+  - *Numerically*, a thick front burns over too small an area until it is about seventeen cells in
+    radius (see [Grid convergence](#grid-convergence)). Correcting it raised the peaks by only
+    10–20%.
+  - *Physically*, the cellular instability was missing. Bauwens et al. (2015) measured its onset
+    in this chamber at 0.225 m, and their flames ran 30–45% faster than laminar from 0.3 to 0.9 m.
+    The tests' 0.1 m/s of initial turbulence adds about a tenth (Bauwens et al. 2008: 1.2 times
+    laminar at 0.3 m, both together).
+- **The expansion ratio** (6.6 for the ideal gas against 7.5) matters less: hot air (7.1) raised
+  test 1 from 0.30 to 0.39 kPa and test 4 from 2.88 to 3.21.
+- **The external explosion.** Molkov and Makarov's factor of 2 outside the vent raises test 1 from
+  0.89 to 2.18 kPa (2.17 measured) and test 6 from 12.9 to 14.5 (7.94). It helps where the room is
+  lit in the middle and overshoots further where it is lit at the back wall, so it is an option,
+  not the default.
+- **Helmholtz and acoustic peaks.** The tests' first peak (Helmholtz oscillation with the Taylor
+  instability, and the external explosion) and the acoustically driven second are resolved only as
+  far as the grid and the flame allow; the model's peaks are single and broad. Test 5's measured
+  maximum is the acoustic peak at 1.22 s, and the model gets 0.37 of it.
+
+So the instability was the largest missing piece. Unbounded beyond its measured range, Gostintsev's
+r^(1/3) overshot badly where the flame runs far (test 6: 28.9 kPa against 7.9; test 4: 10.3
+against 4.8). Held at 4 r₀, where the measurements end, it is the default.
 
 ### Vented rooms against the correlations
 
@@ -252,15 +329,12 @@ the middle of a 4.6 × 3 m wall, stoichiometric methane, lit in the middle. The 
 at the middle of the back wall, after a 1/80 s moving average, as Bauwens et al. filtered theirs
 at 80 Hz. `blastbench deflagration vented --vent 2.7,4,5.4,8 --dx 0.1`, open vents:
 
-| Vent, m² | Turbulent (default) | Laminar | Before (factor, r^(1/3), vorticity) | Molkov | Bartknecht | NFPA 68 |
+| Vent, m² | Default | Sub-grid turbulence alone | Laminar | Molkov | Bartknecht | NFPA 68 |
 |---|---|---|---|---|---|---|
-| 2.7 | 1.36 kPa | 0.9 | 1.7 | 77 | 94 | 179 |
-| 4.0 | 0.55 | | 0.8 | 35 | 48 | 81 |
-| 5.4 | 0.41 | 0.3 | 0.35 | 19 | 29 | 45 |
-| 8.0 | 0.29 | | 0.26 | 8 | 15 | 20 |
-
-"Before" is the default flame this model replaced: wrinkling as r^(1/3) from 1 m and a vorticity
-estimate of sub-grid turbulence.
+| 2.7 | 3.05 kPa | 1.36 | 0.9 | 77 | 94 | 179 |
+| 4.0 | 1.51 | 0.55 | | 35 | 48 | 81 |
+| 5.4 | 1.12 | 0.41 | 0.3 | 19 | 29 | 45 |
+| 8.0 | 0.91 | 0.29 | | 8 | 15 | 20 |
 
 The correlations, for the same room, vent and gas:
 
@@ -276,42 +350,40 @@ The correlations, for the same room, vent and gas:
 - **NFPA 68** (2002) for low-strength enclosures: A_v = C A_s/√P_red, C = 0.037 bar^½ for methane.
   It is an envelope, meant to be conservative.
 
-- **The model's pressures are far below the correlations'**: a thirtieth to a sixtieth of Molkov's
-  best fit, much as before. In an empty room the flame sees little sub-grid turbulence. At the
-  front inside the room u′ averages 0.01–0.04 m/s until 0.7 s, and Bradley's correlation wrinkles
-  up to two fifths of the front's cells by then, and those only a little.
-- **The trend with vent area is flatter than the correlations'**: the pressure falls as A_v^−1.4
-  against A_v^−2 for NFPA 68 and Molkov.
+- **The model's pressures are below the correlations'**: a ninth to a twenty-fifth of Molkov's
+  best fit, and a twentieth to a sixtieth of NFPA 68's.
+- **The trend with vent area is flatter than the correlations'**: the pressure falls as A_v^−1.1
+  against A_v^−2 for NFPA 68 and Molkov. The large vent's peak, the burnt gas leaving, falls least.
 - **The correlations are conservative for this room.** The tests below, in the same chamber,
-  measured a tenth to a quarter of Molkov's fit, and a twentieth to an eighth of NFPA 68's.
+  measured a tenth to a quarter of Molkov's fit, and a twentieth to an eighth of NFPA 68's. Lit in
+  the middle the model is below the tests too (1.1 kPa against 2.2–2.7 for the large vent, 3.1
+  against 7.2 for the small), so there it is on the unsafe side of both.
 
 **Obstacles.** With square posts 0.2 m wide from floor to ceiling on a 1 m grid in the room (`--posts
-0.2`, 24 posts, 4.5% of the floor), test 1's mixture gives 0.55 kPa with the turbulent flame
-against 0.30 without the posts. The laminar flame gives 0.20 against 0.23: it is only blocked. The
-flame's speed at 2 m from the ignition point rises from 10 to 23 m/s. So the flow round obstacles the grid
-resolves now wrinkles the flame, through the σ-model's u′ in the shear behind them, as real
-congestion does, if far more weakly than congested tests would. No test with these posts exists
-to say how far.
+0.2`, 24 posts, 4.5% of the floor), test 1's mixture gave 0.55 kPa with sub-grid turbulence alone
+against 0.30 without the posts. The laminar flame gave 0.20 against 0.23: it is only blocked. The
+flame's speed at 2 m from the ignition point rose from 10 to 23 m/s. So the flow round obstacles the
+grid resolves wrinkles the flame, through the σ-model's u′ in the shear behind them. No test with
+these posts exists to say how far.
 
 ### Bauwens, Chaffee and Dorofeev (2008)
 
 Six tests in that chamber, near-stoichiometric methane, nearly quiescent (u′ about 0.1 m/s), the
-vent covered by a 0.02 mm polypropylene sheet. The model treats the vent as open, as their LES did;
-with a 0.3 kPa panel standing for the sheet, test 1 gives 0.33 kPa, the panel going at 0.20 s as
-the sheet did. The peaks are plotted only (the back wall's pressure, P1, filtered at 80 Hz, and
-the flame's speed along the vent's axis), and were digitised here from the PDF's vector paths
-(`/Volumes/StudioData/bombcad/data/Bauwens2008/digitised/`, calibrated on 5–11 labelled ticks
-an axis, to 0.01 kPa). `blastbench deflagration vented --vent 5.4 --percent 9.0 --speeds` and so
-on, 0.1 m cells:
+vent covered by a 0.02 mm polypropylene sheet. The model treats the vent as open, as their LES did.
+The peaks are plotted only (the back wall's pressure, P1, filtered at 80 Hz, and the flame's speed
+along the vent's axis), and were digitised here from the PDF's vector paths
+(`/Volumes/StudioData/bombcad/data/Bauwens2008/digitised/`, calibrated on 5–11 labelled ticks an
+axis, to 0.01 kPa). `blastbench deflagration vented --vent 5.4 --percent 9.0 --speeds` and so on,
+0.1 m cells:
 
-| Test | Methane | Ignition | Vent, m² | Measured, kPa | Their LES | Model | Before | Molkov |
+| Test | Methane | Ignition | Vent, m² | Measured, kPa | Their LES | Model | Sub-grid turbulence alone | Molkov |
 |---|---|---|---|---|---|---|---|---|
-| 1 | 9.0% | middle | 5.4 | 2.17 (0.47 s) | 1.82 | 0.30 | 0.29 | 19 |
-| 2 | 10.3% | middle | 5.4 | 2.71 (1.08 s) | 1.82 | 0.40 | 0.37 | 19 |
-| 3 | 9.8% | back wall | 5.4 | 5.35 (0.57 s) | 1.39 | 2.93 | 2.3 | 19 |
-| 4 | 9.5% | back wall | 5.4 | 4.79 (0.52 s) | 1.39 | 2.88 | 2.2 | 19 |
-| 5 | 9.2% | middle | 2.7 | 7.23 (1.22 s) | 8.49 | 1.30 | 1.5 | 77 |
-| 6 | 9.2% | back wall | 2.7 | 7.94 (0.58 s) | 4.90 | 4.49 | 4.5 | 77 |
+| 1 | 9.0% | middle | 5.4 | 2.17 (0.47 s) | 1.82 | 0.89 | 0.30 | 19 |
+| 2 | 10.3% | middle | 5.4 | 2.71 (1.08 s) | 1.82 | 1.19 | 0.40 | 19 |
+| 3 | 9.8% | back wall | 5.4 | 5.35 (0.57 s) | 1.39 | 4.30 | 2.93 | 19 |
+| 4 | 9.5% | back wall | 5.4 | 4.79 (0.52 s) | 1.39 | 4.20 | 2.88 | 19 |
+| 5 | 9.2% | middle | 2.7 | 7.23 (1.22 s) | 8.49 | 2.69 | 1.30 | 77 |
+| 6 | 9.2% | back wall | 2.7 | 7.94 (0.58 s) | 4.90 | 12.9 | 4.49 | 77 |
 
 Their LES ran one mixture, 9.5%, for each figure, so tests 1 and 2 share a value, and so do 3 and 4.
 
@@ -320,35 +392,29 @@ floor, as their thermocouples were; m/s, against distance from the ignition poin
 
 | | at 1 m | 2 m | 3 m | largest |
 |---|---|---|---|---|
-| Test 1, measured / model | 6.8 / 4.2 | 18.7 / 10.4 | 19.7 / 15.2 | 20 / 16 |
-| Test 4, measured / model | 6.4 / 3.2 | 11.9 / 7.2 | 20.2 / 16.2 | 45 / 52 |
-| Test 6, measured / model | 5.7 / 2.9 | 11.2 / 6.6 | 20.0 / 16.0 | 125 / 130 |
-| Test 1, towards the back wall | −2.6 to −3.6 / stalls | | | |
+| Test 1, measured / model | 6.8 / 6.1 | 18.7 / 14.9 | 19.7 / 22.5 | 20 / 24 |
+| Test 4, measured / model | 6.4 / 4.9 | 11.9 / 11.9 | 20.2 / 28.2 | 45 / 96 |
+| Test 6, measured / model | 5.7 / 4.5 | 11.2 / 10.7 | 20.0 / 25.8 | 125 / 140 |
+| Test 1, towards the back wall | −2.6 to −3.6 / −2.8 to −4.8 beyond 1 m | | | |
 
-- **Lit at the back wall the model is closest**: 55–60% of the measured peaks, nearer than
-  their LES on the large vent (1.4 kPa). Its flame speeds are about half the measured ones over
-  the first 2 m, and then come close: within a fifth at 3 m, and the largest, as the flame leaves
-  through the vent, within a sixth (52 and 130 m/s against 45 and 125).
-- **Lit in the middle it is far low**, a seventh (tests 1, 2) and a sixth (test 5) of the measured
-  peaks, where their LES came within a third. Towards the vent its flame runs at 55–75% of the measured
-  speed. Towards the back wall it stalls: it reaches 0.5 m and then barely moves for two seconds.
-  The burnt gas drifts towards the vent (1.8–2.8 m/s by 0.55 s), and the unburnt gas behind it
-  flows that way as fast as the flame burns into it. The tests and their LES show a flame running
-  steadily at 3 m/s towards the back wall. Raising the burning velocity by half (`--factor 1.5`)
-  brings the speeds towards the vent to the measured ones and the peak to 0.81 kPa, but the
-  back still stalls. So the stall is not only a slow flame; why the model's burnt gas drifts as it
-  does was not found.
+- **Overall the model is within a factor of 2.7 of every test**, against a factor of 7 before:
+  the model-to-measured ratio's geometric mean over the six is 0.65 (0.30 with sub-grid
+  turbulence alone).
+- **Lit at the back wall it is closest on the large vent**: 80–90% of the measured peaks, nearer
+  than their LES (1.4 kPa). On the small vent (test 6) it is 1.6 times the measured peak. Its flame
+  speeds match the measured ones to 2 m, run a third fast at 3 m, and are too fast leaving through
+  the vent (96 m/s against 45 in test 4).
+- **Lit in the middle it is low**, 0.37–0.44 of the measured peaks, where their LES came within
+  a third. Its flame speeds inside the room are within a fifth of the measured ones, but the back of
+  the flame still stalls between 0.5 and 1 m from the ignition point (see the trace above), before
+  running at the tests' speed beyond. Their measured maxima for tests 2 and 5 are the acoustically
+  driven second peaks, which the model does not reproduce.
 - **The measured mechanisms are partly there.** Bauwens et al. trace the first large peak to a
   Helmholtz oscillation, amplified by the Taylor instability of the flame as the burnt gas is
   accelerated back into the room, and to the external explosion. The second comes from feedback
   between the room's acoustics and the burning. The model resolves the oscillation and the external
-  burning only as far as its grid and flame allow. The external explosion's flame is now wrinkled:
-  at the front outside, u′ averages 0.1–0.25 m/s and Bradley's correlation wrinkles 70–95% of its
-  cells. The Taylor instability's wrinkling below the grid it does not have, as their LES did not.
-- **What is left is not a turbulence model's to give.** The flame's speed matches once the flow has
-  grown, so the sub-grid wrinkling is about right where there is turbulence. What is missing is
-  early: a young flame the grid makes slow, the tests' initial turbulence (u′ ≈ 0.1 m/s) that their
-  LES resolved and this model does not carry, and the stall towards the back wall.
+  burning only as far as its grid and flame allow; the Taylor instability's wrinkling below the grid
+  it does not have, as their LES did not.
 
 ### Grid convergence
 
@@ -356,48 +422,50 @@ floor, as their thermocouples were; m/s, against distance from the ignition poin
   growing ball, holds more of its burnt mass in its outer, larger half, so its middle, where
   |∇b| weighs, lags the radius of the ball that mass makes by about a cell. It burns over too
   small an area, (1 − 0.9 Δ/r)²; the ball grows at 55% of σ S_L at three cells' radius, 73% at
-  six, 83% at ten, and close to σ S_L by about seventeen (`blastbench deflagration ball --closed`, 2.5,
-  5 and 10 cm cells alike). On 0.1 m cells that is the first 1.7 m of a room. Scaling the burning
-  by (1 + 0.75 Δ/r)², r the distance from the ignition point, made a ball grow within 3% of σ S_L
-  from six or seven cells. But it put the closed sphere 5, 7 and 12% ahead of the thin-flame model on 12, 24 and 48
-  cells, and raised the vented peaks by only 10–20% (test 1: 0.36 kPa). It was not kept. Scaling by
-  the front's own curvature fed back on the grid's corrugations, convex parts burning faster and
-  growing.
-- **The flame's speed in a vented room converges roughly; its peak pressure does not.** Test 1's
-  room on 0.2, 0.1 and 0.05 m cells:
+  six, 83% at ten, and close to σ S_L by about seventeen (`blastbench deflagration ball --closed`,
+  2.5, 5 and 10 cm cells alike). On 0.1 m cells that is the first 1.7 m of a room. Scaling the
+  burning by (1 + 0.75 Δ/r)², r the distance from the ignition point, made a ball grow within 3% of
+  σ S_L from six or seven cells. But it put the closed sphere 5, 7 and 12% ahead of the thin-flame
+  model on 12, 24 and 48 cells, and raised the vented peaks by only 10–20%, so it was not kept.
+  Scaling by the front's own curvature fed back on the grid's corrugations, convex parts burning
+  faster and growing.
+- **The flame's speed in a vented room converges; its peak pressure roughly does.** Test 1 on
+  0.2, 0.1 and 0.05 m cells, the default flame:
 
-  | Cells | P_red, turbulent | P_red, laminar | Speed at 1.25 / 1.75 / 2.25 / 2.75 m, turbulent |
-  |---|---|---|---|
-  | 0.2 m | 0.64 kPa | 0.13 | 4.1 / 11.3 / 12.5 / 23.2 m/s |
-  | 0.1 m | 0.30 | 0.23 | 5.3 / 8.5 / 12.3 / 14.6 |
-  | 0.05 m | 0.42 | 0.28 | 5.9 / 10.7 / 16.9 / 19.2 |
-  | Measured | 2.17 | | 9.1 / 17.7 / 19.3 / 19.9 |
+  | Cells | P_red | Speed at 1.25 / 1.75 / 2.25 / 2.75 m |
+  |---|---|---|
+  | 0.2 m | 1.91 kPa | 6.7 / 18.2 / 22.2 / 47.8 m/s |
+  | 0.1 m | 0.89 | 8.1 / 12.8 / 17.0 / 20.6 |
+  | 0.05 m | 0.75 | 9.0 / 15.5 / 24.2 / 28.8 |
+  | Measured | 2.17 | 9.1 / 17.7 / 19.3 / 19.9 |
 
-  At these amplitudes the peak is whichever of several weak transients is largest: the vent's
-  first outflow, the burnt gas reaching it, the flame meeting the walls. Which one that is changes
-  with the grid. The laminar peak rises steadily as the young flame is better resolved. Every
-  resolution gives under a third of the measured peak (a seventh on 0.1 m cells) and a thirtieth to
-  a sixtieth of Molkov's, so the comparisons do not depend on it, but a single run's peak is
-  uncertain by about ±40%. Bauwens et
-  al. found their LES within 8% on 6, 7.5 and 10 cm cells.
+  On 0.05 m cells the speeds match the measured ones to 1.75 m and run a quarter to a half fast
+  beyond, and the peak is within a sixth of the 0.1 m cells'. The 0.2 m cells' are too coarse for a
+  front four cells thick in a 4.6 m room. At these amplitudes the peak is whichever of several
+  transients is largest, so a single run's peak is uncertain by about ±20% on 0.1 m cells or finer.
+  Bauwens et al. found their LES within 8% on 6, 7.5 and 10 cm cells.
 
 ## Limitations
 
 1. **The flame's acceleration is only partly modelled.** A vented room's peak pressure is set by
    how fast the flame burns when the vent is open. In tests that comes from the turbulence the
    outflow makes, cellular and Taylor instabilities (the second amplified by Helmholtz
-   oscillation), and the external explosion. The model now wrinkles the flame by its sub-grid
-   turbulence, after Bauwens et al.'s LES, whose one constant they fitted in this chamber. The
-   instabilities are not modelled (the wrinkling with radius is an option whose onset radius is a
-   guess). Lit at a back wall, the flame's speeds come within a fifth of FM Global's tests beyond
-   3 m (half over the first 2 m), but the peaks are 55–60% of theirs. Lit in the middle, the
-   peaks are a sixth to a seventh of the tests', and the
-   flame stalls towards the back wall.
-2. **A young flame is slow**: until it is about seventeen cells across, a front four cells thick
+   oscillation), and the external explosion. The model wrinkles the flame by its sub-grid
+   turbulence, after Bauwens et al.'s LES, whose one constant they fitted in this chamber, and by
+   its cellular instability from an onset measured there too.
+   - The instability is held beyond four onset radii, where the measurements end; larger flames
+     may accelerate further.
+   - The Taylor instability and the external vortex's extra wrinkling are not modelled; the
+     latter is an option (Molkov and Makarov's factor of 2).
+   - Lit in the middle of FM Global's chamber the peaks are about 0.4 of the tests', and the
+     flame stalls towards the back wall; lit at a back wall, 0.8–1.6 of them.
+2. **A young flame is slow**: until it is about seventeen cells in radius, a front four cells thick
    burns over too small an area (55–83% of it from three to ten cells). On 0.1 m cells that is most
    of a room. The tests' initial turbulence (u′ ≈ 0.1 m/s) is not carried.
-3. **In a quiescent vessel the turbulent flame is 4–8% too fast**: the grid's own flow at a front
-   four cells thick gives the σ-model some u′.
+3. **In a quiescent vessel the default flame beats the thin-flame model**, by 13–14% on 48 cells:
+   the instability is meant to; a few percent of it is the grid's own flow at the front, which the
+   σ-model reads as turbulence. On fine cells the front also corrugates on the grid, and then the
+   instability partly counts the same wrinkling twice.
 4. **No obstacles' sub-grid turbulence**: obstacles larger than a cell or two shape the resolved
    flow, and the σ-model's u′ in their wakes wrinkles the flame. Congestion below the grid's scale,
    which drives the strongest accelerations, is not represented (porosity–distributed-resistance
@@ -409,8 +477,9 @@ floor, as their thermocouples were; m/s, against distance from the ignition poin
 6. **The burning velocity** does not depend on the unburnt gas's pressure and temperature, flame
    stretch (Markstein) or heat loss. A flame is not quenched at walls, and dilution below the
    flammability limit stops it only through the burning velocity.
-7. **K_G and the closed vessel's last instants converge slowly**: the final unburnt layer is far
-   thinner than a cell.
+7. **K_G cannot converge on this front**: the last tenth of a closed vessel's mixture burns in a
+   layer under 1% of its radius thick, and a front four cells thick needs hundreds of cells
+   across the radius to resolve it (35 to 60 bar m/s on 12 to 96 cells, against 76).
 8. **Vent panels have no mass** and go at once. Panels of several kilograms a square metre hold
    on longer and raise the pressure, and EN 14994 corrects for their inertia.
 9. **The domain's open faces copy the cell inside them**, which lets gas flow back in. Burnt gas
@@ -426,9 +495,11 @@ floor, as their thermocouples were; m/s, against distance from the ignition poin
   and their LES ran at 3 m/s.
 - A young flame that burns at its speed from the start: a sub-grid ignition kernel, carried until
   the resolved front is many cells across, in place of the area lost to the front's thickness.
+- A thinner front, or one tracked across the cell, for K_G and the last unburnt layer.
 - The tests' initial turbulence, as resolved eddies laid down with the cloud.
-- The instabilities' wrinkling, with an onset radius from the literature (Bradley, Lawes and
-  Mansour), and the Taylor instability's under acceleration.
+- The instability beyond four onset radii, and propane's onset (Bauwens et al. 2015, Proceedings
+  of the Combustion Institute 35); the Taylor instability's wrinkling under acceleration; the
+  external vortex's (Molkov and Makarov), as a model rather than a factor.
 - Obstacles' sub-grid turbulence, as porosity–distributed-resistance models carry it.
 - The burning velocity's dependence on pressure and temperature (Metghalchi and Keck), and the
   products' own heat capacities instead of a fitted share of the heat.
@@ -437,6 +508,9 @@ floor, as their thermocouples were; m/s, against distance from the ignition poin
 
 ## Sources
 
+- Bauwens, C. R., Bergthorson, J. M. and Dorofeev, S. B. (2015). Critical Peclet numbers for the
+  onset of Darrieus–Landau instability in atmospheric-pressure methane–air flames. *25th ICDERS*,
+  Leeds, paper 231 (Table 1, the critical radii; Fig. 5, the flame speeds beyond them).
 - Bauwens, C. R., Chaffee, J. and Dorofeev, S. (2008). Experimental and numerical study of
   methane–air deflagrations in a vented enclosure. *Fire Safety Science* 9, 1043–1054.
   doi:10.3801/IAFSS.FSS.9-1043 (eq. 5, the equilibrium wrinkling and a = 0.7; Figs. 3 and 6–9,
@@ -466,6 +540,8 @@ floor, as their thermocouples were; m/s, against distance from the ignition poin
   (Bartknecht's equation and Molkov's correlations as the standards use them).
 - Molkov, V. (2001). Unified correlations for vent sizing of enclosures at atmospheric and elevated
   pressures. *IChemE Symposium Series* 148 (Hazards XVI), eqs. 3–5.
+- Molkov, V. V. and Makarov, D. V. (2004). Rethinking the physics of a large-scale vented explosion
+  and its mitigation. *IChemE Symposium Series* 150 (the external vortex's wrinkling factor of 2).
 - Nicoud, F., Baya Toda, H., Cabrit, O., Bose, S. and Lee, J. (2011). Using singular values to build
   a subgrid-scale model for large eddy simulations. *Physics of Fluids* 23, 085106 (the σ-model,
   C = 1.35).

@@ -78,6 +78,19 @@ public enum FootingRockingTest {
         /// (rotation, normalized moment, settlement over L) every 10 ms.
         public var history: [SIMD3<Float>] = []
         public var wallSeconds: Double = 0
+        /// After each packet or event: how far the soil under the footing has sunk for good
+        /// (m), against x along the footing, averaged across it.
+        public var profiles: [[SIMD2<Float>]] = []
+    }
+
+    /// The soil's surface under the footing along x, averaged across it.
+    static func profile(_ solver: StructureSolver) -> [SIMD2<Float>] {
+        let points = solver.footingBedSurface()
+        let xs = Set(points.map(\.place.x)).sorted()
+        return xs.map { x in
+            let row = points.filter { $0.place.x == x }
+            return SIMD2(x, row.map(\.sunk).reduce(0, +) / Float(row.count))
+        }
     }
 
     /// Rocks the wall through `packets`, on sand of `shearModulus`, its cycles no faster than
@@ -194,6 +207,7 @@ public enum FootingRockingTest {
                 }
             }
             result.packets.append(record)
+            result.profiles.append(profile(solver))
             progress?(
                 String(
                     format: "packet %@: rotation %.4f rad, moment %.3f / %.3f, settlement %.4f L",

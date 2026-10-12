@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Moving connected gas inventories")
+@Suite("Moving connected gas inventories", .timeLimit(.minutes(120)))
 struct MovingConnectedGasGroupsTests {
     private func slabPlan(maximumMembers: Int = 64, final: [Double] = [0, 1]) throws
         -> MovingConnectedGasGroups.Plan

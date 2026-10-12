@@ -5,7 +5,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Thermal radiation from the fireball")
+@Suite("Thermal radiation from the fireball", .gpuThreads)
 struct ThermalRadiationTests {
     private func scene(blocks: [Box] = [], domain: SIMD3<Float> = SIMD3(100, 100, 50)) -> FragmentScene {
         var scenario = Scenario(

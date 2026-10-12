@@ -46,7 +46,7 @@ jobs:
       - name: Test release and nightly scripts
         run: make ci-test
       - name: Build
-        run: make build
+        run: make build-strict
       - name: Core tests
         timeout-minutes: 20
         shell: bash
@@ -79,7 +79,7 @@ jobs:
       - name: Test release and nightly scripts
         run: make ci-test
       - name: Build
-        run: make build
+        run: make build-strict
       - name: Test
         # Leave time to upload diagnostics before the overall job timeout.
         timeout-minutes: 45

@@ -54,7 +54,13 @@ struct ThermalOverlayTests {
             try await Task.sleep(for: .milliseconds(5))
         }
         while let thermal = model.thermal, !thermal.caughtUp {
-            #expect(throws: ProjectFileError.self) { try model.keepRun(named: name) }
+            // The radiation can catch up between the check above and the keep: a keep that
+            // succeeds must have found it caught up.
+            do {
+                try model.keepRun(named: name)
+                #expect(thermal.caughtUp, "kept before the thermal radiation had caught up")
+                return model.savedRuns.last!
+            } catch is ProjectFileError {}
             try await Task.sleep(for: .milliseconds(5))
         }
         try model.keepRun(named: name)

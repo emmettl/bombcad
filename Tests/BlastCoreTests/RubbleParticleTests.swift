@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// Failed concrete that becomes particles keeping its mass (`StructureModel.rubbleParticles`).
-@Suite("Rubble particles")
+@Suite("Rubble particles", .gpuThreads)
 struct RubbleParticleTests {
     let device: MTLDevice
 

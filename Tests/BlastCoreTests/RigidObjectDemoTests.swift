@@ -2,7 +2,7 @@ import Testing
 
 @testable import BlastCore
 
-@Suite("Rigid object demo recordings")
+@Suite("Rigid object demo recordings", .timeLimit(.minutes(120)))
 struct RigidObjectDemoTests {
     @Test("The visual cases contain finite ground-respecting trajectories with the intended outcomes")
     func recordings() throws {

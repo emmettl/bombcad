@@ -5,7 +5,7 @@ import Testing
 
 /// Alsubaei's perimeter walls (`PerimeterWallTests`) against the derived data in
 /// Fixtures/Alsubaei2015, and the scenes built from them.
-@Suite("Perimeter walls under field blasts")
+@Suite("Perimeter walls under field blasts", .timeLimit(.minutes(120)))
 struct PerimeterWallTestsTests {
     private func fixture() throws -> [String: Any] {
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()

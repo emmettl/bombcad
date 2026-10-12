@@ -152,7 +152,7 @@ public final class MetalThermalVisibility: ThermalVisibility, @unchecked Sendabl
             // In pieces across the cores: a frame's rays are megabytes.
             let pieces = 8
             let piece = (bytes.count + pieces - 1) / pieces
-            DispatchQueue.concurrentPerform(iterations: pieces) { p in
+            concurrently(iterations: pieces) { p in
                 let range = min(p * piece, bytes.count)..<min((p + 1) * piece, bytes.count)
                 (buffers.rays.contents() + range.lowerBound).copyMemory(
                     from: bytes.baseAddress! + range.lowerBound, byteCount: range.count)

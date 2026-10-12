@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Limited moving gas reconstruction")
+@Suite("Limited moving gas reconstruction", .timeLimit(.minutes(120)))
 struct LimitedMovingReconstructionTests {
     /// A 3³ group stencil; the middle unit cube has two half-width final members.
     /// This tests redistribution independently of box clipping and the flux integrator.

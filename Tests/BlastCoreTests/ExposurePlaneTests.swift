@@ -4,7 +4,7 @@ import Testing
 
 @testable import BlastCore
 
-@Suite("Spatial exposure and diagnostic profiling", .serialized)
+@Suite("Spatial exposure and diagnostic profiling", .serialized, .gpuThreads)
 struct ExposurePlaneTests {
     func solver() throws -> BlastSolver {
         let device = try #require(MTLCreateSystemDefaultDevice())

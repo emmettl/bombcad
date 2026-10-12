@@ -4,7 +4,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Independent initial wall pressure traces")
+@Suite("Independent initial wall pressure traces", .timeLimit(.minutes(120)))
 struct InitialWallTraceTests {
     @Test("Positive Gauss rule reproduces polynomial moments independently")
     func gaussMoments() throws {

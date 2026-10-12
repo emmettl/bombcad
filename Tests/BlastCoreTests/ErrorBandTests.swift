@@ -85,7 +85,7 @@ private func table(_ link: String, header: String) throws -> [[String]] {
 
 private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrences(of: "%", with: "")) }
 
-@Suite struct ErrorBandTests {
+@Suite(.timeLimit(.minutes(120))) struct ErrorBandTests {
     /// Parsed: the Kingery–Bulmash, afterburning and close-in tables are read from the record and
     /// must equal the code's, cell for cell.
     @Test func tablesMirrorTheValidationRecord() throws {
@@ -265,11 +265,13 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
         let wall = SceneStanding(StandingInputs(scenario: ScenarioPreset.blastWall.scenario, cellSize: 0.25))
         let deflection = try #require(wall.band(.peakDeflection))
         #expect(deflection.inputSpread == 0.12)
+        #expect(deflection.derivedMesh?.hasPrefix("4 to 32 elements through") == true)
         // Too flexible under the contest's load, too stiff under its lower shot: either way.
-        #expect(deflection.ratio == "79–114%" && deflection.reads == "reads either way")
+        // Up to the 117% the slab's peak rises towards with the mesh.
+        #expect(deflection.ratio == "79–117%" && deflection.reads == "reads either way")
         #expect(deflection.referenceScatter == 0.03)
         let expected = deflection.expected(115)
-        #expect(abs(expected.lowerBound - 115 / 1.14) < 1e-9 && abs(expected.upperBound - 115 / 0.79) < 1e-9)
+        #expect(abs(expected.lowerBound - 115 / 1.17) < 1e-9 && abs(expected.upperBound - 115 / 0.79) < 1e-9)
         #expect(wall[.structuralResponse]?.regimes?.isEmpty == false)
 
         // An option the slab was not compared with leaves it without a band.
@@ -288,9 +290,33 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
         close.charge = Charge(
             mass: 0.5, position: SIMD3(solid.min.x - 0.3, (solid.min.y + solid.max.y) / 2, 0.5))
         let near = SceneStanding(StandingInputs(scenario: close, cellSize: 0.25))
-        let wu = try #require(near.band(.peakDeflection))
-        #expect(wu.ratio == "40–70%" && wu.side == "unsafe side")
+        // Wu's band was derived on 8 elements through; this wall has 4, so it does not apply.
+        #expect(near.band(.peakDeflection) == nil)
+        #expect(near[.structuralResponse]?.unbanded?.contains { $0.contains("not applicable on 4") } == true)
+        // On 8 elements through it applies, with its mesh recorded.
+        var eight = close
+        eight.structure?.elementSize = (solid.max.x - solid.min.x) / 8
+        let wu = try #require(
+            SceneStanding(StandingInputs(scenario: eight, cellSize: 0.25)).band(.peakDeflection))
+        #expect(
+            wu.ratio == "40–70%" && wu.side == "unsafe side" && wu.derivedMesh == "8 elements through only")
         #expect(near[.structuralResponse]?.regimes?.contains { $0.option == "Fragments removed" } == true)
+    }
+
+    /// Mirrored: the convergence study's OA1 row holds every mesh's value and the measurement.
+    @Test func meshSeriesQuoteTheStudy() throws {
+        let series = ValidationTables.oa1
+        let text = try section(series.document)
+        #expect(text.contains(normalised(series.quote)), "OA1's row is not under \(series.document)")
+        let found = numbers(series.quote)
+        #expect(found.contains(series.measured))
+        for (through, value) in series.byMesh {
+            #expect(series.quote.contains("\(through): \(Int(value))"), "\(through): \(value) not in the row")
+        }
+        // On the calibrated mesh the band spans the meshes either side: 104% to 132%.
+        let band = try #require(series.band(on: series.calibrated))
+        #expect(abs(band.low - 344 / 332.0) < 1e-9 && abs(band.high - 437 / 332.0) < 1e-9)
+        #expect(series.band(on: 60) == nil && series.band(on: 8) == nil)
     }
 
     @Test func terrainAndDeflagrationGiveNoKingeryBulmashBand() throws {

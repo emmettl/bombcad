@@ -5,7 +5,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("OpenVDB writer")
+@Suite("OpenVDB writer", .timeLimit(.minutes(120)))
 struct OpenVDBWriterTests {
     /// Reads back what the writer writes: the header, one float grid's descriptor, metadata and
     /// affine transform, its topology, and its leaves' values. Only the subset the writer uses.

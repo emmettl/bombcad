@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Prescribed fractional piston motion")
+@Suite("Prescribed fractional piston motion", .timeLimit(.minutes(120)))
 struct FractionalPistonTests {
     @Test("Closed-tube pressure approaches the quasi-static limit as piston speed decreases")
     func quasiStaticLimit() throws {

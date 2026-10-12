@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// The luminous gas losing the heat it radiates.
-@Suite("Radiative cooling")
+@Suite("Radiative cooling", .gpuThreads)
 struct RadiativeCoolingTests {
     let device: MTLDevice
 

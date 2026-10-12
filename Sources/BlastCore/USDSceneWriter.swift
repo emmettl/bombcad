@@ -664,7 +664,11 @@ public final class USDSceneWriter {
             if let bands = result.bands, !bands.isEmpty {
                 lines.append(
                     "string[] \(result.kind.rawValue)Bands = ["
-                        + bands.map { quoted("\($0.summary), for \($0.validity)") }
+                        + bands.map {
+                            quoted(
+                                "\($0.summary), for \($0.validity)"
+                                    + ($0.derivedMesh.map { "; derived on \($0)" } ?? ""))
+                        }
                         .joined(separator: ", ") + "]")
             }
         }

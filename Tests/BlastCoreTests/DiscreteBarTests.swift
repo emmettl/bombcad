@@ -6,7 +6,7 @@ import Testing
 
 /// Bars as their own trusses embedded in the elements (`DiscreteBar`), against the smeared bars'
 /// checks: elastic sharing, and a tie's cracks and tension stiffening by the Model Code.
-@Suite("Discrete bars")
+@Suite("Discrete bars", .gpuThreads)
 struct DiscreteBarTests {
     let device: MTLDevice
 

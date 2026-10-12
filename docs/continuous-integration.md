@@ -10,7 +10,7 @@ reached as `scrimply-ci-tb`. The runner is `mac-mini-bombcad`, installed in
 
 | Workflow | When | What |
 |---|---|---|
-| [Check](../.github/workflows/check.yml), light | Every push to `main` | `make check-light`: lint, script tests, build, the core tests and the release-build smoke runs, about ten minutes |
+| [Check](../.github/workflows/check.yml), light | Every push to `main` | `make check-light`: lint, script tests, a build without warnings, the core tests and the release-build smoke runs, about ten minutes |
 | [Check](../.github/workflows/check.yml), full | By hand (suite `all`) | Lint, script tests, build, application and core tests, the packaged app's signature |
 | [Nightly](../.github/workflows/nightly.yml) | 19:00 UTC by GitHub's schedule and 19:20 UTC from the mini, whichever comes first; or by hand | The full check on `main`'s head, with what failed and the suspect commits; then `Scripts/nightly.py`: the benchmarks and the validation suite, compared with earlier nights |
 
@@ -24,6 +24,14 @@ failing tests and errors, and the commits since the last green full check, newes
 the suspects (`Scripts/nightly-suspects.py`; the runner keeps that commit in
 `~/bombcad-nightly/last-green-full`). A full run by hand is still there for a change that wants
 it at once.
+
+**No compiler warnings.** Every check builds with `make build-strict` (`Scripts/build-strict.py`):
+the package and its tests, failing on any warning in this package's own code, each listed once;
+SwiftPM suppresses ContinuumKit's. There were none on 12 October 2026, down from 108 (mostly
+`concurrentPerform` closures that Dispatch marks `@Sendable`; the parallel loops now go through
+`concurrently(iterations:_:)` in BlastCore, whose comment says what keeps them safe). Only files
+compiled in a build can warn, so an incremental build catches what a change brings; `rm -rf
+.build` first to see them all.
 
 A Check run is never cancelled by a newer push: the newest push waits behind it and older waiting
 ones are dropped, so at most one waits. A run started by hand has a queue of its own, by its suite
@@ -50,11 +58,15 @@ that never gets there is failed as hung after ten minutes (`hangLimit`). Paced p
 checked on a clock the test drives, not the wall's.
 
 The core tests have no deadlines, sleeps or timings of their own (their elapsed times are
-simulated). They wait on the GPU synchronously, though, so with the GPU busy Swift Testing's
-threads fill with waiting tests and even trivial ones report only near the end of the run. All
-868 passed in 3,199 s and 4,244 s with the GPU kept busy by other `blastbench` runs, against
-2,016 s in an ordinary `make check`. A ten-minute limit would fail them while they wait for a thread, so CI's
-45-minute test step is their backstop; the core-target stalls above may be this.
+simulated), but the solvers wait on the GPU synchronously. On Swift Testing's few cooperative
+threads those waits starved the rest: with the GPU busy, even trivial tests reported only near
+the end of the run, after half an hour or more. Suites that use the GPU now run their tests on
+threads of their own, as many as cores (`.gpuThreads`, Tests/BlastCoreTests/GPUThreads.swift),
+leaving the cooperative pool to the others: with the GPU saturated by `blastbench` runs, over 500
+of the 875 tests had passed within four minutes, where none had after eighteen. The whole run
+still takes as long as the GPU allows (3,078 and 3,450 s saturated, against 3,199 and 4,244 s
+before). Each test is held to two hours of running on its thread (a GPU suite) or in all (the
+others): at a load average of 250, heavy tests of a debug build ran for over half an hour.
 
 On 9 October, Check runs [37965308304](https://github.com/emmettl/bombcad/actions/runs/37965308304)
 and [37975918140](https://github.com/emmettl/bombcad/actions/runs/37975918140) hit the job limit

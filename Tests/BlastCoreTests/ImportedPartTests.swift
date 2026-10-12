@@ -5,7 +5,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Imported parts and materials")
+@Suite("Imported parts and materials", .gpuThreads)
 struct ImportedPartTests {
     private func cube(
         _ name: String, size: SIMD3<Float> = SIMD3(repeating: 1),

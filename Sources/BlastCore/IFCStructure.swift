@@ -793,7 +793,7 @@ public struct IFCStructure: Sendable {
             let upright =
                 member.role == .shell ? thinAxis(box) != 2 : (0..<3).max { box.size[$0] < box.size[$1] } == 2
             guard upright, box.min.z > 1e-3,
-                groundStorey.map { storey(n) == $0 } ?? (box.min.z <= 0.5),
+                groundStorey.map({ storey(n) == $0 }) ?? (box.min.z <= 0.5),
                 !bodies.contains(where: { j in
                     j != index && abs(solids[j].max.z - box.min.z) <= 1e-3
                         && (0..<2).allSatisfy {

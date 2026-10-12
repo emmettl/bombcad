@@ -67,17 +67,22 @@ swift run -c release blastbench perimeter --study wall
 | Gas in a closed room | UFC 3-340-02's design curve (read off its chart by hand): 48% to 114% by default; 98% to 108% with afterburning and hot air; 90% of Cooper's closed vessel, burnt out | Either way within 8% with afterburning and hot air, good, the fitted burning time hardly mattering, against a design curve whose scatter is not given; by default low for light charges (half, the unsafe side) |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
-| Structural response  | One slab test: solid elements 113–124 mm (104–114%) on 4 to 32 elements through, rising with refinement and not converged, a strip of it running away on 32 (92–98% under the earlier strain-rate laws), shells 135 mm (124%), against 109 mm; the test's repeat peaked at 113 mm, a scatter of about ±2%; a 5% change in its hand-read load moves the peak 13–14%, and a source's 68 ksi yield for the bars, against the measured curve's 72, 9%. The contest's lower shot, run openly with a scaled record, reached about 80% of its peak. One beam bent to failure: peak moment 98–101%, failing at 53–57 mm on 12 elements and holding to 60 mm on 24 against 42 mm, 17% strong on 6. One beam without stirrups failing in shear: 11–15% strong on fine meshes, 37% on coarse, failing suddenly as the test did. Seven drop-weight impacts on beams: with stirrups within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements (+2% to +18% and +17% to +28% on 24), struck about twice as hard as measured, the reactions up to 40% low under the heavy drops and 48% high under the light; the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived. Nineteen on beams without stirrups at rising speeds: within the 2 mm reading at 1 m/s and 15% at 3 m/s, 15% on average beyond on 16 elements but 53% on 24, springing back too far, and decided by how the ends were held (clamped, stiffer than the test's static stiffness). Eighteen short beams struck to shear failure (Peterson et al., 2026): forces as measured at a shear span of one depth (the impact force set by a pad fitted to it), the deep beams too stiff; the beams with stirrups that crushed their strut in the tests hold | Unsafe side in shear: 11–15% too strong, 37% on coarse meshes, struck beams failing by the wrong mechanism and Peterson's struts holding where the tests crushed (low: one static test); 6 elements through 17% strong in bending. Bending of one slab either way by load: 4–14% high under the contest's load, 12–21% low (too stiff, the unsafe side) under its lower shot, not converged (moderate); impact either way on 16 elements but not on 24, where the strain-rate laws, chosen among published laws on these tests, decide it (moderate on one mesh) |
+| Structural response  | One slab test: solid elements 113–124 mm (104–114%) on 4 to 32 elements through, rising with refinement and not converged, a strip of it running away on 32 (92–98% under the earlier strain-rate laws), shells 135 mm (124%), against 109 mm; the test's repeat peaked at 113 mm, a scatter of about ±2%; a 5% change in its hand-read load moves the peak 13–14%, and a source's 68 ksi yield for the bars, against the measured curve's 72, 9%. The contest's lower shot, run openly with a scaled record, reached about 80% of its peak. One beam bent to failure: peak moment 98–101%, failing at 53–57 mm on 12 elements and holding to 60 mm on 24 against 42 mm, 17% strong on 6. One beam without stirrups failing in shear: 11–15% strong on fine meshes, 37% on coarse, failing suddenly as the test did. Seven drop-weight impacts on beams: with stirrups within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements (+2% to +18% and +17% to +28% on 24), struck about twice as hard as measured, the reactions up to 40% low under the heavy drops and 48% high under the light; the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived. Nineteen on beams without stirrups at rising speeds: within the 2 mm reading at 1 m/s and 15% at 3 m/s, 15% on average beyond on 16 elements but 53% on 24, springing back too far, and decided by how the ends were held (clamped, stiffer than the test's static stiffness). Eighteen short beams struck to shear failure (Peterson et al., 2026): forces as measured at a shear span of one depth (the impact force set by a pad fitted to it), the deep beams too stiff; the beams with stirrups that crushed their strut in the tests hold | Unsafe side in shear: 11–15% too strong, 37% on coarse meshes, struck beams failing by the wrong mechanism and Peterson's struts holding where the tests crushed (low: one static test); 6 elements through 17% strong in bending. Bending of one slab either way by load: 4–14% high under the contest's load, rising towards 17% as the mesh is refined, 12–21% low (too stiff, the unsafe side) under its lower shot, not converged (moderate, on the meshes that agreed); impact either way on 16 elements but not on finer meshes, which settle 12–75% high, where the strain-rate laws, chosen among published laws on these tests, decide it (moderate on one mesh). Every structural figure here holds on the mesh it was found on ([convergence](#convergence-on-todays-defaults)) |
 | Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of the paper's text (55–60% of its Figure 9), the impulse under the charge 84–95% of Kingery–Bulmash's, for charges given as TNT equivalents; the slab left a third to a half as far down as measured, spalled only under the charge (on fine air and 12 elements through), and not holed | Unsafe side for damage: the slab bends a third to a half as far, spalls too little and is never holed (low); the load either way within 8%, good |
 | Steel in both faces | Wu et al. (2023): 2 m slabs, one layer or two, within −20% to +7% at the peak under 1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh, 40–70% (too stiff) in the six under 0.2–0.8 kg where the tests spalled; contact charges hole them at a stable step to a half and a third of the measured size (the larger holes at the default step were the step running away). Wang et al. (2022): an aluminised charge's impulse 75–82% as its stated 10 kg of TNT, 94–104% with afterburning; the slabs several times too stiff as supported | Unsafe side under the small charges: 40–70%, too stiff (low); either way under the larger, −20% to +7% (moderate, two shots); holes a half and a third of the size; low for one layer against two and spall |
 | Walls in the open    | Alsubaei (2015), ANFO before perimeter walls: column peaks with no wall within about 10% from 9 m out (a quarter to two thirds high at 8.2 m, where the measured are low); the wall's shielding bracketed, not tested, as the wing walls' length is unknown; walls crack where seen but more widely, rock or slide on their footings in sand; reinforced blockwork top 31 mm against 28 mm as one material, running away as units and joints | Moderate for peaks in the open; low for shielding and for the walls
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof's edge is left 25 mm up against 95 mm measured, a quarter, and peaks at 49 mm against 87 mm in the paper's own model, with the confined regime's pressed interlock (15 and 38 mm without); on 25 mm elements the peak rises to 65 mm and the wall tops tear, so it has not converged | Unsafe side, too stiff: the roof's edge left a quarter as far up as measured (low); the joints' inclined cracking decides it, and the crack models disagree |
 | Fireball radiation   | Two TNT shots by one group (DREO): 100 t, whose total a 100 kg run scaled by the cube root exceeds three to five and a half times; Dial Pack, 500 t, against which the pulse is a sixth as bright at its first maximum, dark from 40 to 350 ms and two to five times too bright after 1 s, 3.9% radiated by 2 s against 2.4%; with gravity it rises but stays as hot, with or without sub-grid mixing | Too bright in all (three to five and a half times), too faint early: illustrative; afterburning keeps the fireball near the flame temperature |
 | Cloud               | Church's tops of 22 TNT clouds of 54 to 1,270 kg: within 4% on average for the first two minutes (a geometric spread of 21% shot by shot), falling behind later; with afterburning, whose burning time was fitted to the open blast, and an entrainment coefficient whose plausible range moves the tops by −9% to +13% | Either way, within 4% on average (21% shot by shot): illustrative; see [the fireball's rise](fireball-rise.md#against-churchs-measured-clouds) |
-| Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; laminar rise times within 1–3% at 48 cells across the radius, the turbulent flame's 4–8% ahead; K_G 35, 41 and 51 on 12, 24 and 48 cells against 76, rising but not shown to converge. Vented rooms: a thirtieth to a sixtieth of Molkov's correlation. FM Global's six tests (digitised): lit at the back wall, 55–60% of the measured peaks, the flame speeds half the measured over the first 2 m and within a fifth beyond 3 m; lit in the middle, a sixth to a seventh, the flame stalling towards the back wall | Vented peaks read low, the unsafe side (a sixth to 60% of measured): illustrative; verified for a laminar flame in a closed vessel |
-| Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 11% to 14 mrad of rotation (against the larger of its two directions), 6–17% low beyond; settlement 1.7–2.3 times that measured. The same footing shaken (FoRDy, eight events on three structures): settlement 0.6–1.5 times, the surface footing's peak rotation within 22% where the test did not lurch one way (the embedded footing's first event a third), a sixth to a half of the energy dissipated. Both on sand of 80 MPa, an estimate, twice the default's | Rocking moment either way to 14 mrad and 6–17% low beyond (moderate); settlement too much, 1.7–2.3 times (moderate); energy too little, a sixth to a half (low), as for a footing that lurches; on a sand twice the default's |
-| Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.2–1.9 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own; collapse nothing | Unsafe side for debris: held back rather than thrown, and slabs never holed (low); collapse never compared |
+| Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; laminar rise times within 1–3% at 48 cells across the radius (the default flame, cellular, 13–14% ahead); K_G 60 against 76 on 96 cells, unable to converge on a four-cell front. FM Global's six tests (digitised): lit at the back wall, 0.8–1.6 times the measured peaks; lit in the middle, about 0.4, the flame stalling towards the back wall. Vented rooms: a ninth to a twenty-fifth of Molkov's correlation, which those tests show conservative | Verified for a laminar flame in a closed vessel; illustrative for vented rooms |
+| Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 11% to 14 mrad of rotation (against the larger of its two directions), 5–14% low beyond; settlement 1.3–1.7 times that measured. The same footing shaken (FoRDy, eight events on three structures): settlement 0.4–1.3 times (0.6–1.3 but for the embedded footing's first event), the surface footing's peak rotation within 10% where the test did not lurch one way (the embedded footing's first event a quarter); energy a cycle 0.5–1.2 times slowly and 0.3–1.2 times shaken, damping ratios 10–27% against 17–32%. Both on sand of 80 MPa, an estimate, twice the default's; the sand's heave set on the slow test | Rocking moment either way to 14 mrad and 5–14% low beyond (moderate); settlement within a factor of 1.7 (moderate); energy too little, a sixth to two thirds of a shaken event's (low), as for a footing that lurches; on a sand twice the default's |
+| Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.2–1.9 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own. [Brick walls](#brick-walls-debris) (Keys, 2016): loads within 15%, but the walls break into too few pieces, falling at full length in the open (means of −2 to +2 m against +0.2 to +0.6 m) and thrown half as far as measured in a shock tube; collapse nothing | Unsafe side for debris: held back rather than thrown, slabs never holed, brick walls thrown short (low); collapse never compared |
 | Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 1–2%, structural responses 4–20%, residual deflections and failure 17–28%; the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
+
+No structural result has yet been shown to converge on today's defaults: the meshes quoted as
+agreeing are the coarse end of each sequence, results that settle do so above the measurements,
+and failures change with the mesh and the step (see [Convergence on today's
+defaults](#convergence-on-todays-defaults)).
 
 Read with the table:
 
@@ -1273,6 +1278,53 @@ The tests' shear cracks open far more than they slide. At a shear span of one de
 0.4–3.4 mm by 2 ms and 1.6–7 mm by 5 ms, sliding 0.1–0.7 and 0.2–1.0 mm: a tenth to a third
 of the opening. The deep beams' end blocks slide along the crack as a plug instead, by 1–3 mm.
 
+**The split, traced** (`--removal-trace`, 11 October 2026). On the beams of shear span d and 2d
+without stirrups, the first plain row above the bottom bars goes along the whole shear span
+within 0.3 ms, 2.6–2.9 ms after impact: every element of it cracked at about 45° (its crack's
+normal 37–44° from vertical) and open 5 mm, crushed under 0.1%. It is a shear band: with the bars
+perfectly bonded, the beam's longitudinal shear between the stiff row of bars and the plain
+concrete above gathers in one row, and with no stirrup in the section to hold its cracks, the
+removal width takes it. Holding those cracks by the longitudinal bars as well (bars along any
+axis within 60° of a crack's normal) only delays it by a millisecond, at 15 mm. With bars that
+slip by the Model Code's splitting law (`--bond splitting`) there is no split, and the main
+cracks come out at the tests' angles (54–55° against 50–74° at d, 46–50° against 37–58° at
+2d): the bars slipping lets the load go to the support as a tied arch. But then the beams
+without stirrups hold, where the tests' failed.
+
+**The struts, traced** (`--strut-trace`). The model's struts crush, in that they pass the peak
+strain, 0.6–1.6 ms after impact under the load and at the support, earlier than the tests' were
+seen to spall (3.8–6.2 ms). They are not removed: crushing removes concrete only far down its
+softening, which on 9.4 mm elements runs to about 27% strain (36 N/mm of crushing energy, 250
+times the fracture energy, in the range Nakamura and Higai's 8.8 √f_c gives), and the most
+crushed reach 0.3–2%. Through the middle of the width they bear 1.3–3.3 f_c, held by
+confinement (up to 3.2 times the strength) from the stresses the other two axes carry, at strain
+rates of 3–20 per second, where the rate factor is only 1.3–1.45; on the side face, which the
+images show, they bear 0.2–0.6 f_c with no confinement, crushed 1–1.7% but not removed. A tenth
+of the crushing energy removes the deep beam's strut at the support at 1.9 ms and the slender
+beam's under the load at 4.5 ms, as in the tests if early, but leaves the beam of span d whole;
+it is not a fix, the energy being in range. What the images saw, spalling, is concrete on the
+face leaving once crushed, which nothing in the model does before it is crushed 27%.
+
+Letting concrete on a free face spall once crushed to Mander, Priestley and Park's spalling
+strain (0.005; tried, not kept) takes the faces under the load and at the supports 0.6–1.3 ms
+after impact in every beam, including those that showed no spalling within 25 ms; it brings the
+deep beams' near reaction to the measured (199–214 kN against 206, from 335), but their strain is
+read over a column's hinge, and over one 9.4 mm element it is 0.05 mm of shortening. Neither bond
+that slips nor any removal of crushed concrete tried here gives all six kinds their failures:
+splitting bond gives the cracks' angles but no failures, perfect bond fails the beams without
+stirrups by the wrong mode, and none fails the beam of span d with stirrups.
+
+Two more were tried, with bond that slips, and not kept (branch `claude/crush-zone`). Crushing
+that softens over a zone of its own length (0.05, 0.1 and 0.15 m), its crushing past the peak
+summed along the zone, leaves every kind within a fraction of a millimetre of bond that slips
+alone, and within a millimetre with confinement off too: with 36 N/mm of crushing energy a strut
+must shorten about 2.5 mm to crush through, and these struts shorten about 0.3 mm, so how far its
+softening is spread hardly matters. Concrete weaker in compression where it is stretched across,
+by the modified compression field theory's 1 / (0.8 + 170 ε₁) (Vecchio and Collins, 1986),
+brings the deep beam's near reaction from 342 to 305 kN (206 measured) and fails nothing more;
+with perfect bond it ran away on the beam of span d without stirrups. The struts the tests saw
+crush are, in this model, strong and tough enough not to.
+
 ## Slabs under close-in charges
 
 The first structural test in the open air with the air solver loading the
@@ -2055,6 +2107,118 @@ joints running away within 30 ms (`blastbench perimeter --study wall --wall maso
 nodes of broken blockwork leaving at 10³ m/s; cracks smeared over a whole face where the tests
 showed a few; and a footing that cannot be held by a slab cast against it.
 
+## Brick walls' debris
+
+Where a brick wall's debris lands: single-leaf brick walls broken by a blast, every brick
+numbered and the debris weighed where it lay. The model's first comparison of debris on the
+ground, and of masonry breaking up. `blastbench keys` runs them (`MasonryDebrisTest.swift`).
+
+### The tests
+
+R. A. Keys, *Experimental & computational structural analysis of masonry panels subject to long
+duration blast loading*, PhD thesis, University of Southampton, 2016 (eprint 413951), and R. Keys
+and S. K. Clubley, *Engineering Structures* 130 (2017) 229–241. The trials were at MoD
+Shoeburyness, and their data remain the Ministry of Defence's; the debris here is read off the
+thesis's and the paper's published figures (`Fixtures/Keys2016`, where the reading and its checks
+are described), and the logged data have been asked for (see [Data requests](data-requests.md)).
+
+| Property | Value |
+|----------|-------|
+| Walls ("A panels") | Solid frogged London brick in running bond, one brick (102.5 mm) thick, 1 m long, 2 m (26 courses) high, class (ii) mortar of 8–10 MPa; BWL3B two panels side by side; stood free on the ground, the tunnel's mortared to its floor |
+| Windrush Arena (WR1A, WR1B, WR2C) | 41 kg TNT on the ground, the walls side-on to it at 10.6, 13 and 15 m: 115, 73 and 53 kPa, 263, 241 and 234 kPa ms recorded beside them, positive phases of 10–12 ms |
+| Air Blast Tunnel (BWL2C, BWL3B) | A shock tube; in its 10.2 m section 60 and 57 kPa for 179 and 152 ms, 3,952 and 3,362 kPa ms, dynamic pressure 24 kPa |
+| Measured | Debris mass in 0.5 m bins along the radial or the tunnel; cracks from high-speed film (WR1A: along bed joints at 0.5 m within 5 ms and at mid-height by 20 ms, three pieces by 100 ms; BWL2C: at 0.5 and 1.5 m by 50 ms) |
+
+Not compared: WR1C (rebuilt in weaker mortar a week before, repeated as WR2C); MW1 (unmortared)
+and MW2, BWL1A, in the tunnel's 4.9 m section, thrown 20–50 m (a tunnel of over 50 m to model);
+the corner panels. Camera lights about 7 m behind BWL2C and BWL3B, and columns 30 m behind
+BWL1A, piled debris against them; the authors expect BWL2C's spread over 6–12 m without them.
+
+### The model
+
+The wall is the model's own brickwork (`StructureMaterial.masonry`, its bricks and mortar joints
+meshed on 37.5 mm elements: two to a course, six to a brick), three elements (112.5 mm) thick,
+its density cut to keep the wall's 390 kg; on a mortar bed of its joints' own bond, cohesion and
+friction (how the Windrush walls were based is not described). Nothing is fitted. The debris's
+mass is binned by where each node of the mesh lies at the end (3 s, or 2 s in the tunnel),
+broken off or not. Three things had to be put right first, each found by these walls:
+
+- **The air must reach well beyond the wall.** With 1.5 m of air behind the charge, 3.5 m either
+  side and 5 m above, the air drained out through its open faces and stayed 15–20 kPa below
+  ambient for as long as it was run, a few kPa lower before the wall than behind it, which
+  pushed the wall over towards the charge (1,300 N s, 3.4 m/s for the wall). The air here
+  reaches 6 m beyond the charge, the wall and either side, and 8 m up; it still settles about
+  5 kPa below ambient, the same on both faces. The tunnel's floor, roof and sides reflect.
+- **Debris on the ground must stop.** With the ground's default friction, a decay of the
+  sliding speed at 8/s while a node is pressed into the ground, the toppled walls crept on at
+  0.3–0.7 m/s for seconds: debris lying on the ground rings, and its lowest nodes are pressed in
+  only now and then. These walls are run with Coulomb friction, μ = 0.6
+  (`StructureSolver.groundFrictionCoefficient`, an option; see
+  [On the ground](structural-model.md#on-the-ground)).
+- **The tunnel's air must load the debris all the way down it.** Debris was loaded only within
+  4 m of the structure's starting bounds; `SolverConfiguration.debrisReach` now sets it, here
+  to the whole tunnel. The tunnel is a box 8 m wide and 6 m high, the measured wave driven in at
+  its inlet (its Friedlander curve fitted to the measured peak, positive phase and impulse, the
+  gas behind the shock by Rankine–Hugoniot, a simple wave behind that), 14 m of tunnel behind
+  the wall, air in 100 mm cells. The driver is the close-in breach session's draft.
+
+### Results
+
+The blast beside the walls, model / measured: 97.5 / 115 kPa and 278 / 263 kPa ms at 10.6 m,
+64.5 / 73 and 237 / 241 at 13 m, 49.1 / 53 and 222 / 234 at 15 m; in the tunnel, an impulse of
+4,171 / 3,952 and 3,702 / 3,362 kPa ms at the inlet and a face peak of 149 / 131 and 141 /
+124 kPa (the inlet gauges' peaks, 80 and 99 kPa against 60 and 57, catch the wall's reflection).
+
+The debris, distances along the radial or tunnel from the wall's upstream face, mass-weighted
+(the 90% figure is the bin by which nine tenths of the mass has been counted):
+
+| Wall | Mean, model / measured | 90% within | Furthest |
+|------|------------------------|------------|----------|
+| WR1A, 10.6 m | 1.90 / 0.23 m | 5.25 / 1.25 m | 7.5 / 3.0 m |
+| WR1B, 13 m | −1.95 / 0.64 m | −0.25 / 2.25 m | 0.5 / 6.0 m |
+| WR2C, 15 m | −1.41 / 0.42 m | 0.75 / 1.75 m | 1.0 / 3.5 m |
+| BWL2C, tunnel | 3.99 / 6.34 m | 7.25 / 8.25 m | 10 / 13 m |
+| BWL3B, tunnel | 3.19 / 5.99 m | 6.75 / 9.75 m | 15 / 15 m |
+
+**In the open the walls break the wrong way.** WR1A cracked along bed joints at 0.5 m and
+mid-height within 20 ms and folded into three pieces about the base and the upper crack, landing
+mostly within a metre of where it stood. The model's walls ride out the 10 ms blast leaning by
+centimetres, their foot cracked, and topple as one piece over 1.5 s: WR1A away from the charge,
+WR1B and WR2C towards it, so that the whole wall lies at full length on one side. On a stronger
+base (a concrete construction joint, or clamped) WR1A cracks one bed joint low down within
+100 ms and the rest topples downstream in one piece: a mean of 1.0–1.3 m and 90% within
+2.75–3.25 m, nearer; WR1B on that base still falls towards the charge (−1.76 m), and WR2C is
+not broken at all, standing still by 0.7 s where the test's wall broke. The breakage, not the
+blast, sets these distances, and the model makes too few cracks: one joint opens and the wall
+turns about it as a body, or none does.
+
+**In the tunnel the walls are thrown 50–60% as far.** BWL2C is pushed downstream at about
+4.5 m/s, opens bed joints at 0.62–0.69 m by 50 ms (measured 0.5 and 1.5 m), falls flat by 0.6 s
+and spreads from 1 to 9 m, where the measured debris lay mostly from 4.5 to 8 m (and would have
+gone further but for the lights). BWL3B, twice as wide, likewise. The loads match within 6–14%,
+so the shortfall is in what the debris feels in flight or how it breaks: the model's debris is
+mostly large intact pieces loaded on their faces, and loose nodes pushed as cubes, while 80% of
+the measured bricks stayed whole in pieces the wind carried on.
+
+### What this does and does not show
+
+It shows the loads are right beside these walls and in the tunnel (peaks within 15%, impulses
+within 10%), and that the model's masonry breaks into too few pieces: one or two joints open
+and the wall moves as a body, so in the open it falls at full length one way or the other, and
+in the tunnel it is thrown about half as far. Three faults in general use came to light and
+have options or fixes: open faces near a structure drain the air (keep them several metres
+away), debris did not come to rest on the ground (Coulomb friction, an option), and debris was
+loaded only within 4 m of where its structure stood (`debrisReach`). Two faults remain: a node
+of BWL3B's debris was flung at 1.1 km/s from 0.6 s (as broken blockwork's nodes are, under
+[perimeter walls](#perimeter-walls-under-field-blasts)), and the toppled walls ring on the
+ground with 100–200 J that nothing damps. Single tests of each wall; which way the open-air
+walls fall is decided by centimetres of lean, so a small change of input may turn it.
+
+For later: why the model's brickwork opens one joint where the walls opened two or three (the
+joints' bond, 0.25 MPa from Lourenço and Rots, against mortar a few days old; the base's
+strength; the element size); the tunnel walls of the 4.9 m section, thrown 20–50 m; the drag
+on broken pieces in flight.
+
 ## Blast loads against empirical references
 
 `blastbench validate` puts a 100 kg charge on rigid ground and compares the air solver with two
@@ -2615,30 +2779,36 @@ A premixed methane or propane cloud lit at a point (see [Gas deflagrations](defl
 
 - **A closed sphere** of stoichiometric methane, against the thin-flame model with the same
   burning velocity: the peak is the AICC pressure the heat was fitted to, and the energy is
-  conserved to 10⁻⁵; the times to half and nine tenths of the rise converge on the model's,
-  within 1% and 3% at 48 cells across the radius; the deflagration index rises with resolution
-  (35, 41 and 51 bar m/s on 12, 24 and 48 cells, against 76) without yet converging, the last
-  unburnt gas being far thinner than a cell. The rise times' agreement is partly two errors
-  cancelling, and the peak is the AICC pressure the heat was fitted to, so neither tests the
-  flame's physics against a measurement.
+  conserved to 10⁻⁵. A laminar flame's rise times pass through the model's at 48 cells across the
+  radius (within 1% and 3%) and run 9–13% ahead on 96, where the front corrugates on the grid. The
+  deflagration index rises about 9 bar m/s a doubling (35 to 60 on 12 to 96 cells, against 76):
+  the last tenth of the mixture burns in a layer under 1% of the radius thick, which a front four
+  cells thick cannot resolve on any grid run here. The peak is the AICC pressure the heat was
+  fitted to, so neither tests the flame's physics against a measurement.
 - **A tube**: a flame lit at the closed end runs at the expansion ratio times the burning
   velocity to within 10%, laminar or turbulent.
-- **The turbulent flame** (the default) is wrinkled by sub-grid turbulence after Bauwens et al.'s
-  LES, Bradley's correlation fed by the air's σ-model eddy viscosity. In the closed sphere it runs
-  4–8% ahead of the laminar flame, from the grid's own flow at the front.
-- **Vented rooms**: in FM Global's 63.7 m³ chamber, the model's peak pressures are a thirtieth to a
-  sixtieth of Molkov's correlation, and far below Bartknecht's and NFPA 68's. Against Bauwens et
-  al.'s six tests in that chamber, digitised from the paper's plots:
-  - Lit at the back wall, the model reaches 55–60% of the measured peaks (their LES 26–62%), with
-    flame speeds about half the measured over the first 2 m and within a fifth beyond 3 m. The
-    sub-grid wrinkling's one constant was fitted by Bauwens et al. in this chamber.
-  - Lit in the middle it reaches a sixth to a seventh, its flame stalling towards the back wall
-    where the tests' ran at 3 m/s.
+- **The default flame** is wrinkled by sub-grid turbulence after Bauwens et al.'s LES (Bradley's
+  correlation fed by the air's σ-model eddy viscosity) and by its cellular instability, from the
+  onset radius Bauwens et al. (2015) measured in FM Global's chamber, held beyond four onset radii
+  where their measurements end. In the closed sphere it runs 13–14% ahead of the thin-flame model.
+- **Vented rooms**, traced (`deflagration.md`, "Where a vented room's pressure was lost"): early
+  pressure goes as the flame's speed to about the sixth power, and the young flame was the
+  shortfall, mostly its missing instability. Against Bauwens et al.'s six tests in that chamber,
+  digitised from the paper's plots:
+  - Lit at the back wall, the model reaches 0.8–1.6 times the measured peaks (their LES 0.26–0.62),
+    with the measured flame speeds to 2 m and a third fast beyond. The sub-grid wrinkling's one
+    constant was fitted by Bauwens et al. in this chamber, and the instability's onset measured
+    there.
+  - Lit in the middle it reaches about 0.4 (their LES within a third), the back of its flame stalling
+    where the tests' ran at 3 m/s, and without the acoustically driven peaks.
+  - The model-to-measured ratio's geometric mean is 0.65, against 0.30 before the instability.
 
-  Obstacles the grid resolves now speed the flame (posts in the room: 0.55 kPa against 0.30). The
-  vented peak does not converge (0.64, 0.30 and 0.42 kPa on 0.2, 0.1 and 0.05 m cells); the flame
-  speed towards the vent roughly does. A young flame burns short of its speed until it is about
-  seventeen cells across. Illustrative.
+  Against the correlations it is a ninth to a twenty-fifth of Molkov's and below NFPA 68's, which
+  are conservative for this room (the tests measured a tenth to a quarter of Molkov's). Obstacles
+  the grid resolves speed the flame (posts in the room: 0.55 kPa against 0.30 with sub-grid
+  turbulence alone). Test 1's peak is 1.91, 0.89 and 0.75 kPa on 0.2, 0.1 and 0.05 m cells, its
+  flame speeds converging. A young flame burns short of its speed until it is about seventeen
+  cells across. Illustrative.
 
 ## A footing rocked on dry sand
 
@@ -2646,10 +2816,12 @@ S. Gajan and B. L. Kutter's centrifuge test SSG02_03, from the FoRCy database: a
 wall on a 2.8 × 0.65 m surface footing on dry Nevada sand at 80% relative density, pushed
 slowly to and fro through five packets of rising amplitude. On sand of 80 MPa the footing's
 moment follows the test within 11% to 14 mrad and levels off near the rigid footing's capacity,
-6–17% below the test's at 30 to 60 mrad. On the sand that settles under cycles (the default since
-the shaken tests below) it settles 1.7 to 2.3 times as much as the test did; on the bed elastic
-up to its capacity, a tenth as much. Details: [footings](structural-model.md#footings)
-(`blastbench rocking`, `--elastic` for the elastic bed).
+5–14% below the test's at 30 to 60 mrad. On the sand that settles under cycles (the default since
+the shaken tests below, with its heave since 2026-10-11) it settles 1.3 to 1.7 times as much as
+the test did (1.7 to 2.3 before the heave); on the bed elastic up to its capacity, a tenth as
+much. It dissipates 0.5 to 1.2 times the test's energy a cycle, falling with amplitude (below).
+Details: [footings](structural-model.md#footings) (`blastbench rocking`, `--elastic` for the
+elastic bed).
 
 ## A footing shaken on dry sand
 
@@ -2660,38 +2832,76 @@ each shaken at its container's base by a tapered 1.2 Hz sine at two or three lev
 (`blastbench shaking`, data in [Samples/FoRDy](../Samples/FoRDy/README.md)). The model drives
 the wall and footing with the measured base acceleration, every node and the footing pulled by
 −m a in the ground's frame, on the 80 MPa sand of the slow test with its 814 kPa bearing
-capacity; nothing was fitted to these tests. 2026-10-10:
+capacity. Nothing was fitted to these tests; the cyclic sand's one fitted number, its heave,
+was set on the slow test's settlement. 2026-10-11:
 
 | Event | Peak base | Rotation (mrad), measured / model | Settlement / L, measured / model / elastic bed | ∫ M dθ / (P L / 2), measured / model / elastic bed |
 |---|---|---|---|---|
-| SSG04 DSW 3 | 0.13 g | +3.6 −4.8 / +5.2 −5.6 | 0.0091 / 0.0087 / 0.0007 | 0.010 / 0.005 / 0.002 |
-| SSG04 DSW 4 | 0.53 g | +9.0 −9.9 / +9.2 −9.2 | 0.0162 / 0.0238 / 0.0003 | 0.062 / 0.021 / 0.002 |
-| SSG04 DSW 5 | 0.73 g | +9.0 −20.8 / +15.1 −11.1 | 0.0240 / 0.0362 / 0.0001 | 0.104 / 0.036 / 0.003 |
-| SSG04 SHW 3 | 0.12 g | +3.2 −2.5 / +3.9 −3.8 | 0.0083 / 0.0095 / 0.0010 | 0.008 / 0.004 / 0.001 |
-| SSG04 SHW 4 | 0.60 g | +15.0 −5.4 / +8.6 −7.8 | 0.0284 / 0.0220 / 0.0007 | 0.049 / 0.013 / 0.003 |
-| SSG03 DSW 3 (embedded) | 0.13 g | +5.1 −3.7 / +1.7 −1.4 | 0.0047 / 0.0029 / 0.0010 | 0.011 / 0.002 / 0.006 |
-| SSG03 DSW 4 | 0.49 g | +21.6 −7.1 / +10.2 −10.4 | 0.0186 / 0.0224 / 0.0000 | 0.119 / 0.041 / 0.015 |
-| SSG03 DSW 5 | 0.97 g | +49.5 +2.8 / +13.5 −13.6 | 0.0190 / 0.0217 / 0.0001 | 0.175 / 0.045 / 0.019 |
+| SSG04 DSW 3 | 0.13 g | +3.6 −4.8 / +5.2 −5.0 | 0.0091 / 0.0066 / 0.0007 | 0.010 / 0.007 / 0.002 |
+| SSG04 DSW 4 | 0.53 g | +9.0 −9.9 / +7.8 −10.9 | 0.0162 / 0.0173 / 0.0003 | 0.062 / 0.025 / 0.002 |
+| SSG04 DSW 5 | 0.73 g | +9.0 −20.8 / +11.0 −15.0 | 0.0240 / 0.0248 / 0.0001 | 0.104 / 0.041 / 0.003 |
+| SSG04 SHW 3 | 0.12 g | +3.2 −2.5 / +3.4 −3.1 | 0.0083 / 0.0082 / 0.0010 | 0.008 / 0.005 / 0.001 |
+| SSG04 SHW 4 | 0.60 g | +15.0 −5.4 / +9.3 −7.3 | 0.0284 / 0.0182 / 0.0007 | 0.049 / 0.015 / 0.003 |
+| SSG03 DSW 3 (embedded) | 0.13 g | +5.1 −3.7 / +1.4 −1.1 | 0.0047 / 0.0019 / 0.0010 | 0.011 / 0.002 / 0.006 |
+| SSG03 DSW 4 | 0.49 g | +21.6 −7.1 / +11.3 −11.6 | 0.0186 / 0.0199 / 0.0000 | 0.119 / 0.058 / 0.015 |
+| SSG03 DSW 5 | 0.97 g | +49.5 +2.8 / +15.3 −14.7 | 0.0190 / 0.0239 / 0.0001 | 0.175 / 0.077 / 0.019 |
 
 ![Moment against rotation in SSG04's DSW event 4, settlement through its three events, and settlement against rotation in the slow SSG02_03: measured, on cyclic sand and on the elastic bed](footing-shaken.png)
 
 On the bed elastic up to its bearing capacity, the footing settled a tenth to a two-hundredth
 of what the sand did, and its moment–rotation loops were thin: it went on rocking for seconds
 after each shake had stopped, where the test's footing came to rest. The sand that settles
-under cycles (see [footings](structural-model.md#footings)) settles 0.6 to 1.5 times as much
-as measured in every event, and follows the measured settlement through each shake, building
-while the shaking is strong and stopping with it. It takes Gajan's contact interface model's
-rules and the share given back from his vertical push on the same sand, so that the slow test
-and these are run on the same sand: it settles twice as much as the slow test did and about as
-much as these, which Gajan found too (the dynamic tests settling more for the same rotation,
-in part by the free field's own settlement, which here was a fifth to a quarter of the
-footing's in SSG04's heavier event). The peak rotation of the surface footing is within 22% where the
-test rocked both ways; where it lurched one way (SSG04 DSW 5, SHW 4 and SSG03 DSW 4 and 5, left leaning by
-8 to 27 mrad) the model rocks symmetrically and does not lurch. The loops are fatter than the
-elastic bed's but still a sixth to a half as wide as measured: the sand dissipates by settling
-under the toe, and by nothing else. The peak moment is up to 0.13 of P L / 2 above the test's
-on the lighter wall. The embedded footing's first event is the worst: it rocks a third as far
+under cycles (see [footings](structural-model.md#footings)) settles 0.4 to 1.3 times as much
+as measured, 0.6 to 1.3 times leaving out the embedded footing's first event (0.6 to 1.5 times
+before its heave), and follows the measured settlement through each shake, building while the
+shaking is strong and stopping with it. Its rules are Gajan's contact interface model's and its
+share given back his vertical push on the same sand; its heave, a part of each contact's
+crushing given back as the point lifts clear, was set on the slow test. The peak rotation of the
+surface footing is within 10% where the test rocked both ways; where it lurched one way
+(SSG04 DSW 5, SHW 4 and SSG03 DSW 4 and 5, left leaning by 8 to 27 mrad) the model rocks
+symmetrically and does not lurch. The peak moment is up to 0.14 of P L / 2 above the test's on
+the lighter wall. The embedded footing's first event is the worst: it rocks a quarter as far
 as the test did, its sides as stiff as Gazetas's formulas say.
+
+**Energy, cycle by cycle** (the cycles of the moment past 1 mrad: their mean half-range of
+rotation, the mean ∮ M dθ a cycle in 10⁻³ of P L / 2, and the median equivalent damping ratio
+W / (4π × ½ M₀ θ₀); printed by `blastbench shaking`):
+
+| Event | Measured | Elastic bed | Cyclic sand, no heave | Cyclic sand (default) |
+|---|---|---|---|---|
+| SSG04 DSW 3 | 2.8 mrad, 1.38, 25% | 3.9 mrad, 0.12, 0% | 3.6 mrad, 1.19, 12% | 3.4 mrad, 1.60, 16% |
+| SSG04 DSW 4 | 6.3 mrad, 5.57, 24% | 5.9 mrad, 0.11, 0% | 5.5 mrad, 1.70, 11% | 5.4 mrad, 2.04, 13% |
+| SSG04 DSW 5 | 8.7 mrad, 9.41, 28% | 7.6 mrad, 0.14, 0% | 7.0 mrad, 2.58, 11% | 7.2 mrad, 3.16, 13% |
+| SSG04 SHW 3 | 2.0 mrad, 1.01, 30% | 2.5 mrad, 0.05, 1% | 2.5 mrad, 0.60, 14% | 2.5 mrad, 0.80, 18% |
+| SSG04 SHW 4 | 4.9 mrad, 4.39, 32% | 5.2 mrad, 0.13, 1% | 4.3 mrad, 1.00, 12% | 4.5 mrad, 1.27, 13% |
+| SSG03 DSW 3 | 2.6 mrad, 1.90, 23% | 4.2 mrad, 0.72, 5% | 1.6 mrad, 0.78, 19% | 1.1 mrad, 0.80, 27% |
+| SSG03 DSW 4 | 8.0 mrad, 10.81, 29% | 7.6 mrad, 0.99, 3% | 6.4 mrad, 3.39, 14% | 7.3 mrad, 5.21, 15% |
+| SSG03 DSW 5 | 11.0 mrad, 15.87, 31% | 9.2 mrad, 1.28, 3% | 8.2 mrad, 3.72, 14% | 9.2 mrad, 6.39, 15% |
+| SSG02_03 a–e (slow) | 3–60 mrad: 1.3, 4.1, 10.9, 24.5, 61.1; 17–21% | 0.2, 0.3, 0.9, 1.9, 7.4; 0–2% | 1.1, 2.6, 6.3, 13.6, 26.2; 9–12% | 1.6, 3.5, 7.8, 15.1, 30.6; 10–17% |
+
+**Where the model's energy goes.** Run without the soil's mass and its cones, SSG04's lighter
+wall dissipates 5–10% more, not less, as contacts' damping replaces the radiation: at 1.2 Hz,
+rocking radiates next to nothing into the soil, as Wolf's rocking cone says it should at low
+frequency. Without the body's mass-proportional damping (0.2/s) it dissipates the same within
+8%. Sliding is a few millimetres and does no work on the moment. What is left is the sand
+yielding under the toe. The test's sand dissipated 17–21% of critical a cycle rocked slowly
+and 23–32% shaken, all but flat with amplitude; the elastic bed, almost nothing; the cyclic
+sand, 9–12% without its heave and 10–18% with it. The heave brings the settlement down and
+the energy up together: the sand crushed under the toe, then partly pushed back under the
+lifting heel, is crushed again in the next half-cycle (Gajan's rebounding, §6.5.2.2 of his
+dissertation). It is not enough. The test's loops cross zero moment with the footing still
+leaning a third of its amplitude towards the side just crushed, so the sand under the toe was
+crushed several millimetres a half-cycle over the whole contact, rounding the surface under
+the footing; the model crushes the outer few points of the bed as deep but leaves the middle
+flat, and its loops cross near upright. The bed's points do not interact, so the crushing of
+the toe cannot spread inwards as the sand's did. Points that also dissipate below their past
+force by friction on it, as sand's own damping (15–25% at these strains, H. B. Seed and I. M.
+Idriss, 1970) would, barely widen the footing's loops: most of its moment–rotation path is
+the heel lifting, which stores energy and gives it back. And in the shaken tests the sand
+itself was shaken, which the model's sand, moving rigidly with the base, is not: the shaken
+tests dissipated about ten points of damping more than the slow one, for the same model. All these
+were tried on a quasi-static replica of the bed driven by the slow test's measured rotation
+(within 2% of the model's moment and 4% of its settlement there) before the shaken runs.
 
 ## Hourglass control
 
@@ -3016,6 +3226,72 @@ checks; see the [shell model](shell-model.md#verification).
 
 These establish that the equations are solved as intended. They say nothing about whether the
 equations are the right ones.
+
+## Convergence on today's defaults
+
+The independent review's larger issue 2 ([validation-review.md](validation-review.md)): no
+structural result had been shown to converge on today's defaults. Each case is run here on a
+sequence of meshes, three levels or more, with the structure's time step halved on the finest
+(or, where that would take half a day, on the next), all on one commit: origin/main at
+`e4b43dc` (11 October 2026), plus a harness-only change that lets `--step-divisor` reach the
+impact, close-in and chamber benches (`54dff3e`; no model code or default touched). The case
+matrix's commands are used (`Scripts/concrete-matrix.py`), with `--layers` or `--h` for the
+mesh; outputs are in `/Volumes/StudioData/bombcad/convergence/`. Where three meshes change
+monotonically, the observed order and a Richardson estimate follow I. B. Celik et al.'s
+procedure for unequal refinement ratios (*J. Fluids Eng.* 130, 078001, 2008;
+`convergence/richardson.py`). None of these tests was repeated, so the measured scatter is not
+known; a change with the mesh is set against the gap to the measurement instead.
+
+| Case | Quantity (measured) | Coarse → fine | Step halved on the finest | Trend |
+|---|---|---|---|---|
+| Contest slab | peak (108 mm) and residual (91 mm) | 4: 114 / 91; 8: 113 / 76; 16: 121 / 90; 32: 124 / 98 mm, 15,067 of 4.4 million elements failed on 32 | 32: 312 mm and 294 left, 110,214 failed: runs away | peak rising more slowly with each halving from 8 (order 1.4, extrapolated 126 mm, 117%), but the finest mesh fails with half the step; residual not monotonic |
+| Janney's beam | peak moment (41.5 kN m), and where it fails (42 mm) | 12: 43.0, fails at 40 mm; 24: 39.4, holds to 60 mm; 36: 34.2, fails at 11 mm; 48: 24.3, fails at 7 mm | 36: 33.8 kN m, fails at 11 mm (48 halved would take half a day) | flips: the finer meshes break before the test's yield |
+| OA1 | peak load (332 kN) | 12: 437; 24: 344; 36: 348; 48: 369 kN | 379 kN | falls to 24, then rises again: not converged |
+| Saatci, light drops | peak (9.3, 12.1, 10.0 mm) | SS0a-1 17.0, 16.5, 16.3; SS1a-1 13.6, 14.1, 14.0; SS2a-1 12.4, 12.8, 12.8 (16, 24, 32) | SS0a-1 15.4 | settled within 2–5% by 24 (SS0a-1 order 1.6, extrapolated 16.0) |
+| Saatci, heavy drops | peak (39.5, 37.9, 35.3 mm) | SS1b-1 40.5, 46.4, 47.6; SS2b-1 37.1, 42.5, 42.6; SS3b-1 33.6, 35.0, 37.0 | SS1b-1 48.1 | rise 15–18% from 16 to 32; SS1b-1 and SS2b-1 settle (extrapolated 48.3 and 42.6), SS3b-1 still rising |
+| Saatci SS0b-1 | failed in the test | 66.5, 108.7, 87.3 mm; 2,359, 5,156, 8,749 elements removed | | fails on every mesh; its deflection does not converge |
+| Ando A24-3 | peak (11 mm) | 11.2, 14.5, 9.7 mm (16, 24, 32) | 9.5 mm | oscillates |
+| Ando A36-5 | peak (66 mm, broken) | 55.9, 65.0, 137.9 mm; 493, 2,122, 8,451 removed | | breaks apart on 32 |
+| Ando B48-5 | peak (55 mm) | 54.0, 71.9, 70.5 mm | | settles near 71 mm, 29% high |
+| Chiquito P7 | left down (340 mm), not holed | 6: 120 (peak 169); 8: 135 (240); 12: 130 (182); 16: holed, peak 247 (fine air) | 16: holed, peak 243 | flips: holed on 16 only |
+| The chamber | roof edge, peak (paper's model 87 mm) and left (95 mm measured) | 0.1 m: 49 / 25 mm, 9 elements failed; 50 mm: 56 / 39 mm, 61,094 failed; 25 mm: 74 mm at 20 ms and rising, then the solution fails (not a number) by 31 ms with 491,071 of 7.5 million elements failed | 50 mm: 56 / 47 mm, 43,189 failed | peak rising; damage grows with refinement and changes with the step; the finest mesh breaks down |
+
+(The meshes are elements through the depth or thickness; for the chamber, the element size,
+the air at 0.1 m throughout. Chiquito's slab is on 25 mm air refined by 2. The chamber cannot
+be meshed at 0.2 m. Ando's beams are three of the nineteen, the case matrix's quick set.)
+
+**What converges.** Saatci's light drops settle within a few per cent by 24 elements, 16 to 75%
+above the measured peaks. The contest slab's peak rises more slowly with each halving from 8
+elements (by 8 mm, then 3), towards about 126 mm, 17% above the measurement. Saatci's heavy
+drops SS1b-1 and SS2b-1 settle by 32 elements, 12 to 20% high, and Ando's B48-5 near 71 mm, 29%
+high. In each, the mesh that agreed with the test (16 elements for the struck beams, 8 for the
+slab) is the coarse end of the sequence: its agreement is partly the mesh's.
+
+**What does not.** Janney's beam holds on 12 and 24 elements and breaks on 36 and 48, at 11 and
+7 mm, before the test's beam had yielded; halving the step on 36 changes nothing, so it is the
+mesh. OA1's peak falls from 12 to 24 elements and rises again by 48, 7% above the 24-element
+value that agreed. Chiquito's P7 is left 120 to 135 mm down on 6 to 12 elements and holed
+through on 16, with half the step as well. Ando's A24-3 oscillates, and A36-5 (broken in the
+test) breaks apart on 32. On the chamber the roof's peak rises with refinement, the elements
+lost grow from a handful to tens of thousands, and on 25 mm elements the solution breaks down
+within 31 ms. And the contest slab's 32-element run, which holds
+at the default step, runs away with half of it, as the review's strip did on 32 elements.
+
+**The step.** Halving the structure's step leaves most results within a few per cent (OA1 +3%,
+Saatci's SS0a-1 −6% and SS1b-1 +1%, A24-3 −2%, the chamber's peak unchanged) but not the failures:
+the chamber's damage and residual move by a quarter, and the slab on 32 elements fails. One lead
+for later, not shown here: the strain rate the rate laws see is a running average over 50 steps
+(`StructureSolver`'s rate filter), so its window, and the strength it gives, changes with the
+step.
+
+**What it means.** No structural result has been shown to converge on today's defaults with
+the measurements inside the change. Where a result settles it does so above the measurement,
+and the meshes quoted elsewhere in this document as agreeing are the coarse ones: 8 for the
+slab, 16 for the struck beams, 24 for OA1 and Janney, 6 to 12 for the close-in slabs. Those
+agreements stand as comparisons at a stated mesh, not as converged answers. Failure (Janney,
+P7, the slab on 32, the chamber) depends on the mesh and, on fine meshes, on the step: the
+crack and removal laws regularise energy over one element, and nothing yet holds a failure
+mode fixed under refinement.
 
 ## What is missing
 
