@@ -175,7 +175,7 @@ struct IFCStructureTests {
     @Test("Inclined elements stay rigid; gaps up to the tolerance are closed so members are tied")
     func inclinedAndGaps() throws {
         let rafter = try element(
-            2, "Rafter", "IfcBeam", [box(SIMD3(0, 1, 3.2), SIMD3(4, 1.2, 3.4))], turn: 0.5)
+            8, "Rafter", "IfcBeam", [box(SIMD3(0, 1, 3.2), SIMD3(4, 1.2, 3.4))], turn: 0.5)
         // The slab 30 mm above the walls' tops.
         var elements = try room().filter { $0.ifcClass == "IfcWall" }
         elements.append(try element(5, "Roof", "IfcSlab", [box(SIMD3(0, 0, 3.03), SIMD3(4, 4, 3.23))]))
@@ -304,6 +304,81 @@ struct IFCStructureTests {
         let options = try JSONDecoder().decode(
             IFCStructure.Options.self, from: JSONEncoder().encode(IFCStructure.Options(untied: [joint.key])))
         #expect(options.untied == [joint.key])
+    }
+
+    @Test("Past the solver's eight materials the nearest of a kind are merged, and it says by how much")
+    func mergedMaterials() throws {
+        // Twelve steel I-beams of different depths, each a material of its own.
+        var elements: [ImportedMesh.BuildingElement] = []
+        for n in 0..<12 {
+            let d = 0.2 + Float(n) * 0.03
+            let (b, tf, tw): (Float, Float, Float) = (0.15, 0.012, 0.007)
+            let y = Float(n) * 1.0
+            elements.append(
+                try element(
+                    n + 1, "Beam \(n)", "IfcBeam",
+                    [
+                        box(SIMD3(0, y - b / 2, 3), SIMD3(5, y + b / 2, 3 + tf)),
+                        box(SIMD3(0, y - tw / 2, 3 + tf), SIMD3(5, y + tw / 2, 3 + d - tf)),
+                        box(SIMD3(0, y - b / 2, 3 + d - tf), SIMD3(5, y + b / 2, 3 + d)),
+                    ], materials: [.init(name: "Steel S355")]))
+        }
+        let structure = try IFCStructure(elements: elements)
+        #expect(structure.model.materials.count <= StructureModel.maxMaterials)
+        let note = try #require(structure.assumptions.first { $0.contains("merged into") })
+        #expect(note.contains("stiffness changed by up to"))
+        #expect(structure.members.contains { $0.material?.contains("merged") == true })
+        // Under the limit nothing is merged.
+        let few = try IFCStructure(elements: Array(elements.prefix(4)))
+        #expect(!few.assumptions.contains { $0.contains("merged into") })
+    }
+
+    @Test("A slab of a plank and a turned lattice bar is square by its volume, and one member")
+    func assembly() throws {
+        let owner = ImportedMesh.BuildingElement.Assembly(
+            id: String(format: "%022d", 50), name: "Plank floor", ifcClass: "IfcSlab")
+        var plank = try element(
+            1, "Plank", "IfcBuildingElementProxy", [box(SIMD3(0, 0, 0), SIMD3(6, 2.4, 0.06))])
+        var bar = try element(
+            2, "Lattice", "IfcBuildingElementProxy", [box(SIMD3(1, 1, 0.06), SIMD3(1.3, 1.02, 0.08))],
+            turn: 0.3)
+        plank.assembly = owner
+        bar.assembly = owner
+        let structure = try IFCStructure(elements: [plank, bar])
+        let floor = try #require(structure.members.first)
+        #expect(structure.members.count == 1 && floor.name == "Plank floor" && floor.role == .shell)
+        #expect(floor.parts.map(Set.init) == [plank.partID, bar.partID])
+        #expect(floor.notes.contains { $0.contains("Built of 2 parts") })
+        // An assembly kept rigid keeps every part an obstacle in the air.
+        var lump = owner
+        lump.ifcClass = "IfcBuildingElementProxy"
+        plank.assembly = lump
+        bar.assembly = lump
+        let wall = try element(3, "Wall", "IfcWall", [box(SIMD3(0, 3, 0), SIMD3(4, 3.2, 3))])
+        let mixed = try IFCStructure(elements: [plank, bar, wall])
+        #expect(Set(mixed.report.rigidParts) == [plank.partID, bar.partID])
+    }
+
+    @Test(
+        "Parallel plates closer than a fifth of an element share a midsurface; a cavity apart they stay apart"
+    )
+    func nearPlates() throws {
+        // Two walls side by side in x, their midsurfaces `offset` apart in y, under a slab
+        // spanning both: two near midsurfaces would leave a sliver of slab elements between them.
+        func mesh(_ offset: Float) throws -> ShellMesh {
+            let model = StructureModel(
+                solids: [
+                    box(SIMD3(0, 0, 0), SIMD3(4, 0.2, 3)),
+                    box(SIMD3(4.5, offset, 0), SIMD3(8.5, offset + 0.2, 3)),
+                    box(SIMD3(0, -1, 3), SIMD3(8.5, 2, 3.2)),
+                ], elementSize: 0.25)
+            return try ShellMesh(model: model)
+        }
+        let near = try mesh(0.002)
+        #expect(near.elements.allSatisfy { $0.size.min() >= 0.2 * 0.25 - 1e-4 })
+        let apart = try mesh(0.15)
+        let levels = Set(apart.positions.map(\.y))
+        #expect(levels.contains { abs($0 - 0.1) < 1e-5 } && levels.contains { abs($0 - 0.25) < 1e-5 })
     }
 
     @Test("A flanged beam is a rectangle 0.6 of its depth wide, as stiff, strong and heavy as the shape")

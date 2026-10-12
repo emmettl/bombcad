@@ -52,8 +52,11 @@ public struct IFCStructure: Sendable {
     /// What became of one element.
     public struct Member: Sendable, Hashable, Codable, Identifiable {
         public var id: String
-        /// Its source part (`ImportedMesh.BuildingElement.partID`).
+        /// Its source part (`ImportedMesh.BuildingElement.partID`), its first part's for an
+        /// assembly.
         public var partID: Int
+        /// For an element built of parts (`ImportedMesh.BuildingElement.assembly`), all of them.
+        public var parts: [Int]?
         public var name: String
         public var ifcClass: String
         public var role: Role
@@ -144,7 +147,9 @@ public struct IFCStructure: Sendable {
         public var assumptions: [String]
         public var yaw: Float
         public var shift: SIMD3<Float>
-        public var rigidParts: [Int] { members.filter { $0.role == .rigid }.map(\.partID) }
+        public var rigidParts: [Int] {
+            members.filter { $0.role == .rigid }.flatMap { $0.parts ?? [$0.partID] }
+        }
         /// The elements whose material is the stated default, not read from the IFC.
         public var assumedMaterials: [Member] { members.filter(\.assumed) }
     }
@@ -180,17 +185,43 @@ public struct IFCStructure: Sendable {
         }
         var assumptions: [String] = []
         var supportNotes: [String] = []
-        let sorted = elements.sorted { $0.globalID < $1.globalID }
+        // An element built of parts (a wall of blocks, a slab of planks) is one member: its
+        // parts' meshes together, as the element they belong to.
+        var groups:
+            [String: (
+                element: ImportedMesh.BuildingElement, triangles: [ImportedMesh.Triangle],
+                meshes: [[ImportedMesh.Triangle]],
+                parts: [Int]
+            )] = [:]
+        for element in elements.sorted(by: { $0.globalID < $1.globalID }) {
+            let key = element.assembly?.id ?? element.globalID
+            if groups[key] == nil {
+                var representative = element
+                if let assembly = element.assembly {
+                    representative.globalID = assembly.id
+                    representative.name = assembly.name
+                    representative.ifcClass = assembly.ifcClass
+                    representative.assembly = nil
+                }
+                groups[key] = (representative, [], [], [])
+            }
+            groups[key]!.triangles += element.mesh.triangles
+            groups[key]!.meshes.append(element.mesh.triangles)
+            groups[key]!.parts.append(element.partID)
+            if groups[key]!.element.materials == nil { groups[key]!.element.materials = element.materials }
+        }
+        let units = groups.values.sorted { $0.element.globalID < $1.element.globalID }
+        let sorted = units.map(\.element)
         guard !sorted.isEmpty else { throw ImportedMesh.ImportError.invalid("No IFC elements to convert.") }
 
         // Turn the building so that its walls lie along the axes.
-        let all = sorted.flatMap { $0.mesh.triangles.flatMap { [$0.a, $0.b, $0.c] } }
+        let all = units.flatMap { $0.triangles.flatMap { [$0.a, $0.b, $0.c] } }
         let low = all.reduce(SIMD3<Float>(repeating: .infinity), simd_min)
         let high = all.reduce(SIMD3<Float>(repeating: -.infinity), simd_max)
         let centre = 0.5 * (low + high)
         var turn = SIMD2<Float>.zero
-        for element in sorted where Self.family(element.ifcClass) == .plate {
-            for t in element.mesh.triangles {
+        for unit in units where Self.family(unit.element.ifcClass) == .plate {
+            for t in unit.triangles {
                 let normal = simd_cross(t.b - t.a, t.c - t.a)
                 let horizontal = SIMD2(normal.x, normal.y)
                 let area = simd_length(horizontal)
@@ -213,9 +244,30 @@ public struct IFCStructure: Sendable {
             return centre + SIMD3(c * d.x - s * d.y, s * d.x + c * d.y, d.z)
         }
 
-        let shapes: [Shape] = sorted.map { element in
-            let triangles = element.mesh.triangles.map {
+        let shapes: [Shape] = units.map { unit in
+            let element = unit.element
+            let triangles = unit.triangles.map {
                 ImportedMesh.Triangle(a: rotate($0.a), b: rotate($0.b), c: rotate($0.c))
+            }
+            // An assembly is square where the parts holding nine tenths of its volume are: round
+            // bars in a precast plank do not tip it.
+            var squareVolume: Float = 0
+            var allVolume: Float = 0
+            for part in unit.meshes where unit.meshes.count > 1 {
+                var square: Float = 0
+                var total: Float = 0
+                var volume: Float = 0
+                for t in part {
+                    let (a, b, c) = (rotate(t.a), rotate(t.b), rotate(t.c))
+                    let normal = simd_cross(b - a, c - a)
+                    let area = simd_length(normal)
+                    guard area > 0 else { continue }
+                    total += area
+                    if simd_reduce_max(simd_abs(normal)) / area > cos(Float(3) * .pi / 180) { square += area }
+                    volume += simd_dot(a, simd_cross(b, c)) / 6
+                }
+                allVolume += abs(volume)
+                if total > 0 && square >= 0.9 * total { squareVolume += abs(volume) }
             }
             let points = triangles.flatMap { [$0.a, $0.b, $0.c] }
             let box = Box(
@@ -234,8 +286,11 @@ public struct IFCStructure: Sendable {
                 if simd_reduce_max(simd_abs(normal)) / area > cos(Float(3) * .pi / 180) { square += area }
                 volume += simd_dot(t.a, simd_cross(t.b, t.c)) / 6
             }
+            let aligned =
+                unit.meshes.count > 1
+                ? allVolume > 0 && squareVolume >= 0.9 * allVolume : total > 0 && square >= 0.9 * total
             return Shape(
-                element: element, triangles: triangles, box: box, aligned: total > 0 && square >= 0.9 * total,
+                element: element, parts: unit.parts, triangles: triangles, box: box, aligned: aligned,
                 volume: abs(volume))
         }
 
@@ -267,22 +322,24 @@ public struct IFCStructure: Sendable {
             envelopes.append(shape.box)
             solidMaterials.append(material)
             solidParts.append(
-                modelID.map { StructureModel.SourcePart(modelID: $0, partID: shape.element.partID) })
+                modelID.map { StructureModel.SourcePart(modelID: $0, partID: shape.parts[0]) })
             return solids.count - 1
         }
 
         for shape in shapes {
             let element = shape.element
             var member = Member(
-                id: element.globalID, partID: element.partID, name: element.name, ifcClass: element.ifcClass,
-                role: .rigid, solid: nil,
+                id: element.globalID, partID: shape.parts[0],
+                parts: shape.parts.count > 1 ? shape.parts : nil,
+                name: element.name, ifcClass: element.ifcClass, role: .rigid, solid: nil,
                 material: nil, materialSource: "", assumed: false, notes: [])
+            let picked = shape.parts.lazy.compactMap { chosen[$0] }.first
             let extent = shape.box.size
             let thin = (0..<3).min { extent[$0] < extent[$1] } ?? 0
             let long = (0..<3).max { extent[$0] < extent[$1] } ?? 2
             let layers = element.materials ?? materials[element.globalID] ?? []
             func read() -> Reading {
-                if let picked = chosen[element.partID] {
+                if let picked {
                     return Reading(
                         material: picked, source: "Chosen: \(picked.name)", assumed: false,
                         thickness: Self.material(of: layers, default: picked).thickness, notes: [])
@@ -305,7 +362,7 @@ public struct IFCStructure: Sendable {
                         "Not plate-like (\(Self.metres(extent))): kept as a rigid obstacle.")
                     break
                 }
-                if finishes && chosen[element.partID] == nil {
+                if finishes && picked == nil {
                     member.notes.append(
                         "A finish (\(layers.isEmpty ? element.name : layers.map(\.name).joined(separator: ", "))): kept "
                             + "as a rigid obstacle, not load-bearing.")
@@ -439,6 +496,9 @@ public struct IFCStructure: Sendable {
             case .other:
                 member.notes.append("Not a wall, slab, member or footing: kept as a rigid obstacle.")
             }
+            if shape.parts.count > 1 {
+                member.notes.append("Built of \(shape.parts.count) parts, taken together as one.")
+            }
             members.append(member)
         }
 
@@ -516,46 +576,53 @@ public struct IFCStructure: Sendable {
                     + (closed.count > 12 ? "; and \(closed.count - 12) more." : "."))
         }
 
-        // Slabs a little apart in level are put on one midsurface, the smaller moved to the
-        // larger's, with the ends of members that stand on them or hang from them: the mesh's
-        // levels run through the whole building, so two near ones leave slivers in every wall
-        // that crosses both.
-        var aligned: [String] = []
-        let plates = structural.filter { members[$0].role == .shell }.compactMap { a in
+        // Parallel plates a little apart (slabs in level, walls in plan) are put on one
+        // midsurface, the smaller moved to the larger's, with the ends of members that stand on
+        // them or meet them: the mesh's lines run through the whole building, so two near ones
+        // leave slivers in every plate that crosses both.
+        var aligned: [[String]] = [[], [], []]
+        // Panes go with them, or they would be left on their wall's old midsurface.
+        let plates = structural.filter { members[$0].role == .shell || members[$0].role == .pane }.compactMap
+        { a in
             members[a].solid.map { (member: a, solid: $0) }
-        }.filter { thinAxis(solids[$0.solid]) == 2 }
+        }
         for (x, a) in plates.enumerated() {
             for b in plates[(x + 1)...] {
                 let (i, j) = (a.solid, b.solid)
+                let k = thinAxis(solids[i])
+                guard thinAxis(solids[j]) == k else { continue }
                 let offset =
-                    0.5 * (solids[i].min.z + solids[i].max.z) - 0.5 * (solids[j].min.z + solids[j].max.z)
+                    0.5 * (solids[i].min[k] + solids[i].max[k]) - 0.5 * (solids[j].min[k] + solids[j].max[k])
                 guard abs(offset) > 1e-4,
                     abs(offset)
-                        <= min(0.5 * min(solids[i].size.z, solids[j].size.z), 0.25 * options.elementSize)
+                        <= min(0.5 * min(solids[i].size[k], solids[j].size[k]), 0.25 * options.elementSize)
                 else { continue }
-                let area = { (n: Int) in solids[n].size.x * solids[n].size.y }
+                let area = { (n: Int) in
+                    solids[n].size.x * solids[n].size.y * solids[n].size.z / solids[n].size[k]
+                }
                 let (moved, by) = area(i) < area(j) ? (a, -offset) : (b, offset)
                 let old = solids[moved.solid]
+                let across = (0..<3).filter { $0 != k }
                 for other in structural {
                     guard let n = members[other].solid, n != moved.solid,
-                        thinAxis(solids[n]) != 2 || members[other].role == .beam,
-                        (0..<2).allSatisfy({
+                        thinAxis(solids[n]) != k || members[other].role == .beam,
+                        across.allSatisfy({
                             solids[n].max[$0] >= old.min[$0] - 1e-4 && old.max[$0] >= solids[n].min[$0] - 1e-4
                         })
                     else { continue }
-                    if abs(solids[n].min.z - old.max.z) < 1e-4 { solids[n].min.z += by }
-                    if abs(solids[n].max.z - old.min.z) < 1e-4 { solids[n].max.z += by }
+                    if abs(solids[n].min[k] - old.max[k]) < 1e-4 { solids[n].min[k] += by }
+                    if abs(solids[n].max[k] - old.min[k]) < 1e-4 { solids[n].max[k] += by }
                 }
-                solids[moved.solid].min.z += by
-                solids[moved.solid].max.z += by
-                aligned.append("\(members[moved.member].name) by \(Self.millimetres(abs(by)))")
+                solids[moved.solid].min[k] += by
+                solids[moved.solid].max[k] += by
+                aligned[k].append("\(members[moved.member].name) by \(Self.millimetres(abs(by)))")
             }
         }
-        if !aligned.isEmpty {
+        for (k, list) in aligned.enumerated() where !list.isEmpty {
             assumptions.append(
-                "Slabs a little apart in level put on one midsurface: "
-                    + aligned.prefix(12).joined(separator: "; ")
-                    + (aligned.count > 12 ? "; and \(aligned.count - 12) more." : "."))
+                (k == 2 ? "Slabs a little apart in level" : "Walls a little apart in plan")
+                    + " put on one midsurface: " + list.prefix(12).joined(separator: "; ")
+                    + (list.count > 12 ? "; and \(list.count - 12) more." : "."))
         }
 
         // Pairs the user untied: the second drawn back from the first along the axis they overlap
@@ -644,6 +711,19 @@ public struct IFCStructure: Sendable {
             assumptions.append(
                 "The structure stands with its lowest member on the ground: lowered \(Self.metres(base)) from its placed "
                     + "height\(footings.isEmpty ? "" : ", its footings below the ground").")
+        }
+
+        // The solver holds eight materials: past that, the nearest of a kind are merged.
+        let fitted = Self.merging(
+            solidMaterials, volumes: solids.map { $0.size.x * $0.size.y * $0.size.z },
+            keeping: options.defaultMaterial,
+            limit: StructureModel.maxMaterials - (options.reinforcement == nil ? 0 : 1))
+        if let note = fitted.note {
+            solidMaterials = fitted.materials
+            for n in members.indices {
+                if let index = members[n].solid { members[n].material = solidMaterials[index].name }
+            }
+            assumptions.append(note)
         }
 
         var model = StructureModel(
@@ -862,9 +942,87 @@ public struct IFCStructure: Sendable {
         self.shift = shift
     }
 
+    /// `materials` (one per solid, of `volumes`) with the nearest two of a kind merged, again and
+    /// again, until there are at most `limit` with `keeping` (the default, never merged): their
+    /// stiffness, density and strengths the volume-weighted means. Nearness is the sum of the
+    /// logarithmic differences of those. The note says how many were merged and the largest change
+    /// in stiffness it made; nil where nothing had to be.
+    static func merging(
+        _ materials: [StructureMaterial], volumes: [Float], keeping: StructureMaterial, limit: Int
+    ) -> (materials: [StructureMaterial], note: String?) {
+        var kinds: [StructureMaterial] = []
+        for material in materials where material != keeping && !kinds.contains(material) {
+            kinds.append(material)
+        }
+        guard kinds.count + 1 > limit else { return (materials, nil) }
+        // Each kind's members (indices into `kinds` as first given) and volume.
+        var groups = kinds.map { kind in
+            (
+                material: kind, members: [kind],
+                volume: zip(materials, volumes).filter { $0.0 == kind }.reduce(Float(0)) { $0 + $1.1 }
+            )
+        }
+        func strength(_ m: StructureMaterial) -> Float {
+            m.model == .concrete ? m.compressiveStrength : m.yieldStress
+        }
+        func distance(_ a: StructureMaterial, _ b: StructureMaterial) -> Float {
+            guard a.model == b.model, a.isTransparent == b.isTransparent else { return .infinity }
+            func log(_ x: Float, _ y: Float) -> Float {
+                x > 0 && y > 0 ? abs(Foundation.log(x / y)) : (x == y ? 0 : 10)
+            }
+            return log(a.youngsModulus, b.youngsModulus) + log(a.density, b.density)
+                + log(strength(a), strength(b))
+        }
+        while groups.count + 1 > limit {
+            var best: (Int, Int, Float)?
+            for i in groups.indices {
+                for j in groups.indices where j > i {
+                    let d = distance(groups[i].material, groups[j].material)
+                    if d < (best?.2 ?? .infinity) { best = (i, j, d) }
+                }
+            }
+            guard let (i, j, _) = best else { break }
+            let (a, b) = (groups[i], groups[j])
+            let total = max(a.volume + b.volume, 1e-12)
+            func mean(_ x: Float, _ y: Float) -> Float { (x * a.volume + y * b.volume) / total }
+            var merged = a.volume >= b.volume ? a.material : b.material
+            merged.youngsModulus = mean(a.material.youngsModulus, b.material.youngsModulus)
+            merged.density = mean(a.material.density, b.material.density)
+            if merged.yieldStress < 1e29 {
+                merged.yieldStress = mean(a.material.yieldStress, b.material.yieldStress)
+            }
+            merged.compressiveStrength = mean(a.material.compressiveStrength, b.material.compressiveStrength)
+            merged.tensileStrength = mean(a.material.tensileStrength, b.material.tensileStrength)
+            let members = a.members + b.members
+            let base = merged.name.components(separatedBy: " (").first ?? merged.name
+            merged.name = "\(base) (\(members.count) merged)"
+            groups[i] = (merged, members, a.volume + b.volume)
+            groups.remove(at: j)
+        }
+        var replacement: [StructureMaterial: StructureMaterial] = [:]
+        var change: Float = 0
+        var merged = 0
+        for group in groups where group.members.count > 1 {
+            merged += group.members.count
+            for member in group.members {
+                replacement[member] = group.material
+                change = max(change, abs(group.material.youngsModulus / member.youngsModulus - 1))
+            }
+        }
+        guard merged > 0 else { return (materials, nil) }
+        return (
+            materials.map { replacement[$0] ?? $0 },
+            "\(merged) materials merged into \(groups.filter { $0.members.count > 1 }.count) to fit the solver's limit of "
+                + "\(limit), the nearest of a kind together (volume-weighted means): stiffness changed by up to "
+                + "\(Int((change * 100).rounded()))% from an element's own."
+        )
+    }
+
     /// An element turned into the structure's frame.
     struct Shape {
         var element: ImportedMesh.BuildingElement
+        /// Its source parts: its own, or an assembly's.
+        var parts: [Int]
         var triangles: [ImportedMesh.Triangle]
         var box: Box
         var aligned: Bool
