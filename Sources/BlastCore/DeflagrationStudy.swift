@@ -73,7 +73,7 @@ public struct ClosedVesselStudy: Sendable {
 
     public func run(
         device: MTLDevice, duration: Double? = nil,
-        report: ((Double, DeflagrationState, Float) -> Void)? = nil
+        report: ((Double, DeflagrationState, Float) -> Void)? = nil, monitor: ((BlastSolver) -> Void)? = nil
     ) throws -> Result {
         let dx = radius / Float(cellsPerRadius)
         let side = 2 * radius + 2 * dx
@@ -126,13 +126,14 @@ public struct ClosedVesselStudy: Sendable {
         let energyStart = solver.totals().energy
 
         let end = duration ?? 1.8 * reference.completion
-        if let report {
-            // Every twentieth of the run: the time, the flame and the gauge's pressure.
-            for n in 1...20 {
-                solver.advance(until: end * Double(n) / 20)
+        if report != nil || monitor != nil {
+            // Every fortieth of the run: the time, the flame and the gauge's pressure.
+            for n in 1...40 {
+                solver.advance(until: end * Double(n) / 40)
                 if let state = solver.deflagrationState() {
-                    report(solver.time, state, solver.gaugeHistories[0].last?.pressure ?? 0)
+                    report?(solver.time, state, solver.gaugeHistories[0].last?.pressure ?? 0)
                 }
+                monitor?(solver)
             }
         } else {
             solver.advance(until: end)
