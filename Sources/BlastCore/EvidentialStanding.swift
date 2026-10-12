@@ -133,7 +133,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-6"
+    public static let currentTable = "standing-table-7"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -694,7 +694,9 @@ public enum StandingTable {
                 title: "Structure from IFC", affects: structure, limit: nil,
                 note:
                     "Its shells and beams, their materials, the connections where they meet and the supports "
-                    + "were inferred from an IFC building and are listed in its report; the shell model's bands "
+                    + "were inferred from an IFC building and are listed in its report, with each concrete "
+                    + "member's reinforcement, read from the IFC where it gives it, else the stated default or none; "
+                    + "the shell model's bands "
                     + "apply only where all of them match what was compared, and the standing says where they do not.",
                 document: "structural-editing.md#structures-from-ifc")
         case .rateIndependent:

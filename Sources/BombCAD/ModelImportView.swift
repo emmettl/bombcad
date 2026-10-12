@@ -427,7 +427,7 @@ struct ModelImportView: View {
             }
         }
         Toggle(
-            "Reinforce concrete shells, \(Double(Self.offeredReinforcement) * 100, format: .number)% each face (assumed)",
+            "Reinforce concrete shells the IFC gives none for, \(Double(Self.offeredReinforcement) * 100, format: .number)% each face (assumed)",
             isOn: Binding(
                 get: { structural.reinforcement != nil },
                 set: { structural.reinforcement = $0 ? Self.offeredReinforcement : nil }))
@@ -450,7 +450,7 @@ struct ModelImportView: View {
             ForEach([BaseConnection.dowelled, .joint, .resting], id: \.self) { Text($0.title).tag($0) }
         }
         Text(
-            "Walls, slabs and members square to the axes become shells and beams; anything else stays a rigid obstacle. Materials come from the IFC where it names one the solver has; the default is used, and flagged, elsewhere. Reinforcement is never read from IFC. Connections where members meet, and supports at footings or the base, are inferred and listed below."
+            "Walls, slabs and members square to the axes become shells and beams; anything else stays a rigid obstacle. Materials come from the IFC where it names one the solver has; the default is used, and flagged, elsewhere. Reinforcement comes from the IFC's bars, or its concrete elements' cover and steel ratio, where it gives them, member by member; few files do, and the default above fills concrete shells it leaves out, flagged. Connections where members meet, and supports at footings or the base, are inferred and listed below."
         ).font(.caption)
     }
     @ViewBuilder private var behaviorControls: some View {

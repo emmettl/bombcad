@@ -17,6 +17,15 @@ struct IFCStructureReportView: View {
                 "\(count(.shell)) shells · \(count(.beam)) beams · \(count(.pane)) panes · \(count(.footing)) footings · "
                     + "\(count(.opening)) openings · \(count(.rigid)) kept rigid"
             ).font(.caption.weight(.semibold))
+            let reinforced = report.members.filter { $0.reinforcementSource != nil }
+            if !reinforced.isEmpty {
+                let read = reinforced.filter { $0.reinforcementAssumed == false }.count
+                Label(
+                    "Reinforcement: \(read) of \(reinforced.count) concrete members from the IFC, the rest "
+                        + "the default or none (flagged under Elements).",
+                    systemImage: read == reinforced.count ? "checkmark.circle" : "exclamationmark.triangle"
+                ).font(.caption).foregroundStyle(read == reinforced.count ? Color.secondary : Color.orange)
+            }
             if !report.assumedMaterials.isEmpty {
                 Label(
                     "\(report.assumedMaterials.count) elements use the default material: choose theirs under Parts.",
@@ -72,6 +81,10 @@ struct IFCStructureReportView: View {
                         if let material = member.material {
                             Text("\(material): \(member.materialSource)").font(.caption)
                                 .foregroundStyle(member.assumed ? .orange : .secondary)
+                        }
+                        if let reinforcement = member.reinforcementSource {
+                            Text(reinforcement).font(.caption)
+                                .foregroundStyle(member.reinforcementAssumed == true ? .orange : .secondary)
                         }
                         ForEach(member.notes, id: \.self) {
                             Text($0).font(.caption2).foregroundStyle(.secondary)
