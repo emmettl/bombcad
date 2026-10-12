@@ -134,8 +134,9 @@ public enum HrynykSlabTest {
         public var bearingSide: Float = 0.1
         public var bearingThickness: Float = 0.02
         /// The seat of the spherical pin beneath and of the ball above: the patch of the plates'
-        /// outer faces held.
-        public var seatSide: Float = 0.032
+        /// outer faces held, nil a single node each, on one vertical line, so that the corner
+        /// turns freely (a patch above and one below clamp it between them).
+        public var seatSide: Float = 0
         /// The weight's flat steel face, as steel elements on the slab carrying the rest of the
         /// weight's mass on their top nodes.
         public var faceThickness: Float = 0.016
@@ -225,7 +226,7 @@ public enum HrynykSlabTest {
             faceHalf: Int((inputs.faceSide / 2 / h).rounded(.down)),
             supports: [support, planElements - support],
             bearingHalf: max(Int((settings.bearingSide / 2 / h).rounded()), 1),
-            seatHalf: max(Int((settings.seatSide / 2 / h).rounded()), 1))
+            seatHalf: max(Int((settings.seatSide / 2 / h).rounded()), 0))
     }
 
     /// The slab meshed with solid elements, its four layers of bars each smeared through a band
@@ -256,10 +257,11 @@ public enum HrynykSlabTest {
         var model = StructureModel(
             solids: solids, material: material ?? self.material(slab, inputs: inputs, settings: settings),
             elementSize: h, fixedBase: false)
-        // The weight's face: a concrete-filled steel section, stiff; elastic steel. The bearing
-        // plates: structural steel.
-        model.setMaterial(.elastic(density: 7850, youngsModulus: 210e9, poissonRatio: 0.3), of: 1)
-        for index in 2..<solids.count { model.setMaterial(.structuralSteel, of: index) }
+        // The weight's face, a concrete-filled steel section, stiff, and the bearing plates, each
+        // held at one node: elastic steel.
+        for index in 1..<solids.count {
+            model.setMaterial(.elastic(density: 7850, youngsModulus: 210e9, poissonRatio: 0.3), of: index)
+        }
         // Symmetric through the depth; the bars along x outside those along y in both mats.
         let middle = (z(l.slabBottom) + z(l.slabTop)) / 2
         let layers: [(height: Float, axis: Int)] = [
@@ -350,6 +352,9 @@ public enum HrynykSlabTest {
         public var peakImpactForceRaw: Float
         /// When the weight left the face (nil if it stayed on to the end of the run).
         public var weightLeft: Float?
+        /// Whether the face, its bond to the slab gone, was set back on the slab's top at the
+        /// centre before this impact.
+        public var faceReseated = false
         /// The face's step down into the top face at the face's edge, left by this impact and in
         /// total.
         public var penetration: Float
@@ -513,8 +518,17 @@ public enum HrynykSlabTest {
                 for n in nodes.indices { nodes[n].velocity = .zero }
             }
         }
-        // The step down at the face's edge: the face's perimeter nodes against the top face two
-        // elements out.
+        // The slab's top at column (i, j): the highest node there still held by a concrete element.
+        func surface(_ i: Int, _ j: Int) -> Float? {
+            guard
+                let k = stride(from: l.slabTop, through: l.slabBottom, by: -1).first(where: {
+                    attached(i, j, $0)
+                })
+            else { return nil }
+            return solver.referencePosition(i, j, k).z + solver.displacement(i, j, k).z
+        }
+        // The step down at the face's edge: the slab's top along the face's perimeter against its
+        // top two elements out (while the face is bonded on, its perimeter nodes).
         func faceStep() -> Float {
             var inside: [Float] = []
             var outside: [Float] = []
@@ -522,11 +536,30 @@ public enum HrynykSlabTest {
             for i in (l.centre - a - 2)...(l.centre + a + 2) {
                 for j in (l.centre - a - 2)...(l.centre + a + 2) {
                     let ring = max(abs(i - l.centre), abs(j - l.centre))
-                    if ring == a { inside.append(solver.displacement(i, j, l.slabTop).z) }
-                    if ring == a + 2 { outside.append(solver.displacement(i, j, l.slabTop).z) }
+                    if ring == a, let z = surface(i, j) { inside.append(z) }
+                    if ring == a + 2, let z = surface(i, j) { outside.append(z) }
                 }
             }
+            guard !inside.isEmpty, !outside.isEmpty else { return 0 }
             return outside.reduce(0, +) / Float(outside.count) - inside.reduce(0, +) / Float(inside.count)
+        }
+        // Where the concrete the face was bonded to has all gone, the face is a loose piece, which
+        // contact (on once any element has failed) lets strike the slab: it is set back, undeformed
+        // and at rest, on the highest point of the slab's top under it at the centre, one element
+        // above it, where contact begins.
+        func reseatFace() -> Bool {
+            let bonded = face.contains { i in face.contains { j in attached(i, j, l.slabTop) } }
+            if bonded { return false }
+            let heights = face.flatMap { i in face.compactMap { j in surface(i, j) } }
+            guard let top = heights.max() else { return false }
+            let lift = top + h - solver.referencePosition(l.centre, l.centre, l.slabTop).z
+            solver.mutateNodes { nodes in
+                for n in faceNodes {
+                    nodes[n].displacement = SIMD3(0, 0, lift)
+                    nodes[n].velocity = .zero
+                }
+            }
+            return true
         }
         func damage() -> (area: Float, layers: Int, removed: Int, bare: Int) {
             let reach = Int((0.45 / h).rounded())
@@ -566,6 +599,7 @@ public enum HrynykSlabTest {
         var impacts: [Impact] = []
         for (number, mass) in (masses ?? Array(inputs.masses.prefix(4))).enumerated() {
             let wallStart = ContinuousClock.now
+            let reseated = reseatFace()
             let start = midpoint()
             let startStep = faceStep()
             let startReaction = reactions().below
@@ -656,7 +690,7 @@ public enum HrynykSlabTest {
                 reactionTime: Float(Double(reactionIndex + 1) * sample),
                 peakImpactForce: Float(filtered[forceIndex]),
                 impactForceTime: Float((Double(forceIndex) + 0.5) * sample),
-                peakImpactForceRaw: Float(force.max() ?? 0), weightLeft: weightLeft,
+                peakImpactForceRaw: Float(force.max() ?? 0), weightLeft: weightLeft, faceReseated: reseated,
                 penetration: step - startStep, totalPenetration: step,
                 bottomAreaGone: d.area, layersCrossed: d.layers, thicknessLayers: l.thicknessElements,
                 punched: d.area >= 0.09 && d.layers == l.thicknessElements, elementsRemoved: d.removed,

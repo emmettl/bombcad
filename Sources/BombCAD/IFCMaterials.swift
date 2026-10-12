@@ -8,8 +8,10 @@ import Foundation
 /// The materials each IFC element is made of, from the converter's metadata: its material layers
 /// (with their thicknesses, in metres) where the IFC gives a layer set, else its materials' names.
 enum IFCMaterials {
-    static func decode(_ data: Data) throws -> [String: [IFCStructure.Layer]] {
+    /// `metresPerUnit` scales thicknesses where the metadata gives no length unit of its own.
+    static func decode(_ data: Data, metresPerUnit: Float = 1) throws -> [String: [IFCStructure.Layer]] {
         let parser = Reader()
+        parser.scale = metresPerUnit
         let document = XMLParser(data: data)
         document.delegate = parser
         document.shouldResolveExternalEntities = false
@@ -24,7 +26,7 @@ enum IFCMaterials {
     private final class Reader: NSObject, XMLParserDelegate {
         var issue: String?
         /// Metres per project length unit.
-        private var scale: Float = 1
+        var scale: Float = 1
         private var section = ""
         private var depth = 0
         /// Material definitions by id: their layers (thickness in project units).

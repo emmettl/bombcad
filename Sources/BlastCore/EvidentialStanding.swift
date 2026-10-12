@@ -133,7 +133,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-6"
+    public static let currentTable = "standing-table-7"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -694,7 +694,9 @@ public enum StandingTable {
                 title: "Structure from IFC", affects: structure, limit: nil,
                 note:
                     "Its shells and beams, their materials, the connections where they meet and the supports "
-                    + "were inferred from an IFC building and are listed in its report; the shell model's bands "
+                    + "were inferred from an IFC building and are listed in its report, with each concrete "
+                    + "member's reinforcement, read from the IFC where it gives it, else the stated default or none; "
+                    + "the shell model's bands "
                     + "apply only where all of them match what was compared, and the standing says where they do not.",
                 document: "structural-editing.md#structures-from-ifc")
         case .rateIndependent:
@@ -1546,6 +1548,12 @@ struct StandingScene {
                         + "reactions up to 40% low; the rate laws were chosen on these tests",
                     "validation.md#beams-struck-by-a-falling-weight"),
                 StandingEvidence(
+                    "Blind: Hrynyk's slabs struck repeatedly by a falling weight (frozen defaults, predicted "
+                        + "before the measurements were unsealed)",
+                    "First impacts 15–29% too flexible, as the calibrated beams were; once damaged, 17–44% too "
+                        + "stiff, springing back to a seventh to a third of the residual",
+                    "validation.md#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight"),
+                StandingEvidence(
                     "An internal explosion in a reinforced concrete chamber",
                     "Unsafe side, too stiff: its roof's edge left 25 mm up against 95 mm measured (a quarter) "
                         + "with the confined regime's pressed interlock, 15 mm without; not converged on 25 mm "
@@ -1669,6 +1677,11 @@ struct StandingScene {
                 "The beam without stirrups broken by the heavy drop as in the "
                     + "test, but damaged by a light one it survived",
                 "validation.md#beams-struck-by-a-falling-weight"),
+            StandingEvidence(
+                "Blind: Hrynyk's slabs struck repeatedly by a falling weight",
+                "Unsafe side: all three slabs punched in the test, by the second or third impact; the model "
+                    + "punched none in four",
+                "validation.md#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight"),
         ]
         var level = EvidenceLevel.approximation
         var summary =

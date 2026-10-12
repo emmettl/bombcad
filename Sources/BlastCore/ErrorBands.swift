@@ -860,6 +860,14 @@ extension StandingScene {
                     "\(imported.name): \(untied.count) pair\(untied.count == 1 ? "" : "s") of members left untied"
                 )
             }
+            let falling = report.members.filter {
+                $0.notes.contains { $0.contains("will fall under gravity") }
+            }
+            if !falling.isEmpty {
+                differences.append(
+                    "\(imported.name): \(falling.count) member\(falling.count == 1 ? "" : "s") tied to nothing supported"
+                )
+            }
             let unfounded = report.supports.filter { $0.contains("foundation left out") }
             if !unfounded.isEmpty {
                 differences.append(
@@ -867,9 +875,25 @@ extension StandingScene {
                         + "\(unfounded.count == 1 ? "" : "s") tied to the ground where the IFC has no foundation"
                 )
             }
-            let reinforced = imported.structuralOptions?.reinforcement != nil
-            if !reinforced {
-                differences.append("\(imported.name): its concrete unreinforced")
+            // Each concrete member's reinforcement: the IFC's own, the stated default or none. Reports
+            // made before reinforcement was read say only whether the default was asked for.
+            let concrete = report.members.filter { $0.reinforcementSource != nil }
+            if concrete.isEmpty {
+                if imported.structuralOptions?.reinforcement == nil {
+                    differences.append("\(imported.name): its concrete unreinforced")
+                }
+            } else {
+                let none = concrete.filter { $0.reinforcementSource?.hasPrefix("None") == true }.count
+                let defaulted = concrete.filter { $0.reinforcementAssumed == true }.count - none
+                if none > 0 {
+                    differences.append(
+                        "\(imported.name): \(none) concrete member\(none == 1 ? "" : "s") unreinforced")
+                }
+                if defaulted > 0 {
+                    differences.append(
+                        "\(imported.name): \(defaulted) concrete shell\(defaulted == 1 ? "" : "s") with the default "
+                            + "reinforcement, not the IFC's")
+                }
             }
         }
         return differences
