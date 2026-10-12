@@ -1670,8 +1670,10 @@ struct StandingScene {
         var level = EvidenceLevel.approximation
         var summary =
             "Errs on the unsafe side, towards too little damage: too strong in shear, struck beams holding "
-            + "where the tests crushed their strut. Breach and joints are the least reliable predictions; debris "
-            + "has been compared off slabs and brick walls, and collapse never."
+            + "where the tests crushed their strut. Failure depends on the mesh and, on fine meshes, the time "
+            + "step: a beam that holds on 24 elements breaks on 36, a close-in slab holes on 16 only. Breach and "
+            + "joints are the least reliable predictions; debris has been compared off slabs and brick walls, "
+            + "and collapse never."
         if let distance = structureDistance, distance < 0.75 {
             evidence.append(
                 StandingEvidence(
@@ -1876,6 +1878,9 @@ struct StandingScene {
             effects.append(
                 "Collapse has never been compared with anything, and debris only off slabs under contact "
                     + "charges and brick walls under blasts, neither well.")
+            effects.append(
+                "A failure mode that holds under mesh refinement: none yet, as cracks and removal regularise "
+                    + "their energy over one element.")
             if structures.count > 1 { effects.append("Bonds or connections between independent structures.") }
         }
         if inputs.thermal == nil {

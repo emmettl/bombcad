@@ -244,6 +244,10 @@ public enum ValidationTables {
             id: "slabSolid", low: 1.04, high: 1.14, document: "validation.md#summary",
             quote: "solid elements 113–124 mm (104–114%) on 4 to 32 elements through"),
         Figure(
+            id: "slabExtrapolated", low: 1.17, high: 1.17,
+            document: "validation.md#convergence-on-todays-defaults",
+            quote: "towards about 126 mm, 17% above the measurement"),
+        Figure(
             id: "slabLowerShot", low: 0.79, high: 0.88,
             document: "validation.md#the-contests-repeat-its-lower-shot-and-its-other-entries",
             quote: "the model reaches 79–88% of the measured peak on 4 to 16 elements"),
@@ -877,7 +881,10 @@ extension StandingScene {
                 bands.append(
                     figure(
                         "chamberPressure", .wallPressure, "Peak wall pressure inside", low: "under-read",
-                        high: "over-read", validity: "a full-scale chamber; 0.1 m cells and elements",
+                        high: "over-read",
+                        validity:
+                            "a full-scale chamber; 0.1 m cells and elements; its roof's peak rises with the mesh "
+                            + "(49 to 56 mm on 50 mm elements) and on 25 mm elements the solution breaks down",
                         check: "An internal explosion in a reinforced concrete chamber"))
                 unbanded.append(
                     "The chamber's roof is about twice as stiff as its test; its deflection has no band.")
@@ -909,7 +916,9 @@ extension StandingScene {
                             "closeInPermanent", .permanentDeflection, "Deflection left close in",
                             low: "too stiff",
                             high: "too flexible",
-                            validity: "2 to 15 kg at 0.5 and 1 m; 6 elements through, fine air",
+                            validity:
+                                "2 to 15 kg at 0.5 and 1 m; 6 elements through, fine air; P7 is left 120 to 135 mm "
+                                + "down on 6 to 12 and holed on 16, with half the step too",
                             check: "Full-scale slabs under close-in charges"))
                 }
             } else if has(.shellElements) {
@@ -926,12 +935,14 @@ extension StandingScene {
                     high: "too flexible",
                     validity:
                         "one slab under a blast, 4 to 32 solid elements through (\(through) here): 104–114% under "
-                        + "the contest's load, 79–88% (too stiff) under its lower shot, a scaled record; not "
-                        + "converged (113, 121, 124 mm on 8, 16, 32; a strip of it runs away on 32), and 93–99% under "
-                        + "the earlier rate laws. Not allowed for: the test's bearings were 4–5 in wide where the "
-                        + "model holds lines of nodes, and 1 in bearings already lower the peak 15–25%",
+                        + "the contest's load, rising with the mesh towards about 117% (113, 121, 124 mm on 8, 16, "
+                        + "32; on 32 with half the step it runs away), and 79–88% (too stiff) under its lower shot, "
+                        + "a scaled record; 93–99% under the earlier rate laws. The mesh that agreed, 8 through, is "
+                        + "the coarse end. Not allowed for: the test's bearings were 4–5 in wide where the model "
+                        + "holds lines of nodes, and 1 in bearings already lower the peak 15–25%",
                     check: "A reinforced slab under a blast, and its lower shot")
                 band.low = ValidationTables.figure("slabLowerShot").low
+                band.high = ValidationTables.figure("slabExtrapolated").high
                 band.referenceScatter = ValidationTables.scatter("slabRepeat")
                 bands.append(band)
             } else {
@@ -968,13 +979,18 @@ extension StandingScene {
                             "shearFine", .shearCapacity, "Strength in shear", lowIsUnsafe: false,
                             low: "too weak",
                             high: "too strong",
-                            validity: "a beam without stirrups, 24 or 36 elements through",
+                            validity:
+                                "a beam without stirrups, 24 or 36 elements through; not converged on today's "
+                                + "defaults: 104%, 105% and 111% on 24, 36 and 48 (379 kN with half the step)",
                             check: "Vecchio and Shim's OA1"))
                 } else if through >= 12 {
                     var band = figure(
                         "shearCoarse", .shearCapacity, "Strength in shear", lowIsUnsafe: false,
                         low: "too weak",
-                        high: "too strong", validity: "a beam without stirrups, \(through) elements through",
+                        high: "too strong",
+                        validity:
+                            "a beam without stirrups, \(through) elements through; on today's defaults 132% on 12 and "
+                            + "104% on 24, not converged",
                         check: "Vecchio and Shim's OA1")
                     // 137% on 12 through, 111% on 24: interpolated by the elements through.
                     let t = Double(through - 12) / 12
@@ -1129,11 +1145,14 @@ extension StandingScene {
                         nil, "validation.md#slabs-under-close-in-charges")
                 } else if through < 24 {
                     add(
-                        "Elements through", kind == .structuralResponse ? true : false,
-                        "8 through are enough for bending, but shear needs about 24 (137% strong on 12; \(through) here).",
+                        "Elements through", nil,
+                        "No structural result converges on today's defaults: the meshes that agree (8 through for "
+                            + "the slab, 24 for a beam in shear) are the coarse end; in shear 132% on 12, 104% on 24 "
+                            + "and 111% on 48 (\(through) here).",
                         kind == .structuralDamage
-                            ? "Mesh finer, about 24 through, where shear failure matters." : nil,
-                        "validation.md#a-beam-failing-in-shear")
+                            ? "Compare two meshes where shear failure matters; the answer moves with both."
+                            : nil,
+                        "validation.md#convergence-on-todays-defaults")
                 }
             }
             if has(.shellSectionShear) {
