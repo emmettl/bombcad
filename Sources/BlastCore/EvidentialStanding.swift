@@ -1548,6 +1548,12 @@ struct StandingScene {
                         + "reactions up to 40% low; the rate laws were chosen on these tests",
                     "validation.md#beams-struck-by-a-falling-weight"),
                 StandingEvidence(
+                    "Blind: Hrynyk's slabs struck repeatedly by a falling weight (frozen defaults, predicted "
+                        + "before the measurements were unsealed)",
+                    "First impacts 15–29% too flexible, as the calibrated beams were; once damaged, 17–44% too "
+                        + "stiff, springing back to a seventh to a third of the residual",
+                    "validation.md#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight"),
+                StandingEvidence(
                     "An internal explosion in a reinforced concrete chamber",
                     "Unsafe side, too stiff: its roof's edge left 25 mm up against 95 mm measured (a quarter) "
                         + "with the confined regime's pressed interlock, 15 mm without; not converged on 25 mm "
@@ -1671,6 +1677,11 @@ struct StandingScene {
                 "The beam without stirrups broken by the heavy drop as in the "
                     + "test, but damaged by a light one it survived",
                 "validation.md#beams-struck-by-a-falling-weight"),
+            StandingEvidence(
+                "Blind: Hrynyk's slabs struck repeatedly by a falling weight",
+                "Unsafe side: all three slabs punched in the test, by the second or third impact; the model "
+                    + "punched none in four",
+                "validation.md#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight"),
         ]
         var level = EvidenceLevel.approximation
         var summary =

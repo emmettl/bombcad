@@ -827,7 +827,7 @@ their licence, as `Samples/FoRCy` does.
 | `Wang2022` | The same for Wang et al. | 1.6 MB | CC BY 4.0 |
 | `Peterson2026` | 3,537 files: load cells and accelerometers (.mat) for 16 beams, high-speed frames (.tif) for 18, each checked against its SHA-256 | 2.5 GB | CC BY 4.0 |
 | `Hupfauf` | The 2022 paper and the 2024 thesis | 3.5 and 59.7 MB | CC BY 4.0; open access |
-| `Hrynyk2013` | `Experimental Data.zip`, the slab records; now sealed for blind test 1 (see [blind tests](blind-tests.md)) | 183 MB | Not stated |
+| `Hrynyk2013` | `Experimental Data.zip`, the slab records, and the thesis; used in blind test 1, still kept in its sealed folder ([validation](validation.md#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight)) | 183 MB | Not stated |
 | `DialPack1971` | Pattman's DREO Report 642, now compared (see [3e](#3e-fireball-radiation)) | 1.52 MB | Government of Canada |
 | `Bauwens2008` | The *Fire Safety Science* 9 paper, a text extract and its plots digitised (`digitised/`) | 1.3 MB | Free to read (IAFSS) |
 | `Alsubaei2015` | The Western University thesis | 8.4 MB | Not stated |

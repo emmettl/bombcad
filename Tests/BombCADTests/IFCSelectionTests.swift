@@ -45,7 +45,7 @@ struct IFCSelectionTests {
             <IfcRoof id="\(id(9))" Name="Outside"><IfcSlab id="\(id(10))"/></IfcRoof>
             </IfcProject></decomposition></ifc>
             """
-        let elements = try IFCImporter.decodeMetadata(Data(xml.utf8))
+        let elements = try IFCImporter.decodeMetadata(Data(xml.utf8)).elements
         #expect(elements.count == 5)
         let a = try #require(elements.first { $0.id == id(4) })
         let b = try #require(elements.first { $0.id == id(8) })
@@ -54,16 +54,41 @@ struct IFCSelectionTests {
         #expect(elements.first { $0.id == id(9) }?.building == nil)
         #expect(elements.first { $0.id == id(9) }?.hasChildren == true)
         #expect(elements.first { $0.id == id(5) }?.supported == false)
-        #expect(throws: ImportedMesh.ImportError.self) {
-            try IFCImporter.decodeMetadata(
-                Data("<ifc><decomposition><IfcWall id='bad'/></decomposition></ifc>".utf8))
-        }
-        #expect(throws: ImportedMesh.ImportError.self) {
-            try IFCImporter.decodeMetadata(
-                Data(
-                    "<ifc><decomposition><IfcWall id='\(id(4))'/><IfcWall id='\(id(4))'/></decomposition></ifc>"
-                        .utf8))
-        }
+        // An element with a bad or repeated GlobalId is left out, and said to be, not the file.
+        let bad = try IFCImporter.decodeMetadata(
+            Data(
+                "<ifc><decomposition><IfcWall id='bad' Name='W'/><IfcSlab id='\(id(4))'/></decomposition></ifc>"
+                    .utf8))
+        #expect(
+            bad.elements.map(\.id) == [id(4)] && bad.skipped.first?.contains("GlobalId 'bad' invalid") == true
+        )
+        let twice = try IFCImporter.decodeMetadata(
+            Data(
+                "<ifc><decomposition><IfcWall id='\(id(4))'/><IfcWall id='\(id(4))'/></decomposition></ifc>"
+                    .utf8))
+        #expect(twice.elements.count == 1 && twice.skipped.first?.contains("used twice") == true)
+    }
+
+    @Test("Parts aggregated into a supported element carry its geometry; openings and spaces do not")
+    func parts() throws {
+        func id(_ n: Int) -> String { String(format: "%022d", n) }
+        let xml = """
+            <ifc><decomposition><IfcProject id="\(id(1))"><IfcBuildingStorey id="\(id(2))" Name="Ground">
+            <IfcWallStandardCase id="\(id(3))" Name="Wall">
+            <IfcBuildingElementPart id="\(id(4))" Name="Block"/><IfcOpeningElement id="\(id(5))"/>
+            <IfcBuildingElementPart id="\(id(6))" Name="Block"><IfcBuildingElementProxy id="\(id(7))"/></IfcBuildingElementPart>
+            </IfcWallStandardCase>
+            <IfcBuildingElementProxy id="\(id(8))" Name="Marker"/>
+            </IfcBuildingStorey></IfcProject></decomposition></ifc>
+            """
+        let elements = Dictionary(
+            uniqueKeysWithValues: try IFCImporter.decodeMetadata(Data(xml.utf8)).elements.map { ($0.id, $0) })
+        #expect(elements[id(4)]?.supported == true && elements[id(4)]?.parentID == id(3))
+        #expect(elements[id(7)]?.supported == true && elements[id(7)]?.parentID == id(6))
+        #expect(elements[id(5)]?.supported == false)
+        // A proxy on its own is no part of anything.
+        #expect(elements[id(8)]?.supported == false)
+        #expect(elements[id(3)]?.hasChildren == true && elements[id(3)]?.storey == "Ground")
     }
     @Test(
         "A chosen storey converts only its GUIDs and persists choices, exclusions and original IFC",
@@ -173,14 +198,55 @@ struct IFCSelectionTests {
 
     }
     @Test(
-        "An upstream unit-detection failure is blocked before scaled geometry can enter the simulation",
+        "Where the converter cannot find the units, the project's own length unit scales the geometry, and says so",
         .enabled(if: IFCImporter.converterURL != nil))
     func unreliableUnits() async throws {
         let prepared = try await IFCImporter.prepare(fixture("wall-with-opening-and-window.ifc"))
         #expect(prepared.defaultIDs.count == 2)
-        do {
-            _ = try await IFCImporter.convert(prepared, includedIDs: prepared.defaultIDs)
-            Issue.record("Undetermined units were accepted")
-        } catch { #expect(error.localizedDescription.contains("units could not be determined")) }
+        #expect(prepared.lengthUnit?.metres == 0.001 && prepared.lengthUnit?.name == "millimetre")
+        let source = try await IFCImporter.convert(prepared, includedIDs: prepared.defaultIDs)
+        // The wall is 3 m long, 0.3 m thick and 2 m high, not 3,000 m.
+        #expect(abs(source.bounds.size.max() - 3) < 1e-3)
+        #expect(source.buildingNotes?.contains { $0.contains("millimetre (0.001 m), was applied") } == true)
+    }
+
+    @Test(
+        "The project's length unit is read from the IFC: SI with its prefix, or converted; none where unclear"
+    )
+    func lengthUnits() {
+        func file(_ units: String, projects: Int = 1) -> Data {
+            let project = (0..<projects).map { n in
+                "#\(n + 1)=IFCPROJECT('0YvctVUKr0kugbFTf53O\(n)9L',$,'P',$,$,$,$,(#20),#7);"
+            }.joined(separator: "\n")
+            return Data(
+                "ISO-10303-21;\nHEADER;FILE_SCHEMA(('IFC4'));ENDSEC;\nDATA;\n\(project)\n\(units)\nENDSEC;\nEND-ISO-10303-21;"
+                    .utf8)
+        }
+        let millimetres =
+            "#7=IFCUNITASSIGNMENT((#8,#9));\n#8=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);\n#9=IFCSIUNIT(*,.AREAUNIT.,$,.SQUARE_METRE.);"
+        #expect(IFCStep.lengthUnit(file(millimetres))?.metres == 0.001)
+        let feet = """
+            #7=IFCUNITASSIGNMENT((#8));
+            #8=IFCCONVERSIONBASEDUNIT(#10,.LENGTHUNIT.,'FOOT',#11);
+            #11=IFCMEASUREWITHUNIT(IFCLENGTHMEASURE(0.3048),#12);
+            #12=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);
+            """
+        #expect(
+            IFCStep.lengthUnit(file(feet)).map { abs($0.metres - 0.3048) < 1e-12 && $0.name == "foot" }
+                == true)
+        // Two projects, or none of its units a length: unclear, so nothing.
+        #expect(IFCStep.lengthUnit(file(millimetres, projects: 2)) == nil)
+        #expect(
+            IFCStep.lengthUnit(
+                file("#7=IFCUNITASSIGNMENT((#9));\n#9=IFCSIUNIT(*,.AREAUNIT.,$,.SQUARE_METRE.);")) == nil)
+        // Strings with quotes and semicolons in them do not upset the statements.
+        let named = file(
+            millimetres
+                + "\n/* a comment; with 'quotes' */\n#30=IFCWALL('2O2Fr$t4X7Zf8NOew3FLOH',$,'It''s; a wall',$,$,$,$,$,$);"
+        )
+        let walls = IFCStep.products(named, classes: ["IfcWall"])
+        #expect(
+            walls.count == 1 && walls.first?.name == "It's; a wall"
+                && walls.first?.id == "2O2Fr$t4X7Zf8NOew3FLOH")
     }
 }

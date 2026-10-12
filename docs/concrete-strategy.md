@@ -411,7 +411,12 @@ no default unless a regime's cases support it:
    modified compression field theory): a strut must shorten about 2.5 mm to crush through and
    these shorten about 0.3 mm. Where the model's strut gets its strength and toughness under
    impact (confinement from the stresses carried, the ductility Mander's law gives confined
-   concrete, the crushing energy) is the question left.
+   concrete, the crushing energy) was traced next (12 October): confinement from the short
+   bearings is real but larger than Eurocode 2 allows, the hooped concrete's ductility is not
+   these beams', and evenly spread crushing is too tough; but none decides the beams, which fail
+   or hold the same without each. Nor does confinement explain OA1's strength or the close-in
+   slabs' stiffness. The open question for these beams is the face's crushed concrete coming
+   away, which the cover-spalling rule tried could not time.
 3. **Masonry that breaks too late and too coarsely.** Against Keys's trials the Windrush walls on
    their mortar bed break at one joint and topple whole about 1.5 s after 41 kg of TNT, two of them
    towards the charge, where the trials' broke in three within 20 ms and folded near the base; the
