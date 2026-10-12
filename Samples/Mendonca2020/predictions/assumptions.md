@@ -165,3 +165,14 @@ run's peaks (reached before the freezing) and its displacements are kept in the 
 folder and are not the prediction. The same run showed the slab lifting off its trestles after
 its first downward peak (the air under its centre peaking at 0.85 MPa, the ground's
 reflection), which the inputs allow (not tied down) and which is left as it is.
+
+**2. 2026-10-12, after the first full secondary run (slab 4 on the calibrated record's air, 200
+ms, on the mini), before any primary run had started: every run is 500 ms.** That run's slab
+peaked 4.3 mm down at 3.9 ms, then the air beneath it threw it off its trestles at about 0.9 m/s:
+its centre rose 44 mm by 100 ms and was still coming down, 1 mm above where it started, at
+200 ms. The protocol asks for each run to go on until the slab has come to rest, which at 200
+ms it had not, so the declared 200 ms was too short for the inputs' unrestrained slab. Runs
+are now 500 ms, by when a slab thrown up this far has landed and settled (the air has gone to
+sleep by about 80 ms, so the extra time is cheap); the end displacement is still the mean over
+the last 10 ms. Nothing else changed. The 200 ms run is kept in the predictor's folder and is
+not reported.
