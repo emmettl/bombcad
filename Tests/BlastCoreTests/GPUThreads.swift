@@ -13,9 +13,15 @@ import Testing
 /// Each test is held to `hangLimit` from when it has its thread, not from when it was started:
 /// Swift Testing starts every test at once and its own time limit would count the wait for a
 /// thread, which with the GPU busy is most of the run. One that runs longer is recorded as hung.
+///
+/// No more of these tests start than there are threads: the rest wait to start (on the
+/// cooperative pool, holding no thread, and before their limit is counted). Otherwise a test
+/// that awaited something, a sleep or a child task, came back to the end of a queue of tests not
+/// yet begun, behind the hour of work of a busy GPU, and its limit counted the wait.
 struct GPUThreads: SuiteTrait, TestTrait, TestScoping {
-    static let executor = DedicatedThreadExecutor(
-        name: "gpu-test", count: max(4, ProcessInfo.processInfo.activeProcessorCount))
+    static let threads = max(4, ProcessInfo.processInfo.activeProcessorCount)
+    static let executor = DedicatedThreadExecutor(name: "gpu-test", count: threads)
+    static let admission = Admission(limit: threads)
 
     /// Longer than the whole suite has taken under any load measured (71 minutes): at a load
     /// average of 250, heavy tests of a debug build ran for over half an hour on their threads.
@@ -29,6 +35,18 @@ struct GPUThreads: SuiteTrait, TestTrait, TestScoping {
     func provideScope(
         for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void
     ) async throws {
+        await Self.admission.enter()
+        do {
+            try await run(function)
+        } catch {
+            await Self.admission.leave()
+            throw error
+        }
+        await Self.admission.leave()
+    }
+
+    /// Runs `function` on the dedicated threads, recording it as hung if it runs past `hangLimit`.
+    func run(_ function: @Sendable () async throws -> Void) async throws {
         let limit = hangLimit
         try await withTaskExecutorPreference(Self.executor) {
             // On its thread now: the test runs from here.
@@ -38,6 +56,32 @@ struct GPUThreads: SuiteTrait, TestTrait, TestScoping {
             }
             defer { watchdog.cancel() }
             try await function()
+        }
+    }
+}
+
+/// Lets `limit` callers in at once and the rest in turn, first come first served.
+actor Admission {
+    let limit: Int
+    private var inside = 0
+    private var waiting: [CheckedContinuation<Void, Never>] = []
+
+    init(limit: Int) { self.limit = limit }
+
+    func enter() async {
+        if inside < limit {
+            inside += 1
+            return
+        }
+        // The one leaving hands its place on.
+        await withCheckedContinuation { waiting.append($0) }
+    }
+
+    func leave() {
+        if waiting.isEmpty {
+            inside -= 1
+        } else {
+            waiting.removeFirst().resume()
         }
     }
 }
@@ -97,17 +141,35 @@ struct GPUThreadsTests {
 
     @Test("A test that runs past its limit on its thread is recorded as hung, one within it is not")
     func hangLimit() async throws {
-        let test = try #require(Test.current)
         var short = GPUThreads()
         short.hangLimit = .milliseconds(100)
         await withKnownIssue {
-            try await short.provideScope(for: test, testCase: Test.Case.current) {
-                try await Task.sleep(for: .milliseconds(500))
-            }
+            try await short.run { Self.hold(0.5) }
         }
+        // Held on its thread, not waiting for one, however busy the others.
         short.hangLimit = .seconds(30)
-        try await short.provideScope(for: test, testCase: Test.Case.current) {
-            try await Task.sleep(for: .milliseconds(50))
-        }
+        try await short.run { Self.hold(0.05) }
+    }
+
+    /// Holds the thread, as a test waiting on the GPU does.
+    private static func hold(_ seconds: Double) { Thread.sleep(forTimeInterval: seconds) }
+
+    @Test("No more tests start than there are threads; the others wait their turn")
+    func admission() async {
+        let gate = Admission(limit: 2)
+        await gate.enter()
+        await gate.enter()
+        let third = Task { await gate.enter() }
+        try? await Task.sleep(for: .milliseconds(50))
+        // Still waiting: leaving hands it the place.
+        await gate.leave()
+        await third.value
+        await gate.leave()
+        await gate.leave()
+        // All places free again.
+        await gate.enter()
+        await gate.enter()
+        await gate.leave()
+        await gate.leave()
     }
 }
