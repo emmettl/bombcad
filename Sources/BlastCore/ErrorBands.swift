@@ -247,9 +247,9 @@ public enum ValidationTables {
             id: "slabSolid", low: 1.04, high: 1.14, document: "validation.md#summary",
             quote: "solid elements 113–124 mm (104–114%) on 4 to 32 elements through"),
         Figure(
-            id: "slabExtrapolated", low: 1.17, high: 1.17,
+            id: "slabExtrapolated", low: 1.19, high: 1.19,
             document: "validation.md#convergence-on-todays-defaults",
-            quote: "towards about 126 mm, 17% above the measurement"),
+            quote: "extrapolated 129 mm, 119%"),
         Figure(
             id: "slabLowerShot", low: 0.79, high: 0.88,
             document: "validation.md#the-contests-repeat-its-lower-shot-and-its-other-entries",
@@ -962,7 +962,7 @@ extension StandingScene {
                         high: "over-read",
                         validity:
                             "a full-scale chamber; 0.1 m cells and elements; its roof's peak rises with the mesh "
-                            + "(49 to 56 mm on 50 mm elements) and on 25 mm elements the solution breaks down",
+                            + "(48 to 57 mm on 50 mm elements) and on 25 mm elements the solution breaks down",
                         check: "An internal explosion in a reinforced concrete chamber"))
                 if let structure = structures.first, abs(structure.elementSize - 0.1) > 0.01 {
                     bands.removeLast()
@@ -1011,11 +1011,11 @@ extension StandingScene {
                                 low: "too stiff",
                                 high: "too flexible",
                                 validity:
-                                    "2 to 15 kg at 0.5 and 1 m; 6 elements through, fine air; P7 is left 120 to 135 mm "
-                                    + "down on 6 to 12 and holed on 16, with half the step too",
+                                    "2 to 15 kg at 0.5 and 1 m; 6 elements through, fine air; P7 is left 112 to 146 mm "
+                                    + "down on 6 to 12 and holed on 16",
                                 check: "Full-scale slabs under close-in charges"),
                             derived:
-                                "6 elements through, calibrated; 6 to 12 leave P7 alike, and on 16 it holes, with half the step too",
+                                "6 elements through, calibrated; 6 to 12 leave P7 alike, and on 16 it holes",
                             meshes: 6...12, unbanded: &unbanded
                         ).map { [$0] } ?? []
                 }
@@ -1035,8 +1035,8 @@ extension StandingScene {
                     high: "too flexible",
                     validity:
                         "one slab under a blast, 4 to 32 solid elements through (\(through) here): 104–114% under "
-                        + "the contest's load, rising with the mesh towards about 117% (113, 121, 124 mm on 8, 16, "
-                        + "32; on 32 with half the step it runs away), and 79–88% (too stiff) under its lower shot, "
+                        + "the contest's load, rising with the mesh towards about 119% (113, 121, 125 mm on 8, 16, "
+                        + "32, and 124 on 32 with half the step), and 79–88% (too stiff) under its lower shot, "
                         + "a scaled record; 93–99% under the earlier rate laws. The mesh that agreed, 8 through, is "
                         + "the coarse end. Not allowed for: the test's bearings were 4–5 in wide where the model "
                         + "holds lines of nodes, and 1 in bearings already lower the peak 15–25%",
@@ -1045,7 +1045,7 @@ extension StandingScene {
                 band.high = ValidationTables.figure("slabExtrapolated").high
                 band.referenceScatter = ValidationTables.scatter("slabRepeat")
                 band.derivedMesh =
-                    "4 to 32 elements through at the default step, calibrated on 8; with half the step 32 runs away"
+                    "4 to 32 elements through, calibrated on 8; 32 holds on half the step; not converged"
                 bands.append(band)
             } else {
                 unbanded.append(
@@ -1089,7 +1089,8 @@ extension StandingScene {
                                 + "meshes either side",
                             check: "Vecchio and Shim's OA1", document: series.document, scaled: true,
                             derivedMesh:
-                                "12, 24, 36 and 48 elements through (132%, 104%, 105% and 111%), calibrated on 24; "
+                                "12, 24, 36 and 48 elements through (132%, 104%, 105% and 111% on the 11 October "
+                                + "defaults; 132% and 103% on 12 and 24 with the 100 µs window), calibrated on 24; "
                                 + "not converged"))
                 } else {
                     unbanded.append(
