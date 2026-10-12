@@ -65,6 +65,12 @@ public struct IFCStructure: Sendable {
         /// Whether its material is an assumption (the stated default), not read from the IFC.
         public var assumed: Bool
         public var notes: [String]
+        /// Where a concrete shell's or beam's reinforcement came from, in words: the IFC's bars,
+        /// its properties, or the stated default; nil for other members.
+        public var reinforcementSource: String? = nil
+        /// Whether that reinforcement is the stated default (or none), not read from the IFC; nil
+        /// for other members and in reports saved before reinforcement was read.
+        public var reinforcementAssumed: Bool? = nil
     }
 
     /// Two members tied where they meet.
@@ -819,25 +825,67 @@ public struct IFCStructure: Sendable {
             )
         }
 
-        // Reinforcement only where asked, in concrete shells.
-        if let ratio = options.reinforcement {
-            for member in members where member.role == .shell {
-                guard let index = member.solid, solidMaterials[index].model == .concrete,
-                    solidMaterials[index].units == nil, !solidMaterials[index].isTransparent
-                else { continue }
-                let box = solids[index]
+        // Reinforcement, member by member: the IFC's bars where it gives them, else the ratio its
+        // properties give, else the stated default (in shells), flagged.
+        var counts = (bars: 0, properties: 0, defaulted: 0, none: 0)
+        for m in members.indices where members[m].role == .shell || members[m].role == .beam {
+            guard let index = members[m].solid, solidMaterials[index].model == .concrete,
+                solidMaterials[index].units == nil, !solidMaterials[index].isTransparent
+            else { continue }
+            let box = solids[index]
+            let isShell = members[m].role == .shell
+            let hosted = shapes.first { $0.element.globalID == members[m].id }?.element.reinforcement
+            if let hosted,
+                let read = IFCReinforcement.layers(
+                    for: hosted, box: box, isShell: isShell, elementSize: options.elementSize,
+                    transform: rotate)
+            {
+                model.reinforcement += read.layers
+                members[m].reinforcementSource = read.description
+                members[m].reinforcementAssumed = false
+                if hosted.bars.isEmpty { counts.properties += 1 } else { counts.bars += 1 }
+            } else if let ratio = options.reinforcement, isShell {
                 let axis = thinAxis(box)
                 model.addMat(
-                    to: box, thicknessAxis: axis, areaPerMetre: ratio * box.size[axis] / 2,
-                    depth: min(0.04, box.size[axis] / 4))
+                    to: IFCReinforcement.matRegion(box, elementSize: options.elementSize),
+                    thicknessAxis: axis,
+                    areaPerMetre: ratio * box.size[axis] / 2, depth: min(0.04, box.size[axis] / 4))
+                members[m].reinforcementSource =
+                    "Default: \(String(format: "%.2f", ratio * 100))% in each face both ways, none being in the IFC "
+                    + "(assumed)."
+                members[m].reinforcementAssumed = true
+                counts.defaulted += 1
+            } else {
+                members[m].reinforcementSource =
+                    (hosted?.bars.isEmpty == false
+                        ? "None: its bars in the IFC run neither along it nor across a face."
+                        : "None: the IFC gives none")
+                    + (options.reinforcement != nil && !isShell
+                        ? ", and the default reinforces shells only." : ".")
+                members[m].reinforcementAssumed = true
+                counts.none += 1
             }
+        }
+        if counts.bars + counts.properties > 0 {
             assumptions.append(
-                "Concrete shells reinforced with \(String(format: "%.2f", ratio * 100))% of bars in each face both ways: a "
-                    + "stated default, not read from the IFC.")
-        } else if solidMaterials.contains(where: {
-            $0.model == .concrete && $0.units == nil && !$0.isTransparent
-        }) {
-            assumptions.append("No reinforcement: none is read from IFC, and none was asked for.")
+                "Reinforcement read from the IFC in \(counts.bars + counts.properties) concrete "
+                    + "member\(counts.bars + counts.properties == 1 ? "" : "s")"
+                    + (counts.properties > 0
+                        ? " (\(counts.properties) from its properties' ratios alone)" : "")
+                    + "; bars merged into mats and at most eight bars a beam (see each member).")
+        }
+        if counts.defaulted > 0, let ratio = options.reinforcement {
+            assumptions.append(
+                "\(counts.defaulted) concrete shell\(counts.defaulted == 1 ? "" : "s") reinforced with "
+                    + "\(String(format: "%.2f", ratio * 100))% of bars in each face both ways: a stated default, the IFC "
+                    + "giving none.")
+        }
+        if counts.none > 0 {
+            assumptions.append(
+                "\(counts.none) concrete member\(counts.none == 1 ? "" : "s") unreinforced: the IFC gives no "
+                    + "reinforcement for \(counts.none == 1 ? "it" : "them")"
+                    + (options.reinforcement == nil
+                        ? " and none was asked for." : " and the default reinforces shells only."))
         }
 
         let assumed = members.filter(\.assumed)
