@@ -50,7 +50,12 @@ struct IFCReinforcementImportTests {
     func attachesAndMaps() async throws {
         let ifc = try sample
         let mesh = try await IFCImporter.convert(ifc)
-        let elements = try #require(mesh.buildingElements)
+        // The import has read them already; read them again here from the bare elements.
+        let elements = try #require(mesh.buildingElements).map {
+            var element = $0
+            element.reinforcement = nil
+            return element
+        }
         let (attached, notes) = await IFCReinforcementReader.attach(
             try await metadata(ifc), to: elements, ifc: ifc, origin: try #require(mesh.buildingOrigin),
             converter: IFCImporter.converterURL)
@@ -75,5 +80,33 @@ struct IFCReinforcementImportTests {
         let perMetre = 5 * Float.pi * 0.006 * 0.006
         #expect(plate.bars.count == 2)
         #expect(plate.bars.allSatisfy { abs($0.y / perMetre - 1) < 0.03 })
+    }
+
+    @Test(
+        "Imported through the app's path, the wall keeps its own bars and the standing does not call it defaulted"
+    )
+    func importedStanding() async throws {
+        let source = try await IFCImporter.convert(try sample)
+        #expect(
+            (source.buildingNotes ?? []).contains { $0.contains("55 of its 55 reinforcing elements placed") })
+        #expect(source.buildingElements?.first { $0.name == "Wall" }?.reinforcement?.bars.count == 55)
+        let domain = source.bounds.size + SIMD3(8, 8, 4)
+        let corner = SIMD3<Float>(4, 4, 0)
+        var model = ImportedModel(
+            name: "reinforced-wall.ifc", source: source, scale: 1, yUp: false, corner: corner,
+            behavior: .deformable,
+            preview: try source.transformed(scale: 1, yUp: false, corner: corner).preview(
+                cellSize: 0.25, domain: domain))
+        model.structuralOptions = IFCStructure.Options()
+        var scene = Scenario(
+            name: "Reinforced wall", domainSize: domain, boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(1, 1, 0)))
+        try scene.installImport(model, material: .reinforcedConcrete, fixedBase: true)
+        let report = try #require(scene.importedModels?.first?.structuralReport)
+        let wall = try #require(report.members.first { $0.name == "Wall" })
+        #expect(wall.reinforcementAssumed == false && wall.reinforcementSource?.contains("55 bars") == true)
+        let standing = SceneStanding(StandingInputs(scenario: scene, cellSize: 0.25))
+        let unbanded = standing[.structuralResponse]?.unbanded ?? []
+        #expect(!unbanded.contains { $0.contains("default reinforcement") || $0.contains("unreinforced") })
     }
 }

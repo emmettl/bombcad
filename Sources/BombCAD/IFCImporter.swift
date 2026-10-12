@@ -53,6 +53,8 @@ enum IFCImporter {
         /// Metres per length unit, read from the IFC itself, for where the converter cannot find
         /// its units; nil unless the file has one project with one length unit.
         var lengthUnit: (metres: Double, name: String)?
+        /// The IFC's reinforcing elements and reinforcement properties (`IFCReinforcementReader`).
+        var reinforcement = IFCReinforcementReader.Metadata()
         var defaultIDs: Set<String> { Set(inventory.filter(\.supported).map(\.id)) }
     }
     static func prepare(_ data: Data, converter: URL? = converterURL) async throws -> Prepared {
@@ -95,6 +97,8 @@ enum IFCImporter {
         let materials =
             (try? IFCMaterials.decode(metadata, metresPerUnit: unitsRead ? 1 : Float(lengthUnit?.metres ?? 1)))
             ?? [:]
+        var reinforcement = IFCReinforcementReader.Metadata(metadata)
+        if !unitsRead { reinforcement.scale = Float(lengthUnit?.metres ?? 1) }
         try Task.checkCancellation()
         guard inventory.contains(where: \.supported) else {
             var classes: [String: Int] = [:]
@@ -111,13 +115,29 @@ enum IFCImporter {
         }
         return Prepared(
             data: data, inventory: inventory, metadataLog: log, materials: materials, skipped: skipped,
-            lengthUnit: lengthUnit)
+            lengthUnit: lengthUnit, reinforcement: reinforcement)
     }
     static func convert(_ data: Data, converter: URL? = converterURL) async throws -> ImportedMesh {
         let prepared = try await prepare(data, converter: converter)
         return try await convert(prepared, includedIDs: prepared.defaultIDs, converter: converter)
     }
     static func convert(_ prepared: Prepared, includedIDs: Set<String>, converter: URL? = converterURL)
+        async throws -> ImportedMesh
+    {
+        let mesh = try await convertElements(prepared, includedIDs: includedIDs, converter: converter)
+        // Reinforcement goes to the elements it lies in, once they are known. (Awaited apart from
+        // the conversion: in the same function, the debug build's task allocator traps.)
+        guard !prepared.reinforcement.isEmpty, let elements = mesh.buildingElements else { return mesh }
+        let (reinforced, notes) = await IFCReinforcementReader.attach(
+            prepared.reinforcement, to: elements, ifc: prepared.data, origin: mesh.buildingOrigin ?? .zero,
+            converter: converter, lengthUnit: prepared.lengthUnit?.metres)
+        try Task.checkCancellation()
+        return try ImportedMesh(
+            buildingElements: reinforced, notes: (mesh.buildingNotes ?? []) + notes,
+            origin: mesh.buildingOrigin,
+            sourceData: mesh.buildingSourceData, selection: mesh.buildingSelection)
+    }
+    private static func convertElements(_ prepared: Prepared, includedIDs: Set<String>, converter: URL?)
         async throws -> ImportedMesh
     {
         try Task.checkCancellation()
