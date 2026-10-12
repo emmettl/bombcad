@@ -191,6 +191,26 @@ state), and the second has gained from leaving buried nodes out of contact (belo
   That raised throughput with contact from 253 to 315 million element-updates per second, and
   the coupled runs of the three-storey building and the infilled frame gave the same results
   to the last digit.
+- **Pairs that cannot touch are skipped** (October 2026). `blastbench contact-profile` times
+  each case with contact off, with its table filled but no forces found, and in full. On the
+  mini, quiet, contact took 20–23% of a structure's time: the table 4–10%, the pairs 13–16%
+  (the solid building intact and with its front wall thrown out to break up, the shell
+  building, and two terraced houses touching). Nodes that are not lattice neighbours begin two
+  elements apart, so a node that has moved less than 0.45 of an element now looks only in the
+  cells that hold a node that has moved further (see the
+  [structural model](structural-model.md#contact)). Timed alternately with the old code on a
+  loaded mini, three rounds each, the pairs took 30% less time in the solid building (1.39
+  against 2.00 s over 1,500 steps) and 22% less with its wall breaking up; whole runs were 4%
+  faster in the solid building, 11% in the shell building, 3% with the wall breaking up and
+  4% for the terraced houses. The results are identical to the last bit in the intact
+  buildings, the terraced houses and `blastbench digest`. With the wall breaking up they first
+  differ between steps 500 and 550, by at most 0.6 µm on 8,719 nodes (a median of 9 units in
+  the last place), as the compiler's fast arithmetic arranges the force sums differently, and
+  the break-up then amplifies that (4,647 elements broken by step 1,500 against 4,698). A build
+  that marks every node as moved, and so skips nothing, gives the same bits as the one that
+  skips. Filling the table is now the larger part; folding its clearing pass into the previous
+  substep's node pass would save a dispatch and a read of every node. Rooms and car parks of
+  rigid objects spend under 1% of their time on contact: their cost is coupling to the air.
 - Skipping the eigenvalue problem that finds diagonal cracks, for elements strained below
   cracking, was tried and made no measurable difference.
 - Reading each element's material from a table (for structures of several materials) cost
@@ -202,8 +222,8 @@ state), and the second has gained from leaving buried nodes out of contact (belo
   reinforcement, and node data once per node of an element, 32 bytes; the lattice itself
   costs 5 bytes per cell (a flag and the cell's element number) and 4 per node (the node's
   number); and contacts use a table that wraps space periodically, sized to about four
-  entries per node at 36 bytes each (a header and eight slots). The concrete building,
-  225,000 elements and 283,000 nodes in a 1.4-million-cell lattice, takes 152 MB. Storing nodes for the whole lattice took 179 MB,
+  entries per node at 40 bytes each (a header, a mark of movement and eight slots). The concrete building,
+  225,000 elements and 283,000 nodes in a 1.4-million-cell lattice, takes 152 MB (about 156 MB with the marks of movement). Storing nodes for the whole lattice took 179 MB,
   and storing everything per lattice cell with a dense contact grid around the structure took
   640 MB. The coupled run takes 0.21 GB in all at 0.25 m air cells, against 0.70 GB at first.
   Reaching a node through its number costs nothing measurable, and the results are identical

@@ -160,6 +160,10 @@ public final class BlastSolver {
     /// Independent bodies came close, and from then on are encoded a substep at a time, side by
     /// side, in contact with each other.
     public private(set) var bodiesInContact = false
+    /// For timing contact between bodies alone: with true, bodies in contact are encoded a
+    /// substep at a time as usual but the pairs between them are not (`blastbench
+    /// contact-profile`). Never for a result.
+    public var bodyContactPairsSkipped = false
     /// Each body's own step overrides from before contact, which shares one step among them all.
     private var stepsBeforeContact: [(solids: Float?, shells: Float?)] = []
     private var bodyContactPipelines: [String: MTLComputePipelineState] = [:]
@@ -1072,7 +1076,7 @@ public final class BlastSolver {
         _ encoder: MTLComputeCommandEncoder, _ parts: [(body: Int, part: StructuralBody.ContactPart)],
         control: MTLBuffer
     ) {
-        guard let bounds = bodyEnvelopeBuffer else { return }
+        guard let bounds = bodyEnvelopeBuffer, !bodyContactPairsSkipped else { return }
         struct Side {
             var width: Float
             var stiffness: Float
