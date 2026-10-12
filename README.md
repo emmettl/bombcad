@@ -90,7 +90,7 @@ Measured on an Apple M4 Max (32-core GPU, 36 GB).
 
 Against the outside world, in brief; the [validation summary](docs/validation.md#summary) gives
 the numbers, and each section the test and the model. The defaults were chosen with these tests
-in view, most tests are single specimens, and where the model errs it mostly predicts too little
+in view (one has since been run blind), most tests are single specimens, and where the model errs it mostly predicts too little
 damage; an [independent review](docs/validation-review.md) weighs the claims:
 
 | Area | Standing |
@@ -98,9 +98,10 @@ damage; an [independent review](docs/validation-review.md) weighs the claims:
 | Air solver and structural numerics | Verified against exact solutions and theory |
 | Blast loads on walls | Either way: impulse within 6% of Kingery–Bulmash (a fit, its scatter not given) on 0.25 m cells beyond 1.5 m/kg^(1/3). Peaks read low, the unsafe side, refinement helping. Good |
 | Gas in a closed room | Either way within 8% with afterburning and hot air against UFC 3-340-02's design curve; by default half for light charges, the unsafe side. Good with the options |
-| Bending of slabs and beams | Either way by load: a slab test at 104–114% on solid elements (its repeat scattered ±2%), but 79–88% (too stiff, the unsafe side) under its lower shot, rising with the mesh, and as sensitive to the strain-rate law chosen; a beam bent to failure at 98–101%, but 17% strong on 6 elements, the unsafe side. Moderate |
-| Shear | Unsafe side: one beam failing in shear 11–15% too strong on fine meshes, 37% on coarse; beams struck to shear failure fail by the wrong mechanism, those with stirrups holding where the tests crushed their strut. Low |
-| Impact | Either way on one mesh: drop-weight beams 12–24% high under light drops, −5% to +3% under heavy ones on 16 elements, further on 24, struck about twice as hard; the strain-rate laws that decide it were chosen on these tests. Moderate on 16 elements |
+| Bending of slabs and beams | Either way by load, on the meshes that agreed: a slab test at 104–114% on solid elements (its repeat scattered ±2%), rising towards 117% as the mesh is refined, but 79–88% (too stiff, the unsafe side) under its lower shot, and as sensitive to the strain-rate law chosen; a beam bent to failure at 98–101% on 12 and 24 elements, but 17% strong on 6 and breaking early on 36 and 48. Moderate, on those meshes |
+| Shear | Unsafe side: one beam failing in shear 4–11% too strong on 24 to 48 elements, 32% on 12, not converged; beams struck to shear failure fail by the wrong mechanism, those with stirrups holding where the tests crushed their strut. Low |
+| Impact | Either way on one mesh: drop-weight beams 12–24% high under light drops, −5% to +3% under heavy ones on 16 elements; finer meshes settle 16–75% and 12–20% high; struck about twice as hard; the strain-rate laws that decide it were chosen on these tests. Moderate on 16 elements only |
+| Held out (blind) | Hrynyk's slabs struck repeatedly by a weight, predicted before the measurements were unsealed: first impacts 15–29% too flexible, as calibrated; once damaged, too stiff, and none of the three punching failures predicted (the unsafe side). [Blind tests](docs/blind-tests.md) |
 | Close-in and contact charges | Unsafe side for damage: a third to a half as far down, too little spall, holes only as an option. The load within 8% from 0.3 m/kg^(1/3); in contact about twice the products' impulse. Good for the load, low for damage |
 | Steel in both faces | Unsafe side under small charges: 40–70% as far, too stiff; −20% to +7% under larger ones (two shots); one layer and two barely told apart. Moderate for larger charges, low for small |
 | Internal explosion | Unsafe side: the chamber's roof left a quarter as far up as measured, too stiff, and not converged. Low |
@@ -121,6 +122,7 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [Concrete model](docs/concrete-model.md)    | Cracking, crushing, shear, reinforcement, bond, strain-rate effects, removal |
 | [Shell model](docs/shell-model.md)          | Shells for walls and slabs, beams for columns                   |
 | [Structural editing](docs/structural-editing.md) | Building structures, materials, openings and restraints in the app |
+| [IFC import over a corpus](docs/ifc-import-corpus.md) | What 385 open IFC files did on import, what was fixed and what is left |
 | [Freestanding objects](docs/freestanding-objects.md) | Rigid boxes and cars coupled to the air, contact and populated scenes |
 | [Terrain](docs/terrain.md)                  | A heightfield ground the blast sees, DEM import, and slopes checked against shock reflection theory |
 | [Large scenes](docs/large-scenes.md) | Bursts of hundreds of tonnes to kilotonnes over kilometres: accuracy, cost and grids against Kingery–Bulmash, terrain at scale |

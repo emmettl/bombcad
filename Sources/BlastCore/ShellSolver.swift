@@ -1155,17 +1155,42 @@ public final class ShellSolver {
     public func advance(steps: Int) {
         var remaining = steps
         while remaining > 0 {
+            // Up to 2,000 substeps at a time, each at its time from the start of the 2,000 and
+            // with what to encode decided there, as when the 2,000 were one command buffer; they
+            // go to the GPU in buffers of about `BlastSolver.commandBufferTarget` of its time, so
+            // that none starves the window server. The substeps are the same however they are cut.
             let count = min(remaining, 2000)
-            guard let commandBuffer = commandQueue.makeCommandBuffer(),
-                let encoder = commandBuffer.makeComputeCommandEncoder()
-            else { return }
-            encodeSubsteps(encoder, count: count, fluid: nil)
-            encoder.endEncoding()
-            commandBuffer.commit()
-            commandBuffer.waitUntilCompleted()
+            let checkpoint = failedAtCheckpoint
+            failedAtCheckpoint = encodesAsFailed
+            defer { failedAtCheckpoint = checkpoint }
+            var done = 0
+            while done < count {
+                let part = gpuSubsteps.part(count - done)
+                guard let commandBuffer = commandQueue.makeCommandBuffer(),
+                    let encoder = commandBuffer.makeComputeCommandEncoder()
+                else { return }
+                encodeSubsteps(
+                    encoder, substeps: done..<(done + part), fluid: nil, prelude: done == 0, interface: nil,
+                    beforeNodes: nil)
+                encoder.endEncoding()
+                commandBuffer.commit()
+                commandBuffer.waitUntilCompleted()
+                gpuSubsteps.measure(commandBuffer, steps: part)
+                done += part
+            }
             time += Double(count) * Double(criticalTimeStep)
             remaining -= count
         }
+    }
+
+    /// The GPU's time for a substep lately, to size `advance`'s command buffers.
+    private var gpuSubsteps = GPUStepRate()
+
+    /// The GPU time each of `advance`'s command buffers aims at, `BlastSolver.commandBufferTarget`
+    /// unless set; the substeps are the same whatever it is.
+    public var commandBufferSeconds: Double {
+        get { gpuSubsteps.target }
+        set { gpuSubsteps.target = newValue }
     }
 
     /// Points and weights of the n-point Gauss-Legendre rule on [-1, 1], by Newton's method on

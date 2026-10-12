@@ -111,12 +111,14 @@ standing says why.
   gauges on a surface. With afterburning and hot air their own tables apply. Gauges beyond
   6 m/kg^(1/3), closer than 0.3, shielded from the charge, over terrain, or on cells coarser than
   any compared grid get none.
-- **Structures** take the slab test's 79–114% on 4 to 32 solid elements through in the far
-  field, either way by load (104–114% under the contest's load, 79–88% under its lower shot), with
-  the contest's repeat, 3%, as the tests' scatter (124% on shells); close in, Wu's slabs (40–70% under charges to 0.8 kg, −20% to +7% to
+- **Structures** take the slab test's 79–117% on 4 to 32 solid elements through in the far
+  field, either way by load (104–114% under the contest's load, rising with the mesh towards
+  117%; 79–88% under its lower shot), with the contest's repeat, 3%, as the tests' scatter (124%
+  on shells). No structural result converges on today's defaults
+  ([convergence](validation.md#convergence-on-todays-defaults)): the meshes that agree are the
+  coarse end, and the bands say so; close in, Wu's slabs (40–70% under charges to 0.8 kg, −20% to +7% to
   2 kg) and, from 2 kg, Chiquito's deflection left (a third to a half); confined, the chamber's
-  wall pressures (0.9 to 1.6 times). Strength in shear is 37% strong on 12 elements through and
-  11–15% on 24 or more, interpolated between. Any structural option the tests were not run with
+  wall pressures (0.9 to 1.6 times). Strength in shear follows OA1 on 12 to 48 elements through, 32% strong on 12 and 4–11% on 24 to 48, spanning the meshes either side of the scene's. Any structural option the tests were not run with
   removes the band. Footings, debris under contact charges, a closed room's gas, the fireball's
   radiated energy and the cloud's top have bands of their own.
 - **In the app** the popover gives each band and, for the value shown, where the measurement
@@ -125,6 +127,18 @@ standing says why.
   Comparison marks a difference narrower than the band, which cannot be told apart against
   measurement. Kept runs, `BombCAD run --standing` and the USD layer carry the bands; standings
   recorded before them open with "not recorded".
+
+**The mesh a structural band holds on.** No structural result converges on today's defaults
+([convergence](validation.md#convergence-on-todays-defaults)): where one settles it settles above
+the measurement, and the meshes that agree are the coarse end. So each structural band records the
+mesh, and where it matters the step, it was derived on (`derivedMesh`), and holds only there:
+Wu's slabs on 8 elements through, Chiquito's on 6 to 12 (on 16 the slab holes), Hupfauf's debris
+on 12, the chamber on 0.1 m elements, OA1's strength on 12 to 48, spanning the meshes either side
+of the scene's, and the contest slab on 4 to 32, reaching the 117% its peak rises towards. On any
+other mesh the band is withheld and the standing says why; the popover, the headless summary and
+the USD layer give the mesh. The advisor varies the air only, and says that a finer structural
+mesh is not shown to bring a structure closer to its test. A safe side found on one mesh is not
+claimed for another: the shells' 124% is the slab test's one mesh.
 
 **Uncertain inputs.** Where the ensemble ran a band's case with its inputs sampled (see
 [the model's spread from uncertain inputs](validation.md#the-models-spread-from-uncertain-inputs)),

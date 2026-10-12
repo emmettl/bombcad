@@ -1,3 +1,4 @@
+import CompressibleFlow
 import simd
 
 /// Static clipped-box geometry linked to connected aggregation and a uniform-gas flux check.

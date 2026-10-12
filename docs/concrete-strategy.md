@@ -399,6 +399,24 @@ no default unless a regime's cases support it:
    3.8–4.3 ms after impact and under the load 5.7–6.2 ms; the model's do not. Trace the
    compression law's strength and softening at these rates and the removal rule for crushed
    concrete.
+
+   Traced (11 October 2026; see [Validation](validation.md#read-from-the-high-speed-images)): the
+   split is a shear band above perfectly bonded bars, which bond that slips removes, bringing the
+   main cracks to the tests' angles but leaving the beams without stirrups whole; the struts crush
+   but are not shed, held in the width's middle by confinement and on the face by removal coming
+   only at 27% crushing. Neither crack-holding by the longitudinal bars, removal at the end of
+   softening, a tenth of the crushing energy, nor cover that spalls at Mander's strain gives all six
+   kinds their failures; nor, tried next at the user's choice (12 October), does a crushing zone
+   of its own length, with bond that slips, nor cracked concrete made weaker in compression (the
+   modified compression field theory): a strut must shorten about 2.5 mm to crush through and
+   these shorten about 0.3 mm. Where the model's strut gets its strength and toughness under
+   impact (confinement from the stresses carried, the ductility Mander's law gives confined
+   concrete, the crushing energy) was traced next (12 October): confinement from the short
+   bearings is real but larger than Eurocode 2 allows, the hooped concrete's ductility is not
+   these beams', and evenly spread crushing is too tough; but none decides the beams, which fail
+   or hold the same without each. Nor does confinement explain OA1's strength or the close-in
+   slabs' stiffness. The open question for these beams is the face's crushed concrete coming
+   away, which the cover-spalling rule tried could not time.
 3. **Masonry that breaks too late and too coarsely.** Against Keys's trials the Windrush walls on
    their mortar bed break at one joint and topple whole about 1.5 s after 41 kg of TNT, two of them
    towards the charge, where the trials' broke in three within 20 ms and folded near the base; the

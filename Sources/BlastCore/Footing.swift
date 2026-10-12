@@ -464,7 +464,7 @@ public struct FootingImpedance: Sendable {
     /// The half-space cone's dynamic stiffness at ω rad/s (trapped mass included), Wolf's closed
     /// form: K + i ω C in translation, K [1 − b²/(3 (1 + b²))] + i ω C b²/(1 + b²) in rocking,
     /// b = ω z₀ / c.
-    public func halfSpace(_ mode: Mode, omega omega: Double) -> Complex {
+    public func halfSpace(_ mode: Mode, omega: Double) -> Complex {
         let k = Double(stiffness[mode.rawValue])
         let c = Double(dashpot[mode.rawValue])
         let mass = Double(trappedMass[mode.rawValue])
@@ -477,7 +477,7 @@ public struct FootingImpedance: Sendable {
 
     /// The dynamic stiffness at ω, over the layer when there is one: the half-space's divided by
     /// 1 + 2 Σⱼ Rʲ z₀ / (z₀ + 2 j d) e^(−i ω j T), T = 2 d / c (the trapped mass outside it).
-    public func dynamicStiffness(_ mode: Mode, omega omega: Double) -> Complex {
+    public func dynamicStiffness(_ mode: Mode, omega: Double) -> Complex {
         let mass = Double(trappedMass[mode.rawValue])
         let cone = halfSpace(mode, omega: omega) + Complex(omega * omega * mass)
         let weights = echoes(mode)

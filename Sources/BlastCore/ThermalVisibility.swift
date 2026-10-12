@@ -57,14 +57,14 @@ public struct CPUThermalVisibility: ThermalVisibility {
 
     /// As `visible(_:)`, but given up, returning nil, once `stop` says so; it is asked between
     /// chunks of a few thousand rays.
-    func visible(_ rays: [ThermalRay], until stop: () -> Bool) -> [Bool]? {
+    func visible(_ rays: [ThermalRay], until stop: @Sendable () -> Bool) -> [Bool]? {
         let chunk = 4096
         let chunks = (rays.count + chunk - 1) / chunk
         var stopped = false
         let result = [Bool](unsafeUninitializedCapacity: rays.count) { result, count in
             // Every element is written, stopped or not, so the array is always whole.
             let stopping = Flag()
-            DispatchQueue.concurrentPerform(iterations: chunks) { c in
+            concurrently(iterations: chunks) { c in
                 let range = c * chunk..<min((c + 1) * chunk, rays.count)
                 if stopping.isSet || stop() {
                     stopping.set()

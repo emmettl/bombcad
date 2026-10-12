@@ -10,7 +10,7 @@ reached as `scrimply-ci-tb`. The runner is `mac-mini-bombcad`, installed in
 
 | Workflow | When | What |
 |---|---|---|
-| [Check](../.github/workflows/check.yml), light | Every push to `main` | `make check-light`: lint, script tests, build, the core tests and the release-build smoke runs, about ten minutes |
+| [Check](../.github/workflows/check.yml), light | Every push to `main` | `make check-light`: lint, script tests, a build without warnings, the core tests and the release-build smoke runs, about ten minutes |
 | [Check](../.github/workflows/check.yml), full | By hand (suite `all`) | Lint, script tests, build, application and core tests, the packaged app's signature |
 | [Nightly](../.github/workflows/nightly.yml) | 19:00 UTC by GitHub's schedule and 19:20 UTC from the mini, whichever comes first; or by hand | The full check on `main`'s head, with what failed and the suspect commits; then `Scripts/nightly.py`: the benchmarks and the validation suite, compared with earlier nights |
 
@@ -24,6 +24,14 @@ failing tests and errors, and the commits since the last green full check, newes
 the suspects (`Scripts/nightly-suspects.py`; the runner keeps that commit in
 `~/bombcad-nightly/last-green-full`). A full run by hand is still there for a change that wants
 it at once.
+
+**No compiler warnings.** Every check builds with `make build-strict` (`Scripts/build-strict.py`):
+the package and its tests, failing on any warning in this package's own code, each listed once;
+SwiftPM suppresses ContinuumKit's. There were none on 12 October 2026, down from 108 (mostly
+`concurrentPerform` closures that Dispatch marks `@Sendable`; the parallel loops now go through
+`concurrently(iterations:_:)` in BlastCore, whose comment says what keeps them safe). Only files
+compiled in a build can warn, so an incremental build catches what a change brings; `rm -rf
+.build` first to see them all.
 
 A Check run is never cancelled by a newer push: the newest push waits behind it and older waiting
 ones are dropped, so at most one waits. A run started by hand has a queue of its own, by its suite

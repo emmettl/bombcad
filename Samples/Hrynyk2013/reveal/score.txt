@@ -1,0 +1,30 @@
+event  mass |     peak m/p  ratio |   resid m/p  ratio |   react m/p  ratio |     force m/p  ratio | punch m/p | pen m/p
+TH2-1   150 |  13.2/ 17.1   1.29 |  2.7/  2.6   0.97 |  556/  502   0.90 |   None/  1312      - |  no/ no | 0/9.6
+TH2-2   180 |  18.7/ 15.5   0.83 |  3.0/  0.9   0.31 |  676/  358   0.53 |   1455/   924   0.63 |  no/ no | 3.5/0.8
+TH2-3   210 |  26.6/ 18.7   0.70 |  8.9/  3.1   0.34 |  580/  341   0.59 |   1325/   924   0.70 | yes/ no | 20/-3.0
+TH6-1   150 |  18.3/ 21.0   1.15 |  6.2/  5.0   0.81 |  483/  397   0.82 |   None/  1307      - |  no/ no | 3.5/9.4
+TH6-2   180 |  27.7/ 19.1   0.69 | 11.4/  2.8   0.25 |  458/  280   0.61 | 1089.9/   917   0.84 | yes/ no | 20/1.1
+TH7-1   150 |  12.8/ 15.3   1.20 |  2.6/  2.5   0.95 |  605/  565   0.93 |   None/  1328      - |  no/ no | 0/9.3
+TH7-2   180 |  18.3/ 13.5   0.74 |  3.3/  0.6   0.18 |  588/  359   0.61 | 1547.1/   926   0.60 | yes/ no | 10/0.8
+TH7-3   210 |  28.5/ 16.1   0.56 | 11.5/  1.7   0.14 |  368/  356   0.97 |  726.3/   929   1.28 |  no/ no | 30/-2.9
+peak disp: n=8 geomean ratio 0.86, mean abs error 26%
+residual: n=8 geomean ratio 0.39, mean abs error 51%
+reaction: n=8 geomean ratio 0.73, mean abs error 25%
+impact force: n=5 geomean ratio 0.78, mean abs error 30%
+primary (impact 1 peak): [('TH2-1', 1.29), ('TH6-1', 1.15), ('TH7-1', 1.2)]
+measured first punching: TH2-3, TH6-2, TH7-2; predicted: none within four impacts
+
+8-element secondary (reported, not scored), and the primary's weight contact:
+event  | meas peak | 16: peak  8: peak | meas react | 16 react 8 react | meas force | 16 force 8 force | reseated(16) left(ms 16) | 8 punches
+TH2-1  |      13.2 |    17.1    16.5 |        556 |     502     464 |       None |    1312    1331 | False   10.6 | False -0.0267
+TH2-2  |      18.7 |    15.5    21.4 |        676 |     358     593 |       1455 |     924    1643 |  True    3.5 | False -0.8755
+TH2-3  |      26.6 |    18.7    26.0 |        580 |     341     534 |       1325 |     924    1672 |  True    4.1 | False -0.9513
+TH2-4  |      None |    25.1     9.7 |       None |     408     135 |       None |     905    3850 |  True    4.6 | False 0.8552
+TH6-1  |      18.3 |    21.0    19.9 |        483 |     397     385 |       None |    1307    1323 | False   13.0 | False 0.087
+TH6-2  |      27.7 |    19.1    26.5 |        458 |     280     426 |     1089.9 |     917    1547 |  True    3.7 | False -0.5118
+TH6-3  |      None |    25.5    32.3 |       None |     247     399 |       None |     902    1458 |  True    4.6 | False -0.2595
+TH6-4  |      None |    31.8    16.1 |       None |     173     110 |       None |     827    1892 |  True   24.0 | False 5.4235
+TH7-1  |      12.8 |    15.3    15.1 |        605 |     565     542 |       None |    1328    1342 | False    9.7 | False -0.0401
+TH7-2  |      18.3 |    13.5    19.2 |        588 |     359     636 |     1547.1 |     926    1625 |  True    3.5 | False -0.0874
+TH7-3  |      28.5 |    16.1    23.4 |        368 |     356     563 |      726.3 |     929    1645 |  True    3.9 | False -0.5187
+TH7-4  |      None |    21.9    24.0 |       None |     406     467 |       None |     918    1304 |  True    4.4 | False 0.4417

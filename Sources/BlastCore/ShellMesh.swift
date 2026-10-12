@@ -176,10 +176,16 @@ struct ShellMesh {
             func offer(_ value: Float, spacing: Float) {
                 if !kept.contains(where: { abs($0 - value) < spacing }) { kept.append(value) }
             }
-            for plate in plates where plate.axis == k { offer(plate.mid, spacing: tolerance) }
+            // Parallel plates within a fifth of an element of each other share the first one's
+            // midsurface (two near ones would leave a sliver of elements in every plate that
+            // crosses both, and a time step to match); further apart, as a cavity wall's leaves
+            // are, they stay apart.
+            for plate in plates where plate.axis == k {
+                offer(plate.mid, spacing: max(tolerance, 0.2 * size))
+            }
             // A column's centreline within half an element of a midsurface moves onto it (cladding
             // flush with a column's face would otherwise leave a sliver of elements, and a time
-            // step to match); parallel plates never merge.
+            // step to match).
             for column in columns where column.axis != k { offer(column.centre[k], spacing: 0.5 * size) }
             // Column faces, so that slabs have nodes around a column's footprint to tie to it.
             for column in columns where column.axis != k {

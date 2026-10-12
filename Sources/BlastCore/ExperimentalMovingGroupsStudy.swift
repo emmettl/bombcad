@@ -1,3 +1,4 @@
+import CompressibleFlow
 import simd
 
 /// A single numerical interval centred on a wet/dry event. Frozen group states feed

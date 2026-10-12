@@ -133,7 +133,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-6"
+    public static let currentTable = "standing-table-7"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -186,6 +186,9 @@ public struct SceneStanding: Codable, Hashable, Sendable {
             if let direction = result.direction { text.append("    \(direction)") }
             for band in result.bands ?? [] {
                 text.append("    Band: \(band.summary), for \(band.validity)")
+                if let mesh = band.derivedMesh {
+                    text.append("      Derived on \(mesh); it holds only there.")
+                }
                 if let verdict = band.againstReference { text.append("      \(verdict)") }
             }
             for note in result.unbanded ?? [] { text.append("    No band: \(note)") }
@@ -699,7 +702,9 @@ public enum StandingTable {
                 title: "Structure from IFC", affects: structure, limit: nil,
                 note:
                     "Its shells and beams, their materials, the connections where they meet and the supports "
-                    + "were inferred from an IFC building and are listed in its report; the shell model's bands "
+                    + "were inferred from an IFC building and are listed in its report, with each concrete "
+                    + "member's reinforcement, read from the IFC where it gives it, else the stated default or none; "
+                    + "the shell model's bands "
                     + "apply only where all of them match what was compared, and the standing says where they do not.",
                 document: "structural-editing.md#structures-from-ifc")
         case .rateIndependent:
@@ -1543,7 +1548,7 @@ struct StandingScene {
                     "validation.md#a-reinforced-beam-bent-to-failure"),
                 StandingEvidence(
                     "A beam without stirrups failing in shear",
-                    "Unsafe side: 11–15% too strong on fine meshes, 37% on 12 elements through",
+                    "Unsafe side, not converged: 4–11% too strong on 24 to 48 elements, 32% on 12",
                     "validation.md#a-beam-failing-in-shear"),
                 StandingEvidence(
                     "Beams struck by a falling weight",
@@ -1551,6 +1556,12 @@ struct StandingScene {
                         + "heavy; on 24, +17% to +28% and −1% to +17%; struck about twice as hard as measured, the "
                         + "reactions up to 40% low; the rate laws were chosen on these tests",
                     "validation.md#beams-struck-by-a-falling-weight"),
+                StandingEvidence(
+                    "Blind: Hrynyk's slabs struck repeatedly by a falling weight (frozen defaults, predicted "
+                        + "before the measurements were unsealed)",
+                    "First impacts 15–29% too flexible, as the calibrated beams were; once damaged, 17–44% too "
+                        + "stiff, springing back to a seventh to a third of the residual",
+                    "validation.md#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight"),
                 StandingEvidence(
                     "An internal explosion in a reinforced concrete chamber",
                     "Unsafe side, too stiff: its roof's edge left 25 mm up against 95 mm measured (a quarter) "
@@ -1663,7 +1674,7 @@ struct StandingScene {
         var evidence = [
             StandingEvidence(
                 "A beam without stirrups failing in shear",
-                "Unsafe side: fails suddenly, as the test did, but 11–15% too strong (37% on coarse meshes)",
+                "Unsafe side: fails suddenly, as the test did, but 4–11% too strong on 24 to 48 elements and 32% on 12, not converged",
                 "validation.md#a-beam-failing-in-shear"),
             StandingEvidence(
                 "Short beams struck to a shear failure (Peterson et al., 2026)",
@@ -1675,12 +1686,19 @@ struct StandingScene {
                 "The beam without stirrups broken by the heavy drop as in the "
                     + "test, but damaged by a light one it survived",
                 "validation.md#beams-struck-by-a-falling-weight"),
+            StandingEvidence(
+                "Blind: Hrynyk's slabs struck repeatedly by a falling weight",
+                "Unsafe side: all three slabs punched in the test, by the second or third impact; the model "
+                    + "punched none in four",
+                "validation.md#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight"),
         ]
         var level = EvidenceLevel.approximation
         var summary =
             "Errs on the unsafe side, towards too little damage: too strong in shear, struck beams holding "
-            + "where the tests crushed their strut. Breach and joints are the least reliable predictions; debris "
-            + "has been compared off slabs and brick walls, and collapse never."
+            + "where the tests crushed their strut. Failure depends on the mesh and, on fine meshes, the time "
+            + "step: a beam that holds on 24 elements breaks on 36, a close-in slab holes on 16 only. Breach and "
+            + "joints are the least reliable predictions; debris has been compared off slabs and brick walls, "
+            + "and collapse never."
         if let distance = structureDistance, distance < 0.75 {
             evidence.append(
                 StandingEvidence(
@@ -1885,6 +1903,9 @@ struct StandingScene {
             effects.append(
                 "Collapse has never been compared with anything, and debris only off slabs under contact "
                     + "charges and brick walls under blasts, neither well.")
+            effects.append(
+                "A failure mode that holds under mesh refinement: none yet, as cracks and removal regularise "
+                    + "their energy over one element.")
             if structures.count > 1 { effects.append("Bonds or connections between independent structures.") }
         }
         if inputs.thermal == nil {

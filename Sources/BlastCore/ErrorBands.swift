@@ -49,6 +49,9 @@ public struct ErrorBand: Codable, Hashable, Sendable {
     /// The reference's own scatter about its mean, one standard deviation as a fraction (the tests
     /// behind Kingery–Bulmash, repeats against it, UFC 3-340-02's rooms); nil where none is known.
     public var referenceScatter: Double? = nil
+    /// For a structure, the mesh (and step) the band was derived on: no structural result
+    /// converges on today's defaults, so a band holds only there; nil for the air's bands.
+    public var derivedMesh: String? = nil
 
     /// Which way the model errs.
     public var reads: String {
@@ -244,6 +247,10 @@ public enum ValidationTables {
             id: "slabSolid", low: 1.04, high: 1.14, document: "validation.md#summary",
             quote: "solid elements 113–124 mm (104–114%) on 4 to 32 elements through"),
         Figure(
+            id: "slabExtrapolated", low: 1.17, high: 1.17,
+            document: "validation.md#convergence-on-todays-defaults",
+            quote: "towards about 126 mm, 17% above the measurement"),
+        Figure(
             id: "slabLowerShot", low: 0.79, high: 0.88,
             document: "validation.md#the-contests-repeat-its-lower-shot-and-its-other-entries",
             quote: "the model reaches 79–88% of the measured peak on 4 to 16 elements"),
@@ -253,12 +260,6 @@ public enum ValidationTables {
         Figure(
             id: "beamMoment", low: 0.95, high: 1.04, document: "validation.md#summary",
             quote: "peak moment 104% on 12 elements, failing at 40 mm against 42 mm, 95% on 24"),
-        Figure(
-            id: "shearFine", low: 1.04, high: 1.11, document: "validation.md#summary",
-            quote: "104–111% on 24 to 48 elements"),
-        Figure(
-            id: "shearCoarse", low: 1.37, high: 1.37, document: "validation.md#a-beam-failing-in-shear",
-            quote: "| 12 elements through           | 456 kN (137%)   | 10.4 mm |"),
         Figure(
             id: "closeInPermanent", low: 0.33, high: 0.5, document: "validation.md#summary",
             quote: "the slab left a third to a half as far down as measured"),
@@ -320,6 +321,40 @@ public enum ValidationTables {
     ]
 
     public static func figure(_ id: String) -> Figure { figures.first { $0.id == id }! }
+
+    /// A result on a sequence of meshes against one measurement, from the convergence study on
+    /// today's defaults; the quote is the study's row and must hold each pair and the measurement.
+    public struct MeshSeries: Sendable {
+        public var id: String
+        public var measured: Double
+        /// Elements through and the model's value on that mesh.
+        public var byMesh: [(through: Int, value: Double)]
+        /// The mesh that agreed with the test, which the record quotes elsewhere.
+        public var calibrated: Int
+        public var document: String
+        public var quote: String
+
+        /// The band on `through` elements: the ratios of the meshes either side, since none
+        /// converges; nil outside the meshes run.
+        public func band(on through: Int) -> (low: Double, high: Double)? {
+            let meshes = byMesh.map(\.through)
+            guard let first = meshes.first, let last = meshes.last, (first...last).contains(through) else {
+                return nil
+            }
+            let below = meshes.lastIndex { $0 <= through }!
+            let above = meshes.firstIndex { $0 >= through }!
+            let span =
+                below == above
+                ? max(below - 1, 0)...min(above + 1, meshes.count - 1) : min(below, above)...max(below, above)
+            let ratios = span.map { byMesh[$0].value / measured }
+            return (ratios.min()!, ratios.max()!)
+        }
+    }
+
+    public static let oa1 = MeshSeries(
+        id: "oa1", measured: 332, byMesh: [(12, 437), (24, 344), (36, 348), (48, 369)], calibrated: 24,
+        document: "validation.md#convergence-on-todays-defaults",
+        quote: "| OA1 | peak load (332 kN) | 12: 437; 24: 344; 36: 348; 48: 369 kN |")
 
     /// The model's spread from uncertain inputs in a validation case, as a coefficient of variation.
     public struct Spread: Sendable {
@@ -717,6 +752,29 @@ extension StandingScene {
         return true
     }
 
+    /// `band` as it holds on the mesh it was derived on: with that mesh recorded, or nil (and the
+    /// reason in `unbanded`) where this scene's elements through lie outside `meshes`. No structural
+    /// result converges on today's defaults, so a band carries no further than the meshes behind it.
+    private func onMesh(
+        _ band: ErrorBand, derived: String, meshes: ClosedRange<Int>?, unbanded: inout [String]
+    ) -> ErrorBand? {
+        var band = band
+        band.derivedMesh = derived
+        if let meshes {
+            guard let through = elementsThrough else {
+                unbanded.append("\(band.quantity): derived on \(derived); no solid elements here to compare.")
+                return nil
+            }
+            guard meshes.contains(through) else {
+                unbanded.append(
+                    "\(band.quantity): derived on \(derived); not applicable on \(through) elements through, since "
+                        + "no structural result converges on today's defaults.")
+                return nil
+            }
+        }
+        return band
+    }
+
     /// A band from a single figure of the record.
     private func figure(
         _ id: String, _ measure: BandMeasure, _ quantity: String, lowIsUnsafe: Bool = true, low: String,
@@ -802,6 +860,14 @@ extension StandingScene {
                     "\(imported.name): \(untied.count) pair\(untied.count == 1 ? "" : "s") of members left untied"
                 )
             }
+            let falling = report.members.filter {
+                $0.notes.contains { $0.contains("will fall under gravity") }
+            }
+            if !falling.isEmpty {
+                differences.append(
+                    "\(imported.name): \(falling.count) member\(falling.count == 1 ? "" : "s") tied to nothing supported"
+                )
+            }
             let unfounded = report.supports.filter { $0.contains("foundation left out") }
             if !unfounded.isEmpty {
                 differences.append(
@@ -809,9 +875,25 @@ extension StandingScene {
                         + "\(unfounded.count == 1 ? "" : "s") tied to the ground where the IFC has no foundation"
                 )
             }
-            let reinforced = imported.structuralOptions?.reinforcement != nil
-            if !reinforced {
-                differences.append("\(imported.name): its concrete unreinforced")
+            // Each concrete member's reinforcement: the IFC's own, the stated default or none. Reports
+            // made before reinforcement was read say only whether the default was asked for.
+            let concrete = report.members.filter { $0.reinforcementSource != nil }
+            if concrete.isEmpty {
+                if imported.structuralOptions?.reinforcement == nil {
+                    differences.append("\(imported.name): its concrete unreinforced")
+                }
+            } else {
+                let none = concrete.filter { $0.reinforcementSource?.hasPrefix("None") == true }.count
+                let defaulted = concrete.filter { $0.reinforcementAssumed == true }.count - none
+                if none > 0 {
+                    differences.append(
+                        "\(imported.name): \(none) concrete member\(none == 1 ? "" : "s") unreinforced")
+                }
+                if defaulted > 0 {
+                    differences.append(
+                        "\(imported.name): \(defaulted) concrete shell\(defaulted == 1 ? "" : "s") with the default "
+                            + "reinforcement, not the IFC's")
+                }
             }
         }
         return differences
@@ -877,8 +959,20 @@ extension StandingScene {
                 bands.append(
                     figure(
                         "chamberPressure", .wallPressure, "Peak wall pressure inside", low: "under-read",
-                        high: "over-read", validity: "a full-scale chamber; 0.1 m cells and elements",
+                        high: "over-read",
+                        validity:
+                            "a full-scale chamber; 0.1 m cells and elements; its roof's peak rises with the mesh "
+                            + "(49 to 56 mm on 50 mm elements) and on 25 mm elements the solution breaks down",
                         check: "An internal explosion in a reinforced concrete chamber"))
+                if let structure = structures.first, abs(structure.elementSize - 0.1) > 0.01 {
+                    bands.removeLast()
+                    unbanded.append(
+                        "Peak wall pressure inside: derived on 0.1 m elements; not applicable on "
+                            + String(format: "%.3g m", structure.elementSize)
+                            + ", since no structural result converges on today's defaults.")
+                } else {
+                    bands[bands.count - 1].derivedMesh = "0.1 m elements and cells only"
+                }
                 unbanded.append(
                     "The chamber's roof is about twice as stiff as its test; its deflection has no band.")
             } else if regime == "in contact" {
@@ -886,38 +980,53 @@ extension StandingScene {
                     "Deflection under a charge in contact was not compared; debris was (see damage).")
             } else if regime == "close in" {
                 if mass <= 0.8 {
-                    bands.append(
-                        figure(
-                            "wuSmall", .peakDeflection, "Peak deflection close in", low: "too stiff",
-                            high: "too flexible",
-                            validity: "0.2 to 0.8 kg at 0.43 m/kg^(1/3), slabs that spalled",
-                            check: "Wu et al.'s slabs with steel in both faces"))
+                    bands +=
+                        onMesh(
+                            figure(
+                                "wuSmall", .peakDeflection, "Peak deflection close in", low: "too stiff",
+                                high: "too flexible",
+                                validity: "0.2 to 0.8 kg at 0.43 m/kg^(1/3), slabs that spalled",
+                                check: "Wu et al.'s slabs with steel in both faces"),
+                            derived: "8 elements through only", meshes: 8...8, unbanded: &unbanded
+                        ).map { [$0] } ?? []
                 } else if mass <= 2 {
-                    bands.append(
-                        figure(
-                            "wuLarge", .peakDeflection, "Peak deflection close in", low: "too stiff",
-                            high: "too flexible",
-                            validity:
-                                "1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh (8 through), held at one edge",
-                            check: "Wu et al.'s slabs with steel in both faces"))
+                    bands +=
+                        onMesh(
+                            figure(
+                                "wuLarge", .peakDeflection, "Peak deflection close in", low: "too stiff",
+                                high: "too flexible",
+                                validity:
+                                    "1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh (8 through), held at one edge",
+                                check: "Wu et al.'s slabs with steel in both faces"),
+                            derived: "8 elements through only", meshes: 8...8, unbanded: &unbanded
+                        ).map { [$0] } ?? []
                 } else {
                     unbanded.append("Peak deflection under charges over 2 kg close in was not measured.")
                 }
                 if mass >= 2 {
-                    bands.append(
-                        figure(
-                            "closeInPermanent", .permanentDeflection, "Deflection left close in",
-                            low: "too stiff",
-                            high: "too flexible",
-                            validity: "2 to 15 kg at 0.5 and 1 m; 6 elements through, fine air",
-                            check: "Full-scale slabs under close-in charges"))
+                    bands +=
+                        onMesh(
+                            figure(
+                                "closeInPermanent", .permanentDeflection, "Deflection left close in",
+                                low: "too stiff",
+                                high: "too flexible",
+                                validity:
+                                    "2 to 15 kg at 0.5 and 1 m; 6 elements through, fine air; P7 is left 120 to 135 mm "
+                                    + "down on 6 to 12 and holed on 16, with half the step too",
+                                check: "Full-scale slabs under close-in charges"),
+                            derived:
+                                "6 elements through, calibrated; 6 to 12 leave P7 alike, and on 16 it holes, with half the step too",
+                            meshes: 6...12, unbanded: &unbanded
+                        ).map { [$0] } ?? []
                 }
             } else if has(.shellElements) {
-                bands.append(
-                    figure(
-                        "slabShell", .peakDeflection, "Peak deflection", low: "too stiff",
-                        high: "too flexible",
-                        validity: "one slab under a blast, shells", check: "A reinforced slab under a blast"))
+                var shell = figure(
+                    "slabShell", .peakDeflection, "Peak deflection", low: "too stiff",
+                    high: "too flexible",
+                    validity: "one slab under a blast, shells", check: "A reinforced slab under a blast")
+                shell.derivedMesh =
+                    "the slab test's shells, one mesh, not refined: its safe side is not shown to hold on another"
+                bands.append(shell)
             } else if let through = elementsThrough, (4...32).contains(through) {
                 // Either way by load: too flexible under the contest's load, too stiff under its lower
                 // shot; the band spans both, with the contest's repeat as the tests' own scatter.
@@ -926,13 +1035,17 @@ extension StandingScene {
                     high: "too flexible",
                     validity:
                         "one slab under a blast, 4 to 32 solid elements through (\(through) here): 104–114% under "
-                        + "the contest's load, 79–88% (too stiff) under its lower shot, a scaled record; not "
-                        + "converged (113, 121, 124 mm on 8, 16, 32; a strip of it runs away on 32), and 93–99% under "
-                        + "the earlier rate laws. Not allowed for: the test's bearings were 4–5 in wide where the "
-                        + "model holds lines of nodes, and 1 in bearings already lower the peak 15–25%",
+                        + "the contest's load, rising with the mesh towards about 117% (113, 121, 124 mm on 8, 16, "
+                        + "32; on 32 with half the step it runs away), and 79–88% (too stiff) under its lower shot, "
+                        + "a scaled record; 93–99% under the earlier rate laws. The mesh that agreed, 8 through, is "
+                        + "the coarse end. Not allowed for: the test's bearings were 4–5 in wide where the model "
+                        + "holds lines of nodes, and 1 in bearings already lower the peak 15–25%",
                     check: "A reinforced slab under a blast, and its lower shot")
                 band.low = ValidationTables.figure("slabLowerShot").low
+                band.high = ValidationTables.figure("slabExtrapolated").high
                 band.referenceScatter = ValidationTables.scatter("slabRepeat")
+                band.derivedMesh =
+                    "4 to 32 elements through at the default step, calibrated on 8; with half the step 32 runs away"
                 bands.append(band)
             } else {
                 unbanded.append(
@@ -962,43 +1075,42 @@ extension StandingScene {
             if materialClasses.contains(.reinforcedConcrete), unmeasuredStructuralOptions.isEmpty,
                 !has(.shellElements), let through = elementsThrough
             {
-                if through >= 24 {
+                // OA1 on 12 to 48 elements through, from the convergence study: the band spans the
+                // meshes either side of this one, since none converges.
+                let series = ValidationTables.oa1
+                if let read = series.band(on: through) {
                     bands.append(
-                        figure(
-                            "shearFine", .shearCapacity, "Strength in shear", lowIsUnsafe: false,
-                            low: "too weak",
-                            high: "too strong",
-                            validity: "a beam without stirrups, 24 or 36 elements through",
-                            check: "Vecchio and Shim's OA1"))
-                } else if through >= 12 {
-                    var band = figure(
-                        "shearCoarse", .shearCapacity, "Strength in shear", lowIsUnsafe: false,
-                        low: "too weak",
-                        high: "too strong", validity: "a beam without stirrups, \(through) elements through",
-                        check: "Vecchio and Shim's OA1")
-                    // 137% on 12 through, 111% on 24: interpolated by the elements through.
-                    let t = Double(through - 12) / 12
-                    band.high = 1.37 + (1.11 - 1.37) * t
-                    band.low = band.high
-                    band.scaled = true
-                    bands.append(band)
+                        ErrorBand(
+                            measure: .shearCapacity, quantity: "Strength in shear", low: read.low,
+                            high: read.high,
+                            lowIsUnsafe: false, meaningLow: "too weak", meaningHigh: "too strong",
+                            validity:
+                                "a beam without stirrups (OA1) on \(through) elements through, spanning the "
+                                + "meshes either side",
+                            check: "Vecchio and Shim's OA1", document: series.document, scaled: true,
+                            derivedMesh:
+                                "12, 24, 36 and 48 elements through (132%, 104%, 105% and 111%), calibrated on 24; "
+                                + "not converged"))
                 } else {
                     unbanded.append(
-                        "\(through) elements through: coarser than the 12 compared in shear, which were 37% strong."
-                    )
+                        "Strength in shear: derived on 12 to 48 elements through; not applicable on \(through), "
+                            + "since no structural result converges on today's defaults.")
                 }
             } else {
                 unbanded.append(
                     "Shear strength was compared only for reinforced concrete solid elements on defaults.")
             }
             if regime == "in contact" {
-                bands.append(
-                    figure(
-                        "debrisSpeed", .debrisSpeed, "Far face's speed against the debris's",
-                        low: "debris too slow",
-                        high: "debris too fast",
-                        validity: "slabs 20–30 cm under contact charges, 12 elements through",
-                        check: "Hupfauf's slabs under contact charges"))
+                bands +=
+                    onMesh(
+                        figure(
+                            "debrisSpeed", .debrisSpeed, "Far face's speed against the debris's",
+                            low: "debris too slow",
+                            high: "debris too fast",
+                            validity: "slabs 20–30 cm under contact charges, 12 elements through",
+                            check: "Hupfauf's slabs under contact charges"),
+                        derived: "12 elements through only", meshes: 12...12, unbanded: &unbanded
+                    ).map { [$0] } ?? []
             }
             unbanded.append("Failed elements and collapse have no band.")
         case .envelopeExposure:
@@ -1129,11 +1241,14 @@ extension StandingScene {
                         nil, "validation.md#slabs-under-close-in-charges")
                 } else if through < 24 {
                     add(
-                        "Elements through", kind == .structuralResponse ? true : false,
-                        "8 through are enough for bending, but shear needs about 24 (137% strong on 12; \(through) here).",
+                        "Elements through", nil,
+                        "No structural result converges on today's defaults: the meshes that agree (8 through for "
+                            + "the slab, 24 for a beam in shear) are the coarse end; in shear 132% on 12, 104% on 24 "
+                            + "and 111% on 48 (\(through) here).",
                         kind == .structuralDamage
-                            ? "Mesh finer, about 24 through, where shear failure matters." : nil,
-                        "validation.md#a-beam-failing-in-shear")
+                            ? "Compare two meshes where shear failure matters; the answer moves with both."
+                            : nil,
+                        "validation.md#convergence-on-todays-defaults")
                 }
             }
             if has(.shellSectionShear) {

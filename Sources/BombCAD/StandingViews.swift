@@ -356,6 +356,14 @@ struct StandingDetail: View {
                             "This run's \(value.formatted(value.value)) puts the measurement at "
                                 + value.range(band.expectedWithInputs(value.value)) + ".")
                     }
+                    if let mesh = band.derivedMesh {
+                        Label(
+                            "Derived on \(mesh); it holds only there, since no structural result converges.",
+                            systemImage: "square.grid.3x3"
+                        )
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    }
                     Text("Holds for \(band.validity)\(band.scaled ? ", scaled to this resolution" : "").")
                         .font(.caption).foregroundStyle(.secondary)
                     if let url = documentURL(band.document) {

@@ -607,7 +607,7 @@ extension BlastSolver {
         var planes = [[LuminousBlock]](repeating: [], count: dims.z)
         withState { cells in
             planes.withUnsafeMutableBufferPointer { planes in
-                DispatchQueue.concurrentPerform(iterations: dims.z) { bk in
+                concurrently(iterations: dims.z) { bk in
                     var plane: [LuminousBlock] = []
                     for bj in 0..<dims.y {
                         for bi in 0..<dims.x {
