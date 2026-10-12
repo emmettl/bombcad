@@ -5,7 +5,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Support connections")
+@Suite("Support connections", .gpuThreads)
 struct SupportConnectionTests {
     private func material() -> StructureMaterial {
         .elastic(density: 2400, youngsModulus: 30e9, poissonRatio: 0.2)

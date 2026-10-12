@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// Checks the shell elements against plate and beam theory.
-@Suite("Shell elements")
+@Suite("Shell elements", .gpuThreads)
 struct ShellTests {
     let device: MTLDevice
 

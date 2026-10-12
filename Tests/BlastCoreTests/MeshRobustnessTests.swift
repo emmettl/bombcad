@@ -4,7 +4,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Mesh robustness")
+@Suite("Mesh robustness", .timeLimit(.minutes(120)))
 struct MeshRobustnessTests {
     private func cube(size: Float = 1, corner: SIMD3<Float> = .zero) throws -> ImportedMesh {
         let points: [SIMD3<Float>] = [

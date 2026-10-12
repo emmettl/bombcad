@@ -5,7 +5,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Scenario setup")
+@Suite("Scenario setup", .gpuThreads)
 struct ScenarioTests {
     let device: MTLDevice
 
@@ -169,7 +169,7 @@ struct ScenarioTests {
     }
 }
 
-@Suite("Blast validation")
+@Suite("Blast validation", .gpuThreads)
 struct BlastValidationTests {
     @Test("A surface burst tracks the empirical free-air curve for twice the mass")
     func surfaceBurstAgainstKinneyGraham() throws {

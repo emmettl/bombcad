@@ -4,7 +4,7 @@ import Testing
 @testable import BlastCore
 
 /// Concrete options that a saved model must keep, and the bench's `--bond`.
-@Suite("Model options saved and read")
+@Suite("Model options saved and read", .timeLimit(.minutes(120)))
 struct ModelOptionPersistenceTests {
     private func roundTrip(_ model: StructureModel) throws -> StructureModel {
         try JSONDecoder().decode(StructureModel.self, from: JSONEncoder().encode(model))

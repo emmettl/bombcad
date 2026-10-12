@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Positive gas-volume quadrature")
+@Suite("Positive gas-volume quadrature", .timeLimit(.minutes(120)))
 struct GasQuadratureTests {
     @Test("Full and half-fluid cells integrate quadratic moments")
     func moments() throws {

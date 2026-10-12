@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Initial wall stencil sensitivity")
+@Suite("Initial wall stencil sensitivity", .timeLimit(.minutes(120)))
 struct WallStencilSensitivityTests {
     @Test("Graph rings retain unique connected neighbours, exclude the centre and have deterministic order")
     func graph() {

@@ -4,7 +4,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Surfaces heated by the fireball's radiation")
+@Suite("Surfaces heated by the fireball's radiation", .timeLimit(.minutes(120)))
 struct SurfaceHeatingTests {
     private let ambient = 293.15
 

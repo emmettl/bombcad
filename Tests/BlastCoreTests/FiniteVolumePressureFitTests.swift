@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Diagnostic finite-volume pressure fits")
+@Suite("Diagnostic finite-volume pressure fits", .timeLimit(.minutes(120)))
 struct FiniteVolumePressureFitTests {
     private func polynomial(_ p: SIMD3<Double>) -> Double {
         1.2 + 2 * p.x - 3 * p.y + 0.7 * p.z + 0.9 * p.x * p.x - 0.4 * p.y * p.y

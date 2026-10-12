@@ -41,7 +41,7 @@ private func node(_ column: SoilColumn, at depth: Double) -> Int {
     column.depths.indices.min { abs(column.depths[$0] - depth) < abs(column.depths[$1] - depth) }!
 }
 
-@Suite("Soil column")
+@Suite("Soil column", .timeLimit(.minutes(120)))
 struct SoilColumnTests {
     let dry = GroundSoil(density: 1600, waveSpeed: 300)
 

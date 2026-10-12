@@ -5,7 +5,7 @@ import simd
 @testable import BlastCore
 
 /// Imported and mapped buildings as stationary envelopes.
-@Suite("Envelopes from imports and map data")
+@Suite("Envelopes from imports and map data", .timeLimit(.minutes(120)))
 struct EnvelopeImportTests {
     /// A box as OBJ text, from its low corner to its high one.
     private func box(_ low: SIMD3<Float>, _ high: SIMD3<Float>) throws -> ImportedMesh {

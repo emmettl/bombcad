@@ -952,7 +952,8 @@ extension StandingScene {
                         "Footing settlement", low: "too little", high: "too much",
                         validity:
                             "a surface footing on dry sand of 80 MPa, twice the default's; the cyclic sand "
-                            + "was made the default after the shaken tests",
+                            + "was made the default after the shaken tests, and its heave under the heel fitted "
+                            + "on one test's settlement (FoRCy)",
                         check: has(.cyclicSand) ? "FoRCy SSG02_03" : "FoRDy, eight events"),
                 ]
             }

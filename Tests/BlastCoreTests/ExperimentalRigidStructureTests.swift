@@ -5,7 +5,7 @@ import simd
 @testable import BlastCore
 
 /// Freestanding objects striking a deformable structure. Mechanical checks only.
-@Suite("Rigid objects against deformable structures", .serialized)
+@Suite("Rigid objects against deformable structures", .serialized, .gpuThreads)
 struct ExperimentalRigidStructureTests {
     let device: MTLDevice
     init() throws { device = try #require(MTLCreateSystemDefaultDevice()) }

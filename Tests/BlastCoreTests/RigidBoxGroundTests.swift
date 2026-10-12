@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Rigid box ground contact")
+@Suite("Rigid box ground contact", .timeLimit(.minutes(120)))
 struct RigidBoxGroundTests {
     @Test("A resting box is supported by its weight without drifting or spinning")
     func resting() throws {

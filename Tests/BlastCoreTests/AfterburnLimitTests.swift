@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// Afterburning's extinction limit.
-@Suite("Afterburning's extinction limit")
+@Suite("Afterburning's extinction limit", .gpuThreads)
 struct AfterburnLimitTests {
     let device: MTLDevice
 

@@ -5,7 +5,7 @@ import Testing
 
 /// The slabs with steel in one face or both (`TwoFaceSlabTests`) against the derived data in
 /// Fixtures/TwoFaceSlabs, transcribed from the papers.
-@Suite("Slabs with steel in both faces")
+@Suite("Slabs with steel in both faces", .timeLimit(.minutes(120)))
 struct TwoFaceSlabTestsTests {
     private func fixture(_ name: String) throws -> [String: Any] {
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()

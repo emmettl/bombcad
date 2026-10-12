@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Moving gas time integration")
+@Suite("Moving gas time integration", .timeLimit(.minutes(120)))
 struct MovingTimeIntegrationTests {
     // A local piston control volume isolates time error from clipping, changing groups
     // and spatial reconstruction. Its single wall changes V at a constant speed.

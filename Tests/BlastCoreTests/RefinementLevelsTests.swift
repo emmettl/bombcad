@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// The air refined in two levels, the second refining the first.
-@Suite("Refinement in two levels")
+@Suite("Refinement in two levels", .gpuThreads)
 struct RefinementLevelsTests {
     let device: MTLDevice
 

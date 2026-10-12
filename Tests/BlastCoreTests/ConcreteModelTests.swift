@@ -7,7 +7,7 @@ import simd
 
 /// Checks the concrete and reinforcement model against its own uniaxial curves and against
 /// the standard section analysis for a reinforced beam.
-@Suite("Concrete model")
+@Suite("Concrete model", .gpuThreads)
 struct ConcreteModelTests {
     let device: MTLDevice
 
@@ -893,7 +893,7 @@ extension ConcreteModelTests {
 }
 
 /// The model against a real test: the normal-strength slab of the Blast Blind Simulation Contest.
-@Suite("Slab benchmark")
+@Suite("Slab benchmark", .gpuThreads)
 struct SlabBenchmarkTests {
     @Test("The recorded load has the stated peak and impulse")
     func load() {
@@ -955,7 +955,7 @@ struct SlabBenchmarkTests {
 }
 
 /// Janney's reinforced beam, bent slowly to failure.
-@Suite("Beam benchmark")
+@Suite("Beam benchmark", .gpuThreads)
 struct BeamBenchmarkTests {
     @Test("The beam's moment follows the measured curve, on two meshes")
     func momentAgainstTest() throws {
@@ -973,7 +973,7 @@ struct BeamBenchmarkTests {
 }
 
 /// Vecchio and Shim's beam OA1, with no stirrups, failing in diagonal tension.
-@Suite("Shear beam benchmark")
+@Suite("Shear beam benchmark", .gpuThreads)
 struct ShearBeamBenchmarkTests {
     @Test("A beam without stirrups fails suddenly in shear, near the measured load")
     func diagonalTension() throws {
@@ -993,7 +993,7 @@ struct ShearBeamBenchmarkTests {
 }
 
 /// Saatci's beams struck at mid-span by a falling weight.
-@Suite("Impact benchmark")
+@Suite("Impact benchmark", .gpuThreads)
 struct ImpactBenchmarkTests {
     let device: MTLDevice
 
@@ -1087,7 +1087,7 @@ struct ImpactBenchmarkTests {
 }
 
 /// Chiquito et al.'s full-scale slabs under charges hung above them.
-@Suite("Close-in slab test")
+@Suite("Close-in slab test", .gpuThreads)
 struct CloseInSlabTests {
     let device: MTLDevice
 
@@ -1127,7 +1127,7 @@ struct CloseInSlabTests {
 }
 
 /// Concrete removed round intact bars leaves the bars.
-@Suite("Bare bars")
+@Suite("Bare bars", .gpuThreads)
 struct BareBarTests {
     /// A reinforced column pulled apart until a crack is far past removal: the force the bars
     /// still carry across it at the end, and how many elements were left as bare bars.

@@ -4,7 +4,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Mesh defect inspection")
+@Suite("Mesh defect inspection", .timeLimit(.minutes(120)))
 struct MeshInspectionTests {
     @Test("Open edges can be inspected but never become a validated mesh")
     func openSurface() throws {

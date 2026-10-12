@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Fractional rigid-box geometry")
+@Suite("Fractional rigid-box geometry", .timeLimit(.minutes(120)))
 struct FractionalBoxGeometryTests {
     @Test(
         "A brief corner graze carries pressure impulse despite zero endpoint volume change",

@@ -5,7 +5,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("The fireball's rise and cloud")
+@Suite("The fireball's rise and cloud", .gpuThreads)
 struct FireballRiseTests {
     private let ambientTemperature = 288.15
     private let ambientPressure = 101_325.0

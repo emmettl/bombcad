@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// Checks that the air loads the structure correctly and that the coupled run behaves sensibly.
-@Suite("Structure coupling")
+@Suite("Structure coupling", .gpuThreads)
 struct StructureCouplingTests {
     let device: MTLDevice
 
@@ -596,7 +596,7 @@ struct StructureCouplingTests {
 }
 
 /// A larger structure: the two-storey frame, on its own under gravity.
-@Suite("Frame")
+@Suite("Frame", .gpuThreads)
 struct FrameTests {
     let device: MTLDevice
 

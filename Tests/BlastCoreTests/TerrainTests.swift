@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// The ground's shape as a heightfield the air sees as solid.
-@Suite("Terrain")
+@Suite("Terrain", .gpuThreads)
 struct TerrainTests {
     let device: MTLDevice
 
@@ -176,7 +176,7 @@ struct TerrainTests {
 }
 
 /// What follows the terrain besides the air: fragments landing, thermal receivers.
-@Suite("Terrain downstream")
+@Suite("Terrain downstream", .gpuThreads)
 struct TerrainDownstreamTests {
     /// Still air of `density` over a 100 m cube, for `duration` from `start`.
     private func still(density: Float, from start: Double, duration: Double) -> (AirSlice, AirSlice) {

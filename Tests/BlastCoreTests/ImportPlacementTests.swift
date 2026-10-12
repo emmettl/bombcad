@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Import placement shortcuts")
+@Suite("Import placement shortcuts", .timeLimit(.minutes(120)))
 struct ImportPlacementTests {
     @Test("Units and up axis determine the physical footprint without changing scale")
     func dimensions() throws {

@@ -4,7 +4,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Repository importer samples")
+@Suite("Repository importer samples", .timeLimit(.minutes(120)))
 struct ImporterSampleTests {
     // Read the actual repository examples; they are not SwiftPM or app resources.
     private var sampleDirectory: URL {

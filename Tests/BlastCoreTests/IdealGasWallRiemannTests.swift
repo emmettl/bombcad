@@ -3,7 +3,7 @@ import Testing
 
 @testable import BlastCore
 
-@Suite("Exact ideal-gas wall pressure")
+@Suite("Exact ideal-gas wall pressure", .timeLimit(.minutes(120)))
 struct IdealGasWallRiemannTests {
     @Test("Compression satisfies the shock jump relation")
     func compression() throws {

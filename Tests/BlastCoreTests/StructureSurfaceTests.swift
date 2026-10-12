@@ -5,7 +5,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Structure surface and USD export")
+@Suite("Structure surface and USD export", .gpuThreads)
 struct StructureSurfaceTests {
     let device: MTLDevice
 
