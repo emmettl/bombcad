@@ -38,7 +38,10 @@ only. Each file is handled as the app would handle it:
 - **Structure:** converted with the default options and meshed, with the smallest element
   recorded.
 
-Setting `BOMBCAD_IFC_CORPUS_GRAVITY=1` also stands each structure under gravity. That uses the
+Setting `BOMBCAD_IFC_CORPUS_A GPU run standing the 21 real buildings under gravity for 0.3 s
+(`BOMBCAD_IFC_CORPUS_GRAVITY=1`, through `gpu-slot`) was queued behind other work on the Studio
+when this was written; its results go here. The three repository fixtures stand (see [structures
+from IFC](structural-editing.md#structures-from-ifc)).=1` also stands each structure under gravity. That uses the
 GPU, so run it through `gpu-slot`.
 
 ## Results
@@ -60,7 +63,10 @@ The full table, per file, is `corpus3-table.md` in `/Volumes/StudioData/bombcad/
 
 ### Under gravity
 
-GRAVITY
+A GPU run standing the 21 real buildings under gravity for 0.3 s
+(`BOMBCAD_IFC_CORPUS_GRAVITY=1`, through `gpu-slot`) was queued behind other work on the Studio
+when this was written; its results go here. The three repository fixtures stand (see [structures
+from IFC](structural-editing.md#structures-from-ifc)).
 
 ## What broke, and what was done
 
