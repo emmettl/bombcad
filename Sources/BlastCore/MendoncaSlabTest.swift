@@ -128,6 +128,13 @@ public enum MendoncaSlabTest {
         /// the depth of the trestles' top rail as an obstacle in the air.
         public var bearingWidth: Float = 0.1
         public var railDepth: Float = 0.1
+        /// The trestles' top rails as elastic timber bonded under the slab, resting on their
+        /// supports in its place (a secondary run), rather than rigid supports under the slab's own
+        /// face: softwood loaded across its grain, C24's mean modulus perpendicular to the grain
+        /// (EN 338) and its mean density.
+        public var timberBearings = false
+        public var timberModulus: Float = 370e6
+        public var timberDensity: Float = 420
         /// Slab A's two 10 mm bars along the span (x); false, across it.
         public var heavyBarsAlongSpan = true
         /// The charge's centre this far above the stand-off the inputs give (0: the stand-off is to
@@ -246,9 +253,20 @@ public enum MendoncaSlabTest {
                 min: SIMD3(s.max.x - settings.bearingWidth, c.y - half, s.min.z - settings.railDepth),
                 max: SIMD3(s.max.x, c.y + half, s.min.z)),
         ]
+        if settings.timberBearings {
+            model.solids += rails
+            for index in 1...rails.count {
+                model.setMaterial(
+                    .elastic(
+                        density: settings.timberDensity, youngsModulus: settings.timberModulus,
+                        poissonRatio: 0.3),
+                    of: index)
+            }
+        }
         let position = SIMD3(c.x, c.y, s.max.z + slab.standoff + settings.chargeLift)
         return Scenario(
-            name: "Mendonça slab \(slab.name)", domainSize: domain, boxes: rails,
+            name: "Mendonça slab \(slab.name)", domainSize: domain,
+            boxes: settings.timberBearings ? [] : rails,
             charge: Charge(mass: slab.charge * settings.chargeFactor, position: position),
             gauges: gauges(inputs: inputs, settings: settings), structure: model)
     }
@@ -343,11 +361,13 @@ public enum MendoncaSlabTest {
         let near = index(s.min.x, 0)
         let far = index(s.max.x, 0)
         // Resting on the trestles' timber, free to lift off; held along the span at the near
-        // bearing's middle line, and across at the middle of each.
+        // bearing's middle line, and across at the middle of each. With timber bearings, their
+        // undersides rest so.
+        let seat = settings.timberBearings ? index(s.min.z - settings.railDepth, 2) : bottom
         structure.mutateNodes { nodes in
             for j in low...high {
                 for i in Array(near...(near + bearing)) + Array((far - bearing)...far) {
-                    guard let n = structure.storedNode(i, j, bottom) else { continue }
+                    guard let n = structure.storedNode(i, j, seat) else { continue }
                     nodes[n].restsOnSupport = true
                     if i == near + bearing / 2 { nodes[n].restrain(x: true) }
                     if j == cj && (i == near + bearing / 2 || i == far - bearing / 2) {

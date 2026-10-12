@@ -187,3 +187,21 @@ seven times as long on the primary's 14.7 million uniform cells but about 19 min
 ratios to that, is applied to the primary's peaks as declared. The primary runs and the
 16-element runs stay on the Studio with the primary's air. No result of these runs had been
 seen; the reason is time alone.
+
+**4. 2026-10-12 21:05, after the primary runs of slabs 5 and 7 and secondary run 1's slab 4:
+a sixth secondary run, timber bearings; the primary unchanged.** In those runs the slab is
+thrown up off its trestles by the air beneath it (35 to 50 mm, at about 1 m/s) and lands on them
+at 190 to 225 ms, and the landing, not the blast, makes the largest downward displacement and
+what is left: slab 5 13.2 mm (10.9 left), slab 7 22.8 mm (20.8 left), slab 4 on the calibrated
+air 7.1 mm (6.3 left), where the blast's own first peak was about 4 mm. The supports are rigid
+in the model, so the bearing lines stop dead as the slab lands, which a slab on timber trestles
+on clay would not. That was a declared assumption and does not contradict the inputs, so the
+primary prediction keeps it and its declared quantities (the largest downward displacement in
+the run and the mean of its last 10 ms); the README reports the blast's first peak beside it as
+description. **Secondary run 6** gives the bearings compliance: each trestle's top rail
+(100 mm wide, 100 mm deep, 0.8 m long, as in the air) is elastic softwood loaded across its grain
+(EN 338 C24: mean modulus perpendicular to the grain 370 MPa, mean density 420 kg/m³), bonded
+under the slab and resting on its supports in the slab's place, so slab and rails lift off and
+land together; the rigid rails leave the air, the rails being in it as part of the structure.
+All seven slabs, on the Studio, on the primary's mesh and air, after the primary runs and before
+the 16-element runs. It is reported, not scored.

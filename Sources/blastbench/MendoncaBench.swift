@@ -9,7 +9,7 @@ import UniformTypeIdentifiers
 // from Samples/Mendonca2020/inputs alone (see MendoncaSlabTest.swift):
 //
 //   blastbench mendonca [--slabs 1,2,4,5,7,9,10] [--layers 8] [--dx 0.0125] [--refine 2] [--mapped]
-//                       [--time 0.2] [--heavy-across] [--lift 0.1]
+//                       [--time 0.2] [--heavy-across] [--lift 0.1] [--timber]
 //                       [--inputs Samples/Mendonca2020/inputs/slabs.json] [--out dir]
 //                       [--ensemble 8 [--seed 1] [--samples 1-8]]   (the inputs' spread)
 //
@@ -27,6 +27,7 @@ func runMendonca(device: MTLDevice) throws {
     if flag("mapped") { settings.mappedCharge = true }
     if let time = option("time").flatMap({ Double($0) }) { settings.duration = time }
     if flag("heavy-across") { settings.heavyBarsAlongSpan = false }
+    if flag("timber") { settings.timberBearings = true }
     if let lift = option("lift").flatMap({ Float($0) }) { settings.chargeLift = lift }
     let names = option("slabs")?.split(separator: ",").map(String.init)
     let slabs = inputs.slabs.filter { names?.contains($0.name) ?? true }
