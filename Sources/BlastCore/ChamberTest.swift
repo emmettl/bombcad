@@ -307,7 +307,7 @@ public enum ChamberTest {
         device: MTLDevice, scenario: Scenario, cellSize: Float, duration: Double,
         interiorOverpressure: Float = 0, afterburning: Bool = false, afterburnEnergy: Float? = nil,
         airModel: AirModel = .idealGas, refinement: Int = 1, contact: ContactMode? = nil,
-        progress: ((String) -> Void)? = nil
+        progress: ((String) -> Void)? = nil, prepare: ((StructureSolver) -> Void)? = nil
     ) throws -> Result {
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
         if afterburning || airModel != .idealGas || refinement > 1 {
@@ -338,6 +338,8 @@ public enum ChamberTest {
         }
         guard let structure = solver.structure else { throw BlastError.allocationFailed("structure") }
         if let contact { structure.contactMode = contact }
+        // For benchmarks: a hook before the run, such as a shorter step.
+        prepare?(structure)
         let h = structure.model.elementSize
         let edge = SIMD3<Float>(roofEdge, 5.0, roof.high)
         let start = ContinuousClock.now

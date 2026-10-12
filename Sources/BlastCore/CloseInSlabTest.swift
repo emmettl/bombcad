@@ -160,7 +160,7 @@ public enum CloseInSlabTest {
         refinement: Int = 1, mappedCharge: Bool = true, afterburning: Bool = false,
         heldLengthwise: Bool = true, stepsPerSample: Int = 16,
         adjust: (inout Scenario) -> Void = { _ in }, progress: ((String) -> Void)? = nil,
-        inspect: ((StructureSolver, Double) -> Void)? = nil
+        inspect: ((StructureSolver, Double) -> Void)? = nil, prepare: ((StructureSolver) -> Void)? = nil
     ) throws -> Result {
         var scenario = scenario(test, elementSize: elementSize)
         adjust(&scenario)
@@ -170,6 +170,8 @@ public enum CloseInSlabTest {
         solver.configuration.refinement = refinement
         try solver.load(scenario)
         guard let structure = solver.structure else { throw BlastError.allocationFailed("structure") }
+        // For benchmarks: a hook before the run, such as a shorter step.
+        prepare?(structure)
         let h = structure.model.elementSize
         func index(_ value: Float, _ axis: Int) -> Int {
             Int(((value - structure.origin[axis]) / h).rounded())

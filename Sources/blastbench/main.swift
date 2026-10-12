@@ -703,7 +703,7 @@ func runChamber() throws {
             ? { line in
                 print(line)
                 fflush(stdout)
-            } : nil)
+            } : nil, prepare: prepareTrace)
     print(
         "\nPeak reflected overpressure (MPa); the six sensors measured \(ChamberTest.measuredPeaks.map { format(Double($0.pressure) / 1e6, 2) }.joined(separator: ", "))"
     )
@@ -2443,7 +2443,7 @@ func runCloseIn() throws {
                 lastStructure = structure
                 applyFragmentThresholds(structure)
                 inspect?(structure, time)
-            })
+            }, prepare: prepareTrace)
         if let path = option("trace") {
             let centre = result.gaugeHistories[5]
             let text = centre.map { "\($0.time),\($0.pressure)" }.joined(separator: "\n")
@@ -2590,6 +2590,8 @@ func runImpact() throws {
             } inspect: { solver in
                 if flag("map") { for line in solver.crackMap(row: solver.ey / 2) { print(line) } }
                 if flag("bars") { printBarYield(solver) }
+            } prepare: {
+                prepareTrace($0)
             }
             let numbers =
                 "\(test.peak.map { format(Double($0) * 1000) } ?? "-") / \(test.residual.map { format(Double($0) * 1000) } ?? "-")"
@@ -2650,6 +2652,8 @@ func runImpact() throws {
         } inspect: { solver in
             // `--map`: the cracks left in the middle row of elements, top row first.
             if flag("map") { for line in solver.crackMap(row: solver.ey / 2) { print(line) } }
+        } prepare: {
+            prepareTrace($0)
         }
         let measured =
             test.peak.map { "\(format(Double($0) * 1000)) / \(format(Double(test.residual ?? 0) * 1000)) mm" }
