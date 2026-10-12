@@ -303,6 +303,56 @@ struct IFCStructureTests {
             untied.members.first { $0.name == "Roof" }?.notes.contains { $0.contains("will fall") } == true)
     }
 
+    @Test("Members that touch but that the mesh does not meet are tied at their nearest nodes, flagged")
+    func contactTies() throws {
+        // A 50 mm topping laid on the room's roof, face to face: parallel plates the mesh keeps
+        // apart, tied where they touch.
+        var elements = try room(concrete: true)
+        elements.append(
+            try element(9, "Topping", "IfcSlab", [box(SIMD3(0, 0, 3.2), SIMD3(4, 4, 3.25))], materials: [.init(name: "Concrete C30/37")]))
+        let structure = try IFCStructure(elements: elements)
+        #expect(structure.model.tiesTouching == true)
+        let topping = try #require(structure.members.first { $0.name == "Topping" })
+        #expect(!topping.notes.contains { $0.contains("will fall") })
+        let tie = try #require(structure.connections.first { $0.first == topping.id || $0.second == topping.id })
+        #expect(tie.kind.contains("inferred"))
+        #expect(structure.assumptions.contains { $0.contains("tied rigidly at their nearest nodes") })
+        let mesh = try ShellMesh(model: structure.model)
+        #expect(mesh.contactTies.count == 1 && mesh.contactTies[0].nodes > 0)
+        // Untied, it is loose again.
+        let apart = try IFCStructure(elements: elements, options: .init(untied: [tie.key]))
+        #expect(apart.members.first { $0.name == "Topping" }?.notes.contains { $0.contains("will fall") } == true)
+        // Saved and read back, the switch stays.
+        let model = try JSONDecoder().decode(StructureModel.self, from: JSONEncoder().encode(structure.model))
+        #expect(model.tiesTouching == true)
+    }
+
+    @Test("A foundation slab above a pit, a beam on the ground and a wall on a rigid arch are held")
+    func heldRules() throws {
+        // A pit's floor sets the lowest level; the foundation slab is 0.4 m above it with
+        // nothing under it: it rests on the ground at its soffit.
+        let pit = try element(1, "Pit floor", "IfcSlab", [box(SIMD3(1, 1, 0), SIMD3(2.5, 2.5, 0.3))])
+        let slab = try element(2, "Foundation slab", "IfcSlab", [box(SIMD3(0, 0, 0.4), SIMD3(8, 6, 0.9))])
+        // A ground beam lying on the ground: its centreline is above it.
+        let ground = try element(3, "Ground beam", "IfcBeam", [box(SIMD3(10, 0, 0), SIMD3(16, 0.3, 0.4))])
+        // A wall standing on an inclined (so rigid) arch.
+        let arch = try element(4, "Arch", "IfcSlab", [box(SIMD3(20, 0, 0), SIMD3(26, 3, 1))], turn: 0.3)
+        let wall = try element(5, "Spandrel", "IfcWall", [box(SIMD3(21, 1, 1.7), SIMD3(25, 1.2, 4))])
+        let structure = try IFCStructure(elements: [pit, slab, ground, arch, wall])
+        #expect(structure.supports.contains { $0.hasPrefix("Foundation slab: on the lowest storey near") && $0.contains("soffit") })
+        #expect(structure.supports.contains { $0.hasPrefix("Ground beam: lies on the ground") })
+        #expect(structure.supports.contains { $0.hasPrefix("Spandrel:") })
+        #expect(!structure.members.contains { $0.notes.contains { $0.contains("will fall") } })
+    }
+
+    @Test("A duplicate, given no elements of its own by the mesh, is not reported as falling")
+    func duplicate() throws {
+        var elements = try room(concrete: true)
+        elements.append(try element(9, "Roof copy", "IfcSlab", [box(SIMD3(0, 0, 3), SIMD3(4, 4, 3.2))]))
+        let structure = try IFCStructure(elements: elements)
+        #expect(!structure.members.contains { $0.notes.contains { $0.contains("will fall") } })
+    }
+
     @Test("A connection the user unticks leaves the pair apart, untied, and says so")
     func untied() throws {
         let elements = try room(concrete: true)

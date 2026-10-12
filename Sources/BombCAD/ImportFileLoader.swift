@@ -45,16 +45,18 @@ final class ImportFileLoader {
                             "Choose an OBJ, STL or IFC file rather than a folder or special file.")
                     }
                     let size = values.fileSize ?? 0
-                    guard size <= 20_000_000 else {
+                    // An IFC building may be larger than a mesh: its limit is the importer's.
+                    let limit = url.pathExtension.lowercased() == "ifc" ? ImportedMesh.ifcSourceLimit : 20_000_000
+                    guard size <= limit else {
                         throw ImportedMesh.ImportError.invalid(
-                            "Model exceeds the 20 MB limit. Simplify the export before importing.")
+                            "Model exceeds the \(limit / 1_000_000) MB limit. Simplify the export before importing.")
                     }
                     let handle = try FileHandle(forReadingFrom: url)
                     defer { try? handle.close() }
                     var data = Data()
-                    while data.count <= 20_000_000 {
+                    while data.count <= limit {
                         try Task.checkCancellation()
-                        let amount = min(1_000_000, 20_000_001 - data.count)
+                        let amount = min(1_000_000, limit + 1 - data.count)
                         guard let chunk = try handle.read(upToCount: amount), !chunk.isEmpty else { break }
                         data.append(chunk)
                     }

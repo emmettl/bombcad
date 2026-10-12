@@ -50,6 +50,9 @@ struct ShellMesh {
     /// column's node where it meets the slab, so that the column bears on the slab over its whole
     /// section instead of at one point.
     var ties: [(slave: UInt32, master: UInt32)] = []
+    /// Where `StructureModel.tiesTouching` tied members that touch but shared no node: the two
+    /// solids and the nodes tied.
+    var contactTies: [(first: Int, second: Int, nodes: Int)] = []
     /// For each element beside a column head, the mean shear stress through its thickness at
     /// which the connection punches (see `punchingStrength`); zero for the rest.
     var punching: [Float] = []
@@ -395,6 +398,101 @@ struct ShellMesh {
             ]
             for (side, offset) in offsets.enumerated() {
                 elements[index].neighbours[side] = Int32(claimed[key &+ offset] ?? -1)
+            }
+        }
+        if model.tiesTouching == true { tieTouching(model: model, tolerance: tolerance) }
+    }
+
+    /// Members that touch but share no node (layers stacked face to face, a beam meeting a column
+    /// off its centreline, a plate against a beam's side) are tied: each node of the lighter one
+    /// near where they touch to the other's nearest, rigidly, as a column's head is to a slab.
+    /// Nodes already tied, holding others, or held by a support are left as they are.
+    private mutating func tieTouching(model: StructureModel, tolerance: Float) {
+        let solids = model.solids
+        var sets = [Set<UInt32>](repeating: [], count: solids.count)
+        for element in elements { for k in 0..<4 { sets[element.solid].insert(element.nodes[k]) } }
+        for beam in beams {
+            sets[beam.solid].insert(beam.nodes.x)
+            sets[beam.solid].insert(beam.nodes.y)
+        }
+        let nodes = sets.map { $0.sorted() }
+        var masterOf: [UInt32: UInt32] = [:]
+        var masters = Set<UInt32>()
+        for tie in ties {
+            masterOf[tie.slave] = tie.master
+            masters.insert(tie.master)
+        }
+        func touch(_ a: Box, _ b: Box) -> Bool {
+            (0..<3).allSatisfy { a.max[$0] >= b.min[$0] - tolerance && b.max[$0] >= a.min[$0] - tolerance }
+        }
+        // Members already joined, through shared nodes or ties, directly or through others.
+        var group = Array(solids.indices)
+        func root(_ n: Int) -> Int {
+            var n = n
+            while group[n] != n {
+                group[n] = group[group[n]]
+                n = group[n]
+            }
+            return n
+        }
+        var owner: [UInt32: Int] = [:]
+        for (n, set) in sets.enumerated() {
+            for node in set {
+                if let other = owner[node] { group[root(n)] = root(other) } else { owner[node] = n }
+            }
+        }
+        for tie in ties {
+            if let a = owner[tie.slave], let b = owner[tie.master] { group[root(a)] = root(b) }
+        }
+        func linked(_ i: Int, _ j: Int) -> Bool { root(i) == root(j) }
+        func volume(_ n: Int) -> Float { solids[n].size.x * solids[n].size.y * solids[n].size.z }
+        // Nodes a connection will hold, through points of their faces as the solver finds them,
+        // or that are clamped: never made to follow another.
+        var anchored = Set<Int>()
+        if model.connectionStiffness != nil {
+            let points = jointPoints(across: ShellSolver.fibresAcross, normals: model.connectionNormals) { point, node in
+                guard let slot = model.connectionSlot(at: point), slot != 0 || abs(node.z) < 1e-4,
+                    let law = model.connection(inSlot: slot)
+                else { return nil }
+                return (slot, law.across)
+            }
+            for (n, list) in points.enumerated() where !list.isEmpty { anchored.insert(n) }
+        }
+        func held(_ p: SIMD3<Float>) -> Bool {
+            model.isClampedBySupport(at: p) || (model.fixedBase && abs(p.z) < 1e-4)
+        }
+        for i in solids.indices where !sets[i].isEmpty {
+            for j in (i + 1)..<solids.count where !sets[j].isEmpty && touch(solids[i], solids[j]) && !linked(i, j) {
+                let (light, heavy) = volume(i) <= volume(j) ? (i, j) : (j, i)
+                // Where they touch, widened to take in both midsurfaces or centrelines.
+                let reach =
+                    max(0.5 * model.elementSize, 0.5 * solids[i].size.min(), 0.5 * solids[j].size.min()) + tolerance
+                var region = Box(min: simd_max(solids[i].min, solids[j].min), max: simd_min(solids[i].max, solids[j].max))
+                region.min -= SIMD3(repeating: reach)
+                region.max += SIMD3(repeating: reach)
+                func inside(_ p: SIMD3<Float>) -> Bool { (0..<3).allSatisfy { p[$0] >= region.min[$0] && p[$0] <= region.max[$0] } }
+                let candidates = nodes[heavy].filter { inside(positions[Int($0)]) }
+                var count = 0
+                for slave in nodes[light] where inside(positions[Int(slave)]) {
+                    guard masterOf[slave] == nil, !masters.contains(slave), !anchored.contains(Int(slave)),
+                        !held(positions[Int(slave)])
+                    else { continue }
+                    let p = positions[Int(slave)]
+                    guard var master = candidates.min(by: {
+                        simd_distance_squared(positions[Int($0)], p) < simd_distance_squared(positions[Int($1)], p)
+                    }), simd_distance(positions[Int(master)], p) <= 2 * reach + model.elementSize
+                    else { continue }
+                    if let up = masterOf[master] { master = up }
+                    guard master != slave else { continue }
+                    ties.append((slave, master))
+                    masterOf[slave] = master
+                    masters.insert(master)
+                    count += 1
+                }
+                if count > 0 {
+                    contactTies.append((i, j, count))
+                    group[root(i)] = root(j)
+                }
             }
         }
     }

@@ -876,6 +876,7 @@ public enum StandingTable {
         "StructureModel.solidElementKind": .option([.shellElements]),
         "StructureModel.shellElementSize": .input,
         "StructureModel.shellLayers": .input,
+        "StructureModel.tiesTouching": .option([.importedStructure]),
         "StructureModel.supports": .input,
         "StructureModel.supportAnchorages": .option([.baseConnections, .footings]),
         "StructureModel.interfaceBond": .option([.interfaceBond]),

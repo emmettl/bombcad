@@ -181,6 +181,19 @@ public struct IFCStructure: Sendable {
         "IfcMemberStandardCase",
     ]
     static let paneThickness: Float = 0.006
+    /// How far the mesh can move a member's end or centreline onto a line it keeps: half an
+    /// element (see `ShellMesh`), and a little.
+    static func snap(_ elementSize: Float) -> Float { 0.5 * elementSize + 0.01 }
+    /// A support region under `box`'s foot, reaching `reach` above and below its underside, so
+    /// as to hold the points of its underside wherever the mesh has put them.
+    static func foot(of box: Box, reach: Float) -> Box {
+        Box(
+            min: SIMD3(box.min.x - 0.01, box.min.y - 0.01, box.min.z - reach),
+            max: SIMD3(box.max.x + 0.01, box.max.y + 0.01, box.min.z + reach))
+    }
+    /// How far above the lowest level a slab of the lowest storey with nothing under it is
+    /// taken to rest on the ground (a foundation slab above a pit), in metres.
+    static let foundationReach: Float = 1
 
     /// The structure of `elements` (in the scene's frame, metres, z up), with `options`; their
     /// materials as the IFC gives them (their own `materials`, else from `materials` by GlobalId),
@@ -744,6 +757,8 @@ public struct IFCStructure: Sendable {
         var model = StructureModel(
             solids: solids, material: options.defaultMaterial, elementSize: options.elementSize)
         model.elementKind = .shell
+        // Members that touch but that the mesh leaves apart are tied where they touch.
+        model.tiesTouching = true
         model.openings = openings
         model.solidMaterial = solidMaterials.map { $0 == options.defaultMaterial ? nil : $0 }
         model.solidSourceParts = modelID == nil ? [] : solidParts
@@ -903,15 +918,91 @@ public struct IFCStructure: Sendable {
                         && solids[$0].max.z > box.min.z - 1e-4
                 }
                 .map { box.min.z - 0.5 * (solids[$0].min.z + solids[$0].max.z) }.max() ?? 0
-            model.supports.append(
-                Box(
-                    min: SIMD3(box.min.x - 0.01, box.min.y - 0.01, box.min.z - max(0, drop) - 0.01),
-                    max: SIMD3(box.max.x + 0.01, box.max.y + 0.01, box.min.z + 0.01)))
+            var region = Self.foot(of: box, reach: Self.snap(options.elementSize))
+            region.min.z = min(region.min.z, box.min.z - max(0, drop) - 0.01)
+            model.supports.append(region)
             model.supportAnchorages.append(options.base)
             supportNotes.append(
                 "\(member.name): on the lowest storey with nothing under it in the IFC, its foundation left out; tied to "
                     + "the ground \(Self.millimetres(box.min.z)) up by \(BaseConnection(options.base).title.lowercased()) (assumed)."
             )
+        }
+
+        // Slabs of the lowest storey with nothing under them (foundation slabs on piles or soil
+        // the IFC leaves out, above a pit that sets the lowest level) rest on the ground at their
+        // soffit.
+        for (n, member) in members.enumerated() where member.role == .shell {
+            guard let index = member.solid else { continue }
+            let box = solids[index]
+            // What stands under it covers under half its plan: walls round a pit's edge do not
+            // carry a slab.
+            let covered = bodies.filter { j in
+                j != index && solids[j].max.z <= box.min.z + 1e-3 && solids[j].max.z >= box.min.z - options.gap
+            }.reduce(Float(0)) { sum, j in
+                let overlap = (0..<2).map { max(0, min(solids[j].max[$0], box.max[$0]) - max(solids[j].min[$0], box.min[$0])) }
+                return sum + overlap[0] * overlap[1]
+            }
+            guard thinAxis(box) == 2, box.min.z > options.gap + 1e-3, box.min.z <= Self.foundationReach,
+                groundStorey.map({ storey(n) == $0 }) ?? false,
+                covered < 0.5 * box.size.x * box.size.y
+            else { continue }
+            model.supports.append(Self.foot(of: box, reach: 0.2 * options.elementSize + 0.01))
+            model.supportAnchorages.append(.resting())
+            supportNotes.append(
+                "\(member.name): on the lowest storey near its lowest level with nothing under it in the IFC, its foundation left out; rests on "
+                    + "the ground at its soffit, \(Self.millimetres(box.min.z)) up, with friction 0.6 (assumed).")
+        }
+
+        // Beams lying on the ground (base plates, ground beams): their centrelines above it, the
+        // ground's connection holds none of their nodes, so they are tied at their underside.
+        for member in members where member.role == .beam {
+            guard let index = member.solid else { continue }
+            let box = solids[index]
+            let long = (0..<3).max { box.size[$0] < box.size[$1] } ?? 2
+            guard long != 2, box.min.z <= options.gap + 1e-3,
+                !model.supports.contains(where: { region in
+                    (0..<3).allSatisfy { box.max[$0] >= region.min[$0] && region.max[$0] >= box.min[$0] }
+                })
+            else { continue }
+            model.supports.append(Self.foot(of: box, reach: Self.snap(options.elementSize)))
+            model.supportAnchorages.append(options.base)
+            supportNotes.append(
+                "\(member.name): lies on the ground, tied at its underside by "
+                    + "\(BaseConnection(options.base).title.lowercased()) (assumed).")
+        }
+        // Members that stand on an element kept rigid (an arch, an inclined roof, a finish) are
+        // held by it, as it does not move.
+        let rigidBoxes = members.indices.filter { members[$0].role == .rigid }.map { n -> (name: String, box: Box) in
+            var box = shapes[n].box
+            box.min += shift
+            box.max += shift
+            return (members[n].name, box)
+        }
+        for member in members where member.role == .shell || member.role == .beam {
+            guard let index = member.solid else { continue }
+            let box = solids[index]
+            guard box.min.z > options.gap + 1e-3,
+                !model.supports.indices.contains(where: { n in
+                    let region = model.supports[n]
+                    return (0..<3).allSatisfy { box.max[$0] >= region.min[$0] && region.max[$0] >= box.min[$0] }
+                }),
+                let under = rigidBoxes.first(where: { rigid in
+                    rigid.box.max.z >= box.min.z - options.gap && rigid.box.min.z < box.min.z
+                        && (0..<2).allSatisfy {
+                            min(rigid.box.max[$0], box.max[$0]) - max(rigid.box.min[$0], box.min[$0]) > 1e-3
+                        }
+                }),
+                // Nothing of the structure under it already.
+                !bodies.contains(where: { j in
+                    j != index && abs(solids[j].max.z - box.min.z) <= 1e-3
+                        && (0..<2).allSatisfy { solids[j].max[$0] > box.min[$0] + 1e-4 && box.max[$0] > solids[j].min[$0] + 1e-4 }
+                })
+            else { continue }
+            model.supports.append(Self.foot(of: box, reach: Self.snap(options.elementSize)))
+            model.supportAnchorages.append(options.base)
+            supportNotes.append(
+                "\(member.name): stands on \(under.name), kept rigid, so held by it as it does not move; tied at its "
+                    + "underside by \(BaseConnection(options.base).title.lowercased()) (assumed).")
         }
 
         // Reinforcement, member by member: the IFC's bars where it gives them, else the ratio its
@@ -990,6 +1081,29 @@ public struct IFCStructure: Sendable {
         // what is held: nodes clamped, or with points of a connection, as the solver holds them.
         var reached: Set<Int>?
         if let mesh = try? ShellMesh(model: model) {
+            // The ties the mesh had to infer, between members it does not meet: a guess, flagged.
+            let bySolid = Dictionary(
+                members.indices.compactMap { n in members[n].solid.map { ($0, n) } }, uniquingKeysWith: { a, _ in a })
+            var inferred = 0
+            for tie in mesh.contactTies {
+                guard let a = bySolid[tie.first], let b = bySolid[tie.second] else { continue }
+                let key = Connection.key(members[a].id, members[b].id)
+                let kind =
+                    "\(Self.kind(members[a], model.solids[tie.first]))–\(Self.kind(members[b], model.solids[tie.second])), "
+                    + "tied at \(tie.nodes) nearest node\(tie.nodes == 1 ? "" : "s") (inferred: the mesh does not meet them)"
+                if let n = connections.firstIndex(where: { $0.key == key }) {
+                    connections[n].kind = kind
+                } else {
+                    connections.append(Connection(first: members[a].id, second: members[b].id, kind: kind))
+                }
+                inferred += 1
+            }
+            if inferred > 0 {
+                assumptions.append(
+                    "\(inferred) pairs of members that touch but that the mesh does not meet (layers face to face, beams off "
+                        + "a column's centreline) are tied rigidly at their nearest nodes: a guess at how they are joined, "
+                        + "listed with the connections; untick one to leave the pair apart.")
+            }
             var parent = Array(0..<mesh.positions.count)
             func root(_ n: Int) -> Int {
                 var n = n
@@ -1032,7 +1146,12 @@ public struct IFCStructure: Sendable {
             for beam in mesh.beams where held.contains(root(Int(beam.nodes[0]))) {
                 solidHeld[beam.solid] = true
             }
-            reached = Set(members.indices.filter { members[$0].solid.map { solidHeld[$0] } ?? false })
+            // A member the mesh gave no elements of its own (overlapping another, coplanar, as a
+            // duplicate does) has nothing to fall.
+            var meshed = [Bool](repeating: false, count: model.solids.count)
+            for element in mesh.elements { meshed[element.solid] = true }
+            for beam in mesh.beams { meshed[beam.solid] = true }
+            reached = Set(members.indices.filter { members[$0].solid.map { solidHeld[$0] || !meshed[$0] } ?? false })
         }
         let loose =
             reached.map { reached in

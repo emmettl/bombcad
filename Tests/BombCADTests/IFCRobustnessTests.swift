@@ -134,16 +134,46 @@ struct IFCRobustnessTests {
         }
     }
 
+    @Test("A wall whose representation is two touching solids is taken apart into them, and imported")
+    func repaired() async throws {
+        // One wall, its body two boxes of one representation side by side: the converter welds
+        // them into one mesh whose shared face leaves edges used four times.
+        let data = Self.ifc(
+            Self.box(100, [0, 0, 0], [2, 0.2, 3]) + "\n" + Self.box(110, [2, 0, 0], [2, 0.2, 3]) + """
+
+                #119=IFCEXTRUDEDAREASOLID(#115,#111,#12,3.);
+                #120=IFCSHAPEREPRESENTATION(#21,'Body','SweptSolid',(#106,#119));
+                #121=IFCPRODUCTDEFINITIONSHAPE($,$,(#120));
+                #122=IFCWALL('\(Self.id(122))',$,'Layered wall',$,$,#30,#121,$,$);
+                """,
+            contained: [122])
+        let prepared = try await IFCImporter.prepare(data)
+        let source = try await IFCImporter.convert(prepared, includedIDs: prepared.defaultIDs)
+        let elements = try #require(source.buildingElements)
+        // The face the two shared is removed: one closed solid, the whole wall, a piece of it.
+        #expect(!elements.isEmpty && elements.allSatisfy { $0.assembly?.id == Self.id(122) && $0.ifcClass == "IfcWall" })
+        #expect(!elements.contains { $0.globalID == Self.id(122) })
+        let low = elements.map(\.mesh.bounds.min).reduce(SIMD3<Float>(repeating: .infinity), simd_min)
+        let high = elements.map(\.mesh.bounds.max).reduce(SIMD3<Float>(repeating: -.infinity), simd_max)
+        #expect(abs(high.x - low.x - 4) < 1e-3 && abs(high.z - low.z - 3) < 1e-3)
+        #expect(source.buildingNotes?.contains { $0.contains("were remade as the") } == true)
+        #expect(source.buildingNotes?.contains { $0.contains("without converted geometry") } == false)
+        // As a structure, one wall.
+        let structure = try IFCStructure(elements: elements)
+        #expect(structure.members.count == 1 && structure.members[0].name == "Layered wall")
+        #expect(structure.members[0].role == .shell)
+    }
+
     @Test("Past the triangle limit the message says to choose fewer elements")
     func triangleLimit() throws {
         let guid = Self.id(5)
         var text = "g \(guid)\nv 0 0 0\nv 1 0 0\nv 0 1 0\n"
-        text += String(repeating: "f 1 2 3\n", count: 100_001)
+        text += String(repeating: "f 1 2 3\n", count: 1_001)
         let metadata = [guid: ImportedMesh.BuildingSourceElement(id: guid, name: "Big", ifcClass: "IfcWall")]
         #expect {
-            _ = try IFCImporter.inspectOBJ(Data(text.utf8), metadata: metadata)
+            _ = try IFCImporter.inspectOBJ(Data(text.utf8), metadata: metadata, triangleLimit: 1_000)
         } throws: { error in
-            error.localizedDescription.contains("more than 100,000 triangles")
+            error.localizedDescription.contains("more than 1,000 triangles")
                 && error.localizedDescription.contains("a storey at a time")
         }
     }
