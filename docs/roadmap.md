@@ -140,9 +140,11 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
 - **Done, illustrative:** [fragments](fragments.md); the fireball's
   [thermal radiation](thermal-radiation.md) and [surface heating](surface-heating.md); its
   [rise and cloud](fireball-rise.md); [ground shock](ground-shock.md), as the manuals'
-  estimate or a layered soil column; [gas deflagrations](deflagration.md), started.
-- **Now:** why the deflagration's flame stalls when lit in the middle, and a young flame's speed
-  on coarse cells.
+  estimate or a layered soil column; [gas deflagrations](deflagration.md), started: FM Global's
+  vented tests within 0.4–1.6 of the measured peaks, with sub-grid turbulence and the measured
+  cellular instability.
+- **Now:** why the deflagration's flame stalls when lit in the middle (about 0.4 there), a young
+  flame's speed on coarse cells, and a thinner front, without which K_G cannot converge.
 - **Paused:** the fireball's radiation, about 21% radiated against Dial Pack's 5.1%; if it
   resumes, flame sheets round a fuel-rich core and the missing hot shock layer.
 - **Next:** the cloud's top after two minutes; a comparison with measured ground motion.

@@ -44,6 +44,26 @@ public enum FlammableGas: String, Sendable, Hashable, Codable, CaseIterable {
         }
     }
 
+    /// The flame radius at which a spherical flame of the mixture at volume fraction `fraction` turns
+    /// cellular, m, at 1 atm and room temperature: Bauwens, Bergthorson and Dorofeev's (2015, Table 1)
+    /// measurements on flames up to 2 m across in FM Global's 64 m³ chamber, interpolated in the
+    /// equivalence ratio and held at the ends of their range (φ 0.81–1.22). None for propane, whose
+    /// measurements (Bauwens et al. 2015, Proceedings of the Combustion Institute 35) were not found.
+    public func criticalRadius(fraction: Float) -> Float? {
+        guard self == .methane else { return nil }
+        let table: [(phi: Float, radius: Float)] = [
+            (0.81, 0.204), (0.83, 0.209), (0.885, 0.2135), (0.89, 0.216), (0.925, 0.2175), (0.99, 0.220),
+            (1.00, 0.225), (1.04, 0.233), (1.07, 0.238), (1.12, 0.267), (1.14, 0.294), (1.17, 0.334),
+            (1.19, 0.315), (1.22, 0.324),
+        ]
+        let phi = equivalenceRatio(fraction: fraction)
+        guard phi > table[0].phi else { return table[0].radius }
+        for (a, b) in zip(table, table.dropFirst()) where phi <= b.phi {
+            return a.radius + (b.radius - a.radius) * (phi - a.phi) / (b.phi - a.phi)
+        }
+        return table[table.count - 1].radius
+    }
+
     /// Gülder's W (m/s), η and ξ.
     var burningVelocityFit: (scale: Float, power: Float, width: Float) {
         switch self {
@@ -142,25 +162,47 @@ public struct FlameAcceleration: Sendable, Hashable, Codable {
     /// (Bradley and Mitcheson's β, Molkov's χ), for turbulence and instabilities not otherwise
     /// represented. 1 leaves it as the other parts make it.
     public var factor: Float = 1
-    /// Wrinkling by the flame's own instabilities as it grows: the burning velocity rises as
-    /// (r / r₀)^(1/3) beyond `wrinklingRadius` from the ignition point (Gostintsev et al. 1988's
-    /// self-similar regime, as used by Molkov's fractal model). The exponent is cited, the onset
-    /// radius is not, so it is off by default. nil for none.
-    public var wrinklingRadius: Float?
+    /// Wrinkling by the flame's own cellular (Darrieus–Landau) instability as it grows: the burning
+    /// velocity rises as (r / r₀)^(1/3) beyond the critical radius r₀ from the ignition point
+    /// (Gostintsev et al. 1988's self-similar regime). nil for none.
+    public var instability: FlameInstability? = .measured
     /// Wrinkling by the turbulence the grid cannot resolve, Ξ_t, from the air's sub-grid mixing
     /// (see `FlameTurbulence`). nil for none.
     public var turbulence: FlameTurbulence? = FlameTurbulence()
+    /// A further multiple of the burning velocity outside the cloud's region, for the external
+    /// explosion: the anisotropic turbulence of the vortex a vented cloud rolls up into, which
+    /// Molkov and Makarov (2004) found isotropic sub-grid models miss, and took as a factor of 2 on
+    /// the flame's wrinkling outside the enclosure. nil for none.
+    public var externalFactor: Float?
 
     public init(
-        factor: Float = 1, wrinklingRadius: Float? = nil, turbulence: FlameTurbulence? = FlameTurbulence()
+        factor: Float = 1, instability: FlameInstability? = .measured,
+        turbulence: FlameTurbulence? = FlameTurbulence()
     ) {
         self.factor = factor
-        self.wrinklingRadius = wrinklingRadius
+        self.instability = instability
         self.turbulence = turbulence
     }
 
     /// A laminar flame: no factor, wrinkling or sub-grid turbulence.
-    public static let laminar = FlameAcceleration(factor: 1, wrinklingRadius: nil, turbulence: nil)
+    public static let laminar = FlameAcceleration(factor: 1, instability: nil, turbulence: nil)
+}
+
+/// Where a flame's cellular instability sets in (see `FlameAcceleration.instability`).
+public enum FlameInstability: Sendable, Hashable, Codable {
+    /// At the critical radius Bauwens, Bergthorson and Dorofeev (2015) measured for the gas and
+    /// mixture (`FlammableGas.criticalRadius`); none for a gas without a measurement.
+    case measured
+    /// At this radius, m.
+    case onset(Float)
+
+    /// The onset radius for a cloud of `gas` at fuel fraction `fraction`, m, or nil.
+    public func radius(gas: FlammableGas, fraction: Float) -> Float? {
+        switch self {
+        case .measured: gas.criticalRadius(fraction: fraction)
+        case .onset(let radius): radius > 0 ? radius : nil
+        }
+    }
 }
 
 /// The flame's wrinkling by sub-grid turbulence, as Bauwens, Chaffee and Dorofeev (2008, eq. 5)

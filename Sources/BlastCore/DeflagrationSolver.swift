@@ -8,7 +8,7 @@ struct DeflagrationUniforms {
     var ny: UInt32 = 0
     var nz: UInt32 = 0
     var dx: Float = 0
-    var ignitionRadius: Float = 0
+    var ignitionCell: UInt32 = 0
     var heat: Float = 0
     var cloudFraction: Float = 0
     var stoichiometricFraction: Float = 0
@@ -20,6 +20,7 @@ struct DeflagrationUniforms {
     var speedFactor: Float = 1
     var wrinklingRadius: Float = 0
     var wrinklingPower: Float = 0
+    var wrinklingLimit: Float = 0
     var turbulenceScale: Float = 0
     var velocityPerViscosity: Float = 0
     var ignitionX: Float = 0
@@ -34,6 +35,13 @@ struct DeflagrationUniforms {
     var unburntGamma: Float = 0
     var expansionRatio: Float = 0
     var kinematicViscosity: Float = 0
+    var externalFactor: Float = 1
+    var regionMinX: Float = 0
+    var regionMinY: Float = 0
+    var regionMinZ: Float = 0
+    var regionMaxX: Float = 0
+    var regionMaxY: Float = 0
+    var regionMaxZ: Float = 0
 }
 
 /// The GPU side of a deflagration: the flame, if there is one, and the vent panels, which also
@@ -41,6 +49,9 @@ struct DeflagrationUniforms {
 final class DeflagrationStage {
     /// Exponent of the burning velocity's growth with radius (Gostintsev et al. 1988).
     static let wrinklingPower: Float = 1.0 / 3
+    /// The radius, in onset radii, beyond which the instability's wrinkling holds: the largest flames
+    /// Bauwens et al. (2015) measured, four critical radii (0.9 m for methane), 2 m across.
+    static let wrinklingLimit: Float = 4
 
     let deflagration: Deflagration?
     /// The panels with a release pressure, in the order of `openTimes`.
@@ -157,13 +168,24 @@ final class DeflagrationStage {
             u.speedWidth = fit.width
             let acceleration = deflagration.acceleration
             u.speedFactor = max(acceleration.factor, 0)
-            u.wrinklingRadius = max(acceleration.wrinklingRadius ?? 0, 0)
+            u.wrinklingRadius =
+                acceleration.instability?.radius(gas: gas, fraction: deflagration.concentration) ?? 0
             u.wrinklingPower = Self.wrinklingPower
+            u.wrinklingLimit = Self.wrinklingLimit
+            u.externalFactor = max(acceleration.externalFactor ?? 1, 0)
+            u.regionMinX = deflagration.region.min.x
+            u.regionMinY = deflagration.region.min.y
+            u.regionMinZ = deflagration.region.min.z
+            u.regionMaxX = deflagration.region.max.x
+            u.regionMaxY = deflagration.region.max.y
+            u.regionMaxZ = deflagration.region.max.z
             if let turbulence = acceleration.turbulence {
                 u.turbulenceScale = FlameTurbulence.bradleyCoefficient * max(turbulence.scale, 0)
                 u.velocityPerViscosity = (2.0 / 3).squareRoot() / (FlameTurbulence.energyCoefficient * dx)
                 u.kinematicViscosity = FlameTurbulence.kinematicViscosity
             }
+            let lit = grid.cell(containing: deflagration.ignition)
+            u.ignitionCell = UInt32(grid.index(lit.i, lit.j, lit.k))
             u.ignitionX = deflagration.ignition.x
             u.ignitionY = deflagration.ignition.y
             u.ignitionZ = deflagration.ignition.z

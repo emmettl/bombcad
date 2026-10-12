@@ -116,16 +116,18 @@ struct GasCloudSection: View {
                     "Wrinkles the flame by the turbulence the grid cannot resolve, taken from the air's sub-grid "
                         + "mixing (turned on with it): shear behind obstacles, jets through openings.")
                 Toggle(
-                    "Wrinkling as it grows",
+                    "Cellular instability",
                     isOn: Binding(
-                        get: { cloud.acceleration.wrinklingRadius != nil },
+                        get: { cloud.acceleration.instability != nil },
                         set: {
-                            model.settings.scenario.deflagration?.acceleration.wrinklingRadius = $0 ? 1 : nil
+                            model.settings.scenario.deflagration?.acceleration.instability =
+                                $0 ? .measured : nil
                         })
                 )
                 .help(
-                    "The burning velocity rises as the cube root of the flame's radius beyond 1 m, a radius "
-                        + "that is a guess, not a measurement.")
+                    "Beyond the radius where a methane flame was measured to turn cellular (about 0.22 m), "
+                        + "the burning velocity rises as the cube root of the flame's radius. None for propane."
+                )
                 Text(
                     "Illustrative: the flame's acceleration is modelled, not resolved. See the deflagration "
                         + "page of the documentation for what has been checked."
