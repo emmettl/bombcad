@@ -179,7 +179,8 @@ public enum IFCReinforcement {
     }
 
     /// Bars given to the elements that hold them: the element the IFC nests a bar in, where it
-    /// does (`hosts`, by the bar's GlobalId) and that element is among `elements`; else the
+    /// does (`hosts`, by the bar's GlobalId) and that element is among `elements` (or one of its
+    /// parts is, the one holding the bar's middle where any does); else the
     /// concrete element whose bounds hold the bar's middle, the smallest if several do; else the
     /// one whose bounds overlap most of the bar's (a U-bar's middle lies in the open part of the
     /// U), at least half. Bars no element holds are returned apart.
@@ -200,7 +201,16 @@ public enum IFCReinforcement {
         }
         var unhosted: [Bar] = []
         for bar in bars {
-            var index = hosts[bar.globalID].flatMap { id in elements.firstIndex { $0.globalID == id } }
+            var index = hosts[bar.globalID].flatMap { id in
+                elements.firstIndex { $0.globalID == id }
+                    ?? {
+                        let parts = elements.indices.filter { elements[$0].assembly?.id == id }
+                        return parts.first { n in
+                            all(bar.centre .>= boxes[n].low - 1e-3)
+                                && all(bar.centre .<= boxes[n].high + 1e-3)
+                        } ?? parts.first
+                    }()
+            }
             if index == nil {
                 let tolerance: Float = 1e-3
                 index = concrete.filter { n in

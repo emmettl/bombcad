@@ -789,7 +789,11 @@ first meeting the surface nodes in front of it.
    the substep's number, and only those touched are cleared.
 2. Each node looks in the 27 cells around it, ignoring nodes from other cells that share an
    entry, and repels any node closer than one element with a
-   penalty spring, a damper (30% of critical) and Coulomb friction (coefficient 0.5).
+   penalty spring, a damper (30% of critical) and Coulomb friction (coefficient 0.5). Nodes that
+   are not lattice neighbours begin at least two elements apart, so two that have each moved
+   less than 0.45 of an element cannot touch: the table marks the entries holding a node that has
+   moved further, and a node that has not looks only in those. Only pairs whose force would be
+   zero are skipped (shells likewise, with their own spacing).
 3. The spring stiffness is a tenth of the stiffest spring the time step allows, based on the
    lighter of the two nodes, so contact never limits the time step.
 

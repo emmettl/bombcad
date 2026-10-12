@@ -517,6 +517,16 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// their fracture energy spread over that band: nonlocal cracking, which keeps a crack from
     /// gathering into one element. Solid elements only; nil, cracks soften element by element.
     public var crackAveraging: Float?
+    /// The time (s) over which the strain rate the rate laws see is averaged: 100 µs by default
+    /// (`defaultStrainRateWindow`, since 12 October 2026). Nil averages over the last 50 of the
+    /// structure's steps instead, as before, a window that shrinks with the element and the step
+    /// (see validation.md, "Convergence on today's defaults"). Saved as 0 when nil, and left out
+    /// at the default.
+    public var strainRateWindow: Float? = StructureModel.defaultStrainRateWindow
+    /// The default strain-rate window, 100 µs: between the 50-step windows of the meshes the
+    /// defaults were chosen on (80 µs for the contest slab on 8 elements, 107 µs for Saatci's
+    /// beams on 16, 53 and 131 µs for Janney's beam on 24 and 12).
+    public static let defaultStrainRateWindow: Float = 1e-4
     /// Whether concrete that fails becomes particles that keep its mass (`RubbleParticle`), each
     /// taking its element's mass, momentum and energy from the element's nodes and pushing, in
     /// contact only, on the other particles and on what is left of the body: rubble that carries
@@ -1222,7 +1232,7 @@ extension StructureModel {
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
         case pressedInterlock, regimeOverride, loadingOverride, regimeDefaults
         case hourglassFollowsCracking, hourglassCapsSteel, discreteBars, barsAsTrusses, trussDiameter
-        case crackAveraging, rubbleParticles
+        case crackAveraging, rubbleParticles, strainRateWindow
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -1258,6 +1268,9 @@ extension StructureModel {
         if barsAsTrusses { try container.encode(barsAsTrusses, forKey: .barsAsTrusses) }
         try container.encodeIfPresent(trussDiameter, forKey: .trussDiameter)
         try container.encodeIfPresent(crackAveraging, forKey: .crackAveraging)
+        if strainRateWindow != Self.defaultStrainRateWindow {
+            try container.encode(strainRateWindow ?? 0, forKey: .strainRateWindow)
+        }
         if rubbleParticles { try container.encode(rubbleParticles, forKey: .rubbleParticles) }
         try container.encodeIfPresent(bondSlip, forKey: .bondSlip)
         try container.encode(solidElementKind, forKey: .solidElementKind)
@@ -1304,6 +1317,10 @@ extension StructureModel {
         barsAsTrusses = try container.decodeIfPresent(Bool.self, forKey: .barsAsTrusses) ?? false
         trussDiameter = try container.decodeIfPresent(Float.self, forKey: .trussDiameter)
         crackAveraging = try container.decodeIfPresent(Float.self, forKey: .crackAveraging)
+        // Absent: the default; 0: the 50-step average.
+        strainRateWindow =
+            try container.decodeIfPresent(Float.self, forKey: .strainRateWindow)
+            .map { $0 > 0 ? $0 : nil } ?? Self.defaultStrainRateWindow
         rubbleParticles = try container.decodeIfPresent(Bool.self, forKey: .rubbleParticles) ?? false
         bondSlip = try container.decodeIfPresent(BondSlip.self, forKey: .bondSlip)
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []

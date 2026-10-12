@@ -258,8 +258,8 @@ public enum ValidationTables {
             id: "slabShell", low: 1.24, high: 1.24, document: "validation.md#summary",
             quote: "shells 135 mm (124%)"),
         Figure(
-            id: "beamMoment", low: 0.98, high: 1.01, document: "validation.md#summary",
-            quote: "peak moment 98–101%, failing at 53–57 mm on 12 elements"),
+            id: "beamMoment", low: 1.0, high: 1.01, document: "validation.md#summary",
+            quote: "peak moment 101% on 12 elements, failing at 44 mm against 42 mm, 100% on 24"),
         Figure(
             id: "closeInPermanent", low: 0.33, high: 0.5, document: "validation.md#summary",
             quote: "the slab left a third to a half as far down as measured"),
@@ -273,8 +273,8 @@ public enum ValidationTables {
             id: "chamberPressure", low: 0.9, high: 1.6, document: "validation.md#summary",
             quote: "peak wall pressures 0.9 to 1.6 times those measured"),
         Figure(
-            id: "debrisSpeed", low: 1.2, high: 1.9, document: "validation.md#summary",
-            quote: "the far face thrown 1.2–1.9 times as fast as the debris at first"),
+            id: "debrisSpeed", low: 1.1, high: 1.7, document: "validation.md#summary",
+            quote: "the far face thrown 1.1–1.7 times as fast as the debris at first"),
         Figure(
             id: "roomDefault", low: 0.48, high: 1.14, document: "validation.md#summary",
             quote: "48% to 114% by default"),
