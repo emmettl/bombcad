@@ -2210,18 +2210,29 @@ mm units:
 
 | Blockwork | 25 kg | 125 kg |
 |---|---|---|
-| Units and joints, bars bonded | runs away numerically on either base: nodes at 10⁵ m/s, everything removed | not run |
-| Units and joints, no bars | punched through at mid-height: 335 mm out and still going at 0.3 s, 14% removed | blown apart: 82% removed, its middle thrown at about 10 m/s |
-| One material, bars bonded | top 31 mm, left 14 mm; mid-height 16 mm; the back cracked 0.5–1.8 mm across most of its length, mostly vertically; 5.5% of the front removed under the charge | breached at mid-height: 89% removed, its middle thrown at about 13 m/s |
+| Units and joints, bars bonded, on the starter bars | top 37 mm, left 21 mm; mid-height 27 mm; every bed joint open 0.14–0.23 mm along the whole back, and on the front at courses 2–6, 9 and 10 (0.12–0.27 mm) and 0.6 mm at the foot; 1.7% removed, nothing faster than 0.5 m/s | collapses: the top 5.8 m out at 1 s, 41% removed, nothing faster than 28 m/s |
+| Units and joints, bars bonded, on a mortar joint | its bars not anchored, it rocks off its base: 398 mm at the top and still going at 0.3 s, 67% of the base's ties broken | thrown off its base, every tie broken, nothing faster than 24 m/s |
+| Units and joints, no bars | punched through at mid-height: 294 mm out and still going at 0.3 s, 13% removed | blown apart: 48% removed, nothing faster than 66 m/s |
+| One material, bars bonded | top 32 mm, left 7 mm; mid-height 17 mm; cracked 1–2 mm across the front at mid-height and 0.2–0.6 mm across most of the back's lower 1.4 m, mostly not along bed joints; 4% of the front removed under the charge | breached at mid-height: 73% removed, nothing faster than 40 m/s |
 | Seen | top 28 mm (double-integrated); bed joints cracked on the front at courses 1, 4–6 and 10 and on the back at 4–6, the top course slid; no spalling | collapsed, debris about 15 m away |
 
-The face's load at 25 kg is 2.5 MPa and 1,614 Pa s (Kingery–Bulmash: 2.7 MPa and 1,473 Pa s). The only stable
-reinforced wall, the blockwork treated as one material with its bars bonded as though grouted,
-peaks within 3 mm of the measured top deflection, though it cracks across rather than along the
-bed joints and loses some of its front, which the test did not. Without bars it is punched
-through, which the test's wall, with bars in foam-filled cells, was not. At 125 kg every version
-comes apart, as the test's did; its pieces fly at 10–13 m/s, which from a metre or two up
-carries them 5–7 m, short of the 15 m reported.
+The face's load at 25 kg is 2.5 MPa and 1,614 Pa s (Kingery–Bulmash: 2.7 MPa and 1,473 Pa s).
+Meshed as units and joints with its bars bonded, the blockwork used to run away: its base course,
+squeezed from every side, followed the concrete compaction curve, whose constants (0.8 GPa at
+10% compaction, 85 GPa once dense) made it five to fifty times stiffer than the hollow block itself
+and outran the time step; at 125 kg, elements left as bare bars were flattened across the wall,
+where no bars run, and blocks crushed from one side then pressed from all sides took the curve's
+pressure at once, both flinging nodes at hundreds of metres a second. With those fixed (see
+concrete-model.md, "Compaction" and "Bare bars"; they apply to materials softer than structural
+concrete only), the wall on starter bars peaks 9 mm (a third) above the measured 28 mm at the
+top, and cracks where the test's did, along the bed joints, front and back, though at more
+courses than were seen. On a mortar joint its unanchored bars let it rock off its base, which
+the test's wall, with the base not described, evidently did not; starter bars are the likelier
+base. Treated as one material it peaks within 4 mm of the measured top but cracks across rather
+than along the bed joints. Without bars it is punched through, which the test's wall, with bars
+in foam-filled cells, was not. At 125 kg every version comes apart, as the test's did, and no
+node of it moves faster than 24–66 m/s, where nodes of the reinforced units and joints had left
+at 500–800 m/s; how far its pieces go, against the 15 m reported, has not been measured.
 
 ### What this does and does not show
 
@@ -2234,8 +2245,9 @@ widely; clamped, the canopied wall's deflection lies within the foam-faced walls
 the half-scale wall is left more damaged than seen. On the footings in sand the walls rock or
 slide as bodies by amounts the thesis does not mention: either the model's sand is too soft and
 weak, the slab cast against the walls held them, or the test's load was lower. Blockwork with
-bars is not usable as units and joints: it runs away. Treated as one material it gives the
-measured deflection at 25 kg and comes apart at 125 kg, as the test's did.
+bars, as units and joints on starter bars, peaks a third above the measured deflection at 25 kg
+and cracks along its bed joints as the test's did; treated as one material it is within 4 mm
+but cracks across them. Either way it comes apart at 125 kg, as the test's did.
 
 For later, without changing the concrete model now: reinforced blockwork meshed as units and
 joints running away within 30 ms (`blastbench perimeter --study wall --wall masonry --charges
