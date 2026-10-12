@@ -815,6 +815,14 @@ another window in µs. Checks (`StrainRateWindowTests`): a prism stretched from 
 rate reaches 1 − 1/e of it after one window on its own step and on half of it, where after 50
 steps the old average reaches 1 − 1/e on the one and 1 − 1/e² on the other.
 
+The window has a cost where an element goes from rest to failure in much less than 100 µs: a
+contact charge, a spalling layer, or concrete crushed at 100 per second, which fails within about
+30 µs. Its averaged rate has then not caught up when it fails, and it is strengthened less than
+the laws say. Under the old average the window on such fine meshes was a few microseconds. The
+laws' own check (`ConcreteModelTests`, a 1 mm cube crushed at 100 per second) therefore runs on
+the 50-step average. Hupfauf's slabs under contact charges are where this shows: their far faces
+moved by up to a third with the change ([Validation](validation.md#convergence-on-todays-defaults)).
+
 ## Removal
 
 An element is removed when
