@@ -1314,6 +1314,17 @@ that slips nor any removal of crushed concrete tried here gives all six kinds th
 splitting bond gives the cracks' angles but no failures, perfect bond fails the beams without
 stirrups by the wrong mode, and none fails the beam of span d with stirrups.
 
+Two more were tried, with bond that slips, and not kept (branch `claude/crush-zone`). Crushing
+that softens over a zone of its own length (0.05, 0.1 and 0.15 m), its crushing past the peak
+summed along the zone, leaves every kind within a fraction of a millimetre of bond that slips
+alone, and within a millimetre with confinement off too: with 36 N/mm of crushing energy a strut
+must shorten about 2.5 mm to crush through, and these struts shorten about 0.3 mm, so how far its
+softening is spread hardly matters. Concrete weaker in compression where it is stretched across,
+by the modified compression field theory's 1 / (0.8 + 170 ε₁) (Vecchio and Collins, 1986),
+brings the deep beam's near reaction from 342 to 305 kN (206 measured) and fails nothing more;
+with perfect bond it ran away on the beam of span d without stirrups. The struts the tests saw
+crush are, in this model, strong and tough enough not to.
+
 ## Slabs under close-in charges
 
 The first structural test in the open air with the air solver loading the

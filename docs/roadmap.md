@@ -230,6 +230,9 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
 - **Rubble as particles, by default under close-in and contact charges** (stage 3): alone it
   holes less than removal did; with fragments removed it holes Hupfauf's slabs that held too, and
   Wu's S4 at 38, 38 or 14 cm as the threshold moves from 0.5 to 1 mm. Kept as an option, for debris.
+- **A crushing zone of its own length, and cracked concrete weaker in compression**, for
+  Peterson's struts (12 October): neither moves the six kinds of beam towards their failures; a
+  strut must shorten about 2.5 mm to crush and these shorten about 0.3 mm.
 - **Closing the space under the close-in slab**, to keep the wave from wrapping under it: the
   trapped air cushions the slab (126 mm peak against 161, and it springs back), so it says
   nothing about the open test.
