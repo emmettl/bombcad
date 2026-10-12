@@ -71,6 +71,8 @@ import simd
 //   blastbench landscape [--mass 500000] [--dx 8] ...   (large surface bursts; see LandscapeBench.swift)
 //   blastbench advise --calibrate [--time]   (the cost-against-fidelity advisor; see AdvisorBench.swift)
 //   blastbench hrynyk [--slabs TH2,TH6,TH7] [--layers 16] [--impacts 4] [--ensemble 16]   (blind test 1; see HrynykBench.swift)
+//   blastbench contact-profile [--cases solid,shell,debris,terraced] [--steps 2000]
+//                        (where contact's time goes; see ContactBench.swift)
 //   blastbench buildings [--dx 0.5] [--duration 0.12] [--mass 50] [--out f.json]
 //                        (three buildings across a street, together and each alone; see BuildingsBench.swift)
 //   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80] [--terrain flat]   (hashes of short runs, to compare builds)
@@ -234,8 +236,12 @@ func applyHourglassOptions(_ model: inout StructureModel) {
     // `--nonlocal 0.05`: cracks soften by their strain averaged over that length either side.
     if let length = option("nonlocal").flatMap({ Float($0) }) { model.crackAveraging = length }
     // `--rate-window 120` (µs): the strain-rate laws see the rate averaged over that time
-    // (`strainRateWindow`) instead of over the last 50 steps.
-    if let window = option("rate-window").flatMap({ Float($0) }) { model.strainRateWindow = window * 1e-6 }
+    // (`strainRateWindow`, 100 µs by default); `--rate-window steps`, over the last 50 steps, as
+    // before 12 October 2026.
+    if let text = option("rate-window") {
+        model.strainRateWindow =
+            text == "steps" ? nil : Float(text).map { $0 * 1e-6 } ?? model.strainRateWindow
+    }
     // `--discrete [mm]`: the layers' bars as discrete trusses (`barsAsTrusses`), of that diameter,
     // or the bond's (`--bond`), or 12 mm; they slip by `--bond` or are bonded perfectly.
     if flag("discrete") {
@@ -4798,6 +4804,7 @@ do {
     switch command {
     case "digest": try runDigest()
     case "buildings": try runBuildings()
+    case "contact-profile": try runContactProfile()
     case "slab": try runSlab()
     case "tie": try runTie()
     case "prism": try runPrism()

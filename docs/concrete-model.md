@@ -741,7 +741,7 @@ by 24 ms at 0.05 m).
 
 Blast loads strain materials at 0.1 to 100 per second, and both concrete and steel are stronger
 at those rates. With `rateDependent` set, strengths are multiplied by a dynamic increase factor
-that depends on a running average (50 steps) of the element's effective strain rate ε̇, or for
+that depends on a running average (over 100 µs, [below](#the-strain-rate-window)) of the element's effective strain rate ε̇, or for
 the bars of their own stretching rate along their debonded length (below):
 
 | Material and mode    | Factor                                                      | Source                    |
@@ -818,18 +818,30 @@ Alternatively, fixed factors can be set (`concreteRateFactor`, `steelRateFactor`
 design values of UFC 3-340-02 (1.19 and 1.17 for bending in the far range).
 
 
-### A strain-rate window in time (an option)
+### The strain-rate window
 
-The running average above is over the last 50 of the structure's steps, a time that shrinks with
-the element and with the step: halving either halves the window, so the rate the laws see, and
-the strength they give, changes with the mesh and the step for the same motion. With
-`StructureModel.strainRateWindow` set (seconds; `blastbench --rate-window` in µs), the average is
-over that fixed time instead, the same filter with time constant τ in place of 50 steps (the
-bars' stretching rates too, and the shells'). Checks (`StrainRateWindowTests`): a prism stretched
-from rest at a steady rate reaches 1 − 1/e of it after one window on its own step and on half of
-it, where after 50 steps the default reaches 1 − 1/e on the one and 1 − 1/e² on the other. Off by
-default; see [Validation](validation.md#convergence-on-todays-defaults) for what it does to
-convergence.
+The running average is a first-order filter of the instantaneous rate with a time constant of
+100 µs (`StructureModel.strainRateWindow`, `defaultStrainRateWindow`), for the bars' stretching
+rates and the shells' too. Before 12 October 2026 it was over the last 50 of the structure's
+steps, a time that shrinks with the element and the step: halving either halved the window, so
+the rate the laws saw, and the strength they gave, changed with the mesh and the step for the same
+motion, and the contest slab on 32 elements ran away on half the step where it held on the full
+one. The 100 µs lies between the 50-step windows of the meshes the defaults were chosen on (80
+µs for the contest slab on 8 elements, 107 µs for Saatci's beams on 16, 53 and 131 µs for Janney's
+beam on 24 and 12), so those meshes move by a few per cent; see
+[Validation](validation.md#convergence-on-todays-defaults). `strainRateWindow = nil` (or
+`blastbench --rate-window steps`) restores the 50-step average, and `--rate-window 120` sets
+another window in µs. Checks (`StrainRateWindowTests`): a prism stretched from rest at a steady
+rate reaches 1 − 1/e of it after one window on its own step and on half of it, where after 50
+steps the old average reaches 1 − 1/e on the one and 1 − 1/e² on the other.
+
+The window has a cost where an element goes from rest to failure in much less than 100 µs: a
+contact charge, a spalling layer, or concrete crushed at 100 per second, which fails within about
+30 µs. Its averaged rate has then not caught up when it fails, and it is strengthened less than
+the laws say. Under the old average the window on such fine meshes was a few microseconds. The
+laws' own check (`ConcreteModelTests`, a 1 mm cube crushed at 100 per second) therefore runs on
+the 50-step average. Hupfauf's slabs under contact charges are where this shows: their far faces
+moved by up to a third with the change ([Validation](validation.md#convergence-on-todays-defaults)).
 
 ## Removal
 

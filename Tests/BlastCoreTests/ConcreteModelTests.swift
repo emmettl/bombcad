@@ -26,10 +26,12 @@ struct ConcreteModelTests {
     /// rate. Returns the nominal stress against strain, sampled as it goes.
     private func strainCube(
         size: Float, material: StructureMaterial, steelRatio: Float = 0, crossBars: Float = 0,
-        to strains: [Float], samplesPerLeg: Int = 150, tracesWork: Bool = false
+        to strains: [Float], samplesPerLeg: Int = 150, tracesWork: Bool = false, rateOverSteps: Bool = false
     ) throws -> (curve: [(strain: Float, stress: Float)], solver: StructureSolver) {
         let cube = Box(min: SIMD3(0, 0, 1), max: SIMD3(size, size, 1 + size))
         var model = StructureModel(solids: [cube], material: material, elementSize: size, fixedBase: false)
+        // The rate averaged over the last 50 steps rather than the default 100 µs.
+        if rateOverSteps { model.strainRateWindow = nil }
         if steelRatio > 0 || crossBars > 0 {
             model.reinforcement = [ReinforcementLayer(region: cube, ratio: SIMD3(steelRatio, crossBars, 0))]
         }
@@ -675,14 +677,17 @@ struct ConcreteModelTests {
     func fastCrushing() throws {
         var material = Self.concrete()
         material.rateDependent = true
-        // A 1 mm cube, so that its time steps are short enough for the running average of the
-        // strain rate to settle well before the peak.
+        // A 1 mm cube, its rate averaged over its last 50 steps rather than the default 100 µs, so
+        // that the average settles well before the peak: this checks the law, not the window. (At
+        // 100 per second the cube crushes within about 30 µs, before a 100 µs average has caught
+        // up; see concrete-model.md, "The strain-rate window".)
         let size: Float = 0.001
         let step = 0.5 * size / material.dilatationalWaveSpeed
         let rate: Float = 100
         let samples = 40
         let (curve, _) = try strainCube(
-            size: size, material: material, to: [-rate * step * 20 * Float(samples)], samplesPerLeg: samples)
+            size: size, material: material, to: [-rate * step * 20 * Float(samples)], samplesPerLeg: samples,
+            rateOverSteps: true)
 
         // CEB-FIP Model Code 1990 above 30 per second: gamma (rate / 30e-6)^(1/3), with
         // log gamma = 6.156 alpha - 2 and alpha = 1 / (5 + 9 fc / 10 MPa).

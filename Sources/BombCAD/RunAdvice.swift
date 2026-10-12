@@ -162,22 +162,23 @@ struct AdvisorSection: View {
 
     var body: some View {
         Section("Advisor") {
+            // The target on a row of its own: beside the value and the button, the sidebar's width
+            // cut it to "Pea…".
+            Picker("Target", selection: $quantity) {
+                ForEach(Goal.allCases) { Text($0.title).tag($0) }
+            }
             HStack {
-                Picker("Target", selection: $quantity) {
-                    ForEach(Goal.allCases) { Text($0.title).tag($0) }
-                }
-                .labelsHidden()
                 if quantity == .time {
                     TextField(
                         "Minutes", value: $minutes, format: .number.precision(.significantDigits(1...3))
                     )
-                    .frame(maxWidth: 56).multilineTextAlignment(.trailing)
+                    .labelsHidden().frame(maxWidth: 56).multilineTextAlignment(.trailing)
                     Text("min")
                 } else {
                     TextField(
                         "Percent", value: $percent, format: .number.precision(.significantDigits(1...3))
                     )
-                    .frame(maxWidth: 56).multilineTextAlignment(.trailing)
+                    .labelsHidden().frame(maxWidth: 56).multilineTextAlignment(.trailing)
                     Text("%")
                 }
                 Spacer()

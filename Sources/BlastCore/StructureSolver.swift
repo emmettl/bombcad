@@ -81,6 +81,9 @@ public final class StructureSolver {
     public var groundFrictionCoefficient: Float = 0
     /// Whether separate pieces of the structure, and loose debris, collide with each other.
     public var contactMode = ContactMode.afterFailure
+    /// For timing contact's parts alone: with true, contact fills its table each substep but
+    /// finds no forces (`blastbench contact-profile`). Never for a result.
+    public var contactTableOnly = false
     /// Contact spring stiffness as a fraction of the stiffest spring the time step allows.
     public var contactStiffness: Float = 0.1
     /// Contact damping as a fraction of critical.
@@ -170,6 +173,9 @@ public final class StructureSolver {
     /// entry, and four node slots per entry.
     let contactHeadBuffer: MTLBuffer
     let contactSlotBuffer: MTLBuffer
+    /// Per table entry, the last substep's stamp at which it held a node that had moved far
+    /// enough to touch one that had not (see `contactMoved` in Structure.metal).
+    let contactMovedBuffer: MTLBuffer
     private let contactPeriod: SIMD3<Int>
     private let contactGridOrigin: SIMD3<Float>
     /// Contact force on each listed node.
@@ -526,6 +532,8 @@ public final class StructureSolver {
         contactHeadBuffer = try buffer(gridCells * 4, "contact grid headers")
         contactSlotBuffer = try buffer(gridCells * 32, "contact grid slots")
         memset(contactHeadBuffer.contents(), 0xFF, contactHeadBuffer.length)
+        contactMovedBuffer = try buffer(gridCells * 4, "contact grid movement")
+        memset(contactMovedBuffer.contents(), 0xFF, contactMovedBuffer.length)
         contactForceBuffer = try buffer(nodeList.count * 12, "contact forces")
         failureGateBuffer = try buffer(16, "failure gate")
         // Placeholders, replaced once the body is set up if its bars slip (`setUpBondSlip`).
@@ -1421,7 +1429,7 @@ public final class StructureSolver {
         [
             nodeBuffer, flagBuffer, stateBuffer, forceBuffer, steelBuffer, barHistoryBuffer, instanceBuffer,
             nodeListBuffer, nodeMapBuffer, cellElementBuffer, materialIndexBuffer,
-            contactHeadBuffer, contactSlotBuffer, contactForceBuffer,
+            contactHeadBuffer, contactSlotBuffer, contactMovedBuffer, contactForceBuffer,
         ].reduce(0) { $0 + $1.length }
     }
 
@@ -1668,7 +1676,8 @@ public final class StructureSolver {
                 stamp = stamp % 0x1FFF_FFF0 + 1
                 uniforms.stamp = stamp
                 let nodes = MTLSize(width: nodeCount, height: 1, depth: 1)
-                for pipeline in [contactClearPipeline, contactHashPipeline, contactForcePipeline] {
+                for pipeline in [contactClearPipeline, contactHashPipeline, contactForcePipeline]
+                where !(contactTableOnly && pipeline === contactForcePipeline) {
                     if pipeline === contactForcePipeline, let rubble = rubbleSystem {
                         // The particles' table, before the nodes read it.
                         for kernel in [rubble.clear, rubble.hash] {
@@ -1693,6 +1702,7 @@ public final class StructureSolver {
                     encoder.setBuffer(failureGateBuffer, offset: 0, index: 3)
                     encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 4)
                     encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 5)
+                    encoder.setBuffer(contactMovedBuffer, offset: 0, index: 13)
                     if pipeline === contactForcePipeline {
                         encoder.setBuffer(contactForceBuffer, offset: 0, index: 7)
                         encoder.setBuffer(contactSlotBuffer, offset: 0, index: 8)
