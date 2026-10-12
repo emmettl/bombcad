@@ -91,14 +91,17 @@ report stays under **Edit layout → Structure from IFC**.
   wide-flange shape of its area and depth. Footings become footings under the members on
   them, set into the soil by their depth. Holes through a shell, openings, doors and unglazed
   windows become openings; a window whose materials or name say glass becomes a 6 mm pane of
-  annealed glass on its wall's midsurface. Inclined, curved and irregular elements, finishes
+  annealed glass on its wall's midsurface. An element built of parts (blocks, planks) is one
+  member, square where the parts holding nine tenths of its volume are. Inclined, curved and irregular elements, finishes
   (stud partitions, flooring, tiles) and slabs on grade that walls pass through stay rigid
   obstacles, each with its reason.
 - **Materials.** Read from the IFC's material names where they name one the solver has
   (concrete, with its grade if given, block, masonry, steel, glass). Elsewhere the stated
   default, flagged in the report, the standing and the parts list; choose a part's material
   under Parts to replace it. Reinforcement is never read: none, or the offered 0.3% in each
-  face both ways, marked as assumed.
+  face both ways, marked as assumed. Past the solver's eight materials (flanged steel sections
+  each have one), the nearest of a kind are merged, and the report gives the largest stiffness
+  change.
 - **Connections.** Members that meet are tied rigidly (their shells share nodes) after gaps
   up to the chosen tolerance (100 mm by default) are closed, measured to a wall's whole
   thickness where only its structural layer is meshed. Every tie is listed; untick one in the
