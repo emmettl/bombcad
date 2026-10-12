@@ -57,7 +57,7 @@ final class RenderExport {
         if includesFragments { options.fragments = document.fragments }
         if includesGroundShock { options.groundShock = document.groundShock }
         state = .running(0)
-        task = Task {
+        task = Task { [self] in
             do {
                 let staged = try StagedRenderExport(destination: scene, includesVolumes: options.vdb != nil)
                 defer { staged.discard() }

@@ -1,3 +1,4 @@
+import CompressibleFlow
 import simd
 
 /// Transactional, capacity-limited remapping with prescribed geometry. This is not an

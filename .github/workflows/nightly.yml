@@ -61,7 +61,7 @@ jobs:
           set -o pipefail
           log_dir="${{ runner.temp }}/full-${{ github.run_id }}-${{ github.run_attempt }}"
           mkdir -p "$log_dir"
-          { make lint && make ci-test && make build && make test \
+          { make lint && make ci-test && make build-strict && make test \
             && bash Scripts/build-app.sh release \
             && codesign --verify --deep --strict dist/BombCAD.app; } 2>&1 | tee "$log_dir/full.log"
       - name: Report failures and name suspects
