@@ -372,6 +372,35 @@ public enum MendoncaSlabTest {
             return -structure.displacement(ci, cj, k).z
         }
 
+        // The gauges sat on the slab and moved with it: each reads the first air cell beyond the
+        // slab's face at its point as it is now, and is moved there whenever that changes (a cell
+        // the face has moved into is solid, and holds a stale state).
+        let dx = solver.grid.cellSize
+        let points = scenario.gauges.map(\.position)
+        var cells = points.map { solver.nearestFluidCell(to: $0) }
+        func followSlab() {
+            var moved = cells
+            for (n, point) in points.enumerated() {
+                let above = point.z > s.max.z
+                let (i, j) = (index(point.x, 0), index(point.y, 1))
+                guard structure.storedNode(i, j, above ? top : bottom) != nil,
+                    attached(i, j, above ? top : bottom)
+                else { continue }
+                let face = structure.position(i, j, above ? top : bottom).z
+                var k = Int((face / dx).rounded(.down))
+                let c = cells[n]
+                while k >= 0, k < solver.grid.nz, solver.isSolid(c.i, c.j, k) { k += above ? 1 : -1 }
+                moved[n].k = min(max(k, 0), solver.grid.nz - 1)
+            }
+            guard moved.map(\.k) != cells.map(\.k) else { return }
+            let histories = solver.gaugeHistories
+            cells = moved
+            solver.setGauges(
+                cells: cells,
+                points: zip(points, cells).map { SIMD3($0.0.x, $0.0.y, (Float($0.1.k) + 0.5) * dx) })
+            for (n, samples) in histories.enumerated() { solver.prependGaugeHistory(n, samples) }
+        }
+
         let start = ContinuousClock.now
         var history: [SIMD2<Float>] = [SIMD2(0, 0)]
         var nextSample = settings.sampleInterval
@@ -386,6 +415,7 @@ public enum MendoncaSlabTest {
             }
             if result.steps == 0 && !solver.airIsAsleep { break }
             if slept == nil && solver.airIsAsleep { slept = solver.time }
+            if !solver.airIsAsleep { followSlab() }
             if solver.time >= nextSample - 1e-9 {
                 let u = centre()
                 if !u.isFinite {

@@ -151,4 +151,17 @@ are committed.
 
 ## Changes after the first run
 
-None yet.
+**1. 2026-10-12, after a 20 ms smoke run (slab 4, the primary's settings, on the Studio): the
+gauges follow the slab's face.** The gauges were fixed points in the air 5 mm above the top
+face. Over the bearings the slab's edges rotate up by a millimetre or so as it bends, the face
+passed the gauge cells' centres, those cells turned solid, and the gauges went on reading their
+frozen state: the four corner gauges and the two mid-side gauges over the supports held 340 and
+1,130 kPa from 1.6 ms to the end, giving positive impulses of 6,400 to 21,000 kPa ms, where
+the gauges at mid-span read normally. The test's gauges sat on the slab and moved with it, so
+this is a harness error against the inputs. From now on, between every batch of air steps
+while the air is awake, each gauge reads the first air cell beyond the slab's face at its point
+as the face is now (the cell is moved and its history kept). Nothing else changed. The smoke
+run's peaks (reached before the freezing) and its displacements are kept in the predictor's
+folder and are not the prediction. The same run showed the slab lifting off its trestles after
+its first downward peak (the air under its centre peaking at 0.85 MPa, the ground's
+reflection), which the inputs allow (not tied down) and which is left as it is.
