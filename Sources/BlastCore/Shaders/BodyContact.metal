@@ -60,6 +60,17 @@ static inline float3 bodyPairForce(float3 offset, float3 relative, float mass, f
     return size > largest ? force * (largest / size) : force;
 }
 
+// Whether a node can touch the other body at all: within the reach of its envelope. Most of a
+// body's nodes are far from the other's, and stop here before searching its table.
+static inline bool bodyContactWithin(float3 position, const device uint *bounds, constant BodyContact &c) {
+    for (uint axis = 0; axis < 3; ++axis) {
+        float low = bodyFloatFromOrder(bounds[6u * c.other + axis]) - c.reach;
+        float high = bodyFloatFromOrder(bounds[6u * c.other + 3u + axis]) + c.reach;
+        if (position[axis] < low || position[axis] > high) { return false; }
+    }
+    return true;
+}
+
 // The force on a node from the nodes of a solid body near it, through that body's table.
 static inline float3 forceFromSolidTable(float3 position, float3 velocity, float mass, float dt,
                                          constant BodyContact &c, const device uint *list,
@@ -188,7 +199,8 @@ kernel void bodyContactSolidFromSolid(const device uint *list [[buffer(0)]],
     float dt = structureStep(u, control, active);
     float3 position;
     StructureNode node;
-    if (!active || !bodyContactNear(bounds, c) || !solidContactNode(n, list, nodes, slots, u, position, node)) {
+    if (!active || !bodyContactNear(bounds, c) || !solidContactNode(n, list, nodes, slots, u, position, node)
+        || !bodyContactWithin(position, bounds, c)) {
         return;
     }
     float3 force = forceFromSolidTable(position, float3(node.velocity), node.mass, dt, c, otherList, otherNodes,
@@ -214,7 +226,8 @@ kernel void bodyContactSolidFromShell(const device uint *list [[buffer(0)]],
     float dt = structureStep(u, control, active);
     float3 position;
     StructureNode node;
-    if (!active || !bodyContactNear(bounds, c) || !solidContactNode(n, list, nodes, slots, u, position, node)) {
+    if (!active || !bodyContactNear(bounds, c) || !solidContactNode(n, list, nodes, slots, u, position, node)
+        || !bodyContactWithin(position, bounds, c)) {
         return;
     }
     float3 force = forceFromShellTable(position, float3(node.velocity), node.mass, dt, c, otherNodes,
@@ -241,7 +254,8 @@ kernel void bodyContactShellFromSolid(const device ShellNode *nodes [[buffer(0)]
     float3 position;
     ShellNode node;
     if (!active || n >= su.nodeCount || !bodyContactNear(bounds, c)
-        || !shellContactNode(n, nodes, reference, slots, su, position, node)) {
+        || !shellContactNode(n, nodes, reference, slots, su, position, node)
+        || !bodyContactWithin(position, bounds, c)) {
         return;
     }
     float3 force = forceFromSolidTable(position, float3(node.velocity), node.mass, dt, c, otherList, otherNodes,
@@ -268,7 +282,8 @@ kernel void bodyContactShellFromShell(const device ShellNode *nodes [[buffer(0)]
     float3 position;
     ShellNode node;
     if (!active || n >= su.nodeCount || !bodyContactNear(bounds, c)
-        || !shellContactNode(n, nodes, reference, slots, su, position, node)) {
+        || !shellContactNode(n, nodes, reference, slots, su, position, node)
+        || !bodyContactWithin(position, bounds, c)) {
         return;
     }
     float3 force = forceFromShellTable(position, float3(node.velocity), node.mass, dt, c, otherNodes,

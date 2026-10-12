@@ -207,6 +207,9 @@ public final class ShellSolver {
     public var debrisDrag = true
     /// Whether separate pieces, and loose debris, collide with each other.
     public var contactMode = ContactMode.afterFailure
+    /// For timing contact's parts alone: with true, contact fills its table each substep but
+    /// finds no forces (`blastbench contact-profile`). Never for a result.
+    public var contactTableOnly = false
     /// Contact spring stiffness as a fraction of the stiffest the time step allows.
     public var contactStiffness: Float = 0.1
     public var contactDamping: Float = 0.3
@@ -288,6 +291,9 @@ public final class ShellSolver {
     private let contactPipelines: [MTLComputePipelineState]
     let contactHeadBuffer: MTLBuffer
     let contactSlotBuffer: MTLBuffer
+    /// Per table entry, the last substep's stamp at which it held a node that had moved far
+    /// enough to touch one that had not (see `shellContactMoved` in Shell.metal).
+    let contactMovedBuffer: MTLBuffer
     let contactForceBuffer: MTLBuffer
     private let contactPeriod: SIMD3<Int>
     private let contactOrigin: SIMD3<Float>
@@ -400,8 +406,10 @@ public final class ShellSolver {
         let tableEntries = period.x * period.y * period.z
         contactHeadBuffer = try buffer(tableEntries * 4, "shell contact headers")
         contactSlotBuffer = try buffer(tableEntries * 32, "shell contact slots")
+        contactMovedBuffer = try buffer(tableEntries * 4, "shell contact movement")
         contactForceBuffer = try buffer(nodes * 12, "shell contact forces")
         memset(contactHeadBuffer.contents(), 0xFF, contactHeadBuffer.length)
+        memset(contactMovedBuffer.contents(), 0xFF, contactMovedBuffer.length)
         loadTableBuffer = try buffer(Self.maxLoadPoints * 8, "applied load table")
         failureGateBuffer = try buffer(16, "failure gate")
         placeholderBuffer = try buffer(64, "shell placeholder")
@@ -904,7 +912,7 @@ public final class ShellSolver {
             barLayoutBuffer, beamBuffer, beamFlagBuffer, beamDisplayBuffer, beamFibreBuffer, beamBarBuffer,
             beamForceBuffer, beamBarLayoutBuffer,
             barBuffer, forceBuffer, incidenceStartBuffer, incidenceBuffer, contactHeadBuffer,
-            contactSlotBuffer,
+            contactSlotBuffer, contactMovedBuffer,
             contactForceBuffer,
         ].reduce(0) { $0 + $1.length }
     }
@@ -1075,7 +1083,8 @@ public final class ShellSolver {
             if encodeContact {
                 stamp = stamp % 0x1FFF_FFF0 + 1
                 uniforms.stamp = stamp
-                for pipeline in contactPipelines {
+                for pipeline in contactPipelines where !(contactTableOnly && pipeline === contactPipelines[2])
+                {
                     encoder.setComputePipelineState(pipeline)
                     encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
                     encoder.setBuffer(referenceBuffer, offset: 0, index: 1)
@@ -1085,6 +1094,7 @@ public final class ShellSolver {
                     encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 5)
                     encoder.setBuffer(failureGateBuffer, offset: 0, index: 6)
                     encoder.setBuffer(contactForceBuffer, offset: 0, index: 7)
+                    encoder.setBuffer(contactMovedBuffer, offset: 0, index: 8)
                     encoder.dispatchThreads(
                         MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
                 }
