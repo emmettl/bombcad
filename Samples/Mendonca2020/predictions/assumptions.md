@@ -205,3 +205,23 @@ under the slab and resting on its supports in the slab's place, so slab and rail
 land together; the rigid rails leave the air, the rails being in it as part of the structure.
 All seven slabs, on the Studio, on the primary's mesh and air, after the primary runs and before
 the 16-element runs. It is reported, not scored.
+
+**5. 2026-10-12 22:00, after all seven primary runs: what drives the landing, a seventh
+secondary run with the air kept awake, and the timber runs cut to two slabs; the primary
+unchanged.** A diagnostic run of slab 4 on the primary's settings (identical to its primary run,
+with the slab's mass-weighted mean height and its bearing lines' heights recorded besides) shows
+the slab in flight under gravity alone (its mean height accelerating at 9.5 to 10.1 m/s² down
+from 20 to 140 ms, before and after the air goes to sleep at 78 ms), and then, from 140 ms, as it
+comes back down through the air cells that were frozen as solid where it was at 78 ms,
+accelerating down at 16 and then 92 m/s² before either edge has landed: a push of up to about
+16 kPa that no contact can give. The air goes to sleep here by its five-crossings limit (the
+domain is crossed in 15.5 ms), and while it sleeps the structure is still loaded by the frozen
+air on a frozen solid mask (`BlastSolver`, the remask skipped). So in the primary runs of the
+2.0 and 1.6 m slabs the largest downward displacement and what is left come from the landing as
+the frozen defaults compute it, an artefact of the air's sleep for a slab thrown this far, and
+the README says so beside them. The primary prediction keeps the defaults and its declared
+quantities (rule 1). **Secondary run 7**: the air never sleeps (its sleep threshold and its
+crossings limit both zero, a change of default, so reported only), on the calibrated record's
+air for all seven slabs, and on the primary's air for slabs 4 and 1, on the Studio. **Secondary
+run 6** (timber bearings) is cut to the two slabs it had run (4 and 1): it tests the landing's
+compliance, which until the air stays awake is not what sets the landing.

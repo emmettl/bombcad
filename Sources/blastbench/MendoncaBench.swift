@@ -9,7 +9,7 @@ import UniformTypeIdentifiers
 // from Samples/Mendonca2020/inputs alone (see MendoncaSlabTest.swift):
 //
 //   blastbench mendonca [--slabs 1,2,4,5,7,9,10] [--layers 8] [--dx 0.0125] [--refine 2] [--mapped]
-//                       [--time 0.2] [--heavy-across] [--lift 0.1] [--timber]
+//                       [--time 0.2] [--heavy-across] [--lift 0.1] [--timber] [--awake]
 //                       [--inputs Samples/Mendonca2020/inputs/slabs.json] [--out dir]
 //                       [--ensemble 8 [--seed 1] [--samples 1-8]]   (the inputs' spread)
 //
@@ -28,6 +28,7 @@ func runMendonca(device: MTLDevice) throws {
     if let time = option("time").flatMap({ Double($0) }) { settings.duration = time }
     if flag("heavy-across") { settings.heavyBarsAlongSpan = false }
     if flag("timber") { settings.timberBearings = true }
+    if flag("awake") { settings.airAwake = true }
     if let lift = option("lift").flatMap({ Float($0) }) { settings.chargeLift = lift }
     let names = option("slabs")?.split(separator: ",").map(String.init)
     let slabs = inputs.slabs.filter { names?.contains($0.name) ?? true }
@@ -75,6 +76,7 @@ func runMendonca(device: MTLDevice) throws {
                     settings: MendoncaSlabTest.settings(settings, values: values))
                 print(line(result))
                 result.history = []
+                result.bodyHistory = []
                 result.pressureHistory = []
                 result.damage.bottomCracks = []
                 result.damage.topCracks = []
@@ -119,6 +121,13 @@ func runMendonca(device: MTLDevice) throws {
             + "\n"
         try displacement.write(
             to: out.appending(path: "slab\(slab.name)-displacement.csv"), atomically: true, encoding: .utf8)
+        let body =
+            "time_ms,mean_lift_mm,near_bearing_lift_mm,far_bearing_lift_mm\n"
+            + result.bodyHistory.map {
+                String(format: "%.2f,%.4f,%.4f,%.4f", $0.x * 1000, $0.y * 1000, $0.z * 1000, $0.w * 1000)
+            }.joined(separator: "\n") + "\n"
+        try body.write(
+            to: out.appending(path: "slab\(slab.name)-flight.csv"), atomically: true, encoding: .utf8)
         let header = (["time_ms"] + result.gauges.map { "\($0.name)_kPa" }).joined(separator: ",")
         let rows = (0..<(result.pressureHistory.first?.count ?? 0)).map { n in
             ([String(format: "%.3f", Double(n) * settings.pressureInterval * 1000)]

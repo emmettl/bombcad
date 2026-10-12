@@ -123,6 +123,9 @@ public enum MendoncaSlabTest {
         public var cellSize: Float = 0.0125
         public var refinement = 1
         public var mappedCharge = false
+        /// Keep the air awake to the end of the run (a secondary run; by default it is frozen once
+        /// quiet or after five crossings of the domain, and the structure then moves on in it).
+        public var airAwake = false
         public var duration: Double = 0.2
         /// The timber the slab bears on along each supported edge, flush with the slab's edge, and
         /// the depth of the trestles' top rail as an obstacle in the air.
@@ -327,6 +330,10 @@ public enum MendoncaSlabTest {
         public var endDisplacementMean: Float
         public var largestRebound: Float
         public var history: [SIMD2<Float>]
+        /// Every sample: time, the slab's mass-weighted mean vertical displacement (up positive),
+        /// and the vertical displacement of the middle node of each bearing's middle line on the
+        /// slab's bottom face, near and far (m). Description, to read the slab's flight by.
+        public var bodyHistory: [SIMD4<Float>] = []
         public var gauges: [GaugeResult]
         /// Each gauge's overpressure (Pa) on a grid of `pressureInterval` to `pressureRecord`.
         public var pressureHistory: [[Float]]
@@ -344,6 +351,10 @@ public enum MendoncaSlabTest {
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: settings.cellSize)
         solver.configuration.refinement = settings.refinement
         solver.configuration.mappedCharge = settings.mappedCharge
+        if settings.airAwake {
+            solver.configuration.airSleepThreshold = 0
+            solver.configuration.airSleepCrossings = 0
+        }
         try solver.load(scenario)
         guard let structure = solver.structure else { throw BlastError.allocationFailed("structure") }
         let s = slabBox(inputs: inputs)
@@ -421,6 +432,19 @@ public enum MendoncaSlabTest {
             for (n, samples) in histories.enumerated() { solver.prependGaugeHistory(n, samples) }
         }
 
+        func meanLift() -> Float {
+            var weighted: Double = 0
+            var total: Double = 0
+            structure.mutateNodes { nodes in
+                for node in nodes {
+                    weighted += Double(node.mass) * Double(node.uz)
+                    total += Double(node.mass)
+                }
+            }
+            return Float(weighted / max(total, 1e-12))
+        }
+        var bodyHistory: [SIMD4<Float>] = [.zero]
+
         let start = ContinuousClock.now
         var history: [SIMD2<Float>] = [SIMD2(0, 0)]
         var nextSample = settings.sampleInterval
@@ -443,6 +467,11 @@ public enum MendoncaSlabTest {
                     break
                 }
                 history.append(SIMD2(Float(solver.time), u))
+                bodyHistory.append(
+                    SIMD4(
+                        Float(solver.time), meanLift(),
+                        structure.displacement(near + bearing / 2, cj, bottom).z,
+                        structure.displacement(far - bearing / 2, cj, bottom).z))
                 while nextSample <= solver.time + 1e-9 { nextSample += settings.sampleInterval }
             }
             if let progress, solver.time >= nextReport {
@@ -497,7 +526,8 @@ public enum MendoncaSlabTest {
             cellCount: solver.grid.cellCount, peakDisplacement: peak.y, peakTime: peak.x,
             endDisplacement: end.y,
             endDisplacementMean: tail.map(\.y).reduce(0, +) / Float(max(tail.count, 1)),
-            largestRebound: peak.y - (afterPeak.min() ?? peak.y), history: history, gauges: gaugeResults,
+            largestRebound: peak.y - (afterPeak.min() ?? peak.y), history: history, bodyHistory: bodyHistory,
+            gauges: gaugeResults,
             pressureHistory: pressureHistory,
             damage: damage(structure, slab: s, inputs: inputs, settings: settings), blownUp: blownUp,
             airSleptAt: slept,
