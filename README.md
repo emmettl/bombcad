@@ -122,6 +122,7 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [Concrete model](docs/concrete-model.md)    | Cracking, crushing, shear, reinforcement, bond, strain-rate effects, removal |
 | [Shell model](docs/shell-model.md)          | Shells for walls and slabs, beams for columns                   |
 | [Structural editing](docs/structural-editing.md) | Building structures, materials, openings and restraints in the app |
+| [IFC import over a corpus](docs/ifc-import-corpus.md) | What 385 open IFC files did on import, what was fixed and what is left |
 | [Freestanding objects](docs/freestanding-objects.md) | Rigid boxes and cars coupled to the air, contact and populated scenes |
 | [Terrain](docs/terrain.md)                  | A heightfield ground the blast sees, DEM import, and slopes checked against shock reflection theory |
 | [Large scenes](docs/large-scenes.md) | Bursts of hundreds of tonnes to kilotonnes over kilometres: accuracy, cost and grids against Kingery–Bulmash, terrain at scale |

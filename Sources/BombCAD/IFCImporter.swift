@@ -22,6 +22,19 @@ enum IFCImporter {
                 "IfcWindowStandardCase",
             ].contains(name)
     }
+    static let standardCases = [
+        "IfcWallStandardCase", "IfcSlabStandardCase", "IfcBeamStandardCase", "IfcColumnStandardCase",
+        "IfcMemberStandardCase", "IfcPlateStandardCase", "IfcDoorStandardCase", "IfcWindowStandardCase",
+    ]
+    static func validGlobalID(_ id: String) -> Bool {
+        id.count == 22
+            && id.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "_" || $0 == "$") })
+    }
+    /// Classes that, aggregated into a supported element, carry its geometry as its parts: a
+    /// wall of sand-lime blocks, a slab of precast planks drawn as proxies.
+    static let partClasses: Set<String> = [
+        "IfcBuildingElementPart", "IfcBuildingElementProxy", "IfcElementAssembly", "IfcCovering",
+    ]
     static var converterURL: URL? {
         let bundled = Bundle.main.bundleURL.appendingPathComponent("Contents/MacOS/IfcConvert")
         if FileManager.default.isExecutableFile(atPath: bundled.path) { return bundled }
@@ -35,6 +48,11 @@ enum IFCImporter {
         var metadataLog: String
         /// Each element's material layers, by GlobalId, where the IFC gives them.
         var materials: [String: [IFCStructure.Layer]] = [:]
+        /// Elements the metadata had to leave out, and why.
+        var skipped: [String] = []
+        /// Metres per length unit, read from the IFC itself, for where the converter cannot find
+        /// its units; nil unless the file has one project with one length unit.
+        var lengthUnit: (metres: Double, name: String)?
         var defaultIDs: Set<String> { Set(inventory.filter(\.supported).map(\.id)) }
     }
     static func prepare(_ data: Data, converter: URL? = converterURL) async throws -> Prepared {
@@ -50,17 +68,50 @@ enum IFCImporter {
         try data.write(to: input)
         let log = try await run(converter, arguments: [input.path, xml.path, "-y"], folder: folder)
         try Task.checkCancellation()
+        guard FileManager.default.fileExists(atPath: xml.path) else {
+            let errors = converterErrors(log)
+            throw ImportedMesh.ImportError.invalid(
+                "The IFC converter could not read the file's structure"
+                    + (errors.isEmpty ? "." : ": " + errors + "."))
+        }
         let metadata = try boundedData(xml)
-        let inventory = try decodeMetadata(metadata)
+        var (inventory, skipped) = try decodeMetadata(metadata)
+        // Products in no spatial structure are missing from the converter's tree: find them in
+        // the IFC itself.
+        let known = Set(inventory.map(\.id))
+        for product in IFCStep.products(data, classes: Set(physicalTypes + standardCases))
+        where !known.contains(product.id) && validGlobalID(product.id) {
+            inventory.append(
+                Element(
+                    id: product.id, name: product.name, ifcClass: product.ifcClass, supported: true,
+                    uncontained: true))
+        }
+        inventory.sort { $0.id < $1.id }
+        // The converter writes no units where it cannot find them; then the file's own.
+        let unitsRead = String(decoding: metadata.prefix(200_000), as: UTF8.self).contains("LENGTHUNIT")
+        let lengthUnit = IFCStep.lengthUnit(data)
         // Materials are only for meshing the building as a structure: an unreadable set leaves
         // them out rather than the import.
-        let materials = (try? IFCMaterials.decode(metadata)) ?? [:]
+        let materials =
+            (try? IFCMaterials.decode(metadata, metresPerUnit: unitsRead ? 1 : Float(lengthUnit?.metres ?? 1)))
+            ?? [:]
         try Task.checkCancellation()
         guard inventory.contains(where: \.supported) else {
+            var classes: [String: Int] = [:]
+            for element in inventory where !element.hasChildren { classes[element.ifcClass, default: 0] += 1 }
+            let found = classes.sorted { ($0.value, $1.key) > ($1.value, $0.key) }.prefix(8)
+                .map { "\($0.value) \($0.key)" }.joined(separator: ", ")
             throw ImportedMesh.ImportError.invalid(
-                "No supported physical elements were found in the IFC decomposition tree.")
+                "No supported physical elements were found in the IFC"
+                    + (found.isEmpty ? "." : ": it holds \(found)")
+                    + (found.isEmpty
+                        ? ""
+                        : ", and none is a wall, slab, roof, column, beam, member, plate, footing, stair, railing, door or window, or a part of one.")
+            )
         }
-        return Prepared(data: data, inventory: inventory, metadataLog: log, materials: materials)
+        return Prepared(
+            data: data, inventory: inventory, metadataLog: log, materials: materials, skipped: skipped,
+            lengthUnit: lengthUnit)
     }
     static func convert(_ data: Data, converter: URL? = converterURL) async throws -> ImportedMesh {
         let prepared = try await prepare(data, converter: converter)
@@ -88,17 +139,36 @@ enum IFCImporter {
                 input.path, obj.path, "-y", "-v", "--use-element-guids", "--weld-vertices", "--include",
                 "attribute", "GlobalId",
             ] + includedIDs.sorted(), folder: folder)
-        guard !geometryLog.contains("Unable to detect unit information") else {
-            throw ImportedMesh.ImportError.invalid(
-                "IFC units could not be determined by the converter. Review project/context and unit definitions in your CAD tool, then re-export. Geometry is blocked to avoid importing it at the wrong scale."
+        var scale = 1.0
+        var notes: [String] = []
+        if geometryLog.contains("Unable to detect unit information") {
+            // The converter then writes the file's own units; scale them by the project's.
+            guard let unit = prepared.lengthUnit else {
+                throw ImportedMesh.ImportError.invalid(
+                    "IFC units could not be determined, by the converter or from the file's one project and its length unit. Review project/context and unit definitions in your CAD tool, then re-export. Geometry is blocked to avoid importing it at the wrong scale."
+                )
+            }
+            scale = unit.metres
+            notes.append(
+                "The converter could not find this IFC's units, so its project's own length unit, the \(unit.name) (\(unit.metres) m), was applied to the geometry. Check the building's size."
             )
         }
         let chosen = prepared.inventory.filter { includedIDs.contains($0.id) }
+        let output = try boundedData(obj)
+        guard output.range(of: Data("\nf ".utf8)) != nil else {
+            let errors = converterErrors(geometryLog)
+            throw ImportedMesh.ImportError.invalid(
+                "The converter produced no geometry for the chosen elements"
+                    + (errors.isEmpty ? "." : ": " + errors + ".")
+                    + " Their representations may be in a context or form it does not read.")
+        }
         let geometry = try decodeOBJ(
-            try boundedData(obj), metadata: Dictionary(uniqueKeysWithValues: chosen.map { ($0.id, $0) }))
+            output, metadata: Dictionary(uniqueKeysWithValues: chosen.map { ($0.id, $0) }), scale: scale)
         let present = Set(geometry.elements.map(\.globalID))
-        let missing = chosen.filter { !present.contains($0.id) }
-        var notes: [String] = []
+        let byID = Dictionary(uniqueKeysWithValues: prepared.inventory.map { ($0.id, $0) })
+        // An element whose geometry is all in its parts is not missing.
+        let carried = Set(geometry.elements.compactMap { byID[$0.globalID]?.parentID })
+        let missing = chosen.filter { !present.contains($0.id) && !carried.contains($0.id) }
         if !missing.isEmpty {
             notes.append(
                 "Selected IFC elements without converted geometry: "
@@ -134,10 +204,52 @@ enum IFCImporter {
         notes.append(
             "IFC converted to metres, Z up. Only explicitly chosen supported elements were converted. Spaces, furnishings, site/proxy markers and other unsupported types are excluded. Material properties are not mapped."
         )
+        // A part takes its element's storey and, where it has none of its own, materials.
+        func root(of id: String) -> Element? {
+            var current = byID[id]
+            while let element = current, !supportedClass(element.ifcClass), let parent = element.parentID {
+                current = byID[parent]
+            }
+            return current.flatMap { supportedClass($0.ifcClass) ? $0 : nil }
+        }
+        var parts = 0
         let elements = geometry.elements.map { element in
             var copy = element
             copy.materials = prepared.materials[element.globalID]
+            if !supportedClass(element.ifcClass), let owner = root(of: element.globalID) {
+                copy.assembly = .init(id: owner.id, name: owner.name, ifcClass: owner.ifcClass)
+                copy.storey = copy.storey ?? owner.storey
+                copy.materials = copy.materials ?? prepared.materials[owner.id]
+                parts += 1
+            }
             return copy
+        }
+        if parts > 0 {
+            notes.append(
+                "\(parts) parts (blocks, planks, proxies) carry the geometry of the elements they make up; each is kept as an element of its own, and meshed with its element as a structure."
+            )
+        }
+        let uncontained = chosen.filter { $0.uncontained == true && present.contains($0.id) }
+        if !uncontained.isEmpty {
+            notes.append(
+                "\(uncontained.count) elements are in no storey or building of the IFC's spatial structure; they were found in the file itself and imported without a storey: "
+                    + uncontained.prefix(10).map(\.name).joined(separator: ", ")
+                    + (uncontained.count > 10 ? ", …" : "") + ".")
+        }
+        if !prepared.skipped.isEmpty {
+            notes.append(
+                "Left out of the IFC's inventory: " + prepared.skipped.prefix(10).joined(separator: "; ")
+                    + (prepared.skipped.count > 10 ? "; and \(prepared.skipped.count - 10) more." : "."))
+        }
+        var unsupported: [String: Int] = [:]
+        for element in prepared.inventory where !element.supported && !element.hasChildren {
+            unsupported[element.ifcClass, default: 0] += 1
+        }
+        if !unsupported.isEmpty {
+            notes.append(
+                "Not imported, as their classes are not supported: "
+                    + unsupported.sorted { ($0.value, $1.key) > ($1.value, $0.key) }.prefix(12)
+                    .map { "\($0.value) \($0.key)" }.joined(separator: ", ") + ".")
         }
         return try ImportedMesh(
             buildingElements: elements, notes: notes, origin: geometry.origin,
@@ -191,9 +303,31 @@ enum IFCImporter {
         try Task.checkCancellation()
         let text = String(decoding: try boundedData(log), as: UTF8.self)
         guard process.terminationStatus == 0 else {
-            throw ImportedMesh.ImportError.invalid("IFC conversion failed. \(String(text.suffix(1800)))")
+            let errors = converterErrors(text)
+            throw ImportedMesh.ImportError.invalid(
+                "IFC conversion failed"
+                    + (errors.isEmpty
+                        ? (process.terminationReason == .uncaughtSignal
+                            ? ": the converter crashed (signal \(process.terminationStatus))."
+                            : ". \(String(text.suffix(1200)))")
+                        : ": " + errors + "."))
         }
         return text
+    }
+
+    /// The converter's error lines, without their time stamps and repeats.
+    static func converterErrors(_ log: String) -> String {
+        var seen = Set<String>()
+        return log.split(whereSeparator: \.isNewline).filter { $0.contains("[Error]") }
+            .map {
+                $0.replacingOccurrences(
+                    of: #"\[Error\]\s*\[[^\]]*\]\s*"#, with: "", options: .regularExpression)
+            }
+            .map {
+                $0.replacingOccurrences(
+                    of: #"'/[^']*source\.ifc'"#, with: "the file", options: .regularExpression)
+            }
+            .filter { seen.insert($0).inserted }.prefix(4).joined(separator: "; ")
     }
 
     static func requireConverter(_ converter: URL?) throws -> URL {
@@ -211,7 +345,7 @@ enum IFCImporter {
         return folder
     }
     typealias Element = ImportedMesh.BuildingSourceElement
-    static func decodeMetadata(_ data: Data) throws -> [Element] {
+    static func decodeMetadata(_ data: Data) throws -> (elements: [Element], skipped: [String]) {
         let parser = Metadata()
         let document = XMLParser(data: data)
         document.delegate = parser
@@ -221,11 +355,12 @@ enum IFCImporter {
                 "IFC metadata could not be read: \(parser.issue ?? document.parserError?.localizedDescription ?? "invalid XML")"
             )
         }
-        return parser.elements.values.sorted { $0.id < $1.id }
+        return (parser.elements.values.sorted { $0.id < $1.id }, parser.skipped)
     }
     private final class Metadata: NSObject, XMLParserDelegate {
         var elements: [String: Element] = [:]
         var issue: String?
+        var skipped: [String] = []
         private var depth = 0
         private var decomposition = false
         private var buildings: [(Int, String, String)] = []
@@ -243,14 +378,14 @@ enum IFCImporter {
             }
             if name == "decomposition" { decomposition = true }
             guard decomposition, let id = attributes["id"] else { return }
-            guard id.count == 22,
-                id.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "_" || $0 == "$") })
-            else {
-                issue = "invalid IFC GlobalId"
-                parser.abortParsing()
+            let label = String((attributes["Name"] ?? name).prefix(200))
+            guard IFCImporter.validGlobalID(id) else {
+                // One bad identifier leaves out its element, not the file.
+                if skipped.count < 1000 {
+                    skipped.append("\(label) (\(name)), its GlobalId '\(id.prefix(40))' invalid")
+                }
                 return
             }
-            let label = String((attributes["Name"] ?? name).prefix(200))
             if name == "IfcBuilding" {
                 buildings.append((depth, id, label))
                 return
@@ -264,16 +399,21 @@ enum IFCImporter {
                     where: name.hasPrefix)
             else { return }
             guard elements[id] == nil else {
-                issue = "duplicate IFC GlobalId"
-                parser.abortParsing()
+                if skipped.count < 1000 {
+                    skipped.append("\(label) (\(name)), its GlobalId \(id) used twice")
+                }
                 return
             }
-            if let parent = parents.last?.1 { elements[parent]?.hasChildren = true }
+            let parent = parents.last?.1
+            if let parent { elements[parent]?.hasChildren = true }
+            // A part of a supported element (or of a part of one) carries its geometry.
+            let part =
+                parent.flatMap { elements[$0]?.supported } == true && IFCImporter.partClasses.contains(name)
             elements[id] = Element(
                 id: id, name: label, ifcClass: name,
                 buildingID: buildings.last?.1, building: buildings.last?.2,
                 storeyID: storeys.last?.1, storey: storeys.last?.2,
-                supported: IFCImporter.supportedClass(name))
+                supported: IFCImporter.supportedClass(name) || part, parentID: parent)
             parents.append((depth, id))
         }
         func parser(
@@ -315,16 +455,18 @@ enum IFCImporter {
         var failures: [ElementFailure]
         var inspectedElements: Int
     }
-    static func decodeOBJ(_ data: Data, metadata: [String: Element]) throws -> (
+    static func decodeOBJ(_ data: Data, metadata: [String: Element], scale: Double = 1) throws -> (
         elements: [ImportedMesh.BuildingElement], origin: SIMD3<Double>
     ) {
-        let review = try inspectOBJ(data, metadata: metadata)
+        let review = try inspectOBJ(data, metadata: metadata, scale: scale)
         if !review.failures.isEmpty {
             throw ElementFailures(failures: review.failures, inspectedElements: review.inspectedElements)
         }
         return (review.elements, review.origin)
     }
-    static func inspectOBJ(_ data: Data, metadata: [String: Element]) throws -> GeometryReview {
+    static func inspectOBJ(_ data: Data, metadata: [String: Element], scale: Double = 1) throws
+        -> GeometryReview
+    {
         guard let text = String(data: data, encoding: .utf8) else {
             throw ImportedMesh.ImportError.invalid("IFC converter output is not UTF-8.")
         }
@@ -340,12 +482,22 @@ enum IFCImporter {
                 guard f.count >= 4, let x = Double(f[1]), let y = Double(f[2]), let z = Double(f[3]),
                     [x, y, z].allSatisfy(\.isFinite), vertices.count < 300_000
                 else { throw ImportedMesh.ImportError.invalid("Invalid or excessive IFC vertices.") }
-                vertices.append(SIMD3(x, y, z))
+                vertices.append(SIMD3(x, y, z) * scale)
             }
             if f.first == "f" {
-                guard let guid, metadata[guid] != nil, f.count == 4, count < 100_000 else {
+                guard let guid, metadata[guid] != nil else {
                     throw ImportedMesh.ImportError.invalid(
-                        "IFC geometry lacks element identity or exceeds triangle limits.")
+                        "IFC geometry came back for an element that was not chosen (\(guid ?? "no element"))."
+                    )
+                }
+                guard f.count == 4 else {
+                    throw ImportedMesh.ImportError.invalid(
+                        "IFC converter output has a face that is not a triangle.")
+                }
+                guard count < 100_000 else {
+                    throw ImportedMesh.ImportError.invalid(
+                        "The chosen IFC elements have more than 100,000 triangles. Choose fewer elements, for example a storey at a time."
+                    )
                 }
                 let indices = try f.dropFirst().map { value -> Int in
                     guard let token = value.split(separator: "/").first, let n = Int(token), n > 0,
