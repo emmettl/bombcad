@@ -1,0 +1,6 @@
+047cee3ccb0b232ee6a496b492174f94fd2e91b5
+
+The frozen commit for blind test 2 (docs/blind-tests.md): origin/main on 2026-10-12, after test
+1's reveal. The predictor runs its harness on this commit's model and defaults, whatever later
+commits change. (origin/main at 3a950ac, where the predictor started, differs from it only in a
+blastbench subcommand and documents; no model code.)
