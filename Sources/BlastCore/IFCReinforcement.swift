@@ -180,8 +180,9 @@ public enum IFCReinforcement {
 
     /// Bars given to the elements that hold them: the element the IFC nests a bar in, where it
     /// does (`hosts`, by the bar's GlobalId) and that element is among `elements`; else the
-    /// concrete element whose bounds hold the bar's middle, the smallest if several do. Bars no
-    /// element holds are returned apart.
+    /// concrete element whose bounds hold the bar's middle, the smallest if several do; else the
+    /// one whose bounds overlap most of the bar's (a U-bar's middle lies in the open part of the
+    /// U), at least half. Bars no element holds are returned apart.
     public static func host(
         _ bars: [Bar], in elements: [ImportedMesh.BuildingElement], hosts: [String: String] = [:]
     ) -> (elements: [ImportedMesh.BuildingElement], unhosted: [Bar]) {
@@ -211,6 +212,18 @@ public enum IFCReinforcement {
                     let b = boxes[m].high - boxes[m].low
                     return a.x * a.y * a.z < b.x * b.y * b.z
                 }
+            }
+            if index == nil {
+                // The share of the bar's bounds (grown by its radius, as a flat bar's are thin)
+                // inside each element's.
+                let low = bar.low - bar.diameter / 2
+                let high = bar.high + bar.diameter / 2
+                let own = (high - low).x * (high - low).y * (high - low).z
+                func share(_ n: Int) -> Float {
+                    let overlap = simd_max(simd_min(high, boxes[n].high) - simd_max(low, boxes[n].low), .zero)
+                    return own > 0 ? overlap.x * overlap.y * overlap.z / own : 0
+                }
+                index = concrete.filter { share($0) >= 0.5 }.max { share($0) < share($1) }
             }
             guard let index else {
                 unhosted.append(bar)

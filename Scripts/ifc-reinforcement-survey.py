@@ -37,8 +37,10 @@ USEFUL = re.compile(
     re.I,
 )
 PSET = re.compile(r"IFCPROPERTYSET\('[^']*',[^,]*,'([^']*)'", re.I)
-SINGLE = re.compile(r"IFCPROPERTYSINGLEVALUE\('([^']*)',[^,]*,([^,)]*(?:\([^)]*\))?)", re.I)
+SINGLE = re.compile(r"IFCPROPERTYSINGLEVALUE\('([^']*)',[^,]*,([A-Z0-9_]*\([^)]*\)|[^,)]*)", re.I)
 NUMERIC = re.compile(r"IFC[A-Z]*MEASURE\(\s*-?[0-9.]+(?:E-?[0-9]+)?\s*\)|IFCREAL\(", re.I)
+# Material names that say the concrete is reinforced, whatever the file gives of its steel.
+REINFORCED_NAME = re.compile(r"IFCMATERIAL\('[^']*(reinforced|gewapend|armiert|stahlbeton|\bRC\b|b[eé]ton arm[eé])", re.I)
 CONCRETE = re.compile(r"IFCMATERIAL\('[^']*(concrete|beton|b[eé]ton|\bC\d\d/\d\d|reinforced)", re.I)
 SCHEMA = re.compile(r"FILE_SCHEMA\s*\(\s*\(\s*'([^']*)'", re.I)
 
@@ -63,6 +65,7 @@ def survey(path):
     entry["usefulProperties"] = useful
     entry["reinforcementPropertyNames"] = sorted(named)
     entry["concrete"] = bool(CONCRETE.search(text))
+    entry["reinforcedByName"] = bool(REINFORCED_NAME.search(text))
     return entry
 
 
@@ -106,6 +109,9 @@ def main():
         "withReinforcementPsets": psets,
         "withUsefulNumericProperties": useful,
         "withAnythingReadable": anything,
+        "namedReinforcedConcrete": count(lambda e: e["reinforcedByName"]),
+        "namedReinforcedWithNothingReadable": count(
+            lambda e: e["reinforcedByName"] and not (e["bars"] + e["meshes"] + e["tendons"] > 0 or e["usefulProperties"])),
         "concreteWithAnythingReadable": count(
             lambda e: e["concrete"] and (e["bars"] + e["meshes"] + e["tendons"] > 0 or e["usefulProperties"])),
     }

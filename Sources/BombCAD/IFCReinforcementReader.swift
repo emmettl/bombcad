@@ -33,6 +33,8 @@ enum IFCReinforcementReader {
         var elements: [String: Element] = [:]
         /// Reinforcement properties by element GlobalId.
         var properties: [String: IFCReinforcement.Properties] = [:]
+        /// Properties left out as no bar could have them, as "set.property = value".
+        var rejected: [String] = []
 
         init() {}
 
@@ -165,6 +167,7 @@ enum IFCReinforcementReader {
                 }
                 metadata.elements[id] = element
             }
+            var rejected: [String] = []
             for (product, ids) in setsOf where elements[product] == nil {
                 var properties = IFCReinforcement.Properties(source: "")
                 var names: [String] = []
@@ -173,9 +176,16 @@ enum IFCReinforcementReader {
                     for (key, value) in set.values {
                         switch key {
                         case "ConcreteCover", "ConcreteCoverAtMainBars":
-                            if properties.cover == nil || key == "ConcreteCoverAtMainBars" {
-                                properties.cover = value * scale
+                            // A cover a bar could have, 5 to 200 mm, in the project's unit or else
+                            // millimetres; others are left out (one file gives 50,000 mm).
+                            guard properties.cover == nil || key == "ConcreteCoverAtMainBars" else { break }
+                            if let cover = [value * scale, value * 0.001].first(where: {
+                                $0 >= 0.005 && $0 <= 0.2
+                            }) {
+                                properties.cover = cover
                                 used = true
+                            } else {
+                                rejected.append("\(set.name).\(key) = \(value)")
                             }
                         case "ReinforcementAreaRatio":
                             // A ratio; written as a percentage where it is more than a fifth.
@@ -194,6 +204,7 @@ enum IFCReinforcementReader {
                 properties.source = Array(Set(names)).sorted().joined(separator: ", ")
                 metadata.properties[product] = properties
             }
+            metadata.rejected = Array(Set(rejected)).sorted()
             return metadata
         }
     }
@@ -235,6 +246,11 @@ enum IFCReinforcementReader {
     ) async -> ([ImportedMesh.BuildingElement], [String]) {
         var result = elements
         var notes: [String] = []
+        if !metadata.rejected.isEmpty {
+            notes.append(
+                "Reinforcement properties left out, no bar's cover being so large or small: "
+                    + metadata.rejected.prefix(5).joined(separator: "; ") + ".")
+        }
         for index in result.indices {
             if let properties = metadata.properties[result[index].globalID] {
                 result[index].reinforcement = IFCReinforcement.Hosted(properties: properties)
