@@ -197,4 +197,17 @@ struct MasonryTests {
         #expect(kineticEnergy() < 0.01 * initial, "still moving: \(kineticEnergy()) J of \(initial) J")
         #expect(solver.summary().erodedElements < 50)
     }
+
+    @Test("Reinforced blockwork struck by a blast pulse stays bounded")
+    func reinforcedBlockworkBounded() throws {
+        // A 0.2 m strip of Alsubaei's reinforced blockwork wall, its ends held as in the middle of
+        // the wall, its face struck by the 25 kg charge's 2.5 MPa. The base course, squeezed from
+        // every side, followed the concrete compaction curve, which for a material this soft was
+        // five to fifty times stiffer than the block itself and outran the time step: its nodes
+        // reached thousands of m/s within 30 ms and more than half the strip was removed.
+        let panel = try PerimeterWallTests.blockworkPanel(device: device)
+        #expect(panel.fastest < 50, "fastest node \(panel.fastest) m/s")
+        #expect(panel.erodedFraction < 0.15, "\(panel.erodedFraction * 100)% removed")
+        #expect(panel.peakTop > 0.02 && panel.peakTop < 0.3, "top \(panel.peakTop) m")
+    }
 }

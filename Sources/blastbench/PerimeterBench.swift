@@ -28,11 +28,34 @@ import Metal
 ///   --clearance 3                       the air behind and above, in wall heights
 ///   --footing 2,0.5                     the footing's width and depth (the thesis's 2.2 × 0.6 m
 ///                                       for the canopied wall, half that taken for the half-scale)
+///
+/// `--study panel` runs a strip of the blockwork alone, with no air, under a pressure pulse:
+///
+///   --length 0.2 --peak 2.5e6 --duration 1.3e-3 --time 0.03 --h 0.05   its length, the pulse
+///                                       (peak Pa, falling to zero over the duration; near the
+///                                       25 kg charge's on the face), how long
+///   --free-ends                         its ends free to move along the wall (held by default)
+///   --no-bars --no-joints               as for the wall
 func runPerimeter(device: MTLDevice) throws {
     switch option("study") ?? "air" {
     case "air": try runPerimeterAir(device: device)
     case "wall": try runPerimeterWall(device: device)
-    default: print("Unknown study; use --study air or wall")
+    case "panel":
+        let r = try PerimeterWallTests.blockworkPanel(
+            device: device, length: option("length").flatMap { Float($0) } ?? 0.2,
+            heldEnds: !flag("free-ends"),
+            bars: !flag("no-bars"),
+            joints: !flag("no-joints"), peak: option("peak").flatMap { Float($0) } ?? 2.5e6,
+            duration: option("duration").flatMap { Float($0) } ?? 1.3e-3,
+            time: option("time").flatMap { Float($0) } ?? 0.03,
+            elementSize: option("h").flatMap { Float($0) } ?? 0.05,
+            progress: flag("progress") ? { print("    " + $0) } : nil)
+        print(
+            "Blockwork panel: top \(format(Double(r.peakTop) * 1000, 1)) mm peak, "
+                + "\(format(Double(r.finalTop) * 1000, 1)) left; fastest \(format(Double(r.fastest), 2)) m/s; "
+                + "\(format(r.erodedFraction * 100, 1))% removed; compacted to \(format(Double(r.compaction) * 100, 2))%"
+        )
+    default: print("Unknown study; use --study air, wall or panel")
     }
 }
 

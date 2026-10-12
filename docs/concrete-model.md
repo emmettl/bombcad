@@ -260,6 +260,16 @@ compression μ = V₀/V − 1:
 - beyond μ = 0.1 it is fully dense: p = 0.8 GPa + K₁ m + K₂ m² + K₃ m³, m = (μ − 0.1)/1.1, with
   K₁ = 85, K₂ = −171 and K₃ = 208 GPa.
 
+Those constants are for structural concrete. A material softer than that, its bulk modulus K
+below 12 GPa (about a 20 MPa concrete's, E = 4700 √f_c), has the curve's rise above the
+crushing pressure scaled by K / 12 GPa: the 0.8 GPa at μ = 0.1 and the fully dense part alike.
+The curve is then no stiffer against the material's own elastic stiffness, which sets the time
+step, than it is for the weakest structural concrete in the benchmarks (Vecchio and Shim's
+22.6 MPa). Unscaled, it was five times stiffer than hollow blockwork (K = 1.7 GPa) while its
+pores crushed and fifty times once dense; reinforced blockwork meshed as units and joints
+squeezed its base course to μ = 0.74 and ran away (see validation.md, "Perimeter walls under
+field blasts"). Every concrete with K of 12 GPa or more runs exactly as before.
+
 The pressure is added as a shift of the three normal stresses, so the shear strength still
 comes from the laws above. Under uniaxial strain to 12% a cube now carries 3 GPa, where
 before it levelled off at 150 MPa and was then removed as crushed; the slab test, a 500 kg

@@ -336,14 +336,36 @@ struct ElementState {
 // with K from the largest, `peak`); beyond that the concrete is fully dense, and
 // p = K1 m + K2 m^2 + K3 m^3 with m = (mu - 0.1) / 1.1 above 0.8 GPa, K1 = 85, K2 = -171 and
 // K3 = 208 GPa.
+//
+// Those constants are for structural concrete. A material softer than that, its bulk modulus K
+// below `compactionStiffness` (about a 20 MPa concrete's), has the curve's rise above the crushing
+// pressure scaled by K / `compactionStiffness`, so that the curve is no stiffer against the
+// material's own elastic stiffness, which the time step is set by, than it is for the weakest
+// structural concrete. Hollow blockwork (K 1.7 GPa) otherwise crushed five times, and once dense
+// fifty times, stiffer than itself, outran the step and ran away.
+constant float compactionStiffness = 12e9f;
+
+static inline float compactionScale(float bulk) {
+    return min(bulk / compactionStiffness, 1.0f);
+}
+
 static inline float compactionPressure(float mu, float peak, float bulk, float fc) {
     float crushPressure = fc / 3.0f;
     float crushStrain = crushPressure / bulk;
     const float lockPressure = 0.8e9f;
     const float lockStrain = 0.1f;
+    float scale = compactionScale(bulk);
     auto loading = [&](float x) {
         if (x <= crushStrain) {
             return bulk * x;
+        }
+        if (scale < 1.0f) {
+            float locked = crushPressure + scale * (lockPressure - crushPressure);
+            if (x <= lockStrain) {
+                return crushPressure + (locked - crushPressure) * (x - crushStrain) / (lockStrain - crushStrain);
+            }
+            float m = (x - lockStrain) / (1.0f + lockStrain);
+            return locked + scale * m * (85e9f + m * (-171e9f + m * 208e9f));
         }
         if (x <= lockStrain) {
             return crushPressure + (lockPressure - crushPressure) * (x - crushStrain) / (lockStrain - crushStrain);
@@ -1602,6 +1624,11 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float crushStrain = crushPressure / bulk;
         float crushVolume = crushStrain
             + (m.compressiveStrength - crushPressure) * (0.1f - crushStrain) / (0.8e9f - crushPressure);
+        if (compactionScale(bulk) < 1.0f) {
+            crushVolume = crushStrain
+                + (m.compressiveStrength - crushPressure) * (0.1f - crushStrain)
+                    / (compactionScale(bulk) * (0.8e9f - crushPressure));
+        }
         if (confined && mu > crushVolume) {
             state.compaction = max(state.compaction, mu);
         }
