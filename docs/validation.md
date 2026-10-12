@@ -2643,33 +2643,47 @@ right for 45 kg of C-4 at 0.53 to 1.78 m/kg^(1/3), with neighbouring gauges diff
 The air's negative phase had not been compared with anything. UFC 3-340-02's Figure 2-16 gives
 it for a hemispherical TNT surface burst against scaled distance: the underpressure, its impulse
 and its duration (digitised, `Fixtures/UFC-3-340-02`, about ±1.5%). `blastbench validate
---histories DIR --until 0.25` re-runs the 100 kg surface burst above to 250 ms and keeps each
-gauge's history (`Scripts/comparisons/negative_phase.py` scores them). The negative phase starts
-where the pressure first falls below ambient after the peak and ends where it rises above it for
-good; close in, the second shock lifts it above ambient for a few milliseconds inside the
-negative phase, and a rise shorter than 5 ms is not taken as its end. Model / chart, on 0.25 m
-cells (0.5 m in brackets):
+--histories DIR --until s [--domain-scale k] [--tag name]` re-runs the 100 kg surface burst above
+and keeps each gauge's history; `Scripts/comparisons/negative_phase.py` scores them. The
+underpressure impulse is summed over the whole record after the peak, which needs no judgement
+of where the phase ends; the phase's depth and duration run from the first fall below ambient to
+the last rise above it, a rise shorter than 5 ms (the second shock, close in) not ending it.
 
-| Z (m/kg^(1/3)) | Underpressure | Impulse | Duration |
-|---|---|---|---|
-| 0.75 | 110% (106%) | 46% (42%) | 158% (156%) |
-| 1 | 45% (43%) | 46% (45%) | 153% (151%) |
-| 1.5 | 96% (87%) | 68% (68%) | 128% (154%) |
-| 2 | 131% (114%) | 79% (79%) | 127% (118%) |
-| 3 | 133% (102%) | 83% (83%) | 121% (121%) |
-| 4 | 125% (89%) | 86% (84%) | 160% (160%) |
-| 5 | 120% (85%) | 90% (88%) | 127% (128%) |
-| 6 | — (beyond the chart) | 93% (93%) | 111% (113%) |
+**What it shows**, on a domain twice the validation's (128 m across, its open faces 36–64 m from
+the gauges), recorded to 450 ms; model / chart:
 
-The negative impulse is settled on these grids (within 2% between them) and 7–21% below the
-chart's from Z = 2 to 6, and about half the chart's close in (Z = 0.75–1). The underpressure is not: a sharp minimum, it deepens
-15–30% as the cells halve, from about the chart's on 0.5 m to a third deeper on 0.25 m. The
-duration runs 11–60% long, mostly in a slow return to ambient whose last few hundred pascals the
-chart's curves would not show; it is the least certain of the three. In this 64 m domain the open
-faces drain nothing that matters: late in the record every gauge sits within 1 kPa of ambient, the
-farthest 4 m inside a face. So the suction that pulls walls and debris back towards the charge is
-about as strong as the design curves' at the ranges of most structures, on the short side close
-in; it is not compared for a free-air burst (Figure 2-8), which needs a run of its own.
+| Z (m/kg^(1/3)) | 0.75 | 1 | 1.5 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|---|---|
+| Underpressure impulse, 0.5 m cells | 43% | 46% | 69% | 83% | 84% | 84% | 87% | 90% |
+| The same, 0.25 m cells | 47% | 47% | 69% | 82% | 85% | 86% | 88% | 90% |
+| With afterburning, 0.5 m | 43% | 47% | 75% | 95% | 102% | 103% | 105% | 108% |
+| Duration, 0.5 m | 156% | 151% | 154% | 118% | 121% | 120% | 119% | 119% |
+
+The impulse is converged and, by default, 10–17% short from Z = 2 to 6; afterburning brings it to
+95–108%. Close in it is under half the chart's whatever is changed: those gauges stand inside
+the fireball, where the products are treated as air and the chart is least sure. The depth of the
+underpressure is not a usable figure: it is a sharp minimum that deepens with every halving of the
+cells, from 85–114% of the chart's on 0.5 m to 120–143% on 0.125 m, refining at the shock doing
+the same as halving the whole grid. The duration runs about a fifth long beyond Z = 2.
+
+**What explains how much** (the trace; each against the default on 0.5 m cells):
+
+| Cause | Effect on the underpressure impulse | |
+|---|---|---|
+| Numerics: cells halved twice (0.125 m), refinement at the shock, the limiter (θ = 1 and 2), HLL for HLLC | 0–5%, converged | Not the cause |
+| The default gas: afterburning | +12 to +18 points from Z = 2 to 6, and +12–22% on the positive impulse | Most of the shortfall |
+| Hot air (vibrational energy) | −1 to −2 points | Small |
+| The validation's 64 m domain | +8 to +21 points at Z = 4–6, its gauges 4–14 m inside open faces (twice and three times the domain agree exactly) | Hid part of the shortfall at range |
+| The record's length | 240 ms misses 3–5 points of slow tail; 450 ms is enough | Small |
+
+So the model's negative phase is right in kind and, by default, about a seventh short at the
+ranges of most structures, for the same reason its positive impulse is 13–22% short: the default
+gas does not burn its products. No numerical default needs changing. Afterburning on by default
+would bring both phases close to the references, with the cost and evidence of
+[Afterburning](#afterburning); that is the user's decision (limitation 3 in the
+[roadmap](roadmap.md#limitations-most-important-first)). For a negative phase, keep open faces
+farther away than the positive phase needs: twice the validation's domain was enough here. Not
+compared: a free-air burst (Figure 2-8).
 
 ### Gas pressure in a closed room
 

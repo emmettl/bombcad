@@ -12,7 +12,7 @@ import simd
 //   blastbench [throughput] [--preset open|single|street|courtyard|wall|box|frame|infill|storeys|tall|tower|column|
 //               protected|glass|carpark|underpass|house|blockwall|chamber|gasroom] [--full] [--dx 0.5,0.25]
 //   blastbench structure [--preset wall|box] [--contact] [--elastic]
-//   blastbench validate [--dx 0.25] [--histories dir --until 0.25]
+//   blastbench validate [--dx 0.25] [--histories dir --until 0.25 [--tag name]] [--domain-scale 2]
 //   blastbench beam [--layers 12,24] [--rate 0.1]
 //   blastbench shear [--layers 12,24] [--rate 0.05] [--slice 92] [--dowel 1] [--map 9]
 //               [--bond pullout|splitting|confined]   (also on beam and slab)
@@ -1061,9 +1061,16 @@ func runValidation() throws {
         option("z").map { $0.split(separator: ",").compactMap { Double($0) } }
         ?? [0.75, 1, 1.5, 2, 3, 4, 5, 6]
     let points = distances.compactMap { KingeryBulmash.point(at: $0) }
+    // `--domain-scale 2`: the domain this many times larger, charge and gauges in its middle, to
+    // see what its open faces send back.
+    let scale = option("domain-scale").flatMap { Float($0) } ?? 1
+    scenario.domainSize *= scale
+    let centre = 32 * scale
+    scenario.charge.position = SIMD3(centre, centre, 0)
     scenario.gauges = points.map { point in
         Gauge(
-            "Z = \(format(point.scaledDistance, 2))", at: SIMD3(32 + Float(point.range(mass: mass)), 32, 0.05)
+            "Z = \(format(point.scaledDistance, 2))",
+            at: SIMD3(centre + Float(point.range(mass: mass)), centre, 0.05)
         )
     }
     print("Surface burst of \(Int(mass)) kg on rigid ground against the Kingery-Bulmash hemispherical")
@@ -1084,7 +1091,9 @@ func runValidation() throws {
                 let name = gauge.name.replacingOccurrences(of: " ", with: "")
                 try? (["time_ms,overpressure_pa"] + rows).joined(separator: "\n")
                     .write(
-                        toFile: "\(directory)/validate-dx\(cellSize)-\(name).csv", atomically: true,
+                        toFile:
+                            "\(directory)/validate-\(option("tag").map { $0 + "-" } ?? "")dx\(cellSize)-\(name).csv",
+                        atomically: true,
                         encoding: .utf8)
             }
         }

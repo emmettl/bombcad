@@ -542,6 +542,11 @@ UFC 3-340-02, lowest for light charges.
    a gauge 13 m away and 5 m inside a truncated boundary differs from the same gauge in a long
    domain by at most 1.2 kPa against a 61.5 kPa peak (2%), all of it in the negative phase,
    and its positive impulse by 1.3%. Keep gauges and structures a few metres inside open faces.
+   The negative phase needs more room: in `blastbench validate`'s 64 m domain the underpressure
+   impulse at gauges 4–14 m inside its faces read 8–21% of UFC's value too high against a domain
+   twice the size (three times gives the same as twice), and a domain too small for a light
+   structure drained below ambient and pushed it over (see
+   [Validation](validation.md#the-negative-phase-against-ufc-3-340-02)).
 
    A characteristic far-field condition (the incoming Riemann invariant taken from still air)
    was tried and was much worse: in a split scheme it treats each face as if waves met it head

@@ -5,7 +5,8 @@
 HISTORIES holds the gauge histories `blastbench validate --histories DIR --until 0.25` writes
 (time in ms, overpressure in Pa, one file per gauge, named by its scaled distance in m/kg^(1/3)).
 For each gauge: the positive phase ends where the pressure first falls below ambient after its
-peak; the negative phase runs from there until it rises back above ambient for good (a rise
+peak; its whole underpressure impulse is also summed from the peak to the record's end, which
+needs no judgement of where the phase ends; the negative phase runs from there until it rises back above ambient for good (a rise
 shorter than 5 ms, the second shock close in, does not end it; if the record ends first, that is
 reported); its depth, duration and impulse (the integral of the underpressure) are set
 beside the chart's at the same scaled distance, interpolated in log–log from
@@ -57,7 +58,11 @@ def negative_phase(t_ms, p_pa, blip_ms=5.0):
     return {
         "start_ms": float(t_ms[start]), "end_ms": float(t_ms[end]), "closed": closed,
         "depth_kpa": float(-seg_p.min() / 1000), "duration_ms": float(t_ms[end] - t_ms[start]),
-        "impulse_pa_s": float(impulse), "positive_impulse_pa_s": float(np.trapezoid(np.maximum(p_pa[: start + 1], 0), t_ms[: start + 1]) / 1000),
+        "impulse_pa_s": float(impulse),
+        # Every underpressure after the peak to the record's end: no judgement of where the phase
+        # ends (afterburning puts a second positive pulse inside it).
+        "total_impulse_pa_s": float(-np.trapezoid(np.minimum(p_pa[peak:], 0), t_ms[peak:]) / 1000),
+        "positive_impulse_pa_s": float(np.trapezoid(np.maximum(p_pa[: start + 1], 0), t_ms[: start + 1]) / 1000),
     }
 
 
@@ -69,7 +74,8 @@ def main(directory, mass_kg=100.0):
     rows = []
     for path in sorted(glob.glob(os.path.join(directory, "validate-*-Z=*.csv"))):
         z = float(re.search(r"Z=(\d+\.\d+)", path).group(1))
-        dx = re.search(r"dx([\d.]+)", path).group(1)
+        dx = re.search(r"dx(\d+(?:\.\d+)?)-", path).group(1)
+        tag = re.search(r"validate-(.*?)-?dx", os.path.basename(path)).group(1).rstrip("-")
         d = np.loadtxt(path, delimiter=",", skiprows=1)
         phase = negative_phase(d[:, 0], d[:, 1])
         if phase is None:
@@ -80,16 +86,17 @@ def main(directory, mass_kg=100.0):
             "duration_ms": (chart(figure["t0"], z_ft) or np.nan) * cube,
             "impulse_pa_s": (chart(figure["is"], z_ft) or np.nan) * cube * PSI / 1000,
         }
-        rows.append({"Z_m": z, "Z_ft": round(z_ft, 3), "dx": dx, "model": phase, "chart": ref})
+        ref["total_impulse_pa_s"] = ref["impulse_pa_s"]
+        rows.append({"Z_m": z, "Z_ft": round(z_ft, 3), "dx": dx, "tag": tag or "default", "model": phase, "chart": ref})
     print(f"{mass_kg:g} kg on the ground; UFC Fig 2-16 at the same scaled distance (model / chart)")
-    print("   Z      dx   underpressure kPa       duration ms             impulse Pa s        closed")
+    print("   Z      dx  run           underpressure kPa       duration ms             impulse Pa s            whole record Pa s       closed")
     for r in rows:
         m, c = r["model"], r["chart"]
         cells = []
-        for key in ("depth_kpa", "duration_ms", "impulse_pa_s"):
+        for key in ("depth_kpa", "duration_ms", "impulse_pa_s", "total_impulse_pa_s"):
             ratio = m[key] / c[key] if c[key] and np.isfinite(c[key]) else np.nan
             cells.append(f"{m[key]:7.2f} / {c[key]:7.2f} ({100 * ratio:4.0f}%)")
-        print(f"{r['Z_m']:5.2f}  {r['dx']:>5}  " + "  ".join(cells) + f"   {m['closed']}")
+        print(f"{r['Z_m']:5.2f}  {r['dx']:>5}  {r['tag']:<12}  " + "  ".join(cells) + f"   {m['closed']}")
     return rows
 
 
