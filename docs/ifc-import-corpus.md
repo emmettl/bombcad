@@ -38,35 +38,45 @@ only. Each file is handled as the app would handle it:
 - **Structure:** converted with the default options and meshed, with the smallest element
   recorded.
 
-Setting `BOMBCAD_IFC_CORPUS_A GPU run standing the 21 real buildings under gravity for 0.3 s
-(`BOMBCAD_IFC_CORPUS_GRAVITY=1`, through `gpu-slot`) was queued behind other work on the Studio
-when this was written; its results go here. The three repository fixtures stand (see [structures
-from IFC](structural-editing.md#structures-from-ifc)).=1` also stands each structure under gravity. That uses the
-GPU, so run it through `gpu-slot`.
+Setting `BOMBCAD_IFC_CORPUS_The 19 real buildings that convert were stood under gravity for 0.3 s, damped (`BOMBCAD_IFC_CORPUS_GRAVITY=1`,
+through `gpu-slot`, on the code before the last two fixes below). The table compares that with
+the share the import now reports as loose: members tied to nothing that stands on a support.
+"Weight carried" is the supports' reaction over the weight. A peak of 54.9 mm is a body falling
+freely against the damping for the whole 0.3 s.
 
-## Results
+| Building | Shells / beams | Loose (by volume) | Weight carried | Peak (mm) |
+|---|---|---|---|---|
+| buildingSMART house | 648 / 0 | 0% | 100% | 0.0 |
+| buildingSMART structural house | 1,044 / 0 | 0% | 100% | 0.5 |
+| Schependomlaan precast floor | 4,095 / 0 | 0% | 100% | 0.0 |
+| Schependomlaan walls, ground floor | 6,579 / 11 | 0% | 100% | 80.1 |
+| Schependomlaan walls, first floor | 6,362 / 10 | 0% | 100% | 66.7 |
+| Schependomlaan walls, second floor | 4,469 / 9 | 0% | 100% | 65.4 |
+| Schependomlaan hollow-core floor | 11,185 / 227 | 1% | 100% | 79.3 |
+| Amersfoort sports hall (first storey) | 21,465 / 746 | 6% | 99% | 78.4 |
+| Duplex (architectural) | 19,814 / 220 | 26% | 64% | 75.6 |
+| Clinic, architectural | 27,888 / 0 | 2% | 59% | 69.6 |
+| Esplanades | 183,736 / 11 | 57% | 42% | 80.8 |
+| buildingSMART road | 16,896 / 0 | 81% | 22% | 54.9 |
+| Schependomlaan steelwork | 222 / 541 | 84% | 9% | 59.1 |
+| buildingSMART bridge | 1,550 / 0 | 95% | 5% | 54.9 |
+| Clinic, structural (first storey) | 27,646 / 363 | 3% | 2% | 55.7 |
+| Schependomlaan structural model | 86,599 / 675 | 0% | 1% | 71.4 |
+| Schependomlaan balconies, stairs, precast elements | 8–394 / 18–48 | 99–100% | 0–88% | 54.9 |
 
-| | First run | After the fixes |
-|---|---|---|
-| Files imported both ways or one way | 112 of 382 | 168 of 385 |
-| Real buildings (buildingSMART, community) imported | 28 of 47, three with one element of hundreds | 31 of 47 |
-| Elements converted | — | 8,630 (811 meshes excluded as invalid) |
-| Smallest shell element, Esplanades / Clinic | 0.1 mm / 2 mm | 52 mm / 62 mm |
+So the small houses, the precast floor and the sand-lime walls stand, but most real buildings
+do not, as imported. Where weight is lost, the loose share accounts for much of it in
+Esplanades, the Duplex, the steelwork, the road and the bridge. It does not in the Clinic's
+architectural model (2% loose, 41% of the weight lost) or in the two structural models below. Subcontractor models without their
+building have nothing to stand on (the balconies, stairs and precast elements). The import
+report now lists the loose members, and the standing names them. Even where nearly all the
+weight is carried, some members sag 65–80 mm: loose pieces, and members bearing on others
+through a single line of nodes.
 
-Every real building now imports except the Schependomlaan design model, which is over the 20 MB
-input limit. The buildingSMART files that stop are its HVAC, plumbing, rail and landscaping
-scenes, which hold no supported elements and say so. Of the IfcOpenShell issue files, most of
-those that stop hold only rebar, proxies or distribution elements, or a single element whose
-mesh is broken: the bug the file was filed for.
-
-The full table, per file, is `corpus3-table.md` in `/Volumes/StudioData/bombcad/import-structural/`.
-
-### Under gravity
-
-A GPU run standing the 21 real buildings under gravity for 0.3 s
-(`BOMBCAD_IFC_CORPUS_GRAVITY=1`, through `gpu-slot`) was queued behind other work on the Studio
-when this was written; its results go here. The three repository fixtures stand (see [structures
-from IFC](structural-editing.md#structures-from-ifc)).
+Two structural models lose nearly all their weight while connected: the Clinic's and
+Schependomlaan's. This has not been traced. Their supports may hold too little of the base, or
+the base connections may fail under the weight. A structure from a real building should be
+stood under gravity, and its loose members dealt with, before it is loaded.
 
 ## What broke, and what was done
 
@@ -101,7 +111,13 @@ from IFC](structural-editing.md#structures-from-ifc)).
    section a material of its own, 37 for the Schependomlaan steelwork against the solver's 8. The
    nearest of a kind are now merged, using volume-weighted means. The report gives the largest
    change this makes to an element's stiffness.
-7. **Slivers.** Parallel plates a few millimetres apart left slivers of elements, as small as
+7. **Loose members.** A member tied to nothing that stands on a support falls under gravity. The
+   import now finds these from the mesh itself: nodes shared or tied, held where clamped or
+   where a connection has points on them, as the solver holds them. It lists them in the report
+   (with their share of the structure) and in the standing. This also showed that unticking a
+   tie did nothing. The mesh joins an end that lies within half an element of a midsurface, so
+   a member drawn back 10 mm stayed tied. It is now drawn back far enough not to be.
+8. **Slivers.** Parallel plates a few millimetres apart left slivers of elements, as small as
    0.1 mm, in every plate that crossed both, and time steps to match. Plates within a fifth of
    an element of each other now share a midsurface (see the [shell
    model](shell-model.md#limitations)), and the structure moves the smaller one onto the larger's
@@ -128,6 +144,11 @@ georeferencing. The corpus showed none of these breaking the importer:
   model whole. Clinic Structural and the Amersfoort sports hall come in a storey at a time. The
   limits are shared with the file loader and the project format, so raising them is a change to
   those as well.
+- **Standing under gravity.** Most real buildings do not stand as imported (see the table
+  above). Loose members are now reported, but tying them (larger gaps closed, members bearing
+  on others over an area, upper storeys on columns that miss their slabs by more than the
+  tolerance) is not done. The weight lost by the Clinic's models and Schependomlaan's
+  structural model is not explained.
 - **Envelope sampling.** An envelope stops where two elements' triangles intersect ambiguously
   (Esplanades), where a building samples into more than the 2,048 regions it holds, or where
   thin elements sample into no cells at 0.25 m (the precast planks). Each says so.

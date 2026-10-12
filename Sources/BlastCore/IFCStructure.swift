@@ -100,7 +100,7 @@ public struct IFCStructure: Sendable {
         /// Gaps between members up to this, in metres, are closed so that they are tied.
         public var gap: Float
         /// Pairs of members (`Connection.key`) the user chose to leave untied: the second is drawn
-        /// back from the first by `untiedGap`.
+        /// back from the first by `untiedGap(elementSize:thickness:)`.
         public var untied: Set<String>
 
         public init(
@@ -128,7 +128,12 @@ public struct IFCStructure: Sendable {
     }
 
     /// How far an untied member is drawn back from the other, in metres.
-    public static let untiedGap: Float = 0.01
+    /// How far an untied member is drawn back from the other's face, in metres: at least 10 mm,
+    /// and far enough that its end lies over half an element from the other's midsurface, as the
+    /// mesh joins an end nearer a midsurface than that to it.
+    public static func untiedGap(elementSize: Float, thickness: Float) -> Float {
+        max(0.01, 0.5 * elementSize + 0.01 - 0.5 * thickness)
+    }
 
     public var model: StructureModel
     public var members: [Member]
@@ -638,7 +643,7 @@ public struct IFCStructure: Sendable {
                 solids[i].max[$0] >= solids[j].min[$0] - 1e-4 && solids[j].max[$0] >= solids[i].min[$0] - 1e-4
             }
         }
-        var untiedPairs = Set<String>()
+        var untiedPairs: [String: Float] = [:]
         for (x, a) in structural.enumerated() {
             for b in structural[(x + 1)...] {
                 let key = Connection.key(members[a].id, members[b].id)
@@ -655,14 +660,15 @@ public struct IFCStructure: Sendable {
                 let volume = { (n: Int) in solids[n].size.x * solids[n].size.y * solids[n].size.z }
                 if ends(a) && !ends(b) || ends(a) == ends(b) && volume(i) < volume(j) { swap(&i, &j) }
                 var moved = solids[j]
+                let gap = Self.untiedGap(elementSize: options.elementSize, thickness: solids[i].size[k])
                 if 0.5 * (moved.min[k] + moved.max[k]) >= 0.5 * (solids[i].min[k] + solids[i].max[k]) {
-                    moved.min[k] = solids[i].max[k] + Self.untiedGap
+                    moved.min[k] = solids[i].max[k] + gap
                 } else {
-                    moved.max[k] = solids[i].min[k] - Self.untiedGap
+                    moved.max[k] = solids[i].min[k] - gap
                 }
                 guard moved.max[k] - moved.min[k] > 1e-3 else { continue }
                 solids[j] = moved
-                untiedPairs.insert(key)
+                untiedPairs[key] = gap
             }
         }
 
@@ -671,13 +677,13 @@ public struct IFCStructure: Sendable {
         for (x, a) in structural.enumerated() {
             for b in structural[(x + 1)...] {
                 guard let i = members[a].solid, let j = members[b].solid else { continue }
-                if untiedPairs.contains(Connection.key(members[a].id, members[b].id)) {
+                if let gap = untiedPairs[Connection.key(members[a].id, members[b].id)] {
                     connections.append(
                         Connection(
                             first: members[a].id, second: members[b].id,
                             kind:
                                 "\(Self.kind(members[a], solids[i]))–\(Self.kind(members[b], solids[j])), untied by choice, "
-                                + "\(Self.millimetres(Self.untiedGap)) apart"))
+                                + "\(Self.millimetres(gap)) apart"))
                     continue
                 }
                 guard touching(i, j) else { continue }
@@ -689,7 +695,7 @@ public struct IFCStructure: Sendable {
                     ))
             }
         }
-        let tied = connections.filter { !untiedPairs.contains($0.key) }
+        let tied = connections.filter { untiedPairs[$0.key] == nil }
         if !tied.isEmpty {
             assumptions.append(
                 "\(tied.count) connections inferred where members meet, each tied rigidly (the shells share "
@@ -979,6 +985,79 @@ public struct IFCStructure: Sendable {
                     + assumed.prefix(8).map(\.name).joined(separator: ", ") + (assumed.count > 8 ? ", …" : "")
                     + ".")
         }
+        // Members tied to nothing that stands on a support fall under gravity: say which. The
+        // mesh decides what is tied: elements sharing nodes, and nodes tied to a column's; and
+        // what is held: nodes clamped, or with points of a connection, as the solver holds them.
+        var reached: Set<Int>?
+        if let mesh = try? ShellMesh(model: model) {
+            var parent = Array(0..<mesh.positions.count)
+            func root(_ n: Int) -> Int {
+                var n = n
+                while parent[n] != n {
+                    parent[n] = parent[parent[n]]
+                    n = parent[n]
+                }
+                return n
+            }
+            func join(_ a: Int, _ b: Int) { parent[root(a)] = root(b) }
+            for element in mesh.elements {
+                for k in 1..<4 { join(Int(element.nodes[0]), Int(element.nodes[k])) }
+            }
+            for beam in mesh.beams { join(Int(beam.nodes[0]), Int(beam.nodes[1])) }
+            for tie in mesh.ties { join(Int(tie.slave), Int(tie.master)) }
+            var anchored = [Bool](repeating: false, count: mesh.positions.count)
+            if model.connectionStiffness != nil {
+                let points = mesh.jointPoints(
+                    across: ShellSolver.fibresAcross, normals: model.connectionNormals
+                ) {
+                    point, node in
+                    guard let slot = model.connectionSlot(at: point), slot != 0 || abs(node.z) < 1e-4,
+                        let law = model.connection(inSlot: slot)
+                    else { return nil }
+                    return (slot, law.across)
+                }
+                for (n, list) in points.enumerated() where !list.isEmpty { anchored[n] = true }
+            }
+            var held = Set<Int>()
+            for (n, position) in mesh.positions.enumerated()
+            where anchored[n] || model.isClampedBySupport(at: position)
+                || (model.fixedBase && abs(position.z) < 1e-4)
+            {
+                held.insert(root(n))
+            }
+            var solidHeld = [Bool](repeating: false, count: model.solids.count)
+            for element in mesh.elements where held.contains(root(Int(element.nodes[0]))) {
+                solidHeld[element.solid] = true
+            }
+            for beam in mesh.beams where held.contains(root(Int(beam.nodes[0]))) {
+                solidHeld[beam.solid] = true
+            }
+            reached = Set(members.indices.filter { members[$0].solid.map { solidHeld[$0] } ?? false })
+        }
+        let loose =
+            reached.map { reached in
+                members.indices.filter { members[$0].solid != nil && !reached.contains($0) }
+            } ?? []
+        if !loose.isEmpty {
+            let volume = { (n: Int) in
+                members[n].solid.map {
+                    model.solids[$0].size.x * model.solids[$0].size.y * model.solids[$0].size.z
+                } ?? 0
+            }
+            let total = members.indices.reduce(Float(0)) { $0 + volume($1) }
+            let share = loose.reduce(Float(0)) { $0 + volume($1) } / max(total, 1e-9)
+            for n in loose {
+                members[n].notes.append(
+                    "Tied to nothing that stands on a support: it will fall under gravity.")
+            }
+            assumptions.append(
+                "\(loose.count) of \(members.filter { $0.solid != nil }.count) members, \(Int((share * 100).rounded()))% of the "
+                    + "structure by volume, are tied to nothing that stands on a support and will fall under gravity: "
+                    + loose.prefix(8).map { members[$0].name }.joined(separator: ", ")
+                    + (loose.count > 8 ? ", …" : "")
+                    + ". Close larger gaps, add supports under Restraints once imported, or leave them out.")
+        }
+
         guard model.materials.count <= StructureModel.maxMaterials else {
             throw ImportedMesh.ImportError.invalid(
                 "The building needs \(model.materials.count) materials, more than the solver's \(StructureModel.maxMaterials)."

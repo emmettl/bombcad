@@ -860,6 +860,14 @@ extension StandingScene {
                     "\(imported.name): \(untied.count) pair\(untied.count == 1 ? "" : "s") of members left untied"
                 )
             }
+            let falling = report.members.filter {
+                $0.notes.contains { $0.contains("will fall under gravity") }
+            }
+            if !falling.isEmpty {
+                differences.append(
+                    "\(imported.name): \(falling.count) member\(falling.count == 1 ? "" : "s") tied to nothing supported"
+                )
+            }
             let unfounded = report.supports.filter { $0.contains("foundation left out") }
             if !unfounded.isEmpty {
                 differences.append(

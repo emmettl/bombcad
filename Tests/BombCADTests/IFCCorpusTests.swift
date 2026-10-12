@@ -57,6 +57,9 @@ struct IFCCorpusTests {
         var smallestElement: Float?
         var smallestAt: String?
         // Under gravity, where asked (`BOMBCAD_IFC_CORPUS_GRAVITY`): after 0.3 s, damped.
+        /// Members tied to nothing supported, and their share of the structure's volume (percent).
+        var loose = 0
+        var looseShare: Int?
         var gravityDisplacement: Float?
         var gravityReaction: Float?
         var gravityEroded: Int?
@@ -208,6 +211,14 @@ struct IFCCorpusTests {
                     }
                 }
                 row.connections = structure.connections.count
+                row.loose =
+                    structure.members.filter { $0.notes.contains { $0.contains("will fall under gravity") } }
+                    .count
+                if let note = structure.assumptions.first(where: { $0.contains("will fall under gravity") }),
+                    let match = note.range(of: #"(\d+)% of the"#, options: .regularExpression)
+                {
+                    row.looseShare = Int(note[match].prefix { $0.isNumber })
+                }
                 row.supports = structure.supports.map { String($0.prefix(200)) }
                 row.assumptions = structure.assumptions.map { String($0.prefix(300)) }
                 row.assumedMaterials = structure.report.assumedMaterials.count

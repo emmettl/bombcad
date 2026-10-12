@@ -107,14 +107,15 @@ def summary(args):
         roles.update(r.get("roles", {}))
     stood = [r for r in rows if r.get("gravityReaction") is not None or r.get("gravityError")]
     if stood:
-        lines += ["## Under gravity (0.3 s, damped)", "", "| file | shells/beams | peak displacement (mm) | reaction / weight | eroded |",
-                  "|---|---|---|---|---|"]
+        lines += ["## Under gravity (0.3 s, damped)", "", "| file | shells/beams | loose members (share) | peak displacement (mm) | reaction / weight | eroded |",
+                  "|---|---|---|---|---|---|"]
         for r in sorted(stood, key=lambda r: r["file"]):
             name = os.path.relpath(r["file"], corpus) if corpus else r["file"]
             if r.get("gravityError"):
-                lines.append(f"| {name} | {r.get('shells')}/{r.get('beams')} | error: {r['gravityError'][:80]} | | |")
+                lines.append(f"| {name} | {r.get('shells')}/{r.get('beams')} | | error: {r['gravityError'][:80]} | | |")
             else:
-                lines.append(f"| {name} | {r.get('shells')}/{r.get('beams')} | {r['gravityDisplacement'] * 1000:.2f} "
+                loose = f"{r.get('loose', 0)} ({r.get('looseShare') or 0}%)"
+                lines.append(f"| {name} | {r.get('shells')}/{r.get('beams')} | {loose} | {r['gravityDisplacement'] * 1000:.2f} "
                              f"| {r['gravityReaction']:.3f} | {r['gravityEroded']} |")
         lines.append("")
     lines += ["## Roles over the corpus", ""] + [f"- {k}: {v}" for k, v in roles.most_common()] + [""]
@@ -124,8 +125,8 @@ def summary(args):
     lines += ["## Unsupported classes left out (leaf elements)", ""] + [
         f"- {k}: {v}" for k, v in unsupported.most_common(30)] + [""]
     lines += ["## Files", "",
-              "| file | schema | MB | stage | supported | chosen | converted | excluded | envelope solids/openings | shells/beams/rigid | ties | supports | smallest element (m) |",
-              "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+              "| file | schema | MB | stage | supported | chosen | converted | excluded | envelope solids/openings | shells/beams/rigid | ties | supports | loose (share) | smallest element (m) |",
+              "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in sorted(rows, key=lambda r: r["file"]):
         name = os.path.relpath(r["file"], corpus) if corpus else r["file"]
         ro = r.get("roles", {})
@@ -135,7 +136,7 @@ def summary(args):
         lines.append(
             f"| {name} | {r.get('schema') or ''} | {r['bytes'] / 1e6:.2f} | {r.get('stage')} | {r.get('supported', '')} | {r.get('chosen', '')} "
             f"| {r.get('converted', '')} | {len(r.get('failures', []))} | {env} | {structure} | {r.get('connections', '')} "
-            f"| {len(r.get('supports', []))} | {'' if small is None else f'{small:.3f}'} |")
+            f"| {len(r.get('supports', []))} | {r.get('loose', 0)} ({r.get('looseShare') or 0}%) | {'' if small is None else f'{small:.3f}'} |")
     text = "\n".join(lines) + "\n"
     if args.markdown:
         pathlib.Path(args.markdown).write_text(text)

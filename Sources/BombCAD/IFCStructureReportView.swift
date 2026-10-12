@@ -68,7 +68,7 @@ struct IFCStructureReportView: View {
                 }
                 if untied != nil {
                     Text(
-                        "Untick a connection to leave the pair untied: the second member is drawn back 10 mm from the first."
+                        "Untick a connection to leave the pair untied: the second member is drawn back from the first, far enough that the mesh does not join them."
                     )
                     .font(.caption).foregroundStyle(.secondary)
                 }

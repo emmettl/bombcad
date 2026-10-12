@@ -282,6 +282,27 @@ struct IFCStructureTests {
         #expect(structure.model.supports.indices.allSatisfy { solver.supportBearingArea(at: $0) > 0 })
     }
 
+    @Test("A member tied to nothing that stands on a support is said to fall")
+    func loose() throws {
+        // The room, and a beam hanging in the air half a metre above its roof.
+        var elements = try room(concrete: true)
+        elements.append(try element(9, "Loose beam", "IfcBeam", [box(SIMD3(0, 2, 3.7), SIMD3(4, 2.3, 4))]))
+        let structure = try IFCStructure(elements: elements)
+        #expect(
+            structure.members.first { $0.name == "Loose beam" }?.notes.contains { $0.contains("will fall") }
+                == true)
+        #expect(structure.members.filter { $0.notes.contains { $0.contains("will fall") } }.count == 1)
+        #expect(
+            structure.assumptions.contains { $0.hasPrefix("1 of 7 members") && $0.contains("Loose beam") })
+        // Untied from the room, the roof falls too.
+        let roof = try #require(structure.members.first { $0.name == "Roof" })
+        let keys = Set(
+            structure.connections.filter { $0.first == roof.id || $0.second == roof.id }.map(\.key))
+        let untied = try IFCStructure(elements: elements, options: .init(untied: keys))
+        #expect(
+            untied.members.first { $0.name == "Roof" }?.notes.contains { $0.contains("will fall") } == true)
+    }
+
     @Test("A connection the user unticks leaves the pair apart, untied, and says so")
     func untied() throws {
         let elements = try room(concrete: true)
@@ -296,7 +317,10 @@ struct IFCStructureTests {
         let gap = (0..<3).map {
             max(solids[0].min[$0] - solids[1].max[$0], solids[1].min[$0] - solids[0].max[$0])
         }.max()!
-        #expect(abs(gap - IFCStructure.untiedGap) < 1e-4)
+        // The wall drawn back from the 0.2 m roof until its top is over half an element from the
+        // roof's midsurface: 35 mm.
+        #expect(abs(gap - IFCStructure.untiedGap(elementSize: 0.25, thickness: 0.2)) < 1e-4)
+        #expect(abs(IFCStructure.untiedGap(elementSize: 0.25, thickness: 0.2) - 0.035) < 1e-6)
         #expect(
             untied.assumptions.contains { $0.hasPrefix("\(tied.connections.count - 1) connections inferred") }
         )
