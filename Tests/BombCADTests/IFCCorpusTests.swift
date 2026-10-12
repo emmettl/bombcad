@@ -67,6 +67,10 @@ struct IFCCorpusTests {
         var gravityDisplacement: Float?
         var gravityReaction: Float?
         var gravityEroded: Int?
+        /// The reaction at clamped nodes, over the weight, which `gravityReaction` (the connections'
+        /// own) leaves out; and the share of the weight on nodes that moved under 10 mm.
+        var gravityClamped: Float?
+        var gravityHeld: Float?
         var gravityError: String?
     }
 
@@ -287,14 +291,27 @@ struct IFCCorpusTests {
                     let gravity = clock.now
                     do {
                         let device = try #require(MTLCreateSystemDefaultDevice())
-                        let solver = try ShellSolver(device: device, model: structure.model)
+                        var model = structure.model
+                        if ProcessInfo.processInfo.environment["BOMBCAD_IFC_CORPUS_NOTIES"] != nil { model.tiesTouching = nil }
+                        let solver = try ShellSolver(device: device, model: model)
                         solver.damping = 50
                         solver.advance(steps: Int(0.3 / Double(solver.criticalTimeStep)))
                         var mass: Float = 0
-                        solver.mutateNodes { mass = $0.reduce(0) { $0 + $1.mass } }
+                        // A tied node's mass is added to its master's, so it is counted once, there.
+                        solver.mutateNodes { mass = $0.filter { $0.flags & 128 == 0 }.reduce(0) { $0 + $1.mass } }
                         row.gravityDisplacement = solver.summary().maxDisplacement
                         row.gravityEroded = solver.summary().erodedElements
                         row.gravityReaction = (solver.anchorSummary()?.reaction.z ?? 0) / (mass * 9.81)
+                        solver.mutateNodes { nodes in
+                            var clamped: Float = 0
+                            var held: Float = 0
+                            for n in nodes.indices {
+                                if nodes[n].isClamped { clamped -= solver.nodalForce(n).z }
+                                if nodes[n].flags & 128 == 0, simd_length(nodes[n].displacement) < 0.01 { held += nodes[n].mass }
+                            }
+                            row.gravityClamped = clamped / (mass * 9.81)
+                            row.gravityHeld = held / mass
+                        }
                         if ProcessInfo.processInfo.environment["BOMBCAD_IFC_CORPUS_DETAIL"] != nil {
                             var clamped = 0
                             solver.mutateNodes { clamped = $0.filter(\.isClamped).count }
@@ -322,6 +339,18 @@ struct IFCCorpusTests {
                             }
                             for (peak, text) in worst.sorted(by: { $0.0 > $1.0 }).prefix(15) { print("DETAIL moved \(peak) \(text)") }
                             print("DETAIL members moving > 10 mm: \(worst.filter { $0.0 > 0.01 }.count) of \(worst.count)")
+                            let tied = Set(solver.mesh.ties.flatMap { [$0.slave, $0.master] })
+                            var eroded: [Int: (count: Int, tied: Int)] = [:]
+                            for (e, element) in solver.mesh.elements.enumerated() where solver.flag(e) == .eroded {
+                                let touches = (0..<4).contains { tied.contains(element.nodes[$0]) }
+                                eroded[element.solid, default: (0, 0)].count += 1
+                                if touches { eroded[element.solid, default: (0, 0)].tied += 1 }
+                            }
+                            for (solid, n) in eroded.sorted(by: { $0.value.count > $1.value.count }).prefix(15) {
+                                let name = structure.members.first { $0.solid == solid }?.name ?? "solid \(solid)"
+                                print("DETAIL eroded \(n.count) (\(n.tied) at a tie) in \(name) \(structure.model.solids[solid])")
+                            }
+                            print("DETAIL contact ties \(solver.mesh.contactTies.count), tied nodes \(solver.mesh.ties.count)")
                         }
                     } catch {
                         row.gravityError = String(error.localizedDescription.prefix(300))

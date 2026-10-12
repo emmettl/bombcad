@@ -191,9 +191,9 @@ public struct IFCStructure: Sendable {
             min: SIMD3(box.min.x - 0.01, box.min.y - 0.01, box.min.z - reach),
             max: SIMD3(box.max.x + 0.01, box.max.y + 0.01, box.min.z + reach))
     }
-    /// How far above the lowest level a slab of the lowest storey with nothing under it is
-    /// taken to rest on the ground (a foundation slab above a pit), in metres.
-    static let foundationReach: Float = 1
+    /// How far above the lowest level a slab with nothing under it is taken to rest on the ground
+    /// (a foundation slab above a pit, a slab on fill inside its foundation walls), in metres.
+    static let foundationReach: Float = 1.5
 
     /// The structure of `elements` (in the scene's frame, metres, z up), with `options`; their
     /// materials as the IFC gives them (their own `materials`, else from `materials` by GlobalId),
@@ -934,9 +934,10 @@ public struct IFCStructure: Sendable {
             )
         }
 
-        // Slabs of the lowest storey with nothing under them (foundation slabs on piles or soil
-        // the IFC leaves out, above a pit that sets the lowest level) rest on the ground at their
-        // soffit.
+        // Slabs near the lowest level with nothing under them rest on the ground at their soffit:
+        // on the lowest storey (foundation slabs on piles or soil the IFC leaves out, above a pit
+        // that sets the lowest level), or within walls standing on the ground (a slab on the fill
+        // inside its foundation walls, often of the storey above theirs).
         for (n, member) in members.enumerated() where member.role == .shell {
             guard let index = member.solid else { continue }
             let box = solids[index]
@@ -949,14 +950,27 @@ public struct IFCStructure: Sendable {
                 return sum + overlap[0] * overlap[1]
             }
             guard thinAxis(box) == 2, box.min.z > options.gap + 1e-3, box.min.z <= Self.foundationReach,
-                groundStorey.map({ storey(n) == $0 }) ?? false,
                 covered < 0.5 * box.size.x * box.size.y
             else { continue }
+            let lowest = groundStorey.map { storey(n) == $0 } ?? false
+            let within = bodies.first { j in
+                j != index && solids[j].min.z <= options.gap + 1e-3 && solids[j].max.z >= box.max.z - 1e-3
+                    && thinAxis(solids[j]) != 2
+                    && (0..<2).allSatisfy {
+                        solids[j].max[$0] >= box.min[$0] - options.gap && box.max[$0] >= solids[j].min[$0] - options.gap
+                    }
+            }
+            guard lowest || within != nil else { continue }
             model.supports.append(Self.foot(of: box, reach: 0.2 * options.elementSize + 0.01))
             model.supportAnchorages.append(.resting())
+            let place =
+                lowest
+                ? "on the lowest storey near its lowest level with nothing under it in the IFC, its foundation left out"
+                : "within walls standing on the ground (\(members.first { $0.solid == within }?.name ?? "a wall")), "
+                    + "near the lowest level with nothing under it in the IFC, the fill under it left out"
             supportNotes.append(
-                "\(member.name): on the lowest storey near its lowest level with nothing under it in the IFC, its foundation left out; rests on "
-                    + "the ground at its soffit, \(Self.millimetres(box.min.z)) up, with friction 0.6 (assumed).")
+                "\(member.name): \(place); rests on the ground at its soffit, \(Self.millimetres(box.min.z)) up, "
+                    + "with friction 0.6 (assumed).")
         }
 
         // Beams lying on the ground (base plates, ground beams): their centrelines above it, the
