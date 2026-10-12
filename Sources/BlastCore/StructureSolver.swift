@@ -710,6 +710,8 @@ public final class StructureSolver {
     /// The footings under the base after the last step, in the order of their connections (the
     /// ground's, then the support regions'); empty without any.
     public func footingSummaries() -> [FootingSummary] { footings?.summaries() ?? [] }
+    /// The first footing's bed points and how far the soil under each has sunk for good.
+    public func footingBedSurface() -> [(place: SIMD2<Float>, sunk: Float)] { footings?.bedSurface() ?? [] }
 
     /// With bars that slip, makes their buffers: the slip state, each element's bar forces, and
     /// the bond's area at each node along each axis, a share of the bars' surface in the elements

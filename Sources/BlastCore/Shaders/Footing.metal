@@ -112,7 +112,9 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
     float4 extent = float4(INFINITY, -INFINITY, INFINITY, -INFINITY);
     for (uint p = c.ranges.x + worker; p < c.ranges.x + c.ranges.y; p += footingThreads) {
         BedPoint point = bed[p];
-        float4 state = bedState[p];  // slip x, slip y, settlement; largest force borne (< 0 lifted off)
+        float4 state = bedState[2 * p];  // slip x, slip y, settlement; largest force borne (< 0 lifted off)
+        // Cyclic sand: the settlement where the point last landed, and 1 once it has lifted clear.
+        float4 landing = bedState[2 * p + 1];
         float2 place = point.placeAndBearing.xy;
         float k = point.placeAndBearing.z;
         float capacity = point.placeAndBearing.w;
@@ -124,6 +126,9 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
         float3 force = float3(0.0f);
         if (opening < 0.0f) {
             float push = -k * opening;
+            if (virgin && landing.y > 0.5f) {
+                landing = float4(state.z, 0.0f, 0.0f, 0.0f);  // landed again after lifting clear
+            }
             if (virgin) {
                 // Sand pressed past the most it has borne compresses along its first-loading
                 // curve, softer than it unloads, and keeps what it does not give back. Unloaded
@@ -172,16 +177,21 @@ kernel void footingStep(device FootingState *states [[buffer(0)]],
             if (virgin && state.w > 0.0f) {
                 state.w = -state.w;  // unloaded to nothing: remembered (< 0) for when it lands
             }
-            if (virgin && c.cyclic.z > 0.0f && state.w < 0.0f && opening > -state.w / k) {
+            if (virgin && landing.y < 0.5f && state.w < 0.0f && opening > -state.w / k) {
                 // Lifted clear, further than the sand springs back from the force it bore (not
-                // flickering at the edge of the contact): the soil heaves back by a part of how
-                // far it has been pressed down, loosened, and the point forgets.
-                state.z += c.cyclic.z * max(-state.z, 0.0f);
-                state.w = -0.0f;
+                // flickering at the edge of the contact): the sand pressed out from under the
+                // point while it bore heaves part of the way back, loosened, and the point
+                // forgets.
+                state.z += c.cyclic.z * max(landing.x - state.z, 0.0f);
+                state.w = c.cyclic.z > 0.0f ? -0.0f : state.w;
+                landing.y = 1.0f;
             }
         }
         sunk = max(sunk, -state.z);
-        bedState[p] = state;
+        bedState[2 * p] = state;
+        if (virgin) {
+            bedState[2 * p + 1] = landing;
+        }
         soilForce += force;
         soilMoment += cross(arm, force);
     }

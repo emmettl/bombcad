@@ -44,7 +44,7 @@ nothing in it should be used to judge the safety of a real structure.
 | 6 | Moving solids are a staircase of whole cells                            | Either way, to a cell: wall positions are good to a cell; small fragments are crude | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | Up to sixteen bodies of up to eight materials each, bonded within and meeting each other only by contact, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly (IFC buildings import as shells and beams where square to the axes, their materials, ties and supports inferred and listed); thrown debris and contact between buildings are approximate | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak is too large; concrete broken under a close-in charge is never removed by default | Too stiff close in, the unsafe side: no hole under a close-in charge, and rebound too large (strength with pressure, and cracks pressed shut, checked: not the cause); removing fragments, an option, holes slabs both ways; rubble kept as particles, an option, holes none | [Validation](validation.md#holes-under-close-in-and-contact-charges) |
-| 9 | Supports and freestanding objects are checked against statics and theory, and footings against nine centrifuge events on one sand (FoRCy, FoRDy) | Either way for a footing's rocking moment, settlement too much and energy too little; footings on soil and connections that open and slide are in, as are boxes and cars that slide, lift and overturn; every object takes the air's load, but late flow is not converged and the cars and furniture are illustrative | [Freestanding objects and supports](#freestanding-objects-and-supports) |
+| 9 | Supports and freestanding objects are checked against statics and theory, and footings against nine centrifuge events on one sand (FoRCy, FoRDy) | Either way for a footing's rocking moment, settlement within a factor of 1.7, energy a sixth to two thirds of a shaken test's; footings on soil and connections that open and slide are in, as are boxes and cars that slide, lift and overturn; every object takes the air's load, but late flow is not converged and the cars and furniture are illustrative | [Freestanding objects and supports](#freestanding-objects-and-supports) |
 | 10 | Only selected panels and document workflows have had visual review      | Other layouts and native interactions may still have problems | Below |
 
 On the last point, see the [native interface review](native-interface-review.md#review-log).
@@ -117,8 +117,9 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
   ([multiple-object scene](multiple-object-scene.md#implemented-contact-between-bodies)); base
   connections, joints at any angle and between parts, and footings on soil checked against FoRCy
   and FoRDy ([supports, as they were built](structural-model.md#supports-and-connections-as-they-were-built)).
-- **Next:** the rebound after a slab's peak; a shaken footing's lurch and the energy it
-  dissipates; pads' and dowels' laws; footings on a slope.
+- **Next:** the rebound after a slab's peak; a shaken footing's lurch, and the rest of its
+  energy (sand crushed across the whole contact, the shaken sand's own); pads' and dowels'
+  laws; footings on a slope.
 - **Blocked:** a footing or connection under fast loading ([data wanted 3b](data-wanted.md#3b-a-footing-or-connection-under-fast-loading)).
 
 ### Freestanding objects and supports
