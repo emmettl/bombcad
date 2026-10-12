@@ -176,3 +176,14 @@ are now 500 ms, by when a slab thrown up this far has landed and settled (the ai
 sleep by about 80 ms, so the extra time is cheap); the end displacement is still the mean over
 the last 10 ms. Nothing else changed. The 200 ms run is kept in the predictor's folder and is
 not reported.
+
+**3. 2026-10-12 20:45, before any of these runs: secondary runs 3, 4 and 5 on the calibrated
+record's air, on the CI mini.** The Studio's GPU is shared by other sessions and gives this
+work one slot at a time (a primary run takes about 17 minutes there), and the mini takes about
+seven times as long on the primary's 14.7 million uniform cells but about 19 minutes a slab on
+25 mm cells refined by 2. So slab A's other layout (3), the higher charge (4) and the ensemble
+(5) are run on that air (secondary run 1's settings), and each is compared with secondary run
+1's slab on the same air: the ensemble's sample 0 is secondary run 1's run, and its spread, as
+ratios to that, is applied to the primary's peaks as declared. The primary runs and the
+16-element runs stay on the Studio with the primary's air. No result of these runs had been
+seen; the reason is time alone.
