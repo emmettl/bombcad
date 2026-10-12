@@ -90,6 +90,9 @@ public final class StructureSolver {
     /// `fragmentOpening` (m) and with a crack strain of `fragmentStrain` across one is fragments.
     public var fragmentOpening: Float = 0.5e-3
     public var fragmentStrain: Float = 0.05
+    /// Concrete is removed once crushed past the end of its softening by this many softening
+    /// ranges (one: twice the strain at which softening ends, roughly).
+    public var crushErosion: Float = 1
 
     /// Let the air push loose debris (nodes no longer attached to any intact element) by its
     /// pressure gradient and drag, when coupled to the air.
@@ -1080,6 +1083,11 @@ public final class StructureSolver {
         stateValue(i, j, k, offset: 108)
     }
 
+    /// Concrete: each axis's confinement factor, less one, as the element's running average.
+    public func confinementGain(_ i: Int, _ j: Int, _ k: Int) -> SIMD3<Float> {
+        SIMD3((0..<3).map { stateValue(i, j, k, offset: 112 + 4 * $0) })
+    }
+
     /// Running average of the element's effective strain rate (1/s).
     public func strainRate(_ i: Int, _ j: Int, _ k: Int) -> Float {
         stateValue(i, j, k, offset: 104)
@@ -1566,7 +1574,7 @@ public final class StructureSolver {
         var parameters = zip(materials, jointed).map { material, jointed in
             Self.parameters(
                 for: material, elementSize: model.elementSize, hourglassCoefficient: hourglassCoefficient,
-                jointed: jointed, bondSlip: model.bondSlip != nil)
+                jointed: jointed, bondSlip: model.bondSlip != nil, crushErosion: crushErosion)
         }
         guard elementCount > 0 else { return }
         // One SIMD group per threadgroup. The element kernel needs many registers, and groups of
@@ -1844,17 +1852,42 @@ public final class StructureSolver {
     public func advance(steps: Int) {
         var remaining = steps
         while remaining > 0 {
+            // Up to 2,000 substeps at a time, each at its time from the start of the 2,000 and
+            // with what to encode decided there, as when the 2,000 were one command buffer; they
+            // go to the GPU in buffers of about `BlastSolver.commandBufferTarget` of its time, so
+            // that none starves the window server. The substeps are the same however they are cut.
             let count = min(remaining, 2000)
-            guard let commandBuffer = commandQueue.makeCommandBuffer(),
-                let encoder = commandBuffer.makeComputeCommandEncoder()
-            else { return }
-            encodeSubsteps(encoder, count: count, fluid: nil)
-            encoder.endEncoding()
-            commandBuffer.commit()
-            commandBuffer.waitUntilCompleted()
+            let checkpoint = failedAtCheckpoint
+            failedAtCheckpoint = encodesAsFailed
+            defer { failedAtCheckpoint = checkpoint }
+            var done = 0
+            while done < count {
+                let part = gpuSubsteps.part(count - done)
+                guard let commandBuffer = commandQueue.makeCommandBuffer(),
+                    let encoder = commandBuffer.makeComputeCommandEncoder()
+                else { return }
+                encodeSubsteps(
+                    encoder, substeps: done..<(done + part), prelude: done == 0, fluid: nil, interface: nil,
+                    beforeNodes: nil, afterNodes: nil)
+                encoder.endEncoding()
+                commandBuffer.commit()
+                commandBuffer.waitUntilCompleted()
+                gpuSubsteps.measure(commandBuffer, steps: part)
+                done += part
+            }
             time += Double(count) * Double(criticalTimeStep)
             remaining -= count
         }
+    }
+
+    /// The GPU's time for a substep lately, to size `advance`'s command buffers.
+    private var gpuSubsteps = GPUStepRate()
+
+    /// The GPU time each of `advance`'s command buffers aims at, `BlastSolver.commandBufferTarget`
+    /// unless set; the substeps are the same whatever it is.
+    public var commandBufferSeconds: Double {
+        get { gpuSubsteps.target }
+        set { gpuSubsteps.target = newValue }
     }
 
     private func makeUniforms(fluid: FluidBinding?) -> StructureUniforms {
@@ -2013,7 +2046,7 @@ public final class StructureSolver {
     /// its masonry is meshed as units and mortar joints.
     static func parameters(
         for material: StructureMaterial, elementSize h: Float, hourglassCoefficient: Float = 1,
-        jointed: Bool = false, bondSlip: Bool = false
+        jointed: Bool = false, bondSlip: Bool = false, crushErosion: Float = 1
     ) -> MaterialParameters {
         var parameters = MaterialParameters(
             density: material.density,
@@ -2075,8 +2108,8 @@ public final class StructureSolver {
         // The crack strain at which the removal width is reached in one element. (It was once
         // capped at 0.5, which on elements under 10 mm removed them at narrower cracks.)
         parameters.erosionStrain = material.erosionOpening / h
-        // Removed once crushed to twice the strain at which softening ends.
-        parameters.crushErosion = 1
+        // Removed once crushed past the end of softening by `crushErosion` softening ranges.
+        parameters.crushErosion = crushErosion
         parameters.confinement = material.confinementCoefficient
         if let steel = material.steel {
             // The fixed rate factor is applied at yield and fades out towards ultimate

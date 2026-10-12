@@ -399,6 +399,15 @@ no default unless a regime's cases support it:
    3.8–4.3 ms after impact and under the load 5.7–6.2 ms; the model's do not. Trace the
    compression law's strength and softening at these rates and the removal rule for crushed
    concrete.
+
+   Traced (11 October 2026; see [Validation](validation.md#read-from-the-high-speed-images)): the
+   split is a shear band above perfectly bonded bars, which bond that slips removes, bringing the
+   main cracks to the tests' angles but leaving the beams without stirrups whole; the struts crush
+   but are not shed, held in the width's middle by confinement and on the face by removal coming
+   only at 27% crushing. Neither crack-holding by the longitudinal bars, removal at the end of
+   softening, a tenth of the crushing energy, nor cover that spalls at Mander's strain gives all six
+   kinds their failures. Untried: a compression zone whose softening is set by a length of its
+   own rather than the element's, judged with bond that slips; that waits for the user's decision.
 3. **Masonry that breaks too late and too coarsely.** Against Keys's trials the Windrush walls on
    their mortar bed break at one joint and topple whole about 1.5 s after 41 kg of TNT, two of them
    towards the charge, where the trials' broke in three within 20 ms and folded near the base; the
