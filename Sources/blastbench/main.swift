@@ -44,7 +44,7 @@ import simd
 //   blastbench rocking [--shear 40] [--bearing 814] [--packets a,b,c,d,e] [--speed 0.2] [--history out.csv]
 //                      [--elastic | --elastic-share 0.12 --memory 0 --heave 0]   (the sand's settling; also for shaking)
 //   blastbench shaking [--tests ssg04-dsw,ssg04-shw,ssg03-dsw] [--shear 80] [--bearing 814] [--samples Samples/FoRDy]
-//                      [--history out-%.csv]   (a wall on a footing shaken at its base, against FoRDy's SSG03/SSG04)
+//                      [--history out-%.csv] [--massless] [--damping 0.2]   (a wall on a footing shaken at its base, against FoRDy's SSG03/SSG04)
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mass kg] [--fit-reach Z]
 //                       [--mode peak|now|impulse|fluence|irradiance]
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
@@ -4411,6 +4411,12 @@ func runRocking() throws {
         String(
             format: "Largest actuator lag %.1f mm; %.0f s", (result.packets.map(\.lag).max() ?? 0) * 1000,
             result.wallSeconds))
+    print("The soil sunk for good under the footing (mm), along it, after each packet:")
+    for (packet, profile) in zip(result.packets, result.profiles) {
+        print(
+            pad(packet.name, 4) + "  "
+                + profile.map { String(format: "%5.1f", $0.y * 1000) }.joined(separator: " "))
+    }
     if let path = option("history") {
         let lines = ["rotation,moment,settlement"] + result.history.map { "\($0.x),\($0.y),\($0.z)" }
         try lines.joined(separator: "\n").write(toFile: path, atomically: true, encoding: .utf8)
@@ -4445,7 +4451,8 @@ func runShaking() throws {
         )
         let result = try FootingShakingTest.run(
             device: device, test: test, series: measured, shearModulus: shear, bearingCapacity: bearing,
-            cyclic: cyclicSandOption(), progress: { print("  " + $0) })
+            damping: option("damping").flatMap { Float($0) } ?? 0.2, cyclic: cyclicSandOption(),
+            radiationDamping: !flag("massless"), progress: { print("  " + $0) })
         print(String(format: "  static pressure %.0f kPa; %.0f s", result.pressure / 1e3, result.wallSeconds))
         print(
             pad("event", 15) + pad("peak g", 8) + pad("rotation + / − (mrad)", 26) + pad("moment + / −", 26)
@@ -4466,6 +4473,24 @@ func runShaking() throws {
                     + pad(String(format: "%.4f  %.4f", a.settlement, b.settlement), 18)
                     + pad(String(format: "%.4f  %.4f", a.energy, b.energy), 18)
                     + pad(String(format: "%.3f  %.3f", a.travel, b.travel), 16))
+        }
+        print("  the soil sunk for good under the footing (mm), along it, after each event:")
+        for (name, profile) in zip(test.events, result.profiles) {
+            print(
+                pad(name, 15) + "  "
+                    + profile.map { String(format: "%5.1f", $0.y * 1000) }.joined(separator: " "))
+        }
+        print(
+            pad("event", 15) + pad("cycles past 1 mrad: rotation (mrad), ∮M dθ a cycle, damping ratio", 70))
+        print(pad("", 15) + pad("measured", 34) + pad("model", 34))
+        for (index, name) in test.events.enumerated() {
+            func cycles(_ s: FootingShakingTest.Summary) -> String {
+                pad(
+                    String(
+                        format: "%.1f  %.4f  %.0f%%", s.cycleAmplitude * 1000, s.cycleEnergy, s.damping * 100),
+                    34)
+            }
+            print(pad(name, 15) + cycles(measured[index].summary) + cycles(result.events[index].summary))
         }
         if let pattern = option("history") {
             for (index, name) in test.events.enumerated() {
