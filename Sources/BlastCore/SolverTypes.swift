@@ -104,6 +104,12 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// The jump that refines the second level, as `refinementThreshold` does the first; nil
     /// for the same.
     public var refinementFinerThreshold: Float?
+    /// Let each refined level take only as many of its r substeps, in each step of the grid above
+    /// it, as its own fastest wave needs, rather than always r: the step is set by the fastest
+    /// wave anywhere, which is often in the hot, unrefined middle of the fireball, while the
+    /// patches follow the slower shock. The coarse step is unchanged; mass, momentum and energy
+    /// stay conserved across every level's edge. Off by default.
+    public var refinementOwnSteps = false
     /// GPU memory for the refined blocks, in bytes; where the shock would need more, the rest of
     /// it stays coarse. About 63 kB a block at ratio 2, 364 kB at ratio 4. With two levels, a third
     /// of it goes to the first and two thirds to the second.
@@ -232,6 +238,9 @@ struct SolverUniforms {
     var limitFlameTemperature: Float = 0
     /// Sub-grid mixing's model: 0 Smagorinsky's, 1 the σ-model (see `SubgridMixing.Model`).
     var mixingModel: UInt32 = 0
+    var ownSteps: UInt32 = 0
+    var refineLevel: UInt32 = 0
+    var sweepAxes: UInt32 = 0
 }
 
 /// Layout matches `StepControl` in `Solver.metal`.
@@ -246,6 +255,12 @@ struct StepControl {
     var tileSweeps: UInt32 = 0
     var stopped: UInt32 = 0
     var lastStep: Float = 0
+    var levelSubsteps0: UInt32 = 0
+    var levelSubsteps1: UInt32 = 0
+    var levelStep0: Float = 0
+    var levelStep1: Float = 0
+    var levelSubstepSum0: UInt32 = 0
+    var levelSubstepSum1: UInt32 = 0
 }
 
 /// Pressure history recorded at a gauge cell, one sample per solver step.
@@ -394,6 +409,11 @@ public struct BatchResult: Sendable {
     public var refinedTiles = 0
     /// Blocks of the second level refined at the end of the batch (0 without one).
     public var finerRefinedTiles = 0
+    /// Substeps the first refined level took per step, and the second per step of the coarse
+    /// grid, averaged over the batch's steps: r and r squared unless they take their own
+    /// (`SolverConfiguration.refinementOwnSteps`); 0 without the level.
+    public var firstLevelSubsteps = 0.0
+    public var secondLevelSubsteps = 0.0
     /// True when the batch stopped just short of its time limit, leaving the last step up to it
     /// for another batch; its unused steps did nothing.
     public var stoppedShort = false

@@ -394,7 +394,9 @@ public final class BlastSolver {
         peakBuffer = try buffer(cells * MemoryLayout<Float>.stride, "peak overpressure")
         impulseBuffer = try buffer(cells * MemoryLayout<Float>.stride, "impulse")
         controlBuffer = try buffer(MemoryLayout<StepControl>.stride, "step control")
-        maxSpeedBuffer = try buffer(2 * MemoryLayout<UInt32>.stride, "max wave speed and overpressure")
+        // The fastest wave and the largest overpressure; with refined levels' own steps, each
+        // level's fastest wave.
+        maxSpeedBuffer = try buffer(4 * MemoryLayout<UInt32>.stride, "max wave speed and overpressure")
         gaugeLogBuffer = try buffer(
             (Self.maxStepsPerBatch + 1) * (Self.maxGauges + 1) * MemoryLayout<Float>.stride, "gauge log")
         gaugeCellBuffer = try buffer(Self.maxGauges * MemoryLayout<UInt32>.stride, "gauge cells")
@@ -1602,13 +1604,18 @@ public final class BlastSolver {
         }
         refinement.encodePlace(
             encoder, parent: coarseView(species: species), control: controlBuffer, tileFlags: tileFlagBuffer,
-            uniforms: uniforms, boxDefinition: experimentalBoxDefinition)
+            uniforms: uniforms, boxDefinition: experimentalBoxDefinition, maxSpeed: maxSpeedBuffer)
         if let finerRefinement, let deep {
             finerRefinement.encodePlace(
                 encoder, parent: refinement.view(), control: controlBuffer, tileFlags: tileFlagBuffer,
-                uniforms: deep)
+                uniforms: deep, maxSpeed: maxSpeedBuffer)
         }
     }
+
+    /// Whether each refined level takes only the substeps its own waves need
+    /// (`SolverConfiguration.refinementOwnSteps`); not with the experimental box, which follows
+    /// the first level's substeps itself.
+    private var ownLevelSteps: Bool { configuration.refinementOwnSteps && experimentalBoxes.isEmpty }
 
     // MARK: - Stepping
 
@@ -1756,6 +1763,11 @@ public final class BlastSolver {
 
             if !asleep { encodeEddyViscosity(encoder, uniforms: uniforms) }
             let refining = refinement != nil && !asleep
+            if let refinement, refining, ownLevelSteps {
+                refinement.encodeLevelSteps(
+                    encoder, control: controlBuffer, maxSpeed: maxSpeedBuffer, uniforms: uniforms,
+                    child: finerRefinement)
+            }
             if let refinement, refining {
                 refinement.encodeSaveHalo(
                     encoder, parent: coarseView(species: currentSpecies), uniforms: uniforms,
@@ -2037,6 +2049,8 @@ public final class BlastSolver {
             isStable: control.batchTime.isFinite && control.dt.isFinite,
             maxOverpressure: control.maxOverpressure, sweptFraction: swept,
             refinedTiles: refinement?.patchCount ?? 0, finerRefinedTiles: finerRefinement?.patchCount ?? 0,
+            firstLevelSubsteps: levelSubsteps(control, level: 0),
+            secondLevelSubsteps: levelSubsteps(control, level: 1),
             stoppedShort: control.stopped == 1,
             reachedLimit: control.stopped == 2, unsupportedInteraction: interObjectContactDetected,
             contactStarted: contactStarted, couplingCapacityExceeded: couplingCapacityExceeded)
@@ -2076,6 +2090,7 @@ public final class BlastSolver {
             if encoded == 0 { break }
             let result = completeBatch()
             total.sweptFraction = Self.mergeSwept(total, result)
+            (total.firstLevelSubsteps, total.secondLevelSubsteps) = Self.mergeSubsteps(total, result)
             total.steps += result.steps
             total.elapsed += result.elapsed
             total.lastTimeStep = result.lastTimeStep
@@ -2122,6 +2137,7 @@ public final class BlastSolver {
         while endTime - time > 1e-7 * max(endTime, 1e-3) {
             let result = advance(steps: 64, timeLimit: endTime)
             total.sweptFraction = Self.mergeSwept(total, result)
+            (total.firstLevelSubsteps, total.secondLevelSubsteps) = Self.mergeSubsteps(total, result)
             total.steps += result.steps
             total.elapsed += result.elapsed
             total.lastTimeStep = result.lastTimeStep
@@ -2134,6 +2150,28 @@ public final class BlastSolver {
         total.unsupportedInteraction = interObjectContactDetected
         total.couplingCapacityExceeded = couplingCapacityExceeded
         return total
+    }
+
+    /// The substeps each refined level took per step in the last batch (see `BatchResult`).
+    private func levelSubsteps(_ control: StepControl, level: Int) -> Double {
+        let levels = refinementLevels
+        guard level < levels.count, let ratio = refinement?.ratio else { return 0 }
+        guard ownLevelSteps, control.activeSteps > 0 else {
+            return Double(level == 0 ? ratio : ratio * ratio)
+        }
+        let sum = level == 0 ? control.levelSubstepSum0 : control.levelSubstepSum1
+        return Double(sum) / Double(control.activeSteps)
+    }
+
+    /// The levels' substeps per step of two runs of steps together, weighted by their steps.
+    private static func mergeSubsteps(_ total: BatchResult, _ result: BatchResult) -> (Double, Double) {
+        let steps = Double(total.steps + result.steps)
+        guard steps > 0 else { return (result.firstLevelSubsteps, result.secondLevelSubsteps) }
+        let (a, b) = (Double(total.steps), Double(result.steps))
+        return (
+            (total.firstLevelSubsteps * a + result.firstLevelSubsteps * b) / steps,
+            (total.secondLevelSubsteps * a + result.secondLevelSubsteps * b) / steps
+        )
     }
 
     /// The swept fraction of two runs of steps together, weighted by their steps.
@@ -2345,6 +2383,11 @@ public final class BlastSolver {
             uniforms.childTileNx = UInt32(finerRefinement.tileDims.x)
             uniforms.childTileNy = UInt32(finerRefinement.tileDims.y)
             uniforms.childTileNz = UInt32(finerRefinement.tileDims.z)
+        }
+        if refinement != nil, ownLevelSteps {
+            uniforms.ownSteps = 1
+            uniforms.refineLevel = 1
+            uniforms.sweepAxes = UInt32(max(1, [grid.nx, grid.ny, grid.nz].filter { $0 > 1 }.count))
         }
         if hasFlame {
             uniforms.deflagration = 1

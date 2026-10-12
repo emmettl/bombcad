@@ -450,9 +450,11 @@ the run slowing, within the bound in [Adding machines](#the-long-term-visions-ef
 - **A bigger single GPU.** An M3 Ultra (80-core GPU, 819 GB/s, up to 512 GB) would run about
   1.5 times as fast as the M4 Max with no communication at all, and could hold a 0.0625 m street
   grid (about 31 GB).
-- **Single-GPU algorithms.** Letting refined patches take shorter steps than the coarse grid
-  (subcycling), and cheaper contact, which takes 45% of a structure's time once on
-  ([Performance](performance.md#structural-solver)).
+- **Single-GPU algorithms.** Refined patches already take shorter steps than the coarse grid
+  (r substeps each, with refluxing); letting each level take only as many as its own waves need
+  is an option ([Refining near the shock](air-blast-model.md#refining-near-the-shock)). Cheaper
+  contact, which takes 45% of a structure's time once on
+  ([Performance](performance.md#structural-solver)), is the other.
 - **Independent runs.** A sweep's cases, a grid-sensitivity study or an uncertainty ensemble are
   separate runs: only the project goes out and the result comes back, so the link does not
   matter and the scaling is perfect. Built in October 2026 for sweeps, across any number of

@@ -119,6 +119,14 @@ final class AirRefinement {
     private let releasePipeline: MTLComputePipelineState
     private let allocatePipeline: MTLComputePipelineState
     private let requestPipeline: MTLComputePipelineState
+    private let levelStepsPipeline: MTLComputePipelineState
+    private let keepPipeline: MTLComputePipelineState
+    /// With the levels' own steps (`refineLevelSteps`): a copy of `arguments` for each substep
+    /// this level may take in a step (for a level beneath another, in each substep of its
+    /// parent's), of no threadgroups where it does not take it; and the dispatch that copies its
+    /// state back into its first buffer after an odd number of sweeps, one per parent substep.
+    private let substepArguments: MTLBuffer
+    private let keepArguments: MTLBuffer
     private let grantPipeline: MTLComputePipelineState
     /// Per group of `allocationGroup` blocks: how many ask for a new patch, then where their
     /// requests start among all.
@@ -205,6 +213,8 @@ final class AirRefinement {
         releasePipeline = try pipeline("refineRelease")
         allocatePipeline = try pipeline("refineAllocate")
         requestPipeline = try pipeline("refineRequest")
+        levelStepsPipeline = try pipeline("refineLevelSteps")
+        keepPipeline = try pipeline("refineKeepCurrent")
         grantPipeline = try pipeline("refineGrant")
         listPipeline = try pipeline("refineList")
         argumentsPipeline = try pipeline("refineArguments")
@@ -248,6 +258,8 @@ final class AirRefinement {
         patchList = try buffer(maxPatches * 4, "patches in use")
         newPatches = try buffer(maxPatches * 4, "new patches")
         arguments = try buffer(32 * 4, "refinement dispatches")
+        substepArguments = try buffer(ratio * ratio * 32 * 4, "refinement dispatches per substep")
+        keepArguments = try buffer(ratio * 3 * 4, "copies back after odd sweeps")
         wanted = try buffer(tiles, "blocks flagged")
         groupCounts = try buffer(
             (tiles + Self.allocationGroup - 1) / Self.allocationGroup * 4, "requests per group of blocks")
@@ -666,8 +678,10 @@ final class AirRefinement {
 
     /// Step 1: the parent's cells around each patch, at the start of the parent's step.
     func encodeSaveHalo(
-        _ encoder: MTLComputeCommandEncoder, parent: ParentView, uniforms: SolverUniforms, control: MTLBuffer
+        _ encoder: MTLComputeCommandEncoder, parent: ParentView, uniforms: SolverUniforms, control: MTLBuffer,
+        dispatches: (MTLBuffer, Int)? = nil
     ) {
+        let dispatches = dispatches ?? (arguments, 0)
         var uniforms = uniforms
         encoder.setComputePipelineState(haloPipeline)
         set(encoder, parent.state, 0)
@@ -678,8 +692,42 @@ final class AirRefinement {
         encoder.setBuffer(control, offset: 0, index: 5)
         set(encoder, parent.patches, 6)
         encoder.dispatchThreadgroups(
-            indirectBuffer: arguments, indirectBufferOffset: 12,
+            indirectBuffer: dispatches.0, indirectBufferOffset: dispatches.1 + 12,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
+    }
+
+    /// Where the dispatches of substep `substep` (in substep `parentSubstep` of the parent's
+    /// step, for a level beneath another) are found: `arguments`, or with the levels' own steps
+    /// that substep's copy, empty where it is not taken.
+    private func substepDispatches(_ substep: Int, parentSubstep: Int?, ownSteps: Bool) -> (MTLBuffer, Int) {
+        guard ownSteps else { return (arguments, 0) }
+        return (substepArguments, ((parentSubstep ?? 0) * ratio + substep) * 32 * 4)
+    }
+
+    /// With the levels' own steps, once per step after `prepareStep`: each level's substeps and
+    /// their length, from its fastest wave (see `refineLevelSteps`). For the first level, with
+    /// `child` the second.
+    func encodeLevelSteps(
+        _ encoder: MTLComputeCommandEncoder, control: MTLBuffer, maxSpeed: MTLBuffer,
+        uniforms: SolverUniforms,
+        child: AirRefinement?
+    ) {
+        var uniforms = uniforms
+        var levels: UInt32 = child == nil ? 1 : 2
+        encoder.setComputePipelineState(levelStepsPipeline)
+        encoder.setBuffer(control, offset: 0, index: 0)
+        encoder.setBuffer(maxSpeed, offset: 0, index: 1)
+        setUniforms(encoder, &uniforms, index: 2)
+        encoder.setBuffer(arguments, offset: 0, index: 3)
+        encoder.setBuffer(substepArguments, offset: 0, index: 4)
+        encoder.setBuffer(keepArguments, offset: 0, index: 5)
+        encoder.setBuffer(child?.arguments ?? arguments, offset: 0, index: 6)
+        encoder.setBuffer(child?.substepArguments ?? substepArguments, offset: 0, index: 7)
+        encoder.setBuffer(child?.keepArguments ?? keepArguments, offset: 0, index: 8)
+        encoder.setBytes(&levels, length: 4, index: 9)
+        encoder.dispatchThreads(
+            MTLSize(width: 1, height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
     }
 
     /// The fine sweep compiled for `model`, made the first time it is used; the general one if
@@ -734,9 +782,11 @@ final class AirRefinement {
     /// within each of these (steps 1 to 5 for it, this level standing for the coarse grid).
     func encodeSubsteps(
         _ encoder: MTLComputeCommandEncoder, axes: [Int], parent: ParentView, peak: MTLBuffer,
-        control: MTLBuffer, maxSpeed: MTLBuffer, uniforms: SolverUniforms, child: Child? = nil
+        control: MTLBuffer, maxSpeed: MTLBuffer, uniforms: SolverUniforms, child: Child? = nil,
+        parentSubstep: Int? = nil
     ) {
         var uniforms = uniforms
+        let ownSteps = uniforms.ownSteps != 0
         let sweepPipeline = sweepPipeline(for: AirModel(rawValue: uniforms.airModel))
         var depth = 8
         while depth > 1 && 64 * depth > sweepPipeline.maxTotalThreadsPerThreadgroup { depth /= 2 }
@@ -747,9 +797,15 @@ final class AirRefinement {
             // The order of the sweeps alternates from substep to substep, starting with the coarse
             // step's, so that the splitting stays second order.
             let order = substep.isMultiple(of: 2) ? axes : axes.reversed()
+            let dispatches = substepDispatches(substep, parentSubstep: parentSubstep, ownSteps: ownSteps)
+            // The second level's work in this substep, empty where this substep is not taken.
+            let childDispatches = child.map {
+                $0.level.substepDispatches(0, parentSubstep: substep, ownSteps: ownSteps)
+            }
             if let child {
                 child.level.encodeSaveHalo(
-                    encoder, parent: view(current: sweep % 2), uniforms: child.uniforms, control: control)
+                    encoder, parent: view(current: sweep % 2), uniforms: child.uniforms, control: control,
+                    dispatches: childDispatches)
             }
             for (n, axis) in order.enumerated() {
                 uniforms.axis = UInt32(axis)
@@ -781,7 +837,7 @@ final class AirRefinement {
                 encoder.setBuffer(parentGravityTable ?? ghosts, offset: 0, index: 19)
                 encoder.setBuffer(gravityTable ?? ghosts, offset: 0, index: 20)
                 encoder.dispatchThreadgroups(
-                    indirectBuffer: arguments, indirectBufferOffset: 60,
+                    indirectBuffer: dispatches.0, indirectBufferOffset: dispatches.1 + 60,
                     threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
 
                 encoder.setComputePipelineState(sweepPipeline)
@@ -822,7 +878,7 @@ final class AirRefinement {
                 encoder.setBuffer(gravityTable ?? fineFlux, offset: 0, index: 25)
                 encoder.setBuffer(viscosity ?? fineFlux, offset: 0, index: 26)
                 encoder.dispatchThreadgroups(
-                    indirectBuffer: arguments, indirectBufferOffset: 0,
+                    indirectBuffer: dispatches.0, indirectBufferOffset: dispatches.1,
                     threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: depth))
                 sweep += 1
             }
@@ -830,20 +886,36 @@ final class AirRefinement {
                 let now = view(current: sweep % 2)
                 child.level.encodeSubsteps(
                     encoder, axes: order, parent: now, peak: peak, control: control, maxSpeed: maxSpeed,
-                    uniforms: child.uniforms)
+                    uniforms: child.uniforms, parentSubstep: substep)
                 child.level.encodeRefluxAndRestrict(
-                    encoder, axes: order, parent: now, control: control, uniforms: child.uniforms)
+                    encoder, axes: order, parent: now, control: control, uniforms: child.uniforms,
+                    dispatches: childDispatches)
             }
         }
         precondition(sweep.isMultiple(of: 2), "A coarse step must take an even number of fine sweeps")
+        if ownSteps {
+            // After an odd number of sweeps taken, the state is in the second buffer.
+            encoder.setComputePipelineState(keepPipeline)
+            bind(encoder, fine[0], 0)
+            encoder.setBuffer(fine[1], offset: 0, index: 1)
+            encoder.setBuffer(fineSpecies[0], offset: 0, index: 2)
+            encoder.setBuffer(fineSpecies[1], offset: 0, index: 3)
+            bind(encoder, fineMask, 4)
+            encoder.setBuffer(patchList, offset: 0, index: 5)
+            setUniforms(encoder, &uniforms, index: 6)
+            encoder.dispatchThreadgroups(
+                indirectBuffer: keepArguments, indirectBufferOffset: (parentSubstep ?? 0) * 12,
+                threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
+        }
     }
 
     /// Steps 4 and 5: refluxing along each of `axes`, then the parent's cells under the patches.
     func encodeRefluxAndRestrict(
         _ encoder: MTLComputeCommandEncoder, axes: [Int], parent: ParentView, control: MTLBuffer,
-        uniforms: SolverUniforms
+        uniforms: SolverUniforms, dispatches: (MTLBuffer, Int)? = nil
     ) {
         var uniforms = uniforms
+        let dispatches = dispatches ?? (arguments, 0)
         encoder.setComputePipelineState(withGravity(refluxPipeline, "refineReflux"))
         set(encoder, parent.state, 0)
         set(encoder, parent.mask, 1)
@@ -863,7 +935,7 @@ final class AirRefinement {
             uniforms.axis = UInt32(axis)
             setUniforms(encoder, &uniforms, index: 2)
             encoder.dispatchThreadgroups(
-                indirectBuffer: arguments, indirectBufferOffset: 24,
+                indirectBuffer: dispatches.0, indirectBufferOffset: dispatches.1 + 24,
                 threadsPerThreadgroup: MTLSize(
                     width: 2 * Self.patchSize * Self.patchSize, height: 1, depth: 1))
         }
@@ -883,7 +955,7 @@ final class AirRefinement {
         set(encoder, parent.species, 12)
         set(encoder, parent.patches, 13)
         encoder.dispatchThreadgroups(
-            indirectBuffer: arguments, indirectBufferOffset: 36,
+            indirectBuffer: dispatches.0, indirectBufferOffset: dispatches.1 + 36,
             threadsPerThreadgroup: MTLSize(
                 width: Self.patchSize * Self.patchSize * Self.patchSize, height: 1, depth: 1))
     }
@@ -1024,7 +1096,7 @@ final class AirRefinement {
     /// them for the next step.
     func encodePlace(
         _ encoder: MTLComputeCommandEncoder, parent: ParentView, control: MTLBuffer, tileFlags: MTLBuffer,
-        uniforms: SolverUniforms, boxDefinition: MTLBuffer? = nil
+        uniforms: SolverUniforms, boxDefinition: MTLBuffer? = nil, maxSpeed: MTLBuffer? = nil
     ) {
         var uniforms = uniforms
         let perTile = MTLSize(width: tileDims.x * tileDims.y * tileDims.z, height: 1, depth: 1)
@@ -1121,6 +1193,8 @@ final class AirRefinement {
         // Not read without gravity.
         encoder.setBuffer(gravityTable ?? fine[0], offset: 0, index: 22)
         encoder.setBuffer(parentGravityTable ?? fine[0], offset: 0, index: 23)
+        // Read only with the levels' own steps.
+        encoder.setBuffer(maxSpeed ?? fine[1], offset: 0, index: 24)
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 48,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
@@ -1183,6 +1257,7 @@ final class AirRefinement {
         uniforms.regionNz = 0
         uniforms.couplingMapCount = 0
         uniforms.experimentalBox = 0
+        uniforms.refineLevel = 2
         return uniforms
     }
 }

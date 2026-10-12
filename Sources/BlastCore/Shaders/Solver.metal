@@ -113,6 +113,11 @@ struct SolverUniforms {
     float limitFlameTemperature;
     // Sub-grid mixing's model (see `eddyViscosity`): 0 Smagorinsky's, 1 the sigma model.
     uint mixingModel;
+    // Refined levels' own steps (see `refineLevelSteps`; 0 when every level takes r substeps of
+    // the grid above): the level these uniforms are for (1 or 2), and the sweeps in a step.
+    uint ownSteps;
+    uint refineLevel;
+    uint sweepAxes;
 };
 
 // Whether the air carries species, for afterburning or a deflagration.
@@ -161,6 +166,14 @@ struct StepControl {
     uint tileSweeps;        // tiles swept, summed over the batch's steps
     uint stopped;           // 1 once a step has stopped short of the time limit, 2 once one reached it
     float lastStep;         // the last step that advanced, before any clipping to the time limit
+    // With refined levels' own steps: each level's substeps in a step of the grid above, their
+    // length, and the substeps taken, summed over the batch (the second level's per coarse step).
+    uint levelSubsteps0;
+    uint levelSubsteps1;
+    float levelStep0;
+    float levelStep1;
+    uint levelSubstepSum0;
+    uint levelSubstepSum1;
 };
 
 // The gas's equation of state. An ideal gas has p = (gamma - 1) times the internal energy per
