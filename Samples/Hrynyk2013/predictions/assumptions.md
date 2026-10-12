@@ -170,3 +170,39 @@ to 4 samples and the middle.** Each sample took about 3.5 hours on the CI Mac mi
 GPU six ways, so 8 would have run into the next day. A fresh Latin hypercube of 4 (seed 1) is
 used rather than the first 4 of the 8, whose strata would not be balanced; the middle is the
 same in both and was kept.
+
+**4. 2026-10-12, after the first full runs, before anything was committed: the face set back on
+the slab when its bond has gone, penetration read off the slab's top, and every run made again.**
+In the first full runs (16 elements, all three slabs, four impacts each, finished on the evening of
+2026-10-11), impact 1 removed, in every slab, exactly the 1,444 elements of concrete that touched
+the face's underside: the bonded face tore the layer under it off as it rebounded, then flew off
+as a loose piece (the penetration read 40 to 870 mm *upwards*). Impacts 2 to 4 then set that piece,
+wherever it had come to rest, going down at 8 m/s, so they did not strike the slab's centre as the
+test's weight did: a harness error against the inputs. From now on, at the start of each impact,
+if no concrete element still holds any node of the face's underside, the face is set back,
+undeformed and at rest, over the centre, one element above the highest point of the slab's top
+beneath it, where the solver's contact begins; contact is on by default once any element has
+failed, as it has by then. The weight then strikes through that contact rather than through a
+bond. Impact 1, with the face bonded, is as before. Penetration is now the step in the slab's own
+top (the highest node in each column still held by concrete) at the face's edge, which while the
+face is bonded is what it was. Nothing else changed. The first runs' numbers are kept on the
+predictor's folder and are not the prediction; no run state was kept between impacts, so all the
+runs (primary, 8-element and ensemble) are made again from the start.
+
+## Interruptions
+
+- **2026-10-11 23:50**: the Studio's GPU faulted and the window server's restart killed every
+  process there. The first full runs had all finished minutes before (TH7's at 23:50); the
+  ensemble and 8-element runs had finished on the mini. Nothing was lost, and change 4 above
+  was made afterwards for its own reason.
+- **2026-10-12 00:08**: the window server was killed again (too many GPU jobs at once). The
+  re-runs with change 4, started at 00:06, survived, but were stopped at 00:15 to keep to the
+  Studio's new three-slot GPU limit: the TH2 and TH6 primaries moved to the CI Mac mini, under
+  its BombCAD lock and paused in Scrimply's nightly window (01:30–04:30 UTC), and TH7's runs on
+  the Studio in a `gpu-slot`. Same commit (418b9b4), same settings; the 8-element runs and the
+  ensemble follow once the primaries are done.
+- **2026-10-12 06:50**: TH2 and TH6 at 16 elements had run 2.5 hours on the mini without
+  finishing an impact (it is about four times slower than a quiet Studio, and paused for
+  Scrimply's nightly), so they were stopped there and run again from the start in the Studio's
+  GPU slots, and the mini took the 8-element runs and the ensemble instead. Same commit and
+  settings.
