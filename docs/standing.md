@@ -118,8 +118,7 @@ standing says why.
   ([convergence](validation.md#convergence-on-todays-defaults)): the meshes that agree are the
   coarse end, and the bands say so; close in, Wu's slabs (40–70% under charges to 0.8 kg, −20% to +7% to
   2 kg) and, from 2 kg, Chiquito's deflection left (a third to a half); confined, the chamber's
-  wall pressures (0.9 to 1.6 times). Strength in shear is 37% strong on 12 elements through and
-  11–15% on 24 or more, interpolated between. Any structural option the tests were not run with
+  wall pressures (0.9 to 1.6 times). Strength in shear follows OA1 on 12 to 48 elements through, 32% strong on 12 and 4–11% on 24 to 48, spanning the meshes either side of the scene's. Any structural option the tests were not run with
   removes the band. Footings, debris under contact charges, a closed room's gas, the fireball's
   radiated energy and the cloud's top have bands of their own.
 - **In the app** the popover gives each band and, for the value shown, where the measurement

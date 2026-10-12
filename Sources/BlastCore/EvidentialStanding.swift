@@ -1537,7 +1537,7 @@ struct StandingScene {
                     "validation.md#a-reinforced-beam-bent-to-failure"),
                 StandingEvidence(
                     "A beam without stirrups failing in shear",
-                    "Unsafe side: 11–15% too strong on fine meshes, 37% on 12 elements through",
+                    "Unsafe side, not converged: 4–11% too strong on 24 to 48 elements, 32% on 12",
                     "validation.md#a-beam-failing-in-shear"),
                 StandingEvidence(
                     "Beams struck by a falling weight",
@@ -1657,7 +1657,7 @@ struct StandingScene {
         var evidence = [
             StandingEvidence(
                 "A beam without stirrups failing in shear",
-                "Unsafe side: fails suddenly, as the test did, but 11–15% too strong (37% on coarse meshes)",
+                "Unsafe side: fails suddenly, as the test did, but 4–11% too strong on 24 to 48 elements and 32% on 12, not converged",
                 "validation.md#a-beam-failing-in-shear"),
             StandingEvidence(
                 "Short beams struck to a shear failure (Peterson et al., 2026)",
