@@ -51,6 +51,12 @@ structural geometry, openings, materials and reinforcement in metres, z up. Its 
 contains instance IDs, source asset references, names, transforms, behavior, attachment status,
 part material assignments and retained previews. Source triangles are not duplicated per instance.
 
+A structural model's `strainRateWindow` (seconds) is left out at its default, 100 µs since 12
+October 2026, and saved as `0` for the earlier average over the last 50 steps. Models saved
+before then carry no key and open with the new default, so they run with the 100 µs window; set
+the window to the 50-step average (`strainRateWindow = nil`) to reproduce them as they ran. The
+encoding version is unchanged, as for the regime's defaults.
+
 The versioned `scenario.objectOwnership` record stores fixed-block and structural-object IDs
 and names, structural component IDs, an optional retained source reference and object order.
 It accompanies the existing geometry without duplicating numerical inputs. Legacy inputs

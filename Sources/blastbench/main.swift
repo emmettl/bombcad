@@ -234,8 +234,12 @@ func applyHourglassOptions(_ model: inout StructureModel) {
     // `--nonlocal 0.05`: cracks soften by their strain averaged over that length either side.
     if let length = option("nonlocal").flatMap({ Float($0) }) { model.crackAveraging = length }
     // `--rate-window 120` (µs): the strain-rate laws see the rate averaged over that time
-    // (`strainRateWindow`) instead of over the last 50 steps.
-    if let window = option("rate-window").flatMap({ Float($0) }) { model.strainRateWindow = window * 1e-6 }
+    // (`strainRateWindow`, 100 µs by default); `--rate-window steps`, over the last 50 steps, as
+    // before 12 October 2026.
+    if let text = option("rate-window") {
+        model.strainRateWindow =
+            text == "steps" ? nil : Float(text).map { $0 * 1e-6 } ?? model.strainRateWindow
+    }
     // `--discrete [mm]`: the layers' bars as discrete trusses (`barsAsTrusses`), of that diameter,
     // or the bond's (`--bond`), or 12 mm; they slip by `--bond` or are bonded perfectly.
     if flag("discrete") {

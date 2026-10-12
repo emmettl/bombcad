@@ -74,8 +74,8 @@ More evidence is worth more than more features.
   not the mesh dependence of failure.
 - **Now:** blind test 1, Hrynyk's slabs struck by a falling weight, predicted on frozen defaults
   ([blind tests](blind-tests.md#test-1-hrynyks-slabs-struck-by-a-falling-weight)).
-- **Next:** blind test 2, slabs under an open-air charge (Mendonça et al.), ready for its
-  predictor after test 1's reveal ([test 2](blind-tests.md#test-2-slabs-under-an-open-air-charge-mendonça-et-al));
+- **Now:** blind test 2, slabs under an open-air charge (Mendonça et al.), frozen at `047cee3`
+  and being predicted ([test 2](blind-tests.md#test-2-slabs-under-an-open-air-charge-mendonça-et-al));
   test 3 reserved, Reynolds's thesis on the contest's high-strength slabs, sealed unread
   ([register](blind-tests.md#register)).
 - **Blocked on the user:** the sources marked *needs the user to obtain* in

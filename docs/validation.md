@@ -3426,10 +3426,11 @@ half the step. It does not make refinement converge where a failure decides the 
 still breaks on 36 and 48 elements, P7 is still holed on 16, the chamber still breaks down on
 25 mm, and Saatci's SS0a-1, which settled at default, now grows on 32 elements as its concrete is
 removed. Those failures come from elsewhere, the crack and removal laws that regularise over one
-element being the next suspect. **Proposed as a default** at 100 µs, for the user to decide (blind
-test 2 is still to freeze): it removes a dependence on the step that has no physical basis and
-changes the agreeing meshes by a few per cent, but it is not a cure for the mesh dependence of
-failure.
+element being the next suspect. **Made the default** at 100 µs on 12 October 2026, the user's decision:
+it removes a dependence on the step that has no physical basis and changes the agreeing meshes by
+a few per cent, but it is not a cure for the mesh dependence of failure. Blind test 2 was frozen
+before it, at `047cee3`, and judges the earlier defaults; test 3 would judge this one. The rest
+of this section, above, is on the defaults of 11 October.
 
 **What it means.** No structural result has been shown to converge on today's defaults with
 the measurements inside the change. Where a result settles it does so above the measurement,
