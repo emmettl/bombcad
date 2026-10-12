@@ -186,6 +186,9 @@ public struct SceneStanding: Codable, Hashable, Sendable {
             if let direction = result.direction { text.append("    \(direction)") }
             for band in result.bands ?? [] {
                 text.append("    Band: \(band.summary), for \(band.validity)")
+                if let mesh = band.derivedMesh {
+                    text.append("      Derived on \(mesh); it holds only there.")
+                }
                 if let verdict = band.againstReference { text.append("      \(verdict)") }
             }
             for note in result.unbanded ?? [] { text.append("    No band: \(note)") }

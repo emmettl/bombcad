@@ -857,6 +857,7 @@ enum HeadlessRun {
         let advice = inputs.advice(for: target, memory: memory)
         var lines = [advice.summary]
         lines += advice.unmet.map { "  " + $0 }
+        if let note = inputs.structuralMeshNote { lines.append("  " + note) }
         let factor = RunCostStore.standard.factor
         func describe(_ candidate: AdvisorCandidate) -> String {
             var parts = AdvisorQuantity.allCases.compactMap { quantity in

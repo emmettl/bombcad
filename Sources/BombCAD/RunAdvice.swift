@@ -99,6 +99,20 @@ extension SimulationInputs {
     }
 }
 
+extension SimulationInputs {
+    /// For a scene with a structure: the advisor varies the air only, and the structure's band
+    /// holds on its calibrated mesh, since no structural result converges on today's defaults.
+    var structuralMeshNote: String? {
+        guard !scenario.structuralObjects.isEmpty else { return nil }
+        let standing = SceneStanding(settings.standingInputs(scenario, thermal: thermal))
+        let mesh =
+            standing.band(.peakDeflection)?.derivedMesh.map { "the mesh its band was derived on, \($0)" }
+            ?? "the meshes of the record's comparisons"
+        return "The structure's mesh is not varied: keep \(mesh). A finer structural mesh is not shown to "
+            + "bring it closer to the measurements, since no structural result converges on today's defaults."
+    }
+}
+
 extension SimulationModel {
     /// The GPU memory the advisor may plan for: what the app lets the air take.
     var advisorMemory: Int {
@@ -194,6 +208,12 @@ struct AdvisorSection: View {
                             .orange
                         )
                         .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if let note = SimulationInputs(
+                        scenario: model.settings.scenario, settings: ProjectRunSettings(model: model)
+                    ).structuralMeshNote {
+                        Text(note).font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     Button("Apply") { model.apply(chosen.setting) }
                         .disabled(chosen.setting == ProjectRunSettings(model: model).advisorSetting)

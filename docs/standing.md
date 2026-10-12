@@ -129,6 +129,18 @@ standing says why.
   measurement. Kept runs, `BombCAD run --standing` and the USD layer carry the bands; standings
   recorded before them open with "not recorded".
 
+**The mesh a structural band holds on.** No structural result converges on today's defaults
+([convergence](validation.md#convergence-on-todays-defaults)): where one settles it settles above
+the measurement, and the meshes that agree are the coarse end. So each structural band records the
+mesh, and where it matters the step, it was derived on (`derivedMesh`), and holds only there:
+Wu's slabs on 8 elements through, Chiquito's on 6 to 12 (on 16 the slab holes), Hupfauf's debris
+on 12, the chamber on 0.1 m elements, OA1's strength on 12 to 48, spanning the meshes either side
+of the scene's, and the contest slab on 4 to 32, reaching the 117% its peak rises towards. On any
+other mesh the band is withheld and the standing says why; the popover, the headless summary and
+the USD layer give the mesh. The advisor varies the air only, and says that a finer structural
+mesh is not shown to bring a structure closer to its test. A safe side found on one mesh is not
+claimed for another: the shells' 124% is the slab test's one mesh.
+
 **Uncertain inputs.** Where the ensemble ran a band's case with its inputs sampled (see
 [the model's spread from uncertain inputs](validation.md#the-models-spread-from-uncertain-inputs)),
 the band carries that spread: the slab's 12%, Wu's 4%, the close-in gauges' 8%, and 2% and 1% for a
