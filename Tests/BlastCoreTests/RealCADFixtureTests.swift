@@ -5,7 +5,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Real CAD export fixtures")
+@Suite("Real CAD export fixtures", .timeLimit(.minutes(120)))
 struct RealCADFixtureTests {
     private var directory: URL {
         URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()

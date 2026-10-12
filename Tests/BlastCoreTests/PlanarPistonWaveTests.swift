@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Analytical planar piston waves")
+@Suite("Analytical planar piston waves", .timeLimit(.minutes(120)))
 struct PlanarPistonWaveTests {
     @Test("Four-grid numerical profiles reduce pressure error against analytical cell averages")
     func gridStudy() throws {

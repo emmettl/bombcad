@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Moving pressure surface/time quadrature")
+@Suite("Moving pressure surface/time quadrature", .timeLimit(.minutes(120)))
 struct MovingPressureQuadratureTests {
     @Test("Affine surface pressure with a quadratic envelope recovers exact moving torque and work")
     func patch() throws {

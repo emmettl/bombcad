@@ -85,7 +85,7 @@ private func table(_ link: String, header: String) throws -> [[String]] {
 
 private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrences(of: "%", with: "")) }
 
-@Suite struct ErrorBandTests {
+@Suite(.timeLimit(.minutes(120))) struct ErrorBandTests {
     /// Parsed: the Kingery–Bulmash, afterburning and close-in tables are read from the record and
     /// must equal the code's, cell for cell.
     @Test func tablesMirrorTheValidationRecord() throws {

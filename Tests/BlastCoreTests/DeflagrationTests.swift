@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// A premixed gas cloud burning behind a flame front, and vent panels.
-@Suite("Deflagration")
+@Suite("Deflagration", .gpuThreads)
 struct DeflagrationTests {
     let device: MTLDevice
 

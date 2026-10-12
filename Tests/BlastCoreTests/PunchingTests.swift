@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// Punching of flat slabs at their columns, and the bars that hold a slab once it has punched.
-@Suite("Punching")
+@Suite("Punching", .gpuThreads)
 struct PunchingTests {
     let device: MTLDevice
 
@@ -150,7 +150,7 @@ struct PunchingTests {
 }
 
 /// Members of shells and beams failing in shear across their section.
-@Suite("Sectional shear")
+@Suite("Sectional shear", .gpuThreads)
 struct SectionalShearTests {
     let device: MTLDevice
 

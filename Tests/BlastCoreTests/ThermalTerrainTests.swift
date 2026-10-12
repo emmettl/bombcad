@@ -5,7 +5,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("The terrain hides the fireball from what is behind it")
+@Suite("The terrain hides the fireball from what is behind it", .gpuThreads)
 struct ThermalTerrainTests {
     private static let gpu = MTLCreateSystemDefaultDevice()?.supportsRaytracing == true
     private let domain = SIMD3<Float>(100, 100, 50)

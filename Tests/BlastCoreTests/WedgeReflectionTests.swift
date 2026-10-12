@@ -5,7 +5,7 @@ import Testing
 @testable import BlastCore
 
 /// A plane shock on a slope: the theory, and the air solver against it.
-@Suite("Wedge reflection")
+@Suite("Wedge reflection", .gpuThreads)
 struct WedgeReflectionTests {
     private let degrees = 180 / Double.pi
 

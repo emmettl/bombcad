@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// Bodies meshed partly with solid elements and partly with shells, tied together.
-@Suite("Mixed bodies")
+@Suite("Mixed bodies", .gpuThreads)
 struct MixedStructureTests {
     let device: MTLDevice
 

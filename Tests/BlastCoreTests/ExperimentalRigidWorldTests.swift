@@ -5,7 +5,7 @@ import simd
 @testable import BlastCore
 
 /// Several freestanding objects with one in the air. Consistency checks only.
-@Suite("Experimental rigid-world coupling", .serialized)
+@Suite("Experimental rigid-world coupling", .serialized, .gpuThreads)
 struct ExperimentalRigidWorldTests {
     let device: MTLDevice
     init() throws { device = try #require(MTLCreateSystemDefaultDevice()) }

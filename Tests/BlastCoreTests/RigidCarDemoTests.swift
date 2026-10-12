@@ -2,7 +2,7 @@ import Testing
 
 @testable import BlastCore
 
-@Suite("Rigid car demo recordings")
+@Suite("Rigid car demo recordings", .timeLimit(.minutes(120)))
 struct RigidCarDemoTests {
     @Test("The car replay cases are finite, stay above the ground and reach their intended outcomes")
     func recordings() throws {

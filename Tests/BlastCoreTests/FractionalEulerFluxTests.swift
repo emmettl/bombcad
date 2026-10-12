@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Stationary fractional Euler flux")
+@Suite("Stationary fractional Euler flux", .timeLimit(.minutes(120)))
 struct FractionalEulerFluxTests {
     private let faces = (0..<8).map {
         FractionalEulerFlux.Face(a: $0, b: ($0 + 1) % 8, normal: SIMD3(1, 0, 0), area: 0.01)

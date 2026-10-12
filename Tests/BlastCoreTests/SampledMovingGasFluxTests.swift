@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Sampled moving gas wall flux")
+@Suite("Sampled moving gas wall flux", .timeLimit(.minutes(120)))
 struct SampledMovingGasFluxTests {
     @Test("Sub-resolution corner contacts preserve canonical geometry moments with a positive sample")
     func tinyContact() throws {

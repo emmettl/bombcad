@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// Masonry meshed as units and mortar joints.
-@Suite("Masonry units and joints")
+@Suite("Masonry units and joints", .gpuThreads)
 struct MasonryTests {
     let device: MTLDevice
 

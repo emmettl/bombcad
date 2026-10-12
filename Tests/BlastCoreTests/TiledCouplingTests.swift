@@ -4,7 +4,7 @@ import Testing
 
 @testable import BlastCore
 
-@Suite("Local body coupling", .serialized)
+@Suite("Local body coupling", .serialized, .gpuThreads)
 struct TiledCouplingTests {
     func configuration(_ layout: BodyCouplingLayout, refinement: Int = 1, skip: Bool = false)
         -> SolverConfiguration
