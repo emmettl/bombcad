@@ -852,6 +852,37 @@ DTIC ADA532249 and ADA532261 (Kasun-III) and ADA048003 (Pre-Dice Throw II), whic
 browser check. Keys's 2016 thesis, behind a bot check, was saved by the user and is now in
 `Keys2016`.
 
+## Digitised from the supplied sources
+
+The copies the user supplied (Schwer, Swisdak, Cooper, UFC 3-340-02, Xu and Lu; their terms
+allow small derived figures with citation) were read on 12 October 2026 for whatever a
+comparison could still use, by `Scripts/digitise-sources` into `Fixtures/` (each folder's README
+gives pages, units, method and error). Kinney and Graham's copy is private reference only and
+was not digitised. What each enables (none run yet):
+
+| Fixture | From | Enables | Tests | Run needed |
+|---------|------|---------|-------|------------|
+| `UFC-3-340-02/negative-phase.json` | Figs 2-8, 2-16: the negative phase of free-air and surface bursts against Z, six parameters each (±1–1.5%) | The air solver's negative phase, never compared: underpressure, its impulse and duration at the gauges of `blastbench validate` | Limitations 3 and 4 (the air), and the open faces that drained Keys's air 15–20 kPa below ambient ([brick walls](validation.md#brick-walls-debris)); the suction that pulls walls and debris back towards the charge | None new for the surface burst: the existing `validate` runs' gauge histories, read past the positive phase; a domain clear enough not to drain (the Keys runs needed 6 m) |
+| `Schwer2015/displacement-histories.json` | Schwer's Fig 4: the three measured histories, 1a, its repeat 1aa and the lower 1b (0.5 ms, checked to 1% of his stated peaks) | The slab's whole history under the repeat and the lower shot, where the record has peaks read by hand; the repeat's scatter as a band | Limitations 1 and 8 (structural response, rebound): the lower shot's 21–29 ms plateau and 54 mm residual, the repeat's 113 mm | None: `blastbench slab` and `--load-scale 0.764` runs already made; an RMS against each history |
+| `XuLu2016/contest-slab-figure-6.json` | Xu and Lu's Fig 6: the same test's deflection and applied force, read on its imperial axes | A second, independent reading of load 1a's record and history: it confirms `SlabBenchmark`'s hand-read load within about 1 psi and history within 1 mm | The load's uncertainty, which moves the slab's peak 13–14% per 5% | None |
+| `UFC-3-340-02/oblique-reflection.json` | Figs 2-9, 2-10: reflected pressure and impulse against angle of incidence, ten heights of burst (vector, 0.14%) | Oblique and Mach reflection on a rigid surface, which the Kingery–Bulmash comparisons (side-on and square-on) never test | Limitation 4 and the staircase of moving solids (6), the Mach stem the terrain runs delayed | An air burst over rigid ground at a few scaled heights, gauges on the ground out to 85°: a new `validate` case |
+| `UFC-3-340-02/vented-gas-impulse.json` | Figs 2-153 to 2-163: gas impulse against vent area, four loading densities, three reflected impulses, seven frangible covers (vector, 0.07%) | Vented rooms and cubicles, where `blastbench gas` compares only the closed room's peak | Limitation 3 (the gas in rooms, 48–114% of the design value) | A room with a vent of known area, with and without a frangible cover, at a few A/V^(2/3): a `gas` variant |
+| `Cooper1996/fragments.json` | Cooper's Table 27.2 (Mott B), Fig 27.13 (measured fragment counts of a cast iron bomb), Figs 27.15–27.18 (Hoerner's drag against Mach) | The fragment model's first comparison with measured masses (its Mott law against Fig 27.13), and drag that changes with Mach for fragments and debris (now a fixed cube drag of 1) | [Fragments](fragments.md), never compared with a test; limitation 5 (debris "pushed crudely") | The bomb's geometry and explosive are not given in Cooper (his ref. 16); the drag curves need a code change before any run |
+
+Swisdak's tables are already in use (`KingeryBulmash.swift`, its Table 3 in `ScenarioTests`);
+his Table 7 adds only the safety standards' distances.
+
+**The two to run first.**
+1. **The negative phase** (UFC Figs 2-8 and 2-16), against the existing `blastbench validate`
+   gauges. It costs no new run beyond a clear enough domain, it has never been compared, and the
+   Keys walls showed what an air domain wrongly below ambient does to light structures; Fig
+   2-16's underpressure, impulse and duration at the 100 kg gauges' scaled distances would show
+   whether the open faces' drain is a fault of small domains alone.
+2. **The slab under all three shots** (Schwer's Fig 4), as RMS errors against each whole history
+   rather than peaks read by hand: the lower shot's plateau and residual, where the model is too
+   stiff (79–88% of the peak), and the repeat's scatter as the band within which load 1a's runs
+   should fall. It needs only the runs already made.
+
 ## Obtained
 
 Supplied by hand during development, and now in use. Copies of Cooper, Swisdak, Kinney and

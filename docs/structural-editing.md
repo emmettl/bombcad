@@ -98,10 +98,22 @@ report stays under **Edit layout → Structure from IFC**.
 - **Materials.** Read from the IFC's material names where they name one the solver has
   (concrete, with its grade if given, block, masonry, steel, glass). Elsewhere the stated
   default, flagged in the report, the standing and the parts list; choose a part's material
-  under Parts to replace it. Reinforcement is never read: none, or the offered 0.3% in each
-  face both ways, marked as assumed. Past the solver's eight materials (flanged steel sections
-  each have one), the nearest of a kind are merged, and the report gives the largest stiffness
+  under Parts to replace it. Past the solver's eight materials (flanged steel sections each
+  have one), the nearest of a kind are merged, and the report gives the largest stiffness
   change.
+- **Reinforcement.** Read from the IFC where it gives it, member by member
+  (`IFCReinforcement`). Reinforcing bars, meshes and tendons are converted alone and each is
+  measured from its shape (a swept tube's diameter is 4V/S, its length S/πd, whatever its
+  path), its size taken from the IFC (its own or its type's, read in the project's unit,
+  millimetres or centimetres, whichever fits the shape) where it gives one. A bar goes to the
+  element the IFC nests it in, else to the concrete element holding its middle or most of it.
+  In a shell, its bars become a mat in each face, their steel per metre each way at their
+  weighted depth (links through the thickness are left out). Along a beam, they become at
+  most eight bars, merged at its corners and the middles of its sides, and the rest are ties.
+  An element with only `Pset_ConcreteElementGeneral` takes its area or mass ratio at its
+  cover, or at 30 mm, stated; covers no bar could have are left out. Elsewhere concrete
+  shells take the offered 0.3% in each face both ways, or none, and beams none; each member
+  says which, flagged where it is not the IFC's. Prestress in tendons is ignored.
 - **Connections.** Members that meet are tied rigidly (their shells share nodes) after gaps
   up to the chosen tolerance (100 mm by default) are closed, measured to a wall's whole
   thickness where only its structural layer is meshed. Every tie is listed; untick one in the
@@ -130,8 +142,22 @@ the building again; saved projects keep the options and report (scene encoding v
 The shell model's bands apply only where the structure is like what was compared: reinforced
 concrete walls and slabs, read from the IFC, all tied and on a modelled base. Otherwise the
 standing names what differs (assumed materials, beams from IFC sections, other materials,
-unreinforced concrete, untied pairs, walls tied where the IFC has no foundation) and gives no
-band.
+concrete unreinforced or on the default's steel rather than the IFC's, untied pairs, walls
+tied where the IFC has no foundation) and gives no band.
+
+**How often IFC files carry reinforcement.** Over the 385 IFC files of the import corpus
+(buildingSMART's samples and community files, and IfcOpenShell's issue files;
+`Scripts/ifc-reinforcement-survey.py`), 62 have concrete. Of them, 3 give anything about
+reinforcement that could be read, and 23 name their concrete reinforced ("gewapend", "RC")
+with nothing to say how. Reinforcing bars appear in 49 files, nearly all IfcOpenShell's
+one-bar bug reports and buildingSMART's two specification examples. The only real building
+with bars, a Tekla export of precast balconies, has six, all in a thermal-break connector
+(not concrete), and the specification's bar cage sweeps its disks along arcs the converter
+does not make. Of 148 reinforcing elements the converter makes 113, and 4 land in a concrete
+element. The one file with reinforcement properties gives a 50 m cover, which is left out.
+In practice, then, reinforcement comes from the default unless a structural model is
+exported with its bars (`IFCReinforcementCorpusTests`, with `BOMBCAD_IFC_CORPUS` set, reads
+a corpus and reports per file).
 
 ## Persisted ownership
 

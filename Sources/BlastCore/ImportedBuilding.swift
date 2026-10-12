@@ -141,9 +141,13 @@ extension ImportedMesh {
         /// Its material layers as the IFC gives them (for meshing it as a structure,
         /// `IFCStructure`); nil where none were read.
         public var materials: [IFCStructure.Layer]?
+        /// The reinforcement the IFC gives it: bars lying in it and its reinforcement properties
+        /// (`IFCReinforcement`); nil where it gives none.
+        public var reinforcement: IFCReinforcement.Hosted?
         public init(
             globalID: String, name: String, ifcClass: String, storey: String?, assembly: Assembly? = nil,
-            mesh: ImportedMesh, materials: [IFCStructure.Layer]? = nil
+            mesh: ImportedMesh, materials: [IFCStructure.Layer]? = nil,
+            reinforcement: IFCReinforcement.Hosted? = nil
         ) {
             self.globalID = globalID
             self.name = name
@@ -152,6 +156,7 @@ extension ImportedMesh {
             self.assembly = assembly
             self.mesh = mesh
             self.materials = materials
+            self.reinforcement = reinforcement
         }
         /// Stable across ordering and tessellation changes; explicitly check collisions on construction.
         public var partID: Int {
