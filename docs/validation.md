@@ -3527,6 +3527,17 @@ hid. Hupfauf's speeds move most because that case runs on a quarter of the step,
 window was a tenth as long as now; most come closer to the thesis's fit, and SN174's moves away.
 The open-air validation suite (`blastbench validate`) has no structure and is unchanged.
 
+**Results after failure move with the build.** Structure.metal is compiled with fast math, so
+any edit to it, even one that changes no arithmetic, can change how the compiler rounds what it
+did not touch. A given binary repeats itself bit for bit, but results after failure, where one
+element's removal decides the next, move between builds. With an unused field added to the
+element state, the quick case matrix (2026-10-13, coarse meshes) moved by: Hupfauf SN131 from
+254 to 758 elements failed, SN142's far face from 145 to 119 m/s, and Janney's moment at 60 mm,
+past failure, from 9.7 to 29.4 kN m (a change that does alter the arithmetic of blockwork only
+gave 5.4). Everything up to failure was unchanged, and `blastbench digest` with it. So the
+post-failure contact numbers and residuals in this document are one draw among builds, with at
+least that scatter.
+
 **What it means.** No structural result has been shown to converge on today's defaults with
 the measurements inside the change. Where a result settles it does so above the measurement,
 and the meshes quoted elsewhere in this document as agreeing are the coarse ones: 8 for the
