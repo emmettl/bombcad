@@ -1,3 +1,4 @@
+import CompressibleFlow
 import simd
 
 /// Capacity-constrained displacement reference on an adjacent-face graph. Face area

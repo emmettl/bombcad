@@ -1,3 +1,4 @@
+import CompressibleFlow
 import Foundation
 import simd
 

@@ -132,8 +132,8 @@ struct FireballRiseTests {
         let dark = CloudRise.follow(start, spec: spec, atmosphere: atmosphere.callAsFunction, at: [0, 600])
         spec.emissivity = 1
         let bright = CloudRise.follow(start, spec: spec, atmosphere: atmosphere.callAsFunction, at: [0, 600])
-        let high = try? #require(dark.stabilised)
-        let low = try? #require(bright.stabilised)
+        let high = dark.stabilised
+        let low = bright.stabilised
         #expect((low?.height ?? 1) < (high?.height ?? 0))
     }
 
