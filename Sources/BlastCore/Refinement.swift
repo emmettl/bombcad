@@ -127,6 +127,9 @@ final class AirRefinement {
     /// state back into its first buffer after an odd number of sweeps, one per parent substep.
     private let substepArguments: MTLBuffer
     private let keepArguments: MTLBuffer
+    /// With the solver's detailed GPU profiling, switches to an encoder of the stage's own and
+    /// returns it.
+    var stage: ((String) -> MTLComputeCommandEncoder)?
     private let grantPipeline: MTLComputePipelineState
     /// Per group of `allocationGroup` blocks: how many ask for a new patch, then where their
     /// requests start among all.
@@ -318,6 +321,11 @@ final class AirRefinement {
         return 0
     }
 
+    /// With detailed profiling, moves `encoder` on to this level's stage `name`.
+    private func stage(_ name: String, _ encoder: inout MTLComputeCommandEncoder) {
+        if let stage { encoder = stage("L\(parent == nil ? 1 : 2) " + name) }
+    }
+
     /// Binds this level's own part of `buffer`.
     private func bind(_ encoder: MTLComputeCommandEncoder, _ buffer: MTLBuffer, _ index: Int) {
         encoder.setBuffer(buffer, offset: offset(of: buffer), index: index)
@@ -371,9 +379,11 @@ final class AirRefinement {
         _ encoder: MTLComputeCommandEncoder, threshold: UInt32,
         interaction: MTLBuffer, uniforms: SolverUniforms
     ) {
+        var encoder = encoder
         guard let combinedBodyOccupancy, let bodyComposePipeline else { return }
         var threshold = threshold
         var uniforms = uniforms
+        stage("remask", &encoder)
         encoder.setComputePipelineState(bodyComposePipeline)
         bind(encoder, fineOccupancy, 0)
         encoder.setBuffer(combinedBodyOccupancy, offset: 0, index: 1)
@@ -387,8 +397,10 @@ final class AirRefinement {
     }
 
     func encodePublishBodies(_ encoder: MTLComputeCommandEncoder, uniforms: SolverUniforms) {
+        var encoder = encoder
         guard let combinedBodyOccupancy, let bodyPublishPipeline else { return }
         var uniforms = uniforms
+        stage("remask", &encoder)
         encoder.setComputePipelineState(bodyPublishPipeline)
         bind(encoder, fineOccupancy, 0)
         encoder.setBuffer(combinedBodyOccupancy, offset: 0, index: 1)
@@ -681,8 +693,10 @@ final class AirRefinement {
         _ encoder: MTLComputeCommandEncoder, parent: ParentView, uniforms: SolverUniforms, control: MTLBuffer,
         dispatches: (MTLBuffer, Int)? = nil
     ) {
+        var encoder = encoder
         let dispatches = dispatches ?? (arguments, 0)
         var uniforms = uniforms
+        stage("halo", &encoder)
         encoder.setComputePipelineState(haloPipeline)
         set(encoder, parent.state, 0)
         encoder.setBuffer(halo, offset: 0, index: 1)
@@ -712,8 +726,10 @@ final class AirRefinement {
         uniforms: SolverUniforms,
         child: AirRefinement?
     ) {
+        var encoder = encoder
         var uniforms = uniforms
         var levels: UInt32 = child == nil ? 1 : 2
+        stage("steps", &encoder)
         encoder.setComputePipelineState(levelStepsPipeline)
         encoder.setBuffer(control, offset: 0, index: 0)
         encoder.setBuffer(maxSpeed, offset: 0, index: 1)
@@ -785,6 +801,7 @@ final class AirRefinement {
         control: MTLBuffer, maxSpeed: MTLBuffer, uniforms: SolverUniforms, child: Child? = nil,
         parentSubstep: Int? = nil
     ) {
+        var encoder = encoder
         var uniforms = uniforms
         let ownSteps = uniforms.ownSteps != 0
         let sweepPipeline = sweepPipeline(for: AirModel(rawValue: uniforms.airModel))
@@ -813,6 +830,7 @@ final class AirRefinement {
                 let source = fine[sweep % 2]
                 let sourceOffset = sweep % 2 == 0 ? offset(of: fine[0]) : 0
 
+                stage("ghosts", &encoder)
                 encoder.setComputePipelineState(withGravity(ghostPipeline, "refineGhosts"))
                 encoder.setBuffer(source, offset: sourceOffset, index: 0)
                 encoder.setBuffer(ghosts, offset: 0, index: 1)
@@ -840,6 +858,7 @@ final class AirRefinement {
                     indirectBuffer: dispatches.0, indirectBufferOffset: dispatches.1 + 60,
                     threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
 
+                stage("sweeps", &encoder)
                 encoder.setComputePipelineState(sweepPipeline)
                 encoder.setBuffer(source, offset: sourceOffset, index: 0)
                 let destination = fine[1 - sweep % 2]
@@ -895,6 +914,7 @@ final class AirRefinement {
         precondition(sweep.isMultiple(of: 2), "A coarse step must take an even number of fine sweeps")
         if ownSteps {
             // After an odd number of sweeps taken, the state is in the second buffer.
+            stage("keep", &encoder)
             encoder.setComputePipelineState(keepPipeline)
             bind(encoder, fine[0], 0)
             encoder.setBuffer(fine[1], offset: 0, index: 1)
@@ -914,8 +934,10 @@ final class AirRefinement {
         _ encoder: MTLComputeCommandEncoder, axes: [Int], parent: ParentView, control: MTLBuffer,
         uniforms: SolverUniforms, dispatches: (MTLBuffer, Int)? = nil
     ) {
+        var encoder = encoder
         var uniforms = uniforms
         let dispatches = dispatches ?? (arguments, 0)
+        stage("reflux", &encoder)
         encoder.setComputePipelineState(withGravity(refluxPipeline, "refineReflux"))
         set(encoder, parent.state, 0)
         set(encoder, parent.mask, 1)
@@ -939,6 +961,7 @@ final class AirRefinement {
                 threadsPerThreadgroup: MTLSize(
                     width: 2 * Self.patchSize * Self.patchSize, height: 1, depth: 1))
         }
+        stage("restrict", &encoder)
         encoder.setComputePipelineState(restrictPipeline)
         set(encoder, parent.state, 0)
         set(encoder, parent.mask, 1)
@@ -966,8 +989,10 @@ final class AirRefinement {
     func encodeRemask(
         _ encoder: MTLComputeCommandEncoder, parent: ParentView, threshold: UInt32, uniforms: SolverUniforms
     ) {
+        var encoder = encoder
         var uniforms = uniforms
         var threshold = threshold
+        stage("remask", &encoder)
         encoder.setComputePipelineState(remaskPreparePipeline)
         bind(encoder, fineMask, 0)
         encoder.setBuffer(fineWall, offset: 0, index: 1)
@@ -984,6 +1009,7 @@ final class AirRefinement {
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 72,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
+        stage("remask", &encoder)
         encoder.setComputePipelineState(remaskApplyPipeline)
         bind(encoder, fineMask, 0)
         bind(encoder, fineOccupancy, 1)
@@ -999,7 +1025,9 @@ final class AirRefinement {
     func encodeSync(
         _ encoder: MTLComputeCommandEncoder, parent: ParentView, control: MTLBuffer, uniforms: SolverUniforms
     ) {
+        var encoder = encoder
         var uniforms = uniforms
+        stage("sync", &encoder)
         encoder.setComputePipelineState(syncPipeline)
         bind(encoder, fine[0], 0)
         set(encoder, parent.state, 1)
@@ -1025,9 +1053,11 @@ final class AirRefinement {
         uniforms: SolverUniforms,
         boxDefinition: MTLBuffer? = nil
     ) {
+        var encoder = encoder
         var uniforms = uniforms
         encoder.setBuffer(boxDefinition ?? wanted, offset: 0, index: 6)
         if let tiles {
+            stage("flag", &encoder)
             encoder.setComputePipelineState(flagTilesPipeline)
             encoder.setBuffer(coarse, offset: 0, index: 0)
             encoder.setBuffer(mask, offset: 0, index: 1)
@@ -1038,6 +1068,7 @@ final class AirRefinement {
             encoder.dispatchThreadgroups(
                 indirectBuffer: tiles.dispatch, indirectBufferOffset: 0, threadsPerThreadgroup: tiles.threads)
         } else {
+            stage("flag", &encoder)
             encoder.setComputePipelineState(flagPipeline)
             encoder.setBuffer(coarse, offset: 0, index: 0)
             encoder.setBuffer(mask, offset: 0, index: 1)
@@ -1058,9 +1089,11 @@ final class AirRefinement {
     func encodeFlagFromParent(
         _ encoder: MTLComputeCommandEncoder, control: MTLBuffer, uniforms: SolverUniforms
     ) {
+        var encoder = encoder
         guard let parent else { return }
         var uniforms = uniforms
         let view = parent.view()
+        stage("flag", &encoder)
         encoder.setComputePipelineState(flagFinePipeline)
         set(encoder, view.state, 0)
         set(encoder, view.mask, 1)
@@ -1078,8 +1111,10 @@ final class AirRefinement {
     /// Step 7a', after the parent is flagged too: the parent's blocks around those this level
     /// wants or keeps are wanted, so that it stays nested.
     func encodeNest(_ encoder: MTLComputeCommandEncoder, control: MTLBuffer, uniforms: SolverUniforms) {
+        var encoder = encoder
         guard let parent else { return }
         var uniforms = uniforms
+        stage("nest", &encoder)
         encoder.setComputePipelineState(nestPipeline)
         encoder.setBuffer(wanted, offset: 0, index: 0)
         bind(encoder, patchOfTile, 1)
@@ -1098,9 +1133,11 @@ final class AirRefinement {
         _ encoder: MTLComputeCommandEncoder, parent: ParentView, control: MTLBuffer, tileFlags: MTLBuffer,
         uniforms: SolverUniforms, boxDefinition: MTLBuffer? = nil, maxSpeed: MTLBuffer? = nil
     ) {
+        var encoder = encoder
         var uniforms = uniforms
         let perTile = MTLSize(width: tileDims.x * tileDims.y * tileDims.z, height: 1, depth: 1)
 
+        stage("place", &encoder)
         encoder.setComputePipelineState(releasePipeline)
         bind(encoder, patchOfTile, 0)
         encoder.setBuffer(tileOfPatch, offset: 0, index: 1)
@@ -1116,6 +1153,7 @@ final class AirRefinement {
         let groups = MTLSize(
             width: (perTile.width + Self.allocationGroup - 1) / Self.allocationGroup, height: 1, depth: 1)
         let groupSize = MTLSize(width: Self.allocationGroup, height: 1, depth: 1)
+        stage("place", &encoder)
         encoder.setComputePipelineState(requestPipeline)
         bind(encoder, patchOfTile, 0)
         encoder.setBuffer(wanted, offset: 0, index: 1)
@@ -1124,6 +1162,7 @@ final class AirRefinement {
         set(encoder, parent.patches, 4)
         encoder.dispatchThreadgroups(groups, threadsPerThreadgroup: groupSize)
 
+        stage("place", &encoder)
         encoder.setComputePipelineState(grantPipeline)
         encoder.setBuffer(groupCounts, offset: 0, index: 0)
         encoder.setBuffer(counters, offset: 0, index: 1)
@@ -1133,6 +1172,7 @@ final class AirRefinement {
             MTLSize(width: 1, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
 
+        stage("place", &encoder)
         encoder.setComputePipelineState(allocatePipeline)
         bind(encoder, patchOfTile, 0)
         encoder.setBuffer(tileOfPatch, offset: 0, index: 1)
@@ -1148,6 +1188,7 @@ final class AirRefinement {
         encoder.setBuffer(groupCounts, offset: 0, index: 11)
         encoder.dispatchThreadgroups(groups, threadsPerThreadgroup: groupSize)
 
+        stage("place", &encoder)
         encoder.setComputePipelineState(listPipeline)
         encoder.setBuffer(tileOfPatch, offset: 0, index: 0)
         encoder.setBuffer(patchList, offset: 0, index: 1)
@@ -1156,6 +1197,7 @@ final class AirRefinement {
         encoder.dispatchThreads(
             MTLSize(width: maxPatches, height: 1, depth: 1), threadsPerThreadgroup: group(listPipeline, 256))
 
+        stage("place", &encoder)
         encoder.setComputePipelineState(argumentsPipeline)
         encoder.setBuffer(counters, offset: 0, index: 0)
         encoder.setBuffer(arguments, offset: 0, index: 1)
@@ -1165,6 +1207,7 @@ final class AirRefinement {
             MTLSize(width: 1, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
 
+        stage("fill", &encoder)
         encoder.setComputePipelineState(withGravity(fillPipeline, "refineFill"))
         bind(encoder, fine[0], 0)
         set(encoder, parent.state, 1)
@@ -1199,6 +1242,7 @@ final class AirRefinement {
             indirectBuffer: arguments, indirectBufferOffset: 48,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
 
+        stage("fill", &encoder)
         encoder.setComputePipelineState(conservePipeline)
         bind(encoder, fine[0], 0)
         set(encoder, parent.mask, 1)
