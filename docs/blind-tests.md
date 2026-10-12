@@ -187,6 +187,6 @@ reads as they stand, by a rule fixed before any prediction.
 
 | # | Test | Frozen commit | Predictions committed | Revealed | Result |
 |---|---|---|---|---|---|
-| 1 | Hrynyk 2013, plain slabs TH2, TH6, TH7 | `1c85774` (2026-10-11) | | | |
+| 1 | Hrynyk 2013, plain slabs TH2, TH6, TH7 | `1c85774` (2026-10-11) | `69d5352` (2026-10-12) | 2026-10-12, sealed folder checked against its manifest | *Between*: first impacts 1.15–1.29 of the measured peak; later impacts 0.56–0.83; no punching predicted where all three slabs punched ([validation](validation.md#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight)) |
 | 2 | Mendonça et al. 2020, unretrofitted slabs 1, 2, 4, 5, 7, 9, 10 | named when its predictor starts, after test 1's reveal | | | |
 | 3 | *Reserved candidate:* K. A. Reynolds, UMKC MS thesis, 2015 (probably the contest's high-strength slabs, on the calibrated slab's rig). Unread; moved to `/Volumes/StudioData/bombcad/blind/reynolds-sealed/` on 2026-10-11. No session opens it, or the contest's high-strength results anywhere, until the judge has assessed it after test 1's reveal. A. K. Vasudevan's UMKC MS thesis (2012), on the contest's slab series, sealed unread beside it in `/Volumes/StudioData/bombcad/blind/vasudevan-sealed/` as a possible companion or source of leaks; released back to `data/` if the assessment finds it unrelated | | | | |

@@ -643,6 +643,9 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
                 }),
                 element.name.count <= 200, element.ifcClass.count <= 100,
                 (element.storey?.count ?? 0) <= 200,
+                element.assembly.map({ $0.id.count == 22 && $0.name.count <= 200 && $0.ifcClass.count <= 100 }
+                )
+                    ?? true,
                 element.mesh.buildingElements == nil,
                 triangles.count + element.mesh.triangles.count <= 100_000
             else {

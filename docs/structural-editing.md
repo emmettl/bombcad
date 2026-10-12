@@ -91,13 +91,16 @@ report stays under **Edit layout → Structure from IFC**.
   wide-flange shape of its area and depth. Footings become footings under the members on
   them, set into the soil by their depth. Holes through a shell, openings, doors and unglazed
   windows become openings; a window whose materials or name say glass becomes a 6 mm pane of
-  annealed glass on its wall's midsurface. Inclined, curved and irregular elements, finishes
+  annealed glass on its wall's midsurface. An element built of parts (blocks, planks) is one
+  member, square where the parts holding nine tenths of its volume are. Inclined, curved and irregular elements, finishes
   (stud partitions, flooring, tiles) and slabs on grade that walls pass through stay rigid
   obstacles, each with its reason.
 - **Materials.** Read from the IFC's material names where they name one the solver has
   (concrete, with its grade if given, block, masonry, steel, glass). Elsewhere the stated
   default, flagged in the report, the standing and the parts list; choose a part's material
-  under Parts to replace it.
+  under Parts to replace it. Past the solver's eight materials (flanged steel sections each
+  have one), the nearest of a kind are merged, and the report gives the largest stiffness
+  change.
 - **Reinforcement.** Read from the IFC where it gives it, member by member
   (`IFCReinforcement`). Reinforcing bars, meshes and tendons are converted alone and each is
   measured from its shape (a swept tube's diameter is 4V/S, its length S/πd, whatever its
@@ -114,14 +117,19 @@ report stays under **Edit layout → Structure from IFC**.
 - **Connections.** Members that meet are tied rigidly (their shells share nodes) after gaps
   up to the chosen tolerance (100 mm by default) are closed, measured to a wall's whole
   thickness where only its structural layer is meshed. Every tie is listed; untick one in the
-  import sheet to leave that pair untied, the second member drawn back 10 mm.
+  import sheet to leave that pair untied, the second member drawn back from the first: at
+  least 10 mm, and far enough that its end lies over half an element from the first's
+  midsurface, as the mesh would otherwise join it there.
 - **Supports.** Members on a footing stand on their own footing over the default sand, tied
   by the chosen base connection (starter bars by default; a construction joint or resting on
   the ground). Without footings the base is tied to the ground by it. Members standing on a
   slab on grade, and walls and columns of the lowest storey with nothing under them in the IFC
   (their foundation left out), are tied to the ground at their foot the same way; slabs on the
   ground rest on it. Each is listed. Change them under **Restraints** once imported; that
-  detaches the structure from its source.
+  detaches the structure from its source. Members tied to nothing that stands on a support
+  (found from the mesh, as the solver ties and holds it) will fall under gravity: the report
+  lists them, with their share of the structure, and the standing names them. Most real
+  buildings in the [IFC corpus](ifc-import-corpus.md#under-gravity) have some.
 
 **Checks.** The small house, the structural house and the duplex's first storey import,
 mesh and stand under gravity: the duplex (6,201 shells and 120 beams) sags 1.2 mm at its

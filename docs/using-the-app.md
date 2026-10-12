@@ -95,6 +95,11 @@ import. Up to 1,024 supported elements can be chosen from a 20,000-entry decompo
 Choose IFC elements in the preview or source inspector to revise choices from retained IFC bytes.
 Changing the subset preserves surviving elements’ simulation positions using the retained IFC coordinate origin.
 Newly included geometry outside the domain or below ground stays blocked until placement is adjusted explicitly.
+An element whose geometry is all in its aggregated parts (a wall of blocks, a slab of precast
+planks drawn as proxies) imports its parts, each named with its element. Products that no storey
+contains are found in the IFC file itself and imported without a storey, and a note says so.
+Where the converter cannot find the units, the length unit of the file's one project is applied,
+and a note says so. A bad or repeated GlobalId leaves out its element, not the file.
 The Parts browser retains element names, types, storey labels and GlobalIds, searchable by any
 of these. Source units and world placements are converted to metres, Z up, then rebased from
 large coordinates before Float conversion. The original coordinate origin remains recorded.
@@ -113,7 +118,7 @@ separately. Inventory follows the decomposition tree; uncontained products may b
 selected solids are collected into one review with names, GlobalIds and repair reasons. Select
 reviewed failures to exclude and retry, or export the complete geometry review. No partial geometry
 result can be applied while invalid meshes remain. Exclusion is an explicit action.
-Undetermined converter units block import to prevent incorrect scale. Rigid imports infer no materials, supports or connections.
+Units that neither the converter nor the file's one project determines block import to prevent incorrect scale. Rigid imports infer no materials, supports or connections. The notes list the classes left out as unsupported, and a file with nothing supported says what it holds. [IFC import over a corpus](ifc-import-corpus.md) records what 385 open IFC files did.
 
 An attached rigid import can become an **exposure-only envelope** (Run ▸ Imported geometry ▸ Use
 as Exposure-only Envelope, or Use All for a group): its sampled boxes as walls and roofs, IFC windows
