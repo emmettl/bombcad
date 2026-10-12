@@ -9,6 +9,7 @@ struct GroundShockSection: View {
     @Bindable var model: SimulationModel
 
     private static let counts = [8, 16, 32, 64]
+
     private static let deepest: [Float] = [3, 5, 10, 20]
 
     /// What lies under the top layer, as the app offers it.
@@ -98,7 +99,9 @@ struct GroundShockSection: View {
                     }
                 }
                 Picker("Points", selection: line(\.count)) {
-                    ForEach(Self.counts, id: \.self) { Text("\($0)").tag($0) }
+                    ForEach(pickerChoices(Self.counts, holding: line(\.count).wrappedValue), id: \.self) {
+                        Text("\($0)").tag($0)
+                    }
                 }
                 coordinate("From x", \.from.x, axis: 0)
                 coordinate("From y", \.from.y, axis: 1)

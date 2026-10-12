@@ -258,8 +258,8 @@ public enum ValidationTables {
             id: "slabShell", low: 1.24, high: 1.24, document: "validation.md#summary",
             quote: "shells 135 mm (124%)"),
         Figure(
-            id: "beamMoment", low: 0.98, high: 1.01, document: "validation.md#summary",
-            quote: "peak moment 98–101%, failing at 53–57 mm on 12 elements"),
+            id: "beamMoment", low: 0.95, high: 1.04, document: "validation.md#summary",
+            quote: "peak moment 104% on 12 elements, failing at 40 mm against 42 mm, 95% on 24"),
         Figure(
             id: "closeInPermanent", low: 0.33, high: 0.5, document: "validation.md#summary",
             quote: "the slab left a third to a half as far down as measured"),
@@ -858,6 +858,14 @@ extension StandingScene {
             if !untied.isEmpty {
                 differences.append(
                     "\(imported.name): \(untied.count) pair\(untied.count == 1 ? "" : "s") of members left untied"
+                )
+            }
+            let falling = report.members.filter {
+                $0.notes.contains { $0.contains("will fall under gravity") }
+            }
+            if !falling.isEmpty {
+                differences.append(
+                    "\(imported.name): \(falling.count) member\(falling.count == 1 ? "" : "s") tied to nothing supported"
                 )
             }
             let unfounded = report.supports.filter { $0.contains("foundation left out") }

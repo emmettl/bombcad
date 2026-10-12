@@ -283,6 +283,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case bondSlip
     case discreteBars
     case nonlocalCracking
+    case rateWindowInTime
     case rubbleParticles
     case pressedInterlock
     case hourglassSecant
@@ -355,6 +356,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .bondSlip: return any { $0.bondSlip != nil }
         case .discreteBars: return any { !$0.allDiscreteBars.isEmpty }
         case .nonlocalCracking: return !concrete.isEmpty && any { $0.crackAveraging != nil }
+        case .rateWindowInTime: return any { $0.strainRateWindow != nil }
         case .rubbleParticles: return !concrete.isEmpty && any { $0.rubbleParticles }
         case .pressedInterlock: return any { $0.pressedInterlock }
         case .hourglassSecant: return !concrete.isEmpty && any { $0.hourglassFollowsCracking }
@@ -613,6 +615,12 @@ public enum StandingTable {
                 note:
                     "Cracks soften by their strain averaged across their band; being judged on the case matrix.",
                 document: "concrete-model.md#nonlocal-cracking")
+        case .rateWindowInTime:
+            return Entry(
+                title: "Strain-rate window in time", affects: structure, limit: .approximation,
+                note: "The rate laws see the strain rate averaged over a fixed time rather than 50 steps: at "
+                    + "100 µs the contest slab no longer depends on the step, but failures still depend on the mesh.",
+                document: "concrete-model.md#a-strain-rate-window-in-time-an-option")
         case .rubbleParticles:
             return Entry(
                 title: "Rubble particles", affects: [.structuralDamage], limit: .approximation,
@@ -890,6 +898,7 @@ public enum StandingTable {
         "StructureModel.barsAsTrusses": .option([.discreteBars]),
         "StructureModel.trussDiameter": .option([.discreteBars]),
         "StructureModel.crackAveraging": .option([.nonlocalCracking]),
+        "StructureModel.strainRateWindow": .option([.rateWindowInTime]),
         "StructureModel.rubbleParticles": .option([.rubbleParticles]),
         "StructureModel.pressedInterlock": .option([.pressedInterlock]),
         "StructureModel.hourglassFollowsCracking": .option([.hourglassSecant]),
@@ -1548,6 +1557,12 @@ struct StandingScene {
                         + "reactions up to 40% low; the rate laws were chosen on these tests",
                     "validation.md#beams-struck-by-a-falling-weight"),
                 StandingEvidence(
+                    "Blind: Hrynyk's slabs struck repeatedly by a falling weight (frozen defaults, predicted "
+                        + "before the measurements were unsealed)",
+                    "First impacts 15–29% too flexible, as the calibrated beams were; once damaged, 17–44% too "
+                        + "stiff, springing back to a seventh to a third of the residual",
+                    "validation.md#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight"),
+                StandingEvidence(
                     "An internal explosion in a reinforced concrete chamber",
                     "Unsafe side, too stiff: its roof's edge left 25 mm up against 95 mm measured (a quarter) "
                         + "with the confined regime's pressed interlock, 15 mm without; not converged on 25 mm "
@@ -1671,6 +1686,11 @@ struct StandingScene {
                 "The beam without stirrups broken by the heavy drop as in the "
                     + "test, but damaged by a light one it survived",
                 "validation.md#beams-struck-by-a-falling-weight"),
+            StandingEvidence(
+                "Blind: Hrynyk's slabs struck repeatedly by a falling weight",
+                "Unsafe side: all three slabs punched in the test, by the second or third impact; the model "
+                    + "punched none in four",
+                "validation.md#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight"),
         ]
         var level = EvidenceLevel.approximation
         var summary =

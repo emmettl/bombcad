@@ -35,13 +35,14 @@ func runHrynyk(device: MTLDevice) throws {
         String(
             format:
                 "  %d  %3.0f kg  peak %6.2f mm at %5.1f ms  residual %6.2f (tail %6.2f) mm  reaction %6.1f kN "
-                + "(0.5 ms %6.1f)  force %6.1f kN (raw %6.1f)  left %@  penetration %5.2f mm  bottom gone %.3f m²  "
+                + "(0.5 ms %6.1f)  force %6.1f kN (raw %6.1f)  left %@%@  penetration %5.2f mm  bottom gone %.3f m²  "
                 + "layers %d/%d  %@  removed %d bare %d  %.0f s",
             impact.number, impact.mass, impact.peakDisplacement * 1000, impact.peakTime * 1000,
             impact.residualDisplacement * 1000, impact.residualTail * 1000, impact.peakReaction / 1000,
             impact.peakReactionAveraged / 1000, impact.peakImpactForce / 1000,
             impact.peakImpactForceRaw / 1000,
             impact.weightLeft.map { String(format: "%.1f ms", $0 * 1000) } ?? "never",
+            impact.faceReseated ? " (face re-seated)" : "",
             impact.penetration * 1000, impact.bottomAreaGone, impact.layersCrossed, impact.thicknessLayers,
             impact.punched ? "PUNCHED" : "not punched", impact.elementsRemoved, impact.elementsBare,
             impact.wallSeconds)

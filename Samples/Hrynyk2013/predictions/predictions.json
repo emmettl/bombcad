@@ -1,0 +1,728 @@
+{
+  "test": "Blind test 1 (docs/blind-tests.md): Hrynyk 2013, slabs TH2, TH6, TH7, impacts 1-4",
+  "frozen_commit": "1c857744802e8cfd2d536f8379d68dad1a85e743",
+  "harness_commit": "418b9b4",
+  "primary_mesh": "16 solid elements through the thickness (8.108 mm)",
+  "units": {
+    "displacement": "mm",
+    "force": "kN",
+    "mass": "kg"
+  },
+  "definitions": "See README.md and assumptions.md in this folder.",
+  "slabs": {
+    "TH2": {
+      "element_size_mm": 8.1081,
+      "elements": 793440,
+      "time_step_us": 0.6756,
+      "self_weight_sag_mm": 0.0522,
+      "first_punching_impact": null,
+      "predicted_broken_from_impact": null,
+      "impacts": [
+        {
+          "impact": 1,
+          "mass_kg": 150,
+          "peak_midpoint_displacement_mm": 17.0649,
+          "residual_midpoint_displacement_mm": 2.619,
+          "peak_total_support_reaction_kN": 501.5225,
+          "peak_impact_force_kN": 1312.0284,
+          "punches": false,
+          "penetration_mm": 9.6294,
+          "predicted_broken": false,
+          "also_recorded": {
+            "peak_time_ms": 10.5233,
+            "residual_mean_of_last_30_ms_mm": 3.315,
+            "peak_reaction_over_0p5_ms_kN": 473.3594,
+            "reaction_peak_time_ms": 4.8992,
+            "impact_force_peak_time_ms": 0.0625,
+            "peak_impact_force_unfiltered_kN": 7416.257,
+            "weight_left_face_ms": 10.6483,
+            "total_penetration_mm": 9.6295,
+            "face_reseated_before_impact": false,
+            "bottom_face_gone_within_450_mm_m2": 0.0,
+            "element_layers_crossed": "16/16",
+            "elements_removed": 1444,
+            "elements_bare": 0
+          },
+          "ensemble_middle_8_through": {
+            "peak_midpoint_displacement_mm": 16.5202,
+            "residual_midpoint_displacement_mm": 2.4095,
+            "peak_total_support_reaction_kN": 463.6024,
+            "peak_impact_force_kN": 1330.5385,
+            "punches": false
+          },
+          "input_uncertainty": {
+            "peak_midpoint_displacement_mm": {
+              "p5": 16.7106,
+              "p95": 17.6975,
+              "ratio_p5": 0.9792,
+              "ratio_p95": 1.0371,
+              "samples": 4
+            },
+            "peak_total_support_reaction_kN": {
+              "p5": 504.6438,
+              "p95": 542.3299,
+              "ratio_p5": 1.0062,
+              "ratio_p95": 1.0814,
+              "samples": 4
+            }
+          },
+          "secondary_8_through": {
+            "peak_midpoint_displacement_mm": 16.5202,
+            "residual_midpoint_displacement_mm": 2.4095,
+            "peak_total_support_reaction_kN": 463.6024,
+            "peak_impact_force_kN": 1330.5385,
+            "punches": false,
+            "penetration_mm": -0.0267
+          }
+        },
+        {
+          "impact": 2,
+          "mass_kg": 180,
+          "peak_midpoint_displacement_mm": 15.4663,
+          "residual_midpoint_displacement_mm": 0.9266,
+          "peak_total_support_reaction_kN": 357.5899,
+          "peak_impact_force_kN": 923.6615,
+          "punches": false,
+          "penetration_mm": 0.7932,
+          "predicted_broken": false,
+          "also_recorded": {
+            "peak_time_ms": 11.3731,
+            "residual_mean_of_last_30_ms_mm": 2.1489,
+            "peak_reaction_over_0p5_ms_kN": 343.1453,
+            "reaction_peak_time_ms": 7.7487,
+            "impact_force_peak_time_ms": 1.4123,
+            "peak_impact_force_unfiltered_kN": 876.6264,
+            "weight_left_face_ms": 3.4994,
+            "total_penetration_mm": 10.4227,
+            "face_reseated_before_impact": true,
+            "bottom_face_gone_within_450_mm_m2": 0.0,
+            "element_layers_crossed": "16/16",
+            "elements_removed": 1444,
+            "elements_bare": 0
+          },
+          "ensemble_middle_8_through": {
+            "peak_midpoint_displacement_mm": 21.3587,
+            "residual_midpoint_displacement_mm": 5.3522,
+            "peak_total_support_reaction_kN": 592.9621,
+            "peak_impact_force_kN": 1643.4686,
+            "punches": false
+          },
+          "input_uncertainty": {
+            "peak_midpoint_displacement_mm": {
+              "p5": 15.3525,
+              "p95": 15.4441,
+              "ratio_p5": 0.9926,
+              "ratio_p95": 0.9986,
+              "samples": 4
+            },
+            "peak_total_support_reaction_kN": {
+              "p5": 359.0446,
+              "p95": 426.1197,
+              "ratio_p5": 1.0041,
+              "ratio_p95": 1.1916,
+              "samples": 4
+            }
+          },
+          "secondary_8_through": {
+            "peak_midpoint_displacement_mm": 21.3587,
+            "residual_midpoint_displacement_mm": 5.3522,
+            "peak_total_support_reaction_kN": 592.9621,
+            "peak_impact_force_kN": 1643.4686,
+            "punches": false,
+            "penetration_mm": -0.8755
+          }
+        },
+        {
+          "impact": 3,
+          "mass_kg": 210,
+          "peak_midpoint_displacement_mm": 18.6892,
+          "residual_midpoint_displacement_mm": 3.0654,
+          "peak_total_support_reaction_kN": 341.1894,
+          "peak_impact_force_kN": 924.3838,
+          "punches": false,
+          "penetration_mm": -2.9571,
+          "predicted_broken": false,
+          "also_recorded": {
+            "peak_time_ms": 11.8731,
+            "residual_mean_of_last_30_ms_mm": 3.6794,
+            "peak_reaction_over_0p5_ms_kN": 324.4288,
+            "reaction_peak_time_ms": 7.9737,
+            "impact_force_peak_time_ms": 1.4373,
+            "peak_impact_force_unfiltered_kN": 875.0304,
+            "weight_left_face_ms": 4.0993,
+            "total_penetration_mm": 7.4656,
+            "face_reseated_before_impact": true,
+            "bottom_face_gone_within_450_mm_m2": 0.0,
+            "element_layers_crossed": "16/16",
+            "elements_removed": 1583,
+            "elements_bare": 0
+          },
+          "ensemble_middle_8_through": {
+            "peak_midpoint_displacement_mm": 26.0069,
+            "residual_midpoint_displacement_mm": 7.8386,
+            "peak_total_support_reaction_kN": 533.8873,
+            "peak_impact_force_kN": 1671.837,
+            "punches": false
+          },
+          "input_uncertainty": {
+            "peak_midpoint_displacement_mm": {
+              "p5": 17.7169,
+              "p95": 18.689,
+              "ratio_p5": 0.948,
+              "ratio_p95": 1.0,
+              "samples": 4
+            },
+            "peak_total_support_reaction_kN": {
+              "p5": 337.8982,
+              "p95": 434.164,
+              "ratio_p5": 0.9904,
+              "ratio_p95": 1.2725,
+              "samples": 4
+            }
+          },
+          "secondary_8_through": {
+            "peak_midpoint_displacement_mm": 26.0069,
+            "residual_midpoint_displacement_mm": 7.8386,
+            "peak_total_support_reaction_kN": 533.8873,
+            "peak_impact_force_kN": 1671.837,
+            "punches": false,
+            "penetration_mm": -0.9513
+          }
+        },
+        {
+          "impact": 4,
+          "mass_kg": 240,
+          "peak_midpoint_displacement_mm": 25.0884,
+          "residual_midpoint_displacement_mm": 7.1717,
+          "peak_total_support_reaction_kN": 407.5736,
+          "peak_impact_force_kN": 904.8365,
+          "punches": false,
+          "penetration_mm": 0.278,
+          "predicted_broken": false,
+          "also_recorded": {
+            "peak_time_ms": 12.6979,
+            "residual_mean_of_last_30_ms_mm": 6.9295,
+            "peak_reaction_over_0p5_ms_kN": 363.4438,
+            "reaction_peak_time_ms": 6.8489,
+            "impact_force_peak_time_ms": 1.4873,
+            "peak_impact_force_unfiltered_kN": 854.1079,
+            "weight_left_face_ms": 4.6492,
+            "total_penetration_mm": 7.7436,
+            "face_reseated_before_impact": true,
+            "bottom_face_gone_within_450_mm_m2": 0.0,
+            "element_layers_crossed": "16/16",
+            "elements_removed": 1635,
+            "elements_bare": 0
+          },
+          "ensemble_middle_8_through": {
+            "peak_midpoint_displacement_mm": 17.9126,
+            "residual_midpoint_displacement_mm": 6.4012,
+            "peak_total_support_reaction_kN": 153.4138,
+            "peak_impact_force_kN": 3470.3118,
+            "punches": false
+          },
+          "input_uncertainty": {
+            "peak_midpoint_displacement_mm": {
+              "p5": 20.2909,
+              "p95": 94.7654,
+              "ratio_p5": 0.8088,
+              "ratio_p95": 3.7773,
+              "samples": 4
+            },
+            "peak_total_support_reaction_kN": {
+              "p5": 431.4441,
+              "p95": 1186.5424,
+              "ratio_p5": 1.0586,
+              "ratio_p95": 2.9112,
+              "samples": 4
+            }
+          },
+          "secondary_8_through": {
+            "peak_midpoint_displacement_mm": 9.6976,
+            "residual_midpoint_displacement_mm": -11.6229,
+            "peak_total_support_reaction_kN": 134.7182,
+            "peak_impact_force_kN": 3849.7048,
+            "punches": false,
+            "penetration_mm": 0.8552
+          }
+        }
+      ]
+    },
+    "TH6": {
+      "element_size_mm": 8.1081,
+      "elements": 793440,
+      "time_step_us": 0.6756,
+      "self_weight_sag_mm": 0.0601,
+      "first_punching_impact": null,
+      "predicted_broken_from_impact": null,
+      "impacts": [
+        {
+          "impact": 1,
+          "mass_kg": 150,
+          "peak_midpoint_displacement_mm": 20.9729,
+          "residual_midpoint_displacement_mm": 5.0429,
+          "peak_total_support_reaction_kN": 397.4461,
+          "peak_impact_force_kN": 1306.976,
+          "punches": false,
+          "penetration_mm": 9.3977,
+          "predicted_broken": false,
+          "also_recorded": {
+            "peak_time_ms": 12.9229,
+            "residual_mean_of_last_30_ms_mm": 5.5696,
+            "peak_reaction_over_0p5_ms_kN": 377.5097,
+            "reaction_peak_time_ms": 5.4491,
+            "impact_force_peak_time_ms": 0.0625,
+            "peak_impact_force_unfiltered_kN": 6846.0395,
+            "weight_left_face_ms": 13.0229,
+            "total_penetration_mm": 9.398,
+            "face_reseated_before_impact": false,
+            "bottom_face_gone_within_450_mm_m2": 0.0,
+            "element_layers_crossed": "16/16",
+            "elements_removed": 1444,
+            "elements_bare": 0
+          },
+          "ensemble_middle_8_through": {
+            "peak_midpoint_displacement_mm": 19.8813,
+            "residual_midpoint_displacement_mm": 4.597,
+            "peak_total_support_reaction_kN": 385.0953,
+            "peak_impact_force_kN": 1322.8206,
+            "punches": false
+          },
+          "input_uncertainty": {
+            "peak_midpoint_displacement_mm": {
+              "p5": 20.4215,
+              "p95": 22.1843,
+              "ratio_p5": 0.9737,
+              "ratio_p95": 1.0578,
+              "samples": 4
+            },
+            "peak_total_support_reaction_kN": {
+              "p5": 404.5274,
+              "p95": 436.3627,
+              "ratio_p5": 1.0178,
+              "ratio_p95": 1.0979,
+              "samples": 4
+            }
+          },
+          "secondary_8_through": {
+            "peak_midpoint_displacement_mm": 19.8813,
+            "residual_midpoint_displacement_mm": 4.597,
+            "peak_total_support_reaction_kN": 385.0953,
+            "peak_impact_force_kN": 1322.8206,
+            "punches": false,
+            "penetration_mm": 0.087
+          }
+        },
+        {
+          "impact": 2,
+          "mass_kg": 180,
+          "peak_midpoint_displacement_mm": 19.1046,
+          "residual_midpoint_displacement_mm": 2.8076,
+          "peak_total_support_reaction_kN": 279.8141,
+          "peak_impact_force_kN": 917.3984,
+          "punches": false,
+          "penetration_mm": 1.0518,
+          "predicted_broken": false,
+          "also_recorded": {
+            "peak_time_ms": 13.0979,
+            "residual_mean_of_last_30_ms_mm": 4.8622,
+            "peak_reaction_over_0p5_ms_kN": 274.8231,
+            "reaction_peak_time_ms": 8.5736,
+            "impact_force_peak_time_ms": 1.4373,
+            "peak_impact_force_unfiltered_kN": 873.1893,
+            "weight_left_face_ms": 3.7494,
+            "total_penetration_mm": 10.4498,
+            "face_reseated_before_impact": true,
+            "bottom_face_gone_within_450_mm_m2": 0.0,
+            "element_layers_crossed": "16/16",
+            "elements_removed": 1544,
+            "elements_bare": 0
+          },
+          "ensemble_middle_8_through": {
+            "peak_midpoint_displacement_mm": 26.4616,
+            "residual_midpoint_displacement_mm": 8.6142,
+            "peak_total_support_reaction_kN": 425.8948,
+            "peak_impact_force_kN": 1546.7921,
+            "punches": false
+          },
+          "input_uncertainty": {
+            "peak_midpoint_displacement_mm": {
+              "p5": 18.9481,
+              "p95": 19.2776,
+              "ratio_p5": 0.9918,
+              "ratio_p95": 1.0091,
+              "samples": 4
+            },
+            "peak_total_support_reaction_kN": {
+              "p5": 274.8701,
+              "p95": 375.8711,
+              "ratio_p5": 0.9823,
+              "ratio_p95": 1.3433,
+              "samples": 4
+            }
+          },
+          "secondary_8_through": {
+            "peak_midpoint_displacement_mm": 26.4616,
+            "residual_midpoint_displacement_mm": 8.6142,
+            "peak_total_support_reaction_kN": 425.8948,
+            "peak_impact_force_kN": 1546.7921,
+            "punches": false,
+            "penetration_mm": -0.5118
+          }
+        },
+        {
+          "impact": 3,
+          "mass_kg": 210,
+          "peak_midpoint_displacement_mm": 25.5094,
+          "residual_midpoint_displacement_mm": 6.5643,
+          "peak_total_support_reaction_kN": 247.4619,
+          "peak_impact_force_kN": 901.5364,
+          "punches": false,
+          "penetration_mm": -1.006,
+          "predicted_broken": false,
+          "also_recorded": {
+            "peak_time_ms": 14.2727,
+            "residual_mean_of_last_30_ms_mm": 7.5913,
+            "peak_reaction_over_0p5_ms_kN": 239.7026,
+            "reaction_peak_time_ms": 8.9235,
+            "impact_force_peak_time_ms": 1.4873,
+            "peak_impact_force_unfiltered_kN": 865.9046,
+            "weight_left_face_ms": 4.6242,
+            "total_penetration_mm": 9.4438,
+            "face_reseated_before_impact": true,
+            "bottom_face_gone_within_450_mm_m2": 0.0,
+            "element_layers_crossed": "16/16",
+            "elements_removed": 1567,
+            "elements_bare": 0
+          },
+          "ensemble_middle_8_through": {
+            "peak_midpoint_displacement_mm": 32.2519,
+            "residual_midpoint_displacement_mm": 11.3311,
+            "peak_total_support_reaction_kN": 399.3803,
+            "peak_impact_force_kN": 1458.253,
+            "punches": false
+          },
+          "input_uncertainty": {
+            "peak_midpoint_displacement_mm": {
+              "p5": 25.1708,
+              "p95": 25.9409,
+              "ratio_p5": 0.9867,
+              "ratio_p95": 1.0169,
+              "samples": 4
+            },
+            "peak_total_support_reaction_kN": {
+              "p5": 235.0139,
+              "p95": 382.2163,
+              "ratio_p5": 0.9497,
+              "ratio_p95": 1.5445,
+              "samples": 4
+            }
+          },
+          "secondary_8_through": {
+            "peak_midpoint_displacement_mm": 32.2519,
+            "residual_midpoint_displacement_mm": 11.3311,
+            "peak_total_support_reaction_kN": 399.3803,
+            "peak_impact_force_kN": 1458.253,
+            "punches": false,
+            "penetration_mm": -0.2595
+          }
+        },
+        {
+          "impact": 4,
+          "mass_kg": 240,
+          "peak_midpoint_displacement_mm": 31.8091,
+          "residual_midpoint_displacement_mm": 9.1669,
+          "peak_total_support_reaction_kN": 173.1617,
+          "peak_impact_force_kN": 827.0414,
+          "punches": false,
+          "penetration_mm": 0.8316,
+          "predicted_broken": false,
+          "also_recorded": {
+            "peak_time_ms": 15.1475,
+            "residual_mean_of_last_30_ms_mm": 9.212,
+            "peak_reaction_over_0p5_ms_kN": 172.7177,
+            "reaction_peak_time_ms": 38.7937,
+            "impact_force_peak_time_ms": 1.6622,
+            "peak_impact_force_unfiltered_kN": 792.7118,
+            "weight_left_face_ms": 23.9711,
+            "total_penetration_mm": 10.2754,
+            "face_reseated_before_impact": true,
+            "bottom_face_gone_within_450_mm_m2": 0.0,
+            "element_layers_crossed": "16/16",
+            "elements_removed": 1675,
+            "elements_bare": 0
+          },
+          "ensemble_middle_8_through": {
+            "peak_midpoint_displacement_mm": 16.1468,
+            "residual_midpoint_displacement_mm": 2.4017,
+            "peak_total_support_reaction_kN": 110.3796,
+            "peak_impact_force_kN": 1891.7256,
+            "punches": false
+          },
+          "input_uncertainty": {
+            "peak_midpoint_displacement_mm": {
+              "p5": 34.9731,
+              "p95": 57.0281,
+              "ratio_p5": 1.0995,
+              "ratio_p95": 1.7928,
+              "samples": 4
+            },
+            "peak_total_support_reaction_kN": {
+              "p5": 275.7113,
+              "p95": 681.6271,
+              "ratio_p5": 1.5922,
+              "ratio_p95": 3.9364,
+              "samples": 4
+            }
+          },
+          "secondary_8_through": {
+            "peak_midpoint_displacement_mm": 16.1468,
+            "residual_midpoint_displacement_mm": 2.4017,
+            "peak_total_support_reaction_kN": 110.3796,
+            "peak_impact_force_kN": 1891.7256,
+            "punches": false,
+            "penetration_mm": 5.4235
+          }
+        }
+      ]
+    },
+    "TH7": {
+      "element_size_mm": 8.1081,
+      "elements": 793440,
+      "time_step_us": 0.6756,
+      "self_weight_sag_mm": 0.0542,
+      "first_punching_impact": null,
+      "predicted_broken_from_impact": null,
+      "impacts": [
+        {
+          "impact": 1,
+          "mass_kg": 150,
+          "peak_midpoint_displacement_mm": 15.2981,
+          "residual_midpoint_displacement_mm": 2.4709,
+          "peak_total_support_reaction_kN": 564.5208,
+          "peak_impact_force_kN": 1327.8986,
+          "punches": false,
+          "penetration_mm": 9.3383,
+          "predicted_broken": false,
+          "also_recorded": {
+            "peak_time_ms": 9.6984,
+            "residual_mean_of_last_30_ms_mm": 2.4299,
+            "peak_reaction_over_0p5_ms_kN": 537.3246,
+            "reaction_peak_time_ms": 4.6492,
+            "impact_force_peak_time_ms": 0.0625,
+            "peak_impact_force_unfiltered_kN": 7119.3405,
+            "weight_left_face_ms": 9.7234,
+            "total_penetration_mm": 9.338,
+            "face_reseated_before_impact": false,
+            "bottom_face_gone_within_450_mm_m2": 0.0,
+            "element_layers_crossed": "16/16",
+            "elements_removed": 1444,
+            "elements_bare": 0
+          },
+          "ensemble_middle_8_through": {
+            "peak_midpoint_displacement_mm": 15.1059,
+            "residual_midpoint_displacement_mm": 2.5163,
+            "peak_total_support_reaction_kN": 542.2441,
+            "peak_impact_force_kN": 1342.491,
+            "punches": false
+          },
+          "input_uncertainty": {
+            "peak_midpoint_displacement_mm": {
+              "p5": 14.8564,
+              "p95": 15.5678,
+              "ratio_p5": 0.9711,
+              "ratio_p95": 1.0176,
+              "samples": 4
+            },
+            "peak_total_support_reaction_kN": {
+              "p5": 546.8514,
+              "p95": 579.5548,
+              "ratio_p5": 0.9687,
+              "ratio_p95": 1.0266,
+              "samples": 4
+            }
+          },
+          "secondary_8_through": {
+            "peak_midpoint_displacement_mm": 15.1059,
+            "residual_midpoint_displacement_mm": 2.5163,
+            "peak_total_support_reaction_kN": 542.2441,
+            "peak_impact_force_kN": 1342.491,
+            "punches": false,
+            "penetration_mm": -0.0401
+          }
+        },
+        {
+          "impact": 2,
+          "mass_kg": 180,
+          "peak_midpoint_displacement_mm": 13.4589,
+          "residual_midpoint_displacement_mm": 0.5889,
+          "peak_total_support_reaction_kN": 359.2627,
+          "peak_impact_force_kN": 925.6022,
+          "punches": false,
+          "penetration_mm": 0.8277,
+          "predicted_broken": false,
+          "also_recorded": {
+            "peak_time_ms": 10.6983,
+            "residual_mean_of_last_30_ms_mm": 0.2586,
+            "peak_reaction_over_0p5_ms_kN": 338.2038,
+            "reaction_peak_time_ms": 7.3738,
+            "impact_force_peak_time_ms": 1.4123,
+            "peak_impact_force_unfiltered_kN": 881.7668,
+            "weight_left_face_ms": 3.4744,
+            "total_penetration_mm": 10.1657,
+            "face_reseated_before_impact": true,
+            "bottom_face_gone_within_450_mm_m2": 0.0,
+            "element_layers_crossed": "16/16",
+            "elements_removed": 1451,
+            "elements_bare": 0
+          },
+          "ensemble_middle_8_through": {
+            "peak_midpoint_displacement_mm": 19.1889,
+            "residual_midpoint_displacement_mm": 5.7074,
+            "peak_total_support_reaction_kN": 636.1583,
+            "peak_impact_force_kN": 1624.7919,
+            "punches": false
+          },
+          "input_uncertainty": {
+            "peak_midpoint_displacement_mm": {
+              "p5": 13.0634,
+              "p95": 13.4041,
+              "ratio_p5": 0.9706,
+              "ratio_p95": 0.9959,
+              "samples": 4
+            },
+            "peak_total_support_reaction_kN": {
+              "p5": 344.1888,
+              "p95": 407.8151,
+              "ratio_p5": 0.958,
+              "ratio_p95": 1.1351,
+              "samples": 4
+            }
+          },
+          "secondary_8_through": {
+            "peak_midpoint_displacement_mm": 19.1889,
+            "residual_midpoint_displacement_mm": 5.7074,
+            "peak_total_support_reaction_kN": 636.1583,
+            "peak_impact_force_kN": 1624.7919,
+            "punches": false,
+            "penetration_mm": -0.0874
+          }
+        },
+        {
+          "impact": 3,
+          "mass_kg": 210,
+          "peak_midpoint_displacement_mm": 16.0701,
+          "residual_midpoint_displacement_mm": 1.6656,
+          "peak_total_support_reaction_kN": 356.1964,
+          "peak_impact_force_kN": 929.0212,
+          "punches": false,
+          "penetration_mm": -2.8569,
+          "predicted_broken": false,
+          "also_recorded": {
+            "peak_time_ms": 11.1232,
+            "residual_mean_of_last_30_ms_mm": 1.0424,
+            "peak_reaction_over_0p5_ms_kN": 332.8975,
+            "reaction_peak_time_ms": 7.5488,
+            "impact_force_peak_time_ms": 1.4373,
+            "peak_impact_force_unfiltered_kN": 874.1932,
+            "weight_left_face_ms": 3.8994,
+            "total_penetration_mm": 7.3088,
+            "face_reseated_before_impact": true,
+            "bottom_face_gone_within_450_mm_m2": 0.0,
+            "element_layers_crossed": "16/16",
+            "elements_removed": 1587,
+            "elements_bare": 0
+          },
+          "ensemble_middle_8_through": {
+            "peak_midpoint_displacement_mm": 23.3573,
+            "residual_midpoint_displacement_mm": 7.4964,
+            "peak_total_support_reaction_kN": 563.3906,
+            "peak_impact_force_kN": 1644.7771,
+            "punches": false
+          },
+          "input_uncertainty": {
+            "peak_midpoint_displacement_mm": {
+              "p5": 14.904,
+              "p95": 16.0665,
+              "ratio_p5": 0.9274,
+              "ratio_p95": 0.9998,
+              "samples": 4
+            },
+            "peak_total_support_reaction_kN": {
+              "p5": 337.2987,
+              "p95": 430.2763,
+              "ratio_p5": 0.9469,
+              "ratio_p95": 1.208,
+              "samples": 4
+            }
+          },
+          "secondary_8_through": {
+            "peak_midpoint_displacement_mm": 23.3573,
+            "residual_midpoint_displacement_mm": 7.4964,
+            "peak_total_support_reaction_kN": 563.3906,
+            "peak_impact_force_kN": 1644.7771,
+            "punches": false,
+            "penetration_mm": -0.5187
+          }
+        },
+        {
+          "impact": 4,
+          "mass_kg": 240,
+          "peak_midpoint_displacement_mm": 21.9173,
+          "residual_midpoint_displacement_mm": 4.6599,
+          "peak_total_support_reaction_kN": 405.563,
+          "peak_impact_force_kN": 918.4366,
+          "punches": false,
+          "penetration_mm": -1.0276,
+          "predicted_broken": false,
+          "also_recorded": {
+            "peak_time_ms": 11.8231,
+            "residual_mean_of_last_30_ms_mm": 4.8665,
+            "peak_reaction_over_0p5_ms_kN": 366.7032,
+            "reaction_peak_time_ms": 6.399,
+            "impact_force_peak_time_ms": 1.4623,
+            "peak_impact_force_unfiltered_kN": 862.2804,
+            "weight_left_face_ms": 4.3743,
+            "total_penetration_mm": 6.2813,
+            "face_reseated_before_impact": true,
+            "bottom_face_gone_within_450_mm_m2": 0.0,
+            "element_layers_crossed": "16/16",
+            "elements_removed": 1664,
+            "elements_bare": 0
+          },
+          "ensemble_middle_8_through": {
+            "peak_midpoint_displacement_mm": 23.98,
+            "residual_midpoint_displacement_mm": 3.6755,
+            "peak_total_support_reaction_kN": 466.9612,
+            "peak_impact_force_kN": 1304.2064,
+            "punches": false
+          },
+          "input_uncertainty": {
+            "peak_midpoint_displacement_mm": {
+              "p5": 21.5676,
+              "p95": 23.1024,
+              "ratio_p5": 0.984,
+              "ratio_p95": 1.0541,
+              "samples": 4
+            },
+            "peak_total_support_reaction_kN": {
+              "p5": 374.8686,
+              "p95": 467.179,
+              "ratio_p5": 0.9243,
+              "ratio_p95": 1.1519,
+              "samples": 4
+            }
+          },
+          "secondary_8_through": {
+            "peak_midpoint_displacement_mm": 23.98,
+            "residual_midpoint_displacement_mm": 3.6755,
+            "peak_total_support_reaction_kN": 466.9612,
+            "peak_impact_force_kN": 1304.2064,
+            "punches": false,
+            "penetration_mm": 0.4417
+          }
+        }
+      ]
+    }
+  }
+}

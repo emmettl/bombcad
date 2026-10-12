@@ -60,6 +60,8 @@ struct SidebarView: View {
                         "Cell size", value: cellSizeBinding,
                         format: .number.precision(.significantDigits(1...4))
                     )
+                    // The row's label names it; in a form the field would show its title again.
+                    .labelsHidden()
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: 80)
                     Text("m")

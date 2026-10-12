@@ -176,6 +176,12 @@ extension SimulationModel {
 struct FreestandingObjectsSection: View {
     @Bindable var model: SimulationModel
 
+    @ViewBuilder private var addButtons: some View {
+        Button("Add Box", systemImage: "plus") { model.addFreestandingBox() }
+        Button("Add Car", systemImage: "car") { model.addCars() }
+        Button("Add Row of Cars", systemImage: "car.2") { model.addCars(4) }
+    }
+
     var body: some View {
         Section {
             ForEach(model.settings.scenario.rigidObjects ?? []) { object in
@@ -184,10 +190,10 @@ struct FreestandingObjectsSection: View {
             ForEach(model.settings.scenario.rigidCars ?? []) { car in
                 FreestandingRow(model: model, id: car.id)
             }
-            HStack {
-                Button("Add Box", systemImage: "plus") { model.addFreestandingBox() }
-                Button("Add Car", systemImage: "car") { model.addCars() }
-                Button("Add Row of Cars", systemImage: "car.2") { model.addCars(4) }
+            // Side by side where they fit; in the sidebar's width that cut all three to "Add…".
+            ViewThatFits(in: .horizontal) {
+                HStack { addButtons }
+                VStack(alignment: .leading) { addButtons }
             }
             if hasObjects {
                 StandingRow(model: model, kinds: [.freestandingMotion])
