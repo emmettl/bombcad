@@ -201,3 +201,8 @@ runs (primary, 8-element and ensemble) are made again from the start.
   its BombCAD lock and paused in Scrimply's nightly window (01:30–04:30 UTC), and TH7's runs on
   the Studio in a `gpu-slot`. Same commit (418b9b4), same settings; the 8-element runs and the
   ensemble follow once the primaries are done.
+- **2026-10-12 06:50**: TH2 and TH6 at 16 elements had run 2.5 hours on the mini without
+  finishing an impact (it is about four times slower than a quiet Studio, and paused for
+  Scrimply's nightly), so they were stopped there and run again from the start in the Studio's
+  GPU slots, and the mini took the 8-element runs and the ensemble instead. Same commit and
+  settings.
