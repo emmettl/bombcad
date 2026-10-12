@@ -1325,6 +1325,39 @@ brings the deep beam's near reaction from 342 to 305 kN (206 measured) and fails
 with perfect bond it ran away on the beam of span d without stirrups. The struts the tests saw
 crush are, in this model, strong and tough enough not to.
 
+**What makes the struts strong, traced** (12 October 2026). Under the load and at the support the
+most compressed concrete through the middle of the width bears 1.3–3.3 times the cylinder
+strength. Of that, the strain rate gives 1.3–1.45 (3 to 20 per second, the CEB's law) and
+confinement the rest: the bearings and the struck pad load short strips, and the concrete either
+side holds the loaded concrete in, along the beam and across its width, so that it carries 0.4–0.8
+f_c across while it is crushed. That is a real effect, the bearing strength of a partly loaded
+area, which Eurocode 2 (6.7) allows up to three times over and which a strip this short on this
+section allows nearer 1.7; the model's, up to 3.3, is more. Crushed free of anything holding
+its sides (`blastbench prism`), the same concrete shows neither lateral stress nor gain and peaks
+at the rate law's 1.41 f_c, so the confinement is the stresses', not an artefact. Confined
+concrete in the model also gets Mander, Priestley and Park's ductility, its strain at peak growing
+five times as fast as its strength, which they found for concrete held by hoops that go on
+holding it as it dilates; concrete held only by its neighbours loses that as they split. And
+crushing spread evenly over many elements, as in a strut, softens over each element's own size:
+the free prism, crushed evenly through its twelve elements, still carries 1.27 f_c at 3% strain,
+where crushing through a zone of 0.1 m would leave it 0.6.
+
+None of the three decides the beams. Without the confined ductility, with or without a crushing
+zone and with either bond, every kind fails or holds as before, within a millimetre; without
+confinement, the beams of span d without stirrups still hold at 10 mm and the deep beams' struts
+still stand. The struts reach their peak and crush on the face, 1–1.7% (the face the images show,
+which the tests saw spall), but the beams never ask more of them: the load goes to the supports
+the same way, at about the measured force for the beams of span d. So the tests' spalling is the
+face's crushed concrete coming away, which the model keeps; whether the beams then failed in the
+tests because of it, or it was the visible sign of a failure the model does not reach by another
+route, these beams cannot say.
+
+Nor is it a common cause of the model's strength elsewhere. Without confinement, OA1 carries 417
+kN on 12 elements and 334 on 24 (437 and 344 with it, 332 measured): a sixth of the coarse mesh's
+excess, which is the diagonal crack unable to cut the compression zone. Chiquito's P7 and P2 are
+left 112 and 213 mm down without it (113 and 210 with it; 340 and 510 measured), and lose no
+element either way.
+
 ## Slabs under close-in charges
 
 The first structural test in the open air with the air solver loading the
