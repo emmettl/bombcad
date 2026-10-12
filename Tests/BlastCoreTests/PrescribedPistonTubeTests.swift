@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Piston tube cell crossings")
+@Suite("Piston tube cell crossings", .timeLimit(.minutes(120)))
 struct PrescribedPistonTubeTests {
     @Test("Physical-time snapshots retain their own gas/wall budgets", arguments: [-20.0, 20.0])
     func snapshots(speed: Double) throws {

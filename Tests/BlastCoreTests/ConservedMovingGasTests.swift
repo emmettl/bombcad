@@ -12,7 +12,7 @@ import simd
     private let optimized = true
 #endif
 
-@Suite("Conserved quadratic moving gas")
+@Suite("Conserved quadratic moving gas", .timeLimit(.minutes(120)))
 struct ConservedMovingGasTests {
     @Test("Both endpoint geometries preserve comoving uniform gas through sampled Euler and Heun updates")
     func uniform() throws {

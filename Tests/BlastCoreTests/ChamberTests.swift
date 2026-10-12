@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// The full-scale internal explosion of Shang et al. (2026).
-@Suite("Chamber test")
+@Suite("Chamber test", .gpuThreads)
 struct ChamberTests {
     let device: MTLDevice
 

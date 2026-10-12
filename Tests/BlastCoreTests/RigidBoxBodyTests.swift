@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Rigid box mechanics")
+@Suite("Rigid box mechanics", .timeLimit(.minutes(120)))
 struct RigidBoxBodyTests {
     @Test("Uniform box moments agree with the analytical mass integrals")
     func massProperties() throws {

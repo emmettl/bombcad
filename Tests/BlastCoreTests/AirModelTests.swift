@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// Thermally perfect air: N2 and O2 storing energy in vibration once hot.
-@Suite("Air model")
+@Suite("Air model", .gpuThreads)
 struct AirModelTests {
     let device: MTLDevice
 

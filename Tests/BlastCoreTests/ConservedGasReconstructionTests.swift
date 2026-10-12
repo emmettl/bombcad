@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Conserved quadratic gas reconstruction")
+@Suite("Conserved quadratic gas reconstruction", .timeLimit(.minutes(120)))
 struct ConservedGasReconstructionTests {
     private func conserved(_ p: SIMD3<Double>) -> SIMD8<Double> {
         SIMD8(

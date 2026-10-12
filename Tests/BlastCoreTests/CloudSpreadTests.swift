@@ -4,7 +4,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("The cloud's spread once it stops rising")
+@Suite("The cloud's spread once it stops rising", .timeLimit(.minutes(120)))
 struct CloudSpreadTests {
     private let groundTemperature = 288.15
     private let groundPressure = 101_325.0

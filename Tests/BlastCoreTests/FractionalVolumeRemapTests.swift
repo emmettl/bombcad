@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Fractional volume remap plan")
+@Suite("Fractional volume remap plan", .timeLimit(.minutes(120)))
 struct FractionalVolumeRemapTests {
     @Test("A capacity network reroutes an early transfer to preserve a later cell's only exit")
     func reroutesContestedExit() throws {

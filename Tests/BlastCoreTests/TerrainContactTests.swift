@@ -5,7 +5,7 @@ import simd
 @testable import BlastCore
 
 /// Freestanding objects on the terrain: resting, sliding and tipping as statics says.
-@Suite("Freestanding objects on the terrain")
+@Suite("Freestanding objects on the terrain", .gpuThreads)
 struct TerrainContactTests {
     private let size = SIMD3<Double>(1, 0.6, 0.4)
     private let mass = 100.0

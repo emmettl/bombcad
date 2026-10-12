@@ -6,7 +6,7 @@ import Testing
 
 /// Keys's brick walls (`MasonryDebrisTests`) against the digitised histograms in
 /// Fixtures/Keys2016.
-@Suite("Brick walls' debris")
+@Suite("Brick walls' debris", .gpuThreads)
 struct MasonryDebrisTestsTests {
     private func fixture() throws -> [String: [String: Any]] {
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()

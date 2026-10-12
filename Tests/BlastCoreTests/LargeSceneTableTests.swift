@@ -39,7 +39,7 @@ private func table(_ link: String, header: String) throws -> (header: [String], 
 
 private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrences(of: "%", with: "")) }
 
-@Suite("Large-scene tables")
+@Suite("Large-scene tables", .timeLimit(.minutes(120)))
 struct LargeSceneTableTests {
     private let link = "large-scenes.md#against-kingerybulmash-to-40-mkg13"
 

@@ -4,7 +4,7 @@ import Testing
 
 @testable import BlastCore
 
-@Suite("Independent structural bodies", .serialized)
+@Suite("Independent structural bodies", .serialized, .gpuThreads)
 struct MultiBodyTests {
     func scene(clamped: Bool = true, shells: Bool = false) throws -> Scenario {
         let first = Box(x: 2...2.5, y: 2...4, height: 2)

@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// The ground points and their soil columns over a terrain.
-@Suite("Ground points on the terrain")
+@Suite("Ground points on the terrain", .gpuThreads)
 struct TerrainGroundTests {
     let device: MTLDevice
 

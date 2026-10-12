@@ -4,7 +4,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Rigid car definitions")
+@Suite("Rigid car definitions", .timeLimit(.minutes(120)))
 struct RigidCarDefinitionTests {
     @Test("Car identity, assumptions and inputs survive repeated JSON round trips exactly")
     func roundTrip() throws {

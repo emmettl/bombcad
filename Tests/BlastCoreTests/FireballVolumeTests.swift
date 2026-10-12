@@ -5,7 +5,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("The fireball as a partly transparent volume")
+@Suite("The fireball as a partly transparent volume", .gpuThreads)
 struct FireballVolumeTests {
     private let sigma = Float(ThermalExposure.stefanBoltzmann)
 

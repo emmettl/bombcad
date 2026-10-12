@@ -6,7 +6,7 @@ import simd
 
 /// The car's shell in the air, following the rigid box's coupling checks. Numerical and
 /// mechanical consistency only; nothing here is compared with a blast experiment.
-@Suite("Experimental rigid-car coupling", .serialized)
+@Suite("Experimental rigid-car coupling", .serialized, .gpuThreads)
 struct ExperimentalRigidCarTests {
     let device: MTLDevice
     init() throws { device = try #require(MTLCreateSystemDefaultDevice()) }

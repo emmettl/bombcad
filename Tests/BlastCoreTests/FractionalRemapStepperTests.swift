@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Fractional remap motion substeps")
+@Suite("Fractional remap motion substeps", .timeLimit(.minutes(120)))
 struct FractionalRemapStepperTests {
     private let faces = [FractionalVolumeRemap.Face(a: 0, b: 1, openArea: 1), .init(a: 1, b: 2, openArea: 1)]
     private func volumes(_ time: Double) -> [Double] { [0.02 * (1 - time), 0.001, 0.02 * time] }

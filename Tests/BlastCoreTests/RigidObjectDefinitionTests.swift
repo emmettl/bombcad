@@ -4,7 +4,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Rigid object definitions")
+@Suite("Rigid object definitions", .timeLimit(.minutes(120)))
 struct RigidObjectDefinitionTests {
     private func box() throws -> RigidObjectDefinition {
         try RigidObjectDefinition(

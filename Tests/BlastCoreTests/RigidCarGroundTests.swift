@@ -6,7 +6,7 @@ import simd
 
 /// Mechanical checks of the simplified car against statics and rigid-body dynamics. These test
 /// that the equations are solved as intended; none is a validation against a blast experiment.
-@Suite("Rigid car ground contact")
+@Suite("Rigid car ground contact", .timeLimit(.minutes(120)))
 struct RigidCarGroundTests {
     private let g = 9.81
 

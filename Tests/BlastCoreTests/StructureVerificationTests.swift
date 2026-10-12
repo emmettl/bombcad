@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// Verification of the explicit finite-element solver against beam and wave theory.
-@Suite("Structure verification")
+@Suite("Structure verification", .gpuThreads)
 struct StructureVerificationTests {
     let device: MTLDevice
 

@@ -4,7 +4,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("The cloud in turbulent air and in a measured sounding")
+@Suite("The cloud in turbulent air and in a measured sounding", .timeLimit(.minutes(120)))
 struct CloudAtmosphereTests {
     private let ambientTemperature = 288.15
     private let ambientPressure = 101_325.0

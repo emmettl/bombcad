@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Stationary fractional Euler walls")
+@Suite("Stationary fractional Euler walls", .timeLimit(.minutes(120)))
 struct FractionalEulerWallTests {
     @Test("Invalid walls and excessive steps fail; separating gas gives positive traction")
     func invalidWall() throws {

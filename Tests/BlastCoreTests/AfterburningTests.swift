@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// Burning of the detonation products in the air around them.
-@Suite("Afterburning")
+@Suite("Afterburning", .gpuThreads)
 struct AfterburningTests {
     let device: MTLDevice
 

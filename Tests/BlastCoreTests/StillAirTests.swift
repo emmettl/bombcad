@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// Skipping still air must not change the answer at all.
-@Suite("Still air")
+@Suite("Still air", .gpuThreads)
 struct StillAirTests {
     let device: MTLDevice
 
