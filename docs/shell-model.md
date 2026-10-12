@@ -448,9 +448,11 @@ the bars' dowel action and slab–column joints a punching check, the shell fram
 9. **Structures from IFC are only as square as their boxes.** Each wall, slab and member is
    one box square to the axes: inclined and curved elements stay rigid, a wall's layers become
    its one structural layer, flanged steel a rectangle of equal bending stiffness (about twice
-   as stiff axially), and members that meet are tied rigidly. Slabs a little apart in level
-   are moved onto one midsurface (by up to a quarter of an element), as the mesh's levels run
-   through the whole building and two near ones leave slivers that shorten the time step.
+   as stiff axially), and members that meet are tied rigidly. Parallel plates a little apart
+   are moved onto one midsurface (by up to a quarter of an element), as the mesh's lines run
+   through the whole building and two near ones leave slivers that shorten the time step; the
+   mesh itself puts parallel plates within a fifth of an element of each other on the first's
+   midsurface.
 
 ## Future work
 

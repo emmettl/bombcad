@@ -13,10 +13,16 @@ extension ImportedMesh {
         public var storey: String?
         public var supported: Bool
         public var hasChildren: Bool
+        /// The element it is aggregated into, where it is a part of one (a wall's blocks, a
+        /// slab's precast planks); nil for one in a storey or building directly.
+        public var parentID: String?
+        /// Whether it was found in the IFC's entities but not in its spatial structure.
+        public var uncontained: Bool?
         public init(
             id: String, name: String, ifcClass: String, buildingID: String? = nil,
             building: String? = nil, storeyID: String? = nil, storey: String? = nil,
-            supported: Bool = true, hasChildren: Bool = false
+            supported: Bool = true, hasChildren: Bool = false, parentID: String? = nil,
+            uncontained: Bool? = nil
         ) {
             self.id = id
             self.name = name
@@ -27,6 +33,8 @@ extension ImportedMesh {
             self.storey = storey
             self.supported = supported
             self.hasChildren = hasChildren
+            self.parentID = parentID
+            self.uncontained = uncontained
         }
     }
     public struct BuildingSelection: Sendable, Hashable, Codable {
@@ -111,10 +119,24 @@ extension ImportedMesh {
 
     /// IFC products are independent solids. Nested shells within a product still represent cavities.
     public struct BuildingElement: Sendable, Hashable, Codable {
+        /// The element a part belongs to: a wall built of blocks, a slab of planks, whose own
+        /// entity has no geometry of its own.
+        public struct Assembly: Sendable, Hashable, Codable {
+            public var id: String
+            public var name: String
+            public var ifcClass: String
+            public init(id: String, name: String, ifcClass: String) {
+                self.id = id
+                self.name = name
+                self.ifcClass = ifcClass
+            }
+        }
         public var globalID: String
         public var name: String
         public var ifcClass: String
         public var storey: String?
+        /// For a part of an element, that element.
+        public var assembly: Assembly?
         public var mesh: ImportedMesh
         /// Its material layers as the IFC gives them (for meshing it as a structure,
         /// `IFCStructure`); nil where none were read.
@@ -123,13 +145,15 @@ extension ImportedMesh {
         /// (`IFCReinforcement`); nil where it gives none.
         public var reinforcement: IFCReinforcement.Hosted?
         public init(
-            globalID: String, name: String, ifcClass: String, storey: String?, mesh: ImportedMesh,
-            materials: [IFCStructure.Layer]? = nil, reinforcement: IFCReinforcement.Hosted? = nil
+            globalID: String, name: String, ifcClass: String, storey: String?, assembly: Assembly? = nil,
+            mesh: ImportedMesh, materials: [IFCStructure.Layer]? = nil,
+            reinforcement: IFCReinforcement.Hosted? = nil
         ) {
             self.globalID = globalID
             self.name = name
             self.ifcClass = ifcClass
             self.storey = storey
+            self.assembly = assembly
             self.mesh = mesh
             self.materials = materials
             self.reinforcement = reinforcement

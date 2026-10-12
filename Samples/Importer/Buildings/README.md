@@ -93,11 +93,12 @@ licence notices in [manifest.json](manifest.json). They remain repository-only.
   convert to **0.2032 × 0.2032 × 3.048 m**.
 - [wall-with-opening-and-window.ifc](wall-with-opening-and-window.ifc):
   buildingSMART International Ltd.; **Peter Bonsma / RDF Ltd.** in the source
-  owner history. This is a **negative unit-detection fixture**. The source
-  declares millimetres, but the pinned converter cannot resolve its project /
-  context and reports that unit information is unavailable. BombCAD blocks it
-  before preview instead of accepting a 3,000 m wall. Repair/re-export the IFC
-  project and unit definitions before importing it.
+  owner history. A **unit-detection fixture**. The source declares millimetres,
+  but the pinned converter cannot resolve its project / context (it also holds an
+  IfcProjectLibrary) and reports that unit information is unavailable. BombCAD
+  then reads the one project's length unit from the file itself and scales the
+  geometry by it, a 3 m wall rather than a 3,000 m one, and the import notes say
+  so. A file without exactly one project and one length unit is still blocked.
 
 The latter three files use [LICENSE-buildingSMART.txt](LICENSE-buildingSMART.txt)
 (CC-BY-4.0). No fixture is silently repaired or rescaled. The grid sampler reports

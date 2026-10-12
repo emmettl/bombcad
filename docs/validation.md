@@ -67,7 +67,7 @@ swift run -c release blastbench perimeter --study wall
 | Gas in a closed room | UFC 3-340-02's design curve (read off its chart by hand): 48% to 114% by default; 98% to 108% with afterburning and hot air; 90% of Cooper's closed vessel, burnt out | Either way within 8% with afterburning and hot air, good, the fitted burning time hardly mattering, against a design curve whose scatter is not given; by default low for light charges (half, the unsafe side) |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
-| Structural response  | One slab test: solid elements 113–124 mm (104–114%) on 4 to 32 elements through, rising with refinement and not converged, a strip of it running away on 32 (92–98% under the earlier strain-rate laws), shells 135 mm (124%), against 109 mm; the test's repeat peaked at 113 mm, a scatter of about ±2%; a 5% change in its hand-read load moves the peak 13–14%, and a source's 68 ksi yield for the bars, against the measured curve's 72, 9%. The contest's lower shot, run openly with a scaled record, reached about 80% of its peak. One beam bent to failure: peak moment 98–101%, failing at 53–57 mm on 12 elements and holding to 60 mm on 24 against 42 mm, 17% strong on 6. One beam without stirrups failing in shear: 11–15% strong on fine meshes, 37% on coarse, failing suddenly as the test did. Seven drop-weight impacts on beams: with stirrups within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements (+2% to +18% and +17% to +28% on 24), struck about twice as hard as measured, the reactions up to 40% low under the heavy drops and 48% high under the light; the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived. Nineteen on beams without stirrups at rising speeds: within the 2 mm reading at 1 m/s and 15% at 3 m/s, 15% on average beyond on 16 elements but 53% on 24, springing back too far, and decided by how the ends were held (clamped, stiffer than the test's static stiffness). Eighteen short beams struck to shear failure (Peterson et al., 2026): forces as measured at a shear span of one depth (the impact force set by a pad fitted to it), the deep beams too stiff; the beams with stirrups that crushed their strut in the tests hold | Unsafe side in shear: 11–15% too strong, 37% on coarse meshes, struck beams failing by the wrong mechanism and Peterson's struts holding where the tests crushed (low: one static test); 6 elements through 17% strong in bending. Bending of one slab either way by load: 4–14% high under the contest's load, rising towards 17% as the mesh is refined, 12–21% low (too stiff, the unsafe side) under its lower shot, not converged (moderate, on the meshes that agreed); impact either way on 16 elements but not on finer meshes, which settle 12–75% high, where the strain-rate laws, chosen among published laws on these tests, decide it (moderate on one mesh). Every structural figure here holds on the mesh it was found on ([convergence](#convergence-on-todays-defaults)) |
+| Structural response  | One slab test: solid elements 113–124 mm (104–114%) on 4 to 32 elements through, rising with refinement and not converged, a strip of it running away on 32 (92–98% under the earlier strain-rate laws), shells 135 mm (124%), against 109 mm; the test's repeat peaked at 113 mm, a scatter of about ±2%; a 5% change in its hand-read load moves the peak 13–14%, and a source's 68 ksi yield for the bars, against the measured curve's 72, 9%. The contest's lower shot, run openly with a scaled record, reached about 80% of its peak. One beam bent to failure: peak moment 104% on 12 elements, failing at 40 mm against 42 mm, 95% on 24, holding to 60 mm, but breaking at 11 and 7 mm on 36 and 48, before the test's yield (11 October defaults; see [convergence](#convergence-on-todays-defaults)). One beam without stirrups failing in shear: 104–111% on 24 to 48 elements, 132% on 12, not converged, failing suddenly as the test did. Seven drop-weight impacts on beams: with stirrups within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements (+2% to +18% and +17% to +28% on 24), struck about twice as hard as measured, the reactions up to 40% low under the heavy drops and 48% high under the light; the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived. Nineteen on beams without stirrups at rising speeds: within the 2 mm reading at 1 m/s and 15% at 3 m/s, 15% on average beyond on 16 elements but 53% on 24, springing back too far, and decided by how the ends were held (clamped, stiffer than the test's static stiffness). Eighteen short beams struck to shear failure (Peterson et al., 2026): forces as measured at a shear span of one depth (the impact force set by a pad fitted to it), the deep beams too stiff; the beams with stirrups that crushed their strut in the tests hold | Unsafe side in shear: 4–11% too strong on 24 to 48 elements, 32% on 12, not converged, struck beams failing by the wrong mechanism and Peterson's struts holding where the tests crushed (low: one static test); 6 elements through 17% strong in bending. Bending of one slab either way by load: 4–14% high under the contest's load, rising towards 17% as the mesh is refined, 12–21% low (too stiff, the unsafe side) under its lower shot, not converged (moderate, on the meshes that agreed); impact either way on 16 elements but not on finer meshes, which settle 12–75% high, where the strain-rate laws, chosen among published laws on these tests, decide it (moderate on one mesh). Every structural figure here holds on the mesh it was found on ([convergence](#convergence-on-todays-defaults)) |
 | Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of the paper's text (55–60% of its Figure 9), the impulse under the charge 84–95% of Kingery–Bulmash's, for charges given as TNT equivalents; the slab left a third to a half as far down as measured, spalled only under the charge (on fine air and 12 elements through), and not holed | Unsafe side for damage: the slab bends a third to a half as far, spalls too little and is never holed (low); the load either way within 8%, good |
 | Steel in both faces | Wu et al. (2023): 2 m slabs, one layer or two, within −20% to +7% at the peak under 1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh, 40–70% (too stiff) in the six under 0.2–0.8 kg where the tests spalled; contact charges hole them at a stable step to a half and a third of the measured size (the larger holes at the default step were the step running away). Wang et al. (2022): an aluminised charge's impulse 75–82% as its stated 10 kg of TNT, 94–104% with afterburning; the slabs several times too stiff as supported | Unsafe side under the small charges: 40–70%, too stiff (low); either way under the larger, −20% to +7% (moderate, two shots); holes a half and a third of the size; low for one layer against two and spall |
 | Walls in the open    | Alsubaei (2015), ANFO before perimeter walls: column peaks with no wall within about 10% from 9 m out (a quarter to two thirds high at 8.2 m, where the measured are low); the wall's shielding bracketed, not tested, as the wing walls' length is unknown; walls crack where seen but more widely, rock or slide on their footings in sand; reinforced blockwork top 31 mm against 28 mm as one material, running away as units and joints | Moderate for peaks in the open; low for shielding and for the walls
@@ -76,6 +76,7 @@ swift run -c release blastbench perimeter --study wall
 | Cloud               | Church's tops of 22 TNT clouds of 54 to 1,270 kg: within 4% on average for the first two minutes (a geometric spread of 21% shot by shot), falling behind later; with afterburning, whose burning time was fitted to the open blast, and an entrainment coefficient whose plausible range moves the tops by −9% to +13% | Either way, within 4% on average (21% shot by shot): illustrative; see [the fireball's rise](fireball-rise.md#against-churchs-measured-clouds) |
 | Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; laminar rise times within 1–3% at 48 cells across the radius (the default flame, cellular, 13–14% ahead); K_G 60 against 76 on 96 cells, unable to converge on a four-cell front. FM Global's six tests (digitised): lit at the back wall, 0.8–1.6 times the measured peaks; lit in the middle, about 0.4, the flame stalling towards the back wall. Vented rooms: a ninth to a twenty-fifth of Molkov's correlation, which those tests show conservative | Verified for a laminar flame in a closed vessel; illustrative for vented rooms |
 | Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 11% to 14 mrad of rotation (against the larger of its two directions), 5–14% low beyond; settlement 1.3–1.7 times that measured. The same footing shaken (FoRDy, eight events on three structures): settlement 0.4–1.3 times (0.6–1.3 but for the embedded footing's first event), the surface footing's peak rotation within 10% where the test did not lurch one way (the embedded footing's first event a quarter); energy a cycle 0.5–1.2 times slowly and 0.3–1.2 times shaken, damping ratios 10–27% against 17–32%. Both on sand of 80 MPa, an estimate, twice the default's; the sand's heave set on the slow test | Rocking moment either way to 14 mrad and 5–14% low beyond (moderate); settlement within a factor of 1.7 (moderate); energy too little, a sixth to two thirds of a shaken event's (low), as for a footing that lurches; on a sand twice the default's |
+| Held out (blind)     | Hrynyk's three plain slabs struck repeatedly by a falling weight, predicted on frozen defaults before the measurements were unsealed: first impacts 1.15–1.29 times the measured peak (too flexible, as the calibrated beams were); later impacts 0.56–0.83, residuals a seventh to a third, and none of the three slabs' punching failures predicted | Between, by the protocol's rule: the calibrated error on undamaged slabs, much worse and on the unsafe side once they are damaged |
 | Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.2–1.9 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own. [Brick walls](#brick-walls-debris) (Keys, 2016): loads within 15%, but the walls break into too few pieces, falling at full length in the open (means of −2 to +2 m against +0.2 to +0.6 m) and thrown half as far as measured in a shock tube; collapse nothing | Unsafe side for debris: held back rather than thrown, slabs never holed, brick walls thrown short (low); collapse never compared |
 | Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 1–2%, structural responses 4–20%, residual deflections and failure 17–28%; the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
 
@@ -91,7 +92,8 @@ Read with the table:
   law after Ando's beams (with independent support from tension tests of bars); the contest
   slab moved from 93–99% to 105–115% with them. Perfect bond over bars that slip, the removal
   rules and the interlock cap were likewise kept or set aside by these comparisons. The
-  structural tests are a calibration set as much as a validation set; none was run blind.
+  structural tests are a calibration set as much as a validation set. One has since been run
+  blind: [Hrynyk's slabs](#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight), below.
 - **Supports are assumed** in every structural test, the sources rarely describing them, and
   they move the results by 15–25% (the contest slab, Wu's slabs) or more (Ando's beams, Wang's
   slabs).
@@ -105,6 +107,88 @@ Read with the table:
   too strong.
 
 See the [independent review](validation-review.md) for the evidence behind these notes.
+
+## Blind test 1: Hrynyk's slabs struck by a falling weight
+
+**Blind.** The record's first held-out test, run under [the blind-test protocol](blind-tests.md):
+the model's defaults frozen at commit `1c85774`, a predictor that had seen no measurement, its
+assumptions committed before its first run, its predictions committed with their hashes
+(`69d5352`) before the measurements were unsealed, and scored by a session that chose no default.
+Nothing here may be tuned: any later change that moves these slabs is calibration, reported
+beside this result, never in place of it.
+
+**The test.** T. D. Hrynyk's slabs (PhD thesis, University of Toronto, 2013): 1.8 m square and
+130 mm thick, steel in both faces both ways, held at their corners, struck at the centre by a
+300 mm square steel weight at 8 m/s, again and again, the mass rising from 150 kg by 30 kg. The
+three plain slabs with records: TH2 (0.42% steel each layer), TH6 (0.27%) and TH7 (0.59%). Inputs
+as the predictor had them: [Samples/Hrynyk2013](../Samples/Hrynyk2013/README.md). Measured: the
+thesis's Tables 4.5–4.8 and its account of each impact; impact forces from the records where the
+weight's accelerometers did not saturate, processed by a script fixed before any prediction.
+
+**The model** (the predictor's [assumptions](../Samples/Hrynyk2013/predictions/assumptions.md)): 16
+solid elements through, defaults throughout, no air; the weight's steel face bonded to the slab for
+the first impact, as the calibrated beams were struck; corners on single seats above and below;
+each impact 200 ms, the slab brought to rest between them.
+
+**The predictor's changes, judged.** Its log records four changes after runs, none after any
+measurement was seen. Change 1 (the corner seats clamped the slab against its free rotation) and
+change 4 (the bonded face tore off on impact 1, so impacts 2–4 struck a loose piece of concrete
+wherever it lay, not the slab's centre) corrected set-ups that contradicted the inputs, found from
+the model's own outputs; they are legitimate. But change 4's remedy, a fresh face set on the slab
+and striking through the solver's contact, is itself a modelling choice: on 16 elements the weight
+leaves after 3.5–4.6 ms instead of 10–13 ms on impact 1, and strikes impacts 2–4 with about 920 kN
+against 1,310 kN. Impacts 2–4 are therefore scored as declared, with that caveat; impact 1, the
+primary score, is untouched by it. Changes 2 and 3 concern the secondary runs only.
+
+**Results**, predicted (16 elements through) against measured, as ratios:
+
+| Impact | Peak displacement, mm | Residual, mm | Peak total reaction, kN | Peak impact force, kN | Punched? |
+|---|---|---|---|---|---|
+| TH2-1, 150 kg | 17.1 / 13.2 (**1.29**) | 2.6 / 2.7 (0.97) | 502 / 556 (0.90) | 1,312 / not measured | no / no |
+| TH6-1, 150 kg | 21.0 / 18.3 (**1.15**) | 5.0 / 6.2 (0.81) | 397 / 483 (0.82) | 1,307 / not measured | no / no |
+| TH7-1, 150 kg | 15.3 / 12.8 (**1.20**) | 2.5 / 2.6 (0.95) | 565 / 605 (0.93) | 1,328 / not measured | no / no |
+| TH2-2, 180 kg | 15.5 / 18.7 (0.83) | 0.9 / 3.0 (0.31) | 358 / 676 (0.53) | 924 / 1,455 (0.63) | no / no |
+| TH6-2, 180 kg | 19.1 / 27.7 (0.69) | 2.8 / 11.4 (0.25) | 280 / 458 (0.61) | 917 / 1,090 (0.84) | no / **yes** |
+| TH7-2, 180 kg | 13.5 / 18.3 (0.74) | 0.6 / 3.3 (0.18) | 359 / 588 (0.61) | 926 / 1,547 (0.60) | no / **yes** |
+| TH2-3, 210 kg | 18.7 / 26.6 (0.70) | 3.1 / 8.9 (0.34) | 341 / 580 (0.59) | 924 / 1,325 (0.70) | no / **yes** |
+| TH7-3, 210 kg | 16.1 / 28.5 (0.56) | 1.7 / 11.5 (0.14) | 356 / 368 (0.97) | 929 / 726 (1.28) | no / yes, further |
+
+(TH2 and TH7 were stopped after three impacts and TH6 after two, so the predictions for later
+impacts are unscored. The measured TH2-2 force is from one accelerometer, which the thesis flags.)
+
+Scored as the protocol fixed:
+
+- **Primary:** the first impact on each undamaged slab peaked 1.15–1.29 times as far as measured:
+  too flexible, the safe side for deflection, and about as the calibrated beams were under Saatci's
+  light drops (12–24% too flexible). One of the three lies outside the protocol's 0.75–1.25.
+- **Over all eight impacts:** peak displacement 0.56–1.29, geometric mean 0.86, mean absolute
+  error 26%; residual a seventh to the full measured value, geometric mean 0.39; total reaction
+  0.53–0.97, geometric mean 0.73; impact force, where measured, 0.60–1.28, geometric mean 0.78.
+- **Punching:** all three slabs punched in the test, TH6 and TH7 on the second impact and TH2 on
+  the third; the model punched none in four impacts, on either mesh. None of three first punching
+  impacts predicted: **the unsafe side**.
+- **Verdict, by the rule fixed beforehand:** *between* the calibrated record and worse. Not "as
+  good", since one primary ratio exceeds 1.25 and punching is missed throughout; not "worse",
+  since every primary ratio lies within 0.5–2 and the peaks' mean error is under 50%.
+
+**Read against the calibrated record.** On the undamaged slab the blind error is the calibrated
+error: 15–29% too flexible against 12–24% on Saatci's light drops. Once the slab is damaged the
+model is too stiff and too elastic: later impacts peak 17–44% short, the slab springs back to a
+seventh to a third of the measured residual, and the punching shear failure that ended every test
+never forms. That is the record's known weakness, shear strength too high and broken concrete
+kept, now seen blind. The calibrated comparisons had not shown how large it is on repeated impact.
+
+**The secondary runs** (reported, not scored). On 8 elements through, the first impacts are within
+5% of the 16-element ones (16.5, 19.9 and 15.1 mm), but impacts 2 and 3 come out much closer to
+the test (21.4, 26.0, 26.5, 19.2 and 23.4 mm against 18.7, 26.6, 27.7, 18.3 and 28.5), with
+reactions of 430–640 kN and impact forces of 1,550–1,670 kN. The weight's contact on the
+re-seated face (change 4) evidently behaves differently on the two meshes, so the later impacts
+depend on the mesh through the contact as much as through the slab. That is not a better
+prediction, since the protocol scores the declared mesh; it says the repeated-impact results are
+not converged. Neither mesh punches. The predictor's 4-sample input spread (on 8 elements) puts the
+first impacts' peaks within about ±3–4% of its own centre, far narrower than the error.
+
+Outputs and the scoring script: `/Volumes/StudioData/bombcad/blind-results/hrynyk/`.
 
 ## Structural response against a real test
 
@@ -390,6 +474,25 @@ with the mesh as under load 1a (72–92% across ±5% of the load on 8), and keep
 residual: too stiff, where under load 1a it is too flexible. Its
 response rises more steeply with the load than the slab's did: 76% of the impulse gives 52% of
 the peak in the model (59 of 113 mm on 8 elements) and 65% in the tests (72 of 111).
+
+**The whole histories.** Schwer's Figure 4, digitised (`Fixtures/Schwer2015`, within 1% of the
+peaks he states), gives all three shots' records: load 1a (slab 2, the record above), its repeat
+1aa (slab 4) and the lower shot 1b (slab 6). Re-run on 4, 8 and 16 elements through with today's
+defaults and scored over each record from 5 ms (`blastbench slab --history-csv`,
+`Scripts/comparisons/slab_histories.py`); the bands are derived on 8:
+
+| Elements through | Load 1a: RMS, mean | Against 1aa | Lower shot against 1b: RMS, mean | Lower shot at the record's end |
+|---|---|---|---|---|
+| 4 | 4.6 mm, +1.5 | 6.1 mm, −0.7 | 13.4 mm, −11.7 | 44 mm (measured 54) |
+| 8 | 7.4 mm, −1.8 | 10.1 mm, −4.1 | 14.7 mm, −12.6 | 32 mm |
+| 16 | 8.4 mm, +3.7 | 8.9 mm, +1.0 | 11.7 mm, −9.6 | 36 mm |
+
+The two measured shots under load 1a differ from each other by 3.9 mm RMS (2.4 mm on average): the
+model's histories under that load lie 1.2 to 2.2 times as far from either. Under the lower shot
+they lie 3 to 4 times as far, short throughout (by 10–13 mm on average), and settle 18–22 mm
+below the record's 54 mm: too stiff over the whole history, not only at the peak. The digitised
+lower shot reads 70.7 mm over 21–29 ms (its median) and 54.1 mm at the end, within 2% of the hand
+reading above, so the peaks' figures stand.
 
 **The contest's other entries.** Schwer reports that the blind finite-element predictions of the
 repeated shot ranged from 38% short to 99% beyond the measured peaks, and suspects that the
@@ -1324,6 +1427,39 @@ by the modified compression field theory's 1 / (0.8 + 170 ε₁) (Vecchio and Co
 brings the deep beam's near reaction from 342 to 305 kN (206 measured) and fails nothing more;
 with perfect bond it ran away on the beam of span d without stirrups. The struts the tests saw
 crush are, in this model, strong and tough enough not to.
+
+**What makes the struts strong, traced** (12 October 2026). Under the load and at the support the
+most compressed concrete through the middle of the width bears 1.3–3.3 times the cylinder
+strength. Of that, the strain rate gives 1.3–1.45 (3 to 20 per second, the CEB's law) and
+confinement the rest: the bearings and the struck pad load short strips, and the concrete either
+side holds the loaded concrete in, along the beam and across its width, so that it carries 0.4–0.8
+f_c across while it is crushed. That is a real effect, the bearing strength of a partly loaded
+area, which Eurocode 2 (6.7) allows up to three times over and which a strip this short on this
+section allows nearer 1.7; the model's, up to 3.3, is more. Crushed free of anything holding
+its sides (`blastbench prism`), the same concrete shows neither lateral stress nor gain and peaks
+at the rate law's 1.41 f_c, so the confinement is the stresses', not an artefact. Confined
+concrete in the model also gets Mander, Priestley and Park's ductility, its strain at peak growing
+five times as fast as its strength, which they found for concrete held by hoops that go on
+holding it as it dilates; concrete held only by its neighbours loses that as they split. And
+crushing spread evenly over many elements, as in a strut, softens over each element's own size:
+the free prism, crushed evenly through its twelve elements, still carries 1.27 f_c at 3% strain,
+where crushing through a zone of 0.1 m would leave it 0.6.
+
+None of the three decides the beams. Without the confined ductility, with or without a crushing
+zone and with either bond, every kind fails or holds as before, within a millimetre; without
+confinement, the beams of span d without stirrups still hold at 10 mm and the deep beams' struts
+still stand. The struts reach their peak and crush on the face, 1–1.7% (the face the images show,
+which the tests saw spall), but the beams never ask more of them: the load goes to the supports
+the same way, at about the measured force for the beams of span d. So the tests' spalling is the
+face's crushed concrete coming away, which the model keeps; whether the beams then failed in the
+tests because of it, or it was the visible sign of a failure the model does not reach by another
+route, these beams cannot say.
+
+Nor is it a common cause of the model's strength elsewhere. Without confinement, OA1 carries 417
+kN on 12 elements and 334 on 24 (437 and 344 with it, 332 measured): a sixth of the coarse mesh's
+excess, which is the diagonal crack unable to cut the compression zone. Chiquito's P7 and P2 are
+left 112 and 213 mm down without it (113 and 210 with it; 340 and 510 measured), and lose no
+element either way.
 
 ## Slabs under close-in charges
 
@@ -2502,6 +2638,39 @@ table with tests near a charge, Rae and McAfee's (above), found it broadly
 right for 45 kg of C-4 at 0.53 to 1.78 m/kg^(1/3), with neighbouring gauges differing by up to
 40% where the fireball reaches.
 
+### The negative phase, against UFC 3-340-02
+
+The air's negative phase had not been compared with anything. UFC 3-340-02's Figure 2-16 gives
+it for a hemispherical TNT surface burst against scaled distance: the underpressure, its impulse
+and its duration (digitised, `Fixtures/UFC-3-340-02`, about ±1.5%). `blastbench validate
+--histories DIR --until 0.25` re-runs the 100 kg surface burst above to 250 ms and keeps each
+gauge's history (`Scripts/comparisons/negative_phase.py` scores them). The negative phase starts
+where the pressure first falls below ambient after the peak and ends where it rises above it for
+good; close in, the second shock lifts it above ambient for a few milliseconds inside the
+negative phase, and a rise shorter than 5 ms is not taken as its end. Model / chart, on 0.25 m
+cells (0.5 m in brackets):
+
+| Z (m/kg^(1/3)) | Underpressure | Impulse | Duration |
+|---|---|---|---|
+| 0.75 | 110% (106%) | 46% (42%) | 158% (156%) |
+| 1 | 45% (43%) | 46% (45%) | 153% (151%) |
+| 1.5 | 96% (87%) | 68% (68%) | 128% (154%) |
+| 2 | 131% (114%) | 79% (79%) | 127% (118%) |
+| 3 | 133% (102%) | 83% (83%) | 121% (121%) |
+| 4 | 125% (89%) | 86% (84%) | 160% (160%) |
+| 5 | 120% (85%) | 90% (88%) | 127% (128%) |
+| 6 | — (beyond the chart) | 93% (93%) | 111% (113%) |
+
+The negative impulse is settled on these grids (within 2% between them) and 7–21% below the
+chart's from Z = 2 to 6, and about half the chart's close in (Z = 0.75–1). The underpressure is not: a sharp minimum, it deepens
+15–30% as the cells halve, from about the chart's on 0.5 m to a third deeper on 0.25 m. The
+duration runs 11–60% long, mostly in a slow return to ambient whose last few hundred pascals the
+chart's curves would not show; it is the least certain of the three. In this 64 m domain the open
+faces drain nothing that matters: late in the record every gauge sits within 1 kPa of ambient, the
+farthest 4 m inside a face. So the suction that pulls walls and debris back towards the charge is
+about as strong as the design curves' at the ranges of most structures, on the short side close
+in; it is not compared for a free-air burst (Figure 2-8), which needs a run of its own.
+
 ### Gas pressure in a closed room
 
 A charge fired in a closed room leaves, once the shocks have died down, hot gas at a steady
@@ -3283,6 +3452,36 @@ the chamber's damage and residual move by a quarter, and the slab on 32 elements
 for later, not shown here: the strain rate the rate laws see is a running average over 50 steps
 (`StructureSolver`'s rate filter), so its window, and the strength it gives, changes with the
 step.
+
+**A strain-rate window in time.** The lead above was then tested: the
+[option](concrete-model.md#a-strain-rate-window-in-time-an-option) that averages the strain rate
+over a fixed time instead of 50 steps, at 100 µs, between the 50-step windows of the meshes the
+defaults were chosen on (80 µs for the slab on 8 elements, 107 µs for Saatci's beams on 16, 131
+and 53 µs for Janney's on 12 and 24). The same pinned base plus the option (`fdf920e`), the same
+benches with `--rate-window 100`; outputs in `convergence/window/`:
+
+| Case | Default (from the table) | 100 µs window | Step halved on the finest |
+|---|---|---|---|
+| Contest slab, peak / left (108 / 91 mm) | 114/91, 113/76, 121/90, 124/98 on 4–32; 15,067 failed on 32 | 113/90, 113/76, 121/91, 125/91; none failed | 124/91, none failed (default: 312 mm, runs away) |
+| Janney's beam (41.5 kN m, 42 mm) | 43.0 at 40 mm, 39.4 holds, 34.2 at 11 mm, 24.3 at 7 mm | 41.7 at 44 mm, 41.5 holds, 34.4 at 11 mm, 23.8 at 7 mm | |
+| Saatci SS0a-1, SS1b-1, SS3b-1 (9.3, 39.5, 35.3 mm) | 17.0/16.5/16.3, 40.5/46.4/47.6, 33.6/35.0/37.0 | 16.8/17.4/21.1 (3,974 removed on 32), 39.3/45.3/47.6, 33.5/35.3/36.4 | |
+| Chiquito P7, left (340 mm) | 135, 130, holed (8, 12, 16) | 146, 131, holed (the same 1,085 elements failed) | |
+| The chamber, roof edge on 50 mm | 56 / 39 mm, 61,094 failed (47 mm and 43,189 with half the step) | 57 / 39 mm, 44,869 failed | |
+| The chamber on 25 mm | breaks down by 31 ms | breaks down by 30 ms | |
+
+The window takes away the slab's dependence on the step: on 32 elements it gives the same
+answer on half the step, where the default ran away, its peak now rising by 8 then 4 mm a halving
+(order 1.0, extrapolated 129 mm, 119%) and its residual settled at 91 mm, the measured value. It
+leaves the meshes that agreed nearly as they were (the slab on 8 the same; Saatci's beams on 16
+within 0.1–1.2 mm; Janney's within 1% of the measured moment on 12 and 24, against 4–5% at default), and the chamber's damage on 50 mm near the default's on
+half the step. It does not make refinement converge where a failure decides the answer: Janney
+still breaks on 36 and 48 elements, P7 is still holed on 16, the chamber still breaks down on
+25 mm, and Saatci's SS0a-1, which settled at default, now grows on 32 elements as its concrete is
+removed. Those failures come from elsewhere, the crack and removal laws that regularise over one
+element being the next suspect. **Proposed as a default** at 100 µs, for the user to decide (blind
+test 2 is still to freeze): it removes a dependence on the step that has no physical basis and
+changes the agreeing meshes by a few per cent, but it is not a cure for the mesh dependence of
+failure.
 
 **What it means.** No structural result has been shown to converge on today's defaults with
 the measurements inside the change. Where a result settles it does so above the measurement,

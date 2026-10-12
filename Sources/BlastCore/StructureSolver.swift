@@ -1922,7 +1922,7 @@ public final class StructureSolver {
             (uniforms.gravityX, uniforms.gravityY, uniforms.gravityZ) = (way.x, way.y, way.z)
         }
         // Time constant of the running averages of strain rate and confinement: 50 steps.
-        uniforms.rateFilter = 1 / (50 * criticalTimeStep)
+        uniforms.rateFilter = 1 / (model.strainRateWindow ?? 50 * criticalTimeStep)
         uniforms.secondCracks = model.secondCracks ? 1 : 0
         uniforms.bareBars = model.bareBars ? 1 : 0
         uniforms.removesFragments = model.removesFragments ? 1 : 0

@@ -1,0 +1,170 @@
+{
+ "source": "T. D. Hrynyk, PhD thesis, University of Toronto, 2013 (TSpace 1807/35851): Tables 4.5-4.8, section 4.2, Figure 4.82; and the raw records (measured-records.json, processed by seal_measured.py).",
+ "slabs_terminated": {
+  "TH2": {
+   "impacts": 3,
+   "imparted_energy_kJ": 17.3,
+   "termination": "decreased support reactions; extensive damage"
+  },
+  "TH6": {
+   "impacts": 2,
+   "imparted_energy_kJ": 10.6,
+   "termination": "extensive damage"
+  },
+  "TH7": {
+   "impacts": 3,
+   "imparted_energy_kJ": 17.3,
+   "termination": "decreased support reactions; extensive damage"
+  }
+ },
+ "first_punching_event": {
+  "TH2": "TH2-3",
+  "TH6": "TH6-2",
+  "TH7": "TH7-2"
+ },
+ "events": {
+  "TH2-1": {
+   "mass_kg": 150,
+   "midpoint_displacement_event_peak_mm": 13.2,
+   "midpoint_displacement_event_residual_mm": 2.7,
+   "midpoint_displacement_total_peak_mm": 13.2,
+   "midpoint_displacement_total_residual_mm": 2.7,
+   "total_support_reaction_peak_kN": 556,
+   "total_support_reaction_peak_unfiltered_from_records_kN": 518.6,
+   "impact_force_peak_kN_from_records": null,
+   "impact_force_accelerometers": null,
+   "bottom_crack_max_mm": 0.5,
+   "bottom_crack_location": "circumferential",
+   "top_crack_max_mm": 0.1,
+   "penetration_mm": 0,
+   "observed": "Fanned cracking along the bars, denser round the impact zone within a circumferential crack; no penetration; local spalling on the top face in the impact zone."
+  },
+  "TH2-2": {
+   "mass_kg": 180,
+   "midpoint_displacement_event_peak_mm": 18.7,
+   "midpoint_displacement_event_residual_mm": 3.0,
+   "midpoint_displacement_total_peak_mm": 21.4,
+   "midpoint_displacement_total_residual_mm": 5.7,
+   "total_support_reaction_peak_kN": 676,
+   "total_support_reaction_peak_unfiltered_from_records_kN": 673.8,
+   "impact_force_peak_kN_from_records": 1452.6,
+   "impact_force_accelerometers": [
+    "A12"
+   ],
+   "bottom_crack_max_mm": 0.5,
+   "bottom_crack_location": "circumferential",
+   "top_crack_max_mm": 0.15,
+   "penetration_mm": 3.5,
+   "observed": "New circumferential cracks on both faces; extensive scabbing of the bottom face round the impact zone; penetration about 3-3.5 mm.",
+   "impact_force_peak_kN_thesis": 1455,
+   "impact_force_note": "single accelerometer; the thesis flags it as possibly unrepresentative"
+  },
+  "TH2-3": {
+   "mass_kg": 210,
+   "midpoint_displacement_event_peak_mm": 26.6,
+   "midpoint_displacement_event_residual_mm": 8.9,
+   "midpoint_displacement_total_peak_mm": 32.3,
+   "midpoint_displacement_total_residual_mm": 14.7,
+   "total_support_reaction_peak_kN": 580,
+   "total_support_reaction_peak_unfiltered_from_records_kN": 580.3,
+   "impact_force_peak_kN_from_records": 1405.5,
+   "impact_force_accelerometers": [
+    "A12",
+    "A13"
+   ],
+   "bottom_crack_max_mm": "0.60 (outside the scabbed region)",
+   "bottom_crack_location": "radial",
+   "top_crack_max_mm": 0.2,
+   "penetration_mm": 20,
+   "observed": "Punched: light visible through large diagonal cracks from the impact zone on the top to the scabbed region on the bottom; penetration about 20 mm over the full impact perimeter; top bars exposed. Testing ended (reactions fell; extensive damage).",
+   "impact_force_peak_kN_thesis": 1325
+  },
+  "TH6-1": {
+   "mass_kg": 150,
+   "midpoint_displacement_event_peak_mm": 18.3,
+   "midpoint_displacement_event_residual_mm": 6.2,
+   "midpoint_displacement_total_peak_mm": 18.3,
+   "midpoint_displacement_total_residual_mm": 6.2,
+   "total_support_reaction_peak_kN": 483,
+   "total_support_reaction_peak_unfiltered_from_records_kN": 438.9,
+   "impact_force_peak_kN_from_records": null,
+   "impact_force_accelerometers": null,
+   "bottom_crack_max_mm": null,
+   "bottom_crack_location": null,
+   "top_crack_max_mm": 0.15,
+   "penetration_mm": 3.5,
+   "observed": "A few large cracks along the bars on the bottom face (0.15-0.35 mm); local penetration about 3-3.5 mm."
+  },
+  "TH6-2": {
+   "mass_kg": 180,
+   "midpoint_displacement_event_peak_mm": 27.7,
+   "midpoint_displacement_event_residual_mm": 11.4,
+   "midpoint_displacement_total_peak_mm": 33.9,
+   "midpoint_displacement_total_residual_mm": 17.6,
+   "total_support_reaction_peak_kN": 458,
+   "total_support_reaction_peak_unfiltered_from_records_kN": 420.7,
+   "impact_force_peak_kN_from_records": 1089.9,
+   "impact_force_accelerometers": [
+    "A12"
+   ],
+   "bottom_crack_max_mm": "0.85 (outside the scabbed region)",
+   "bottom_crack_location": "radial",
+   "top_crack_max_mm": 0.3,
+   "penetration_mm": 20,
+   "observed": "Punched: extensive scabbing round the impact zone, bottom bars exposed, light visible through the slab; penetration about 18-20 mm, uniform over the impact zone. Testing ended (extensive damage)."
+  },
+  "TH7-1": {
+   "mass_kg": 150,
+   "midpoint_displacement_event_peak_mm": 12.8,
+   "midpoint_displacement_event_residual_mm": 2.6,
+   "midpoint_displacement_total_peak_mm": 12.8,
+   "midpoint_displacement_total_residual_mm": 2.6,
+   "total_support_reaction_peak_kN": 605,
+   "total_support_reaction_peak_unfiltered_from_records_kN": 602.1,
+   "impact_force_peak_kN_from_records": null,
+   "impact_force_accelerometers": null,
+   "bottom_crack_max_mm": 0.6,
+   "bottom_crack_location": "circumferential",
+   "top_crack_max_mm": 0.15,
+   "penetration_mm": 0,
+   "observed": "Cracks along the bars on both faces; distinct circumferential (punching) crack on the bottom face round the impact zone, 0.60 mm; no penetration or scabbing."
+  },
+  "TH7-2": {
+   "mass_kg": 180,
+   "midpoint_displacement_event_peak_mm": 18.3,
+   "midpoint_displacement_event_residual_mm": 3.3,
+   "midpoint_displacement_total_peak_mm": 20.9,
+   "midpoint_displacement_total_residual_mm": 5.9,
+   "total_support_reaction_peak_kN": 588,
+   "total_support_reaction_peak_unfiltered_from_records_kN": 566.1,
+   "impact_force_peak_kN_from_records": 1547.1,
+   "impact_force_accelerometers": [
+    "A12"
+   ],
+   "bottom_crack_max_mm": 1.8,
+   "bottom_crack_location": "circumferential",
+   "top_crack_max_mm": 0.15,
+   "penetration_mm": 10,
+   "observed": "Punching crack widened to 1.8 mm with limited scabbing inside it; penetration about 9-10 mm. The thesis says punching had occurred in this event."
+  },
+  "TH7-3": {
+   "mass_kg": 210,
+   "midpoint_displacement_event_peak_mm": 28.5,
+   "midpoint_displacement_event_residual_mm": 11.5,
+   "midpoint_displacement_total_peak_mm": 34.4,
+   "midpoint_displacement_total_residual_mm": 17.4,
+   "total_support_reaction_peak_kN": 368,
+   "total_support_reaction_peak_unfiltered_from_records_kN": 363.8,
+   "impact_force_peak_kN_from_records": 726.3,
+   "impact_force_accelerometers": [
+    "A12",
+    "A13"
+   ],
+   "bottom_crack_max_mm": 20,
+   "bottom_crack_location": "circumferential",
+   "top_crack_max_mm": 0.15,
+   "penetration_mm": 30,
+   "observed": "Extensive damage: scabbing round the impact zone exposing the bottom bars; penetration 30 mm uniform; reactions much lower than before. Testing ended."
+  }
+ }
+}
