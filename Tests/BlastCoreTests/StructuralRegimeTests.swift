@@ -4,7 +4,7 @@ import Testing
 @testable import BlastCore
 
 /// The regime a structure is in, and the defaults it chooses (`StructuralRegime`).
-@Suite("Structural regimes")
+@Suite("Structural regimes", .timeLimit(.minutes(120)))
 struct StructuralRegimeTests {
     /// A 1 m cube from (5, 5, 0), and 1 kg of TNT `distance` metres in front of its face.
     private func scene(distance: Float, mass: Float = 1) -> (StructureModel, Scenario) {

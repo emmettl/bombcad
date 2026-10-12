@@ -4,7 +4,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Imported model picking and placement")
+@Suite("Imported model picking and placement", .timeLimit(.minutes(120)))
 struct ImportInteractionTests {
     private func cube(size: Float = 1, offset: SIMD3<Float> = .zero, base: Int = 0) -> String {
         let vertices: [SIMD3<Float>] = [

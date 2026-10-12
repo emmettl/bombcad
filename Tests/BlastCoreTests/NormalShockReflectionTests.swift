@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Independent normal-shock reflection")
+@Suite("Independent normal-shock reflection", .timeLimit(.minutes(120)))
 struct NormalShockReflectionTests {
     @Test("Incident and reflected shocks satisfy mass, momentum and enthalpy jumps", arguments: [1.2, 2.0])
     func jumps(mach: Double) throws {

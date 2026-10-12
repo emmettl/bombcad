@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Adaptive moving-box face openings")
+@Suite("Adaptive moving-box face openings", .timeLimit(.minutes(120)))
 struct AdaptiveBoxFaceSweepTests {
     @Test("Rotation matches an analytical secant face-area integral and shared-face geometry")
     func rotation() throws {

@@ -20,12 +20,10 @@ private final class ProbeView: MTKView {
 
 /// The viewport draws every frame during a run and otherwise only when what it draws changes.
 @MainActor
-@Suite("Viewport drawing", .serialized)
+@Suite("Viewport drawing", .serialized, .hangLimit)
 struct ViewportDrawingTests {
-    private func waitUntil(timeout: Duration = .seconds(30), _ condition: () -> Bool) async throws {
-        let deadline = ContinuousClock.now + timeout
+    private func waitUntil(_ condition: () -> Bool) async throws {
         while !condition() {
-            try #require(ContinuousClock.now < deadline, "Timed out")
             try await Task.sleep(for: .milliseconds(5))
         }
     }
@@ -50,8 +48,7 @@ struct ViewportDrawingTests {
             coordinator.draw(in: view)
             let requests = view.requests
             change()
-            let deadline = ContinuousClock.now + .seconds(30)
-            while view.requests == requests, ContinuousClock.now < deadline {
+            while view.requests == requests {
                 try await Task.sleep(for: .milliseconds(5))
             }
             return view.requests > requests

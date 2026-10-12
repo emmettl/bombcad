@@ -5,7 +5,7 @@ import simd
 
 /// The populated scenes are well formed: their objects stand apart, on the ground, clear of the
 /// blocks and the charge, and stay put until something moves them.
-@Suite("Populated scenes")
+@Suite("Populated scenes", .timeLimit(.minutes(120)))
 struct PopulatedSceneTests {
     @Test("Objects stand clear of each other, the blocks and the charge", arguments: PopulatedScene.allCases)
     func clear(scene: PopulatedScene) throws {

@@ -5,7 +5,7 @@ import Testing
 
 @testable import BombCAD
 
-@MainActor @Suite("Ground points in the app", .serialized)
+@MainActor @Suite("Ground points in the app", .serialized, .hangLimit)
 struct GroundShockOverlayTests {
     /// A point under the block, then a line out along the ground from beside the charge.
     private func spec() -> GroundShockSpec {
@@ -31,9 +31,8 @@ struct GroundShockOverlayTests {
     }
 
     private func waitUntil(_ model: SimulationModel, _ condition: () -> Bool) async throws {
-        let deadline = ContinuousClock.now + .seconds(120)
         while !condition() {
-            try #require(ContinuousClock.now < deadline && model.errorMessage == nil)
+            try #require(model.errorMessage == nil)
             try await Task.sleep(for: .milliseconds(5))
         }
     }
@@ -108,8 +107,10 @@ struct GroundShockOverlayTests {
         #expect(reopened.savedRuns.last?.groundShock == ground && reopened.groundShock == spec())
 
         // Using the run's inputs brings the points back, as one step to undo.
+        let steps = model.undoStack.count
         model.groundShockSpec = nil
-        try await Task.sleep(for: .milliseconds(300))
+        // The edit settles into a step to undo a moment later, however busy the Mac.
+        while model.undoStack.count == steps { try await Task.sleep(for: .milliseconds(5)) }
         try model.useRunInputs(id: kept.id)
         #expect(model.groundShockSpec == spec())
         model.undo()

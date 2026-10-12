@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Stationary grouped reconstruction")
+@Suite("Stationary grouped reconstruction", .timeLimit(.minutes(120)))
 struct LimitedGroupedGasFluxTests {
     @Test("Full-rank nonuniform stencils reproduce affine primitive face values")
     func affine() throws {

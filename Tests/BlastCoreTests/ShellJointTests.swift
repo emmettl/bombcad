@@ -8,7 +8,7 @@ import simd
 /// Support joints on shells and beams facing any way (`ShellMesh.jointPoints`): a wall hung by
 /// the free edge at its end, a wall on an inclined joint, and a slab and a beam seated on
 /// bearings at their ends, each as solid elements do.
-@Suite("Shell joints")
+@Suite("Shell joints", .gpuThreads)
 struct ShellJointTests {
     let device: MTLDevice
     let material = StructureMaterial.elastic(density: 2400, youngsModulus: 30e9, poissonRatio: 0.2)

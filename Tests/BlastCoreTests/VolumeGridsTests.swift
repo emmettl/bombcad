@@ -4,7 +4,7 @@ import Testing
 
 @testable import BlastCore
 
-@Suite("The air as volume grids")
+@Suite("The air as volume grids", .gpuThreads)
 struct VolumeGridsTests {
     @Test("Peak and impulse come from the solver's fields, in kPa and Pa·s, and follow the blast")
     func peakAndImpulse() throws {

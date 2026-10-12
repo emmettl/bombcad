@@ -230,6 +230,91 @@ does not establish agreement in surface loading. The matched-solid study isolate
 of removing mechanics; this diagnostic matrix records the consequences of changing the
 resolved boundary as well.
 
+## Envelopes from imports and map data
+
+Envelopes can also come from geometry made elsewhere, so that a neighbourhood of real buildings
+costs what its blocks cost. The code is `Sources/BlastCore/EnvelopeImport.swift`,
+`MapBuildings.swift` and, for IFC windows and doors, `Sources/BombCAD/IFCOpenings.swift`. Each
+envelope made this way records where it came from (`Scenario.envelopeSources`), which sets its
+[standing](standing.md): an approximation for imports, illustrative for map data.
+
+### IFC and other imports
+
+**Use as Exposure-only Envelope** (Run ▸ Imported geometry), or **Use All as Exposure-only
+Envelopes** for a group of them, turns an attached rigid import into a building of its own:
+
+- its sampled boxes become the envelope's solids: walls, slabs, roofs, columns and every other
+  element the import kept;
+- IFC windows and doors become openings, cut as their placed bounding boxes from every solid they
+  cross. Windows and doors the importer left out, because their meshes are not closed (the usual
+  case: all 24 windows and 14 doors of the duplex fixture fail its watertight check), are read back
+  from the retained IFC bytes for their bounds alone. An OBJ or STL import has no elements, so no
+  openings;
+- the import is removed, so that its geometry is not counted twice, and its note says what was
+  kept. Element identities, materials and the link to the source are not kept; Undo restores the
+  import.
+
+Limits are the envelopes': 2,048 solids and 256 openings a building, 2,048 fragments in a scene.
+
+**Checked against the same building as rigid obstacles** (`EnvelopeImportStudyTests`, run with
+`BOMBCAD_ENVELOPE_STUDY=<folder>`; 10 kg 8 m in front, 80 ms, surfaces recorded on both, the
+rigid import through an observer built from its boxes):
+
+| Building, cells | Envelope against the rigid import | With the left-out windows and doors cut |
+|---|---|---|
+| House, 0.5 m | identical: 278 solid cells, 824 faces | no windows or doors: identical |
+| House, 0.25 m | identical: 2,181 cells, 4,087 faces | identical |
+| Duplex, 0.5 m | identical: 2,391 cells, 4,880 faces | 29 cells cut; maps 0.10% (peak), 0.51% (impulse); surface loading 0.74% |
+| Duplex, 0.25 m | identical: 23,512 cells, 24,941 faces | 100 cells cut; maps 0.06%, 0.24%; surface loading 0.35% |
+
+The envelope is the rigid import to the bit: the same cells in the mask, the same maps and the
+same face-by-face surface records. Cutting the windows' and doors' bounds opens a little more
+than the holes the converter cut in the walls (frames, sills, reveals): under 0.6% on the maps and
+0.8% on the summed surface loading. The net vector impulse changes by 4% and 17%, a small
+residual of large opposing face loads, as in the matched study above. Converting takes
+milliseconds; reading the 38 windows' and doors' bounds back from the IFC 0.4 s; runs take what
+the rigid import's do (0.6 and 3.6 s). Openings raise the duplex's fragments from 63 to 148 at
+0.5 m and from 142 to 332 at 0.25 m, which is what limits how many such buildings a scene holds.
+
+### Buildings from map data
+
+**Map buildings** (Run tab) reads building footprints from an OpenStreetMap extract (`.osm`) or
+GeoJSON that you supply; BombCAD downloads nothing. Closed ways tagged `building`, and
+multipolygon relations (their outer and inner ways joined into rings, inner rings as courtyards),
+are buildings; `building:part` is left out, as it lies within its building. GeoJSON Polygons and
+MultiPolygons with a `building` property are buildings, or every feature where none has it.
+
+- **Placement.** Longitude and latitude become scene metres by a local equirectangular mapping
+  about the scene's corner (the buildings' south-west corner by default). A footprint is
+  rasterised on the grid's cells, a cell in where its centre is inside (even–odd over the rings,
+  so courtyards stay open), and merged into rectangles: the 13 synthetic buildings make 17
+  boxes. Each stands on the lowest point of the [terrain](terrain.md) under it, if there is one,
+  and is a solid block: no interior, openings or roof shape.
+- **Heights.** `height` (metres, or feet as `40 ft` or `40'6"`), else `building:levels` plus
+  `roof:levels` at 3 m a level, else an assumed two levels (6 m); `min_height` or
+  `building:min_level` lifts the bottom. The report counts each source.
+- **What is left out**, and said: footprints with fewer than three distinct corners or no area,
+  those outside the scene or smaller than a cell, and a later building's cells where an earlier
+  one already stands (overlaps go to the first). A roof above the domain is lowered to it.
+- **Credit.** OpenStreetMap data is under the Open Database Licence: placing buildings adds
+  "Buildings © OpenStreetMap contributors, ODbL 1.0" to the scene's attributions, which the
+  Map buildings section shows, and the USD export (`customLayerData.attributions`) and the
+  results' CSV carry. Only a small synthetic fixture is bundled
+  (`Samples/MapBuildings/synthetic-neighbourhood.geojson`), made up rather than taken from a map.
+
+![Thirteen synthetic map buildings on a 5° slope, 60 ms after 20 kg in the open square](building-envelopes/map-neighbourhood.png)
+
+**Checked** by `EnvelopeImportTests` (footprints where their coordinates put them to a cell, each
+height fallback, courtyards, the degenerate cases, overlaps and placement on a slope) and **costed**
+by `blastbench terrain --study buildings`: placing the 13 buildings takes 1–3 ms; a run with them
+takes no longer than the empty scene (0.75–1.0 times as long: they take cells out of the air), on
+flat ground or a slope; recording their 26,000 (0.5 m) or 106,000 (0.25 m) faces costs nothing
+measurable.
+
+What is lost against the real buildings: openings, interiors, roof shapes, eaves and anything
+under a cell; heights where the map has no tag; and positions and heights only as good as the
+map's. They shield and reflect the blast as solid blocks of their footprint, nothing more.
+
 ## Scope and verification
 
 Tests compare surface integration with independent per-step CPU pressure accumulation,

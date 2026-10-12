@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Prescribed moving shock reflection")
+@Suite("Prescribed moving shock reflection", .timeLimit(.minutes(120)))
 struct MovingShockReflectionTests {
     @Test(
         "Galilean reflection preserves pressure and density while changing velocity",

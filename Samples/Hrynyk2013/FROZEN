@@ -1,0 +1,5 @@
+1c857744802e8cfd2d536f8379d68dad1a85e743
+
+The frozen commit for blind test 1 (docs/blind-tests.md): origin/main as it stood when these
+inputs were added, on 2026-10-11. The predictor checks out this commit and runs its harness on
+its defaults, whatever later commits change.

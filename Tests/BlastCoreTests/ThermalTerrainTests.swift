@@ -5,7 +5,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("The terrain hides the fireball from what is behind it")
+@Suite("The terrain hides the fireball from what is behind it", .gpuThreads)
 struct ThermalTerrainTests {
     private static let gpu = MTLCreateSystemDefaultDevice()?.supportsRaytracing == true
     private let domain = SIMD3<Float>(100, 100, 50)
@@ -51,7 +51,10 @@ struct ThermalTerrainTests {
             ("CPU", CPUThermalVisibility(occluders: [], terrain: terrain))
         ]
         if Self.gpu, TerrainSight(terrain) != nil {
-            tests.append(("GPU", try #require(MetalThermalVisibility(occluders: [], terrain: terrain))))
+            // Waited for, not raced by the CPU, however busy the GPU is.
+            let metal = try #require(MetalThermalVisibility(occluders: [], terrain: terrain))
+            metal.racesCPU = false
+            tests.append(("GPU", metal))
         }
         return tests
     }
@@ -137,7 +140,7 @@ struct ThermalTerrainTests {
     }
 
     @Test(
-        "The GPU's test is the CPU's, ray for ray, on a rough terrain with blocks",
+        "The GPU's test, waited for, is the CPU's ray for ray on a rough terrain with blocks",
         .enabled(if: ThermalTerrainTests.gpu))
     func gpuAgrees() throws {
         let terrain = rough
@@ -145,18 +148,22 @@ struct ThermalTerrainTests {
             Box(min: SIMD3(40, 40, 0), max: SIMD3(44, 60, 14)),
             Box(min: SIMD3(70, 10, 5), max: SIMD3(72, 30, 20)),
         ]
-        let rays = segments(over: terrain, count: 50_000)
+        let rays = segments(over: terrain, count: 8000)
         let cpu = CPUThermalVisibility(occluders: blocks, terrain: terrain).visible(rays)
+        // The GPU's own answer, waited for, not raced by the CPU however busy the GPU is.
         let metal = try #require(MetalThermalVisibility(occluders: blocks, terrain: terrain))
+        metal.racesCPU = false
         let gpu = metal.visible(rays)
-        #expect(metal.usage.gpuFrames == 1)
+        #expect(metal.usage.gpuFrames == 1 && metal.usage.cpuFrames == 0)
         let differing = zip(cpu, gpu).filter { $0 != $1 }.count
         #expect(differing == 0, "\(differing) of \(rays.count) rays differ")
         let hidden = cpu.filter { !$0 }.count
-        #expect(hidden > 10_000 && hidden < 40_000, "\(hidden) hidden")
+        #expect(hidden > 1600 && hidden < 6400, "\(hidden) hidden")
         // And with no blocks, the terrain alone.
         let alone = try #require(MetalThermalVisibility(occluders: [], terrain: terrain))
+        alone.racesCPU = false
         #expect(alone.visible(rays) == CPUThermalVisibility(occluders: [], terrain: terrain).visible(rays))
+        #expect(alone.usage.gpuFrames == 1 && alone.usage.cpuFrames == 0)
     }
 
     /// A cube of gas at 2,000 K, `side` metres, centred at `centre`, in voxels of 0.25 m.

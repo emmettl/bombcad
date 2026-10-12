@@ -4,7 +4,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Released shared Euler bindings")
+@Suite("Released shared Euler bindings", .timeLimit(.minutes(120)))
 struct SharedEulerBindingsTests {
     @Test("The actual app-owned tube stages assemble the released public result type")
     func multistageBinding() throws {

@@ -5,7 +5,7 @@ import Testing
 
 @testable import BombCAD
 
-@MainActor @Suite("Building exposure inspection", .serialized)
+@MainActor @Suite("Building exposure inspection", .serialized, .hangLimit)
 struct EnvelopeInspectionTests {
     func document() throws -> ProjectDocument {
         var scene = Scenario(
@@ -25,9 +25,7 @@ struct EnvelopeInspectionTests {
     }
 
     func wait(_ condition: () -> Bool) async throws {
-        let deadline = ContinuousClock.now + .seconds(60)
         while !condition() {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(5))
         }
     }

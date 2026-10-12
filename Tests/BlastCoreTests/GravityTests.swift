@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// Gravity acting on the air.
-@Suite("Gravity")
+@Suite("Gravity", .gpuThreads)
 struct GravityTests {
     let device: MTLDevice
 

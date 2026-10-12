@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// The air's finer level near the shock.
-@Suite("Refinement")
+@Suite("Refinement", .gpuThreads)
 struct RefinementTests {
     let device: MTLDevice
 

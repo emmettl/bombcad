@@ -3,7 +3,7 @@ import Testing
 
 @testable import BlastCore
 
-@Suite("Released shared gas packet bindings")
+@Suite("Released shared gas packet bindings", .timeLimit(.minutes(120)))
 struct SharedPacketBindingsTests {
     @Test("Application packet values and operator are the released public types")
     func publicBinding() throws {

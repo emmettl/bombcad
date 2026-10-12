@@ -150,10 +150,19 @@ public final class BlastSolver {
         if let error = command.error { throw error }
         return (command.gpuEndTime - command.gpuStartTime) / Double(repetitions)
     }
-    public var interObjectContactDetected: Bool {
+    /// Independent bodies' envelopes or resolved cells overlap.
+    public var bodyEnvelopesOverlap: Bool {
         interactionBuffer?.contents().load(as: UInt32.self) != nil
             && interactionBuffer!.contents().load(as: UInt32.self) & 1 != 0
     }
+    /// Bodies came close with contact between them switched off: the run cannot go on.
+    public var interObjectContactDetected: Bool { bodyEnvelopesOverlap && !configuration.interBodyContact }
+    /// Independent bodies came close, and from then on are encoded a substep at a time, side by
+    /// side, in contact with each other.
+    public private(set) var bodiesInContact = false
+    /// Each body's own step overrides from before contact, which shares one step among them all.
+    private var stepsBeforeContact: [(solids: Float?, shells: Float?)] = []
+    private var bodyContactPipelines: [String: MTLComputePipelineState] = [:]
     private var tiledCoupling: TiledCoupling?
     private var couplingTiles: MTLBuffer?
     private var denseCouplingCells = 0
@@ -770,7 +779,7 @@ public final class BlastSolver {
                 min: simd_min(bounds.min, body.model.bounds.min),
                 max: simd_max(bounds.max, body.model.bounds.max))
         }
-        let margin = SIMD3<Float>(4, 4, 3)
+        let margin = configuration.debrisReach
         let low = grid.cell(containing: bounds.min - margin)
         let high = grid.cell(containing: bounds.max + margin)
         var origin = SIMD3(low.i, low.j, low.k)
@@ -993,10 +1002,16 @@ public final class BlastSolver {
     private func encodeInteractionCheck(_ encoder: MTLComputeCommandEncoder) {
         guard let interactionBuffer, let bounds = bodyEnvelopeBuffer else { return }
         var count = UInt32(bodies.count)
+        // With contact, bodies within one of their widest spheres of each other start it, before
+        // any spheres can touch.
+        var margin: Float =
+            configuration.interBodyContact
+            ? bodies.map { max($0.model.elementSize, 2 * $0.shellEnvelopeMargin) }.max() ?? 0 : 0
         encoder.setComputePipelineState(validateEnvelopesPipeline)
         encoder.setBuffer(bounds, offset: 0, index: 0)
         encoder.setBytes(&count, length: 4, index: 1)
         encoder.setBuffer(interactionBuffer, offset: 0, index: 2)
+        encoder.setBytes(&margin, length: 4, index: 3)
         encoder.dispatchThreads(
             MTLSize(width: bodies.count, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
@@ -1009,12 +1024,127 @@ public final class BlastSolver {
                 MTLSize(width: 1, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
         }
+        // Once in contact, bodies coming close is no reason to stop.
+        var halting: UInt32 = bodiesInContact ? ~1 : ~0
         encoder.setComputePipelineState(haltInteractionPipeline)
         encoder.setBuffer(interactionBuffer, offset: 0, index: 0)
         encoder.setBuffer(controlBuffer, offset: 0, index: 1)
+        encoder.setBytes(&halting, length: 4, index: 2)
         encoder.dispatchThreads(
             MTLSize(width: 1, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+    }
+
+    /// Encodes `count` substeps of every body a substep at a time, side by side, with contact
+    /// between them: each body fills its own contact table and finds its own contacts, then each
+    /// pair of bodies meets (`encodeBodyContact`), and only then does any body move.
+    private func encodeBodiesInContact(
+        _ encoder: MTLComputeCommandEncoder, count: Int, fluid: StructureSolver.FluidBinding
+    ) {
+        for substep in 0..<count {
+            func nest(_ index: Int, _ parts: [(body: Int, part: StructuralBody.ContactPart)]) {
+                guard index < bodies.count else {
+                    encodeBodyContact(encoder, parts, control: fluid.control)
+                    return
+                }
+                bodies[index].encodeSubsteps(
+                    encoder, substeps: substep..<(substep + 1), prelude: substep == 0, fluid: fluid,
+                    beforeNodes: { found in nest(index + 1, parts + found.map { (index, $0) }) },
+                    afterSubstep: { [self] step in encodeBodyEnvelope(encoder, index: index, substep: step) })
+            }
+            nest(0, [])
+        }
+    }
+
+    private func bodyContactPipeline(_ name: String) -> MTLComputePipelineState? {
+        if let pipeline = bodyContactPipelines[name] { return pipeline }
+        let pipeline = try? ShaderLibrary.pipeline(name, in: library)
+        bodyContactPipelines[name] = pipeline
+        return pipeline
+    }
+
+    /// Each part of each body against each part of every other, both ways round, with the same
+    /// spring, damper and friction from both sides: the softer spring, less damping and less
+    /// friction of the two.
+    private func encodeBodyContact(
+        _ encoder: MTLComputeCommandEncoder, _ parts: [(body: Int, part: StructuralBody.ContactPart)],
+        control: MTLBuffer
+    ) {
+        guard let bounds = bodyEnvelopeBuffer else { return }
+        struct Side {
+            var width: Float
+            var stiffness: Float
+            var damping: Float
+            var friction: Float
+            var nodes: Int
+        }
+        func side(_ part: StructuralBody.ContactPart) -> Side {
+            switch part {
+            case .solid(let solver, let u):
+                Side(
+                    width: u.h, stiffness: u.contactStiffness, damping: u.contactDamping,
+                    friction: u.contactFriction, nodes: solver.nodeCount)
+            case .shell(let solver, let u):
+                Side(
+                    width: u.contactRadius, stiffness: u.contactStiffness, damping: u.contactDamping,
+                    friction: u.contactFriction, nodes: solver.nodeCount)
+            }
+        }
+        for a in parts.indices {
+            for b in parts.indices where parts[a].body != parts[b].body {
+                let own = side(parts[a].part)
+                let other = side(parts[b].part)
+                guard own.nodes > 0, other.nodes > 0 else { continue }
+                var contact = StructuralBody.ContactParameters(
+                    reach: 0.5 * (own.width + other.width), stiffness: min(own.stiffness, other.stiffness),
+                    damping: min(own.damping, other.damping), friction: min(own.friction, other.friction),
+                    own: UInt32(parts[a].body), other: UInt32(parts[b].body))
+                let name: String
+                switch (parts[a].part, parts[b].part) {
+                case (.solid, .solid): name = "bodyContactSolidFromSolid"
+                case (.solid, .shell): name = "bodyContactSolidFromShell"
+                case (.shell, .solid): name = "bodyContactShellFromSolid"
+                case (.shell, .shell): name = "bodyContactShellFromShell"
+                }
+                guard let pipeline = bodyContactPipeline(name) else { continue }
+                encoder.setComputePipelineState(pipeline)
+                switch parts[a].part {
+                case .solid(let solver, var u):
+                    encoder.setBuffer(solver.nodeListBuffer, offset: 0, index: 0)
+                    encoder.setBuffer(solver.nodeBuffer, offset: 0, index: 1)
+                    encoder.setBuffer(solver.contactSlotBuffer, offset: 0, index: 2)
+                    encoder.setBytes(&u, length: MemoryLayout<StructureUniforms>.stride, index: 3)
+                    encoder.setBuffer(solver.contactForceBuffer, offset: 0, index: 5)
+                case .shell(let solver, var u):
+                    encoder.setBuffer(solver.nodeBuffer, offset: 0, index: 0)
+                    encoder.setBuffer(solver.referenceBuffer, offset: 0, index: 1)
+                    encoder.setBuffer(solver.contactSlotBuffer, offset: 0, index: 2)
+                    encoder.setBytes(&u, length: MemoryLayout<ShellUniforms>.stride, index: 3)
+                    encoder.setBuffer(solver.contactForceBuffer, offset: 0, index: 5)
+                }
+                encoder.setBuffer(control, offset: 0, index: 4)
+                switch parts[b].part {
+                case .solid(let solver, var u):
+                    encoder.setBuffer(solver.nodeListBuffer, offset: 0, index: 6)
+                    encoder.setBuffer(solver.nodeBuffer, offset: 0, index: 7)
+                    encoder.setBuffer(solver.contactHeadBuffer, offset: 0, index: 8)
+                    encoder.setBuffer(solver.contactSlotBuffer, offset: 0, index: 9)
+                    encoder.setBytes(&u, length: MemoryLayout<StructureUniforms>.stride, index: 10)
+                case .shell(let solver, var u):
+                    encoder.setBuffer(solver.nodeBuffer, offset: 0, index: 6)
+                    encoder.setBuffer(solver.referenceBuffer, offset: 0, index: 7)
+                    encoder.setBuffer(solver.contactHeadBuffer, offset: 0, index: 8)
+                    encoder.setBuffer(solver.contactSlotBuffer, offset: 0, index: 9)
+                    encoder.setBytes(&u, length: MemoryLayout<ShellUniforms>.stride, index: 10)
+                }
+                encoder.setBytes(
+                    &contact, length: MemoryLayout<StructuralBody.ContactParameters>.stride, index: 11)
+                encoder.setBuffer(bounds, offset: 0, index: 12)
+                encoder.dispatchThreads(
+                    MTLSize(width: own.nodes, height: 1, depth: 1),
+                    threadsPerThreadgroup: MTLSize(width: pipeline.threadExecutionWidth, height: 1, depth: 1))
+            }
+        }
     }
 
     /// Encodes the return to the air of what loose debris took from it during the substeps.
@@ -1219,6 +1349,13 @@ public final class BlastSolver {
             }
         }
         if let interactionBuffer { memset(interactionBuffer.contents(), 0, interactionBuffer.length) }
+        if bodiesInContact {
+            for (body, steps) in zip(bodies, stepsBeforeContact) {
+                body.solids?.stepOverride = steps.solids
+                body.shells?.stepOverride = steps.shells
+            }
+            bodiesInContact = false
+        }
 
         if hasBody, let commandBuffer = commandQueue.makeCommandBuffer(),
             let encoder = commandBuffer.makeComputeCommandEncoder()
@@ -1712,7 +1849,10 @@ public final class BlastSolver {
                     for body in bodies { body.prepareDebrisAreas(encoder, fluid: binding) }
                     binding.debrisAreasPrepared = true
                 }
-                for (index, body) in bodies.enumerated() {
+                if bodiesInContact {
+                    encodeBodiesInContact(encoder, count: count, fluid: binding)
+                }
+                for (index, body) in bodies.enumerated() where !bodiesInContact {
                     if bodies.count > 1 {
                         body.encodeSubsteps(
                             encoder, count: count, fluid: binding,
@@ -1850,6 +1990,20 @@ public final class BlastSolver {
                 ? Double(control.tileSweeps) / (Double(control.activeSteps) * tiles) : 0
         }
         frameExtractor?.complete(reachedLimit: control.stopped == 2, time: time, steps: stepCount)
+        // Bodies that came close stopped the batch; from the next, they meet in contact.
+        var contactStarted = false
+        if bodyEnvelopesOverlap, configuration.interBodyContact, !bodiesInContact, !couplingCapacityExceeded {
+            bodiesInContact = true
+            contactStarted = true
+            // In contact, every body takes the shortest of their steps, so that the two sides of
+            // each pair push for the same time and their impulses are equal and opposite.
+            let common = bodies.map(\.criticalTimeStep).min()!
+            stepsBeforeContact = bodies.map { ($0.solids?.stepOverride, $0.shells?.stepOverride) }
+            for body in bodies {
+                body.solids?.stepOverride = common
+                body.shells?.stepOverride = common
+            }
+        }
         return BatchResult(
             steps: Int(control.activeSteps), elapsed: elapsed, lastTimeStep: Double(lastStep),
             isStable: control.batchTime.isFinite && control.dt.isFinite,
@@ -1857,7 +2011,7 @@ public final class BlastSolver {
             refinedTiles: refinement?.patchCount ?? 0, finerRefinedTiles: finerRefinement?.patchCount ?? 0,
             stoppedShort: control.stopped == 1,
             reachedLimit: control.stopped == 2, unsupportedInteraction: interObjectContactDetected,
-            couplingCapacityExceeded: couplingCapacityExceeded)
+            contactStarted: contactStarted, couplingCapacityExceeded: couplingCapacityExceeded)
     }
 
     /// Advances by `steps` time steps, blocking until the GPU has finished.
@@ -1883,6 +2037,7 @@ public final class BlastSolver {
             total.finerRefinedTiles = result.finerRefinedTiles
             remaining -= result.steps
             stoppedShort = result.stoppedShort
+            if result.contactStarted { continue }
             if result.steps == 0 || result.reachedLimit || (result.steps < count && !result.stoppedShort)
                 || !result.isStable
             {

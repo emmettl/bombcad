@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Time-integrated translating box face openings")
+@Suite("Time-integrated translating box face openings", .timeLimit(.minutes(120)))
 struct TranslatingBoxFaceSweepTests {
     @Test("A crossing integrates the blocked time and agrees across a shared face")
     func sharedFace() throws {

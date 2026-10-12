@@ -430,6 +430,9 @@ final class SimulationModel {
     @ObservationIgnored private var structureRecord: [StructureSample] = []
     @ObservationIgnored private var bodyRecords: [UUID: [StructureSample]] = [:]
     private(set) var bodySummaries: [UUID: StructureSummary] = [:]
+    /// The run's time when its independent structures came close and began to meet through
+    /// contact, in seconds; nil while they are apart.
+    private(set) var structuresInContactFrom: Double?
     /// Largest deflection recorded so far, in millimetres.
     var peakDeflection: Double { structureHistory.map(\.deflection).max() ?? 0 }
     private(set) var memoryFootprint = 0
@@ -457,6 +460,9 @@ final class SimulationModel {
     @ObservationIgnored private var rebuildTask: Task<Void, Never>?
     @ObservationIgnored private var batchSize = 4
     @ObservationIgnored private var paceOriginWall = ContinuousClock.now
+    /// The playback clock, which says how far a paced run may have got: the wall clock, unless a
+    /// test drives it, to check the pacing whatever else keeps the GPU busy.
+    @ObservationIgnored var playbackNow: @MainActor () -> ContinuousClock.Instant = { ContinuousClock.now }
     @ObservationIgnored private var paceOriginTime: Double = 0
     @ObservationIgnored private var lastBatchCompletion = ContinuousClock.now
     @ObservationIgnored private var lastTracePublication = ContinuousClock.now
@@ -824,7 +830,7 @@ final class SimulationModel {
     /// Call when `settings` changes; records the edit and rebuilds once the edits settle.
     private var importsNeedResampling: Bool {
         (settings.scenario.importedModels ?? []).contains {
-            $0.isAttached && $0.preview.cellSize != settings.resolution.cellSize
+            $0.needsSampling(cellSize: settings.resolution.cellSize)
         }
     }
     func settingsChanged() {
@@ -1003,8 +1009,8 @@ final class SimulationModel {
 
     var domainSize: SIMD3<Float> { settings.scenario.domainSize }
 
-    /// The farthest the view zooms out: three times the domain's longest side, and no less than
-    /// SceneView's own 600 m.
+    /// The farthest the view zooms out (`zoomLimits`): three times the domain's longest side, and
+    /// no less than SceneView's own 600 m.
     var farthestZoom: Float { max(3 * max(domainSize.x, domainSize.y, domainSize.z), 600) }
 
     // MARK: - Editing the layout
@@ -2195,6 +2201,7 @@ final class SimulationModel {
         bodyHistories = [:]
         structureRecord = []
         bodyRecords = [:]
+        structuresInContactFrom = nil
         bodySummaries = Dictionary(
             uniqueKeysWithValues: (solver?.bodies ?? []).compactMap { body in
                 body.summary().map { (body.id, $0) }
@@ -2219,7 +2226,7 @@ final class SimulationModel {
     // MARK: - Stepping
 
     private func restartPacing() {
-        paceOriginWall = .now
+        paceOriginWall = playbackNow()
         paceOriginTime = solver?.time ?? time
         lastBatchCompletion = .now
     }
@@ -2248,7 +2255,7 @@ final class SimulationModel {
         if samples { limit = min(limit, nextStructureSampleTime) }
         var target = limit
         if speed != .unlimited {
-            let wall = (ContinuousClock.now - paceOriginWall).seconds
+            let wall = (playbackNow() - paceOriginWall).seconds
             target = min(limit, paceOriginTime + wall / speed.rawValue)
         }
         let remaining = target - solver.time
@@ -2473,6 +2480,7 @@ final class SimulationModel {
         bodySummaries = Dictionary(
             uniqueKeysWithValues: solver.bodies.compactMap { body in body.summary().map { (body.id, $0) } })
         stopIfSolverFailed(solver, summary: structureSummary)
+        if structuresInContactFrom == nil, solver.bodiesInContact { structuresInContactFrom = solver.time }
         structureHistory = structureRecord
         bodyHistories = bodyRecords
         updateFragmentStatus()

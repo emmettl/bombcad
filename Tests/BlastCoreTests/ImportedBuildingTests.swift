@@ -4,7 +4,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Independent IFC element sampling")
+@Suite("Independent IFC element sampling", .timeLimit(.minutes(120)))
 struct ImportedBuildingTests {
     private func cube(size: Float = 1, corner: SIMD3<Float> = .zero) throws -> ImportedMesh {
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()

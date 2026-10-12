@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Initial wall trace error decomposition")
+@Suite("Initial wall trace error decomposition", .timeLimit(.minutes(120)))
 struct WallTraceDecompositionTests {
     @Test("Pressure diagnostics preserve bounded traces and expose the actual raw fit and factor")
     func actualFit() throws {

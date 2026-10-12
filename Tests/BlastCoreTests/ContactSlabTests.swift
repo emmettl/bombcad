@@ -3,7 +3,7 @@ import Testing
 
 @testable import BlastCore
 
-@Suite("Slabs under contact charges")
+@Suite("Slabs under contact charges", .timeLimit(.minutes(120)))
 struct ContactSlabTests {
     struct Fixture: Decodable {
         struct Group: Decodable {

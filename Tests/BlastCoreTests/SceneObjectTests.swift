@@ -4,7 +4,7 @@ import Testing
 
 @testable import BlastCore
 
-@Suite("Scene object ownership")
+@Suite("Scene object ownership", .gpuThreads)
 struct SceneObjectTests {
     private let a = Box(min: SIMD3(1, 1, 0), max: SIMD3(2, 2, 1))
     private let b = Box(min: SIMD3(3, 1, 0), max: SIMD3(4, 2, 1))

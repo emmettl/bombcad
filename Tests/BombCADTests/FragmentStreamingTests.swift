@@ -5,7 +5,7 @@ import Testing
 
 @testable import BombCAD
 
-@Suite("Fragment regions")
+@Suite("Fragment regions", .hangLimit)
 struct FragmentRegionTests {
     @Test("The air sent grows with the frames the consumer is behind, thinned to stay under the cap")
     func region() {
@@ -63,7 +63,7 @@ final class StalledConsumer: FrameConsumer, @unchecked Sendable {
     func cancel() {}
 }
 
-@MainActor @Suite("Fragments flown alongside a run", .serialized)
+@MainActor @Suite("Fragments flown alongside a run", .serialized, .hangLimit)
 struct FragmentStreamingTests {
     private func document() -> ProjectDocument {
         var scene = Scenario(
@@ -123,9 +123,7 @@ struct FragmentStreamingTests {
         let run = Task {
             try await HeadlessRun.perform(document(), options: options(spec), consumer: consumer)
         }
-        let clock = ContinuousClock()
-        let deadline = clock.now + .seconds(10)
-        while consumer.sent < 5, clock.now < deadline {
+        while consumer.sent < 5 {
             try await Task.sleep(for: .milliseconds(10))
         }
         // Frame 0 and four more, ahead of a consumer stuck before its first.

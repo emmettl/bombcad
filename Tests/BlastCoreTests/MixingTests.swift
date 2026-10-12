@@ -6,7 +6,7 @@ import simd
 @testable import BlastCore
 
 /// Sub-grid turbulent mixing in the air.
-@Suite("Sub-grid mixing")
+@Suite("Sub-grid mixing", .gpuThreads)
 struct MixingTests {
     let device: MTLDevice
 

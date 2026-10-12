@@ -9,6 +9,7 @@ import simd
 //                      [--surfaces terrain,tilted] [--run 1]
 //   blastbench terrain --study shield [--mass 100] [--heights 2,4,8] [--dx 0.25] [--refine 2]
 //   blastbench terrain --study hill [--dx 0.5,0.25,0.125]
+//   blastbench terrain --study buildings [--buildings file.geojson|.osm] [--buildings-origin lon,lat] [--dx 0.5,0.25]
 //   blastbench terrain --dem file.asc|file.tif --origin x,y [--size 200,200] [--spacing 1]   (a DEM's crop)
 //   [--out dir]   (CSV of every row; default /Volumes/StudioData/bombcad/terrain)
 
@@ -23,6 +24,7 @@ func runTerrain(device: MTLDevice) throws {
     case "wedge": try runWedgeStudy(device: device, out: out)
     case "shield": try runShieldStudy(device: device, out: out)
     case "hill": try runHillStudy(device: device, out: out)
+    case "buildings": try runBuildingsStudy(device: device, out: out)
     default: print("Unknown study; use wedge, shield or hill.")
     }
 }
@@ -361,4 +363,76 @@ func applyTerrain(_ name: String, to scenario: inout Scenario) {
         scenario.charge.position.y = at[1]
     }
     scenario.replaceTerrain(with: terrain)
+}
+
+/// Places `path`'s map buildings (.osm or GeoJSON) in `scenario` as envelopes, on `resolution`
+/// cells, its (0, 0) at `--buildings-origin lon,lat` (the buildings' south-west corner by default).
+func applyMapBuildings(_ path: String, to scenario: inout Scenario, resolution: Float) {
+    do {
+        let buildings = try MapBuilding.read(contentsOf: URL(filePath: path))
+        let corner = buildings.flatMap { $0.rings.flatMap { $0 } }.reduce(
+            SIMD2(Double.infinity, .infinity), simd_min)
+        let origin = list("buildings-origin", [corner.x, corner.y])
+        let report = try scenario.addMapBuildings(
+            buildings,
+            placement: MapBuildingPlacement(origin: SIMD2(origin[0], origin[1]), resolution: resolution))
+        print("Map buildings: \(report.summary).")
+        for (id, reason) in report.skipped { print("  left out \(id): \(reason)") }
+    } catch {
+        print("Could not place the map buildings \(path): \(error)")
+        exit(1)
+    }
+}
+
+/// A neighbourhood of map buildings round the charge, on flat ground and on a slope: what placing
+/// them costs, what running with them costs, and what recording their surfaces costs.
+private func runBuildingsStudy(device: MTLDevice, out: URL) throws {
+    let path = option("buildings") ?? "Samples/MapBuildings/synthetic-neighbourhood.geojson"
+    let buildings = try MapBuilding.read(contentsOf: URL(filePath: path))
+    let origin = list("buildings-origin", [0, 51.5])
+    let duration = option("time").flatMap(Double.init) ?? 0.08
+    var csv = "dx,case,buildings,boxes,place_s,steps,run_s,record_run_s,faces\n"
+    for dx in list("dx", [0.5, 0.25]).map(Float.init) {
+        var base = ScenarioPreset.openGround.scenario
+        base.charge = Charge(mass: 20, position: SIMD3(26, 39, 0.5))
+        base.gauges = []
+        var cases: [(String, Scenario, Double, Int)] = [("no buildings", base, 0, 0)]
+        for terrain in [nil, Terrain.slope(domain: base.domainSize, spacing: dx, foot: 0, angle: 5)] {
+            var scene = base
+            scene.replaceTerrain(with: terrain)
+            let clock = Date()
+            let report = try scene.addMapBuildings(
+                buildings,
+                placement: MapBuildingPlacement(origin: SIMD2(origin[0], origin[1]), resolution: dx))
+            cases.append(
+                (
+                    terrain == nil ? "buildings" : "buildings on a 5° slope", scene,
+                    Date().timeIntervalSince(clock),
+                    report.placed.count
+                ))
+            if terrain == nil { print("\(dx) m: \(report.summary)") }
+        }
+        for (name, scene, place, count) in cases {
+            func run(recording: Bool) throws -> (steps: Int, seconds: Double, faces: Int) {
+                let solver = try BlastSolver(device: device, scenario: scene, cellSize: dx)
+                if recording { try solver.configureEnvelopeExposure(objects: scene.envelopeObjects) }
+                let clock = Date()
+                let steps = solver.advance(until: duration).steps
+                let faces = solver.envelopeExposureSummaries()?.reduce(0) { $0 + $1.faceCount } ?? 0
+                return (steps, Date().timeIntervalSince(clock), faces)
+            }
+            let plain = try run(recording: false)
+            let recorded = scene.envelopeObjects.isEmpty ? plain : try run(recording: true)
+            print(
+                String(
+                    format:
+                        "  %-24@ %3d buildings, %4d boxes, placed in %.3f s; %d steps in %.2f s, recording %d faces %.2f s",
+                    name as NSString, count, scene.rigidBoxes.count, place, plain.steps, plain.seconds,
+                    recorded.faces,
+                    recorded.seconds))
+            csv +=
+                "\(dx),\(name),\(count),\(scene.rigidBoxes.count),\(place),\(plain.steps),\(plain.seconds),\(recorded.seconds),\(recorded.faces)\n"
+        }
+    }
+    try csv.write(to: out.appending(path: "buildings.csv"), atomically: true, encoding: .utf8)
 }

@@ -5,7 +5,7 @@ import Testing
 @testable import BombCAD
 
 @MainActor
-@Suite("Local coupling run failure", .serialized)
+@Suite("Local coupling run failure", .serialized, .hangLimit)
 struct LocalCouplingRunFailureTests {
     @Test("A storage stop reaches the editor and cannot be kept as a completed run")
     func exhaustedPool() async throws {
@@ -19,9 +19,8 @@ struct LocalCouplingRunFailureTests {
         document.runSettings?.resolution = "coarse"
         document.runSettings?.duration = 0.004
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
-        let deadline = ContinuousClock.now + .seconds(20)
         while !model.experimentIsReady {
-            try #require(model.errorMessage == nil && ContinuousClock.now < deadline)
+            try #require(model.errorMessage == nil)
             try await Task.sleep(for: .milliseconds(5))
         }
         var runtime: BlastSolver?
@@ -43,7 +42,6 @@ struct LocalCouplingRunFailureTests {
         try #require(setupError == nil)
         let solver = try #require(runtime)
         while model.isRunning {
-            try #require(ContinuousClock.now < deadline)
             try await Task.sleep(for: .milliseconds(5))
         }
         #expect(solver.couplingCapacityExceeded && !solver.interObjectContactDetected)

@@ -7,7 +7,7 @@ import simd
 
 /// The base's connection to the ground (`Anchorage`) against statics: bearing, pull-off,
 /// sliding at the friction limit and overturning about the toe.
-@Suite("Anchorage")
+@Suite("Anchorage", .gpuThreads)
 struct AnchorageTests {
     let device: MTLDevice
     /// Stiff and elastic, so that the body's own deformation and cracking stay out of the way.

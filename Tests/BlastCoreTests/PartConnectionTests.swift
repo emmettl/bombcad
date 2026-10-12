@@ -8,7 +8,7 @@ import simd
 /// Connections between two moving parts of one body (`Anchorage.betweenParts`): a block seated
 /// across a gap on another bears on it, holds and slides on it with its forces equal and
 /// opposite, and drops once it slides off its seat.
-@Suite("Connections between parts")
+@Suite("Connections between parts", .gpuThreads)
 struct PartConnectionTests {
     let device: MTLDevice
     let material = StructureMaterial.elastic(density: 2400, youngsModulus: 30e9, poissonRatio: 0.2)

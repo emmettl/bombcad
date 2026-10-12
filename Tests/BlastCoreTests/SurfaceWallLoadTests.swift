@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Sampled wall pressure loads")
+@Suite("Sampled wall pressure loads", .timeLimit(.minutes(120)))
 struct SurfaceWallLoadTests {
     @Test("Affine pressure has an analytical patch torque missed by centroid evaluation")
     func patchTorque() throws {

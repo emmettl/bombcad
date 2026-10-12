@@ -4,7 +4,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Experimental rigid-box coupling", .serialized)
+@Suite("Experimental rigid-box coupling", .serialized, .gpuThreads)
 struct ExperimentalRigidBoxTests {
     let device: MTLDevice
     init() throws { device = try #require(MTLCreateSystemDefaultDevice()) }

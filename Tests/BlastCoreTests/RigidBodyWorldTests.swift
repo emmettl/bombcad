@@ -5,7 +5,7 @@ import simd
 
 /// Several freestanding bodies in contact with the ground, static blocks and each other.
 /// Mechanical checks only; no air.
-@Suite("Rigid-body world")
+@Suite("Rigid-body world", .timeLimit(.minutes(120)))
 struct RigidBodyWorldTests {
     private func box(
         _ size: SIMD3<Double>, at position: SIMD3<Double>, mass: Double, yaw: Double = 0,

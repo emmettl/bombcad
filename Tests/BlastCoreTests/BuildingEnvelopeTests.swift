@@ -5,7 +5,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Stationary building envelopes", .serialized)
+@Suite("Stationary building envelopes", .serialized, .gpuThreads)
 struct BuildingEnvelopeTests {
     func scene() throws -> Scenario {
         var scene = Scenario(

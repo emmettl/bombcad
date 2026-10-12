@@ -4,7 +4,7 @@ Experimental. Rigid boxes and simplified cars that slide, lift, tip and strike e
 scene's blocks and deformable structures, every one of them coupled to the air. Nothing here is
 validated against a blast experiment: the car is an illustrative 1500 kg saloon on locked
 tyres with rigid suspension, and the checks below are numerical and mechanical. The staged plan
-is in the [roadmap](roadmap.md#freestanding-objects-and-supports); milestones 1–3 (one box, one
+is [below](#the-staged-plan); milestones 1–3 (one box, one
 box in the air, one car) are described there.
 
 ## A car beside a charge: resolving the gap under it
@@ -172,8 +172,9 @@ with the Mac's load, so only the coupling and contact figures separate cleanly.
 
 ## Striking a deformable structure
 
-`ExperimentalRigidStructureSimulation` steps the objects with a structure of solid elements or
-shells, without air, at the structure's own time step. After each structure step the nodes
+`ExperimentalRigidStructureSimulation` steps the objects with the scene's structures, of solid
+elements, shells or both, without air, all at the shortest of their time steps (a box thrown
+between two walls strikes the one it is thrown at, which alone takes the reaction). After each structure step the nodes
 near an object are handed to `RigidBodyWorld` as point masses (a shell's as spheres of half its
 thickness); the object's faces strike them with the same inelastic, frictional impulses as
 everything else, equal and opposite, and the nodes' new velocities go back to the structure.
@@ -270,6 +271,74 @@ the 3D view, which draws freestanding objects as oriented boxes. A result is mar
 date when the layout changes. A deformable structure in the scene is refused. The layouts
 "Car park with parked cars (freestanding)" and "Furnished room (freestanding)" open the
 populated scenes above.
+
+## The staged plan
+
+The four milestones the work followed, with what was done at each (moved from the
+[roadmap](roadmap.md#freestanding-objects-and-supports) on 11 October 2026). The studies behind
+milestones 1 and 2 are in [rigid-box coupling studies](rigid-box-coupling-studies.md).
+
+A fixed base, the default, represents an intact attachment to a rigid foundation. A base can
+instead stand on connections that deform, open, slide and fail, or on a footing on soil (see
+the [structural model](structural-model.md#base-connections)). Independent rigid objects, boxes
+and a simplified car, move under gravity, friction and contact, coupled to the air. These are
+mechanics checked against theory, not validated vehicle or furniture models.
+
+1. **One rigid box, without blast.** Add scenario objects with shape, pose, mass, centre of
+   gravity, rotational inertia and contact properties, with backward-compatible persistence.
+   Keep rendering geometry separate from simple collision shapes. Implement translation,
+   rotation, gravity, unilateral ground contact and static/sliding friction. Verify rest under
+   gravity, the sliding threshold, response to prescribed linear and angular impulses, and
+   rocking and tipping without artificial energy gain; check timestep convergence.
+2. **One box coupled to the air.** Integrate surface pressure into force and torque, and
+   update moving boundaries on the coarse and refined air grids. Handle exposed air cells,
+   moving-wall velocity and motion beyond the initial coupling region. Check gas conservation,
+   momentum exchange and sensitivity to air resolution and timestep before adding scenes.
+3. **One simplified car.** Use a rigid body with four tyre contact locations and an explicit
+   all-wheels-locked assumption, initially with rigid suspension. Friction depends on each
+   contact's normal force and vanishes on lift-off. Check sliding and load transfer, then
+   rocking and tipping; distinguish these mechanical checks from validation against a blast
+   experiment. Crushing, wheel rotation and fragmentation are later extensions. (Done: the
+   mechanics in `RigidCarBody`, the box reference with the box as the shell and four
+   tyre contacts at the corners of a wheelbase × track rectangle, each with its own load and
+   Coulomb friction; the shell's corners catch a car that has tipped. `RigidCarDefinition`
+   saves the locked wheels and rigid suspension explicitly, as `Scenario.rigidCars` beside
+   rigid objects. Rigid suspension leaves four tyre loads indeterminate; the reported split is
+   the one equal tyre stiffnesses give, which leaves the motion unchanged. Tests check rest
+   loads against statics, the sliding threshold μW, load transfer of μWh/L under braking and
+   μWh/t sliding sideways, a sideways push holding below the static stability factor t/2h and
+   tipping above it, rocking back below the balance angle atan(t/2h) and tipping onto the side
+   above it, no energy gain, first-order timestep convergence and saved-file round trips.
+   These are mechanical checks; none is a validation against a blast experiment, and the
+   illustrative saloon's values are typical magnitudes, not a measured car. `swift run
+   rigidboxdemo` adds five car cases to the replay. Coupled to the air as the box is:
+   `ExperimentalRigidCarSimulation` puts the shell in the air, held clear of the ground so the
+   blast reaches the underside, and drives the car with the air's impulse and torque; the
+   tyres are contact points only. Tests check ambient balance on the static tyre loads, the
+   momentum budget, the force and torque of a pressure gradient about the low centre of mass,
+   and a blast loading the far tyres. `swift run -c release rigidboxdemo --car-blast` replays
+   the saloon 1.5 m from 1, 5 and 10 kg for 2 s (`--fine` for 0.05 m cells around the car). These are not
+   converged: the 0.15 m gap under the shell spans at most one cell, and from 0.2 to 0.1 m
+   cells the 10 kg air impulse goes from 6.4 to 9.0 kN s sideways and from 8.2 to 3.7 kN s
+   up, and the car rocks to 25° and back instead of overturning. Resolved: whole-cell masks made
+   the gap 0.2 m on 0.2 m cells and 0.1 m on 0.1 m ones, and patches started with gas packed
+   under the shell. With patches resolving the gap exactly, 10 kg overturns on near-car cells
+   from 0.075 to 0.025 m, the blast's load converging (passing the balance angle at 0.41 s on
+   the two finest); 5 kg rocks to 10° and 1 kg barely moves. Flow after the blast, with the car
+   steeply tilted, is not converged. See [freestanding objects](freestanding-objects.md).)
+4. **Several objects and populated scenes.** Add collisions with static scenery, deformable
+   structures and other objects, using spatial filtering. Expose placement, duplication,
+   properties, animated poses and displacement/speed/tipping results in the app. Progress
+   from a row of cars to a populated car park and a furnished room, with explicit friction
+   and support assumptions. Benchmark each against identical geometry held stationary,
+   reporting air-grid cost separately from motion, coupling and contact; include a crowded
+   collision case. Do not promise a throughput target before these measurements. (Done:
+   contact between bodies, blocks and the ground with a sweep over grown bounds; every object
+   in the air with its own moving boundary and patches, tested against one box of the same
+   size, a sheltered box and the gas's budget; objects striking solids and shells, with
+   momentum and energy budgets; a populated car park, a furnished room and a crowded pen in
+   the app or the study, each against the same geometry held, the coupling costing more than
+   the air. See [freestanding objects](freestanding-objects.md#several-objects).)
 
 ## Limitations and future work
 

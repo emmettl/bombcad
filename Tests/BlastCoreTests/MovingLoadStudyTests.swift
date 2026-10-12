@@ -3,7 +3,7 @@ import simd
 
 @testable import BlastCore
 
-@Suite("Sustained moving pressure loads")
+@Suite("Sustained moving pressure loads", .timeLimit(.minutes(120)))
 struct MovingLoadStudyTests {
     @Test("Nominal raw-cell closure resolves a tiny rotated corner while final groups remain conservative")
     func rotatedSliver() throws {
