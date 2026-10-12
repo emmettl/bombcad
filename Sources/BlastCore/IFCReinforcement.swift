@@ -436,3 +436,11 @@ public enum IFCReinforcement {
         )
     }
 }
+
+extension ImportedMesh.Triangle {
+    /// A triangle of three points, for building shapes outside BlastCore (the app's reading of a
+    /// converter's reinforcement).
+    public init(_ a: SIMD3<Float>, _ b: SIMD3<Float>, _ c: SIMD3<Float>) {
+        self.init(a: a, b: b, c: c)
+    }
+}
