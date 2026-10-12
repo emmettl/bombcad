@@ -228,6 +228,12 @@ public struct IFCStructure: Sendable {
                     representative.assembly = nil
                 }
                 groups[key] = (representative, [], [], [])
+            } else if let held = element.reinforcement {
+                // A part's bars are its element's, as are its properties where no part before it had any.
+                var gathered = groups[key]!.element.reinforcement ?? .init()
+                gathered.bars += held.bars
+                gathered.properties = gathered.properties ?? held.properties
+                groups[key]!.element.reinforcement = gathered
             }
             groups[key]!.triangles += element.mesh.triangles
             groups[key]!.meshes.append(element.mesh.triangles)
