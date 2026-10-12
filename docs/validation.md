@@ -79,6 +79,11 @@ swift run -c release blastbench perimeter --study wall
 | Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.2–1.9 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own. [Brick walls](#brick-walls-debris) (Keys, 2016): loads within 15%, but the walls break into too few pieces, falling at full length in the open (means of −2 to +2 m against +0.2 to +0.6 m) and thrown half as far as measured in a shock tube; collapse nothing | Unsafe side for debris: held back rather than thrown, slabs never holed, brick walls thrown short (low); collapse never compared |
 | Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 1–2%, structural responses 4–20%, residual deflections and failure 17–28%; the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
 
+No structural result has yet been shown to converge on today's defaults: the meshes quoted as
+agreeing are the coarse end of each sequence, results that settle do so above the measurements,
+and failures change with the mesh and the step (see [Convergence on today's
+defaults](#convergence-on-todays-defaults)).
+
 Read with the table:
 
 - **The defaults were chosen with these tests in view.** The concrete's tensile strain-rate law
@@ -3210,6 +3215,72 @@ checks; see the [shell model](shell-model.md#verification).
 
 These establish that the equations are solved as intended. They say nothing about whether the
 equations are the right ones.
+
+## Convergence on today's defaults
+
+The independent review's larger issue 2 ([validation-review.md](validation-review.md)): no
+structural result had been shown to converge on today's defaults. Each case is run here on a
+sequence of meshes, three levels or more, with the structure's time step halved on the finest
+(or, where that would take half a day, on the next), all on one commit: origin/main at
+`e4b43dc` (11 October 2026), plus a harness-only change that lets `--step-divisor` reach the
+impact, close-in and chamber benches (`54dff3e`; no model code or default touched). The case
+matrix's commands are used (`Scripts/concrete-matrix.py`), with `--layers` or `--h` for the
+mesh; outputs are in `/Volumes/StudioData/bombcad/convergence/`. Where three meshes change
+monotonically, the observed order and a Richardson estimate follow I. B. Celik et al.'s
+procedure for unequal refinement ratios (*J. Fluids Eng.* 130, 078001, 2008;
+`convergence/richardson.py`). None of these tests was repeated, so the measured scatter is not
+known; a change with the mesh is set against the gap to the measurement instead.
+
+| Case | Quantity (measured) | Coarse → fine | Step halved on the finest | Trend |
+|---|---|---|---|---|
+| Contest slab | peak (108 mm) and residual (91 mm) | 4: 114 / 91; 8: 113 / 76; 16: 121 / 90; 32: 124 / 98 mm, 15,067 of 4.4 million elements failed on 32 | 32: 312 mm and 294 left, 110,214 failed: runs away | peak rising more slowly with each halving from 8 (order 1.4, extrapolated 126 mm, 117%), but the finest mesh fails with half the step; residual not monotonic |
+| Janney's beam | peak moment (41.5 kN m), and where it fails (42 mm) | 12: 43.0, fails at 40 mm; 24: 39.4, holds to 60 mm; 36: 34.2, fails at 11 mm; 48: 24.3, fails at 7 mm | 36: 33.8 kN m, fails at 11 mm (48 halved would take half a day) | flips: the finer meshes break before the test's yield |
+| OA1 | peak load (332 kN) | 12: 437; 24: 344; 36: 348; 48: 369 kN | 379 kN | falls to 24, then rises again: not converged |
+| Saatci, light drops | peak (9.3, 12.1, 10.0 mm) | SS0a-1 17.0, 16.5, 16.3; SS1a-1 13.6, 14.1, 14.0; SS2a-1 12.4, 12.8, 12.8 (16, 24, 32) | SS0a-1 15.4 | settled within 2–5% by 24 (SS0a-1 order 1.6, extrapolated 16.0) |
+| Saatci, heavy drops | peak (39.5, 37.9, 35.3 mm) | SS1b-1 40.5, 46.4, 47.6; SS2b-1 37.1, 42.5, 42.6; SS3b-1 33.6, 35.0, 37.0 | SS1b-1 48.1 | rise 15–18% from 16 to 32; SS1b-1 and SS2b-1 settle (extrapolated 48.3 and 42.6), SS3b-1 still rising |
+| Saatci SS0b-1 | failed in the test | 66.5, 108.7, 87.3 mm; 2,359, 5,156, 8,749 elements removed | | fails on every mesh; its deflection does not converge |
+| Ando A24-3 | peak (11 mm) | 11.2, 14.5, 9.7 mm (16, 24, 32) | 9.5 mm | oscillates |
+| Ando A36-5 | peak (66 mm, broken) | 55.9, 65.0, 137.9 mm; 493, 2,122, 8,451 removed | | breaks apart on 32 |
+| Ando B48-5 | peak (55 mm) | 54.0, 71.9, 70.5 mm | | settles near 71 mm, 29% high |
+| Chiquito P7 | left down (340 mm), not holed | 6: 120 (peak 169); 8: 135 (240); 12: 130 (182); 16: holed, peak 247 (fine air) | 16: holed, peak 243 | flips: holed on 16 only |
+| The chamber | roof edge, peak (paper's model 87 mm) and left (95 mm measured) | 0.1 m: 49 / 25 mm, 9 elements failed; 50 mm: 56 / 39 mm, 61,094 failed; 25 mm: 74 mm at 20 ms and rising, then the solution fails (not a number) by 31 ms with 491,071 of 7.5 million elements failed | 50 mm: 56 / 47 mm, 43,189 failed | peak rising; damage grows with refinement and changes with the step; the finest mesh breaks down |
+
+(The meshes are elements through the depth or thickness; for the chamber, the element size,
+the air at 0.1 m throughout. Chiquito's slab is on 25 mm air refined by 2. The chamber cannot
+be meshed at 0.2 m. Ando's beams are three of the nineteen, the case matrix's quick set.)
+
+**What converges.** Saatci's light drops settle within a few per cent by 24 elements, 16 to 75%
+above the measured peaks. The contest slab's peak rises more slowly with each halving from 8
+elements (by 8 mm, then 3), towards about 126 mm, 17% above the measurement. Saatci's heavy
+drops SS1b-1 and SS2b-1 settle by 32 elements, 12 to 20% high, and Ando's B48-5 near 71 mm, 29%
+high. In each, the mesh that agreed with the test (16 elements for the struck beams, 8 for the
+slab) is the coarse end of the sequence: its agreement is partly the mesh's.
+
+**What does not.** Janney's beam holds on 12 and 24 elements and breaks on 36 and 48, at 11 and
+7 mm, before the test's beam had yielded; halving the step on 36 changes nothing, so it is the
+mesh. OA1's peak falls from 12 to 24 elements and rises again by 48, 7% above the 24-element
+value that agreed. Chiquito's P7 is left 120 to 135 mm down on 6 to 12 elements and holed
+through on 16, with half the step as well. Ando's A24-3 oscillates, and A36-5 (broken in the
+test) breaks apart on 32. On the chamber the roof's peak rises with refinement, the elements
+lost grow from a handful to tens of thousands, and on 25 mm elements the solution breaks down
+within 31 ms. And the contest slab's 32-element run, which holds
+at the default step, runs away with half of it, as the review's strip did on 32 elements.
+
+**The step.** Halving the structure's step leaves most results within a few per cent (OA1 +3%,
+Saatci's SS0a-1 −6% and SS1b-1 +1%, A24-3 −2%, the chamber's peak unchanged) but not the failures:
+the chamber's damage and residual move by a quarter, and the slab on 32 elements fails. One lead
+for later, not shown here: the strain rate the rate laws see is a running average over 50 steps
+(`StructureSolver`'s rate filter), so its window, and the strength it gives, changes with the
+step.
+
+**What it means.** No structural result has been shown to converge on today's defaults with
+the measurements inside the change. Where a result settles it does so above the measurement,
+and the meshes quoted elsewhere in this document as agreeing are the coarse ones: 8 for the
+slab, 16 for the struck beams, 24 for OA1 and Janney, 6 to 12 for the close-in slabs. Those
+agreements stand as comparisons at a stated mesh, not as converged answers. Failure (Janney,
+P7, the slab on 32, the chamber) depends on the mesh and, on fine meshes, on the step: the
+crack and removal laws regularise energy over one element, and nothing yet holds a failure
+mode fixed under refinement.
 
 ## What is missing
 
