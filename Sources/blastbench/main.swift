@@ -230,6 +230,9 @@ func applyHourglassOptions(_ model: inout StructureModel) {
     if flag("hourglass-no-steel") { model.hourglassCapsSteel = false }
     // `--nonlocal 0.05`: cracks soften by their strain averaged over that length either side.
     if let length = option("nonlocal").flatMap({ Float($0) }) { model.crackAveraging = length }
+    // `--rate-window 120` (µs): the strain-rate laws see the rate averaged over that time
+    // (`strainRateWindow`) instead of over the last 50 steps.
+    if let window = option("rate-window").flatMap({ Float($0) }) { model.strainRateWindow = window * 1e-6 }
     // `--discrete [mm]`: the layers' bars as discrete trusses (`barsAsTrusses`), of that diameter,
     // or the bond's (`--bond`), or 12 mm; they slip by `--bond` or are bonded perfectly.
     if flag("discrete") {
@@ -250,6 +253,16 @@ func prepareTrace(_ solver: StructureSolver) {
     // compacted under a contact charge needs (see `ContactSlabTest`).
     if let divisor = option("step-divisor").flatMap({ Float($0) }) {
         solver.stepOverride = solver.stableTimeStep / divisor
+    }
+    // `--print-step`: the structure's step and the strain-rate filter's window (50 steps unless
+    // `--rate-window` fixes it), as the run starts.
+    if flag("print-step") {
+        let window = solver.model.strainRateWindow ?? 50 * solver.criticalTimeStep
+        print(
+            "Structure's step \(format(Double(solver.criticalTimeStep) * 1e6, 3)) µs, strain-rate window "
+                + "\(format(Double(window) * 1e6, 1)) µs, elements \(format(Double(solver.model.elementSize) * 1000, 2)) mm"
+        )
+        fflush(stdout)
     }
     applyFragmentThresholds(solver)
 }

@@ -797,6 +797,20 @@ a charge, so every result before the fix that involved fast crushing was affecte
 Alternatively, fixed factors can be set (`concreteRateFactor`, `steelRateFactor`), such as the
 design values of UFC 3-340-02 (1.19 and 1.17 for bending in the far range).
 
+
+### A strain-rate window in time (an option)
+
+The running average above is over the last 50 of the structure's steps, a time that shrinks with
+the element and with the step: halving either halves the window, so the rate the laws see, and
+the strength they give, changes with the mesh and the step for the same motion. With
+`StructureModel.strainRateWindow` set (seconds; `blastbench --rate-window` in µs), the average is
+over that fixed time instead, the same filter with time constant τ in place of 50 steps (the
+bars' stretching rates too, and the shells'). Checks (`StrainRateWindowTests`): a prism stretched
+from rest at a steady rate reaches 1 − 1/e of it after one window on its own step and on half of
+it, where after 50 steps the default reaches 1 − 1/e on the one and 1 − 1/e² on the other. Off by
+default; see [Validation](validation.md#convergence-on-todays-defaults) for what it does to
+convergence.
+
 ## Removal
 
 An element is removed when
