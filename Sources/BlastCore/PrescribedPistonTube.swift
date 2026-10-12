@@ -1,3 +1,4 @@
+import CompressibleFlow
 import simd
 
 /// One-dimensional planar piston with conservative end-cell merging/splitting.

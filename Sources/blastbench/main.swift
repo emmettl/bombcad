@@ -2059,7 +2059,7 @@ func columnReport(_ structure: StructureSolver, i i0: Int, j: Int, offsets: [Int
             }
             let bars = structure.barPlasticStrain(i, j, k)
             let barText = [bars.x, bars.y].map { abs($0) > 1e8 ? "cut" : format(Double($0) * 100, 1) }
-            let widest = planes.history.max() ?? 0
+            let widest = planes.history.max()
             let note: String
             if flag != .active {
                 note = ""

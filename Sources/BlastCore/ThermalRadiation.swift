@@ -370,7 +370,7 @@ public struct ThermalExposure: Sendable {
         let views = [View](unsafeUninitializedCapacity: receivers.count) { views, count in
             rays.withUnsafeMutableBufferPointer { rays in
                 weights.withUnsafeMutableBufferPointer { weights in
-                    DispatchQueue.concurrentPerform(iterations: chunks) { c in
+                    concurrently(iterations: chunks) { c in
                         let range = c * chunk..<min((c + 1) * chunk, receivers.count)
                         var chunkRays: [ThermalRay] = []
                         var chunkWeights: [Float] = []
@@ -392,7 +392,7 @@ public struct ThermalExposure: Sendable {
         var offsets = [0]
         for chunkRays in rays { offsets.append(offsets.last! + chunkRays.count) }
         let all = [ThermalRay](unsafeUninitializedCapacity: offsets.last!) { buffer, count in
-            DispatchQueue.concurrentPerform(iterations: chunks) { c in
+            concurrently(iterations: chunks) { c in
                 _ = UnsafeMutableBufferPointer(rebasing: buffer[offsets[c]..<offsets[c + 1]]).initialize(
                     from: rays[c])
             }
@@ -401,7 +401,7 @@ public struct ThermalExposure: Sendable {
         let visible = visibility.visible(all)
         result.withUnsafeMutableBufferPointer { result in
             visible.withUnsafeBufferPointer { visible in
-                DispatchQueue.concurrentPerform(iterations: chunks) { c in
+                concurrently(iterations: chunks) { c in
                     let chunkVisible = UnsafeBufferPointer(rebasing: visible[offsets[c]..<offsets[c + 1]])
                     var next = 0
                     for n in c * chunk..<min((c + 1) * chunk, receivers.count) {

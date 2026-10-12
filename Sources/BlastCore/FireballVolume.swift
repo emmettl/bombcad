@@ -80,7 +80,7 @@ extension LuminousCells {
             temperatures.withUnsafeMutableBufferPointer { temperatures in
                 products.withUnsafeMutableBufferPointer { products in
                     // A plane of voxels at a time, across the cores; each voxel's cells in order.
-                    DispatchQueue.concurrentPerform(iterations: n.z) { c in
+                    concurrently(iterations: n.z) { c in
                         var found = false
                         for b in 0..<n.y {
                             for a in 0..<n.x {
@@ -274,7 +274,7 @@ extension BlastSolver {
         let hasProducts = speciesHoldDetonationProducts
         var packed = [UInt32](repeating: 0, count: fineCounts.x * fineCounts.y * fineCounts.z)
         packed.withUnsafeMutableBufferPointer { packed in
-            DispatchQueue.concurrentPerform(iterations: fineCounts.z) { k in
+            concurrently(iterations: fineCounts.z) { k in
                 for j in 0..<fineCounts.y {
                     for i in 0..<fineCounts.x {
                         let at = fineLow &+ SIMD3(i, j, k)
@@ -325,7 +325,7 @@ extension BlastSolver {
         withState { cells in
             readSpecies { species in
                 packed.withUnsafeMutableBufferPointer { packed in
-                    DispatchQueue.concurrentPerform(iterations: counts.z) { k in
+                    concurrently(iterations: counts.z) { k in
                         for j in 0..<counts.y {
                             for i in 0..<counts.x {
                                 let index = grid.index(low.x + i, low.y + j, low.z + k)
@@ -386,7 +386,7 @@ struct ThermalMedium: Sendable {
         let plane = n.x * n.y
         var voxels = [SIMD4<Float>](repeating: .zero, count: cells.fills.count)
         voxels.withUnsafeMutableBufferPointer { voxels in
-            DispatchQueue.concurrentPerform(iterations: n.z) { k in
+            concurrently(iterations: n.z) { k in
                 for v in k * plane..<(k + 1) * plane {
                     let t = Float(cells.temperatures[v])
                     guard cells.fills[v] > 0, t > 0 else { continue }
@@ -398,7 +398,7 @@ struct ThermalMedium: Sendable {
                 }
             }
             // Gas may be found within a voxel only where it or one round it has some.
-            DispatchQueue.concurrentPerform(iterations: n.z) { k in
+            concurrently(iterations: n.z) { k in
                 for j in 0..<n.y {
                     for i in 0..<n.x {
                         var near = false
@@ -638,7 +638,7 @@ struct CPUThermalMarch: ThermalMarch {
     func irradiance(_ medium: ThermalMedium, receivers set: ThermalReceiverSet, occluded: Bool) -> [Float] {
         let receivers = set.receivers
         return [Float](unsafeUninitializedCapacity: receivers.count) { result, count in
-            DispatchQueue.concurrentPerform(iterations: receivers.count) { n in
+            concurrently(iterations: receivers.count) { n in
                 (result.baseAddress! + n).initialize(
                     to: irradiance(medium, at: receivers[n], occluded: occluded))
             }
@@ -810,7 +810,7 @@ extension ThermalExposure {
             let power = Float(
                 Double(spec.emissivity) * Self.stefanBoltzmann * pow(Double(frame.temperature), 4))
             irradiance = [Float](unsafeUninitializedCapacity: enclosure.count) { result, count in
-                DispatchQueue.concurrentPerform(iterations: enclosure.count) { n in
+                concurrently(iterations: enclosure.count) { n in
                     var rays: [ThermalRay] = []
                     var weights: [Float] = []
                     let view = view(from: enclosure[n].0, frame, power: power, rays: &rays, weights: &weights)

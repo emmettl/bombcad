@@ -268,7 +268,7 @@ extension BlastSolver {
         var planes = [Sums](repeating: Sums(), count: nz)
         withState { cells in
             planes.withUnsafeMutableBufferPointer { planes in
-                DispatchQueue.concurrentPerform(iterations: nz) { k in
+                concurrently(iterations: nz) { k in
                     var sums = Sums()
                     let (planePressure, planeTemperature) = planeAmbient[k]
                     for j in 0..<ny {

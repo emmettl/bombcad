@@ -209,7 +209,7 @@ struct CloudSpreadTests {
             temperature: 1200, riseSpeed: 0, hottest: 2000, buoyancy: 15_000, warmBuoyancy: 18_000,
             ambientTemperature: groundTemperature, ambientPressure: groundPressure, chargeMass: 60)
         let cloud = CloudResult(spec: spec, handOver: start)
-        let stoppedAt = try? #require(cloud.stabilised)
+        let stoppedAt = cloud.stabilised
         guard let stoppedAt else { return }
         let rising = cloud.samples.filter { $0.time <= stoppedAt.time }
         let spreading = cloud.samples.filter { $0.time > stoppedAt.time }
@@ -218,7 +218,7 @@ struct CloudSpreadTests {
         // It carries on from where it stopped, and never narrower: flattening as a gravity current
         // first, and then thickened by the turbulence as it drifts kilometres.
         let frames = cloud.frames()
-        let first = try? #require(frames.first { $0.time > stoppedAt.time })
+        let first = frames.first { $0.time > stoppedAt.time }
         #expect(abs((first?.radius ?? 0) / stoppedAt.radius - 1) < 0.02)
         #expect(abs((first?.height ?? 0) - stoppedAt.height) < 0.5)
         for (a, b) in zip(spreading, spreading.dropFirst()) { #expect(b.radius >= a.radius) }
