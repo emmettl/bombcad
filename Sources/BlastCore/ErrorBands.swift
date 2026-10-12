@@ -312,11 +312,11 @@ public enum ValidationTables {
             id: "cloudTop", low: 0.79, high: 1.21, document: "fireball-rise.md",
             quote: "to 4% on average and 21% shot by shot"),
         Figure(
-            id: "ventedBackWall", low: 0.55, high: 0.6, document: "validation.md#summary",
-            quote: "lit at the back wall, 55–60% of the measured peaks"),
+            id: "ventedBackWall", low: 0.8, high: 1.6, document: "validation.md#summary",
+            quote: "lit at the back wall, 0.8–1.6 times the measured peaks"),
         Figure(
-            id: "ventedMiddle", low: 0.143, high: 0.167, document: "validation.md#summary",
-            quote: "lit in the middle, a sixth to a seventh"),
+            id: "ventedMiddle", low: 0.4, high: 0.4, document: "validation.md#summary",
+            quote: "lit in the middle, about 0.4"),
     ]
 
     public static func figure(_ id: String) -> Figure { figures.first { $0.id == id }! }
@@ -849,8 +849,9 @@ extension StandingScene {
                         "Peak pressure in a vented room, lit at the back wall",
                         low: "flame too slow", high: "over-read",
                         validity:
-                            "FM Global's 63.7 m³ chamber, digitised; the wrinkling constant fitted by Bauwens "
-                            + "et al. in this chamber, and the peak not converged (about ±40%)",
+                            "FM Global's 63.7 m³ chamber, digitised; the wrinkling constant fitted, and the "
+                            + "instability's onset measured, by Bauwens et al. in this chamber; the peak uncertain by "
+                            + "about ±20% on 0.1 m cells",
                         check: "Bauwens et al.'s vented deflagrations"),
                     figure(
                         "ventedMiddle", .ventedPressure, "Peak pressure in a vented room, lit in the middle",
