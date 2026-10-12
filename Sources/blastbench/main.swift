@@ -747,6 +747,7 @@ func runThroughput() throws {
             var refined = 0.0
             var finer = 0.0
             var (most, finerMost) = (0, 0)
+            var substeps = SIMD2<Double>.zero
             var batches = 0
             while solver.time < event {
                 let result = solver.advance(steps: 64, timeLimit: event)
@@ -759,8 +760,11 @@ func runThroughput() throws {
                 finer += Double(result.finerRefinedTiles)
                 most = max(most, result.refinedTiles)
                 finerMost = max(finerMost, result.finerRefinedTiles)
+                substeps +=
+                    SIMD2(result.firstLevelSubsteps, result.secondLevelSubsteps) * Double(result.steps)
                 batches += 1
             }
+            substeps /= Double(max(steps, 1))
             let blocks = Double(
                 ((solver.grid.nx + 3) / 4) * ((solver.grid.ny + 3) / 4) * ((solver.grid.nz + 3) / 4))
             print(
@@ -768,7 +772,9 @@ func runThroughput() throws {
                     + "at most \(most) (room for \(solver.refinementPatchCapacity)), of \(Int(blocks))"
                     + (solver.configuration.refinementLevels > 1
                         ? "; at the second level \(format(finer / Double(max(batches, 1)), 0)) on average, "
-                            + "at most \(finerMost) (room for \(solver.finerRefinementPatchCapacity))" : ""))
+                            + "at most \(finerMost) (room for \(solver.finerRefinementPatchCapacity))" : "")
+                    + "; substeps per step \(format(substeps.x, 2))"
+                    + (solver.configuration.refinementLevels > 1 ? " and \(format(substeps.y, 2))" : ""))
         } else if runWholeEvent {
             let result = solver.advance(until: event)
             (steps, swept) = (result.steps, result.sweptFraction)
@@ -917,7 +923,8 @@ func runChamber() throws {
 /// Gas pressure in a closed room against UFC 3-340-02 Figure 2-152.
 /// A solver for `scenario`, with the air options given on the command line (`--afterburn`).
 /// The air's refinement from `--refine 2|4`, `--refine-levels 1|2`, `--refine-margin 1|2` (cells of
-/// margin around the shock), `--refine-threshold`,
+/// margin around the shock), `--refine-own-steps` (each level takes only the substeps its own waves
+/// need), `--refine-threshold`,
 /// `--refine-finer-threshold` (the second level's) and `--refine-memory` (MB).
 func configureRefinement(_ configuration: inout SolverConfiguration) {
     // The terrain's ground is cut through the cells by default (TerrainCutCells.swift); `--staircase`
@@ -930,6 +937,7 @@ func configureRefinement(_ configuration: inout SolverConfiguration) {
     }
     if let levels = option("refine-levels").flatMap({ Int($0) }) { configuration.refinementLevels = levels }
     if let margin = option("refine-margin").flatMap({ Int($0) }) { configuration.refinementMargin = margin }
+    if flag("refine-own-steps") { configuration.refinementOwnSteps = true }
     if let threshold = option("refine-finer-threshold").flatMap({ Float($0) }) {
         configuration.refinementFinerThreshold = threshold
     }
