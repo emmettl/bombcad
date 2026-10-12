@@ -3201,7 +3201,7 @@ known; a change with the mesh is set against the gap to the measurement instead.
 | Ando A36-5 | peak (66 mm, broken) | 55.9, 65.0, 137.9 mm; 493, 2,122, 8,451 removed | | breaks apart on 32 |
 | Ando B48-5 | peak (55 mm) | 54.0, 71.9, 70.5 mm | | settles near 71 mm, 29% high |
 | Chiquito P7 | left down (340 mm), not holed | 6: 120 (peak 169); 8: 135 (240); 12: 130 (182); 16: holed, peak 247 (fine air) | 16: holed, peak 243 | flips: holed on 16 only |
-| The chamber | roof edge, peak (paper's model 87 mm) and left (95 mm measured) | 0.1 m: 49 / 25 mm, 9 elements failed; 50 mm: 56 / 39 mm, 61,094 failed; 25 mm: still running (stopped twice by the Studio's crashes) | 50 mm: 56 / 47 mm, 43,189 failed | peak rising; damage grows with refinement and changes with the step |
+| The chamber | roof edge, peak (paper's model 87 mm) and left (95 mm measured) | 0.1 m: 49 / 25 mm, 9 elements failed; 50 mm: 56 / 39 mm, 61,094 failed; 25 mm: 74 mm at 20 ms and rising, then the solution fails (not a number) by 31 ms with 491,071 of 7.5 million elements failed | 50 mm: 56 / 47 mm, 43,189 failed | peak rising; damage grows with refinement and changes with the step; the finest mesh breaks down |
 
 (The meshes are elements through the depth or thickness; for the chamber, the element size,
 the air at 0.1 m throughout. Chiquito's slab is on 25 mm air refined by 2. The chamber cannot
@@ -3219,8 +3219,9 @@ slab) is the coarse end of the sequence: its agreement is partly the mesh's.
 mesh. OA1's peak falls from 12 to 24 elements and rises again by 48, 7% above the 24-element
 value that agreed. Chiquito's P7 is left 120 to 135 mm down on 6 to 12 elements and holed
 through on 16, with half the step as well. Ando's A24-3 oscillates, and A36-5 (broken in the
-test) breaks apart on 32. On the chamber the roof's peak rises with refinement, and the elements
-lost grow from a handful to tens of thousands. And the contest slab's 32-element run, which holds
+test) breaks apart on 32. On the chamber the roof's peak rises with refinement, the elements
+lost grow from a handful to tens of thousands, and on 25 mm elements the solution breaks down
+within 31 ms. And the contest slab's 32-element run, which holds
 at the default step, runs away with half of it, as the review's strip did on 32 elements.
 
 **The step.** Halving the structure's step leaves most results within a few per cent (OA1 +3%,
