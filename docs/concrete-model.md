@@ -270,6 +270,16 @@ pores crushed and fifty times once dense; reinforced blockwork meshed as units a
 squeezed its base course to μ = 0.74 and ran away (see validation.md, "Perimeter walls under
 field blasts"). Every concrete with K of 12 GPa or more runs exactly as before.
 
+In the same softer materials, the compaction counts from the volume an element had when it was
+last confined, if before that it lost volume past the curve's onset while crushed from fewer
+sides (otherwise from its undeformed volume, as before). That volume says nothing of its pores, since the model does not
+let crushed concrete swell (see below). Counted from the undeformed volume, an element of
+blockwork crushed from one side to μ = 0.4 with little pressure, then pressed from every side,
+took the curve's pressure at once, several GPa in one step, and flung its nodes at hundreds of
+metres a second. Structural concrete is left counting from its undeformed volume until the
+concrete cases have been run with the rule; concrete under a shock is confined from the start
+and would not be affected.
+
 The pressure is added as a shift of the three normal stresses, so the shear strength still
 comes from the laws above. Under uniaxial strain to 12% a cube now carries 3 GPa, where
 before it levelled off at 150 MPa and was then removed as crushed; the slab test, a 500 kg
@@ -838,7 +848,12 @@ are intact is not removed but left as those bars (`StructureModel.bareBars`, on 
 it has no concrete stress and no bulk viscosity, its faces take no air pressure and let the air
 through, and its hourglass forces are capped at the bars' strength; but its bars go on carrying
 force between its nodes, which stay attached, until every one of them has ruptured, when it is
-removed. So concrete crushed or blown out round a mat leaves the mat across the hole, and a
+removed. In a material softer than structural concrete (bulk modulus under 12 GPa, as for the
+compaction above), it is also removed once squeezed to a quarter of its volume, as concrete is,
+and an element squeezed that far is not left as bars at all: bars along one or two axes hold
+nothing across the third, and blockwork's bare elements, with bars up and along the wall, were
+flattened across it or turned inside out and flung their nodes at 500 m/s while they were kept.
+Structural concrete keeps the old rule until the concrete cases have been run with this one. So concrete crushed or blown out round a mat leaves the mat across the hole, and a
 member broken through hangs on its bars instead of falling apart where its concrete went. The
 nodes keep the concrete's mass, which is not shed as debris. Bare elements are counted as
 removed, and not drawn.
