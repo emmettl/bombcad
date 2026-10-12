@@ -328,6 +328,8 @@ struct ElementState {
     float secondHistory;
     float inclinedPlastic;  // plastic strain of the inclined bars (1e9 once ruptured)
     packed_float3 jointSlip;  // masonry: sliding along mortar joints, as shear strains xy, yz, zx
+    float compactionStart;    // concrete: mu when it was last confined, if it was crushed past the
+                              // compaction's onset unconfined; else zero (see `compaction`)
 };
 
 // Pressure in concrete compacted to mu = V0 / V - 1, after Holmquist, Johnson and Cook (1993):
@@ -1629,14 +1631,23 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                 + (m.compressiveStrength - crushPressure) * (0.1f - crushStrain)
                     / (compactionScale(bulk) * (0.8e9f - crushPressure));
         }
-        if (confined && mu > crushVolume) {
-            state.compaction = max(state.compaction, mu);
+        // The compaction counts from the volume an element had when it was confined: what it lost
+        // being crushed from fewer sides, past the curve's onset, says nothing of its pores (as
+        // above). Counted from its undeformed volume, blockwork crushed unconfined to mu = 0.4
+        // that was then pressed from every side jumped from a few MPa to several GPa in one step
+        // and flung its nodes at hundreds of metres a second.
+        if (!confined) {
+            state.compactionStart = mu > crushVolume ? mu : 0.0f;
+        }
+        float pores = mu - state.compactionStart;
+        if (confined && pores > crushVolume) {
+            state.compaction = max(state.compaction, pores);
         }
         // While confined, once it has passed that, an element follows the curve.
         // (Following it afterwards too, once the element was cracking and bending, pressed open
         // cracks shut and weakened a wall that had been briefly squeezed by the shock.)
-        if (confined && mu > 0.0f && state.compaction > crushVolume) {
-            float compacted = compactionPressure(mu, state.compaction, bulk, m.compressiveStrength);
+        if (confined && pores > 0.0f && state.compaction > crushVolume) {
+            float compacted = compactionPressure(pores, state.compaction, bulk, m.compressiveStrength);
             float pressure = -(material[0][0] + material[1][1] + material[2][2]) / 3.0f;
             if (compacted > pressure) {
                 float shift = pressure - compacted;
@@ -1916,10 +1927,14 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             eroded = eroded || (crack >= u.fragmentStrain && open >= 2);
         }
         // Concrete removed while some of its bars are intact leaves them: the element carries on
-        // as those bars alone, from the next step, until they too have ruptured.
+        // as those bars alone, from the next step, until they too have ruptured, or until it is
+        // squeezed to a quarter of its volume, as concrete is removed. Bars along one or two axes
+        // hold nothing across the third, and a bare element flattened or turned inside out across
+        // it pushed its nodes apart through its bars: blockwork's flung nodes at 500 m/s.
+        bool collapsed = volume < u.minVolumeRatio * referenceVolume;
         if (bare) {
-            eroded = !anySteel;
-        } else if (eroded && anySteel && u.bareBars != 0) {
+            eroded = !anySteel || collapsed;
+        } else if (eroded && anySteel && u.bareBars != 0 && !collapsed) {
             flags[element] = elementBaring;
             failureGate[0] = 1;
             eroded = false;
