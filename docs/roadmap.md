@@ -68,6 +68,8 @@ More evidence is worth more than more features.
   ([ensembles](validation.md#the-models-spread-from-uncertain-inputs)); the reference curves' own
   scatter ([data wanted 3g](data-wanted.md#3g-the-reference-curves-own-scatter)); each result's
   [standing and error bands](standing.md), direction first.
+  A [mesh-refinement study](validation.md#convergence-on-todays-defaults) on one pinned commit:
+  nothing converges with the measurement inside the change; failures flip with mesh and step.
 - **Now:** blind test 1, Hrynyk's slabs struck by a falling weight, predicted on frozen defaults
   ([blind tests](blind-tests.md#test-1-hrynyks-slabs-struck-by-a-falling-weight)).
 - **Next:** blind test 2, slabs under an open-air charge (Mendonça et al.), ready for its
