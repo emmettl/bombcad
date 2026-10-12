@@ -33,7 +33,13 @@ without storing fluxes.
 **Time-step control on the GPU.** The final sweep of each step records the fastest wave speed
 with an atomic maximum. A one-thread kernel at the start of the next step turns that into the
 time step, advances the clock and samples the gauges. Because nothing is read back to the CPU
-between steps, up to 256 steps are queued in one command buffer.
+between steps, a batch of up to 256 steps runs without the CPU. `advance` hands a batch to the GPU
+in command buffers of about 75 ms of its time each, sized from the rate it has measured, as the
+app sizes its batches: one buffer holding the GPU for seconds starved the window server, which
+the system then killed with every app. The batch's clock, time limit and sampling stay on the
+GPU from one buffer to the next, so its steps are the same to the bit however it is cut
+(`blastbench digest`, and one-step buffers in the tests); the structure and shell solvers cut
+their runs of 2,000 substeps the same way.
 
 **Recorded fields.** The final sweep also accumulates, per cell, the peak overpressure and the
 positive-phase impulse (the time integral of overpressure while it is positive). These are what

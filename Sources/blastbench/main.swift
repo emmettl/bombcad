@@ -4350,15 +4350,17 @@ func runDigest() throws {
         hash = (hash ^ UInt64(value.bitPattern)) &* 0x100_0000_01b3
     }
     let steps = option("steps").flatMap { Int($0) } ?? 80
-    let cases: [(String, ScenarioPreset, Float, Bool)] = [
-        ("open", .openGround, 0.5, false), ("street", .streetCanyon, 0.5, false),
-        ("street, afterburning", .streetCanyon, 0.5, true), ("wall", .blastWall, 0.25, false),
+    let cases: [(String, ScenarioPreset, Float, Bool, Bool)] = [
+        ("open", .openGround, 0.5, false, false), ("street", .streetCanyon, 0.5, false, false),
+        ("street, afterburning", .streetCanyon, 0.5, true, false), ("wall", .blastWall, 0.25, false, false),
+        ("wall as shells", .blastWall, 0.25, false, true),
     ]
-    for (name, preset, cellSize, afterburning) in cases {
+    for (name, preset, cellSize, afterburning, shells) in cases {
         var configuration = SolverConfiguration()
         configureRefinement(&configuration)
         configuration.afterburning = afterburning
         var scenario = preset.scenario
+        if shells { scenario.structure?.elementKind = .shell }
         // `--terrain flat` lays the floor down as a heightfield, which must change nothing.
         if option("terrain") == "flat" {
             scenario.terrain = .flat(domain: scenario.domainSize, spacing: cellSize)
@@ -4392,6 +4394,47 @@ func runDigest() throws {
             "\(name), \(cellSize) m: \(String(hash, radix: 16)) after \(result.steps) steps, "
                 + "\(result.refinedTiles) refined blocks"
                 + (result.finerRefinedTiles > 0 ? ", \(result.finerRefinedTiles) at the second level" : ""))
+    }
+    // The structure on its own, in solids and in shells: a wall struck hard enough to fail, over
+    // more than one 2,000-substep run of `advance`, so that its contact joins in.
+    for shells in [false, true] {
+        let wall = Box(min: .zero, max: SIMD3(0.2, 2, 2))
+        var model = StructureModel(solids: [wall], elementSize: 0.1, fixedBase: true)
+        model.addMat(to: wall, thicknessAxis: 0, areaPerMetre: 4e-4, depth: 0.04)
+        let load = PressureLoad(
+            axis: 0, positiveSide: false,
+            history: [SIMD2(0, 0), SIMD2(0.0005, 3e6), SIMD2(0.004, 0), SIMD2(10, 0)])
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
+        let summary: StructureSummary
+        let substeps = option("substeps").flatMap { Int($0) } ?? 3000
+        if shells {
+            model.elementKind = .shell
+            let solver = try ShellSolver(device: device, model: model)
+            solver.appliedLoad = load
+            solver.advance(steps: substeps)
+            solver.mutateNodes { nodes in
+                for node in nodes {
+                    for value in [node.ux, node.uy, node.uz, node.vx, node.vy, node.vz] { fnv(&hash, value) }
+                }
+            }
+            summary = solver.summary()
+        } else {
+            let solver = try StructureSolver(device: device, model: model)
+            solver.appliedLoad = load
+            solver.advance(steps: substeps)
+            solver.mutateNodes { nodes in
+                for node in nodes {
+                    for value in [node.ux, node.uy, node.uz, node.vx, node.vy, node.vz] { fnv(&hash, value) }
+                }
+            }
+            summary = solver.summary()
+        }
+        fnv(&hash, summary.maxDisplacement)
+        fnv(&hash, summary.maxDamage)
+        fnv(&hash, Float(summary.erodedElements))
+        print(
+            "wall alone\(shells ? " as shells" : ""): \(String(hash, radix: 16)) after \(substeps) substeps, "
+                + "\(summary.erodedElements) elements failed")
     }
 }
 
