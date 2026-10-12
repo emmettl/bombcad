@@ -8,6 +8,7 @@ struct FragmentSection: View {
     @AppStorage(AppPreferences.Key.sweepHosts) private var sweepHosts = ""
 
     private static let counts = [200, 500, 1000, 2000, 5000, 10_000, 20_000]
+
     private static let tracerCounts = [0, 100, 300, 1000, 3000]
 
     var body: some View {
@@ -27,14 +28,18 @@ struct FragmentSection: View {
                     range: 0...2.7,
                     text: "\(Int(model.fragmentSpec?.casingMass ?? 0)) kg, \(launchSpeed) m/s")
                 Picker("Fragments", selection: spec(\.count)) {
-                    ForEach(Self.counts, id: \.self) { Text("\($0)").tag($0) }
+                    ForEach(pickerChoices(Self.counts, holding: spec(\.count).wrappedValue), id: \.self) {
+                        Text("\($0)").tag($0)
+                    }
                 }
                 Picker("Casing shape", selection: spec(\.casing)) {
                     Text("Cylinder").tag(FragmentSpec.Casing.cylinder)
                     Text("Sphere").tag(FragmentSpec.Casing.sphere)
                 }
                 Picker("Tracers", selection: spec(\.tracers)) {
-                    ForEach(Self.tracerCounts, id: \.self) { Text($0 == 0 ? "None" : "\($0)").tag($0) }
+                    ForEach(
+                        pickerChoices(Self.tracerCounts, holding: spec(\.tracers).wrappedValue), id: \.self
+                    ) { Text($0 == 0 ? "None" : "\($0)").tag($0) }
                 }
                 PlacementPicker(
                     title: "Fly on", host: $model.fragmentsHost,
@@ -116,4 +121,10 @@ struct FragmentDisplaySettings: View {
                 range: 2...12, text: "\(Int(model.renderSettings.dotSize)) pt")
         }
     }
+}
+
+/// A picker's choices, with the value held among them if it is not one: a project can hold any
+/// number, and a picker whose value matches no choice shows nothing.
+func pickerChoices(_ choices: [Int], holding value: Int) -> [Int] {
+    choices.contains(value) ? choices : (choices + [value]).sorted()
 }

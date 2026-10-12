@@ -171,6 +171,99 @@ struct InterfaceSnapshotTests {
             appearance: appearance, to: folder.appending(path: "standing-readout.png"))
     }
 
+    /// A blast wall on a hill, with freestanding objects and every companion model in use, so
+    /// that each of the Run sidebar's sections shows its settings.
+    private func everySection() throws -> ProjectDocument {
+        var scene = ScenarioPreset.blastWall.scenario
+        scene.boxes = [Box(min: SIMD3(4, 4, 0), max: SIMD3(7, 9, 3))]
+        scene.rigidObjects = [
+            try RigidObjectDefinition(
+                name: "Crate", shape: .box(size: SIMD3(1, 1, 1)), position: SIMD3(22, 14, 0.5), mass: 200)
+        ]
+        scene.rigidCars = [try .saloon(position: SIMD3(24, 20, 0))]
+        scene.replaceTerrain(
+            with: .hill(domain: scene.domainSize, spacing: 0.5, centre: SIMD2(26, 16), height: 2, radius: 4))
+        var document = ProjectDocument(scenario: scene)
+        document.runSettings?.resolution = "coarse"
+        // As the sections' switches set them, with a line of points a choice does not offer.
+        document.fragments = FragmentSection.defaultSpec(for: scene)
+        document.thermal = ThermalSpec()
+        document.cloud = CloudSpec()
+        var ground = GroundShockSection.defaultSpec(for: scene)
+        ground.line?.count = 12
+        document.groundShock = ground
+        return document
+    }
+
+    /// A methane cloud in a vented room.
+    private func gasRoom() -> ProjectDocument {
+        var scene = Scenario(
+            name: "Vented room", domainSize: SIMD3(8, 6, 4), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(1, 1, 1)))
+        scene.deflagration = Deflagration(
+            gas: .methane, region: Box(min: SIMD3(0.5, 0.5, 0), max: SIMD3(4, 4, 2.5)),
+            ignition: SIMD3(1, 1, 1))
+        scene.ventPanels = [
+            VentPanel(box: Box(min: SIMD3(3.9, 1, 1), max: SIMD3(4, 2, 2)), releasePressure: 5000)
+        ]
+        var document = ProjectDocument(scenario: scene)
+        document.runSettings?.resolution = "coarse"
+        return document
+    }
+
+    @Test("Render the panels not yet reviewed, whole and at a short height", arguments: ["light", "dark"])
+    func remainingPanels(style: String) throws {
+        let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
+        let folder = URL(filePath: output, directoryHint: .isDirectory).appending(path: style)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let appearance: NSAppearance.Name = style == "dark" ? .darkAqua : .aqua
+        let short = CGSize(width: 310, height: 580)
+        for (name, document) in [("every-section", try everySection()), ("gas-room", gasRoom())] {
+            let model = SimulationModel(document: document)
+            let original = ProjectDocument(model: model)
+            // The whole Run sidebar, tall enough to show every row, and at the short height.
+            try snapshot(
+                SidebarView(model: model).frame(width: 310, height: 6000),
+                size: CGSize(width: 310, height: 6000),
+                appearance: appearance, to: folder.appending(path: "run-\(name).png"), expandToFit: false)
+            try snapshot(
+                SidebarView(model: model).frame(width: short.width, height: short.height).clipped(),
+                size: short,
+                appearance: appearance, to: folder.appending(path: "run-\(name)-short.png"),
+                expandToFit: false)
+            #expect(ProjectDocument(model: model) == original)
+        }
+        // The Edit tab with a gauge, a block and a freestanding object chosen.
+        let model = SimulationModel(document: try everySection())
+        let original = ProjectDocument(model: model)
+        model.selection = .gauge(0)
+        try snapshot(
+            EditorView(model: model).frame(width: 310, height: 3200), size: CGSize(width: 310, height: 3200),
+            appearance: appearance, to: folder.appending(path: "edit-gauge.png"), expandToFit: false)
+        if let id = model.settings.scenario.fixedObjects.first?.id {
+            model.selection = .block(id)
+            try snapshot(
+                EditorView(model: model).frame(width: 310, height: 3200),
+                size: CGSize(width: 310, height: 3200),
+                appearance: appearance, to: folder.appending(path: "edit-block.png"), expandToFit: false)
+        }
+        model.selection = nil
+        try snapshot(
+            EditorView(model: model).frame(width: short.width, height: short.height).clipped(), size: short,
+            appearance: appearance, to: folder.appending(path: "edit-short.png"), expandToFit: false)
+        // Sheets: a sweep, and a file that cannot be imported.
+        try snapshot(
+            ParameterSweepView(model: model), size: CGSize(width: 520, height: 420), appearance: appearance,
+            to: folder.appending(path: "sweep.png"))
+        let open = try ImportedMesh.inspect(
+            data: Data("v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3".utf8), fileExtension: "obj")
+        try snapshot(
+            ImportRecoveryView(filename: "open.obj", inspection: open) { _ in },
+            size: CGSize(width: 560, height: 420),
+            appearance: appearance, to: folder.appending(path: "import-recovery.png"))
+        #expect(ProjectDocument(model: model) == original)
+    }
+
     private func snapshot<V: View>(
         _ view: V, size: CGSize, appearance: NSAppearance.Name, to file: URL,
         expandToFit: Bool = true
@@ -199,5 +292,22 @@ struct InterfaceSnapshotTests {
         host.cacheDisplay(in: host.bounds, to: bitmap)
         let data = try #require(bitmap.representation(using: .png, properties: [:]))
         try data.write(to: file)
+        // A capture taller than a screen also in parts of about one, overlapping, to read.
+        guard host.bounds.height > 1100, let image = bitmap.cgImage else { return }
+        let scale = CGFloat(image.height) / host.bounds.height
+        let part = 900 * scale
+        var top: CGFloat = 0
+        var index = 1
+        while top < CGFloat(image.height) {
+            let rect = CGRect(
+                x: 0, y: top, width: CGFloat(image.width), height: min(part, CGFloat(image.height) - top))
+            let piece = try #require(image.cropping(to: rect))
+            let rep = NSBitmapImageRep(cgImage: piece)
+            let name = file.deletingPathExtension().lastPathComponent + "-part\(index).png"
+            try #require(rep.representation(using: .png, properties: [:])).write(
+                to: file.deletingLastPathComponent().appending(path: name))
+            top += part - 60 * scale
+            index += 1
+        }
     }
 }
