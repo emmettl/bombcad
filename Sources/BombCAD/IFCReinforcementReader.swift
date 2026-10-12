@@ -253,7 +253,10 @@ enum IFCReinforcementReader {
                     + metadata.rejected.prefix(5).joined(separator: "; ") + ".")
         }
         for index in result.indices {
-            if let properties = metadata.properties[result[index].globalID] {
+            // A part (or a shell of an element split in repair) takes its element's properties.
+            if let properties = metadata.properties[result[index].globalID]
+                ?? result[index].assembly.flatMap({ metadata.properties[$0.id] })
+            {
                 result[index].reinforcement = IFCReinforcement.Hosted(properties: properties)
             }
         }

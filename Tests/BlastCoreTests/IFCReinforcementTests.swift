@@ -104,6 +104,19 @@ struct IFCReinforcementTests {
         #expect(hosted[0].reinforcement?.bars.map(\.globalID) == ["w"])
         #expect(hosted[1].reinforcement?.bars.map(\.globalID) == ["n"])
         #expect(unhosted.map(\.globalID) == ["o"])
+        // Nested in an element that is present only as its parts: the part holding its middle.
+        var parts: [ImportedMesh.BuildingElement] = []
+        for (n, range) in [(Float(0), Float(2)), (2, 4)].enumerated() {
+            var part = try element(
+                5 + n, "Part", "IfcBuildingElementPart",
+                Box(min: SIMD3(range.0, 0, 0), max: SIMD3(range.1, 0.2, 3)))
+            part.assembly = .init(id: "whole", name: "Wall", ifcClass: "IfcWall")
+            parts.append(part)
+        }
+        let late = IFCReinforcement.Bar(
+            globalID: "p", from: SIMD3(3, 0.05, 0.1), to: SIMD3(3, 0.05, 2.9), diameter: 0.012)
+        let byPart = IFCReinforcement.host([late], in: [slab] + parts, hosts: ["p": "whole"]).elements
+        #expect(byPart.map { $0.reinforcement?.bars.count ?? 0 } == [0, 0, 1])
     }
 
     /// 12 mm bars at 200 mm both ways in each face of a 4 × 3 m wall 0.2 m thick: vertical bars
