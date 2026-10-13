@@ -1733,10 +1733,14 @@ struct StandingScene {
                 "Concrete broken under a close-in charge is never removed, so no hole opens.",
                 "Debris is pushed crudely by the air, as cubes with a fixed drag.",
                 "Collapse is chaotic: a slightly different input gives a different pattern of debris.",
+                "Results after failure move with the build of the structure's GPU code, which uses fast math: "
+                    + "failed elements, debris speeds and residuals are one draw among builds (Hupfauf's SN131 "
+                    + "254 or 758 elements failed, Janney's moment past failure 9.7 or 29.4 kN m). Everything up "
+                    + "to failure repeats.",
             ],
             documents: [
                 "concrete-model.md#limitations", "structural-model.md#limitations",
-                "validation.md#what-is-missing",
+                "validation.md#what-is-missing", "validation.md#convergence-on-todays-defaults",
             ])
     }
 
