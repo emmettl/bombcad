@@ -2210,18 +2210,29 @@ mm units:
 
 | Blockwork | 25 kg | 125 kg |
 |---|---|---|
-| Units and joints, bars bonded | runs away numerically on either base: nodes at 10⁵ m/s, everything removed | not run |
-| Units and joints, no bars | punched through at mid-height: 335 mm out and still going at 0.3 s, 14% removed | blown apart: 82% removed, its middle thrown at about 10 m/s |
-| One material, bars bonded | top 31 mm, left 14 mm; mid-height 16 mm; the back cracked 0.5–1.8 mm across most of its length, mostly vertically; 5.5% of the front removed under the charge | breached at mid-height: 89% removed, its middle thrown at about 13 m/s |
+| Units and joints, bars bonded, on the starter bars | top 37 mm, left 21 mm; mid-height 27 mm; every bed joint open 0.14–0.22 mm along the whole back, and on the front at courses 2–6, 9 and 10 (0.12–0.25 mm) and 0.65 mm at the foot; 1.7% removed, nothing faster than 0.4 m/s | collapses: the top 3.3 m out at 1 s, 23% removed, nothing faster than 11 m/s |
+| Units and joints, bars bonded, on a mortar joint | its bars not anchored, it rocks off its base: 399 mm at the top and still going at 0.3 s, 67% of the base's ties broken | thrown off its base, every tie broken, nothing faster than 22 m/s |
+| Units and joints, no bars | punched through at mid-height: 338 mm out and still going at 0.3 s, 14% removed | blown apart: 49% removed, nothing faster than 21 m/s |
+| One material, bars bonded | top 32 mm, left 6 mm; mid-height 16 mm; cracked 0.2–1.2 mm across most of the front's lower 1.4 m and 0.2–0.3 mm across the back, mostly on horizontal planes but in every row of elements rather than at the bed joints; 7% of the front removed under the charge | breached at mid-height: 73% removed, nothing faster than 24 m/s |
 | Seen | top 28 mm (double-integrated); bed joints cracked on the front at courses 1, 4–6 and 10 and on the back at 4–6, the top course slid; no spalling | collapsed, debris about 15 m away |
 
-The face's load at 25 kg is 2.5 MPa and 1,614 Pa s (Kingery–Bulmash: 2.7 MPa and 1,473 Pa s). The only stable
-reinforced wall, the blockwork treated as one material with its bars bonded as though grouted,
-peaks within 3 mm of the measured top deflection, though it cracks across rather than along the
-bed joints and loses some of its front, which the test did not. Without bars it is punched
-through, which the test's wall, with bars in foam-filled cells, was not. At 125 kg every version
-comes apart, as the test's did; its pieces fly at 10–13 m/s, which from a metre or two up
-carries them 5–7 m, short of the 15 m reported.
+The face's load at 25 kg is 2.5 MPa and 1,614 Pa s (Kingery–Bulmash: 2.7 MPa and 1,473 Pa s).
+Meshed as units and joints with its bars bonded, the blockwork used to run away: its base course,
+squeezed from every side, followed the concrete compaction curve, whose constants (0.8 GPa at
+10% compaction, 85 GPa once dense) made it five to fifty times stiffer than the hollow block itself
+and outran the time step; at 125 kg, elements left as bare bars were flattened across the wall,
+where no bars run, and blocks crushed from one side then pressed from all sides took the curve's
+pressure at once, both flinging nodes at hundreds of metres a second. With those fixed (see
+concrete-model.md, "Compaction" and "Bare bars"; they apply to materials softer than structural
+concrete only), the wall on starter bars peaks 9 mm (a third) above the measured 28 mm at the
+top, and cracks where the test's did, along the bed joints, front and back, though at more
+courses than were seen. (Run on today's 100 µs strain-rate window.) On a mortar joint its unanchored bars let it rock off its base, which
+the test's wall, with the base not described, evidently did not; starter bars are the likelier
+base. Treated as one material it peaks within 4 mm of the measured top but cracks in every row
+of elements rather than at the bed joints, and loses more of its front. Without bars it is punched through, which the test's wall, with bars
+in foam-filled cells, was not. At 125 kg every version comes apart, as the test's did, and no
+node of it moves faster than 11–24 m/s, where nodes of the reinforced units and joints had left
+at 500–800 m/s; how far its pieces go, against the 15 m reported, has not been measured.
 
 ### What this does and does not show
 
@@ -2234,8 +2245,9 @@ widely; clamped, the canopied wall's deflection lies within the foam-faced walls
 the half-scale wall is left more damaged than seen. On the footings in sand the walls rock or
 slide as bodies by amounts the thesis does not mention: either the model's sand is too soft and
 weak, the slab cast against the walls held them, or the test's load was lower. Blockwork with
-bars is not usable as units and joints: it runs away. Treated as one material it gives the
-measured deflection at 25 kg and comes apart at 125 kg, as the test's did.
+bars, as units and joints on starter bars, peaks a third above the measured deflection at 25 kg
+and cracks along its bed joints as the test's did; treated as one material it is within 4 mm
+but cracks between them as much as at them. Either way it comes apart at 125 kg, as the test's did.
 
 For later, without changing the concrete model now: reinforced blockwork meshed as units and
 joints running away within 30 ms (`blastbench perimeter --study wall --wall masonry --charges
@@ -3514,6 +3526,17 @@ to the new one: they are sensitive to small changes once they break, which the e
 hid. Hupfauf's speeds move most because that case runs on a quarter of the step, where the old
 window was a tenth as long as now; most come closer to the thesis's fit, and SN174's moves away.
 The open-air validation suite (`blastbench validate`) has no structure and is unchanged.
+
+**Results after failure move with the build.** Structure.metal is compiled with fast math, so
+any edit to it, even one that changes no arithmetic, can change how the compiler rounds what it
+did not touch. A given binary repeats itself bit for bit, but results after failure, where one
+element's removal decides the next, move between builds. With an unused field added to the
+element state, the quick case matrix (2026-10-13, coarse meshes) moved by: Hupfauf SN131 from
+254 to 758 elements failed, SN142's far face from 145 to 119 m/s, and Janney's moment at 60 mm,
+past failure, from 9.7 to 29.4 kN m (a change that does alter the arithmetic of blockwork only
+gave 5.4). Everything up to failure was unchanged, and `blastbench digest` with it. So the
+post-failure contact numbers and residuals in this document are one draw among builds, with at
+least that scatter.
 
 **What it means.** No structural result has been shown to converge on today's defaults with
 the measurements inside the change. Where a result settles it does so above the measurement,
