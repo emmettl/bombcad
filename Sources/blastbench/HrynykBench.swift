@@ -245,5 +245,18 @@ final class ConeTrace {
                 solver.stress(i, j, k)[2] / 1e6, solver.compaction(i, j, k))
         }
         print(under)
+        // Every 5 ms, the top and bottom faces' sag (mm) out from the centre along x, node by node,
+        // the face's edge marked: a punching plug shows as a step across the cone.
+        let ms = Int((t * 1000).rounded())
+        guard ms % 5 == 0, ms > 0, abs(t * 1000 - Double(ms)) < 0.26 else { return }
+        for (name, k) in [("top", l.slabTop), ("bottom", l.slabBottom)] {
+            var row = "            \(name) sag"
+            for i in l.centre...(l.centre + l.faceHalf + l.thicknessElements + 4) {
+                row +=
+                    (i == l.centre + l.faceHalf ? " |" : " ")
+                    + String(format: "%.1f", -solver.displacement(i, j, k).z * 1000)
+            }
+            print(row)
+        }
     }
 }
