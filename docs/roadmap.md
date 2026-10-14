@@ -28,7 +28,8 @@ theory. Against measurements, eleven structural tests give a mixed picture: bend
 within 2%), impacts on beams with stirrups within a quarter on one mesh but not on a
 finer one, shear 11–15% too strong on fine meshes, and full-scale slabs close in and an internal
 explosion's roof far too stiff, a quarter to a half of the measured deflection. The defaults were
-chosen with these tests in view and none was run blind (see the
+chosen with these tests in view; two tests since run blind both erred on the unsafe side, a slab
+never punching and two slabs under a blast collapsing that the model left standing (see the
 [independent review](validation-review.md)). It is not validated for engineering decisions, and
 nothing in it should be used to judge the safety of a real structure.
 
@@ -40,7 +41,7 @@ nothing in it should be used to judge the safety of a real structure.
 | 2 | Shear failure and joints are the least reliable predictions             | The unsafe side where they err, shear too strong: breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | The default gas has no afterburning and treats hot air as cold          | Low, the unsafe side, without the options: incident impulse 13–22% low and rooms' gas 48–114% of the design value (half for light charges), unless afterburning and hot air (2 times slower) are switched on; the gas loses its radiated heat only with radiative cooling on | [Air-blast model](air-blast-model.md#hot-air) |
 | 4 | Peak pressure is under-resolved near the charge                         | Peaks read low, the unsafe side: close-in loading needs fine or twice-refined air; spall needs cells of 0.005 W^(1/3) and 12 elements through a slab | [Validation](validation.md#what-stops-the-spall-and-the-breach) |
-| 5 | Collapse has never been compared with anything; debris twice, off slabs under contact charges and brick walls under blasts | Debris held back rather than thrown, the unsafe side for a hazard (as rubble particles, an option, thrown at nearer the measured speed); brick walls break into too few pieces, falling at full length in the open and thrown half as far as measured in a shock tube; collapse looks plausible, that is all | [Validation](validation.md#slabs-under-contact-charges), [brick walls](validation.md#brick-walls-debris) |
+| 5 | Collapse compared once, blind, and missed (two of Mendonça's slabs under an open-air charge); debris twice, off slabs under contact charges and brick walls under blasts | Debris held back rather than thrown, the unsafe side for a hazard (as rubble particles, an option, thrown at nearer the measured speed); brick walls break into too few pieces, falling at full length in the open and thrown half as far as measured in a shock tube; collapse looks plausible, that is all | [Validation](validation.md#slabs-under-contact-charges), [brick walls](validation.md#brick-walls-debris) |
 | 6 | Moving solids are a staircase of whole cells                            | Either way, to a cell: wall positions are good to a cell; small fragments are crude | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | Up to sixteen bodies of up to eight materials each, bonded within and meeting each other only by contact, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly (IFC buildings import as shells and beams where square to the axes, their materials, ties and supports inferred and listed); thrown debris and contact between buildings are approximate | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak is too large; concrete broken under a close-in charge is never removed by default | Too stiff close in, the unsafe side: no hole under a close-in charge, and rebound too large (strength with pressure, and cracks pressed shut, checked: not the cause); removing fragments, an option, holes slabs both ways; rubble kept as particles, an option, holes none | [Validation](validation.md#holes-under-close-in-and-contact-charges) |
@@ -74,8 +75,8 @@ More evidence is worth more than more features.
   not the mesh dependence of failure ([what moved](validation.md#convergence-on-todays-defaults)).
 - **Now:** blind test 1, Hrynyk's slabs struck by a falling weight, predicted on frozen defaults
   ([blind tests](blind-tests.md#test-1-hrynyks-slabs-struck-by-a-falling-weight)).
-- **Now:** blind test 2, slabs under an open-air charge (Mendonça et al.), frozen at `047cee3`
-  and being predicted ([test 2](blind-tests.md#test-2-slabs-under-an-open-air-charge-mendonça-et-al));
+- **Done:** blind test 2, slabs under an open-air charge (Mendonça et al.), frozen at `047cee3`,
+  scored *worse* ([validation](validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge));
   test 3 reserved, Reynolds's thesis on the contest's high-strength slabs, sealed unread
   ([register](blind-tests.md#register)).
 - **Blocked on the user:** the sources marked *needs the user to obtain* in
