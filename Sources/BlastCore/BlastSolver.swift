@@ -1898,7 +1898,13 @@ public final class BlastSolver {
                 if !asleep {
                     encodeDebrisExchange(encoder)
                 }
-                if configuration.twoWayCoupling && !asleep {
+                // The solid outline follows the structure even while the air sleeps: the air is frozen,
+                // but a body still moving reads the frozen air beside where it now is. Frozen where
+                // it was when the air went to sleep, a face that had moved back through that outline
+                // read solid cells, and no air, on one side and frozen air on the other (Mendonça's
+                // slabs, thrown up and landing, were pushed down at about 11 g). Where nothing
+                // crosses a cell's centre the outline and the air are left exactly as they were.
+                if configuration.twoWayCoupling {
                     encodeRemask(encoder)
                     encodeInteractionCheck(encoder)
                 }
