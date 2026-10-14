@@ -11,6 +11,8 @@ import UniformTypeIdentifiers
 //   blastbench mendonca [--slabs 1,2,4,5,7,9,10] [--layers 8] [--dx 0.0125] [--refine 2] [--mapped]
 //                       [--time 0.2] [--heavy-across] [--lift 0.1] [--timber] [--awake]
 //                       [--inputs Samples/Mendonca2020/inputs/slabs.json] [--out dir]
+//                       after the reveal: [--charge-factor 1.5] [--ft-factor 0.5] [--gf-factor 1] [--fc-factor 1]
+//                       [--fy-factor 1] [--afterburn] [--no-rate] [--bond splitting] [--rate-window steps]
 //                       [--ensemble 8 [--seed 1] [--samples 1-8]]   (the inputs' spread)
 //
 // Writes each slab's result as JSON, its histories as CSV and its faces' cracks as PNG and text
@@ -30,6 +32,12 @@ func runMendonca(device: MTLDevice) throws {
     if flag("timber") { settings.timberBearings = true }
     if flag("awake") { settings.airAwake = true }
     if let lift = option("lift").flatMap({ Float($0) }) { settings.chargeLift = lift }
+    // Studies after the reveal: the charge, and the concrete's and bars' strengths, scaled.
+    if let factor = option("charge-factor").flatMap({ Float($0) }) { settings.chargeFactor = factor }
+    if let factor = option("fc-factor").flatMap({ Float($0) }) { settings.fcFactor = factor }
+    if let factor = option("ft-factor").flatMap({ Float($0) }) { settings.ftFactor = factor }
+    if let factor = option("gf-factor").flatMap({ Float($0) }) { settings.gfFactor = factor }
+    if let factor = option("fy-factor").flatMap({ Float($0) }) { settings.fyFactor = factor }
     let names = option("slabs")?.split(separator: ",").map(String.init)
     let slabs = inputs.slabs.filter { names?.contains($0.name) ?? true }
     let out = URL(filePath: option("out") ?? "/Volumes/StudioData/bombcad/mendonca-prediction/run")
