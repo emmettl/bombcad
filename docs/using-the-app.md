@@ -99,7 +99,9 @@ An element whose geometry is all in its aggregated parts (a wall of blocks, a sl
 planks drawn as proxies) imports its parts, each named with its element. Products that no storey
 contains are found in the IFC file itself and imported without a storey, and a note says so.
 Where the converter cannot find the units, the length unit of the file's one project is applied,
-and a note says so. A bad or repeated GlobalId leaves out its element, not the file.
+and a note says so. An element whose mesh is several closed solids welded together (layers, a
+frame and its sash) is remade as those solids, each a piece of the element, and the notes list
+it and any pieces left out as open. A bad or repeated GlobalId leaves out its element, not the file.
 The Parts browser retains element names, types, storey labels and GlobalIds, searchable by any
 of these. Source units and world placements are converted to metres, Z up, then rebased from
 large coordinates before Float conversion. The original coordinate origin remains recorded.
@@ -252,7 +254,8 @@ contained part therefore needs a Boolean union if it is intended to fill materia
 is normalized internally for sampling without rewriting the source. Rays on triangulation edges
 use one face owner and tangent contacts cancel.
 
-Limits are 20 MB, 100,000 triangles, 2 million sampled cells, and 2,048 coalesced regions.
+Limits are 20 MB, 100,000 triangles, 2 million sampled cells, and 2,048 coalesced regions; an
+IFC building may be 100 MB and 400,000 triangles, with a note past 20 MB.
 A spatial hierarchy limits intersection checking to overlapping triangle bounds, with a
 2 million candidate-pair limit, a traversal budget and cancellation. Models that exceed
 validation limits must be simplified; they are not imported with incomplete checks. A scanline-work budget also limits

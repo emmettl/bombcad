@@ -936,8 +936,9 @@ public struct IFCStructure: Sendable {
 
         // Slabs near the lowest level with nothing under them rest on the ground at their soffit:
         // on the lowest storey (foundation slabs on piles or soil the IFC leaves out, above a pit
-        // that sets the lowest level), or within walls standing on the ground (a slab on the fill
-        // inside its foundation walls, often of the storey above theirs).
+        // that sets the lowest level), or within or against walls standing on the ground (a slab
+        // on the fill inside its foundation walls or a porch's beside them, often of the storey
+        // above theirs).
         for (n, member) in members.enumerated() where member.role == .shell {
             guard let index = member.solid else { continue }
             let box = solids[index]
@@ -954,7 +955,8 @@ public struct IFCStructure: Sendable {
             else { continue }
             let lowest = groundStorey.map { storey(n) == $0 } ?? false
             let within = bodies.first { j in
-                j != index && solids[j].min.z <= options.gap + 1e-3 && solids[j].max.z >= box.max.z - 1e-3
+                // Reaching past its mid-thickness, so not a floor on top of crawl-space walls.
+                j != index && solids[j].min.z <= options.gap + 1e-3 && solids[j].max.z >= 0.5 * (box.min.z + box.max.z)
                     && thinAxis(solids[j]) != 2
                     && (0..<2).allSatisfy {
                         solids[j].max[$0] >= box.min[$0] - options.gap && box.max[$0] >= solids[j].min[$0] - options.gap

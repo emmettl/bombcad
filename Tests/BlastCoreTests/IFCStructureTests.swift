@@ -367,6 +367,15 @@ struct IFCStructureTests {
         }
         let upper = try IFCStructure(elements: tall + [floor])
         #expect(!upper.supports.contains { $0.hasPrefix("First floor:") })
+        // A floor on top of 0.6 m crawl-space walls is carried by them, not the ground.
+        let low = try walls.indices.map { n -> ImportedMesh.BuildingElement in
+            var b = [box(SIMD3(0, 0, 0), SIMD3(4.4, 0.2, 3)), box(SIMD3(0, 4.2, 0), SIMD3(4.4, 4.4, 3)),
+                box(SIMD3(0, 0.2, 0), SIMD3(0.2, 4.2, 3)), box(SIMD3(4.2, 0.2, 0), SIMD3(4.4, 4.2, 3))][n]
+            b.max.z = 0.6
+            return try element(n + 1, "Wall \(n + 1)", "IfcWall", [b], storey: "Crawl space")
+        }
+        let suspended = try element(9, "Ground floor", "IfcSlab", [box(SIMD3(0, 0, 0.6), SIMD3(4.4, 4.4, 0.8))], storey: "Ground")
+        #expect(!(try IFCStructure(elements: low + [suspended])).supports.contains { $0.hasPrefix("Ground floor:") })
     }
 
     @Test("A duplicate, given no elements of its own by the mesh, is not reported as falling")
