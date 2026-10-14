@@ -53,19 +53,20 @@ Incident peak overpressure, as a share of Kingery–Bulmash's, along the mirrore
 
 | Grid | Scaled cell (finest) | Z = 1 | 2 | 5 | 10 | 14 | 20 | 28 | 40 | Coarse cells | GPU memory | Time |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 16 m | 0.20 | 47% | 53% | 52% | 52% | 51% | 49% | 49% | 51% | 2.2M | 0.13 GB | 2 s |
-| 8 m | 0.10 | 66% | 66% | 70% | 69% | 67% | 65% | 64% | 66% | 18M | 1.0 GB | 37 s |
-| 4 m | 0.05 | 82% | 80% | 81% | 81% | 77% | 74% | 75% | 79% | 144M | 8.2 GB | 650 s |
-| 16 m, refined twice, threshold 0.1 | 0.05 | 82% | 79% | 80% | 57% | 52% | 49% | 49% | 50% | 2.2M | 4.4 GB* | 11 s |
-| 16 m, refined twice, threshold 0.02 | 0.05 | 82% | 79% | 81% | 80% | 77% | 72% | 55% | 52% | 2.2M | 4.4 GB* | 31 s |
-| 16 m, refined twice, threshold 0.005 | 0.05 | 82% | 79% | 80% | 80% | 78% | 76% | 74% | 76% | 2.2M | 4.4 GB* | 155 s |
-| 8 m, refined twice, threshold 0.02 | 0.025 | 98% | 86% | 90% | 88% | 85% | 81% | 68% | 68% | 18M | 9.6 GB* | 231 s |
+| 16 m | 0.20 | 47% | 53% | 52% | 52% | 51% | 49% | 49% | 51% | 2.2M | 0.13 GB | 0.5 s |
+| 8 m | 0.10 | 66% | 66% | 70% | 69% | 67% | 65% | 64% | 66% | 18M | 1.0 GB | 9 s |
+| 4 m | 0.05 | 82% | 80% | 81% | 81% | 77% | 74% | 75% | 79% | 144M | 8.2 GB | 137 s |
+| 16 m, refined twice, threshold 0.1 | 0.05 | 82% | 79% | 80% | 57% | 52% | 49% | 49% | 50% | 2.2M | 4.4 GB* | 1.7 s |
+| 16 m, refined twice, threshold 0.02 | 0.05 | 82% | 79% | 81% | 80% | 77% | 72% | 55% | 52% | 2.2M | 4.4 GB* | 6.4 s |
+| 16 m, refined twice, threshold 0.005 | 0.05 | 82% | 79% | 80% | 80% | 78% | 76% | 74% | 76% | 2.2M | 4.4 GB* | 25 s |
+| 8 m, refined twice, threshold 0.02 | 0.025 | 98% | 86% | 90% | 88% | 85% | 81% | 68% | 68% | 18M | 9.6 GB* | 52 s |
 
 \* A pool of 4 or 8 GB for the refined blocks was asked for and reserved; the most in use was a
 eighth to a quarter of it (the default 1 GB holds the threshold-0.1 and 0.02 runs on 16 m cells).
 
-The domains are 3.3 km square and 0.83 km high. The times are this Mac's (an M4 Max, shared with
-other work, so ±30%).
+The domains are 3.3 km square and 0.83 km high. The times are this Mac's (an M4 Max) with
+nothing else running, the mean of two runs that agreed within 5%; the runs first timed here, on a
+Mac loaded with other work, took 4 to 7 times as long.
 
 Positive impulse is 82–90% of Kingery–Bulmash's beyond Z = 2 on every grid (76–101% at Z = 1),
 as in the open-air record without afterburning. Along the mirrored side, on the uniform grids and
@@ -101,11 +102,11 @@ Reading these:
   threshold's fraction across a cell. At 0.1 (the default) that is out to about 20 kPa
   (Z ≈ 7 to 10); at 0.02, about 5 kPa (Z ≈ 20 to 28); at 0.005, beyond Z = 40.
 - **Refinement buys the fine grid's peaks for a fraction of its cost.** Refined twice from
-  16 m, at threshold 0.005, the burst has the 4 m grid's peaks everywhere in a quarter of its time
+  16 m, at threshold 0.005, the burst has the 4 m grid's peaks everywhere in a fifth of its time
   and half its memory (most of that the blocks' pool, a quarter used). From 8 m it reaches cells of 2 m near the shock (88–98% out to Z = 10),
   which uniformly would take 1.2 billion cells, more than this Mac holds.
 - **Impulse and arrival need no refinement**; the peak close in does. For impulse alone, 16 m
-  cells (0.2 m/kg^(1/3)) do in 2 s what 4 m cells do in 11 minutes, within 5% beyond Z = 3 and
+  cells (0.2 m/kg^(1/3)) do in half a second what 4 m cells do in over two minutes, within 5% beyond Z = 3 and
   10% beyond Z = 2.
 
 ### The domain's height
@@ -169,8 +170,8 @@ cells along any axis by the view's volume texture, a limit memory reaches first.
 **Cost.** Cost goes with the scaled cell and the scaled extent (above). The tile skipping of
 still air helps only until the shock has crossed the domain, which is most of the run. For
 gauges to 40 m/kg^(1/3), the useful choices are 16 m on 500 t (0.2 m/kg^(1/3)) for impulse and
-arrival in seconds, and the same refined twice at threshold 0.005 for peaks within 20–25%, in
-minutes.
+arrival in half a second, and the same refined twice at threshold 0.005 for peaks within 20–25%,
+in under half a minute (on a quiet M4 Max).
 
 **Gauges.** Done: a line of gauges by scaled distance. `Scenario.gaugeLine(direction:)` places
 gauges 1.5 m above the ground (or the terrain) on a line from the charge at the
@@ -182,7 +183,8 @@ room. The solver now records 64 gauges, not 16.
 0.1–0.7 ms of CPU a frame after the batch on these grids (its box of luminous cells, at most 57,000
 voxels at 4 m). It is the frames' interruptions that cost: each ends a batch. With refinement, a
 burst cut out every 50 ms took about 0.1 s a step against 0.04 s for a burst sixteen times the
-size unbroken; on uniform cells it costs little (1,362 steps in 9 s). The cut-out kernel writes a
+size unbroken; on uniform cells it costs little (1,362 steps in 9 s). Those runs were timed on a
+loaded Mac, so their absolute times are long; the comparison between them stands. The cut-out kernel writes a
 buffer of 4 bytes for every cell of the grid (0.6 GB at 144M cells).
 
 Done: **a refined run's fireball reaches the consumers on its finest cells.** Where a patch of
