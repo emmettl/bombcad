@@ -112,9 +112,12 @@ standing says why.
   6 m/kg^(1/3), closer than 0.3, shielded from the charge, over terrain, or on cells coarser than
   any compared grid get none.
 - **Structures** take the slab test's 79–119% on 4 to 32 solid elements through in the far
-  field, either way by load (104–114% under the contest's load, rising with the mesh towards
+  field, either way by load (104–115% under the contest's load, rising with the mesh towards
   119%; 79–88% under its lower shot), with the contest's repeat, 3%, as the tests' scatter (124%
-  on shells). No structural result converges on today's defaults
+  on shells). That band came from a shock tube's long, uniform load. It is withheld within
+  1.5 m/kg^(1/3) of a charge: there, blind test 2's open-air slabs
+  ([Mendonça](validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge)) bent a tenth to
+  a quarter as far as measured, and the two nearest collapsed where the model's stood. No structural result converges on today's defaults
   ([convergence](validation.md#convergence-on-todays-defaults)): the meshes that agree are the
   coarse end, and the bands say so; close in, Wu's slabs (40–70% under charges to 0.8 kg, −20% to +7% to
   2 kg) and, from 2 kg, Chiquito's deflection left (a third to a half); confined, the chamber's
@@ -212,5 +215,10 @@ changes, change the table with it and advance `SceneStanding.currentTable`.
   frozen before the 100 µs strain-rate window became the default on 12 October 2026, so their
   results apply to the 50-step average it replaced, and the standing says so beside them; test 3
   would judge today's ([convergence](validation.md#convergence-on-todays-defaults)).
+- **The sleeping air.** Once the air is quiet, or late, it sleeps, and a structure still moving is
+  loaded from the frozen air. In blind test 2 this drove landing slabs down at about 11 g and
+  made peaks that agreed by coincidence. The standing notes it on every scene with a structure,
+  since only the run can tell whether the structure was still moving; keep the air awake for
+  anything thrown.
 - **Not a judgement of safety.** Nothing here is validated for engineering decisions or for
   judging the safety of a real structure, and the standing says so.
