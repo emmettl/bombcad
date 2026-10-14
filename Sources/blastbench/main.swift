@@ -73,6 +73,7 @@ import simd
 //   blastbench hrynyk [--slabs TH2,TH6,TH7] [--layers 16] [--impacts 4] [--ensemble 16]   (blind test 1; see HrynykBench.swift)
 //   blastbench contact-profile [--cases solid,shell,debris,terraced] [--steps 2000]
 //                        (where contact's time goes; see ContactBench.swift)
+//   blastbench mendonca [--slabs 1,2,4,5,7,9,10] [--layers 8] [--dx 0.0125] [--ensemble 8]   (blind test 2; see MendoncaBench.swift)
 //   blastbench buildings [--dx 0.5] [--duration 0.12] [--mass 50] [--out f.json]
 //                        (three buildings across a street, together and each alone; see BuildingsBench.swift)
 //   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80] [--terrain flat]   (hashes of short runs, to compare builds)
@@ -4969,6 +4970,7 @@ do {
     case "landscape": try runLandscape(device: device)
     case "advise": try runAdvise(device: device)
     case "hrynyk": try runHrynyk(device: device)
+    case "mendonca": try runMendonca(device: device)
     case "deflagration": try runDeflagration()
     case "perimeter": try runPerimeter(device: device)
     case "keys": try runKeys(device: device)
