@@ -223,6 +223,141 @@ static inline Cell prolong(int3 fine, int3 tile, uint patch, const device Cell *
     return result;
 }
 
+// The coarse cell just beyond a patch's face, as `prolong` would see it for a ghost cell in it this
+// substep: its state blended to the substep's start (with gravity, its deviation from the
+// background), its limited slope along each axis, and its fuel and oxygen per mass. Worked out
+// once per coarse cell and sweep (`refineGhostBasis`), for the 2 r^2 ghost cells in it that the
+// sweep reads, which each would otherwise blend seven coarse cells afresh.
+struct GhostBasis {
+    Cell c;
+    Cell slope[3];
+    float2 species;
+    float rho;
+    uint held;  // 1 where a patch of the grid above holds the coarse cell, so `species` are its own
+};
+
+// Coarse cell `cell`'s basis, as `prolong` computes its parts.
+static inline GhostBasis ghostBasisOf(int3 cell, int3 tile, uint patch, const device Cell *coarse,
+                                      const device Cell *halo, const device uchar *mask, float alpha,
+                                      constant SolverUniforms &u, const device int *parentPatches,
+                                      const device float4 *parentTable, const device float2 *coarseSpecies) {
+    int3 dims = int3(u.nx, u.ny, u.nz);
+    bool gravity = airGravity;
+    GhostBasis basis;
+    Cell c = coarseAt(cell, tile, patch, coarse, halo, alpha, u, parentPatches);
+    if (gravity) {
+        c = gravityDeviation(c, parentTable, cell.z, -1.0f);
+    }
+    basis.c = c;
+    for (int axis = 0; axis < 3; ++axis) {
+        Cell zero = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+        basis.slope[axis] = zero;
+        if (dims[axis] == 1) {
+            continue;
+        }
+        int3 below = cell;
+        int3 above = cell;
+        below[axis] -= 1;
+        above[axis] += 1;
+        Cell lo = c;
+        Cell hi = c;
+        if (below[axis] >= 0 && !parentSolid(mask, parentIndex(below, parentPatches, u), u)) {
+            lo = coarseAt(below, tile, patch, coarse, halo, alpha, u, parentPatches);
+            if (gravity) {
+                lo = gravityDeviation(lo, parentTable, below.z, -1.0f);
+            }
+        }
+        if (above[axis] < dims[axis] && !parentSolid(mask, parentIndex(above, parentPatches, u), u)) {
+            hi = coarseAt(above, tile, patch, coarse, halo, alpha, u, parentPatches);
+            if (gravity) {
+                hi = gravityDeviation(hi, parentTable, above.z, -1.0f);
+            }
+        }
+        basis.slope[axis].rho = limitedSlope(c.rho - lo.rho, hi.rho - c.rho, 1.0f);
+        basis.slope[axis].mx = limitedSlope(c.mx - lo.mx, hi.mx - c.mx, 1.0f);
+        basis.slope[axis].my = limitedSlope(c.my - lo.my, hi.my - c.my, 1.0f);
+        basis.slope[axis].mz = limitedSlope(c.mz - lo.mz, hi.mz - c.mz, 1.0f);
+        basis.slope[axis].energy = limitedSlope(c.energy - lo.energy, hi.energy - c.energy, 1.0f);
+    }
+    // The coarse cell's fuel and oxygen and density as they are at the step's end, for the ghost
+    // cells' own at its mass fractions.
+    int at = parentIndex(cell, parentPatches, u);
+    basis.held = at >= 0 && u.afterburnEnergy > 0.0f ? 1u : 0u;
+    basis.species = basis.held != 0u ? coarseSpecies[at] : float2(0.0f);
+    basis.rho = basis.held != 0u ? coarse[at].rho : 0.0f;
+    return basis;
+}
+
+// Fine cell `fine` filled from its coarse cell's basis, as `prolong` fills it.
+static inline Cell ghostFrom(GhostBasis basis, int3 fine, constant SolverUniforms &u,
+                             const device float4 *levelTable) {
+    int r = int(u.refineRatio);
+    int3 cell = fine / r;
+    int3 dims = int3(u.nx, u.ny, u.nz);
+    Cell c = basis.c;
+    float3 offset = (float3(fine - cell * r) + 0.5f) / float(r) - 0.5f;
+    Cell result = c;
+    for (int axis = 0; axis < 3; ++axis) {
+        if (dims[axis] == 1) {
+            continue;
+        }
+        float o = offset[axis];
+        result.rho += o * basis.slope[axis].rho;
+        result.mx += o * basis.slope[axis].mx;
+        result.my += o * basis.slope[axis].my;
+        result.mz += o * basis.slope[axis].mz;
+        result.energy += o * basis.slope[axis].energy;
+    }
+    if (airGravity) {
+        c = gravityDeviation(c, levelTable, fine.z, 1.0f);
+        result = gravityDeviation(result, levelTable, fine.z, 1.0f);
+    }
+    if (result.rho <= u.densityFloor || cellPressureOf(result, u) <= u.pressureFloor) {
+        return c;
+    }
+    return result;
+}
+
+// Where in `bases` the coarse cell under ghost cell `fine` of `patch` (on `tile`) is, along the
+// sweep's axis.
+static inline uint ghostBasisIndex(uint patch, int3 fine, int3 tile, constant SolverUniforms &u) {
+    uint axis = u.axis;
+    int3 cell = fine / int(u.refineRatio) - tile * patchSize;
+    uint high = cell[axis] < 0 ? 0u : 1u;
+    return (patch * 2u + high) * uint(patchSize * patchSize) + uint(cell[(axis + 1) % 3])
+        + uint(patchSize) * uint(cell[(axis + 2) % 3]);
+}
+
+// Before each fine sweep, per coarse cell beyond either face of each patch along the sweep: its
+// basis (see `GhostBasis`). Coarse cells outside the domain are left alone; no ghost reads them.
+kernel void refineGhostBasis(const device Cell *coarse [[buffer(0)]],
+                             const device Cell *halo [[buffer(1)]],
+                             const device uchar *mask [[buffer(2)]],
+                             constant SolverUniforms &u [[buffer(3)]],
+                             const device uint *tileOfPatch [[buffer(4)]],
+                             const device uint *patchList [[buffer(5)]],
+                             const device int *parentPatches [[buffer(6)]],
+                             const device float4 *parentTable [[buffer(7)]],
+                             const device float2 *coarseSpecies [[buffer(8)]],
+                             device GhostBasis *bases [[buffer(9)]],
+                             uint gid [[thread_position_in_grid]]) {
+    uint perPatch = 2u * uint(patchSize * patchSize);
+    uint patch = patchList[gid / perPatch];
+    uint position = gid % perPatch;
+    uint high = position / uint(patchSize * patchSize);
+    uint axis = u.axis;
+    int3 tile = tileCoordinates(tileOfPatch[patch], u);
+    int3 cell = tile * patchSize;
+    cell[axis] += high != 0u ? patchSize : -1;
+    cell[(axis + 1) % 3] += int(position % uint(patchSize));
+    cell[(axis + 2) % 3] += int((position / uint(patchSize)) % uint(patchSize));
+    if (any(cell < 0) || any(cell >= int3(u.nx, u.ny, u.nz))) {
+        return;
+    }
+    bases[patch * perPatch + position] =
+        ghostBasisOf(cell, tile, patch, coarse, halo, mask, u.refineAlpha, u, parentPatches, parentTable, coarseSpecies);
+}
+
 static inline Prim primOf(Cell c, constant SolverUniforms &u) {
     Prim w;
     w.rho = max(c.rho, u.densityFloor);
@@ -282,7 +417,7 @@ static inline uint ghostIndex(uint patch, uint layer, uint a, uint b, uint side)
 
 // Before each fine sweep: the ghosts of every patch along `u.axis`, one thread each.
 kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
-                         device Cell *ghosts [[buffer(1)]],
+                         device float *ghostSpeeds [[buffer(1)]],
                          device uchar *ghostKinds [[buffer(2)]],
                          const device uchar *mask [[buffer(3)]],
                          constant SolverUniforms &u [[buffer(4)]],
@@ -296,12 +431,10 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
                          const device packed_float3 *fineWall [[buffer(12)]],
                          device float *fineFlux [[buffer(13)]],
                          const device StepControl &control [[buffer(14)]],
-                         const device float2 *fineSpecies [[buffer(15)]],
-                         device float2 *ghostSpecies [[buffer(16)]],
-                         const device float2 *coarseSpecies [[buffer(17)]],
                          const device int *parentPatches [[buffer(18)]],
                          const device float4 *parentTable [[buffer(19)]],
                          const device float4 *levelTable [[buffer(20)]],
+                         const device GhostBasis *bases [[buffer(21)]],
                          uint gid [[thread_position_in_grid]]) {
     uint side = uint(patchSize) * u.refineRatio;
     uint perPatch = 4u * side * side;
@@ -337,7 +470,7 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
         ghostKinds[index] = kind == kindWall ? ghostWall : ghostOpen;
         if (kind == kindWall) {
             // A solid cell inside the domain may be moving; a reflecting face of the domain is not.
-            ghosts[index].mx =
+            ghostSpeeds[index] =
                 inDomain ? parentWallVelocity(wallVelocity, cell, parentIndex(cell, parentPatches, u), u)[axis] : 0.0f;
         }
         return;
@@ -347,26 +480,15 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
         uint there = fineIndex(uint(holder), fine, home, u);
         if ((fineMask[there] & 1) != 0) {
             ghostKinds[index] = ghostWall;
-            ghosts[index].mx = float3(fineWall[there])[axis];
+            ghostSpeeds[index] = float3(fineWall[there])[axis];
             return;
         }
-        ghosts[index] = fineSrc[there];
+        // The sweep reads the neighbouring patch's cell itself.
         ghostKinds[index] = ghostFine;
-        if (u.afterburnEnergy > 0.0f) {
-            ghostSpecies[index] = fineSpecies[there];
-        }
         return;
     }
-    Cell outside = prolong(fine, tile, patch, coarse, halo, mask, u.refineAlpha, u, parentPatches, parentTable,
-                           levelTable);
-    ghosts[index] = outside;
+    // The sweep fills a ghost over unrefined air from its coarse cell's basis.
     ghostKinds[index] = ghostCoarse;
-    if (u.afterburnEnergy > 0.0f) {
-        // At the coarse cell's mass fractions, as they are at the step's end.
-        int at = parentIndex(cell, parentPatches, u);
-        ghostSpecies[index] = at < 0 ? float2(0.0f, u.stillOxygen) / u.stillRho * outside.rho
-                                     : coarseSpecies[at] / max(coarse[at].rho, u.densityFloor) * outside.rho;
-    }
     // Unrefined fluid beside a patch's face, where the fine cell inside is solid: the coarse cell
     // used a flux through that face, which refluxing must replace with what the fine level has
     // there, the wall's (the fine sweep adds the fluxes of fine cells that are fluid).
@@ -375,6 +497,7 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
         inside[axis] = layer == 1u ? 0 : int(side) - 1;
         uint own = patch * side * side * side + uint(inside.x + int(side) * (inside.y + int(side) * inside.z));
         if ((fineMask[own] & 1) != 0) {
+            Cell outside = ghostFrom(bases[ghostBasisIndex(patch, fine, tile, u)], fine, u, levelTable);
             Prim w = primOf(outside, u);
             Prim wall = mirrored(w, float3(fineWall[own])[axis]);
             Flux f = layer == 1u ? riemannFlux(w, wall, u) : riemannFlux(wall, w, u);
@@ -387,12 +510,12 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
 // One fine cell's one-dimensional update along `u.axis`, over a coarse step / r: as `sweepCell`,
 // with the patch's own outline (`fineMask`) and the speeds of its solid cells (`fineWall`).
 static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device Cell *fineSrc, device Cell *fineDst,
-                                 const device Cell *ghosts, const device uchar *ghostKinds, const device uchar *mask,
+                                 const device float *ghostSpeeds, const device uchar *ghostKinds, const device uchar *mask,
                                  device atomic_uint *peakBits, const device StepControl &control,
                                  device atomic_uint *maxSpeed, constant SolverUniforms &u, device float *fineFlux,
                                  device float *fineImpulse, const device uchar *fineMask,
                                  const device packed_float3 *fineWall, const device float2 *speciesSrc,
-                                 device float2 *speciesDst, const device float2 *ghostSpecies,
+                                 device float2 *speciesDst, const device GhostBasis *bases,
                                  device float *speciesFluxSums, const device int *boxPatches, device float *boxImpulse, const device uint *tileOfPatch,
                                  const device int *childPatches, device float *childFlux, device float *childSpeciesFlux,
                                  const device float4 *gravityTable, const device float *viscosity) {
@@ -421,6 +544,9 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
         return;
     }
 
+    // Beyond the patch, the fuel and oxygen of the ghost cell `offset` along the sweep, as `look`
+    // found them, by offset + 2.
+    float2 ghostSpecies[5];
     // The kind of the cell `offset` along the sweep, its state if fluid, and its speed along the
     // sweep if a wall.
     auto look = [&](int offset, thread Prim &w, thread float &speed) {
@@ -443,13 +569,33 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
         uint g = ghostIndex(patch, layer, a, b, uint(side));
         uchar kind = ghostKinds[g];
         if (kind == ghostWall) {
-            speed = ghosts[g].mx;
+            speed = ghostSpeeds[g];
             return int(kindWall);
         }
         if (kind == ghostOpen) {
             return int(kindOpen);
         }
-        w = primOf(ghosts[g], u);
+        int3 beyond = fine;
+        beyond[axis] += offset;
+        if (kind == ghostFine) {
+            // Held by the neighbouring patch.
+            int3 home = beyond / side;
+            uint there = fineIndex(uint(boxPatches[tileIndex(home, u)]), beyond, home, u);
+            w = primOf(fineSrc[there], u);
+            if (u.afterburnEnergy > 0.0f) {
+                ghostSpecies[offset + 2] = speciesSrc[there];
+            }
+            return int(kindFluid);
+        }
+        GhostBasis basis = bases[ghostBasisIndex(patch, beyond, tile, u)];
+        Cell outside = ghostFrom(basis, beyond, u, gravityTable);
+        w = primOf(outside, u);
+        if (u.afterburnEnergy > 0.0f) {
+            // At the coarse cell's mass fractions, as they are at the step's end.
+            ghostSpecies[offset + 2] = basis.held == 0u
+                ? float2(0.0f, u.stillOxygen) / u.stillRho * outside.rho
+                : basis.species / max(basis.rho, u.densityFloor) * outside.rho;
+        }
         return int(kindFluid);
     };
 
@@ -643,8 +789,7 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
             if (along >= 0 && along < side) {
                 return speciesSrc[index + offset * stride] / w.rho;
             }
-            uint layer = along < 0 ? uint(along + 2) : uint(along - side + 2);
-            return ghostSpecies[ghostIndex(patch, layer, a, b, uint(side))] / w.rho;
+            return ghostSpecies[offset + 2] / w.rho;
         };
         float2 inflow = speciesFlux(fluxLow.mass, speciesAt(-1, kindM1, wM1), fraction);
         float2 outflow = speciesFlux(fluxHigh.mass, fraction, speciesAt(1, kindP1, wP1));
@@ -714,7 +859,7 @@ kernel void refineSweep(const device Cell *fineSrc [[buffer(0)]],
                         const device StepControl &control [[buffer(4)]],
                         device atomic_uint *maxSpeed [[buffer(5)]],
                         constant SolverUniforms &u [[buffer(6)]],
-                        const device Cell *ghosts [[buffer(7)]],
+                        const device float *ghostSpeeds [[buffer(7)]],
                         const device uchar *ghostKinds [[buffer(8)]],
                         const device uint *tileOfPatch [[buffer(9)]],
                         const device uint *patchList [[buffer(10)]],
@@ -724,7 +869,7 @@ kernel void refineSweep(const device Cell *fineSrc [[buffer(0)]],
                         const device packed_float3 *fineWall [[buffer(15)]],
                         const device float2 *speciesSrc [[buffer(16)]],
                         device float2 *speciesDst [[buffer(17)]],
-                        const device float2 *ghostSpecies [[buffer(18)]],
+                        const device GhostBasis *bases [[buffer(18)]],
                         device float *speciesFluxSums [[buffer(19)]],
                         const device int *boxPatches [[buffer(20)]],
                         device float *boxImpulse [[buffer(21)]],
@@ -744,9 +889,9 @@ kernel void refineSweep(const device Cell *fineSrc [[buffer(0)]],
     int3 tile = tileCoordinates(tileOfPatch[patch], u);
     int3 origin = int3(block % across, (block / across) % across, block / (across * across)) * 8;
     for (uint z = local.z; z < 8u; z += groupSize.z) {
-        fineSweepCell(origin + int3(local.x, local.y, z), tile, patch, fineSrc, fineDst, ghosts, ghostKinds, mask,
+        fineSweepCell(origin + int3(local.x, local.y, z), tile, patch, fineSrc, fineDst, ghostSpeeds, ghostKinds, mask,
                       peakBits, control, maxSpeed, u, fineFlux, fineImpulse, fineMask, fineWall, speciesSrc,
-                      speciesDst, ghostSpecies, speciesFluxSums, boxPatches, boxImpulse, tileOfPatch, childPatches,
+                      speciesDst, bases, speciesFluxSums, boxPatches, boxImpulse, tileOfPatch, childPatches,
                       childFlux, childSpeciesFlux, gravityTable, viscosity);
     }
 }
