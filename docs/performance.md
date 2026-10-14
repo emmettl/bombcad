@@ -429,17 +429,17 @@ a candidate (cells finer than any grid compared count as the finest compared), i
   threshold's reach (`ValidationTables.refinementReach`, 2 × threshold × ambient), no more at a time
   than the pool of refined blocks holds (a third of it for the first level and two thirds for the
   second), each fine update 1.6 times a coarse one;
-- 0.4 ms a step whatever the grid, and 1.5 ms more with two levels of refinement;
+- 1.2 ms a step more with two levels of refinement (a step of its own costs nothing measurable);
 - the structure's element-updates at 300 million a second;
 - 57 bytes a cell (73 with afterburning), plus the refined blocks' pool.
 
-`blastbench advise --calibrate` sets it against the runs timed above: every whole event in the
-tables of this page comes within a factor of two (0.53 to 1.46, street and open ground, uniform,
-refined once and twice, with and without afterburning; the pool's cap is what brings the two-level
-runs in). The large scenes' runs read 2 to 6 times the estimate, but they were timed while the Mac
-was loaded with other work: timed again in one session beside the street on 0.25 m cells, and
-scaled by that run's slowdown, the 500 t runs on 2.2 million cells came 1.7 to 2.5 times the
-estimate, which is the error to expect at kilometre scale until they are timed on a quiet Mac.
+`blastbench advise --calibrate --time` sets it against runs timed on a quiet Mac (load under 2,
+nothing else on the GPU; two rounds that agreed within 5%), the street and open ground of this
+page and the large scenes' 500 t bursts alike: every one comes within 0.62 to 1.40 times the
+estimate (uniform, refined once and twice, with and without afterburning; the pool's cap is what
+brings the two-level runs in). The street reads low because more of its air is skipped than the
+model's arrival times allow, behind its blocks. The large scenes' runs first recorded, on a Mac
+loaded with other work, had taken 4 to 7 times as long.
 Every finished `BombCAD run` records its wall time against its estimate in
 `~/Library/Caches/BombCAD/run-costs.json`, and the advisor shows, beside the unloaded estimate,
 what the median of this Mac's recent runs makes of it.
