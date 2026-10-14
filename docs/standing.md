@@ -123,7 +123,9 @@ standing says why.
   2 kg) and, from 2 kg, Chiquito's deflection left (a third to a half); confined, the chamber's
   wall pressures (0.9 to 1.6 times). Strength in shear follows OA1 on 12 to 48 elements through, 32% strong on 12 and 4–11% on 24 to 48, spanning the meshes either side of the scene's. Any structural option the tests were not run with
   removes the band. Footings, debris under contact charges, a closed room's gas, the fireball's
-  radiated energy and the cloud's top have bands of their own.
+  radiated energy and the cloud's top have bands of their own. The debris band, after failure,
+  is widened by its spread across roundings of the same arithmetic (`roundingSpread`, ±10% from
+  Hupfauf's far faces).
 - **In the app** the popover gives each band and, for the value shown, where the measurement
   would lie; under each gauge's peak and the structure's largest deflection a line says what to
   expect, rounded to two figures: "68 mm: expect 59–65 mm (model reads high: too flexible)".
