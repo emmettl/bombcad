@@ -349,7 +349,7 @@ Wu's small charges and a third to a half as far down close in (Chiquito). Here t
 a tenth to a quarter of the meters' at 1.44 m/kg^(1/3). The two slabs at 0.93 and 1.16 m/kg^(1/3)
 collapsed, where the model's are barely cracked. This was the record's first comparison of
 collapse, and both collapses were missed. The standing's band for a slab's peak deflection under a
-blast, 0.79–1.17 from the calibrated contest slab, does not carry over to these slabs. This is the
+blast, 0.79–1.19 from the calibrated contest slab (0.79–1.17 at the frozen commit), does not carry over to these slabs. This is the
 record's known direction of error, too stiff and too strong, the unsafe side, seen blind and
 larger than any calibrated comparison showed. The candidate causes, for later work and not the
 score, are:
