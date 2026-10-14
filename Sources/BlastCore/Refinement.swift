@@ -321,7 +321,8 @@ final class AirRefinement {
         return 0
     }
 
-    /// With detailed profiling, moves `encoder` on to this level's stage `name`.
+    /// With detailed profiling, moves `encoder` on to this level's stage `name`. Each method
+    /// starts with this, as the encoder it is given may have been ended by a stage before.
     private func stage(_ name: String, _ encoder: inout MTLComputeCommandEncoder) {
         if let stage { encoder = stage("L\(parent == nil ? 1 : 2) " + name) }
     }
@@ -380,6 +381,7 @@ final class AirRefinement {
         interaction: MTLBuffer, uniforms: SolverUniforms
     ) {
         var encoder = encoder
+        stage("remask", &encoder)
         guard let combinedBodyOccupancy, let bodyComposePipeline else { return }
         var threshold = threshold
         var uniforms = uniforms
@@ -398,6 +400,7 @@ final class AirRefinement {
 
     func encodePublishBodies(_ encoder: MTLComputeCommandEncoder, uniforms: SolverUniforms) {
         var encoder = encoder
+        stage("remask", &encoder)
         guard let combinedBodyOccupancy, let bodyPublishPipeline else { return }
         var uniforms = uniforms
         stage("remask", &encoder)
@@ -694,6 +697,7 @@ final class AirRefinement {
         dispatches: (MTLBuffer, Int)? = nil
     ) {
         var encoder = encoder
+        stage("halo", &encoder)
         let dispatches = dispatches ?? (arguments, 0)
         var uniforms = uniforms
         stage("halo", &encoder)
@@ -727,6 +731,7 @@ final class AirRefinement {
         child: AirRefinement?
     ) {
         var encoder = encoder
+        stage("steps", &encoder)
         var uniforms = uniforms
         var levels: UInt32 = child == nil ? 1 : 2
         stage("steps", &encoder)
@@ -802,6 +807,7 @@ final class AirRefinement {
         parentSubstep: Int? = nil
     ) {
         var encoder = encoder
+        stage("ghosts", &encoder)
         var uniforms = uniforms
         let ownSteps = uniforms.ownSteps != 0
         let sweepPipeline = sweepPipeline(for: AirModel(rawValue: uniforms.airModel))
@@ -935,6 +941,7 @@ final class AirRefinement {
         uniforms: SolverUniforms, dispatches: (MTLBuffer, Int)? = nil
     ) {
         var encoder = encoder
+        stage("reflux", &encoder)
         var uniforms = uniforms
         let dispatches = dispatches ?? (arguments, 0)
         stage("reflux", &encoder)
@@ -990,6 +997,7 @@ final class AirRefinement {
         _ encoder: MTLComputeCommandEncoder, parent: ParentView, threshold: UInt32, uniforms: SolverUniforms
     ) {
         var encoder = encoder
+        stage("remask", &encoder)
         var uniforms = uniforms
         var threshold = threshold
         stage("remask", &encoder)
@@ -1026,6 +1034,7 @@ final class AirRefinement {
         _ encoder: MTLComputeCommandEncoder, parent: ParentView, control: MTLBuffer, uniforms: SolverUniforms
     ) {
         var encoder = encoder
+        stage("sync", &encoder)
         var uniforms = uniforms
         stage("sync", &encoder)
         encoder.setComputePipelineState(syncPipeline)
@@ -1054,6 +1063,7 @@ final class AirRefinement {
         boxDefinition: MTLBuffer? = nil
     ) {
         var encoder = encoder
+        stage("flag", &encoder)
         var uniforms = uniforms
         encoder.setBuffer(boxDefinition ?? wanted, offset: 0, index: 6)
         if let tiles {
@@ -1090,6 +1100,7 @@ final class AirRefinement {
         _ encoder: MTLComputeCommandEncoder, control: MTLBuffer, uniforms: SolverUniforms
     ) {
         var encoder = encoder
+        stage("flag", &encoder)
         guard let parent else { return }
         var uniforms = uniforms
         let view = parent.view()
@@ -1112,6 +1123,7 @@ final class AirRefinement {
     /// wants or keeps are wanted, so that it stays nested.
     func encodeNest(_ encoder: MTLComputeCommandEncoder, control: MTLBuffer, uniforms: SolverUniforms) {
         var encoder = encoder
+        stage("nest", &encoder)
         guard let parent else { return }
         var uniforms = uniforms
         stage("nest", &encoder)
@@ -1134,6 +1146,7 @@ final class AirRefinement {
         uniforms: SolverUniforms, boxDefinition: MTLBuffer? = nil, maxSpeed: MTLBuffer? = nil
     ) {
         var encoder = encoder
+        stage("place", &encoder)
         var uniforms = uniforms
         let perTile = MTLSize(width: tileDims.x * tileDims.y * tileDims.z, height: 1, depth: 1)
 

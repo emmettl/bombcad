@@ -294,6 +294,8 @@ public final class BlastSolver {
     private(set) var refinement: AirRefinement?
     /// The second finer level, refining the first, with `SolverConfiguration.refinementLevels` 2.
     private(set) var finerRefinement: AirRefinement?
+    /// With detailed GPU profiling, while a batch is encoded: the encoder now open.
+    private var liveEncoder: (() -> MTLComputeCommandEncoder)?
     /// The refined levels, finest last.
     var refinementLevels: [AirRefinement] { [refinement, finerRefinement].compactMap { $0 } }
     /// Bound in place of the refinement's buffers while the air is not refined.
@@ -1172,6 +1174,8 @@ public final class BlastSolver {
     /// cells' outline too where the air is refined, unless `fine` is false.
     private func encodeRemask(_ encoder: MTLComputeCommandEncoder, fine: Bool = true) {
         guard hasBody, let region = couplingRegion, let occupancyBuffer else { return }
+        // A refined level's call may move detailed profiling on to another encoder.
+        var encoder = encoder
         encodeAllocateCoupling(encoder)
         var uniforms = couplingUniforms(region)
         if !fine { (uniforms.refineRatio, uniforms.deepRatio) = (0, 0) }
@@ -1261,6 +1265,7 @@ public final class BlastSolver {
                             encoder, threshold: uniforms.deepThreshold, interaction: interactionBuffer,
                             uniforms: deep)
                     }
+                    encoder = liveEncoder?() ?? encoder
                 }
             }
         }
@@ -1272,6 +1277,7 @@ public final class BlastSolver {
             if let deep = finerUniforms(makeUniforms()) {
                 finerRefinement?.encodePublishBodies(encoder, uniforms: deep)
             }
+            encoder = liveEncoder?() ?? encoder
         }
 
         let size = couplingSize(region)
@@ -1685,8 +1691,12 @@ public final class BlastSolver {
                     return encoder
                 }
             }
+            liveEncoder = { encoder }
         }
-        defer { for level in refinementLevels { level.stage = nil } }
+        defer {
+            for level in refinementLevels { level.stage = nil }
+            liveEncoder = nil
+        }
         // In flight from the first part's encoding until `completeBatch()`.
         defer { if first { batchInFlight = true } }
 
