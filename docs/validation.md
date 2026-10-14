@@ -3707,16 +3707,37 @@ hid. Hupfauf's speeds move most because that case runs on a quarter of the step,
 window was a tenth as long as now; most come closer to the thesis's fit, and SN174's moves away.
 The open-air validation suite (`blastbench validate`) has no structure and is unchanged.
 
-**Results after failure move with the build.** Structure.metal is compiled with fast math, so
-any edit to it, even one that changes no arithmetic, can change how the compiler rounds what it
-did not touch. A given binary repeats itself bit for bit, but results after failure, where one
-element's removal decides the next, move between builds. With an unused field added to the
-element state, the quick case matrix (2026-10-13, coarse meshes) moved by: Hupfauf SN131 from
-254 to 758 elements failed, SN142's far face from 145 to 119 m/s, and Janney's moment at 60 mm,
-past failure, from 9.7 to 29.4 kN m (a change that does alter the arithmetic of blockwork only
-gave 5.4). Everything up to failure was unchanged, and `blastbench digest` with it. So the
-post-failure contact numbers and residuals in this document are one draw among builds, with at
-least that scatter.
+**Results after failure move with the rounding, not with harmless edits.** A given binary repeats
+itself bit for bit, and so does a rebuild after an edit that changes no arithmetic: unused floats
+at the end or in the middle of the element state, a test in the element kernel that never passes
+and an unused kernel left the quick Hupfauf, Janney and Chiquito P7 cases, the Keys walls and
+`blastbench digest` unchanged (14 October 2026; [the switches](performance.md#fast-math-and-the-build)).
+An earlier note here put Hupfauf SN131's 254 or 758 elements failed down to an unused field; the two
+builds it compared stood either side of the 100 µs window's becoming the default, and today's build
+gives 255 with `--rate-window steps` and 758 without, with the field or not (SN142 145 and 119 m/s
+likewise). What does move results after failure is a different rounding of the same arithmetic.
+Built with fused multiply-adds turned off, or with relaxed math, against the default:
+
+| Case, after failure | Default | No fused multiply-adds | Relaxed math |
+|---------------------|---------|------------------------|--------------|
+| Hupfauf SN142: far face (m/s), elements failed | 119.4, 2,336 | 120.9, 2,307 | 116.0, 2,290 |
+| Hupfauf SN131 | 16.0, 758 | 15.2, 815 | 18.7, 761 |
+| Janney: fails at; moment at 50 / 60 mm (kN m) | 44 mm; 29.9 / 29.4 | 40 mm; 37.6 / 37.5 | 43 mm; 38.0 / 29.6 |
+| Keys WR1A / WR1B: elements eroded | 1,839 / 1,777 | 1,873 / 1,755 | 1,957 / 1,939 |
+| Ando at 5–6 m/s: peaks (mm) | 43.8, 62.1, 48.2, 55.2, 81.7, 121.4 | 44.0, 61.9, 49.5, 55.8, 80.7, 102.6 | 43.9, 59.9, 50.6, 56.9, 82.4, 116.1 |
+
+(Ando's A24-5, A24-6, A36-5, B36-5, B48-5 and B48-6, on 16 elements.) Before failure the builds
+agree to about 1% (Janney's peak 41.7–42.0 kN m, the slabs' momenta within 0.5%, Chiquito P7 112–113
+mm), and Keys WR2C, which barely breaks, keeps its 162 eroded. So a result after failure in this
+document is one draw among roundings, with about that scatter: a change to the model's arithmetic,
+another compiler or another GPU draws again.
+
+Ando's beams at 5–6 m/s moved by up to two thirds when the 100 µs window became the default. That is
+the window, not the rounding: on one build, windows of 90, 95, 100 and 105 µs give A24-5 30.1,
+33.4, 43.8 and 43.0 mm, B48-5 65.2, 85.3, 81.7 and 84.9 and B36-5 43.8, 53.5, 55.2 and 55.4,
+where the roundings above move those three by 2 mm at most (of the six, B48-6 alone spreads
+widely, 103–121 mm). Once they break, the beams follow the window's length closely and not
+smoothly, so their results are as uncertain as that choice.
 
 **What it means.** No structural result has been shown to converge on today's defaults with
 the measurements inside the change. Where a result settles it does so above the measurement,

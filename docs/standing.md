@@ -206,8 +206,8 @@ changes, change the table with it and advance `SceneStanding.currentTable`.
   far out share a peak-overpressure standing, with the nearest gauge's distance among its notes.
 - **Damage is coarse.** Structural damage and failure is an approximation throughout, with
   collapse named as compared once, blind, and missed, and debris as compared once; it does not tell a spall from a
-  breach. Results after failure move between builds of the structure's GPU code (fast math), so
-  the standing gives them as one draw among builds
+  breach. Results after failure move with any change to how their arithmetic rounds (a changed
+  model, compiler or GPU), so the standing gives them as one draw among roundings
   ([convergence](validation.md#convergence-on-todays-defaults)).
 - **Building surface records** exported as JSON are a list and carry no standing of their own;
   `--standing` covers them.
