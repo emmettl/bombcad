@@ -58,7 +58,7 @@ The standing is worked out from the scene's actual settings each time they chang
   approximation; base connections cap them at verified; simplified cars make freestanding motion
   illustrative. Options with their own evidence (shells, bars that slip, footings) add it.
 - **What is left out.** Each scene lists what it could involve that nothing here models: a
-  rigid ground with no crater, collapse never compared and debris only once, ignition and fire, and so on.
+  rigid ground with no crater, collapse compared once (blind, and missed) and debris only once, ignition and fire, and so on.
 
 ## In the app
 
@@ -202,8 +202,10 @@ changes, change the table with it and advance `SceneStanding.currentTable`.
 - **One standing per result per scene,** not per gauge or per element. A gauge close in and one
   far out share a peak-overpressure standing, with the nearest gauge's distance among its notes.
 - **Damage is coarse.** Structural damage and failure is an approximation throughout, with
-  collapse named as never compared and debris as compared once; it does not tell a spall from a
-  breach.
+  collapse named as compared once, blind, and missed, and debris as compared once; it does not tell a spall from a
+  breach. Results after failure move between builds of the structure's GPU code (fast math), so
+  the standing gives them as one draw among builds
+  ([convergence](validation.md#convergence-on-todays-defaults)).
 - **Building surface records** exported as JSON are a list and carry no standing of their own;
   `--standing` covers them.
 - **Blind tests judge the defaults frozen for them.** Tests 1 (`1c85774`) and 2 (`047cee3`) were

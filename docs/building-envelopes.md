@@ -328,3 +328,40 @@ Unresolved openings and thin walls can disappear. Fixed geometry cannot represen
 windows, collapse, debris or evolving shielding. This establishes stationary exposure
 behaviour and its computational cost; it does not validate invented buildings against
 measurements or establish kilogram-to-kiloton physical coverage.
+
+## Future work: damage for envelope buildings
+
+Envelopes make district-scale scenes possible: the air is cheap at that scale (a 3.3 km domain of
+145 million cells ran a 500 t burst in 137 s on an unloaded M4 Max; see
+[large scenes](large-scenes.md)), but a scene holds at most 16 deformable bodies. Every other
+building is a rigid, exposure-only envelope that never breaks, so a district run says what each
+building is loaded with and nothing about what happens to it.
+
+A cheaper damage model would give envelope buildings a damage estimate from the loads already
+recorded on their faces, one way at first, with the air still seeing a rigid building:
+
+- **Per component, single degree of freedom** (in the manner of UFC 3-340-02 and the PDC's SBEDS):
+  each wall panel, storey or glazing pane an equivalent spring-mass driven by the pressure history
+  on its faces, giving its peak deflection or support rotation and so a damage level.
+- **Pressure–impulse curves**: each component's peak overpressure and impulse placed against
+  curves of equal damage, cheaper still and needing no time history.
+- **Fragility curves**: a probability of each damage state from the same loads, where published.
+
+What decides whether it is worth building, to answer before any of it is:
+
+1. **Its error against the detailed model.** The matched pairs above use pinned detailed
+   references, so they compare loads, not damage. The same isolated, paired and four-building
+   layouts (and the [street study's](street-interaction.md)) would be run with the detailed
+   buildings free to respond, and the reduced model's damage per component set against theirs.
+2. **Its error against measurement**, where data exist: the [perimeter walls](validation.md#perimeter-walls-under-field-blasts)
+   (Alsubaei), the [brick walls](validation.md#brick-walls-debris) (Keys), and UFC 3-340-02's
+   charts as they are digitised in `UFC340.swift`.
+3. **The error from not venting.** Glazing or walls that fail while the air still sees them whole
+   leave the inside loads wrong; set against the detailed run's internal loads, this says how far
+   a one-way model can be trusted, and whether failed openings must be opened in the air.
+4. **Its cost per building against the air's**, which should be small: the recorder's faces
+   already hold peak and impulse, but a single-degree-of-freedom model needs each component's
+   pressure history, which the recorder would have to keep.
+
+Until those comparisons are made, its results would stand as an approximation where a chart or
+curve applies and as illustrative otherwise (see [standing](standing.md)).

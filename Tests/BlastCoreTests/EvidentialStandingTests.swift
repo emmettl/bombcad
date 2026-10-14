@@ -141,7 +141,7 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
         let wall = standing(ScenarioPreset.blastWall.scenario)
         #expect(wall[.structuralResponse]?.level == .compared)
         #expect(wall[.structuralDamage]?.level == .approximation)
-        #expect(wall.unsupported.contains { $0.contains("Collapse has never been compared") })
+        #expect(wall.unsupported.contains { $0.contains("Collapse compared once, blind, and missed") })
         #expect(standing(ScenarioPreset.openGround.scenario)[.structuralResponse] == nil)
     }
 

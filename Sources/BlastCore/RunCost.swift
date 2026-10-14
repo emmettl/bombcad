@@ -46,11 +46,11 @@ public enum RunCost {
     /// where outlines differ, and their ghost cells; 18 matches them.
     public static let shellCells: Float = 18
     /// Seconds a step costs whatever the grid (launching its kernels, the tiles' list, the
-    /// gauges), and more with two levels of refinement (their patches' bookkeeping): from the 500 t
-    /// runs on 2.2 million cells, timed beside the street and scaled by its slowdown that session,
-    /// and the street's and open ground's two-level runs.
-    public static let stepOverhead = 0.0004
-    public static let twoLevelStepOverhead = 0.0015
+    /// gauges), and more with two levels of refinement (their patches' bookkeeping): fitted to every
+    /// run of `blastbench advise --calibrate --time` on a quiet Mac (load under 2), on which a step
+    /// of its own costs nothing measurable and a step in two levels 1.2 ms.
+    public static let stepOverhead = 0.0
+    public static let twoLevelStepOverhead = 0.0012
     /// GPU memory a block of refined air takes, ratio 2 (`SolverConfiguration.refinementMemory`).
     public static let blockBytes = 63_000.0
     /// Air bytes a cell: 57, with the fuel and oxygen 73 (docs/large-scenes.md).

@@ -1544,6 +1544,13 @@ struct StandingScene {
                         + "contest's lower shot (a scaled record) 79–88% of the peak: too stiff, the unsafe side",
                     "validation.md#structural-response-against-a-real-test"),
                 StandingEvidence(
+                    "Blind: Mendonça's slabs under an open-air charge (defaults frozen at 047cee3, before the "
+                        + "100 µs window; predicted before the measurements were unsealed)",
+                    "Unsafe side, too stiff and too strong: the blast's own peak a tenth to a quarter of the "
+                        + "measured; the two slabs nearest the charge collapsed, the model's barely cracked; the "
+                        + "declared peaks near the measured made by an artefact of the sleeping air on landing",
+                    "validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge"),
+                StandingEvidence(
                     "A reinforced beam bent to failure",
                     "Peak moment 100–101% on 12 and 24 elements through, failing at 44 mm on 12 and holding on "
                         + "24, against 42 mm; breaking at 11 and 7 mm on 36 and 48 (17% strong, the unsafe side, "
@@ -1697,6 +1704,11 @@ struct StandingScene {
                 "Unsafe side: all three slabs punched in the test, by the second or third impact; the model "
                     + "punched none in four",
                 "validation.md#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight"),
+            StandingEvidence(
+                "Blind: Mendonça's slabs under an open-air charge (defaults before the 100 µs window)",
+                "Unsafe side: the two slabs nearest the charge collapsed in the test; the model left both "
+                    + "standing, barely cracked",
+                "validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge"),
         ]
         var level = EvidenceLevel.approximation
         var summary =
@@ -1704,7 +1716,7 @@ struct StandingScene {
             + "where the tests crushed their strut. Failure depends on the mesh and, on fine meshes, the time "
             + "step: a beam that holds on 24 elements breaks on 36, a close-in slab holes on 16 only. Breach and "
             + "joints are the least reliable predictions; debris has been compared off slabs and brick walls, "
-            + "and collapse never."
+            + "and collapse once, blind, where both slabs that collapsed were left standing."
         if let distance = structureDistance, distance < 0.75 {
             evidence.append(
                 StandingEvidence(
@@ -1733,10 +1745,14 @@ struct StandingScene {
                 "Concrete broken under a close-in charge is never removed, so no hole opens.",
                 "Debris is pushed crudely by the air, as cubes with a fixed drag.",
                 "Collapse is chaotic: a slightly different input gives a different pattern of debris.",
+                "Results after failure move with the build of the structure's GPU code, which uses fast math: "
+                    + "failed elements, debris speeds and residuals are one draw among builds (Hupfauf's SN131 "
+                    + "254 or 758 elements failed, Janney's moment past failure 9.7 or 29.4 kN m). Everything up "
+                    + "to failure repeats.",
             ],
             documents: [
                 "concrete-model.md#limitations", "structural-model.md#limitations",
-                "validation.md#what-is-missing",
+                "validation.md#what-is-missing", "validation.md#convergence-on-todays-defaults",
             ])
     }
 
@@ -1907,8 +1923,8 @@ struct StandingScene {
         ]
         if !structures.isEmpty {
             effects.append(
-                "Collapse has never been compared with anything, and debris only off slabs under contact "
-                    + "charges and brick walls under blasts, neither well.")
+                "Collapse compared once, blind, and missed (two slabs under a blast left standing), and debris "
+                    + "only off slabs under contact charges and brick walls under blasts, neither well.")
             effects.append(
                 "A failure mode that holds under mesh refinement: none yet, as cracks and removal regularise "
                     + "their energy over one element.")

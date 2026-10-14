@@ -76,8 +76,8 @@ swift run -c release blastbench perimeter --study wall
 | Cloud               | Church's tops of 22 TNT clouds of 54 to 1,270 kg: within 4% on average for the first two minutes (a geometric spread of 21% shot by shot), falling behind later; with afterburning, whose burning time was fitted to the open blast, and an entrainment coefficient whose plausible range moves the tops by −9% to +13% | Either way, within 4% on average (21% shot by shot): illustrative; see [the fireball's rise](fireball-rise.md#against-churchs-measured-clouds) |
 | Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; laminar rise times within 1–3% at 48 cells across the radius (the default flame, cellular, 13–14% ahead); K_G 60 against 76 on 96 cells, unable to converge on a four-cell front. FM Global's six tests (digitised): lit at the back wall, 0.8–1.6 times the measured peaks; lit in the middle, about 0.4, the flame stalling towards the back wall. Vented rooms: a ninth to a twenty-fifth of Molkov's correlation, which those tests show conservative | Verified for a laminar flame in a closed vessel; illustrative for vented rooms |
 | Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 11% to 14 mrad of rotation (against the larger of its two directions), 5–14% low beyond; settlement 1.3–1.7 times that measured. The same footing shaken (FoRDy, eight events on three structures): settlement 0.4–1.3 times (0.6–1.3 but for the embedded footing's first event), the surface footing's peak rotation within 10% where the test did not lurch one way (the embedded footing's first event a quarter); energy a cycle 0.5–1.2 times slowly and 0.3–1.2 times shaken, damping ratios 10–27% against 17–32%. Both on sand of 80 MPa, an estimate, twice the default's; the sand's heave set on the slow test | Rocking moment either way to 14 mrad and 5–14% low beyond (moderate); settlement within a factor of 1.7 (moderate); energy too little, a sixth to two thirds of a shaken event's (low), as for a footing that lurches; on a sand twice the default's |
-| Held out (blind)     | Hrynyk's three plain slabs struck repeatedly by a falling weight, predicted on frozen defaults before the measurements were unsealed: first impacts 1.15–1.29 times the measured peak (too flexible, as the calibrated beams were); later impacts 0.56–0.83, residuals a seventh to a third, and none of the three slabs' punching failures predicted | Between, by the protocol's rule: the calibrated error on undamaged slabs, much worse and on the unsafe side once they are damaged |
-| Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.1–1.7 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own. [Brick walls](#brick-walls-debris) (Keys, 2016): loads within 15%, but the walls break into too few pieces, falling at full length in the open (means of −2 to +2 m against +0.2 to +0.6 m) and thrown half as far as measured in a shock tube; collapse nothing | Unsafe side for debris: held back rather than thrown, slabs never holed, brick walls thrown short (low); collapse never compared |
+| Held out (blind)     | Hrynyk's three plain slabs struck repeatedly by a falling weight, predicted on frozen defaults before the measurements were unsealed: first impacts 1.15–1.29 times the measured peak (too flexible, as the calibrated beams were); later impacts 0.56–0.83, residuals a seventh to a third, and none of the three slabs' punching failures predicted. Mendonça's seven slabs under an open-air charge: the two nearest the charge collapsed, the model leaving them standing; the declared peaks 0.31–1.23 of measured on the survivors, those near 1 made by an artefact of the sleeping air as the slabs landed after the blast threw them up; the blast's own peak a tenth to a quarter of the meters' | Hrynyk: between, by the protocol's rule, the calibrated error on undamaged slabs, much worse and on the unsafe side once they are damaged. Mendonça: worse, by the rule, far too stiff and too strong, the unsafe side |
+| Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.1–1.7 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own. [Brick walls](#brick-walls-debris) (Keys, 2016): loads within 15%, but the walls break into too few pieces, falling at full length in the open (means of −2 to +2 m against +0.2 to +0.6 m) and thrown half as far as measured in a shock tube. Collapse once, blind: [Mendonça's slabs](#blind-test-2-mendonças-slabs-under-an-open-air-charge), the two that collapsed left standing | Unsafe side for debris: held back rather than thrown, slabs never holed, brick walls thrown short (low); collapse missed in both slabs that collapsed (blind) |
 | Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 1–2%, structural responses 4–20%, residual deflections and failure 17–28%; the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
 
 No structural result has yet been shown to converge on today's defaults: the meshes quoted as
@@ -92,8 +92,9 @@ Read with the table:
   law after Ando's beams (with independent support from tension tests of bars); the contest
   slab moved from 93–99% to 105–115% with them. Perfect bond over bars that slip, the removal
   rules and the interlock cap were likewise kept or set aside by these comparisons. The
-  structural tests are a calibration set as much as a validation set. One has since been run
-  blind: [Hrynyk's slabs](#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight), below.
+  structural tests are a calibration set as much as a validation set. Two have since been run
+  blind: [Hrynyk's slabs](#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight) and
+  [Mendonça's slabs](#blind-test-2-mendonças-slabs-under-an-open-air-charge), below.
 - **Supports are assumed** in every structural test, the sources rarely describing them, and
   they move the results by 15–25% (the contest slab, Wu's slabs) or more (Ando's beams, Wang's
   slabs).
@@ -104,7 +105,8 @@ Read with the table:
   measurements; their own scatter is not given here.
 - **Where the model errs, it mostly errs towards too little damage**: shear too strong, the
   chamber's roof and the close-in slabs too stiff, the small charges' slabs and Peterson's struts
-  too strong.
+  too strong; and, blind, Hrynyk's slabs never punched and Mendonça's slabs a tenth to a quarter
+  as far down under the blast, two collapses missed.
 
 See the [independent review](validation-review.md) for the evidence behind these notes.
 
@@ -189,6 +191,184 @@ not converged. Neither mesh punches. The predictor's 4-sample input spread (on 8
 first impacts' peaks within about ±3–4% of its own centre, far narrower than the error.
 
 Outputs and the scoring script: `/Volumes/StudioData/bombcad/blind-results/hrynyk/`.
+
+### What holds the cone, traced
+
+After the reveal, so calibration and not the blind result: `blastbench hrynyk --cone --work` follows
+elements on a 45° line out from the face's edge, the concrete under the face, both faces' sag across
+the cone, and the cone band's work by mechanism. TH6 and TH7, 8 elements through, on main with the
+100 µs rate window (whose old 50-step average gives the same punching picture). On 8 elements the
+re-seated face delivers the second blow (1,520–1,620 kN, peaks 25.8 and 18.9 mm against 27.7 and
+18.3), so the load is there; neither slab punches.
+
+- **The cone forms but does not move.** Cracks of 1 mm or more cross every layer within 450 mm, and
+  at mid-depth the cone's crack lies about 25° from horizontal, a punching cone's angle. It opens to
+  0.7 mm and stops, carrying under 1 MPa of shear against an interlock cap of 1.6. The plug never
+  steps down: the top face drops 0.5–1 mm more inside the face than just outside it, against the
+  measured 20 mm (TH6-2) and 10 mm (TH7-2). Instead the slab thickens under the face, the bottom
+  sagging 4–9 mm more than the top, and the bottom face stays smooth across the cone, carried by
+  the bottom bars: delamination, not a plug.
+- **No one mechanism holds it.** In the cone band on TH6-2 the work is hourglass control 38%
+  (mostly at its cap), aggregate interlock 29%, bars 16%, dowels 8%. Take one away and the next
+  takes the shear: interlock at 0.2 doubles the dowels' work; hourglass control that softens with
+  cracking moves its share into interlock (peak 30.8 mm, step 3.4 mm); all three together leave
+  the first impact twice as flexible as measured (38.6 mm) and the bottom peels 26 mm off the top,
+  held by its bars, still with a 4 mm step. None punches.
+- **Confinement and rate do not decide, as in Peterson's beams.** The cone's confinement gain is
+  about zero and its strain rate 1–25/s; confinement off moves TH6-2 by 1%, rate laws off by 10%,
+  and neither punches. Under the face the concrete is pressed confined (gain 0.15–0.3, −55 to −80
+  MPa), reaches 0.5% strain against the 15% that would crush it out, and never compacts: the face
+  does not indent (0.1 mm against 3.5 measured after TH6-1).
+
+So the miss is kinematic: smeared cracks on 16 mm hexes let the cone crack open but not slide,
+and the face's edge, which in the test crushed its way in, is spread over a whole element. Options
+to try, none adopted: an embedded crack that can slide (deferred until data could decide it; this
+is such data), removal at a shear or crushing strain the face's edge reaches, or a finer ring
+under the face's edge. Each must keep the bending, impact and close-in comparisons. Runs:
+`/Volumes/StudioData/bombcad/concrete-stages/hrynyk-runs/`.
+
+## Blind test 2: Mendonça's slabs under an open-air charge
+
+**Blind.** The record's second held-out test, under [the blind-test protocol](blind-tests.md):
+defaults frozen at `047cee3`, after test 1's reveal. A fresh predictor that had seen no
+measurement committed its assumptions (`efc6fc6`, rebased from `c298d6b`) before its first run,
+and its predictions with their hashes (`96083e6`). The judge checked the SHA256SUMS, the harness
+files' identity across the rebase (`git diff` of each old and new commit pair is empty over the
+harness and the sample folder) and the sealed folder against its manifest, then unsealed it.
+Nothing here may be tuned.
+
+**The test.** F. B. Mendonça, G. S. Urgessa and colleagues (2018, 2020, 2021; records on the GMU
+Dataverse, CC0). Field blasts at DCTA, Brazil: slabs 1.0 m square and 80 mm thick, with a light
+mesh in the bottom face only. Each rested on timber trestles along two sides, 0.4 m above clay,
+not tied down, with 2.6–2.8 kg TNT-equivalent of PBX hung above its centre. Slabs 1 and 10 had the
+charge at 1.3 and 1.6 m (0.93 and 1.16 m/kg^(1/3)), and the two repeat groups at 2.0 m (about 1.44
+m/kg^(1/3)): A (slabs 2 and 5, 53 MPa, two 10 mm bars added one way) and B (slabs 4, 7 and 9, 62 MPa,
+a denser mesh). Inputs as the predictor had them: [Samples/Mendonca2020](../Samples/Mendonca2020/README.md).
+Measured: each slab's outcome from the papers, and the two pull-wire meters at the centre and
+eight pencil gauges, processed by a script fixed before any prediction
+([reveal](../Samples/Mendonca2020/reveal/)).
+
+**The model** (the predictor's [assumptions](../Samples/Mendonca2020/predictions/assumptions.md)):
+defaults throughout, 8 solid elements through (10 mm), uniform 12.5 mm air, the charge a TNT
+sphere with its centre at the stand-off, bearings 100 mm wide on rigid lines (clear span 0.8 m),
+the slab free to lift off, each run 500 ms.
+
+**The predictor's changes, judged.** Five changes, none after any measurement was seen:
+
+- Change 1 makes the gauges follow the slab's face. Before it, the rotating edges swallowed the gauge
+  cells, which then read frozen values. It corrects a harness error against the inputs, so it is
+  legitimate.
+- Change 2 lengthens the runs from 200 to 500 ms, before any primary run, because a slab thrown up
+  had not come to rest. The protocol asks for that, so it is legitimate.
+- Changes 3–5 concern the secondary runs only.
+
+The primary prediction was run on the frozen model with the harness at `c5721b2` (`e512afb` on
+main).
+
+**Results**, predicted against measured (mm):
+
+| Slab | Stand-off | Outcome | Declared peak (q. 2) | Blast's first peak | End (q. 3) |
+|---|---|---|---|---|---|
+| 1 | 1.3 m | survives / **collapsed** | 10.9 / — | 10.3 at 8 ms / — | 8.3 / — |
+| 10 | 1.6 m | survives / **collapsed** | 14.7 / — | 5.9 / — (the meters ran out to 145 and 499 mm) | 14.1 / — |
+| 2 | 2.0 m | survives / survived | 11.7 / 38.2 (**0.31**) | 3.8 at 4 ms / 38.2 at 15 ms (0.10) | 9.4 / 25.9 (0.36) |
+| 5 | 2.0 m | survives / survived | 13.2 / 23.5 (**0.56**) | 3.6 / 23.5 at 45 ms (0.15) | 11.0 / 21.6 (0.51) |
+| 4 | 2.0 m | survives / survived | 25.1 / 20.4 (**1.23**) | 4.3 / 16.9 at 39 ms (0.25) | 23.2 / 20.3 (1.14) |
+| 7 | 2.0 m | survives / survived | 22.8 / 25.8 (**0.88**) | 4.1 / 22.3 at 43 ms (0.18) | 20.8 / 25.3 (0.82) |
+| 9 | 2.0 m | survives / survived | 21.8 / 24.0 (**0.91**) | 4.4 / 22.1 at 44 ms (0.20) | 20.1 / 24.0 (0.84) |
+
+The declared peak is the largest downward displacement in the run. The measured peak is the
+meters' mean, read downward as the sealed rule fixed. The blast's first peak is the model's
+`blast_peak_mm`, set against the meters' first downward peak, read by the judge after the reveal
+([phases.json](../Samples/Mendonca2020/reveal/phases.json)).
+
+Scored as the protocol fixed:
+
+- **Primary:** outcomes 5 of 7. Slabs 1 and 10, nearest the charge, collapsed; the model left them
+  standing, only cracked: **the unsafe side**. The declared peak on the survivors gives group A a
+  mean ratio of **0.40** (0.31 and 0.56), below the group's measured range of 22–40 mm. Group B
+  gives **0.99** (1.23, 0.88 and 0.91), inside its range of 19–26 mm.
+- **Verdict, by the rule fixed beforehand: *worse* than the calibrated record**, since group A's
+  ratio lies outside 0.5–2. Five right outcomes alone would have been *between*.
+- **End displacement:** 0.36–1.14, the same pattern as the peak, for the reason below.
+- **Pressures at the corners** (1, 3, 4 and 6, one dead channel left out), with the model's
+  ratios to measured:
+  - At 2.0 m, peaks have a median of 0.67 (0.30–1.67) and impulses 0.73 (0.29–1.89).
+  - At 1.3 and 1.6 m, peaks have a median of 2.2 and impulses 2.1.
+  - The measured corners of one slab differ by 1.7–4.5 times, where the model's agree within 3%.
+  - Slab 1's measured corner pressures, under the nearest charge, are no higher than at 2.0 m,
+    which a centred charge would not give.
+
+  The gauges' scatter swamps the comparison. At 2.0 m the model's load may be a quarter to a third
+  low.
+- **Damage:** the tests show radial cracking on slab 5's bottom face and on slab 10, and concentric
+  circles on slab 1's top face as it collapsed. Slab 5 also has a main crack right across the
+  section with less steel, where the 2021 paper says it collapsed in that direction only, and slab 2
+  was similar. The model shows cracks parallel to the supports, banded about mid-span, made mostly
+  by its landing; no crushing or spall, of which the papers describe none on the survivors either.
+  The radial pattern of a load concentrated at the centre is missing.
+- **The predictor's uncertainty** brackets the measured peak on four survivors, slab 2 lying above
+  its band, but on the 2.0 m slabs those bands measure the landing's sensitivity, not the blast's. No input sample collapses slab 1 or 10.
+
+**The landing, judged.** The predictor warned that on every slab but slab 1 the declared peak and
+end come from the slab landing, after the reflected wave beneath threw it off its trestles. It
+blamed an artefact of the frozen air. Checked:
+
+- **The throw-off is physical, and the test shows it.** After its first downward peak each 2.0 m
+  slab's centre rose 15–45 mm over the next 60–110 ms. Slab 4 went 28 mm above where it started.
+  The slabs settled 170–330 ms after onset, as the model's slabs leave their trestles and land at
+  160–225 ms. The centre meters cannot tell whether the real slabs left the trestles.
+- **The landing's depth is an artefact.** The predictor's diagnostic run of slab 4 falls at 1 g
+  until 150 ms. Then, between 150 and 170 ms, it accelerates downward at about 11 g while both
+  bearing lines are still 20–40 mm up, a push of 15–20 kPa that quiet air cannot give.
+  - The cause is the frozen solver's sleeping air: while it sleeps the structure is still loaded
+    from the frozen state and mask, without remasking.
+  - With the air kept awake (a secondary run) the 2.0 m slabs land only 1.8–3.9 mm down.
+  - The explanation holds.
+- **So group B's 0.99 is not evidence of accuracy.** The model's 20–25 mm there is the frozen air
+  driving the slab onto rigid supports; the measured 20–26 mm is the test slab's first peak and its settling after
+  it landed. The agreement is a coincidence.
+
+**Secondary reading: the blast's first peak** (not a re-scoring). Against the meters' first
+peaks the model's blast peak is a tenth to a quarter: 3.6–4.4 mm at 4 ms against 17–38 mm at
+15–45 ms. The group means are A 0.12 and B 0.21; by the protocol's thresholds that too is *worse*,
+and by far.
+
+- **The meters may include the supports.** They measure the centre's absolute movement, so part of
+  the measured peak may be the trestles pressed into the clay. The source's own pre-test check found
+  the supports moving, and the authors put slab 2's 25 mm residual down to them.
+- **The timing fits either cause.** The meters' first peaks come 40–45 ms after onset on four
+  slabs, ten times the model's time to peak. That fits a slab far softer than the model's, or
+  moving supports.
+- **Either way the slabs bent and broke far more than the model's.** Each residual is within 4 mm
+  of the first peak on slabs 4, 5, 7 and 9, after the slab had risen and landed again. No movement
+  of the supports explains the two collapses.
+
+**Read against the calibrated record.** The calibrated open-air slabs were 40–70% too stiff under
+Wu's small charges and a third to a half as far down close in (Chiquito). Here the blast peak is
+a tenth to a quarter of the meters' at 1.44 m/kg^(1/3). The two slabs at 0.93 and 1.16 m/kg^(1/3)
+collapsed, where the model's are barely cracked. This was the record's first comparison of
+collapse, and both collapses were missed. The standing's band for a slab's peak deflection under a
+blast, 0.79–1.17 from the calibrated contest slab, does not carry over to these slabs. This is the
+record's known direction of error, too stiff and too strong, the unsafe side, seen blind and
+larger than any calibrated comparison showed. The candidate causes, for later work and not the
+score, are:
+
+- the cylindrical charge fired from its top, which throws more of the blast down;
+- trestles that sink and timber that gives;
+- the light mesh's bars and their bond;
+- the load, a quarter to a third low at the 2.0 m gauges;
+- the shear and tension strength kept in the cracked concrete.
+
+**The secondary runs** (reported, not scored):
+
+- The calibrated record's air, 16 elements, a higher charge, timber bearings and the other layout of
+  slab A's bars each move the blast peak by at most a quarter.
+- The 2021 paper's account reads as the 10 mm bars running across the span, the predictor's
+  secondary layout, which gives 4.4 mm.
+- On every setting every slab survives.
+
+Outputs and the scoring scripts: `/Volumes/StudioData/bombcad/blind-results/mendonca/`.
 
 ## Structural response against a real test
 
@@ -3561,8 +3741,9 @@ In rough order of value:
    test bending, shear without stirrups statically, and shear with and without stirrups under
    impact.
 3. A structural test run blind on frozen defaults: every default here was chosen with the
-   comparisons above in view. The first, Hrynyk's slabs struck by a falling weight, is set up
-   under the [blind-test protocol](blind-tests.md).
+   comparisons above in view. Two have been run under the [blind-test protocol](blind-tests.md),
+   Hrynyk's slabs struck by a falling weight and Mendonça's slabs under an open-air charge; both
+   err on the unsafe side wherever damage decides.
 4. The concrete's tensile strain-rate law at 1 to 10 per second, which decides the heavy
    impacts above: tests that separate the material's strengthening from the specimen's
    inertia, or a second impact programme to test a change against.

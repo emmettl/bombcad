@@ -1108,7 +1108,9 @@ extension StandingScene {
                             "debrisSpeed", .debrisSpeed, "Far face's speed against the debris's",
                             low: "debris too slow",
                             high: "debris too fast",
-                            validity: "slabs 20–30 cm under contact charges, 12 elements through",
+                            validity:
+                                "slabs 20–30 cm under contact charges, 12 elements through; after failure, so one "
+                                + "draw among builds (SN142's far face 145 or 119 m/s between two)",
                             check: "Hupfauf's slabs under contact charges"),
                         derived: "12 elements through only", meshes: 12...12, unbanded: &unbanded
                     ).map { [$0] } ?? []
