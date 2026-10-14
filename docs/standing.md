@@ -112,7 +112,7 @@ standing says why.
   6 m/kg^(1/3), closer than 0.3, shielded from the charge, over terrain, or on cells coarser than
   any compared grid get none.
 - **Structures** take the slab test's 79–119% on 4 to 32 solid elements through in the far
-  field, either way by load (104–114% under the contest's load, rising with the mesh towards
+  field, either way by load (104–115% under the contest's load, rising with the mesh towards
   119%; 79–88% under its lower shot), with the contest's repeat, 3%, as the tests' scatter (124%
   on shells). That band came from a shock tube's long, uniform load. It is withheld within
   1.5 m/kg^(1/3) of a charge: there, blind test 2's open-air slabs

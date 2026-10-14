@@ -1054,7 +1054,7 @@ extension StandingScene {
                     "slabSolid", .peakDeflection, "Peak deflection", low: "too stiff",
                     high: "too flexible",
                     validity:
-                        "one slab under a blast, 4 to 32 solid elements through (\(through) here): 104–114% under "
+                        "one slab under a blast, 4 to 32 solid elements through (\(through) here): 104–115% under "
                         + "the contest's load, rising with the mesh towards about 119% (113, 121, 125 mm on 8, 16, "
                         + "32, and 124 on 32 with half the step), and 79–88% (too stiff) under its lower shot, "
                         + "a scaled record; 93–99% under the earlier rate laws. The mesh that agreed, 8 through, is "

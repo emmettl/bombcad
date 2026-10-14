@@ -564,7 +564,7 @@ public enum StandingTable {
         case .shellElements:
             return Entry(
                 title: "Shell elements", affects: structure, limit: nil,
-                note: "On the slab test shells peaked at 135 mm, 124% of that measured, against 104–114% "
+                note: "On the slab test shells peaked at 135 mm, 124% of that measured, against 104–115% "
                     + "for solid elements.",
                 document: "validation.md#structural-response-against-a-real-test")
         case .shellSectionShear:
@@ -1582,7 +1582,7 @@ struct StandingScene {
             parts.append(
                 "reinforced concrete errs mostly on the unsafe side, towards too little damage: too strong in "
                     + "shear, too stiff in a full-scale chamber and close in. In bending one slab reads either way, "
-                    + "4–14% high under the contest's load and 12–21% low under its lower shot, not converged, and its beams struck on 16 elements come within 12–23%; it "
+                    + "4–15% high under the contest's load and 12–21% low under its lower shot, not converged, and its beams struck on 16 elements come within 12–23%; it "
                     + "springs back too far. Blind, open-air slabs bent a tenth to a quarter as far as measured, "
                     + "and the two that collapsed were left standing")
         }
