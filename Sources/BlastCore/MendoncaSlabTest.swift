@@ -343,14 +343,19 @@ public enum MendoncaSlabTest {
         public var wallSeconds: Double
     }
 
+    /// Runs `slab`. For studies after the reveal, `adjust` changes the scene and `configure` the air
+    /// solver before it is loaded; both leave it as the blind prediction had it by default.
     public static func run(
         device: MTLDevice, slab: Slab, inputs: Inputs, settings: Settings = Settings(),
+        adjust: (inout Scenario) -> Void = { _ in }, configure: (BlastSolver) -> Void = { _ in },
         progress: ((String) -> Void)? = nil
     ) throws -> Result {
-        let scenario = scenario(slab, inputs: inputs, settings: settings)
+        var scenario = scenario(slab, inputs: inputs, settings: settings)
+        adjust(&scenario)
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: settings.cellSize)
         solver.configuration.refinement = settings.refinement
         solver.configuration.mappedCharge = settings.mappedCharge
+        configure(solver)
         if settings.airAwake {
             solver.configuration.airSleepThreshold = 0
             solver.configuration.airSleepCrossings = 0
