@@ -328,7 +328,10 @@ struct ElementState {
     float secondHistory;
     float inclinedPlastic;  // plastic strain of the inclined bars (1e9 once ruptured)
     packed_float3 jointSlip;  // masonry: sliding along mortar joints, as shear strains xy, yz, zx
+    float compactionStart;    // softer than structural concrete: mu when it was last confined, if it
+                              // was crushed past the compaction's onset unconfined; else zero
 };
+static_assert(sizeof(ElementState) == 196, "ElementState must match StructureSolver.stateStride");
 
 // Pressure in concrete compacted to mu = V0 / V - 1, after Holmquist, Johnson and Cook (1993):
 // elastic (bulk modulus K) up to the crushing pressure fc / 3; then the pores collapse, and the
@@ -336,14 +339,36 @@ struct ElementState {
 // with K from the largest, `peak`); beyond that the concrete is fully dense, and
 // p = K1 m + K2 m^2 + K3 m^3 with m = (mu - 0.1) / 1.1 above 0.8 GPa, K1 = 85, K2 = -171 and
 // K3 = 208 GPa.
+//
+// Those constants are for structural concrete. A material softer than that, its bulk modulus K
+// below `compactionStiffness` (about a 20 MPa concrete's), has the curve's rise above the crushing
+// pressure scaled by K / `compactionStiffness`, so that the curve is no stiffer against the
+// material's own elastic stiffness, which the time step is set by, than it is for the weakest
+// structural concrete. Hollow blockwork (K 1.7 GPa) otherwise crushed five times, and once dense
+// fifty times, stiffer than itself, outran the step and ran away.
+constant float compactionStiffness = 12e9f;
+
+static inline float compactionScale(float bulk) {
+    return min(bulk / compactionStiffness, 1.0f);
+}
+
 static inline float compactionPressure(float mu, float peak, float bulk, float fc) {
     float crushPressure = fc / 3.0f;
     float crushStrain = crushPressure / bulk;
     const float lockPressure = 0.8e9f;
     const float lockStrain = 0.1f;
+    float scale = compactionScale(bulk);
     auto loading = [&](float x) {
         if (x <= crushStrain) {
             return bulk * x;
+        }
+        if (scale < 1.0f) {
+            float locked = crushPressure + scale * (lockPressure - crushPressure);
+            if (x <= lockStrain) {
+                return crushPressure + (locked - crushPressure) * (x - crushStrain) / (lockStrain - crushStrain);
+            }
+            float m = (x - lockStrain) / (1.0f + lockStrain);
+            return locked + scale * m * (85e9f + m * (-171e9f + m * 208e9f));
         }
         if (x <= lockStrain) {
             return crushPressure + (lockPressure - crushPressure) * (x - crushStrain) / (lockStrain - crushStrain);
@@ -1602,14 +1627,29 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float crushStrain = crushPressure / bulk;
         float crushVolume = crushStrain
             + (m.compressiveStrength - crushPressure) * (0.1f - crushStrain) / (0.8e9f - crushPressure);
-        if (confined && mu > crushVolume) {
-            state.compaction = max(state.compaction, mu);
+        if (compactionScale(bulk) < 1.0f) {
+            crushVolume = crushStrain
+                + (m.compressiveStrength - crushPressure) * (0.1f - crushStrain)
+                    / (compactionScale(bulk) * (0.8e9f - crushPressure));
+        }
+        // In a material softer than structural concrete, the compaction counts from the volume an
+        // element had when it was confined: what it lost being crushed from fewer sides, past the
+        // curve's onset, says nothing of its pores (as above). Counted from its undeformed volume,
+        // blockwork crushed unconfined to mu = 0.4 that was then pressed from every side jumped
+        // from a few MPa to several GPa in one step and flung its nodes at hundreds of metres a
+        // second. (Structural concrete is left as it was until the concrete cases decide it.)
+        if (!confined && compactionScale(bulk) < 1.0f) {
+            state.compactionStart = mu > crushVolume ? mu : 0.0f;
+        }
+        float pores = mu - state.compactionStart;
+        if (confined && pores > crushVolume) {
+            state.compaction = max(state.compaction, pores);
         }
         // While confined, once it has passed that, an element follows the curve.
         // (Following it afterwards too, once the element was cracking and bending, pressed open
         // cracks shut and weakened a wall that had been briefly squeezed by the shock.)
-        if (confined && mu > 0.0f && state.compaction > crushVolume) {
-            float compacted = compactionPressure(mu, state.compaction, bulk, m.compressiveStrength);
+        if (confined && pores > 0.0f && state.compaction > crushVolume) {
+            float compacted = compactionPressure(pores, state.compaction, bulk, m.compressiveStrength);
             float pressure = -(material[0][0] + material[1][1] + material[2][2]) / 3.0f;
             if (compacted > pressure) {
                 float shift = pressure - compacted;
@@ -1889,10 +1929,17 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             eroded = eroded || (crack >= u.fragmentStrain && open >= 2);
         }
         // Concrete removed while some of its bars are intact leaves them: the element carries on
-        // as those bars alone, from the next step, until they too have ruptured.
+        // as those bars alone, from the next step, until they too have ruptured. In a material
+        // softer than structural concrete (`compactionScale`), also until it is squeezed to a
+        // quarter of its volume, as concrete is: bars along one or two axes hold nothing across
+        // the third, and blockwork's bare elements, flattened or turned inside out across it,
+        // pushed their nodes apart through their bars at 500 m/s. (Structural concrete is left as
+        // it was until the concrete cases decide it.)
+        bool collapsed = compactionScale(m.lambda + 2.0f * m.mu / 3.0f) < 1.0f
+            && volume < u.minVolumeRatio * referenceVolume;
         if (bare) {
-            eroded = !anySteel;
-        } else if (eroded && anySteel && u.bareBars != 0) {
+            eroded = !anySteel || collapsed;
+        } else if (eroded && anySteel && u.bareBars != 0 && !collapsed) {
             flags[element] = elementBaring;
             failureGate[0] = 1;
             eroded = false;
