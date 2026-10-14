@@ -260,6 +260,26 @@ compression μ = V₀/V − 1:
 - beyond μ = 0.1 it is fully dense: p = 0.8 GPa + K₁ m + K₂ m² + K₃ m³, m = (μ − 0.1)/1.1, with
   K₁ = 85, K₂ = −171 and K₃ = 208 GPa.
 
+Those constants are for structural concrete. A material softer than that, its bulk modulus K
+below 12 GPa (about a 20 MPa concrete's, E = 4700 √f_c), has the curve's rise above the
+crushing pressure scaled by K / 12 GPa: the 0.8 GPa at μ = 0.1 and the fully dense part alike.
+The curve is then no stiffer against the material's own elastic stiffness, which sets the time
+step, than it is for the weakest structural concrete in the benchmarks (Vecchio and Shim's
+22.6 MPa). Unscaled, it was five times stiffer than hollow blockwork (K = 1.7 GPa) while its
+pores crushed and fifty times once dense; reinforced blockwork meshed as units and joints
+squeezed its base course to μ = 0.74 and ran away (see validation.md, "Perimeter walls under
+field blasts"). Every concrete with K of 12 GPa or more runs exactly as before.
+
+In the same softer materials, the compaction counts from the volume an element had when it was
+last confined, if before that it lost volume past the curve's onset while crushed from fewer
+sides (otherwise from its undeformed volume, as before). That volume says nothing of its pores, since the model does not
+let crushed concrete swell (see below). Counted from the undeformed volume, an element of
+blockwork crushed from one side to μ = 0.4 with little pressure, then pressed from every side,
+took the curve's pressure at once, several GPa in one step, and flung its nodes at hundreds of
+metres a second. Structural concrete is left counting from its undeformed volume until the
+concrete cases have been run with the rule; concrete under a shock is confined from the start
+and would not be affected.
+
 The pressure is added as a shift of the three normal stresses, so the shear strength still
 comes from the laws above. Under uniaxial strain to 12% a cube now carries 3 GPa, where
 before it levelled off at 150 MPa and was then removed as crushed; the slab test, a 500 kg
@@ -721,7 +741,7 @@ by 24 ms at 0.05 m).
 
 Blast loads strain materials at 0.1 to 100 per second, and both concrete and steel are stronger
 at those rates. With `rateDependent` set, strengths are multiplied by a dynamic increase factor
-that depends on a running average (50 steps) of the element's effective strain rate ε̇, or for
+that depends on a running average (over 100 µs, [below](#the-strain-rate-window)) of the element's effective strain rate ε̇, or for
 the bars of their own stretching rate along their debonded length (below):
 
 | Material and mode    | Factor                                                      | Source                    |
@@ -798,18 +818,30 @@ Alternatively, fixed factors can be set (`concreteRateFactor`, `steelRateFactor`
 design values of UFC 3-340-02 (1.19 and 1.17 for bending in the far range).
 
 
-### A strain-rate window in time (an option)
+### The strain-rate window
 
-The running average above is over the last 50 of the structure's steps, a time that shrinks with
-the element and with the step: halving either halves the window, so the rate the laws see, and
-the strength they give, changes with the mesh and the step for the same motion. With
-`StructureModel.strainRateWindow` set (seconds; `blastbench --rate-window` in µs), the average is
-over that fixed time instead, the same filter with time constant τ in place of 50 steps (the
-bars' stretching rates too, and the shells'). Checks (`StrainRateWindowTests`): a prism stretched
-from rest at a steady rate reaches 1 − 1/e of it after one window on its own step and on half of
-it, where after 50 steps the default reaches 1 − 1/e on the one and 1 − 1/e² on the other. Off by
-default; see [Validation](validation.md#convergence-on-todays-defaults) for what it does to
-convergence.
+The running average is a first-order filter of the instantaneous rate with a time constant of
+100 µs (`StructureModel.strainRateWindow`, `defaultStrainRateWindow`), for the bars' stretching
+rates and the shells' too. Before 12 October 2026 it was over the last 50 of the structure's
+steps, a time that shrinks with the element and the step: halving either halved the window, so
+the rate the laws saw, and the strength they gave, changed with the mesh and the step for the same
+motion, and the contest slab on 32 elements ran away on half the step where it held on the full
+one. The 100 µs lies between the 50-step windows of the meshes the defaults were chosen on (80
+µs for the contest slab on 8 elements, 107 µs for Saatci's beams on 16, 53 and 131 µs for Janney's
+beam on 24 and 12), so those meshes move by a few per cent; see
+[Validation](validation.md#convergence-on-todays-defaults). `strainRateWindow = nil` (or
+`blastbench --rate-window steps`) restores the 50-step average, and `--rate-window 120` sets
+another window in µs. Checks (`StrainRateWindowTests`): a prism stretched from rest at a steady
+rate reaches 1 − 1/e of it after one window on its own step and on half of it, where after 50
+steps the old average reaches 1 − 1/e on the one and 1 − 1/e² on the other.
+
+The window has a cost where an element goes from rest to failure in much less than 100 µs: a
+contact charge, a spalling layer, or concrete crushed at 100 per second, which fails within about
+30 µs. Its averaged rate has then not caught up when it fails, and it is strengthened less than
+the laws say. Under the old average the window on such fine meshes was a few microseconds. The
+laws' own check (`ConcreteModelTests`, a 1 mm cube crushed at 100 per second) therefore runs on
+the 50-step average. Hupfauf's slabs under contact charges are where this shows: their far faces
+moved by up to a third with the change ([Validation](validation.md#convergence-on-todays-defaults)).
 
 ## Removal
 
@@ -842,7 +874,12 @@ are intact is not removed but left as those bars (`StructureModel.bareBars`, on 
 it has no concrete stress and no bulk viscosity, its faces take no air pressure and let the air
 through, and its hourglass forces are capped at the bars' strength; but its bars go on carrying
 force between its nodes, which stay attached, until every one of them has ruptured, when it is
-removed. So concrete crushed or blown out round a mat leaves the mat across the hole, and a
+removed. In a material softer than structural concrete (bulk modulus under 12 GPa, as for the
+compaction above), it is also removed once squeezed to a quarter of its volume, as concrete is,
+and an element squeezed that far is not left as bars at all: bars along one or two axes hold
+nothing across the third, and blockwork's bare elements, with bars up and along the wall, were
+flattened across it or turned inside out and flung their nodes at 500 m/s while they were kept.
+Structural concrete keeps the old rule until the concrete cases have been run with this one. So concrete crushed or blown out round a mat leaves the mat across the hole, and a
 member broken through hangs on its bars instead of falling apart where its concrete went. The
 nodes keep the concrete's mass, which is not shed as debris. Bare elements are counted as
 removed, and not drawn.

@@ -70,12 +70,12 @@ More evidence is worth more than more features.
   [standing and error bands](standing.md), direction first.
   A [mesh-refinement study](validation.md#convergence-on-todays-defaults) on one pinned commit:
   nothing converges with the measurement inside the change; failures flip with mesh and step.
-  A strain-rate window in time (an option, proposed as a default) removes the step dependence,
-  not the mesh dependence of failure.
+  A strain-rate window of 100 µs, the default since 12 October 2026, removes the step dependence,
+  not the mesh dependence of failure ([what moved](validation.md#convergence-on-todays-defaults)).
 - **Now:** blind test 1, Hrynyk's slabs struck by a falling weight, predicted on frozen defaults
   ([blind tests](blind-tests.md#test-1-hrynyks-slabs-struck-by-a-falling-weight)).
-- **Next:** blind test 2, slabs under an open-air charge (Mendonça et al.), ready for its
-  predictor after test 1's reveal ([test 2](blind-tests.md#test-2-slabs-under-an-open-air-charge-mendonça-et-al));
+- **Now:** blind test 2, slabs under an open-air charge (Mendonça et al.), frozen at `047cee3`
+  and being predicted ([test 2](blind-tests.md#test-2-slabs-under-an-open-air-charge-mendonça-et-al));
   test 3 reserved, Reynolds's thesis on the contest's high-strength slabs, sealed unread
   ([register](blind-tests.md#register)).
 - **Blocked on the user:** the sources marked *needs the user to obtain* in

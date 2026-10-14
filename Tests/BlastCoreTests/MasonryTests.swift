@@ -197,4 +197,88 @@ struct MasonryTests {
         #expect(kineticEnergy() < 0.01 * initial, "still moving: \(kineticEnergy()) J of \(initial) J")
         #expect(solver.summary().erodedElements < 50)
     }
+
+    @Test("Reinforced blockwork struck by a blast pulse stays bounded")
+    func reinforcedBlockworkBounded() throws {
+        // A 0.2 m strip of Alsubaei's reinforced blockwork wall, its ends held as in the middle of
+        // the wall, its face struck by the 25 kg charge's 2.5 MPa. The base course, squeezed from
+        // every side, followed the concrete compaction curve, which for a material this soft was
+        // five to fifty times stiffer than the block itself and outran the time step: its nodes
+        // reached thousands of m/s within 30 ms and more than half the strip was removed.
+        let panel = try PerimeterWallTests.blockworkPanel(device: device)
+        #expect(panel.fastest < 50, "fastest node \(panel.fastest) m/s")
+        #expect(panel.erodedFraction < 0.15, "\(panel.erodedFraction * 100)% removed")
+        #expect(panel.peakTop > 0.02 && panel.peakTop < 0.3, "top \(panel.peakTop) m")
+    }
+
+    @Test("Reinforced blockwork broken up by a larger blast throws nothing faster than the blast could")
+    func reinforcedBlockworkBreakUp() throws {
+        // The 125 kg charge's 12.7 MPa on a 0.4 m strip: it comes apart, as the wall did. The
+        // pulse's impulse on the front row of elements alone would throw it at about 80 m/s.
+        // Elements left as bare bars, which run only up the wall and along it, were flattened
+        // across its thickness or turned inside out and kept, and flung their nodes at 500 m/s.
+        let panel = try PerimeterWallTests.blockworkPanel(
+            device: device, length: 0.4, peak: 12.7e6, duration: 0.9e-3, time: 0.12)
+        #expect(panel.fastest < 150, "fastest node \(panel.fastest) m/s")
+        // Nothing kept past a quarter of its volume (V0 / V - 1 = 3), but for the step in which it
+        // went; before, a bare element was squeezed to a seven-thousandth.
+        #expect(panel.compaction < 3.5, "compacted to \(panel.compaction)")
+    }
+
+    @Test("Block crushed from one side and then held in compacts only from there")
+    func compactionCountsFromConfinement() throws {
+        // A cube of blockwork squashed by 5% with its sides free, losing 3% of its volume, then
+        // held at the sides and squashed a further 0.5%. The pores it crushed losing volume from
+        // one side say nothing (the model does not let crushed concrete swell), so held in it
+        // compacts only from where it is. Counted from its undeformed volume, the curve took over
+        // at once: here at 48 MPa, three times the 14 MPa it carries, and in the 125 kg wall, from
+        // 40% lost unconfined, at several GPa, flinging nodes at hundreds of m/s.
+        let size: Float = 0.05
+        let cube = Box(min: SIMD3(0, 0, 1), max: SIMD3(size, size, 1 + size))
+        let model = StructureModel(
+            solids: [cube], material: .concreteBlock, elementSize: size, fixedBase: false)
+        let solver = try StructureSolver(device: device, model: model)
+        solver.gravity = 0
+        solver.groundContact = false
+        // Squashed downwards: the bottom nodes on rollers, one of them pinned, the top ones
+        // pushed down at a set speed and free sideways until the sides are held.
+        func squash(by strain: Float, steps: Int, heldSides: Bool) -> Float {
+            let rate = strain * size / (Float(steps) * solver.criticalTimeStep)
+            solver.mutateNodes { nodes in
+                for k in 0...1 {
+                    for j in 0...1 {
+                        for i in 0...1 {
+                            let n = solver.nodeIndex(i, j, k)
+                            if k == 0 {
+                                nodes[n].restrain(x: i == 0 && j == 0, y: i == 0 && j == 0, z: true)
+                            } else {
+                                nodes[n].isPushedVertically = true
+                                nodes[n].velocity.z = -rate
+                            }
+                            if heldSides {
+                                nodes[n].velocity.x = 0
+                                nodes[n].velocity.y = 0
+                                nodes[n].restrain(x: true, y: true)
+                            }
+                        }
+                    }
+                }
+            }
+            var largest: Float = 0
+            for _ in 0..<(steps / 20) {
+                solver.advance(steps: 20)
+                var force: Float = 0
+                for j in 0...1 {
+                    for i in 0...1 { force += solver.nodalForce(i, j, 1).z }
+                }
+                largest = max(largest, force / (size * size))
+            }
+            return largest
+        }
+        _ = squash(by: 0.05, steps: 20_000, heldSides: false)
+        let held = squash(by: 0.005, steps: 2_000, heldSides: true)
+        #expect(solver.flag(0, 0, 0) == .active)
+        #expect(held < 25e6, "held in, it pushed back at \(held / 1e6) MPa")
+        #expect(solver.compaction(0, 0, 0) < 0.01, "compaction \(solver.compaction(0, 0, 0))")
+    }
 }

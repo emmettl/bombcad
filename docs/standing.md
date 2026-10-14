@@ -111,9 +111,9 @@ standing says why.
   gauges on a surface. With afterburning and hot air their own tables apply. Gauges beyond
   6 m/kg^(1/3), closer than 0.3, shielded from the charge, over terrain, or on cells coarser than
   any compared grid get none.
-- **Structures** take the slab test's 79–117% on 4 to 32 solid elements through in the far
+- **Structures** take the slab test's 79–119% on 4 to 32 solid elements through in the far
   field, either way by load (104–114% under the contest's load, rising with the mesh towards
-  117%; 79–88% under its lower shot), with the contest's repeat, 3%, as the tests' scatter (124%
+  119%; 79–88% under its lower shot), with the contest's repeat, 3%, as the tests' scatter (124%
   on shells). No structural result converges on today's defaults
   ([convergence](validation.md#convergence-on-todays-defaults)): the meshes that agree are the
   coarse end, and the bands say so; close in, Wu's slabs (40–70% under charges to 0.8 kg, −20% to +7% to
@@ -134,7 +134,7 @@ the measurement, and the meshes that agree are the coarse end. So each structura
 mesh, and where it matters the step, it was derived on (`derivedMesh`), and holds only there:
 Wu's slabs on 8 elements through, Chiquito's on 6 to 12 (on 16 the slab holes), Hupfauf's debris
 on 12, the chamber on 0.1 m elements, OA1's strength on 12 to 48, spanning the meshes either side
-of the scene's, and the contest slab on 4 to 32, reaching the 117% its peak rises towards. On any
+of the scene's, and the contest slab on 4 to 32, reaching the 119% its peak rises towards. On any
 other mesh the band is withheld and the standing says why; the popover, the headless summary and
 the USD layer give the mesh. The advisor varies the air only, and says that a finer structural
 mesh is not shown to bring a structure closer to its test. A safe side found on one mesh is not
@@ -203,8 +203,14 @@ changes, change the table with it and advance `SceneStanding.currentTable`.
   far out share a peak-overpressure standing, with the nearest gauge's distance among its notes.
 - **Damage is coarse.** Structural damage and failure is an approximation throughout, with
   collapse named as never compared and debris as compared once; it does not tell a spall from a
-  breach.
+  breach. Results after failure move between builds of the structure's GPU code (fast math), so
+  the standing gives them as one draw among builds
+  ([convergence](validation.md#convergence-on-todays-defaults)).
 - **Building surface records** exported as JSON are a list and carry no standing of their own;
   `--standing` covers them.
+- **Blind tests judge the defaults frozen for them.** Tests 1 (`1c85774`) and 2 (`047cee3`) were
+  frozen before the 100 µs strain-rate window became the default on 12 October 2026, so their
+  results apply to the 50-step average it replaced, and the standing says so beside them; test 3
+  would judge today's ([convergence](validation.md#convergence-on-todays-defaults)).
 - **Not a judgement of safety.** Nothing here is validated for engineering decisions or for
   judging the safety of a real structure, and the standing says so.
