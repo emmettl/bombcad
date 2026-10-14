@@ -1166,15 +1166,24 @@ enum ShaderLibrary {
         if probe.statePadding > 0 {
             // Unused floats in the element state: a change to the source that alters no
             // arithmetic, to see what results a rebuild moves.
-            let anchor =
-                probe.padInMiddle
-                ? "    float compaction;  // concrete: largest volumetric compression so far, mu = V0 / V - 1\n"
-                : "    packed_float3 jointSlip;  // masonry: sliding along mortar joints, as shear strains xy, yz, zx\n"
-            guard source.contains(anchor) else {
-                throw BlastError.missingShader("ElementState's field to pad after")
-            }
+            let padding = "    float unusedPadding[\(probe.statePadding)];\n"
+            let size = "sizeof(ElementState) == \(StructureSolver.stateStride - 4 * probe.statePadding)"
+            guard source.contains(size) else { throw BlastError.missingShader("ElementState's size check") }
             source = source.replacingOccurrences(
-                of: anchor, with: anchor + "    float unusedPadding[\(probe.statePadding)];\n")
+                of: size, with: "sizeof(ElementState) == \(StructureSolver.stateStride)")
+            if probe.padInMiddle {
+                let anchor =
+                    "    float compaction;  // concrete: largest volumetric compression so far, mu = V0 / V - 1\n"
+                guard let field = source.range(of: anchor) else {
+                    throw BlastError.missingShader("ElementState's compaction, to pad after")
+                }
+                source.insert(contentsOf: padding, at: field.upperBound)
+            } else {
+                guard let start = source.range(of: "struct ElementState {"),
+                    let end = source.range(of: "\n};", range: start.upperBound..<source.endIndex)
+                else { throw BlastError.missingShader("ElementState's end, to pad") }
+                source.insert(contentsOf: "\n" + padding.dropLast(), at: end.lowerBound)
+            }
         }
         if probe.perturbations.contains("branch") {
             let load = "    ElementState state = states[compact];\n"

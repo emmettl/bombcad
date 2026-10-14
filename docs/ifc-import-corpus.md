@@ -38,7 +38,7 @@ only. Each file is handled as the app would handle it:
 - **Structure:** converted with the default options and meshed, with the smallest element
   recorded.
 
-Setting `BOMBCAD_IFC_CORPUS_The 19 real buildings that convert were stood under gravity for 0.3 s, damped (`BOMBCAD_IFC_CORPUS_GRAVITY=1`,
+The 19 real buildings that convert were stood under gravity for 0.3 s, damped (`BOMBCAD_IFC_CORPUS_GRAVITY=1`,
 through `gpu-slot`, on the code before the last two fixes below). The table compares that with
 the share the import now reports as loose: members tied to nothing that stands on a support.
 "Weight carried" is the supports' reaction over the weight. A peak of 54.9 mm is a body falling

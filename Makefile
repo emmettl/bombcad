@@ -52,12 +52,14 @@ lint:
 format:
 	swift format format --in-place --recursive Package.swift Sources Tests Scripts
 
+# The scripts' own tests, and the documents' relative links and anchors (check-doc-links.py).
 ci-test:
 	python3 Scripts/test-release.py
 	python3 Scripts/test-nightly.py
 	python3 Scripts/test-remote.py
 	python3 Scripts/test-nightly-suspects.py
 	python3 Scripts/test-build-strict.py
+	python3 Scripts/check-doc-links.py
 
 check: lint build-strict test ci-test
 

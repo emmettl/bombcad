@@ -40,7 +40,7 @@ public final class StructureSolver {
     }
 
     /// Bytes of state per element (`ElementState` in Structure.metal).
-    public static let stateStride = 192 + 4 * BuildProbe.current.statePadding
+    public static let stateStride = 196 + 4 * BuildProbe.current.statePadding
     static let forceStride = 96
 
     public let device: MTLDevice
@@ -1138,7 +1138,8 @@ public final class StructureSolver {
     }
 
     /// The largest volumetric compression, V0 / V - 1, that element (i, j, k)'s pores have been
-    /// crushed to; zero until it passes the crushing pressure while confined.
+    /// crushed to; zero until it passes the crushing pressure while confined. Volume it lost
+    /// crushed unconfined, before it was last confined, is not counted.
     public func compaction(_ i: Int, _ j: Int, _ k: Int) -> Float {
         stateValue(i, j, k, offset: 144)
     }
