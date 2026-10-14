@@ -160,8 +160,12 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
 - **Done:** [large scenes](large-scenes.md) of hundreds of tonnes to kilotonnes; exposure-only
   [building envelopes](building-envelopes.md) to 64 buildings, from IFC and mesh imports and
   OpenStreetMap footprints; a cost-against-fidelity advisor reading the error bands
-  ([choosing settings](performance.md#choosing-settings)).
-- **Next:** costs measured on an unloaded Mac at kilometre scale; terrain's slopes as cut cells.
+  ([choosing settings](performance.md#choosing-settings)), its costs re-timed on an unloaded Mac
+  at kilometre scale.
+- **Next:** terrain's slopes as cut cells; a cheaper damage model for envelope buildings
+  (single-degree-of-freedom, pressure–impulse or fragility), once its errors against the detailed
+  model and measurement, and the cost of not venting, are known
+  ([damage for envelope buildings](building-envelopes.md#future-work-damage-for-envelope-buildings)).
 
 ### Distributed computing
 
