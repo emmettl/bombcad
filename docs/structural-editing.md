@@ -129,7 +129,7 @@ report stays under **Edit layout → Structure from IFC**.
   detaches the structure from its source. Members tied to nothing that stands on a support
   (found from the mesh, as the solver ties and holds it) will fall under gravity: the report
   lists them, with their share of the structure, and the standing names them. Most real
-  buildings in the [IFC corpus](ifc-import-corpus.md#under-gravity) have some.
+  buildings in the [IFC corpus](ifc-import-corpus.md#running-it) have some.
 
 **Checks.** The small house, the structural house and the duplex's first storey import,
 mesh and stand under gravity: the duplex (6,201 shells and 120 beams) sags 1.2 mm at its
