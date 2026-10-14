@@ -103,10 +103,24 @@ func runMendonca(device: MTLDevice) throws {
                 format: "slab %@: layout %@, %.0f MPa, %.0f kg/m³, %.2f kg at %.2f m", slab.name,
                 slab.layout.rawValue, slab.compressiveStrength / 1e6, slab.density, slab.charge, slab.standoff
             ))
-        let result = try MendoncaSlabTest.run(device: device, slab: slab, inputs: inputs, settings: settings)
-        {
-            print("  " + $0)
-        }
+        // Studies after the reveal: the rate, hourglass and bond options (`--no-rate`, `--bond`,
+        // `--rate-window`, ...) on the slab, and `--afterburn` in the air.
+        let result = try MendoncaSlabTest.run(
+            device: device, slab: slab, inputs: inputs, settings: settings,
+            adjust: { scenario in
+                guard var model = scenario.structure else { return }
+                if flag("no-rate") { model.material.rateDependent = false }
+                if let bond = chosenBondSlip(diameter: inputs.meshBar) { model.bondSlip = bond }
+                applyRateOptions(&model)
+                scenario.structure = model
+            },
+            configure: { solver in
+                if flag("afterburn") {
+                    solver.configuration.afterburning = true
+                    solver.configuration.mappedCharge = false
+                }
+            },
+            progress: { print("  " + $0) })
         print(line(result))
         print(
             String(
