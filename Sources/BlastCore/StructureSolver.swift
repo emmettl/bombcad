@@ -40,7 +40,7 @@ public final class StructureSolver {
     }
 
     /// Bytes of state per element (`ElementState` in Structure.metal).
-    public static let stateStride = 192
+    public static let stateStride = 192 + 4 * BuildProbe.current.statePadding
     static let forceStride = 96
 
     public let device: MTLDevice
