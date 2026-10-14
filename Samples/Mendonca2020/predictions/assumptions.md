@@ -225,3 +225,21 @@ crossings limit both zero, a change of default, so reported only), on the calibr
 air for all seven slabs, and on the primary's air for slabs 4 and 1, on the Studio. **Secondary
 run 6** (timber bearings) is cut to the two slabs it had run (4 and 1): it tests the landing's
 compliance, which until the air stays awake is not what sets the landing.
+
+**Also cut, 2026-10-13 01:35 (no change to any assumption):** the 16-element runs were split
+into two fixed lists of slabs (1, 2, 10 and 9, 7, 5) so that two could run at once without
+running one twice; slab 1's run, minutes old, was stopped and made again. The same evening the
+Studio's ensemble share was added: the ensemble's samples were run on whichever machine was free
+(the Studio from sample 8 down, the mini from 1 up), each on the calibrated record's air as
+declared in change 3, each sample's file written once and copied to the other machine.
+
+## Interruptions
+
+- **2026-10-13, after every run had finished (the last, the 16-element slab 5, at 07:19):** all
+  sessions stopped when the account ran out of tokens, until 2026-10-14. No run was in progress;
+  none was lost.
+- **2026-10-14, 16:10 to 18:57:** the StudioData drive stopped completing writes, stalling every
+  output there. Nothing in this predictor's working folder had been written since 2026-10-13
+  07:19, and all 68 result files read back whole afterwards, so no run was affected or repeated.
+- The predictions were collated afterwards from those runs, made on the frozen commit's model
+  (`047cee3`) with the harness named in the README; nothing was re-run.
