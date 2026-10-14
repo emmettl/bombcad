@@ -190,6 +190,41 @@ first impacts' peaks within about ±3–4% of its own centre, far narrower than 
 
 Outputs and the scoring script: `/Volumes/StudioData/bombcad/blind-results/hrynyk/`.
 
+### What holds the cone, traced
+
+After the reveal, so calibration and not the blind result: `blastbench hrynyk --cone --work` follows
+elements on a 45° line out from the face's edge, the concrete under the face, both faces' sag across
+the cone, and the cone band's work by mechanism. TH6 and TH7, 8 elements through, on main with the
+100 µs rate window (whose old 50-step average gives the same punching picture). On 8 elements the
+re-seated face delivers the second blow (1,520–1,620 kN, peaks 25.8 and 18.9 mm against 27.7 and
+18.3), so the load is there; neither slab punches.
+
+- **The cone forms but does not move.** Cracks of 1 mm or more cross every layer within 450 mm, and
+  at mid-depth the cone's crack lies about 25° from horizontal, a punching cone's angle. It opens to
+  0.7 mm and stops, carrying under 1 MPa of shear against an interlock cap of 1.6. The plug never
+  steps down: the top face drops 0.5–1 mm more inside the face than just outside it, against the
+  measured 20 mm (TH6-2) and 10 mm (TH7-2). Instead the slab thickens under the face, the bottom
+  sagging 4–9 mm more than the top, and the bottom face stays smooth across the cone, carried by
+  the bottom bars: delamination, not a plug.
+- **No one mechanism holds it.** In the cone band on TH6-2 the work is hourglass control 38%
+  (mostly at its cap), aggregate interlock 29%, bars 16%, dowels 8%. Take one away and the next
+  takes the shear: interlock at 0.2 doubles the dowels' work; hourglass control that softens with
+  cracking moves its share into interlock (peak 30.8 mm, step 3.4 mm); all three together leave
+  the first impact twice as flexible as measured (38.6 mm) and the bottom peels 26 mm off the top,
+  held by its bars, still with a 4 mm step. None punches.
+- **Confinement and rate do not decide, as in Peterson's beams.** The cone's confinement gain is
+  about zero and its strain rate 1–25/s; confinement off moves TH6-2 by 1%, rate laws off by 10%,
+  and neither punches. Under the face the concrete is pressed confined (gain 0.15–0.3, −55 to −80
+  MPa), reaches 0.5% strain against the 15% that would crush it out, and never compacts: the face
+  does not indent (0.1 mm against 3.5 measured after TH6-1).
+
+So the miss is kinematic: smeared cracks on 16 mm hexes let the cone crack open but not slide,
+and the face's edge, which in the test crushed its way in, is spread over a whole element. Options
+to try, none adopted: an embedded crack that can slide (deferred until data could decide it; this
+is such data), removal at a shear or crushing strain the face's edge reaches, or a finer ring
+under the face's edge. Each must keep the bending, impact and close-in comparisons. Runs:
+`/Volumes/StudioData/bombcad/concrete-stages/hrynyk-runs/`.
+
 ## Structural response against a real test
 
 ### The test

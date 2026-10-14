@@ -425,7 +425,10 @@ public enum HrynykSlabTest {
     public static func run(
         device: MTLDevice, slab: Slab, inputs: Inputs, settings: Settings = Settings(),
         masses: [Float]? = nil,
-        values: [String: Double] = [:], progress: (Impact) -> Void = { _ in }
+        values: [String: Double] = [:], progress: (Impact) -> Void = { _ in },
+        adjust: (inout StructureModel) -> Void = { _ in },
+        prepare: (StructureSolver, Layout) -> Void = { _, _ in },
+        inspect: (StructureSolver, Layout, Int, Double) -> Void = { _, _, _, _ in }
     ) throws -> Result {
         var settings = settings
         if let factor = values["bearing"] { settings.bearingSide *= Float(factor) }
@@ -433,9 +436,11 @@ public enum HrynykSlabTest {
         let material = ValidationEnsemble.perturbed(
             self.material(slab, inputs: inputs, settings: settings), values)
         let speed = inputs.impactSpeed * Float(values["speed"] ?? 1)
-        let (model, l) = self.model(slab, inputs: inputs, settings: settings, material: material)
+        var (model, l) = self.model(slab, inputs: inputs, settings: settings, material: material)
+        adjust(&model)
         let solver = try StructureSolver(device: device, model: model)
         solver.groundContact = false
+        prepare(solver, l)
         let h = l.h
         let g = solver.gravity
         let face = (l.centre - l.faceHalf)...(l.centre + l.faceHalf)
@@ -620,6 +625,7 @@ public enum HrynykSlabTest {
             while solver.time - t0 < settings.duration - 1e-9 {
                 solver.advance(steps: stepsPerSample)
                 let t = Float(solver.time - t0)
+                inspect(solver, l, number + 1, solver.time - t0)
                 displacement.append(SIMD2(t, midpoint() - start))
                 let r = reactions()
                 below.append(r.below - startReaction)
