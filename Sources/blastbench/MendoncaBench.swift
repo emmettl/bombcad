@@ -11,6 +11,8 @@ import UniformTypeIdentifiers
 //   blastbench mendonca [--slabs 1,2,4,5,7,9,10] [--layers 8] [--dx 0.0125] [--refine 2] [--mapped]
 //                       [--time 0.2] [--heavy-across] [--lift 0.1] [--timber] [--awake]
 //                       [--inputs Samples/Mendonca2020/inputs/slabs.json] [--out dir]
+//                       after the reveal: [--charge-factor 1.5] [--ft-factor 0.5] [--gf-factor 1] [--fc-factor 1]
+//                       [--fy-factor 1] [--afterburn] [--no-rate] [--bond splitting] [--rate-window steps]
 //                       [--ensemble 8 [--seed 1] [--samples 1-8]]   (the inputs' spread)
 //
 // Writes each slab's result as JSON, its histories as CSV and its faces' cracks as PNG and text
@@ -30,6 +32,12 @@ func runMendonca(device: MTLDevice) throws {
     if flag("timber") { settings.timberBearings = true }
     if flag("awake") { settings.airAwake = true }
     if let lift = option("lift").flatMap({ Float($0) }) { settings.chargeLift = lift }
+    // Studies after the reveal: the charge, and the concrete's and bars' strengths, scaled.
+    if let factor = option("charge-factor").flatMap({ Float($0) }) { settings.chargeFactor = factor }
+    if let factor = option("fc-factor").flatMap({ Float($0) }) { settings.fcFactor = factor }
+    if let factor = option("ft-factor").flatMap({ Float($0) }) { settings.ftFactor = factor }
+    if let factor = option("gf-factor").flatMap({ Float($0) }) { settings.gfFactor = factor }
+    if let factor = option("fy-factor").flatMap({ Float($0) }) { settings.fyFactor = factor }
     let names = option("slabs")?.split(separator: ",").map(String.init)
     let slabs = inputs.slabs.filter { names?.contains($0.name) ?? true }
     let out = URL(filePath: option("out") ?? "/Volumes/StudioData/bombcad/mendonca-prediction/run")
@@ -103,10 +111,24 @@ func runMendonca(device: MTLDevice) throws {
                 format: "slab %@: layout %@, %.0f MPa, %.0f kg/m³, %.2f kg at %.2f m", slab.name,
                 slab.layout.rawValue, slab.compressiveStrength / 1e6, slab.density, slab.charge, slab.standoff
             ))
-        let result = try MendoncaSlabTest.run(device: device, slab: slab, inputs: inputs, settings: settings)
-        {
-            print("  " + $0)
-        }
+        // Studies after the reveal: the rate, hourglass and bond options (`--no-rate`, `--bond`,
+        // `--rate-window`, ...) on the slab, and `--afterburn` in the air.
+        let result = try MendoncaSlabTest.run(
+            device: device, slab: slab, inputs: inputs, settings: settings,
+            adjust: { scenario in
+                guard var model = scenario.structure else { return }
+                if flag("no-rate") { model.material.rateDependent = false }
+                if let bond = chosenBondSlip(diameter: inputs.meshBar) { model.bondSlip = bond }
+                applyRateOptions(&model)
+                scenario.structure = model
+            },
+            configure: { solver in
+                if flag("afterburn") {
+                    solver.configuration.afterburning = true
+                    solver.configuration.mappedCharge = false
+                }
+            },
+            progress: { print("  " + $0) })
         print(line(result))
         print(
             String(
