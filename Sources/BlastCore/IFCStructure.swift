@@ -935,13 +935,23 @@ public struct IFCStructure: Sendable {
         }
 
         // Slabs near the lowest level with nothing under them rest on the ground at their soffit:
-        // on the lowest storey (foundation slabs on piles or soil the IFC leaves out, above a pit
-        // that sets the lowest level), or within or against walls standing on the ground (a slab
-        // on the fill inside its foundation walls or a porch's beside them, often of the storey
-        // above theirs).
+        // - on the lowest storey (foundation slabs on piles or soil the IFC leaves out, above a
+        //   pit that sets the lowest level);
+        // - on another storey that starts near the lowest level, with nothing at all under them
+        //   (the foundation slabs, where the pit's floor is a storey of its own);
+        // - within or against walls starting near the lowest level (on the ground, or on footings
+        //   the IFC leaves out) and reaching past their mid-thickness: a slab on the fill inside
+        //   its foundation walls, or a porch's beside them, often of the storey above theirs.
+        var storeyBase: [String: Float] = [:]
+        for (n, member) in members.enumerated() {
+            guard let index = member.solid, bodies.contains(index), let name = storey(n) else { continue }
+            storeyBase[name] = min(storeyBase[name] ?? .infinity, solids[index].min.z)
+        }
+        let lowStoreys = Set(storeyBase.filter { $0.value <= Self.foundationReach }.keys)
         for (n, member) in members.enumerated() where member.role == .shell {
             guard let index = member.solid else { continue }
             let box = solids[index]
+            guard thinAxis(box) == 2, box.min.z > options.gap + 1e-3 else { continue }
             // What stands under it covers under half its plan: walls round a pit's edge do not
             // carry a slab.
             let covered = bodies.filter { j in
@@ -953,28 +963,32 @@ public struct IFCStructure: Sendable {
                 }
                 return sum + overlap[0] * overlap[1]
             }
-            guard thinAxis(box) == 2, box.min.z > options.gap + 1e-3, box.min.z <= Self.foundationReach,
-                covered < 0.5 * box.size.x * box.size.y
-            else { continue }
-            let lowest = groundStorey.map { storey(n) == $0 } ?? false
+            let area = box.size.x * box.size.y
+            guard covered < 0.5 * area else { continue }
+            let near = box.min.z <= Self.foundationReach
+            let lowest = near && (groundStorey.map { storey(n) == $0 } ?? false)
+            let low = near && covered < 0.01 * area && storey(n).map(lowStoreys.contains) == true
             let within = bodies.first { j in
                 // Reaching past its mid-thickness, so not a floor on top of crawl-space walls.
-                j != index && solids[j].min.z <= options.gap + 1e-3
+                j != index && thinAxis(solids[j]) != 2
+                    && solids[j].min.z <= Self.foundationReach && solids[j].min.z < box.min.z
+                    && box.min.z - solids[j].min.z <= Self.foundationReach
                     && solids[j].max.z >= 0.5 * (box.min.z + box.max.z)
-                    && thinAxis(solids[j]) != 2
                     && (0..<2).allSatisfy {
                         solids[j].max[$0] >= box.min[$0] - options.gap
                             && box.max[$0] >= solids[j].min[$0] - options.gap
                     }
             }
-            guard lowest || within != nil else { continue }
+            guard lowest || low || within != nil else { continue }
             model.supports.append(Self.foot(of: box, reach: 0.2 * options.elementSize + 0.01))
             model.supportAnchorages.append(.resting())
             let place =
                 lowest
                 ? "on the lowest storey near its lowest level with nothing under it in the IFC, its foundation left out"
-                : "within walls standing on the ground (\(members.first { $0.solid == within }?.name ?? "a wall")), "
-                    + "near the lowest level with nothing under it in the IFC, the fill under it left out"
+                : within != nil
+                    ? "within walls of the foundation (\(members.first { $0.solid == within }?.name ?? "a wall")), "
+                        + "with nothing under it in the IFC, the fill under it left out"
+                    : "on a storey starting near the lowest level, with nothing under it in the IFC, its foundation left out"
             supportNotes.append(
                 "\(member.name): \(place); rests on the ground at its soffit, \(Self.millimetres(box.min.z)) up, "
                     + "with friction 0.6 (assumed).")

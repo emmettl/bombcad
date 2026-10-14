@@ -369,7 +369,7 @@ struct IFCStructureTests {
         let structure = try IFCStructure(elements: walls + [slab])
         #expect(
             structure.supports.contains {
-                $0.hasPrefix("Slab on grade: within walls standing on the ground") && $0.contains("soffit")
+                $0.hasPrefix("Slab on grade: within walls of the foundation") && $0.contains("soffit")
             })
         #expect(!structure.members.contains { $0.notes.contains { $0.contains("will fall") } })
         // A slab as high above the lowest level as a storey is not.
@@ -400,6 +400,39 @@ struct IFCStructureTests {
             !(try IFCStructure(elements: low + [suspended])).supports.contains {
                 $0.hasPrefix("Ground floor:")
             })
+    }
+
+    @Test(
+        "Foundation slabs of a storey above the pit's own, and a slab inside walls on footings, rest on the ground"
+    )
+    func foundationStoreys() throws {
+        // The pit's floor is a storey of its own and sets the lowest level; the foundation slab
+        // 0.4 m above it, with nothing under it, is of the next storey.
+        let pit = try element(
+            1, "Pit floor", "IfcSlab", [box(SIMD3(1, 1, 0), SIMD3(2.5, 2.5, 0.3))], storey: "Pit")
+        let slab = try element(
+            2, "Foundation slab", "IfcSlab", [box(SIMD3(3, 0, 0.4), SIMD3(9, 6, 0.95))], storey: "Foundation")
+        let structure = try IFCStructure(elements: [pit, slab])
+        #expect(
+            structure.supports.contains {
+                $0.hasPrefix("Foundation slab: on a storey starting near the lowest level")
+            })
+        // Foundation walls 1 m high standing 0.9 m up (on footings the IFC leaves out), and the
+        // slab on the fill between them 1.77 m up.
+        let walls = try [
+            box(SIMD3(20, 0, 0.9), SIMD3(24.4, 0.2, 1.9)), box(SIMD3(20, 4.2, 0.9), SIMD3(24.4, 4.4, 1.9)),
+            box(SIMD3(20, 0.2, 0.9), SIMD3(20.2, 4.2, 1.9)),
+            box(SIMD3(24.2, 0.2, 0.9), SIMD3(24.4, 4.2, 1.9)),
+        ].enumerated().map {
+            try element(
+                $0.offset + 3, "Foundation wall \($0.offset + 1)", "IfcWall", [$0.element],
+                storey: "Foundation")
+        }
+        let grade = try element(
+            9, "Slab on grade", "IfcSlab", [box(SIMD3(20.2, 0.2, 1.75), SIMD3(24.2, 4.2, 1.9))],
+            storey: "Ground")
+        let footed = try IFCStructure(elements: [pit] + walls + [grade])
+        #expect(footed.supports.contains { $0.hasPrefix("Slab on grade: within walls of the foundation") })
     }
 
     @Test("A duplicate, given no elements of its own by the mesh, is not reported as falling")
