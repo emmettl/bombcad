@@ -1537,16 +1537,17 @@ struct StandingScene {
             evidence += [
                 StandingEvidence(
                     "A reinforced slab under a blast",
-                    "Either way by load. Reads high under the test's load: 113–124 mm against 109 mm measured, and 113 "
-                        + "in its repeat (104–114% of the first), on 4 to 32 solid elements through, rising with the "
-                        + "mesh and not converged, a strip of it running away on 32; shells 135 mm (124%); a 5% "
+                    "Either way by load. Reads high under the test's load: 113–125 mm against 109 mm measured, and 113 "
+                        + "in its repeat (104–115% of the first), on 4 to 32 solid elements through, rising with the "
+                        + "mesh towards about 119% and not converged (32 holding on half the step); shells 135 mm (124%); a 5% "
                         + "change in its hand-read load moves it 13–14%, a source's 68 ksi bar yield 9%. Under the "
                         + "contest's lower shot (a scaled record) 79–88% of the peak: too stiff, the unsafe side",
                     "validation.md#structural-response-against-a-real-test"),
                 StandingEvidence(
                     "A reinforced beam bent to failure",
-                    "Peak moment 98–101% (17% strong, the unsafe side, on 6 elements through); failing at "
-                        + "53–57 mm on 12 elements and holding to 60 mm on 24, against 42 mm",
+                    "Peak moment 100–101% on 12 and 24 elements through, failing at 44 mm on 12 and holding on "
+                        + "24, against 42 mm; breaking at 11 and 7 mm on 36 and 48 (17% strong, the unsafe side, "
+                        + "on 6 under the earlier defaults)",
                     "validation.md#a-reinforced-beam-bent-to-failure"),
                 StandingEvidence(
                     "A beam without stirrups failing in shear",
@@ -1554,13 +1555,13 @@ struct StandingScene {
                     "validation.md#a-beam-failing-in-shear"),
                 StandingEvidence(
                     "Beams struck by a falling weight",
-                    "Either way on 16 elements, with stirrups: 12–24% high under light drops, −5% to +3% under "
-                        + "heavy; on 24, +17% to +28% and −1% to +17%; struck about twice as hard as measured, the "
+                    "Either way on 16 elements, with stirrups: 12–23% high under light drops, −5% to −1% under "
+                        + "heavy; on 24 (earlier defaults), +17% to +28% and −1% to +17%; struck about twice as hard as measured, the "
                         + "reactions up to 40% low; the rate laws were chosen on these tests",
                     "validation.md#beams-struck-by-a-falling-weight"),
                 StandingEvidence(
-                    "Blind: Hrynyk's slabs struck repeatedly by a falling weight (frozen defaults, predicted "
-                        + "before the measurements were unsealed)",
+                    "Blind: Hrynyk's slabs struck repeatedly by a falling weight (defaults frozen at 1c85774, "
+                        + "before the 100 µs strain-rate window; predicted before the measurements were unsealed)",
                     "First impacts 15–29% too flexible, as the calibrated beams were; once damaged, 17–44% too "
                         + "stiff, springing back to a seventh to a third of the residual",
                     "validation.md#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight"),
@@ -1574,7 +1575,7 @@ struct StandingScene {
             parts.append(
                 "reinforced concrete errs mostly on the unsafe side, towards too little damage: too strong in "
                     + "shear, too stiff in a full-scale chamber and close in. In bending one slab reads either way, "
-                    + "4–14% high under the contest's load and 12–21% low under its lower shot, not converged, and its beams struck on 16 elements come within 12–24%; it "
+                    + "4–14% high under the contest's load and 12–21% low under its lower shot, not converged, and its beams struck on 16 elements come within 12–23%; it "
                     + "springs back too far")
         }
         if classes.contains(.plainConcrete) {
@@ -1663,6 +1664,9 @@ struct StandingScene {
             assumptions: [
                 "The defaults were chosen with these tests in view: a calibration set as much as a validation "
                     + "set, none run blind.",
+                "Blind tests judge the defaults frozen for them: tests 1 (1c85774) and 2 (047cee3) the 50-step "
+                    + "strain-rate average that the 100 µs window replaced on 12 October 2026; test 3 would judge "
+                    + "today's.",
                 "Supports are assumed in every structural test, and move the results by 15–25% or more.",
                 "Most tests are single specimens.",
                 "Lattice-aligned geometry, a staircase of whole cells to the air.",
@@ -1689,7 +1693,7 @@ struct StandingScene {
                     + "test, but damaged by a light one it survived",
                 "validation.md#beams-struck-by-a-falling-weight"),
             StandingEvidence(
-                "Blind: Hrynyk's slabs struck repeatedly by a falling weight",
+                "Blind: Hrynyk's slabs struck repeatedly by a falling weight (defaults before the 100 µs window)",
                 "Unsafe side: all three slabs punched in the test, by the second or third impact; the model "
                     + "punched none in four",
                 "validation.md#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight"),
@@ -1710,7 +1714,7 @@ struct StandingScene {
             evidence.append(
                 StandingEvidence(
                     "Slabs under contact charges (Hupfauf, 2024)",
-                    "The far face thrown 1.2–1.9 times as fast as the debris at first; the loose layer held back "
+                    "The far face thrown 1.1–1.7 times as fast as the debris at first; the loose layer held back "
                         + "rather than thrown, and no slab holed where four were",
                     "validation.md#slabs-under-contact-charges"))
             summary +=
@@ -1729,10 +1733,14 @@ struct StandingScene {
                 "Concrete broken under a close-in charge is never removed, so no hole opens.",
                 "Debris is pushed crudely by the air, as cubes with a fixed drag.",
                 "Collapse is chaotic: a slightly different input gives a different pattern of debris.",
+                "Results after failure move with the build of the structure's GPU code, which uses fast math: "
+                    + "failed elements, debris speeds and residuals are one draw among builds (Hupfauf's SN131 "
+                    + "254 or 758 elements failed, Janney's moment past failure 9.7 or 29.4 kN m). Everything up "
+                    + "to failure repeats.",
             ],
             documents: [
                 "concrete-model.md#limitations", "structural-model.md#limitations",
-                "validation.md#what-is-missing",
+                "validation.md#what-is-missing", "validation.md#convergence-on-todays-defaults",
             ])
     }
 
