@@ -151,7 +151,9 @@ struct IFCRobustnessTests {
         let source = try await IFCImporter.convert(prepared, includedIDs: prepared.defaultIDs)
         let elements = try #require(source.buildingElements)
         // The face the two shared is removed: one closed solid, the whole wall, a piece of it.
-        #expect(!elements.isEmpty && elements.allSatisfy { $0.assembly?.id == Self.id(122) && $0.ifcClass == "IfcWall" })
+        #expect(
+            !elements.isEmpty
+                && elements.allSatisfy { $0.assembly?.id == Self.id(122) && $0.ifcClass == "IfcWall" })
         #expect(!elements.contains { $0.globalID == Self.id(122) })
         let low = elements.map(\.mesh.bounds.min).reduce(SIMD3<Float>(repeating: .infinity), simd_min)
         let high = elements.map(\.mesh.bounds.max).reduce(SIMD3<Float>(repeating: -.infinity), simd_max)

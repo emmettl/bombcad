@@ -450,7 +450,8 @@ struct ShellMesh {
         // or that are clamped: never made to follow another.
         var anchored = Set<Int>()
         if model.connectionStiffness != nil {
-            let points = jointPoints(across: ShellSolver.fibresAcross, normals: model.connectionNormals) { point, node in
+            let points = jointPoints(across: ShellSolver.fibresAcross, normals: model.connectionNormals) {
+                point, node in
                 guard let slot = model.connectionSlot(at: point), slot != 0 || abs(node.z) < 1e-4,
                     let law = model.connection(inSlot: slot)
                 else { return nil }
@@ -462,15 +463,20 @@ struct ShellMesh {
             model.isClampedBySupport(at: p) || (model.fixedBase && abs(p.z) < 1e-4)
         }
         for i in solids.indices where !sets[i].isEmpty {
-            for j in (i + 1)..<solids.count where !sets[j].isEmpty && touch(solids[i], solids[j]) && !linked(i, j) {
+            for j in (i + 1)..<solids.count
+            where !sets[j].isEmpty && touch(solids[i], solids[j]) && !linked(i, j) {
                 let (light, heavy) = volume(i) <= volume(j) ? (i, j) : (j, i)
                 // Where they touch, widened to take in both midsurfaces or centrelines.
                 let reach =
-                    max(0.5 * model.elementSize, 0.5 * solids[i].size.min(), 0.5 * solids[j].size.min()) + tolerance
-                var region = Box(min: simd_max(solids[i].min, solids[j].min), max: simd_min(solids[i].max, solids[j].max))
+                    max(0.5 * model.elementSize, 0.5 * solids[i].size.min(), 0.5 * solids[j].size.min())
+                    + tolerance
+                var region = Box(
+                    min: simd_max(solids[i].min, solids[j].min), max: simd_min(solids[i].max, solids[j].max))
                 region.min -= SIMD3(repeating: reach)
                 region.max += SIMD3(repeating: reach)
-                func inside(_ p: SIMD3<Float>) -> Bool { (0..<3).allSatisfy { p[$0] >= region.min[$0] && p[$0] <= region.max[$0] } }
+                func inside(_ p: SIMD3<Float>) -> Bool {
+                    (0..<3).allSatisfy { p[$0] >= region.min[$0] && p[$0] <= region.max[$0] }
+                }
                 let candidates = nodes[heavy].filter { inside(positions[Int($0)]) }
                 var count = 0
                 for slave in nodes[light] where inside(positions[Int(slave)]) {
@@ -478,9 +484,11 @@ struct ShellMesh {
                         !held(positions[Int(slave)])
                     else { continue }
                     let p = positions[Int(slave)]
-                    guard var master = candidates.min(by: {
-                        simd_distance_squared(positions[Int($0)], p) < simd_distance_squared(positions[Int($1)], p)
-                    }), simd_distance(positions[Int(master)], p) <= 2 * reach + model.elementSize
+                    guard
+                        var master = candidates.min(by: {
+                            simd_distance_squared(positions[Int($0)], p)
+                                < simd_distance_squared(positions[Int($1)], p)
+                        }), simd_distance(positions[Int(master)], p) <= 2 * reach + model.elementSize
                     else { continue }
                     if let up = masterOf[master] { master = up }
                     guard master != slave else { continue }

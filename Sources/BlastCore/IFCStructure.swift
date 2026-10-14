@@ -945,9 +945,12 @@ public struct IFCStructure: Sendable {
             // What stands under it covers under half its plan: walls round a pit's edge do not
             // carry a slab.
             let covered = bodies.filter { j in
-                j != index && solids[j].max.z <= box.min.z + 1e-3 && solids[j].max.z >= box.min.z - options.gap
+                j != index && solids[j].max.z <= box.min.z + 1e-3
+                    && solids[j].max.z >= box.min.z - options.gap
             }.reduce(Float(0)) { sum, j in
-                let overlap = (0..<2).map { max(0, min(solids[j].max[$0], box.max[$0]) - max(solids[j].min[$0], box.min[$0])) }
+                let overlap = (0..<2).map {
+                    max(0, min(solids[j].max[$0], box.max[$0]) - max(solids[j].min[$0], box.min[$0]))
+                }
                 return sum + overlap[0] * overlap[1]
             }
             guard thinAxis(box) == 2, box.min.z > options.gap + 1e-3, box.min.z <= Self.foundationReach,
@@ -956,10 +959,12 @@ public struct IFCStructure: Sendable {
             let lowest = groundStorey.map { storey(n) == $0 } ?? false
             let within = bodies.first { j in
                 // Reaching past its mid-thickness, so not a floor on top of crawl-space walls.
-                j != index && solids[j].min.z <= options.gap + 1e-3 && solids[j].max.z >= 0.5 * (box.min.z + box.max.z)
+                j != index && solids[j].min.z <= options.gap + 1e-3
+                    && solids[j].max.z >= 0.5 * (box.min.z + box.max.z)
                     && thinAxis(solids[j]) != 2
                     && (0..<2).allSatisfy {
-                        solids[j].max[$0] >= box.min[$0] - options.gap && box.max[$0] >= solids[j].min[$0] - options.gap
+                        solids[j].max[$0] >= box.min[$0] - options.gap
+                            && box.max[$0] >= solids[j].min[$0] - options.gap
                     }
             }
             guard lowest || within != nil else { continue }
@@ -994,7 +999,8 @@ public struct IFCStructure: Sendable {
         }
         // Members that stand on an element kept rigid (an arch, an inclined roof, a finish) are
         // held by it, as it does not move.
-        let rigidBoxes = members.indices.filter { members[$0].role == .rigid }.map { n -> (name: String, box: Box) in
+        let rigidBoxes = members.indices.filter { members[$0].role == .rigid }.map {
+            n -> (name: String, box: Box) in
             var box = shapes[n].box
             box.min += shift
             box.max += shift
@@ -1006,7 +1012,9 @@ public struct IFCStructure: Sendable {
             guard box.min.z > options.gap + 1e-3,
                 !model.supports.indices.contains(where: { n in
                     let region = model.supports[n]
-                    return (0..<3).allSatisfy { box.max[$0] >= region.min[$0] && region.max[$0] >= box.min[$0] }
+                    return (0..<3).allSatisfy {
+                        box.max[$0] >= region.min[$0] && region.max[$0] >= box.min[$0]
+                    }
                 }),
                 let under = rigidBoxes.first(where: { rigid in
                     rigid.box.max.z >= box.min.z - options.gap && rigid.box.min.z < box.min.z
@@ -1017,7 +1025,9 @@ public struct IFCStructure: Sendable {
                 // Nothing of the structure under it already.
                 !bodies.contains(where: { j in
                     j != index && abs(solids[j].max.z - box.min.z) <= 1e-3
-                        && (0..<2).allSatisfy { solids[j].max[$0] > box.min[$0] + 1e-4 && box.max[$0] > solids[j].min[$0] + 1e-4 }
+                        && (0..<2).allSatisfy {
+                            solids[j].max[$0] > box.min[$0] + 1e-4 && box.max[$0] > solids[j].min[$0] + 1e-4
+                        }
                 })
             else { continue }
             model.supports.append(Self.foot(of: box, reach: Self.snap(options.elementSize)))
@@ -1105,7 +1115,8 @@ public struct IFCStructure: Sendable {
         if let mesh = try? ShellMesh(model: model) {
             // The ties the mesh had to infer, between members it does not meet: a guess, flagged.
             let bySolid = Dictionary(
-                members.indices.compactMap { n in members[n].solid.map { ($0, n) } }, uniquingKeysWith: { a, _ in a })
+                members.indices.compactMap { n in members[n].solid.map { ($0, n) } },
+                uniquingKeysWith: { a, _ in a })
             var inferred = 0
             for tie in mesh.contactTies {
                 guard let a = bySolid[tie.first], let b = bySolid[tie.second] else { continue }
@@ -1173,7 +1184,8 @@ public struct IFCStructure: Sendable {
             var meshed = [Bool](repeating: false, count: model.solids.count)
             for element in mesh.elements { meshed[element.solid] = true }
             for beam in mesh.beams { meshed[beam.solid] = true }
-            reached = Set(members.indices.filter { members[$0].solid.map { solidHeld[$0] || !meshed[$0] } ?? false })
+            reached = Set(
+                members.indices.filter { members[$0].solid.map { solidHeld[$0] || !meshed[$0] } ?? false })
         }
         let loose =
             reached.map { reached in

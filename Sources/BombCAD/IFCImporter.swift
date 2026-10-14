@@ -186,7 +186,8 @@ enum IFCImporter {
             output, metadata: Dictionary(uniqueKeysWithValues: chosen.map { ($0.id, $0) }), scale: scale)
         if prepared.data.count > 20_000_000 {
             notes.append(
-                "This IFC is \(prepared.data.count / 1_000_000) MB, past 20 MB: converting, sampling and saving it are slower, and the project keeps the whole file.")
+                "This IFC is \(prepared.data.count / 1_000_000) MB, past 20 MB: converting, sampling and saving it are slower, and the project keeps the whole file."
+            )
         }
         // A repaired element is present in its solids.
         let present = Set(geometry.elements.map { $0.assembly?.id ?? $0.globalID })
@@ -198,11 +199,13 @@ enum IFCImporter {
                     + "(pieces welded together, faces shared) were remade as the "
                     + "\(geometry.repairs.reduce(0) { $0 + $1.solids }) closed solid\(geometry.repairs.reduce(0) { $0 + $1.solids } == 1 ? "" : "s") "
                     + "they are made of, faces they shared removed, each imported as a piece of its element: "
-                    + geometry.repairs.prefix(8).map(\.name).joined(separator: ", ") + (geometry.repairs.count > 8 ? ", …" : "")
+                    + geometry.repairs.prefix(8).map(\.name).joined(separator: ", ")
+                    + (geometry.repairs.count > 8 ? ", …" : "")
                     + (left.isEmpty
                         ? "."
                         : ". Of \(left.count) of them, \(left.reduce(0) { $0 + $1.leftOut }) pieces left out, being open or "
-                            + "not valid solids on their own: " + left.prefix(5).map(\.name).joined(separator: ", ") + "."))
+                            + "not valid solids on their own: "
+                            + left.prefix(5).map(\.name).joined(separator: ", ") + "."))
         }
         // An element whose geometry is all in its parts is not missing.
         let carried = Set(geometry.elements.compactMap { byID[$0.globalID]?.parentID })
@@ -577,7 +580,8 @@ enum IFCImporter {
         // four steps of the building's extent, its collapsed triangles dropped.
         let extent = used.reduce(0.0) { max($0, simd_reduce_max(simd_abs(vertices[$1] - origin))) }
         let coarse = max(0.0000001, extent * 4.8e-7)
-        func mesh(_ triangles: [[Int]], quantum: Double = 0.0000001, _ position: (Int) -> SIMD3<Double>) throws
+        func mesh(_ triangles: [[Int]], quantum: Double = 0.0000001, _ position: (Int) -> SIMD3<Double>)
+            throws
             -> ImportedMesh
         {
             // IFC meshing can emit coincident face vertices with floating-point roundoff.
@@ -585,9 +589,13 @@ enum IFCImporter {
             func at(_ n: Int) -> SIMD3<Double> {
                 ((position(n) - origin) / quantum).rounded(.toNearestOrAwayFromZero) * quantum
             }
-            let kept = quantum > 0.0000001 ? triangles.filter { f in at(f[0]) != at(f[1]) && at(f[1]) != at(f[2]) && at(f[0]) != at(f[2]) } : triangles
+            let kept =
+                quantum > 0.0000001
+                ? triangles.filter { f in at(f[0]) != at(f[1]) && at(f[1]) != at(f[2]) && at(f[0]) != at(f[2])
+                } : triangles
             let indices = Set(kept.flatMap { $0 }).sorted()
-            let mapping = Dictionary(uniqueKeysWithValues: indices.enumerated().map { ($0.element, $0.offset + 1) })
+            let mapping = Dictionary(
+                uniqueKeysWithValues: indices.enumerated().map { ($0.element, $0.offset + 1) })
             var obj = ""
             for n in indices {
                 let v = at(n)
@@ -610,12 +618,16 @@ enum IFCImporter {
                 let reason = String(error.localizedDescription.prefix(2000))
                 // Welded at the scene's precision, where its tiny edges were what failed.
                 if coarse > 0.0000001,
-                    let welded = try? mesh(conformingFaces(faces[id]!, vertices: vertices, origin: origin), quantum: coarse, {
-                        vertices[$0]
-                    })
+                    let welded = try? mesh(
+                        conformingFaces(faces[id]!, vertices: vertices, origin: origin), quantum: coarse,
+                        {
+                            vertices[$0]
+                        })
                 {
                     elements.append(
-                        .init(globalID: id, name: info.name, ifcClass: info.ifcClass, storey: info.storey, mesh: welded))
+                        .init(
+                            globalID: id, name: info.name, ifcClass: info.ifcClass, storey: info.storey,
+                            mesh: welded))
                     continue
                 }
                 // Its mesh taken apart into the closed solids it is made of, where it is.
@@ -637,11 +649,13 @@ enum IFCImporter {
                     failures.append(ElementFailure(id: id, name: info.name, reason: reason))
                     continue
                 }
-                let owner = ImportedMesh.BuildingElement.Assembly(id: id, name: info.name, ifcClass: info.ifcClass)
+                let owner = ImportedMesh.BuildingElement.Assembly(
+                    id: id, name: info.name, ifcClass: info.ifcClass)
                 for (k, piece) in pieces.enumerated() {
                     elements.append(
                         .init(
-                            globalID: IFCMeshRepair.pieceID(id, k), name: String("\(info.name) · \(k + 1)".prefix(200)),
+                            globalID: IFCMeshRepair.pieceID(id, k),
+                            name: String("\(info.name) · \(k + 1)".prefix(200)),
                             ifcClass: info.ifcClass, storey: info.storey, assembly: owner, mesh: piece))
                 }
                 repairs.append(
@@ -651,7 +665,8 @@ enum IFCImporter {
             }
         }
         return GeometryReview(
-            elements: elements, origin: origin, failures: failures, inspectedElements: faces.count, repairs: repairs)
+            elements: elements, origin: origin, failures: failures, inspectedElements: faces.count,
+            repairs: repairs)
     }
     /// Split a triangle edge at an existing boundary vertex. This changes triangulation only:
     /// no missing face is created, and the original surface is strictly validated afterwards.

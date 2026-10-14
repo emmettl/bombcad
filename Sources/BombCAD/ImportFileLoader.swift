@@ -46,10 +46,12 @@ final class ImportFileLoader {
                     }
                     let size = values.fileSize ?? 0
                     // An IFC building may be larger than a mesh: its limit is the importer's.
-                    let limit = url.pathExtension.lowercased() == "ifc" ? ImportedMesh.ifcSourceLimit : 20_000_000
+                    let limit =
+                        url.pathExtension.lowercased() == "ifc" ? ImportedMesh.ifcSourceLimit : 20_000_000
                     guard size <= limit else {
                         throw ImportedMesh.ImportError.invalid(
-                            "Model exceeds the \(limit / 1_000_000) MB limit. Simplify the export before importing.")
+                            "Model exceeds the \(limit / 1_000_000) MB limit. Simplify the export before importing."
+                        )
                     }
                     let handle = try FileHandle(forReadingFrom: url)
                     defer { try? handle.close() }

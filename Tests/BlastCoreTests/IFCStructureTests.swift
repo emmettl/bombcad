@@ -309,19 +309,23 @@ struct IFCStructureTests {
         // apart, tied where they touch.
         var elements = try room(concrete: true)
         elements.append(
-            try element(9, "Topping", "IfcSlab", [box(SIMD3(0, 0, 3.2), SIMD3(4, 4, 3.25))], materials: [.init(name: "Concrete C30/37")]))
+            try element(
+                9, "Topping", "IfcSlab", [box(SIMD3(0, 0, 3.2), SIMD3(4, 4, 3.25))],
+                materials: [.init(name: "Concrete C30/37")]))
         let structure = try IFCStructure(elements: elements)
         #expect(structure.model.tiesTouching == true)
         let topping = try #require(structure.members.first { $0.name == "Topping" })
         #expect(!topping.notes.contains { $0.contains("will fall") })
-        let tie = try #require(structure.connections.first { $0.first == topping.id || $0.second == topping.id })
+        let tie = try #require(
+            structure.connections.first { $0.first == topping.id || $0.second == topping.id })
         #expect(tie.kind.contains("inferred"))
         #expect(structure.assumptions.contains { $0.contains("tied rigidly at their nearest nodes") })
         let mesh = try ShellMesh(model: structure.model)
         #expect(mesh.contactTies.count == 1 && mesh.contactTies[0].nodes > 0)
         // Untied, it is loose again.
         let apart = try IFCStructure(elements: elements, options: .init(untied: [tie.key]))
-        #expect(apart.members.first { $0.name == "Topping" }?.notes.contains { $0.contains("will fall") } == true)
+        #expect(
+            apart.members.first { $0.name == "Topping" }?.notes.contains { $0.contains("will fall") } == true)
         // Saved and read back, the switch stays.
         let model = try JSONDecoder().decode(StructureModel.self, from: JSONEncoder().encode(structure.model))
         #expect(model.tiesTouching == true)
@@ -339,7 +343,10 @@ struct IFCStructureTests {
         let arch = try element(4, "Arch", "IfcSlab", [box(SIMD3(20, 0, 0), SIMD3(26, 3, 1))], turn: 0.3)
         let wall = try element(5, "Spandrel", "IfcWall", [box(SIMD3(21, 1, 1.7), SIMD3(25, 1.2, 4))])
         let structure = try IFCStructure(elements: [pit, slab, ground, arch, wall])
-        #expect(structure.supports.contains { $0.hasPrefix("Foundation slab: on the lowest storey near") && $0.contains("soffit") })
+        #expect(
+            structure.supports.contains {
+                $0.hasPrefix("Foundation slab: on the lowest storey near") && $0.contains("soffit")
+            })
         #expect(structure.supports.contains { $0.hasPrefix("Ground beam: lies on the ground") })
         #expect(structure.supports.contains { $0.hasPrefix("Spandrel:") })
         #expect(!structure.members.contains { $0.notes.contains { $0.contains("will fall") } })
@@ -352,16 +359,27 @@ struct IFCStructureTests {
         let walls = try [
             box(SIMD3(0, 0, 0), SIMD3(4.4, 0.2, 1.25)), box(SIMD3(0, 4.2, 0), SIMD3(4.4, 4.4, 1.25)),
             box(SIMD3(0, 0.2, 0), SIMD3(0.2, 4.2, 1.25)), box(SIMD3(4.2, 0.2, 0), SIMD3(4.4, 4.2, 1.25)),
-        ].enumerated().map { try element($0.offset + 1, "Foundation wall \($0.offset + 1)", "IfcWall", [$0.element], storey: "T/FDN") }
-        let slab = try element(9, "Slab on grade", "IfcSlab", [box(SIMD3(0.2, 0.2, 1.1), SIMD3(4.2, 4.2, 1.25))], storey: "Level 1")
+        ].enumerated().map {
+            try element(
+                $0.offset + 1, "Foundation wall \($0.offset + 1)", "IfcWall", [$0.element], storey: "T/FDN")
+        }
+        let slab = try element(
+            9, "Slab on grade", "IfcSlab", [box(SIMD3(0.2, 0.2, 1.1), SIMD3(4.2, 4.2, 1.25))],
+            storey: "Level 1")
         let structure = try IFCStructure(elements: walls + [slab])
-        #expect(structure.supports.contains { $0.hasPrefix("Slab on grade: within walls standing on the ground") && $0.contains("soffit") })
+        #expect(
+            structure.supports.contains {
+                $0.hasPrefix("Slab on grade: within walls standing on the ground") && $0.contains("soffit")
+            })
         #expect(!structure.members.contains { $0.notes.contains { $0.contains("will fall") } })
         // A slab as high above the lowest level as a storey is not.
-        let floor = try element(9, "First floor", "IfcSlab", [box(SIMD3(0.2, 0.2, 2.8), SIMD3(4.2, 4.2, 3))], storey: "Level 1")
+        let floor = try element(
+            9, "First floor", "IfcSlab", [box(SIMD3(0.2, 0.2, 2.8), SIMD3(4.2, 4.2, 3))], storey: "Level 1")
         let tall = try walls.indices.map { n -> ImportedMesh.BuildingElement in
-            var b = [box(SIMD3(0, 0, 0), SIMD3(4.4, 0.2, 3)), box(SIMD3(0, 4.2, 0), SIMD3(4.4, 4.4, 3)),
-                box(SIMD3(0, 0.2, 0), SIMD3(0.2, 4.2, 3)), box(SIMD3(4.2, 0.2, 0), SIMD3(4.4, 4.2, 3))][n]
+            var b = [
+                box(SIMD3(0, 0, 0), SIMD3(4.4, 0.2, 3)), box(SIMD3(0, 4.2, 0), SIMD3(4.4, 4.4, 3)),
+                box(SIMD3(0, 0.2, 0), SIMD3(0.2, 4.2, 3)), box(SIMD3(4.2, 0.2, 0), SIMD3(4.4, 4.2, 3)),
+            ][n]
             b.max.z = 3
             return try element(n + 1, "Wall \(n + 1)", "IfcWall", [b], storey: "Ground")
         }
@@ -369,13 +387,19 @@ struct IFCStructureTests {
         #expect(!upper.supports.contains { $0.hasPrefix("First floor:") })
         // A floor on top of 0.6 m crawl-space walls is carried by them, not the ground.
         let low = try walls.indices.map { n -> ImportedMesh.BuildingElement in
-            var b = [box(SIMD3(0, 0, 0), SIMD3(4.4, 0.2, 3)), box(SIMD3(0, 4.2, 0), SIMD3(4.4, 4.4, 3)),
-                box(SIMD3(0, 0.2, 0), SIMD3(0.2, 4.2, 3)), box(SIMD3(4.2, 0.2, 0), SIMD3(4.4, 4.2, 3))][n]
+            var b = [
+                box(SIMD3(0, 0, 0), SIMD3(4.4, 0.2, 3)), box(SIMD3(0, 4.2, 0), SIMD3(4.4, 4.4, 3)),
+                box(SIMD3(0, 0.2, 0), SIMD3(0.2, 4.2, 3)), box(SIMD3(4.2, 0.2, 0), SIMD3(4.4, 4.2, 3)),
+            ][n]
             b.max.z = 0.6
             return try element(n + 1, "Wall \(n + 1)", "IfcWall", [b], storey: "Crawl space")
         }
-        let suspended = try element(9, "Ground floor", "IfcSlab", [box(SIMD3(0, 0, 0.6), SIMD3(4.4, 4.4, 0.8))], storey: "Ground")
-        #expect(!(try IFCStructure(elements: low + [suspended])).supports.contains { $0.hasPrefix("Ground floor:") })
+        let suspended = try element(
+            9, "Ground floor", "IfcSlab", [box(SIMD3(0, 0, 0.6), SIMD3(4.4, 4.4, 0.8))], storey: "Ground")
+        #expect(
+            !(try IFCStructure(elements: low + [suspended])).supports.contains {
+                $0.hasPrefix("Ground floor:")
+            })
     }
 
     @Test("A duplicate, given no elements of its own by the mesh, is not reported as falling")

@@ -28,7 +28,8 @@ enum IFCMeshRepair {
         func weld(_ n: Int) -> Int {
             let p = vertices[n]
             let key = SIMD3<Int64>(
-                Int64((p.x / tolerance).rounded()), Int64((p.y / tolerance).rounded()), Int64((p.z / tolerance).rounded()))
+                Int64((p.x / tolerance).rounded()), Int64((p.y / tolerance).rounded()),
+                Int64((p.z / tolerance).rounded()))
             if let found = index[key] { return found }
             index[key] = points.count
             points.append(p)
@@ -112,9 +113,13 @@ enum IFCMeshRepair {
         for piece in pieces.keys.sorted().compactMap({ pieces[$0] }) {
             var directed: [Edge: Int] = [:]
             for f in piece {
-                for (a, b) in [(f.x, f.y), (f.y, f.z), (f.z, f.x)] { directed[Edge(a: a, b: b), default: 0] += 1 }
+                for (a, b) in [(f.x, f.y), (f.y, f.z), (f.z, f.x)] {
+                    directed[Edge(a: a, b: b), default: 0] += 1
+                }
             }
-            let closed = directed.allSatisfy { edge, count in count == 1 && directed[Edge(a: edge.b, b: edge.a)] == 1 }
+            let closed = directed.allSatisfy { edge, count in
+                count == 1 && directed[Edge(a: edge.b, b: edge.a)] == 1
+            }
             if closed {
                 result.shells.append(piece)
             } else {
@@ -133,7 +138,9 @@ enum IFCMeshRepair {
     static func pieceID(_ id: String, _ piece: Int) -> String {
         func hash(_ seed: UInt64) -> UInt64 {
             var value = seed
-            for byte in Array(id.utf8) + Array("#\(piece)".utf8) { value = (value ^ UInt64(byte)) &* 1_099_511_628_211 }
+            for byte in Array(id.utf8) + Array("#\(piece)".utf8) {
+                value = (value ^ UInt64(byte)) &* 1_099_511_628_211
+            }
             return value
         }
         let a = hash(14_695_981_039_346_656_037)

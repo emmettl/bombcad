@@ -678,7 +678,8 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
             try selection.validate(
                 converted: Set(
                     sorted.map { element in
-                        chosen.contains(element.globalID) ? element.globalID : (element.assembly?.id ?? element.globalID)
+                        chosen.contains(element.globalID)
+                            ? element.globalID : (element.assembly?.id ?? element.globalID)
                     }))
         }
         buildingSelection = selection

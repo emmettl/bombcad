@@ -183,10 +183,13 @@ struct IFCSelectionTests {
         // A door and a window whose exported meshes are not closed (their pieces welded
         // together) are remade as the closed solids they are made of.
         for ifcClass in ["IfcDoor", "IfcWindow"] {
-            let element = try #require(duplex.inventory.first { $0.ifcClass == ifcClass && $0.storey == "Level 1" })
+            let element = try #require(
+                duplex.inventory.first { $0.ifcClass == ifcClass && $0.storey == "Level 1" })
             let source = try await IFCImporter.convert(duplex, includedIDs: [element.id])
             let pieces = try #require(source.buildingElements)
-            #expect(!pieces.isEmpty && pieces.allSatisfy { $0.assembly?.id == element.id && $0.ifcClass == ifcClass })
+            #expect(
+                !pieces.isEmpty
+                    && pieces.allSatisfy { $0.assembly?.id == element.id && $0.ifcClass == ifcClass })
             #expect(source.buildingNotes?.contains { $0.contains("were remade as the") } == true)
         }
 
