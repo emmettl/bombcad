@@ -667,7 +667,10 @@ public final class USDSceneWriter {
                         + bands.map {
                             quoted(
                                 "\($0.summary), for \($0.validity)"
-                                    + ($0.derivedMesh.map { "; derived on \($0)" } ?? ""))
+                                    + ($0.derivedMesh.map { "; derived on \($0)" } ?? "")
+                                    + ($0.roundingSpread.map {
+                                        String(format: "; roundings ±%.0f%%", 100 * $0)
+                                    } ?? ""))
                         }
                         .joined(separator: ", ") + "]")
             }

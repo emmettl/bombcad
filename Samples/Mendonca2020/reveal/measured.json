@@ -1,0 +1,255 @@
+{
+ "source": "Mendon\u00e7a, Urgessa, Augusto and Rocco, CivilEng 1(2) 51-74 (2020), doi:10.3390/civileng1020005 (section 3, read 2026-10-11 in the browser); Mendon\u00e7a et al., An. Acad. Bras. Ci\u00eanc. 93(1) e20200511 (2021); and the Dataverse records (doi:10.13021/ORC2020/MVTEFA) processed by seal_measured.py. Dataset numbering checked against the data paper: the highest pressures 1997, 3801, 4073, 2114, 2654, 2029 and 3084 kPa match slabs 1, 2, 4, 5, 7, 9 and 10.",
+ "scored_slabs": [
+  "Slab1",
+  "Slab2",
+  "Slab4",
+  "Slab5",
+  "Slab7",
+  "Slab9",
+  "Slab10"
+ ],
+ "slabs": {
+  "Slab1": {
+   "outcome": "collapsed",
+   "observed": "Slab 1 collapsed completely; the displacement meter failed. Circular concentric cracks on the top face.",
+   "peak_downward_displacement_mm_mean_of_meters": null,
+   "pressure_peaks_kPa": {
+    "Sensor_1(kPa)": 1578.4,
+    "Sensor_2(kPa)": 844.1,
+    "Sensor_3(kPa)": 1310.1,
+    "Sensor_4(kPa)": 1012.2,
+    "Sensor_5(kPa)": 1997.4,
+    "Sensor_6(kPa)": 820.6,
+    "Sensor_7(kPa)": 847.1,
+    "Sensor_8(kPa)": 686.3
+   },
+   "pressure_positive_impulse_kPa_ms": {
+    "Sensor_1(kPa)": 228.4,
+    "Sensor_2(kPa)": 240.5,
+    "Sensor_3(kPa)": 188.9,
+    "Sensor_4(kPa)": 251.6,
+    "Sensor_5(kPa)": 555.0,
+    "Sensor_6(kPa)": 157.8,
+    "Sensor_7(kPa)": 314.4,
+    "Sensor_8(kPa)": 240.2
+   }
+  },
+  "Slab2": {
+   "outcome": "survived",
+   "observed": "A main crack on the bottom face; no collapse. Authors attribute the ~25 mm residual to support displacement.",
+   "peak_downward_displacement_mm_mean_of_meters": 38.2,
+   "peak_downward_displacement_mm_each": [
+    36.59,
+    39.83
+   ],
+   "end_of_record_mm_each": [
+    24.88,
+    26.87
+   ],
+   "pressure_peaks_kPa": {
+    "Sensor_1(kPa)": 26.0,
+    "Sensor_2(kPa)": 718.3,
+    "Sensor_3(kPa)": 2634.2,
+    "Sensor_4(kPa)": 3801.1,
+    "Sensor_5(kPa)": 1303.2,
+    "Sensor_6(kPa)": 2215.0,
+    "Sensor_7(kPa)": 2159.3,
+    "Sensor_8(kPa)": 1327.1
+   },
+   "pressure_positive_impulse_kPa_ms": {
+    "Sensor_1(kPa)": 7.2,
+    "Sensor_2(kPa)": 154.0,
+    "Sensor_3(kPa)": 417.7,
+    "Sensor_4(kPa)": 978.7,
+    "Sensor_5(kPa)": 680.2,
+    "Sensor_6(kPa)": 393.9,
+    "Sensor_7(kPa)": 426.4,
+    "Sensor_8(kPa)": 281.0
+   }
+  },
+  "Slab4": {
+   "outcome": "survived",
+   "observed": "Did not fail; displacement record shows rebound above and below the start.",
+   "peak_downward_displacement_mm_mean_of_meters": 20.4,
+   "peak_downward_displacement_mm_each": [
+    18.65,
+    22.17
+   ],
+   "end_of_record_mm_each": [
+    18.63,
+    22.0
+   ],
+   "pressure_peaks_kPa": {
+    "Sensor_1(kPa)": 912.6,
+    "Sensor_2(kPa)": 754.8,
+    "Sensor_3(kPa)": 4072.8,
+    "Sensor_4(kPa)": 2373.8,
+    "Sensor_5(kPa)": 986.0,
+    "Sensor_6(kPa)": 3593.1,
+    "Sensor_7(kPa)": 2316.5,
+    "Sensor_8(kPa)": 1986.3
+   },
+   "pressure_positive_impulse_kPa_ms": {
+    "Sensor_1(kPa)": 193.5,
+    "Sensor_2(kPa)": 146.9,
+    "Sensor_3(kPa)": 461.8,
+    "Sensor_4(kPa)": 454.1,
+    "Sensor_5(kPa)": 452.5,
+    "Sensor_6(kPa)": 406.0,
+    "Sensor_7(kPa)": 453.6,
+    "Sensor_8(kPa)": 226.0
+   },
+   "displacement_note": "The record's largest excursion is +27 to +29 mm, opposite in sign to every other slab's; scored, as defined before predictions, on the downward (negative) reading, 18.7 and 22.2 mm, which is also where the record ends. Both are reported at the reveal."
+  },
+  "Slab5": {
+   "outcome": "survived",
+   "observed": "Did not collapse completely; large radial cracks on the bottom face; a main crack across the section with the lower (0.175%) ratio, fewer and smaller cracks the other way (2021 paper).",
+   "peak_downward_displacement_mm_mean_of_meters": 23.5,
+   "peak_downward_displacement_mm_each": [
+    22.32,
+    24.63
+   ],
+   "end_of_record_mm_each": [
+    20.68,
+    22.62
+   ],
+   "pressure_peaks_kPa": {
+    "Sensor_1(kPa)": 798.6,
+    "Sensor_2(kPa)": 937.1,
+    "Sensor_3(kPa)": 1390.4,
+    "Sensor_4(kPa)": 2000.8,
+    "Sensor_5(kPa)": 1496.9,
+    "Sensor_6(kPa)": 933.2,
+    "Sensor_7(kPa)": 2114.0,
+    "Sensor_8(kPa)": 1690.7
+   },
+   "pressure_positive_impulse_kPa_ms": {
+    "Sensor_1(kPa)": 190.0,
+    "Sensor_2(kPa)": 190.6,
+    "Sensor_3(kPa)": 317.0,
+    "Sensor_4(kPa)": 373.0,
+    "Sensor_5(kPa)": 472.8,
+    "Sensor_6(kPa)": 191.1,
+    "Sensor_7(kPa)": 537.1,
+    "Sensor_8(kPa)": 276.4
+   }
+  },
+  "Slab7": {
+   "outcome": "survived",
+   "observed": "Did not collapse; many cracks on the bottom face; displacement record above and below the start.",
+   "peak_downward_displacement_mm_mean_of_meters": 25.8,
+   "peak_downward_displacement_mm_each": [
+    25.25,
+    26.43
+   ],
+   "end_of_record_mm_each": [
+    24.99,
+    25.63
+   ],
+   "pressure_peaks_kPa": {
+    "Sensor_1(kPa)": 820.7,
+    "Sensor_2(kPa)": 494.8,
+    "Sensor_3(kPa)": 2654.1,
+    "Sensor_4(kPa)": 1686.5,
+    "Sensor_5(kPa)": 1543.4,
+    "Sensor_6(kPa)": 956.4,
+    "Sensor_7(kPa)": 2239.3,
+    "Sensor_8(kPa)": 2179.6
+   },
+   "pressure_positive_impulse_kPa_ms": {
+    "Sensor_1(kPa)": 214.0,
+    "Sensor_2(kPa)": 120.5,
+    "Sensor_3(kPa)": 478.5,
+    "Sensor_4(kPa)": 300.0,
+    "Sensor_5(kPa)": 499.0,
+    "Sensor_6(kPa)": 181.8,
+    "Sensor_7(kPa)": 599.3,
+    "Sensor_8(kPa)": 326.2
+   }
+  },
+  "Slab9": {
+   "outcome": "survived",
+   "observed": "Did not collapse; many cracks on the bottom face; peak displacement close to 25 mm (data paper).",
+   "peak_downward_displacement_mm_mean_of_meters": 24.0,
+   "peak_downward_displacement_mm_each": [
+    24.06,
+    24.0
+   ],
+   "end_of_record_mm_each": [
+    24.05,
+    23.97
+   ],
+   "pressure_peaks_kPa": {
+    "Sensor_1(kPa)": 1052.3,
+    "Sensor_2(kPa)": 441.8,
+    "Sensor_3(kPa)": 2029.1,
+    "Sensor_4(kPa)": 1874.0,
+    "Sensor_5(kPa)": 1215.6,
+    "Sensor_6(kPa)": 746.4,
+    "Sensor_7(kPa)": 1831.0,
+    "Sensor_8(kPa)": 1490.4
+   },
+   "pressure_positive_impulse_kPa_ms": {
+    "Sensor_1(kPa)": 148.4,
+    "Sensor_2(kPa)": 144.7,
+    "Sensor_3(kPa)": 420.7,
+    "Sensor_4(kPa)": 440.8,
+    "Sensor_5(kPa)": 557.7,
+    "Sensor_6(kPa)": 234.9,
+    "Sensor_7(kPa)": 533.8,
+    "Sensor_8(kPa)": 175.4
+   }
+  },
+  "Slab10": {
+   "outcome": "collapsed",
+   "observed": "Collapsed; radial cracks; the displacement meters recorded only one peak since the slab failed.",
+   "peak_downward_displacement_mm_mean_of_meters": 322.3,
+   "peak_downward_displacement_mm_each": [
+    499.48,
+    145.16
+   ],
+   "end_of_record_mm_each": [
+    169.04,
+    137.56
+   ],
+   "displacement_note": "slab failed; the reading is not a structural peak",
+   "pressure_peaks_kPa": {
+    "Sensor_1(kPa)": 1106.8,
+    "Sensor_2(kPa)": 537.8,
+    "Sensor_3(kPa)": 2944.2,
+    "Sensor_4(kPa)": 3066.4,
+    "Sensor_5(kPa)": 970.6,
+    "Sensor_6(kPa)": 2472.1,
+    "Sensor_7(kPa)": 3084.1,
+    "Sensor_8(kPa)": 1699.3
+   },
+   "pressure_positive_impulse_kPa_ms": {
+    "Sensor_1(kPa)": 142.1,
+    "Sensor_2(kPa)": 103.1,
+    "Sensor_3(kPa)": 261.9,
+    "Sensor_4(kPa)": 885.4,
+    "Sensor_5(kPa)": 481.7,
+    "Sensor_6(kPa)": 704.0,
+    "Sensor_7(kPa)": 736.3,
+    "Sensor_8(kPa)": 220.6
+   }
+  }
+ },
+ "repeat_groups": {
+  "A (53 MPa, 5 mm at 15 cm both ways + two 10 mm, 2.0 m)": [
+   "Slab2",
+   "Slab5"
+  ],
+  "B (62 MPa, 5 mm at 10 cm both ways, 2.0 m)": [
+   "Slab4",
+   "Slab7",
+   "Slab9"
+  ],
+  "C (42 MPa, 5 mm at 15 cm both ways)": [
+   "Slab1 (1.3 m)",
+   "Slab10 (1.6 m)"
+  ]
+ },
+ "processing_rule": "Peak downward displacement = minus the most negative reading of each meter (records read downward as negative), averaged over the meters; fixed on 2026-10-11 before any prediction."
+}

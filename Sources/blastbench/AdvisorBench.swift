@@ -93,33 +93,33 @@ private func timedCases() -> [TimedCase] {
             configuration: configured(refine: 2, levels: 2), duration: openEvent, recorded: 8.1, source: perf),
         TimedCase(
             name: "500 t 16 m", scenario: landscape, cellSize: 16, configuration: configured(),
-            duration: 9.41, recorded: 2, source: large),
+            duration: 9.41, recorded: 0.5, source: large),
         TimedCase(
             name: "500 t 8 m", scenario: landscape, cellSize: 8, configuration: configured(), duration: 9.41,
-            recorded: 37, source: large),
+            recorded: 8.8, source: large),
         TimedCase(
             name: "500 t 4 m", scenario: landscape, cellSize: 4, configuration: configured(), duration: 9.41,
-            recorded: 650, source: large),
+            recorded: 137, source: large),
         TimedCase(
             name: "500 t 16 m twice, 0.1", scenario: landscape, cellSize: 16,
-            configuration: configured(refine: 2, levels: 2, memory: 4 << 30), duration: 9.41, recorded: 11,
+            configuration: configured(refine: 2, levels: 2, memory: 4 << 30), duration: 9.41, recorded: 1.7,
             source: large),
         TimedCase(
             name: "500 t 16 m twice, 0.02", scenario: landscape, cellSize: 16,
             configuration: configured(refine: 2, levels: 2, threshold: 0.02, memory: 4 << 30), duration: 9.41,
-            recorded: 31, source: large),
+            recorded: 6.4, source: large),
         TimedCase(
             name: "500 t 16 m twice, 0.005", scenario: landscape, cellSize: 16,
             configuration: configured(refine: 2, levels: 2, threshold: 0.005, memory: 4 << 30),
-            duration: 9.41, recorded: 155, source: large),
+            duration: 9.41, recorded: 25, source: large),
         TimedCase(
             name: "500 t 8 m twice, 0.02", scenario: landscape, cellSize: 8,
             configuration: configured(refine: 2, levels: 2, threshold: 0.02, memory: 8 << 30), duration: 9.41,
-            recorded: 231, source: large),
+            recorded: 52, source: large),
         TimedCase(
             name: "500 t 16 m twice, 0.02 burning", scenario: landscape, cellSize: 16,
             configuration: configured(refine: 2, levels: 2, threshold: 0.02, burning: true), duration: 9.41,
-            recorded: 56, source: large),
+            recorded: 11, source: large),
     ]
 }
 
