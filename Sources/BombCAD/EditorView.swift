@@ -76,7 +76,7 @@ struct EditorView: View {
                 }.count
                 if thin > 0 {
                     Label(
-                        "\(thin) regions have a dimension below two air cells (\(2 * h, format: .number) m). Thin walls or small gaps may be under-resolved. Imported voxel regions can also reflect the sampling grid rather than individual features.",
+                        "\(thin == 1 ? "1 region has" : "\(thin) regions have") a dimension below two air cells (\(2 * h, format: .number) m). Thin walls or small gaps may be under-resolved. Imported voxel regions can also reflect the sampling grid rather than individual features.",
                         systemImage: "exclamationmark.triangle"
                     ).font(.caption).foregroundStyle(.orange)
                 }
@@ -211,12 +211,15 @@ struct EditorView: View {
                             remove: { model.removeComponent(row.reference) })
                     }
                     Button("Add Opening", systemImage: "plus") { model.addOpening() }
-                    Picker("Main material", selection: mainMaterialBinding) {
+                    // "Material", as in the Run tab: "Main material" cut "Reinforced concrete" short in
+                    // the sidebar's width. The properties below say it is the main one.
+                    Picker("Material", selection: mainMaterialBinding) {
                         ForEach(StructureMaterial.presets, id: \.self) { Text($0.name).tag($0) }
                         if !StructureMaterial.presets.contains(model.editedMaterial) {
                             Text("Custom: \(model.editedMaterial.name)").tag(model.editedMaterial)
                         }
                     }
+                    .help("The material of every piece not given its own.")
                     DisclosureGroup("Main material properties") {
                         MaterialEditor(material: mainMaterialBinding)
                     }

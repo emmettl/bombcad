@@ -1118,12 +1118,24 @@ kernel void shellContactClear(const device ShellNode *nodes [[buffer(0)]],
     }
 }
 
+// Nodes that do not begin near each other begin at least `neighbourDistance` apart, so two that
+// have each moved less than `shellContactStill` of what that leaves beyond the contact radius
+// cannot touch. The table marks each cell holding a node that has moved further, and a node that
+// has not skips the cells left unmarked, whose pairs would all give zero force (as in
+// `contactForces`); the margin below a half covers round-off.
+constant float shellContactStill = 0.4f;
+
+static inline bool shellContactMoved(float3 displacement, constant ShellUniforms &u) {
+    return length(displacement) >= shellContactStill * max(u.neighbourDistance - u.contactRadius, 0.0f);
+}
+
 kernel void shellContactHash(const device ShellNode *nodes [[buffer(0)]],
                              const device float4 *reference [[buffer(1)]],
                              device atomic_uint *slots [[buffer(3)]],
                              constant ShellUniforms &u [[buffer(4)]],
                              const device StepControl &control [[buffer(5)]],
                              const device uint *failureGate [[buffer(6)]],
+                             device uint *moved [[buffer(8)]],
                              uint n [[thread_position_in_grid]]) {
     bool active;
     shellStep(u, control, active);
@@ -1131,6 +1143,9 @@ kernel void shellContactHash(const device ShellNode *nodes [[buffer(0)]],
         return;
     }
     uint target = shellContactBucket(shellContactCell(reference[n].xyz + float3(nodes[n].displacement), u), u);
+    if (shellContactMoved(float3(nodes[n].displacement), u)) {
+        moved[target] = u.stamp;
+    }
     uint carried = n;
     for (uint slot = 0; slot < shellContactSlots && carried != emptySlot; ++slot) {
         uint held = atomic_fetch_min_explicit(&slots[target * shellContactSlots + slot], carried, memory_order_relaxed);
@@ -1146,6 +1161,7 @@ kernel void shellContactForces(const device ShellNode *nodes [[buffer(0)]],
                                const device StepControl &control [[buffer(5)]],
                                const device uint *failureGate [[buffer(6)]],
                                device packed_float3 *contact [[buffer(7)]],
+                               const device uint *moved [[buffer(8)]],
                                uint n [[thread_position_in_grid]]) {
     bool active;
     float dt = shellStep(u, control, active);
@@ -1170,12 +1186,13 @@ kernel void shellContactForces(const device ShellNode *nodes [[buffer(0)]],
         contact[n] = float3(0.0f);
         return;
     }
+    bool still = !shellContactMoved(float3(node.displacement), u);
     for (int dz = -1; dz <= 1; ++dz) {
         for (int dy = -1; dy <= 1; ++dy) {
             for (int dx = -1; dx <= 1; ++dx) {
                 int3 c = cell + int3(dx, dy, dz);
                 uint target = shellContactBucket(c, u);
-                if (heads[target] != u.stamp) {
+                if (heads[target] != u.stamp || (still && moved[target] != u.stamp)) {
                     continue;
                 }
                 for (uint slot = 0; slot < shellContactSlots; ++slot) {
@@ -1186,12 +1203,14 @@ kernel void shellContactForces(const device ShellNode *nodes [[buffer(0)]],
                     if (other == n) {
                         continue;
                     }
+                    // Nodes that began near each other never repel; tested first, from where they
+                    // began, so that a neighbour's motion need not be read.
                     float3 otherHome = reference[other].xyz;
-                    float3 otherPosition = otherHome + float3(nodes[other].displacement);
-                    if (any(shellContactCell(otherPosition, u) != c)) {
+                    if (distance(home, otherHome) < u.neighbourDistance) {
                         continue;
                     }
-                    if (distance(home, otherHome) < u.neighbourDistance) {
+                    float3 otherPosition = otherHome + float3(nodes[other].displacement);
+                    if (any(shellContactCell(otherPosition, u) != c)) {
                         continue;
                     }
                     float3 offset = position - otherPosition;

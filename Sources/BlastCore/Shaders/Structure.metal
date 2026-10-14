@@ -328,7 +328,10 @@ struct ElementState {
     float secondHistory;
     float inclinedPlastic;  // plastic strain of the inclined bars (1e9 once ruptured)
     packed_float3 jointSlip;  // masonry: sliding along mortar joints, as shear strains xy, yz, zx
+    float compactionStart;    // softer than structural concrete: mu when it was last confined, if it
+                              // was crushed past the compaction's onset unconfined; else zero
 };
+static_assert(sizeof(ElementState) == 196, "ElementState must match StructureSolver.stateStride");
 
 // Pressure in concrete compacted to mu = V0 / V - 1, after Holmquist, Johnson and Cook (1993):
 // elastic (bulk modulus K) up to the crushing pressure fc / 3; then the pores collapse, and the
@@ -336,14 +339,36 @@ struct ElementState {
 // with K from the largest, `peak`); beyond that the concrete is fully dense, and
 // p = K1 m + K2 m^2 + K3 m^3 with m = (mu - 0.1) / 1.1 above 0.8 GPa, K1 = 85, K2 = -171 and
 // K3 = 208 GPa.
+//
+// Those constants are for structural concrete. A material softer than that, its bulk modulus K
+// below `compactionStiffness` (about a 20 MPa concrete's), has the curve's rise above the crushing
+// pressure scaled by K / `compactionStiffness`, so that the curve is no stiffer against the
+// material's own elastic stiffness, which the time step is set by, than it is for the weakest
+// structural concrete. Hollow blockwork (K 1.7 GPa) otherwise crushed five times, and once dense
+// fifty times, stiffer than itself, outran the step and ran away.
+constant float compactionStiffness = 12e9f;
+
+static inline float compactionScale(float bulk) {
+    return min(bulk / compactionStiffness, 1.0f);
+}
+
 static inline float compactionPressure(float mu, float peak, float bulk, float fc) {
     float crushPressure = fc / 3.0f;
     float crushStrain = crushPressure / bulk;
     const float lockPressure = 0.8e9f;
     const float lockStrain = 0.1f;
+    float scale = compactionScale(bulk);
     auto loading = [&](float x) {
         if (x <= crushStrain) {
             return bulk * x;
+        }
+        if (scale < 1.0f) {
+            float locked = crushPressure + scale * (lockPressure - crushPressure);
+            if (x <= lockStrain) {
+                return crushPressure + (locked - crushPressure) * (x - crushStrain) / (lockStrain - crushStrain);
+            }
+            float m = (x - lockStrain) / (1.0f + lockStrain);
+            return locked + scale * m * (85e9f + m * (-171e9f + m * 208e9f));
         }
         if (x <= lockStrain) {
             return crushPressure + (lockPressure - crushPressure) * (x - crushStrain) / (lockStrain - crushStrain);
@@ -1602,14 +1627,29 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float crushStrain = crushPressure / bulk;
         float crushVolume = crushStrain
             + (m.compressiveStrength - crushPressure) * (0.1f - crushStrain) / (0.8e9f - crushPressure);
-        if (confined && mu > crushVolume) {
-            state.compaction = max(state.compaction, mu);
+        if (compactionScale(bulk) < 1.0f) {
+            crushVolume = crushStrain
+                + (m.compressiveStrength - crushPressure) * (0.1f - crushStrain)
+                    / (compactionScale(bulk) * (0.8e9f - crushPressure));
+        }
+        // In a material softer than structural concrete, the compaction counts from the volume an
+        // element had when it was confined: what it lost being crushed from fewer sides, past the
+        // curve's onset, says nothing of its pores (as above). Counted from its undeformed volume,
+        // blockwork crushed unconfined to mu = 0.4 that was then pressed from every side jumped
+        // from a few MPa to several GPa in one step and flung its nodes at hundreds of metres a
+        // second. (Structural concrete is left as it was until the concrete cases decide it.)
+        if (!confined && compactionScale(bulk) < 1.0f) {
+            state.compactionStart = mu > crushVolume ? mu : 0.0f;
+        }
+        float pores = mu - state.compactionStart;
+        if (confined && pores > crushVolume) {
+            state.compaction = max(state.compaction, pores);
         }
         // While confined, once it has passed that, an element follows the curve.
         // (Following it afterwards too, once the element was cracking and bending, pressed open
         // cracks shut and weakened a wall that had been briefly squeezed by the shock.)
-        if (confined && mu > 0.0f && state.compaction > crushVolume) {
-            float compacted = compactionPressure(mu, state.compaction, bulk, m.compressiveStrength);
+        if (confined && pores > 0.0f && state.compaction > crushVolume) {
+            float compacted = compactionPressure(pores, state.compaction, bulk, m.compressiveStrength);
             float pressure = -(material[0][0] + material[1][1] + material[2][2]) / 3.0f;
             if (compacted > pressure) {
                 float shift = pressure - compacted;
@@ -1889,10 +1929,17 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             eroded = eroded || (crack >= u.fragmentStrain && open >= 2);
         }
         // Concrete removed while some of its bars are intact leaves them: the element carries on
-        // as those bars alone, from the next step, until they too have ruptured.
+        // as those bars alone, from the next step, until they too have ruptured. In a material
+        // softer than structural concrete (`compactionScale`), also until it is squeezed to a
+        // quarter of its volume, as concrete is: bars along one or two axes hold nothing across
+        // the third, and blockwork's bare elements, flattened or turned inside out across it,
+        // pushed their nodes apart through their bars at 500 m/s. (Structural concrete is left as
+        // it was until the concrete cases decide it.)
+        bool collapsed = compactionScale(m.lambda + 2.0f * m.mu / 3.0f) < 1.0f
+            && volume < u.minVolumeRatio * referenceVolume;
         if (bare) {
-            eroded = !anySteel;
-        } else if (eroded && anySteel && u.bareBars != 0) {
+            eroded = !anySteel || collapsed;
+        } else if (eroded && anySteel && u.bareBars != 0 && !collapsed) {
             flags[element] = elementBaring;
             failureGate[0] = 1;
             eroded = false;
@@ -2326,6 +2373,18 @@ kernel void contactClear(const device uint *nodeList [[buffer(0)]],
     }
 }
 
+// Nodes that are not lattice neighbours begin at least two elements apart, so two that have each
+// moved less than `contactStill` of an element from where they began are still more than an
+// element apart, and cannot touch. The table marks each cell holding a node that has moved
+// further, with the substep's stamp, and a node that has not skips the cells left unmarked: the
+// pairs skipped are exactly those whose force would be zero. The margin below half an element
+// covers round-off in the positions.
+constant float contactStill = 0.45f;
+
+static inline bool contactMoved(float3 displacement, constant StructureUniforms &u) {
+    return length_squared(displacement) >= (contactStill * u.h) * (contactStill * u.h);
+}
+
 // ...then every node offers its index to its cell, which keeps the `contactSlots` smallest in
 // ascending order: each slot keeps the smaller of what it holds and what arrives, and passes
 // the larger on to the next. A crowded cell therefore always drops the same nodes.
@@ -2336,6 +2395,7 @@ kernel void contactHash(const device uint *nodeList [[buffer(0)]],
                         const device StepControl &control [[buffer(4)]],
                         constant StructureUniforms &u [[buffer(5)]],
                         device atomic_uint *slots [[buffer(6)]],
+                        device uint *moved [[buffer(13)]],
                         uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     structureStep(u, control, active);
@@ -2348,6 +2408,9 @@ kernel void contactHash(const device uint *nodeList [[buffer(0)]],
     float3 position = nodePosition(threadIndex, nodeList, nodes, u);
     int3 cell = contactCell(position, u);
     uint target = contactBucket(cell, u);
+    if (contactMoved(float3(nodes[threadIndex].displacement), u)) {
+        moved[target] = u.stamp;
+    }
     // Compact indices follow lattice order, so the smallest are the same nodes either way.
     uint carried = threadIndex;
     for (uint slot = 0; slot < contactSlots && carried != emptySlot; ++slot) {
@@ -2455,6 +2518,7 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                           const device uint *rubbleHeads [[buffer(10)]],
                           const device uint *rubbleSlots [[buffer(11)]],
                           const device uint *rubbleState [[buffer(12)]],
+                          const device uint *moved [[buffer(13)]],
                           uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -2483,6 +2547,7 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
         contact[threadIndex] = float3(0.0f);
         return;
     }
+    bool still = !contactMoved(float3(node.displacement), u);
     for (int dz = -1; dz <= 1; ++dz) {
         for (int dy = -1; dy <= 1; ++dy) {
             for (int dx = -1; dx <= 1; ++dx) {
@@ -2490,6 +2555,9 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                 uint target = contactBucket(c, u);
                 if (heads[target] != u.stamp) {
                     continue;  // not touched this substep: whatever it holds is stale
+                }
+                if (still && moved[target] != u.stamp) {
+                    continue;  // nothing in it has moved far enough to touch a node that has not
                 }
                 // The slots hold the cell's nodes in ascending order, so the forces are summed in
                 // the same order whatever the timing of the threads that filled them.
@@ -2501,6 +2569,16 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                     if (otherIndex == threadIndex) {
                         continue;
                     }
+                    // Nodes that began as neighbours never repel each other. While joined they are
+                    // held apart by their element; once it has failed they may already be closer
+                    // than a sphere's width, and a spring switched on there would create energy.
+                    // Separated pieces therefore overlap by up to one element before they touch.
+                    // Tested first, from the lattice alone: in a structure in one piece nearly
+                    // every node near another is its neighbour, and its position need not be read.
+                    int3 difference = int3(latticeNode(nodeList[otherIndex], u)) - lattice;
+                    if (all(abs(difference) <= 1)) {
+                        continue;
+                    }
                     float3 otherPosition = nodePosition(otherIndex, nodeList, nodes, u);
                     // An entry can hold nodes of other cells that hash to it; count each node only
                     // when visiting its own cell.
@@ -2510,14 +2588,6 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                     float3 offset = position - otherPosition;
                     float distance = length(offset);
                     if (distance >= u.h || distance < 1e-9f) {
-                        continue;
-                    }
-                    int3 difference = int3(latticeNode(nodeList[otherIndex], u)) - lattice;
-                    // Nodes that began as neighbours never repel each other. While joined they are
-                    // held apart by their element; once it has failed they may already be closer
-                    // than a sphere's width, and a spring switched on there would create energy.
-                    // Separated pieces therefore overlap by up to one element before they touch.
-                    if (all(abs(difference) <= 1)) {
                         continue;
                     }
 

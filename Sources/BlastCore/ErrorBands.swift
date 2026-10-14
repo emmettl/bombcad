@@ -247,9 +247,9 @@ public enum ValidationTables {
             id: "slabSolid", low: 1.04, high: 1.14, document: "validation.md#summary",
             quote: "solid elements 113–124 mm (104–114%) on 4 to 32 elements through"),
         Figure(
-            id: "slabExtrapolated", low: 1.17, high: 1.17,
+            id: "slabExtrapolated", low: 1.19, high: 1.19,
             document: "validation.md#convergence-on-todays-defaults",
-            quote: "towards about 126 mm, 17% above the measurement"),
+            quote: "extrapolated 129 mm, 119%"),
         Figure(
             id: "slabLowerShot", low: 0.79, high: 0.88,
             document: "validation.md#the-contests-repeat-its-lower-shot-and-its-other-entries",
@@ -258,8 +258,8 @@ public enum ValidationTables {
             id: "slabShell", low: 1.24, high: 1.24, document: "validation.md#summary",
             quote: "shells 135 mm (124%)"),
         Figure(
-            id: "beamMoment", low: 0.95, high: 1.04, document: "validation.md#summary",
-            quote: "peak moment 104% on 12 elements, failing at 40 mm against 42 mm, 95% on 24"),
+            id: "beamMoment", low: 1.0, high: 1.01, document: "validation.md#summary",
+            quote: "peak moment 101% on 12 elements, failing at 44 mm against 42 mm, 100% on 24"),
         Figure(
             id: "closeInPermanent", low: 0.33, high: 0.5, document: "validation.md#summary",
             quote: "the slab left a third to a half as far down as measured"),
@@ -273,8 +273,8 @@ public enum ValidationTables {
             id: "chamberPressure", low: 0.9, high: 1.6, document: "validation.md#summary",
             quote: "peak wall pressures 0.9 to 1.6 times those measured"),
         Figure(
-            id: "debrisSpeed", low: 1.2, high: 1.9, document: "validation.md#summary",
-            quote: "the far face thrown 1.2–1.9 times as fast as the debris at first"),
+            id: "debrisSpeed", low: 1.1, high: 1.7, document: "validation.md#summary",
+            quote: "the far face thrown 1.1–1.7 times as fast as the debris at first"),
         Figure(
             id: "roomDefault", low: 0.48, high: 1.14, document: "validation.md#summary",
             quote: "48% to 114% by default"),
@@ -967,7 +967,7 @@ extension StandingScene {
                         high: "over-read",
                         validity:
                             "a full-scale chamber; 0.1 m cells and elements; its roof's peak rises with the mesh "
-                            + "(49 to 56 mm on 50 mm elements) and on 25 mm elements the solution breaks down",
+                            + "(48 to 57 mm on 50 mm elements) and on 25 mm elements the solution breaks down",
                         check: "An internal explosion in a reinforced concrete chamber"))
                 if let structure = structures.first, abs(structure.elementSize - 0.1) > 0.01 {
                     bands.removeLast()
@@ -1016,11 +1016,11 @@ extension StandingScene {
                                 low: "too stiff",
                                 high: "too flexible",
                                 validity:
-                                    "2 to 15 kg at 0.5 and 1 m; 6 elements through, fine air; P7 is left 120 to 135 mm "
-                                    + "down on 6 to 12 and holed on 16, with half the step too",
+                                    "2 to 15 kg at 0.5 and 1 m; 6 elements through, fine air; P7 is left 112 to 146 mm "
+                                    + "down on 6 to 12 and holed on 16",
                                 check: "Full-scale slabs under close-in charges"),
                             derived:
-                                "6 elements through, calibrated; 6 to 12 leave P7 alike, and on 16 it holes, with half the step too",
+                                "6 elements through, calibrated; 6 to 12 leave P7 alike, and on 16 it holes",
                             meshes: 6...12, unbanded: &unbanded
                         ).map { [$0] } ?? []
                 }
@@ -1040,8 +1040,8 @@ extension StandingScene {
                     high: "too flexible",
                     validity:
                         "one slab under a blast, 4 to 32 solid elements through (\(through) here): 104–114% under "
-                        + "the contest's load, rising with the mesh towards about 117% (113, 121, 124 mm on 8, 16, "
-                        + "32; on 32 with half the step it runs away), and 79–88% (too stiff) under its lower shot, "
+                        + "the contest's load, rising with the mesh towards about 119% (113, 121, 125 mm on 8, 16, "
+                        + "32, and 124 on 32 with half the step), and 79–88% (too stiff) under its lower shot, "
                         + "a scaled record; 93–99% under the earlier rate laws. The mesh that agreed, 8 through, is "
                         + "the coarse end. Not allowed for: the test's bearings were 4–5 in wide where the model "
                         + "holds lines of nodes, and 1 in bearings already lower the peak 15–25%",
@@ -1050,7 +1050,7 @@ extension StandingScene {
                 band.high = ValidationTables.figure("slabExtrapolated").high
                 band.referenceScatter = ValidationTables.scatter("slabRepeat")
                 band.derivedMesh =
-                    "4 to 32 elements through at the default step, calibrated on 8; with half the step 32 runs away"
+                    "4 to 32 elements through, calibrated on 8; 32 holds on half the step; not converged"
                 bands.append(band)
             } else {
                 unbanded.append(
@@ -1094,7 +1094,8 @@ extension StandingScene {
                                 + "meshes either side",
                             check: "Vecchio and Shim's OA1", document: series.document, scaled: true,
                             derivedMesh:
-                                "12, 24, 36 and 48 elements through (132%, 104%, 105% and 111%), calibrated on 24; "
+                                "12, 24, 36 and 48 elements through (132%, 104%, 105% and 111% on the 11 October "
+                                + "defaults; 132% and 103% on 12 and 24 with the 100 µs window), calibrated on 24; "
                                 + "not converged"))
                 } else {
                     unbanded.append(
@@ -1112,7 +1113,9 @@ extension StandingScene {
                             "debrisSpeed", .debrisSpeed, "Far face's speed against the debris's",
                             low: "debris too slow",
                             high: "debris too fast",
-                            validity: "slabs 20–30 cm under contact charges, 12 elements through",
+                            validity:
+                                "slabs 20–30 cm under contact charges, 12 elements through; after failure, so one "
+                                + "draw among builds (SN142's far face 145 or 119 m/s between two)",
                             check: "Hupfauf's slabs under contact charges"),
                         derived: "12 elements through only", meshes: 12...12, unbanded: &unbanded
                     ).map { [$0] } ?? []

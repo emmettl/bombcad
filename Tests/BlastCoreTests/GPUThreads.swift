@@ -26,6 +26,8 @@ struct GPUThreads: SuiteTrait, TestTrait, TestScoping {
     /// Longer than the whole suite has taken under any load measured (71 minutes): at a load
     /// average of 250, heavy tests of a debug build ran for over half an hour on their threads.
     var hangLimit: Duration = .seconds(2 * 60 * 60)
+    /// For the tests: called as a hang is recorded.
+    var onHang: (@Sendable () -> Void)?
 
     var isRecursive: Bool { true }
 
@@ -48,11 +50,16 @@ struct GPUThreads: SuiteTrait, TestTrait, TestScoping {
     /// Runs `function` on the dedicated threads, recording it as hung if it runs past `hangLimit`.
     func run(_ function: @Sendable () async throws -> Void) async throws {
         let limit = hangLimit
+        let hung = onHang
         try await withTaskExecutorPreference(Self.executor) {
             // On its thread now: the test runs from here.
+            // An unstructured task, so on the cooperative pool, not the dedicated threads (it does
+            // not take their preference): with every one of those held, as by hung tests, it still
+            // wakes, if after a while when the pool is busy too.
             let watchdog = Task {
                 try await Task.sleep(for: limit)
                 Issue.record("Hung: still running \(limit) after it got its thread.")
+                hung?()
             }
             defer { watchdog.cancel() }
             try await function()
@@ -143,9 +150,27 @@ struct GPUThreadsTests {
     func hangLimit() async throws {
         var short = GPUThreads()
         short.hangLimit = .milliseconds(100)
-        await withKnownIssue {
-            try await short.run { Self.hold(0.5) }
+        // Every dedicated thread but the one the test holds held too, as when tests hang or the GPU
+        // is busy: the watchdog must still wake while the test holds its thread. With the
+        // cooperative pool busy as well, under load, that can take a while, so the test holds its
+        // thread until it does, up to two minutes, rather than for a fixed time it may outlast.
+        let holders = (1..<GPUThreads.threads).map { _ in
+            Task(executorPreference: GPUThreads.executor) { Self.hold(1) }
         }
+        try await Task.sleep(for: .milliseconds(200))
+        let fired = Signal()
+        let inTime = Signal()
+        short.onHang = { fired.set() }
+        await withKnownIssue {
+            try await short.run {
+                let start = Date()
+                while !fired.isSet && Date().timeIntervalSince(start) < 120 { Self.hold(0.01) }
+                if fired.isSet { inTime.set() }
+            }
+        }
+        #expect(inTime.isSet, "The watchdog did not wake while the test held its thread.")
+        for holder in holders { await holder.value }
+        short.onHang = nil
         // Held on its thread, not waiting for one, however busy the others.
         short.hangLimit = .seconds(30)
         try await short.run { Self.hold(0.05) }
@@ -172,4 +197,12 @@ struct GPUThreadsTests {
         await gate.leave()
         await gate.leave()
     }
+}
+
+/// A flag set once, from any thread.
+private final class Signal: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = false
+    var isSet: Bool { lock.withLock { value } }
+    func set() { lock.withLock { value = true } }
 }

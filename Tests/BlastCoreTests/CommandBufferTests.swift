@@ -67,6 +67,9 @@ struct CommandBufferTests {
         let wall = Box(min: .zero, max: SIMD3(0.2, 2, 2))
         var model = StructureModel(solids: [wall], elementSize: 0.1, fixedBase: true)
         model.addMat(to: wall, thicknessAxis: 0, areaPerMetre: 4e-4, depth: 0.04)
+        // The rate averaged over 50 steps, as when this test was written, under which this load
+        // breaks the wall within the run; the 100 µs window strengthens it enough to hold.
+        model.strainRateWindow = nil
         let load = PressureLoad(
             axis: 0, positiveSide: false,
             history: [SIMD2(0, 0), SIMD2(0.0005, 3e6), SIMD2(0.004, 0), SIMD2(10, 0)])

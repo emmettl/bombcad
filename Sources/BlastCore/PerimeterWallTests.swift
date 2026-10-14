@@ -336,6 +336,97 @@ public enum PerimeterWallTests {
         return material
     }
 
+    /// What a strip of blockwork did (`blockworkPanel`): how far its top's and its mid-height's
+    /// back face went away from the load, the fastest node, the share of elements removed, and
+    /// the largest compaction (V0 / V - 1) any element was squeezed to while confined.
+    public struct PanelResult: Sendable {
+        public var peakTop: Float = 0
+        public var finalTop: Float = 0
+        public var peakMiddle: Float = 0
+        public var fastest: Float = 0
+        public var erodedFraction: Double = 0
+        public var compaction: Float = 0
+    }
+
+    /// A strip of the blockwork wall alone, `length` long (on the dowelled base with its bars, on
+    /// a construction joint without), its front face pushed by a pressure rising at once to
+    /// `peak` Pa and falling to zero over `duration` seconds, with no air, for `time` seconds.
+    /// The defaults are near what the 25 kg charge put on the wall's face. With `heldEnds` its
+    /// ends cannot move along the wall, as in the middle of a long wall. With `bars` and `joints`
+    /// this is the arrangement that once ran away under that charge.
+    public static func blockworkPanel(
+        device: MTLDevice, length: Float = 0.2, heldEnds: Bool = true, bars: Bool = true, joints: Bool = true,
+        peak: Float = 2.5e6, duration: Float = 1.3e-3, time: Float = 0.03, elementSize: Float = 0.05,
+        progress: ((String) -> Void)? = nil
+    ) throws -> PanelResult {
+        let t: Float = 0.4
+        let height: Float = 2
+        let stem = Box(min: SIMD3(0, 0, 0), max: SIMD3(t, length, height))
+        var model = StructureModel(solids: [stem], material: blockwork(bars: bars), elementSize: elementSize)
+        model.unitJoints = joints
+        let area: Float = 314e-6 / 0.2
+        if bars {
+            model.addMat(
+                to: stem, thicknessAxis: 0, areaPerMetre: area, transverseAreaPerMetre: 113e-6 / 0.2,
+                longitudinalAxis: 2, depth: 0.1)
+            model.baseAnchorage = Anchorage.dowelled(ratio: 2 * area / t, yieldStrength: grade60.yieldStress)
+        } else {
+            model.baseAnchorage = .constructionJoint
+        }
+        let solver = try StructureSolver(device: device, model: model)
+        solver.appliedLoad = PressureLoad(
+            axis: 0, positiveSide: false, history: [SIMD2(0, peak), SIMD2(duration, 0), SIMD2(1e3, 0)])
+        let h = model.elementSize
+        let iBack = Int((t / h).rounded())
+        let jEnd = Int((length / h).rounded())
+        let jMiddle = jEnd / 2
+        let kTop = Int((height / h).rounded())
+        if heldEnds {
+            solver.mutateNodes { nodes in
+                for k in 0...kTop {
+                    for j in [0, jEnd] {
+                        for i in 0...iBack {
+                            if let n = solver.storedNode(i, j, k) { nodes[n].restrain(y: true) }
+                        }
+                    }
+                }
+            }
+        }
+        var result = PanelResult()
+        let steps = max(Int((Float(0.5e-3) / solver.criticalTimeStep).rounded()), 1)
+        var elapsed: Float = 0
+        while elapsed < time {
+            solver.advance(steps: steps)
+            elapsed += Float(steps) * solver.criticalTimeStep
+            let top = solver.displacement(iBack, jMiddle, kTop).x
+            let middle = solver.displacement(iBack, jMiddle, kTop / 2).x
+            result.peakTop = max(result.peakTop, top)
+            result.peakMiddle = max(result.peakMiddle, middle)
+            var fastest: Float = 0
+            solver.mutateNodes { nodes in
+                for node in nodes where node.mass > 0 {
+                    fastest = max(fastest, simd_length(SIMD3(node.vx, node.vy, node.vz)))
+                }
+            }
+            result.fastest = max(result.fastest, fastest)
+            progress?(
+                String(
+                    format: "%5.1f ms: top %7.1f mm, middle %7.1f mm, fastest %9.2f m/s, removed %.1f%%",
+                    elapsed * 1000, top * 1000, middle * 1000, fastest, solver.summary().erodedFraction * 100)
+            )
+        }
+        result.finalTop = solver.displacement(iBack, jMiddle, kTop).x
+        result.erodedFraction = solver.summary().erodedFraction
+        for k in 0..<solver.ez {
+            for j in 0..<solver.ey {
+                for i in 0..<solver.ex {
+                    result.compaction = max(result.compaction, solver.compaction(i, j, k))
+                }
+            }
+        }
+        return result
+    }
+
     /// What the wall did, at the middle of its length.
     public struct WallResult: Sendable {
         public var wall: Wall
