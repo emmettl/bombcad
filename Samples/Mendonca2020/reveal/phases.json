@@ -1,0 +1,126 @@
+{
+ "note": "After the reveal (judge): the phases of each displacement record, for the secondary reading.\nOnset = the last sample within 0.05 mm of zero before the first reading past 0.5 mm. First peak =\nthe most negative reading within 80 ms of onset; rise = the most positive from 30 to 300 ms;\nlanding = the most negative within 200 ms after the rise; end = mean of the last 10% of 4 s.",
+ "records_read_downward_negative": true,
+ "slabs": {
+  "Slab2": {
+   "Displacement_1_(mm)": {
+    "first_peak_mm": -36.59,
+    "first_peak_after_onset_ms": 16,
+    "highest_after_mm": 1.25,
+    "highest_after_ms": 108,
+    "landing_mm": -26.13,
+    "landing_ms": 219,
+    "end_mean_mm": -24.88
+   },
+   "Displacement_2_(mm)": {
+    "first_peak_mm": -39.83,
+    "first_peak_after_onset_ms": 15,
+    "highest_after_mm": 0.95,
+    "highest_after_ms": 110,
+    "landing_mm": -30.19,
+    "landing_ms": 208,
+    "end_mean_mm": -26.87
+   }
+  },
+  "Slab4": {
+   "Displacement_1_(mm)": {
+    "first_peak_mm": -15.12,
+    "first_peak_after_onset_ms": 38,
+    "highest_after_mm": 27.07,
+    "highest_after_ms": 148,
+    "landing_mm": -18.37,
+    "landing_ms": 292,
+    "end_mean_mm": -18.63
+   },
+   "Displacement_2_(mm)": {
+    "first_peak_mm": -18.75,
+    "first_peak_after_onset_ms": 39,
+    "highest_after_mm": 28.73,
+    "highest_after_ms": 150,
+    "landing_mm": -22.17,
+    "landing_ms": 290,
+    "end_mean_mm": -22.0
+   }
+  },
+  "Slab5": {
+   "Displacement_1_(mm)": {
+    "first_peak_mm": -22.32,
+    "first_peak_after_onset_ms": 44,
+    "highest_after_mm": -6.72,
+    "highest_after_ms": 102,
+    "landing_mm": -21.44,
+    "landing_ms": 174,
+    "end_mean_mm": -20.68
+   },
+   "Displacement_2_(mm)": {
+    "first_peak_mm": -24.63,
+    "first_peak_after_onset_ms": 45,
+    "highest_after_mm": -9.87,
+    "highest_after_ms": 103,
+    "landing_mm": -23.92,
+    "landing_ms": 174,
+    "end_mean_mm": -22.62
+   }
+  },
+  "Slab7": {
+   "Displacement_1_(mm)": {
+    "first_peak_mm": -21.72,
+    "first_peak_after_onset_ms": 45,
+    "highest_after_mm": 5.63,
+    "highest_after_ms": 138,
+    "landing_mm": -25.25,
+    "landing_ms": 256,
+    "end_mean_mm": -24.99
+   },
+   "Displacement_2_(mm)": {
+    "first_peak_mm": -22.9,
+    "first_peak_after_onset_ms": 41,
+    "highest_after_mm": 10.11,
+    "highest_after_ms": 140,
+    "landing_mm": -26.43,
+    "landing_ms": 254,
+    "end_mean_mm": -25.63
+   }
+  },
+  "Slab9": {
+   "Displacement_1_(mm)": {
+    "first_peak_mm": -22.23,
+    "first_peak_after_onset_ms": 46,
+    "highest_after_mm": -0.38,
+    "highest_after_ms": 135,
+    "landing_mm": -23.69,
+    "landing_ms": 335,
+    "end_mean_mm": -24.05
+   },
+   "Displacement_2_(mm)": {
+    "first_peak_mm": -21.93,
+    "first_peak_after_onset_ms": 42,
+    "highest_after_mm": 4.68,
+    "highest_after_ms": 137,
+    "landing_mm": -23.71,
+    "landing_ms": 334,
+    "end_mean_mm": -23.97
+   }
+  },
+  "Slab10": {
+   "Displacement_1_(mm)": {
+    "first_peak_mm": -397.65,
+    "first_peak_after_onset_ms": 80,
+    "highest_after_mm": -43.38,
+    "highest_after_ms": 30,
+    "landing_mm": -499.48,
+    "landing_ms": 133,
+    "end_mean_mm": -169.04
+   },
+   "Displacement_2_(mm)": {
+    "first_peak_mm": -133.56,
+    "first_peak_after_onset_ms": 80,
+    "highest_after_mm": -47.26,
+    "highest_after_ms": 30,
+    "landing_mm": -136.39,
+    "landing_ms": 130,
+    "end_mean_mm": -137.56
+   }
+  }
+ }
+}
