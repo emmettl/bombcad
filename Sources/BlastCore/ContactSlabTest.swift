@@ -180,7 +180,7 @@ public enum ContactSlabTest {
     public static func run(
         device: MTLDevice, test: Test, cellSize: Float = 0.02, elementSize: Float? = nil, refinement: Int = 2,
         levels: Int = 2, duration: Double = 0.003, stepDivisor: Float = 4,
-        adjust: (inout Scenario) -> Void = { _ in },
+        adjust: (inout Scenario) -> Void = { _ in }, afterburning: Bool = false,
         progress: ((String) -> Void)? = nil, inspect: ((StructureSolver, Double) -> Void)? = nil
     ) throws -> Result {
         var scenario = scenario(test, elementSize: elementSize)
@@ -188,6 +188,7 @@ public enum ContactSlabTest {
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
         solver.configuration.refinement = refinement
         solver.configuration.refinementLevels = refinement > 1 ? levels : 1
+        solver.configuration.afterburning = afterburning
         try solver.load(scenario)
         guard let structure = solver.structure else { throw BlastError.allocationFailed("structure") }
         // The structure's step is set by its elastic wave speed; compacted concrete is several

@@ -2222,6 +2222,7 @@ func runContact() throws {
                     scenario.structure = structure
                 }
             },
+            afterburning: flag("afterburn"),
             progress: flag("progress")
                 ? { line in
                     print("  " + line)
@@ -2500,7 +2501,7 @@ func runTwoFace() throws {
                 device: device, test: test, cellSize: cellSize,
                 refinement: option("refine").flatMap { Int($0) } ?? 2, elementSize: elementSize,
                 duration: duration,
-                heldLengthwise: flag("held"), adjust: adjust,
+                heldLengthwise: flag("held"), afterburning: flag("afterburn"), adjust: adjust,
                 prepare: { solver in
                     prepareTrace(solver)
                     lastStructure = solver

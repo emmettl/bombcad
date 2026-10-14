@@ -146,7 +146,7 @@ public enum MasonryDebrisTests {
         device: MTLDevice, trial: Trial, cellSize: Float = 0.1, elementSize: Float = 0.0375,
         duration: Double = 3, minimum: Double = 0.6, restSpeed: Float = 0.05, airSleepThreshold: Float = 5e-4,
         clearance: Float = 8, height: Float = 10, groundFriction: Float = 0.6, base: Anchorage? = mortarBed,
-        progress: ((String) -> Void)? = nil
+        afterburning: Bool = false, progress: ((String) -> Void)? = nil
     ) throws -> Result {
         let started = ContinuousClock.now
         // The air's open faces must be well clear: with 1.5 m behind the charge, 3.5 m either
@@ -175,7 +175,8 @@ public enum MasonryDebrisTests {
             ],
             structure: model)
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
-        solver.configuration.mappedCharge = true
+        solver.configuration.mappedCharge = !afterburning
+        solver.configuration.afterburning = afterburning
         // A free-standing brick wall resists only about 0.1 kPa of overturning pressure, so the
         // air is kept going until it is within 50 Pa of ambient everywhere (not the default
         // 2 kPa, or five crossings of the domain): frozen any sooner, what is left of the blast

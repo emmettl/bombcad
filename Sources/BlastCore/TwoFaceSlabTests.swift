@@ -408,7 +408,8 @@ public enum TwoFaceSlabTests {
     public static func run(
         device: MTLDevice, test: WuTest, cellSize: Float = 0.025, refinement: Int = 2,
         elementSize: Float = 0.0125,
-        duration: Double = 0.1, heldLengthwise: Bool = false, adjust: (inout Scenario) -> Void = { _ in },
+        duration: Double = 0.1, heldLengthwise: Bool = false, afterburning: Bool = false,
+        adjust: (inout Scenario) -> Void = { _ in },
         prepare: ((StructureSolver) -> Void)? = nil, progress: ((String) -> Void)? = nil,
         inspect: ((StructureSolver, Double) -> Void)? = nil
     ) throws -> Result {
@@ -421,7 +422,7 @@ public enum TwoFaceSlabTests {
         return try run(
             device: device, scenario: scenario, slab: wuSlab, thicknessAxis: 2, probes: probes,
             cellSize: cellSize,
-            refinement: refinement, duration: duration, chargeTowardsLow: false, afterburning: false,
+            refinement: refinement, duration: duration, chargeTowardsLow: false, afterburning: afterburning,
             hold: { structure, nodes, index in
                 let h = structure.model.elementSize
                 let bottom = index(wuSlab.min.z, 2)

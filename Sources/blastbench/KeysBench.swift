@@ -91,7 +91,7 @@ func runKeys(device: MTLDevice) throws {
             device: device, trial: trial, cellSize: dx, elementSize: h, duration: time,
             airSleepThreshold: sleep,
             clearance: clearance, height: height, groundFriction: groundFriction, base: base,
-            progress: { print("  \($0)") })
+            afterburning: flag("afterburn"), progress: { print("  \($0)") })
         print(
             String(
                 format: "  free field: %5.1f kPa, %5.0f kPa ms (measured %5.1f, %5.0f)",
