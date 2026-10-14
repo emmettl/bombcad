@@ -218,12 +218,19 @@ re-seated face delivers the second blow (1,520–1,620 kN, peaks 25.8 and 18.9 m
   MPa), reaches 0.5% strain against the 15% that would crush it out, and never compacts: the face
   does not indent (0.1 mm against 3.5 measured after TH6-1).
 
-So the miss is kinematic: smeared cracks on 16 mm hexes let the cone crack open but not slide,
-and the face's edge, which in the test crushed its way in, is spread over a whole element. Options
-to try, none adopted: an embedded crack that can slide (deferred until data could decide it; this
-is such data), removal at a shear or crushing strain the face's edge reaches, or a finer ring
-under the face's edge. Each must keep the bending, impact and close-in comparisons. Runs:
-`/Volumes/StudioData/bombcad/concrete-stages/hrynyk-runs/`.
+**The lock, isolated.** `blastbench shearband` cuts a block in plane strain with a band that
+cracks at once and carries no shear, opens it 0.2 mm and slides it 5 mm. Along the lattice it slides
+for nothing (shear under 0.1 MPa after the first millimetre). At 45° across it, as a staircase, it
+takes 7.5 MPa of shear and 15 MPa of compression, and crushes: 354 J against 3.5. Not dilatancy
+(7.1 MPa without it), not the band's width (5.2 MPa three wide), not the element size (10.3 MPa on
+8 mm elements), and hourglass control that softens with cracking leaves it (7.3 MPa). Each band
+element fixes its crack axes from its own strain, at 14–38° rather than 45°, and sliding along the
+band then shortens a misaligned axis until it crushes; a quarter of the band's work also goes into
+hourglass control at its cap. Hrynyk's whole punching stress is about 5 MPa, so a 45° cone cannot
+slide out however weak its concrete is made. That is the miss: the cone's kinematics, not any
+mechanism's strength. A route out, not adopted: an embedded crack whose jump takes each element's
+own motion across it (strong discontinuity, kinematically consistent), with the shear band as its
+first gate. Runs: `/Volumes/StudioData/bombcad/concrete-stages/hrynyk-runs/`.
 
 ## Structural response against a real test
 
