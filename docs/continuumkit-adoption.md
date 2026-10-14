@@ -255,3 +255,37 @@ The **ContinuumKit** column gives its status: released, merged but unreleased, a
    - Cost: a few days with Hugoniot references. Who: whichever project reaches it first, after agreeing on it.
 
 The release of Edgerton's four merged primitives as alpha.24 needs the user's authorisation and belongs to Codex. BombCAD needs nothing from alpha.22 or alpha.23 and stays on alpha.21 until it adopts something new.
+
+## Notes for Edgerton
+
+### Concrete law changes since C1's inventory (`01e5896`), for C2 — 14 October 2026
+
+C1 inventoried BombCAD's concrete law at `01e5896` (12 October 2026). Since then:
+
+1. **The strain-rate window is the default (`fa13bb9`, then `5f5772d`).**
+   - The rate laws (CEB-FIP MC1990 compression, fib MC2010 tension, CEB 187 steel) see the strain rate averaged over 100 µs.
+   - Before, it was averaged over the last 50 structural steps, a window that shrank with the element and the step.
+   - The kernel is unchanged; only the uniform changes. `rateFilter` is now `1 / StructureModel.strainRateWindow` (1e4 per second), where it was `1 / (50 · criticalTimeStep)`. Solids and shells both.
+   - `strainRateWindow = nil` (saved as 0) restores the 50-step average.
+   - A saved model without the field now runs with 100 µs.
+   - Events shorter than about 30 µs are under-strengthened.
+2. **Compaction for materials softer than structural concrete, meaning bulk modulus below 12 GPa (`278e111`).**
+   - The HJC compaction curve's rise above crushing is scaled by K / 12 GPa.
+   - With K ≥ 12 GPa, the original path runs bit for bit.
+3. **Compaction start and bare bars, again only below K = 12 GPa (`dbcabf2`, `b9f995e`).**
+   - Compaction counts from the volume an element had when it was last confined, if it was crushed past the curve's onset unconfined.
+   - An element left as bare bars is removed at a quarter of its volume.
+   - Structural concrete keeps the old rules bit for bit until the concrete cases have been rerun with the new ones.
+4. **`ElementState` grows from 192 to 196 bytes (`dbcabf2`).**
+   - A trailing `float compactionStart` (zero unless the rule in item 3 applies).
+   - `static_assert(sizeof(ElementState) == 196)` holds it to `StructureSolver.stateStride`.
+   - The planned embedded sliding crack (E-FEM) would take it to 212 behind a function constant. It is not on main yet.
+
+Nothing else in the constitutive path changed. The contact pair skip (`afa5c84`) touches only contact.
+
+**Recommendation for C2:**
+
+- Pin a named BombCAD revision at or after `b9f995e`, for example the main of the day.
+- List the options the adapter takes, including `strainRateWindow`.
+- Read the state size from `stateStride` rather than writing in 192 or 196.
+- For structural concrete, C1's 14 paths should still agree, except for rate-dependent queries, which need the new `rateFilter`.
