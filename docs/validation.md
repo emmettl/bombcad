@@ -2729,12 +2729,25 @@ the same as halving the whole grid. The duration runs about a fifth long beyond 
 
 So the model's negative phase is right in kind and, by default, about a seventh short at the
 ranges of most structures, for the same reason its positive impulse is 13–22% short: the default
-gas does not burn its products. No numerical default needs changing. Afterburning on by default
-would bring both phases close to the references, with the cost and evidence of
-[Afterburning](#afterburning); that is the user's decision (limitation 3 in the
-[roadmap](roadmap.md#limitations-most-important-first)). For a negative phase, keep open faces
-farther away than the positive phase needs: twice the validation's domain was enough here. Not
-compared: a free-air burst (Figure 2-8).
+gas does not burn its products. No numerical default needs changing.
+
+**Proposal.** Afterburning on by default in the open, without hot air (which costs a quarter and
+moves the suction by only 1–2 points). It brings the underpressure impulse to 95–108% from
+Z = 2 to 6 and the positive impulse within 4%, with the evidence of
+[Afterburning](#afterburning), at roughly 1.6 times the air's time (inferred, not timed here:
+afterburning and hot air together double it and hot air alone adds a quarter,
+[Performance](performance.md)). Left off, the default stays on the unsafe
+side for anything loaded outward, and the standing should say so. For glazing and façades that
+means: the suction a recorded envelope sums (signed impulse, [Building
+envelopes](building-envelopes.md)) reads about a seventh low, so panes that survive the positive
+phase and are drawn out of their frames, and cladding fixings in pull-out, are judged against too
+little outward load, and a flexible pane's rebound is underdriven. The reach of this comparison is
+Z = 6, and most glazing breaks farther out, where the negative phase is a larger share of the
+load and the shortfall was narrowing (90% at Z = 6); farther out is not compared. Separately,
+for any suction or rebound result, keep the open faces at least 36 m from the receivers: the
+validation's 64 m domain overstated far gauges by 8–21 points. Whether to change the default is
+the user's decision (limitation 3 in the [roadmap](roadmap.md#limitations-most-important-first)).
+Not compared: a free-air burst (Figure 2-8).
 
 ### Gas pressure in a closed room
 
