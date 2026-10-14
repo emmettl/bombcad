@@ -255,6 +255,10 @@ public enum ValidationTables {
             document: "validation.md#the-contests-repeat-its-lower-shot-and-its-other-entries",
             quote: "the model reaches 79–88% of the measured peak on 4 to 16 elements"),
         Figure(
+            id: "slabBlindOpenAir", low: 0.10, high: 0.25,
+            document: "validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge",
+            quote: "the model's blast peak is a tenth to a quarter"),
+        Figure(
             id: "slabShell", low: 1.24, high: 1.24, document: "validation.md#summary",
             quote: "shells 135 mm (124%)"),
         Figure(
@@ -321,6 +325,12 @@ public enum ValidationTables {
     ]
 
     public static func figure(_ id: String) -> Figure { figures.first { $0.id == id }! }
+
+    /// The scaled distance (m/kg^(1/3)) within which the contest slab's band is withheld: blind,
+    /// open-air slabs at 0.93 to 1.44 bent a tenth to a quarter as far as measured, and the two
+    /// nearest collapsed where the model's stood. The contest's load was a shock tube's, long and
+    /// uniform.
+    public static let blindSlabReach: Float = 1.5
 
     /// A result on a sequence of meshes against one measurement, from the convergence study on
     /// today's defaults; the quote is the study's row and must hold each pair and the measurement.
@@ -1019,6 +1029,16 @@ extension StandingScene {
                             meshes: 6...12, unbanded: &unbanded
                         ).map { [$0] } ?? []
                 }
+            } else if let distance = structureDistance, distance < ValidationTables.blindSlabReach {
+                let blind = ValidationTables.figure("slabBlindOpenAir")
+                unbanded.append(
+                    String(
+                        format:
+                            "Peak deflection: %.2f m/kg^(1/3) from the charge, where blind open-air slabs "
+                            + "(Mendonça, 0.93 to 1.44) bent %.0f–%.0f%% as far as measured and the two nearest, "
+                            + "which collapsed, were left standing. The contest slab's band, from a shock tube's "
+                            + "long uniform load, is not given within %.1f.",
+                        distance, blind.low * 100, blind.high * 100, ValidationTables.blindSlabReach))
             } else if has(.shellElements) {
                 var shell = figure(
                     "slabShell", .peakDeflection, "Peak deflection", low: "too stiff",
@@ -1034,12 +1054,14 @@ extension StandingScene {
                     "slabSolid", .peakDeflection, "Peak deflection", low: "too stiff",
                     high: "too flexible",
                     validity:
-                        "one slab under a blast, 4 to 32 solid elements through (\(through) here): 104–114% under "
+                        "one slab under a blast, 4 to 32 solid elements through (\(through) here): 104–115% under "
                         + "the contest's load, rising with the mesh towards about 119% (113, 121, 125 mm on 8, 16, "
                         + "32, and 124 on 32 with half the step), and 79–88% (too stiff) under its lower shot, "
                         + "a scaled record; 93–99% under the earlier rate laws. The mesh that agreed, 8 through, is "
                         + "the coarse end. Not allowed for: the test's bearings were 4–5 in wide where the model "
-                        + "holds lines of nodes, and 1 in bearings already lower the peak 15–25%",
+                        + "holds lines of nodes, and 1 in bearings already lower the peak 15–25%. Blind, open-air "
+                        + "slabs at 0.93 to 1.44 m/kg^(1/3) bent a tenth to a quarter as far, so it is not given "
+                        + "within 1.5",
                     check: "A reinforced slab under a blast, and its lower shot")
                 band.low = ValidationTables.figure("slabLowerShot").low
                 band.high = ValidationTables.figure("slabExtrapolated").high

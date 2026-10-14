@@ -150,6 +150,62 @@ the farthest range, 27.8 m (6 m/kg^(1/3)), where the incident and reflected peak
 and 79% of Kingery–Bulmash to 70%. So for blasts that matter close in, a threshold of 0.2 halves
 the cost.
 
+### Where a refined run's GPU time goes
+
+```bash
+swift run -c release blastbench profile --preset open --refine 2 --refine-levels 2
+```
+
+`blastbench profile` runs a whole event with each of the air's stages in a compute encoder of its
+own and sums their GPU time (the sums leave out the gaps between encoders), counts how closely the
+patches fit the jumps the threshold flags, and times an empty dispatch; `--closein` takes
+`closeair`'s burst at Z = 0.5. On a quiet Studio (October 2026), 0.5 m cells (40 mm close in),
+refined by 2, the GPU time against the same grid unrefined, and its shares:
+
+| Run | Against unrefined | Fine sweeps | Ghost fills | Coarse sweeps | Halo, reflux, restrict | Regridding |
+|---|---|---|---|---|---|---|
+| Open ground, one level | 5.4× | 52% | 15% | 19% | 9% | 4% |
+| Open ground, afterburning | – | 49% | 18% | 20% | 9% | 4% |
+| Street, one level | 5.3× | 45% | 18% | 19% | 11% | 5% |
+| Close in, one level | 17× | 55% | 20% | 7% | 12% | 6% |
+| Open ground, two levels | 30× | 56% | 21% | 4% | 16% | 3% |
+| Street, two levels | 41× | 54% | 23% | 3% | 17% | 3% |
+| Close in, two levels | 165× | 58% | 22% | 1% | 16% | 3% |
+
+With the deformable wall on 0.25 m cells, the structure takes 34% of a run refined by 2 and the
+fine cells' outline and the debris' trade with them (remask and sync) 7% more. Afterburning makes
+a fine cell's update 13% dearer and its ghosts 30%.
+
+- **Per cell, a fine update costs about twice a coarse one**: a coarse cell 0.16 to 0.22 ns a
+  sweep, a fine cell 0.22 to 0.30 ns, and its share of the ghost fills 0.08 to 0.12 ns more.
+  The ghosts, two cells either side of a patch along each sweep, half again as many cells as
+  the patch, are re-filled before every sweep; those over unrefined air are each interpolated
+  afresh from seven coarse cells at two times.
+- **Half the patches are margin.** Of the refined blocks, 44% to 67% hold a pair of cells
+  whose pressures differ by more than the threshold; the rest are there because they lie within
+  `refineReach` (two coarse cells) of one, or, for the first of two levels, around the second.
+  Only 12% to 30% of the refined cells lie in such a pair: a shock smeared over two or three
+  cells cuts through blocks four cells across.
+- **Launching is cheap**: an empty dispatch takes 2.2 µs of GPU time, about 30 dispatches a step
+  with one level and 75 with two, so 1% to 3% of a step, and 8% close in with one level.
+- **Close in, the patches cover most of the domain** (70% of its blocks), so they hardly pay:
+  uniform 20 mm cells take 0.31 s against 0.46 s for 40 mm cells refined by 2, and uniform
+  10 mm cells 4.3 s against 4.5 s refined twice. Over `closeair`'s four distances, whose
+  domains grow with the distance, 40 mm cells refined twice take 28 s against 48 s on uniform
+  10 mm cells.
+
+What might be done, with the speed-up each might give a refined run, from these shares:
+
+| | Change | Estimate | Risk |
+|---|---|---|---|
+| 1 | A margin of one coarse cell instead of two | 1.15 to 1.3 | The shock nearer the coarse ghosts; peaks to be re-checked |
+| 2 | Cheaper ghosts: neighbouring patches read in the sweep, the coarse interpolation once per coarse cell and substep | 1.08 to 1.12 | Low |
+| 3 | A uniform finer grid where the patches would cover most of the domain | Up to 1.5 close in | None to the answers |
+| 4 | Two levels: halo of the ring only, refluxing in one dispatch | 1.05 to 1.08 | Low |
+| 5 | Each level only the substeps its own waves need (tried, not merged) | 1.15 and 1.3 on open ground with one and two levels; 1.0 on the street; 0.93 close in | Measured; none to the answers |
+| 6 | A fine sweep specialised for cells away from the patch's faces | 1.05 to 1.1 | Low |
+| 7 | Longer coarse steps where the fastest wave is in a patch | Under 1.03 | |
+
 ## Structural solver
 
 ```bash

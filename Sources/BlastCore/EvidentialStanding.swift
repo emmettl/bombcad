@@ -564,7 +564,7 @@ public enum StandingTable {
         case .shellElements:
             return Entry(
                 title: "Shell elements", affects: structure, limit: nil,
-                note: "On the slab test shells peaked at 135 mm, 124% of that measured, against 104–114% "
+                note: "On the slab test shells peaked at 135 mm, 124% of that measured, against 104–115% "
                     + "for solid elements.",
                 document: "validation.md#structural-response-against-a-real-test")
         case .shellSectionShear:
@@ -1582,8 +1582,9 @@ struct StandingScene {
             parts.append(
                 "reinforced concrete errs mostly on the unsafe side, towards too little damage: too strong in "
                     + "shear, too stiff in a full-scale chamber and close in. In bending one slab reads either way, "
-                    + "4–14% high under the contest's load and 12–21% low under its lower shot, not converged, and its beams struck on 16 elements come within 12–23%; it "
-                    + "springs back too far")
+                    + "4–15% high under the contest's load and 12–21% low under its lower shot, not converged, and its beams struck on 16 elements come within 12–23%; it "
+                    + "springs back too far. Blind, open-air slabs bent a tenth to a quarter as far as measured, "
+                    + "and the two that collapsed were left standing")
         }
         if classes.contains(.plainConcrete) {
             level = max(level, .verified)
@@ -1660,6 +1661,14 @@ struct StandingScene {
                 "Independent bodies meet through contact between their nodes, the spring and damper of contact "
                     + "within a body, checked for momentum and energy but never against a test; they must start "
                     + "apart and never bond.")
+        }
+        let configuration = inputs.configuration
+        if configuration.airSleepThreshold > 0 || configuration.airSleepCrossings > 0 {
+            resolution.append(
+                "The air sleeps once quiet or late, and a structure still moving then is loaded from the "
+                    + "frozen air: blind, slabs thrown off their supports were driven down at about 11 g on "
+                    + "landing, and their peaks agreed by coincidence. For a structure thrown or still moving, "
+                    + "keep the air awake (air sleep threshold and crossings 0).")
         }
         // Options a saved structure set that have since been retired, and what applies instead.
         for note in Set(structures.flatMap(\.retiredOptions)).sorted() { resolution.append(note) }
