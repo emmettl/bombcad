@@ -250,6 +250,7 @@ The **ContinuumKit** column gives its status: released, merged but unreleased, a
    - The candidate: BombCAD's wrapped hash table with ordered slots and moved marks, with Edgerton as the second consumer.
    - Cost: days to the ContinuumKit standard (contract, independent oracle, two-host release, parity in both applications).
    - Who: a Claude session writes the contract and the BombCAD side; Codex reviews and owns the Edgerton adoption.
+   - Proposed on 14 October as [ContinuumKit#91](https://github.com/emmettl/ContinuumKit/pull/91) (`ContactSearch`, `ContactSearchMetal`). It is unreleased, and BombCAD adopts it only after a release, with `blastbench digest` bit-identical.
 5. **Plan one solid shock EOS for ContinuumKit before either application needs it.**
    - Its uses: spall and contact charges (BombCAD), perforation (Edgerton T4).
    - Cost: a few days with Hugoniot references. Who: whichever project reaches it first, after agreeing on it.
@@ -279,7 +280,7 @@ C1 inventoried BombCAD's concrete law at `01e5896` (12 October 2026). Since then
 4. **`ElementState` grows from 192 to 196 bytes (`dbcabf2`).**
    - A trailing `float compactionStart` (zero unless the rule in item 3 applies).
    - `static_assert(sizeof(ElementState) == 196)` holds it to `StructureSolver.stateStride`.
-   - The planned embedded sliding crack (E-FEM) would take it to 212 behind a function constant. It is not on main yet.
+   - The planned E-FEM sliding crack needs no new state; the stride stays 196.
 
 Nothing else in the constitutive path changed. The contact pair skip (`afa5c84`) touches only contact.
 
