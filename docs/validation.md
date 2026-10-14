@@ -478,19 +478,23 @@ the peak in the model (59 of 113 mm on 8 elements) and 65% in the tests (72 of 1
 **The whole histories.** Schwer's Figure 4, digitised (`Fixtures/Schwer2015`, within 1% of the
 peaks he states), gives all three shots' records: load 1a (slab 2, the record above), its repeat
 1aa (slab 4) and the lower shot 1b (slab 6). Re-run on 4, 8 and 16 elements through with today's
-defaults and scored over each record from 5 ms (`blastbench slab --history-csv`,
-`Scripts/comparisons/slab_histories.py`); the bands are derived on 8:
+defaults (the 100 µs strain-rate window included) and scored over each record from 5 ms
+(`blastbench slab --history-csv`, `Scripts/comparisons/slab_histories.py`); the bands are derived
+on 8:
 
 | Elements through | Load 1a: RMS, mean | Against 1aa | Lower shot against 1b: RMS, mean | Lower shot at the record's end |
 |---|---|---|---|---|
-| 4 | 4.6 mm, +1.5 | 6.1 mm, −0.7 | 13.4 mm, −11.7 | 44 mm (measured 54) |
+| 4 | 4.5 mm, +0.9 | 6.3 mm, −1.2 | 13.4 mm, −11.7 | 44 mm (measured 54) |
 | 8 | 7.4 mm, −1.8 | 10.1 mm, −4.1 | 14.7 mm, −12.6 | 32 mm |
-| 16 | 8.4 mm, +3.7 | 8.9 mm, +1.0 | 11.7 mm, −9.6 | 36 mm |
+| 16 | 8.5 mm, +3.4 | 9.2 mm, +0.6 | 11.7 mm, −9.7 | 36 mm |
 
 The two measured shots under load 1a differ from each other by 3.9 mm RMS (2.4 mm on average): the
-model's histories under that load lie 1.2 to 2.2 times as far from either. Under the lower shot
-they lie 3 to 4 times as far, short throughout (by 10–13 mm on average), and settle 18–22 mm
-below the record's 54 mm: too stiff over the whole history, not only at the peak. The digitised
+model's histories under that load lie 1.2 to 2.6 times as far from either. Under the lower shot
+they lie 3 to 4 times as far, short throughout (by 10–13 mm on average), and settle 10–22 mm
+below the record's 54 mm: too stiff over the whole history, not only at the peak. The rate
+window moves none of this: before it, every figure was within 0.3 mm RMS and 0.6 mm in the mean
+of the table's, and the lower shot ended at the same depths, so its shortfall is not the
+step-dependent rate. The digitised
 lower shot reads 70.7 mm over 21–29 ms (its median) and 54.1 mm at the end, within 2% of the hand
 reading above, so the peaks' figures stand.
 
