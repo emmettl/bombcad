@@ -60,8 +60,8 @@ design model (49 MB) included. The buildingSMART files that stop are its HVAC, p
 and landscaping scenes and the IFC 4.3 road, which hold no supported elements and say so, and
 its electrical scene, whose one element's mesh is open. Clinic Structural's 650
 excluded meshes are elements that round 1 never chose: with the higher triangle limit it now
-converts more than one storey, and its bar joists and coped steel beams come from the converter
-open (see "What is left").
+converts more than one storey, and its bar joists are surfaces, not solids (see "What is
+left"). Its 188 wide-flange beams and columns that also came in open are now closed (item 14).
 
 The full table, per file, is `corpus5-table.md` in `/Volumes/StudioData/bombcad/import-structural/`.
 
@@ -70,9 +70,15 @@ The full table, per file, is `corpus5-table.md` in `/Volumes/StudioData/bombcad/
 The real buildings that convert were stood under gravity for 0.3 s, damped
 (`BOMBCAD_IFC_CORPUS_GRAVITY=1`, through `gpu-slot`), before round 2 and after it. "Weight
 carried" is the supports' reaction over the weight. A building counts as standing when it
-carries at least 95%. "Still" is the share of the weight on nodes that moved under 10 mm, which
-tells sagging from falling; it was recorded only after round 2. A peak of 54.9 mm is a body
-falling freely against the damping for the whole 0.3 s.
+carries at least 95%. "Still" is the share of the weight on nodes that moved under 10 mm,
+recorded only after round 2. A peak of 54.9 mm is a body falling freely against the damping for
+the whole 0.3 s.
+
+Where under 95% is carried, the end speed of the weight that moved tells deflecting from
+falling. A body falling against the damping keeps moving at g over the damping rate, about
+0.2 m/s; one that is deflecting slows to rest. The corpus summary's verdict says "stands,
+deflects" where that weight is under half the falling speed and slowing, and "falls" otherwise.
+Every building below that carries under 95% falls: what moves is still going at 0.10–0.20 m/s.
 
 **8 of the 19 stood before round 2. 12 stand after it**, the Schependomlaan structural model
 among them. The Schependomlaan design model, too large before, now imports and carries 57% of
@@ -98,7 +104,7 @@ its weight.
 | Duplex (architectural) | 19,814 / 220 | 64% | 65% | 65% | 53.0 |
 | buildingSMART bridge | 4,287 / 0 | 5% | 54% | 48% | 59.2 |
 | buildingSMART road | 16,896 / 0 | 22% | 41% | 29% | 83.0 |
-| Clinic, structural | 94,172 / 4,479 (27,646 / 363 before) | 2% | 79% | 78% | 68.1 |
+| Clinic, structural | 97,102 / 10,080 (27,646 / 363 before) | 2% | 77% | 75% | 73.8 |
 | Schependomlaan design model | 67,702 / 1,038 | — | 57% | 48% | 128.8 |
 
 Some peaks exceed 10 mm while nearly all the weight is still: a few light pieces fall, such as
@@ -118,20 +124,23 @@ What changed for each:
 - **The sports hall** is no longer comparable: the higher triangle limit converts three
   storeys, not the first alone, and the upper ones do not all stand.
 - **The Duplex:** its slabs on grade and porch slabs now rest on the ground (item 11). What
-  moves is the top floor: a 7.5 m W310 steel beam carries the masonry party wall and the green
-  roof, and sags 47 mm. That is its elastic deflection by hand, so it bends rather than
-  falling. The wall erodes as it cracks over the beam, and at 0.3 s the structure is still
-  settling. The beam may have a post under it that the IFC or the converted elements leave
-  out.
+  moves is the top floor: the two 7.5 m W310 steel beams, the masonry party wall on them and
+  the green roof, 35% of the weight. They move 47–60 mm, and at 0.3 s they are still moving at
+  the falling speed, 0.20 m/s, so they fall rather than deflect. (A beam's elastic deflection
+  under that load is also about 48 mm by hand, but deflection would have slowed to rest.) What
+  should hold the beams' ends has not been traced; the party wall erodes as it comes down with
+  them.
 - **The two structural models.** The Schependomlaan structural model now stands. Its pit's
   floor is a storey of its own, so the foundation slabs, which are of the next storey, were not
   taken to rest on the ground until the rule took in storeys starting near the lowest level
   (item 11). Before that it carried 34%, the building sinking about 60 mm, nearly free fall.
   The Clinic's slab on grade, 52 × 56 m and two thirds of the model's weight, lies on fill
   between foundation walls that stand on footings, 1.8 m above the lowest level. It is now
-  taken to rest on the ground, and the model carries 79%. What still moves has not been traced.
-  The likely cause is the steel frame: the 461 bar joists and 188 coped beams left out as open
-  meshes (see "What is left") leave floors and roofs without the joists between their girders.
+  taken to rest on the ground, and the model carried 79%. Its 188 wide-flange beams and columns
+  that came in open are now closed (item 14), and it carries 77%, so they were not what was missing. What
+  still falls (25% of the weight, at 0.18 m/s) has not been traced. The likely cause is the
+  461 bar joists left out (see "What is left"), which leave floors and roofs without the joists
+  between their girders.
 
 The "before" run counted a tied node's mass twice (the solver adds it to its master's), so it
 understated weight carried by the share of tied nodes. That is a fraction of a percent for most
@@ -226,6 +235,15 @@ buildings. The "after" run counts it once.
     and that the project keeps the whole file. Meshes from OBJ and STL keep their limits.
 13. **Duplicates.** Layers exported twice (the road's courses) overlap coplanar, and the mesh
     gives the second no elements. It is no longer reported as falling.
+14. **Profiles that share segments.** Revit writes a curve segment that two profiles have in
+    common only once: the fillet arcs of steel sections of one size. The converter builds that
+    segment's edge for the first profile and reuses it in the next. There it does not meet the
+    profile's own straight segments, so the end faces are lost and the mesh is open. Converted
+    alone, each beam is closed. Converted together, 183 of the Clinic's 277 wide-flange beams
+    were open, and the import left out 188 wide-flange beams and columns. Before conversion, the importer now gives each composite curve copies of the
+    segments it shares with others, with their curves and placements (`IFCStep`). Points and
+    directions stay shared, and nothing else in the file changes. All the Clinic's wide-flange
+    beams and columns now come in closed.
 
 The task's list also named mapped items, extruded-solid variants, boolean openings and
 georeferencing. The corpus showed none of these breaking the importer:
@@ -239,10 +257,15 @@ georeferencing. The corpus showed none of these breaking the importer:
 ## What is left
 
 - **Meshes open as the converter returns them.** These are 1,414 pieces of repaired elements,
-  and whole elements: Clinic Structural's 461 rod-web bar joists and 188 coped wide-flange beams,
   and the IfcOpenShell issue files filed for exactly this. Their boundaries are open where the
   converter's subtraction or sweep failed. Filling holes that are not flat is not done; the
   review names each element.
+- **Bar joists.** Clinic Structural's 461 rod-web bar joists are surfaces in the IFC, not
+  solids: each body is an IfcFaceBasedSurfaceModel of 19 open face sets, its chords and rods.
+  They could come in as beams instead. The IFC gives each joist's axis (an "Axis" polyline) and
+  its K-series designation (14K1 and the like), but not its section. Mass and stiffness would
+  have to come from the Steel Joist Institute's tables by designation, which is not done. They
+  are left out, and the review names them.
 - **Subcontractor models alone.** Balconies, stairs and precast pieces without their building
   have nothing to stand on, and are reported loose.
 - **Envelope sampling.** An envelope stops where two elements' triangles intersect ambiguously,
