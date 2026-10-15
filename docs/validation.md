@@ -435,6 +435,35 @@ above cannot bring Mendonça within the bands without breaking the calibrated co
 supports soft enough to give the measured peaks would be a fit to unknown trestles. Rerun this
 table when the embedded crack lands.
 
+**Where the resistance lies at the first peak** (16 October 2026; calibration).
+- **The method.** At the first peak, the work each mechanism has done, in elements that have
+  cracked and in those that have not. Each is put as a uniform pressure: its work over the volume
+  the bottom face has swept.
+- **The cases.** Slabs 4 and 1, and Hrynyk's TH6-1, on 8 elements at the 100 µs window.
+- **The diagnostic.** Hourglass stiffness scaled in cracked elements only, to ×0.5 and ×0.1.
+- **The tools.** `blastbench mendonca|hrynyk --account [--cracked-hourglass 0.1]`, on branch
+  `claude/hourglass-account`, not on main.
+- **The check.** The rounding variant agrees within 2%.
+
+| Case, first peak | Concrete, cracked / uncracked (kPa) | Bars | Hourglass, below / at its cap | Total | First peak, hourglass in cracked elements ×0.5 / ×0.1 |
+|---|---|---|---|---|---|
+| Slab 4, 4.30 mm | 36 / 11 (36%) | 62 (47%) | 8 / 15 (17%) | 131 | 4.31 / 4.32 mm |
+| Slab 1, 10.07 mm | 104 / 10 (37%) | 120 (39%) | 16 / 58 (24%) | 307 | 9.63 / 10.25 mm |
+| TH6-1, 20.3 mm | 114 / 0 (59%) | 38 (20%) | 18 / 20 (20%) | 193 | 21.1 / 22.0 mm |
+
+**The excess is not mostly the hourglass control.** It does a fifth of the work at the first peak,
+and cutting it to a tenth where the concrete has cracked moves the peaks by at most 8%.
+- **The concrete in cracked elements.** Its largest parts are the concrete between cracks (the
+  hairline channel, tension stiffening), aggregate interlock, and shear across and beside the
+  cracks.
+- **The bars.** At Mendonça they do 39–47% of the work. Halving their yield moves the first peaks by
+  9–13% (the table above), so at the first peak they work mostly elastically.
+- **Together.** The slab meets its first peak still largely elastic, cracked but stiffened across
+  its cracks by the concrete between them and by elastic bars, where the tests' slabs yielded.
+- **The embedded crack does not change this.** Tried since, to free cracks across the lattice, it
+  softened cracked elements everywhere but left slab 4's first peak at 4.7–5.9 mm
+  ([record](concrete-model.md#embedded-cracks-tried-and-not-adopted)).
+
 ## Structural response against a real test
 
 ### The test
