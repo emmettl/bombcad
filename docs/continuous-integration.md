@@ -10,7 +10,7 @@ reached as `scrimply-ci-tb`. The runner is `mac-mini-bombcad`, installed in
 
 | Workflow | When | What |
 |---|---|---|
-| [Check](../.github/workflows/check.yml), light | Every push to `main` | `make check-light`: lint, script tests, a build without warnings, the core tests and the release-build smoke runs, about ten minutes |
+| [Check](../.github/workflows/check.yml), light | Every push to `main` | `make check-light`: lint, script tests and the documents' links, a build without warnings, the core tests and the release-build smoke runs, about ten minutes |
 | [Check](../.github/workflows/check.yml), full | By hand (suite `all`) | Lint, script tests, build, application and core tests, the packaged app's signature |
 | [Nightly](../.github/workflows/nightly.yml) | 19:00 UTC by GitHub's schedule and 19:20 UTC from the mini, whichever comes first; or by hand | The full check on `main`'s head, with what failed and the suspect commits; then `Scripts/nightly.py`: the benchmarks and the validation suite, compared with earlier nights |
 
