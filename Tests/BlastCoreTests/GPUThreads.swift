@@ -13,10 +13,11 @@ import Testing
 /// Each test is held to `hangLimit` from when it has its thread, not from when it was started:
 /// Swift Testing starts every test at once and its own time limit would count the wait for a
 /// thread, which with the GPU busy is most of the run. One that runs longer stops the test run:
-/// a test spinning on the GPU never returns, so an issue recorded against it would never be
-/// reported and the run would wait for ever (on 15 October two did, for five hours, their
-/// output held unseen in the log's buffer). So the hung test is named on standard error, which
-/// is not buffered, and the test process exits with a failure. The watchdog is a dispatch timer,
+/// a test that never returns is never finished, so an issue recorded against it is not reported
+/// until the run is stopped (on 15 October two Sod shock-tube tests were recorded hung at two
+/// hours and the run went on for three more, the log's buffered output showing nothing after
+/// tests that had in fact passed). So the hung test is named on standard error, which is not
+/// buffered, and the test process exits with a failure. The watchdog is a dispatch timer,
 /// on threads of its own, so that it fires however busy the cooperative pool and these threads.
 ///
 /// No more of these tests start than there are threads: the rest wait to start (on the
