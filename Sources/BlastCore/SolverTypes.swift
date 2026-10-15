@@ -149,10 +149,19 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// flame going (see `AfterburnLimit`); nil, the default, for wherever they meet oxygen.
     public var afterburnLimit: AfterburnLimit?
     /// The terrain's ground surface as cut cells rather than whole ones (see `TerrainCutGeometry`):
-    /// slopes are slopes, not staircases. Off by default; read when a scene is loaded.
-    public var terrainCutCells = false
+    /// slopes are slopes, not staircases. On by default; false for the staircase. Read when a scene
+    /// is loaded, and only where the air is not refined (see `cutsTerrain(of:)`).
+    public var terrainCutCells = true
 
     public init() {}
+
+    /// Whether `scenario`'s terrain is cut through the cells when it loads: it has slopes, cut
+    /// cells are on, and the air is neither refined (whose levels keep the staircase, as yet) nor
+    /// a deflagration's.
+    public func cutsTerrain(of scenario: Scenario) -> Bool {
+        terrainCutCells && refinement <= 1 && scenario.deflagration == nil
+            && (scenario.terrain.map { !$0.isFlat } ?? false)
+    }
 }
 
 /// Primitive gas state in SI units.
@@ -451,12 +460,9 @@ public enum BlastError: Error, CustomStringConvertible {
     case outsideBlastCurves(Double)
     /// A discrete bar that does not lie wholly within the body's concrete.
     case barOutsideConcrete(Int, SIMD3<Float>)
-    /// An option that cannot be used with another.
-    case unsupportedCombination(String)
 
     public var description: String {
         switch self {
-        case .unsupportedCombination(let what): "Not supported: \(what)"
         case .missingShader(let name): "Shader source \(name) is missing from the bundle"
         case .missingFunction(let name): "Shader function \(name) not found"
         case .allocationFailed(let what): "Could not allocate \(what)"

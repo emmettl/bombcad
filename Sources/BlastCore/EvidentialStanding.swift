@@ -269,7 +269,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case stationaryWalls
     case closedBoundaries
     case terrain
-    case terrainCutCells
+    case terrainStaircase
     case deflagration
     case ventPanels
     case importedEnvelopes
@@ -341,8 +341,9 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .stationaryWalls: return !structures.isEmpty && !config.movingWalls
         case .closedBoundaries: return inputs.scenario.reflectiveFaces != .ground
         case .terrain: return inputs.scenario.terrain.map { !$0.isFlat } ?? false
-        case .terrainCutCells:
-            return config.terrainCutCells && (inputs.scenario.terrain.map { !$0.isFlat } ?? false)
+        case .terrainStaircase:
+            return (inputs.scenario.terrain.map { !$0.isFlat } ?? false)
+                && !config.cutsTerrain(of: inputs.scenario)
         case .deflagration: return inputs.scenario.deflagration != nil
         case .ventPanels: return !(inputs.scenario.ventPanels ?? []).isEmpty
         case .importedEnvelopes:
@@ -528,18 +529,19 @@ public enum StandingTable {
                 ],
                 limit: .approximation,
                 note:
-                    "By default a staircase of whole cells: it delays Mach reflection off a slope by 3–11° and under-reads "
-                    + "the triple point's angle by 20–75% on 100–400 cells along the run; shielding behind "
-                    + "ridges is consistency-checked only, and peaks focused far behind a round hill do not "
-                    + "converge.",
+                    "Rigid and smooth, cut through the cells where the air is not refined: on 100–400 cells "
+                    + "the triple point's angle within 0.25° of three-shock theory at 30–45° and Mach "
+                    + "reflection 1–3° late; shielding behind ridges is consistency-checked only, and peaks "
+                    + "focused far behind a round hill do not converge.",
                 document: "terrain.md#limitations")
-        case .terrainCutCells:
+        case .terrainStaircase:
             return Entry(
-                title: "Terrain on cut cells", affects: air + [.envelopeExposure], limit: nil,
-                note: "Slopes cut through the cells instead of a staircase: on 100–400 cells the triple "
-                    + "point's angle is within 0.25° of three-shock theory at 30–45° and Mach reflection "
-                    + "starts 1–3° late, against the staircase's 3–11°; conservative to round-off. Not yet "
-                    + "with refinement.",
+                title: "Terrain as a staircase", affects: air + [.envelopeExposure], limit: .approximation,
+                note:
+                    "Refined air, or the staircase chosen, keeps the terrain as whole cells: it delays Mach "
+                    + "reflection off a slope by 3–11° and under-reads the triple point's angle by 20–75% on "
+                    + "100–400 cells, and windward faces' peaks read 1.3–1.5 times the cut cells', growing "
+                    + "with resolution.",
                 document: "terrain.md#cut-cells")
         case .deflagration:
             return Entry(
@@ -872,7 +874,7 @@ public enum StandingTable {
         "SolverConfiguration.debrisReach": .numerical,
         "SolverConfiguration.openFaces": .numerical,
         "SolverConfiguration.minimumBalloonCells": .numerical,
-        "SolverConfiguration.refinement": .option([.shockRefinement, .twoLevelRefinement]),
+        "SolverConfiguration.refinement": .option([.shockRefinement, .twoLevelRefinement, .terrainStaircase]),
         "SolverConfiguration.refinementThreshold": .numerical,
         "SolverConfiguration.refinementMargin": .numerical,
         "SolverConfiguration.refinementLevels": .option([.twoLevelRefinement]),
@@ -883,7 +885,7 @@ public enum StandingTable {
         "SolverConfiguration.mixing": .option([.subgridMixing]),
         "SolverConfiguration.periodicSides": .numerical,
         "SolverConfiguration.afterburnLimit": .option([.afterburnLimit]),
-        "SolverConfiguration.terrainCutCells": .option([.terrainCutCells]),
+        "SolverConfiguration.terrainCutCells": .option([.terrainStaircase]),
         // The structure.
         "StructureModel.solids": .input,
         "StructureModel.openings": .input,
@@ -1310,7 +1312,7 @@ struct StandingScene {
                 "The lee impulse within 6%; peaks focused far behind it not "
                     + "converged", "terrain.md#a-hills-resolution-sensitivity"),
         ]
-            + (has(.terrainCutCells)
+            + (!has(.terrainStaircase)
                 ? [
                     StandingEvidence(
                         "Cut cells on a slope against three-shock theory",

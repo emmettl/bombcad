@@ -66,10 +66,13 @@ struct TerrainTests {
         return scenario
     }
 
-    @Test("A coarse cell is solid exactly where its centre is below the surface")
+    @Test("On the staircase a coarse cell is solid exactly where its centre is below the surface")
     func coarseMask() throws {
         let scenario = slopeScenario(cell: 0.5)
-        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.5)
+        var staircase = SolverConfiguration()
+        staircase.terrainCutCells = false
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 0.5, configuration: staircase)
         let grid = solver.grid
         let terrain = try #require(scenario.terrain)
         var mismatched = 0

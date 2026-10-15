@@ -20,7 +20,9 @@ import), `Shaders/Refine.metal` (`refineFill`, the fine cells' outline) and, for
   are metres above the domain's floor, z = 0, which stays the reflecting face beneath it. It is
   a property of the scene beside its objects, not one of them; the multiple-object scene schema
   is unchanged.
-- **In the air's mask.** A cell is solid where its centre lies below the surface, on the coarse
+- **In the air's mask.** Where the air is not refined the surface is cut through the cells, by
+  default (see [Cut cells](#cut-cells)). Otherwise, and when the staircase is chosen, a cell
+  is solid where its centre lies below the surface, on the coarse
   grid (set on the CPU when the scene loads, beside the blocks) and on every level of
   refinement (`refineFill` evaluates the same bilinear surface at each fine cell's centre). So
   the terrain is a staircase of whole cells at each level's own resolution, as a block is; the
@@ -82,7 +84,8 @@ independent encoder.
 
 ## Checks
 
-All on the Mac Studio, single precision, the default scheme. The runs and their CSV files are in
+All on the Mac Studio, single precision, on the staircase, which was the only surface until cut
+cells (`--staircase` reproduces them now). The runs and their CSV files are in
 `/Volumes/StudioData/bombcad/terrain/`.
 
 ### A slope: regular and Mach reflection
@@ -213,7 +216,8 @@ history) over flat ground's on the same cells:
 
 ## Cut cells
 
-`SolverConfiguration.terrainCutCells` (off by default; `--cut-cells` on any blastbench scene)
+`SolverConfiguration.terrainCutCells` (on by default since 15 October 2026; `--staircase` on any
+blastbench scene, or Run ▸ Terrain ▸ Cut cells along its slopes off in the app, for whole cells)
 cuts the ground's surface through the cells instead of rounding it to whole ones, so a slope is
 a slope. Only the terrain is cut; blocks, structures and moving bodies keep their whole cells.
 The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry) and `sweepCell` and
@@ -241,9 +245,15 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry) and `sweepC
 - **Gauges, painting and totals.** A gauge or painted peak on the surface reads the first cell at
   least half air. Charges deposited in cut cells weight by α; the solver's totals count α of
   each cut cell.
-- **Not yet with refinement.** A scene with cut cells and refinement is refused when it loads;
-  the fine levels need their own cut geometry, redistribution within each patch and refluxing
-  of the cut faces.
+- **Not yet with refinement.** Refined air keeps the staircase on every level (the fine levels
+  need their own cut geometry, redistribution within each patch and refluxing of the cut faces).
+  The Run tab's Terrain caption says so when shocks are sharpened, and the advisor (in the app
+  and `BombCAD run --advise`) when the setting it chooses refines. A deflagration's air keeps it
+  too.
+- **Saved runs.** A run over terrain on cut cells records `"terrainCutCells": true` in its
+  settings; one on the staircase, and every run saved before cut cells, records nothing, and a
+  project saved so reopens on the staircase it ran on. The standing names "Terrain as a
+  staircase" when a run uses it, and the error bands say which surface the scene had.
 
 ### Cut cells on a slope
 
@@ -270,7 +280,7 @@ the Mac mini). χ, the triple point's angle:
 
 ### Cut cells behind a ridge
 
-The ridge study above (`blastbench terrain --study shield`) with and without `--cut-cells`, on
+The ridge study above (`blastbench terrain --study shield`) with and without `--staircase`, on
 0.25 and 0.125 m cells, on the Mac mini; peaks from the gauges, impulse at the first cell at
 least half air. Ratios to flat ground on the same cells, staircase / cut cells:
 
@@ -390,11 +400,11 @@ surface cross a cell a metre. The GPU and the CPU agree on every receiver.
 
 ## Limitations
 
-1. **A staircase of whole cells, by default.** Slopes are steps one cell high, at each refinement
-   level's own cells. They delay Mach reflection by 3–11° and under-read the triple point's angle
-   by 20–75% on 100–400 cells along a run (above), converging at first order. [Cut
-   cells](#cut-cells) remove this on uniform grids; they are not yet available with refinement,
-   which shrinks the staircase only where the shock is refined.
+1. **A staircase of whole cells where the air is refined.** Slopes are then steps one cell high,
+   at each refinement level's own cells. They delay Mach reflection by 3–11° and under-read the
+   triple point's angle by 20–75% on 100–400 cells along a run (above), converging at first
+   order. [Cut cells](#cut-cells), the default on uniform grids, remove this; they are not yet
+   available with refinement, which shrinks the staircase only where the shock is refined.
 2. **Rigid, smooth and reflecting.** No cratering, no soil that gives or absorbs, no vegetation or
    roughness besides the staircase's, no snow or water. The floor under the terrain still reflects.
 3. **Refinement near the surface.** Placing a patch gains still air on one side of the surface and
@@ -432,7 +442,7 @@ surface cross a cell a metre. The GPU and the CPU agree on every receiver.
 ## Future work
 
 - **Cut cells with refinement**: each fine level's own cut geometry, redistribution within each
-  patch and refluxing of the cut faces; then cut cells as the terrain's default.
+  patch and refluxing of the cut faces, so that refined runs need not keep the staircase.
 - **Footings and the ground's connection on a slope**: the base held where it meets the terrain,
   with slope factors on a footing's soil.
 - **DEM reprojection** (UTM from geographic) and area-averaged downsampling.

@@ -154,6 +154,16 @@ public struct Advice: Sendable, Equatable {
     /// When the settings as they are refine so much of the domain that a grid of the refined cells
     /// throughout costs less, the candidate that stands for them.
     public var currentStandIn: AdvisorCandidate? = nil
+    /// Whether the scene's terrain is cut through the cells where the air is not refined, and so a
+    /// staircase in the chosen setting if it refines.
+    public var terrainCutWhenUniform = false
+
+    /// A line saying so, when the chosen setting refines the air over a terrain that would
+    /// otherwise be cut through the cells.
+    public var terrainNote: String? {
+        guard terrainCutWhenUniform, let chosen, chosen.setting.refinement > 1 else { return nil }
+        return "Refined, the terrain is a staircase of whole cells: cut cells need uniform air, as yet."
+    }
 
     /// A line saying so, when the settings as they are refine most of the domain.
     public var standInNote: String? {
@@ -223,6 +233,20 @@ public enum RunAdvisor {
     /// `evaluate` (the standing's error bands for that setting). Ties go to the setting nearest
     /// `current`; a setting over `memory` bytes is never chosen.
     public static func advise(
+        _ scenario: Scenario, configuration: SolverConfiguration, duration: Double, target: AdvisorTarget,
+        current: AdvisorSetting, memory: Int, maximumCells: Int,
+        evaluate: (AdvisorSetting) -> (error: [AdvisorQuantity: Double], unbanded: [AdvisorQuantity: String])
+    ) -> Advice {
+        var advice = choose(
+            scenario, configuration: configuration, duration: duration, target: target, current: current,
+            memory: memory, maximumCells: maximumCells, evaluate: evaluate)
+        var uniform = configuration
+        uniform.refinement = 1
+        advice.terrainCutWhenUniform = uniform.cutsTerrain(of: scenario)
+        return advice
+    }
+
+    private static func choose(
         _ scenario: Scenario, configuration: SolverConfiguration, duration: Double, target: AdvisorTarget,
         current: AdvisorSetting, memory: Int, maximumCells: Int,
         evaluate: (AdvisorSetting) -> (error: [AdvisorQuantity: Double], unbanded: [AdvisorQuantity: String])

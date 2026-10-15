@@ -22,6 +22,10 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     var shockThreshold: Float?
     /// Gravity in the air when on; nil, and left out of the file and the fingerprint, when off.
     var gravity: Bool?
+    /// True when the scene's terrain is cut through the cells (where the air is not refined); nil,
+    /// and left out of the file and the fingerprint, for a staircase of whole cells, as every run
+    /// over terrain was before cut cells, or for a scene without terrain.
+    var terrainCutCells: Bool?
     var solidElementSize: Float
     var duration: Double
 
@@ -32,6 +36,8 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         shockLevels = settings.shockLevels > 1 ? settings.shockLevels : nil
         shockThreshold = settings.shockThreshold != 0.1 ? settings.shockThreshold : nil
         gravity = settings.gravity ? true : nil
+        terrainCutCells =
+            settings.terrainCutCells && settings.scenario.terrain.map { !$0.isFlat } == true ? true : nil
         solidElementSize = settings.solidElementSize
         self.duration = duration
     }
@@ -39,6 +45,13 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     @MainActor
     init(model: SimulationModel) {
         self.init(settings: model.settings, duration: model.duration)
+    }
+
+    /// Whether a run of `scenario` under these settings cuts its terrain through the cells (where
+    /// the air is not refined): as recorded over terrain, where nil is the staircase; by default
+    /// without, so that terrain added later is cut.
+    func cutsTerrain(over scenario: Scenario) -> Bool {
+        terrainCutCells ?? !(scenario.terrain.map { !$0.isFlat } ?? false)
     }
 
     /// The grid as people say it: a preset's name ("medium") or its cells ("4 m").

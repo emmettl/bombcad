@@ -104,20 +104,24 @@ struct TerrainCutCellTests {
         }
     }
 
-    @Test("Off, the terrain is the staircase it was, to the bit")
-    func off() throws {
+    @Test("Cut by default; the staircase when off, when refined and on flat ground")
+    func defaults() throws {
         var scenario = ScenarioPreset.openGround.scenario
         scenario.terrain = .hill(
             domain: scenario.domainSize, spacing: 1, centre: SIMD2(44, 32), height: 6, radius: 6)
-        let a = try BlastSolver(device: device, scenario: scenario, cellSize: 0.5)
-        var configuration = SolverConfiguration()
-        configuration.terrainCutCells = false
-        let b = try BlastSolver(
-            device: device, scenario: scenario, cellSize: 0.5, configuration: configuration)
-        _ = a.advance(steps: 30)
-        _ = b.advance(steps: 30)
-        #expect(a.withState { x in b.withState { y in Array(x) == Array(y) } })
-        #expect(a.terrainCut == nil)
+        #expect(try BlastSolver(device: device, scenario: scenario, cellSize: 0.5).terrainCut != nil)
+        var off = SolverConfiguration()
+        off.terrainCutCells = false
+        var refined = SolverConfiguration()
+        refined.refinement = 2
+        for configuration in [off, refined] {
+            let solver = try BlastSolver(
+                device: device, scenario: scenario, cellSize: 0.5, configuration: configuration)
+            #expect(solver.terrainCut == nil)
+            #expect(solver.terrainSurface == scenario.terrain!.surfaceCells(grid: solver.grid))
+        }
+        scenario.terrain = .flat(domain: scenario.domainSize, spacing: 1)
+        #expect(try BlastSolver(device: device, scenario: scenario, cellSize: 0.5).terrainCut == nil)
     }
 
     @Test("Under gravity, a burst over a hill conserves its mass to round-off")

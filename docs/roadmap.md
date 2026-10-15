@@ -162,7 +162,7 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   OpenStreetMap footprints; a cost-against-fidelity advisor reading the error bands
   ([choosing settings](performance.md#choosing-settings)), its costs re-timed on an unloaded Mac
   at kilometre scale.
-- **Next:** terrain's cut cells ([option](terrain.md#cut-cells), uniform grids) with refinement; a cheaper damage model for envelope buildings
+- **Next:** terrain's [cut cells](terrain.md#cut-cells) (the default on uniform grids) with refinement; a cheaper damage model for envelope buildings
   (single-degree-of-freedom, pressure–impulse or fragility), once its errors against the detailed
   model and measurement, and the cost of not venting, are known
   ([damage for envelope buildings](building-envelopes.md#future-work-damage-for-envelope-buildings)).

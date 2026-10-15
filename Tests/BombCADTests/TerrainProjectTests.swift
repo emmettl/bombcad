@@ -88,6 +88,29 @@ struct TerrainProjectTests {
         #expect(try ProjectDocument(archive: inline).savedRuns == document.savedRuns)
     }
 
+    @Test("Cut cells are recorded over terrain; a run without the record reopens on the staircase it ran on")
+    func cutCellsRecorded() throws {
+        let scene = hilly()
+        let settings = try #require(ProjectDocument(scenario: scene).runSettings)
+        #expect(settings.terrainCutCells == true && settings.cutsTerrain(over: scene))
+        // Flat ground records nothing and reopens with cut cells on, for terrain added later.
+        let open = ScenarioPreset.openGround.scenario
+        let flat = try #require(ProjectDocument(scenario: open).runSettings)
+        #expect(flat.terrainCutCells == nil && flat.cutsTerrain(over: open))
+        // The staircase, chosen or from before cut cells, records nothing and stays the staircase.
+        var older = settings
+        older.terrainCutCells = nil
+        #expect(!older.cutsTerrain(over: scene))
+        let json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(older)) as? [String: Any]
+        #expect(json?["terrainCutCells"] == nil)
+        // The standing names the staircase only where it is used.
+        #expect(!settings.standingInputs(scene).options.contains(.terrainStaircase))
+        #expect(older.standingInputs(scene).options.contains(.terrainStaircase))
+        var refined = settings
+        refined.sharpShocks = true
+        #expect(refined.standingInputs(scene).options.contains(.terrainStaircase))
+    }
+
     @Test("Laying a terrain carries the charge and gauges with the ground under them")
     func carried() {
         let flat = ScenarioPreset.openGround.scenario

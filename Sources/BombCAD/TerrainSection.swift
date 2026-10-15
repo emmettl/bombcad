@@ -3,8 +3,8 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// The Run tab's Terrain section: the ground's shape under the scene, flat by default, a simple
-/// shape or a crop of an elevation grid (an ESRI ASCII grid or a GeoTIFF). The air sees it as
-/// solid cells under its surface.
+/// shape or a crop of an elevation grid (an ESRI ASCII grid or a GeoTIFF). The air sees its surface
+/// cut through the cells, or, where the air is refined or the staircase is chosen, as whole cells.
 struct TerrainSection: View {
     @Bindable var model: SimulationModel
     /// The grid last imported, kept for moving its crop; the scene keeps only the crop.
@@ -32,10 +32,14 @@ struct TerrainSection: View {
                     Text($0.rawValue).tag($0)
                 }
             }
-            .help(
-                "The ground's shape. The air sees it as solid cells below its surface: a staircase of whole cells."
-            )
+            .help("The ground's shape, rigid and smooth.")
             if let terrain = scenario.terrain, !terrain.isFlat {
+                Toggle("Cut cells along its slopes", isOn: $model.settings.terrainCutCells)
+                    .help(
+                        "Cuts the surface through the air's cells, so that a slope reflects the blast as a slope "
+                            + "does. Off, the surface is a staircase of whole cells, which delays Mach reflection "
+                            + "and overstates the peaks on faces towards the charge. About 10% slower a step. "
+                            + "Refined air keeps the staircase, as yet.")
                 if shape.wrappedValue != .imported {
                     LabeledSlider(
                         title: "Relief", value: relief, range: 1...Double(0.6 * scenario.domainSize.z),
@@ -94,12 +98,19 @@ struct TerrainSection: View {
 
     private func caption(_ terrain: Terrain) -> String {
         let cell = model.grid?.cellSize ?? 0
-        return (terrain.source.map { $0.prefix(1).uppercased() + $0.dropFirst() + ". " } ?? "")
+        let nodes =
+            (terrain.source.map { $0.prefix(1).uppercased() + $0.dropFirst() + ". " } ?? "")
             + "\(terrain.columns) × \(terrain.rows) nodes \(terrain.spacing) m apart. "
-            + (cell > 0
+        let steps =
+            (cell > 0
                 ? "On \(cell) m cells its slopes are steps of whole cells, "
                 : "Its slopes are steps of whole cells, ")
             + "which delay Mach reflection on them; finer cells approach a smooth slope."
+        guard model.settings.terrainCutCells else { return nodes + steps }
+        guard model.settings.sharpShocks else {
+            return nodes + "Its slopes are cut through the cells, and reflect the blast as smooth slopes do."
+        }
+        return nodes + "With sharpened shocks the refined air keeps the staircase, as yet: " + steps
     }
 
     private var shape: Binding<Shape> {

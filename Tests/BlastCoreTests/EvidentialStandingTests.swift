@@ -206,10 +206,16 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
         let hilly = standing(scenario)
         #expect(flat[.impulse]?.level == .compared && hilly[.impulse]?.level == .approximation)
         #expect(hilly[.impulse]?.evidence.contains { $0.document.hasPrefix("terrain.md") } == true)
-        let cut = standing(scenario) { $0.configuration.terrainCutCells = true }
-        #expect(cut[.impulse]?.options.contains("Terrain on cut cells") == true)
-        #expect(cut[.impulse]?.evidence.contains { $0.document == "terrain.md#cut-cells" } == true)
-        #expect(hilly[.impulse]?.evidence.contains { $0.document == "terrain.md#cut-cells" } == false)
+        // Cut cells by default; the staircase when chosen, or when the air is refined.
+        #expect(hilly[.impulse]?.options.contains("Terrain as a staircase") == false)
+        #expect(hilly[.impulse]?.evidence.contains { $0.document == "terrain.md#cut-cells" } == true)
+        for staircase in [
+            standing(scenario) { $0.configuration.terrainCutCells = false },
+            standing(scenario) { $0.configuration.refinement = 2 },
+        ] {
+            #expect(staircase[.impulse]?.options.contains("Terrain as a staircase") == true)
+            #expect(staircase[.impulse]?.evidence.contains { $0.document == "terrain.md#cut-cells" } == false)
+        }
         scenario.terrain = Terrain.flat(domain: scenario.domainSize, spacing: 1)
         #expect(standing(scenario) == flat)
 

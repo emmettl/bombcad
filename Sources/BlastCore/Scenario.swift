@@ -369,12 +369,11 @@ extension BlastSolver {
             }
         }
         var cut: TerrainCutGeometry?
-        if let terrain = scenario.terrain, configuration.terrainCutCells {
-            guard configuration.refinement <= 1 else {
-                throw BlastError.unsupportedCombination("the terrain's cut cells with refinement, as yet")
-            }
+        if let terrain = scenario.terrain, configuration.cutsTerrain(of: scenario) {
             try terrain.validate(domain: scenario.domainSize)
+            // A surface that crosses no cell (one lying on cells' faces) is its staircase.
             cut = TerrainCutGeometry(terrain: terrain, grid: grid)
+            if cut?.cutColumns.isEmpty == true { cut = nil }
         }
         if let cut {
             // The cells below each column's first cell of air are solid; the cut cells hold air.

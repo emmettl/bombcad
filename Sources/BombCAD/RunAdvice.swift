@@ -35,7 +35,8 @@ extension ProjectRunSettings {
         var configuration = SolverConfiguration()
         Self.configureAir(
             &configuration, detailedCharge: detailedCharge, sharpShocks: sharpShocks,
-            shockLevels: shockLevels ?? 1, gravity: gravity ?? false, shockThreshold: shockThreshold ?? 0.1)
+            shockLevels: shockLevels ?? 1, gravity: gravity ?? false, shockThreshold: shockThreshold ?? 0.1,
+            terrainCutCells: cutsTerrain(over: scenario))
         return RunCost.estimate(
             scenario, cellSize: (Resolution(rawValue: resolution) ?? .medium).cellSize,
             configuration: configuration,
@@ -51,7 +52,8 @@ extension SimulationInputs {
         ProjectRunSettings.configureAir(
             &configuration, detailedCharge: settings.detailedCharge, sharpShocks: settings.sharpShocks,
             shockLevels: settings.shockLevels ?? 1, gravity: settings.gravity ?? false,
-            shockThreshold: settings.shockThreshold ?? 0.1)
+            shockThreshold: settings.shockThreshold ?? 0.1,
+            terrainCutCells: settings.cutsTerrain(over: scenario))
         return RunAdvisor.advise(
             scenario, configuration: configuration, duration: settings.duration, target: target,
             current: settings.advisorSetting, memory: memory, maximumCells: ProjectDocument.maximumCells
@@ -204,7 +206,7 @@ struct AdvisorSection: View {
                         )
                         .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
-                    if let note = advice.standInNote {
+                    ForEach([advice.standInNote, advice.terrainNote].compactMap { $0 }, id: \.self) { note in
                         Text(note).font(.caption).foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }

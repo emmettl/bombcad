@@ -36,6 +36,10 @@ public enum RunCost {
     /// Afterburning and hot air against an ideal gas, per cell-update: the street at 0.25 m takes
     /// twice as long, of which a shorter step is part (docs/performance.md, "Air solver").
     public static let afterburningUpdateCost = 1.6
+    /// The terrain cut through the cells against its staircase, per cell-update: 6–13% more a step
+    /// over the ridges on 2.2 million cells, 15–25% with gravity (docs/terrain.md, "The cut cells'
+    /// cost").
+    public static let terrainCutUpdateCost = 1.1
     /// Element-updates a second with contact (docs/performance.md, "Structural solver").
     public static let elementUpdatesPerSecond = 3.0e8
     /// The time step against still air's: about a third, from the fireball's hot gas (0.34 on the
@@ -230,7 +234,9 @@ public enum RunCost {
         let perCell = burning ? burningBytesPerCell : bytesPerCell
         let memory =
             grid.cellCount * perCell + (configuration.refinement > 1 ? configuration.refinementMemory : 0)
-        let updateCost = burning ? afterburningUpdateCost : 1
+        let updateCost =
+            (burning ? afterburningUpdateCost : 1)
+            * (configuration.cutsTerrain(of: scenario) ? terrainCutUpdateCost : 1)
         let twoLevels = configuration.refinement > 1 && configuration.refinementLevels > 1
         let overhead = Double(steps) * (stepOverhead + (twoLevels ? twoLevelStepOverhead : 0))
         let seconds =

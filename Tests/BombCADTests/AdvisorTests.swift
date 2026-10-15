@@ -38,6 +38,30 @@ struct AdvisorTests {
         #expect(fidelity.error[.peak] == chosen.error[.peak])
     }
 
+    @Test("Over terrain, a refined choice says its terrain is a staircase; cut cells cost a little more")
+    func terrainStaircase() throws {
+        var inputs = landscape()
+        let domain = inputs.scenario.domainSize
+        inputs.scenario.replaceTerrain(
+            with: .hill(
+                domain: domain, spacing: 32, centre: SIMD2(0.6 * domain.x, 0.5 * domain.y), height: 60,
+                radius: 0.1 * domain.x))
+        inputs.settings = ProjectDocument(scenario: inputs.scenario).runSettings!
+        inputs.settings.resolution = Resolution(cellSize: 16)!.rawValue
+        inputs.settings.duration = 4.5
+        let advice = inputs.advice(for: .seconds(600), memory: memory)
+        let chosen = try #require(advice.chosen)
+        #expect((advice.terrainNote != nil) == (chosen.setting.refinement > 1))
+        var staircase = inputs.settings
+        staircase.terrainCutCells = nil
+        #expect(
+            staircase.costEstimate(inputs.scenario).seconds
+                < inputs.settings.costEstimate(inputs.scenario).seconds)
+        #expect(
+            inputs.settings.costEstimate(landscape().scenario).seconds
+                == landscape().settings.costEstimate(landscape().scenario).seconds)
+    }
+
     @Test("Peaks within 2% are out of reach: the nearest is offered, and why")
     func unmet() throws {
         let advice = landscape().advice(for: .fidelity(.peak, within: 0.02), memory: memory)

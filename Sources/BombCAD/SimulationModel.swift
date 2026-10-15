@@ -154,6 +154,9 @@ struct SimulationSettings: Equatable {
     var shockThreshold: Float = 0.1
     /// Gravity in the air: it starts at rest in a hydrostatic atmosphere and hot gas rises.
     var gravity = false
+    /// The terrain cut through the cells where the air is not refined; false for a staircase of
+    /// whole cells.
+    var terrainCutCells = true
 
     var chargeMass: Float {
         get { scenario.charge.mass }
@@ -657,6 +660,7 @@ final class SimulationModel {
                 settings.shockLevels = run.shockLevels ?? 1
                 settings.shockThreshold = run.shockThreshold ?? 0.1
                 settings.gravity = run.gravity ?? false
+                settings.terrainCutCells = run.cutsTerrain(over: scenario)
                 settings.solidElementSize = run.solidElementSize
                 duration = run.duration
             }
@@ -795,6 +799,7 @@ final class SimulationModel {
             settings.shockLevels = run.shockLevels ?? 1
             settings.shockThreshold = run.shockThreshold ?? 0.1
             settings.gravity = run.gravity ?? false
+            settings.terrainCutCells = run.cutsTerrain(over: document.scenario)
             settings.solidElementSize = run.solidElementSize
             duration = run.duration
         }
@@ -996,6 +1001,7 @@ final class SimulationModel {
         settings.shockLevels = inputs.settings.shockLevels ?? 1
         settings.shockThreshold = inputs.settings.shockThreshold ?? 0.1
         settings.gravity = inputs.settings.gravity ?? false
+        settings.terrainCutCells = inputs.settings.cutsTerrain(over: inputs.scenario)
         settings.solidElementSize = inputs.settings.solidElementSize
         duration = inputs.settings.duration
         handledSettings = settings
@@ -2117,7 +2123,7 @@ final class SimulationModel {
         ProjectRunSettings.configureAir(
             &solver.configuration, detailedCharge: settings.detailedCharge, sharpShocks: settings.sharpShocks,
             shockLevels: settings.shockLevels, gravity: settings.gravity,
-            shockThreshold: settings.shockThreshold)
+            shockThreshold: settings.shockThreshold, terrainCutCells: settings.terrainCutCells)
     }
 
     private func rebuild() {

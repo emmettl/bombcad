@@ -556,7 +556,12 @@ extension StandingScene {
         if has(.deflagration) {
             return "A deflagration fires in place of the charges; Kingery–Bulmash does not apply."
         }
-        if has(.terrain) { return "The comparisons were on flat ground; this scene has terrain." }
+        if has(.terrain) {
+            return has(.terrainStaircase)
+                ? "The comparisons were on flat ground; this scene has terrain, as a staircase of whole cells."
+                : "The comparisons were on flat ground; this scene has terrain, its slopes checked against "
+                    + "reflection theory only."
+        }
         if has(.dissociatingAir) { return "Dissociating air has no comparison of its own." }
         if has(.hotAir) != has(.afterburning) {
             return has(.hotAir)
