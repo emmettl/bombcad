@@ -1040,7 +1040,8 @@ extension StandingScene {
                         validity:
                             "a full-scale chamber; 0.1 m cells and elements; its roof's peak rises with the mesh "
                             + "(48 to 57 mm on 50 mm elements) and on 25 mm elements the solution breaks down; "
-                            + "the roof alike with afterburning and hot air (37 mm against 38)",
+                            + "the wall pressures compared on the ideal gas only, the roof alike with afterburning "
+                            + "and hot air (37 mm against 38)",
                         check: "An internal explosion in a reinforced concrete chamber"))
                 if let structure = structures.first, abs(structure.elementSize - 0.1) > 0.01 {
                     bands.removeLast()
@@ -1076,7 +1077,8 @@ extension StandingScene {
                                 "wuLarge", .peakDeflection, "Peak deflection close in", low: "too stiff",
                                 high: "too flexible",
                                 validity:
-                                    "1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh (8 through), held at one edge",
+                                    "1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh (8 through), held at one edge; "
+                                    + "on the ideal gas only, not run again with afterburning and hot air",
                                 check: "Wu et al.'s slabs with steel in both faces"),
                             derived: "8 elements through only", meshes: 8...8, unbanded: &unbanded
                         ).map { [$0] } ?? []
@@ -1092,7 +1094,8 @@ extension StandingScene {
                                 high: "too flexible",
                                 validity:
                                     "2 to 15 kg at 0.5 and 1 m; 6 elements through, fine air; P7 is left 112 to 146 mm "
-                                    + "down on 6 to 12 and holed on 16",
+                                    + "down on 6 to 12 and holed on 16; with afterburning and hot air the heavy "
+                                    + "charges leave 110–196 mm against 340 and 510",
                                 check: "Full-scale slabs under close-in charges"),
                             derived:
                                 "6 elements through, calibrated; 6 to 12 leave P7 alike, and on 16 it holes",
@@ -1105,7 +1108,8 @@ extension StandingScene {
                     String(
                         format:
                             "Peak deflection: %.2f m/kg^(1/3) from the charge, where blind open-air slabs "
-                            + "(Mendonça, 0.93 to 1.44) bent %.0f–%.0f%% as far as measured and the two nearest, "
+                            + "(Mendonça, 0.93 to 1.44, on the ideal gas of the frozen 047cee3) bent %.0f–%.0f%% as "
+                            + "far as measured and the two nearest, "
                             + "which collapsed, were left standing. The contest slab's band, from a shock tube's "
                             + "long uniform load, is not given within %.1f.",
                         distance, blind.low * 100, blind.high * 100, ValidationTables.blindSlabReach))
@@ -1248,7 +1252,12 @@ extension StandingScene {
             }
             unbanded.append("Faces shielded or turned from the charge were not compared.")
         case .thermal:
-            if inputs.thermal?.fireball == .volume {
+            if !burning {
+                unbanded.append(
+                    "Energy radiated: compared with afterburning and hot air, today's defaults; without both the "
+                        + "fireball is gone within 50 ms, or with afterburning alone radiates 29% against 21%."
+                )
+            } else if inputs.thermal?.fireball == .volume {
                 bands.append(
                     figure(
                         has(.radiativeCooling) ? "fireballCooling" : "fireballTotal", .radiatedEnergy,
@@ -1258,7 +1267,11 @@ extension StandingScene {
                 unbanded.append("Only the volume's radiation was compared with a measurement.")
             }
         case .cloud:
-            if has(.afterburning) {
+            if has(.afterburning) && has(.hotAir) {
+                unbanded.append(
+                    "Cloud's top: Church's clouds were compared with afterburning alone; hot air, on by default "
+                        + "since 15 October 2026, was not run against them.")
+            } else if has(.afterburning) {
                 bands.append(
                     figure(
                         "cloudTop", .cloudTop, "Cloud's top", lowIsUnsafe: true, low: "too low",

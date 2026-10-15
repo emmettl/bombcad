@@ -1436,7 +1436,7 @@ struct StandingScene {
             if let cells = closeInCells {
                 evidence.append(
                     StandingEvidence(
-                        "1 kg burst above rigid ground, 0.3 to 1 m/kg^(1/3) (blastbench closeair)",
+                        "1 kg burst above rigid ground, 0.3 to 1 m/kg^(1/3), the ideal gas only (blastbench closeair)",
                         "Reflected peak \(closeAir[cells]!) on \(millimetres(cells)) cells per kg^(1/3)",
                         "validation.md#close-in"))
             } else {
@@ -1547,7 +1547,7 @@ struct StandingScene {
             if let cells = closeInCells {
                 evidence.append(
                     StandingEvidence(
-                        "1 kg burst above rigid ground, 0.3 to 1 m/kg^(1/3) (blastbench closeair)",
+                        "1 kg burst above rigid ground, 0.3 to 1 m/kg^(1/3), the ideal gas only (blastbench closeair)",
                         "Reflected impulse \(closeAir[cells]!) on \(millimetres(cells)) cells per kg^(1/3)",
                         "validation.md#close-in"))
             } else {
@@ -1720,8 +1720,9 @@ struct StandingScene {
             evidence.append(
                 StandingEvidence(
                     "Wu et al.'s slabs with steel in both faces",
-                    "Unsafe side under 0.2–0.8 kg, too stiff: 40–70% of the measured peak; within −20% to +7% under "
-                        + "1.6 kg, two shots on one mesh",
+                    "Unsafe side under 0.2–0.8 kg, too stiff: 40–70% of the measured peak (S5 and D5 alike with "
+                        + "afterburning and hot air); within −20% to +7% under 1.6 kg, two shots on one mesh, on the "
+                        + "ideal gas only",
                     "validation.md#slabs-with-steel-in-both-faces"))
             resolution.append(
                 String(
@@ -1807,8 +1808,9 @@ struct StandingScene {
             evidence.append(
                 StandingEvidence(
                     "Slabs under contact charges (Hupfauf, 2024)",
-                    "The far face thrown 1.1–1.7 times as fast as the debris at first; the loose layer held back "
-                        + "rather than thrown, and no slab holed where four were",
+                    "The far face thrown 1.1–1.7 times as fast as the debris at first without afterburning (with "
+                        + "it, today's default, the 20 cm slabs' far faces 63–78 m/s against 69–84 measured); the "
+                        + "loose layer held back rather than thrown, and no slab holed where four were",
                     "validation.md#slabs-under-contact-charges"))
             summary +=
                 " Close in, unsafe again: slabs spall too little, hold their debris back and are holed only by "
@@ -1891,6 +1893,10 @@ struct StandingScene {
             assumptions.append(
                 "Without afterburning the products cool as cold air would: the fireball is a few metres across "
                     + "and gone within 50 ms. Use afterburning for a thermal study.")
+        } else if !has(.hotAir) {
+            assumptions.append(
+                "The comparisons were run with afterburning and hot air, today's defaults; afterburning alone "
+                    + "radiates more (29% of the street's charge against 21%).")
         }
         var resolution: [String] = []
         if inputs.cellSize >= 0.5 {
@@ -1946,6 +1952,11 @@ struct StandingScene {
         ]
         if !has(.afterburning) {
             assumptions.append("The comparison with Church's clouds was made with afterburning on.")
+        } else if has(.hotAir) {
+            assumptions.append(
+                "The comparison with Church's clouds was made with afterburning alone; hot air, on by default "
+                    + "since 15 October 2026, was not run against them (the street's cloud tops 453 m with both, "
+                    + "304 m with neither).")
         }
         return result(
             .cloud, .illustrative,
