@@ -40,6 +40,9 @@ func runKeys(device: MTLDevice) throws {
             print(
                 "  bed joints open at 50 ms: \(result.crackHeights.map { String(format: "%.2f", $0) }) m (measured \(trial.crackHeights))"
             )
+            print(
+                "  pieces over 1 kg: \(result.pieces.filter { $0 > 1 }.count), the largest \(result.pieces.prefix(4).map { String(format: "%.1f", $0) }) kg; under 1 kg: \(result.pieces.filter { $0 <= 1 }.count)"
+            )
             print("  measured: \(result.measuredSpread)")
             print("  model:    \(result.spread)")
             print(
@@ -97,6 +100,14 @@ func runKeys(device: MTLDevice) throws {
                 format: "  free field: %5.1f kPa, %5.0f kPa ms (measured %5.1f, %5.0f)",
                 result.gaugePeak / 1000,
                 result.gaugeImpulse, trial.measuredPeak / 1000, trial.measuredImpulse))
+        for (time, heights) in result.crackHistory {
+            print(
+                "  bed joints open \(Int((time * 1000).rounded())) ms after arrival: "
+                    + "\(heights.map { String(format: "%.2f", $0) }) m")
+        }
+        print(
+            "  pieces over 1 kg: \(result.pieces.filter { $0 > 1 }.count), the largest \(result.pieces.prefix(4).map { String(format: "%.1f", $0) }) kg; under 1 kg: \(result.pieces.filter { $0 <= 1 }.count)"
+        )
         print("  measured: \(result.measuredSpread)")
         print("  model:    \(result.spread)")
         print(

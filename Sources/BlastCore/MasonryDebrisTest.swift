@@ -102,6 +102,12 @@ public enum MasonryDebrisTests {
         public var summary = StructureSummary()
         public var elementSize: Float = 0
         public var wallSeconds: Double = 0
+        /// When the wave reached the face (s), and the bed joints open by 0.1 mm across at least
+        /// half the wall at 5, 10, 20, 50, 100 and 200 ms after that.
+        public var arrival: Float = 0
+        public var crackHistory: [(time: Double, heights: [Float])] = []
+        /// The pieces it ended in (`pieces`), heaviest first, kg.
+        public var pieces: [Float] = []
 
         public var spread: Spread { Spread(firstBin: firstBin, masses: masses) }
         public var measuredSpread: Spread { Spread(firstBin: trial.firstBin, masses: trial.masses) }
@@ -200,9 +206,20 @@ public enum MasonryDebrisTests {
         result.elementSize = structure.model.elementSize
         var nextReport = 0.05
         var nextCheck = minimum
+        var crackTimes: [Double] = [0.005, 0.01, 0.02, 0.05, 0.1, 0.2]
         while solver.time < duration {
             let batch = solver.advance(steps: 32, timeLimit: duration)
             if batch.steps == 0 && !solver.airIsAsleep { break }
+            // Times are from the charge's detonation; the wave reaches the wall some ms later.
+            if let next = crackTimes.first, solver.time >= next + Double(result.arrival) {
+                crackTimes.removeFirst()
+                result.crackHistory.append((next, openBedJoints(structure, width: 0.1e-3)))
+            }
+            if result.arrival == 0, let face = solver.gaugeHistories.dropFirst().first,
+                let last = face.last, last.pressure > scenario.atmosphere.pressure + 5e3
+            {
+                result.arrival = Float(last.time)
+            }
             if solver.time >= nextCheck {
                 nextCheck += 0.05
                 if fastest() < restSpeed { break }
@@ -260,6 +277,7 @@ public enum MasonryDebrisTests {
             }
         }
         result.masses = masses
+        result.pieces = pieces(structure)
 
         let ambient = scenario.atmosphere.pressure
         let samples = solver.gaugeHistories.first ?? []
@@ -272,6 +290,84 @@ public enum MasonryDebrisTests {
         result.wallSeconds =
             Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18
         return result
+    }
+}
+
+extension MasonryDebrisTests {
+    /// The pieces the body has broken into: its intact elements, joined to each neighbour beyond
+    /// them along an axis unless they have opened by more than `opening` (m) on the plane across
+    /// that axis. An element holding an open joint so goes with the piece on its near side,
+    /// rather than counting as a piece of its own. The mass of each piece (kg), largest first.
+    public static func pieces(_ structure: StructureSolver, opening: Float = 1e-3) -> [Float] {
+        let (ex, ey, ez) = (structure.ex, structure.ey, structure.ez)
+        let h = structure.model.elementSize
+        let elementMass = structure.model.material.density * h * h * h
+        var parent = [Int](repeating: -1, count: ex * ey * ez)
+        var opened = [[Bool]](repeating: [false, false, false], count: ex * ey * ez)
+        for k in 0..<ez {
+            for j in 0..<ey {
+                for i in 0..<ex where structure.flag(i, j, k) == .active {
+                    let index = structure.elementIndex(i, j, k)
+                    parent[index] = index
+                    let planes = structure.crackPlanes(i, j, k)
+                    var open = [false, false, false]
+                    for p in planes.normals.indices where planes.history[p] * h > opening {
+                        for axis in 0..<3 where abs(planes.normals[p][axis]) > 0.7 { open[axis] = true }
+                    }
+                    opened[index] = open
+                }
+            }
+        }
+        func root(_ a: Int) -> Int {
+            var a = a
+            while parent[a] != a {
+                parent[a] = parent[parent[a]]
+                a = parent[a]
+            }
+            return a
+        }
+        for k in 0..<ez {
+            for j in 0..<ey {
+                for i in 0..<ex {
+                    let a = structure.elementIndex(i, j, k)
+                    guard parent[a] >= 0 else { continue }
+                    for (axis, b) in [
+                        (0, i + 1 < ex ? a + 1 : -1), (1, j + 1 < ey ? a + ex : -1),
+                        (2, k + 1 < ez ? a + ex * ey : -1),
+                    ]
+                    where b >= 0 && parent[b] >= 0 && !opened[a][axis] {
+                        parent[root(a)] = root(b)
+                    }
+                }
+            }
+        }
+        var masses: [Int: Float] = [:]
+        for a in parent.indices where parent[a] >= 0 { masses[root(a), default: 0] += elementMass }
+        return masses.values.sorted(by: >)
+    }
+
+    /// Heights (m above the base, the middle of the element row) of the rows of elements cracked
+    /// open on a horizontal plane by more than `width`, or removed, across at least half the
+    /// wall: the bed joints that have opened.
+    public static func openBedJoints(_ structure: StructureSolver, width: Float) -> [Float] {
+        let h = structure.model.elementSize
+        var heights: [Float] = []
+        for k in 0..<structure.ez {
+            var open = 0
+            var count = 0
+            for j in 0..<structure.ey {
+                for i in 0..<structure.ex where structure.flag(i, j, k) != .empty {
+                    count += 1
+                    let planes = structure.crackPlanes(i, j, k)
+                    let opened = planes.normals.indices.contains { p in
+                        abs(planes.normals[p].z) > 0.7 && planes.history[p] * h > width
+                    }
+                    if opened || structure.flag(i, j, k) == .eroded { open += 1 }
+                }
+            }
+            if count > 0, open * 2 >= count { heights.append((Float(k) + 0.5) * h) }
+        }
+        return heights
     }
 }
 
@@ -511,6 +607,8 @@ extension MasonryDebrisTests {
         public var facePeak: Float = 0
         /// Bed joints open across half the wall's width at 50 ms (m above the base).
         public var crackHeights: [Float] = []
+        /// The pieces it ended in (`pieces`), heaviest first, kg.
+        public var pieces: [Float] = []
         public var settled: Double = 0
         public var summary = StructureSummary()
         public var wallSeconds: Double = 0
@@ -581,7 +679,6 @@ extension MasonryDebrisTests {
             return speed
         }
         var result = TunnelResult(trial: trial, masses: [])
-        let h = structure.model.elementSize
         var nextReport = 0.05
         var nextCheck = minimum
         var checkedCracks = false
@@ -592,21 +689,7 @@ extension MasonryDebrisTests {
             drive()
             if !checkedCracks, solver.time >= 0.05 {
                 checkedCracks = true
-                for k in 0..<structure.ez {
-                    var open = 0
-                    var count = 0
-                    for j in 0..<structure.ey {
-                        for i in 0..<structure.ex where structure.flag(i, j, k) != .empty {
-                            count += 1
-                            let planes = structure.crackPlanes(i, j, k)
-                            let opened = planes.normals.indices.contains { p in
-                                abs(planes.normals[p].z) > 0.7 && planes.history[p] * h > 1e-3
-                            }
-                            if opened || structure.flag(i, j, k) == .eroded { open += 1 }
-                        }
-                    }
-                    if count > 0, open * 2 >= count { result.crackHeights.append((Float(k) + 0.5) * h) }
-                }
+                result.crackHeights = openBedJoints(structure, width: 1e-3)
             }
             if solver.time >= nextCheck {
                 nextCheck += 0.05
@@ -656,6 +739,7 @@ extension MasonryDebrisTests {
             }
         }
         result.masses = masses
+        result.pieces = pieces(structure)
         let ambient = scenario.atmosphere.pressure
         let incident = solver.gaugeHistories.first ?? []
         result.incidentPeak = (incident.map(\.pressure).max() ?? ambient) - ambient
