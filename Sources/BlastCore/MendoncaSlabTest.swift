@@ -151,6 +151,11 @@ public enum MendoncaSlabTest {
         public var margin: Float = 1
         public var domainHeight: Float = 3.2
         public var underBlockGap: Float?
+        /// Studies after the reveal: the bearings as soft ground under the slab instead of rigid
+        /// lines, a Winkler bed of this subgrade modulus (Pa/m) over the bearings' area, yielding
+        /// at `softSupportCapacity` (Pa), for trestles on clay; nil for the rigid bearings.
+        public var softSupportModulus: Float?
+        public var softSupportCapacity: Float = 600e3
         /// The crack opening (largest reached) that counts an element broken across.
         public var brokenOpening: Float = 0.001
         public var sampleInterval: Double = 1e-4
@@ -269,6 +274,19 @@ public enum MendoncaSlabTest {
                 min: SIMD3(s.max.x - settings.bearingWidth, c.y - half, s.min.z - settings.railDepth),
                 max: SIMD3(s.max.x, c.y + half, s.min.z)),
         ]
+        if let modulus = settings.softSupportModulus {
+            // The slab's underside over each bearing, tied to soft ground that does not pull.
+            for rail in rails {
+                model.supports.append(
+                    Box(
+                        min: SIMD3(rail.min.x, rail.min.y, s.min.z - h / 2),
+                        max: SIMD3(rail.max.x, rail.max.y, s.min.z + h / 2)))
+                model.supportAnchorages.append(
+                    .soil(
+                        subgradeModulus: modulus, bearingCapacity: settings.softSupportCapacity, friction: 0.5
+                    ))
+            }
+        }
         if settings.timberBearings {
             model.solids += rails
             for index in 1...rails.count {
@@ -290,7 +308,7 @@ public enum MendoncaSlabTest {
             } ?? []
         return Scenario(
             name: "Mendonça slab \(slab.name)", domainSize: domain(inputs: inputs, settings: settings),
-            boxes: (settings.timberBearings ? [] : rails) + underBlock,
+            boxes: (settings.timberBearings || settings.softSupportModulus != nil ? [] : rails) + underBlock,
             charge: Charge(mass: slab.charge * settings.chargeFactor, position: position),
             gauges: gauges(inputs: inputs, settings: settings), structure: model)
     }
@@ -401,14 +419,16 @@ public enum MendoncaSlabTest {
         // bearing's middle line, and across at the middle of each. With timber bearings, their
         // undersides rest so.
         let seat = settings.timberBearings ? index(s.min.z - settings.railDepth, 2) : bottom
-        structure.mutateNodes { nodes in
-            for j in low...high {
-                for i in Array(near...(near + bearing)) + Array((far - bearing)...far) {
-                    guard let n = structure.storedNode(i, j, seat) else { continue }
-                    nodes[n].restsOnSupport = true
-                    if i == near + bearing / 2 { nodes[n].restrain(x: true) }
-                    if j == cj && (i == near + bearing / 2 || i == far - bearing / 2) {
-                        nodes[n].restrain(y: true)
+        if settings.softSupportModulus == nil {
+            structure.mutateNodes { nodes in
+                for j in low...high {
+                    for i in Array(near...(near + bearing)) + Array((far - bearing)...far) {
+                        guard let n = structure.storedNode(i, j, seat) else { continue }
+                        nodes[n].restsOnSupport = true
+                        if i == near + bearing / 2 { nodes[n].restrain(x: true) }
+                        if j == cj && (i == near + bearing / 2 || i == far - bearing / 2) {
+                            nodes[n].restrain(y: true)
+                        }
                     }
                 }
             }

@@ -44,6 +44,11 @@ func runMendonca(device: MTLDevice) throws {
     if let margin = option("margin").flatMap({ Float($0) }) { settings.margin = margin }
     if let height = option("domain-height").flatMap({ Float($0) }) { settings.domainHeight = height }
     if let gap = option("under-block").flatMap({ Float($0) }) { settings.underBlockGap = gap }
+    // `--soft-supports 6e7 [--support-capacity 130e3]`: the bearings as soft ground (Pa/m, Pa).
+    if let modulus = option("soft-supports").flatMap({ Float($0) }) { settings.softSupportModulus = modulus }
+    if let capacity = option("support-capacity").flatMap({ Float($0) }) {
+        settings.softSupportCapacity = capacity
+    }
     let names = option("slabs")?.split(separator: ",").map(String.init)
     let slabs = inputs.slabs.filter { names?.contains($0.name) ?? true }
     let out = URL(filePath: option("out") ?? "/Volumes/StudioData/bombcad/mendonca-prediction/run")
