@@ -108,7 +108,6 @@ final class AirRefinement {
     /// compiled in (see `airGravityConstant` in Solver.metal), made when first needed.
     private var gravityPipelines: [String: MTLComputePipelineState] = [:]
     private let ghostPipeline: MTLComputePipelineState
-    private let ghostBasisPipeline: MTLComputePipelineState
     private let haloPipeline: MTLComputePipelineState
     private let refluxPipeline: MTLComputePipelineState
     private let restrictPipeline: MTLComputePipelineState
@@ -198,7 +197,6 @@ final class AirRefinement {
         }
         sweepPipeline = try pipeline("refineSweep")
         ghostPipeline = try pipeline("refineGhosts")
-        ghostBasisPipeline = try pipeline("refineGhostBasis")
         haloPipeline = try pipeline("refineSaveHalo")
         refluxPipeline = try pipeline("refineReflux")
         restrictPipeline = try pipeline("refineRestrict")
@@ -298,7 +296,8 @@ final class AirRefinement {
             parent == nil ? [patchOfTile, fineMask, fineOccupancy, fine[0]].reduce(0) { $0 + $1.length } : 0
         return
             ([
-                tileOfPatch, freeStack, patchList, newPatches, wanted, groupCounts, seenMask, halo, ghostSpeeds, ghostBases,
+                tileOfPatch, freeStack, patchList, newPatches, wanted, groupCounts, seenMask, halo,
+                ghostSpeeds, ghostBases,
                 ghostKinds,
                 fineFlux, fineImpulse, impulseBase, coarseFlux, fineWall,
                 fineSpeciesFlux, coarseSpeciesFlux, fine[1],
@@ -784,24 +783,6 @@ final class AirRefinement {
                 let sourceOffset = sweep % 2 == 0 ? offset(of: fine[0]) : 0
 
                 stage("ghosts", &encoder)
-                encoder.setComputePipelineState(withGravity(ghostBasisPipeline, "refineGhostBasis"))
-                set(encoder, parent.state, 0)
-                encoder.setBuffer(halo, offset: 0, index: 1)
-                set(encoder, parent.mask, 2)
-                setUniforms(encoder, &uniforms, index: 3)
-                encoder.setBuffer(tileOfPatch, offset: 0, index: 4)
-                encoder.setBuffer(patchList, offset: 0, index: 5)
-                set(encoder, parent.patches, 6)
-                // Not read without gravity.
-                encoder.setBuffer(parentGravityTable ?? ghostBases, offset: 0, index: 7)
-                set(encoder, parent.species, 8)
-                encoder.setBuffer(ghostBases, offset: 0, index: 9)
-                // One thread per coarse cell beyond the two faces, as refluxing's dispatch has.
-                encoder.dispatchThreadgroups(
-                    indirectBuffer: arguments, indirectBufferOffset: 24,
-                    threadsPerThreadgroup: MTLSize(
-                        width: 2 * Self.patchSize * Self.patchSize, height: 1, depth: 1))
-
                 encoder.setComputePipelineState(withGravity(ghostPipeline, "refineGhosts"))
                 encoder.setBuffer(source, offset: sourceOffset, index: 0)
                 encoder.setBuffer(ghostSpeeds, offset: 0, index: 1)
@@ -818,6 +799,7 @@ final class AirRefinement {
                 encoder.setBuffer(fineWall, offset: 0, index: 12)
                 encoder.setBuffer(fineFlux, offset: 0, index: 13)
                 encoder.setBuffer(control, offset: 0, index: 14)
+                set(encoder, parent.species, 15)
                 set(encoder, parent.patches, 18)
                 // Not read without gravity.
                 encoder.setBuffer(parentGravityTable ?? ghostBases, offset: 0, index: 19)

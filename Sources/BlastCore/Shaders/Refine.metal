@@ -226,7 +226,7 @@ static inline Cell prolong(int3 fine, int3 tile, uint patch, const device Cell *
 // The coarse cell just beyond a patch's face, as `prolong` would see it for a ghost cell in it this
 // substep: its state blended to the substep's start (with gravity, its deviation from the
 // background), its limited slope along each axis, and its fuel and oxygen per mass. Worked out
-// once per coarse cell and sweep (`refineGhostBasis`), for the 2 r^2 ghost cells in it that the
+// once per coarse cell and sweep (by one thread of `refineGhosts`), for the 2 r^2 ghost cells in it that the
 // sweep reads, which each would otherwise blend seven coarse cells afresh.
 struct GhostBasis {
     Cell c;
@@ -328,36 +328,6 @@ static inline uint ghostBasisIndex(uint patch, int3 fine, int3 tile, constant So
         + uint(patchSize) * uint(cell[(axis + 2) % 3]);
 }
 
-// Before each fine sweep, per coarse cell beyond either face of each patch along the sweep: its
-// basis (see `GhostBasis`). Coarse cells outside the domain are left alone; no ghost reads them.
-kernel void refineGhostBasis(const device Cell *coarse [[buffer(0)]],
-                             const device Cell *halo [[buffer(1)]],
-                             const device uchar *mask [[buffer(2)]],
-                             constant SolverUniforms &u [[buffer(3)]],
-                             const device uint *tileOfPatch [[buffer(4)]],
-                             const device uint *patchList [[buffer(5)]],
-                             const device int *parentPatches [[buffer(6)]],
-                             const device float4 *parentTable [[buffer(7)]],
-                             const device float2 *coarseSpecies [[buffer(8)]],
-                             device GhostBasis *bases [[buffer(9)]],
-                             uint gid [[thread_position_in_grid]]) {
-    uint perPatch = 2u * uint(patchSize * patchSize);
-    uint patch = patchList[gid / perPatch];
-    uint position = gid % perPatch;
-    uint high = position / uint(patchSize * patchSize);
-    uint axis = u.axis;
-    int3 tile = tileCoordinates(tileOfPatch[patch], u);
-    int3 cell = tile * patchSize;
-    cell[axis] += high != 0u ? patchSize : -1;
-    cell[(axis + 1) % 3] += int(position % uint(patchSize));
-    cell[(axis + 2) % 3] += int((position / uint(patchSize)) % uint(patchSize));
-    if (any(cell < 0) || any(cell >= int3(u.nx, u.ny, u.nz))) {
-        return;
-    }
-    bases[patch * perPatch + position] =
-        ghostBasisOf(cell, tile, patch, coarse, halo, mask, u.refineAlpha, u, parentPatches, parentTable, coarseSpecies);
-}
-
 static inline Prim primOf(Cell c, constant SolverUniforms &u) {
     Prim w;
     w.rho = max(c.rho, u.densityFloor);
@@ -431,10 +401,11 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
                          const device packed_float3 *fineWall [[buffer(12)]],
                          device float *fineFlux [[buffer(13)]],
                          const device StepControl &control [[buffer(14)]],
+                         const device float2 *coarseSpecies [[buffer(15)]],
                          const device int *parentPatches [[buffer(18)]],
                          const device float4 *parentTable [[buffer(19)]],
                          const device float4 *levelTable [[buffer(20)]],
-                         const device GhostBasis *bases [[buffer(21)]],
+                         device GhostBasis *bases [[buffer(21)]],
                          uint gid [[thread_position_in_grid]]) {
     uint side = uint(patchSize) * u.refineRatio;
     uint perPatch = 4u * side * side;
@@ -456,6 +427,22 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
     if (fine[(axis + 1) % 3] >= dims[(axis + 1) % 3] * int(u.refineRatio)
         || fine[(axis + 2) % 3] >= dims[(axis + 2) % 3] * int(u.refineRatio)) {
         return;
+    }
+    // The outermost ghost at the first corner of each coarse cell beyond either face works out that
+    // cell's basis for the sweep (see `GhostBasis`); coarse cells outside the domain are left
+    // alone, as no ghost reads them.
+    uint r = u.refineRatio;
+    if ((layer == 0u || layer == 3u) && a % r == 0u && b % r == 0u) {
+        int3 beyond = tile * patchSize;
+        beyond[axis] += layer == 3u ? patchSize : -1;
+        beyond[(axis + 1) % 3] += int(a / r);
+        beyond[(axis + 2) % 3] += int(b / r);
+        if (all(beyond >= 0) && all(beyond < dims)) {
+            uint high = layer == 3u ? 1u : 0u;
+            bases[(patch * 2u + high) * uint(patchSize * patchSize) + a / r + uint(patchSize) * (b / r)] =
+                ghostBasisOf(beyond, tile, patch, coarse, halo, mask, u.refineAlpha, u, parentPatches, parentTable,
+                             coarseSpecies);
+        }
     }
     int n = dims[axis] * int(u.refineRatio);
     int kind = fineKind(fine, n, mask, u, parentPatches);
@@ -497,7 +484,10 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
         inside[axis] = layer == 1u ? 0 : int(side) - 1;
         uint own = patch * side * side * side + uint(inside.x + int(side) * (inside.y + int(side) * inside.z));
         if ((fineMask[own] & 1) != 0) {
-            Cell outside = ghostFrom(bases[ghostBasisIndex(patch, fine, tile, u)], fine, u, levelTable);
+            // Its own basis: the thread that writes it for the sweep may not have yet.
+            GhostBasis basis = ghostBasisOf(fine / int(r), tile, patch, coarse, halo, mask, u.refineAlpha, u,
+                                            parentPatches, parentTable, coarseSpecies);
+            Cell outside = ghostFrom(basis, fine, u, levelTable);
             Prim w = primOf(outside, u);
             Prim wall = mirrored(w, float3(fineWall[own])[axis]);
             Flux f = layer == 1u ? riemannFlux(w, wall, u) : riemannFlux(wall, w, u);
