@@ -12,6 +12,7 @@ import Metal
 ///   --sleep 0.0005                      freeze the air below this overpressure (of ambient)
 ///   --clearance 8 --height 10           air beyond the charge, the wall and either side; its height
 ///   --ground-friction 0.6               the ground's Coulomb coefficient (0: the old decay at 8/s)
+///   --ground-stiffness 5e7              soft ground (subgrade modulus, Pa/m) instead of the hard ground
 ///   --base mortar|joint|clamped         the wall on a mortar bed as its joints (default), on a
 ///                                       concrete construction joint, or clamped
 ///   --tunnel BWL2C [--downstream 14]    an Air Blast Tunnel wall, the measured wave driven in at
@@ -20,6 +21,8 @@ import Metal
 ///                                       at this speed (on a mortar bed, or resting on the ground)
 func runKeys(device: MTLDevice) throws {
     let groundFriction = option("ground-friction").flatMap { Float($0) } ?? 0.6
+    // `--ground-stiffness 5e7`: soft ground (Pa/m) for the debris to land on, not the hard ground.
+    let groundStiffness = option("ground-stiffness").flatMap { Float($0) } ?? 0
     if let names = option("tunnel")?.split(separator: ",").map(String.init) {
         // The Air Blast Tunnel's walls: --tunnel BWL2C [--downstream 14] [--dx 0.1] [--h 0.0375] [--time 2]
         for trial in MasonryDebrisTests.tunnelTrials where names.contains(trial.id) {
@@ -29,6 +32,7 @@ func runKeys(device: MTLDevice) throws {
                 elementSize: option("h").flatMap { Float($0) } ?? 0.0375,
                 duration: option("time").flatMap { Double($0) } ?? 2,
                 downstream: option("downstream").flatMap { Float($0) } ?? 14, groundFriction: groundFriction,
+                groundStiffness: groundStiffness,
                 progress: { print("  \($0)") })
             print(
                 String(
@@ -39,6 +43,9 @@ func runKeys(device: MTLDevice) throws {
                     result.facePeak / 1000))
             print(
                 "  bed joints open at 50 ms: \(result.crackHeights.map { String(format: "%.2f", $0) }) m (measured \(trial.crackHeights))"
+            )
+            print(
+                "  pieces over 1 kg: \(result.pieces.filter { $0 > 1 }.count), the largest \(result.pieces.prefix(4).map { String(format: "%.1f", $0) }) kg; under 1 kg: \(result.pieces.filter { $0 <= 1 }.count)"
             )
             print("  measured: \(result.measuredSpread)")
             print("  model:    \(result.spread)")
@@ -91,12 +98,20 @@ func runKeys(device: MTLDevice) throws {
             device: device, trial: trial, cellSize: dx, elementSize: h, duration: time,
             airSleepThreshold: sleep,
             clearance: clearance, height: height, groundFriction: groundFriction, base: base,
-            afterburning: burning, progress: { print("  \($0)") })
+            afterburning: burning, groundStiffness: groundStiffness, progress: { print("  \($0)") })
         print(
             String(
                 format: "  free field: %5.1f kPa, %5.0f kPa ms (measured %5.1f, %5.0f)",
                 result.gaugePeak / 1000,
                 result.gaugeImpulse, trial.measuredPeak / 1000, trial.measuredImpulse))
+        for (time, heights) in result.crackHistory {
+            print(
+                "  bed joints open \(Int((time * 1000).rounded())) ms after arrival: "
+                    + "\(heights.map { String(format: "%.2f", $0) }) m")
+        }
+        print(
+            "  pieces over 1 kg: \(result.pieces.filter { $0 > 1 }.count), the largest \(result.pieces.prefix(4).map { String(format: "%.1f", $0) }) kg; under 1 kg: \(result.pieces.filter { $0 <= 1 }.count)"
+        )
         print("  measured: \(result.measuredSpread)")
         print("  model:    \(result.spread)")
         print(

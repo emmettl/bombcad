@@ -913,6 +913,18 @@ friction is μ times what bears on it however much it chatters, so the same slab
 way. Nodes tied to the ground by a base connection are left to the connection's own friction,
 and shells keep the decay. Whether it should become the default for debris is for the debris comparisons to decide.
 
+`StructureSolver.groundStiffness` (an option, zero by default) makes the ground soft: with a
+subgrade modulus k (Pa/m), a node below the ground is pushed back as by a Winkler bed under
+its h², damped at 30% of critical, instead of being put back on the plane at once; the friction
+above acts on the speed the bed gives back. A slab of the brickwork resting on a 5×10⁷ Pa/m
+bed (firm soil) sinks by its weight over the bed, and thrown along it at 1 m/s it still stops
+in about v / μg. On the hard ground a falling brick wall's nodes are stopped dead within a
+step, and Keys's toppled walls shatter as they land (about two fifths of WR1A's elements
+removed in 0.1 s); on a 5×10⁷ Pa/m bed WR1A loses under half as many (799 against 1747) and
+lands in about 20 pieces over 1 kg rather than 37. The modulus is the soil's,
+not the brickwork's, so the option fits debris falling on earth, not on paving or a slab. The
+air sees the ground as hard either way. See [Validation](validation.md#brick-walls-debris).
+
 ## Verification
 
 See [Validation](validation.md). In brief: stress-wave speed, cantilever deflection and natural

@@ -79,6 +79,11 @@ public final class StructureSolver {
     /// debris on the ground can creep on for seconds (see docs/structural-model.md). An option
     /// until the debris comparisons decide it; Keys's walls use 0.6.
     public var groundFrictionCoefficient: Float = 0
+    /// Soft ground for debris: with a subgrade modulus (Pa/m), a node below the ground is pushed
+    /// back as by a Winkler bed over its h², damped at 30% of critical, instead of being stopped
+    /// at the surface in one step. Zero (the default) keeps the hard ground. An option, for
+    /// debris landing on soil (Keys's brick walls).
+    public var groundStiffness: Float = 0
     /// Whether separate pieces of the structure, and loose debris, collide with each other.
     public var contactMode = ContactMode.afterFailure
     /// For timing contact's parts alone: with true, contact fills its table each substep but
@@ -1922,6 +1927,7 @@ public final class StructureSolver {
             contactDamping: contactDamping,
             contactFriction: contactFriction)
         uniforms.groundCoulomb = groundContact ? groundFrictionCoefficient : 0
+        uniforms.groundStiffness = groundContact ? groundStiffness : 0
         let down = simd_normalize(gravityDirection)
         (uniforms.gravityX, uniforms.gravityY, uniforms.gravityZ) = (down.x, down.y, down.z)
         if groundAcceleration != .zero {

@@ -116,6 +116,7 @@ struct StructureUniforms {
     float fragmentOpening;  // m: with `removesFragments`, the opening across two planes...
     float fragmentStrain;   // ...and the crack strain across one that make concrete fragments
     float groundCoulomb;    // > 0: the ground's Coulomb friction coefficient (else `groundFriction`'s decay)
+    float groundStiffness;  // > 0: soft ground, Pa/m over a node's h² (else the hard ground)
 };
 
 // Gravity's pull per unit mass, when it has been turned.
@@ -3139,7 +3140,22 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         velocity.z = min(velocity.z, 0.0f);
     }
     float referenceHeight = u.originZ + float(tid.z) * u.h;
-    if (referenceHeight + displacement.z < 0.0f && u.groundFriction >= 0.0f && !anchoredNode) {
+    float penetration = -(referenceHeight + displacement.z);
+    if (u.groundStiffness > 0.0f && penetration > 0.0f && u.groundFriction >= 0.0f && !anchoredNode
+        && node.mass > 0.0f) {
+        // Soft ground: the node presses into it as into a Winkler bed of the given modulus over
+        // its h², damped at 30% of critical, and the ground's friction acts on the push it gives.
+        float k = u.groundStiffness * u.h * u.h / node.mass;
+        float push = dt * (k * penetration - 2.0f * 0.3f * sqrt(k) * velocity.z);
+        float gained = max(push, 0.0f);
+        velocity.z += push;
+        if (u.groundCoulomb > 0.0f) {
+            float sliding = length(velocity.xy);
+            velocity.xy *= sliding > 0.0f ? max(0.0f, 1.0f - u.groundCoulomb * gained / sliding) : 0.0f;
+        } else {
+            velocity.xy *= max(0.0f, 1.0f - u.groundFriction * dt);
+        }
+    } else if (penetration > 0.0f && u.groundFriction >= 0.0f && !anchoredNode) {
         // Debris landing on the ground: stop the fall and shed horizontal speed. By Coulomb, the
         // sliding speed lost is the friction coefficient times the speed the ground took off the
         // fall, so that over time the ground holds back the coefficient times what bears on it

@@ -1007,6 +1007,7 @@ struct StructureUniforms {
     var fragmentOpening: Float = 0.5e-3
     var fragmentStrain: Float = 0.05
     var groundCoulomb: Float = 0
+    var groundStiffness: Float = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
