@@ -112,7 +112,7 @@ standing says why.
   counted as the finer grid. Close in (0.3 to 0.75 m/kg^(1/3)) the close-in table is used, for
   gauges on a surface. With afterburning and hot air, today's defaults, their own tables apply
   ([re-run](validation.md#the-defaults-since-15-october) on all three grids, reflected peaks
-  included); close in there is none yet. Gauges beyond
+  included, and close in). Gauges beyond
   6 m/kg^(1/3), closer than 0.3, shielded from the charge, over terrain, or on cells coarser than
   any compared grid get none.
 - **Structures** take the slab test's 79–119% on 4 to 32 solid elements through in the far
@@ -230,10 +230,11 @@ changes, change the table with it and advance `SceneStanding.currentTable`.
   debris feels no air while it sleeps, so the standing notes it on every scene with a structure;
   keep the air awake for debris in flight or anything thrown far.
 - **Bands hold on the air they were found on.** Since afterburning, hot air and far-field faces
-  became the default on 15 October 2026, Kingery–Bulmash's tables, the rooms, Wang's and Wu's
-  small charges and Chiquito's slabs have been run again on them, and the fireball's radiation
-  and Church's clouds were compared on them already. Close-in loads (withheld with afterburning),
-  Wu's 1.6 kg slab and the chamber's wall pressures say they were compared on the ideal gas only;
-  Hupfauf's debris is withheld on today's air until run again.
+  became the default on 15 October 2026, Kingery–Bulmash's tables close in and out, the rooms,
+  Wang's and Wu's slabs, Chiquito's, Hupfauf's debris and the chamber's wall pressures have been
+  run again on them, and the fireball's radiation and Church's clouds were compared on them
+  already. Each takes its own band on its own air; afterburning without hot air, compared only
+  on 0.25 m cells, takes few. On today's air afterburning nearly doubles the chamber roof's rise
+  (83–85 mm against 48).
 - **Not a judgement of safety.** Nothing here is validated for engineering decisions or for
   judging the safety of a real structure, and the standing says so.
