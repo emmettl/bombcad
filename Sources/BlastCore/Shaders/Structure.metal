@@ -117,7 +117,6 @@ struct StructureUniforms {
     float fragmentStrain;   // ...and the crack strain across one that make concrete fragments
     float groundCoulomb;    // > 0: the ground's Coulomb friction coefficient (else `groundFriction`'s decay)
     float groundStiffness;  // > 0: soft ground, Pa/m over a node's h² (else the hard ground)
-    float jointSeparation;  // > 0: a mortar joint's element goes once opened or slid this far (m)
 };
 
 // Gravity's pull per unit mass, when it has been turned.
@@ -1861,8 +1860,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             // it shuts again, as a wall rocking on the joint does; it goes only once the joint
             // has opened, or slid, by half an element.
             bool joint = c < 3 && ((joints >> c) & 1u) != 0u;
-            float jointStrain = u.jointSeparation > 0.0f ? u.jointSeparation / u.h : max(m.erosionStrain, 0.5f);
-            if (reached < (joint ? jointStrain : m.erosionStrain)) {
+            if (reached < (joint ? max(m.erosionStrain, 0.5f) : m.erosionStrain)) {
                 continue;
             }
             // Intact inclined bars across the crack bridge it.

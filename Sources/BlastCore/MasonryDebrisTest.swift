@@ -152,8 +152,7 @@ public enum MasonryDebrisTests {
         device: MTLDevice, trial: Trial, cellSize: Float = 0.1, elementSize: Float = 0.0375,
         duration: Double = 3, minimum: Double = 0.6, restSpeed: Float = 0.05, airSleepThreshold: Float = 5e-4,
         clearance: Float = 8, height: Float = 10, groundFriction: Float = 0.6, base: Anchorage? = mortarBed,
-        afterburning: Bool = false, groundStiffness: Float = 0, jointSeparation: Float = 0,
-        progress: ((String) -> Void)? = nil
+        afterburning: Bool = false, groundStiffness: Float = 0, progress: ((String) -> Void)? = nil
     ) throws -> Result {
         let started = ContinuousClock.now
         // The air's open faces must be well clear: with 1.5 m behind the charge, 3.5 m either
@@ -196,7 +195,6 @@ public enum MasonryDebrisTests {
         // 0.3 to 0.7 m/s for seconds (docs/structural-model.md#on-the-ground).
         structure.groundFrictionCoefficient = groundFriction
         structure.groundStiffness = groundStiffness
-        structure.jointSeparation = jointSeparation
 
         func fastest() -> Float {
             var speed: Float = 0
@@ -630,7 +628,7 @@ extension MasonryDebrisTests {
         device: MTLDevice, trial: TunnelTrial, cellSize: Float = 0.1, elementSize: Float = 0.0375,
         duration: Double = 2, upstream: Float = 2, downstream: Float = 14, tunnelWidth: Float = 8,
         tunnelHeight: Float = 6, groundFriction: Float = 0.6, minimum: Double = 0.8, restSpeed: Float = 0.05,
-        groundStiffness: Float = 0, jointSeparation: Float = 0, progress: ((String) -> Void)? = nil
+        groundStiffness: Float = 0, progress: ((String) -> Void)? = nil
     ) throws -> TunnelResult {
         let started = ContinuousClock.now
         let front = upstream
@@ -664,7 +662,6 @@ extension MasonryDebrisTests {
         guard let structure = solver.structure else { throw BlastError.allocationFailed("structure") }
         structure.groundFrictionCoefficient = groundFriction
         structure.groundStiffness = groundStiffness
-        structure.jointSeparation = jointSeparation
         let grid = solver.grid
         func drive() {
             let cell = solver.cellState(inflow(trial, at: Float(solver.time)))

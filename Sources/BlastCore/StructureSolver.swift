@@ -84,10 +84,6 @@ public final class StructureSolver {
     /// at the surface in one step. Zero (the default) keeps the hard ground. An option, for
     /// debris landing on soil (Keys's brick walls).
     public var groundStiffness: Float = 0
-    /// Masonry: the opening or slide (m) past which an element holding a mortar joint is removed,
-    /// so that the pieces either side part; zero (the default) keeps half an element, which lets
-    /// a wall rock on an open joint. An option, for walls that break up (Keys's).
-    public var jointSeparation: Float = 0
     /// Whether separate pieces of the structure, and loose debris, collide with each other.
     public var contactMode = ContactMode.afterFailure
     /// For timing contact's parts alone: with true, contact fills its table each substep but
@@ -1932,7 +1928,6 @@ public final class StructureSolver {
             contactFriction: contactFriction)
         uniforms.groundCoulomb = groundContact ? groundFrictionCoefficient : 0
         uniforms.groundStiffness = groundContact ? groundStiffness : 0
-        uniforms.jointSeparation = jointSeparation
         let down = simd_normalize(gravityDirection)
         (uniforms.gravityX, uniforms.gravityY, uniforms.gravityZ) = (down.x, down.y, down.z)
         if groundAcceleration != .zero {
