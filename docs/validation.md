@@ -2062,7 +2062,7 @@ the rig's, or the slab lifting in its clamps, which the model holds down.
 
 On today's air (afterburning, hot air and far-field faces, the defaults since 15 October 2026;
 rerun 16 October), S8 peaks at 16.3–16.4 mm against 18.0 and D8 at 16.4–16.5 against 13.9
-across the three roundings, −9% and +18%, left 8.2–8.9 mm down. The air is not what moved
+across the three roundings, left 8.2–8.9 mm down: 0.91 and 1.18–1.19 times the measured peak. The air is not what moved
 them: on the ideal gas the same build gives 16.1 and 16.3 mm. The change from the 14.4 and
 14.9 mm above comes from changes to the structural model since, not traced here.
 
@@ -2226,8 +2226,15 @@ all eight slabs:
 
 The burning products load the slab more slowly, and the 20 cm slabs' far faces now move at
 about the measured tips' speed (0.9–1.2 times the fit) where on the ideal gas they moved 1.2 to
-1.9 times; the 25 and 30 cm slabs are left 1.0 to 2.1 times. As before, nothing is holed, and
-the face 14–16 cm out moves at 12–30 m/s at 0.5 ms.
+1.9 times; the 25 and 30 cm slabs are left 1.0 to 2.1 times. On the six slabs of the table
+above, the far face on the axis is 0.88–1.82 times the fit on today's air. As before, nothing is
+holed, and the face 14–16 cm out moves at 12–30 m/s at 0.5 ms. Across the roundings, as in
+[the convergence section](#convergence-on-todays-defaults), on today's air:
+
+| Case, after failure, on today's air | Default | No fused multiply-adds | Relaxed math |
+|-------------------------------------|---------|------------------------|--------------|
+| Hupfauf SN142 on today's air: far face (m/s), elements failed | 62.9, 2,478 | 106.3, 2,773 | 61.5, 2,272 |
+| Hupfauf SN131 on today's air | 22.4, 824 | 27.7, 881 | 22.6, 786 |
 
 At first, then, the far face under the charge moves 1.2 to 1.9 times as fast as the debris did,
 its profile narrower than the measured on the thinner slabs and about as wide on the thicker,
@@ -2952,19 +2959,20 @@ gas is brought to rest, so that two cells out the record is a third of the surfa
 40 mm cells refined to 10 mm read a third low).
 
 On today's air (afterburning, hot air and far-field faces, the defaults since 15 October 2026;
-rerun 16 October), the same bursts, peak and impulse against the references:
+rerun 16 October), the same bursts, the 10 mm column on uniform 10 mm cells:
 
-| Z (free air) | 40 mm | 20 mm | 10 mm | 40 mm refined to 10 mm | 5 mm | Impulse: 40 mm | 20 mm | 10 mm | 40 mm refined to 10 mm | 5 mm |
-|--------------|-------|-------|-------|------------------------|------|-------|-------|-------|------|------|
-| 0.3          | 20%   | 36%   | 64%   | 64%                    | 107% | 66%   | 84%   | 99%   | 99%  | 103% |
-| 0.5          | 25%   | 54%   | 83%   | 81%                    | 101% | 77%   | 85%   | 96%   | 97%  | 104% |
-| 0.75         | 36%   | 61%   | 90%   | 89%                    | 98%  | 88%   | 100%  | 111%  | 110% | 105% |
-| 1            | 46%   | 69%   | 88%   | 88%                    | 104% | 99%   | 103%  | 102%  | 102% | 104% |
+| Z (free air) | Reference peak | 40 mm | 20 mm | 10 mm | 5 mm | Reference impulse | 40 mm | 20 mm | 10 mm | 5 mm |
+|--------------|----------------|-------|-------|-------|------|-------------------|-------|-------|-------|------|
+| 0.3          | 70.0 MPa       | 20%   | 36%   | 64%   | 107% | 3,168 Pa s        | 66%   | 84%   | 99%   | 103% |
+| 0.5          | 26.6 MPa       | 25%   | 54%   | 83%   | 101% | 1,459 Pa s        | 77%   | 85%   | 96%   | 104% |
+| 0.75         | 10.4 MPa       | 36%   | 61%   | 90%   | 98%  | 824 Pa s          | 88%   | 100%  | 111%  | 105% |
+| 1            | 4.7 MPa        | 46%   | 69%   | 88%   | 104% | 561 Pa s          | 99%   | 103%  | 102%  | 104% |
 
 On the finest air the peaks are within 7% and the impulses 3–5% high, against 92–104% and
 94–103% on the ideal gas; on coarser cells the peaks are lower than the ideal gas's (the hot
 air's shock is smeared over more cells) and the impulses about the same. 40 mm cells refined
-twice still give 10 mm cells' answers, within 2%.
+twice give the 10 mm column within 2% (64, 81, 89 and 88% of the peaks; 99, 97, 110 and 102%
+of the impulses).
 
 ### Afterburning
 
@@ -3352,9 +3360,10 @@ approximate, and peaks this close to a charge change sharply with position, so t
 loose: the model is between 0.9 and 1.6 times the measured range.
 
 **On today's air** (afterburning, hot air and far-field faces, the defaults since 15 October
-2026; rerun 16 October): 6.9 and 4.3 MPa on the side walls and 3.4 MPa on the roof, 1.0 to 1.6
-times the measured range as before. The roof is another matter: its free edge rises 83 mm and
-is left 55 mm up (83–85 and 55–57 mm across the three roundings, 73–78 elements removed),
+2026; rerun 16 October): 6.9 and 4.3 MPa on the side walls and 3.4 MPa on the roof, so the peak
+wall pressures are 1.0 to 1.6 times those measured on today's air. The roof is another matter:
+its free edge rises 83–85 mm and is left 55–57 mm up across the three roundings (73–78
+elements removed),
 against 48 and 25 mm on the ideal gas with today's other defaults, 33 and 15 mm with hot air
 alone and the same 83 and 55 mm with the old open faces. Afterburning, in a chamber whose vent
 keeps the burning products in, now nearly doubles the roof's rise, where before the confined
