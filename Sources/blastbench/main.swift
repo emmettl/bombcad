@@ -12,6 +12,7 @@ import simd
 //   blastbench [throughput] [--preset open|single|street|courtyard|wall|box|frame|infill|storeys|tall|tower|column|
 //               protected|glass|carpark|underpass|house|blockwall|chamber|gasroom] [--full] [--dx 0.5,0.25]
 //   blastbench structure [--preset wall|box] [--contact] [--elastic]
+//   (any command) [--rounding default|unfused|relaxed]   (the kernels' rounding; see KernelRounding)
 //   blastbench validate [--dx 0.25] [--histories dir --until 0.25]
 //   blastbench beam [--layers 12,24] [--rate 0.1]
 //   blastbench shear [--layers 12,24] [--rate 0.05] [--slice 92] [--dowel 1] [--map 9]
@@ -687,6 +688,19 @@ func format(_ value: Double, _ digits: Int = 1) -> String { String(format: "%.\(
 guard let device = MTLCreateSystemDefaultDevice() else {
     print("No Metal device available")
     exit(1)
+}
+
+// `--rounding unfused` or `relaxed` (or `default`): the kernels round as the rounding ensemble's
+// do (`KernelRounding`); a command run with each gives the spread its results after failure have
+// between builds whose arithmetic rounds differently.
+if let name = option("rounding") {
+    guard let rounding = KernelRounding(rawValue: name) else {
+        print("--rounding takes \(KernelRounding.allCases.map(\.rawValue).joined(separator: ", ")).")
+        exit(2)
+    }
+    unsetenv("BOMBCAD_KERNEL_MATH")
+    unsetenv("BOMBCAD_KERNEL_CONTRACT")
+    for (key, value) in rounding.environment { setenv(key, value, 1) }
 }
 
 func runThroughput() throws {

@@ -40,16 +40,19 @@ public struct EnsembleCase: Sendable {
 }
 
 /// One run of an ensemble: the case, its place in the ensemble (0 has every input at its middle
-/// value), and each input's value.
+/// value), each input's value, and the kernels' rounding where one is chosen.
 public struct EnsembleSample: Codable, Sendable, Equatable {
     public var caseID: String
     public var index: Int
     public var values: [String: Double]
+    /// nil builds the kernels as the run's environment says, the default unless set.
+    public var rounding: KernelRounding?
 
-    public init(caseID: String, index: Int, values: [String: Double]) {
+    public init(caseID: String, index: Int, values: [String: Double], rounding: KernelRounding? = nil) {
         self.caseID = caseID
         self.index = index
         self.values = values
+        self.rounding = rounding
     }
 }
 
@@ -368,6 +371,16 @@ public enum ValidationEnsemble {
             }
     }
 
+    /// `case`'s run with every input at its middle value, once with each of the kernels'
+    /// roundings, the default first: the spread a different rounding gives, which is where results
+    /// after failure are one draw among several.
+    public static func roundingSamples(case id: String) throws -> [EnsembleSample] {
+        let middle = try samples(case: id, count: 0, seed: 0)[0]
+        return KernelRounding.allCases.enumerated().map { number, rounding in
+            EnsembleSample(caseID: id, index: number, values: middle.values, rounding: rounding)
+        }
+    }
+
     // MARK: - Running one
 
     /// Runs `sample` on this Mac's GPU.
@@ -377,7 +390,9 @@ public enum ValidationEnsemble {
         }
         let start = ContinuousClock.now
         // An output that did not happen (a beam that never failed) is left out.
-        let outputs = try outputs(sample, device: device).filter(\.value.isFinite)
+        let outputs = try KernelRounding.$current.withValue(sample.rounding) {
+            try outputs(sample, device: device).filter(\.value.isFinite)
+        }
         let took = start.duration(to: .now)
         return EnsembleOutcome(
             outputs: outputs,

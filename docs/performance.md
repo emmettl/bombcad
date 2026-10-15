@@ -610,6 +610,12 @@ The switches apply to the whole library, air included: on 0.125 m cells, where t
 of the work, safe math costs 1.4 times, so the air's kernels slow at least as much as the
 structure's.
 
+Fast math stays the default. A run chooses relaxed math or no fused multiply-adds as a
+`KernelRounding` (`blastbench --rounding unfused`; `BombCAD ensemble --rounding-ensemble` and
+`Scripts/concrete-matrix.py --rounding-ensemble` run all three) to see how far a result after
+failure moves with the rounding; [validation](validation.md#the-models-spread-from-uncertain-inputs)
+says how.
+
 ## Other Macs
 
 Measured on the CI Mac mini (M4, 10-core GPU, 120 GB/s, 24 GB) on 7 and 8 October 2026, against
