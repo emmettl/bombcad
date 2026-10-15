@@ -209,7 +209,7 @@ struct RunComparisonView: View {
                             unrecorded: true)
                     }
                     Text(
-                        "\(run.settings.gridName.capitalized) grid · Afterburning \(run.settings.detailedCharge ? "on" : "off") · Shock refinement \(run.settings.sharpShocks ? ((run.settings.shockLevels ?? 1) > 1 ? "in two levels" : "on") : "off")\(run.settings.gravity == true ? " · Gravity" : "")\(run.scenario.terrain.map { !$0.isFlat } == true ? (run.settings.terrainCutCells == true && !(run.settings.sharpShocks && (run.settings.shockLevels ?? 1) > 1) ? " · Terrain cut" : " · Terrain as steps") : "")"
+                        "\(run.settings.gridName.capitalized) grid · Afterburning \(run.settings.detailedCharge ? "on" : "off") · Shock refinement \(run.settings.sharpShocks ? ((run.settings.shockLevels ?? 1) > 1 ? "in two levels" : "on") : "off")\(run.settings.gravity == true ? " · Gravity" : "")\(run.scenario.terrain.map { !$0.isFlat } == true ? (run.settings.terrainCutCells == true ? " · Terrain cut" : " · Terrain as steps") : "")"
                     )
                     .font(.caption).foregroundStyle(.secondary)
                     DisclosureGroup("Run inputs") {

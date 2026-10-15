@@ -20,9 +20,9 @@ import), `Shaders/Refine.metal` (`refineFill`, the fine cells' outline) and, for
   are metres above the domain's floor, z = 0, which stays the reflecting face beneath it. It is
   a property of the scene beside its objects, not one of them; the multiple-object scene schema
   is unchanged.
-- **In the air's mask.** Where the air is not refined the surface is cut through the cells, by
-  default (see [Cut cells](#cut-cells)). Otherwise, and when the staircase is chosen, a cell
-  is solid where its centre lies below the surface, on the coarse
+- **In the air's mask.** By default the surface is cut through the cells on every level (see [Cut
+  cells](#cut-cells)). When the staircase is chosen, a cell is solid where its centre lies below
+  the surface, on the coarse
   grid (set on the CPU when the scene loads, beside the blocks) and on every level of
   refinement (`refineFill` evaluates the same bilinear surface at each fine cell's centre). So
   the terrain is a staircase of whole cells at each level's own resolution, as a block is; the
@@ -247,10 +247,12 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell
 - **Gauges, painting and totals.** A gauge or painted peak on the surface reads the first cell at
   least half air. Charges deposited in cut cells weight by α; the solver's totals count α of
   each cut cell.
-- **Refined once.** A patch works out its fine cells' shares and apertures on the GPU when it is
-  placed, by the coarse grid's quadrature at its own size (8 / r points to an edge, the very
-  points the coarse grid's fall on, so that a coarse cell's share is the mean of its fine cells'),
-  and its fine cells take the coarse grid's cut-cell update. Each substep's differences are shared
+- **Refined.** A patch works out its fine cells' shares and apertures on the GPU when it is
+  placed, by the coarse grid's quadrature at its own size: the very points the coarse grid's fall
+  on, so that a coarse cell's share is the mean of its fine cells'. The coarse grid takes more
+  points where the air is refined (16 to an edge refined once by 2, 32 twice, at most 32), so that
+  each level keeps about 8 to its own cells' edges; at 2 × 2 the second level's walls came out
+  coarse and its triple point 0.4° lower. Its fine cells take the coarse grid's cut-cell update. Each substep's differences are shared
   out up the fine columns, through the patches stacked above, and what reaches the top of a stack
   goes to the coarse cell above it. A coarse cell beside a patch records its flux through their
   face times the face's aperture, as the fine cells do theirs, and a cut cell takes its
@@ -259,12 +261,14 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell
   its fine cells. Restriction weights the fine cells by their shares over the coarse cell's, and
   a new patch's fine cells are made to hold what the coarse cell held, share for share, so
   placing and releasing patches neither gains nor loses gas: such patches are not kept, as the
-  staircase's are. A closed box over a hill holds its mass and energy to 1e-8 over 120 steps with
-  650 patches placed along the slope (`TerrainCutCellTests`, also with afterburning and gravity).
-  Without terrain, or with cut cells off, the refined runs' digests are unchanged to the bit.
-- **Not refined twice.** Air refined twice over again keeps the staircase on every level, as
-  does a deflagration's. The Run tab's Terrain caption says so, and the advisor (in the app and
-  `BombCAD run --advise`) when the setting it chooses refines twice.
+  staircase's are. Refined twice, the second level sees the first as the first sees the coarse
+  grid: its differences pass up into the first level's cells, and the first level shares out its
+  own after the second has refluxed into them, a cell it covers dropping its own, what reaches one
+  then carried down by the second level's sync. A closed box over a hill holds its mass and energy
+  to 2–4e-8 over 120 steps, refined once (650 patches along the slope) or twice (4,200 at the
+  second level), also with afterburning and gravity (`TerrainCutCellTests`). Without terrain, or
+  with cut cells off, the refined runs' digests are unchanged to the bit, once or twice.
+- **A deflagration's air** keeps the staircase.
 - **Saved runs.** A run over terrain on cut cells records `"terrainCutCells": true` in its
   settings; one on the staircase, and every run saved before cut cells, records nothing, and a
   project saved so reopens on the staircase it ran on. The standing names "Terrain as a
@@ -293,22 +297,22 @@ the Mac mini). χ, the triple point's angle:
   13.6–13.9 times ambient against two-shock theory's 13.7 and 13.8; the staircase's is 12.8–13.7,
   with spikes to 19 near the transition where steps take the shock square on.
 
-Refined once (`--refine 2`), the cells along the run at the fine level's size, against the
-staircase refined alike:
+Refined (`--refine 2`, and `--refine-levels 2`), against the staircase refined alike; the
+finest cells along the run in brackets:
 
-| Slope | Theory | Cut, refined, 200 / 400 fine cells | Staircase, refined, 200 / 400 |
-|------:|-------:|-----------------------------------:|------------------------------:|
-| 30°   | 8.50°  | 8.00 / 8.23°                       | 6.67 / 7.24°                  |
-| 40°   | 4.40°  | 4.51 / 4.22°                       | 2.34 / 3.33°                  |
-| 45°   | 2.70°  | 2.76 / 2.66°                       | 0.54 / 1.13°                  |
-| 48°   | 1.78°  | 1.03 / 0.96°                       | regular                       |
-| 50°   | 1.21°  | regular                            | regular                       |
+| Slope | Theory | Cut, once (200 / 400) | Staircase, once | Cut, twice (400) | Staircase, twice |
+|------:|-------:|----------------------:|----------------:|-----------------:|-----------------:|
+| 30°   | 8.50°  | 8.08 / 8.33°          | 6.67 / 7.24°    | 8.01°            | 7.15°            |
+| 40°   | 4.40°  | 4.64 / 4.44°          | 2.34 / 3.33°    | 4.65°            | 3.15°            |
+| 45°   | 2.70°  | 2.76 / 2.66°          | 0.54 / 1.13°    | 2.77°            | 1.27°            |
+| 48°   | 1.78°  | 1.14 / 1.32°          | regular         | 1.66°            | regular          |
+| 50°   | 1.21°  | regular               | regular         | regular          | regular          |
 
-Over 30–48° the mean error refined is 0.36 and 0.33° on cut cells, against 1.9 and 1.4° on the
-staircase; it is twice uniform cut cells' on the fine level's grid (0.20 and 0.17°), the triple
-point reading 0.3–0.5° low at 30° and 0.8° at 48°, where the patches' edges cross the cut cells.
-The smooth control refined is as unrefined (9.07 / 8.96° at 30°, 1.74 / 1.76° at 48°), so the
-measurement on the coarse cells is not the cause.
+Over 30–48° the mean error refined once is 0.34 and 0.18° on cut cells (uniform cut cells on the
+fine level's grid: 0.20 and 0.17°), against 1.9 and 1.4° on the staircase; refined twice it is
+0.23° against 1.4°. The triple point reads up to 0.5° low at 30°, where the patches' edges cross
+the cut cells. (Refined twice on 0.02 m coarse cells, 50 along the run, the triple point is
+measured to about a degree, by the coarse cells, and the smooth control scatters as much.)
 
 ### Cut cells behind a ridge
 
@@ -343,8 +347,9 @@ least half air. Ratios to flat ground on the same cells, staircase / cut cells:
 - **Refined once** on 0.25 m cells (fine cells of 0.125 m), the cut cells give what uniform
   0.125 m cells give: 1.58 and 1.51 on the 4 m ridge's windward face (1.60 and 1.56 uniform),
   1.52 on the 2 m ridge's (1.54) and 1.16 on the 8 m ridge's (1.19); 0.57 and 0.71 6 m behind the
-  4 m crest (0.57 and 0.73). The staircase refined reads 1.75–1.77 on the 4 m ridge's face, less
-  than its uniform 0.125 m cells' 2.37, as only the patches' steps are fine.
+  4 m crest (0.57 and 0.73). Refined twice (0.0625 m at the second level): 1.62 and 1.54 on the
+  4 m ridge's face, 1.61 on the 2 m ridge's and 1.18 on the 8 m ridge's. The staircase refined reads 1.75–1.77 on the 4 m ridge's face once and 1.72–1.79
+  twice, less than its uniform 0.125 m cells' 2.37, as only the patches' steps are fine.
 - **At 500 t with gravity** (`blastbench landscape --study terrain --gravity --cut-cells`, 4.3 m
   cells) the ridges' ratios are the 100 kg ones within 0.01 to 0.03, as on the staircase (see
   [Large scenes](large-scenes.md#over-terrain-at-scale)). Along the valleys the peaks agree
@@ -362,10 +367,12 @@ On the Mac mini, unloaded, 2.2 million cells (the ridges on 0.25 m cells):
   swept from the start rather than when the blast wakes them. The number of steps is the same
   within 1%, except the 8 m ridge's (6% more on cut cells, where the staircase pushed the
   hottest gas out of the domain).
-- **Refined once**, the ridges cost within 5% of the staircase refined alike, a step and over the
-  run (6.3–6.6 ms a step on 0.25 m cells refined by 2): the fine cells' geometry is worked out
-  once a patch is placed, and patches along the surface are released once the blast has passed
-  instead of kept. The pool holds a third fewer patches (64 bytes more a fine cell).
+- **Refined**, the ridges cost within 5% of the staircase refined alike once (6.3–6.6 ms a step
+  on 0.25 m cells refined by 2) and within the mini's noise twice (0.7 to 1.1 times, 28–36 ms a
+  step): the fine cells' geometry is worked out once a patch is placed, and patches along the
+  surface are released once the blast has passed instead of kept. The pool holds a third fewer
+  patches (64 bytes more a fine cell). The coarse geometry's finer quadrature takes 0.3 s at 2.2
+  million cells refined once and 0.7 s twice.
 - **Building the geometry**: 0.08 s against the staircase mask's 0.03 s at 2.2 million cells,
   0.4 s against 0.2 s at 17.7 million.
 - **Memory**: 16 bytes a column and 64 a cut cell (shares, walls and the step's differences),
@@ -441,12 +448,11 @@ surface cross a cell a metre. The GPU and the CPU agree on every receiver.
 
 ## Limitations
 
-1. **A staircase of whole cells where the air is refined twice.** Slopes are then steps one cell
-   high, at each refinement level's own cells. They delay Mach reflection by 3–11° and under-read
-   the triple point's angle by 20–75% on 100–400 cells along a run (above), converging at first
-   order. [Cut cells](#cut-cells), the default on uniform air and air refined once, remove this;
-   refined once, the triple point reads up to 0.8° lower than on a uniform grid of the fine
-   cells.
+1. **A staircase of whole cells when chosen** (or under a deflagration). Slopes are then steps one
+   cell high, at each refinement level's own cells. They delay Mach reflection by 3–11° and
+   under-read the triple point's angle by 20–75% on 100–400 cells along a run (above), converging
+   at first order. [Cut cells](#cut-cells), the default, remove this; refined, the triple point
+   reads up to 0.5° lower than on a uniform grid of the finest cells.
 2. **Rigid, smooth and reflecting.** No cratering, no soil that gives or absorbs, no vegetation or
    roughness besides the staircase's, no snow or water. The floor under the terrain still reflects.
 3. **Refinement near the surface.** Placing a patch gains still air on one side of the surface and
@@ -483,8 +489,6 @@ surface cross a cell a metre. The GPU and the CPU agree on every receiver.
 
 ## Future work
 
-- **Cut cells refined twice**: the second level's geometry, and its differences carried up
-  through the first level's patches, so that no run need keep the staircase.
 - **Footings and the ground's connection on a slope**: the base held where it meets the terrain,
   with slope factors on a footing's soil.
 - **DEM reprojection** (UTM from geographic) and area-averaged downsampling.

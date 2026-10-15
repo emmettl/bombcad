@@ -108,9 +108,8 @@ struct TerrainProjectTests {
         #expect(older.standingInputs(scene).options.contains(.terrainStaircase))
         var refined = settings
         refined.sharpShocks = true
-        #expect(!refined.standingInputs(scene).options.contains(.terrainStaircase))
         refined.shockLevels = 2
-        #expect(refined.standingInputs(scene).options.contains(.terrainStaircase))
+        #expect(!refined.standingInputs(scene).options.contains(.terrainStaircase))
     }
 
     @Test("Laying a terrain carries the charge and gauges with the ground under them")

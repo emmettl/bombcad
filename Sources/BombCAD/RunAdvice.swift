@@ -206,7 +206,7 @@ struct AdvisorSection: View {
                         )
                         .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
-                    ForEach([advice.standInNote, advice.terrainNote].compactMap { $0 }, id: \.self) { note in
+                    if let note = advice.standInNote {
                         Text(note).font(.caption).foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }

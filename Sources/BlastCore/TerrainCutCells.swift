@@ -29,6 +29,16 @@ public struct TerrainCutGeometry: Sendable, Equatable {
     public var cutColumns: [UInt32]
     public var nx: Int
     public var ny: Int
+    /// Points to an edge of a cell's quadrature; a level of refinement uses as many to its own
+    /// cells' edges as fall in them, the same points (see `cutSamples` in Refine.metal).
+    public var samples: Int
+
+    /// Points to an edge for the coarse grid when the air is refined `levels` times by `ratio`, so
+    /// that the finest cells still have about eight: 8 unrefined, at most 32.
+    public static func samples(ratio: Int, levels: Int) -> Int {
+        guard ratio > 1 else { return 8 }
+        return min(8 * Int(pow(Double(ratio), Double(max(levels, 1)))), 32)
+    }
 
     /// Cells under this share of air pass the rest of their difference to the first cell above at
     /// least this full, so that what a cell takes is at most twice its own.
@@ -54,6 +64,7 @@ public struct TerrainCutGeometry: Sendable, Equatable {
         nx = grid.nx
         ny = grid.ny
         let n = max(samples, 1)
+        self.samples = n
         func h(_ x: Double, _ y: Double) -> Double { Double(terrain.height(at: SIMD2(Float(x), Float(y)))) }
         // The surface's lowest and highest over a footprint: at its corners, the terrain's nodes inside
         // it and where its edges cross the nodes' lines (a bilinear patch has its extremes there).

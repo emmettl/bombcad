@@ -106,15 +106,20 @@ struct TerrainCutCellTests {
 
     @Test(
         "Refined, a closed box over a hill conserves its gas to round-off across the levels",
-        arguments: [(false, false), (true, false), (false, true)])
-    func refinedConservation(afterburning: Bool, gravity: Bool) throws {
+        arguments: [
+            (false, false, 1), (true, false, 1), (false, true, 1), (false, false, 2), (true, false, 2),
+            (false, true, 2),
+        ])
+    func refinedConservation(afterburning: Bool, gravity: Bool, levels: Int) throws {
         var configuration = cut()
         configuration.refinement = 2
+        configuration.refinementLevels = levels
         configuration.refinementThreshold = 0.02
         configuration.afterburning = afterburning
         if gravity { configuration.gravity = AirGravity() }
         let solver = try closedHill(configuration)
         #expect(solver.terrainCut != nil && solver.refinement?.cutTerrain == true)
+        #expect(levels == 1 || solver.finerRefinement?.cutTerrain == true)
         let before = solver.totals()
         let fuel = solver.speciesTotals()
         var refinedCut = false
@@ -139,7 +144,7 @@ struct TerrainCutCellTests {
         }
     }
 
-    @Test("Cut by default, refined once too; the staircase when off, refined twice, and on flat ground")
+    @Test("Cut by default, refined once or twice too; the staircase when off, and on flat ground")
     func defaults() throws {
         var scenario = ScenarioPreset.openGround.scenario
         scenario.terrain = .hill(
@@ -152,15 +157,16 @@ struct TerrainCutCellTests {
         twice.refinementLevels = 2
         var refined = SolverConfiguration()
         refined.refinement = 2
-        #expect(
-            try BlastSolver(device: device, scenario: scenario, cellSize: 0.5, configuration: refined)
+        for configuration in [refined, twice] {
+            #expect(
+                try BlastSolver(
+                    device: device, scenario: scenario, cellSize: 0.5, configuration: configuration
+                )
                 .terrainCut != nil)
-        for configuration in [off, twice] {
-            let solver = try BlastSolver(
-                device: device, scenario: scenario, cellSize: 0.5, configuration: configuration)
-            #expect(solver.terrainCut == nil)
-            #expect(solver.terrainSurface == scenario.terrain!.surfaceCells(grid: solver.grid))
         }
+        let staircase = try BlastSolver(device: device, scenario: scenario, cellSize: 0.5, configuration: off)
+        #expect(staircase.terrainCut == nil)
+        #expect(staircase.terrainSurface == scenario.terrain!.surfaceCells(grid: staircase.grid))
         scenario.terrain = .flat(domain: scenario.domainSize, spacing: 1)
         #expect(try BlastSolver(device: device, scenario: scenario, cellSize: 0.5).terrainCut == nil)
     }

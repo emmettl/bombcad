@@ -747,13 +747,13 @@ public final class BlastSolver {
             let within = simd_clamp(
                 point / grid.cellSize - SIMD3<Float>(cell), .zero, SIMD3(repeating: 0.999))
             var child = SIMD3<Int>((within * Float(r)).rounded(.down))
-            if let terrain, refinement?.coarseCut != nil {
+            if let terrain, let cut = refinement?.coarseCut {
                 // On cut cells, a fine cell at least half air, as on the coarse grid (`surfaceCells`).
                 let fine = { cell &* r &+ child }
                 while child.z < r - 1,
                     TerrainCutGeometry.share(
                         of: fine(), cellSize: grid.cellSize / Float(r), terrain: terrain,
-                        samples: max(8 / r, 1))
+                        samples: max(cut.geometry.samples / r, 1))
                         < TerrainCutGeometry.receivingShare
                 {
                     child.z += 1
@@ -1581,8 +1581,7 @@ public final class BlastSolver {
         let memory =
             levels == 1 ? [total] : Self.levelMemoryShares.map { Int(Double(total) * $0) }
         let composition = bodies.count > 1
-        // Cut cells are refined one level deep (`cutsTerrain(of:)` keeps the staircase otherwise).
-        let cut = terrainCut != nil && levels == 1
+        let cut = terrainCut != nil
         let first = AirRefinement.layout(
             grid: grid, ratio: ratio, parentScale: 1, memory: memory[0], species: hasSpecies,
             bodyComposition: composition, cut: cut)
@@ -1590,7 +1589,7 @@ public final class BlastSolver {
             levels > 1
             ? AirRefinement.layout(
                 grid: grid, ratio: ratio, parentScale: ratio, memory: memory[1], species: hasSpecies,
-                bodyComposition: composition) : nil
+                bodyComposition: composition, cut: cut) : nil
         let side = AirRefinement.patchSize * ratio
         let reserve =
             second.map { ($0.tileDims.x * $0.tileDims.y * $0.tileDims.z, $0.maxPatches * side * side * side) }
@@ -1611,7 +1610,7 @@ public final class BlastSolver {
             if levels > 1, let refinement {
                 finerRefinement = try? AirRefinement(
                     device: device, library: library, grid: grid, ratio: ratio, memory: memory[1],
-                    species: hasSpecies, bodyComposition: composition, parent: refinement)
+                    species: hasSpecies, bodyComposition: composition, parent: refinement, cut: cut)
             }
         }
         for level in refinementLevels {
@@ -1619,7 +1618,7 @@ public final class BlastSolver {
             level.setBoxes(rigidBoxes)
             level.setTerrain(rigidBoxes == nil ? nil : terrain)
         }
-        refinement?.coarseCut = cut ? terrainCut : nil
+        for level in refinementLevels { level.coarseCut = cut ? terrainCut : nil }
         updateGaugeChildren()
     }
 
@@ -1923,6 +1922,11 @@ public final class BlastSolver {
                         uniforms: uniforms,
                         state: self.stateBuffers[self.current],
                         species: self.currentSpecies)
+                    // What reached first-level cells the second level covers is carried down to it.
+                    if let finer = self.finerRefinement, let deep = self.finerUniforms(uniforms) {
+                        finer.encodeSync(
+                            encoder, parent: refinement.view(), control: self.controlBuffer, uniforms: deep)
+                    }
                 }
             }
             airStage("other")

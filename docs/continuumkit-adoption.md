@@ -199,10 +199,9 @@ wall pressure and flux redistribution per column once a step.
 **A candidate, not yet.** The geometry (`TerrainCutGeometry`: α, apertures and walls of a
 heightfield, by quadrature) is pure Swift with its own tests and would sit naturally beside
 CompressibleFlow's fractional geometry. The kernel is bound to BombCAD's state layout, sweeps,
-tiles and gravity table, and has one consumer. Propose the geometry, and the redistribution as
-a reference CPU routine, once cut cells work with refinement and have become the terrain's
-default, and if a second consumer (ContinuumKit's own moving cut cells, or Edgerton) wants
-them.
+tiles and gravity table, and has one consumer. Cut cells are now the terrain's default, refined
+or not (15 October 2026). Propose the geometry, and the redistribution as a reference CPU
+routine, if a second consumer (ContinuumKit's own moving cut cells, or Edgerton) wants them.
 
 ## Overlap with Edgerton and candidates for ContinuumKit — 14 October 2026
 

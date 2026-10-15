@@ -109,7 +109,7 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
 
 - **Done:** afterburning, hot air and dissociation; refinement in one or two levels; gravity,
   sub-grid mixing and radiative cooling as options ([air-blast model](air-blast-model.md));
-  terrain ([terrain](terrain.md)); bursts checked to 40 m/kg^(1/3) ([large scenes](large-scenes.md)).
+  terrain on cut cells ([terrain](terrain.md#cut-cells)); bursts checked to 40 m/kg^(1/3) ([large scenes](large-scenes.md)).
 - **Next:** a refinement criterion that follows weak shocks over kilometres; close in, a mapped
   one-dimensional start or the products' own composition for the hottest gas.
 - **Deferred:** cut cells for moving solids.
@@ -162,7 +162,7 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   OpenStreetMap footprints; a cost-against-fidelity advisor reading the error bands
   ([choosing settings](performance.md#choosing-settings)), its costs re-timed on an unloaded Mac
   at kilometre scale.
-- **Next:** terrain's [cut cells](terrain.md#cut-cells) (the default on uniform grids) with refinement; a cheaper damage model for envelope buildings
+- **Next:** a cheaper damage model for envelope buildings
   (single-degree-of-freedom, pressure–impulse or fragility), once its errors against the detailed
   model and measurement, and the cost of not venting, are known
   ([damage for envelope buildings](building-envelopes.md#future-work-damage-for-envelope-buildings)).

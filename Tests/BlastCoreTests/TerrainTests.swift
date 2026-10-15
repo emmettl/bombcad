@@ -89,9 +89,12 @@ struct TerrainTests {
             solver.terrainSurface?[30 + grid.nx * 4] == Int32(terrain.buriedCells(i: 30, j: 4, grid: grid)))
     }
 
-    @Test("Fine cells follow the surface at their own resolution, on both levels")
-    func fineOutline() throws {
+    @Test(
+        "Fine cells follow the surface at their own resolution, on both levels, on the staircase or cut",
+        arguments: [false, true])
+    func fineOutline(cut: Bool) throws {
         var configuration = SolverConfiguration()
+        configuration.terrainCutCells = cut
         configuration.refinement = 2
         configuration.refinementLevels = 2
         configuration.refinementThreshold = -1
@@ -112,8 +115,20 @@ struct TerrainTests {
             let fine = solver.grid.cellSize / Float(level.parentScale * level.ratio)
             let outline = level.rigidOutline(solver.grid)
             #expect(!outline.isEmpty)
-            let wrong = outline.filter { $0.rigid != terrain.contains((SIMD3<Float>($0.cell) + 0.5) * fine) }
-            #expect(wrong.isEmpty, "\(wrong.count) of \(outline.count) fine cells")
+            // On the staircase solid where the centre is below the surface; cut, where the cell holds
+            // no air by the level's quadrature (worked out on the GPU, so a cell may differ by rounding).
+            let samples = max(
+                (solver.terrainCut?.geometry.samples ?? 8) / (level.parentScale * level.ratio), 1)
+            let wrong = outline.filter {
+                $0.rigid
+                    != (cut
+                        ? TerrainCutGeometry.share(
+                            of: $0.cell, cellSize: fine, terrain: terrain, samples: samples) == 0
+                        : terrain.contains((SIMD3<Float>($0.cell) + 0.5) * fine))
+            }
+            #expect(
+                wrong.count <= (cut ? outline.count / 1000 : 0),
+                "\(wrong.count) of \(outline.count) fine cells")
             #expect(outline.contains { $0.rigid })
         }
     }

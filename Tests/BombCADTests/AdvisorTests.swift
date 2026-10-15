@@ -38,8 +38,8 @@ struct AdvisorTests {
         #expect(fidelity.error[.peak] == chosen.error[.peak])
     }
 
-    @Test("Over terrain, a refined choice says its terrain is a staircase; cut cells cost a little more")
-    func terrainStaircase() throws {
+    @Test("Over terrain, cut cells cost a little more than the staircase")
+    func terrainCutCost() throws {
         var inputs = landscape()
         let domain = inputs.scenario.domainSize
         inputs.scenario.replaceTerrain(
@@ -49,9 +49,7 @@ struct AdvisorTests {
         inputs.settings = ProjectDocument(scenario: inputs.scenario).runSettings!
         inputs.settings.resolution = Resolution(cellSize: 16)!.rawValue
         inputs.settings.duration = 4.5
-        let advice = inputs.advice(for: .seconds(600), memory: memory)
-        let chosen = try #require(advice.chosen)
-        #expect((advice.terrainNote != nil) == (chosen.setting.refinement > 1 && chosen.setting.levels > 1))
+        #expect(inputs.advice(for: .seconds(600), memory: memory).chosen != nil)
         var staircase = inputs.settings
         staircase.terrainCutCells = nil
         #expect(
