@@ -12,7 +12,13 @@ import Testing
 ///
 /// Each test is held to `hangLimit` from when it has its thread, not from when it was started:
 /// Swift Testing starts every test at once and its own time limit would count the wait for a
-/// thread, which with the GPU busy is most of the run. One that runs longer is recorded as hung.
+/// thread, which with the GPU busy is most of the run. One that runs longer stops the test run:
+/// a test that never returns is never finished, so an issue recorded against it is not reported
+/// until the run is stopped (on 15 October two Sod shock-tube tests were recorded hung at two
+/// hours and the run went on for three more, the log's buffered output showing nothing after
+/// tests that had in fact passed). So the hung test is named on standard error, which is not
+/// buffered, and the test process exits with a failure. The watchdog is a dispatch timer,
+/// on threads of its own, so that it fires however busy the cooperative pool and these threads.
 ///
 /// No more of these tests start than there are threads: the rest wait to start (on the
 /// cooperative pool, holding no thread, and before their limit is counted). Otherwise a test
@@ -26,8 +32,8 @@ struct GPUThreads: SuiteTrait, TestTrait, TestScoping {
     /// Longer than the whole suite has taken under any load measured (71 minutes): at a load
     /// average of 250, heavy tests of a debug build ran for over half an hour on their threads.
     var hangLimit: Duration = .seconds(2 * 60 * 60)
-    /// For the tests: called as a hang is recorded.
-    var onHang: (@Sendable () -> Void)?
+    /// For the tests: called in place of stopping the run, with what would have been said.
+    var onHang: (@Sendable (String) -> Void)?
 
     var isRecursive: Bool { true }
 
@@ -39,7 +45,7 @@ struct GPUThreads: SuiteTrait, TestTrait, TestScoping {
     ) async throws {
         await Self.admission.enter()
         do {
-            try await run(function)
+            try await run(Self.describe(test, testCase), function)
         } catch {
             await Self.admission.leave()
             throw error
@@ -47,23 +53,42 @@ struct GPUThreads: SuiteTrait, TestTrait, TestScoping {
         await Self.admission.leave()
     }
 
-    /// Runs `function` on the dedicated threads, recording it as hung if it runs past `hangLimit`.
-    func run(_ function: @Sendable () async throws -> Void) async throws {
+    /// Runs `function`, the test `name`, on the dedicated threads, stopping the run if it is still
+    /// running `hangLimit` after it began there.
+    func run(_ name: String, _ function: @Sendable () async throws -> Void) async throws {
         let limit = hangLimit
-        let hung = onHang
+        let hung = onHang ?? { Self.stop($0) }
         try await withTaskExecutorPreference(Self.executor) {
             // On its thread now: the test runs from here.
-            // An unstructured task, so on the cooperative pool, not the dedicated threads (it does
-            // not take their preference): with every one of those held, as by hung tests, it still
-            // wakes, if after a while when the pool is busy too.
-            let watchdog = Task {
-                try await Task.sleep(for: limit)
-                Issue.record("Hung: still running \(limit) after it got its thread.")
-                hung?()
+            let watchdog = DispatchSource.makeTimerSource(queue: .global(qos: .userInitiated))
+            watchdog.schedule(deadline: .now() + limit.timeInterval)
+            watchdog.setEventHandler {
+                hung("Hung: \(name) still running \(limit) after it got its thread; stopping the test run.")
             }
+            watchdog.activate()
             defer { watchdog.cancel() }
             try await function()
         }
+    }
+
+    /// The test and where it is, as a hang names it (which of its arguments is not public).
+    static func describe(_ test: Test, _ testCase: Test.Case?) -> String {
+        let place = "\(test.sourceLocation.fileName):\(test.sourceLocation.line)"
+        return
+            "\"\(test.displayName ?? test.name)\" (\(place)\(test.isParameterized ? ", one of its argument cases" : ""))"
+    }
+
+    /// Says what hung where it is seen at once, and ends the test process with a failure.
+    static func stop(_ message: String) -> Never {
+        fflush(stdout)
+        FileHandle.standardError.write(Data((message + "\n").utf8))
+        exit(EXIT_FAILURE)
+    }
+}
+
+extension Duration {
+    fileprivate var timeInterval: TimeInterval {
+        Double(components.seconds) + Double(components.attoseconds) * 1e-18
     }
 }
 
@@ -146,34 +171,51 @@ struct GPUThreadsTests {
         #expect(Thread.current.name?.hasPrefix("gpu-test-") == true)
     }
 
-    @Test("A test that runs past its limit on its thread is recorded as hung, one within it is not")
+    @Test("A test still running past its limit is caught however busy the threads, one within it is not")
     func hangLimit() async throws {
         var short = GPUThreads()
         short.hangLimit = .milliseconds(100)
         // Every dedicated thread but the one the test holds held too, as when tests hang or the GPU
-        // is busy: the watchdog must still wake while the test holds its thread. With the
-        // cooperative pool busy as well, under load, that can take a while, so the test holds its
-        // thread until it does, up to two minutes, rather than for a fixed time it may outlast.
+        // is busy, and the cooperative pool's threads as well, for longer than the watchdog may
+        // take: it must still fire while the test spins on its thread. The test holds its thread
+        // until it does, up to two minutes.
         let holders = (1..<GPUThreads.threads).map { _ in
-            Task(executorPreference: GPUThreads.executor) { Self.hold(1) }
+            Task(executorPreference: GPUThreads.executor) { Self.hold(8) }
+        }
+        let pool = (0..<ProcessInfo.processInfo.activeProcessorCount).map { _ in
+            Task.detached { Self.hold(8) }
         }
         try await Task.sleep(for: .milliseconds(200))
-        let fired = Signal()
-        let inTime = Signal()
-        short.onHang = { fired.set() }
-        await withKnownIssue {
-            try await short.run {
-                let start = Date()
-                while !fired.isSet && Date().timeIntervalSince(start) < 120 { Self.hold(0.01) }
-                if fired.isSet { inTime.set() }
-            }
+        let said = Message()
+        short.onHang = { said.set($0) }
+        let began = Message()
+        try await short.run("\"spinning\"") {
+            began.set("")
+            while said.value == nil && Date().timeIntervalSince(began.time ?? .now) < 120 { Self.hold(0.01) }
         }
-        #expect(inTime.isSet, "The watchdog did not wake while the test held its thread.")
-        for holder in holders { await holder.value }
-        short.onHang = nil
-        // Held on its thread, not waiting for one, however busy the others.
+        #expect(
+            said.value
+                == "Hung: \"spinning\" still running 0.1 seconds after it got its thread; stopping the test run."
+        )
+        let waited = (said.time ?? .distantFuture).timeIntervalSince(began.time ?? .distantPast)
+        #expect(waited < 4, "The watchdog waited \(waited) s, for a busy thread.")
+        for task in holders + pool { await task.value }
+        // Held on its thread, not waiting for one, however busy the others: not caught.
+        let late = Message()
+        short.onHang = { late.set($0) }
         short.hangLimit = .seconds(30)
-        try await short.run { Self.hold(0.05) }
+        try await short.run("within") { Self.hold(0.05) }
+        #expect(late.value == nil)
+    }
+
+    @Test("A hang names the test, where it is, and whether it takes arguments", arguments: [3])
+    func naming(_ n: Int) throws {
+        let test = try #require(Test.current)
+        let line = test.sourceLocation.line
+        #expect(
+            GPUThreads.describe(test, Test.Case.current)
+                == "\"A hang names the test, where it is, and whether it takes arguments\" "
+                + "(GPUThreads.swift:\(line), one of its argument cases)")
     }
 
     /// Holds the thread, as a test waiting on the GPU does.
@@ -199,10 +241,17 @@ struct GPUThreadsTests {
     }
 }
 
-/// A flag set once, from any thread.
-private final class Signal: @unchecked Sendable {
+/// A message set from any thread, and when.
+private final class Message: @unchecked Sendable {
     private let lock = NSLock()
-    private var value = false
-    var isSet: Bool { lock.withLock { value } }
-    func set() { lock.withLock { value = true } }
+    private var text: String?
+    private var date: Date?
+    var value: String? { lock.withLock { text } }
+    var time: Date? { lock.withLock { date } }
+    func set(_ message: String) {
+        lock.withLock {
+            text = message
+            date = Date()
+        }
+    }
 }
