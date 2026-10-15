@@ -3477,6 +3477,22 @@ Reading this table:
 The samples and results are kept as JSON (`--out`), each result as it arrives, so an ensemble
 cut short carries on from where it was.
 
+**The spread from rounding.** `--rounding-ensemble` runs each case's middle inputs three times
+instead: with the kernels' default rounding, without fused multiply-adds and with relaxed math.
+It prints each output's lowest to highest, with each rounding's value and the default's marked:
+
+```bash
+swift run -c release BombCAD ensemble janney,saatci --rounding-ensemble
+```
+
+Before failure the three agree to about 1%; after it they spread as any two builds whose
+arithmetic rounds differently would ([results after failure](#convergence-on-todays-defaults)).
+Most of the ensemble's outputs are peaks. For the post-failure quantities of the case matrix,
+`Scripts/concrete-matrix.py --rounding-ensemble` runs each blastbench command with
+`--rounding default`, `unfused` and `relaxed`, and gives each row as the default's value with
+the lowest and highest after it. Each costs about three runs (relaxed math and no fused
+multiply-adds cost 0–10% more than the default; [performance](performance.md#fast-math-and-the-build)).
+
 ## Consistency across air grids
 
 The 3 m reinforced cantilever wall, 6 m from the charge, coupled to the air solver:

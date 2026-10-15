@@ -10,7 +10,7 @@ enum HeadlessEnsemble {
     static let usage = """
         Usage: BombCAD ensemble <case>[,<case>…] [--samples <n>] [--seed <n>] [--worker <ssh host>]…
                                 [--local-workers <n>] [--no-default-workers] [--ratio <times slower>]
-                                [--out <folder>]
+                                [--out <folder>] [--rounding-ensemble]
                BombCAD ensemble --list
 
         Samples each case's uncertain inputs by a Latin hypercube, seeded so that the same seed
@@ -23,6 +23,10 @@ enum HeadlessEnsemble {
         percentiles; --out writes each case's samples and results as JSON into a new folder, each
         result as it comes in, and given a folder an ensemble cut short was writing, carries on
         from the results already there.
+        --rounding-ensemble runs each case with every input at its middle value instead, once
+        with the kernels' default rounding, once without fused multiply-adds and once with relaxed
+        math, and prints each output's lowest to highest with the default's value: results after
+        failure spread by about that between any two builds whose arithmetic rounds differently.
         --list names the cases and their inputs.
         """
 
@@ -66,6 +70,8 @@ enum HeadlessEnsemble {
         var localWorkers = 0
         var ratio: Double?
         var out: URL?
+        /// Each case's middle run with each of the kernels' roundings, in place of the samples.
+        var roundingEnsemble = false
 
         static func parse(_ arguments: [String]) throws -> Options {
             var options = Options()
@@ -74,6 +80,14 @@ enum HeadlessEnsemble {
             var index = 0
             while index < arguments.count {
                 let argument = arguments[index]
+                if argument == "--rounding-ensemble" {
+                    guard !options.roundingEnsemble else {
+                        throw ProjectFileError.invalid("Give \(argument) once.")
+                    }
+                    options.roundingEnsemble = true
+                    index += 1
+                    continue
+                }
                 guard argument.hasPrefix("--") else {
                     positional.append(argument)
                     index += 1
@@ -131,6 +145,10 @@ enum HeadlessEnsemble {
                 }
             }
             guard positional.count == 1 else { throw ProjectFileError.invalid("Name the cases to run.") }
+            if options.roundingEnsemble, seen.contains("samples") || seen.contains("seed") {
+                throw ProjectFileError.invalid(
+                    "--rounding-ensemble runs each case's middle inputs; leave out --samples and --seed.")
+            }
             options.cases = positional[0].split(separator: ",").map {
                 $0.trimmingCharacters(in: .whitespaces)
             }
@@ -182,7 +200,10 @@ enum HeadlessEnsemble {
         let progress = try options.out.map { try Progress(folder: $0) }
         let done = progress?.done ?? []
         for (caseIndex, id) in options.cases.enumerated() {
-            let samples = try ValidationEnsemble.samples(case: id, count: options.samples, seed: options.seed)
+            let samples =
+                options.roundingEnsemble
+                ? try ValidationEnsemble.roundingSamples(case: id)
+                : try ValidationEnsemble.samples(case: id, count: options.samples, seed: options.seed)
             var item = Report.Case(
                 id: id, samples: samples, outcomes: Array(repeating: nil, count: samples.count),
                 places: Array(repeating: nil, count: samples.count))
@@ -368,6 +389,7 @@ enum HeadlessEnsemble {
     /// the samples' mean, spread and 5th to 95th percentiles.
     static func summary(_ item: Report.Case) -> [String] {
         guard let info = ValidationEnsemble.cases.first(where: { $0.id == item.id }) else { return [] }
+        if item.samples.contains(where: { $0.rounding != nil }) { return roundingSummary(item, info) }
         let ran = item.outcomes.compactMap { $0 }
         var lines = [
             "\(info.title): \(ran.count) of \(item.samples.count) runs, "
@@ -417,6 +439,38 @@ enum HeadlessEnsemble {
                     "; follows "
                     + drivers.map { String(format: "%@ (%+.2f)", $0.0, $0.1) }.joined(separator: ", ")
             }
+            lines.append(line)
+        }
+        return lines
+    }
+
+    /// Lines for a case run with each of the kernels' roundings: each output's lowest to highest,
+    /// the default's value and the others', and half the range against the default.
+    static func roundingSummary(_ item: Report.Case, _ info: EnsembleCase) -> [String] {
+        let ran = zip(item.samples, item.outcomes).compactMap { sample, outcome in
+            outcome.map { (rounding: sample.rounding ?? .standard, outcome: $0) }
+        }
+        var lines = [
+            "\(info.title): \(ran.count) of \(item.samples.count) roundings, "
+                + "\(item.places.compactMap { $0 }.filter { $0 != "here" }.count) on other Macs"
+        ]
+        func format(_ value: Double) -> String { String(format: "%.3g", value) }
+        for output in info.outputs {
+            let values = ran.compactMap { run in run.outcome.outputs[output.key].map { (run.rounding, $0) } }
+            guard let low = values.map(\.1).min(), let high = values.map(\.1).max() else {
+                lines.append("  \(output.name): –")
+                continue
+            }
+            let standard = values.first { $0.0 == .standard }?.1
+            var line = "  \(output.name): \(format(low))–\(format(high)) \(output.unit) ("
+            line += values.map { "\($0.0 == .standard ? "default" : $0.0.name) \(format($0.1))" }
+                .joined(separator: ", ")
+            line += ")"
+            if let standard, standard != 0 {
+                line += String(format: ", ±%.1f%% of the default", 50 * (high - low) / abs(standard))
+            }
+            if values.count < ran.count { line += " (in \(values.count) of \(ran.count) runs)" }
+            if let measured = output.measured { line += "; measured \(format(measured))" }
             lines.append(line)
         }
         return lines
