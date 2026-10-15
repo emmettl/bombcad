@@ -158,6 +158,9 @@ struct SimulationSettings: Equatable {
     /// The terrain cut through the cells where the air is not refined; false for a staircase of
     /// whole cells.
     var terrainCutCells = true
+    /// Debris lands on soil, a Winkler bed of `groundStiffness` (Pa/m), instead of the hard ground.
+    var softGround = false
+    var groundStiffness = SolverConfiguration.soilSubgradeModulus
 
     var chargeMass: Float {
         get { scenario.charge.mass }
@@ -662,6 +665,8 @@ final class SimulationModel {
                 settings.shockThreshold = run.shockThreshold ?? 0.1
                 settings.gravity = run.gravity ?? false
                 settings.terrainCutCells = run.cutsTerrain(over: scenario)
+                settings.softGround = run.groundStiffness != nil
+                settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
                 settings.solidElementSize = run.solidElementSize
                 duration = run.duration
             }
@@ -801,6 +806,8 @@ final class SimulationModel {
             settings.shockThreshold = run.shockThreshold ?? 0.1
             settings.gravity = run.gravity ?? false
             settings.terrainCutCells = run.cutsTerrain(over: document.scenario)
+            settings.softGround = run.groundStiffness != nil
+            settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
             settings.solidElementSize = run.solidElementSize
             duration = run.duration
         }
@@ -1003,6 +1010,8 @@ final class SimulationModel {
         settings.shockThreshold = inputs.settings.shockThreshold ?? 0.1
         settings.gravity = inputs.settings.gravity ?? false
         settings.terrainCutCells = inputs.settings.cutsTerrain(over: inputs.scenario)
+        settings.softGround = inputs.settings.groundStiffness != nil
+        settings.groundStiffness = inputs.settings.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
         settings.solidElementSize = inputs.settings.solidElementSize
         duration = inputs.settings.duration
         handledSettings = settings
@@ -2124,7 +2133,8 @@ final class SimulationModel {
         ProjectRunSettings.configureAir(
             &solver.configuration, detailedCharge: settings.detailedCharge, sharpShocks: settings.sharpShocks,
             shockLevels: settings.shockLevels, gravity: settings.gravity,
-            shockThreshold: settings.shockThreshold, terrainCutCells: settings.terrainCutCells)
+            shockThreshold: settings.shockThreshold, terrainCutCells: settings.terrainCutCells,
+            groundStiffness: settings.softGround ? settings.groundStiffness : nil)
     }
 
     private func rebuild() {

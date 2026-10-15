@@ -296,6 +296,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case baseConnections
     case jointsBetweenParts
     case footings
+    case softGround
     case cyclicSand
     case freeBase
     case importedStructure
@@ -386,6 +387,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
                 (s.fixedBase && s.baseAnchorage?.footing != nil)
                     || s.supportAnchorages.contains { $0?.footing != nil }
             }
+        case .softGround: return config.groundStiffness != nil && !structures.isEmpty
         case .cyclicSand:
             return any { s in
                 (s.fixedBase && s.baseAnchorage?.footing?.soil.cyclic != nil)
@@ -710,6 +712,16 @@ public enum StandingTable {
                     + "With the sand that settles under cycles (the default), settlement 1.3–1.7 times that "
                     + "measured, and 0.4–1.3 times in eight shaken events; a tenth on the elastic bed.",
                 document: "validation.md#a-footing-rocked-on-dry-sand")
+        case .softGround:
+            return Entry(
+                title: "Soft ground under debris", affects: [.structuralDamage], limit: nil,
+                note:
+                    "Debris lands on a Winkler bed of the soil's subgrade modulus instead of a hard ground that "
+                    + "stops it dead. Compared once, on Keys's brick walls in the open at 5×10⁷ Pa/m (one run "
+                    + "each): WR1A's debris came in from a mean 2.10 m to 1.36 m against 0.23 m measured, WR1B's "
+                    + "from 2.15 to 1.36 m against 0.64 m. Not for paving or slabs; the air sees the ground as "
+                    + "hard.",
+                document: "validation.md#brick-walls-debris")
         case .cyclicSand:
             return Entry(
                 title: "Sand that settles under cycles", affects: structure, limit: nil,
@@ -898,6 +910,7 @@ public enum StandingTable {
         "SolverConfiguration.periodicSides": .numerical,
         "SolverConfiguration.afterburnLimit": .option([.afterburnLimit]),
         "SolverConfiguration.terrainCutCells": .option([.terrainStaircase]),
+        "SolverConfiguration.groundStiffness": .option([.softGround]),
         // The structure.
         "StructureModel.solids": .input,
         "StructureModel.openings": .input,
@@ -1688,6 +1701,14 @@ struct StandingScene {
                         + "1.5–2 m too far out in the open and thrown half as far as measured in a shock tube",
                     "validation.md#brick-walls-debris"
                 ))
+            if has(.softGround) {
+                evidence.append(
+                    StandingEvidence(
+                        "Brick walls' debris on soft ground (Keys, 2016)",
+                        "At 5×10⁷ Pa/m the mean distance 1.36 m against 0.23 and 0.64 m measured (2.10 and 2.15 m "
+                            + "on the hard ground); one run of each wall", "validation.md#brick-walls-debris")
+                )
+            }
             parts.append(
                 "masonry's joints verified; brick walls under blasts fall as one column, not in pieces")
         }
