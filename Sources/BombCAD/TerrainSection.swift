@@ -57,6 +57,33 @@ struct TerrainSection: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            Picker("Debris lands on", selection: $model.settings.softGround) {
+                Text("Rigid ground").tag(false)
+                Text("Soil").tag(true)
+            }
+            .help(
+                "Where a structure's debris falls. Rigid ground stops it dead, which shatters falling brickwork; "
+                    + "soil gives under it, a bed of the stiffness below. Compared once, on brick walls in the open "
+                    + "(Keys): their debris lay a third nearer on soil, still farther out than measured. Not for "
+                    + "paving or a slab. The air sees the ground as hard either way.")
+            if model.settings.softGround {
+                LabeledSlider(
+                    title: "Soil stiffness",
+                    value: Binding(
+                        get: { log10(Double(model.settings.groundStiffness)) },
+                        set: { model.settings.groundStiffness = Float((pow(10, $0) / 1e6).rounded() * 1e6) }),
+                    range: log10(
+                        Double(SolverConfiguration.soilSubgradeRange.lowerBound))...log10(
+                            Double(SolverConfiguration.soilSubgradeRange.upperBound)),
+                    text: String(format: "%.0f MN/m³", model.settings.groundStiffness / 1e6))
+                Text(
+                    "The soil's subgrade modulus: about 10–20 MN/m³ for loose sand or soft clay, 50 for medium dense "
+                        + "sand (the default), 100–150 for dense sand or stiff clay."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            }
             Button("Import elevation grid…") { isImporting = true }
                 .help(
                     "An ESRI ASCII grid (.asc) or a GeoTIFF (.tif) of elevations, cropped to the scene from its south-west corner."
