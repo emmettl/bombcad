@@ -97,6 +97,7 @@ The whole path has been run for real, with the `BombCAD-notary` profile, from 20
 | 0.1.2 (4)  | `239a67e` | `aa446aa3-ba2e-486b-9ef3-ad5651ec6948` | Published as v0.1.2           |
 | 0.2.0 (5)  | `6eef870` | `678f1bcd-04bc-4c3d-a2d2-f2fad6ffdc29` | Superseded, not published     |
 | 0.2.0 (6)  | `5d930d7` | `7dcc4ec3-0956-4be4-9e4b-972c2e29abca` | Published as v0.2.0           |
+| 0.3.0 (7)  | `b524a9d` | `de90ca6f-1803-4cd9-998b-525980d409c6` | Candidate, not yet published  |
 
 For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
 assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
@@ -134,6 +135,14 @@ ticket, passed `codesign --verify --deep --strict`, was accepted by `spctl` as
 `Notarized Developer ID`, and holds the licence text and both shader bundles; `make release-smoke`
 passed. Its notes, reviewed independently, are in `docs/release-notes/0.2.0.md`. Its ZIP,
 checksum and manifest are attached to the GitHub release `v0.2.0`, tagged on `5d930d7`.
+
+Build 7 (0.3.0) was prepared on 2026-10-15 from `f5a9261`, with `make release` run once inside
+`gpu-slot` and the app's tests now deterministic: all 300 app and 921 core tests passed, Apple
+accepted it, and a fresh expansion of its ZIP matched the checksum
+(`c42fb6b3634087187807ff9f156dcb0430eced31049309fa291f434a79bd8e17`), validated its stapled
+ticket, passed `codesign --verify --deep --strict`, was accepted by `spctl` as
+`Notarized Developer ID`, and holds the licence text and both shader bundles; `make release-smoke`
+passed. Its notes, reviewed independently, are in `docs/release-notes/0.3.0.md`.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
