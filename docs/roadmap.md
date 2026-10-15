@@ -77,8 +77,9 @@ More evidence is worth more than more features.
   ([blind tests](blind-tests.md#test-1-hrynyks-slabs-struck-by-a-falling-weight)).
 - **Done:** blind test 2, slabs under an open-air charge (Mendonça et al.), frozen at `047cee3`,
   scored *worse* ([validation](validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge));
-  test 3 reserved, Reynolds's thesis on the contest's high-strength slabs, sealed unread
-  ([register](blind-tests.md#register)).
+  test 3, Reynolds's high-strength slabs in the contest's blast load simulator, frozen at the
+  released v0.3.0 (`b524a9d`) and being predicted
+  ([test 3](blind-tests.md#test-3-high-strength-slabs-in-the-blast-load-simulator-reynolds-2015)).
 - **Blocked on the user:** the sources marked *needs the user to obtain* in
   [data wanted](data-wanted.md), chiefly ACI SP-306 for the high-strength slabs, Saatci's
   records, Kasun-III's mapped debris for fragment sizes, shear across cracks at high rates, a
