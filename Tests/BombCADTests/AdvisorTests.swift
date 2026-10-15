@@ -60,6 +60,28 @@ struct AdvisorTests {
         #expect(!none.met && none.unmet.first?.contains("no gauges") == true)
     }
 
+    @Test("Close in, refined settings whose patches would fill the domain are told of the uniform grid")
+    func uniformCloseIn() throws {
+        // 1 kg 0.5 m above rigid ground, 2 m across: 0.04 m cells refined once hold about 30%.
+        var scenario = Scenario(
+            name: "Close in", domainSize: SIMD3(2, 2, 2), boxes: [],
+            charge: Charge(mass: 1, position: SIMD3(1, 1, 0.5)))
+        scenario.reflectiveFaces = .ground
+        scenario.gauges = [Gauge("below", at: SIMD3(1, 1, 0.01))]
+        var settings = try #require(ProjectDocument(scenario: scenario).runSettings)
+        settings.resolution = Resolution(cellSize: 0.04)!.rawValue
+        settings.sharpShocks = true
+        settings.duration = 0.01
+        let advice = SimulationInputs(scenario: scenario, settings: settings).advice(
+            for: .seconds(600), memory: memory)
+        #expect(advice.currentStandIn?.setting == AdvisorSetting(cellSize: 0.02))
+        let note = try #require(advice.standInNote)
+        #expect(note.hasPrefix("As set (0.04 m cells, refined once), the patches would hold about "))
+        #expect(note.hasSuffix("% of the domain: 0.02 m cells cost less, with the same cells at the shock."))
+        // In the open, no such note.
+        #expect(landscape().advice(for: .seconds(600), memory: memory).standInNote == nil)
+    }
+
     @Test("Advice is asked of a headless run with --advise, which does not run")
     func headless() throws {
         let options = try HeadlessRun.Options.parse(["scene.bombcad", "--advise", "peak:20%"])
