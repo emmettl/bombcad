@@ -210,7 +210,9 @@ changes, change the table with it and advance `SceneStanding.currentTable`.
   collapse named as compared once, blind, and missed, and debris as compared once; it does not tell a spall from a
   breach. Results after failure move with any change to how their arithmetic rounds (a changed
   model, compiler or GPU), so the standing gives them as one draw among roundings
-  ([convergence](validation.md#convergence-on-todays-defaults)).
+  ([convergence](validation.md#convergence-on-todays-defaults)). Beams broken by an impact also
+  follow the strain-rate window's length, steeply and not monotonically (Ando's at 90 to 105 µs),
+  far more than rounding moves them, and the standing says so.
 - **Building surface records** exported as JSON are a list and carry no standing of their own;
   `--standing` covers them.
 - **Blind tests judge the defaults frozen for them.** Tests 1 (`1c85774`) and 2 (`047cee3`) were
