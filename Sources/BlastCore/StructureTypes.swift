@@ -1,3 +1,4 @@
+import ContactSearchMetal
 import Foundation
 import Metal
 import simd
@@ -1126,7 +1127,10 @@ enum ShaderLibrary {
             }
             return try String(contentsOf: url, encoding: .utf8)
         }.joined(separator: "\n")
-        return try device.makeLibrary(source: source, options: nil)
+        // Contact's table and search are ContinuumKit's (`ContactSearchMetal`), compiled ahead of
+        // the kernels that use them.
+        return try device.makeLibrary(
+            source: try MetalContactSearch.functionSource() + "\n" + source, options: nil)
     }
 
     /// Index of the optional function constant that compiles a kernel for one gas model
