@@ -229,5 +229,11 @@ changes, change the table with it and advance `SceneStanding.currentTable`.
   drove blind test 2's landing slabs down at about 11 g. It still feels no new flow, and loose
   debris feels no air while it sleeps, so the standing notes it on every scene with a structure;
   keep the air awake for debris in flight or anything thrown far.
+- **Bands hold on the air they were found on.** Since afterburning, hot air and far-field faces
+  became the default on 15 October 2026, Kingery–Bulmash's tables, the rooms, Wang's and Wu's
+  small charges and Chiquito's slabs have been run again on them, and the fireball's radiation
+  was compared on them already. Close-in loads (withheld with afterburning), Wu's 1.6 kg slab and
+  the chamber's wall pressures say they were compared on the ideal gas only; Hupfauf's debris
+  and Church's clouds (afterburning alone) are withheld on today's air until run again.
 - **Not a judgement of safety.** Nothing here is validated for engineering decisions or for
   judging the safety of a real structure, and the standing says so.

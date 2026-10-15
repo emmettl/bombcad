@@ -355,6 +355,28 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
     }
 
     /// Mirrored: the convergence study's OA1 row holds every mesh's value and the measurement.
+    /// The fireball's radiation was compared on today's air, Church's clouds on afterburning alone:
+    /// each band holds only on the air it came from.
+    @Test func radiationAndCloudFollowTheAirTheyWereComparedOn() throws {
+        func standing(afterburning: Bool, hotAir: Bool) -> SceneStanding {
+            var config = SolverConfiguration()
+            config.afterburning = afterburning
+            config.airModel = hotAir ? .thermallyPerfect : .idealGas
+            return SceneStanding(
+                StandingInputs(
+                    scenario: ScenarioPreset.streetCanyon.scenario, cellSize: 0.25, configuration: config,
+                    thermal: ThermalSpec(), cloud: CloudSpec()))
+        }
+        let today = standing(afterburning: true, hotAir: true)
+        #expect(today.band(.radiatedEnergy) != nil)
+        #expect(today.band(.cloudTop) == nil)
+        #expect(today[.cloud]?.unbanded?.contains { $0.contains("afterburning alone") } == true)
+        let alone = standing(afterburning: true, hotAir: false)
+        #expect(alone.band(.radiatedEnergy) == nil && alone.band(.cloudTop) != nil)
+        let ideal = standing(afterburning: false, hotAir: false)
+        #expect(ideal.band(.radiatedEnergy) == nil && ideal.band(.cloudTop) == nil)
+    }
+
     @Test func meshSeriesQuoteTheStudy() throws {
         let series = ValidationTables.oa1
         let text = try section(series.document)
