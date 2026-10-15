@@ -513,6 +513,26 @@ held along both edges, are the one benchmark that could arch, and they agree tod
 strength and stiffness, the hourglass control and arching are each ruled out, by runs or by
 construction, as what holds these slabs. What does is not found on these meshes.
 
+**Nor is it the mesh** (16 October 2026). Slabs 4 and 1 were run to their first peaks on 8, 16 and
+24 elements through, the elements kept cubic (10, 5 and 3.3 mm).
+- **The air:** the harness's own (an ideal gas without afterburning, as in every Mendonça run so
+  far), kept awake. The harness does not take the recommended air the benches now start from.
+- **The step:** the structure's falls with the element, at about 1.2, 0.6 and 0.4 µs.
+- **Rounding:** nothing failed before the first peaks, so no post-failure figure needed the
+  rounding variant.
+
+| Elements through | Elements | Slab 4, first peak | Slab 1, first peak and first 30 ms | Wall time (20 / 30 ms) |
+|---|---|---|---|---|
+| 8 | 80,000 | 4.30 mm at 4.0 ms | 10.07 mm, stands | 184 / 219 s |
+| 16 | 640,000 | 4.19 mm at 3.9 ms | 9.17 mm, stands | 419 / 602 s |
+| 24 | 2,160,000 | 4.32 mm at 3.9 ms | 10.02 mm, stands (702 elements removed) | 1,594 / 1,742 s |
+| Measured | | 20.4 mm (meters 18.7, 22.2) | collapsed | |
+
+- **No trend:** the first peaks move by under 10% with no direction, at a fifth and less of the
+  measured, so nothing extrapolates towards the tests.
+- **The bands stand:** Mendonça's bands, tied to their derived meshes, hold on any of these meshes.
+- **Cost:** the 24-element runs cost nine and eight times the 8-element ones.
+
 ## Structural response against a real test
 
 ### The test
