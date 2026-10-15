@@ -737,6 +737,56 @@ there the struck beams go further from their tests. A length chosen to fit OA1 i
 it stays an option. Nor does it hold the contest slab with discrete bars together (still apart
 by 24 ms at 0.05 m).
 
+### Embedded cracks, tried and not adopted
+
+The user chose on 14 October 2026 to try an embedded crack, reversing the
+[strategy's](concrete-strategy.md) deferral, on the strength of the punching trace
+([validation](validation.md#what-holds-the-cone-traced)). It was built as an option and judged
+through three gates, stopping at the first that failed:
+1. a 45° crack band that slides freely;
+2. Hrynyk's slabs punching on 8 elements;
+3. the case matrix.
+
+It is not on main. The code and a full record are on branch `claude/embedded-crack` (55c8e87),
+"Embedded cracks" in this file there.
+
+**What it was.** Once a crack's axes stopped turning, the element's corners beyond the crack moved
+by a jump J, an unknown of the element's own.
+- The concrete read the jump's strain along the crack's normal rather than along the corners'
+  split.
+- The hourglass control did not see the jump.
+- J came from one relaxed Newton step a step on the element's energy: the concrete's traction
+  against the hourglass control's push.
+- The split was chosen from the crack's normal and the lattice's directions, by the energy it
+  would release.
+- The element stayed one-point; its state grew from 196 to 212 bytes.
+- Off, it was bit-identical.
+
+**What it did.**
+
+| Attempt | Gate 1: 45° band, no interlock | Gate 2: Hrynyk's first impacts against crack off |
+|---|---|---|
+| Splits from any lattice direction | 7.5 → 0.9–1.9 MPa (16 mm), 10.3 → 1.5–2.9 (8 mm) | TH6-1 27.7 mm on 150 kN (off 20.2 on 384); plug steps 5× further; none punches |
+| Splits within 35° of the crack's normal | 1.3–2.0 / 1.7–2.2 MPa | TH6-1 30.2 mm on 128 kN; plug steps less |
+| Bars read the uncorrected strain | 1.3–2.0 / 1.7–2.2 MPa | TH6-1 28.7 mm on 142 kN; thousands of elements left as bare bars; TH7-3 meets the punching criterion on a slab already far too soft |
+
+- The aligned band was unchanged throughout (about 0 MPa).
+- The rounding variant agreed within 2%.
+- Measured first impacts: 18.3 mm on 483 kN (TH6), 12.8 mm on 605 kN (TH7), 13.2 mm on 556 kN (TH2).
+- Mendonça's slabs on the last build (8 elements):
+  - slab 4: 5.9 mm, against 20.4 measured (4.3 off);
+  - slab 1: 31 mm and surviving, where the test's collapsed (10.1 off).
+
+**Why not adopted.** The jump freed the 45° band by three-quarters, but in the slabs it softened
+every cracked element. The first impacts on undamaged slabs came out 1.4–1.7 times the measured
+peak, on a third of the reaction. Neither restricting the splits nor fixing the bars' strain
+removed that, so the source lies in how the jump meets elements cracked for other reasons than
+the shear it is for: the hourglass control it relieves (a one-point slab's bending in its cracked
+elements) or the strain it moves.
+
+Punching under impact therefore stays declared as not predicted. In the standing, the cone forms
+but cannot slide out.
+
 ## Strain-rate effects
 
 Blast loads strain materials at 0.1 to 100 per second, and both concrete and steel are stronger
