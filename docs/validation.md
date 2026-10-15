@@ -230,9 +230,10 @@ element fixes its crack axes from its own strain, at 14–38° rather than 45°,
 band then shortens a misaligned axis until it crushes; a quarter of the band's work also goes into
 hourglass control at its cap. Hrynyk's whole punching stress is about 5 MPa, so a 45° cone cannot
 slide out however weak its concrete is made. That is the miss: the cone's kinematics, not any
-mechanism's strength. A route out, not adopted: an embedded crack whose jump takes each element's
-own motion across it (strong discontinuity, kinematically consistent), with the shear band as its
-first gate. Runs: `/Volumes/StudioData/bombcad/concrete-stages/hrynyk-runs/`.
+mechanism's strength. An embedded crack whose jump takes each element's own motion across it was
+then tried and not adopted: it freed the band by three-quarters but softened the slabs' first
+impacts to 1.4–1.7 times the measured peaks
+([record](concrete-model.md#embedded-cracks-tried-and-not-adopted)). Punching stays not predicted. Runs: `/Volumes/StudioData/bombcad/concrete-stages/hrynyk-runs/`.
 
 ## Blind test 2: Mendonça's slabs under an open-air charge
 
@@ -335,6 +336,12 @@ blamed an artefact of the frozen air. Checked:
 - **So group B's 0.99 is not evidence of accuracy.** The model's 20–25 mm there is the frozen air
   driving the slab onto rigid supports; the measured 20–26 mm is the test slab's first peak and its settling after
   it landed. The agreement is a coincidence.
+- **Fixed since (2026-10-15), not re-scored.** The solid outline now follows the structure while
+  the air sleeps (see [freezing the air](air-blast-model.md#freezing-the-air)). On today's main,
+  at the primary's settings, slabs 4, 5 and 7's largest downward displacement is the blast's own,
+  4.3, 3.7 and 4.1 mm at 4 ms, where the landing gave 17.6, 15.0 and 18.0 mm. Thrown up 40–50 mm,
+  they fall freely and are still bouncing on the rigid trestles at 500 ms. The blind record above
+  stands as scored at its frozen commit.
 
 **Secondary reading: the blast's first peak** (not a re-scoring). Against the meters' first
 peaks the model's blast peak is a tenth to a quarter: 3.6–4.4 mm at 4 ms against 17–38 mm at

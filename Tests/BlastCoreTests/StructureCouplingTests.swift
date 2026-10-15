@@ -593,6 +593,40 @@ struct StructureCouplingTests {
         solver.restart()
         #expect(!solver.airIsAsleep)
     }
+
+    @Test("A body falling through sleeping air is loaded by the air beside where it now is")
+    func bodyMovesOnThroughSleepingAir() throws {
+        // A free block in a closed box of still air at half an atmosphere over ambient: the same
+        // pressure on every face, so it falls freely. The air sleeps at the first checkpoint. Were
+        // the solid outline frozen with it, the block, once it had fallen out of its outline,
+        // would read solid cells above it, so no air, and the overpressure below it (blind test
+        // 2's slabs, landing after the blast had thrown them up, were pushed down so).
+        var scenario = Scenario(
+            name: "Falling block", domainSize: SIMD3(1.2, 1.2, 2), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(0.1, 0.1, 0.1)),
+            structure: StructureModel(
+                solids: [Box(min: SIMD3(0.4, 0.4, 1.2), max: SIMD3(0.8, 0.8, 1.4))], material: Self.elastic,
+                elementSize: 0.1, fixedBase: false))
+        scenario.reflectiveFaces = .all
+        var configuration = SolverConfiguration()
+        configuration.skipStillAir = false
+        configuration.airSleepThreshold = 0
+        configuration.airSleepCrossings = 1e-6
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 0.05, configuration: configuration)
+        let structure = try #require(solver.structure)
+        let ambient = scenario.atmosphere
+        solver.fill(uniform: Primitive(density: 1.5 * ambient.density, pressure: 1.5 * ambient.pressure))
+        solver.advance(until: 0.01)
+        #expect(solver.airIsAsleep)
+        // 0.2 s of free fall is 0.196 m, four cells.
+        let end: Double = 0.2
+        let result = solver.advance(until: end)
+        #expect(result.isStable)
+        let fallen = -structure.displacement(structure.ex / 2, structure.ey / 2, structure.ez / 2).z
+        let free = Float(0.5 * 9.81 * end * end)
+        #expect(abs(fallen / free - 1) < 0.03, "fell \(fallen) m, freely \(free) m")
+    }
 }
 
 /// A larger structure: the two-storey frame, on its own under gravity.

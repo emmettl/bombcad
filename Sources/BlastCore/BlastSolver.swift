@@ -1174,12 +1174,15 @@ public final class BlastSolver {
 
     /// Encodes one update of the solid mask from the structure's current shape, and of the fine
     /// cells' outline too where the air is refined, unless `fine` is false.
-    private func encodeRemask(_ encoder: MTLComputeCommandEncoder, fine: Bool = true) {
+    /// With `allocate` false (the air asleep), only the coupling pages already allocated follow the
+    /// structure: frozen-air mechanics take no new pages.
+    private func encodeRemask(_ encoder: MTLComputeCommandEncoder, fine: Bool = true, allocate: Bool = true) {
         guard hasBody, let region = couplingRegion, let occupancyBuffer else { return }
         // A refined level's call may move detailed profiling on to another encoder.
         var encoder = encoder
-        encodeAllocateCoupling(encoder)
+        if allocate { encodeAllocateCoupling(encoder) }
         var uniforms = couplingUniforms(region)
+        uniforms.quietCoverage = allocate ? 0 : 1
         if !fine { (uniforms.refineRatio, uniforms.deepRatio) = (0, 0) }
         let length = MemoryLayout<CouplingUniforms>.stride
         let patches = refinement?.patchOfTile ?? refinementPlaceholder
@@ -1187,6 +1190,7 @@ public final class BlastSolver {
 
         for body in bodies {
             uniforms = couplingUniforms(region, body: body)
+            uniforms.quietCoverage = allocate ? 0 : 1
             if !fine { (uniforms.refineRatio, uniforms.deepRatio) = (0, 0) }
             if let structure = body.solids {
                 encoder.setComputePipelineState(splatPipeline)
@@ -1272,6 +1276,7 @@ public final class BlastSolver {
             }
         }
         uniforms = couplingUniforms(region)
+        uniforms.quietCoverage = allocate ? 0 : 1
         if !fine { (uniforms.refineRatio, uniforms.deepRatio) = (0, 0) }
         let composed = combinedOccupancyBuffer ?? occupancyBuffer
         if fine, bodies.count > 1 {
@@ -1929,9 +1934,16 @@ public final class BlastSolver {
                 if !asleep {
                     encodeDebrisExchange(encoder)
                 }
-                if configuration.twoWayCoupling && !asleep {
-                    encodeRemask(encoder)
-                    encodeInteractionCheck(encoder)
+                // The solid outline follows the structure even while the air sleeps: the air is frozen,
+                // but a body still moving reads the frozen air beside where it now is. Frozen where
+                // it was when the air went to sleep, a face that had moved back through that outline
+                // read solid cells, and no air, on one side and frozen air on the other (Mendonça's
+                // slabs, thrown up and landing, were pushed down at about 11 g). Where nothing
+                // crosses a cell's centre the outline and the air are left exactly as they were.
+                // Asleep, it takes no new coupling pages, and the interaction check above stands.
+                if configuration.twoWayCoupling {
+                    encodeRemask(encoder, allocate: !asleep)
+                    if !asleep { encodeInteractionCheck(encoder) }
                 }
                 if let refinement, refining {
                     refinement.encodeSync(

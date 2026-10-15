@@ -1102,6 +1102,8 @@ struct CouplingUniforms {
     var deepThreshold: UInt32 = 1
     var deepPatchOffset: UInt32 = 0
     var deepCellOffset: UInt32 = 0
+    /// 1 while the air sleeps: points in coupling pages not allocated are left out quietly.
+    var quietCoverage: UInt32 = 0
 }
 
 /// When nodes of the structure repel each other.
