@@ -166,6 +166,93 @@ struct IFCRobustnessTests {
         #expect(structure.members[0].role == .shell)
     }
 
+    @Test("Two profiles sharing their fillet arcs are each given arcs of their own before conversion")
+    func sharedSegments() throws {
+        // Two W460 sections drawn as outlines, two of their four fillet arcs (reversed, as Revit
+        // writes them) the same entities in both. The converter then leaves the second's ends open:
+        // in the Clinic's structural model, 183 of its 277 wide-flange beams.
+        let (b, d, tf, tw, r) = (0.0765, 0.2275, 0.0133, 0.004, 0.0177)
+        let (y1, x1) = (d - tf, tw + r)
+        let y2 = y1 - r
+        enum Segment {
+            case line((Double, Double), (Double, Double))
+            case arc((Double, Double), Double, Double)
+        }
+        let outline: [Segment] = [
+            .line((-b, -y1), (-b, -d)), .line((-b, -d), (b, -d)), .line((b, -d), (b, -y1)),
+            .line((b, -y1), (x1, -y1)),
+            .arc((x1, -y2), 180, 270), .line((tw, -y2), (tw, y2)), .arc((x1, y2), 90, 180),
+            .line((x1, y1), (b, y1)),
+            .line((b, y1), (b, d)), .line((b, d), (-b, d)), .line((-b, d), (-b, y1)),
+            .line((-b, y1), (-x1, y1)),
+            .arc((-x1, y2), 0, 90), .line((-tw, y2), (-tw, -y2)), .arc((-x1, -y2), 270, 0),
+            .line((-x1, -y1), (-b, -y1)),
+        ]
+        var lines = ["#200=IFCDIRECTION((1.,0.));"]
+        var next = 1000
+        func add(_ text: String) -> Int {
+            lines.append("#\(next)=\(text)")
+            next += 1
+            return next - 1
+        }
+        func segment(_ part: Segment) -> Int {
+            switch part {
+            case .line(let p, let q):
+                let a = add("IFCCARTESIANPOINT((\(p.0),\(p.1)));")
+                let b = add("IFCCARTESIANPOINT((\(q.0),\(q.1)));")
+                return add(
+                    "IFCCOMPOSITECURVESEGMENT(.CONTINUOUS.,.T.,#\(add("IFCPOLYLINE((#\(a),#\(b)));")));")
+            case .arc(let centre, let from, let to):
+                let point = add("IFCCARTESIANPOINT((\(centre.0),\(centre.1)));")
+                let circle = add("IFCCIRCLE(#\(add("IFCAXIS2PLACEMENT2D(#\(point),#200);")),\(r));")
+                let trimmed = add(
+                    "IFCTRIMMEDCURVE(#\(circle),(IFCPARAMETERVALUE(\(from))),(IFCPARAMETERVALUE(\(to))),.T.,.PARAMETER.);"
+                )
+                return add("IFCCOMPOSITECURVESEGMENT(.CONTINUOUS.,.F.,#\(trimmed));")
+            }
+        }
+        let shared = [4: segment(outline[4]), 6: segment(outline[6])]
+        for n in 0..<2 {
+            let segments = outline.indices.map { shared[$0] ?? segment(outline[$0]) }
+            let curve = add("IFCCOMPOSITECURVE((\(segments.map { "#\($0)" }.joined(separator: ","))),.F.);")
+            let profile = add("IFCARBITRARYCLOSEDPROFILEDEF(.AREA.,$,#\(curve));")
+            let k = 500 + 100 * n
+            lines += [
+                "#\(k)=IFCCARTESIANPOINT((0.,\(2 * n).,0.));", "#\(k + 1)=IFCDIRECTION((0.,1.,0.));",
+                "#\(k + 2)=IFCDIRECTION((1.,0.,0.));",
+                "#\(k + 3)=IFCAXIS2PLACEMENT3D(#\(k),#\(k + 1),#\(k + 2));",
+                "#\(k + 4)=IFCEXTRUDEDAREASOLID(#\(profile),#\(k + 3),#12,7.);",
+                "#\(k + 5)=IFCSHAPEREPRESENTATION(#21,'Body','SweptSolid',(#\(k + 4)));",
+                "#\(k + 6)=IFCPRODUCTDEFINITIONSHAPE($,$,(#\(k + 5)));",
+                "#\(k + 7)=IFCBEAM('\(Self.id(k + 7))',$,'Beam \(n + 1)',$,$,#30,#\(k + 6),$,$);",
+            ]
+        }
+        let data = Self.ifc(lines.joined(separator: "\n"), contained: [507, 607])
+        // The second outline is given copies of the two arcs, its curve rewritten in place.
+        let unshared = IFCStep.unsharingCurveSegments(data)
+        #expect(unshared.copies == 2)
+        let curves = IFCStep.entities(unshared.data) { $0 == "IFCCOMPOSITECURVE" }
+        #expect(
+            curves.count == 2
+                && Set(curves.values.flatMap { IFCStep.references($0.arguments[0]) }).count == 32)
+        #expect(IFCStep.unsharingCurveSegments(unshared.data).copies == 0)
+        // The copies are new entities, their circles and placements copied, their points shared.
+        let before = IFCStep.entities(data) { _ in true }
+        let after = IFCStep.entities(unshared.data) { _ in true }
+        #expect(after.count == before.count + 2 * 4)
+        #expect(Set(after.values.map(\.id)).count == after.count)
+        #expect(
+            after.values.filter { $0.name == "IFCCARTESIANPOINT" }.count
+                == before.values.filter { $0.name == "IFCCARTESIANPOINT" }.count)
+        // Everything else is as it was: a file with nothing shared comes back unchanged.
+        #expect(
+            before.values.allSatisfy { entity in
+                entity.name == "IFCCOMPOSITECURVE" || after[entity.id] == entity
+            })
+        let plain = Self.ifc(Self.box(100, [0, 0, 0], [1, 1, 1]))
+        #expect(IFCStep.unsharingCurveSegments(plain).data == plain)
+    }
+
     @Test("Past the triangle limit the message says to choose fewer elements")
     func triangleLimit() throws {
         let guid = Self.id(5)

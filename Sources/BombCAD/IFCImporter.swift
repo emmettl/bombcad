@@ -150,7 +150,8 @@ enum IFCImporter {
         defer { try? FileManager.default.removeItem(at: folder) }
         let input = folder.appendingPathComponent("source.ifc")
         let obj = folder.appendingPathComponent("geometry.obj")
-        try prepared.data.write(to: input)
+        // Each profile's outline with segments of its own, or the converter can leave it open.
+        try IFCStep.unsharingCurveSegments(prepared.data).data.write(to: input)
         // Exact GUID filtering never implicitly includes descendants. Openings are still subtracted
         // by the converter, even though opening entities are not imported as solid obstacles.
         let geometryLog = try await run(

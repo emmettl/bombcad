@@ -269,6 +269,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case stationaryWalls
     case closedBoundaries
     case terrain
+    case terrainCutCells
     case deflagration
     case ventPanels
     case importedEnvelopes
@@ -340,6 +341,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .stationaryWalls: return !structures.isEmpty && !config.movingWalls
         case .closedBoundaries: return inputs.scenario.reflectiveFaces != .ground
         case .terrain: return inputs.scenario.terrain.map { !$0.isFlat } ?? false
+        case .terrainCutCells:
+            return config.terrainCutCells && (inputs.scenario.terrain.map { !$0.isFlat } ?? false)
         case .deflagration: return inputs.scenario.deflagration != nil
         case .ventPanels: return !(inputs.scenario.ventPanels ?? []).isEmpty
         case .importedEnvelopes:
@@ -525,11 +528,19 @@ public enum StandingTable {
                 ],
                 limit: .approximation,
                 note:
-                    "A staircase of whole cells: it delays Mach reflection off a slope by 3–11° and under-reads "
+                    "By default a staircase of whole cells: it delays Mach reflection off a slope by 3–11° and under-reads "
                     + "the triple point's angle by 20–75% on 100–400 cells along the run; shielding behind "
                     + "ridges is consistency-checked only, and peaks focused far behind a round hill do not "
                     + "converge.",
                 document: "terrain.md#limitations")
+        case .terrainCutCells:
+            return Entry(
+                title: "Terrain on cut cells", affects: air + [.envelopeExposure], limit: nil,
+                note: "Slopes cut through the cells instead of a staircase: on 100–400 cells the triple "
+                    + "point's angle is within 0.25° of three-shock theory at 30–45° and Mach reflection "
+                    + "starts 1–3° late, against the staircase's 3–11°; conservative to round-off. Not yet "
+                    + "with refinement.",
+                document: "terrain.md#cut-cells")
         case .deflagration:
             return Entry(
                 title: "Gas deflagration", affects: air + structure + [.envelopeExposure],
@@ -872,6 +883,7 @@ public enum StandingTable {
         "SolverConfiguration.mixing": .option([.subgridMixing]),
         "SolverConfiguration.periodicSides": .numerical,
         "SolverConfiguration.afterburnLimit": .option([.afterburnLimit]),
+        "SolverConfiguration.terrainCutCells": .option([.terrainCutCells]),
         // The structure.
         "StructureModel.solids": .input,
         "StructureModel.openings": .input,
@@ -1298,6 +1310,15 @@ struct StandingScene {
                 "The lee impulse within 6%; peaks focused far behind it not "
                     + "converged", "terrain.md#a-hills-resolution-sensitivity"),
         ]
+            + (has(.terrainCutCells)
+                ? [
+                    StandingEvidence(
+                        "Cut cells on a slope against three-shock theory",
+                        "Triple point within 0.25° at 30–45° and 0.4–0.65° low at 48° on 100–400 cells; transition "
+                            + "between 48 and 50° "
+                            + "against 50.6–50.8° for Mach 2; conservative to round-off",
+                        "terrain.md#cut-cells")
+                ] : [])
     }
 
     /// The deflagration's checks: no charge fires, so the comparisons with Kingery–Bulmash do not

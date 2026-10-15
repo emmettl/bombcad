@@ -368,7 +368,26 @@ extension BlastSolver {
                 }
             }
         }
-        if let terrain = scenario.terrain {
+        var cut: TerrainCutGeometry?
+        if let terrain = scenario.terrain, configuration.terrainCutCells {
+            guard configuration.refinement <= 1 else {
+                throw BlastError.unsupportedCombination("the terrain's cut cells with refinement, as yet")
+            }
+            try terrain.validate(domain: scenario.domainSize)
+            cut = TerrainCutGeometry(terrain: terrain, grid: grid)
+        }
+        if let cut {
+            // The cells below each column's first cell of air are solid; the cut cells hold air.
+            let firstAir = cut.firstAirCells
+            mutateMask { mask in
+                for j in 0..<grid.ny {
+                    for i in 0..<grid.nx {
+                        for k in 0..<Int(firstAir[i + grid.nx * j]) { mask[grid.index(i, j, k)] = 1 }
+                    }
+                }
+            }
+            terrainSurface = cut.surfaceCells
+        } else if let terrain = scenario.terrain {
             try terrain.validate(domain: scenario.domainSize)
             // A cell is solid when its centre lies below the surface, as for a block.
             let surface = terrain.surfaceCells(grid: grid)
@@ -383,6 +402,7 @@ extension BlastSolver {
         }
         rigidBoxes = scenario.rigidBoxes
         terrain = scenario.terrain
+        terrainCut = try cut.map { try TerrainCutBuffers(geometry: $0, device: device) }
         // The structure is added to the mask on the GPU, by the same rule that later tracks it.
         try scenario.validateStructuralSeparation()
         // Each structure runs with the regime and loading the scene gives it, for its defaults.
@@ -397,7 +417,14 @@ extension BlastSolver {
         fill(
             uniform: Primitive(density: scenario.atmosphere.density, pressure: scenario.atmosphere.pressure))
         let mapping = mapping(for: scenario)
-        let gaugeCells = scenario.gauges.map { nearestFluidCell(to: $0.position) }
+        let gaugeCells = scenario.gauges.map { gauge -> (i: Int, j: Int, k: Int) in
+            var cell = nearestFluidCell(to: gauge.position)
+            // On cut cells a gauge in a cell less than half air reads the first one above that is.
+            if let column = terrainCut?.geometry.column(cell.i, cell.j) {
+                cell.k = max(cell.k, Int(column.w))
+            }
+            return cell
+        }
         let gaugeCentres = gaugeCells.map { grid.cellCentre($0.i, $0.j, $0.k) }
         var mapped: SphericalBlast?
         if let mapping {
@@ -525,7 +552,8 @@ extension BlastSolver {
                 }
             }
         }
-        let total = weights.reduce(Float(0)) { $0 + $1.fraction }
+        // A cut cell holds air in only its fluid share of the sphere's part of it.
+        let total = weights.reduce(Float(0)) { $0 + $1.fraction * Float(fluidShare($1.index)) }
         guard total > 0 else { return }
 
         let volume = total * dx * dx * dx

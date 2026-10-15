@@ -206,6 +206,10 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
         let hilly = standing(scenario)
         #expect(flat[.impulse]?.level == .compared && hilly[.impulse]?.level == .approximation)
         #expect(hilly[.impulse]?.evidence.contains { $0.document.hasPrefix("terrain.md") } == true)
+        let cut = standing(scenario) { $0.configuration.terrainCutCells = true }
+        #expect(cut[.impulse]?.options.contains("Terrain on cut cells") == true)
+        #expect(cut[.impulse]?.evidence.contains { $0.document == "terrain.md#cut-cells" } == true)
+        #expect(hilly[.impulse]?.evidence.contains { $0.document == "terrain.md#cut-cells" } == false)
         scenario.terrain = Terrain.flat(domain: scenario.domainSize, spacing: 1)
         #expect(standing(scenario) == flat)
 
