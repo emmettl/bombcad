@@ -915,6 +915,12 @@ extension StandingScene {
                     "\(imported.name): \(untied.count) pair\(untied.count == 1 ? "" : "s") of members left untied"
                 )
             }
+            let guessed = report.connections.filter { $0.kind.contains("inferred") }
+            if !guessed.isEmpty {
+                differences.append(
+                    "\(imported.name): \(guessed.count) pair\(guessed.count == 1 ? "" : "s") tied at nearest nodes, a guess"
+                )
+            }
             let falling = report.members.filter {
                 $0.notes.contains { $0.contains("will fall under gravity") }
             }

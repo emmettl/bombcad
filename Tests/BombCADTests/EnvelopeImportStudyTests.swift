@@ -105,9 +105,13 @@ struct EnvelopeImportStudyTests {
         _ file: String, cellSize: Float, standoff: Float, mass: Float, duration: Double, device: MTLDevice
     ) async throws -> (cases: [Case], comparisons: [Comparison], conversion: EnvelopeConversionReport) {
         // As in the app: elements that fail validation (open meshes) are excluded, and it is retried.
+        // Windows and doors are left out by choice, as the import's repairs now make most of them
+        // closed solids: their bounds become the envelope's openings.
         let prepared = try await IFCImporter.prepare(
             Data(contentsOf: Self.folder.appendingPathComponent(file)))
         var included = prepared.defaultIDs
+        included.subtract(
+            prepared.inventory.filter { ["IfcWindow", "IfcDoor"].contains($0.ifcClass) }.map(\.id))
         var excluded: [String] = []
         var converted: ImportedMesh?
         while converted == nil {
@@ -190,8 +194,8 @@ struct EnvelopeImportStudyTests {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let (cases, comparisons, conversion) = try await study(
             "duplex-apartment.ifc", cellSize: 0.5, standoff: 6, mass: 5, duration: 0.04, device: device)
-        // The duplex's 24 windows and 14 doors are open meshes, left out of the rigid import (their
-        // walls' openings are cut by the converter); their bounds become the envelope's openings.
+        // The duplex's 24 windows and 14 doors, left out of the rigid import (their walls' openings
+        // are cut by the converter), become the envelope's openings.
         #expect(conversion.openingElements == 38)
         let exact = comparisons[0]
         #expect(exact.differingCells == 0 && exact.peakL1 == 0 && exact.impulseL1 == 0, "\(exact)")

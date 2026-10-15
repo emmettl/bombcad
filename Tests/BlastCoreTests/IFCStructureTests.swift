@@ -14,7 +14,7 @@ struct IFCStructureTests {
     /// solids.
     private func element(
         _ n: Int, _ name: String, _ ifcClass: String, _ boxes: [Box], turn: Float = 0,
-        materials: [IFCStructure.Layer]? = nil
+        materials: [IFCStructure.Layer]? = nil, storey: String = "Ground"
     ) throws -> ImportedMesh.BuildingElement {
         var text = ""
         var base = 0
@@ -43,7 +43,7 @@ struct IFCStructureTests {
         }
         let mesh = try ImportedMesh(data: Data(text.utf8), fileExtension: "obj")
         return ImportedMesh.BuildingElement(
-            globalID: String(format: "%022d", n), name: name, ifcClass: ifcClass, storey: "Ground",
+            globalID: String(format: "%022d", n), name: name, ifcClass: ifcClass, storey: storey,
             mesh: mesh,
             materials: materials)
     }
@@ -301,6 +301,146 @@ struct IFCStructureTests {
         let untied = try IFCStructure(elements: elements, options: .init(untied: keys))
         #expect(
             untied.members.first { $0.name == "Roof" }?.notes.contains { $0.contains("will fall") } == true)
+    }
+
+    @Test("Members that touch but that the mesh does not meet are tied at their nearest nodes, flagged")
+    func contactTies() throws {
+        // A 50 mm topping laid on the room's roof, face to face: parallel plates the mesh keeps
+        // apart, tied where they touch.
+        var elements = try room(concrete: true)
+        elements.append(
+            try element(
+                9, "Topping", "IfcSlab", [box(SIMD3(0, 0, 3.2), SIMD3(4, 4, 3.25))],
+                materials: [.init(name: "Concrete C30/37")]))
+        let structure = try IFCStructure(elements: elements)
+        #expect(structure.model.tiesTouching == true)
+        let topping = try #require(structure.members.first { $0.name == "Topping" })
+        #expect(!topping.notes.contains { $0.contains("will fall") })
+        let tie = try #require(
+            structure.connections.first { $0.first == topping.id || $0.second == topping.id })
+        #expect(tie.kind.contains("inferred"))
+        #expect(structure.assumptions.contains { $0.contains("tied rigidly at their nearest nodes") })
+        let mesh = try ShellMesh(model: structure.model)
+        #expect(mesh.contactTies.count == 1 && mesh.contactTies[0].nodes > 0)
+        // Untied, it is loose again.
+        let apart = try IFCStructure(elements: elements, options: .init(untied: [tie.key]))
+        #expect(
+            apart.members.first { $0.name == "Topping" }?.notes.contains { $0.contains("will fall") } == true)
+        // Saved and read back, the switch stays.
+        let model = try JSONDecoder().decode(StructureModel.self, from: JSONEncoder().encode(structure.model))
+        #expect(model.tiesTouching == true)
+    }
+
+    @Test("A foundation slab above a pit, a beam on the ground and a wall on a rigid arch are held")
+    func heldRules() throws {
+        // A pit's floor sets the lowest level; the foundation slab is 0.4 m above it with
+        // nothing under it: it rests on the ground at its soffit.
+        let pit = try element(1, "Pit floor", "IfcSlab", [box(SIMD3(1, 1, 0), SIMD3(2.5, 2.5, 0.3))])
+        let slab = try element(2, "Foundation slab", "IfcSlab", [box(SIMD3(0, 0, 0.4), SIMD3(8, 6, 0.9))])
+        // A ground beam lying on the ground: its centreline is above it.
+        let ground = try element(3, "Ground beam", "IfcBeam", [box(SIMD3(10, 0, 0), SIMD3(16, 0.3, 0.4))])
+        // A wall standing on an inclined (so rigid) arch.
+        let arch = try element(4, "Arch", "IfcSlab", [box(SIMD3(20, 0, 0), SIMD3(26, 3, 1))], turn: 0.3)
+        let wall = try element(5, "Spandrel", "IfcWall", [box(SIMD3(21, 1, 1.7), SIMD3(25, 1.2, 4))])
+        let structure = try IFCStructure(elements: [pit, slab, ground, arch, wall])
+        #expect(
+            structure.supports.contains {
+                $0.hasPrefix("Foundation slab: on the lowest storey near") && $0.contains("soffit")
+            })
+        #expect(structure.supports.contains { $0.hasPrefix("Ground beam: lies on the ground") })
+        #expect(structure.supports.contains { $0.hasPrefix("Spandrel:") })
+        #expect(!structure.members.contains { $0.notes.contains { $0.contains("will fall") } })
+    }
+
+    @Test("A slab on grade within its foundation walls, of the storey above theirs, rests on the ground")
+    func slabOnGrade() throws {
+        // Foundation walls 1.25 m high round a 4 m square; the slab on the fill between them is of
+        // the ground floor, its top level with theirs.
+        let walls = try [
+            box(SIMD3(0, 0, 0), SIMD3(4.4, 0.2, 1.25)), box(SIMD3(0, 4.2, 0), SIMD3(4.4, 4.4, 1.25)),
+            box(SIMD3(0, 0.2, 0), SIMD3(0.2, 4.2, 1.25)), box(SIMD3(4.2, 0.2, 0), SIMD3(4.4, 4.2, 1.25)),
+        ].enumerated().map {
+            try element(
+                $0.offset + 1, "Foundation wall \($0.offset + 1)", "IfcWall", [$0.element], storey: "T/FDN")
+        }
+        let slab = try element(
+            9, "Slab on grade", "IfcSlab", [box(SIMD3(0.2, 0.2, 1.1), SIMD3(4.2, 4.2, 1.25))],
+            storey: "Level 1")
+        let structure = try IFCStructure(elements: walls + [slab])
+        #expect(
+            structure.supports.contains {
+                $0.hasPrefix("Slab on grade: within walls of the foundation") && $0.contains("soffit")
+            })
+        #expect(!structure.members.contains { $0.notes.contains { $0.contains("will fall") } })
+        // A slab as high above the lowest level as a storey is not.
+        let floor = try element(
+            9, "First floor", "IfcSlab", [box(SIMD3(0.2, 0.2, 2.8), SIMD3(4.2, 4.2, 3))], storey: "Level 1")
+        let tall = try walls.indices.map { n -> ImportedMesh.BuildingElement in
+            var b = [
+                box(SIMD3(0, 0, 0), SIMD3(4.4, 0.2, 3)), box(SIMD3(0, 4.2, 0), SIMD3(4.4, 4.4, 3)),
+                box(SIMD3(0, 0.2, 0), SIMD3(0.2, 4.2, 3)), box(SIMD3(4.2, 0.2, 0), SIMD3(4.4, 4.2, 3)),
+            ][n]
+            b.max.z = 3
+            return try element(n + 1, "Wall \(n + 1)", "IfcWall", [b], storey: "Ground")
+        }
+        let upper = try IFCStructure(elements: tall + [floor])
+        #expect(!upper.supports.contains { $0.hasPrefix("First floor:") })
+        // A floor on top of 0.6 m crawl-space walls is carried by them, not the ground.
+        let low = try walls.indices.map { n -> ImportedMesh.BuildingElement in
+            var b = [
+                box(SIMD3(0, 0, 0), SIMD3(4.4, 0.2, 3)), box(SIMD3(0, 4.2, 0), SIMD3(4.4, 4.4, 3)),
+                box(SIMD3(0, 0.2, 0), SIMD3(0.2, 4.2, 3)), box(SIMD3(4.2, 0.2, 0), SIMD3(4.4, 4.2, 3)),
+            ][n]
+            b.max.z = 0.6
+            return try element(n + 1, "Wall \(n + 1)", "IfcWall", [b], storey: "Crawl space")
+        }
+        let suspended = try element(
+            9, "Ground floor", "IfcSlab", [box(SIMD3(0, 0, 0.6), SIMD3(4.4, 4.4, 0.8))], storey: "Ground")
+        #expect(
+            !(try IFCStructure(elements: low + [suspended])).supports.contains {
+                $0.hasPrefix("Ground floor:")
+            })
+    }
+
+    @Test(
+        "Foundation slabs of a storey above the pit's own, and a slab inside walls on footings, rest on the ground"
+    )
+    func foundationStoreys() throws {
+        // The pit's floor is a storey of its own and sets the lowest level; the foundation slab
+        // 0.4 m above it, with nothing under it, is of the next storey.
+        let pit = try element(
+            1, "Pit floor", "IfcSlab", [box(SIMD3(1, 1, 0), SIMD3(2.5, 2.5, 0.3))], storey: "Pit")
+        let slab = try element(
+            2, "Foundation slab", "IfcSlab", [box(SIMD3(3, 0, 0.4), SIMD3(9, 6, 0.95))], storey: "Foundation")
+        let structure = try IFCStructure(elements: [pit, slab])
+        #expect(
+            structure.supports.contains {
+                $0.hasPrefix("Foundation slab: on a storey starting near the lowest level")
+            })
+        // Foundation walls 1 m high standing 0.9 m up (on footings the IFC leaves out), and the
+        // slab on the fill between them 1.77 m up.
+        let walls = try [
+            box(SIMD3(20, 0, 0.9), SIMD3(24.4, 0.2, 1.9)), box(SIMD3(20, 4.2, 0.9), SIMD3(24.4, 4.4, 1.9)),
+            box(SIMD3(20, 0.2, 0.9), SIMD3(20.2, 4.2, 1.9)),
+            box(SIMD3(24.2, 0.2, 0.9), SIMD3(24.4, 4.2, 1.9)),
+        ].enumerated().map {
+            try element(
+                $0.offset + 3, "Foundation wall \($0.offset + 1)", "IfcWall", [$0.element],
+                storey: "Foundation")
+        }
+        let grade = try element(
+            9, "Slab on grade", "IfcSlab", [box(SIMD3(20.2, 0.2, 1.75), SIMD3(24.2, 4.2, 1.9))],
+            storey: "Ground")
+        let footed = try IFCStructure(elements: [pit] + walls + [grade])
+        #expect(footed.supports.contains { $0.hasPrefix("Slab on grade: within walls of the foundation") })
+    }
+
+    @Test("A duplicate, given no elements of its own by the mesh, is not reported as falling")
+    func duplicate() throws {
+        var elements = try room(concrete: true)
+        elements.append(try element(9, "Roof copy", "IfcSlab", [box(SIMD3(0, 0, 3), SIMD3(4, 4, 3.2))]))
+        let structure = try IFCStructure(elements: elements)
+        #expect(!structure.members.contains { $0.notes.contains { $0.contains("will fall") } })
     }
 
     @Test("A connection the user unticks leaves the pair apart, untied, and says so")

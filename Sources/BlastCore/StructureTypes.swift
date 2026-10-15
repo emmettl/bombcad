@@ -464,6 +464,10 @@ public struct StructureModel: Sendable, Hashable, Codable {
     public var shellElementSize: Float?
     /// Layers of concrete (or other material) through the thickness of each shell.
     public var shellLayers: Int = 8
+    /// With shells, whether members that touch but share no node of the mesh (layers stacked
+    /// face to face, a beam meeting a column off its centreline) are tied at their nearest
+    /// nodes. Set for structures from IFC; nil (no) otherwise.
+    public var tiesTouching: Bool?
     /// Regions in which the structure is held still: nodes inside any of them do not move
     /// (beyond the ground plane, which `fixedBase` holds). For walls built into rigid scenery.
     public var supports: [Box] = []
@@ -1371,7 +1375,7 @@ extension StructureModel {
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
         case pressedInterlock, regimeOverride, loadingOverride, regimeDefaults
         case hourglassFollowsCracking, hourglassCapsSteel, discreteBars, barsAsTrusses, trussDiameter
-        case crackAveraging, rubbleParticles, strainRateWindow
+        case crackAveraging, rubbleParticles, strainRateWindow, tiesTouching
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -1410,6 +1414,7 @@ extension StructureModel {
         if strainRateWindow != Self.defaultStrainRateWindow {
             try container.encode(strainRateWindow ?? 0, forKey: .strainRateWindow)
         }
+        try container.encodeIfPresent(tiesTouching, forKey: .tiesTouching)
         if rubbleParticles { try container.encode(rubbleParticles, forKey: .rubbleParticles) }
         try container.encodeIfPresent(bondSlip, forKey: .bondSlip)
         try container.encode(solidElementKind, forKey: .solidElementKind)
@@ -1439,6 +1444,7 @@ extension StructureModel {
             try container.decodeIfPresent([SourcePart?].self, forKey: .solidSourceParts) ?? []
         elementKind = try container.decodeIfPresent(ElementKind.self, forKey: .elementKind) ?? .solid
         shellLayers = try container.decodeIfPresent(Int.self, forKey: .shellLayers) ?? 8
+        tiesTouching = try container.decodeIfPresent(Bool.self, forKey: .tiesTouching)
         supports = try container.decodeIfPresent([Box].self, forKey: .supports) ?? []
         supportAnchorages = try container.decodeIfPresent([Anchorage?].self, forKey: .supportAnchorages) ?? []
         secondCracks = try container.decodeIfPresent(Bool.self, forKey: .secondCracks) ?? true

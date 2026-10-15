@@ -29,54 +29,113 @@ python3 Scripts/ifc-corpus.py summary OUT --markdown OUT/table.md
 ```
 
 Each file runs in a process of its own through the `IFCCorpusTests` test, so a crash or a
-timeout becomes a row of its own. The run takes about ten minutes on the Studio and uses the CPU
-only. Each file is handled as the app would handle it:
-- **Choice:** at most 1,024 elements, the lowest storeys first. Past the 100,000-triangle limit,
-  the first storey alone.
+timeout becomes a row of its own. The run takes about half an hour on the Studio and uses the
+CPU only. Each file is handled as the app would handle it:
+- **Choice:** at most 1,024 elements, the lowest storeys first by their elevations in the IFC.
+  Past the triangle limit, the lowest storey alone.
 - **Invalid meshes:** excluded and the rest converted again, as the import review does.
 - **Envelope:** sampled at 0.25 m (0.5 or 1 m for larger sites).
-- **Structure:** converted with the default options and meshed, with the smallest element
-  recorded.
+- **Structure:** converted with the default options and meshed, with the smallest element and
+  the loose members recorded.
 
-The 19 real buildings that convert were stood under gravity for 0.3 s, damped (`BOMBCAD_IFC_CORPUS_GRAVITY=1`,
-through `gpu-slot`, on the code before the last two fixes below). The table compares that with
-the share the import now reports as loose: members tied to nothing that stands on a support.
-"Weight carried" is the supports' reaction over the weight. A peak of 54.9 mm is a body falling
-freely against the damping for the whole 0.3 s.
+Setting `BOMBCAD_IFC_CORPUS_GRAVITY=1` also stands each structure under gravity for 0.3 s,
+damped. That uses the GPU, so run it through `gpu-slot`.
 
-| Building | Shells / beams | Loose (by volume) | Weight carried | Peak (mm) |
-|---|---|---|---|---|
-| buildingSMART house | 648 / 0 | 0% | 100% | 0.0 |
-| buildingSMART structural house | 1,044 / 0 | 0% | 100% | 0.5 |
-| Schependomlaan precast floor | 4,095 / 0 | 0% | 100% | 0.0 |
-| Schependomlaan walls, ground floor | 6,579 / 11 | 0% | 100% | 80.1 |
-| Schependomlaan walls, first floor | 6,362 / 10 | 0% | 100% | 66.7 |
-| Schependomlaan walls, second floor | 4,469 / 9 | 0% | 100% | 65.4 |
-| Schependomlaan hollow-core floor | 11,185 / 227 | 1% | 100% | 79.3 |
-| Amersfoort sports hall (first storey) | 21,465 / 746 | 6% | 99% | 78.4 |
-| Duplex (architectural) | 19,814 / 220 | 26% | 64% | 75.6 |
-| Clinic, architectural | 27,888 / 0 | 2% | 59% | 69.6 |
-| Esplanades | 183,736 / 11 | 57% | 42% | 80.8 |
-| buildingSMART road | 16,896 / 0 | 81% | 22% | 54.9 |
-| Schependomlaan steelwork | 222 / 541 | 84% | 9% | 59.1 |
-| buildingSMART bridge | 1,550 / 0 | 95% | 5% | 54.9 |
-| Clinic, structural (first storey) | 27,646 / 363 | 3% | 2% | 55.7 |
-| Schependomlaan structural model | 86,599 / 675 | 0% | 1% | 71.4 |
-| Schependomlaan balconies, stairs, precast elements | 8–394 / 18–48 | 99–100% | 0–88% | 54.9 |
+## Results
 
-So the small houses, the precast floor and the sand-lime walls stand, but most real buildings
-do not, as imported. Where weight is lost, the loose share accounts for much of it in
-Esplanades, the Duplex, the steelwork, the road and the bridge. It does not in the Clinic's
-architectural model (2% loose, 41% of the weight lost) or in the two structural models below. Subcontractor models without their
-building have nothing to stand on (the balconies, stairs and precast elements). The import
-report now lists the loose members, and the standing names them. Even where nearly all the
-weight is carried, some members sag 65–80 mm: loose pieces, and members bearing on others
-through a single line of nodes.
+| | First run | Round 1 | Round 2 |
+|---|---|---|---|
+| Files imported | 112 of 382 | 168 of 385 | 188 of 385 |
+| Real buildings imported (buildingSMART, community) | 28 of 47, three with one element of hundreds | 31 of 47 | 32 of 47 |
+| Elements converted | 6,056 | 8,630 | 15,035 |
+| Element meshes excluded as invalid, real buildings | 584 | 653 | 71, besides Clinic Structural's 650 |
+| Elements repaired (real buildings) | — | — | 737, into 3,613 closed solids |
+| Smallest shell element, Esplanades / Clinic | 0.1 mm / 2 mm | 52 mm / 62 mm | 52 mm / 62 mm |
 
-Two structural models lose nearly all their weight while connected: the Clinic's and
-Schependomlaan's. This has not been traced. Their supports may hold too little of the base, or
-the base connections may fail under the weight. A structure from a real building should be
-stood under gravity, and its loose members dealt with, before it is loaded.
+Round 1 made the importer read what real files hold (parts, uncontained elements, units) and say
+plainly what it cannot. Round 2 was about real buildings standing once imported: repairing
+broken element meshes, tying members that touch, holding what stands on the ground or on rigid
+elements, and taking files up to 100 MB. Every real building now imports, the Schependomlaan
+design model (49 MB) included. The buildingSMART files that stop are its HVAC, plumbing, rail
+and landscaping scenes and the IFC 4.3 road, which hold no supported elements and say so, and
+its electrical scene, whose one element's mesh is open. Clinic Structural's 650
+excluded meshes are elements that round 1 never chose: with the higher triangle limit it now
+converts more than one storey, and its bar joists and coped steel beams come from the converter
+open (see "What is left").
+
+The full table, per file, is `corpus5-table.md` in `/Volumes/StudioData/bombcad/import-structural/`.
+
+### Under gravity
+
+The real buildings that convert were stood under gravity for 0.3 s, damped
+(`BOMBCAD_IFC_CORPUS_GRAVITY=1`, through `gpu-slot`), before round 2 and after it. "Weight
+carried" is the supports' reaction over the weight. A building counts as standing when it
+carries at least 95%. "Still" is the share of the weight on nodes that moved under 10 mm, which
+tells sagging from falling; it was recorded only after round 2. A peak of 54.9 mm is a body
+falling freely against the damping for the whole 0.3 s.
+
+**8 of the 19 stood before round 2. 12 stand after it**, the Schependomlaan structural model
+among them. The Schependomlaan design model, too large before, now imports and carries 57% of
+its weight.
+
+| Building | Shells / beams after | Carried before | Carried after | Still after | Peak after (mm) |
+|---|---|---|---|---|---|
+| buildingSMART house | 648 / 0 | 100% | 100% | 100% | 0.0 |
+| buildingSMART structural house | 1,044 / 0 | 100% | 100% | 100% | 0.5 |
+| Schependomlaan precast floor | 4,095 / 0 | 100% | 100% | 100% | 0.0 |
+| Schependomlaan walls, ground floor | 6,579 / 11 | 100% | 100% | 100% | 12.0 |
+| Schependomlaan walls, first floor | 6,362 / 10 | 100% | 100% | 100% | 0.2 |
+| Schependomlaan walls, second floor | 4,469 / 9 | 100% | 100% | 100% | 0.1 |
+| Schependomlaan hollow-core floor | 11,185 / 227 | 100% | 100% | 100% | 73.8 |
+| Clinic, architectural | 27,888 / 0 | 59% | **100%** | 100% | 0.4 |
+| Esplanades | 210,321 / 11 | 42% | **99%** | 99% | 75.7 |
+| Schependomlaan stairs and landings | 386 / 30 | 0% | **100%** | 100% | 46.9 |
+| Schependomlaan precast elements | 394 / 48 | 0% | **98%** | 98% | 54.9 |
+| Schependomlaan structural model | 86,599 / 675 | 1% | **97%** | 95% | 65.5 |
+| Schependomlaan balconies | 8 / 18 | 88% | 88% | 88% | 54.9 |
+| Schependomlaan steelwork | 222 / 541 | 9% | 86% | 71% | 82.1 |
+| Amersfoort sports hall | 46,350 / 1,445 (21,465 / 746 before) | 99% | 68% | 62% | 87.1 |
+| Duplex (architectural) | 19,814 / 220 | 64% | 65% | 65% | 53.0 |
+| buildingSMART bridge | 4,287 / 0 | 5% | 54% | 48% | 59.2 |
+| buildingSMART road | 16,896 / 0 | 22% | 41% | 29% | 83.0 |
+| Clinic, structural | 94,172 / 4,479 (27,646 / 363 before) | 2% | 79% | 78% | 68.1 |
+| Schependomlaan design model | 67,702 / 1,038 | — | 57% | 48% | 128.8 |
+
+Some peaks exceed 10 mm while nearly all the weight is still: a few light pieces fall, such as
+the hollow-core floor's 59 loose members (under 1% of it), and the rest stands.
+
+What changed for each:
+- **Now standing:**
+  - The Clinic's architectural model and Esplanades stand after the repairs and contact ties
+    (items 9 and 10).
+  - The stairs and precast elements stand on the new support rules (item 11).
+  - The sand-lime walls are still now (peaks of 66–80 mm before). On the second floor, three
+    walls moved 65 mm without the contact ties and 0.1 mm with them.
+- **Better but not standing:**
+  - The steelwork rests its base plates on the ground (item 11). Six members are still loose.
+  - On the bridge, the spandrel walls stand on the arch.
+  - On the road, its courses are tied.
+- **The sports hall** is no longer comparable: the higher triangle limit converts three
+  storeys, not the first alone, and the upper ones do not all stand.
+- **The Duplex:** its slabs on grade and porch slabs now rest on the ground (item 11). What
+  moves is the top floor: a 7.5 m W310 steel beam carries the masonry party wall and the green
+  roof, and sags 47 mm. That is its elastic deflection by hand, so it bends rather than
+  falling. The wall erodes as it cracks over the beam, and at 0.3 s the structure is still
+  settling. The beam may have a post under it that the IFC or the converted elements leave
+  out.
+- **The two structural models.** The Schependomlaan structural model now stands. Its pit's
+  floor is a storey of its own, so the foundation slabs, which are of the next storey, were not
+  taken to rest on the ground until the rule took in storeys starting near the lowest level
+  (item 11). Before that it carried 34%, the building sinking about 60 mm, nearly free fall.
+  The Clinic's slab on grade, 52 × 56 m and two thirds of the model's weight, lies on fill
+  between foundation walls that stand on footings, 1.8 m above the lowest level. It is now
+  taken to rest on the ground, and the model carries 79%. What still moves has not been traced.
+  The likely cause is the steel frame: the 461 bar joists and 188 coped beams left out as open
+  meshes (see "What is left") leave floors and roofs without the joists between their girders.
+
+The "before" run counted a tied node's mass twice (the solver adds it to its master's), so it
+understated weight carried by the share of tied nodes. That is a fraction of a percent for most
+buildings. The "after" run counts it once.
 
 ## What broke, and what was done
 
@@ -122,6 +181,51 @@ stood under gravity, and its loose members dealt with, before it is loaded.
    an element of each other now share a midsurface (see the [shell
    model](shell-model.md#limitations)), and the structure moves the smaller one onto the larger's
    midsurface, carrying what stands on it.
+9. **Broken element meshes.** The largest loss in round 1: 802 element meshes were excluded,
+   303 of Esplanades' 1,024 chosen elements among them. Their representation items (layers,
+   sub-solids, a frame and its sash) touch, and the converter welds them into one mesh whose
+   shared faces leave edges used four times (`IFCMeshRepair`). Such a mesh is now remade:
+   - Coincident faces of opposite sense cancel, so two pieces pressed together over the same
+     triangles become one solid.
+   - The rest are paired across each edge, where more than two meet with the next one round the
+     edge on its inner side. Each closed set is a solid, imported as a piece of its element, as
+     parts are.
+   - A mesh whose tiny edges fell together in the scene's single precision (a steel section's
+     fillets, 50 m from the building's corner) is welded at that precision instead.
+
+   737 elements of the real buildings were remade into 3,613 closed solids. 1,414 pieces were left
+   out as open, and the import lists them.
+10. **Members that touch but are not joined.** Layers stacked face to face (a road's courses, a
+    topping on a slab), beams meeting a column off its centreline, and plates against a beam's
+    side share no node of the mesh, so they stood apart. Structures from IFC now tie them
+    (`StructureModel.tiesTouching`): each node of the lighter member near where they touch to the
+    nearest node of the other, rigidly. Nodes already tied, holding others, or held by a support
+    are left alone. Only pairs not already joined, directly or through others, are tied. Each tie
+    is listed with the connections as inferred, a guess, and the standing names it. Unticking one
+    leaves the pair apart.
+11. **Foundations the IFC leaves out.** A lift pit's floor 0.4 m below the foundation slabs set
+    Schependomlaan's lowest level, so the whole structural model hung from it (1% of its weight
+    carried). The pit's floor is a storey of its own, so the foundation slabs were not of the
+    lowest storey. The Duplex's and the Clinic's slabs on grade lie on fill between their
+    foundation walls, which stand on footings or the ground, and are of the storey above the
+    walls'. A slab with less than half its plan on anything now rests on the ground at its
+    soffit in three cases:
+    - it is of the lowest storey and within 1.5 m of the lowest level;
+    - it is of another storey that starts within 1.5 m of it, with nothing at all under it;
+    - it lies within or against walls that start within 1.5 m of the lowest level, its soffit
+      within 1.5 m of their base and their tops at least as high as its mid-thickness.
+
+    A floor on top of crawl-space walls bears on them and stays carried by them. Beams lying on
+    the ground (base plates, ground beams) are tied at their underside, since the ground's connection holds
+    only nodes at ground level, and theirs are above it. Members standing on an element kept
+    rigid (an arch, an inclined roof) are held by it, as it does not move. Each support reaches
+    half an element above and below the foot, since the mesh may move a member's end or
+    centreline that far onto a line it keeps. Each is listed as assumed.
+12. **Size.** IFC files up to 100 MB (up from 20) and buildings up to 400,000 triangles (up from
+    100,000) now import. Past 20 MB a note says that converting, sampling and saving are slower,
+    and that the project keeps the whole file. Meshes from OBJ and STL keep their limits.
+13. **Duplicates.** Layers exported twice (the road's courses) overlap coplanar, and the mesh
+    gives the second no elements. It is no longer reported as falling.
 
 The task's list also named mapped items, extruded-solid variants, boolean openings and
 georeferencing. The corpus showed none of these breaking the importer:
@@ -134,26 +238,19 @@ georeferencing. The corpus showed none of these breaking the importer:
 
 ## What is left
 
-- **Open or non-manifold meshes.** These are the largest loss: 802 element meshes across the
-  corpus, 303 of Esplanades' 1,024 chosen elements, 183 of the Clinic's and 44 of the Duplex's.
-  The ones looked at have edges shared by four faces: the element's representation items
-  (layers, sub-solids) touch each other, and a few have open edges. The converter's output does
-  not keep the items apart, even unwelded, so separating them would need a decomposition of the
-  welded mesh, which is not done. The review names each element, and they can be excluded.
-- **The 20 MB input and 100,000-triangle limits.** These keep out the Schependomlaan design
-  model whole. Clinic Structural and the Amersfoort sports hall come in a storey at a time. The
-  limits are shared with the file loader and the project format, so raising them is a change to
-  those as well.
-- **Standing under gravity.** Most real buildings do not stand as imported (see the table
-  above). Loose members are now reported, but tying them (larger gaps closed, members bearing
-  on others over an area, upper storeys on columns that miss their slabs by more than the
-  tolerance) is not done. The weight lost by the Clinic's models and Schependomlaan's
-  structural model is not explained.
-- **Envelope sampling.** An envelope stops where two elements' triangles intersect ambiguously
-  (Esplanades), where a building samples into more than the 2,048 regions it holds, or where
-  thin elements sample into no cells at 0.25 m (the precast planks). Each says so.
-- **Not imported:** rebar is being read for structures in separate work. Unsupported classes
-  stay out: proxies on their own, coverings, MEP and infrastructure elements (IfcCourse,
+- **Meshes open as the converter returns them.** These are 1,414 pieces of repaired elements,
+  and whole elements: Clinic Structural's 461 rod-web bar joists and 188 coped wide-flange beams,
+  and the IfcOpenShell issue files filed for exactly this. Their boundaries are open where the
+  converter's subtraction or sweep failed. Filling holes that are not flat is not done; the
+  review names each element.
+- **Subcontractor models alone.** Balconies, stairs and precast pieces without their building
+  have nothing to stand on, and are reported loose.
+- **Envelope sampling.** An envelope stops where two elements' triangles intersect ambiguously,
+  where a building samples into more than its 2,048 regions or 256 openings (the Schependomlaan
+  design model has 1,066 windows and doors), or where thin elements sample into no cells at
+  0.25 m. Each says so.
+- **Not imported:** rebar is read for structures in separate work. Unsupported classes stay
+  out: proxies on their own, coverings, MEP and infrastructure elements (IfcCourse,
   IfcTrackElement…).
 - **Inclined members.** Most rigid members are rigid because they are not square to the axes:
-  2,170 of them, mostly sloped roof members, ramps and braces.
+  about 2,700 of them, mostly sloped roof members, ramps and braces.

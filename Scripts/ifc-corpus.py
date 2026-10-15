@@ -107,16 +107,19 @@ def summary(args):
         roles.update(r.get("roles", {}))
     stood = [r for r in rows if r.get("gravityReaction") is not None or r.get("gravityError")]
     if stood:
-        lines += ["## Under gravity (0.3 s, damped)", "", "| file | shells/beams | loose members (share) | peak displacement (mm) | reaction / weight | eroded |",
-                  "|---|---|---|---|---|---|"]
+        lines += ["## Under gravity (0.3 s, damped)", "", "| file | shells/beams | loose members (share) | peak displacement (mm) | reaction / weight | weight moving < 10 mm | eroded |",
+                  "|---|---|---|---|---|---|---|"]
         for r in sorted(stood, key=lambda r: r["file"]):
             name = os.path.relpath(r["file"], corpus) if corpus else r["file"]
             if r.get("gravityError"):
-                lines.append(f"| {name} | {r.get('shells')}/{r.get('beams')} | | error: {r['gravityError'][:80]} | | |")
+                lines.append(f"| {name} | {r.get('shells')}/{r.get('beams')} | | error: {r['gravityError'][:80]} | | | |")
             else:
                 loose = f"{r.get('loose', 0)} ({r.get('looseShare') or 0}%)"
+                # The reaction at clamped nodes, which the connections' own leaves out, is added.
+                reaction = r["gravityReaction"] + (r.get("gravityClamped") or 0)
+                held = f"{r['gravityHeld']:.3f}" if r.get("gravityHeld") is not None else ""
                 lines.append(f"| {name} | {r.get('shells')}/{r.get('beams')} | {loose} | {r['gravityDisplacement'] * 1000:.2f} "
-                             f"| {r['gravityReaction']:.3f} | {r['gravityEroded']} |")
+                             f"| {reaction:.3f} | {held} | {r['gravityEroded']} |")
         lines.append("")
     lines += ["## Roles over the corpus", ""] + [f"- {k}: {v}" for k, v in roles.most_common()] + [""]
     lines += ["## Kept rigid, why", ""] + [f"- {v} × {k}" for k, v in reasons.most_common(30)] + [""]

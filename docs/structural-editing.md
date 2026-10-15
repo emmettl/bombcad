@@ -119,13 +119,19 @@ report stays under **Edit layout → Structure from IFC**.
   thickness where only its structural layer is meshed. Every tie is listed; untick one in the
   import sheet to leave that pair untied, the second member drawn back from the first: at
   least 10 mm, and far enough that its end lies over half an element from the first's
-  midsurface, as the mesh would otherwise join it there.
+  midsurface, as the mesh would otherwise join it there. Members that touch but that the mesh
+  does not meet (layers face to face, a beam off a column's centreline) are tied at their
+  nearest nodes, listed as inferred, a guess.
 - **Supports.** Members on a footing stand on their own footing over the default sand, tied
   by the chosen base connection (starter bars by default; a construction joint or resting on
   the ground). Without footings the base is tied to the ground by it. Members standing on a
   slab on grade, and walls and columns of the lowest storey with nothing under them in the IFC
   (their foundation left out), are tied to the ground at their foot the same way; slabs on the
-  ground rest on it. Each is listed. Change them under **Restraints** once imported; that
+  ground rest on it, as do slabs near the lowest level with little under them: foundation
+  slabs above a pit, and slabs on fill inside or beside their foundation walls (see the [IFC
+  corpus](ifc-import-corpus.md#what-broke-and-what-was-done), item 11). Beams lying on the ground are tied at
+  their underside, and members standing on an element kept rigid are held by it. Each is
+  listed. Change them under **Restraints** once imported; that
   detaches the structure from its source. Members tied to nothing that stands on a support
   (found from the mesh, as the solver ties and holds it) will fall under gravity: the report
   lists them, with their share of the structure, and the standing names them. Most real
