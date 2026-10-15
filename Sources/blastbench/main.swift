@@ -898,6 +898,9 @@ func runChamber() throws {
 /// margin around the shock), `--refine-threshold`,
 /// `--refine-finer-threshold` (the second level's) and `--refine-memory` (MB).
 func configureRefinement(_ configuration: inout SolverConfiguration) {
+    // `--cut-cells` lays the terrain's ground as cut cells (TerrainCutCells.swift).
+    if flag("cut-cells") { configuration.terrainCutCells = true }
+    if let cfl = option("cfl").flatMap({ Float($0) }) { configuration.cfl = cfl }
     if let ratio = option("refine").flatMap({ Int($0) }) { configuration.refinement = ratio }
     if let threshold = option("refine-threshold").flatMap({ Float($0) }) {
         configuration.refinementThreshold = threshold

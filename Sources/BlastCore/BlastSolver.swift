@@ -218,7 +218,10 @@ public final class BlastSolver {
         var sweep: MTLComputePipelineState
         var sweepTiles: MTLComputePipelineState
         var collectTiles: MTLComputePipelineState
+        var redistributeCutDefects: MTLComputePipelineState
     }
+    /// The terrain's cut cells, when `configuration.terrainCutCells` laid them at the last load.
+    var terrainCut: TerrainCutBuffers?
     /// `CellKernels` for each gas model used so far, with gravity compiled in or not.
     private var cellKernelsByModel: [Int: CellKernels] = [:]
     private let wakeTilesPipeline: MTLComputePipelineState
@@ -632,7 +635,7 @@ public final class BlastSolver {
         let fine = refinedGas()
         var total = SIMD2<Double>.zero
         for index in 0..<grid.cellCount where mask[index] == 0 && fine?.covered.contains(index) != true {
-            total += SIMD2(Double(species[index].x), Double(species[index].y))
+            total += SIMD2(Double(species[index].x), Double(species[index].y)) * fluidShare(index)
         }
         total = total * volume + (fine?.species ?? .zero)
         return (total.x, total.y)
@@ -698,6 +701,7 @@ public final class BlastSolver {
         rigidBoxes = nil
         terrain = nil
         terrainSurface = nil
+        terrainCut = nil
         needsRigidMaskCapture = true
         let pointer = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
         try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
@@ -1407,6 +1411,25 @@ public final class BlastSolver {
         tilesEnabled = configuration.skipStillAir && deflagrationStage == nil
         memset(tileFlagBuffer.contents(), 0, tileFlagBuffer.length)
         tileCountBuffer.contents().storeBytes(of: 0, as: UInt32.self)
+        if tilesEnabled, let cut = terrainCut?.geometry {
+            // A cut cell passes its difference up its column, perhaps into the tile above: their tiles
+            // are always swept.
+            let flags = tileFlagBuffer.contents().bindMemory(to: UInt8.self, capacity: tileFlagBuffer.length)
+            for j in 0..<grid.ny {
+                for i in 0..<grid.nx {
+                    let column = cut.column(i, j)
+                    let top = max(Int(column.z), Int(column.w))
+                    guard top > Int(column.y) else { continue }
+                    for k in max(Int(column.y) - 2, 0)...min(top + 1, grid.nz - 1) {
+                        for (di, dj) in [(-2, 0), (2, 0), (0, -2), (0, 2), (0, 0)] {
+                            let x = min(max(i + di, 0), grid.nx - 1) / Self.tileSize
+                            let y = min(max(j + dj, 0), grid.ny - 1) / Self.tileSize
+                            flags[x + tileDims.x * (y + tileDims.y * (k / Self.tileSize))] = 1
+                        }
+                    }
+                }
+            }
+        }
         if tilesEnabled, tiledCoupling == nil, let region = couplingRegion {
             // Around the structure the mask moves and debris trades with the air, so those
             // tiles are always swept.
@@ -1825,6 +1848,10 @@ public final class BlastSolver {
             // Not read without gravity, or without mixing.
             encoder.setBuffer(gravityTable(scale: 1) ?? noSpecies, offset: 0, index: 18)
             encoder.setBuffer(mixingViscosity() ?? noSpecies, offset: 0, index: 19)
+            encoder.setBuffer(terrainCut?.columns ?? noSpecies, offset: 0, index: 20)
+            encoder.setBuffer(terrainCut?.records ?? noSpecies, offset: 0, index: 21)
+            encoder.setBuffer(terrainCut?.walls ?? noSpecies, offset: 0, index: 22)
+            encoder.setBuffer(terrainCut?.defects ?? noSpecies, offset: 0, index: 23)
             for (n, axis) in axes.enumerated() where !asleep {
                 if configuration.periodicSides { encodePeriodicHalo(encoder, uniforms: uniforms) }
                 uniforms.axis = UInt32(axis)
@@ -1840,6 +1867,23 @@ public final class BlastSolver {
                         threadsPerThreadgroup: tileThreads)
                 } else {
                     dispatchGrid(encoder, pipeline: kernels.sweep)
+                }
+                if let terrainCut, n == axes.count - 1, !terrainCut.geometry.cutColumns.isEmpty {
+                    encodeCutRedistribution(
+                        encoder, cut: terrainCut, pipeline: kernels.redistributeCutDefects,
+                        uniforms: uniforms,
+                        state: stateBuffers[1 - current],
+                        species: hasSpecies ? speciesBuffers[1 - current] : noSpecies)
+                    // The merge took over the encoder's pipeline and some of its buffers.
+                    encoder.setComputePipelineState(tilesEnabled ? kernels.sweepTiles : kernels.sweep)
+                    encoder.setBuffer(maskBuffer, offset: 0, index: 2)
+                    encoder.setBuffer(peakBuffer, offset: 0, index: 3)
+                    encoder.setBuffer(impulseBuffer, offset: 0, index: 4)
+                    encoder.setBuffer(controlBuffer, offset: 0, index: 5)
+                    encoder.setBuffer(maxSpeedBuffer, offset: 0, index: 6)
+                    encoder.setBuffer(wallVelocityBuffer, offset: 0, index: 8)
+                    encoder.setBuffer(tileListBuffer, offset: 0, index: 9)
+                    encoder.setBuffer(tileFlagBuffer, offset: 0, index: 10)
                 }
                 current = 1 - current
             }
@@ -2297,14 +2341,23 @@ public final class BlastSolver {
             var mass = 0.0
             var energy = 0.0
             for index in 0..<grid.cellCount where mask[index] == 0 && fine?.covered.contains(index) != true {
-                mass += Double(cells[index].density)
-                energy += Double(cells[index].energy)
+                let share = fluidShare(index)
+                mass += Double(cells[index].density) * share
+                energy += Double(cells[index].energy) * share
             }
             return (mass * volume + (fine?.mass ?? 0), energy * volume + (fine?.energy ?? 0))
         }
     }
 
     /// Total momentum of the gas in kg m/s, counted as `totals()` is.
+    /// The share of cell `index` that holds air: its cut cell's, or one.
+    func fluidShare(_ index: Int) -> Double {
+        guard let cut = terrainCut?.geometry else { return 1 }
+        let i = index % grid.nx
+        let j = (index / grid.nx) % grid.ny
+        return Double(cut.alpha(i, j, index / (grid.nx * grid.ny)))
+    }
+
     public func momentum() -> SIMD3<Double> {
         let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
         let volume = Double(grid.cellSize) * Double(grid.cellSize) * Double(grid.cellSize)
@@ -2312,9 +2365,10 @@ public final class BlastSolver {
         return withState { cells in
             var total = SIMD3<Double>.zero
             for index in 0..<grid.cellCount where mask[index] == 0 && fine?.covered.contains(index) != true {
-                total += SIMD3(
-                    Double(cells[index].momentumX), Double(cells[index].momentumY),
-                    Double(cells[index].momentumZ))
+                total +=
+                    SIMD3(
+                        Double(cells[index].momentumX), Double(cells[index].momentumY),
+                        Double(cells[index].momentumZ)) * fluidShare(index)
             }
             return total * volume + (fine?.momentum ?? .zero)
         }
@@ -2446,7 +2500,9 @@ public final class BlastSolver {
         let gravity = configuration.gravity != nil
         let mixing = configuration.mixing != nil
         let limit = configuration.afterburnLimit != nil
-        let key = 8 * Int(model.rawValue) + (gravity ? 1 : 0) + (mixing ? 2 : 0) + (limit ? 4 : 0)
+        let cut = terrainCut != nil
+        let key =
+            16 * Int(model.rawValue) + (gravity ? 1 : 0) + (mixing ? 2 : 0) + (limit ? 4 : 0) + (cut ? 8 : 0)
         if let kernels = cellKernelsByModel[key] { return kernels }
         var constants = MTLFunctionConstantValues()
         var value = model.rawValue
@@ -2454,14 +2510,43 @@ public final class BlastSolver {
         if gravity { constants = ShaderLibrary.withGravity(constants) }
         if mixing { constants = ShaderLibrary.withMixing(constants) }
         if limit { constants = ShaderLibrary.withBurnLimit(constants) }
+        if cut { constants = ShaderLibrary.withCutCells(constants) }
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
             try ShaderLibrary.pipeline(name, in: library, constants: constants)
         }
         let kernels = CellKernels(
             sweep: try pipeline("sweep"), sweepTiles: try pipeline("sweepTiles"),
-            collectTiles: try pipeline("collectTiles"))
+            collectTiles: try pipeline("collectTiles"),
+            redistributeCutDefects: try pipeline("redistributeCutDefects"))
         cellKernelsByModel[key] = kernels
         return kernels
+    }
+
+    /// Shares each cut cell's difference over the step out up its column, in `state` just swept (see
+    /// `redistributeCutDefects` in Solver.metal).
+    private func encodeCutRedistribution(
+        _ encoder: MTLComputeCommandEncoder, cut: TerrainCutBuffers, pipeline: MTLComputePipelineState,
+        uniforms: SolverUniforms, state: MTLBuffer, species: MTLBuffer
+    ) {
+        var uniforms = uniforms
+        var count = UInt32(cut.geometry.cutColumns.count)
+        encoder.setComputePipelineState(pipeline)
+        encoder.setBuffer(state, offset: 0, index: 0)
+        encoder.setBuffer(species, offset: 0, index: 1)
+        encoder.setBuffer(cut.columns, offset: 0, index: 2)
+        encoder.setBuffer(cut.records, offset: 0, index: 3)
+        encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 4)
+        encoder.setBuffer(controlBuffer, offset: 0, index: 5)
+        encoder.setBuffer(peakBuffer, offset: 0, index: 6)
+        encoder.setBuffer(maxSpeedBuffer, offset: 0, index: 7)
+        encoder.setBuffer(cut.defects, offset: 0, index: 8)
+        encoder.setBuffer(cut.cutColumns, offset: 0, index: 9)
+        encoder.setBytes(&count, length: 4, index: 10)
+        encoder.setBuffer(gravityTable(scale: 1) ?? cut.columns, offset: 0, index: 11)
+        let width = min(pipeline.maxTotalThreadsPerThreadgroup, 64)
+        encoder.dispatchThreads(
+            MTLSize(width: Int(count), height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: width, height: 1, depth: 1))
     }
 
     /// Threads per tile in the tiled sweep: a column through the tile for each, or several if the

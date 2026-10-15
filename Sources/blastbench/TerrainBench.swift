@@ -64,7 +64,8 @@ private func runWedgeStudy(device: MTLDevice, out: URL) throws {
                     (r.theoryChi.map { String(format: "%.2f", $0) } ?? "RR") as NSString, r.surfacePressure,
                     (r.regularPressure.map { String(format: "%.2f", $0) } ?? "-") as NSString, r.cells,
                     r.seconds,
-                    (r.probeOffset.map { String(format: "probe %+.2f cells", $0 / Double(dx)) } ?? "")
+                    ((r.probeOffset.map { String(format: "probe %+.2f cells", $0 / Double(dx)) } ?? "")
+                        + String(format: "  median %.2f", r.surfaceMedian))
                         as NSString)
                 print(line)
                 csv +=

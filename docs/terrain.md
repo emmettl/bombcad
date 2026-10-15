@@ -211,6 +211,115 @@ history) over flat ground's on the same cells:
   surface behind the blast.
 - **Memory**: four bytes a node, once on the CPU and once a refinement level on the GPU.
 
+## Cut cells
+
+`SolverConfiguration.terrainCutCells` (off by default; `--cut-cells` on any blastbench scene)
+cuts the ground's surface through the cells instead of rounding it to whole ones, so a slope is
+a slope. Only the terrain is cut; blocks, structures and moving bodies keep their whole cells.
+The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry) and `sweepCell` and
+`redistributeCutDefects` in `Shaders/Solver.metal`.
+
+- **Geometry, once.** For each cell the surface crosses: its share of air, α, and the share of
+  each of its faces open to the air (the apertures), by 8 × 8 points of quadrature over the
+  bilinear surface (good to about 1/64). In a heightfield's column the air's share only grows
+  going up, so a column's cut cells are one run with solid below and whole cells above. The wall
+  in a cell is the difference of its apertures, axis by axis, so the faces and the wall close
+  exactly and air at rest stays at rest to the last bit, with and without gravity.
+- **Fluxes.** The sweeps stay dimensionally split. A cut cell's faces pass their flux times their
+  aperture; its wall pushes with the pressure of the Riemann problem between the cell's gas and
+  its mirror about the wall's normal (a deviation from the hydrostatic pressure under gravity).
+  Solid cells beside a cut cell take its gas mirrored about its wall, not about the cell face,
+  so the reconstruction sees the slope.
+- **The small cells.** A cell with α far below one cannot take its own conservative update at
+  the solver's time step. It takes the whole cell's update instead, and the difference between
+  that and its conservative one is kept and, once a step (after the last sweep, so that
+  the split sweeps' tangential fluxes cancel), shared out: the cell keeps α of it and passes the
+  rest up its column to the first cell at least half air. This is flux redistribution (Chern and
+  Colella; Colella, Graves, Keen and Modiano), applied per column. Mass, momentum, energy and
+  the products' species are conserved to round-off, with afterburning and gravity (the tests in
+  `TerrainCutCellTests`), and the time step is the whole cells' one.
+- **Gauges, painting and totals.** A gauge or painted peak on the surface reads the first cell at
+  least half air. Charges deposited in cut cells weight by α; the solver's totals count α of
+  each cut cell.
+- **Not yet with refinement.** A scene with cut cells and refinement is refused when it loads;
+  the fine levels need their own cut geometry, redistribution within each patch and refluxing
+  of the cut faces.
+
+### Cut cells on a slope
+
+The wedge problem above, on the cut surface (`blastbench terrain --study wedge --cut-cells`, on
+the Mac mini). χ, the triple point's angle:
+
+| Slope | Theory | Cut, 100 / 200 / 400 cells | Smooth, 400 | Staircase, 400 |
+|------:|-------:|---------------------------:|------------:|---------------:|
+| 30°   | 8.50°  | 8.48 / 8.46 / 8.28°        | 8.89°       | 7.22°          |
+| 40°   | 4.40°  | 4.62 / 4.50 / 4.36°        | 4.65°       | 3.26°          |
+| 45°   | 2.70°  | 2.72 / 2.68 / 2.74°        | 2.74°       | 1.03°          |
+| 48°   | 1.78°  | 1.13 / 1.16 / 1.41°        | 1.74°       | regular        |
+| 50°   | 1.21°  | regular                    | 0.73°       | regular        |
+
+- **The cut slope reflects as smooth ground does.** χ is within 0.25° of theory at 30–45° on
+  every grid and 0.4–0.65° low at 48°, where smooth ground is within 0.1°. Over 30–48° the mean
+  error is 0.23, 0.20 and 0.17° on 100, 200 and 400 cells, against the staircase's 2.6, 2.0 and
+  1.5° and smooth ground's 0.30, 0.23 and 0.18°.
+- **Mach reflection appears between 48° and 50°** on all three grids, against 50.6° in theory
+  and 50–51° on smooth ground; the staircase's is between 40° and 48° and moves with the grid.
+- **Regular reflection's pressure** (the median on the surface behind the foot, 55° and 60°) is
+  13.6–13.9 times ambient against two-shock theory's 13.7 and 13.8; the staircase's is 12.8–13.7,
+  with spikes to 19 near the transition where steps take the shock square on.
+
+### Cut cells behind a ridge
+
+The ridge study above (`blastbench terrain --study shield`) with and without `--cut-cells`, on
+0.25 and 0.125 m cells, on the Mac mini; peaks from the gauges, impulse at the first cell at
+least half air. Ratios to flat ground on the same cells, staircase / cut cells:
+
+| | 0.25 m | 0.125 m |
+|---|---|---|
+| Ridge 4 m, windward face 3 m before the crest (x = 22 m): peak | 2.12 / 1.55 | 2.37 / 1.56 |
+| its arrival against flat ground's at the taut path | +0.0 / −2.9% | −0.7 / −2.9% |
+| Ridge 2 m, windward face: peak | 1.97 / 1.45 | 2.11 / 1.54 |
+| Ridge 8 m, windward face (x = 19 m): peak | 1.68 / 1.16 | 1.81 / 1.19 |
+| Steep ridge 4 m, windward face: peak | 2.04 / 1.92 | 2.21 / 2.10 |
+| Ridge 4 m, crest: peak, impulse | 1.15, 0.82 / 0.92, 0.64 | 1.20, 0.73 / 0.89, 0.53 |
+| Ridge 4 m, 6 m behind the crest: peak, impulse | 0.68, 0.71 / 0.61, 0.73 | 0.65, 0.72 / 0.57, 0.73 |
+| Ridge 8 m, 13 m behind: peak, impulse | 0.52, 0.55 / 0.45, 0.58 | 0.49, 0.57 / 0.42, 0.58 |
+| Ridge 4 m, 35 m behind: peak, impulse | 1.01, 0.92 / 0.99, 0.93 | 1.06, 0.92 / 1.04, 0.93 |
+
+- **The windward faces differ most, and the cut cells converge there.** The 27° faces load
+  1.15–1.6 times flat ground's peak on cut cells, 1.6–2.4 times on the staircase. Between the two
+  grids the cut cells' peaks move by 0–6% and the staircase's rise by 7–12%, as each step's face
+  takes the blast square on wherever it is. On cut cells the blast arrives on the face 1–10%
+  before flat ground's at the same path: a Mach stem leads where the incident shock meets the
+  surface, as the wedge problem shows; on the staircase it arrives as a regular reflection
+  would. A blast of Mach 1.2–1.5 on a 27° slope reflects as Mach reflection in theory (detachment
+  at 43–49° for those strengths), so the staircase's high peaks are the steps', not the slope's.
+- **Behind the crest the two agree within 0.1** in peak and 0.03 in impulse, and the far field
+  within 0.02 to 0.05: shielding is much as the staircase had it, the cut cells shielding a
+  little more close behind. The crest's impulse (a kink, 0.5–0.8 of flat ground's) does not
+  converge on either.
+- **At 500 t with gravity** (`blastbench landscape --study terrain --gravity --cut-cells`, 4.3 m
+  cells) the ridges' ratios are the 100 kg ones within 0.01 to 0.03, as on the staircase (see
+  [Large scenes](large-scenes.md#over-terrain-at-scale)). Along the valleys the peaks agree
+  within 0.05–0.15 and the impulse far down the 68 m valley reads 1.4 times flat ground's on
+  cut cells against 1.2 on the staircase, whose steps line the valley's sides: not compared
+  with anything.
+
+### The cut cells' cost
+
+On the Mac mini, unloaded, 2.2 million cells (the ridges on 0.25 m cells):
+
+- **Per step**, 6–13% more than the staircase without gravity and 15–25% with it at 500 t
+  (every swept cell looks up its column; the cut cells' fluxes, wall pressure and differences;
+  one redistribution kernel over the cut columns once a step). Tiles holding cut cells are
+  swept from the start rather than when the blast wakes them. The number of steps is the same
+  within 1%, except the 8 m ridge's (6% more on cut cells, where the staircase pushed the
+  hottest gas out of the domain).
+- **Building the geometry**: 0.08 s against the staircase mask's 0.03 s at 2.2 million cells,
+  0.4 s against 0.2 s at 17.7 million.
+- **Memory**: 16 bytes a column and 64 a cut cell (shares, walls and the step's differences),
+  under 1% of the air's state over these ridges.
+
 ## Downstream
 
 - **Thermal radiation.** The terrain is in the sight lines (`ThermalTerrain.swift`): a segment
@@ -281,10 +390,11 @@ surface cross a cell a metre. The GPU and the CPU agree on every receiver.
 
 ## Limitations
 
-1. **A staircase of whole cells.** Slopes are steps one cell high, at each refinement level's own
-   cells. They delay Mach reflection by 3–11° and under-read the triple point's angle by 20–75%
-   on 100–400 cells along a run (above), converging at first order. Cut cells would remove
-   this; refinement shrinks it only where the shock is refined.
+1. **A staircase of whole cells, by default.** Slopes are steps one cell high, at each refinement
+   level's own cells. They delay Mach reflection by 3–11° and under-read the triple point's angle
+   by 20–75% on 100–400 cells along a run (above), converging at first order. [Cut
+   cells](#cut-cells) remove this on uniform grids; they are not yet available with refinement,
+   which shrinks the staircase only where the shock is refined.
 2. **Rigid, smooth and reflecting.** No cratering, no soil that gives or absorbs, no vegetation or
    roughness besides the staircase's, no snow or water. The floor under the terrain still reflects.
 3. **Refinement near the surface.** Placing a patch gains still air on one side of the surface and
@@ -321,7 +431,8 @@ surface cross a cell a metre. The GPU and the CPU agree on every receiver.
 
 ## Future work
 
-- **Cut cells for terrain**, so that a slope is a slope: the staircase is the largest error found.
+- **Cut cells with refinement**: each fine level's own cut geometry, redistribution within each
+  patch and refluxing of the cut faces; then cut cells as the terrain's default.
 - **Footings and the ground's connection on a slope**: the base held where it meets the terrain,
   with slope factors on a footing's soil.
 - **DEM reprojection** (UTM from geographic) and area-averaged downsampling.
@@ -344,6 +455,18 @@ surface cross a cell a metre. The GPU and the CPU agree on every receiver.
   text on gas dynamics, for example J. D. Anderson, *Modern Compressible Flow*, 3rd ed.,
   McGraw-Hill, 2003, chapter 4; checked here by the largest deflection at Mach 2 (22.97°) and the
   normal-reflection limit (15 times ambient at Mach 2).
+- I.-L. Chern and P. Colella, "A conservative front tracking method for hyperbolic conservation
+  laws", Lawrence Livermore National Laboratory, UCRL-97200, 1987; and P. Colella, D. T. Graves,
+  B. J. Keen and D. Modiano, "A Cartesian grid embedded boundary method for hyperbolic
+  conservation laws", *Journal of Computational Physics* 211, 347–366, 2006. Flux redistribution
+  for the small cells: the cut cells' scheme; known here through the literature below.
+- R. Klein, K. R. Bates and N. Nikiforakis, "Well-balanced compressible cut-cell simulation of
+  atmospheric flow", *Philosophical Transactions of the Royal Society A* 367, 4559–4575, 2009; and
+  N. Gokhale, N. Nikiforakis and R. Klein, "A dimensionally split Cartesian cut cell method for
+  hyperbolic conservation laws", *Journal of Computational Physics* 364, 186–208, 2018.
+  Dimensionally split cut cells, apertures and the wall's pressure from a mirrored Riemann problem;
+  their flux stabilisation was tried here first and over-read χ as the grid was refined, from
+  the split sweeps' tangential flux, which redistribution once a step removed.
 - ESRI, *ASCII raster format* (the `.asc` header keywords), and OGC, *GeoTIFF Standard* 1.1, 2019
   (ModelPixelScale, ModelTiepoint, ModelTransformation, the GeoKey directory); Adobe, *TIFF Revision
   6.0*, 1992, and Adobe Technical Note 3 (1995) for the floating-point predictor, as libtiff
