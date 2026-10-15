@@ -39,7 +39,7 @@ struct ProjectSessionTests {
         model.camera.zoom(by: 0.8)
         #expect(session.snapshot != beforeRun)
         let cameraEdit = session.snapshot
-        model.settings.detailedCharge = true
+        model.settings.detailedCharge.toggle()
         #expect(session.snapshot != cameraEdit)
         let numericalEdit = session.snapshot
         model.duration = 0.03

@@ -23,6 +23,9 @@ struct GroundShockRunTests {
         var document = ProjectDocument(scenario: scene)
         document.runSettings?.resolution = "coarse"
         document.runSettings?.duration = 0.006
+        // The plane-wave check below allows for the load being rebuilt between seven frames, for
+        // the ideal gas's short pulse it was written with.
+        document.runSettings?.detailedCharge = false
         return document
     }
 

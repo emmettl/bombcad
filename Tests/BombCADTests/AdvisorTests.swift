@@ -98,8 +98,12 @@ struct AdvisorTests {
             for: .seconds(600), memory: memory)
         #expect(advice.currentStandIn?.setting == AdvisorSetting(cellSize: 0.02))
         let note = try #require(advice.standInNote)
-        #expect(note.hasPrefix("As set (0.04 m cells, refined once), the patches would hold about "))
-        #expect(note.hasSuffix("% of the domain: 0.02 m cells cost less, with the same cells at the shock."))
+        #expect(
+            note.hasPrefix("As set (0.04 m cells, refined once, afterburning), the patches would hold about ")
+        )
+        #expect(
+            note.hasSuffix(
+                "% of the domain: 0.02 m cells, afterburning cost less, with the same cells at the shock."))
         // In the open, no such note.
         #expect(landscape().advice(for: .seconds(600), memory: memory).standInNote == nil)
     }
