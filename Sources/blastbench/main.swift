@@ -899,8 +899,7 @@ func runChamber() throws {
 /// `--refine-finer-threshold` (the second level's) and `--refine-memory` (MB).
 func configureRefinement(_ configuration: inout SolverConfiguration) {
     // The terrain's ground is cut through the cells by default (TerrainCutCells.swift); `--staircase`
-    // lays it as whole cells, as refined air does anyway. `--cut-cells` is the default, kept for old
-    // command lines.
+    // lays it as whole cells. `--cut-cells` is the default, kept for old command lines.
     if flag("staircase") { configuration.terrainCutCells = false }
     if let cfl = option("cfl").flatMap({ Float($0) }) { configuration.cfl = cfl }
     if let ratio = option("refine").flatMap({ Int($0) }) { configuration.refinement = ratio }

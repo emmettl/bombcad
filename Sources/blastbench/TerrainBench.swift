@@ -8,6 +8,7 @@ import simd
 //   blastbench terrain --study wedge [--mach 2] [--wedges 20,30,40,50,55,60] [--dx 0.01,0.005]
 //                      [--surfaces terrain,tilted] [--run 1]
 //   blastbench terrain --study shield [--mass 100] [--heights 2,4,8] [--dx 0.25] [--refine 2]
+//   (either study: [--staircase] [--afterburn] [--air thermal])
 //   blastbench terrain --study hill [--dx 0.5,0.25,0.125]
 //   blastbench terrain --study buildings [--buildings file.geojson|.osm] [--buildings-origin lon,lat] [--dx 0.5,0.25]
 //   blastbench terrain --dem file.asc|file.tif --origin x,y [--size 200,200] [--spacing 1]   (a DEM's crop)
@@ -27,6 +28,13 @@ func runTerrain(device: MTLDevice) throws {
     case "buildings": try runBuildingsStudy(device: device, out: out)
     default: print("Unknown study; use wedge, shield or hill.")
     }
+}
+
+/// The air for the terrain's studies: `--afterburn` and `--air thermal` (afterburning and hot air)
+/// besides the default.
+private func configureTerrainAir(_ configuration: inout SolverConfiguration) {
+    if flag("afterburn") { configuration.afterburning = true }
+    if let model = chosenAirModel() { configuration.airModel = model }
 }
 
 private func list(_ name: String, _ fallback: [Double]) -> [Double] {
@@ -57,6 +65,7 @@ private func runWedgeStudy(device: MTLDevice, out: URL) throws {
                 study.shockMach = mach
                 study.distance = run
                 configureRefinement(&study.configuration)
+                configureTerrainAir(&study.configuration)
                 let r = try study.run(device: device)
                 let line = String(
                     format: "%-8@ %.4f  %5.1f  %6.1f       %5.2f  %6@  %5.2f  %7@  %8d  %.1f  %@",
@@ -115,6 +124,7 @@ func profileRun(
     }
     var configuration = SolverConfiguration()
     configureRefinement(&configuration)
+    configureTerrainAir(&configuration)
     configuration.gravity = chosenGravity()
     let maskClock = Date()
     let solver = try BlastSolver(

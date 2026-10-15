@@ -350,6 +350,14 @@ least half air. Ratios to flat ground on the same cells, staircase / cut cells:
   4 m crest (0.57 and 0.73). Refined twice (0.0625 m at the second level): 1.62 and 1.54 on the
   4 m ridge's face, 1.61 on the 2 m ridge's and 1.18 on the 8 m ridge's. The staircase refined reads 1.75–1.77 on the 4 m ridge's face once and 1.72–1.79
   twice, less than its uniform 0.125 m cells' 2.37, as only the patches' steps are fine.
+- **On the recommended air** (afterburning and hot air, `--afterburn --air thermal`, 0.25 m
+  cells) the ratios hold: 1.51 and 1.54 on the 4 m ridge's windward face on cut cells (1.52 and
+  1.55 on ideal gas without afterburning), 2.14 on the staircase (2.12–2.13); 1.93 and 2.05 on
+  the steep ridge's (1.92 and 2.04); peaks behind the crest within 0.01. The impulse behind the
+  ridge rises on both, to about 0.8 of flat ground's 3–13 m behind the crest (0.7 on ideal gas),
+  as the afterburning products burn on. Cut cells cost 13–15% more a step than the staircase
+  there. On the slope, with hot air, the triple point moves 0.15–0.3° lower on both, cut cells
+  still within 0.33° of ideal-gas theory at 30–45° and the staircase 2.4° off.
 - **At 500 t with gravity** (`blastbench landscape --study terrain --gravity --cut-cells`, 4.3 m
   cells) the ridges' ratios are the 100 kg ones within 0.01 to 0.03, as on the staircase (see
   [Large scenes](large-scenes.md#over-terrain-at-scale)). Along the valleys the peaks agree
