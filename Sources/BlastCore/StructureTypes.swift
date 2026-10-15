@@ -1,3 +1,4 @@
+import ContactSearchMetal
 import Foundation
 import Metal
 import simd
@@ -1167,6 +1168,9 @@ enum ShaderLibrary {
             }
             return try String(contentsOf: url, encoding: .utf8)
         }.joined(separator: "\n")
+        // Contact's table and search are ContinuumKit's (`ContactSearchMetal`), compiled ahead of
+        // the kernels that use them.
+        source = try MetalContactSearch.functionSource() + "\n" + source
         if probe.statePadding > 0 {
             // Unused floats in the element state: a change to the source that alters no
             // arithmetic, to see what results a rebuild moves.

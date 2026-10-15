@@ -793,7 +793,8 @@ first meeting the surface nodes in front of it.
    are not lattice neighbours begin at least two elements apart, so two that have each moved
    less than 0.45 of an element cannot touch: the table marks the entries holding a node that has
    moved further, and a node that has not looks only in those. Only pairs whose force would be
-   zero are skipped (shells likewise, with their own spacing).
+   zero are skipped (shells likewise, with their own spacing). The table and its search are
+   ContinuumKit's `ContactSearchMetal` ([adoption](continuumkit-adoption.md)).
 3. The spring stiffness is a tenth of the stiffest spring the time step allows, based on the
    lighter of the two nodes, so contact never limits the time step.
 
