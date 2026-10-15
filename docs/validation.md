@@ -496,6 +496,23 @@ measured values. Together they make Hrynyk's first impact, already too flexible,
 - **The options were not kept on main.** Under the [strategy's](concrete-strategy.md) rule for
   options that move nothing, they stay on branch `claude/stiffness-study`.
 
+**Arching from the supports, ruled out by inspection** (16 October 2026). Compressive membrane
+action needs a slab held in its plane at both supports. None of the too-stiff cases is.
+- **Mendonça's trestles:** frictionless and one-sided, holding the slab in x along one line at one
+  bearing only, and in y at two nodes.
+- **Wu's beams:** frictionless, holding x at one edge (both edges only with `--held`, off by
+  default).
+- **The contest slab, Schwer's lower shot:** a pin and a roller.
+- **Hrynyk's seats:** one corner pinned, two on rollers, one free.
+
+Each is held in its plane only as far as it must be, so there is nothing to arch against. Releasing
+the supports in-plane, the check proposed, is how they are already run. Chiquito's close-in slabs,
+held along both edges, are the one benchmark that could arch, and they agree today.
+
+**The stiffness line ends here.** The load, the supports, the bars, the bond, the cracked concrete's
+strength and stiffness, the hourglass control and arching are each ruled out, by runs or by
+construction, as what holds these slabs. What does is not found on these meshes.
+
 ## Structural response against a real test
 
 ### The test
