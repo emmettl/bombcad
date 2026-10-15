@@ -1,0 +1,288 @@
+trace,time_ms,pressure_psi,pressure_kPa
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",0,0.0,0.0
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",1,29.5,203.4
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",2,33.7,232.4
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",3,34.7,239.2
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",4,33.5,231.0
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",5,38.4,264.8
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",6,44.6,307.5
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",7,49.5,341.3
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",8,41.5,286.1
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",9,39.2,270.3
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",10,35.4,244.1
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",11,30.4,209.6
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",12,29.5,203.4
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",13,25.4,175.1
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",14,21.4,147.5
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",15,20.1,138.6
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",16,19.3,133.1
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",17,18.5,127.6
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",18,17.2,118.6
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",19,15.9,109.6
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",20,14.2,97.9
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",21,16.4,113.1
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",22,16.65,114.8
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",23,16.9,116.5
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",24,14.95,103.1
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",25,14.6,100.7
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",26,15.15,104.5
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",27,13.75,94.8
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",28,13.8,95.1
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",29,14.4,99.3
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",30,13.1,90.3
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",31,13.2,91.0
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",32,11.7,80.7
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",33,11.45,78.9
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",34,11.9,82.0
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",35,11.2,77.2
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",36,11.1,76.5
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",37,9.7,66.9
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",38,10.05,69.3
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",39,10.4,71.7
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",40,10.35,71.4
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",41,10.3,71.0
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",42,8.3,57.2
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",43,6.3,43.4
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",44,6.9,47.6
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",45,7.45,51.4
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",46,7.3,50.3
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",47,7.2,49.6
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",48,7.45,51.4
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",49,6.9,47.6
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",50,6.3,43.4
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",51,6.3,43.4
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",52,6.4,44.1
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",53,6.1,42.1
+"HSCV1 and HSCV2 (Fig 9, black, overlapping)",54,5.8,40.0
+"HSCV3 (Fig 9, grey)",0,0.0,0.0
+"HSCV3 (Fig 9, grey)",1,20.77,143.2
+"HSCV3 (Fig 9, grey)",2,27.68,190.8
+"HSCV3 (Fig 9, grey)",3,30.0,206.8
+"HSCV3 (Fig 9, grey)",4,29.9,206.2
+"HSCV3 (Fig 9, grey)",5,33.33,229.8
+"HSCV3 (Fig 9, grey)",6,34.83,240.1
+"HSCV3 (Fig 9, grey)",7,38.14,263.0
+"HSCV3 (Fig 9, grey)",8,35.06,241.7
+"HSCV3 (Fig 9, grey)",9,31.97,220.4
+"HSCV3 (Fig 9, grey)",10,28.57,197.0
+"HSCV3 (Fig 9, grey)",11,25.17,173.5
+"HSCV3 (Fig 9, grey)",12,23.46,161.8
+"HSCV3 (Fig 9, grey)",13,21.75,150.0
+"HSCV3 (Fig 9, grey)",14,20.04,138.2
+"HSCV3 (Fig 9, grey)",15,16.31,112.5
+"HSCV3 (Fig 9, grey)",16,15.75,108.6
+"HSCV3 (Fig 9, grey)",17,14.03,96.7
+"HSCV3 (Fig 9, grey)",18,12.37,85.3
+"HSCV3 (Fig 9, grey)",19,13.38,92.3
+"HSCV3 (Fig 9, grey)",20,12.84,88.5
+"HSCV3 (Fig 9, grey)",21,13.42,92.5
+"HSCV3 (Fig 9, grey)",22,13.39,92.3
+"HSCV3 (Fig 9, grey)",23,12.43,85.7
+"HSCV3 (Fig 9, grey)",24,11.03,76.0
+"HSCV3 (Fig 9, grey)",25,10.83,74.7
+"HSCV3 (Fig 9, grey)",26,11.79,81.3
+"HSCV3 (Fig 9, grey)",27,9.54,65.8
+"HSCV3 (Fig 9, grey)",28,10.23,70.5
+"HSCV3 (Fig 9, grey)",29,11.95,82.4
+"HSCV3 (Fig 9, grey)",30,10.81,74.5
+"HSCV3 (Fig 9, grey)",31,10.52,72.5
+"HSCV3 (Fig 9, grey)",32,8.94,61.6
+"HSCV3 (Fig 9, grey)",33,7.82,53.9
+"HSCV3 (Fig 9, grey)",34,7.92,54.6
+"HSCV3 (Fig 9, grey)",35,8.67,59.8
+"HSCV3 (Fig 9, grey)",36,8.14,56.1
+"HSCV3 (Fig 9, grey)",37,7.43,51.2
+"HSCV3 (Fig 9, grey)",38,6.72,46.3
+"HSCV3 (Fig 9, grey)",39,5.84,40.3
+"HSCV3 (Fig 9, grey)",40,6.58,45.4
+"HSCV3 (Fig 9, grey)",41,5.54,38.2
+"HSCV3 (Fig 9, grey)",42,5.67,39.1
+"HSCV3 (Fig 9, grey)",43,5.34,36.8
+"HSCV3 (Fig 9, grey)",44,5.02,34.6
+"HSCV3 (Fig 9, grey)",45,4.66,32.1
+"HSCV3 (Fig 9, grey)",46,4.31,29.7
+"HSCV3 (Fig 9, grey)",47,3.95,27.2
+"HSCV3 (Fig 9, grey)",48,3.96,27.3
+"HSCV3 (Fig 9, grey)",49,3.18,21.9
+"HSCV3 (Fig 9, grey)",50,2.87,19.8
+"HSCV3 (Fig 9, grey)",51,3.07,21.2
+"HSCV3 (Fig 9, grey)",52,3.26,22.5
+"HSCV3 (Fig 9, grey)",53,3.07,21.2
+"HSCV3 (Fig 9, grey)",54,2.19,15.1
+"HSCV4 (Fig 10, black)",0,0.0,0.0
+"HSCV4 (Fig 10, black)",1,28.2,194.4
+"HSCV4 (Fig 10, black)",2,28.2,194.4
+"HSCV4 (Fig 10, black)",3,31.26,215.5
+"HSCV4 (Fig 10, black)",4,32.14,221.6
+"HSCV4 (Fig 10, black)",5,33.02,227.7
+"HSCV4 (Fig 10, black)",6,32.21,222.1
+"HSCV4 (Fig 10, black)",7,37.97,261.8
+"HSCV4 (Fig 10, black)",8,35.4,244.1
+"HSCV4 (Fig 10, black)",9,33.23,229.1
+"HSCV4 (Fig 10, black)",10,29.27,201.8
+"HSCV4 (Fig 10, black)",11,26.35,181.7
+"HSCV4 (Fig 10, black)",12,23.77,163.9
+"HSCV4 (Fig 10, black)",13,21.58,148.8
+"HSCV4 (Fig 10, black)",14,19.39,133.7
+"HSCV4 (Fig 10, black)",15,17.52,120.8
+"HSCV4 (Fig 10, black)",16,15.65,107.9
+"HSCV4 (Fig 10, black)",17,13.92,96.0
+"HSCV4 (Fig 10, black)",18,13.1,90.3
+"HSCV4 (Fig 10, black)",19,12.29,84.7
+"HSCV4 (Fig 10, black)",20,12.71,87.6
+"HSCV4 (Fig 10, black)",21,12.26,84.5
+"HSCV4 (Fig 10, black)",22,12.22,84.3
+"HSCV4 (Fig 10, black)",23,11.79,81.3
+"HSCV4 (Fig 10, black)",24,10.67,73.6
+"HSCV4 (Fig 10, black)",25,10.48,72.3
+"HSCV4 (Fig 10, black)",26,10.29,70.9
+"HSCV4 (Fig 10, black)",27,8.72,60.1
+"HSCV4 (Fig 10, black)",28,9.32,64.3
+"HSCV4 (Fig 10, black)",29,10.28,70.9
+"HSCV4 (Fig 10, black)",30,11.34,78.2
+"HSCV4 (Fig 10, black)",31,10.91,75.2
+"HSCV4 (Fig 10, black)",32,9.09,62.7
+"HSCV4 (Fig 10, black)",33,6.98,48.1
+"HSCV4 (Fig 10, black)",34,8.16,56.3
+"HSCV4 (Fig 10, black)",35,7.32,50.5
+"HSCV4 (Fig 10, black)",36,7.59,52.3
+"HSCV4 (Fig 10, black)",37,7.9,54.5
+"HSCV4 (Fig 10, black)",38,6.09,42.0
+"HSCV4 (Fig 10, black)",39,5.65,39.0
+"HSCV4 (Fig 10, black)",40,5.23,36.1
+"HSCV4 (Fig 10, black)",41,4.81,33.2
+"HSCV4 (Fig 10, black)",42,4.85,33.4
+"HSCV4 (Fig 10, black)",43,4.65,32.1
+"HSCV4 (Fig 10, black)",44,3.97,27.4
+"HSCV4 (Fig 10, black)",45,3.21,22.1
+"HSCV4 (Fig 10, black)",46,3.31,22.8
+"HSCV4 (Fig 10, black)",47,3.39,23.4
+"HSCV4 (Fig 10, black)",48,3.58,24.7
+"HSCV4 (Fig 10, black)",49,3.45,23.8
+"HSCV4 (Fig 10, black)",50,3.14,21.6
+"HSCV4 (Fig 10, black)",51,3.13,21.6
+"HSCV4 (Fig 10, black)",52,2.94,20.3
+"HSCV4 (Fig 10, black)",53,2.27,15.7
+"HSCV4 (Fig 10, black)",54,2.77,19.1
+"HSCV4 (Fig 10, black)",55,2.64,18.2
+"HSCV4 (Fig 10, black)",56,2.3,15.9
+"HSCV4 (Fig 10, black)",57,2.33,16.1
+"HSCV4 (Fig 10, black)",58,2.13,14.7
+"HSCV5 (Fig 10, dark grey)",0,0.0,0.0
+"HSCV5 (Fig 10, dark grey)",1,29.12,200.8
+"HSCV5 (Fig 10, dark grey)",2,29.12,200.8
+"HSCV5 (Fig 10, dark grey)",3,29.9,206.2
+"HSCV5 (Fig 10, dark grey)",4,27.83,191.9
+"HSCV5 (Fig 10, dark grey)",5,28.8,198.6
+"HSCV5 (Fig 10, dark grey)",6,26.19,180.6
+"HSCV5 (Fig 10, dark grey)",7,23.81,164.2
+"HSCV5 (Fig 10, dark grey)",8,23.11,159.3
+"HSCV5 (Fig 10, dark grey)",9,20.06,138.3
+"HSCV5 (Fig 10, dark grey)",10,17.48,120.5
+"HSCV5 (Fig 10, dark grey)",11,16.25,112.0
+"HSCV5 (Fig 10, dark grey)",12,15.03,103.6
+"HSCV5 (Fig 10, dark grey)",13,13.81,95.2
+"HSCV5 (Fig 10, dark grey)",14,11.66,80.4
+"HSCV5 (Fig 10, dark grey)",15,11.16,76.9
+"HSCV5 (Fig 10, dark grey)",16,10.66,73.5
+"HSCV5 (Fig 10, dark grey)",17,10.17,70.1
+"HSCV5 (Fig 10, dark grey)",18,10.76,74.2
+"HSCV5 (Fig 10, dark grey)",19,8.66,59.7
+"HSCV5 (Fig 10, dark grey)",20,7.89,54.4
+"HSCV5 (Fig 10, dark grey)",21,6.68,46.1
+"HSCV5 (Fig 10, dark grey)",22,5.17,35.6
+"HSCV5 (Fig 10, dark grey)",23,7.65,52.7
+"HSCV5 (Fig 10, dark grey)",24,8.1,55.8
+"HSCV5 (Fig 10, dark grey)",25,8.55,59.0
+"HSCV5 (Fig 10, dark grey)",26,6.9,47.6
+"HSCV5 (Fig 10, dark grey)",27,5.74,39.6
+"HSCV5 (Fig 10, dark grey)",28,6.33,43.6
+"HSCV5 (Fig 10, dark grey)",29,6.92,47.7
+"HSCV5 (Fig 10, dark grey)",30,6.95,47.9
+"HSCV5 (Fig 10, dark grey)",31,7.95,54.8
+"HSCV5 (Fig 10, dark grey)",32,7.27,50.1
+"HSCV5 (Fig 10, dark grey)",33,6.58,45.4
+"HSCV5 (Fig 10, dark grey)",34,5.9,40.7
+"HSCV5 (Fig 10, dark grey)",35,5.22,36.0
+"HSCV5 (Fig 10, dark grey)",36,4.35,30.0
+"HSCV5 (Fig 10, dark grey)",37,3.49,24.1
+"HSCV5 (Fig 10, dark grey)",38,3.48,24.0
+"HSCV5 (Fig 10, dark grey)",39,3.47,23.9
+"HSCV5 (Fig 10, dark grey)",40,2.16,14.9
+"HSCV5 (Fig 10, dark grey)",41,1.85,12.8
+"HSCV5 (Fig 10, dark grey)",42,1.72,11.9
+"HSCV5 (Fig 10, dark grey)",43,1.58,10.9
+"HSCV5 (Fig 10, dark grey)",44,1.45,10.0
+"HSCV5 (Fig 10, dark grey)",45,1.13,7.8
+"HSCV5 (Fig 10, dark grey)",46,1.02,7.0
+"HSCV5 (Fig 10, dark grey)",47,1.04,7.2
+"HSCV5 (Fig 10, dark grey)",48,1.06,7.3
+"HSCV5 (Fig 10, dark grey)",49,1.07,7.4
+"HSCV5 (Fig 10, dark grey)",50,1.09,7.5
+"HSCV5 (Fig 10, dark grey)",51,0.77,5.3
+"HSCV5 (Fig 10, dark grey)",52,0.46,3.2
+"HSCV5 (Fig 10, dark grey)",53,0.46,3.2
+"HSCV5 (Fig 10, dark grey)",54,0.46,3.2
+"HSCV5 (Fig 10, dark grey)",55,0.46,3.2
+"HSCV5 (Fig 10, dark grey)",56,0.46,3.2
+"HSCV5 (Fig 10, dark grey)",57,0.46,3.2
+"HSCV5 (Fig 10, dark grey)",58,0.46,3.2
+"HSCV6 (Fig 10, light grey)",0,0.0,0.0
+"HSCV6 (Fig 10, light grey)",1,27.5,189.6
+"HSCV6 (Fig 10, light grey)",2,33.09,228.1
+"HSCV6 (Fig 10, light grey)",3,32.57,224.6
+"HSCV6 (Fig 10, light grey)",4,30.16,207.9
+"HSCV6 (Fig 10, light grey)",5,29.79,205.4
+"HSCV6 (Fig 10, light grey)",6,29.42,202.8
+"HSCV6 (Fig 10, light grey)",7,28.21,194.5
+"HSCV6 (Fig 10, light grey)",8,26.22,180.8
+"HSCV6 (Fig 10, light grey)",9,22.71,156.6
+"HSCV6 (Fig 10, light grey)",10,20.13,138.8
+"HSCV6 (Fig 10, light grey)",11,18.7,128.9
+"HSCV6 (Fig 10, light grey)",12,17.26,119.0
+"HSCV6 (Fig 10, light grey)",13,15.83,109.1
+"HSCV6 (Fig 10, light grey)",14,12.21,84.2
+"HSCV6 (Fig 10, light grey)",15,12.34,85.1
+"HSCV6 (Fig 10, light grey)",16,9.78,67.4
+"HSCV6 (Fig 10, light grey)",17,12.16,83.8
+"HSCV6 (Fig 10, light grey)",18,11.43,78.8
+"HSCV6 (Fig 10, light grey)",19,11.49,79.2
+"HSCV6 (Fig 10, light grey)",20,10.95,75.5
+"HSCV6 (Fig 10, light grey)",21,8.75,60.3
+"HSCV6 (Fig 10, light grey)",22,8.14,56.1
+"HSCV6 (Fig 10, light grey)",23,9.09,62.7
+"HSCV6 (Fig 10, light grey)",24,6.81,47.0
+"HSCV6 (Fig 10, light grey)",25,7.65,52.7
+"HSCV6 (Fig 10, light grey)",26,8.5,58.6
+"HSCV6 (Fig 10, light grey)",27,6.28,43.3
+"HSCV6 (Fig 10, light grey)",28,6.83,47.1
+"HSCV6 (Fig 10, light grey)",29,5.31,36.6
+"HSCV6 (Fig 10, light grey)",30,6.21,42.8
+"HSCV6 (Fig 10, light grey)",31,7.24,49.9
+"HSCV6 (Fig 10, light grey)",32,6.32,43.6
+"HSCV6 (Fig 10, light grey)",33,5.85,40.3
+"HSCV6 (Fig 10, light grey)",34,5.03,34.7
+"HSCV6 (Fig 10, light grey)",35,4.39,30.3
+"HSCV6 (Fig 10, light grey)",36,5.25,36.2
+"HSCV6 (Fig 10, light grey)",37,4.69,32.3
+"HSCV6 (Fig 10, light grey)",38,3.37,23.2
+"HSCV6 (Fig 10, light grey)",39,4.04,27.9
+"HSCV6 (Fig 10, light grey)",40,2.81,19.4
+"HSCV6 (Fig 10, light grey)",41,2.8,19.3
+"HSCV6 (Fig 10, light grey)",42,2.87,19.8
+"HSCV6 (Fig 10, light grey)",43,2.58,17.8
+"HSCV6 (Fig 10, light grey)",44,2.2,15.2
+"HSCV6 (Fig 10, light grey)",45,2.05,14.1
+"HSCV6 (Fig 10, light grey)",46,1.67,11.5
+"HSCV6 (Fig 10, light grey)",47,2.06,14.2
+"HSCV6 (Fig 10, light grey)",48,1.98,13.7
+"HSCV6 (Fig 10, light grey)",49,1.24,8.5
+"HSCV6 (Fig 10, light grey)",50,1.53,10.5
+"HSCV6 (Fig 10, light grey)",51,0.93,6.4
+"HSCV6 (Fig 10, light grey)",52,0.96,6.6
+"HSCV6 (Fig 10, light grey)",53,0.57,3.9
+"HSCV6 (Fig 10, light grey)",54,0.36,2.5
+"HSCV6 (Fig 10, light grey)",55,0.78,5.4
+"HSCV6 (Fig 10, light grey)",56,0.45,3.1
+"HSCV6 (Fig 10, light grey)",57,0.45,3.1
+"HSCV6 (Fig 10, light grey)",58,0.45,3.1
