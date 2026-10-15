@@ -2652,6 +2652,70 @@ The reflected peaks and the incident impulses agree as closely (within 3 points 
 `blastbench validate --afterburn --air thermal` takes 18 s on 0.5 m cells refined against 28 s on
 0.25 m cells, and 146 s on 0.25 m cells refined against 419 s on 0.125 m cells.
 
+#### Afterburning by default: what it would cost and move
+
+Measured on 15 October to decide whether afterburning should be on by default
+(limitation 3 in the [roadmap](roadmap.md#limitations-most-important-first)); nothing here changes a
+default. Each case was run off and on with the same binary (branch
+`claude/afterburn-default-study`, whose benches gained `--afterburn` where they lacked it), on
+each comparison's own mesh and the 100 µs rate window; outputs on StudioData under
+`bombcad/afterburn-study`.
+
+**The cost**, on the Mac Studio shared with other sessions, so as ratios of runs back to back:
+the street's event 1.3 to 2.0 times as long on 0.25 m cells (four pairs, 1.85 the median), 1.2 to
+1.6 on 0.5 m, 1.10 to 1.14 refined twice on 0.5 m, and the validation's three grids 1.3; memory a
+quarter more (0.61 GB against 0.48 on 0.25 m). Hot air with it costs no more (14–17 s against
+15–18 s for afterburning alone, 10–11 s off): its extra work a cell is repaid by the longer step
+in cooler gas. The inferred 1.6 above stands as the middle of that range.
+
+**A condition.** Burning products need room: in a domain hardly bigger than the fireball the open
+faces cannot let them out, and the late gas presses on whatever is near like a vented room's.
+Wang's slab sits in 2.5 × 2.3 × 2.0 m with the 10 kg charge 0.4 m from a face; with afterburning
+its gauges' impulse over 100 ms came to 2.1–2.5 times the measured (8.5 MPa ms at P1), nearly all
+after 20 ms, at 70–80 kPa held for tens of milliseconds, where in 6.5 × 6.3 × 4 m it is 3.98, 119%
+(off, 2.58 in either). Chiquito's slab centre (6.8 × 6.45 × 3 m, 15 kg) read 20.5 kPa s against 4.1
+off, and Alsubaei's blockwork face under 125 kg 38.7 against 13.7, while neither structure moved
+more. The benchmarks' domains were sized for the default gas; with afterburning a scene needs its
+open faces several fireball radii away, which in Wang's case cost seven times the run. The figure
+of 94–104% for Wang with afterburning recorded above does not reproduce on today's code in either
+domain.
+
+**What moves**, on/off:
+
+| Comparison | Off | With afterburning |
+|---|---|---|
+| Open-air loads, 0.25 m (`validate`), from 1 m/kg^(1/3) | Incident peak 76–82%, impulse 78–86%, reflected impulse 91–102% | Peak +3–6%, impulse +15–24% (96–101%), reflected impulse +7–16% (98–115%), arrival up to 2% earlier |
+| Ground shock (from the ground's peak and impulse; not run) | | Soil velocity, which follows the peak, +3–6%; displacement, which follows the impulse, +15–24% |
+| Contest slab | Prescribed load | Not affected |
+| Wu S5, D5, 0.2 kg at 0.25 m | Peak 2.0, 2.8 mm (measured 4.0, 4.1) | 2.4, 2.9 mm |
+| Wang A, B | 1.3 mm at D1, several times too stiff | 5–15% less; the gauges as above |
+| Chiquito, 2 and 1.74 kg at 1 m | Peak 14, 12 mm; left 3, 3 (P1 measured 0) | 17, 15 mm; 5, 4 |
+| Chiquito, 13–15 kg at 1 and 0.5 m | Left 112–214 mm (P7, P2 measured 340, 510) | 5–10% less; the slab's momentum at 5 ms 1–3% less |
+| Hupfauf, eight contact charges | Tip velocities, craters | Within 5% on most; three slabs near the threshold of spalling move either way (one crater 92 to 28 cm), as chaotic debris does; momentum within 1% |
+| Alsubaei, the air | Reflected peaks 0.8–1.7 of measured | +3–5%; impulses +6% to +59%, +18% the median |
+| Alsubaei, RC walls on footings | Top 204, 315 mm (tests: no significant deformation) | 222, 350 mm |
+| Alsubaei, blockwork, 25 kg | Top 37 mm (measured 28) | 49 mm; 125 kg collapses either way, as in the test |
+| Keys, free field | Impulse 98–106% of measured | 110–119%; peaks +3%; debris spread much as before |
+| Rooms (`gas`) | 48–114% of UFC 2-152 | Alone 124–131%; with hot air 98–108% |
+| Fireball radiation, the street, 170 ms | Under 0.1% radiated, luminous to 44 ms | Alone 29%, peak 8.4 MW/m², surfaces to 994 K; with hot air 21%, 3.2 MW/m², 774 K (TNT 3.8–6.6%) |
+| The cloud, the street's hand-over, still air | Top 307 m | Alone 468 m; with hot air 455 m (Church: 0.68 of his tops off, 1.04 with both at 2 min) |
+| The negative phase, Z = 2–6 | 83–90% of UFC | 95–108% |
+
+**So:** afterburning brings the open air's incident and suction impulses within a few per cent,
+the rooms within 8% with hot air, and the cloud to Church's tops; it moves the structures it was
+checked on by under a fifth either way, towards the tests for Wu's slabs and away from them for
+Chiquito's heavy charges, Wang's slabs and Alsubaei's walls (close in, part of that is the mapped
+charge, which needs the ideal gas, being given up: the slab's early momentum falls 1–3%), and
+pushes the loads that were already high
+(Alsubaei's near gauges, Keys' free field, the reflected impulse in the middle ranges) higher.
+Alone it overshoots rooms by a quarter and makes the fireball brighter still, so if it becomes the
+default it should be with hot air, the app's existing "Afterburning and hot air", for every scene
+rather than only scenes in the open: rooms need it most, a scene with walls is partly open, and a
+result should not jump when a wall is added. Its costs are 1.3–2 times the air's time, a quarter
+more memory, larger domains for close-in charges, and illustrative radiation 3–5 times too bright
+instead of almost none, until the gas cools. The bands derived without it (Keys, Alsubaei, the
+close-in slabs) would need deriving again. That decision is the user's.
+
 ### Kinney–Graham
 
 The same burst against the Kinney–Graham free-air formulae for 200 kg (a charge on perfectly
@@ -2731,12 +2795,11 @@ So the model's negative phase is right in kind and, by default, about a seventh 
 ranges of most structures, for the same reason its positive impulse is 13–22% short: the default
 gas does not burn its products. No numerical default needs changing.
 
-**Proposal.** Afterburning on by default in the open, without hot air (which costs a quarter and
-moves the suction by only 1–2 points). It brings the underpressure impulse to 95–108% from
-Z = 2 to 6 and the positive impulse within 4%, with the evidence of
-[Afterburning](#afterburning), at roughly 1.6 times the air's time (inferred, not timed here:
-afterburning and hot air together double it and hot air alone adds a quarter,
-[Performance](performance.md)). Left off, the default stays on the unsafe
+**Proposal.** Afterburning on by default, with hot air (which moves the suction by only 1–2
+points, but keeps rooms within 8% where afterburning alone overshoots them by a quarter), for
+every scene. It brings the underpressure impulse to 95–108% from Z = 2 to 6 and the positive
+impulse within 4–6%, at 1.3 to 2 times the air's time, measured with what else it moves in
+[Afterburning by default](#afterburning-by-default-what-it-would-cost-and-move). Left off, the default stays on the unsafe
 side for anything loaded outward, and the standing should say so. For glazing and façades that
 means: the suction a recorded envelope sums (signed impulse, [Building
 envelopes](building-envelopes.md)) reads about a seventh low, so panes that survive the positive
