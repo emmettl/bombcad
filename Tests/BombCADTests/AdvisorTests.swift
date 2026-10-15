@@ -51,7 +51,7 @@ struct AdvisorTests {
         inputs.settings.duration = 4.5
         let advice = inputs.advice(for: .seconds(600), memory: memory)
         let chosen = try #require(advice.chosen)
-        #expect((advice.terrainNote != nil) == (chosen.setting.refinement > 1))
+        #expect((advice.terrainNote != nil) == (chosen.setting.refinement > 1 && chosen.setting.levels > 1))
         var staircase = inputs.settings
         staircase.terrainCutCells = nil
         #expect(

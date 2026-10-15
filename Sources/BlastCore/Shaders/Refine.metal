@@ -52,6 +52,189 @@ constant int haloSide = 8;  // patchSize + 2 haloDepth
 constant uint haloCells = 512;
 constant uint freePatch = 0xFFFFFFFFu;
 
+struct TerrainUniforms {
+    float2 origin;
+    float spacing;
+    uint columns;
+    uint rows;
+    uint enabled;
+};
+
+// The terrain's elevation at `p`: bilinear between the nodes round it, the edge carried outward,
+// as `Terrain.height(at:)` computes it.
+static inline float terrainHeight(float2 p, constant TerrainUniforms &t, const device float *heights) {
+    float2 last = float2(float(t.columns - 1), float(t.rows - 1));
+    float2 position = clamp((p - t.origin) / t.spacing, float2(0.0f), last);
+    int2 low = min(int2(floor(position)), int2(int(t.columns) - 2, int(t.rows) - 2));
+    float2 f = position - float2(low);
+    uint base = uint(low.x) + t.columns * uint(low.y);
+    float h00 = heights[base];
+    float h10 = heights[base + 1];
+    float h01 = heights[base + t.columns];
+    float h11 = heights[base + t.columns + 1];
+    float bottom = h00 + f.x * (h10 - h00);
+    float top = h01 + f.x * (h11 - h01);
+    return bottom + f.y * (top - bottom);
+}
+
+// The terrain's cut cells on a level of refinement (see `TerrainCutGeometry` for the coarse
+// grid's): each fine cell's share of air and the apertures of its faces, by the coarse grid's
+// quadrature at the fine cell's own size: `8 / r` points to an edge, the very points the coarse
+// grid's 8 fall on, so that a coarse cell's share is the mean of its fine cells' (the lengths of
+// air above each point add up). A share under 1e-6 counts as none, and a face beside a cell
+// with none is closed, as on the coarse grid. `low` holds the share and the low faces' apertures
+// (x, y, z), `high` the high faces'.
+struct CutGeometry {
+    float4 low;
+    float4 high;
+};
+
+// The share of air above the surface at height `h` along a column from `z0`, `dx` high.
+static inline float cutOpen(float h, float z0, float dx) {
+    return clamp((z0 + dx - max(h, z0)) / dx, 0.0f, 1.0f);
+}
+
+// The share of air of fine cell `c` (cells of `dx`, `samples` points to an edge).
+static inline float cutShareAt(int3 c, float dx, int samples, constant TerrainUniforms &t,
+                               const device float *heights) {
+    float2 origin = float2(c.xy) * dx;
+    float z0 = float(c.z) * dx;
+    float sum = 0.0f;
+    for (int b = 0; b < samples; ++b) {
+        for (int a = 0; a < samples; ++a) {
+            float2 p = origin + (float2(float(a), float(b)) + 0.5f) / float(samples) * dx;
+            sum += cutOpen(terrainHeight(p, t, heights), z0, dx);
+        }
+    }
+    float share = sum / float(samples * samples);
+    return share < 1e-6f ? 0.0f : share;
+}
+
+// The open share of the face of `c` low along `axis` (0 or 1): points along the face's line.
+static inline float cutSideAperture(int3 c, uint axis, float dx, int samples, constant TerrainUniforms &t,
+                                    const device float *heights) {
+    float2 origin = float2(c.xy) * dx;
+    float z0 = float(c.z) * dx;
+    float sum = 0.0f;
+    for (int a = 0; a < samples; ++a) {
+        float along = (float(a) + 0.5f) / float(samples) * dx;
+        float2 p = axis == 0u ? origin + float2(0.0f, along) : origin + float2(along, 0.0f);
+        sum += cutOpen(terrainHeight(p, t, heights), z0, dx);
+    }
+    return sum / float(samples);
+}
+
+// The surface's highest over the footprint of fine cell `c`: at its corners and where its edges
+// cross the terrain's node lines (a bilinear patch has its extremes there), as the coarse grid's
+// `TerrainCutGeometry` finds it.
+static inline float cutHighest(int3 c, float dx, constant TerrainUniforms &t, const device float *heights) {
+    float2 low = float2(c.xy) * dx;
+    float2 high = low + dx;
+    float xs[6];
+    float ys[6];
+    int nx = 0;
+    int ny = 0;
+    xs[nx++] = low.x;
+    xs[nx++] = high.x;
+    ys[ny++] = low.y;
+    ys[ny++] = high.y;
+    for (float line = ceil((low.x - t.origin.x) / t.spacing); nx < 6 && t.origin.x + line * t.spacing < high.x; line += 1.0f) {
+        xs[nx++] = t.origin.x + line * t.spacing;
+    }
+    for (float line = ceil((low.y - t.origin.y) / t.spacing); ny < 6 && t.origin.y + line * t.spacing < high.y; line += 1.0f) {
+        ys[ny++] = t.origin.y + line * t.spacing;
+    }
+    float highest = -INFINITY;
+    for (int i = 0; i < nx; ++i) {
+        for (int j = 0; j < ny; ++j) {
+            highest = max(highest, terrainHeight(float2(xs[i], ys[j]), t, heights));
+        }
+    }
+    return highest;
+}
+
+// Fine cell `c`'s share of air and apertures. A cell the surface does not rise into is whole, its
+// faces all open (the solid cell beneath it is a wall to it as to any whole cell), as on the coarse
+// grid, where such cells lie above a column's cut cells.
+static inline CutGeometry cutGeometryAt(int3 c, float dx, int samples, constant TerrainUniforms &t,
+                                        const device float *heights) {
+    float highest = cutHighest(c, dx, t, heights);
+    if (highest <= float(c.z) * dx) {
+        CutGeometry whole = {float4(1.0f), float4(1.0f)};
+        return whole;
+    }
+    // The footprint's heights give the share, the low and high faces along z, and the share of the
+    // cells below and above.
+    float2 origin = float2(c.xy) * dx;
+    float z0 = float(c.z) * dx;
+    float share = 0.0f;
+    float below = 0.0f;
+    float above = 0.0f;
+    float lowZ = 0.0f;
+    float highZ = 0.0f;
+    for (int b = 0; b < samples; ++b) {
+        for (int a = 0; a < samples; ++a) {
+            float h = terrainHeight(origin + (float2(float(a), float(b)) + 0.5f) / float(samples) * dx, t, heights);
+            share += cutOpen(h, z0, dx);
+            below += cutOpen(h, z0 - dx, dx);
+            above += cutOpen(h, z0 + dx, dx);
+            lowZ += h < z0 ? 1.0f : 0.0f;
+            highZ += h < z0 + dx ? 1.0f : 0.0f;
+        }
+    }
+    float count = float(samples * samples);
+    share /= count;
+    below /= count;
+    above /= count;
+    share = share < 1e-6f ? 0.0f : share;
+    below = below < 1e-6f ? 0.0f : below;
+    above = above < 1e-6f ? 0.0f : above;
+    CutGeometry g;
+    g.low = float4(share, 0.0f, 0.0f, 0.0f);
+    g.high = float4(0.0f);
+    if (share == 0.0f) {
+        return g;
+    }
+    int3 ex = int3(1, 0, 0);
+    int3 ey = int3(0, 1, 0);
+    bool westOpen = cutShareAt(c - ex, dx, samples, t, heights) > 0.0f;
+    bool southOpen = cutShareAt(c - ey, dx, samples, t, heights) > 0.0f;
+    bool eastOpen = cutShareAt(c + ex, dx, samples, t, heights) > 0.0f;
+    bool northOpen = cutShareAt(c + ey, dx, samples, t, heights) > 0.0f;
+    g.low.y = westOpen ? cutSideAperture(c, 0u, dx, samples, t, heights) : 0.0f;
+    g.low.z = southOpen ? cutSideAperture(c, 1u, dx, samples, t, heights) : 0.0f;
+    g.low.w = c.z > 0 && below > 0.0f ? lowZ / count : 0.0f;
+    // A high face is its neighbour's low face: open in full beside a whole cell.
+    float z0f = float(c.z) * dx;
+    g.high.x = !eastOpen ? 0.0f
+        : cutHighest(c + ex, dx, t, heights) <= z0f ? 1.0f
+                                                    : cutSideAperture(c + ex, 0u, dx, samples, t, heights);
+    g.high.y = !northOpen ? 0.0f
+        : cutHighest(c + ey, dx, t, heights) <= z0f ? 1.0f
+                                                    : cutSideAperture(c + ey, 1u, dx, samples, t, heights);
+    g.high.z = highest <= z0f + dx ? 1.0f : (above > 0.0f ? highZ / count : 0.0f);
+    return g;
+}
+
+// Whether a cell with this geometry is cut (or touches a cut face), and so takes a cut cell's update.
+static inline bool cutGeometryCut(CutGeometry g) {
+    return any(g.low != float4(1.0f)) || any(g.high.xyz != float3(1.0f));
+}
+
+// The wall's unit normal, out of the air into the ground, from the apertures' differences; down
+// where they cancel.
+static inline float3 cutGeometryNormal(CutGeometry g) {
+    float3 wall = g.low.yzw - g.high.xyz;
+    float size = length(wall);
+    return size > 1e-6f ? wall / size : float3(0.0f, 0.0f, -1.0f);
+}
+
+// Points to an edge of a fine cell's quadrature at ratio `r`: the coarse grid's 8 shared out.
+static inline int cutSamples(uint r) {
+    return max(8 / int(r), 1);
+}
+
+
 // Index of the parent's cell `cell` in its state, its mask and the rest of its fields: on the
 // coarse grid, the cell's own; under a level that refines another, the cell of that level's patch
 // holding it, or -1 where none does.
@@ -272,7 +455,7 @@ static inline float wallSpeedOf(const device float *wallVelocity, int3 cell, con
 // fluid held by a neighbouring patch, fluid in unrefined air (whose coarse cell is refluxed),
 // a wall (whose speed along the sweep the ghost's x momentum then holds), or an open face of the
 // domain.
-enum GhostKind { ghostFine = 0, ghostCoarse = 1, ghostWall = 2, ghostOpen = 3 };
+enum GhostKind { ghostFine = 0, ghostCoarse = 1, ghostWall = 2, ghostOpen = 3, ghostTerrain = 4 };
 
 // Index of a ghost: layer 0 and 1 are two and one cells below the patch along the sweep, 2 and 3
 // one and two above; (a, b) are the cell's place across the sweep, along the next two axes.
@@ -302,6 +485,8 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
                          const device int *parentPatches [[buffer(18)]],
                          const device float4 *parentTable [[buffer(19)]],
                          const device float4 *levelTable [[buffer(20)]],
+                         const device float *terrainHeights [[buffer(21)]],
+                         constant TerrainUniforms &terrain [[buffer(22)]],
                          uint gid [[thread_position_in_grid]]) {
     uint side = uint(patchSize) * u.refineRatio;
     uint perPatch = 4u * side * side;
@@ -333,6 +518,13 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
     int3 cell = fine / int(u.refineRatio);
     int3 home = cell / patchSize;
     int holder = inDomain ? patchOfTile[tileIndex(home, u)] : -1;
+    if (cutCells && terrain.enabled != 0 && holder < 0 && inDomain
+        && cutShareAt(fine, u.dx / float(u.refineRatio), cutSamples(u.refineRatio), terrain, terrainHeights) == 0.0f) {
+        // Unrefined, and its fine cell here would hold no air: the terrain's, as a patch's own are.
+        ghostKinds[index] = ghostTerrain;
+        ghosts[index].mx = 0.0f;
+        return;
+    }
     if (kind != kindFluid && holder < 0) {
         ghostKinds[index] = kind == kindWall ? ghostWall : ghostOpen;
         if (kind == kindWall) {
@@ -346,7 +538,8 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
         // Held by a neighbouring patch, whose own outline decides whether it is solid.
         uint there = fineIndex(uint(holder), fine, home, u);
         if ((fineMask[there] & 1) != 0) {
-            ghostKinds[index] = ghostWall;
+            // With cut cells, the terrain's solid cells are marked so, for their neighbours' mirrors.
+            ghostKinds[index] = cutCells && (fineMask[there] & 16) != 0 ? ghostTerrain : ghostWall;
             ghosts[index].mx = float3(fineWall[there])[axis];
             return;
         }
@@ -374,7 +567,8 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
         int3 inside = local;
         inside[axis] = layer == 1u ? 0 : int(side) - 1;
         uint own = patch * side * side * side + uint(inside.x + int(side) * (inside.y + int(side) * inside.z));
-        if ((fineMask[own] & 1) != 0) {
+        // (A cut cell's face beside the terrain's solid fine cell is closed: nothing passes.)
+        if ((fineMask[own] & 1) != 0 && !(cutCells && (fineMask[own] & 16) != 0)) {
             Prim w = primOf(outside, u);
             Prim wall = mirrored(w, float3(fineWall[own])[axis]);
             Flux f = layer == 1u ? riemannFlux(w, wall, u) : riemannFlux(wall, w, u);
@@ -395,7 +589,9 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
                                  device float2 *speciesDst, const device float2 *ghostSpecies,
                                  device float *speciesFluxSums, const device int *boxPatches, device float *boxImpulse, const device uint *tileOfPatch,
                                  const device int *childPatches, device float *childFlux, device float *childSpeciesFlux,
-                                 const device float4 *gravityTable, const device float *viscosity) {
+                                 const device float4 *gravityTable, const device float *viscosity,
+                                 const device float4 *fineCut, device float4 *fineDefects,
+                                 const device float *terrainHeights, constant TerrainUniforms &terrain) {
     int r = int(u.refineRatio);
     int shift = r == 2 ? 1 : 2;
     int side = patchSize * r;
@@ -422,9 +618,11 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
     }
 
     // The kind of the cell `offset` along the sweep, its state if fluid, and its speed along the
-    // sweep if a wall.
+    // sweep if a wall; `ground` says whether a wall is the terrain's (cut cells only).
+    bool ground = false;
     auto look = [&](int offset, thread Prim &w, thread float &speed) {
         speed = 0.0f;
+        ground = false;
         int along = local[axis] + offset;
         if (along >= 0 && along < side) {
             int3 g = fine;
@@ -434,6 +632,7 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
             }
             if ((fineMask[index + offset * stride] & 1) != 0) {
                 speed = float3(fineWall[index + offset * stride])[axis];
+                ground = (fineMask[index + offset * stride] & 16) != 0;
                 return int(kindWall);
             }
             w = primOf(fineSrc[index + offset * stride], u);
@@ -442,6 +641,10 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
         uint layer = along < 0 ? uint(along + 2) : uint(along - side + 2);
         uint g = ghostIndex(patch, layer, a, b, uint(side));
         uchar kind = ghostKinds[g];
+        if (kind == ghostTerrain) {
+            ground = true;
+            return int(kindWall);
+        }
         if (kind == ghostWall) {
             speed = ghosts[g].mx;
             return int(kindWall);
@@ -461,6 +664,7 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
     Prim wP1 = w0;
     float speedP1;
     int kindP1 = look(1, wP1, speedP1);
+    bool groundP1 = ground;
     if (kindP1 == kindWall) {
         wP1 = mirrored(w0, speedP1);
         from.z = 0;
@@ -472,6 +676,9 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
     Prim wM1 = w0;
     float speedM1;
     int kindM1 = look(-1, wM1, speedM1);
+    bool groundM1 = ground;
+    bool groundP2 = false;
+    bool groundM2 = false;
     if (kindM1 == kindWall) {
         wM1 = mirrored(w0, speedM1);
         from.y = 0;
@@ -489,6 +696,7 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
         Prim w = wP1;
         float speed;
         int kind = look(2, w, speed);
+        groundP2 = kind == kindWall && ground;
         if (kind == kindFluid) {
             wP2 = w;
         } else if (kind == kindWall) {
@@ -510,6 +718,7 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
         Prim w = wM1;
         float speed;
         int kind = look(-2, w, speed);
+        groundM2 = kind == kindWall && ground;
         if (kind == kindFluid) {
             wM2 = w;
         } else if (kind == kindWall) {
@@ -521,6 +730,46 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
         }
     } else {
         from.x = from.y;
+    }
+
+    // The terrain's cut cells, as on the coarse grid (see `sweepCell`): a ghost beside a cut cell
+    // mirrors it about its wall's normal; one two away, the cell beside it about that cell's.
+    CutGeometry here = {float4(1.0f), float4(1.0f)};
+    bool cut = false;
+    float dxFineCut = u.dx / float(r);
+    if (cutCells) {
+        here.low = fineCut[2 * index];
+        here.high = fineCut[2 * index + 1];
+        cut = cutGeometryCut(here);
+        // The geometry of the cell `offset` along the sweep: this patch's, or worked out afresh.
+        auto geometryAt = [&](int offset) {
+            int along = local[axis] + offset;
+            if (along >= 0 && along < side) {
+                CutGeometry g;
+                g.low = fineCut[2 * (index + offset * stride)];
+                g.high = fineCut[2 * (index + offset * stride) + 1];
+                return g;
+            }
+            int3 at = fine;
+            at[axis] += offset;
+            return cutGeometryAt(at, dxFineCut, cutSamples(u.refineRatio), terrain, terrainHeights);
+        };
+        if (kindP1 == kindWall && groundP1) {
+            float3 normal = toSweep(cutGeometryNormal(here), axis);
+            wP1 = mirroredAbout(w0, normal);
+            wP2 = mirroredAbout(wM1, normal);
+        }
+        if (kindM1 == kindWall && groundM1) {
+            float3 normal = toSweep(cutGeometryNormal(here), axis);
+            wM1 = mirroredAbout(w0, normal);
+            wM2 = mirroredAbout(wP1, normal);
+        }
+        if (kindP1 == kindFluid && groundP2) {
+            wP2 = mirroredAbout(wP1, toSweep(cutGeometryNormal(geometryAt(1)), axis));
+        }
+        if (kindM1 == kindFluid && groundM2) {
+            wM2 = mirroredAbout(wM1, toSweep(cutGeometryNormal(geometryAt(-1)), axis));
+        }
     }
 
     float dt = levelStep(control, u);
@@ -614,12 +863,42 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
         }
     }
 
-    // A fine cell on the patch's face, beside unrefined fluid, adds up the flux through it.
+    // A cut cell's update (see `cutCellUpdate`), and its faces' apertures for what it records.
+    Flux defect = {0.0f, float3(0.0f), 0.0f};
+    Flux cutLow = fluxLow;
+    Flux cutHigh = fluxHigh;
+    float apertureLow = 1.0f;
+    float apertureHigh = 1.0f;
+    if (cutCells && cut) {
+        apertureLow = here.low[1 + axis];
+        apertureHigh = here.high[axis];
+        CutUpdate update = cutCellUpdate(w0, fluxLow, fluxHigh, apertureLow, apertureHigh, here.low.x,
+                                         toSweep(cutGeometryNormal(here), axis), gravityHere, gravityTable, fine.z,
+                                         lambda, dt, u);
+        cutLow = update.low;
+        cutHigh = update.high;
+        defect = update.defect;
+    }
+
+    // A fine cell on the patch's face, beside unrefined fluid, adds up the flux through it (times
+    // the face's aperture, on cut cells).
     if (local[axis] == 0 && ghostKinds[ghostIndex(patch, 1u, a, b, uint(side))] == ghostCoarse) {
-        addFlux(fineFlux, registerSlot(patch, 2u * axis, a, b, uint(side)), fluxLow, axis, dt);
+        Flux through = fluxLow;
+        if (apertureLow != 1.0f) {
+            through.mass *= apertureLow;
+            through.momentum *= apertureLow;
+            through.energy *= apertureLow;
+        }
+        addFlux(fineFlux, registerSlot(patch, 2u * axis, a, b, uint(side)), through, axis, dt);
     }
     if (local[axis] == side - 1 && ghostKinds[ghostIndex(patch, 2u, a, b, uint(side))] == ghostCoarse) {
-        addFlux(fineFlux, registerSlot(patch, 2u * axis + 1u, a, b, uint(side)), fluxHigh, axis, dt);
+        Flux through = fluxHigh;
+        if (apertureHigh != 1.0f) {
+            through.mass *= apertureHigh;
+            through.momentum *= apertureHigh;
+            through.energy *= apertureHigh;
+        }
+        addFlux(fineFlux, registerSlot(patch, 2u * axis + 1u, a, b, uint(side)), through, axis, dt);
     }
 
     float3 momentum = toSweep(float3(c.mx, c.my, c.mz), axis);
@@ -659,13 +938,21 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
         }
         if (local[axis] == 0 && ghostKinds[ghostIndex(patch, 1u, a, b, uint(side))] == ghostCoarse) {
             uint slot = speciesSlot(patch, 2u * axis, a, b, uint(side));
-            speciesFluxSums[slot] += inflow.x * dt;
-            speciesFluxSums[slot + 1] += inflow.y * dt;
+            speciesFluxSums[slot] += apertureLow * inflow.x * dt;
+            speciesFluxSums[slot + 1] += apertureLow * inflow.y * dt;
         }
         if (local[axis] == side - 1 && ghostKinds[ghostIndex(patch, 2u, a, b, uint(side))] == ghostCoarse) {
             uint slot = speciesSlot(patch, 2u * axis + 1u, a, b, uint(side));
-            speciesFluxSums[slot] += outflow.x * dt;
-            speciesFluxSums[slot + 1] += outflow.y * dt;
+            speciesFluxSums[slot] += apertureHigh * outflow.x * dt;
+            speciesFluxSums[slot + 1] += apertureHigh * outflow.y * dt;
+        }
+        if (cutCells && cut) {
+            // The species' difference too, at the conservative mass fluxes.
+            float2 cutIn = speciesFlux(cutLow.mass, speciesAt(-1, kindM1, wM1), fraction);
+            float2 cutOut = speciesFlux(cutHigh.mass, fraction, speciesAt(1, kindP1, wP1));
+            float2 kept = -lambda * ((cutOut - cutIn) - here.low.x * (outflow - inflow));
+            float4 held = fineDefects[2 * index + 1];
+            fineDefects[2 * index + 1] = float4(held.xy + kept, held.zw);
         }
         if (childSpecies >= 0) {
             float2 through = (childLow ? inflow : outflow) * dt;
@@ -682,6 +969,12 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
         speciesDst[index] = species;
     }
 
+    if (cutCells && cut) {
+        float4 held = fineDefects[2 * index];
+        float4 heldEnergy = fineDefects[2 * index + 1];
+        fineDefects[2 * index] = float4(held.x + defect.mass, held.yzw + fromSweep(defect.momentum, axis));
+        fineDefects[2 * index + 1] = float4(heldEnergy.xy, heldEnergy.z + defect.energy, heldEnergy.w);
+    }
     rho = max(rho, u.densityFloor);
     float kinetic = 0.5f * dot(momentum, momentum) / rho;
     float pressure = gasPressure(rho, energy - kinetic, u.airModel, u.gamma);
@@ -703,7 +996,10 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
         float ambient = airGravity ? gravityAmbientOf(gravityTable, fine.z, u) : u.ambientPressure;
         recordCell(maxSpeed, momentum, rho, pressure, u, ambient);
         float overpressure = pressure - ambient;
-        if (overpressure > 0.0f) {
+        // On cut cells, only a cell at least half air counts for the peaks and the impulse, as on
+        // the coarse grid where they are read at the first such cell: a sliver's state is its share
+        // of what it is given.
+        if (overpressure > 0.0f && (!cutCells || here.low.x >= 0.5f)) {
             // Positive floats order like their bit patterns.
             atomic_fetch_max_explicit(&peakBits[coarseIndex], as_type<uint>(overpressure), memory_order_relaxed);
             fineImpulse[index] += overpressure * dt;
@@ -737,6 +1033,10 @@ kernel void refineSweep(const device Cell *fineSrc [[buffer(0)]],
                         device float *childSpeciesFlux [[buffer(24)]],
                         const device float4 *gravityTable [[buffer(25)]],
                         const device float *viscosity [[buffer(26)]],
+                        const device float4 *fineCut [[buffer(27)]],
+                        device float4 *fineDefects [[buffer(28)]],
+                        const device float *terrainHeights [[buffer(29)]],
+                        constant TerrainUniforms &terrain [[buffer(30)]],
                         uint3 group [[threadgroup_position_in_grid]],
                         uint3 local [[thread_position_in_threadgroup]],
                         uint3 groupSize [[threads_per_threadgroup]]) {
@@ -751,7 +1051,229 @@ kernel void refineSweep(const device Cell *fineSrc [[buffer(0)]],
         fineSweepCell(origin + int3(local.x, local.y, z), tile, patch, fineSrc, fineDst, ghosts, ghostKinds, mask,
                       peakBits, control, maxSpeed, u, fineFlux, fineImpulse, fineMask, fineWall, speciesSrc,
                       speciesDst, ghostSpecies, speciesFluxSums, boxPatches, boxImpulse, tileOfPatch, childPatches,
-                      childFlux, childSpeciesFlux, gravityTable, viscosity);
+                      childFlux, childSpeciesFlux, gravityTable, viscosity, fineCut, fineDefects, terrainHeights,
+                      terrain);
+    }
+}
+
+// With the terrain's cut cells, after each substep's final sweep: every fine cut cell's
+// difference (see `redistributeCutDefects` for the coarse grid's) is shared out up its fine column,
+// the cell keeping its share alpha and the rest going to the first cell above at least half air,
+// through the patches stacked above it. What reaches the top of a stack still unplaced goes to the
+// coarse cell above it (`refineCutPassUp`). One thread a fine column of each patch with cut cells
+// that has none beneath it, dispatched as the ghosts are (four of their layers to a patch's one).
+kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
+                                  device float2 *fineSpecies [[buffer(1)]],
+                                  const device float4 *fineCut [[buffer(2)]],
+                                  device float4 *fineDefects [[buffer(3)]],
+                                  constant SolverUniforms &u [[buffer(4)]],
+                                  const device int *patchOfTile [[buffer(5)]],
+                                  const device uint *tileOfPatch [[buffer(6)]],
+                                  const device uint *patchList [[buffer(7)]],
+                                  const device uint *patchCut [[buffer(8)]],
+                                  device float4 *passedUp [[buffer(9)]],
+                                  const device StepControl &control [[buffer(10)]],
+                                  const device uchar *mask [[buffer(11)]],
+                                  const device uchar *fineMask [[buffer(12)]],
+                                  device atomic_uint *maxSpeed [[buffer(13)]],
+                                  const device float4 *gravityTable [[buffer(14)]],
+                                  uint gid [[thread_position_in_grid]]) {
+    if (!cutCells || control.dt <= 0.0f) {
+        return;
+    }
+    int r = int(u.refineRatio);
+    int side = patchSize * r;
+    uint perPatch = 4u * uint(side * side);
+    uint position = gid % perPatch;
+    if (position >= uint(side * side)) {
+        return;
+    }
+    uint patch = patchList[gid / perPatch];
+    if (patchCut[patch] == 0u) {
+        return;
+    }
+    int3 tile = tileCoordinates(tileOfPatch[patch], u);
+    if (tile.z > 0) {
+        int below = patchOfTile[tileIndex(tile - int3(0, 0, 1), u)];
+        if (below >= 0 && patchCut[below] != 0u) {
+            return;
+        }
+    }
+    int a = int(position) % side;
+    int b = int(position) / side;
+    int3 dims = int3(u.nx, u.ny, u.nz);
+    bool withSpecies = u.afterburnEnergy > 0.0f;
+    float4 passed = float4(0.0f);
+    float4 passedEnergy = float4(0.0f);
+    bool reached = false;
+    int last = -1;
+    float lastShare = 1.0f;
+    int lastZ = 0;
+    // Adds `change` (mass, momentum) and `changeEnergy` (fuel, oxygen, energy) for its whole
+    // volume to fine cell `index`, holding `share` of air.
+    auto apply = [&](int index, float4 change, float4 changeEnergy, float share, int z) {
+        Cell c = fine[index];
+        c.rho += change.x / share;
+        c.mx += change.y / share;
+        c.my += change.z / share;
+        c.mz += change.w / share;
+        c.energy += changeEnergy.z / share;
+        c.rho = max(c.rho, u.densityFloor);
+        float3 momentum = float3(c.mx, c.my, c.mz);
+        float kinetic = 0.5f * dot(momentum, momentum) / c.rho;
+        float pressure = gasPressure(c.rho, c.energy - kinetic, u.airModel, u.gamma);
+        if (pressure < u.pressureFloor) {
+            pressure = u.pressureFloor;
+            c.energy = gasEnergy(c.rho, pressure, u.airModel, u.gamma) + kinetic;
+        }
+        fine[index] = c;
+        if (withSpecies) {
+            fineSpecies[index] = max(fineSpecies[index] + changeEnergy.xy / share, 0.0f);
+        }
+        float ambient = airGravity ? gravityAmbientOf(gravityTable, z, u) : u.ambientPressure;
+        recordCell(maxSpeed, momentum, c.rho, pressure, u, ambient);
+    };
+    uint current = patch;
+    int3 at = tile;
+    bool more = true;
+    while (more) {
+        for (int k = 0; k < side; ++k) {
+            int3 f = at * side + int3(a, b, k);
+            if (any(f / r >= dims)) {
+                break;
+            }
+            int index = int(fineIndex(current, f, at, u));
+            if ((fineMask[index] & 1) != 0) {
+                // Solid: the terrain's beneath the air, or a block above it, which what is still
+                // carried up cannot pass; the last cell of air takes it.
+                if (last >= 0 && (any(passed != 0.0f) || any(passedEnergy != 0.0f))) {
+                    apply(last, passed, passedEnergy, lastShare, lastZ);
+                    passed = float4(0.0f);
+                    passedEnergy = float4(0.0f);
+                }
+                continue;
+            }
+            CutGeometry g = {fineCut[2 * index], fineCut[2 * index + 1]};
+            float share = g.low.x;
+            reached = reached || share >= 0.5f;
+            float4 change = float4(0.0f);
+            float4 changeEnergy = float4(0.0f);
+            if (reached) {
+                change += passed;
+                changeEnergy += passedEnergy;
+                passed = float4(0.0f);
+                passedEnergy = float4(0.0f);
+            }
+            if (cutGeometryCut(g)) {
+                float4 d = fineDefects[2 * index];
+                float4 e = fineDefects[2 * index + 1];
+                fineDefects[2 * index] = float4(0.0f);
+                fineDefects[2 * index + 1] = float4(0.0f);
+                change += share * d;
+                changeEnergy += share * e;
+                passed += (1.0f - share) * d;
+                passedEnergy += (1.0f - share) * e;
+            }
+            if (any(change != 0.0f) || any(changeEnergy != 0.0f)) {
+                apply(index, change, changeEnergy, share, f.z);
+            }
+            last = index;
+            lastShare = share;
+            lastZ = f.z;
+        }
+        bool carrying = any(passed != 0.0f) || any(passedEnergy != 0.0f);
+        int3 up = at + int3(0, 0, 1);
+        int holder = up.z < int(u.refineTileNz) ? patchOfTile[tileIndex(up, u)] : -1;
+        if (holder >= 0 && (patchCut[holder] != 0u || carrying)) {
+            current = uint(holder);
+            at = up;
+        } else {
+            more = false;
+        }
+    }
+    if (any(passed != 0.0f) || any(passedEnergy != 0.0f)) {
+        // To the coarse cell above the stack, if air; else the last fine cell of air keeps it.
+        int3 above = int3((at.xy * side + int2(a, b)) / r, (at.z + 1) * patchSize);
+        if (above.z < dims.z && mask[above.x + dims.x * (above.y + dims.y * above.z)] == 0) {
+            uint slot = 2u * (current * uint(side * side) + position);
+            passedUp[slot] += passed;
+            passedUp[slot + 1] += passedEnergy;
+        } else if (last >= 0) {
+            apply(last, passed, passedEnergy, lastShare, lastZ);
+        }
+    }
+}
+
+// After the substeps, with the terrain's cut cells: what each stack of patches passed up out of
+// its top goes to the coarse cell above, a cut cell's difference or straight into a whole one, its
+// r^2 fine columns added in a fixed order. One thread a coarse column of each patch, dispatched as
+// the restriction is (the first 16 of a patch's 64).
+kernel void refineCutPassUp(device Cell *coarse [[buffer(0)]],
+                            device float2 *coarseSpecies [[buffer(1)]],
+                            const device uint4 *cutColumns [[buffer(2)]],
+                            device float4 *cutDefects [[buffer(3)]],
+                            constant SolverUniforms &u [[buffer(4)]],
+                            const device uint *tileOfPatch [[buffer(5)]],
+                            const device uint *patchList [[buffer(6)]],
+                            device float4 *passedUp [[buffer(7)]],
+                            const device StepControl &control [[buffer(8)]],
+                            uint gid [[thread_position_in_grid]]) {
+    if (!cutCells || control.dt <= 0.0f) {
+        return;
+    }
+    uint perPatch = uint(patchSize * patchSize * patchSize);
+    uint position = gid % perPatch;
+    if (position >= uint(patchSize * patchSize)) {
+        return;
+    }
+    uint patch = patchList[gid / perPatch];
+    int3 tile = tileCoordinates(tileOfPatch[patch], u);
+    int r = int(u.refineRatio);
+    int side = patchSize * r;
+    int2 column = int2(int(position) % patchSize, int(position) / patchSize);
+    float4 sum = float4(0.0f);
+    float4 sumEnergy = float4(0.0f);
+    for (int fb = 0; fb < r; ++fb) {
+        for (int fa = 0; fa < r; ++fa) {
+            uint slot = 2u * (patch * uint(side * side) + uint(column.x * r + fa + side * (column.y * r + fb)));
+            sum += passedUp[slot];
+            sumEnergy += passedUp[slot + 1];
+            passedUp[slot] = float4(0.0f);
+            passedUp[slot + 1] = float4(0.0f);
+        }
+    }
+    if (all(sum == 0.0f) && all(sumEnergy == 0.0f)) {
+        return;
+    }
+    int3 cell = int3(tile.xy * patchSize + column, (tile.z + 1) * patchSize);
+    if (any(cell >= int3(u.nx, u.ny, u.nz))) {
+        return;
+    }
+    // A fine cell's volume over the coarse cell's.
+    float scale = 1.0f / float(r * r * r);
+    sum *= scale;
+    sumEnergy *= scale;
+    uint4 columnRecord = cutColumnOf(cell, cutColumns, u);
+    if (cell.z < int(columnRecord.z)) {
+        uint record = columnRecord.x + uint(cell.z) - columnRecord.y;
+        cutDefects[2 * record] += sum;
+        cutDefects[2 * record + 1] += float4(sumEnergy.xyz, 0.0f);
+        return;
+    }
+    int index = cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z);
+    Cell c = coarse[index];
+    c.rho = max(c.rho + sum.x, u.densityFloor);
+    c.mx += sum.y;
+    c.my += sum.z;
+    c.mz += sum.w;
+    c.energy += sumEnergy.z;
+    float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / c.rho;
+    if (gasPressure(c.rho, c.energy - kinetic, u.airModel, u.gamma) < u.pressureFloor) {
+        c.energy = gasEnergy(c.rho, u.pressureFloor, u.airModel, u.gamma) + kinetic;
+    }
+    coarse[index] = c;
+    if (u.afterburnEnergy > 0.0f) {
+        coarseSpecies[index] = max(coarseSpecies[index] + sumEnergy.xy, 0.0f);
     }
 }
 
@@ -793,6 +1315,8 @@ kernel void refineReflux(device Cell *coarse [[buffer(0)]],
                          const device float *coarseSpeciesFlux [[buffer(10)]],
                          device float2 *coarseSpecies [[buffer(11)]],
                          const device int *parentPatches [[buffer(12)]],
+                         const device uint4 *cutColumns [[buffer(13)]],
+                         device float4 *cutDefects [[buffer(14)]],
                          uint gid [[thread_position_in_grid]]) {
     if (control.dt <= 0.0f) {
         return;
@@ -854,6 +1378,30 @@ kernel void refineReflux(device Cell *coarse [[buffer(0)]],
     float area = 1.0f / float(r * r);
     float sign = high != 0 ? 1.0f : -1.0f;  // the outside cell lies above the face, or below
     float scale = sign / u.dx;
+    if (cutCells) {
+        uint4 column = cutColumnOf(outside, cutColumns, u);
+        if (outside.z < int(column.z)) {
+            // A cut cell takes the correction into its difference, which is shared out after
+            // (`redistributeCutDefects`), as its own sweeps' are: divided by its share of air it
+            // could be too much for it.
+            uint record = column.x + uint(outside.z) - column.y;
+            float4 change = scale * float4(area * sums[0] - coarseFlux[slot], area * sums[1] - coarseFlux[slot + 1],
+                                           area * sums[2] - coarseFlux[slot + 2], area * sums[3] - coarseFlux[slot + 3]);
+            float energy = scale * (area * sums[4] - coarseFlux[slot + 4]);
+            if (airGravity && axis == 2u) {
+                energy -= 0.5f * u.gravity * (area * sums[0] - coarseFlux[slot]);
+            }
+            float2 species = float2(0.0f);
+            if (u.afterburnEnergy > 0.0f) {
+                uint at = speciesSlot(patch, face, uint(a), uint(b), uint(patchSize));
+                float2 used = float2(coarseSpeciesFlux[at], coarseSpeciesFlux[at + 1]);
+                species = scale * (area * speciesSums - used);
+            }
+            cutDefects[2 * record] += change;
+            cutDefects[2 * record + 1] += float4(species, energy, 0.0f);
+            return;
+        }
+    }
     Cell c = coarse[outsideIndex];
     c.rho += scale * (area * sums[0] - coarseFlux[slot]);
     c.mx += scale * (area * sums[1] - coarseFlux[slot + 1]);
@@ -985,6 +1533,42 @@ static inline float2 speciesMean(int3 cell, uint patch, int3 tile, const device 
     return (((o[0] + o[1]) + (o[2] + o[3])) + ((o[4] + o[5]) + (o[6] + o[7]))) * (1.0f / 64.0f);
 }
 
+// With the terrain's cut cells, a coarse cut cell's state from its fine cells: their air weighted by
+// their shares, over the coarse cell's own share (`coarseShare`), so that it holds what they hold.
+// Its fuel and oxygen likewise into `species`.
+static inline Cell cutMean(int3 cell, uint patch, int3 tile, const device Cell *fine, const device uchar *fineMask,
+                           const device float4 *fineCut, float coarseShare, const device float2 *fineSpecies,
+                           bool takeSpecies, thread float2 &species, constant SolverUniforms &u) {
+    int r = int(u.refineRatio);
+    Cell sum = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+    species = float2(0.0f);
+    bool withSpecies = takeSpecies && u.afterburnEnergy > 0.0f;
+    for (int n = 0; n < r * r * r; ++n) {
+        uint child = fineIndex(patch, cell * r + int3(n % r, (n / r) % r, n / (r * r)), tile, u);
+        if ((fineMask[child] & 1) != 0) {
+            continue;
+        }
+        float share = fineCut[2 * child].x;
+        Cell f = fine[child];
+        sum.rho += share * f.rho;
+        sum.mx += share * f.mx;
+        sum.my += share * f.my;
+        sum.mz += share * f.mz;
+        sum.energy += share * f.energy;
+        if (withSpecies) {
+            species += share * fineSpecies[child];
+        }
+    }
+    float inverse = 1.0f / (float(r * r * r) * coarseShare);
+    sum.rho *= inverse;
+    sum.mx *= inverse;
+    sum.my *= inverse;
+    sum.mz *= inverse;
+    sum.energy *= inverse;
+    species *= inverse;
+    return sum;
+}
+
 // Step 5: each coarse cell under a patch becomes the mean of its fine cells, and takes their
 // largest impulse.
 kernel void refineRestrict(device Cell *coarse [[buffer(0)]],
@@ -1001,6 +1585,9 @@ kernel void refineRestrict(device Cell *coarse [[buffer(0)]],
                            const device float2 *fineSpecies [[buffer(11)]],
                            device float2 *coarseSpecies [[buffer(12)]],
                            const device int *parentPatches [[buffer(13)]],
+                           const device uint4 *cutColumns [[buffer(14)]],
+                           const device float4 *cutRecords [[buffer(15)]],
+                           const device float4 *fineCut [[buffer(16)]],
                            uint gid [[thread_position_in_grid]]) {
     if (control.dt <= 0.0f) {
         return;
@@ -1026,6 +1613,19 @@ kernel void refineRestrict(device Cell *coarse [[buffer(0)]],
         largest = max(largest, (fineMask[child] & 1) == 0 ? fineImpulse[child] : 0.0f);
     }
     impulse[index] = impulseBase[patch * perPatch + position] + largest;
+    if (cutCells) {
+        uint4 column = cutColumnOf(cell, cutColumns, u);
+        if (cell.z >= int(column.y) && cell.z < int(column.z)) {
+            float2 species;
+            Cell mean = cutMean(cell, patch, tile, fine, fineMask, fineCut, cutRecordOf(cell, cutColumns, cutRecords, u).x,
+                                fineSpecies, true, species, u);
+            coarse[index] = mean;
+            if (u.afterburnEnergy > 0.0f) {
+                coarseSpecies[index] = species;
+            }
+            return;
+        }
+    }
     // A cell whose fine cells are all solid keeps what it had.
     int count;
     Cell mean = fineMean(cell, patch, tile, fine, fineMask, u, count);
@@ -1053,6 +1653,9 @@ kernel void refineSync(device Cell *fine [[buffer(0)]],
                        const device StepControl &control [[buffer(7)]],
                        const device uchar *fineMask [[buffer(8)]],
                        const device int *parentPatches [[buffer(9)]],
+                       const device uint4 *cutColumns [[buffer(10)]],
+                       const device float4 *cutRecords [[buffer(11)]],
+                       const device float4 *fineCut [[buffer(12)]],
                        uint gid [[thread_position_in_grid]]) {
     if (control.dt <= 0.0f) {
         return;
@@ -1083,6 +1686,15 @@ kernel void refineSync(device Cell *fine [[buffer(0)]],
     Cell mean = fineMean(cell, patch, tile, fine, fineMask, u, count);
     if (count == 0) {
         return;
+    }
+    if (cutCells) {
+        uint4 column = cutColumnOf(cell, cutColumns, u);
+        if (cell.z >= int(column.y) && cell.z < int(column.z)) {
+            // A coarse cut cell's fine cells hold its air share for share.
+            float2 species;
+            mean = cutMean(cell, patch, tile, fine, fineMask, fineCut, cutRecordOf(cell, cutColumns, cutRecords, u).x,
+                           (const device float2 *)fineCut, false, species, u);
+        }
     }
     Cell d = c;
     d.rho -= mean.rho;
@@ -1517,31 +2129,6 @@ kernel void refineArguments(device atomic_int *counters [[buffer(0)]],
 }
 
 // Matches `TerrainUniforms` in Refinement.swift.
-struct TerrainUniforms {
-    float2 origin;
-    float spacing;
-    uint columns;
-    uint rows;
-    uint enabled;
-};
-
-// The terrain's elevation at `p`: bilinear between the nodes round it, the edge carried outward,
-// as `Terrain.height(at:)` computes it.
-static inline float terrainHeight(float2 p, constant TerrainUniforms &t, const device float *heights) {
-    float2 last = float2(float(t.columns - 1), float(t.rows - 1));
-    float2 position = clamp((p - t.origin) / t.spacing, float2(0.0f), last);
-    int2 low = min(int2(floor(position)), int2(int(t.columns) - 2, int(t.rows) - 2));
-    float2 f = position - float2(low);
-    uint base = uint(low.x) + t.columns * uint(low.y);
-    float h00 = heights[base];
-    float h10 = heights[base + 1];
-    float h01 = heights[base + t.columns];
-    float h11 = heights[base + t.columns + 1];
-    float bottom = h00 + f.x * (h10 - h00);
-    float top = h01 + f.x * (h11 - h01);
-    return bottom + f.y * (top - bottom);
-}
-
 // Step 7f: fills each new patch from the coarse air (at the step's end).
 kernel void refineFill(device Cell *fine [[buffer(0)]],
                        const device Cell *coarse [[buffer(1)]],
@@ -1567,6 +2154,9 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
                        constant TerrainUniforms &terrain [[buffer(21)]],
                        const device float4 *gravityTable [[buffer(22)]],
                        const device float4 *parentGravityTable [[buffer(23)]],
+                       device float4 *fineCut [[buffer(24)]],
+                       const device uint4 *cutColumns [[buffer(25)]],
+                       device uint *patchCut [[buffer(26)]],
                        uint gid [[thread_position_in_grid]]) {
     uint r = u.refineRatio;
     uint side = uint(patchSize) * r;
@@ -1584,6 +2174,20 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
         return;
     }
     bool parentIsSolid = parentSolid(mask, index, u);
+    // With the terrain's cut cells, each fine cell's share of air and apertures; a fine cell without
+    // air is the terrain's (`refineFillConserve` notes whether the patch has cut cells).
+    uint at = patch * cells + position;
+    CutGeometry geometry = {float4(1.0f), float4(1.0f)};
+    if (cutCells) {
+        if (position == 0u) {
+            patchCut[patch] = 0u;
+        }
+        if (terrain.enabled != 0) {
+            geometry = cutGeometryAt(fineCoordinates, u.dx / float(r), cutSamples(r), terrain, terrainHeights);
+        }
+        fineCut[2 * at] = geometry.low;
+        fineCut[2 * at + 1] = geometry.high;
+    }
     // The fine outline: rigid blocks by whether the fine cell's centre lies in one (or, without
     // a list of them, as the coarse cell is), and the structure as the coarse cell has it until
     // the structure's own fine pass (`refineRemaskPrepare`) refines it.
@@ -1597,21 +2201,34 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
             rigid = all(centre >= boxes[2 * n].xyz) && all(centre <= boxes[2 * n + 1].xyz);
         }
         if (!rigid && terrain.enabled != 0) {
-            byTerrain = centre.z < terrainHeight(centre.xy, terrain, terrainHeights);
+            byTerrain = cutCells ? geometry.low.x == 0.0f : centre.z < terrainHeight(centre.xy, terrain, terrainHeights);
             rigid = byTerrain;
         }
     } else {
         rigid = parentRigid(rigidMask, index, u);
     }
     bool structure = u.experimentalBox == 0 && parentIsSolid && !parentRigid(rigidMask, index, u);
-    uint at = patch * cells + position;
     float3 point = (float3(fineCoordinates)+0.5f)*(u.dx/float(r));
     int owner = u.experimentalBox != 0 ? experimentalBoxOwner(point,u.dx/float(r),u,boxDefinition) : -1;
     bool own = owner >= 0;
     fineMask[at] = (rigid || structure || own ? 1 : 0) | (rigid ? 2 : 0) | (own ? 8 : 0) | (byTerrain ? 16 : 0);
     fineWall[at] = own ? experimentalBoxVelocity(point,boxDefinition+boxVectors*uint(owner))
                       : structure ? parentWallVelocity(wallVelocity, cell, index, u) : float3(0.0f);
-    if (!parentIsSolid) {
+    bool coarseCut = false;
+    if (cutCells && !parentIsSolid) {
+        uint4 column = cutColumnOf(cell, cutColumns, u);
+        coarseCut = cell.z < int(column.z);
+    }
+    if (coarseCut) {
+        // In a coarse cut cell, its state throughout (under gravity, its deviation from the background
+        // on the fine cell's): `refineFillConserve` then makes the fine cells hold what it holds.
+        Cell c = coarse[index];
+        if (airGravity) {
+            c = gravityDeviation(gravityDeviation(c, parentGravityTable, cell.z, -1.0f), gravityTable,
+                                 fineCoordinates.z, 1.0f);
+        }
+        fine[at] = c;
+    } else if (!parentIsSolid) {
         fine[at] = prolong(fineCoordinates, tile, patch, coarse, coarse, mask, 1.0f, u, parentPatches,
                            parentGravityTable, gravityTable);
     } else {
@@ -1668,6 +2285,12 @@ kernel void refineFillConserve(device Cell *fine [[buffer(0)]],
                                device uint *pinned [[buffer(6)]],
                                device float2 *fineSpecies [[buffer(7)]],
                                const device int *parentPatches [[buffer(8)]],
+                               const device Cell *coarse [[buffer(9)]],
+                               const device float2 *coarseSpecies [[buffer(10)]],
+                               const device uint4 *cutColumns [[buffer(11)]],
+                               const device float4 *cutRecords [[buffer(12)]],
+                               const device float4 *fineCut [[buffer(13)]],
+                               device uint *patchCut [[buffer(14)]],
                                uint gid [[thread_position_in_grid]]) {
     uint perPatch = uint(patchSize * patchSize * patchSize);
     uint patch = newPatches[gid / perPatch];
@@ -1682,6 +2305,54 @@ kernel void refineFillConserve(device Cell *fine [[buffer(0)]],
     int r = int(u.refineRatio);
     int all = r * r * r;
     bool coarseSolid = parentSolid(mask, parentIndex(cell, parentPatches, u), u);
+    if (cutCells) {
+        bool anyCut = false;
+        for (int n = 0; n < all; ++n) {
+            uint child = fineIndex(patch, cell * r + int3(n % r, (n / r) % r, n / (r * r)), tile, u);
+            CutGeometry g = {fineCut[2 * child], fineCut[2 * child + 1]};
+            anyCut = anyCut || cutGeometryCut(g);
+        }
+        if (anyCut) {
+            patchCut[patch] = 1u;
+        }
+        uint4 column = cutColumnOf(cell, cutColumns, u);
+        if (!coarseSolid && cell.z < int(column.z)) {
+            // A coarse cut cell: its fine cells, each filled with its state, are made to hold what it
+            // holds, share for share, by adding the same to each (the shares agree to rounding).
+            // Nothing is given up or shared, and the patch need not be kept.
+            int index = parentIndex(cell, parentPatches, u);
+            float target = float(all) * cutRecordOf(cell, cutColumns, cutRecords, u).x;
+            float2 species;
+            Cell held =
+                cutMean(cell, patch, tile, fine, fineMask, fineCut, 1.0f / float(all), fineSpecies, true, species, u);
+            float shares = 0.0f;
+            for (int n = 0; n < all; ++n) {
+                uint child = fineIndex(patch, cell * r + int3(n % r, (n / r) % r, n / (r * r)), tile, u);
+                shares += (fineMask[child] & 1) == 0 ? fineCut[2 * child].x : 0.0f;
+            }
+            if (shares <= 0.0f) {
+                return;
+            }
+            Cell c = coarse[index];
+            Cell d;
+            d.rho = (target * c.rho - held.rho) / shares;
+            d.mx = (target * c.mx - held.mx) / shares;
+            d.my = (target * c.my - held.my) / shares;
+            d.mz = (target * c.mz - held.mz) / shares;
+            d.energy = (target * c.energy - held.energy) / shares;
+            float2 dSpecies = u.afterburnEnergy > 0.0f ? (target * coarseSpecies[index] - species) / shares : float2(0.0f);
+            for (int n = 0; n < all; ++n) {
+                uint child = fineIndex(patch, cell * r + int3(n % r, (n / r) % r, n / (r * r)), tile, u);
+                if ((fineMask[child] & 1) == 0) {
+                    fine[child] = addCells(fine[child], d);
+                    if (u.afterburnEnergy > 0.0f) {
+                        fineSpecies[child] = max(fineSpecies[child] + dSpecies, 0.0f);
+                    }
+                }
+            }
+            return;
+        }
+    }
     int fluid = 0;
     Cell lost = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
     float2 lostSpecies = float2(0.0f);

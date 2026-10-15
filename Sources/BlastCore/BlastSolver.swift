@@ -746,7 +746,19 @@ public final class BlastSolver {
             let r = refinementLevels.reduce(1) { $0 * $1.ratio }
             let within = simd_clamp(
                 point / grid.cellSize - SIMD3<Float>(cell), .zero, SIMD3(repeating: 0.999))
-            let child = SIMD3<Int>((within * Float(r)).rounded(.down))
+            var child = SIMD3<Int>((within * Float(r)).rounded(.down))
+            if let terrain, refinement?.coarseCut != nil {
+                // On cut cells, a fine cell at least half air, as on the coarse grid (`surfaceCells`).
+                let fine = { cell &* r &+ child }
+                while child.z < r - 1,
+                    TerrainCutGeometry.share(
+                        of: fine(), cellSize: grid.cellSize / Float(r), terrain: terrain,
+                        samples: max(8 / r, 1))
+                        < TerrainCutGeometry.receivingShare
+                {
+                    child.z += 1
+                }
+            }
             pointer[n] = UInt32(child.x + r * (child.y + r * child.z))
         }
     }
@@ -1569,9 +1581,11 @@ public final class BlastSolver {
         let memory =
             levels == 1 ? [total] : Self.levelMemoryShares.map { Int(Double(total) * $0) }
         let composition = bodies.count > 1
+        // Cut cells are refined one level deep (`cutsTerrain(of:)` keeps the staircase otherwise).
+        let cut = terrainCut != nil && levels == 1
         let first = AirRefinement.layout(
             grid: grid, ratio: ratio, parentScale: 1, memory: memory[0], species: hasSpecies,
-            bodyComposition: composition)
+            bodyComposition: composition, cut: cut)
         let second =
             levels > 1
             ? AirRefinement.layout(
@@ -1584,6 +1598,7 @@ public final class BlastSolver {
         let layoutChanged =
             refinement?.ratio != ratio || refinement?.species != hasSpecies
             || refinement?.bodyComposition != composition || refinement?.maxPatches != first.maxPatches
+            || refinement?.cutTerrain != cut
             || finerRefinement?.maxPatches != second?.maxPatches
             || (refinement?.patchOfTile.length ?? 0)
                 != max(16, (first.tileDims.x * first.tileDims.y * first.tileDims.z + reserve.0) * 4)
@@ -1592,7 +1607,7 @@ public final class BlastSolver {
             finerRefinement = nil
             refinement = try? AirRefinement(
                 device: device, library: library, grid: grid, ratio: ratio, memory: memory[0],
-                species: hasSpecies, bodyComposition: composition, reserve: (reserve.0, reserve.1))
+                species: hasSpecies, bodyComposition: composition, reserve: (reserve.0, reserve.1), cut: cut)
             if levels > 1, let refinement {
                 finerRefinement = try? AirRefinement(
                     device: device, library: library, grid: grid, ratio: ratio, memory: memory[1],
@@ -1604,6 +1619,7 @@ public final class BlastSolver {
             level.setBoxes(rigidBoxes)
             level.setTerrain(rigidBoxes == nil ? nil : terrain)
         }
+        refinement?.coarseCut = cut ? terrainCut : nil
         updateGaugeChildren()
     }
 
@@ -1868,7 +1884,10 @@ public final class BlastSolver {
                 } else {
                     dispatchGrid(encoder, pipeline: kernels.sweep)
                 }
-                if let terrainCut, n == axes.count - 1, !terrainCut.geometry.cutColumns.isEmpty {
+                // Where the air is refined, after refluxing instead (below).
+                if let terrainCut, n == axes.count - 1, !terrainCut.geometry.cutColumns.isEmpty,
+                    !(refinement != nil && refining)
+                {
                     encodeCutRedistribution(
                         encoder, cut: terrainCut, pipeline: kernels.redistributeCutDefects,
                         uniforms: uniforms,
@@ -1894,7 +1913,17 @@ public final class BlastSolver {
                     maxSpeed: maxSpeedBuffer, uniforms: uniforms,
                     child: finerRefinement.flatMap { level in finerUniforms(uniforms).map { (level, $0) } })
                 refinement.encodeRefluxAndRestrict(
-                    encoder, axes: axes, parent: coarse, control: controlBuffer, uniforms: uniforms)
+                    encoder, axes: axes, parent: coarse, control: controlBuffer, uniforms: uniforms
+                ) { encoder in
+                    guard let terrainCut = self.terrainCut, !terrainCut.geometry.cutColumns.isEmpty else {
+                        return
+                    }
+                    self.encodeCutRedistribution(
+                        encoder, cut: terrainCut, pipeline: kernels.redistributeCutDefects,
+                        uniforms: uniforms,
+                        state: self.stateBuffers[self.current],
+                        species: self.currentSpecies)
+                }
             }
             airStage("other")
             if let radiativeCoolingStage, !asleep {
@@ -2349,7 +2378,6 @@ public final class BlastSolver {
         }
     }
 
-    /// Total momentum of the gas in kg m/s, counted as `totals()` is.
     /// The share of cell `index` that holds air: its cut cell's, or one.
     func fluidShare(_ index: Int) -> Double {
         guard let cut = terrainCut?.geometry else { return 1 }
@@ -2358,6 +2386,7 @@ public final class BlastSolver {
         return Double(cut.alpha(i, j, index / (grid.nx * grid.ny)))
     }
 
+    /// Total momentum of the gas in kg m/s, counted as `totals()` is.
     public func momentum() -> SIMD3<Double> {
         let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
         let volume = Double(grid.cellSize) * Double(grid.cellSize) * Double(grid.cellSize)
@@ -2544,6 +2573,15 @@ public final class BlastSolver {
         encoder.setBuffer(cut.cutColumns, offset: 0, index: 9)
         encoder.setBytes(&count, length: 4, index: 10)
         encoder.setBuffer(gravityTable(scale: 1) ?? cut.columns, offset: 0, index: 11)
+        encoder.setBuffer(maskBuffer, offset: 0, index: 12)
+        // Not read without refinement.
+        let refined = refinement?.coarseCut != nil ? refinement : nil
+        encoder.setBuffer(refined?.patchOfTile ?? cut.columns, offset: 0, index: 13)
+        encoder.setBuffer(refined?.fine[0] ?? cut.columns, offset: 0, index: 14)
+        encoder.setBuffer(refined?.fineCutBuffer ?? cut.columns, offset: 0, index: 15)
+        encoder.setBuffer(refined?.fineSpecies[0] ?? cut.columns, offset: 0, index: 16)
+        encoder.setBuffer(refined?.fineMask ?? cut.columns, offset: 0, index: 17)
+        encoder.setBuffer(refined?.gravityTable ?? cut.columns, offset: 0, index: 18)
         let width = min(pipeline.maxTotalThreadsPerThreadgroup, 64)
         encoder.dispatchThreads(
             MTLSize(width: Int(count), height: 1, depth: 1),

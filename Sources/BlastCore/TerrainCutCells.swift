@@ -168,6 +168,23 @@ public struct TerrainCutGeometry: Sendable, Equatable {
         self.walls = walls
     }
 
+    /// The share of air of cell `cell` of `cellSize` over `terrain`, by `samples` × `samples` points,
+    /// in single precision as a level of refinement works it out (`cutShareAt` in Refine.metal).
+    public static func share(of cell: SIMD3<Int>, cellSize: Float, terrain: Terrain, samples: Int) -> Float {
+        let origin = SIMD2<Float>(Float(cell.x), Float(cell.y)) * cellSize
+        let z0 = Float(cell.z) * cellSize
+        var sum: Float = 0
+        for b in 0..<samples {
+            for a in 0..<samples {
+                let p = origin + (SIMD2<Float>(Float(a), Float(b)) + 0.5) / Float(samples) * cellSize
+                let h = terrain.height(at: p)
+                sum += min(max((z0 + cellSize - max(h, z0)) / cellSize, 0), 1)
+            }
+        }
+        let share = sum / Float(samples * samples)
+        return share < 1e-6 ? 0 : share
+    }
+
     /// The first cell of air in each column of the domain, x fastest (cells below are solid).
     public var firstAirCells: [Int32] {
         var cells = [Int32](repeating: 0, count: nx * ny)

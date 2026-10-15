@@ -104,7 +104,42 @@ struct TerrainCutCellTests {
         }
     }
 
-    @Test("Cut by default; the staircase when off, when refined and on flat ground")
+    @Test(
+        "Refined, a closed box over a hill conserves its gas to round-off across the levels",
+        arguments: [(false, false), (true, false), (false, true)])
+    func refinedConservation(afterburning: Bool, gravity: Bool) throws {
+        var configuration = cut()
+        configuration.refinement = 2
+        configuration.refinementThreshold = 0.02
+        configuration.afterburning = afterburning
+        if gravity { configuration.gravity = AirGravity() }
+        let solver = try closedHill(configuration)
+        #expect(solver.terrainCut != nil && solver.refinement?.cutTerrain == true)
+        let before = solver.totals()
+        let fuel = solver.speciesTotals()
+        var refinedCut = false
+        for _ in 0..<12 {
+            _ = solver.advance(steps: 10)
+            // Patches over the hill's cut cells, at some point.
+            refinedCut =
+                refinedCut
+                || (solver.refinement?.holdsAny(from: SIMD3(28, 4, 0), through: SIMD3(52, 28, 16)) ?? false)
+        }
+        #expect(refinedCut)
+        let after = solver.totals()
+        #expect(abs(after.mass / before.mass - 1) < 1e-5, "mass \(after.mass / before.mass - 1)")
+        let heat = Double(configuration.afterburnEnergy)
+        let held = before.energy + (afterburning ? fuel.fuel * heat : 0)
+        let now = after.energy + (afterburning ? solver.speciesTotals().fuel * heat : 0)
+        #expect(abs(now / held - 1) < 1e-5, "energy \(now / held - 1)")
+        if afterburning {
+            let species = solver.speciesTotals()
+            let oxygen = species.oxygen + (fuel.fuel - species.fuel) * Double(BlastSolver.oxygenPerFuel)
+            #expect(abs(oxygen / fuel.oxygen - 1) < 1e-5, "oxygen \(oxygen / fuel.oxygen - 1)")
+        }
+    }
+
+    @Test("Cut by default, refined once too; the staircase when off, refined twice, and on flat ground")
     func defaults() throws {
         var scenario = ScenarioPreset.openGround.scenario
         scenario.terrain = .hill(
@@ -112,9 +147,15 @@ struct TerrainCutCellTests {
         #expect(try BlastSolver(device: device, scenario: scenario, cellSize: 0.5).terrainCut != nil)
         var off = SolverConfiguration()
         off.terrainCutCells = false
+        var twice = SolverConfiguration()
+        twice.refinement = 2
+        twice.refinementLevels = 2
         var refined = SolverConfiguration()
         refined.refinement = 2
-        for configuration in [off, refined] {
+        #expect(
+            try BlastSolver(device: device, scenario: scenario, cellSize: 0.5, configuration: refined)
+                .terrainCut != nil)
+        for configuration in [off, twice] {
             let solver = try BlastSolver(
                 device: device, scenario: scenario, cellSize: 0.5, configuration: configuration)
             #expect(solver.terrainCut == nil)

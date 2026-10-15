@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 
 /// The Run tab's Terrain section: the ground's shape under the scene, flat by default, a simple
 /// shape or a crop of an elevation grid (an ESRI ASCII grid or a GeoTIFF). The air sees its surface
-/// cut through the cells, or, where the air is refined or the staircase is chosen, as whole cells.
+/// cut through the cells, or, where the air is refined twice or the staircase is chosen, as whole cells.
 struct TerrainSection: View {
     @Bindable var model: SimulationModel
     /// The grid last imported, kept for moving its crop; the scene keeps only the crop.
@@ -39,7 +39,7 @@ struct TerrainSection: View {
                         "Cuts the surface through the air's cells, so that a slope reflects the blast as a slope "
                             + "does. Off, the surface is a staircase of whole cells, which delays Mach reflection "
                             + "and overstates the peaks on faces towards the charge. About 10% slower a step. "
-                            + "Refined air keeps the staircase, as yet.")
+                            + "Air refined twice over again keeps the staircase, as yet.")
                 if shape.wrappedValue != .imported {
                     LabeledSlider(
                         title: "Relief", value: relief, range: 1...Double(0.6 * scenario.domainSize.z),
@@ -107,10 +107,10 @@ struct TerrainSection: View {
                 : "Its slopes are steps of whole cells, ")
             + "which delay Mach reflection on them; finer cells approach a smooth slope."
         guard model.settings.terrainCutCells else { return nodes + steps }
-        guard model.settings.sharpShocks else {
+        guard model.settings.sharpShocks, model.settings.shockLevels > 1 else {
             return nodes + "Its slopes are cut through the cells, and reflect the blast as smooth slopes do."
         }
-        return nodes + "With sharpened shocks the refined air keeps the staircase, as yet: " + steps
+        return nodes + "Refined twice over again, the air keeps the staircase, as yet: " + steps
     }
 
     private var shape: Binding<Shape> {

@@ -529,7 +529,7 @@ public enum StandingTable {
                 ],
                 limit: .approximation,
                 note:
-                    "Rigid and smooth, cut through the cells where the air is not refined: on 100–400 cells "
+                    "Rigid and smooth, cut through the cells unless the air is refined twice: on 100–400 cells "
                     + "the triple point's angle within 0.25° of three-shock theory at 30–45° and Mach "
                     + "reflection 1–3° late; shielding behind ridges is consistency-checked only, and peaks "
                     + "focused far behind a round hill do not converge.",
@@ -538,7 +538,7 @@ public enum StandingTable {
             return Entry(
                 title: "Terrain as a staircase", affects: air + [.envelopeExposure], limit: .approximation,
                 note:
-                    "Refined air, or the staircase chosen, keeps the terrain as whole cells: it delays Mach "
+                    "Air refined twice, or the staircase chosen, keeps the terrain as whole cells: it delays Mach "
                     + "reflection off a slope by 3–11° and under-reads the triple point's angle by 20–75% on "
                     + "100–400 cells, and windward faces' peaks read 1.3–1.5 times the cut cells', growing "
                     + "with resolution.",
@@ -877,7 +877,7 @@ public enum StandingTable {
         "SolverConfiguration.refinement": .option([.shockRefinement, .twoLevelRefinement, .terrainStaircase]),
         "SolverConfiguration.refinementThreshold": .numerical,
         "SolverConfiguration.refinementMargin": .numerical,
-        "SolverConfiguration.refinementLevels": .option([.twoLevelRefinement]),
+        "SolverConfiguration.refinementLevels": .option([.twoLevelRefinement, .terrainStaircase]),
         "SolverConfiguration.refinementFinerThreshold": .numerical,
         "SolverConfiguration.refinementMemory": .numerical,
         "SolverConfiguration.radiativeCooling": .option([.radiativeCooling]),
@@ -1316,9 +1316,9 @@ struct StandingScene {
                 ? [
                     StandingEvidence(
                         "Cut cells on a slope against three-shock theory",
-                        "Triple point within 0.25° at 30–45° and 0.4–0.65° low at 48° on 100–400 cells; transition "
-                            + "between 48 and 50° "
-                            + "against 50.6–50.8° for Mach 2; conservative to round-off",
+                        "Triple point within 0.25° at 30–45° and 0.4–0.65° low at 48° on 100–400 cells (refined "
+                            + "once, within 0.5° at 30–45° and 0.8° low at 48°); transition between 48 and 50° "
+                            + "against 50.6–50.8° for Mach 2; conservative to round-off across the levels",
                         "terrain.md#cut-cells")
                 ] : [])
     }

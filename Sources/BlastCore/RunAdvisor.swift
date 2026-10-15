@@ -154,15 +154,19 @@ public struct Advice: Sendable, Equatable {
     /// When the settings as they are refine so much of the domain that a grid of the refined cells
     /// throughout costs less, the candidate that stands for them.
     public var currentStandIn: AdvisorCandidate? = nil
-    /// Whether the scene's terrain is cut through the cells where the air is not refined, and so a
-    /// staircase in the chosen setting if it refines.
+    /// Whether the scene's terrain is cut through the cells where the air is uniform or refined
+    /// once, and so a staircase in the chosen setting if it refines twice.
     public var terrainCutWhenUniform = false
 
-    /// A line saying so, when the chosen setting refines the air over a terrain that would
+    /// A line saying so, when the chosen setting refines the air twice over a terrain that would
     /// otherwise be cut through the cells.
     public var terrainNote: String? {
-        guard terrainCutWhenUniform, let chosen, chosen.setting.refinement > 1 else { return nil }
-        return "Refined, the terrain is a staircase of whole cells: cut cells need uniform air, as yet."
+        guard terrainCutWhenUniform, let chosen, chosen.setting.refinement > 1, chosen.setting.levels > 1
+        else {
+            return nil
+        }
+        return
+            "Refined twice, the terrain is a staircase of whole cells: cut cells refine one level deep, as yet."
     }
 
     /// A line saying so, when the settings as they are refine most of the domain.

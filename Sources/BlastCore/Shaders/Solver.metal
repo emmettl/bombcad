@@ -921,6 +921,79 @@ static inline MixingFace mixingFace(Prim a, Prim b, float nuA, float nuB, float 
     return face;
 }
 
+// A cut cell's update along a sweep (see `cutCells`): its faces' fluxes times their apertures,
+// less the wall's push, which is (apertureLow - apertureHigh) times the pressure of the state
+// against its mirror across the wall's `normal` (in the sweep's frame), taken as each face's
+// momentum flux less that pressure; and the difference from the whole cell's update of a cell with
+// `share` of it fluid. Every level of the air updates its cut cells so.
+struct CutUpdate {
+    Flux low;
+    Flux high;
+    Flux defect;
+};
+
+static inline CutUpdate cutCellUpdate(Prim w0, Flux fluxLow, Flux fluxHigh, float apertureLow, float apertureHigh,
+                                      float share, float3 normal, bool gravityHere, const device float4 *gravityTable,
+                                      int k, float lambda, float dt, constant SolverUniforms &u) {
+    Flux cutLow = fluxLow;
+    Flux cutHigh = fluxHigh;
+    // The pressure at the wall: of the state against its mirror across the wall's normal.
+    float towards = dot(w0.v, normal);
+    Prim into = w0;
+    into.v = float3(towards, 0.0f, 0.0f);
+    Prim back = into;
+    back.v.x = -towards;
+    float wallPressure = riemannFlux(into, back, u).momentum.x;
+    // The Riemann solver's own rounding, between a state and itself: whole cells see it at
+    // both faces, where it cancels, but weighted by unequal apertures it would not, so it is
+    // taken out of the cut cell's fluxes (and its wall's), and air at rest stays at rest. (The
+    // vertical sweep under gravity takes the physical flux between states alike already.)
+    if (!gravityHere) {
+        Flux self = riemannFlux(w0, w0, u);
+        Flux exact = physicalFlux(w0, totalEnergy(w0, u));
+        Flux residual = {self.mass - exact.mass, self.momentum - exact.momentum, self.energy - exact.energy};
+        cutLow.mass -= residual.mass;
+        cutLow.momentum -= residual.momentum;
+        cutLow.energy -= residual.energy;
+        cutHigh.mass -= residual.mass;
+        cutHigh.momentum -= residual.momentum;
+        cutHigh.energy -= residual.energy;
+        wallPressure -= residual.momentum.x;
+    }
+    // Under gravity the vertical fluxes leave out the background's pressure at the faces, and
+    // the wall's push is its pressure less the background's in the cell (which balances the
+    // background's at the faces and its weight in the cell's fluid share).
+    if (gravityHere) {
+        // Still against the wall, its pressure is the cell's, exactly, as `gravityFlux` takes
+        // the physical flux between states alike.
+        if (towards == 0.0f) {
+            wallPressure = w0.p;
+        }
+        wallPressure -= primOfCell(gravityRestOf(gravityTable, k), u).p;
+    }
+    // The wall's push, (apertureLow - apertureHigh) times its pressure, taken as the faces'
+    // momentum fluxes less that pressure: the same sum, and nothing at rest.
+    cutLow.momentum.x -= wallPressure;
+    cutHigh.momentum.x -= wallPressure;
+    cutLow.mass *= apertureLow;
+    cutLow.momentum *= apertureLow;
+    cutLow.energy *= apertureLow;
+    cutHigh.mass *= apertureHigh;
+    cutHigh.momentum *= apertureHigh;
+    cutHigh.energy *= apertureHigh;
+    Flux defect;
+    defect.mass = -lambda * ((cutHigh.mass - cutLow.mass) - share * (fluxHigh.mass - fluxLow.mass));
+    defect.momentum = -lambda * ((cutHigh.momentum - cutLow.momentum) - share * (fluxHigh.momentum - fluxLow.momentum));
+    defect.energy = -lambda * ((cutHigh.energy - cutLow.energy) - share * (fluxHigh.energy - fluxLow.energy));
+    if (gravityHere) {
+        // Gravity's work, through the open part of each face (its pull on the momentum, over
+        // the fluid share, is the whole cell's times it, so leaves no difference).
+        defect.energy -= dt * u.gravity * 0.5f * ((cutHigh.mass + cutLow.mass) - share * (fluxHigh.mass + fluxLow.mass));
+    }
+    CutUpdate update = {cutLow, cutHigh, defect};
+    return update;
+}
+
 static inline Flux sumOf(Flux a, Flux b) {
     a.mass += b.mass;
     a.momentum += b.momentum;
@@ -1194,6 +1267,7 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
     // A cell of unrefined air beside a patch records the flux it used through the face they
     // share, so that the patch's own fluxes can replace it (see Refine.metal).
     int speciesRegister = -1;  // where its fuel and oxygen flux goes, if it records one
+    int fluxRegister = -1;  // and its flux
     bool registerLow = false;
     if (u.refineRatio != 0) {
         // The cell across may be fluid or solid here; either way this cell's flux through the
@@ -1210,7 +1284,7 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
                 uint face = 2u * axis + (lowEdge ? 1u : 0u);
                 uint slot = registerSlot(uint(patch), face, uint(inPatch[(axis + 1) % 3]),
                                          uint(inPatch[(axis + 2) % 3]), uint(patchSize));
-                storeFlux(coarseFlux, slot, lowEdge ? fluxLow : fluxHigh, axis, dt);
+                fluxRegister = int(slot);
                 speciesRegister = int(speciesSlot(uint(patch), face, uint(inPatch[(axis + 1) % 3]),
                                                   uint(inPatch[(axis + 2) % 3]), uint(patchSize)));
                 registerLow = lowEdge;
@@ -1226,6 +1300,7 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
     Flux cutLow = fluxLow;
     Flux cutHigh = fluxHigh;
     float cutShare = 1.0f;
+    float registerAperture = 1.0f;
     if (cutCells) {
         uint4 column = cutColumnOf(cell, cutColumns, u);
         if (cell.z < int(column.z)) {
@@ -1236,63 +1311,25 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
             float apertureLow = own[1 + axis];
             float apertureHigh = cutRecordOf(next, cutColumns, cutRecords, u)[1 + axis];
             float4 wall = cutWalls[cutRecord];
-            // The pressure at the wall: of the state against its mirror across the wall's normal.
-            float3 normal = toSweep(wall.xyz, axis);
-            float towards = dot(w0.v, normal);
-            Prim into = w0;
-            into.v = float3(towards, 0.0f, 0.0f);
-            Prim back = into;
-            back.v.x = -towards;
-            float wallPressure = riemannFlux(into, back, u).momentum.x;
-            // The Riemann solver's own rounding, between a state and itself: whole cells see it at
-            // both faces, where it cancels, but weighted by unequal apertures it would not, so it is
-            // taken out of the cut cell's fluxes (and its wall's), and air at rest stays at rest. (The
-            // vertical sweep under gravity takes the physical flux between states alike already.)
-            if (!gravityHere) {
-                Flux self = riemannFlux(w0, w0, u);
-                Flux exact = physicalFlux(w0, totalEnergy(w0, u));
-                Flux residual = {self.mass - exact.mass, self.momentum - exact.momentum, self.energy - exact.energy};
-                cutLow.mass -= residual.mass;
-                cutLow.momentum -= residual.momentum;
-                cutLow.energy -= residual.energy;
-                cutHigh.mass -= residual.mass;
-                cutHigh.momentum -= residual.momentum;
-                cutHigh.energy -= residual.energy;
-                wallPressure -= residual.momentum.x;
-            }
-            // Under gravity the vertical fluxes leave out the background's pressure at the faces, and
-            // the wall's push is its pressure less the background's in the cell (which balances the
-            // background's at the faces and its weight in the cell's fluid share).
-            if (gravityHere) {
-                // Still against the wall, its pressure is the cell's, exactly, as `gravityFlux` takes
-                // the physical flux between states alike.
-                if (towards == 0.0f) {
-                    wallPressure = w0.p;
-                }
-                wallPressure -= primOfCell(gravityRestOf(gravityTable, cell.z), u).p;
-            }
-            // The wall's push, (apertureLow - apertureHigh) times its pressure, taken as the faces'
-            // momentum fluxes less that pressure: the same sum, and nothing at rest.
-            cutLow.momentum.x -= wallPressure;
-            cutHigh.momentum.x -= wallPressure;
-            cutLow.mass *= apertureLow;
-            cutLow.momentum *= apertureLow;
-            cutLow.energy *= apertureLow;
-            cutHigh.mass *= apertureHigh;
-            cutHigh.momentum *= apertureHigh;
-            cutHigh.energy *= apertureHigh;
             cutShare = own.x;
-            defect.mass = -lambda * ((cutHigh.mass - cutLow.mass) - cutShare * (fluxHigh.mass - fluxLow.mass));
-            defect.momentum =
-                -lambda * ((cutHigh.momentum - cutLow.momentum) - cutShare * (fluxHigh.momentum - fluxLow.momentum));
-            defect.energy = -lambda * ((cutHigh.energy - cutLow.energy) - cutShare * (fluxHigh.energy - fluxLow.energy));
-            if (gravityHere) {
-                // Gravity's work, through the open part of each face (its pull on the momentum, over
-                // the fluid share, is the whole cell's times it, so leaves no difference).
-                defect.energy -= dt * u.gravity * 0.5f
-                    * ((cutHigh.mass + cutLow.mass) - cutShare * (fluxHigh.mass + fluxLow.mass));
-            }
+            CutUpdate update = cutCellUpdate(w0, fluxLow, fluxHigh, apertureLow, apertureHigh, cutShare,
+                                             toSweep(wall.xyz, axis), gravityHere, gravityTable, cell.z, lambda, dt, u);
+            cutLow = update.low;
+            cutHigh = update.high;
+            defect = update.defect;
+            registerAperture = registerLow ? apertureLow : apertureHigh;
         }
+    }
+    if (fluxRegister >= 0) {
+        // Through a cut cell's face, the face's own flux times its aperture (the wall's push is the
+        // cell's own, not the face's), as the fine cells record theirs.
+        Flux through = registerLow ? fluxLow : fluxHigh;
+        if (registerAperture != 1.0f) {
+            through.mass *= registerAperture;
+            through.momentum *= registerAperture;
+            through.energy *= registerAperture;
+        }
+        storeFlux(coarseFlux, uint(fluxRegister), through, axis, dt);
     }
 
     Cell c = src[index];
@@ -1356,7 +1393,7 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
         }
         species = max(own - lambda * (outflow - inflow), 0.0f);
         if (speciesRegister >= 0) {
-            float2 through = (registerLow ? inflow : outflow) * dt;
+            float2 through = (registerLow ? inflow : outflow) * (registerAperture * dt);
             coarseSpeciesFlux[speciesRegister] = through.x;
             coarseSpeciesFlux[speciesRegister + 1] = through.y;
         }
@@ -1492,6 +1529,10 @@ kernel void sweepTiles(device Cell *src [[buffer(0)]],
 // column: the cell keeps its share alpha of it, and the rest goes to the first cell above it at
 // least half full (the next cell up, for a cell itself at least half full), in a fixed order. The
 // differences are then cleared. One thread a column with cut cells, its index in `columnsCut`.
+// Where the air is refined, this runs after refluxing: a cell under a patch drops its own
+// difference (its fine cells hold its air, and have shared out theirs), and what reaches such a
+// cell goes into its fine cells, as much a volume to each. A block standing in the column stops
+// what is carried up; the last cell of air below it takes it.
 kernel void redistributeCutDefects(device Cell *state [[buffer(0)]],
                                    device float2 *species [[buffer(1)]],
                                    const device uint4 *cutColumns [[buffer(2)]],
@@ -1504,6 +1545,13 @@ kernel void redistributeCutDefects(device Cell *state [[buffer(0)]],
                                    const device uint *columnsCut [[buffer(9)]],
                                    constant uint &columnCount [[buffer(10)]],
                                    const device float4 *gravityTable [[buffer(11)]],
+                                   const device uchar *mask [[buffer(12)]],
+                                   const device int *patchOfTile [[buffer(13)]],
+                                   device Cell *fine [[buffer(14)]],
+                                   const device float4 *fineCut [[buffer(15)]],
+                                   device float2 *fineSpecies [[buffer(16)]],
+                                   const device uchar *fineMask [[buffer(17)]],
+                                   const device float4 *fineGravityTable [[buffer(18)]],
                                    uint gid [[thread_position_in_grid]]) {
     if (!cutCells || gid >= columnCount) {
         return;
@@ -1518,37 +1566,47 @@ kernel void redistributeCutDefects(device Cell *state [[buffer(0)]],
     int stride = int(u.nx * u.ny);
     int base = xy.x + int(u.nx) * xy.y;
     int top = int(u.nz) - 1;
-    // What each cell above the first gets from those below it, carried up the column.
-    float4 passed = float4(0.0f);
-    float4 passedEnergy = float4(0.0f);
-    int last = min(max(int(column.z), int(column.w)), top);
-    for (int k = int(column.y); k <= last; ++k) {
-        float alpha = cutRecordOf(int3(xy, k), cutColumns, cutRecords, u).x;
-        float4 change = float4(0.0f);
-        float4 changeEnergy = float4(0.0f);
-        // From the first cell at least half full up, each takes what those below passed on.
-        if (k >= int(column.w)) {
-            change += passed;
-            changeEnergy += passedEnergy;
-            passed = float4(0.0f);
-            passedEnergy = float4(0.0f);
-        }
-        if (k < int(column.z)) {
-            uint record = column.x + uint(k) - column.y;
-            float4 d = cutDefects[2 * record];
-            float4 e = cutDefects[2 * record + 1];
-            cutDefects[2 * record] = float4(0.0f);
-            cutDefects[2 * record + 1] = float4(0.0f);
-            // Its share, and the rest for the cell that takes it.
-            change += alpha * d;
-            changeEnergy += alpha * e;
-            passed += (1.0f - alpha) * d;
-            passedEnergy += (1.0f - alpha) * e;
-        }
-        if (all(change == 0.0f) && all(changeEnergy == 0.0f)) {
-            continue;
-        }
+    bool refined = u.refineRatio != 0u;
+    int r = int(u.refineRatio);
+    int side = patchSize * r;
+    // Adds `change` (mass, momentum) and `changeEnergy` (fuel, oxygen, energy), for its whole volume,
+    // to the air of cell k, holding `alpha` of it: to its own state, or under a patch to each of its
+    // fine cells of air.
+    auto apply = [&](int k, float4 change, float4 changeEnergy, float alpha) {
+        int3 cell = int3(xy, k);
         int index = base + stride * k;
+        int holder = refined ? patchAt(cell, patchOfTile, u) : -1;
+        if (holder >= 0) {
+            int3 tile = cell / patchSize;
+            for (int n = 0; n < r * r * r; ++n) {
+                int3 f = cell * r + int3(n % r, (n / r) % r, n / (r * r));
+                int3 local = f - tile * side;
+                uint child = uint(holder) * uint(side * side * side) + uint(local.x + side * (local.y + side * local.z));
+                if ((fineMask[child] & 1) != 0) {
+                    continue;
+                }
+                Cell c = fine[child];
+                c.rho = max(c.rho + change.x / alpha, u.densityFloor);
+                c.mx += change.y / alpha;
+                c.my += change.z / alpha;
+                c.mz += change.w / alpha;
+                c.energy += changeEnergy.z / alpha;
+                float3 momentum = float3(c.mx, c.my, c.mz);
+                float kinetic = 0.5f * dot(momentum, momentum) / c.rho;
+                float pressure = gasPressure(c.rho, c.energy - kinetic, u.airModel, u.gamma);
+                if (pressure < u.pressureFloor) {
+                    pressure = u.pressureFloor;
+                    c.energy = gasEnergy(c.rho, pressure, u.airModel, u.gamma) + kinetic;
+                }
+                fine[child] = c;
+                if (withSpecies) {
+                    fineSpecies[child] = max(fineSpecies[child] + changeEnergy.xy / alpha, 0.0f);
+                }
+                float ambient = airGravity ? gravityAmbientOf(fineGravityTable, f.z, u) : u.ambientPressure;
+                recordCell(maxSpeed, momentum, c.rho, pressure, u, ambient);
+            }
+            return;
+        }
         Cell c = state[index];
         c.rho += change.x / alpha;
         c.mx += change.y / alpha;
@@ -1570,6 +1628,56 @@ kernel void redistributeCutDefects(device Cell *state [[buffer(0)]],
         float ambient = airGravity ? gravityAmbientOf(gravityTable, k, u) : u.ambientPressure;
         peak[index] = max(peak[index], pressure - ambient);
         recordCell(maxSpeed, momentum, c.rho, pressure, u, ambient);
+    };
+    // What each cell above the first gets from those below it, carried up the column.
+    float4 passed = float4(0.0f);
+    float4 passedEnergy = float4(0.0f);
+    int lastK = -1;
+    float lastAlpha = 1.0f;
+    int last = min(max(int(column.z), int(column.w)), top);
+    for (int k = int(column.y); k <= last; ++k) {
+        float alpha = cutRecordOf(int3(xy, k), cutColumns, cutRecords, u).x;
+        float4 change = float4(0.0f);
+        float4 changeEnergy = float4(0.0f);
+        // From the first cell at least half full up, each takes what those below passed on.
+        if (k >= int(column.w)) {
+            change += passed;
+            changeEnergy += passedEnergy;
+            passed = float4(0.0f);
+            passedEnergy = float4(0.0f);
+        }
+        if (k < int(column.z)) {
+            uint record = column.x + uint(k) - column.y;
+            float4 d = cutDefects[2 * record];
+            float4 e = cutDefects[2 * record + 1];
+            cutDefects[2 * record] = float4(0.0f);
+            cutDefects[2 * record + 1] = float4(0.0f);
+            if (!refined || patchAt(int3(xy, k), patchOfTile, u) < 0) {
+                // Its share, and the rest for the cell that takes it.
+                change += alpha * d;
+                changeEnergy += alpha * e;
+                passed += (1.0f - alpha) * d;
+                passedEnergy += (1.0f - alpha) * e;
+            }
+        }
+        if (mask[base + stride * k] != 0) {
+            // A block: what it would take goes to the last cell of air below it, and nothing
+            // passes it.
+            change += passed;
+            changeEnergy += passedEnergy;
+            passed = float4(0.0f);
+            passedEnergy = float4(0.0f);
+            if (lastK >= 0 && (any(change != 0.0f) || any(changeEnergy != 0.0f))) {
+                apply(lastK, change, changeEnergy, lastAlpha);
+            }
+            continue;
+        }
+        lastK = k;
+        lastAlpha = alpha;
+        if (all(change == 0.0f) && all(changeEnergy == 0.0f)) {
+            continue;
+        }
+        apply(k, change, changeEnergy, alpha);
     }
 }
 

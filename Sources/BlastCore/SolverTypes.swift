@@ -156,10 +156,10 @@ public struct SolverConfiguration: Sendable, Hashable {
     public init() {}
 
     /// Whether `scenario`'s terrain is cut through the cells when it loads: it has slopes, cut
-    /// cells are on, and the air is neither refined (whose levels keep the staircase, as yet) nor
-    /// a deflagration's.
+    /// cells are on, and the air is neither refined in two levels (which keep the staircase, as
+    /// yet) nor a deflagration's.
     public func cutsTerrain(of scenario: Scenario) -> Bool {
-        terrainCutCells && refinement <= 1 && scenario.deflagration == nil
+        terrainCutCells && (refinement <= 1 || refinementLevels <= 1) && scenario.deflagration == nil
             && (scenario.terrain.map { !$0.isFlat } ?? false)
     }
 }

@@ -132,15 +132,41 @@ final class AirRefinement {
     private let argumentsPipeline: MTLComputePipelineState
     private let fillPipeline: MTLComputePipelineState
 
+    /// With the terrain's cut cells on the coarse grid (`coarseCut`): each fine cell's share of air
+    /// and apertures (two float4 a cell), the differences its sweeps keep (two more), whether each
+    /// patch has cut cells, and what each fine column passes up out of the top of its stack of
+    /// patches (two float4 a column of each patch). See Refine.metal.
+    let cutTerrain: Bool
+    private let fineCut: MTLBuffer?
+    private let fineDefects: MTLBuffer?
+    var fineCutBuffer: MTLBuffer? { fineCut }
+    private let patchCut: MTLBuffer?
+    private let passedUp: MTLBuffer?
+    /// The coarse grid's cut cells, which refluxing, restriction and filling read and write.
+    var coarseCut: TerrainCutBuffers?
+    private lazy var redistributeCutPipeline: MTLComputePipelineState? =
+        (try? ShaderLibrary.pipeline(
+            "refineRedistributeCut", in: library)).map { withGravity($0, "refineRedistributeCut") }
+    private lazy var cutPassUpPipeline: MTLComputePipelineState? =
+        (try? ShaderLibrary.pipeline(
+            "refineCutPassUp", in: library)).map { withGravity($0, "refineCutPassUp") }
+    /// `base`, or with cut cells, compiled for them.
+    private func cutSpecialised(_ base: MTLComputePipelineState, _ name: String) -> MTLComputePipelineState {
+        cutTerrain ? withGravity(base, name) : base
+    }
+
     /// Bytes one patch takes: two fine states, its halo and its flux registers, and with `species`
     /// their fuel and oxygen.
-    static func bytesPerPatch(ratio: Int, species: Bool = false, bodyComposition: Bool = false) -> Int {
+    static func bytesPerPatch(
+        ratio: Int, species: Bool = false, bodyComposition: Bool = false, cut: Bool = false
+    ) -> Int {
         let side = patchSize * ratio
         let cell = MemoryLayout<CellState>.stride
         let gas =
             2 * side * side * side * cell + side * side * side * (4 + 1 + 12 + 16) + 64 * 5 + 4 + 512
             * cell
             + 4 * side * side * (cell + 1) + 6 * side * side * 5 * 4 + 6 * patchSize * patchSize * 5 * 4
+            + (cut ? side * side * side * 64 + side * side * 32 + 4 : 0)
         let composition = bodyComposition ? side * side * side * 16 : 0
         guard species else { return gas + composition }
         return gas + composition + 2 * side * side * side * 8 + 4 * side * side * 8 + 6 * side * side * 8
@@ -150,7 +176,8 @@ final class AirRefinement {
     /// The size in blocks of a level whose parent has `parentScale` cells along each coarse
     /// cell's edge, and how many patches `memory` holds.
     static func layout(
-        grid: Grid, ratio: Int, parentScale: Int, memory: Int, species: Bool, bodyComposition: Bool
+        grid: Grid, ratio: Int, parentScale: Int, memory: Int, species: Bool, bodyComposition: Bool,
+        cut: Bool = false
     ) -> (tileDims: SIMD3<Int>, maxPatches: Int) {
         let block = patchSize
         let cells = SIMD3(grid.nx, grid.ny, grid.nz) &* parentScale
@@ -160,7 +187,9 @@ final class AirRefinement {
             1,
             min(
                 tiles,
-                memory / bytesPerPatch(ratio: ratio, species: species, bodyComposition: bodyComposition)))
+                memory
+                    / bytesPerPatch(
+                        ratio: ratio, species: species, bodyComposition: bodyComposition, cut: cut)))
         return (tileDims, patches)
     }
 
@@ -169,13 +198,15 @@ final class AirRefinement {
     init(
         device: MTLDevice, library: MTLLibrary, grid: Grid, ratio: Int, memory: Int, species: Bool = false,
         bodyComposition: Bool = false, parent: AirRefinement? = nil,
-        reserve: (tiles: Int, cells: Int) = (0, 0)
+        reserve: (tiles: Int, cells: Int) = (0, 0), cut: Bool = false
     )
         throws
     {
         precondition(ratio == 2 || ratio == 4, "The air is refined by 2 or 4")
         precondition(parent.map { $0.ratio == ratio } ?? true, "Every level is refined by the same ratio")
+        precondition(!cut || parent == nil, "Cut cells are refined one level deep")
         self.ratio = ratio
+        self.cutTerrain = cut
         self.bodyComposition = bodyComposition
         self.species = species
         self.parent = parent
@@ -183,7 +214,7 @@ final class AirRefinement {
         side = Self.patchSize * ratio
         let layout = Self.layout(
             grid: grid, ratio: ratio, parentScale: parentScale, memory: memory, species: species,
-            bodyComposition: bodyComposition)
+            bodyComposition: bodyComposition, cut: cut)
         tileDims = layout.tileDims
         maxPatches = layout.maxPatches
         let tiles = tileDims.x * tileDims.y * tileDims.z
@@ -277,6 +308,14 @@ final class AirRefinement {
         fineSpeciesFlux = try buffer(maxPatches * 6 * side * side * pair, "fine species flux sums")
         coarseSpeciesFlux = try buffer(
             maxPatches * 6 * Self.patchSize * Self.patchSize * pair, "coarse species fluxes")
+        if cut {
+            fineCut = try buffer(fineCells * 32, "fine cut cells")
+            fineDefects = try buffer(fineCells * 32, "fine cut differences")
+            patchCut = try buffer(maxPatches * 4, "patches with cut cells")
+            passedUp = try buffer(maxPatches * side * side * 32, "passed up out of the patches")
+        } else {
+            (fineCut, fineDefects, patchCut, passedUp) = (nil, nil, nil, nil)
+        }
         if bodyComposition {
             combinedBodyOccupancy = try buffer(fineCells * 16, "combined fine body occupancy")
             memset(combinedBodyOccupancy!.contents(), 0, combinedBodyOccupancy!.length)
@@ -296,7 +335,9 @@ final class AirRefinement {
                 ghostKinds,
                 fineFlux, fineImpulse, impulseBase, coarseFlux, fineWall, ghostSpecies,
                 fineSpeciesFlux, coarseSpeciesFlux, fine[1],
-            ] + fineSpecies).reduce(0) { $0 + $1.length } + shared + (experimentalBoxImpulse?.length ?? 0)
+            ] + fineSpecies + [fineCut, fineDefects, patchCut, passedUp].compactMap { $0 }).reduce(0) {
+                $0 + $1.length
+            } + shared + (experimentalBoxImpulse?.length ?? 0)
             + (combinedBodyOccupancy?.length ?? 0)
     }
 
@@ -428,6 +469,8 @@ final class AirRefinement {
             to: UInt8.self, capacity: maxPatches * cells)
         let fuelAndOxygen = fineSpecies[0].contents().bindMemory(
             to: SIMD2<Float>.self, capacity: species ? maxPatches * cells : 0)
+        // With cut cells, each fine cell holds its share of air.
+        let shares = fineCut?.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2 * maxPatches * cells)
         var covered = Set<Int>()
         var (mass, energy, momentum, carried) = (0.0, 0.0, SIMD3<Double>.zero, SIMD2<Double>.zero)
         for patch in 0..<maxPatches where owners[patch] != .max {
@@ -447,10 +490,11 @@ final class AirRefinement {
                     guard !excluding.contains(at.x + dims.x * (at.y + dims.y * at.z)) else { continue }
                 }
                 let c = state[patch * cells + n]
-                mass += Double(c.density) * volume
-                energy += Double(c.energy) * volume
-                momentum += SIMD3(Double(c.momentumX), Double(c.momentumY), Double(c.momentumZ)) * volume
-                if species { carried += SIMD2<Double>(fuelAndOxygen[patch * cells + n]) * volume }
+                let held = volume * Double(shares?[2 * (patch * cells + n)].x ?? 1)
+                mass += Double(c.density) * held
+                energy += Double(c.energy) * held
+                momentum += SIMD3(Double(c.momentumX), Double(c.momentumY), Double(c.momentumZ)) * held
+                if species { carried += SIMD2<Double>(fuelAndOxygen[patch * cells + n]) * held }
             }
         }
         return (covered, mass, energy, momentum, carried)
@@ -667,6 +711,9 @@ final class AirRefinement {
             memset(combinedBodyOccupancy.contents(), 0, combinedBodyOccupancy.length)
         }
         memset(pinned.contents(), 0, pinned.length)
+        for buffer in [fineCut, fineDefects, patchCut, passedUp].compactMap({ $0 }) {
+            memset(buffer.contents(), 0, buffer.length)
+        }
     }
 
     private func group(_ pipeline: MTLComputePipelineState, _ width: Int) -> MTLSize {
@@ -710,8 +757,9 @@ final class AirRefinement {
         let gravity = gravityTable != nil
         let mixing = viscosity != nil && name == "refineSweep"
         let limit = burnLimit && name == "refineSweep"
-        guard gravity || mixing || limit else { return base }
-        let key = "\(name) \(model.map { "\($0.rawValue)" } ?? "-") \(gravity) \(mixing) \(limit)"
+        let cut = cutTerrain
+        guard gravity || mixing || limit || cut else { return base }
+        let key = "\(name) \(model.map { "\($0.rawValue)" } ?? "-") \(gravity) \(mixing) \(limit) \(cut)"
         if let pipeline = gravityPipelines[key] { return pipeline }
         var constants = MTLFunctionConstantValues()
         if var value = model?.rawValue {
@@ -720,6 +768,7 @@ final class AirRefinement {
         if gravity { constants = ShaderLibrary.withGravity(constants) }
         if mixing { constants = ShaderLibrary.withMixing(constants) }
         if limit { constants = ShaderLibrary.withBurnLimit(constants) }
+        if cut { constants = ShaderLibrary.withCutCells(constants) }
         guard let pipeline = try? ShaderLibrary.pipeline(name, in: library, constants: constants) else {
             return base
         }
@@ -729,7 +778,7 @@ final class AirRefinement {
 
     private func sweepPipeline(for model: AirModel?) -> MTLComputePipelineState {
         guard let model else { return withGravity(sweepPipeline, "refineSweep") }
-        if gravityTable != nil || viscosity != nil || burnLimit {
+        if gravityTable != nil || viscosity != nil || burnLimit || cutTerrain {
             return withGravity(sweepPipeline, "refineSweep", model: model)
         }
         if let pipeline = sweepPipelines[model] { return pipeline }
@@ -801,6 +850,10 @@ final class AirRefinement {
                 // Not read without gravity.
                 encoder.setBuffer(parentGravityTable ?? ghosts, offset: 0, index: 19)
                 encoder.setBuffer(gravityTable ?? ghosts, offset: 0, index: 20)
+                // Not read without cut cells.
+                var terrain = terrainUniforms
+                encoder.setBuffer(terrainHeights, offset: 0, index: 21)
+                encoder.setBytes(&terrain, length: MemoryLayout<TerrainUniforms>.stride, index: 22)
                 encoder.dispatchThreadgroups(
                     indirectBuffer: arguments, indirectBufferOffset: 60,
                     threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
@@ -843,10 +896,20 @@ final class AirRefinement {
                 // Not read without gravity.
                 encoder.setBuffer(gravityTable ?? fineFlux, offset: 0, index: 25)
                 encoder.setBuffer(viscosity ?? fineFlux, offset: 0, index: 26)
+                // Not read without cut cells.
+                encoder.setBuffer(fineCut ?? fineFlux, offset: 0, index: 27)
+                encoder.setBuffer(fineDefects ?? fineFlux, offset: 0, index: 28)
+                encoder.setBuffer(terrainHeights, offset: 0, index: 29)
+                encoder.setBytes(&terrain, length: MemoryLayout<TerrainUniforms>.stride, index: 30)
                 encoder.dispatchThreadgroups(
                     indirectBuffer: arguments, indirectBufferOffset: 0,
                     threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: depth))
                 sweep += 1
+                if uniforms.finalSweep != 0 {
+                    encodeCutRedistribution(
+                        encoder, sweep: sweep, uniforms: uniforms, control: control, maxSpeed: maxSpeed,
+                        parent: parent)
+                }
             }
             if let child {
                 let now = view(current: sweep % 2)
@@ -860,14 +923,68 @@ final class AirRefinement {
         precondition(sweep.isMultiple(of: 2), "A coarse step must take an even number of fine sweeps")
     }
 
+    /// With cut cells, after a substep's final sweep (`sweep` sweeps done): the fine cut cells'
+    /// differences shared out up their columns (`refineRedistributeCut`).
+    private func encodeCutRedistribution(
+        _ encoder: MTLComputeCommandEncoder, sweep: Int, uniforms: SolverUniforms, control: MTLBuffer,
+        maxSpeed: MTLBuffer, parent: ParentView
+    ) {
+        guard cutTerrain, let pipeline = redistributeCutPipeline, let fineCut, let fineDefects, let patchCut,
+            let passedUp
+        else { return }
+        var encoder = encoder
+        stage("cut cells", &encoder)
+        var uniforms = uniforms
+        encoder.setComputePipelineState(pipeline)
+        let state = fine[sweep % 2]
+        encoder.setBuffer(state, offset: state === fine[0] ? offset(of: fine[0]) : 0, index: 0)
+        encoder.setBuffer(fineSpecies[sweep % 2], offset: 0, index: 1)
+        encoder.setBuffer(fineCut, offset: 0, index: 2)
+        encoder.setBuffer(fineDefects, offset: 0, index: 3)
+        setUniforms(encoder, &uniforms, index: 4)
+        bind(encoder, patchOfTile, 5)
+        encoder.setBuffer(tileOfPatch, offset: 0, index: 6)
+        encoder.setBuffer(patchList, offset: 0, index: 7)
+        encoder.setBuffer(patchCut, offset: 0, index: 8)
+        encoder.setBuffer(passedUp, offset: 0, index: 9)
+        encoder.setBuffer(control, offset: 0, index: 10)
+        set(encoder, parent.mask, 11)
+        bind(encoder, fineMask, 12)
+        encoder.setBuffer(maxSpeed, offset: 0, index: 13)
+        // Not read without gravity.
+        encoder.setBuffer(gravityTable ?? fineCut, offset: 0, index: 14)
+        encoder.dispatchThreadgroups(
+            indirectBuffer: arguments, indirectBufferOffset: 60,
+            threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
+    }
+
     /// Steps 4 and 5: refluxing along each of `axes`, then the parent's cells under the patches.
+    /// With cut cells, first what the stacks of patches passed up out of their tops goes to the
+    /// coarse cells above them, and `beforeRestricting` runs between refluxing and restriction
+    /// (the coarse grid's cut cells shared out, `redistributeCutDefects`).
     func encodeRefluxAndRestrict(
         _ encoder: MTLComputeCommandEncoder, axes: [Int], parent: ParentView, control: MTLBuffer,
-        uniforms: SolverUniforms
+        uniforms: SolverUniforms, beforeRestricting: ((MTLComputeCommandEncoder) -> Void)? = nil
     ) {
         var encoder = encoder
-        stage("reflux", &encoder)
         var uniforms = uniforms
+        if cutTerrain, let pipeline = cutPassUpPipeline, let coarseCut, let passedUp {
+            stage("cut cells", &encoder)
+            encoder.setComputePipelineState(pipeline)
+            set(encoder, parent.state, 0)
+            set(encoder, parent.species, 1)
+            encoder.setBuffer(coarseCut.columns, offset: 0, index: 2)
+            encoder.setBuffer(coarseCut.defects, offset: 0, index: 3)
+            setUniforms(encoder, &uniforms, index: 4)
+            encoder.setBuffer(tileOfPatch, offset: 0, index: 5)
+            encoder.setBuffer(patchList, offset: 0, index: 6)
+            encoder.setBuffer(passedUp, offset: 0, index: 7)
+            encoder.setBuffer(control, offset: 0, index: 8)
+            encoder.dispatchThreadgroups(
+                indirectBuffer: arguments, indirectBufferOffset: 36,
+                threadsPerThreadgroup: MTLSize(
+                    width: Self.patchSize * Self.patchSize * Self.patchSize, height: 1, depth: 1))
+        }
         stage("reflux", &encoder)
         encoder.setComputePipelineState(withGravity(refluxPipeline, "refineReflux"))
         set(encoder, parent.state, 0)
@@ -882,6 +999,9 @@ final class AirRefinement {
         encoder.setBuffer(coarseSpeciesFlux, offset: 0, index: 10)
         set(encoder, parent.species, 11)
         set(encoder, parent.patches, 12)
+        // Not read without cut cells.
+        encoder.setBuffer(coarseCut?.columns ?? fineFlux, offset: 0, index: 13)
+        encoder.setBuffer(coarseCut?.defects ?? fineFlux, offset: 0, index: 14)
         // One axis at a time: a coarse cell can border patches across several of its faces, but
         // across only one along any axis.
         for axis in axes {
@@ -892,8 +1012,9 @@ final class AirRefinement {
                 threadsPerThreadgroup: MTLSize(
                     width: 2 * Self.patchSize * Self.patchSize, height: 1, depth: 1))
         }
+        if let beforeRestricting { beforeRestricting(encoder) }
         stage("restrict", &encoder)
-        encoder.setComputePipelineState(restrictPipeline)
+        encoder.setComputePipelineState(cutSpecialised(restrictPipeline, "refineRestrict"))
         set(encoder, parent.state, 0)
         set(encoder, parent.mask, 1)
         setUniforms(encoder, &uniforms, index: 2)
@@ -908,6 +1029,10 @@ final class AirRefinement {
         encoder.setBuffer(fineSpecies[0], offset: 0, index: 11)
         set(encoder, parent.species, 12)
         set(encoder, parent.patches, 13)
+        // Not read without cut cells.
+        encoder.setBuffer(coarseCut?.columns ?? fineFlux, offset: 0, index: 14)
+        encoder.setBuffer(coarseCut?.records ?? fineFlux, offset: 0, index: 15)
+        encoder.setBuffer(fineCut ?? fineFlux, offset: 0, index: 16)
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 36,
             threadsPerThreadgroup: MTLSize(
@@ -961,7 +1086,7 @@ final class AirRefinement {
         stage("sync", &encoder)
         var uniforms = uniforms
         stage("sync", &encoder)
-        encoder.setComputePipelineState(syncPipeline)
+        encoder.setComputePipelineState(cutSpecialised(syncPipeline, "refineSync"))
         bind(encoder, fine[0], 0)
         set(encoder, parent.state, 1)
         set(encoder, parent.mask, 2)
@@ -972,6 +1097,10 @@ final class AirRefinement {
         encoder.setBuffer(control, offset: 0, index: 7)
         bind(encoder, fineMask, 8)
         set(encoder, parent.patches, 9)
+        // Not read without cut cells.
+        encoder.setBuffer(coarseCut?.columns ?? fineWall, offset: 0, index: 10)
+        encoder.setBuffer(coarseCut?.records ?? fineWall, offset: 0, index: 11)
+        encoder.setBuffer(fineCut ?? fineWall, offset: 0, index: 12)
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 36,
             threadsPerThreadgroup: MTLSize(
@@ -1173,12 +1302,16 @@ final class AirRefinement {
         // Not read without gravity.
         encoder.setBuffer(gravityTable ?? fine[0], offset: 0, index: 22)
         encoder.setBuffer(parentGravityTable ?? fine[0], offset: 0, index: 23)
+        // Not read without cut cells.
+        encoder.setBuffer(fineCut ?? fineWall, offset: 0, index: 24)
+        encoder.setBuffer(coarseCut?.columns ?? fineWall, offset: 0, index: 25)
+        encoder.setBuffer(patchCut ?? fineWall, offset: 0, index: 26)
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 48,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
 
         stage("fill", &encoder)
-        encoder.setComputePipelineState(conservePipeline)
+        encoder.setComputePipelineState(cutSpecialised(conservePipeline, "refineFillConserve"))
         bind(encoder, fine[0], 0)
         set(encoder, parent.mask, 1)
         setUniforms(encoder, &uniforms, index: 2)
@@ -1188,6 +1321,13 @@ final class AirRefinement {
         encoder.setBuffer(pinned, offset: 0, index: 6)
         encoder.setBuffer(fineSpecies[0], offset: 0, index: 7)
         set(encoder, parent.patches, 8)
+        // Not read without cut cells.
+        set(encoder, parent.state, 9)
+        set(encoder, parent.species, 10)
+        encoder.setBuffer(coarseCut?.columns ?? fineWall, offset: 0, index: 11)
+        encoder.setBuffer(coarseCut?.records ?? fineWall, offset: 0, index: 12)
+        encoder.setBuffer(fineCut ?? fineWall, offset: 0, index: 13)
+        encoder.setBuffer(patchCut ?? fineWall, offset: 0, index: 14)
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 84,
             threadsPerThreadgroup: MTLSize(

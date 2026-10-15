@@ -211,7 +211,10 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
         #expect(hilly[.impulse]?.evidence.contains { $0.document == "terrain.md#cut-cells" } == true)
         for staircase in [
             standing(scenario) { $0.configuration.terrainCutCells = false },
-            standing(scenario) { $0.configuration.refinement = 2 },
+            standing(scenario) {
+                $0.configuration.refinement = 2
+                $0.configuration.refinementLevels = 2
+            },
         ] {
             #expect(staircase[.impulse]?.options.contains("Terrain as a staircase") == true)
             #expect(staircase[.impulse]?.evidence.contains { $0.document == "terrain.md#cut-cells" } == false)
