@@ -66,7 +66,11 @@ leaving the cooperative pool to the others: with the GPU saturated by `blastbenc
 of the 875 tests had passed within four minutes, where none had after eighteen. The whole run
 still takes as long as the GPU allows (3,078 and 3,450 s saturated, against 3,199 and 4,244 s
 before). Each test is held to two hours of running on its thread (a GPU suite) or in all (the
-others): at a load average of 250, heavy tests of a debug build ran for over half an hour.
+others): at a load average of 250, heavy tests of a debug build ran for over half an hour. A GPU
+test past its two hours ends the test run: it is named on standard error and the test process
+exits with a failure. Recording an issue was not enough: on 15 October two tests spinning on the
+GPU ran for five hours, since a test that never returns is never reported, and the log, buffered,
+showed nothing after they started.
 
 On 9 October, Check runs [37965308304](https://github.com/emmettl/bombcad/actions/runs/37965308304)
 and [37975918140](https://github.com/emmettl/bombcad/actions/runs/37975918140) hit the job limit
