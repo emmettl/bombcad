@@ -1100,16 +1100,16 @@ kernel void refineSync(device Cell *fine [[buffer(0)]],
     }
 }
 
-// How close, in coarse cells, a sharp jump must come to a block of cells for that block to be
-// refined too. A shock moves under half a cell a step, and the patches are placed afresh every
-// step, so it cannot leave the refined blocks before they follow it.
-constant int refineReach = 2;
-
-// Marks the block holding `cell`, and every block within `refineReach` cells of it.
+// Marks the block holding `cell`, and every block within `u.refineMargin` cells of it: how close a
+// sharp jump must come to a block of cells for that block to be refined too
+// (`SolverConfiguration.refinementMargin`, 1 by default). A shock moves under half a cell a step,
+// and the patches are placed afresh every step, so it cannot leave the refined blocks before they
+// follow it.
 static inline void flagAround(int3 cell, device uchar *wanted, constant SolverUniforms &u) {
     int3 dims = int3(u.nx, u.ny, u.nz);
-    int3 low = max(cell - refineReach, 0) / patchSize;
-    int3 high = min(cell + refineReach, dims - 1) / patchSize;
+    int reach = int(u.refineMargin);
+    int3 low = max(cell - reach, 0) / patchSize;
+    int3 high = min(cell + reach, dims - 1) / patchSize;
     for (int z = low.z; z <= high.z; ++z) {
         for (int y = low.y; y <= high.y; ++y) {
             for (int x = low.x; x <= high.x; ++x) {
@@ -1120,7 +1120,7 @@ static inline void flagAround(int3 cell, device uchar *wanted, constant SolverUn
 }
 
 // Step 7a: a tile is wanted where the pressure of a cell in it and of a neighbour differ by more
-// than `refineThreshold` of the lower, or where such a pair lies within `refineReach` cells.
+// than `refineThreshold` of the lower, or where such a pair lies within `refineMargin` cells.
 static inline void flagCell(int3 cell, const device Cell *coarse, const device uchar *mask, device uchar *wanted,
                             constant SolverUniforms &u, const device float4 *boxDefinition) {
     int3 dims = int3(u.nx, u.ny, u.nz);

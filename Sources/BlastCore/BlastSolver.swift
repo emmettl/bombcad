@@ -2376,6 +2376,7 @@ public final class BlastSolver {
         uniforms.stillEnergy = stillCell.energy
         uniforms.airModel = configuration.airModel.rawValue
         refinement?.configure(&uniforms, threshold: configuration.refinementThreshold)
+        uniforms.refineMargin = UInt32(max(configuration.refinementMargin, 0))
         if let finerRefinement {
             uniforms.childTileNx = UInt32(finerRefinement.tileDims.x)
             uniforms.childTileNy = UInt32(finerRefinement.tileDims.y)

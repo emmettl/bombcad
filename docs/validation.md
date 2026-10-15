@@ -377,6 +377,57 @@ score, are:
 
 Outputs and the scoring scripts: `/Volumes/StudioData/bombcad/blind-results/mendonca/`.
 
+**Diagnosis after the reveal** (calibration now, not a re-scoring). Why the model's slabs are several
+times too stiff and too strong, candidate by candidate, on today's model (`8a44a1a`, the 100 µs
+strain-rate window), the air kept awake so that the sleeping-air fault does not enter, slabs 4 and
+2 (2.0 m) and slab 1 (1.3 m), 30–150 ms each, half on the CI mini; `blastbench mendonca` with the
+switches named; outputs in `/Volumes/StudioData/bombcad/mendonca-diagnosis/`. The model's first
+peak at 2.0 m is 3.8–4.3 mm at 4 ms against 17–38 mm at 15–45 ms measured:
+
+| Candidate | Change | First peak, slabs 2 and 4 (mm) | Slab 1 at 1.3 m (mm) |
+|---|---|---|---|
+| None | | 3.8, 4.3 | 10.1, stands |
+| The load | charge ×1.5 (the corners' median 0.67), the centre's impulse 477 → 637 Pa s | 5.4, 5.7 | 19.9, stands |
+| | charge ×2 (impulse ×1.6) | 6.5, 7.0 | 30.7, stands |
+| | afterburning (impulse +2%) | 3.7, 4.4 | 11.9 |
+| The supports | timber rails | 4.4, 4.5 | 18.6 |
+| | soft supports yielding at 131 kPa (assumed: trestle legs on clay) | 3.9, 3.9, left 2–3 mm down, no throw | |
+| | the same, softer (60 kPa) | 4.3 at 18 ms, 4.4 at 14 ms | |
+| The mesh and its bond | bars that slip (`--bond splitting`) | 3.7, 4.0 | 9.0 |
+| | the bars' yield ×0.5 / ×2 | 4.3, 4.7 / 3.5, 3.8 | |
+| Cracked concrete | tensile strength ×0.5 / ×0.25 | 3.8, 4.3 / 3.9, 4.5 | 11.4 / 13.2 |
+| | fracture energy ×0.5 | 3.6, 4.0 | 10.1 |
+| | the strain-rate laws off | 3.9, 4.4 | 12.1 |
+| The air | a rigid block under the slab (the underside's impulse 435 → 161 Pa s) | 3.9, 4.7 | |
+| | the domain 5 × 5 × 5 m instead of 3 × 3 × 3.2 | 3.8, 4.3 | |
+
+- **The load** accounts for little. The centre's impulse, 477 Pa s at 2.0 m, is what a rigid-plastic
+  slab of the light mesh's strength (about 40 kPa) needs to move about 25 mm. Raising it to the
+  corner gauges' median moves the peak by 40%; reaching the measured peaks would take four to nine
+  times the impulse. Afterburning adds 2%. At 1.3 m the model's corner pressures are already 2.2
+  times the measured.
+- **The supports** change the timing and the throw, not the size. Soft, yielding supports leave a
+  2–3 mm permanent set and no rebound, and push the peak to 14–18 ms, as measured, but the centre
+  still moves about 4 mm. The meters' absolute readings may include some sinking of the trestles,
+  but nothing in the sources fixes how much.
+- **The mesh and its bond** move the peak by under 15%.
+- **The concrete's strengths** move it by under 7% at 2.0 m and a third at 1.3 m. With a quarter of
+  the tensile strength the slab cracks over twice the area (618 surface elements on the bottom
+  face against 340) and peaks at the same 4.5 mm: the cracked elements go on carrying the load.
+- **The air beneath** pushes back from 3 ms (851 kPa under the centre), but cutting it to a third
+  leaves the peak within 10%, and a larger domain changes nothing.
+
+Taken as a rigid-plastic slab, the model's 4.3 mm implies a resistance of about 220 kPa; the light
+mesh can give about 40 kPa, and the tests' 17–38 mm imply about that. The excess does not lie in
+the load, the supports, the bars, the bond or the concrete's strengths: the cracked concrete keeps
+its stiffness and strength across the cracks, so no hinge forms, and slabs 1 and 10 cannot fail by
+the concentric, punching-like pattern their tests showed. **Proposal: none affordable now.** The
+change that targets this is the embedded crack (E-FEM) the concrete session is building, which lets
+a crack across an element soften without the element's other planes holding it; the cheap knobs
+above cannot bring Mendonça within the bands without breaking the calibrated comparisons, and
+supports soft enough to give the measured peaks would be a fit to unknown trestles. Rerun this
+table when the embedded crack lands.
+
 ## Structural response against a real test
 
 ### The test
