@@ -449,12 +449,13 @@ public enum StandingTable {
             return Entry(
                 title: "Afterburning", affects: air + [.thermal, .cloud], limit: nil,
                 note: "The products burn in the air they mix with; the burning time was fitted to "
-                    + "Kingery–Bulmash's incident impulse.",
+                    + "Kingery–Bulmash's incident impulse. The default, with hot air, since 15 October 2026.",
                 document: "air-blast-model.md#afterburning")
         case .hotAir:
             return Entry(
                 title: "Hot air", affects: air + [.thermal], limit: nil,
-                note: "Air stores energy in molecular vibration, its γ falling towards 1.29 near 3000 K.",
+                note: "Air stores energy in molecular vibration, its γ falling towards 1.29 near 3000 K. The "
+                    + "default, with afterburning, since 15 October 2026.",
                 document: "air-blast-model.md#hot-air")
         case .dissociatingAir:
             return Entry(
@@ -1113,6 +1114,8 @@ extension SceneStanding {
 
 /// The scene's numbers the table needs, worked out once.
 struct StandingScene {
+    /// The Kingery–Bulmash comparison's grids for 100 kg, by name, as the tables' columns.
+    static let columns = ["0.5": 0, "0.25": 1, "0.125": 2]
     let inputs: StandingInputs
     let options: [ModelOption]
     let structures: [StructureModel]
@@ -1390,8 +1393,16 @@ struct StandingScene {
 
     func peakOverpressure() -> ResultStanding {
         if has(.deflagration) { return deflagrationResult(.peakOverpressure) }
-        let incident = ["0.125": "86–97%", "0.25": "76–82%", "0.5": "57–69%"]
-        let reflected = ["0.125": "67–92%", "0.25": "37–82%", "0.5": "20–69%"]
+        // Today's defaults burn the products in hot air, compared on their own tables.
+        let burning = has(.afterburning) && has(.hotAir)
+        let incident = Self.columns.mapValues {
+            ValidationTables.span(
+                burning ? ValidationTables.burningIncidentPeak : ValidationTables.incidentPeak, grid: $0)
+        }
+        let reflected = Self.columns.mapValues {
+            ValidationTables.span(
+                burning ? ValidationTables.burningReflectedPeak : ValidationTables.reflectedPeak, grid: $0)
+        }
         var evidence: [StandingEvidence] = []
         var level = EvidenceLevel.compared
         var summary: String
@@ -1400,25 +1411,22 @@ struct StandingScene {
             level = .approximation
             summary =
                 "Reads low, the unsafe side: the cells are coarser than any compared with Kingery–Bulmash, "
-                + "whose coarsest grid gave 57–69% of the incident peak."
+                + "whose coarsest grid gave \(incident["0.5"]!) of the incident peak."
         default:
             let key = grid == .fine ? "0.125" : grid == .medium ? "0.25" : "0.5"
             summary =
                 "Reads low, the unsafe side, as shocks are smeared: Kingery–Bulmash's incident peak "
-                + "\(incident[key]!), reflected \(reflected[key]!), on air as fine for this charge as the "
-                + "comparison's \(grid.cells) were for 100 kg."
+                + "\(incident[key]!), reflected \(reflected[key]!)\(burning ? " with afterburning and hot air" : ""), "
+                + "on air as fine for this charge as the comparison's \(grid.cells) were for 100 kg."
             evidence.append(
                 StandingEvidence(
                     "Kingery–Bulmash, a fit to many surface bursts whose scatter is not given; 100 kg from 0.75 to "
-                        + "6 m/kg^(1/3) (blastbench validate)",
+                        + "6 m/kg^(1/3) (blastbench validate"
+                        + (burning ? ", afterburning, hot air and far-field faces)" : ")"),
                     "Incident peak \(incident[key]!) and reflected \(reflected[key]!) on \(grid.cells)",
-                    "validation.md#kingerybulmash-the-design-practice-standard"))
-        }
-        if has(.afterburning) {
-            evidence.append(
-                StandingEvidence(
-                    "Kingery–Bulmash with afterburning (and hot air)",
-                    "Incident peak 78–86% (72–84%) on 0.25 m cells", "validation.md#afterburning"))
+                    burning
+                        ? ValidationTables.burningDocument
+                        : "validation.md#kingerybulmash-the-design-practice-standard"))
         }
         var resolution: [String] = []
         if closeIn, let first = gaugeDistances.first, first < 0.75 {
@@ -1452,46 +1460,63 @@ struct StandingScene {
 
     func impulse() -> ResultStanding {
         if has(.deflagration) { return deflagrationResult(.impulse) }
-        let reflected = ["0.125": "94–105%", "0.25": "84–102%", "0.5": "73–99%"]
         var evidence: [StandingEvidence] = []
         var level = EvidenceLevel.compared
         var summary: String
         let burns = has(.afterburning)
         let hot = has(.hotAir) || has(.dissociatingAir)
+        // Today's defaults burn the products in hot air, compared on their own tables.
+        let burning = burns && has(.hotAir)
+        let reflected = Self.columns.mapValues {
+            ValidationTables.span(
+                burning ? ValidationTables.burningReflectedImpulse : ValidationTables.reflectedImpulse,
+                grid: $0)
+        }
+        let key = grid == .fine ? "0.125" : grid == .medium ? "0.25" : "0.5"
         let incident =
-            burns
-            ? (hot
-                ? "incident impulse 94–99% beyond 1 m/kg^(1/3) (the burning time fitted to it)"
-                : "incident impulse 96–101% beyond 1 m/kg^(1/3) (the burning time fitted to it)")
-            : "incident impulse 13–22% low on every grid (the unsafe side for what the wave passes over), "
-                + "for want of afterburning"
+            burning
+            ? "incident impulse \(ValidationTables.span(ValidationTables.burningIncidentImpulse, grid: Self.columns[key]!, from: 1)) "
+                + "beyond 1 m/kg^(1/3) (the burning time fitted to it)"
+            : burns
+                ? "incident impulse 96–101% beyond 1 m/kg^(1/3) (the burning time fitted to it)"
+                : "incident impulse 13–22% low on every grid (the unsafe side for what the wave passes over), "
+                    + "for want of afterburning"
         switch grid {
         case .coarser:
             level = .approximation
             summary =
                 "Reads low on cells coarser than any compared: on the coarsest compared Kingery–Bulmash's "
-                + "reflected impulse was 73–99%, and its \(incident)."
+                + "reflected impulse was \(reflected["0.5"]!), and its \(incident)."
         default:
-            let key = grid == .fine ? "0.125" : grid == .medium ? "0.25" : "0.5"
             summary =
                 "On walls, either way: Kingery–Bulmash's reflected impulse \(reflected[key]!) on the comparison's "
-                + "\(grid.cells) for 100 kg (within 6% beyond 1.5 m/kg^(1/3) on 0.25 m or finer); \(incident)."
+                + "\(grid.cells) for 100 kg ("
+                + (burning
+                    ? "4–15% high beyond 1.5 m/kg^(1/3) on 0.25 m or finer, not fitted"
+                    : "within 6% beyond 1.5 m/kg^(1/3) on 0.25 m or finer") + "); \(incident)."
             evidence.append(
                 StandingEvidence(
                     "Kingery–Bulmash, a fit to many surface bursts whose scatter is not given; 100 kg from 0.75 to "
-                        + "6 m/kg^(1/3) (blastbench validate)",
+                        + "6 m/kg^(1/3) (blastbench validate"
+                        + (burning ? ", afterburning, hot air and far-field faces)" : ")"),
                     "Reflected impulse \(reflected[key]!) on \(grid.cells)",
-                    "validation.md#kingerybulmash-the-design-practice-standard"))
+                    burning
+                        ? ValidationTables.burningDocument
+                        : "validation.md#kingerybulmash-the-design-practice-standard"))
         }
-        if burns {
+        if burning {
             evidence.append(
                 StandingEvidence(
-                    "Kingery–Bulmash with afterburning\(hot ? " and hot air" : "") (blastbench validate --afterburn)",
-                    hot
-                        ? "Incident impulse 94–99% beyond 1 m/kg^(1/3), fitted; reflected 6–13% high in the "
-                            + "middle ranges, not fitted"
-                        : "Incident impulse 96–101% beyond 1 m/kg^(1/3), fitted; reflected 6–15% high in the "
-                            + "middle ranges, not fitted",
+                    "Kingery–Bulmash, incident impulse, on today's defaults",
+                    "\(ValidationTables.span(ValidationTables.burningIncidentImpulse, grid: 1, from: 1)) beyond 1 "
+                        + "m/kg^(1/3) on 0.25 m cells, fitted: the burning time was chosen on it",
+                    ValidationTables.burningDocument))
+        } else if burns {
+            evidence.append(
+                StandingEvidence(
+                    "Kingery–Bulmash with afterburning alone (blastbench validate --afterburn)",
+                    "Incident impulse 96–101% beyond 1 m/kg^(1/3), fitted; reflected 6–15% high in the "
+                        + "middle ranges, not fitted",
                     "validation.md#afterburning"))
         } else {
             evidence.append(

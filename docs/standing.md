@@ -47,9 +47,11 @@ The standing is worked out from the scene's actual settings each time they chang
   and no sectional shear check in beams under a blast or a blow, and, loaded slowly, hourglass
   control that softens with cracking. An option the regime set is a default, not the user's
   choice (`pressedInterlockFromRegime`, `hourglassFromRegime`).
-- **Afterburning.** Off, the incident impulse is 13–22% low; on, it is within 4% (6% with hot
-  air), with the burning time fitted to it. Reflecting domain faces bring in the closed-room
-  comparison, whose agreement depends on both options.
+- **Afterburning.** On by default since 15 October 2026, with hot air and far-field faces: the
+  incident impulse within 4% beyond 1 m/kg^(1/3) on 0.25 m cells, with the burning time fitted to
+  it, and the reflected impulse 8–15% high; off, the incident impulse is 13–22% low. A band
+  derived without it is withheld under it until derived again (Hupfauf's debris). Reflecting
+  domain faces bring in the closed-room comparison, whose agreement depends on both options.
 - **Materials.** Reinforced concrete has been compared with measurement; plain concrete, steel and masonry
   are verified against theory; glass is an approximation. A structure takes its weakest material.
 - **Model options.** Each option that changes a result's standing has one entry: what it does,
@@ -108,7 +110,9 @@ standing says why.
   ratio per distance and grid; the band spans the compared distances either side of the gauge,
   and between grids it is interpolated in the logarithm of the scene's scaled cell, refinement
   counted as the finer grid. Close in (0.3 to 0.75 m/kg^(1/3)) the close-in table is used, for
-  gauges on a surface. With afterburning and hot air their own tables apply. Gauges beyond
+  gauges on a surface. With afterburning and hot air, today's defaults, their own tables apply
+  ([re-run](validation.md#the-defaults-since-15-october) on all three grids, reflected peaks
+  included); close in there is none yet. Gauges beyond
   6 m/kg^(1/3), closer than 0.3, shielded from the charge, over terrain, or on cells coarser than
   any compared grid get none.
 - **Structures** take the slab test's 79–119% on 4 to 32 solid elements through in the far
@@ -159,7 +163,7 @@ deviation: Kingery's tests about Kingery–Bulmash's fit, 6.4% in incident peak 
 impulse; for reflected values, which Kingery and Bulmash calculated rather than fitted, modern
 repeats' 6–8% (8% taken); UFC 3-340-02's rooms, 11%. Each band says plainly whether the model's
 error lies inside that scatter, where it cannot be told apart from the tests (the reflected
-impulse within 6%, a closed room's 98–108% with afterburning and hot air), or outside it, where
+impulse within 6% without afterburning, a closed room's 98–108% with afterburning and hot air), or outside it, where
 the difference is the model's (the incident impulse 13–22% low, peaks under-resolved, a room's
 default gas; arrival times, 2–10% early against about ±2%, have no band). The expected range adds
 the scatter at 5–95% as it does the inputs' spread, and comparison uses the combined width. Close in, where repeats differed

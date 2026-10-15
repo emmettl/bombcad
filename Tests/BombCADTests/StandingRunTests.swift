@@ -36,14 +36,16 @@ struct StandingRunTests {
         reference.standing = reference.derivedStanding()
         var same = try SavedRunTests().fixture(name: "Same")
         same.standing = same.derivedStanding()
-        var burning = try SavedRunTests().fixture(name: "Burning")
-        burning.settings.detailedCharge = true
+        // The other gas from the fixture's: afterburning and hot air have been the default since
+        // 15 October 2026.
+        var burning = try SavedRunTests().fixture(name: "Other gas")
+        burning.settings.detailedCharge.toggle()
         burning.standing = burning.derivedStanding()
         let unrecorded = try SavedRunTests().fixture(name: "Unrecorded")
         #expect([reference, same].standingDifferences(from: reference).isEmpty)
         let differences = [reference, same, burning, unrecorded].standingDifferences(from: reference)
         #expect(!differences.isEmpty)
-        #expect(differences.allSatisfy { $0.hasPrefix("Burning · ") })
+        #expect(differences.allSatisfy { $0.hasPrefix("Other gas · ") })
         #expect(differences.contains { $0.contains("Impulse") })
         #expect([unrecorded, reference].standingDifferences(from: unrecorded).isEmpty)
     }

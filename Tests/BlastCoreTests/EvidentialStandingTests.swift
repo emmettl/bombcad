@@ -156,7 +156,11 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
             }[.impulse])
         #expect(plain.level == .compared && burning.level == .compared)
         #expect(plain.summary.contains("13–22% low"))
-        #expect(burning.summary.contains("94–99%") && burning.summary.contains("fitted"))
+        // Read from today's tables, on whichever grid the street's air matches.
+        let spans = (0..<3).map {
+            ValidationTables.span(ValidationTables.burningIncidentImpulse, grid: $0, from: 1)
+        }
+        #expect(spans.contains { burning.summary.contains($0) } && burning.summary.contains("fitted"))
         #expect(burning.options == ["Afterburning", "Hot air"])
         #expect(plain.options.isEmpty)
     }

@@ -210,15 +210,30 @@ public enum ValidationTables {
         [73, 77, 88, 95, 99, 94, 94, 93], [84, 91, 97, 101, 102, 97, 94, 94],
         [96, 102, 102, 105, 104, 98, 95, 94],
     ])
-    /// With afterburning and hot air: the refinement table's uniform 0.25 and 0.125 m columns, and
-    /// the incident impulse on 0.25 m cells.
+    /// With afterburning, hot air and far-field faces, the defaults since 15 October 2026
+    /// (validation.md, "The defaults since 15 October").
     public static let burningIncidentPeak = Table(byGrid: [
-        nil, [72, 74, 82, 78, 83, 82, 84, 83], [90, 89, 93, 87, 88, 91, 92, 92],
+        [60, 60, 71, 68, 73, 71, 73, 75], [78, 80, 86, 80, 84, 84, 85, 85], [98, 95, 96, 89, 90, 92, 93, 93],
     ])
-    public static let burningIncidentImpulse = Table(byGrid: [nil, [116, 94, 95, 94, 99, 98, 98, 96], nil])
+    public static let burningIncidentImpulse = Table(byGrid: [
+        [138, 102, 104, 99, 103, 102, 103, 103], [122, 96, 97, 96, 101, 100, 100, 98],
+        [121, 96, 90, 92, 97, 97, 96, 94],
+    ])
+    public static let burningReflectedPeak = Table(byGrid: [
+        [20, 26, 38, 49, 63, 69, 74, 75], [38, 45, 61, 70, 81, 85, 85, 87], [67, 69, 85, 86, 92, 95, 95, 95],
+    ])
     public static let burningReflectedImpulse = Table(byGrid: [
-        nil, [85, 93, 106, 110, 113, 110, 107, 106], [94, 103, 114, 113, 112, 107, 104, 103],
+        [80, 86, 100, 106, 113, 114, 113, 112], [90, 98, 110, 113, 115, 113, 110, 108],
+        [100, 107, 115, 114, 113, 109, 106, 104],
     ])
+    /// Where the burning tables are recorded.
+    public static let burningDocument = "validation.md#the-defaults-since-15-october"
+
+    /// A column's range as "a–b%", from the `from`th distance out (1 is 1 m/kg^(1/3)).
+    public static func span(_ table: Table, grid: Int, from: Int = 0) -> String {
+        let column = table.byGrid[grid]!.dropFirst(from)
+        return String(format: "%.0f–%.0f%%", column.min()!, column.max()!)
+    }
 
     /// Close in: a 1 kg burst in the air, reflected under it, by free-air scaled distance.
     public static let closeDistances: [Double] = [0.3, 0.5, 0.75, 1]
@@ -689,22 +704,21 @@ extension StandingScene {
             } else {
                 let check =
                     burning
-                    ? "Kingery–Bulmash with afterburning and hot air, 100 kg (blastbench validate --afterburn --air thermal)"
+                    ? "Kingery–Bulmash with afterburning, hot air and far-field faces, 100 kg (blastbench validate)"
                     : "Kingery–Bulmash, 100 kg surface burst (blastbench validate)"
                 let document =
                     burning
-                    ? "validation.md#afterburning"
+                    ? ValidationTables.burningDocument
                     : "validation.md#kingerybulmash-the-design-practice-standard"
                 let grids = ValidationTables.grids
                 let distances = ValidationTables.distances
                 if onBox {
-                    bands.peak =
-                        burning
-                        ? nil
-                        : band(
-                            ValidationTables.reflectedPeak, grids, distances, measure: .peakOverpressure,
-                            quantity: "Reflected peak overpressure", check: check, document: document,
-                            low: "peaks smeared over cells")
+                    bands.peak = band(
+                        burning ? ValidationTables.burningReflectedPeak : ValidationTables.reflectedPeak,
+                        grids,
+                        distances, measure: .peakOverpressure,
+                        quantity: "Reflected peak overpressure", check: check, document: document,
+                        low: "peaks smeared over cells")
                     bands.impulse = band(
                         burning
                             ? ValidationTables.burningReflectedImpulse : ValidationTables.reflectedImpulse,
@@ -726,10 +740,7 @@ extension StandingScene {
                         low: burning ? "under-read" : "under-read without afterburning")
                 }
                 if bands.peak == nil || bands.impulse == nil {
-                    bands.note =
-                        burning
-                        ? "With afterburning, cells coarser than 0.25 m for 100 kg, and reflected peaks, were not compared."
-                        : "Cells coarser than any grid compared (0.5 m for 100 kg)."
+                    bands.note = "Cells coarser than any grid compared (0.5 m for 100 kg)."
                 }
             }
             // The inputs' spread where the ensemble ran the case: a wall facing the charge, or the
@@ -1028,7 +1039,8 @@ extension StandingScene {
                         high: "over-read",
                         validity:
                             "a full-scale chamber; 0.1 m cells and elements; its roof's peak rises with the mesh "
-                            + "(48 to 57 mm on 50 mm elements) and on 25 mm elements the solution breaks down",
+                            + "(48 to 57 mm on 50 mm elements) and on 25 mm elements the solution breaks down; "
+                            + "the roof alike with afterburning and hot air (37 mm against 38)",
                         check: "An internal explosion in a reinforced concrete chamber"))
                 if let structure = structures.first, abs(structure.elementSize - 0.1) > 0.01 {
                     bands.removeLast()
@@ -1051,7 +1063,9 @@ extension StandingScene {
                             figure(
                                 "wuSmall", .peakDeflection, "Peak deflection close in", low: "too stiff",
                                 high: "too flexible",
-                                validity: "0.2 to 0.8 kg at 0.43 m/kg^(1/3), slabs that spalled",
+                                validity:
+                                    "0.2 to 0.8 kg at 0.43 m/kg^(1/3), slabs that spalled; with afterburning and hot "
+                                    + "air S5 and D5 alike (2.3 mm against 4.0 and 4.1)",
                                 check: "Wu et al.'s slabs with steel in both faces"),
                             derived: "8 elements through only", meshes: 8...8, unbanded: &unbanded
                         ).map { [$0] } ?? []
@@ -1189,9 +1203,19 @@ extension StandingScene {
                         + "among roundings (the far face 116–121 m/s on SN142, 15–19 on SN131)",
                     check: "Hupfauf's slabs under contact charges")
                 debris.roundingSpread = ValidationTables.rounding("hupfaufSN142", "hupfaufSN131")
-                bands +=
-                    onMesh(debris, derived: "12 elements through only", meshes: 12...12, unbanded: &unbanded)
-                    .map { [$0] } ?? []
+                if has(.afterburning) {
+                    // Derived without it; with it the far faces slowed by about a third.
+                    unbanded.append(
+                        "Far face's speed against the debris's: derived without afterburning. With it, today's "
+                            + "default, the 20 cm slabs' far faces reach 63–78 m/s against 69–84 measured, where "
+                            + "they had reached 114–118; not given until derived again.")
+                } else {
+                    bands +=
+                        onMesh(
+                            debris, derived: "12 elements through only", meshes: 12...12, unbanded: &unbanded
+                        )
+                        .map { [$0] } ?? []
+                }
             }
             unbanded.append("Failed elements and collapse have no band.")
         case .envelopeExposure:
@@ -1210,8 +1234,11 @@ extension StandingScene {
                             meaningHigh: "over-read",
                             validity: String(
                                 format: "a rigid wall facing the charge at %.2f m/kg^(1/3)", distance),
-                            check: "Kingery–Bulmash, 100 kg",
-                            document: "validation.md#kingerybulmash-the-design-practice-standard",
+                            check: burning
+                                ? "Kingery–Bulmash on today's defaults, 100 kg" : "Kingery–Bulmash, 100 kg",
+                            document: burning
+                                ? ValidationTables.burningDocument
+                                : "validation.md#kingerybulmash-the-design-practice-standard",
                             scaled: read.scaled, referenceScatter: ValidationTables.scatter("reflected")))
                 } else {
                     unbanded.append("The nearest face lies outside the compared distances or cells.")
@@ -1375,12 +1402,12 @@ extension StandingScene {
                 add(
                     "Afterburning", nil,
                     has(.afterburning)
-                        ? "In the open the incident impulse is within 4–6% (fitted), but the reflected impulse on walls "
-                            + "6–15% high in the middle ranges."
+                        ? "In the open the incident impulse is within 4% beyond 1 m/kg^(1/3) on 0.25 m cells "
+                            + "(fitted), but the reflected impulse on walls 8–15% high in the middle ranges."
                         : "In the open the reflected impulse on walls is within 6%, but the incident impulse 13–22% low: "
                             + "low for objects the wave passes over.",
                     has(.afterburning) ? nil : "Turn afterburning on where the incident impulse matters.",
-                    "validation.md#afterburning")
+                    has(.afterburning) ? ValidationTables.burningDocument : "validation.md#afterburning")
             }
         case .envelopeExposure, .freestandingMotion, .thermal, .surfaceHeating, .cloud, .fragments,
             .groundShock:

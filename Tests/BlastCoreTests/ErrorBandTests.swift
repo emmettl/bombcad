@@ -106,25 +106,24 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
                 #expect(column == code.byGrid[grid]!.map(Optional.some), "\(header), grid \(grid)")
             }
         }
-        // Afterburning and hot air: the refinement table's uniform 0.25 and 0.125 m columns, and the
-        // first table's incident impulse with hot air.
-        let refined = try table("validation.md#afterburning", header: "0.5 m refined")
+        // Today's defaults, afterburning, hot air and far-field faces: four quantities on three grids.
+        let burning = try table(ValidationTables.burningDocument, header: "Incident peak: 0.5 m")
+        #expect(burning.count == ValidationTables.distances.count)
+        for (first, code) in [
+            (2, ValidationTables.burningIncidentPeak), (5, ValidationTables.burningIncidentImpulse),
+            (8, ValidationTables.burningReflectedPeak), (11, ValidationTables.burningReflectedImpulse),
+        ] {
+            for grid in 0..<3 {
+                #expect(
+                    burning.map { percent($0[first + grid]) } == code.byGrid[grid]!.map(Optional.some),
+                    "burning column \(first + grid)")
+            }
+        }
+        // The debris band's note quotes the re-run's row for Hupfauf's 20 cm slabs.
         #expect(
-            refined.map { percent($0[2]) }
-                == ValidationTables.burningIncidentPeak.byGrid[1]!.map(Optional.some))
-        #expect(
-            refined.map { percent($0[4]) }
-                == ValidationTables.burningIncidentPeak.byGrid[2]!.map(Optional.some))
-        #expect(
-            refined.map { percent($0[6]) }
-                == ValidationTables.burningReflectedImpulse.byGrid[1]!.map(Optional.some))
-        #expect(
-            refined.map { percent($0[8]) }
-                == ValidationTables.burningReflectedImpulse.byGrid[2]!.map(Optional.some))
-        let burning = try table("validation.md#afterburning", header: "With hot air: incident peak")
-        #expect(
-            burning.map { percent($0[6]) }
-                == ValidationTables.burningIncidentImpulse.byGrid[1]!.map(Optional.some))
+            try section(ValidationTables.burningDocument).contains(
+                normalised(
+                    "| Hupfauf, 20 cm slabs: far face's tip | 114–118 m/s (measured 69–84) | 63–78 m/s |")))
         // Close in: four cell sizes, peaks then impulses.
         let close = try table("validation.md#close-in", header: "Z (free air)")
         #expect(close.map { Double($0[0]) } == ValidationTables.closeDistances.map(Optional.some))
@@ -245,6 +244,7 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
                 scenario: ScenarioPreset.openGround.scenario, cellSize: 0.25, configuration: config))
         let far = try #require(burning.gauges?.first { $0.scaledDistance > 1.5 && $0.scaledDistance < 5 })
         #expect(try #require(far.impulse).low >= 0.94)
+        #expect(far.impulse?.document == ValidationTables.burningDocument)
 
         // Coarser than any grid: no band, and a reason.
         var small = ScenarioPreset.openGround.scenario
@@ -262,6 +262,12 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
         let face = try #require(standing.gauge("Face"))
         #expect(face.onSurface)
         #expect(face.peak?.quantity == "Reflected peak overpressure")
+        // Today's defaults have their own reflected peaks too.
+        var burns = SolverConfiguration()
+        burns.afterburning = true
+        burns.airModel = .thermallyPerfect
+        let hot = SceneStanding(StandingInputs(scenario: scenario, cellSize: 0.25, configuration: burns))
+        #expect(hot.gauge("Face")?.peak?.document == ValidationTables.burningDocument)
         #expect(face.peak?.inputSpread == 0.02 && face.impulse?.inputSpread == 0.01)
         #expect(face.peak?.referenceScatter == 0.08 && face.impulse?.referenceScatter == 0.08)
         // Under-resolved peaks lie outside the tests' scatter; the difference is the model's.
@@ -337,6 +343,15 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
             SceneStanding(StandingInputs(scenario: contact, cellSize: 0.25)).band(.debrisSpeed))
         #expect(abs((debris.roundingSpread ?? 0) - 3.5 / 33.9) < 1e-9)
         #expect(debris.expectedWithInputs(100) != debris.expected(100))
+        // Derived without afterburning: with it, today's default, withheld and said why.
+        var burns = SolverConfiguration()
+        burns.afterburning = true
+        burns.airModel = .thermallyPerfect
+        let burning = SceneStanding(StandingInputs(scenario: contact, cellSize: 0.25, configuration: burns))
+        #expect(burning.band(.debrisSpeed) == nil)
+        #expect(
+            burning[.structuralDamage]?.unbanded?.contains { $0.contains("derived without afterburning") }
+                == true)
     }
 
     /// Mirrored: the convergence study's OA1 row holds every mesh's value and the measurement.

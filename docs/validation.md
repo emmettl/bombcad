@@ -3035,6 +3035,22 @@ same peaks:
 | Keys, free field: positive phase | 98–106% | 92–111%, peaks 86–94% |
 | Keys, debris: mean throw | 2.1 m (measured 0.2–0.6) | 1.6–1.7 m |
 
+Against Kingery–Bulmash on these defaults, a 100 kg surface burst on uniform grids (`blastbench
+validate`), as a percentage of the reference (the bands' tables since 15 October):
+
+| Range | Z | Incident peak: 0.5 m | 0.25 m | 0.125 m | Incident impulse: 0.5 m | 0.25 m | 0.125 m | Reflected peak: 0.5 m | 0.25 m | 0.125 m | Reflected impulse: 0.5 m | 0.25 m | 0.125 m |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 3.5 m | 0.75 | 60% | 78% | 98% | 138% | 122% | 121% | 20% | 38% | 67% | 80% | 90% | 100% |
+| 4.6 m | 1 | 60% | 80% | 95% | 102% | 96% | 96% | 26% | 45% | 69% | 86% | 98% | 107% |
+| 7.0 m | 1.5 | 71% | 86% | 96% | 104% | 97% | 90% | 38% | 61% | 85% | 100% | 110% | 115% |
+| 9.3 m | 2 | 68% | 80% | 89% | 99% | 96% | 92% | 49% | 70% | 86% | 106% | 113% | 114% |
+| 13.9 m | 3 | 73% | 84% | 90% | 103% | 101% | 97% | 63% | 81% | 92% | 113% | 115% | 113% |
+| 18.6 m | 4 | 71% | 84% | 92% | 102% | 100% | 97% | 69% | 85% | 95% | 114% | 113% | 109% |
+| 23.2 m | 5 | 73% | 85% | 93% | 103% | 100% | 96% | 74% | 85% | 95% | 113% | 110% | 106% |
+| 27.8 m | 6 | 75% | 85% | 93% | 103% | 98% | 94% | 75% | 87% | 95% | 112% | 108% | 104% |
+
+The arrival on 0.25 m cells comes at 92, 91, 89, 92, 93, 96, 96 and 97% of the reference's time.
+
 Two faults were found and fixed on the way. The far-field ghost first let hot air's
 temperature go to NaN beside contact charges, where air drawn back hard into the rarefaction gave
 the acoustic linearisation a negative pressure (Hupfauf's craters came out 2.7 m across); its
