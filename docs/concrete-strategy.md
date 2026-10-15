@@ -351,6 +351,11 @@ strut's crushing under impact (the compression law's strength and softening at t
 the removal rule for crushed concrete). The embedded crack stays the step for OA1 on 12 elements,
 which these images do not test.
 
+**The embedded crack, tried (14–15 October 2026).** The user chose to try it after the punching
+trace showed that a 45° crack in one-point hexes cannot slide. Three attempts freed the 45° band by
+three-quarters, but softened Hrynyk's undamaged slabs to 1.4–1.7 times their measured peaks, and
+were not adopted ([record](concrete-model.md#embedded-cracks-tried-and-not-adopted)).
+
 **Stage 3: failed concrete to particles, for breach and debris (one to two months).**
 
 - An element past an erosion rule is converted into particles carrying its mass and velocity,
