@@ -880,7 +880,8 @@ func runChamber() throws {
 
 /// Gas pressure in a closed room against UFC 3-340-02 Figure 2-152.
 /// A solver for `scenario`, with the air options given on the command line (`--afterburn`).
-/// The air's refinement from `--refine 2|4`, `--refine-levels 1|2`, `--refine-threshold`,
+/// The air's refinement from `--refine 2|4`, `--refine-levels 1|2`, `--refine-margin 1|2` (cells of
+/// margin around the shock), `--refine-threshold`,
 /// `--refine-finer-threshold` (the second level's) and `--refine-memory` (MB).
 func configureRefinement(_ configuration: inout SolverConfiguration) {
     if let ratio = option("refine").flatMap({ Int($0) }) { configuration.refinement = ratio }
@@ -888,6 +889,7 @@ func configureRefinement(_ configuration: inout SolverConfiguration) {
         configuration.refinementThreshold = threshold
     }
     if let levels = option("refine-levels").flatMap({ Int($0) }) { configuration.refinementLevels = levels }
+    if let margin = option("refine-margin").flatMap({ Int($0) }) { configuration.refinementMargin = margin }
     if let threshold = option("refine-finer-threshold").flatMap({ Float($0) }) {
         configuration.refinementFinerThreshold = threshold
     }
