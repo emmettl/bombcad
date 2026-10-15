@@ -880,7 +880,8 @@ func runChamber() throws {
 
 /// Gas pressure in a closed room against UFC 3-340-02 Figure 2-152.
 /// A solver for `scenario`, with the air options given on the command line (`--afterburn`).
-/// The air's refinement from `--refine 2|4`, `--refine-levels 1|2`, `--refine-threshold`,
+/// The air's refinement from `--refine 2|4`, `--refine-levels 1|2`, `--refine-margin 1|2` (cells of
+/// margin around the shock), `--refine-threshold`,
 /// `--refine-finer-threshold` (the second level's) and `--refine-memory` (MB).
 func configureRefinement(_ configuration: inout SolverConfiguration) {
     if let ratio = option("refine").flatMap({ Int($0) }) { configuration.refinement = ratio }
@@ -888,6 +889,7 @@ func configureRefinement(_ configuration: inout SolverConfiguration) {
         configuration.refinementThreshold = threshold
     }
     if let levels = option("refine-levels").flatMap({ Int($0) }) { configuration.refinementLevels = levels }
+    if let margin = option("refine-margin").flatMap({ Int($0) }) { configuration.refinementMargin = margin }
     if let threshold = option("refine-finer-threshold").flatMap({ Float($0) }) {
         configuration.refinementFinerThreshold = threshold
     }
@@ -4810,13 +4812,17 @@ func runProfile() throws {
     var cellSize = option("dx").flatMap { Float($0) } ?? 0.5
     var end: Double
     if flag("closein") {
-        // `closeair`'s burst at Z 0.5 (1 kg 0.5 m above rigid ground).
+        // `closeair`'s burst at Z 0.5 (1 kg 0.5 m above rigid ground), in a domain `--width` m
+        // across (1.5 by default) and as high, at least 1.4 m, run until the blast has crossed it.
         if option("dx") == nil { cellSize = 0.04 }
+        let width = option("width").flatMap { Float($0) } ?? 1.5
+        let height = max(width, 1.4)
         scenario = Scenario(
-            name: "Close-in reflection", domainSize: SIMD3(1.5, 1.5, 1.4), boxes: [],
-            charge: Charge(mass: 1, position: SIMD3(0.75, 0.75, 0.5)))
+            name: "Close-in reflection", domainSize: SIMD3(width, width, height), boxes: [],
+            charge: Charge(mass: 1, position: SIMD3(width / 2, width / 2, 0.5)))
         scenario.reflectiveFaces = .ground
-        end = 0.5 / 340 + 0.004
+        let farthest = simd_length(SIMD3(width / 2, width / 2, height - 0.5))
+        end = width == 1.5 ? 0.5 / 340 + 0.004 : Double(farthest) / 340 + 0.004
     } else {
         scenario = preset(named: option("preset")).scenario
         end = scenario.structure == nil ? scenario.acousticCrossingTime : 0.05

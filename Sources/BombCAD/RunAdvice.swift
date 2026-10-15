@@ -204,6 +204,10 @@ struct AdvisorSection: View {
                         )
                         .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
+                    if let note = advice.standInNote {
+                        Text(note).font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     ForEach(advice.unmet, id: \.self) { line in
                         Label(line, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(
                             .orange
