@@ -464,6 +464,38 @@ and cutting it to a tenth where the concrete has cracked moves the peaks by at m
   softened cracked elements everywhere but left slab 4's first peak at 4.7–5.9 mm
   ([record](concrete-model.md#embedded-cracks-tried-and-not-adopted)).
 
+**Cracked concrete's stiffness at blast rates, tried** (16 October 2026; calibration).
+- **The variants:**
+  1. the concrete between cracks without the rate's gain (it cracks at the raised strength, then
+     carries tension from the static one);
+  2. that tension fading as the bars crossing the crack yield, to nothing at a plastic strain of
+     the yield strain (fib MC2010's loss of tension stiffening past yield);
+  3. bond slip, already on record: Mendonça's first peaks fall to 3.7 and 4.0 mm, and elsewhere slip
+     is too stiff ([bars that slip](#bars-that-slip-across-the-tests));
+  4. a cracked plane's shear stiffness at 0.05 of the concrete's instead of 0.25;
+  - and 1, 2 and 4 together.
+- **The cases:** 8 elements, the 100 µs window, the air as on main at `c512c95` (no afterburning by
+  default; Mendonça's air kept awake). Off, every variant is bit-identical.
+
+| Variant | Mendonça 4 / 1, first peak | Schwer 1b, peak / residual | TH6-1 / TH6-2 | Wu S6 / S7 / D6 |
+|---|---|---|---|---|
+| Today | 4.30 / 10.07 mm | 59 / 30 mm | 20.3 / 25.8 mm | 3.9 / 7.4 / 3.9 mm |
+| 1 | 4.21 / 10.18 | 59 / 31 | 21.2 / 26.3 | 4.0 / 7.6 / 4.1 |
+| 2 | 4.31 / 9.92 | 59 / 31 | 20.2 / 25.8 | 3.9 / 7.4 / 3.9 |
+| 4 | 4.28 / 10.28 | 60 / 29 | 22.5 / 28.4 | 4.0 / 7.7 / 4.0 |
+| 1, 2 and 4 | 4.35 / 10.72 | 61 / 30 | 23.2 / 28.6 | 4.2 / 8.0 / 4.2 |
+| Measured | 20.4 / collapsed | about 72 / 54 | 18.3 / 27.7 | 8.2 / 13.2 / 10.1 |
+
+**None moves the targets by more than 8%,** where they stand at a fifth to four-fifths of the
+measured values. Together they make Hrynyk's first impact, already too flexible, more so.
+- **The bars' rate law** (`--static-steel`) moves Mendonça's first peaks by 2% and 8%.
+- **So the stiffness lies elsewhere.** Neither the cracked concrete's stiffness nor its strength
+  (the diagnosis above), the hourglass control, the bars' yield or their rate, nor bond slip holds
+  Mendonça's slabs; one by one, each moves the first peak by under 10%.
+- **The guard cases were not run,** there being no candidate to guard.
+- **The options were not kept on main.** Under the [strategy's](concrete-strategy.md) rule for
+  options that move nothing, they stay on branch `claude/stiffness-study`.
+
 ## Structural response against a real test
 
 ### The test
