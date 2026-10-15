@@ -335,6 +335,12 @@ blamed an artefact of the frozen air. Checked:
 - **So group B's 0.99 is not evidence of accuracy.** The model's 20–25 mm there is the frozen air
   driving the slab onto rigid supports; the measured 20–26 mm is the test slab's first peak and its settling after
   it landed. The agreement is a coincidence.
+- **Fixed since (2026-10-15), not re-scored.** The solid outline now follows the structure while
+  the air sleeps (see [freezing the air](air-blast-model.md#freezing-the-air)). On today's main,
+  at the primary's settings, slabs 4, 5 and 7's largest downward displacement is the blast's own,
+  4.3, 3.7 and 4.1 mm at 4 ms, where the landing gave 17.6, 15.0 and 18.0 mm. Thrown up 40–50 mm,
+  they fall freely and are still bouncing on the rigid trestles at 500 ms. The blind record above
+  stands as scored at its frozen commit.
 
 **Secondary reading: the blast's first peak** (not a re-scoring). Against the meters' first
 peaks the model's blast peak is a tenth to a quarter: 3.6–4.4 mm at 4 ms against 17–38 mm at

@@ -512,6 +512,15 @@ mask, so the pressure test alone may never be met. The threshold is not lower be
 winds left behind by a blast die away slowly: a second after a 50 kg charge, some cells were
 still 0.8 kPa from ambient.
 
+The solid outline still follows the structure while the air sleeps. A body moving on is loaded by
+the frozen air beside where it now is, and a cell it leaves is filled from its neighbours, as
+when the air is awake. Until 2026-10-15 the outline froze with the air. A face that had moved
+back through it then read solid cells, so no air, on one side and frozen air on the other: in
+blind test 2 Mendonça's slabs, thrown up off their trestles, were driven down at about 11 g as
+they came back (see [validation](validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge)).
+Where nothing crosses a cell's centre the outline and the air are left exactly as they were,
+and with several bodies the frozen air takes no new coupling pages.
+
 ## Verification and validation
 
 See [Validation](validation.md). In brief: the scheme reproduces Sod's shock tube, a reflected
