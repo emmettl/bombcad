@@ -69,7 +69,7 @@ swift run -c release blastbench perimeter --study wall
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
 | Structural response  | One slab test: solid elements 113–125 mm (104–115%) on 4 to 32 elements through, rising with refinement and not converged, the same on 32 with half the step (on the earlier 50-step average of the strain rate it, and a strip of it, ran away there; 92–98% under the earlier strain-rate laws), shells 135 mm (124%), against 109 mm; the test's repeat peaked at 113 mm, a scatter of about ±2%; a 5% change in its hand-read load moves the peak 13–14%, and a source's 68 ksi yield for the bars, against the measured curve's 72, 9%. The contest's lower shot, run openly with a scaled record, reached about 80% of its peak. One beam bent to failure: peak moment 101% on 12 elements, failing at 44 mm against 42 mm, 100% on 24, holding to 60 mm, but breaking at 11 and 7 mm on 36 and 48, before the test's yield (12 October defaults; see [convergence](#convergence-on-todays-defaults)). One beam without stirrups failing in shear: 104–111% on 24 to 48 elements, 132% on 12, not converged, failing suddenly as the test did. Seven drop-weight impacts on beams: with stirrups within 12–23% under light drops and −5% to −1% under heavy ones on 16 elements (+2% to +18% and +17% to +28% on 24), struck about twice as hard as measured, the reactions up to 40% low under the heavy drops and 48% high under the light; the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived. Nineteen on beams without stirrups at rising speeds: within the 2 mm reading at 1 m/s and 15% at 3 m/s, 22% on average beyond on 16 elements (16% before the strain-rate window, the beams that broke moving by up to two thirds either way) and 53% on 24 on the earlier defaults, springing back too far, and decided by how the ends were held (clamped, stiffer than the test's static stiffness). Eighteen short beams struck to shear failure (Peterson et al., 2026): forces as measured at a shear span of one depth (the impact force set by a pad fitted to it), the deep beams too stiff; the beams with stirrups that crushed their strut in the tests hold | Unsafe side in shear: 4–11% too strong on 24 to 48 elements, 32% on 12, not converged, struck beams failing by the wrong mechanism and Peterson's struts holding where the tests crushed (low: one static test); 6 elements through 17% strong in bending. Bending of one slab either way by load: 4–15% high under the contest's load, rising towards 19% as the mesh is refined, 12–21% low (too stiff, the unsafe side) under its lower shot, not converged (moderate, on the meshes that agreed); impact either way on 16 elements but not on finer meshes, which settle 12–75% high, where the strain-rate laws, chosen among published laws on these tests, decide it (moderate on one mesh). Every structural figure here holds on the mesh it was found on ([convergence](#convergence-on-todays-defaults)) |
 | Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of the paper's text (55–60% of its Figure 9), the impulse under the charge 84–95% of Kingery–Bulmash's, for charges given as TNT equivalents; the slab left a third to a half as far down as measured, spalled only under the charge (on fine air and 12 elements through), and not holed | Unsafe side for damage: the slab bends a third to a half as far, spalls too little and is never holed (low); the load either way within 8%, good |
-| Steel in both faces | Wu et al. (2023): 2 m slabs, one layer or two, within −20% to +7% at the peak under 1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh, 40–70% (too stiff) in the six under 0.2–0.8 kg where the tests spalled; contact charges hole them at a stable step to a half and a third of the measured size (the larger holes at the default step were the step running away). Wang et al. (2022): an aluminised charge's impulse 75–82% as its stated 10 kg of TNT, 94–104% with afterburning; the slabs several times too stiff as supported | Unsafe side under the small charges: 40–70%, too stiff (low); either way under the larger, −20% to +7% (moderate, two shots); holes a half and a third of the size; low for one layer against two and spall |
+| Steel in both faces | Wu et al. (2023): 2 m slabs, one layer or two, within −20% to +7% at the peak under 1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh, 40–70% (too stiff) in the six under 0.2–0.8 kg where the tests spalled; contact charges hole them at a stable step to a half and a third of the measured size (the larger holes at the default step were the step running away). Wang et al. (2022): an aluminised charge's impulse 75–82% as its stated 10 kg of TNT, 81–86% with afterburning and hot air; the slabs several times too stiff as supported | Unsafe side under the small charges: 40–70%, too stiff (low); either way under the larger, −20% to +7% (moderate, two shots); holes a half and a third of the size; low for one layer against two and spall |
 | Walls in the open    | Alsubaei (2015), ANFO before perimeter walls: column peaks with no wall within about 10% from 9 m out (a quarter to two thirds high at 8.2 m, where the measured are low); the wall's shielding bracketed, not tested, as the wing walls' length is unknown; walls crack where seen but more widely, rock or slide on their footings in sand; reinforced blockwork top 31 mm against 28 mm as one material, running away as units and joints | Moderate for peaks in the open; low for shielding and for the walls
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof's edge is left 25 mm up against 95 mm measured, a quarter, and peaks at 48 mm against 87 mm in the paper's own model, with the confined regime's pressed interlock (15 and 38 mm without); on 25 mm elements the peak rises to 65 mm and the wall tops tear, so it has not converged | Unsafe side, too stiff: the roof's edge left a quarter as far up as measured (low); the joints' inclined cracking decides it, and the crack models disagree |
 | Fireball radiation   | Two TNT shots by one group (DREO): 100 t, whose total a 100 kg run scaled by the cube root exceeds three to five and a half times; Dial Pack, 500 t, against which the pulse is a sixth as bright at its first maximum, dark from 40 to 350 ms and two to five times too bright after 1 s, 3.9% radiated by 2 s against 2.4%; with gravity it rises but stays as hot, with or without sub-grid mixing | Too bright in all (three to five and a half times), too faint early: illustrative; afterburning keeps the fireball near the flame temperature |
@@ -2091,15 +2091,19 @@ impulse a proper equation of state for its products gives.
 **Wang's slabs.** Reflected pressure on the slab's face where the plate's gauges were, measured
 / model:
 
-| Gauge | Peak (MPa) | Arrival (ms) | Impulse (MPa ms) | With afterburning |
+| Gauge | Peak (MPa) | Arrival (ms) | Impulse (MPa ms) | Today's defaults: peak, impulse |
 |---|---|---|---|---|
-| P1, facing the charge | 32.3 / 19.2 | 0.36 / 0.42 | 3.35 / 2.51 | 3.14 |
-| P2, 0.16 m across | 26.5 / 19.3 | 0.36 / 0.42 | 3.02 / 2.49 | 3.15 |
-| P3, 0.3 m up | 23.6 / 18.2 | 0.38 / 0.44 | 2.93 / 2.21 | 2.88 |
+| P1, facing the charge | 32.3 / 19.2 | 0.36 / 0.42 | 3.35 / 2.51 | 16.6, 2.85 |
+| P2, 0.16 m across | 26.5 / 19.3 | 0.36 / 0.42 | 3.02 / 2.49 | 15.0, 2.61 |
+| P3, 0.3 m up | 23.6 / 18.2 | 0.38 / 0.44 | 2.93 / 2.21 | 13.9, 2.36 |
 
 As 10 kg of TNT the charge gives three quarters of the measured impulse, arriving a sixth late, and
-three fifths of the peak; with its products burning on (`--afterburn`) the impulse comes within
-6%, consistent with an aluminised charge worth more than its stated equivalent. The paper's
+three fifths of the peak. With afterburning and hot air, the defaults since 15 October, and
+far-field faces, it gives 81–86% of the impulse and half the peak, the domain four times as wide
+agreeing within 4%: an aluminised charge worth more than its stated equivalent. (A figure of
+94–104% with afterburning was recorded here before: it does not reproduce, and in this domain,
+2.5 m across with the charge 0.4 m from a face, copying faces trapped the burning products and
+read 2.5 times the measured impulse.) The paper's
 own ConWep curve peaks near 24 MPa. Deflection at the centre of the back, mm, measured / model:
 
 | Slab | Measured, peak / left | Edges fixed | Edges free to slide in their plane | With slip |
@@ -2964,9 +2968,11 @@ after 20 ms, at 70–80 kPa held for tens of milliseconds, where in 6.5 × 6.3 �
 (off, 2.58 in either). Chiquito's slab centre (6.8 × 6.45 × 3 m, 15 kg) read 20.5 kPa s against 4.1
 off, and Alsubaei's blockwork face under 125 kg 38.7 against 13.7, while neither structure moved
 more. The benchmarks' domains were sized for the default gas; with afterburning a scene needs its
-open faces several fireball radii away, which in Wang's case cost seven times the run. The figure
-of 94–104% for Wang with afterburning recorded above does not reproduce on today's code in either
-domain.
+open faces several fireball radii away, which in Wang's case cost seven times the run, or faces
+that let the products out: the [far-field faces](air-blast-model.md#open-faces) adopted with the
+default, with which Wang's own box gives 2.85 MPa ms, within 4% of a box four times as wide. The
+figure of 94–104% for Wang with afterburning recorded above did not reproduce in either domain;
+it now reads 81–86%.
 
 **What moves**, on/off:
 
@@ -3003,6 +3009,38 @@ result should not jump when a wall is added. Its costs are 1.3–2 times the air
 more memory, larger domains for close-in charges, and illustrative radiation 3–5 times too bright
 instead of almost none, until the gas cools. The bands derived without it (Keys, Alsubaei, the
 close-in slabs) would need deriving again. That decision is the user's.
+
+#### The defaults since 15 October
+
+Afterburning and hot air were made the default on 15 October, with [far-field open
+faces](air-blast-model.md#open-faces), which the trapped products above called for. Every
+comparison that takes its load from the air was run again on its own mesh with the 100 µs rate
+window (outputs on StudioData under `bombcad/afterburn-study/flip`); the far-field faces alone
+change the Kingery–Bulmash gauges by under 1% and the street's impulses by under 4%, with the
+same peaks:
+
+| Comparison | Before (ideal gas, copying faces) | Today's defaults |
+|---|---|---|
+| Open-air loads, 0.25 m, from 1 m/kg^(1/3) | Incident peak 76–82%, impulse 78–86%, reflected impulse 91–102% | 80–86%, 96–101%, 98–115% |
+| Rooms (UFC 2-152) | 48–114% | 98–108% |
+| Wu S5, D5, 0.2 kg at 0.25 m: peak | 2.0, 2.8 mm (measured 4.0, 4.1) | 2.3, 2.3 mm |
+| Wang: gauges' impulse | 75–82% | 81–86% |
+| Chiquito, 2 and 1.74 kg at 1 m | Peak 14, 12 mm; left 3, 3 (P1 measured 0) | 17, 15 mm; 4, 4 |
+| Chiquito, 13–15 kg at 1 and 0.5 m: left | 112–214 mm (P7, P2 measured 340, 510) | 110–196 mm |
+| Hupfauf, 20 cm slabs: far face's tip | 114–118 m/s (measured 69–84) | 63–78 m/s |
+| Hupfauf, 25 and 30 cm slabs: tip | 16–52 m/s (measured 15–56) | 22–54 m/s, a third faster under the 1 and 1.5 kg charges on SN131, SN145 and SN175 |
+| Alsubaei, the air: reflected peaks | 0.8–1.7 of measured | 3–5% higher |
+| Alsubaei, RC walls on footings: top | 204, 315 mm (tests: no significant deformation) | 228, 352 mm |
+| Alsubaei, blockwork, 25 kg: top | 37 mm (measured 28) | 48 mm; 125 kg collapses either way, as in the test |
+| Keys, free field: positive phase | 98–106% | 92–111%, peaks 86–94% |
+| Keys, debris: mean throw | 2.1 m (measured 0.2–0.6) | 1.6–1.7 m |
+
+Two faults were found and fixed on the way. The far-field ghost first let hot air's
+temperature go to NaN beside contact charges, where air drawn back hard into the rarefaction gave
+the acoustic linearisation a negative pressure (Hupfauf's craters came out 2.7 m across); its
+pressure is now held within a factor of two of the two sides'. And Keys' free-field impulse was
+summed over the whole 3 s record, which the copying faces' draining had hidden; it is now the
+positive phase's, as the test's gauges give it.
 
 ### Kinney–Graham
 

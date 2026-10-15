@@ -77,7 +77,7 @@ public struct AdvisorSetting: Sendable, Hashable, Codable {
 
     public init(
         cellSize: Float, refinement: Int = 1, levels: Int = 1, threshold: Float = 0.1,
-        afterburning: Bool = false
+        afterburning: Bool = SolverConfiguration.recommended.afterburning
     ) {
         self.cellSize = cellSize
         self.refinement = refinement
@@ -94,6 +94,7 @@ public struct AdvisorSetting: Sendable, Hashable, Codable {
         configuration.refinementThreshold = threshold
         configuration.afterburning = afterburning
         configuration.airModel = afterburning ? .thermallyPerfect : .idealGas
+        configuration.openFaces = SolverConfiguration.recommended.openFaces
         return configuration
     }
 

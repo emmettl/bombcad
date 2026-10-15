@@ -32,6 +32,21 @@ public enum RiemannSolver: UInt32, Sendable, CaseIterable {
 }
 
 public struct SolverConfiguration: Sendable, Hashable {
+    /// What runs start from since 15 October 2026 (the app's new projects, `BombCAD run`, the
+    /// benches and the validation's harnesses): afterburning and hot air, which keep the open
+    /// blast's incident and suction impulses within a few per cent and a closed room's pressure
+    /// within 8% of the references, and far-field open faces, which let the burning products
+    /// out of a domain hardly bigger than the fireball (docs/validation.md, "Afterburning by
+    /// default"). `SolverConfiguration()` stays the bare numerical core: an ideal gas, no
+    /// afterburning and faces that copy, which the exact solutions and conservation checks test.
+    public static var recommended: SolverConfiguration {
+        var configuration = SolverConfiguration()
+        configuration.afterburning = true
+        configuration.airModel = .thermallyPerfect
+        configuration.openFaces = .farField
+        return configuration
+    }
+
     /// Coarse boundary storage for multiple structures, read by `setStructures`.
     /// Automatic keeps dense storage when smaller; a single body retains its dense path.
     public var bodyCouplingLayout: BodyCouplingLayout = .automatic
@@ -64,11 +79,11 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// leaving air that is still in its initial uniform state untouched. The answer is the same
     /// either way. Read at `restart()`.
     public var skipStillAir = true
-    /// How the air's pressure follows from its energy (see `AirModel`).
+    /// How the air's pressure follows from its energy (see `AirModel`). Hot air in `recommended`.
     public var airModel: AirModel = .idealGas
     /// Burn the detonation products in the air they mix with (afterburning), releasing
     /// `afterburnEnergy` per kilogram of charge as far as the oxygen allows. Read at `restart()`;
-    /// takes effect for charges deposited after it is set.
+    /// takes effect for charges deposited after it is set. On in `recommended`.
     public var afterburning = false
     /// Energy released by burning one kilogram of TNT's detonation products in air, J/kg: its
     /// heat of combustion less its heat of detonation.
@@ -105,7 +120,7 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// products leave. On Wang's slab, whose 10 kg charge stands 0.4 m from a face, the gauges'
     /// impulse with afterburning is within 4% of a domain four times as wide, where copying
     /// gave 3.8 times it. Not with gravity, whose ambient changes with height: there the faces
-    /// copy.
+    /// copy. Far field in `recommended`.
     public var openFaces: OpenFaces = .copy
     /// Smallest radius, in cells, of the sphere a charge's energy is deposited into.
     public var minimumBalloonCells: Float = 2

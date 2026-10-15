@@ -35,6 +35,8 @@ private func standing(
     _ change: (inout StandingInputs) -> Void = { _ in }
 ) -> SceneStanding {
     var inputs = StandingInputs(scenario: scenario, cellSize: cellSize)
+    // As the app runs it, with far-field faces whether or not it burns.
+    inputs.configuration.openFaces = SolverConfiguration.recommended.openFaces
     change(&inputs)
     return SceneStanding(inputs)
 }

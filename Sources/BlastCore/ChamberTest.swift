@@ -273,8 +273,9 @@ public enum ChamberTest {
 
     public static func run(
         device: MTLDevice, cellSize: Float = 0.1, elementSize: Float = 0.1, downstand: Bool = true,
-        ties: Bool = true, elastic: Bool = false, chargeScale: Float = 1, afterburning: Bool = false,
-        afterburnEnergy: Float? = nil, airModel: AirModel = .idealGas,
+        ties: Bool = true, elastic: Bool = false, chargeScale: Float = 1,
+        afterburning: Bool = SolverConfiguration.recommended.afterburning,
+        afterburnEnergy: Float? = nil, airModel: AirModel = SolverConfiguration.recommended.airModel,
         duration: Double = 0.3, refinement: Int = 1
     ) throws -> Result {
         try run(
@@ -305,13 +306,19 @@ public enum ChamberTest {
     /// `interiorOverpressure` (Pa) at the start.
     public static func run(
         device: MTLDevice, scenario: Scenario, cellSize: Float, duration: Double,
-        interiorOverpressure: Float = 0, afterburning: Bool = false, afterburnEnergy: Float? = nil,
-        airModel: AirModel = .idealGas, refinement: Int = 1, contact: ContactMode? = nil,
+        interiorOverpressure: Float = 0, afterburning: Bool = SolverConfiguration.recommended.afterburning,
+        afterburnEnergy: Float? = nil,
+        airModel: AirModel = SolverConfiguration.recommended.airModel, refinement: Int = 1,
+        contact: ContactMode? = nil,
         progress: ((String) -> Void)? = nil, prepare: ((StructureSolver) -> Void)? = nil
     ) throws -> Result {
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
-        if afterburning || airModel != .idealGas || refinement > 1 {
+        let defaults = SolverConfiguration()
+        if afterburning != defaults.afterburning || airModel != defaults.airModel || refinement > 1
+            || afterburnEnergy != nil
+        {
             solver.configuration.afterburning = afterburning
+            solver.configuration.openFaces = SolverConfiguration.recommended.openFaces
             solver.configuration.airModel = airModel
             solver.configuration.refinement = refinement
             if let afterburnEnergy { solver.configuration.afterburnEnergy = afterburnEnergy }

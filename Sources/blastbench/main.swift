@@ -179,12 +179,20 @@ func chosenBondSlip(diameter: Float) -> BondSlip? {
 /// (`none`), or, alone or as `--bond mortar`, the joint where masonry meets concrete.
 let chosenBond = BondArgument(present: flag("bond"), value: option("bond"))
 
-/// The air model `--air thermal` or `--air dissociating` asks for, or nil for the default.
+/// Afterburning and hot air are the default since 15 October 2026: `--no-afterburn` turns
+/// afterburning off, and hot air with it unless `--air` says otherwise, for the earlier default.
+/// `--afterburn` changes nothing there, and still turns afterburning on in the studies that start
+/// from the bare core (the terrain's numerical studies).
+let burning = !flag("no-afterburn")
+
+/// The air model `--air ideal`, `--air thermal` or `--air dissociating` asks for (the ideal gas
+/// with `--no-afterburn`), or nil for the default.
 func chosenAirModel() -> AirModel? {
     switch option("air") {
+    case "ideal": .idealGas
     case "thermal": .thermallyPerfect
     case "dissociating": .dissociating
-    default: nil
+    default: burning ? nil : .idealGas
     }
 }
 
@@ -771,6 +779,20 @@ func runThroughput() throws {
         let elapsed = ContinuousClock.now - start
         let seconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18
         let stepRate = Double(steps) / seconds
+        if flag("gauges"), runWholeEvent {
+            // `--gauges`: each gauge's peak overpressure and positive impulse over the event.
+            let ambient = Double(solver.configuration.ambientPressure)
+            for (gauge, samples) in zip(scenario.gauges, solver.gaugeHistories) {
+                var impulse = 0.0
+                for (a, b) in zip(samples, samples.dropFirst()) {
+                    impulse += (b.time - a.time) * max(0.5 * Double(a.pressure + b.pressure) - ambient, 0)
+                }
+                let peak = (samples.map { Double($0.pressure) }.max() ?? ambient) - ambient
+                print(
+                    "  gauge \(pad(gauge.name, 16)) \(format(peak / 1000, 1)) kPa, \(format(impulse, 0)) Pa s"
+                )
+            }
+        }
 
         var totalSteps = Double(steps)
         var wallTime = seconds
@@ -852,7 +874,7 @@ func runChamber() throws {
     }
     let result = try ChamberTest.run(
         device: device, scenario: scenario, cellSize: cellSize, duration: duration,
-        afterburning: flag("afterburn"),
+        afterburning: burning,
         afterburnEnergy: option("afterburn-energy").flatMap { Float($0) }.map { $0 * 1e6 },
         airModel: chosenAirModel() ?? .idealGas,
         refinement: option("refine").flatMap { Int($0) } ?? 1,
@@ -957,33 +979,23 @@ func chosenBurnLimit() -> AfterburnLimit? {
 }
 
 func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver {
-    var configuration = SolverConfiguration()
+    var configuration = SolverConfiguration.recommended
     configureRefinement(&configuration)
     configuration.radiativeCooling = try chosenCooling()
     configuration.gravity = chosenGravity()
     configuration.mixing = chosenMixing()
     configuration.afterburnLimit = chosenBurnLimit()
-    let solver = try BlastSolver(
+    configuration.afterburning = burning
+    if let air = chosenAirModel() { configuration.airModel = air }
+    if flag("mapped") { configuration.mappedCharge = true }
+    // `--copy-faces`: open faces that copy the air inside outward, as before 15 October 2026.
+    if flag("copy-faces") { configuration.openFaces = .copy }
+    if let time = option("burn-time").flatMap({ Float($0) }) { configuration.afterburnTime = time / 1000 }
+    if let energy = option("afterburn-energy").flatMap({ Float($0) }) {
+        configuration.afterburnEnergy = energy * 1e6
+    }
+    return try BlastSolver(
         device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
-    if let air = chosenAirModel() {
-        solver.configuration.airModel = air
-        try solver.load(scenario)
-    }
-    if flag("mapped") {
-        solver.configuration.mappedCharge = true
-        try solver.load(scenario)
-    }
-    if flag("afterburn") {
-        solver.configuration.afterburning = true
-        if let time = option("burn-time").flatMap({ Float($0) }) {
-            solver.configuration.afterburnTime = time / 1000
-        }
-        if let energy = option("afterburn-energy").flatMap({ Float($0) }) {
-            solver.configuration.afterburnEnergy = energy * 1e6
-        }
-        try solver.load(scenario)
-    }
-    return solver
 }
 
 func runGasPressure() throws {
@@ -991,7 +1003,7 @@ func runGasPressure() throws {
     let settle = option("time").flatMap { Double($0) } ?? 0.08
     print(
         "Charge in the middle of a closed \(Int(side)) m cubic room, after the shocks have settled (\(format(settle * 1000, 0)) ms)"
-            + (flag("afterburn") ? ", with afterburning" : "")
+            + (burning ? ", with afterburning" : "")
             + (chosenAirModel().map { ", \($0) air" } ?? ""))
     print(
         pad("W/V kg/m3", 11) + pad("charge", 10) + pad("model", 12) + pad("(g-1)E/V", 12)
@@ -1059,7 +1071,7 @@ func runValidation() throws {
             solver.configuration.minimumBalloonCells = cells
         }
         if flag("hll") { solver.configuration.riemannSolver = .hll }
-        if flag("afterburn") { solver.configuration.afterburning = true }
+        solver.configuration.afterburning = burning
         if let air = chosenAirModel() { solver.configuration.airModel = air }
         if flag("mapped") { solver.configuration.mappedCharge = true }
         if let time = option("burn-time").flatMap({ Float($0) }) {
@@ -2243,7 +2255,8 @@ func runContact() throws {
                     scenario.structure = structure
                 }
             },
-            afterburning: flag("afterburn"),
+            afterburning: burning, airModel: option("air") == nil ? nil : chosenAirModel(),
+            openFaces: flag("copy-faces") ? .copy : .farField,
             progress: flag("progress")
                 ? { line in
                     print("  " + line)
@@ -2522,7 +2535,7 @@ func runTwoFace() throws {
                 device: device, test: test, cellSize: cellSize,
                 refinement: option("refine").flatMap { Int($0) } ?? 2, elementSize: elementSize,
                 duration: duration,
-                heldLengthwise: flag("held"), afterburning: flag("afterburn"), adjust: adjust,
+                heldLengthwise: flag("held"), afterburning: burning, adjust: adjust,
                 prepare: { solver in
                     prepareTrace(solver)
                     lastStructure = solver
@@ -2583,7 +2596,7 @@ func runTwoFace() throws {
                 elementSize: elementSize, duration: duration,
                 edges: option("edges").flatMap { TwoFaceSlabTests.WangEdges(rawValue: $0) }
                     ?? (flag("hinged") ? .hinged : .fixed),
-                afterburning: flag("afterburn"),
+                afterburning: burning,
                 adjust: { scenario in
                     adjust(&scenario)
                     if let bond = chosenBondSlip(diameter: test.bar) { scenario.structure?.bondSlip = bond }
@@ -2652,7 +2665,7 @@ func runCloseIn() throws {
         }
         let result = try CloseInSlabTest.run(
             device: device, test: test, cellSize: cellSize, elementSize: elementSize, duration: duration,
-            refinement: refinement, mappedCharge: !flag("no-map"), afterburning: flag("afterburn"),
+            refinement: refinement, mappedCharge: !flag("no-map"), afterburning: burning,
             heldLengthwise: !flag("sliding"), stepsPerSample: option("trace") != nil ? 1 : 16,
             adjust: { scenario in
                 if flag("no-rate") { scenario.structure?.material.rateDependent = false }
@@ -4054,7 +4067,7 @@ func runDialPack() throws {
         name: "Dial Pack", domainSize: SIMD3(side, side, side / 2), boxes: [],
         charge: Charge(mass: mass, position: SIMD3(side / 2, side / 2, radius)))
     scenario.gauges = []
-    var configuration = SolverConfiguration()
+    var configuration = SolverConfiguration.recommended
     configureRefinement(&configuration)
     configuration.afterburning = true
     configuration.airModel = .thermallyPerfect

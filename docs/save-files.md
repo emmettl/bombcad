@@ -186,8 +186,19 @@ new projects capture those choices as their own numerical settings.
 
 The Settings window also selects the starting playback speed for new windows. Playback speed
 is a presentation preference rather than a saved simulation input, and can still be changed in
-each window's Run tab. Restore Defaults returns the app defaults to medium grid, both numerical
-options off, and 100× slow motion.
+each window's Run tab. Restore Defaults returns the app defaults to medium grid, afterburning and
+hot air on, shock refinement off, and 100× slow motion.
+
+**Afterburning and hot air by default (15 October 2026).** New projects start with
+`detailedCharge` on, and the solver's open faces are far-field rather than copying for every
+project (see [Afterburning by default](validation.md#afterburning-by-default-what-it-would-cost-and-move)).
+A saved project keeps the `detailedCharge` it was saved with, so one saved off opens off; run
+again, it gives slightly different numbers where the domain's open faces matter, since they now
+let the air out at ambient pressure ([open faces](air-blast-model.md#open-faces)): with both
+options off, the street's peaks come out the same and its gauges' impulses within 4%, and the
+open-ground gauges against Kingery–Bulmash within 1%; late in a run, in a small domain, the air
+settles near ambient instead of draining about 1 kPa below it. The preference moved to a new key, `newProject.afterburningAndHotAir`,
+so a choice made under the old one is not carried over.
 
 ## Remaining work
 

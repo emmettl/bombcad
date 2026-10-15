@@ -82,7 +82,7 @@ private func runPerimeterAir(device: MTLDevice) throws {
     func run(_ layout: T.Layout, _ anfo: Float, wall: Bool) throws -> T.AirResult {
         let r = try T.runAir(
             device: device, layout: layout, anfo: anfo, wall: wall, cellSize: dx, refinement: refine,
-            columnWidth: columns, wallLength: wing, afterburning: flag("afterburn"),
+            columnWidth: columns, wallLength: wing, afterburning: burning,
             progress: flag("progress") ? { print("    " + $0) } : nil)
         print(
             "  \(format(Double(anfo), 2)) kg \(wall ? "with" : "without") the wall: "
@@ -292,7 +292,7 @@ private func runPerimeterWall(device: MTLDevice) throws {
                         ?? (wall == .halfScale ? 0.15 : anfo > 50 && wall == .masonry ? 1.0 : 0.3),
                     bars: bars, joints: !flag("no-joints"), footing: footing,
                     clearance: option("clearance").flatMap { Float($0) } ?? 3,
-                    afterburning: flag("afterburn"),
+                    afterburning: burning,
                     progress: flag("progress") ? { print("    " + $0) } : nil)
                 print(
                     "  \(format(Double(anfo), 0)) kg, \(base.rawValue): top \(format(Double(r.peakTop) * 1000, 1)) mm "

@@ -268,6 +268,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case structureFixedInAir
     case stationaryWalls
     case closedBoundaries
+    case copiedOpenFaces
     case terrain
     case terrainStaircase
     case deflagration
@@ -340,6 +341,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .structureFixedInAir: return !structures.isEmpty && !config.twoWayCoupling
         case .stationaryWalls: return !structures.isEmpty && !config.movingWalls
         case .closedBoundaries: return inputs.scenario.reflectiveFaces != .ground
+        case .copiedOpenFaces: return config.openFaces == .copy && config.gravity == nil
         case .terrain: return inputs.scenario.terrain.map { !$0.isFlat } ?? false
         case .terrainStaircase:
             return (inputs.scenario.terrain.map { !$0.isFlat } ?? false)
@@ -521,6 +523,15 @@ public enum StandingTable {
                 title: "Reflecting domain faces", affects: air, limit: nil,
                 note: "Faces of the domain other than the ground reflect, as walls of a closed room.",
                 document: "validation.md#gas-pressure-in-a-closed-room")
+        case .copiedOpenFaces:
+            return Entry(
+                title: "Open faces that copy", affects: air, limit: nil,
+                note: "The open faces copy the air inside outward instead of standing still air beyond: "
+                    + "a domain hardly bigger than the fireball traps its burning products (Wang's gauges "
+                    + "3.8 times the impulse of a domain four times as wide), and one losing air drains below "
+                    + "ambient. Far-field faces replaced them for every run on 15 October; the bands were derived "
+                    + "with these.",
+                document: "validation.md#afterburning-by-default-what-it-would-cost-and-move")
         case .terrain:
             return Entry(
                 title: "Terrain",
@@ -872,7 +883,7 @@ public enum StandingTable {
         "SolverConfiguration.airSleepThreshold": .numerical,
         "SolverConfiguration.airSleepCrossings": .numerical,
         "SolverConfiguration.debrisReach": .numerical,
-        "SolverConfiguration.openFaces": .numerical,
+        "SolverConfiguration.openFaces": .option([.copiedOpenFaces]),
         "SolverConfiguration.minimumBalloonCells": .numerical,
         "SolverConfiguration.refinement": .option([.shockRefinement, .twoLevelRefinement]),
         "SolverConfiguration.refinementThreshold": .numerical,

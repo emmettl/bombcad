@@ -128,14 +128,12 @@ private func runLandscapeBurst(device: MTLDevice, out: URL) throws {
     let duration =
         option("time").flatMap(Double.init)
         ?? (last.scaledArrival + 1.5 * (KingeryBulmash.scaledDuration(at: zMax) ?? 0.01)) * scale
-    var configuration = SolverConfiguration()
+    var configuration = SolverConfiguration.recommended
     configureRefinement(&configuration)
     configuration.gravity = chosenGravity()
-    if flag("afterburn") {
-        // As the app's "Afterburning and hot air".
-        configuration.afterburning = true
-        configuration.airModel = .thermallyPerfect
-    }
+    // As the app's "Afterburning and hot air", on unless `--no-afterburn`.
+    configuration.afterburning = burning
+    if let air = chosenAirModel() { configuration.airModel = air }
     print(
         String(
             format:

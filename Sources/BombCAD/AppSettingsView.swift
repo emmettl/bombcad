@@ -2,7 +2,7 @@ import SwiftUI
 
 struct AppSettingsView: View {
     @AppStorage(AppPreferences.Key.resolution) private var resolution = Resolution.medium.rawValue
-    @AppStorage(AppPreferences.Key.detailedCharge) private var detailedCharge = false
+    @AppStorage(AppPreferences.Key.detailedCharge) private var detailedCharge = true
     @AppStorage(AppPreferences.Key.sharpShocks) private var sharpShocks = false
     @AppStorage(AppPreferences.Key.playbackSpeed) private var playbackSpeed = PlaybackSpeed.x100.rawValue
     @AppStorage(AppPreferences.Key.sweepHosts) private var sweepHosts = ""
@@ -104,7 +104,7 @@ struct AppSettingsView: View {
                 Spacer()
                 Button("Restore Defaults") {
                     resolution = Resolution.medium.rawValue
-                    detailedCharge = false
+                    detailedCharge = true
                     sharpShocks = false
                     playbackSpeed = PlaybackSpeed.x100.rawValue
                     sweepUsesRemote = false

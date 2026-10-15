@@ -36,10 +36,8 @@ private func timedCases() -> [TimedCase] {
         configuration.refinementLevels = levels
         configuration.refinementThreshold = threshold
         configuration.refinementMemory = memory
-        if burning {
-            configuration.afterburning = true
-            configuration.airModel = .thermallyPerfect
-        }
+        configuration.afterburning = burning
+        configuration.airModel = burning ? .thermallyPerfect : .idealGas
         return configuration
     }
     let street = ScenarioPreset.streetCanyon.scenario

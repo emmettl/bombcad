@@ -93,7 +93,9 @@ public enum MasonryDebrisTests {
         public var firstBin: Float
         public var masses: [Float]
         /// The model's side-on peak and positive impulse on the ground at the wall's radius, 3 m
-        /// to one side of it.
+        /// to one side of it: the impulse of the positive phase, from the arrival to the first
+        /// return to ambient, as the test's gauges give it (summed over seconds of record, a
+        /// residual of tens of pascals in the settled air would add hundreds of Pa s).
         public var gaugePeak: Float = 0
         public var gaugeImpulse: Float = 0
         /// When everything had come to rest (the fastest node under `restSpeed`), or the time
@@ -146,7 +148,7 @@ public enum MasonryDebrisTests {
         device: MTLDevice, trial: Trial, cellSize: Float = 0.1, elementSize: Float = 0.0375,
         duration: Double = 3, minimum: Double = 0.6, restSpeed: Float = 0.05, airSleepThreshold: Float = 5e-4,
         clearance: Float = 8, height: Float = 10, groundFriction: Float = 0.6, base: Anchorage? = mortarBed,
-        afterburning: Bool = false, progress: ((String) -> Void)? = nil
+        afterburning: Bool = SolverConfiguration.recommended.afterburning, progress: ((String) -> Void)? = nil
     ) throws -> Result {
         let started = ContinuousClock.now
         // The air's open faces must be well clear: with 1.5 m behind the charge, 3.5 m either
@@ -177,6 +179,9 @@ public enum MasonryDebrisTests {
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
         solver.configuration.mappedCharge = !afterburning
         solver.configuration.afterburning = afterburning
+        solver.configuration.openFaces = SolverConfiguration.recommended.openFaces
+        // As the app's "Afterburning and hot air": both or neither.
+        solver.configuration.airModel = afterburning ? .thermallyPerfect : .idealGas
         // A free-standing brick wall resists only about 0.1 kPa of overturning pressure, so the
         // air is kept going until it is within 50 Pa of ambient everywhere (not the default
         // 2 kPa, or five crossings of the domain): frozen any sooner, what is left of the blast
@@ -264,8 +269,15 @@ public enum MasonryDebrisTests {
         let ambient = scenario.atmosphere.pressure
         let samples = solver.gaugeHistories.first ?? []
         result.gaugePeak = (samples.map(\.pressure).max() ?? ambient) - ambient
-        result.gaugeImpulse = zip(samples, samples.dropFirst()).reduce(0) {
-            $0 + Float($1.1.time - $1.0.time) * max(0.5 * ($1.0.pressure + $1.1.pressure) - ambient, 0)
+        var arrived = false
+        for (a, b) in zip(samples, samples.dropFirst()) {
+            let over = 0.5 * (a.pressure + b.pressure) - ambient
+            if over > 0.01 * result.gaugePeak {
+                arrived = true
+            } else if arrived {
+                break
+            }
+            result.gaugeImpulse += Float(b.time - a.time) * max(over, 0)
         }
         result.summary = structure.summary()
         let elapsed = ContinuousClock.now - started

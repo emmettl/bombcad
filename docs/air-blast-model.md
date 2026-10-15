@@ -58,8 +58,31 @@ the app paints on the ground and on rigid blocks.
 - The ground can have a shape, a heightfield [terrain](terrain.md): a cell below its surface is
   solid, on the coarse grid and every refinement level, as for a block. The floor beneath it stays
   a reflecting face.
-- The ground (z = 0) is a reflecting face. The other five faces of the domain are open: the
-  stencil copies the last interior cell (zero-gradient extrapolation).
+- The ground (z = 0) is a reflecting face. The other five faces of the domain are open; see
+  [Open faces](#open-faces).
+
+### Open faces
+
+Since 15 October 2026 the open faces stand still air beyond them (`OpenFaces.farField`, in
+`SolverConfiguration.recommended`, which the app, `BombCAD run`, the benches and the validation's
+harnesses start from). Across a face the waves are taken as acoustic: the one leaving, p + ρc u,
+comes from the cell inside, the one entering from still air, and the ghost's density follows the
+isentrope of the side the flow comes from. A wave passing out is let through, and gas at ambient
+pressure, however hot, stays at rest; air drawn in supersonically is still air itself, and the
+ghost's pressure is held within a factor of two of the two sides', where the linearisation would
+otherwise give a negative pressure (as it did beside contact charges, air rushing back into their
+rarefaction, which hot air turned into NaNs). Under gravity, whose ambient changes with height,
+the faces copy.
+
+The earlier faces copied the last interior cell outward (zero-gradient, `OpenFaces.copy`, still
+the bare `SolverConfiguration()`). That lets a shock out but holds whatever pressure the air near
+the face settles to: a domain hardly bigger than a fireball trapped its burning products (Wang's
+slab, its 10 kg charge 0.4 m from a face, read 3.8 times the impulse of a domain four times as
+wide; far-field faces read within 4% of it, and doubling and quadrupling the box moved them under
+3%), and a domain losing air through them drained below ambient (about 1 kPa below in an 8 m box
+after a 1 kg burst; far-field faces leave it within tens of pascals). On the validation's
+Kingery–Bulmash gauges the two agree to the per cent in every peak, impulse and arrival; on the
+street they give the same peaks and impulses within 4%.
 
 ## The charge
 
@@ -82,7 +105,9 @@ The charge is a "bursting balloon": a sphere of hot, dense gas at rest.
 
 TNT is short of oxygen: its detonation products are mostly carbon monoxide, hydrogen and
 carbon, which burn when they mix with air, releasing about twice the energy of the detonation
-again. With `SolverConfiguration.afterburning` on:
+again. With `SolverConfiguration.afterburning` on (as it is, with hot air, for every run since
+15 October 2026: `SolverConfiguration.recommended`; the app's "Afterburning and hot air" and
+`blastbench --no-afterburn` turn both off):
 
 - The air carries two more densities, of unburnt products ("fuel") and of oxygen (23.2% of
   air by mass). They move with the gas, each leaving a cell at that cell's mass fraction
@@ -538,18 +563,20 @@ UFC 3-340-02, lowest for light charges.
 
 1. **The source model is crude.** An ideal-gas balloon with γ = 1.4 ignores the detonation
    wave and the real equation of state of the detonation products. It is poor within a few
-   charge diameters, or a few cells, of the charge. By default (no afterburning, an ideal gas)
-   it under-predicts incident impulse by 13% to 22% at all ranges tested, and a closed room's
-   gas pressure is half the design value for light charges. With afterburning and hot air the
-   incident impulse is within 6% beyond 1 m/kg^(1/3) and rooms within 8%, but the burning time
-   is fitted, mixing is numerical, the products are treated as air, and dissociation is an
-   option that changes little.
+   charge diameters, or a few cells, of the charge. With afterburning and hot air, the defaults
+   since 15 October 2026, the incident impulse is within 4% beyond 1 m/kg^(1/3) and rooms within
+   8%, but the burning time is fitted, mixing is numerical, the products are treated as air, and
+   dissociation is an option that changes little. Without them (an ideal gas, no afterburning,
+   still selectable for speed) the incident impulse is 13% to 22% low at all ranges tested, and a
+   closed room's gas pressure is half the design value for light charges.
 2. **Shocks are smeared over two or three cells**, so peak overpressure is under-predicted near
    the charge, where the wave is thin compared with a cell. Impulse is much less affected.
    Refinement (above) gives the peaks of a grid twice or four times as fine, in one level, or four
    times as fine in two; there are no more than two levels.
-3. **Open boundaries reflect a little.** They copy the state inside outward (zero-gradient,
-   or "transmissive"), which is not exactly non-reflecting. Measured: for 50 kg at the surface,
+3. **Open boundaries reflect a little.** The far-field faces (see [Open faces](#open-faces))
+   treat each face's waves as acoustic and head-on, so neither strong nor oblique waves leave
+   exactly; the copying faces before them (zero-gradient, or "transmissive") were not exactly
+   non-reflecting either, and the figures that follow are theirs. Measured: for 50 kg at the surface,
    a gauge 13 m away and 5 m inside a truncated boundary differs from the same gauge in a long
    domain by at most 1.2 kPa against a 61.5 kPa peak (2%), all of it in the negative phase,
    and its positive impulse by 1.3%. Keep gauges and structures a few metres inside open faces.
@@ -563,7 +590,9 @@ UFC 3-340-02, lowest for light charges.
    was tried and was much worse: in a split scheme it treats each face as if waves met it head
    on, and a blast running along a side or top boundary, with full overpressure and almost no
    flow through it, was turned into a strong spurious outflow that doubled the impulse at the
-   gauge.
+   gauge; it also set hot gas at ambient pressure flowing out at a kilometre a second, the two
+   sides' ratios of specific heats differing. The acoustic form adopted on 15 October moves the
+   street's impulses by under 4% and the Kingery–Bulmash gauges' by under 1%.
 4. **One gas.** Detonation products are treated as air: by default as an ideal gas of γ = 1.4,
    or as thermally perfect air, so the fireball's composition, and its temperature, are not
    realistic. It loses the heat it radiates only with radiative cooling on, and then only above

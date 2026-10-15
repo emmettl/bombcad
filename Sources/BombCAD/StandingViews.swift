@@ -13,6 +13,8 @@ extension ProjectRunSettings {
     ) {
         configuration.afterburning = detailedCharge
         configuration.airModel = detailedCharge ? .thermallyPerfect : .idealGas
+        // Far-field faces either way since 15 October 2026 (see `SolverConfiguration.recommended`).
+        configuration.openFaces = SolverConfiguration.recommended.openFaces
         configuration.refinement = sharpShocks ? 2 : 1
         configuration.refinementLevels = sharpShocks ? shockLevels : 1
         configuration.refinementThreshold = shockThreshold

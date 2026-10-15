@@ -4,7 +4,10 @@ import Foundation
 struct AppPreferences: Equatable, Sendable {
     enum Key {
         static let resolution = "newProject.resolution"
-        static let detailedCharge = "newProject.detailedCharge"
+        /// Afterburning and hot air for new projects. On by default since 15 October 2026, under a
+        /// key of its own: the earlier key held the old default, written back by every save, so
+        /// it cannot say whether anyone chose to leave it off.
+        static let detailedCharge = "newProject.afterburningAndHotAir"
         static let sharpShocks = "newProject.sharpShocks"
         static let playbackSpeed = "playback.defaultSpeed"
         /// The other Macs to share sweeps with, one SSH host per line.
@@ -15,7 +18,7 @@ struct AppPreferences: Equatable, Sendable {
     }
 
     var resolution: Resolution = .medium
-    var detailedCharge = false
+    var detailedCharge = true
     var sharpShocks = false
     var playbackSpeed: PlaybackSpeed = .x100
     /// Other Macs to share sweeps with, as SSH host names or aliases, and whether to use them.
@@ -54,7 +57,7 @@ struct AppPreferences: Equatable, Sendable {
         if let value = store.string(forKey: Key.resolution), let resolution = Resolution(rawValue: value) {
             preferences.resolution = resolution
         }
-        preferences.detailedCharge = store.object(forKey: Key.detailedCharge) as? Bool ?? false
+        preferences.detailedCharge = store.object(forKey: Key.detailedCharge) as? Bool ?? true
         preferences.sharpShocks = store.object(forKey: Key.sharpShocks) as? Bool ?? false
         if let value = store.object(forKey: Key.playbackSpeed) as? NSNumber,
             let speed = PlaybackSpeed(rawValue: value.doubleValue)

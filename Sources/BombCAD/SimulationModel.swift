@@ -141,8 +141,9 @@ struct SimulationSettings: Equatable {
     var scenario = ScenarioPreset.streetCanyon.scenario
     var resolution = Resolution.medium
     /// Burn the charge's products in the air, and let hot air store energy in molecular
-    /// vibration: closer to tests, about twice as slow.
-    var detailedCharge = false
+    /// vibration: closer to tests, 1.3 to 2 times as slow. On by default since 15 October 2026;
+    /// a saved project keeps its own.
+    var detailedCharge = true
     /// Refine the air twice over where the shock is, so that peak pressures come out as on a grid
     /// twice as fine.
     var sharpShocks = false
@@ -2171,10 +2172,10 @@ final class SimulationModel {
                 let created = try BlastSolver(
                     device: device, commandQueue: commandQueue, scenario: scenario,
                     cellSize: settings.resolution.cellSize)
-                if settings.detailedCharge || settings.sharpShocks {
-                    configureAir(created)
-                    try created.load(scenario)
-                }
+                // Always: even with both options off the air takes the far-field faces (and gravity)
+                // from the settings, not the bare core's.
+                configureAir(created)
+                try created.load(scenario)
                 solver = created
             }
             if let solver, !scenario.envelopeObjects.isEmpty {

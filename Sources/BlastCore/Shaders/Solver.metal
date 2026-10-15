@@ -452,8 +452,9 @@ static inline bool farFieldFaces(constant SolverUniforms &u) { return (u.boundar
 // acoustic: the one leaving, p + ρc u, comes from inside, and the one entering is still air's,
 // so a wave passing out is let through, and gas at ambient pressure, however hot, stays at rest
 // (Riemann invariants would not keep it so, the two sides' ratios of specific heats differing).
-// Leaving supersonically the ghost is the inside state; otherwise the density follows the
-// isentrope of the side the flow comes from, and the speeds along the face come from that side.
+// Leaving supersonically the ghost is the inside state, and drawn in supersonically still air;
+// otherwise the density follows the isentrope of the side the flow comes from, and the speeds
+// along the face come from that side.
 static inline Prim farFieldGhost(Prim w, float side, constant SolverUniforms &u) {
     float un = side * w.v.x;
     float c = sqrt(w.g * w.p / w.rho);
@@ -465,10 +466,16 @@ static inline Prim farFieldGhost(Prim w, float side, constant SolverUniforms &u)
     float2 gas = gasState(a.rho, u.stillEnergy - 0.5f * a.rho * dot(still, still), u.airModel, u.gamma);
     a.p = gas.x;
     a.g = gas.y;
+    // Drawn in supersonically, still air itself.
+    if (un <= -c) { return a; }
     float impedance = w.rho * c;
     float leaving = w.p + impedance * un;
     float entering = a.p - impedance * side * a.v.x;
-    float p = max(0.5f * (leaving + entering), u.pressureFloor);
+    // The acoustic waves are a linearisation: where the two sides differ several times over (air
+    // drawn back hard into a contact charge's rarefaction would give a negative pressure) the
+    // ghost's pressure is held within a factor of two of theirs, which keeps its density, and
+    // hot air's temperature worked out from it, finite.
+    float p = clamp(0.5f * (leaving + entering), 0.5f * min(w.p, a.p), 2.0f * max(w.p, a.p));
     float speed = (leaving - entering) / (2.0f * impedance);
     Prim b = speed > 0.0f ? w : a;
     b.rho *= powr(p / b.p, 1.0f / b.g);

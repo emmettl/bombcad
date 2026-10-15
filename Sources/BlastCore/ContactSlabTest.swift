@@ -180,7 +180,9 @@ public enum ContactSlabTest {
     public static func run(
         device: MTLDevice, test: Test, cellSize: Float = 0.02, elementSize: Float? = nil, refinement: Int = 2,
         levels: Int = 2, duration: Double = 0.003, stepDivisor: Float = 4,
-        adjust: (inout Scenario) -> Void = { _ in }, afterburning: Bool = false,
+        adjust: (inout Scenario) -> Void = { _ in },
+        afterburning: Bool = SolverConfiguration.recommended.afterburning,
+        airModel: AirModel? = nil, openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
         progress: ((String) -> Void)? = nil, inspect: ((StructureSolver, Double) -> Void)? = nil
     ) throws -> Result {
         var scenario = scenario(test, elementSize: elementSize)
@@ -189,6 +191,9 @@ public enum ContactSlabTest {
         solver.configuration.refinement = refinement
         solver.configuration.refinementLevels = refinement > 1 ? levels : 1
         solver.configuration.afterburning = afterburning
+        solver.configuration.openFaces = openFaces
+        // As the app's "Afterburning and hot air": both or neither.
+        solver.configuration.airModel = airModel ?? (afterburning ? .thermallyPerfect : .idealGas)
         try solver.load(scenario)
         guard let structure = solver.structure else { throw BlastError.allocationFailed("structure") }
         // The structure's step is set by its elastic wave speed; compacted concrete is several

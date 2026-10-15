@@ -67,7 +67,9 @@ func runBuildings() throws {
         for object in scenario.structuralObjects where !kept.contains(object.name) {
             try scenario.removeObject(id: object.id)
         }
-        var configuration = SolverConfiguration()
+        var configuration = SolverConfiguration.recommended
+        configuration.afterburning = burning
+        if let air = chosenAirModel() { configuration.airModel = air }
         configuration.airSleepThreshold = 0
         configuration.airSleepCrossings = 0
         configuration.interBodyContact = contact

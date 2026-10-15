@@ -288,6 +288,9 @@ public enum TwoFaceSlabTests {
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
         solver.configuration.mappedCharge = !afterburning
         solver.configuration.afterburning = afterburning
+        solver.configuration.openFaces = SolverConfiguration.recommended.openFaces
+        // As the app's "Afterburning and hot air": both or neither.
+        solver.configuration.airModel = afterburning ? .thermallyPerfect : .idealGas
         solver.configuration.refinement = refinement
         try solver.load(scenario)
         guard let structure = solver.structure else { throw BlastError.allocationFailed("structure") }
@@ -408,7 +411,8 @@ public enum TwoFaceSlabTests {
     public static func run(
         device: MTLDevice, test: WuTest, cellSize: Float = 0.025, refinement: Int = 2,
         elementSize: Float = 0.0125,
-        duration: Double = 0.1, heldLengthwise: Bool = false, afterburning: Bool = false,
+        duration: Double = 0.1, heldLengthwise: Bool = false,
+        afterburning: Bool = SolverConfiguration.recommended.afterburning,
         adjust: (inout Scenario) -> Void = { _ in },
         prepare: ((StructureSolver) -> Void)? = nil, progress: ((String) -> Void)? = nil,
         inspect: ((StructureSolver, Double) -> Void)? = nil
@@ -469,7 +473,7 @@ public enum TwoFaceSlabTests {
     public static func run(
         device: MTLDevice, test: WangTest, cellSize: Float = 0.025, refinement: Int = 1,
         elementSize: Float = 0.0125, duration: Double = 0.1, edges: WangEdges = .fixed,
-        afterburning: Bool = false,
+        afterburning: Bool = SolverConfiguration.recommended.afterburning,
         adjust: (inout Scenario) -> Void = { _ in },
         prepare: ((StructureSolver) -> Void)? = nil, progress: ((String) -> Void)? = nil,
         inspect: ((StructureSolver, Double) -> Void)? = nil

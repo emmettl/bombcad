@@ -122,7 +122,9 @@ func profileRun(
         return Gauge(
             "x \(x)", at: SIMD3(x, 0.5 * dx, max(terrain?.height(at: SIMD2(x, 0)) ?? 0, top) + 0.5 * dx))
     }
-    var configuration = SolverConfiguration()
+    var configuration = SolverConfiguration.recommended
+    configuration.afterburning = burning
+    if let air = chosenAirModel() { configuration.airModel = air }
     configureRefinement(&configuration)
     configureTerrainAir(&configuration)
     configuration.gravity = chosenGravity()
