@@ -1,8 +1,9 @@
 # ContinuumKit adoption
 
-BombCAD pins [ContinuumKit `0.1.0-alpha.21`](https://github.com/emmettl/ContinuumKit/releases/tag/0.1.0-alpha.21)
-and commits the resolved Git revision (`4d32f58`). Since alpha.19 the pressure-gradient
-fit (`FiniteVolumePressureFit`) solves its least squares with the shared `PivotedQR`. Source picking and fragment segments use the
+BombCAD pins [ContinuumKit `0.1.0-alpha.25`](https://github.com/emmettl/ContinuumKit/releases/tag/0.1.0-alpha.25)
+and commits the resolved Git revision (`c3f5d08`). Since alpha.19 the pressure-gradient
+fit (`FiniteVolumePressureFit`) solves its least squares with the shared `PivotedQR`;
+since alpha.25 contact's table and search are the shared `ContactSearchMetal`. Source picking and fragment segments use the
 shared closed-box query in `SceneModel`; application ownership and mechanical
 coupling remain in BombCAD.
 
@@ -159,6 +160,31 @@ freezes the current pre-adoption application and retains all affected native
 Euler/staged/tube/group/moving-gas/piston/wall evidence. Earlier releases and
 historical fixture identities remain verifiable.
 
+## Contact search adoption — 15 October 2026
+
+Structure and shell contact now use ContinuumKit's `ContactSearchMetal`
+([alpha.25](https://github.com/emmettl/ContinuumKit/releases/tag/0.1.0-alpha.25), extracted from
+BombCAD at `659091b`; see [ContinuumKit#91](https://github.com/emmettl/ContinuumKit/pull/91)).
+
+`ShaderLibrary` compiles `MetalContactSearch.functionSource()` ahead of BombCAD's shaders, and
+BombCAD's contact code calls the shared functions:
+
+- `contactCell` and `contactBucket`, and their shell twins, call `cksCell` and `cksEntry`;
+- the clearing pass calls `cksClearEntry`, and the insertion chain `cksInsert`;
+- the listing test calls `cksListed`, and the entries a search visits are chosen by `cksSearches`.
+
+Rubble and contact between bodies reach the table through the same wrappers. The pair forces,
+lattice-neighbour exclusion, buried nodes, the movement thresholds, the stamp, the table's sizing
+and its buffers stay in BombCAD, so the order of every sum is unchanged.
+
+Built from the same tree with and without the shared functions:
+
+- all seven `blastbench digest` cases are bit-identical, including the walls that fail (20
+  elements each, solid and shell);
+- so are the node hashes of `blastbench contact-profile` over 1,500 steps for the solid
+  building, the shell building, the solid building with its front wall breaking up (4,625
+  elements broken), and the terraced houses in contact.
+
 ## Overlap with Edgerton and candidates for ContinuumKit — 14 October 2026
 
 A read-only audit of three repositories:
@@ -250,7 +276,7 @@ The **ContinuumKit** column gives its status: released, merged but unreleased, a
    - The candidate: BombCAD's wrapped hash table with ordered slots and moved marks, with Edgerton as the second consumer.
    - Cost: days to the ContinuumKit standard (contract, independent oracle, two-host release, parity in both applications).
    - Who: a Claude session writes the contract and the BombCAD side; Codex reviews and owns the Edgerton adoption.
-   - Proposed on 14 October as [ContinuumKit#91](https://github.com/emmettl/ContinuumKit/pull/91) (`ContactSearch`, `ContactSearchMetal`). It is unreleased, and BombCAD adopts it only after a release, with `blastbench digest` bit-identical.
+   - Done: [ContinuumKit#91](https://github.com/emmettl/ContinuumKit/pull/91) (`ContactSearch`, `ContactSearchMetal`), released in alpha.25 and adopted by BombCAD with `blastbench digest` bit-identical (see above). Edgerton's adoption is Codex's.
 5. **Plan one solid shock EOS for ContinuumKit before either application needs it.**
    - Its uses: spall and contact charges (BombCAD), perforation (Edgerton T4).
    - Cost: a few days with Hugoniot references. Who: whichever project reaches it first, after agreeing on it.
@@ -280,7 +306,7 @@ C1 inventoried BombCAD's concrete law at `01e5896` (12 October 2026). Since then
 4. **`ElementState` grows from 192 to 196 bytes (`dbcabf2`).**
    - A trailing `float compactionStart` (zero unless the rule in item 3 applies).
    - `static_assert(sizeof(ElementState) == 196)` holds it to `StructureSolver.stateStride`.
-   - The planned E-FEM sliding crack needs no new state; the stride stays 196.
+   - The planned E-FEM sliding crack would take it to 212 bytes behind a function constant (on a branch, not on main); read the size from `stateStride`.
 
 Nothing else in the constitutive path changed. The contact pair skip (`afa5c84`) touches only contact.
 

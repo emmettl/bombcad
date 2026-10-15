@@ -15,7 +15,7 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/emmettl/ContinuumKit.git",
-            exact: "0.1.0-alpha.21")
+            exact: "0.1.0-alpha.25")
     ],
     targets: [
         // Shaders are copied verbatim and compiled at runtime so that `swift build`,
@@ -27,6 +27,7 @@ let package = Package(
                 .product(name: "GeometryImport", package: "continuumkit"),
                 .product(name: "CompressibleFlow", package: "continuumkit"),
                 .product(name: "Numerics", package: "continuumkit"),
+                .product(name: "ContactSearchMetal", package: "continuumkit"),
             ], resources: [.copy("Shaders")]),
         .target(
             name: "BlastRender",
