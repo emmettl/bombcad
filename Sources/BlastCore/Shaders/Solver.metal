@@ -410,6 +410,39 @@ static inline Prim mirrored(Prim w, float wallSpeed) {
     return w;
 }
 
+// Whether the open faces stand still ambient air beyond them (`OpenFaces.farField`).
+static inline bool farFieldFaces(constant SolverUniforms &u) { return (u.boundaryFlags & (1u << 6)) != 0; }
+
+// The ghost beyond an open face for the far field, from the state `w` inside it; `side` is +1 on
+// the high face of the sweep and -1 on the low. Across the face's normal the waves are taken as
+// acoustic: the one leaving, p + ρc u, comes from inside, and the one entering is still air's,
+// so a wave passing out is let through, and gas at ambient pressure, however hot, stays at rest
+// (Riemann invariants would not keep it so, the two sides' ratios of specific heats differing).
+// Leaving supersonically the ghost is the inside state; otherwise the density follows the
+// isentrope of the side the flow comes from, and the speeds along the face come from that side.
+static inline Prim farFieldGhost(Prim w, float side, constant SolverUniforms &u) {
+    float un = side * w.v.x;
+    float c = sqrt(w.g * w.p / w.rho);
+    if (un >= c) { return w; }
+    Prim a;
+    a.rho = u.stillRho;
+    float3 still = float3(u.stillMx, u.stillMy, u.stillMz) / u.stillRho;
+    a.v = toSweep(still, u.axis);
+    float2 gas = gasState(a.rho, u.stillEnergy - 0.5f * a.rho * dot(still, still), u.airModel, u.gamma);
+    a.p = gas.x;
+    a.g = gas.y;
+    float impedance = w.rho * c;
+    float leaving = w.p + impedance * un;
+    float entering = a.p - impedance * side * a.v.x;
+    float p = max(0.5f * (leaving + entering), u.pressureFloor);
+    float speed = (leaving - entering) / (2.0f * impedance);
+    Prim b = speed > 0.0f ? w : a;
+    b.rho *= powr(p / b.p, 1.0f / b.g);
+    b.p = p;
+    b.v.x = side * speed;
+    return b;
+}
+
 // A compact coarse-boundary page is 4^3 cells. Wall storage starts with a tile count,
 // an overflow flag and one world-tile -> pool-slot entry (UINT_MAX when absent).
 constant int couplingSide = 4;
@@ -966,6 +999,7 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
         from.z = 0;
         mirror.z = -1.0f;
     } else {
+        if (farFieldFaces(u)) { wP1 = farFieldGhost(w0, 1.0f, u); }
         from.z = 0;
     }
     Prim wM1 = w0;
@@ -976,6 +1010,7 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
         from.y = 0;
         mirror.y = -1.0f;
     } else {
+        if (farFieldFaces(u)) { wM1 = farFieldGhost(w0, -1.0f, u); }
         from.y = 0;
     }
 
@@ -1113,8 +1148,12 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
     if (carriesSpecies(u)) {
         float2 own = speciesSrc[index];
         float2 fraction = own / max(c.rho, u.densityFloor);
-        float2 below = kindM1 == kindFluid ? speciesSrc[index - stride] / wM1.rho : fraction;
-        float2 above = kindP1 == kindFluid ? speciesSrc[index + stride] / wP1.rho : fraction;
+        // Beyond a far-field face, still air: its oxygen and no products.
+        float2 ambient = farFieldFaces(u) ? float2(0.0f, u.stillOxygen / u.stillRho) : fraction;
+        float2 below = kindM1 == kindFluid ? speciesSrc[index - stride] / wM1.rho
+                                           : (kindM1 == kindOpen ? ambient : fraction);
+        float2 above = kindP1 == kindFluid ? speciesSrc[index + stride] / wP1.rho
+                                           : (kindP1 == kindOpen ? ambient : fraction);
         float2 inflow = speciesFlux(fluxLow.mass, below, fraction);
         float2 outflow = speciesFlux(fluxHigh.mass, fraction, above);
         if (u.deflagration != 0u) {

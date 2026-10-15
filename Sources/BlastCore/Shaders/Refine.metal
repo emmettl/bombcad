@@ -466,7 +466,7 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
         from.z = 0;
         mirror.z = -1.0f;
     } else if (kindP1 == kindOpen) {
-        wP1 = w0;
+        wP1 = farFieldFaces(u) ? farFieldGhost(w0, 1.0f, u) : w0;
         from.z = 0;
     }
     Prim wM1 = w0;
@@ -477,7 +477,7 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
         from.y = 0;
         mirror.y = -1.0f;
     } else if (kindM1 == kindOpen) {
-        wM1 = w0;
+        wM1 = farFieldFaces(u) ? farFieldGhost(w0, -1.0f, u) : w0;
         from.y = 0;
     }
     Prim wP2 = wP1;
@@ -636,6 +636,10 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
         float2 own = speciesSrc[index];
         float2 fraction = own / max(c.rho, u.densityFloor);
         auto speciesAt = [&](int offset, int kind, Prim w) {
+            if (kind == kindOpen && farFieldFaces(u)) {
+                // Beyond a far-field face, still air: its oxygen and no products.
+                return float2(0.0f, u.stillOxygen / u.stillRho);
+            }
             if (kind != kindFluid) {
                 return fraction;
             }

@@ -1,6 +1,15 @@
 import simd
 
 /// Faces of the domain that reflect (rigid wall). Faces not listed let waves leave.
+/// How the domain's open faces are treated (see `SolverConfiguration.openFaces`).
+public enum OpenFaces: String, Sendable, Hashable, Codable, CaseIterable {
+    case copy
+    case farField
+}
+
+/// Bit 6 of the uniforms' boundary flags: the open faces stand ambient air beyond them.
+let farFieldFlag: UInt32 = 1 << 6
+
 public struct BoundaryFaces: OptionSet, Sendable, Hashable, Codable {
     public let rawValue: UInt32
 
@@ -87,6 +96,17 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// follows it and loads its loose debris. Debris that flies further keeps flying but feels no
     /// air; walls thrown tens of metres down a shock tube need it larger.
     public var debrisReach = SIMD3<Float>(4, 4, 3)
+    /// What the domain's open (not reflective) faces do. `.copy` copies the state inside outward,
+    /// which lets a shock out but holds whatever pressure the air near the face settles to: a
+    /// domain hardly bigger than a fireball traps its burning products, and one that loses air
+    /// through them drains below ambient. `.farField` stands still ambient air beyond each open
+    /// face and treats the waves across it as acoustic (the one leaving from inside, the one
+    /// entering from the ambient), so a wave passes out, late pressure relaxes to ambient and
+    /// products leave. On Wang's slab, whose 10 kg charge stands 0.4 m from a face, the gauges'
+    /// impulse with afterburning is within 4% of a domain four times as wide, where copying
+    /// gave 3.8 times it. Not with gravity, whose ambient changes with height: there the faces
+    /// copy.
+    public var openFaces: OpenFaces = .copy
     /// Smallest radius, in cells, of the sphere a charge's energy is deposited into.
     public var minimumBalloonCells: Float = 2
     /// Refine the air where the blast's shock is by this ratio, 2 or 4: each block of 4 x 4 x 4

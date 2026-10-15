@@ -2374,7 +2374,8 @@ public final class BlastSolver {
             pressureFloor: configuration.pressureFloor,
             limiterTheta: configuration.limiterTheta,
             riemannSolver: configuration.riemannSolver.rawValue,
-            boundaryFlags: configuration.reflectiveFaces.rawValue,
+            boundaryFlags: configuration.reflectiveFaces.rawValue
+                | (configuration.openFaces == .farField && configuration.gravity == nil ? farFieldFlag : 0),
             gaugeCount: UInt32(gaugeCount))
         if tilesEnabled {
             uniforms.tileNx = UInt32(tileDims.x)
