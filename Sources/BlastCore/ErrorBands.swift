@@ -1267,10 +1267,10 @@ extension StandingScene {
                 unbanded.append("Only the volume's radiation was compared with a measurement.")
             }
         case .cloud:
-            if has(.afterburning) && has(.hotAir) {
+            if has(.afterburning) && !has(.hotAir) {
                 unbanded.append(
-                    "Cloud's top: Church's clouds were compared with afterburning alone; hot air, on by default "
-                        + "since 15 October 2026, was not run against them.")
+                    "Cloud's top: Church's clouds were compared with afterburning and hot air together, today's "
+                        + "defaults; afterburning alone was not run against them.")
             } else if has(.afterburning) {
                 bands.append(
                     figure(

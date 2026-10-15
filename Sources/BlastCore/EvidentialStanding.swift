@@ -1952,11 +1952,10 @@ struct StandingScene {
         ]
         if !has(.afterburning) {
             assumptions.append("The comparison with Church's clouds was made with afterburning on.")
-        } else if has(.hotAir) {
+        } else if !has(.hotAir) {
             assumptions.append(
-                "The comparison with Church's clouds was made with afterburning alone; hot air, on by default "
-                    + "since 15 October 2026, was not run against them (the street's cloud tops 453 m with both, "
-                    + "304 m with neither).")
+                "The comparison with Church's clouds was made with afterburning and hot air together, today's "
+                    + "defaults; afterburning alone was not run against them.")
         }
         return result(
             .cloud, .illustrative,

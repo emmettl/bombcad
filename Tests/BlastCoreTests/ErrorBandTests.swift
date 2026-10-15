@@ -355,8 +355,8 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
     }
 
     /// Mirrored: the convergence study's OA1 row holds every mesh's value and the measurement.
-    /// The fireball's radiation was compared on today's air, Church's clouds on afterburning alone:
-    /// each band holds only on the air it came from.
+    /// The fireball's radiation and Church's clouds were compared on today's air, afterburning and
+    /// hot air: each band holds only on the air it came from.
     @Test func radiationAndCloudFollowTheAirTheyWereComparedOn() throws {
         func standing(afterburning: Bool, hotAir: Bool) -> SceneStanding {
             var config = SolverConfiguration()
@@ -368,11 +368,10 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
                     thermal: ThermalSpec(), cloud: CloudSpec()))
         }
         let today = standing(afterburning: true, hotAir: true)
-        #expect(today.band(.radiatedEnergy) != nil)
-        #expect(today.band(.cloudTop) == nil)
-        #expect(today[.cloud]?.unbanded?.contains { $0.contains("afterburning alone") } == true)
+        #expect(today.band(.radiatedEnergy) != nil && today.band(.cloudTop) != nil)
         let alone = standing(afterburning: true, hotAir: false)
-        #expect(alone.band(.radiatedEnergy) == nil && alone.band(.cloudTop) != nil)
+        #expect(alone.band(.radiatedEnergy) == nil && alone.band(.cloudTop) == nil)
+        #expect(alone[.cloud]?.unbanded?.contains { $0.contains("afterburning alone") } == true)
         let ideal = standing(afterburning: false, hotAir: false)
         #expect(ideal.band(.radiatedEnergy) == nil && ideal.band(.cloudTop) == nil)
     }
