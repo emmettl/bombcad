@@ -1550,7 +1550,8 @@ struct StandingScene {
                         + "100 µs window; predicted before the measurements were unsealed)",
                     "Unsafe side, too stiff and too strong: the blast's own peak a tenth to a quarter of the "
                         + "measured; the two slabs nearest the charge collapsed, the model's barely cracked; the "
-                        + "declared peaks near the measured made by an artefact of the sleeping air on landing",
+                        + "declared peaks near the measured made by an artefact of the sleeping air on landing, fixed "
+                        + "since (the blast's own peak unchanged)",
                     "validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge"),
                 StandingEvidence(
                     "A reinforced beam bent to failure",
@@ -1674,10 +1675,10 @@ struct StandingScene {
         let configuration = inputs.configuration
         if configuration.airSleepThreshold > 0 || configuration.airSleepCrossings > 0 {
             resolution.append(
-                "The air sleeps once quiet or late, and a structure still moving then is loaded from the "
-                    + "frozen air: blind, slabs thrown off their supports were driven down at about 11 g on "
-                    + "landing, and their peaks agreed by coincidence. For a structure thrown or still moving, "
-                    + "keep the air awake (air sleep threshold and crossings 0).")
+                "The air sleeps once quiet or late: a structure moving on is loaded by the frozen air beside "
+                    + "where it now is but feels no new flow, and loose debris feels no air at all. For debris "
+                    + "in flight or a structure thrown far, keep the air awake (air sleep threshold and "
+                    + "crossings 0).")
         }
         // Options a saved structure set that have since been retired, and what applies instead.
         for note in Set(structures.flatMap(\.retiredOptions)).sorted() { resolution.append(note) }

@@ -219,10 +219,11 @@ changes, change the table with it and advance `SceneStanding.currentTable`.
   frozen before the 100 µs strain-rate window became the default on 12 October 2026, so their
   results apply to the 50-step average it replaced, and the standing says so beside them; test 3
   would judge today's ([convergence](validation.md#convergence-on-todays-defaults)).
-- **The sleeping air.** Once the air is quiet, or late, it sleeps, and a structure still moving is
-  loaded from the frozen air. In blind test 2 this drove landing slabs down at about 11 g and
-  made peaks that agreed by coincidence. The standing notes it on every scene with a structure,
-  since only the run can tell whether the structure was still moving; keep the air awake for
-  anything thrown.
+- **The sleeping air.** Once the air is quiet, or late, it sleeps. Since 15 October 2026 its
+  outline follows the structure ([freezing the air](air-blast-model.md#freezing-the-air)), so a
+  structure moving on is loaded by the frozen air beside where it is; before, the frozen outline
+  drove blind test 2's landing slabs down at about 11 g. It still feels no new flow, and loose
+  debris feels no air while it sleeps, so the standing notes it on every scene with a structure;
+  keep the air awake for debris in flight or anything thrown far.
 - **Not a judgement of safety.** Nothing here is validated for engineering decisions or for
   judging the safety of a real structure, and the standing says so.
