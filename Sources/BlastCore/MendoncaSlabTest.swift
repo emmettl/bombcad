@@ -145,6 +145,17 @@ public enum MendoncaSlabTest {
         public var chargeLift: Float = 0
         /// The pressure gauges' distance in from each edge at the corners.
         public var gaugeInset: Float = 0.05
+        /// Studies after the reveal: the air beyond the slab's edges, and the domain's height (the
+        /// blind runs' 1 m and 3.2 m); and a rigid block filling the space under the slab between
+        /// its bearings, up to `underBlockGap` below it, nil for none.
+        public var margin: Float = 1
+        public var domainHeight: Float = 3.2
+        public var underBlockGap: Float?
+        /// Studies after the reveal: the bearings as soft ground under the slab instead of rigid
+        /// lines, a Winkler bed of this subgrade modulus (Pa/m) over the bearings' area, yielding
+        /// at `softSupportCapacity` (Pa), for trestles on clay; nil for the rigid bearings.
+        public var softSupportModulus: Float?
+        public var softSupportCapacity: Float = 600e3
         /// The crack opening (largest reached) that counts an element broken across.
         public var brokenOpening: Float = 0.001
         public var sampleInterval: Double = 1e-4
@@ -184,13 +195,20 @@ public enum MendoncaSlabTest {
         return material
     }
 
-    public static func slabBox(inputs: Inputs) -> Box {
-        Box(
-            min: SIMD3(1.0, 1.0, inputs.height),
-            max: SIMD3(1.0 + inputs.plan, 1.0 + inputs.plan, inputs.height + inputs.thickness))
+    public static func slabBox(inputs: Inputs, settings: Settings = Settings()) -> Box {
+        let m = settings.margin
+        return Box(
+            min: SIMD3(m, m, inputs.height),
+            max: SIMD3(m + inputs.plan, m + inputs.plan, inputs.height + inputs.thickness))
     }
 
+    /// The blind runs' domain, 3.0 × 3.0 × 3.2 m.
     public static let domain = SIMD3<Float>(3.0, 3.0, 3.2)
+
+    public static func domain(inputs: Inputs, settings: Settings) -> SIMD3<Float> {
+        let side = 2 * settings.margin + inputs.plan
+        return SIMD3(side, side, settings.domainHeight)
+    }
 
     /// The pressure gauges on the slab's top face, in the air against it: the four corners (the
     /// dataset's 1, 3, 4 and 6), the centre, and the four mid-sides (2, 5, 7 and 8) for interest;
@@ -198,7 +216,7 @@ public enum MendoncaSlabTest {
     /// the supported edges: 6 7 4 at the far support (x high), 2 and 8 at mid-span, 3 5 1 at the
     /// near support (x low), y rising from left to right.
     public static func gauges(inputs: Inputs, settings: Settings) -> [Gauge] {
-        let s = slabBox(inputs: inputs)
+        let s = slabBox(inputs: inputs, settings: settings)
         let d = settings.gaugeInset
         let lift: Float = 0.005
         let top = s.max.z + lift
@@ -222,7 +240,7 @@ public enum MendoncaSlabTest {
     /// the bars' level; the trestles' top rails under the bearings as rigid blocks in the air; the
     /// charge as TNT at its stand-off above the centre.
     public static func scenario(_ slab: Slab, inputs: Inputs, settings: Settings) -> Scenario {
-        let s = slabBox(inputs: inputs)
+        let s = slabBox(inputs: inputs, settings: settings)
         let h = inputs.thickness / Float(settings.elementsThroughDepth)
         var model = StructureModel(
             solids: [s], material: material(slab, inputs: inputs, settings: settings), elementSize: h,
@@ -256,6 +274,19 @@ public enum MendoncaSlabTest {
                 min: SIMD3(s.max.x - settings.bearingWidth, c.y - half, s.min.z - settings.railDepth),
                 max: SIMD3(s.max.x, c.y + half, s.min.z)),
         ]
+        if let modulus = settings.softSupportModulus {
+            // The slab's underside over each bearing, tied to soft ground that does not pull.
+            for rail in rails {
+                model.supports.append(
+                    Box(
+                        min: SIMD3(rail.min.x, rail.min.y, s.min.z - h / 2),
+                        max: SIMD3(rail.max.x, rail.max.y, s.min.z + h / 2)))
+                model.supportAnchorages.append(
+                    .soil(
+                        subgradeModulus: modulus, bearingCapacity: settings.softSupportCapacity, friction: 0.5
+                    ))
+            }
+        }
         if settings.timberBearings {
             model.solids += rails
             for index in 1...rails.count {
@@ -267,9 +298,17 @@ public enum MendoncaSlabTest {
             }
         }
         let position = SIMD3(c.x, c.y, s.max.z + slab.standoff + settings.chargeLift)
+        let underBlock =
+            settings.underBlockGap.map { gap in
+                [
+                    Box(
+                        min: SIMD3(s.min.x + settings.bearingWidth, s.min.y, 0),
+                        max: SIMD3(s.max.x - settings.bearingWidth, s.max.y, s.min.z - gap))
+                ]
+            } ?? []
         return Scenario(
-            name: "Mendonça slab \(slab.name)", domainSize: domain,
-            boxes: settings.timberBearings ? [] : rails,
+            name: "Mendonça slab \(slab.name)", domainSize: domain(inputs: inputs, settings: settings),
+            boxes: (settings.timberBearings || settings.softSupportModulus != nil ? [] : rails) + underBlock,
             charge: Charge(mass: slab.charge * settings.chargeFactor, position: position),
             gauges: gauges(inputs: inputs, settings: settings), structure: model)
     }
@@ -362,7 +401,7 @@ public enum MendoncaSlabTest {
         }
         try solver.load(scenario)
         guard let structure = solver.structure else { throw BlastError.allocationFailed("structure") }
-        let s = slabBox(inputs: inputs)
+        let s = slabBox(inputs: inputs, settings: settings)
         let h = structure.model.elementSize
         func index(_ value: Float, _ axis: Int) -> Int {
             Int(((value - structure.origin[axis]) / h).rounded())
@@ -380,14 +419,16 @@ public enum MendoncaSlabTest {
         // bearing's middle line, and across at the middle of each. With timber bearings, their
         // undersides rest so.
         let seat = settings.timberBearings ? index(s.min.z - settings.railDepth, 2) : bottom
-        structure.mutateNodes { nodes in
-            for j in low...high {
-                for i in Array(near...(near + bearing)) + Array((far - bearing)...far) {
-                    guard let n = structure.storedNode(i, j, seat) else { continue }
-                    nodes[n].restsOnSupport = true
-                    if i == near + bearing / 2 { nodes[n].restrain(x: true) }
-                    if j == cj && (i == near + bearing / 2 || i == far - bearing / 2) {
-                        nodes[n].restrain(y: true)
+        if settings.softSupportModulus == nil {
+            structure.mutateNodes { nodes in
+                for j in low...high {
+                    for i in Array(near...(near + bearing)) + Array((far - bearing)...far) {
+                        guard let n = structure.storedNode(i, j, seat) else { continue }
+                        nodes[n].restsOnSupport = true
+                        if i == near + bearing / 2 { nodes[n].restrain(x: true) }
+                        if j == cj && (i == near + bearing / 2 || i == far - bearing / 2) {
+                            nodes[n].restrain(y: true)
+                        }
                     }
                 }
             }

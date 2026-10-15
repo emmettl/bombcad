@@ -381,8 +381,10 @@ shocks" switch (ratio 2) and, under it, "Twice over again" (two levels); `blastb
 
 - **Where.** The grid is cut into blocks of 4 × 4 × 4 cells. A block is refined where the
   pressures of two neighbouring cells in it differ by more than `refinementThreshold` (10%) of
-  the lower, and so is any block within two cells of such a pair: a shock moves under half a
-  cell a step, and the blocks are placed afresh every step, so it cannot outrun them. Each
+  the lower, and so is any block within a cell of such a pair (`refinementMargin`; two cells
+  until October 2026, which moved the validation's peaks by under 1.3% and cost a fifth more
+  blocks): a shock moves under half a cell a step, and the blocks are placed afresh every step,
+  so it cannot outrun them. Each
   refined block is a patch of (4r)³ fine cells, taken from a pool of fixed size
   (`refinementMemory`, 1 GB by default, about 63 kB a patch at ratio 2 and 364 kB at ratio 4).
   Where the shock would need more, the rest of it stays coarse.

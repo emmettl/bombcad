@@ -1,3 +1,4 @@
+import ContactSearchMetal
 import Foundation
 import Metal
 import simd
@@ -1108,6 +1109,47 @@ public enum ContactMode: UInt32, Sendable {
     case always = 2
 }
 
+/// How the kernels round their arithmetic. Results before failure agree between these to about
+/// 1%; after failure, where one element's removal decides the next, they spread, and the spread
+/// is the scatter any change to the arithmetic, the compiler or the GPU would give (see
+/// "Results after failure move with the rounding" in docs/validation.md). A run chooses one with
+/// `KernelRounding.$current.withValue(_:)`; otherwise the kernels are built as by default, or as
+/// the environment's `BuildProbe` says.
+public enum KernelRounding: String, Codable, Sendable, CaseIterable {
+    /// Metal's fast math, as always.
+    case standard = "default"
+    /// Fast math without fused multiply-adds (`#pragma METAL fp contract(off)`).
+    case unfused
+    /// Relaxed math: fast math's reassociation and approximate functions, but honouring
+    /// infinities and NaNs.
+    case relaxed
+
+    /// The rounding the kernels built in this task use; nil leaves them as the environment says.
+    @TaskLocal public static var current: KernelRounding?
+
+    var mathMode: MTLMathMode? { self == .relaxed ? .relaxed : nil }
+    var contract: String? { self == .unfused ? "off" : nil }
+
+    /// The environment variables that build the kernels this way (`BuildProbe`), for a process to
+    /// set before it builds any; the default sets none, and those set otherwise are cleared.
+    public var environment: [String: String] {
+        switch self {
+        case .standard: [:]
+        case .unfused: ["BOMBCAD_KERNEL_CONTRACT": "off"]
+        case .relaxed: ["BOMBCAD_KERNEL_MATH": "relaxed"]
+        }
+    }
+
+    /// As the ensemble prints it.
+    public var name: String {
+        switch self {
+        case .standard: "default"
+        case .unfused: "no fused multiply-adds"
+        case .relaxed: "relaxed math"
+        }
+    }
+}
+
 /// How the kernels are compiled, for measuring what fast math does to results: unchanged unless
 /// set in the environment. `BOMBCAD_KERNEL_MATH` (fast, relaxed or safe) sets the math mode,
 /// `BOMBCAD_KERNEL_CONTRACT` (off, on or fast) prepends Metal's contraction pragma, and
@@ -1153,7 +1195,11 @@ enum ShaderLibrary {
             "Gravity",
             "Deflagration", "Mixing",
         ]
-        let probe = BuildProbe.current
+        var probe = BuildProbe.current
+        if let rounding = KernelRounding.current {
+            probe.mathMode = rounding.mathMode
+            probe.contract = rounding.contract
+        }
         var source = try files.map { name in
             guard
                 let url = Bundle.module.url(
@@ -1163,6 +1209,9 @@ enum ShaderLibrary {
             }
             return try String(contentsOf: url, encoding: .utf8)
         }.joined(separator: "\n")
+        // Contact's table and search are ContinuumKit's (`ContactSearchMetal`), compiled ahead of
+        // the kernels that use them.
+        source = try MetalContactSearch.functionSource() + "\n" + source
         if probe.statePadding > 0 {
             // Unused floats in the element state: a change to the source that alters no
             // arithmetic, to see what results a rebuild moves.

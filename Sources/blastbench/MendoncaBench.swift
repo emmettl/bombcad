@@ -13,6 +13,7 @@ import UniformTypeIdentifiers
 //                       [--inputs Samples/Mendonca2020/inputs/slabs.json] [--out dir]
 //                       after the reveal: [--charge-factor 1.5] [--ft-factor 0.5] [--gf-factor 1] [--fc-factor 1]
 //                       [--fy-factor 1] [--afterburn] [--no-rate] [--bond splitting] [--rate-window steps]
+//                       [--margin 1] [--domain-height 3.2] [--under-block 0.06]
 //                       [--ensemble 8 [--seed 1] [--samples 1-8]]   (the inputs' spread)
 //
 // Writes each slab's result as JSON, its histories as CSV and its faces' cracks as PNG and text
@@ -38,6 +39,16 @@ func runMendonca(device: MTLDevice) throws {
     if let factor = option("ft-factor").flatMap({ Float($0) }) { settings.ftFactor = factor }
     if let factor = option("gf-factor").flatMap({ Float($0) }) { settings.gfFactor = factor }
     if let factor = option("fy-factor").flatMap({ Float($0) }) { settings.fyFactor = factor }
+    // `--margin 2 --domain-height 5`: more air round the slab; `--under-block 0.06`: a rigid block
+    // under the slab between its bearings, 60 mm below it, keeping the wave from beneath.
+    if let margin = option("margin").flatMap({ Float($0) }) { settings.margin = margin }
+    if let height = option("domain-height").flatMap({ Float($0) }) { settings.domainHeight = height }
+    if let gap = option("under-block").flatMap({ Float($0) }) { settings.underBlockGap = gap }
+    // `--soft-supports 6e7 [--support-capacity 130e3]`: the bearings as soft ground (Pa/m, Pa).
+    if let modulus = option("soft-supports").flatMap({ Float($0) }) { settings.softSupportModulus = modulus }
+    if let capacity = option("support-capacity").flatMap({ Float($0) }) {
+        settings.softSupportCapacity = capacity
+    }
     let names = option("slabs")?.split(separator: ",").map(String.init)
     let slabs = inputs.slabs.filter { names?.contains($0.name) ?? true }
     let out = URL(filePath: option("out") ?? "/Volumes/StudioData/bombcad/mendonca-prediction/run")

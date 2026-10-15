@@ -1083,19 +1083,18 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
 // element) never repel: while joined their elements hold them apart.
 // Nodes kept in each entry of the shell contact table; debris piles up more densely on shell
 // meshes, whose cells are an element (250 mm) across.
-constant uint shellContactSlots = 8;
+constant uint shellContactSlots = cksSlotCount;
 
 static inline bool shellContactEnabled(constant ShellUniforms &u, const device uint *failureGate) {
     return u.contactMode == 2 || (u.contactMode == 1 && failureGate[0] != 0);
 }
 
 static inline int3 shellContactCell(float3 position, constant ShellUniforms &u) {
-    return int3(floor((position - float3(u.gridOriginX, u.gridOriginY, u.gridOriginZ)) / u.contactRadius));
+    return cksCell(position, float3(u.gridOriginX, u.gridOriginY, u.gridOriginZ), u.contactRadius);
 }
 
 static inline uint shellContactBucket(int3 cell, constant ShellUniforms &u) {
-    uint3 wrapped = uint3(cell) & (uint3(u.contactNx, u.contactNy, u.contactNz) - 1u);
-    return wrapped.x + u.contactNx * (wrapped.y + u.contactNy * wrapped.z);
+    return cksEntry(cell, uint3(u.contactNx, u.contactNy, u.contactNz));
 }
 
 kernel void shellContactClear(const device ShellNode *nodes [[buffer(0)]],
@@ -1112,10 +1111,7 @@ kernel void shellContactClear(const device ShellNode *nodes [[buffer(0)]],
         return;
     }
     uint target = shellContactBucket(shellContactCell(reference[n].xyz + float3(nodes[n].displacement), u), u);
-    heads[target] = u.stamp;
-    for (uint slot = 0; slot < shellContactSlots; ++slot) {
-        slots[target * shellContactSlots + slot] = emptySlot;
-    }
+    cksClearEntry(target, u.stamp, heads, slots);
 }
 
 // Nodes that do not begin near each other begin at least `neighbourDistance` apart, so two that
@@ -1146,11 +1142,7 @@ kernel void shellContactHash(const device ShellNode *nodes [[buffer(0)]],
     if (shellContactMoved(float3(nodes[n].displacement), u)) {
         moved[target] = u.stamp;
     }
-    uint carried = n;
-    for (uint slot = 0; slot < shellContactSlots && carried != emptySlot; ++slot) {
-        uint held = atomic_fetch_min_explicit(&slots[target * shellContactSlots + slot], carried, memory_order_relaxed);
-        carried = max(held, carried);
-    }
+    cksInsert(target, n, slots);
 }
 
 kernel void shellContactForces(const device ShellNode *nodes [[buffer(0)]],
@@ -1177,12 +1169,7 @@ kernel void shellContactForces(const device ShellNode *nodes [[buffer(0)]],
     // A node that its own crowded entry dropped is invisible to the others this step, so it must
     // not push them either: then every pair sees each other or neither does, the forces between
     // them are equal and opposite, and contact cannot pump momentum into a pile of debris.
-    uint own = shellContactBucket(cell, u);
-    bool listed = false;
-    for (uint slot = 0; slot < shellContactSlots; ++slot) {
-        listed = listed || slots[own * shellContactSlots + slot] == n;
-    }
-    if (!listed) {
+    if (!cksListed(shellContactBucket(cell, u), n, slots)) {
         contact[n] = float3(0.0f);
         return;
     }
@@ -1192,7 +1179,7 @@ kernel void shellContactForces(const device ShellNode *nodes [[buffer(0)]],
             for (int dx = -1; dx <= 1; ++dx) {
                 int3 c = cell + int3(dx, dy, dz);
                 uint target = shellContactBucket(c, u);
-                if (heads[target] != u.stamp || (still && moved[target] != u.stamp)) {
+                if (!cksSearches(target, u.stamp, still, heads, moved)) {
                     continue;
                 }
                 for (uint slot = 0; slot < shellContactSlots; ++slot) {

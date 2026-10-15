@@ -9,12 +9,19 @@ tables (`--compare old.json`) to see what a change moved.
     Scripts/concrete-matrix.py [--quick] [--cases slab,oa1] [--extra="--bond splitting"]
                                [--label slip] [--out DIR] [--blastbench PATH] [--compare OLD.json]
                                [--update OLD.json]   (rerun some cases and keep the rest)
+                               [--rounding-ensemble]
 
 Writes DIR/matrix.md, DIR/matrix.json and each command's raw output. DIR defaults to
 /Volumes/StudioData/bombcad/concrete-matrix/LABEL when that volume is mounted. The full matrix
 takes some hours on one Mac; `--quick` runs the coarser mesh of each case only. The table on
 today's defaults is kept in Benchmarks/ConcreteMatrix/defaults.md; pass its .json to `--compare`.
 (`--extra` takes its value after an equals sign, since it begins with dashes.)
+
+`--rounding-ensemble` runs each command three times, with the kernels' default rounding, without
+fused multiply-adds and with relaxed math (blastbench `--rounding`), and gives each quantity as
+the default's value with the lowest and highest beside it: results after failure spread by about
+that between any two builds whose arithmetic rounds differently (docs/validation.md, "Results
+after failure move with the rounding").
 """
 import argparse
 import json
@@ -186,6 +193,31 @@ CASES = [
 ]
 
 
+# The kernels' roundings (blastbench `--rounding`, `KernelRounding`), the default first.
+ROUNDINGS = ["default", "unfused", "relaxed"]
+
+
+def rounding_values(label, runs):
+    """Each rounding's value of the row `label`, where its run gave one."""
+    values = {}
+    for rounding, _, rows in runs:
+        for other, _, value, _, _ in rows:
+            if other == label and value is not None:
+                values[rounding] = value
+    return values
+
+
+def model_cell(value, row):
+    """The model's value, and with a rounding ensemble the lowest to highest of its roundings."""
+    if value is None:
+        return "-"
+    text = f"{value:g} {row['unit']}"
+    values = list(row.get("roundings", {}).values())
+    if len(values) > 1:
+        text += f" ({min(values):g}–{max(values):g})"
+    return text
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--quick", action="store_true")
@@ -197,6 +229,9 @@ def main():
     parser.add_argument("--compare", help="an earlier matrix.json to set beside this one")
     parser.add_argument(
         "--update", help="an earlier matrix.json whose cases this run replaces, the rest kept, written as one table")
+    parser.add_argument(
+        "--rounding-ensemble", action="store_true",
+        help="each case with the default rounding, without fused multiply-adds and with relaxed math")
     args = parser.parse_args()
 
     studio = Path("/Volumes/StudioData")
@@ -216,16 +251,26 @@ def main():
             continue
         command = [args.blastbench] + (quick if args.quick else full) + args.extra.split()
         start = time.time()
-        result = subprocess.run(command, capture_output=True, text=True)
-        text = result.stdout + result.stderr
-        (out / f"{key}.txt").write_text(" ".join(command) + "\n\n" + text)
-        rows = parse(text)
-        if result.returncode != 0 or not rows:
-            print(f"{title}: exit {result.returncode}, {len(rows)} rows read; see {out / (key + '.txt')}", file=sys.stderr)
+        runs = []
+        for rounding in (ROUNDINGS if args.rounding_ensemble else [None]):
+            name = key if rounding in (None, "default") else f"{key}-{rounding}"
+            run = command + (["--rounding", rounding] if rounding else [])
+            result = subprocess.run(run, capture_output=True, text=True)
+            text = result.stdout + result.stderr
+            (out / f"{name}.txt").write_text(" ".join(run) + "\n\n" + text)
+            rows = parse(text)
+            if result.returncode != 0 or not rows:
+                print(f"{title}: exit {result.returncode}, {len(rows)} rows read; see {out / (name + '.txt')}",
+                      file=sys.stderr)
+            runs.append((rounding, result.returncode, rows))
+        rows = [{"label": l, "measured": m, "model": v, "unit": u, "note": n} for l, m, v, u, n in runs[0][2]]
+        if args.rounding_ensemble:
+            for row in rows:
+                row["roundings"] = rounding_values(row["label"], runs)
         report["cases"].append({
             "key": key, "title": title, "regime": regime, "command": " ".join(command[1:]),
-            "seconds": round(time.time() - start), "exit": result.returncode,
-            "rows": [{"label": l, "measured": m, "model": v, "unit": u, "note": n} for l, m, v, u, n in rows],
+            "seconds": round(time.time() - start), "exit": max(code for _, code, _ in runs),
+            "rows": rows,
         })
         print(f"{title}: {len(rows)} rows in {round(time.time() - start)} s", flush=True)
 
@@ -238,7 +283,10 @@ def main():
         report["cases"] = [merged[key] for key in order if key in merged]
 
     lines = [f"# Concrete case matrix: {args.label}", "",
-             f"Flags: `{args.extra or '(defaults)'}`" + (", quick" if args.quick else ""), "",
+             f"Flags: `{args.extra or '(defaults)'}`" + (", quick" if args.quick else "")
+             + (", each with the default rounding, without fused multiply-adds and with relaxed math;"
+                " the model's value is the default's, the lowest to highest after it" if args.rounding_ensemble else ""),
+             "",
              "| Case | Regime | Quantity | Measured | Model | Model / measured |" + (" Before |" if old else "") + " Note |",
              "|---|---|---|---|---|---|" + ("---|" if old else "") + "---|"]
     for case in report["cases"]:
@@ -248,7 +296,7 @@ def main():
             before = old.get((case["key"], row["label"]))
             cells = [case["title"], case["regime"], row["label"],
                      f"{m:g} {row['unit']}" if m is not None else "-",
-                     f"{v:g} {row['unit']}" if v is not None else "-", ratio]
+                     model_cell(v, row), ratio]
             if old:
                 cells.append(f"{before:g}" if before is not None else "-")
             cells.append(row["note"])

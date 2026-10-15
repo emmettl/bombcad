@@ -463,7 +463,8 @@ the run slowing, within the bound in [Adding machines](#the-long-term-visions-ef
   the mini was measured faster, ran four of the six, and halved the sweep (a median 63 s against
   119 s).
   Uncertainty ensembles of the validation cases share their runs the same way (`BombCAD
-  ensemble`, a job of its own for the worker, protocol version 9; see
+  ensemble`, a job of its own for the worker, protocol version 9, and 10 since a run carries
+  the kernels' rounding; see
   [Validation](validation.md#the-models-spread-from-uncertain-inputs)): 153 runs of nine cases
   took 1 h 55 min on the Studio, a second worker on it and the mini, against 4.5 hours of runs,
   the mini taking 53. Each result is kept as it arrives, and a worker that does not answer

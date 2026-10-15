@@ -97,6 +97,12 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// A tile is refined where the pressures of two neighbouring cells in it differ by more than
     /// this fraction of the lower, and so are the tiles around it.
     public var refinementThreshold: Float = 0.1
+    /// How close, in cells of the grid a level refines, such a pair must come to a block for the
+    /// block to be refined too: the margin kept around the shock. A shock moves under half a cell
+    /// a step and the blocks are placed afresh every step, so 1 still holds it. Until 15 October
+    /// 2026 it was 2; 1 moves the validation's peaks and impulses by under 1.3% and refines a
+    /// fifth fewer blocks (docs/performance.md, "Where a refined run's GPU time goes").
+    public var refinementMargin = 1
     /// Levels of refinement, 1 or 2, each by `refinement`: with 2, the blocks of the first level
     /// that the shock crosses are refined again, as the first refines the coarse grid, so that
     /// near the shock the cells are `refinement` squared times finer. Read at `restart()`.
@@ -232,6 +238,7 @@ struct SolverUniforms {
     var limitFlameTemperature: Float = 0
     /// Sub-grid mixing's model: 0 Smagorinsky's, 1 the σ-model (see `SubgridMixing.Model`).
     var mixingModel: UInt32 = 0
+    var refineMargin: UInt32 = 1
 }
 
 /// Layout matches `StepControl` in `Solver.metal`.
