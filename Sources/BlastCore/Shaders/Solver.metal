@@ -113,6 +113,9 @@ struct SolverUniforms {
     float limitFlameTemperature;
     // Sub-grid mixing's model (see `eddyViscosity`): 0 Smagorinsky's, 1 the sigma model.
     uint mixingModel;
+    // How close, in cells of the grid a level refines, a sharp jump must come to a block for it to
+    // be refined (see `flagAround`).
+    uint refineMargin;
 };
 
 // Whether the air carries species, for afterburning or a deflagration.

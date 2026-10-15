@@ -60,9 +60,17 @@ struct IFCCorpusTests {
         /// Members tied to nothing supported, and their share of the structure's volume (percent).
         var loose = 0
         var looseShare: Int?
+        /// Elements whose meshes were repaired, the solids they gave, and pieces left out.
+        var repaired = 0
+        var repairedSolids = 0
+        var repairLeftOut = 0
         var gravityDisplacement: Float?
         var gravityReaction: Float?
         var gravityEroded: Int?
+        /// The reaction at clamped nodes, over the weight, which `gravityReaction` (the connections'
+        /// own) leaves out; and the share of the weight on nodes that moved under 10 mm.
+        var gravityClamped: Float?
+        var gravityHeld: Float?
         var gravityError: String?
     }
 
@@ -121,18 +129,21 @@ struct IFCCorpusTests {
             row.materialElements = prepared.materials.count
             // As the app asks: at most 1,024 elements, here the lowest storeys' first.
             var ids = prepared.defaultIDs
+            // Storeys from the lowest, by their elevations in the IFC (else as listed, after them).
+            let elevations = IFCStep.storeyElevations(data)
+            var order: [String: Double] = [:]
+            for (n, storey) in prepared.inventory.compactMap(\.storeyID).enumerated()
+            where order[storey] == nil {
+                order[storey] = elevations[storey] ?? 1e12 + Double(n)
+            }
+            func rank(_ element: ImportedMesh.BuildingSourceElement) -> Double {
+                order[element.storeyID ?? ""] ?? .infinity
+            }
             if ids.count > 1024 {
-                let order = Dictionary(
-                    prepared.inventory.compactMap(\.storeyID).enumerated().map { ($1, $0) },
-                    uniquingKeysWith: min)
-                ids = Set(
-                    prepared.inventory.filter(\.supported)
-                        .sorted {
-                            (order[$0.storeyID ?? ""] ?? .max, $0.id) < (
-                                order[$1.storeyID ?? ""] ?? .max, $1.id
-                            )
-                        }
-                        .prefix(1024).map(\.id))
+                let sorted = prepared.inventory.filter(\.supported).sorted { a, b in
+                    rank(a) != rank(b) ? rank(a) < rank(b) : a.id < b.id
+                }
+                ids = Set(sorted.prefix(1024).map(\.id))
                 row.chosenNote = "\(prepared.defaultIDs.count) supported; the first 1,024 by storey"
             }
             row.stage = "convert"
@@ -153,17 +164,19 @@ struct IFCCorpusTests {
                     }
                     ids.subtract(failures.failures.map(\.id))
                     guard !ids.isEmpty else { throw failures }
-                } catch  where !narrowed && error.localizedDescription.contains("100,000 triangles") {
+                } catch
+                    where !narrowed && error.localizedDescription.contains("triangles. Choose fewer elements")
+                {
                     narrowed = true
-                    let storeys = prepared.inventory.filter { ids.contains($0.id) }.map { $0.storeyID ?? "" }
-                    let order = Dictionary(storeys.enumerated().map { ($1, $0) }, uniquingKeysWith: min)
-                    let lowest = order.min { $0.value < $1.value }?.key ?? ""
+                    let storeys = Set(
+                        prepared.inventory.filter { ids.contains($0.id) }.compactMap(\.storeyID))
+                    let lowest = storeys.min { (order[$0] ?? .infinity) < (order[$1] ?? .infinity) } ?? ""
                     ids = Set(
                         prepared.inventory.filter { ids.contains($0.id) && ($0.storeyID ?? "") == lowest }
                             .map(\.id))
                     row.chosenNote =
                         (row.chosenNote.map { $0 + "; " } ?? "")
-                        + "over 100,000 triangles: the first storey alone, \(ids.count) elements"
+                        + "over the triangle limit: the first storey alone, \(ids.count) elements"
                     guard !ids.isEmpty else { throw error }
                 }
             }
@@ -178,6 +191,22 @@ struct IFCCorpusTests {
             }
             .map { String($0.prefix(600)) }
             row.size = [mesh.bounds.size.x, mesh.bounds.size.y, mesh.bounds.size.z]
+            if let note = (mesh.buildingNotes ?? []).first(where: { $0.contains("were remade as the") }) {
+                func number(_ pattern: String) -> Int {
+                    note.range(of: pattern, options: .regularExpression).flatMap {
+                        Int(note[$0].prefix { $0.isNumber })
+                    } ?? 0
+                }
+                row.repaired = number(#"^\d+"#)
+                row.repairedSolids =
+                    (note.range(of: #"remade as the \d+"#, options: .regularExpression)).flatMap {
+                        Int(note[$0].dropFirst(14))
+                    } ?? 0
+                row.repairLeftOut =
+                    (note.range(of: #", \d+ pieces left out"#, options: .regularExpression)).flatMap {
+                        Int(note[$0].dropFirst(2).prefix { $0.isNumber })
+                    } ?? 0
+            }
 
             // As an envelope: rigid, sampled, windows and doors cut as openings.
             row.stage = "envelope"
@@ -223,6 +252,47 @@ struct IFCCorpusTests {
                 row.assumptions = structure.assumptions.map { String($0.prefix(300)) }
                 row.assumedMaterials = structure.report.assumedMaterials.count
                 row.yaw = structure.yaw
+                if ProcessInfo.processInfo.environment["BOMBCAD_IFC_CORPUS_BOTTOM"] != nil {
+                    let solids = structure.model.solids
+                    for member in structure.members.sorted(by: {
+                        ($0.solid.map { solids[$0].min.z } ?? 99) < ($1.solid.map { solids[$0].min.z } ?? 99)
+                    }).prefix(25) {
+                        guard let i = member.solid else { continue }
+                        print(
+                            "BOTTOM \(member.name) [\(member.role.rawValue) \(member.ifcClass)] \(solids[i].min) \(solids[i].max)"
+                        )
+                    }
+                    for line in structure.supports { print("BOTTOM support \(line.prefix(200))") }
+                }
+                if ProcessInfo.processInfo.environment["BOMBCAD_IFC_CORPUS_LOOSE"] != nil {
+                    // Each loose member, and the nearest member to it: the gap along each axis.
+                    let solids = structure.model.solids
+                    for member in structure.members
+                    where member.notes.contains(where: { $0.contains("will fall") }) {
+                        guard let i = member.solid else { continue }
+                        var best: (Float, String)?
+                        for other in structure.members where other.solid != nil && other.solid != i {
+                            let j = other.solid!
+                            let gap = (0..<3).map {
+                                max(
+                                    0,
+                                    max(
+                                        solids[j].min[$0] - solids[i].max[$0],
+                                        solids[i].min[$0] - solids[j].max[$0]))
+                            }
+                            let d = simd_length(SIMD3(gap[0], gap[1], gap[2]))
+                            if best == nil || d < best!.0 {
+                                best = (
+                                    d,
+                                    "\(other.name) [\(other.role.rawValue)] gap \(gap) \(other.notes.contains { $0.contains("will fall") } ? "loose" : "held")"
+                                )
+                            }
+                        }
+                        print(
+                            "LOOSE \(member.name) [\(member.role.rawValue) \(member.ifcClass)] \(solids[i].min) \(solids[i].max) nearest \(best?.1 ?? "-")"
+                        )
+                    }
+                }
                 let shellMesh = try ShellMesh(model: structure.model)
                 let owner = { (solid: Int) in
                     structure.members.first { $0.solid == solid }?.name ?? "solid \(solid)"
@@ -245,14 +315,94 @@ struct IFCCorpusTests {
                     let gravity = clock.now
                     do {
                         let device = try #require(MTLCreateSystemDefaultDevice())
-                        let solver = try ShellSolver(device: device, model: structure.model)
+                        var model = structure.model
+                        if ProcessInfo.processInfo.environment["BOMBCAD_IFC_CORPUS_NOTIES"] != nil {
+                            model.tiesTouching = nil
+                        }
+                        let solver = try ShellSolver(device: device, model: model)
                         solver.damping = 50
                         solver.advance(steps: Int(0.3 / Double(solver.criticalTimeStep)))
                         var mass: Float = 0
-                        solver.mutateNodes { mass = $0.reduce(0) { $0 + $1.mass } }
+                        // A tied node's mass is added to its master's, so it is counted once, there.
+                        solver.mutateNodes {
+                            mass = $0.filter { $0.flags & 128 == 0 }.reduce(0) { $0 + $1.mass }
+                        }
                         row.gravityDisplacement = solver.summary().maxDisplacement
                         row.gravityEroded = solver.summary().erodedElements
                         row.gravityReaction = (solver.anchorSummary()?.reaction.z ?? 0) / (mass * 9.81)
+                        solver.mutateNodes { nodes in
+                            var clamped: Float = 0
+                            var held: Float = 0
+                            for n in nodes.indices {
+                                if nodes[n].isClamped { clamped -= solver.nodalForce(n).z }
+                                if nodes[n].flags & 128 == 0, simd_length(nodes[n].displacement) < 0.01 {
+                                    held += nodes[n].mass
+                                }
+                            }
+                            row.gravityClamped = clamped / (mass * 9.81)
+                            row.gravityHeld = held / mass
+                        }
+                        if ProcessInfo.processInfo.environment["BOMBCAD_IFC_CORPUS_DETAIL"] != nil {
+                            var clamped = 0
+                            solver.mutateNodes { clamped = $0.filter(\.isClamped).count }
+                            let anchors = solver.anchorSummary()
+                            print(
+                                "DETAIL mass \(mass) clamped nodes \(clamped) fixedBase \(structure.model.fixedBase) anchors \(anchors?.nodes ?? 0) separated \(anchors?.separated ?? 0) reaction \(anchors?.reaction ?? .zero) maxSettlement \(anchors?.maxSettlement ?? 0)"
+                            )
+                            for (n, support) in structure.model.supports.enumerated() {
+                                let law = structure.model.supportAnchorages[n]
+                                print(
+                                    "DETAIL support \(n) \(support.min) \(support.max) footing \(law?.footing != nil) bearing \(solver.supportBearingArea(at: n))"
+                                )
+                            }
+                            for f in solver.footingSummaries() {
+                                print(
+                                    "DETAIL footing size \(f.size) moved \(f.displacement) soil \(f.soilForce) joint \(f.jointForce)"
+                                )
+                            }
+                            var worst: [(Float, String)] = []
+                            for member in structure.members {
+                                guard let solid = member.solid else { continue }
+                                let box = structure.model.solids[solid]
+                                var peak: Float = 0
+                                for n in 0..<solver.nodeCount {
+                                    let p = solver.referencePositions[n]
+                                    if (0..<3).allSatisfy({
+                                        p[$0] >= box.min[$0] - 0.01 && p[$0] <= box.max[$0] + 0.01
+                                    }) {
+                                        peak = max(peak, simd_length(solver.node(n).displacement))
+                                    }
+                                }
+                                worst.append(
+                                    (peak, "\(member.name) [\(member.role.rawValue)] \(box.min) \(box.max)"))
+                            }
+                            for (peak, text) in worst.sorted(by: { $0.0 > $1.0 }).prefix(15) {
+                                print("DETAIL moved \(peak) \(text)")
+                            }
+                            print(
+                                "DETAIL members moving > 10 mm: \(worst.filter { $0.0 > 0.01 }.count) of \(worst.count)"
+                            )
+                            let tied = Set(solver.mesh.ties.flatMap { [$0.slave, $0.master] })
+                            var eroded: [Int: (count: Int, tied: Int)] = [:]
+                            for (e, element) in solver.mesh.elements.enumerated()
+                            where solver.flag(e) == .eroded {
+                                let touches = (0..<4).contains { tied.contains(element.nodes[$0]) }
+                                eroded[element.solid, default: (0, 0)].count += 1
+                                if touches { eroded[element.solid, default: (0, 0)].tied += 1 }
+                            }
+                            for (solid, n) in eroded.sorted(by: { $0.value.count > $1.value.count }).prefix(
+                                15)
+                            {
+                                let name =
+                                    structure.members.first { $0.solid == solid }?.name ?? "solid \(solid)"
+                                print(
+                                    "DETAIL eroded \(n.count) (\(n.tied) at a tie) in \(name) \(structure.model.solids[solid])"
+                                )
+                            }
+                            print(
+                                "DETAIL contact ties \(solver.mesh.contactTies.count), tied nodes \(solver.mesh.ties.count)"
+                            )
+                        }
                     } catch {
                         row.gravityError = String(error.localizedDescription.prefix(300))
                     }

@@ -58,9 +58,9 @@ enum IFCImporter {
         var defaultIDs: Set<String> { Set(inventory.filter(\.supported).map(\.id)) }
     }
     static func prepare(_ data: Data, converter: URL? = converterURL) async throws -> Prepared {
-        guard data.count <= 20_000_000 else {
+        guard data.count <= ImportedMesh.ifcSourceLimit else {
             throw ImportedMesh.ImportError.invalid(
-                "IFC exceeds the 20 MB limit. Export a smaller building or subset.")
+                "IFC exceeds the 100 MB limit. Export a smaller building or subset.")
         }
         let converter = try requireConverter(converter)
         let folder = try temporaryFolder()
@@ -184,8 +184,29 @@ enum IFCImporter {
         }
         let geometry = try decodeOBJ(
             output, metadata: Dictionary(uniqueKeysWithValues: chosen.map { ($0.id, $0) }), scale: scale)
-        let present = Set(geometry.elements.map(\.globalID))
+        if prepared.data.count > 20_000_000 {
+            notes.append(
+                "This IFC is \(prepared.data.count / 1_000_000) MB, past 20 MB: converting, sampling and saving it are slower, and the project keeps the whole file."
+            )
+        }
+        // A repaired element is present in its solids.
+        let present = Set(geometry.elements.map { $0.assembly?.id ?? $0.globalID })
         let byID = Dictionary(uniqueKeysWithValues: prepared.inventory.map { ($0.id, $0) })
+        if !geometry.repairs.isEmpty {
+            let left = geometry.repairs.filter { $0.leftOut > 0 }
+            notes.append(
+                "\(geometry.repairs.count) element\(geometry.repairs.count == 1 ? "" : "s") whose meshes were not closed solids "
+                    + "(pieces welded together, faces shared) were remade as the "
+                    + "\(geometry.repairs.reduce(0) { $0 + $1.solids }) closed solid\(geometry.repairs.reduce(0) { $0 + $1.solids } == 1 ? "" : "s") "
+                    + "they are made of, faces they shared removed, each imported as a piece of its element: "
+                    + geometry.repairs.prefix(8).map(\.name).joined(separator: ", ")
+                    + (geometry.repairs.count > 8 ? ", …" : "")
+                    + (left.isEmpty
+                        ? "."
+                        : ". Of \(left.count) of them, \(left.reduce(0) { $0 + $1.leftOut }) pieces left out, being open or "
+                            + "not valid solids on their own: "
+                            + left.prefix(5).map(\.name).joined(separator: ", ") + "."))
+        }
         // An element whose geometry is all in its parts is not missing.
         let carried = Set(geometry.elements.compactMap { byID[$0.globalID]?.parentID })
         let missing = chosen.filter { !present.contains($0.id) && !carried.contains($0.id) }
@@ -235,8 +256,10 @@ enum IFCImporter {
         var parts = 0
         let elements = geometry.elements.map { element in
             var copy = element
-            copy.materials = prepared.materials[element.globalID]
-            if !supportedClass(element.ifcClass), let owner = root(of: element.globalID) {
+            // A repaired element's solids stand for it: its id, materials and place.
+            let source = element.assembly?.id ?? element.globalID
+            copy.materials = prepared.materials[source]
+            if let entry = byID[source], !supportedClass(entry.ifcClass), let owner = root(of: source) {
                 copy.assembly = .init(id: owner.id, name: owner.name, ifcClass: owner.ifcClass)
                 copy.storey = copy.storey ?? owner.storey
                 copy.materials = copy.materials ?? prepared.materials[owner.id]
@@ -279,12 +302,12 @@ enum IFCImporter {
 
     static func boundedData(_ url: URL) throws -> Data {
         let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-        guard size <= 20_000_000 else {
+        guard size <= 200_000_000 else {
             throw ImportedMesh.ImportError.invalid(
-                "Converted IFC output exceeds 20 MB. Simplify or split the model.")
+                "Converted IFC output exceeds 200 MB. Simplify or split the model.")
         }
         let data = try Data(contentsOf: url)
-        guard data.count <= 20_000_000 else {
+        guard data.count <= 200_000_000 else {
             throw ImportedMesh.ImportError.invalid("Converted IFC output exceeds its limit.")
         }
         return data
@@ -313,7 +336,7 @@ enum IFCImporter {
             for url in try FileManager.default.contentsOfDirectory(
                 at: folder, includingPropertiesForKeys: [.fileSizeKey])
             {
-                if (try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) > 20_000_000 {
+                if (try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) > 200_000_000 {
                     throw ImportedMesh.ImportError.invalid(
                         "IFC conversion exceeded its output limit. Simplify or split the model.")
                 }
@@ -469,22 +492,36 @@ enum IFCImporter {
                 + failures.map { "\($0.name) · \($0.id)\n\($0.reason)" }.joined(separator: "\n\n")
         }
     }
+    /// An element whose mesh was taken apart into the closed solids it is made of
+    /// (`IFCMeshRepair`), and what could not be.
+    struct ElementRepair: Sendable, Hashable {
+        var id: String
+        var name: String
+        var solids: Int
+        /// Pieces left out: open, or not valid solids on their own.
+        var leftOut: Int
+        var reason: String
+    }
     struct GeometryReview {
         var elements: [ImportedMesh.BuildingElement]
         var origin: SIMD3<Double>
         var failures: [ElementFailure]
         var inspectedElements: Int
+        var repairs: [ElementRepair] = []
     }
     static func decodeOBJ(_ data: Data, metadata: [String: Element], scale: Double = 1) throws -> (
-        elements: [ImportedMesh.BuildingElement], origin: SIMD3<Double>
+        elements: [ImportedMesh.BuildingElement], origin: SIMD3<Double>, repairs: [ElementRepair]
     ) {
         let review = try inspectOBJ(data, metadata: metadata, scale: scale)
         if !review.failures.isEmpty {
             throw ElementFailures(failures: review.failures, inspectedElements: review.inspectedElements)
         }
-        return (review.elements, review.origin)
+        return (review.elements, review.origin, review.repairs)
     }
-    static func inspectOBJ(_ data: Data, metadata: [String: Element], scale: Double = 1) throws
+    static func inspectOBJ(
+        _ data: Data, metadata: [String: Element], scale: Double = 1,
+        triangleLimit: Int = ImportedMesh.buildingTriangleLimit
+    ) throws
         -> GeometryReview
     {
         guard let text = String(data: data, encoding: .utf8) else {
@@ -500,7 +537,7 @@ enum IFCImporter {
             if f.first == "g" || f.first == "o" { guid = f.count == 2 ? String(f[1]) : nil }
             if f.first == "v" {
                 guard f.count >= 4, let x = Double(f[1]), let y = Double(f[2]), let z = Double(f[3]),
-                    [x, y, z].allSatisfy(\.isFinite), vertices.count < 300_000
+                    [x, y, z].allSatisfy(\.isFinite), vertices.count < 3 * ImportedMesh.buildingTriangleLimit
                 else { throw ImportedMesh.ImportError.invalid("Invalid or excessive IFC vertices.") }
                 vertices.append(SIMD3(x, y, z) * scale)
             }
@@ -514,9 +551,9 @@ enum IFCImporter {
                     throw ImportedMesh.ImportError.invalid(
                         "IFC converter output has a face that is not a triangle.")
                 }
-                guard count < 100_000 else {
+                guard count < triangleLimit else {
                     throw ImportedMesh.ImportError.invalid(
-                        "The chosen IFC elements have more than 100,000 triangles. Choose fewer elements, for example a storey at a time."
+                        "The chosen IFC elements have more than \(triangleLimit.formatted(.number.locale(Locale(identifier: "en_GB")))) triangles. Choose fewer elements, for example a storey at a time."
                     )
                 }
                 let indices = try f.dropFirst().map { value -> Int in
@@ -537,36 +574,99 @@ enum IFCImporter {
         let origin = used.reduce(SIMD3<Double>(repeating: .infinity)) { simd_min($0, vertices[$1]) }
         var elements: [ImportedMesh.BuildingElement] = []
         var failures: [ElementFailure] = []
+        var repairs: [ElementRepair] = []
+        // The scene holds coordinates in single precision: across a large building, vertices
+        // closer than a few of its steps fall together. A mesh that fails for that is welded at
+        // four steps of the building's extent, its collapsed triangles dropped.
+        let extent = used.reduce(0.0) { max($0, simd_reduce_max(simd_abs(vertices[$1] - origin))) }
+        let coarse = max(0.0000001, extent * 4.8e-7)
+        func mesh(_ triangles: [[Int]], quantum: Double = 0.0000001, _ position: (Int) -> SIMD3<Double>)
+            throws
+            -> ImportedMesh
+        {
+            // IFC meshing can emit coincident face vertices with floating-point roundoff.
+            // Canonicalise at 0.1 micrometre, then strictly revalidate every resulting solid.
+            func at(_ n: Int) -> SIMD3<Double> {
+                ((position(n) - origin) / quantum).rounded(.toNearestOrAwayFromZero) * quantum
+            }
+            let kept =
+                quantum > 0.0000001
+                ? triangles.filter { f in at(f[0]) != at(f[1]) && at(f[1]) != at(f[2]) && at(f[0]) != at(f[2])
+                } : triangles
+            let indices = Set(kept.flatMap { $0 }).sorted()
+            let mapping = Dictionary(
+                uniqueKeysWithValues: indices.enumerated().map { ($0.element, $0.offset + 1) })
+            var obj = ""
+            for n in indices {
+                let v = at(n)
+                obj += "v \(v.x) \(v.y) \(v.z)\n"
+            }
+            for f in kept { obj += "f \(mapping[f[0]]!) \(mapping[f[1]]!) \(mapping[f[2]]!)\n" }
+            return try ImportedMesh(data: Data(obj.utf8), fileExtension: "obj")
+        }
         for id in faces.keys.sorted() {
             try Task.checkCancellation()
             let info = metadata[id]!
             do {
                 let originalTriangles = faces[id]!
                 let triangles = try conformingFaces(originalTriangles, vertices: vertices, origin: origin)
-                let indices = Set(triangles.flatMap { $0 }).sorted()
-                let mapping = Dictionary(
-                    uniqueKeysWithValues: indices.enumerated().map { ($0.element, $0.offset + 1) })
-                var obj = ""
-                for n in indices {
-                    // IFC meshing can emit coincident face vertices with floating-point roundoff.
-                    // Canonicalise at 0.1 micrometre, then strictly revalidate every resulting solid.
-                    let v = ((vertices[n] - origin) / 0.0000001).rounded(.toNearestOrAwayFromZero) * 0.0000001
-                    obj += "v \(v.x) \(v.y) \(v.z)\n"
-                }
-                for f in triangles { obj += "f \(mapping[f[0]]!) \(mapping[f[1]]!) \(mapping[f[2]]!)\n" }
-                let mesh = try ImportedMesh(data: Data(obj.utf8), fileExtension: "obj")
                 elements.append(
                     .init(
                         globalID: id, name: info.name, ifcClass: info.ifcClass, storey: info.storey,
-                        mesh: mesh))
+                        mesh: try mesh(triangles) { vertices[$0] }))
             } catch is CancellationError { throw CancellationError() } catch {
-                failures.append(
-                    ElementFailure(
-                        id: id, name: info.name, reason: String(error.localizedDescription.prefix(2000))))
+                let reason = String(error.localizedDescription.prefix(2000))
+                // Welded at the scene's precision, where its tiny edges were what failed.
+                if coarse > 0.0000001,
+                    let welded = try? mesh(
+                        conformingFaces(faces[id]!, vertices: vertices, origin: origin), quantum: coarse,
+                        {
+                            vertices[$0]
+                        })
+                {
+                    elements.append(
+                        .init(
+                            globalID: id, name: info.name, ifcClass: info.ifcClass, storey: info.storey,
+                            mesh: welded))
+                    continue
+                }
+                // Its mesh taken apart into the closed solids it is made of, where it is.
+                let repair = IFCMeshRepair.shells(faces[id]!, vertices: vertices)
+                var pieces: [ImportedMesh] = []
+                var invalid = 0
+                for shell in repair.shells {
+                    try Task.checkCancellation()
+                    let triangles = shell.map { [$0.x, $0.y, $0.z] }
+                    if let piece = try? mesh(triangles, { repair.points[$0] }) {
+                        pieces.append(piece)
+                    } else if let piece = try? mesh(triangles, quantum: coarse, { repair.points[$0] }) {
+                        pieces.append(piece)
+                    } else {
+                        invalid += 1
+                    }
+                }
+                guard !pieces.isEmpty, pieces.count <= 64 * 64 else {
+                    failures.append(ElementFailure(id: id, name: info.name, reason: reason))
+                    continue
+                }
+                let owner = ImportedMesh.BuildingElement.Assembly(
+                    id: id, name: info.name, ifcClass: info.ifcClass)
+                for (k, piece) in pieces.enumerated() {
+                    elements.append(
+                        .init(
+                            globalID: IFCMeshRepair.pieceID(id, k),
+                            name: String("\(info.name) · \(k + 1)".prefix(200)),
+                            ifcClass: info.ifcClass, storey: info.storey, assembly: owner, mesh: piece))
+                }
+                repairs.append(
+                    ElementRepair(
+                        id: id, name: info.name, solids: pieces.count, leftOut: repair.openPieces + invalid,
+                        reason: reason))
             }
         }
         return GeometryReview(
-            elements: elements, origin: origin, failures: failures, inspectedElements: faces.count)
+            elements: elements, origin: origin, failures: failures, inspectedElements: faces.count,
+            repairs: repairs)
     }
     /// Split a triangle edge at an existing boundary vertex. This changes triangulation only:
     /// no missing face is created, and the original surface is strictly validated afterwards.

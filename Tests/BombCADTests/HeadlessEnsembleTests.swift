@@ -25,6 +25,43 @@ struct HeadlessEnsembleTests {
         }
     }
 
+    @Test("--rounding-ensemble runs each case's middle once per rounding and gives each output's range")
+    func roundingEnsemble() async throws {
+        let options = try HeadlessEnsemble.Options.parse(["janney,kb-wall", "--rounding-ensemble"])
+        #expect(options.roundingEnsemble && options.cases == ["janney", "kb-wall"])
+        for bad in [
+            ["janney", "--rounding-ensemble", "--samples", "4"],
+            ["janney", "--rounding-ensemble", "--seed", "2"],
+            ["janney", "--rounding-ensemble", "--rounding-ensemble"],
+        ] {
+            #expect(throws: ProjectFileError.self, "\(bad)") { try HeadlessEnsemble.Options.parse(bad) }
+        }
+        // Stand-in runs: the moment by rounding, and a failure the relaxed run never reaches.
+        var lines: [String] = []
+        let report = try await HeadlessEnsemble.run(
+            try HeadlessEnsemble.Options.parse(["janney", "--rounding-ensemble"]), log: { lines.append($0) },
+            runHere: { sample in
+                let moment = ["default": 41.7, "unfused": 42.0, "relaxed": 41.9][
+                    sample.rounding?.rawValue ?? ""]
+                var outputs = ["moment": moment ?? 0]
+                if sample.rounding != .relaxed { outputs["failure"] = sample.rounding == .standard ? 44 : 40 }
+                return EnsembleOutcome(outputs: outputs, seconds: 1, device: "test")
+            })
+        #expect(report.cases[0].samples.map(\.rounding) == [.standard, .unfused, .relaxed])
+        #expect(
+            lines.first?.hasPrefix("Janney's beam bent to failure, 12 elements through: 3 of 3 roundings")
+                == true)
+        #expect(
+            lines.contains {
+                $0.contains("41.7–42 kN m (default 41.7, no fused multiply-adds 42, relaxed math 41.9)")
+                    && $0.contains("±0.4% of the default") && $0.contains("measured 41.5")
+            })
+        #expect(
+            lines.contains {
+                $0.contains("40–44") && $0.contains("default 44") && $0.contains("in 2 of 3 runs")
+            })
+    }
+
     @Test("An ensemble shared with a worker gives the same samples and results as here alone")
     func shared() async throws {
         var options = try HeadlessEnsemble.Options.parse(["kb-curve", "--samples", "12", "--seed", "4"])

@@ -293,8 +293,8 @@ constant bool turnedGravity = is_function_constant_defined(turnedGravityConstant
 // debris packed onto 25 mm elements overflowed it: the nodes left out sank into the others and
 // were pushed back out when they reappeared, feeding energy to the debris until, in the chamber
 // test, half a million elements had been torn off by it.
-constant uint contactSlots = 8;
-constant uint emptySlot = 0xFFFFFFFFu;
+constant uint contactSlots = cksSlotCount;  // ContinuumKit's contact search (ContactSearchMetal)
+constant uint emptySlot = cksEmptySlot;
 // Contact safeguards, for solids and shells alike: a pair separating faster than
 // `separationLimit` is pushed no further, and contact changes a node's velocity by at most
 // `contactKick` in one step. A penalty spring stores energy in its overlap, and nodes hidden from
@@ -2337,12 +2337,11 @@ static inline float3 debrisAirForce(float3 position, float3 velocity, float volu
 // neighbouring cells stay neighbours in memory, and only cells a whole period apart share an
 // entry and its slots.
 static inline int3 contactCell(float3 position, constant StructureUniforms &u) {
-    return int3(floor((position - float3(u.gridOriginX, u.gridOriginY, u.gridOriginZ)) / u.h));
+    return cksCell(position, float3(u.gridOriginX, u.gridOriginY, u.gridOriginZ), u.h);
 }
 
 static inline uint contactBucket(int3 cell, constant StructureUniforms &u) {
-    uint3 wrapped = uint3(cell) & (uint3(u.contactNx, u.contactNy, u.contactNz) - 1u);
-    return wrapped.x + u.contactNx * (wrapped.y + u.contactNy * wrapped.z);
+    return cksEntry(cell, uint3(u.contactNx, u.contactNy, u.contactNz));
 }
 
 // The contact grid is filled in two passes, so that what a cell holds does not depend on the
@@ -2366,11 +2365,7 @@ kernel void contactClear(const device uint *nodeList [[buffer(0)]],
     float3 position = nodePosition(threadIndex, nodeList, nodes, u);
     int3 cell = contactCell(position, u);
     // Several nodes may write the same values here; that is harmless.
-    uint target = contactBucket(cell, u);
-    heads[target] = u.stamp;
-    for (uint slot = 0; slot < contactSlots; ++slot) {
-        slots[target * contactSlots + slot] = emptySlot;
-    }
+    cksClearEntry(contactBucket(cell, u), u.stamp, heads, slots);
 }
 
 // Nodes that are not lattice neighbours begin at least two elements apart, so two that have each
@@ -2412,11 +2407,7 @@ kernel void contactHash(const device uint *nodeList [[buffer(0)]],
         moved[target] = u.stamp;
     }
     // Compact indices follow lattice order, so the smallest are the same nodes either way.
-    uint carried = threadIndex;
-    for (uint slot = 0; slot < contactSlots && carried != emptySlot; ++slot) {
-        uint held = atomic_fetch_min_explicit(&slots[target * contactSlots + slot], carried, memory_order_relaxed);
-        carried = max(held, carried);
-    }
+    cksInsert(target, threadIndex, slots);
 }
 
 // Rubble's particles (see Rubble.metal) and their contact with each other and with nodes.
@@ -2538,12 +2529,7 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
     // A node that its own crowded entry dropped is invisible to the others this step, so it does
     // not push them either: every pair then sees each other or neither does, and the forces
     // between them are equal and opposite.
-    uint own = contactBucket(cell, u);
-    bool listed = false;
-    for (uint slot = 0; slot < contactSlots; ++slot) {
-        listed = listed || slots[own * contactSlots + slot] == threadIndex;
-    }
-    if (!listed) {
+    if (!cksListed(contactBucket(cell, u), threadIndex, slots)) {
         contact[threadIndex] = float3(0.0f);
         return;
     }
@@ -2553,11 +2539,10 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
             for (int dx = -1; dx <= 1; ++dx) {
                 int3 c = cell + int3(dx, dy, dz);
                 uint target = contactBucket(c, u);
-                if (heads[target] != u.stamp) {
-                    continue;  // not touched this substep: whatever it holds is stale
-                }
-                if (still && moved[target] != u.stamp) {
-                    continue;  // nothing in it has moved far enough to touch a node that has not
+                // Not touched this substep, so whatever it holds is stale; or, for a node that has not
+                // moved, nothing in it has moved far enough to touch it.
+                if (!cksSearches(target, u.stamp, still, heads, moved)) {
+                    continue;
                 }
                 // The slots hold the cell's nodes in ascending order, so the forces are summed in
                 // the same order whatever the timing of the threads that filled them.
@@ -3228,6 +3213,9 @@ struct CouplingUniforms {
     uint deepThreshold;
     uint deepPatchOffset;
     uint deepCellOffset;
+    // 1 while the air sleeps: a point in a coupling page not allocated is left out quietly, as the
+    // frozen air takes no new pages, rather than flagging the pool as exhausted.
+    uint quietCoverage;
 };
 
 // Decode a compact slot for remasking/exchange, or the historical dense-region coordinate.
@@ -3247,8 +3235,10 @@ static inline int3 couplingWorldCell(uint3 tid, constant CouplingUniforms &u, co
 }
 static inline int coarseCouplingSlot(int3 local, constant CouplingUniforms &u, device atomic_uint *map) {
     if (u.couplingMapCount != 0u) {
-        return checkedCouplingSlot(local + int3(u.regionX, u.regionY, u.regionZ),
-            int3(u.fluidNx, u.fluidNy, u.fluidNz), map);
+        int3 cell = local + int3(u.regionX, u.regionY, u.regionZ);
+        int3 dims = int3(u.fluidNx, u.fluidNy, u.fluidNz);
+        return u.quietCoverage != 0u ? sparseCouplingSlot(cell, dims, (const device uint *)map)
+                                     : checkedCouplingSlot(cell, dims, map);
     }
     return local.x + int(u.regionNx) * (local.y + int(u.regionNy) * local.z);
 }

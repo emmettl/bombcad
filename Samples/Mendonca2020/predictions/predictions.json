@@ -1,0 +1,4353 @@
+{
+  "ensemble": {
+    "1": {
+      "applies_to": [
+        "1",
+        "10"
+      ],
+      "collapsing_samples": 0,
+      "ratio_high": 1.164,
+      "ratio_low": 0.525,
+      "reference_peak_mm": 10.44,
+      "samples": [
+        {
+          "collapses": false,
+          "index": 1,
+          "peak_mm": 5.48,
+          "peak_time_ms": 3.4,
+          "ratio": 0.525,
+          "values": {
+            "bearing": 0.12304755598219175,
+            "charge": 0.7224055135997818,
+            "fc": 1.008231627786542,
+            "ft": 0.9294836329135708,
+            "fy": 1.1617828422562142,
+            "gf": 0.6788853631658819,
+            "lift": 0.08028418084890199
+          }
+        },
+        {
+          "collapses": false,
+          "index": 2,
+          "peak_mm": 11.96,
+          "peak_time_ms": 9.6,
+          "ratio": 1.145,
+          "values": {
+            "bearing": 0.06250142727984263,
+            "charge": 1.1607769641384775,
+            "fc": 0.9887112981547385,
+            "ft": 1.2011331843488526,
+            "fy": 1.0318913047645017,
+            "gf": 1.7988440156911145,
+            "lift": 0.07358958488448815
+          }
+        },
+        {
+          "collapses": false,
+          "index": 3,
+          "peak_mm": 10.2,
+          "peak_time_ms": 179.8,
+          "ratio": 0.977,
+          "values": {
+            "bearing": 0.10385855452393303,
+            "charge": 0.8919689961282099,
+            "fc": 0.9806326376082913,
+            "ft": 0.8625941521989259,
+            "fy": 1.5431558272418975,
+            "gf": 0.8813926554623416,
+            "lift": 0.008563371510278346
+          }
+        },
+        {
+          "collapses": false,
+          "index": 4,
+          "peak_mm": 9.91,
+          "peak_time_ms": 8.4,
+          "ratio": 0.949,
+          "values": {
+            "bearing": 0.0842016229415103,
+            "charge": 1.0372432438980417,
+            "fc": 1.0721599435829174,
+            "ft": 0.6874020444063439,
+            "fy": 1.4207247656934545,
+            "gf": 1.369107988152609,
+            "lift": 0.024260491246768368
+          }
+        },
+        {
+          "collapses": false,
+          "index": 5,
+          "peak_mm": 8.42,
+          "peak_time_ms": 6.8,
+          "ratio": 0.806,
+          "values": {
+            "bearing": 0.09486071858647528,
+            "charge": 1.1049026105342632,
+            "fc": 1.0263175101880044,
+            "ft": 1.024495354296554,
+            "fy": 1.281910912628621,
+            "gf": 1.1799609395514927,
+            "lift": 0.09688215125415889
+          }
+        },
+        {
+          "collapses": false,
+          "index": 6,
+          "peak_mm": 6.9,
+          "peak_time_ms": 3.4,
+          "ratio": 0.661,
+          "values": {
+            "bearing": 0.1333125868804688,
+            "charge": 0.9672344310879127,
+            "fc": 1.04332048526728,
+            "ft": 1.0880556464625537,
+            "fy": 1.0520760157345854,
+            "gf": 0.7418635349288913,
+            "lift": 0.05158437671487386
+          }
+        },
+        {
+          "collapses": false,
+          "index": 7,
+          "peak_mm": 6.88,
+          "peak_time_ms": 166.4,
+          "ratio": 0.659,
+          "values": {
+            "bearing": 0.1435432780605898,
+            "charge": 0.9903056914314763,
+            "fc": 0.9247880324820428,
+            "ft": 1.1087057045179398,
+            "fy": 1.4085936346924375,
+            "gf": 0.9688154532337951,
+            "lift": 0.027212126162218922
+          }
+        },
+        {
+          "collapses": false,
+          "index": 8,
+          "peak_mm": 12.15,
+          "peak_time_ms": 8.6,
+          "ratio": 1.164,
+          "values": {
+            "bearing": 0.05577420509591559,
+            "charge": 1.0178164128248959,
+            "fc": 0.9541355624110062,
+            "ft": 0.9998947463446358,
+            "fy": 0.9320889318642602,
+            "gf": 1.0843023521438286,
+            "lift": 0.046726104191361084
+          }
+        }
+      ]
+    },
+    "2": {
+      "applies_to": [
+        "2",
+        "5"
+      ],
+      "collapsing_samples": 0,
+      "ratio_high": 2.072,
+      "ratio_low": 0.485,
+      "reference_peak_mm": 5.93,
+      "samples": [
+        {
+          "collapses": false,
+          "index": 1,
+          "peak_mm": 2.88,
+          "peak_time_ms": 218.4,
+          "ratio": 0.485,
+          "values": {
+            "bearing": 0.12304755598219175,
+            "charge": 0.7224055135997818,
+            "fc": 1.008231627786542,
+            "ft": 0.9294836329135708,
+            "fy": 1.1617828422562142,
+            "gf": 0.6788853631658819,
+            "lift": 0.08028418084890199
+          }
+        },
+        {
+          "collapses": false,
+          "index": 2,
+          "peak_mm": 7.09,
+          "peak_time_ms": 183.4,
+          "ratio": 1.195,
+          "values": {
+            "bearing": 0.06250142727984263,
+            "charge": 1.1607769641384775,
+            "fc": 0.9887112981547385,
+            "ft": 1.2011331843488526,
+            "fy": 1.0318913047645017,
+            "gf": 1.7988440156911145,
+            "lift": 0.07358958488448815
+          }
+        },
+        {
+          "collapses": false,
+          "index": 3,
+          "peak_mm": 4.06,
+          "peak_time_ms": 219.8,
+          "ratio": 0.685,
+          "values": {
+            "bearing": 0.10385855452393303,
+            "charge": 0.8919689961282099,
+            "fc": 0.9806326376082913,
+            "ft": 0.8625941521989259,
+            "fy": 1.5431558272418975,
+            "gf": 0.8813926554623416,
+            "lift": 0.008563371510278346
+          }
+        },
+        {
+          "collapses": false,
+          "index": 4,
+          "peak_mm": 5.34,
+          "peak_time_ms": 200.1,
+          "ratio": 0.901,
+          "values": {
+            "bearing": 0.0842016229415103,
+            "charge": 1.0372432438980417,
+            "fc": 1.0721599435829174,
+            "ft": 0.6874020444063439,
+            "fy": 1.4207247656934545,
+            "gf": 1.369107988152609,
+            "lift": 0.024260491246768368
+          }
+        },
+        {
+          "collapses": false,
+          "index": 5,
+          "peak_mm": 4.39,
+          "peak_time_ms": 233.5,
+          "ratio": 0.741,
+          "values": {
+            "bearing": 0.09486071858647528,
+            "charge": 1.1049026105342632,
+            "fc": 1.0263175101880044,
+            "ft": 1.024495354296554,
+            "fy": 1.281910912628621,
+            "gf": 1.1799609395514927,
+            "lift": 0.09688215125415889
+          }
+        },
+        {
+          "collapses": false,
+          "index": 6,
+          "peak_mm": 12.29,
+          "peak_time_ms": 247.5,
+          "ratio": 2.072,
+          "values": {
+            "bearing": 0.1333125868804688,
+            "charge": 0.9672344310879127,
+            "fc": 1.04332048526728,
+            "ft": 1.0880556464625537,
+            "fy": 1.0520760157345854,
+            "gf": 0.7418635349288913,
+            "lift": 0.05158437671487386
+          }
+        },
+        {
+          "collapses": false,
+          "index": 7,
+          "peak_mm": 6.71,
+          "peak_time_ms": 268.8,
+          "ratio": 1.131,
+          "values": {
+            "bearing": 0.1435432780605898,
+            "charge": 0.9903056914314763,
+            "fc": 0.9247880324820428,
+            "ft": 1.1087057045179398,
+            "fy": 1.4085936346924375,
+            "gf": 0.9688154532337951,
+            "lift": 0.027212126162218922
+          }
+        },
+        {
+          "collapses": false,
+          "index": 8,
+          "peak_mm": 6.86,
+          "peak_time_ms": 169.4,
+          "ratio": 1.156,
+          "values": {
+            "bearing": 0.05577420509591559,
+            "charge": 1.0178164128248959,
+            "fc": 0.9541355624110062,
+            "ft": 0.9998947463446358,
+            "fy": 0.9320889318642602,
+            "gf": 1.0843023521438286,
+            "lift": 0.046726104191361084
+          }
+        }
+      ]
+    },
+    "4": {
+      "applies_to": [
+        "4",
+        "7",
+        "9"
+      ],
+      "collapsing_samples": 0,
+      "ratio_high": 3.148,
+      "ratio_low": 0.744,
+      "reference_peak_mm": 7.09,
+      "samples": [
+        {
+          "collapses": false,
+          "index": 1,
+          "peak_mm": 7.68,
+          "peak_time_ms": 217.4,
+          "ratio": 1.083,
+          "values": {
+            "bearing": 0.12304755598219175,
+            "charge": 0.7224055135997818,
+            "fc": 1.008231627786542,
+            "ft": 0.9294836329135708,
+            "fy": 1.1617828422562142,
+            "gf": 0.6788853631658819,
+            "lift": 0.08028418084890199
+          }
+        },
+        {
+          "collapses": false,
+          "index": 2,
+          "peak_mm": 8.13,
+          "peak_time_ms": 177.4,
+          "ratio": 1.147,
+          "values": {
+            "bearing": 0.06250142727984263,
+            "charge": 1.1607769641384775,
+            "fc": 0.9887112981547385,
+            "ft": 1.2011331843488526,
+            "fy": 1.0318913047645017,
+            "gf": 1.7988440156911145,
+            "lift": 0.07358958488448815
+          }
+        },
+        {
+          "collapses": false,
+          "index": 3,
+          "peak_mm": 5.28,
+          "peak_time_ms": 213.0,
+          "ratio": 0.744,
+          "values": {
+            "bearing": 0.10385855452393303,
+            "charge": 0.8919689961282099,
+            "fc": 0.9806326376082913,
+            "ft": 0.8625941521989259,
+            "fy": 1.5431558272418975,
+            "gf": 0.8813926554623416,
+            "lift": 0.008563371510278346
+          }
+        },
+        {
+          "collapses": false,
+          "index": 4,
+          "peak_mm": 5.9,
+          "peak_time_ms": 198.7,
+          "ratio": 0.831,
+          "values": {
+            "bearing": 0.0842016229415103,
+            "charge": 1.0372432438980417,
+            "fc": 1.0721599435829174,
+            "ft": 0.6874020444063439,
+            "fy": 1.4207247656934545,
+            "gf": 1.369107988152609,
+            "lift": 0.024260491246768368
+          }
+        },
+        {
+          "collapses": false,
+          "index": 5,
+          "peak_mm": 7.35,
+          "peak_time_ms": 225.6,
+          "ratio": 1.036,
+          "values": {
+            "bearing": 0.09486071858647528,
+            "charge": 1.1049026105342632,
+            "fc": 1.0263175101880044,
+            "ft": 1.024495354296554,
+            "fy": 1.281910912628621,
+            "gf": 1.1799609395514927,
+            "lift": 0.09688215125415889
+          }
+        },
+        {
+          "collapses": false,
+          "index": 6,
+          "peak_mm": 22.32,
+          "peak_time_ms": 247.0,
+          "ratio": 3.148,
+          "values": {
+            "bearing": 0.1333125868804688,
+            "charge": 0.9672344310879127,
+            "fc": 1.04332048526728,
+            "ft": 1.0880556464625537,
+            "fy": 1.0520760157345854,
+            "gf": 0.7418635349288913,
+            "lift": 0.05158437671487386
+          }
+        },
+        {
+          "collapses": false,
+          "index": 7,
+          "peak_mm": 10.99,
+          "peak_time_ms": 280.5,
+          "ratio": 1.549,
+          "values": {
+            "bearing": 0.1435432780605898,
+            "charge": 0.9903056914314763,
+            "fc": 0.9247880324820428,
+            "ft": 1.1087057045179398,
+            "fy": 1.4085936346924375,
+            "gf": 0.9688154532337951,
+            "lift": 0.027212126162218922
+          }
+        },
+        {
+          "collapses": false,
+          "index": 8,
+          "peak_mm": 5.87,
+          "peak_time_ms": 165.1,
+          "ratio": 0.827,
+          "values": {
+            "bearing": 0.05577420509591559,
+            "charge": 1.0178164128248959,
+            "fc": 0.9541355624110062,
+            "ft": 0.9998947463446358,
+            "fy": 0.9320889318642602,
+            "gf": 1.0843023521438286,
+            "lift": 0.046726104191361084
+          }
+        }
+      ]
+    }
+  },
+  "frozen_commit": "047cee3ccb0b232ee6a496b492174f94fd2e91b5",
+  "groups": {
+    "A": {
+      "mean_peak_displacement_mm": 12.45,
+      "slabs": [
+        "2",
+        "5"
+      ]
+    },
+    "B": {
+      "mean_peak_displacement_mm": 23.23,
+      "slabs": [
+        "4",
+        "7",
+        "9"
+      ]
+    },
+    "C": {
+      "mean_peak_displacement_mm": 12.82,
+      "slabs": [
+        "1",
+        "10"
+      ]
+    }
+  },
+  "primary": {
+    "1": {
+      "air_slept_ms": 78.2,
+      "blast_peak_mm": 10.34,
+      "blast_peak_time_ms": 7.6,
+      "blew_up": false,
+      "charge_kg": 2.76,
+      "collapses": false,
+      "damage": {
+        "bar_elements_ruptured": 0,
+        "bars_span": true,
+        "bottom_face_scabbed_m2": 0,
+        "concrete_spans": true,
+        "elements_bare": 0,
+        "elements_removed": 0,
+        "largest_piece_share": 1,
+        "pieces": 1,
+        "top_face_crushed_m2": 0,
+        "top_face_spalled_m2": 0,
+        "widest_bottom_crack_mm": 4.034,
+        "widest_top_crack_mm": 0.433
+      },
+      "end_displacement_last_sample_mm": 7.42,
+      "end_displacement_mm": 8.27,
+      "gauges": {
+        "1 (corner)": {
+          "arrival_ms": 0.754,
+          "impulse_all_positive_kPa_ms": 493.6,
+          "impulse_kPa_ms": 493.6,
+          "peak_kPa": 3925.2
+        },
+        "2 (mid-side)": {
+          "arrival_ms": 0.693,
+          "impulse_all_positive_kPa_ms": 638.1,
+          "impulse_kPa_ms": 590.8,
+          "peak_kPa": 4449.2
+        },
+        "3 (corner)": {
+          "arrival_ms": 0.754,
+          "impulse_all_positive_kPa_ms": 492.8,
+          "impulse_kPa_ms": 492.8,
+          "peak_kPa": 3931.8
+        },
+        "4 (corner)": {
+          "arrival_ms": 0.754,
+          "impulse_all_positive_kPa_ms": 500.3,
+          "impulse_kPa_ms": 500.3,
+          "peak_kPa": 3989.8
+        },
+        "5 (mid-side)": {
+          "arrival_ms": 0.683,
+          "impulse_all_positive_kPa_ms": 613.9,
+          "impulse_kPa_ms": 605.6,
+          "peak_kPa": 4564.2
+        },
+        "6 (corner)": {
+          "arrival_ms": 0.754,
+          "impulse_all_positive_kPa_ms": 502.2,
+          "impulse_kPa_ms": 502.1,
+          "peak_kPa": 4049.4
+        },
+        "7 (mid-side)": {
+          "arrival_ms": 0.683,
+          "impulse_all_positive_kPa_ms": 619.0,
+          "impulse_kPa_ms": 612.1,
+          "peak_kPa": 4592.3
+        },
+        "8 (mid-side)": {
+          "arrival_ms": 0.693,
+          "impulse_all_positive_kPa_ms": 638.2,
+          "impulse_kPa_ms": 590.8,
+          "peak_kPa": 4449.2
+        },
+        "centre": {
+          "arrival_ms": 0.618,
+          "impulse_all_positive_kPa_ms": 1032.6,
+          "impulse_kPa_ms": 787.3,
+          "peak_kPa": 5393.0
+        },
+        "under the centre": {
+          "arrival_ms": 1.895,
+          "impulse_all_positive_kPa_ms": 622.4,
+          "impulse_kPa_ms": 516.2,
+          "peak_kPa": 1808.6
+        }
+      },
+      "highest_rise_mm": 3.99,
+      "last_100_ms_range_mm": [
+        6.75,
+        10.84
+      ],
+      "layout": "C",
+      "peak_displacement_mm": 10.94,
+      "peak_displacement_uncertainty_mm": [
+        5.74,
+        12.73
+      ],
+      "peak_time_ms": 160.37,
+      "standoff_m": 1.3,
+      "wall_seconds": 738
+    },
+    "10": {
+      "air_slept_ms": 78.6,
+      "blast_peak_mm": 5.94,
+      "blast_peak_time_ms": 3.4,
+      "blew_up": false,
+      "charge_kg": 2.6,
+      "collapses": false,
+      "damage": {
+        "bar_elements_ruptured": 0,
+        "bars_span": true,
+        "bottom_face_scabbed_m2": 0,
+        "concrete_spans": true,
+        "elements_bare": 0,
+        "elements_removed": 0,
+        "largest_piece_share": 1,
+        "pieces": 1,
+        "top_face_crushed_m2": 0,
+        "top_face_spalled_m2": 0,
+        "widest_bottom_crack_mm": 3.238,
+        "widest_top_crack_mm": 1.297
+      },
+      "end_displacement_last_sample_mm": 14.09,
+      "end_displacement_mm": 14.11,
+      "gauges": {
+        "1 (corner)": {
+          "arrival_ms": 1.066,
+          "impulse_all_positive_kPa_ms": 366.3,
+          "impulse_kPa_ms": 366.3,
+          "peak_kPa": 2156.5
+        },
+        "2 (mid-side)": {
+          "arrival_ms": 1.004,
+          "impulse_all_positive_kPa_ms": 460.7,
+          "impulse_kPa_ms": 448.6,
+          "peak_kPa": 2404.3
+        },
+        "3 (corner)": {
+          "arrival_ms": 1.066,
+          "impulse_all_positive_kPa_ms": 366.0,
+          "impulse_kPa_ms": 366.0,
+          "peak_kPa": 2152.1
+        },
+        "4 (corner)": {
+          "arrival_ms": 1.066,
+          "impulse_all_positive_kPa_ms": 367.6,
+          "impulse_kPa_ms": 367.6,
+          "peak_kPa": 2156.5
+        },
+        "5 (mid-side)": {
+          "arrival_ms": 0.989,
+          "impulse_all_positive_kPa_ms": 463.2,
+          "impulse_kPa_ms": 460.6,
+          "peak_kPa": 2229.3
+        },
+        "6 (corner)": {
+          "arrival_ms": 1.066,
+          "impulse_all_positive_kPa_ms": 368.6,
+          "impulse_kPa_ms": 368.6,
+          "peak_kPa": 2171.5
+        },
+        "7 (mid-side)": {
+          "arrival_ms": 0.989,
+          "impulse_all_positive_kPa_ms": 469.5,
+          "impulse_kPa_ms": 467.3,
+          "peak_kPa": 2352.0
+        },
+        "8 (mid-side)": {
+          "arrival_ms": 1.004,
+          "impulse_all_positive_kPa_ms": 460.7,
+          "impulse_kPa_ms": 448.6,
+          "peak_kPa": 2404.3
+        },
+        "centre": {
+          "arrival_ms": 0.93,
+          "impulse_all_positive_kPa_ms": 798.5,
+          "impulse_kPa_ms": 585.8,
+          "peak_kPa": 2751.7
+        },
+        "under the centre": {
+          "arrival_ms": 2.286,
+          "impulse_all_positive_kPa_ms": 510.1,
+          "impulse_kPa_ms": 426.7,
+          "peak_kPa": 1156.8
+        }
+      },
+      "highest_rise_mm": 19.36,
+      "last_100_ms_range_mm": [
+        14.07,
+        14.15
+      ],
+      "layout": "C",
+      "peak_displacement_mm": 14.71,
+      "peak_displacement_uncertainty_mm": [
+        7.72,
+        17.12
+      ],
+      "peak_time_ms": 163.77,
+      "standoff_m": 1.6,
+      "wall_seconds": 513
+    },
+    "2": {
+      "air_slept_ms": 78.3,
+      "blast_peak_mm": 3.77,
+      "blast_peak_time_ms": 3.91,
+      "blew_up": false,
+      "charge_kg": 2.72,
+      "collapses": false,
+      "damage": {
+        "bar_elements_ruptured": 0,
+        "bars_span": true,
+        "bottom_face_scabbed_m2": 0,
+        "concrete_spans": true,
+        "elements_bare": 0,
+        "elements_removed": 0,
+        "largest_piece_share": 1,
+        "pieces": 1,
+        "top_face_crushed_m2": 0,
+        "top_face_spalled_m2": 0,
+        "widest_bottom_crack_mm": 2.181,
+        "widest_top_crack_mm": 1.75
+      },
+      "end_displacement_last_sample_mm": 9.38,
+      "end_displacement_mm": 9.44,
+      "gauges": {
+        "1 (corner)": {
+          "arrival_ms": 1.541,
+          "impulse_all_positive_kPa_ms": 281.2,
+          "impulse_kPa_ms": 281.1,
+          "peak_kPa": 1238.9
+        },
+        "2 (mid-side)": {
+          "arrival_ms": 1.484,
+          "impulse_all_positive_kPa_ms": 358.5,
+          "impulse_kPa_ms": 348.6,
+          "peak_kPa": 1332.7
+        },
+        "3 (corner)": {
+          "arrival_ms": 1.541,
+          "impulse_all_positive_kPa_ms": 281.1,
+          "impulse_kPa_ms": 281.0,
+          "peak_kPa": 1234.3
+        },
+        "4 (corner)": {
+          "arrival_ms": 1.541,
+          "impulse_all_positive_kPa_ms": 282.3,
+          "impulse_kPa_ms": 282.3,
+          "peak_kPa": 1236.3
+        },
+        "5 (mid-side)": {
+          "arrival_ms": 1.467,
+          "impulse_all_positive_kPa_ms": 352.7,
+          "impulse_kPa_ms": 349.2,
+          "peak_kPa": 1264.0
+        },
+        "6 (corner)": {
+          "arrival_ms": 1.541,
+          "impulse_all_positive_kPa_ms": 282.3,
+          "impulse_kPa_ms": 282.3,
+          "peak_kPa": 1235.6
+        },
+        "7 (mid-side)": {
+          "arrival_ms": 1.467,
+          "impulse_all_positive_kPa_ms": 353.1,
+          "impulse_kPa_ms": 349.5,
+          "peak_kPa": 1241.3
+        },
+        "8 (mid-side)": {
+          "arrival_ms": 1.484,
+          "impulse_all_positive_kPa_ms": 358.1,
+          "impulse_kPa_ms": 348.6,
+          "peak_kPa": 1332.7
+        },
+        "centre": {
+          "arrival_ms": 1.41,
+          "impulse_all_positive_kPa_ms": 648.6,
+          "impulse_kPa_ms": 477.1,
+          "peak_kPa": 1463.9
+        },
+        "under the centre": {
+          "arrival_ms": 2.851,
+          "impulse_all_positive_kPa_ms": 450.7,
+          "impulse_kPa_ms": 397.0,
+          "peak_kPa": 859.6
+        }
+      },
+      "highest_rise_mm": 48.0,
+      "last_100_ms_range_mm": [
+        9.33,
+        9.52
+      ],
+      "layout": "A",
+      "peak_displacement_mm": 11.67,
+      "peak_displacement_uncertainty_mm": [
+        5.66,
+        24.18
+      ],
+      "peak_time_ms": 191.4,
+      "standoff_m": 2,
+      "wall_seconds": 747
+    },
+    "4": {
+      "air_slept_ms": 78.1,
+      "blast_peak_mm": 4.27,
+      "blast_peak_time_ms": 4.0,
+      "blew_up": false,
+      "charge_kg": 2.69,
+      "collapses": false,
+      "damage": {
+        "bar_elements_ruptured": 0,
+        "bars_span": true,
+        "bottom_face_scabbed_m2": 0,
+        "concrete_spans": true,
+        "elements_bare": 0,
+        "elements_removed": 0,
+        "largest_piece_share": 1,
+        "pieces": 1,
+        "top_face_crushed_m2": 0,
+        "top_face_spalled_m2": 0,
+        "widest_bottom_crack_mm": 5.919,
+        "widest_top_crack_mm": 2.806
+      },
+      "end_displacement_last_sample_mm": 23.23,
+      "end_displacement_mm": 23.21,
+      "gauges": {
+        "1 (corner)": {
+          "arrival_ms": 1.545,
+          "impulse_all_positive_kPa_ms": 279.4,
+          "impulse_kPa_ms": 279.4,
+          "peak_kPa": 1235.9
+        },
+        "2 (mid-side)": {
+          "arrival_ms": 1.488,
+          "impulse_all_positive_kPa_ms": 356.2,
+          "impulse_kPa_ms": 345.5,
+          "peak_kPa": 1316.5
+        },
+        "3 (corner)": {
+          "arrival_ms": 1.545,
+          "impulse_all_positive_kPa_ms": 279.4,
+          "impulse_kPa_ms": 279.4,
+          "peak_kPa": 1233.4
+        },
+        "4 (corner)": {
+          "arrival_ms": 1.545,
+          "impulse_all_positive_kPa_ms": 281.1,
+          "impulse_kPa_ms": 281.1,
+          "peak_kPa": 1239.3
+        },
+        "5 (mid-side)": {
+          "arrival_ms": 1.472,
+          "impulse_all_positive_kPa_ms": 350.0,
+          "impulse_kPa_ms": 346.3,
+          "peak_kPa": 1233.2
+        },
+        "6 (corner)": {
+          "arrival_ms": 1.545,
+          "impulse_all_positive_kPa_ms": 281.0,
+          "impulse_kPa_ms": 281.0,
+          "peak_kPa": 1236.4
+        },
+        "7 (mid-side)": {
+          "arrival_ms": 1.472,
+          "impulse_all_positive_kPa_ms": 350.7,
+          "impulse_kPa_ms": 347.0,
+          "peak_kPa": 1236.0
+        },
+        "8 (mid-side)": {
+          "arrival_ms": 1.488,
+          "impulse_all_positive_kPa_ms": 356.3,
+          "impulse_kPa_ms": 345.5,
+          "peak_kPa": 1316.5
+        },
+        "centre": {
+          "arrival_ms": 1.412,
+          "impulse_all_positive_kPa_ms": 657.9,
+          "impulse_kPa_ms": 473.2,
+          "peak_kPa": 1445.0
+        },
+        "under the centre": {
+          "arrival_ms": 2.854,
+          "impulse_all_positive_kPa_ms": 447.2,
+          "impulse_kPa_ms": 394.2,
+          "peak_kPa": 851.1
+        }
+      },
+      "highest_rise_mm": 43.93,
+      "last_100_ms_range_mm": [
+        23.15,
+        23.28
+      ],
+      "layout": "B",
+      "peak_displacement_mm": 25.11,
+      "peak_displacement_uncertainty_mm": [
+        18.68,
+        79.05
+      ],
+      "peak_time_ms": 189.27,
+      "standoff_m": 2,
+      "wall_seconds": 608
+    },
+    "5": {
+      "air_slept_ms": 78.4,
+      "blast_peak_mm": 3.64,
+      "blast_peak_time_ms": 3.91,
+      "blew_up": false,
+      "charge_kg": 2.58,
+      "collapses": false,
+      "damage": {
+        "bar_elements_ruptured": 0,
+        "bars_span": true,
+        "bottom_face_scabbed_m2": 0,
+        "concrete_spans": true,
+        "elements_bare": 0,
+        "elements_removed": 0,
+        "largest_piece_share": 1,
+        "pieces": 1,
+        "top_face_crushed_m2": 0,
+        "top_face_spalled_m2": 0,
+        "widest_bottom_crack_mm": 2.094,
+        "widest_top_crack_mm": 7.923
+      },
+      "end_displacement_last_sample_mm": 10.93,
+      "end_displacement_mm": 11.0,
+      "gauges": {
+        "1 (corner)": {
+          "arrival_ms": 1.565,
+          "impulse_all_positive_kPa_ms": 269.7,
+          "impulse_kPa_ms": 269.7,
+          "peak_kPa": 1167.4
+        },
+        "2 (mid-side)": {
+          "arrival_ms": 1.509,
+          "impulse_all_positive_kPa_ms": 339.1,
+          "impulse_kPa_ms": 334.7,
+          "peak_kPa": 1259.9
+        },
+        "3 (corner)": {
+          "arrival_ms": 1.565,
+          "impulse_all_positive_kPa_ms": 269.8,
+          "impulse_kPa_ms": 269.8,
+          "peak_kPa": 1168.6
+        },
+        "4 (corner)": {
+          "arrival_ms": 1.565,
+          "impulse_all_positive_kPa_ms": 271.4,
+          "impulse_kPa_ms": 271.4,
+          "peak_kPa": 1175.0
+        },
+        "5 (mid-side)": {
+          "arrival_ms": 1.49,
+          "impulse_all_positive_kPa_ms": 341.3,
+          "impulse_kPa_ms": 335.6,
+          "peak_kPa": 1191.8
+        },
+        "6 (corner)": {
+          "arrival_ms": 1.565,
+          "impulse_all_positive_kPa_ms": 271.3,
+          "impulse_kPa_ms": 271.3,
+          "peak_kPa": 1172.8
+        },
+        "7 (mid-side)": {
+          "arrival_ms": 1.49,
+          "impulse_all_positive_kPa_ms": 342.2,
+          "impulse_kPa_ms": 336.6,
+          "peak_kPa": 1176.2
+        },
+        "8 (mid-side)": {
+          "arrival_ms": 1.509,
+          "impulse_all_positive_kPa_ms": 339.0,
+          "impulse_kPa_ms": 334.7,
+          "peak_kPa": 1259.9
+        },
+        "centre": {
+          "arrival_ms": 1.432,
+          "impulse_all_positive_kPa_ms": 576.8,
+          "impulse_kPa_ms": 459.3,
+          "peak_kPa": 1384.6
+        },
+        "under the centre": {
+          "arrival_ms": 2.882,
+          "impulse_all_positive_kPa_ms": 435.8,
+          "impulse_kPa_ms": 383.3,
+          "peak_kPa": 819.1
+        }
+      },
+      "highest_rise_mm": 50.76,
+      "last_100_ms_range_mm": [
+        10.87,
+        11.11
+      ],
+      "layout": "A",
+      "peak_displacement_mm": 13.23,
+      "peak_displacement_uncertainty_mm": [
+        6.42,
+        27.41
+      ],
+      "peak_time_ms": 192.34,
+      "standoff_m": 2,
+      "wall_seconds": 998
+    },
+    "7": {
+      "air_slept_ms": 78.3,
+      "blast_peak_mm": 4.06,
+      "blast_peak_time_ms": 3.9,
+      "blew_up": false,
+      "charge_kg": 2.6,
+      "collapses": false,
+      "damage": {
+        "bar_elements_ruptured": 0,
+        "bars_span": true,
+        "bottom_face_scabbed_m2": 0,
+        "concrete_spans": true,
+        "elements_bare": 0,
+        "elements_removed": 0,
+        "largest_piece_share": 1,
+        "pieces": 1,
+        "top_face_crushed_m2": 0,
+        "top_face_spalled_m2": 0,
+        "widest_bottom_crack_mm": 4.261,
+        "widest_top_crack_mm": 2.226
+      },
+      "end_displacement_last_sample_mm": 20.76,
+      "end_displacement_mm": 20.76,
+      "gauges": {
+        "1 (corner)": {
+          "arrival_ms": 1.561,
+          "impulse_all_positive_kPa_ms": 271.6,
+          "impulse_kPa_ms": 271.6,
+          "peak_kPa": 1194.9
+        },
+        "2 (mid-side)": {
+          "arrival_ms": 1.503,
+          "impulse_all_positive_kPa_ms": 343.6,
+          "impulse_kPa_ms": 336.7,
+          "peak_kPa": 1270.4
+        },
+        "3 (corner)": {
+          "arrival_ms": 1.561,
+          "impulse_all_positive_kPa_ms": 271.6,
+          "impulse_kPa_ms": 271.6,
+          "peak_kPa": 1205.7
+        },
+        "4 (corner)": {
+          "arrival_ms": 1.561,
+          "impulse_all_positive_kPa_ms": 273.3,
+          "impulse_kPa_ms": 273.3,
+          "peak_kPa": 1198.7
+        },
+        "5 (mid-side)": {
+          "arrival_ms": 1.487,
+          "impulse_all_positive_kPa_ms": 342.0,
+          "impulse_kPa_ms": 336.9,
+          "peak_kPa": 1201.6
+        },
+        "6 (corner)": {
+          "arrival_ms": 1.561,
+          "impulse_all_positive_kPa_ms": 273.2,
+          "impulse_kPa_ms": 273.2,
+          "peak_kPa": 1192.8
+        },
+        "7 (mid-side)": {
+          "arrival_ms": 1.487,
+          "impulse_all_positive_kPa_ms": 343.2,
+          "impulse_kPa_ms": 338.1,
+          "peak_kPa": 1183.6
+        },
+        "8 (mid-side)": {
+          "arrival_ms": 1.503,
+          "impulse_all_positive_kPa_ms": 343.3,
+          "impulse_kPa_ms": 336.7,
+          "peak_kPa": 1270.4
+        },
+        "centre": {
+          "arrival_ms": 1.429,
+          "impulse_all_positive_kPa_ms": 598.1,
+          "impulse_kPa_ms": 461.8,
+          "peak_kPa": 1395.7
+        },
+        "under the centre": {
+          "arrival_ms": 2.878,
+          "impulse_all_positive_kPa_ms": 438.3,
+          "impulse_kPa_ms": 385.4,
+          "peak_kPa": 824.9
+        }
+      },
+      "highest_rise_mm": 48.77,
+      "last_100_ms_range_mm": [
+        20.66,
+        20.85
+      ],
+      "layout": "B",
+      "peak_displacement_mm": 22.77,
+      "peak_displacement_uncertainty_mm": [
+        16.94,
+        71.68
+      ],
+      "peak_time_ms": 224.02,
+      "standoff_m": 2,
+      "wall_seconds": 717
+    },
+    "9": {
+      "air_slept_ms": 78.2,
+      "blast_peak_mm": 4.36,
+      "blast_peak_time_ms": 4.01,
+      "blew_up": false,
+      "charge_kg": 2.72,
+      "collapses": false,
+      "damage": {
+        "bar_elements_ruptured": 0,
+        "bars_span": true,
+        "bottom_face_scabbed_m2": 0,
+        "concrete_spans": true,
+        "elements_bare": 0,
+        "elements_removed": 0,
+        "largest_piece_share": 1,
+        "pieces": 1,
+        "top_face_crushed_m2": 0,
+        "top_face_spalled_m2": 0,
+        "widest_bottom_crack_mm": 5.013,
+        "widest_top_crack_mm": 3.174
+      },
+      "end_displacement_last_sample_mm": 20.03,
+      "end_displacement_mm": 20.05,
+      "gauges": {
+        "1 (corner)": {
+          "arrival_ms": 1.541,
+          "impulse_all_positive_kPa_ms": 281.3,
+          "impulse_kPa_ms": 281.2,
+          "peak_kPa": 1245.7
+        },
+        "2 (mid-side)": {
+          "arrival_ms": 1.484,
+          "impulse_all_positive_kPa_ms": 362.0,
+          "impulse_kPa_ms": 348.6,
+          "peak_kPa": 1332.7
+        },
+        "3 (corner)": {
+          "arrival_ms": 1.541,
+          "impulse_all_positive_kPa_ms": 281.4,
+          "impulse_kPa_ms": 281.4,
+          "peak_kPa": 1240.0
+        },
+        "4 (corner)": {
+          "arrival_ms": 1.541,
+          "impulse_all_positive_kPa_ms": 283.1,
+          "impulse_kPa_ms": 283.1,
+          "peak_kPa": 1249.1
+        },
+        "5 (mid-side)": {
+          "arrival_ms": 1.467,
+          "impulse_all_positive_kPa_ms": 352.1,
+          "impulse_kPa_ms": 348.5,
+          "peak_kPa": 1251.7
+        },
+        "6 (corner)": {
+          "arrival_ms": 1.541,
+          "impulse_all_positive_kPa_ms": 283.1,
+          "impulse_kPa_ms": 283.0,
+          "peak_kPa": 1246.7
+        },
+        "7 (mid-side)": {
+          "arrival_ms": 1.467,
+          "impulse_all_positive_kPa_ms": 352.5,
+          "impulse_kPa_ms": 348.9,
+          "peak_kPa": 1237.5
+        },
+        "8 (mid-side)": {
+          "arrival_ms": 1.484,
+          "impulse_all_positive_kPa_ms": 361.3,
+          "impulse_kPa_ms": 348.6,
+          "peak_kPa": 1332.7
+        },
+        "centre": {
+          "arrival_ms": 1.41,
+          "impulse_all_positive_kPa_ms": 648.1,
+          "impulse_kPa_ms": 477.0,
+          "peak_kPa": 1463.9
+        },
+        "under the centre": {
+          "arrival_ms": 2.847,
+          "impulse_all_positive_kPa_ms": 450.8,
+          "impulse_kPa_ms": 397.3,
+          "peak_kPa": 861.3
+        }
+      },
+      "highest_rise_mm": 43.78,
+      "last_100_ms_range_mm": [
+        19.99,
+        20.11
+      ],
+      "layout": "B",
+      "peak_displacement_mm": 21.8,
+      "peak_displacement_uncertainty_mm": [
+        16.22,
+        68.63
+      ],
+      "peak_time_ms": 188.58,
+      "standoff_m": 2,
+      "wall_seconds": 539
+    }
+  },
+  "secondary": {
+    "air25": {
+      "label": "air 25 mm refined by 2, mapped start (two options on)",
+      "slabs": {
+        "1": {
+          "air_slept_ms": 78.8,
+          "blast_peak_mm": 10.44,
+          "blast_peak_time_ms": 7.83,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 2.005,
+            "widest_top_crack_mm": 0.439
+          },
+          "end_displacement_last_sample_mm": 0.92,
+          "end_displacement_mm": -0.25,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 0.728,
+              "impulse_all_positive_kPa_ms": 430.0,
+              "impulse_kPa_ms": 430.0,
+              "peak_kPa": 3051.3
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 0.682,
+              "impulse_all_positive_kPa_ms": 545.9,
+              "impulse_kPa_ms": 494.2,
+              "peak_kPa": 3159.8
+            },
+            "3 (corner)": {
+              "arrival_ms": 0.728,
+              "impulse_all_positive_kPa_ms": 428.5,
+              "impulse_kPa_ms": 428.5,
+              "peak_kPa": 3049.0
+            },
+            "4 (corner)": {
+              "arrival_ms": 0.749,
+              "impulse_all_positive_kPa_ms": 420.5,
+              "impulse_kPa_ms": 420.5,
+              "peak_kPa": 3108.6
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 0.656,
+              "impulse_all_positive_kPa_ms": 516.5,
+              "impulse_kPa_ms": 508.7,
+              "peak_kPa": 3308.4
+            },
+            "6 (corner)": {
+              "arrival_ms": 0.728,
+              "impulse_all_positive_kPa_ms": 438.7,
+              "impulse_kPa_ms": 438.6,
+              "peak_kPa": 3118.8
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 0.682,
+              "impulse_all_positive_kPa_ms": 505.7,
+              "impulse_kPa_ms": 493.8,
+              "peak_kPa": 3298.3
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 0.682,
+              "impulse_all_positive_kPa_ms": 546.0,
+              "impulse_kPa_ms": 494.2,
+              "peak_kPa": 3159.8
+            },
+            "centre": {
+              "arrival_ms": 0.607,
+              "impulse_all_positive_kPa_ms": 850.6,
+              "impulse_kPa_ms": 643.7,
+              "peak_kPa": 3668.2
+            },
+            "under the centre": {
+              "arrival_ms": 1.892,
+              "impulse_all_positive_kPa_ms": 601.3,
+              "impulse_kPa_ms": 507.0,
+              "peak_kPa": 1743.4
+            }
+          },
+          "highest_rise_mm": 6.46,
+          "last_100_ms_range_mm": [
+            -2.79,
+            7.35
+          ],
+          "peak_displacement_mm": 10.44,
+          "peak_time_ms": 7.83,
+          "wall_seconds": 1587
+        },
+        "10": {
+          "air_slept_ms": 79.2,
+          "blast_peak_mm": 5.85,
+          "blast_peak_time_ms": 3.42,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 1.508,
+            "widest_top_crack_mm": 0.246
+          },
+          "end_displacement_last_sample_mm": -0.38,
+          "end_displacement_mm": -0.62,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.038,
+              "impulse_all_positive_kPa_ms": 334.0,
+              "impulse_kPa_ms": 333.9,
+              "peak_kPa": 1715.2
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 0.992,
+              "impulse_all_positive_kPa_ms": 397.2,
+              "impulse_kPa_ms": 385.9,
+              "peak_kPa": 1800.0
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.038,
+              "impulse_all_positive_kPa_ms": 333.7,
+              "impulse_kPa_ms": 333.6,
+              "peak_kPa": 1713.0
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.038,
+              "impulse_all_positive_kPa_ms": 345.4,
+              "impulse_kPa_ms": 345.4,
+              "peak_kPa": 1751.1
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 0.964,
+              "impulse_all_positive_kPa_ms": 427.1,
+              "impulse_kPa_ms": 424.7,
+              "peak_kPa": 1876.4
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.038,
+              "impulse_all_positive_kPa_ms": 344.4,
+              "impulse_kPa_ms": 344.3,
+              "peak_kPa": 1756.9
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 0.992,
+              "impulse_all_positive_kPa_ms": 411.6,
+              "impulse_kPa_ms": 409.3,
+              "peak_kPa": 1899.1
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 0.992,
+              "impulse_all_positive_kPa_ms": 396.8,
+              "impulse_kPa_ms": 385.9,
+              "peak_kPa": 1800.0
+            },
+            "centre": {
+              "arrival_ms": 0.917,
+              "impulse_all_positive_kPa_ms": 666.6,
+              "impulse_kPa_ms": 509.1,
+              "peak_kPa": 2016.8
+            },
+            "under the centre": {
+              "arrival_ms": 2.283,
+              "impulse_all_positive_kPa_ms": 483.1,
+              "impulse_kPa_ms": 403.3,
+              "peak_kPa": 866.2
+            }
+          },
+          "highest_rise_mm": 19.34,
+          "last_100_ms_range_mm": [
+            -0.78,
+            4.73
+          ],
+          "peak_displacement_mm": 5.85,
+          "peak_time_ms": 3.42,
+          "wall_seconds": 1491
+        },
+        "2": {
+          "air_slept_ms": 78.2,
+          "blast_peak_mm": 3.78,
+          "blast_peak_time_ms": 3.9,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 1.146,
+            "widest_top_crack_mm": 0.821
+          },
+          "end_displacement_last_sample_mm": 4.18,
+          "end_displacement_mm": 4.22,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.504,
+              "impulse_all_positive_kPa_ms": 269.5,
+              "impulse_kPa_ms": 269.1,
+              "peak_kPa": 946.9
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.462,
+              "impulse_all_positive_kPa_ms": 323.4,
+              "impulse_kPa_ms": 312.9,
+              "peak_kPa": 1036.3
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.504,
+              "impulse_all_positive_kPa_ms": 269.5,
+              "impulse_kPa_ms": 269.1,
+              "peak_kPa": 947.1
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.538,
+              "impulse_all_positive_kPa_ms": 264.5,
+              "impulse_kPa_ms": 264.2,
+              "peak_kPa": 962.4
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.427,
+              "impulse_all_positive_kPa_ms": 336.5,
+              "impulse_kPa_ms": 333.8,
+              "peak_kPa": 1006.7
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.538,
+              "impulse_all_positive_kPa_ms": 264.5,
+              "impulse_kPa_ms": 264.1,
+              "peak_kPa": 965.3
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.462,
+              "impulse_all_positive_kPa_ms": 332.1,
+              "impulse_kPa_ms": 327.9,
+              "peak_kPa": 1036.1
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.462,
+              "impulse_all_positive_kPa_ms": 323.5,
+              "impulse_kPa_ms": 312.9,
+              "peak_kPa": 1036.3
+            },
+            "centre": {
+              "arrival_ms": 1.39,
+              "impulse_all_positive_kPa_ms": 557.4,
+              "impulse_kPa_ms": 435.1,
+              "peak_kPa": 1133.6
+            },
+            "under the centre": {
+              "arrival_ms": 2.844,
+              "impulse_all_positive_kPa_ms": 448.0,
+              "impulse_kPa_ms": 396.0,
+              "peak_kPa": 854.8
+            }
+          },
+          "highest_rise_mm": 48.01,
+          "last_100_ms_range_mm": [
+            4.13,
+            4.29
+          ],
+          "peak_displacement_mm": 5.93,
+          "peak_time_ms": 211.73,
+          "wall_seconds": 1007
+        },
+        "4": {
+          "air_slept_ms": 78.3,
+          "blast_peak_mm": 4.28,
+          "blast_peak_time_ms": 3.93,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 1.38,
+            "widest_top_crack_mm": 0.667
+          },
+          "end_displacement_last_sample_mm": 6.28,
+          "end_displacement_mm": 6.26,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.509,
+              "impulse_all_positive_kPa_ms": 266.8,
+              "impulse_kPa_ms": 266.5,
+              "peak_kPa": 946.2
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.468,
+              "impulse_all_positive_kPa_ms": 314.1,
+              "impulse_kPa_ms": 310.4,
+              "peak_kPa": 1024.2
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.509,
+              "impulse_all_positive_kPa_ms": 266.8,
+              "impulse_kPa_ms": 266.6,
+              "peak_kPa": 944.6
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.541,
+              "impulse_all_positive_kPa_ms": 262.5,
+              "impulse_kPa_ms": 262.2,
+              "peak_kPa": 959.3
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.433,
+              "impulse_all_positive_kPa_ms": 333.9,
+              "impulse_kPa_ms": 330.8,
+              "peak_kPa": 1006.0
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.541,
+              "impulse_all_positive_kPa_ms": 262.5,
+              "impulse_kPa_ms": 262.2,
+              "peak_kPa": 963.9
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.468,
+              "impulse_all_positive_kPa_ms": 330.9,
+              "impulse_kPa_ms": 326.5,
+              "peak_kPa": 1020.8
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.468,
+              "impulse_all_positive_kPa_ms": 314.5,
+              "impulse_kPa_ms": 310.4,
+              "peak_kPa": 1024.2
+            },
+            "centre": {
+              "arrival_ms": 1.391,
+              "impulse_all_positive_kPa_ms": 553.2,
+              "impulse_kPa_ms": 431.9,
+              "peak_kPa": 1119.7
+            },
+            "under the centre": {
+              "arrival_ms": 2.855,
+              "impulse_all_positive_kPa_ms": 445.6,
+              "impulse_kPa_ms": 393.3,
+              "peak_kPa": 848.0
+            }
+          },
+          "highest_rise_mm": 44.43,
+          "last_100_ms_range_mm": [
+            6.22,
+            6.31
+          ],
+          "peak_displacement_mm": 7.09,
+          "peak_time_ms": 211.4,
+          "wall_seconds": 1161
+        },
+        "5": {
+          "air_slept_ms": 78.8,
+          "blast_peak_mm": 3.6,
+          "blast_peak_time_ms": 3.93,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0.0001,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 0.688,
+            "widest_top_crack_mm": 0.937
+          },
+          "end_displacement_last_sample_mm": 3.65,
+          "end_displacement_mm": 3.62,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.528,
+              "impulse_all_positive_kPa_ms": 257.1,
+              "impulse_kPa_ms": 256.9,
+              "peak_kPa": 896.1
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.485,
+              "impulse_all_positive_kPa_ms": 305.9,
+              "impulse_kPa_ms": 301.2,
+              "peak_kPa": 980.6
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.528,
+              "impulse_all_positive_kPa_ms": 257.2,
+              "impulse_kPa_ms": 257.0,
+              "peak_kPa": 901.7
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.562,
+              "impulse_all_positive_kPa_ms": 254.0,
+              "impulse_kPa_ms": 253.7,
+              "peak_kPa": 912.7
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.454,
+              "impulse_all_positive_kPa_ms": 323.7,
+              "impulse_kPa_ms": 319.2,
+              "peak_kPa": 958.4
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.562,
+              "impulse_all_positive_kPa_ms": 254.0,
+              "impulse_kPa_ms": 253.8,
+              "peak_kPa": 914.7
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.485,
+              "impulse_all_positive_kPa_ms": 321.0,
+              "impulse_kPa_ms": 315.4,
+              "peak_kPa": 977.2
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.485,
+              "impulse_all_positive_kPa_ms": 306.1,
+              "impulse_kPa_ms": 301.2,
+              "peak_kPa": 980.6
+            },
+            "centre": {
+              "arrival_ms": 1.41,
+              "impulse_all_positive_kPa_ms": 541.2,
+              "impulse_kPa_ms": 419.8,
+              "peak_kPa": 1068.6
+            },
+            "under the centre": {
+              "arrival_ms": 2.883,
+              "impulse_all_positive_kPa_ms": 434.2,
+              "impulse_kPa_ms": 419.8,
+              "peak_kPa": 814.8
+            }
+          },
+          "highest_rise_mm": 51.72,
+          "last_100_ms_range_mm": [
+            3.55,
+            3.69
+          ],
+          "peak_displacement_mm": 4.84,
+          "peak_time_ms": 215.51,
+          "wall_seconds": 2303
+        },
+        "7": {
+          "air_slept_ms": 78.7,
+          "blast_peak_mm": 4.12,
+          "blast_peak_time_ms": 3.93,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 1.174,
+            "widest_top_crack_mm": 0.797
+          },
+          "end_displacement_last_sample_mm": 6.34,
+          "end_displacement_mm": 6.37,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.525,
+              "impulse_all_positive_kPa_ms": 259.5,
+              "impulse_kPa_ms": 259.3,
+              "peak_kPa": 911.8
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.484,
+              "impulse_all_positive_kPa_ms": 307.8,
+              "impulse_kPa_ms": 302.9,
+              "peak_kPa": 988.9
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.525,
+              "impulse_all_positive_kPa_ms": 259.5,
+              "impulse_kPa_ms": 259.3,
+              "peak_kPa": 910.7
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.559,
+              "impulse_all_positive_kPa_ms": 255.9,
+              "impulse_kPa_ms": 255.7,
+              "peak_kPa": 920.5
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.447,
+              "impulse_all_positive_kPa_ms": 324.7,
+              "impulse_kPa_ms": 320.5,
+              "peak_kPa": 960.9
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.559,
+              "impulse_all_positive_kPa_ms": 255.7,
+              "impulse_kPa_ms": 255.5,
+              "peak_kPa": 923.6
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.484,
+              "impulse_all_positive_kPa_ms": 321.7,
+              "impulse_kPa_ms": 316.4,
+              "peak_kPa": 975.7
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.484,
+              "impulse_all_positive_kPa_ms": 307.3,
+              "impulse_kPa_ms": 302.9,
+              "peak_kPa": 988.9
+            },
+            "centre": {
+              "arrival_ms": 1.408,
+              "impulse_all_positive_kPa_ms": 542.4,
+              "impulse_kPa_ms": 422.0,
+              "peak_kPa": 1078.1
+            },
+            "under the centre": {
+              "arrival_ms": 2.873,
+              "impulse_all_positive_kPa_ms": 436.7,
+              "impulse_kPa_ms": 422.4,
+              "peak_kPa": 820.7
+            }
+          },
+          "highest_rise_mm": 45.89,
+          "last_100_ms_range_mm": [
+            6.32,
+            6.43
+          ],
+          "peak_displacement_mm": 7.4,
+          "peak_time_ms": 211.33,
+          "wall_seconds": 1624
+        },
+        "9": {
+          "air_slept_ms": 79.2,
+          "blast_peak_mm": 4.43,
+          "blast_peak_time_ms": 3.9,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 1.732,
+            "widest_top_crack_mm": 0.658
+          },
+          "end_displacement_last_sample_mm": 6.79,
+          "end_displacement_mm": 6.8,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.504,
+              "impulse_all_positive_kPa_ms": 270.3,
+              "impulse_kPa_ms": 270.0,
+              "peak_kPa": 955.8
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.462,
+              "impulse_all_positive_kPa_ms": 318.1,
+              "impulse_kPa_ms": 313.0,
+              "peak_kPa": 1036.3
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.504,
+              "impulse_all_positive_kPa_ms": 270.3,
+              "impulse_kPa_ms": 270.0,
+              "peak_kPa": 953.9
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.538,
+              "impulse_all_positive_kPa_ms": 264.7,
+              "impulse_kPa_ms": 264.4,
+              "peak_kPa": 974.5
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.427,
+              "impulse_all_positive_kPa_ms": 333.9,
+              "impulse_kPa_ms": 331.1,
+              "peak_kPa": 1006.3
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.538,
+              "impulse_all_positive_kPa_ms": 264.7,
+              "impulse_kPa_ms": 264.4,
+              "peak_kPa": 974.6
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.462,
+              "impulse_all_positive_kPa_ms": 331.2,
+              "impulse_kPa_ms": 327.0,
+              "peak_kPa": 1043.7
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.462,
+              "impulse_all_positive_kPa_ms": 318.2,
+              "impulse_kPa_ms": 312.9,
+              "peak_kPa": 1036.3
+            },
+            "centre": {
+              "arrival_ms": 1.39,
+              "impulse_all_positive_kPa_ms": 556.3,
+              "impulse_kPa_ms": 435.1,
+              "peak_kPa": 1133.3
+            },
+            "under the centre": {
+              "arrival_ms": 2.844,
+              "impulse_all_positive_kPa_ms": 448.3,
+              "impulse_kPa_ms": 396.2,
+              "peak_kPa": 856.3
+            }
+          },
+          "highest_rise_mm": 44.4,
+          "last_100_ms_range_mm": [
+            6.75,
+            6.84
+          ],
+          "peak_displacement_mm": 7.62,
+          "peak_time_ms": 211.1,
+          "wall_seconds": 1367
+        }
+      }
+    },
+    "awake12": {
+      "label": "air never sleeps, on the primary's air (slabs 4 and 1)",
+      "slabs": {
+        "1": {
+          "air_slept_ms": null,
+          "blast_peak_mm": 10.34,
+          "blast_peak_time_ms": 7.6,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 4.034,
+            "widest_top_crack_mm": 0.433
+          },
+          "end_displacement_last_sample_mm": 4.17,
+          "end_displacement_mm": 5.09,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 0.754,
+              "impulse_all_positive_kPa_ms": 493.6,
+              "impulse_kPa_ms": 493.6,
+              "peak_kPa": 3925.2
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 0.693,
+              "impulse_all_positive_kPa_ms": 638.1,
+              "impulse_kPa_ms": 590.8,
+              "peak_kPa": 4449.2
+            },
+            "3 (corner)": {
+              "arrival_ms": 0.754,
+              "impulse_all_positive_kPa_ms": 492.8,
+              "impulse_kPa_ms": 492.8,
+              "peak_kPa": 3931.8
+            },
+            "4 (corner)": {
+              "arrival_ms": 0.754,
+              "impulse_all_positive_kPa_ms": 500.3,
+              "impulse_kPa_ms": 500.3,
+              "peak_kPa": 3989.8
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 0.683,
+              "impulse_all_positive_kPa_ms": 613.9,
+              "impulse_kPa_ms": 605.6,
+              "peak_kPa": 4564.2
+            },
+            "6 (corner)": {
+              "arrival_ms": 0.754,
+              "impulse_all_positive_kPa_ms": 502.5,
+              "impulse_kPa_ms": 502.1,
+              "peak_kPa": 4049.4
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 0.683,
+              "impulse_all_positive_kPa_ms": 619.8,
+              "impulse_kPa_ms": 612.1,
+              "peak_kPa": 4592.3
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 0.693,
+              "impulse_all_positive_kPa_ms": 638.2,
+              "impulse_kPa_ms": 590.8,
+              "peak_kPa": 4449.2
+            },
+            "centre": {
+              "arrival_ms": 0.618,
+              "impulse_all_positive_kPa_ms": 1032.6,
+              "impulse_kPa_ms": 787.3,
+              "peak_kPa": 5393.0
+            },
+            "under the centre": {
+              "arrival_ms": 1.895,
+              "impulse_all_positive_kPa_ms": 622.4,
+              "impulse_kPa_ms": 516.2,
+              "peak_kPa": 1808.6
+            }
+          },
+          "highest_rise_mm": 4.0,
+          "last_100_ms_range_mm": [
+            0.7,
+            8.24
+          ],
+          "peak_displacement_mm": 10.34,
+          "peak_time_ms": 7.6,
+          "wall_seconds": 2699
+        },
+        "4": {
+          "air_slept_ms": null,
+          "blast_peak_mm": 4.27,
+          "blast_peak_time_ms": 4.0,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0.0006,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 6,
+            "largest_piece_share": 1.0,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 10.516,
+            "widest_top_crack_mm": 0.218
+          },
+          "end_displacement_last_sample_mm": -444.08,
+          "end_displacement_mm": -449.32,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.545,
+              "impulse_all_positive_kPa_ms": 279.4,
+              "impulse_kPa_ms": 279.4,
+              "peak_kPa": 1235.9
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.488,
+              "impulse_all_positive_kPa_ms": 356.2,
+              "impulse_kPa_ms": 345.5,
+              "peak_kPa": 1316.5
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.545,
+              "impulse_all_positive_kPa_ms": 279.4,
+              "impulse_kPa_ms": 279.4,
+              "peak_kPa": 1233.4
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.545,
+              "impulse_all_positive_kPa_ms": 281.1,
+              "impulse_kPa_ms": 281.1,
+              "peak_kPa": 1239.3
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.472,
+              "impulse_all_positive_kPa_ms": 350.6,
+              "impulse_kPa_ms": 346.3,
+              "peak_kPa": 1233.2
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.545,
+              "impulse_all_positive_kPa_ms": 281.0,
+              "impulse_kPa_ms": 281.0,
+              "peak_kPa": 1236.4
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.472,
+              "impulse_all_positive_kPa_ms": 351.1,
+              "impulse_kPa_ms": 347.0,
+              "peak_kPa": 1236.0
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.488,
+              "impulse_all_positive_kPa_ms": 356.3,
+              "impulse_kPa_ms": 345.5,
+              "peak_kPa": 1316.5
+            },
+            "centre": {
+              "arrival_ms": 1.412,
+              "impulse_all_positive_kPa_ms": 659.0,
+              "impulse_kPa_ms": 473.2,
+              "peak_kPa": 1445.0
+            },
+            "under the centre": {
+              "arrival_ms": 2.854,
+              "impulse_all_positive_kPa_ms": 447.2,
+              "impulse_kPa_ms": 394.2,
+              "peak_kPa": 851.1
+            }
+          },
+          "highest_rise_mm": 462.09,
+          "last_100_ms_range_mm": [
+            -462.09,
+            -303.23
+          ],
+          "peak_displacement_mm": 4.27,
+          "peak_time_ms": 4.0,
+          "wall_seconds": 2260
+        }
+      }
+    },
+    "awake25": {
+      "label": "air never sleeps, on the calibrated air",
+      "slabs": {
+        "1": {
+          "air_slept_ms": null,
+          "blast_peak_mm": 10.44,
+          "blast_peak_time_ms": 7.83,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 2.005,
+            "widest_top_crack_mm": 0.439
+          },
+          "end_displacement_last_sample_mm": -5.25,
+          "end_displacement_mm": -4.99,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 0.728,
+              "impulse_all_positive_kPa_ms": 430.0,
+              "impulse_kPa_ms": 430.0,
+              "peak_kPa": 3051.3
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 0.682,
+              "impulse_all_positive_kPa_ms": 545.9,
+              "impulse_kPa_ms": 494.2,
+              "peak_kPa": 3159.8
+            },
+            "3 (corner)": {
+              "arrival_ms": 0.728,
+              "impulse_all_positive_kPa_ms": 428.5,
+              "impulse_kPa_ms": 428.5,
+              "peak_kPa": 3049.0
+            },
+            "4 (corner)": {
+              "arrival_ms": 0.749,
+              "impulse_all_positive_kPa_ms": 420.5,
+              "impulse_kPa_ms": 420.5,
+              "peak_kPa": 3108.6
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 0.656,
+              "impulse_all_positive_kPa_ms": 516.5,
+              "impulse_kPa_ms": 508.7,
+              "peak_kPa": 3308.4
+            },
+            "6 (corner)": {
+              "arrival_ms": 0.728,
+              "impulse_all_positive_kPa_ms": 438.7,
+              "impulse_kPa_ms": 438.6,
+              "peak_kPa": 3118.8
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 0.682,
+              "impulse_all_positive_kPa_ms": 505.7,
+              "impulse_kPa_ms": 493.8,
+              "peak_kPa": 3298.3
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 0.682,
+              "impulse_all_positive_kPa_ms": 546.0,
+              "impulse_kPa_ms": 494.2,
+              "peak_kPa": 3159.8
+            },
+            "centre": {
+              "arrival_ms": 0.607,
+              "impulse_all_positive_kPa_ms": 850.6,
+              "impulse_kPa_ms": 643.7,
+              "peak_kPa": 3668.2
+            },
+            "under the centre": {
+              "arrival_ms": 1.892,
+              "impulse_all_positive_kPa_ms": 601.3,
+              "impulse_kPa_ms": 507.0,
+              "peak_kPa": 1743.4
+            }
+          },
+          "highest_rise_mm": 6.46,
+          "last_100_ms_range_mm": [
+            -5.25,
+            8.36
+          ],
+          "peak_displacement_mm": 10.44,
+          "peak_time_ms": 7.83,
+          "wall_seconds": 491
+        },
+        "10": {
+          "air_slept_ms": null,
+          "blast_peak_mm": 5.85,
+          "blast_peak_time_ms": 3.42,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 1.508,
+            "widest_top_crack_mm": 0.246
+          },
+          "end_displacement_last_sample_mm": 1.3,
+          "end_displacement_mm": 2.75,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.038,
+              "impulse_all_positive_kPa_ms": 334.0,
+              "impulse_kPa_ms": 333.9,
+              "peak_kPa": 1715.2
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 0.992,
+              "impulse_all_positive_kPa_ms": 397.2,
+              "impulse_kPa_ms": 385.9,
+              "peak_kPa": 1800.0
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.038,
+              "impulse_all_positive_kPa_ms": 333.7,
+              "impulse_kPa_ms": 333.6,
+              "peak_kPa": 1713.0
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.038,
+              "impulse_all_positive_kPa_ms": 345.4,
+              "impulse_kPa_ms": 345.4,
+              "peak_kPa": 1751.1
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 0.964,
+              "impulse_all_positive_kPa_ms": 427.1,
+              "impulse_kPa_ms": 424.7,
+              "peak_kPa": 1876.4
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.038,
+              "impulse_all_positive_kPa_ms": 344.4,
+              "impulse_kPa_ms": 344.3,
+              "peak_kPa": 1756.9
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 0.992,
+              "impulse_all_positive_kPa_ms": 411.6,
+              "impulse_kPa_ms": 409.3,
+              "peak_kPa": 1899.1
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 0.992,
+              "impulse_all_positive_kPa_ms": 396.8,
+              "impulse_kPa_ms": 385.9,
+              "peak_kPa": 1800.0
+            },
+            "centre": {
+              "arrival_ms": 0.917,
+              "impulse_all_positive_kPa_ms": 666.6,
+              "impulse_kPa_ms": 509.1,
+              "peak_kPa": 2016.8
+            },
+            "under the centre": {
+              "arrival_ms": 2.283,
+              "impulse_all_positive_kPa_ms": 483.1,
+              "impulse_kPa_ms": 403.3,
+              "peak_kPa": 866.2
+            }
+          },
+          "highest_rise_mm": 19.34,
+          "last_100_ms_range_mm": [
+            -13.74,
+            3.63
+          ],
+          "peak_displacement_mm": 5.85,
+          "peak_time_ms": 3.42,
+          "wall_seconds": 926
+        },
+        "2": {
+          "air_slept_ms": null,
+          "blast_peak_mm": 3.78,
+          "blast_peak_time_ms": 3.9,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 0.695,
+            "widest_top_crack_mm": 0.252
+          },
+          "end_displacement_last_sample_mm": -20.64,
+          "end_displacement_mm": -21.81,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.504,
+              "impulse_all_positive_kPa_ms": 269.5,
+              "impulse_kPa_ms": 269.1,
+              "peak_kPa": 946.9
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.462,
+              "impulse_all_positive_kPa_ms": 323.4,
+              "impulse_kPa_ms": 312.9,
+              "peak_kPa": 1036.3
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.504,
+              "impulse_all_positive_kPa_ms": 269.5,
+              "impulse_kPa_ms": 269.1,
+              "peak_kPa": 947.1
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.538,
+              "impulse_all_positive_kPa_ms": 264.5,
+              "impulse_kPa_ms": 264.2,
+              "peak_kPa": 962.4
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.427,
+              "impulse_all_positive_kPa_ms": 336.5,
+              "impulse_kPa_ms": 333.8,
+              "peak_kPa": 1006.7
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.538,
+              "impulse_all_positive_kPa_ms": 264.5,
+              "impulse_kPa_ms": 264.1,
+              "peak_kPa": 965.3
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.462,
+              "impulse_all_positive_kPa_ms": 332.1,
+              "impulse_kPa_ms": 327.9,
+              "peak_kPa": 1036.1
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.462,
+              "impulse_all_positive_kPa_ms": 323.5,
+              "impulse_kPa_ms": 312.9,
+              "peak_kPa": 1036.3
+            },
+            "centre": {
+              "arrival_ms": 1.39,
+              "impulse_all_positive_kPa_ms": 557.4,
+              "impulse_kPa_ms": 435.1,
+              "peak_kPa": 1133.6
+            },
+            "under the centre": {
+              "arrival_ms": 2.844,
+              "impulse_all_positive_kPa_ms": 448.0,
+              "impulse_kPa_ms": 396.0,
+              "peak_kPa": 854.8
+            }
+          },
+          "highest_rise_mm": 48.07,
+          "last_100_ms_range_mm": [
+            -24.29,
+            -0.53
+          ],
+          "peak_displacement_mm": 3.78,
+          "peak_time_ms": 3.9,
+          "wall_seconds": 630
+        },
+        "4": {
+          "air_slept_ms": null,
+          "blast_peak_mm": 4.28,
+          "blast_peak_time_ms": 3.93,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 1.06,
+            "widest_top_crack_mm": 0.154
+          },
+          "end_displacement_last_sample_mm": -7.76,
+          "end_displacement_mm": -9.16,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.509,
+              "impulse_all_positive_kPa_ms": 266.8,
+              "impulse_kPa_ms": 266.5,
+              "peak_kPa": 946.2
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.468,
+              "impulse_all_positive_kPa_ms": 314.1,
+              "impulse_kPa_ms": 310.4,
+              "peak_kPa": 1024.2
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.509,
+              "impulse_all_positive_kPa_ms": 266.8,
+              "impulse_kPa_ms": 266.6,
+              "peak_kPa": 944.6
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.541,
+              "impulse_all_positive_kPa_ms": 262.5,
+              "impulse_kPa_ms": 262.2,
+              "peak_kPa": 959.3
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.433,
+              "impulse_all_positive_kPa_ms": 333.9,
+              "impulse_kPa_ms": 330.8,
+              "peak_kPa": 1006.0
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.541,
+              "impulse_all_positive_kPa_ms": 262.5,
+              "impulse_kPa_ms": 262.2,
+              "peak_kPa": 963.9
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.468,
+              "impulse_all_positive_kPa_ms": 330.9,
+              "impulse_kPa_ms": 326.5,
+              "peak_kPa": 1020.8
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.468,
+              "impulse_all_positive_kPa_ms": 314.5,
+              "impulse_kPa_ms": 310.4,
+              "peak_kPa": 1024.2
+            },
+            "centre": {
+              "arrival_ms": 1.391,
+              "impulse_all_positive_kPa_ms": 553.2,
+              "impulse_kPa_ms": 431.9,
+              "peak_kPa": 1119.7
+            },
+            "under the centre": {
+              "arrival_ms": 2.855,
+              "impulse_all_positive_kPa_ms": 445.6,
+              "impulse_kPa_ms": 393.3,
+              "peak_kPa": 848.0
+            }
+          },
+          "highest_rise_mm": 44.39,
+          "last_100_ms_range_mm": [
+            -15.4,
+            -5.65
+          ],
+          "peak_displacement_mm": 4.28,
+          "peak_time_ms": 3.93,
+          "wall_seconds": 598
+        },
+        "5": {
+          "air_slept_ms": null,
+          "blast_peak_mm": 3.6,
+          "blast_peak_time_ms": 3.93,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 0.522,
+            "widest_top_crack_mm": 0.296
+          },
+          "end_displacement_last_sample_mm": -23.29,
+          "end_displacement_mm": -24.19,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.528,
+              "impulse_all_positive_kPa_ms": 257.1,
+              "impulse_kPa_ms": 256.9,
+              "peak_kPa": 896.1
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.485,
+              "impulse_all_positive_kPa_ms": 305.9,
+              "impulse_kPa_ms": 301.2,
+              "peak_kPa": 980.6
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.528,
+              "impulse_all_positive_kPa_ms": 257.2,
+              "impulse_kPa_ms": 257.0,
+              "peak_kPa": 901.7
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.562,
+              "impulse_all_positive_kPa_ms": 254.0,
+              "impulse_kPa_ms": 253.7,
+              "peak_kPa": 912.7
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.454,
+              "impulse_all_positive_kPa_ms": 323.7,
+              "impulse_kPa_ms": 319.2,
+              "peak_kPa": 958.4
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.562,
+              "impulse_all_positive_kPa_ms": 254.0,
+              "impulse_kPa_ms": 253.8,
+              "peak_kPa": 914.7
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.485,
+              "impulse_all_positive_kPa_ms": 321.0,
+              "impulse_kPa_ms": 315.4,
+              "peak_kPa": 977.2
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.485,
+              "impulse_all_positive_kPa_ms": 306.1,
+              "impulse_kPa_ms": 301.2,
+              "peak_kPa": 980.6
+            },
+            "centre": {
+              "arrival_ms": 1.41,
+              "impulse_all_positive_kPa_ms": 541.2,
+              "impulse_kPa_ms": 419.8,
+              "peak_kPa": 1068.6
+            },
+            "under the centre": {
+              "arrival_ms": 2.883,
+              "impulse_all_positive_kPa_ms": 434.2,
+              "impulse_kPa_ms": 419.8,
+              "peak_kPa": 814.8
+            }
+          },
+          "highest_rise_mm": 51.76,
+          "last_100_ms_range_mm": [
+            -25.65,
+            -0.05
+          ],
+          "peak_displacement_mm": 3.6,
+          "peak_time_ms": 3.93,
+          "wall_seconds": 1074
+        },
+        "7": {
+          "air_slept_ms": null,
+          "blast_peak_mm": 4.12,
+          "blast_peak_time_ms": 3.93,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 0.843,
+            "widest_top_crack_mm": 0.195
+          },
+          "end_displacement_last_sample_mm": -13.42,
+          "end_displacement_mm": -15.25,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.525,
+              "impulse_all_positive_kPa_ms": 259.5,
+              "impulse_kPa_ms": 259.3,
+              "peak_kPa": 911.8
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.484,
+              "impulse_all_positive_kPa_ms": 307.8,
+              "impulse_kPa_ms": 302.9,
+              "peak_kPa": 988.9
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.525,
+              "impulse_all_positive_kPa_ms": 259.5,
+              "impulse_kPa_ms": 259.3,
+              "peak_kPa": 910.7
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.559,
+              "impulse_all_positive_kPa_ms": 255.9,
+              "impulse_kPa_ms": 255.7,
+              "peak_kPa": 920.5
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.447,
+              "impulse_all_positive_kPa_ms": 324.7,
+              "impulse_kPa_ms": 320.5,
+              "peak_kPa": 960.9
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.559,
+              "impulse_all_positive_kPa_ms": 255.7,
+              "impulse_kPa_ms": 255.5,
+              "peak_kPa": 923.6
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.484,
+              "impulse_all_positive_kPa_ms": 321.7,
+              "impulse_kPa_ms": 316.4,
+              "peak_kPa": 975.7
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.484,
+              "impulse_all_positive_kPa_ms": 307.3,
+              "impulse_kPa_ms": 302.9,
+              "peak_kPa": 988.9
+            },
+            "centre": {
+              "arrival_ms": 1.408,
+              "impulse_all_positive_kPa_ms": 542.4,
+              "impulse_kPa_ms": 422.0,
+              "peak_kPa": 1078.1
+            },
+            "under the centre": {
+              "arrival_ms": 2.873,
+              "impulse_all_positive_kPa_ms": 436.7,
+              "impulse_kPa_ms": 422.4,
+              "peak_kPa": 820.7
+            }
+          },
+          "highest_rise_mm": 45.97,
+          "last_100_ms_range_mm": [
+            -21.97,
+            -6.37
+          ],
+          "peak_displacement_mm": 4.12,
+          "peak_time_ms": 3.93,
+          "wall_seconds": 951
+        },
+        "9": {
+          "air_slept_ms": null,
+          "blast_peak_mm": 4.43,
+          "blast_peak_time_ms": 3.9,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 1.236,
+            "widest_top_crack_mm": 0.143
+          },
+          "end_displacement_last_sample_mm": -25.29,
+          "end_displacement_mm": -25.23,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.504,
+              "impulse_all_positive_kPa_ms": 270.3,
+              "impulse_kPa_ms": 270.0,
+              "peak_kPa": 955.8
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.462,
+              "impulse_all_positive_kPa_ms": 318.1,
+              "impulse_kPa_ms": 313.0,
+              "peak_kPa": 1036.3
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.504,
+              "impulse_all_positive_kPa_ms": 270.3,
+              "impulse_kPa_ms": 270.0,
+              "peak_kPa": 953.9
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.538,
+              "impulse_all_positive_kPa_ms": 264.7,
+              "impulse_kPa_ms": 264.4,
+              "peak_kPa": 974.5
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.427,
+              "impulse_all_positive_kPa_ms": 333.9,
+              "impulse_kPa_ms": 331.1,
+              "peak_kPa": 1006.3
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.538,
+              "impulse_all_positive_kPa_ms": 264.7,
+              "impulse_kPa_ms": 264.4,
+              "peak_kPa": 974.6
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.462,
+              "impulse_all_positive_kPa_ms": 331.2,
+              "impulse_kPa_ms": 327.0,
+              "peak_kPa": 1043.7
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.462,
+              "impulse_all_positive_kPa_ms": 318.2,
+              "impulse_kPa_ms": 312.9,
+              "peak_kPa": 1036.3
+            },
+            "centre": {
+              "arrival_ms": 1.39,
+              "impulse_all_positive_kPa_ms": 556.3,
+              "impulse_kPa_ms": 435.1,
+              "peak_kPa": 1133.3
+            },
+            "under the centre": {
+              "arrival_ms": 2.844,
+              "impulse_all_positive_kPa_ms": 448.3,
+              "impulse_kPa_ms": 396.2,
+              "peak_kPa": 856.3
+            }
+          },
+          "highest_rise_mm": 44.47,
+          "last_100_ms_range_mm": [
+            -25.32,
+            -6.23
+          ],
+          "peak_displacement_mm": 4.43,
+          "peak_time_ms": 3.9,
+          "wall_seconds": 1072
+        }
+      }
+    },
+    "heavy-across": {
+      "label": "slab A's 10 mm bars across the span (calibrated air)",
+      "slabs": {
+        "2": {
+          "air_slept_ms": 78.1,
+          "blast_peak_mm": 4.4,
+          "blast_peak_time_ms": 4.0,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 1.166,
+            "widest_top_crack_mm": 1.098
+          },
+          "end_displacement_last_sample_mm": 8.06,
+          "end_displacement_mm": 8.07,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.504,
+              "impulse_all_positive_kPa_ms": 269.4,
+              "impulse_kPa_ms": 269.1,
+              "peak_kPa": 947.1
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.462,
+              "impulse_all_positive_kPa_ms": 316.4,
+              "impulse_kPa_ms": 312.9,
+              "peak_kPa": 1036.3
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.504,
+              "impulse_all_positive_kPa_ms": 269.4,
+              "impulse_kPa_ms": 269.1,
+              "peak_kPa": 947.9
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.538,
+              "impulse_all_positive_kPa_ms": 263.9,
+              "impulse_kPa_ms": 263.8,
+              "peak_kPa": 961.8
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.427,
+              "impulse_all_positive_kPa_ms": 336.4,
+              "impulse_kPa_ms": 333.7,
+              "peak_kPa": 1004.2
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.538,
+              "impulse_all_positive_kPa_ms": 263.8,
+              "impulse_kPa_ms": 263.8,
+              "peak_kPa": 965.3
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.462,
+              "impulse_all_positive_kPa_ms": 331.7,
+              "impulse_kPa_ms": 327.6,
+              "peak_kPa": 1037.6
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.462,
+              "impulse_all_positive_kPa_ms": 317.0,
+              "impulse_kPa_ms": 312.9,
+              "peak_kPa": 1036.3
+            },
+            "centre": {
+              "arrival_ms": 1.39,
+              "impulse_all_positive_kPa_ms": 555.3,
+              "impulse_kPa_ms": 435.1,
+              "peak_kPa": 1133.6
+            },
+            "under the centre": {
+              "arrival_ms": 2.844,
+              "impulse_all_positive_kPa_ms": 448.5,
+              "impulse_kPa_ms": 396.4,
+              "peak_kPa": 855.6
+            }
+          },
+          "highest_rise_mm": 40.71,
+          "last_100_ms_range_mm": [
+            8.02,
+            8.12
+          ],
+          "peak_displacement_mm": 8.87,
+          "peak_time_ms": 202.74,
+          "wall_seconds": 1361
+        },
+        "5": {
+          "air_slept_ms": 78.3,
+          "blast_peak_mm": 4.39,
+          "blast_peak_time_ms": 4.03,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 2.074,
+            "widest_top_crack_mm": 1.191
+          },
+          "end_displacement_last_sample_mm": 8.2,
+          "end_displacement_mm": 8.17,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.528,
+              "impulse_all_positive_kPa_ms": 257.1,
+              "impulse_kPa_ms": 256.9,
+              "peak_kPa": 896.1
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.485,
+              "impulse_all_positive_kPa_ms": 303.5,
+              "impulse_kPa_ms": 301.2,
+              "peak_kPa": 980.6
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.528,
+              "impulse_all_positive_kPa_ms": 257.2,
+              "impulse_kPa_ms": 257.0,
+              "peak_kPa": 901.7
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.562,
+              "impulse_all_positive_kPa_ms": 254.0,
+              "impulse_kPa_ms": 253.7,
+              "peak_kPa": 912.9
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.454,
+              "impulse_all_positive_kPa_ms": 323.7,
+              "impulse_kPa_ms": 319.2,
+              "peak_kPa": 958.4
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.562,
+              "impulse_all_positive_kPa_ms": 253.9,
+              "impulse_kPa_ms": 253.7,
+              "peak_kPa": 914.6
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.485,
+              "impulse_all_positive_kPa_ms": 320.5,
+              "impulse_kPa_ms": 315.1,
+              "peak_kPa": 982.1
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.485,
+              "impulse_all_positive_kPa_ms": 304.1,
+              "impulse_kPa_ms": 301.2,
+              "peak_kPa": 980.6
+            },
+            "centre": {
+              "arrival_ms": 1.41,
+              "impulse_all_positive_kPa_ms": 540.1,
+              "impulse_kPa_ms": 419.8,
+              "peak_kPa": 1068.6
+            },
+            "under the centre": {
+              "arrival_ms": 2.883,
+              "impulse_all_positive_kPa_ms": 434.7,
+              "impulse_kPa_ms": 420.2,
+              "peak_kPa": 815.5
+            }
+          },
+          "highest_rise_mm": 43.88,
+          "last_100_ms_range_mm": [
+            8.12,
+            8.23
+          ],
+          "peak_displacement_mm": 8.99,
+          "peak_time_ms": 213.68,
+          "wall_seconds": 1541
+        }
+      }
+    },
+    "layers16": {
+      "label": "16 elements through",
+      "slabs": {
+        "1": {
+          "air_slept_ms": 78.1,
+          "blast_peak_mm": 9.26,
+          "blast_peak_time_ms": 7.21,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0.0042,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 170,
+            "largest_piece_share": 1.0,
+            "pieces": 1,
+            "top_face_crushed_m2": 0.0001,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 13.381,
+            "widest_top_crack_mm": 1.331
+          },
+          "end_displacement_last_sample_mm": 18.14,
+          "end_displacement_mm": 18.1,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 0.761,
+              "impulse_all_positive_kPa_ms": 478.8,
+              "impulse_kPa_ms": 478.7,
+              "peak_kPa": 3299.1
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 0.676,
+              "impulse_all_positive_kPa_ms": 682.4,
+              "impulse_kPa_ms": 634.6,
+              "peak_kPa": 4972.2
+            },
+            "3 (corner)": {
+              "arrival_ms": 0.747,
+              "impulse_all_positive_kPa_ms": 483.4,
+              "impulse_kPa_ms": 483.3,
+              "peak_kPa": 3233.0
+            },
+            "4 (corner)": {
+              "arrival_ms": 0.754,
+              "impulse_all_positive_kPa_ms": 448.0,
+              "impulse_kPa_ms": 448.0,
+              "peak_kPa": 3618.0
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 0.69,
+              "impulse_all_positive_kPa_ms": 632.9,
+              "impulse_kPa_ms": 610.7,
+              "peak_kPa": 4440.5
+            },
+            "6 (corner)": {
+              "arrival_ms": 0.75,
+              "impulse_all_positive_kPa_ms": 470.8,
+              "impulse_kPa_ms": 470.8,
+              "peak_kPa": 3363.4
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 0.683,
+              "impulse_all_positive_kPa_ms": 643.1,
+              "impulse_kPa_ms": 624.1,
+              "peak_kPa": 4153.8
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 0.693,
+              "impulse_all_positive_kPa_ms": 590.6,
+              "impulse_kPa_ms": 547.8,
+              "peak_kPa": 4102.7
+            },
+            "centre": {
+              "arrival_ms": 0.618,
+              "impulse_all_positive_kPa_ms": 1022.9,
+              "impulse_kPa_ms": 778.9,
+              "peak_kPa": 5332.0
+            },
+            "under the centre": {
+              "arrival_ms": 1.927,
+              "impulse_all_positive_kPa_ms": 600.6,
+              "impulse_kPa_ms": 505.4,
+              "peak_kPa": 1669.2
+            }
+          },
+          "highest_rise_mm": 15.73,
+          "last_100_ms_range_mm": [
+            18.04,
+            18.19
+          ],
+          "peak_displacement_mm": 19.13,
+          "peak_time_ms": 183.57,
+          "wall_seconds": 5407
+        },
+        "10": {
+          "air_slept_ms": 78.1,
+          "blast_peak_mm": 6.14,
+          "blast_peak_time_ms": 3.4,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0.002,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 81,
+            "largest_piece_share": 1.0,
+            "pieces": 1,
+            "top_face_crushed_m2": 0.0001,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 13.686,
+            "widest_top_crack_mm": 2.068
+          },
+          "end_displacement_last_sample_mm": 22.63,
+          "end_displacement_mm": 22.6,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.076,
+              "impulse_all_positive_kPa_ms": 386.2,
+              "impulse_kPa_ms": 386.2,
+              "peak_kPa": 2171.8
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 0.984,
+              "impulse_all_positive_kPa_ms": 509.5,
+              "impulse_kPa_ms": 492.9,
+              "peak_kPa": 2725.7
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.057,
+              "impulse_all_positive_kPa_ms": 376.6,
+              "impulse_kPa_ms": 376.6,
+              "peak_kPa": 1921.5
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.076,
+              "impulse_all_positive_kPa_ms": 343.8,
+              "impulse_kPa_ms": 343.8,
+              "peak_kPa": 1944.4
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 0.999,
+              "impulse_all_positive_kPa_ms": 480.6,
+              "impulse_kPa_ms": 476.1,
+              "peak_kPa": 2759.2
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.062,
+              "impulse_all_positive_kPa_ms": 363.2,
+              "impulse_kPa_ms": 363.2,
+              "peak_kPa": 1920.2
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 0.989,
+              "impulse_all_positive_kPa_ms": 473.7,
+              "impulse_kPa_ms": 470.3,
+              "peak_kPa": 2231.3
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.004,
+              "impulse_all_positive_kPa_ms": 439.8,
+              "impulse_kPa_ms": 428.7,
+              "peak_kPa": 2210.8
+            },
+            "centre": {
+              "arrival_ms": 0.93,
+              "impulse_all_positive_kPa_ms": 764.6,
+              "impulse_kPa_ms": 572.9,
+              "peak_kPa": 2660.5
+            },
+            "under the centre": {
+              "arrival_ms": 2.318,
+              "impulse_all_positive_kPa_ms": 541.2,
+              "impulse_kPa_ms": 443.4,
+              "peak_kPa": 1274.4
+            }
+          },
+          "highest_rise_mm": 24.26,
+          "last_100_ms_range_mm": [
+            22.5,
+            22.68
+          ],
+          "peak_displacement_mm": 23.61,
+          "peak_time_ms": 169.21,
+          "wall_seconds": 4757
+        },
+        "2": {
+          "air_slept_ms": 78.5,
+          "blast_peak_mm": 3.69,
+          "blast_peak_time_ms": 3.8,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0.009,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 361,
+            "largest_piece_share": 0.999,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 11.873,
+            "widest_top_crack_mm": 0.45
+          },
+          "end_displacement_last_sample_mm": -1396.7,
+          "end_displacement_mm": -1386.31,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.554,
+              "impulse_all_positive_kPa_ms": 298.1,
+              "impulse_kPa_ms": 298.1,
+              "peak_kPa": 1295.9
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.462,
+              "impulse_all_positive_kPa_ms": 383.2,
+              "impulse_kPa_ms": 375.8,
+              "peak_kPa": 1486.9
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.533,
+              "impulse_all_positive_kPa_ms": 290.2,
+              "impulse_kPa_ms": 290.2,
+              "peak_kPa": 1152.1
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.557,
+              "impulse_all_positive_kPa_ms": 253.9,
+              "impulse_kPa_ms": 253.8,
+              "peak_kPa": 1152.2
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.479,
+              "impulse_all_positive_kPa_ms": 380.1,
+              "impulse_kPa_ms": 373.7,
+              "peak_kPa": 1524.5
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.537,
+              "impulse_all_positive_kPa_ms": 278.1,
+              "impulse_kPa_ms": 278.1,
+              "peak_kPa": 1159.5
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.484,
+              "impulse_all_positive_kPa_ms": 341.5,
+              "impulse_kPa_ms": 335.7,
+              "peak_kPa": 1447.6
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.484,
+              "impulse_all_positive_kPa_ms": 343.6,
+              "impulse_kPa_ms": 335.5,
+              "peak_kPa": 1243.4
+            },
+            "centre": {
+              "arrival_ms": 1.41,
+              "impulse_all_positive_kPa_ms": 628.8,
+              "impulse_kPa_ms": 472.9,
+              "peak_kPa": 1566.0
+            },
+            "under the centre": {
+              "arrival_ms": 2.857,
+              "impulse_all_positive_kPa_ms": 459.5,
+              "impulse_kPa_ms": 445.9,
+              "peak_kPa": 943.3
+            }
+          },
+          "highest_rise_mm": 1396.7,
+          "last_100_ms_range_mm": [
+            -1396.7,
+            -1141.79
+          ],
+          "peak_displacement_mm": 3.69,
+          "peak_time_ms": 3.8,
+          "wall_seconds": 4340
+        },
+        "4": {
+          "air_slept_ms": 78.4,
+          "blast_peak_mm": 4.14,
+          "blast_peak_time_ms": 3.9,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 5.994,
+            "widest_top_crack_mm": 4.994
+          },
+          "end_displacement_last_sample_mm": 29.43,
+          "end_displacement_mm": 29.37,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.558,
+              "impulse_all_positive_kPa_ms": 293.8,
+              "impulse_kPa_ms": 293.8,
+              "peak_kPa": 1252.2
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.467,
+              "impulse_all_positive_kPa_ms": 377.3,
+              "impulse_kPa_ms": 371.4,
+              "peak_kPa": 1467.3
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.538,
+              "impulse_all_positive_kPa_ms": 288.2,
+              "impulse_kPa_ms": 288.2,
+              "peak_kPa": 1135.6
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.563,
+              "impulse_all_positive_kPa_ms": 251.9,
+              "impulse_kPa_ms": 251.9,
+              "peak_kPa": 1137.2
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.483,
+              "impulse_all_positive_kPa_ms": 375.3,
+              "impulse_kPa_ms": 370.4,
+              "peak_kPa": 1503.8
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.541,
+              "impulse_all_positive_kPa_ms": 275.6,
+              "impulse_kPa_ms": 275.6,
+              "peak_kPa": 1143.7
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.488,
+              "impulse_all_positive_kPa_ms": 338.9,
+              "impulse_kPa_ms": 334.7,
+              "peak_kPa": 1432.0
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.488,
+              "impulse_all_positive_kPa_ms": 337.8,
+              "impulse_kPa_ms": 334.4,
+              "peak_kPa": 1223.6
+            },
+            "centre": {
+              "arrival_ms": 1.412,
+              "impulse_all_positive_kPa_ms": 638.6,
+              "impulse_kPa_ms": 469.1,
+              "peak_kPa": 1573.0
+            },
+            "under the centre": {
+              "arrival_ms": 2.88,
+              "impulse_all_positive_kPa_ms": 454.4,
+              "impulse_kPa_ms": 440.6,
+              "peak_kPa": 952.9
+            }
+          },
+          "highest_rise_mm": 53.68,
+          "last_100_ms_range_mm": [
+            29.25,
+            29.5
+          ],
+          "peak_displacement_mm": 31.3,
+          "peak_time_ms": 213.8,
+          "wall_seconds": 6721
+        },
+        "5": {
+          "air_slept_ms": 78.1,
+          "blast_peak_mm": 3.62,
+          "blast_peak_time_ms": 3.81,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0.0098,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 393,
+            "largest_piece_share": 0.999,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 10.1,
+            "widest_top_crack_mm": 0.584
+          },
+          "end_displacement_last_sample_mm": -1421.14,
+          "end_displacement_mm": -1410.86,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.579,
+              "impulse_all_positive_kPa_ms": 284.7,
+              "impulse_kPa_ms": 284.7,
+              "peak_kPa": 1207.0
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.486,
+              "impulse_all_positive_kPa_ms": 364.5,
+              "impulse_kPa_ms": 360.4,
+              "peak_kPa": 1402.4
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.557,
+              "impulse_all_positive_kPa_ms": 278.5,
+              "impulse_kPa_ms": 278.5,
+              "peak_kPa": 1087.9
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.582,
+              "impulse_all_positive_kPa_ms": 243.0,
+              "impulse_kPa_ms": 243.0,
+              "peak_kPa": 1087.7
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.503,
+              "impulse_all_positive_kPa_ms": 368.1,
+              "impulse_kPa_ms": 359.3,
+              "peak_kPa": 1437.9
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.561,
+              "impulse_all_positive_kPa_ms": 266.9,
+              "impulse_kPa_ms": 266.9,
+              "peak_kPa": 1091.4
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.509,
+              "impulse_all_positive_kPa_ms": 330.1,
+              "impulse_kPa_ms": 323.1,
+              "peak_kPa": 1373.6
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.509,
+              "impulse_all_positive_kPa_ms": 324.9,
+              "impulse_kPa_ms": 322.4,
+              "peak_kPa": 1175.1
+            },
+            "centre": {
+              "arrival_ms": 1.432,
+              "impulse_all_positive_kPa_ms": 562.7,
+              "impulse_kPa_ms": 453.3,
+              "peak_kPa": 1473.1
+            },
+            "under the centre": {
+              "arrival_ms": 2.908,
+              "impulse_all_positive_kPa_ms": 444.4,
+              "impulse_kPa_ms": 427.7,
+              "peak_kPa": 923.7
+            }
+          },
+          "highest_rise_mm": 1421.14,
+          "last_100_ms_range_mm": [
+            -1421.14,
+            -1168.23
+          ],
+          "peak_displacement_mm": 3.62,
+          "peak_time_ms": 3.81,
+          "wall_seconds": 2455
+        },
+        "7": {
+          "air_slept_ms": 78.4,
+          "blast_peak_mm": 4.05,
+          "blast_peak_time_ms": 4.01,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0.0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 5.325,
+            "widest_top_crack_mm": 3.503
+          },
+          "end_displacement_last_sample_mm": 15.89,
+          "end_displacement_mm": 15.91,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.575,
+              "impulse_all_positive_kPa_ms": 283.9,
+              "impulse_kPa_ms": 283.9,
+              "peak_kPa": 1202.8
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.482,
+              "impulse_all_positive_kPa_ms": 368.5,
+              "impulse_kPa_ms": 362.1,
+              "peak_kPa": 1417.4
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.554,
+              "impulse_all_positive_kPa_ms": 282.0,
+              "impulse_kPa_ms": 282.0,
+              "peak_kPa": 1095.4
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.58,
+              "impulse_all_positive_kPa_ms": 245.1,
+              "impulse_kPa_ms": 245.1,
+              "peak_kPa": 1097.7
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.499,
+              "impulse_all_positive_kPa_ms": 367.8,
+              "impulse_kPa_ms": 361.3,
+              "peak_kPa": 1449.5
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.558,
+              "impulse_all_positive_kPa_ms": 269.1,
+              "impulse_kPa_ms": 269.1,
+              "peak_kPa": 1101.0
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.503,
+              "impulse_all_positive_kPa_ms": 332.9,
+              "impulse_kPa_ms": 325.7,
+              "peak_kPa": 1381.6
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.503,
+              "impulse_all_positive_kPa_ms": 327.7,
+              "impulse_kPa_ms": 327.1,
+              "peak_kPa": 1183.5
+            },
+            "centre": {
+              "arrival_ms": 1.429,
+              "impulse_all_positive_kPa_ms": 578.4,
+              "impulse_kPa_ms": 457.8,
+              "peak_kPa": 1527.3
+            },
+            "under the centre": {
+              "arrival_ms": 2.878,
+              "impulse_all_positive_kPa_ms": 438.6,
+              "impulse_kPa_ms": 424.9,
+              "peak_kPa": 702.2
+            }
+          },
+          "highest_rise_mm": 52.99,
+          "last_100_ms_range_mm": [
+            15.85,
+            15.98
+          ],
+          "peak_displacement_mm": 16.56,
+          "peak_time_ms": 200.6,
+          "wall_seconds": 2840
+        },
+        "9": {
+          "air_slept_ms": 78.5,
+          "blast_peak_mm": 4.18,
+          "blast_peak_time_ms": 3.91,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0.0016,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 63,
+            "largest_piece_share": 1.0,
+            "pieces": 1,
+            "top_face_crushed_m2": 0.0006,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 8.506,
+            "widest_top_crack_mm": 3.024
+          },
+          "end_displacement_last_sample_mm": 29.32,
+          "end_displacement_mm": 29.26,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.554,
+              "impulse_all_positive_kPa_ms": 296.8,
+              "impulse_kPa_ms": 296.8,
+              "peak_kPa": 1275.2
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.462,
+              "impulse_all_positive_kPa_ms": 385.7,
+              "impulse_kPa_ms": 375.3,
+              "peak_kPa": 1487.8
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.533,
+              "impulse_all_positive_kPa_ms": 290.6,
+              "impulse_kPa_ms": 290.6,
+              "peak_kPa": 1149.3
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.557,
+              "impulse_all_positive_kPa_ms": 254.6,
+              "impulse_kPa_ms": 254.5,
+              "peak_kPa": 1154.0
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.479,
+              "impulse_all_positive_kPa_ms": 377.6,
+              "impulse_kPa_ms": 373.2,
+              "peak_kPa": 1524.1
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.537,
+              "impulse_all_positive_kPa_ms": 277.8,
+              "impulse_kPa_ms": 277.8,
+              "peak_kPa": 1159.0
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.484,
+              "impulse_all_positive_kPa_ms": 342.2,
+              "impulse_kPa_ms": 336.9,
+              "peak_kPa": 1449.3
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.484,
+              "impulse_all_positive_kPa_ms": 344.5,
+              "impulse_kPa_ms": 336.5,
+              "peak_kPa": 1238.7
+            },
+            "centre": {
+              "arrival_ms": 1.41,
+              "impulse_all_positive_kPa_ms": 630.3,
+              "impulse_kPa_ms": 473.5,
+              "peak_kPa": 1608.7
+            },
+            "under the centre": {
+              "arrival_ms": 2.847,
+              "impulse_all_positive_kPa_ms": 459.2,
+              "impulse_kPa_ms": 405.0,
+              "peak_kPa": 949.7
+            }
+          },
+          "highest_rise_mm": 53.44,
+          "last_100_ms_range_mm": [
+            29.17,
+            29.38
+          ],
+          "peak_displacement_mm": 31.17,
+          "peak_time_ms": 211.64,
+          "wall_seconds": 4239
+        }
+      }
+    },
+    "lift": {
+      "label": "stand-off to the cylinder's bottom face, centre 0.1 m higher (calibrated air)",
+      "slabs": {
+        "1": {
+          "air_slept_ms": 79.1,
+          "blast_peak_mm": 7.85,
+          "blast_peak_time_ms": 6.72,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 2.689,
+            "widest_top_crack_mm": 0.385
+          },
+          "end_displacement_last_sample_mm": -4.55,
+          "end_displacement_mm": -4.06,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 0.817,
+              "impulse_all_positive_kPa_ms": 403.0,
+              "impulse_kPa_ms": 402.6,
+              "peak_kPa": 2542.0
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 0.773,
+              "impulse_all_positive_kPa_ms": 498.7,
+              "impulse_kPa_ms": 456.3,
+              "peak_kPa": 2645.4
+            },
+            "3 (corner)": {
+              "arrival_ms": 0.817,
+              "impulse_all_positive_kPa_ms": 401.1,
+              "impulse_kPa_ms": 400.7,
+              "peak_kPa": 2512.5
+            },
+            "4 (corner)": {
+              "arrival_ms": 0.84,
+              "impulse_all_positive_kPa_ms": 395.0,
+              "impulse_kPa_ms": 395.0,
+              "peak_kPa": 2630.4
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 0.744,
+              "impulse_all_positive_kPa_ms": 483.1,
+              "impulse_kPa_ms": 479.2,
+              "peak_kPa": 2780.7
+            },
+            "6 (corner)": {
+              "arrival_ms": 0.817,
+              "impulse_all_positive_kPa_ms": 397.9,
+              "impulse_kPa_ms": 397.9,
+              "peak_kPa": 2646.1
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 0.766,
+              "impulse_all_positive_kPa_ms": 470.5,
+              "impulse_kPa_ms": 466.0,
+              "peak_kPa": 2782.1
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 0.773,
+              "impulse_all_positive_kPa_ms": 498.6,
+              "impulse_kPa_ms": 456.3,
+              "peak_kPa": 2645.4
+            },
+            "centre": {
+              "arrival_ms": 0.695,
+              "impulse_all_positive_kPa_ms": 760.7,
+              "impulse_kPa_ms": 595.8,
+              "peak_kPa": 3038.2
+            },
+            "under the centre": {
+              "arrival_ms": 2.009,
+              "impulse_all_positive_kPa_ms": 543.8,
+              "impulse_kPa_ms": 456.2,
+              "peak_kPa": 1227.0
+            }
+          },
+          "highest_rise_mm": 9.73,
+          "last_100_ms_range_mm": [
+            -5.78,
+            5.39
+          ],
+          "peak_displacement_mm": 7.85,
+          "peak_time_ms": 6.72,
+          "wall_seconds": 1233
+        },
+        "10": {
+          "air_slept_ms": 78.9,
+          "blast_peak_mm": 5.21,
+          "blast_peak_time_ms": 3.5,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 1.336,
+            "widest_top_crack_mm": 0.442
+          },
+          "end_displacement_last_sample_mm": 7.62,
+          "end_displacement_mm": 7.64,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.145,
+              "impulse_all_positive_kPa_ms": 311.2,
+              "impulse_kPa_ms": 311.0,
+              "peak_kPa": 1428.3
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.098,
+              "impulse_all_positive_kPa_ms": 370.2,
+              "impulse_kPa_ms": 362.5,
+              "peak_kPa": 1535.7
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.145,
+              "impulse_all_positive_kPa_ms": 311.4,
+              "impulse_kPa_ms": 311.2,
+              "peak_kPa": 1435.3
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.174,
+              "impulse_all_positive_kPa_ms": 309.0,
+              "impulse_kPa_ms": 309.0,
+              "peak_kPa": 1468.2
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.073,
+              "impulse_all_positive_kPa_ms": 400.4,
+              "impulse_kPa_ms": 398.2,
+              "peak_kPa": 1576.7
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.174,
+              "impulse_all_positive_kPa_ms": 308.5,
+              "impulse_kPa_ms": 308.5,
+              "peak_kPa": 1454.2
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.098,
+              "impulse_all_positive_kPa_ms": 389.7,
+              "impulse_kPa_ms": 387.6,
+              "peak_kPa": 1657.7
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.098,
+              "impulse_all_positive_kPa_ms": 371.1,
+              "impulse_kPa_ms": 362.5,
+              "peak_kPa": 1535.7
+            },
+            "centre": {
+              "arrival_ms": 1.03,
+              "impulse_all_positive_kPa_ms": 632.1,
+              "impulse_kPa_ms": 485.4,
+              "peak_kPa": 1711.2
+            },
+            "under the centre": {
+              "arrival_ms": 2.422,
+              "impulse_all_positive_kPa_ms": 485.9,
+              "impulse_kPa_ms": 407.2,
+              "peak_kPa": 891.7
+            }
+          },
+          "highest_rise_mm": 25.55,
+          "last_100_ms_range_mm": [
+            7.58,
+            7.7
+          ],
+          "peak_displacement_mm": 8.65,
+          "peak_time_ms": 175.46,
+          "wall_seconds": 1187
+        },
+        "2": {
+          "air_slept_ms": 79.0,
+          "blast_peak_mm": 3.47,
+          "blast_peak_time_ms": 4.03,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 1.044,
+            "widest_top_crack_mm": 0.995
+          },
+          "end_displacement_last_sample_mm": 4.45,
+          "end_displacement_mm": 4.49,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.641,
+              "impulse_all_positive_kPa_ms": 247.8,
+              "impulse_kPa_ms": 247.5,
+              "peak_kPa": 827.3
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.601,
+              "impulse_all_positive_kPa_ms": 295.6,
+              "impulse_kPa_ms": 295.6,
+              "peak_kPa": 907.1
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.641,
+              "impulse_all_positive_kPa_ms": 251.7,
+              "impulse_kPa_ms": 251.4,
+              "peak_kPa": 831.5
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.677,
+              "impulse_all_positive_kPa_ms": 247.0,
+              "impulse_kPa_ms": 246.6,
+              "peak_kPa": 835.8
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.566,
+              "impulse_all_positive_kPa_ms": 315.0,
+              "impulse_kPa_ms": 314.3,
+              "peak_kPa": 875.1
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.677,
+              "impulse_all_positive_kPa_ms": 247.0,
+              "impulse_kPa_ms": 246.7,
+              "peak_kPa": 835.9
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.601,
+              "impulse_all_positive_kPa_ms": 310.5,
+              "impulse_kPa_ms": 309.8,
+              "peak_kPa": 886.2
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.601,
+              "impulse_all_positive_kPa_ms": 295.6,
+              "impulse_kPa_ms": 295.6,
+              "peak_kPa": 907.1
+            },
+            "centre": {
+              "arrival_ms": 1.53,
+              "impulse_all_positive_kPa_ms": 521.6,
+              "impulse_kPa_ms": 414.5,
+              "peak_kPa": 983.2
+            },
+            "under the centre": {
+              "arrival_ms": 3.006,
+              "impulse_all_positive_kPa_ms": 436.5,
+              "impulse_kPa_ms": 425.2,
+              "peak_kPa": 801.3
+            }
+          },
+          "highest_rise_mm": 55.03,
+          "last_100_ms_range_mm": [
+            4.39,
+            4.58
+          ],
+          "peak_displacement_mm": 5.92,
+          "peak_time_ms": 224.06,
+          "wall_seconds": 1365
+        },
+        "4": {
+          "air_slept_ms": 79.2,
+          "blast_peak_mm": 3.82,
+          "blast_peak_time_ms": 4.02,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 1.062,
+            "widest_top_crack_mm": 0.859
+          },
+          "end_displacement_last_sample_mm": 6.84,
+          "end_displacement_mm": 6.87,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.646,
+              "impulse_all_positive_kPa_ms": 247.3,
+              "impulse_kPa_ms": 247.0,
+              "peak_kPa": 823.3
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.608,
+              "impulse_all_positive_kPa_ms": 294.1,
+              "impulse_kPa_ms": 293.2,
+              "peak_kPa": 896.7
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.646,
+              "impulse_all_positive_kPa_ms": 247.3,
+              "impulse_kPa_ms": 247.0,
+              "peak_kPa": 824.7
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.682,
+              "impulse_all_positive_kPa_ms": 245.0,
+              "impulse_kPa_ms": 244.6,
+              "peak_kPa": 823.4
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.571,
+              "impulse_all_positive_kPa_ms": 310.4,
+              "impulse_kPa_ms": 309.4,
+              "peak_kPa": 865.9
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.682,
+              "impulse_all_positive_kPa_ms": 245.3,
+              "impulse_kPa_ms": 245.0,
+              "peak_kPa": 826.4
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.606,
+              "impulse_all_positive_kPa_ms": 308.0,
+              "impulse_kPa_ms": 305.9,
+              "peak_kPa": 883.1
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.608,
+              "impulse_all_positive_kPa_ms": 294.1,
+              "impulse_kPa_ms": 293.2,
+              "peak_kPa": 896.7
+            },
+            "centre": {
+              "arrival_ms": 1.534,
+              "impulse_all_positive_kPa_ms": 522.4,
+              "impulse_kPa_ms": 411.4,
+              "peak_kPa": 971.7
+            },
+            "under the centre": {
+              "arrival_ms": 3.014,
+              "impulse_all_positive_kPa_ms": 433.5,
+              "impulse_kPa_ms": 422.1,
+              "peak_kPa": 793.2
+            }
+          },
+          "highest_rise_mm": 51.21,
+          "last_100_ms_range_mm": [
+            6.81,
+            6.93
+          ],
+          "peak_displacement_mm": 7.49,
+          "peak_time_ms": 217.74,
+          "wall_seconds": 1458
+        },
+        "5": {
+          "air_slept_ms": 78.3,
+          "blast_peak_mm": 3.37,
+          "blast_peak_time_ms": 4.02,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 1.261,
+            "widest_top_crack_mm": 0.935
+          },
+          "end_displacement_last_sample_mm": 9.16,
+          "end_displacement_mm": 9.23,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.669,
+              "impulse_all_positive_kPa_ms": 238.5,
+              "impulse_kPa_ms": 238.3,
+              "peak_kPa": 784.2
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.629,
+              "impulse_all_positive_kPa_ms": 284.3,
+              "impulse_kPa_ms": 284.3,
+              "peak_kPa": 858.6
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.669,
+              "impulse_all_positive_kPa_ms": 238.5,
+              "impulse_kPa_ms": 238.3,
+              "peak_kPa": 787.3
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.706,
+              "impulse_all_positive_kPa_ms": 237.2,
+              "impulse_kPa_ms": 237.0,
+              "peak_kPa": 794.5
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.592,
+              "impulse_all_positive_kPa_ms": 301.8,
+              "impulse_kPa_ms": 299.9,
+              "peak_kPa": 833.4
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.706,
+              "impulse_all_positive_kPa_ms": 237.4,
+              "impulse_kPa_ms": 237.2,
+              "peak_kPa": 794.9
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.627,
+              "impulse_all_positive_kPa_ms": 300.1,
+              "impulse_kPa_ms": 298.1,
+              "peak_kPa": 838.7
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.629,
+              "impulse_all_positive_kPa_ms": 284.3,
+              "impulse_kPa_ms": 284.3,
+              "peak_kPa": 858.6
+            },
+            "centre": {
+              "arrival_ms": 1.553,
+              "impulse_all_positive_kPa_ms": 506.3,
+              "impulse_kPa_ms": 400.0,
+              "peak_kPa": 930.2
+            },
+            "under the centre": {
+              "arrival_ms": 3.045,
+              "impulse_all_positive_kPa_ms": 421.9,
+              "impulse_kPa_ms": 409.5,
+              "peak_kPa": 762.8
+            }
+          },
+          "highest_rise_mm": 56.75,
+          "last_100_ms_range_mm": [
+            9.11,
+            9.32
+          ],
+          "peak_displacement_mm": 11.32,
+          "peak_time_ms": 220.48,
+          "wall_seconds": 1221
+        },
+        "7": {
+          "air_slept_ms": 79.3,
+          "blast_peak_mm": 3.6,
+          "blast_peak_time_ms": 4.02,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 1.064,
+            "widest_top_crack_mm": 1.059
+          },
+          "end_displacement_last_sample_mm": 5.86,
+          "end_displacement_mm": 5.84,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.665,
+              "impulse_all_positive_kPa_ms": 241.0,
+              "impulse_kPa_ms": 240.8,
+              "peak_kPa": 794.1
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.624,
+              "impulse_all_positive_kPa_ms": 286.2,
+              "impulse_kPa_ms": 286.0,
+              "peak_kPa": 865.7
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.665,
+              "impulse_all_positive_kPa_ms": 241.2,
+              "impulse_kPa_ms": 241.0,
+              "peak_kPa": 797.8
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.7,
+              "impulse_all_positive_kPa_ms": 238.6,
+              "impulse_kPa_ms": 238.3,
+              "peak_kPa": 802.3
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.589,
+              "impulse_all_positive_kPa_ms": 303.1,
+              "impulse_kPa_ms": 301.4,
+              "peak_kPa": 839.9
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.7,
+              "impulse_all_positive_kPa_ms": 238.6,
+              "impulse_kPa_ms": 238.4,
+              "peak_kPa": 804.1
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.624,
+              "impulse_all_positive_kPa_ms": 301.5,
+              "impulse_kPa_ms": 298.5,
+              "peak_kPa": 851.1
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.624,
+              "impulse_all_positive_kPa_ms": 286.0,
+              "impulse_kPa_ms": 286.0,
+              "peak_kPa": 865.7
+            },
+            "centre": {
+              "arrival_ms": 1.55,
+              "impulse_all_positive_kPa_ms": 509.1,
+              "impulse_kPa_ms": 402.1,
+              "peak_kPa": 937.8
+            },
+            "under the centre": {
+              "arrival_ms": 3.034,
+              "impulse_all_positive_kPa_ms": 424.2,
+              "impulse_kPa_ms": 412.0,
+              "peak_kPa": 765.9
+            }
+          },
+          "highest_rise_mm": 51.4,
+          "last_100_ms_range_mm": [
+            5.79,
+            5.9
+          ],
+          "peak_displacement_mm": 6.93,
+          "peak_time_ms": 219.88,
+          "wall_seconds": 1387
+        },
+        "9": {
+          "air_slept_ms": 79.2,
+          "blast_peak_mm": 3.96,
+          "blast_peak_time_ms": 4.11,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 2.197,
+            "widest_top_crack_mm": 0.736
+          },
+          "end_displacement_last_sample_mm": 9.97,
+          "end_displacement_mm": 9.98,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.641,
+              "impulse_all_positive_kPa_ms": 248.0,
+              "impulse_kPa_ms": 247.6,
+              "peak_kPa": 828.9
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.601,
+              "impulse_all_positive_kPa_ms": 296.7,
+              "impulse_kPa_ms": 295.6,
+              "peak_kPa": 907.1
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.641,
+              "impulse_all_positive_kPa_ms": 247.9,
+              "impulse_kPa_ms": 247.6,
+              "peak_kPa": 832.5
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.677,
+              "impulse_all_positive_kPa_ms": 246.7,
+              "impulse_kPa_ms": 246.3,
+              "peak_kPa": 839.6
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.566,
+              "impulse_all_positive_kPa_ms": 315.0,
+              "impulse_kPa_ms": 314.2,
+              "peak_kPa": 883.1
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.677,
+              "impulse_all_positive_kPa_ms": 246.7,
+              "impulse_kPa_ms": 246.3,
+              "peak_kPa": 839.2
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.601,
+              "impulse_all_positive_kPa_ms": 311.3,
+              "impulse_kPa_ms": 309.5,
+              "peak_kPa": 887.3
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.601,
+              "impulse_all_positive_kPa_ms": 296.4,
+              "impulse_kPa_ms": 295.6,
+              "peak_kPa": 907.1
+            },
+            "centre": {
+              "arrival_ms": 1.53,
+              "impulse_all_positive_kPa_ms": 522.5,
+              "impulse_kPa_ms": 414.5,
+              "peak_kPa": 983.0
+            },
+            "under the centre": {
+              "arrival_ms": 3.007,
+              "impulse_all_positive_kPa_ms": 436.5,
+              "impulse_kPa_ms": 425.4,
+              "peak_kPa": 802.0
+            }
+          },
+          "highest_rise_mm": 49.24,
+          "last_100_ms_range_mm": [
+            9.92,
+            10.04
+          ],
+          "peak_displacement_mm": 11.06,
+          "peak_time_ms": 218.72,
+          "wall_seconds": 1210
+        }
+      }
+    },
+    "timber": {
+      "label": "timber bearings (slabs 4 and 1)",
+      "slabs": {
+        "1": {
+          "air_slept_ms": 78.5,
+          "blast_peak_mm": 12.76,
+          "blast_peak_time_ms": 8.51,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0.0267,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 267,
+            "largest_piece_share": 0.997,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 6.76,
+            "widest_top_crack_mm": 0.878
+          },
+          "end_displacement_last_sample_mm": 17.07,
+          "end_displacement_mm": 17.07,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 0.765,
+              "impulse_all_positive_kPa_ms": 495.2,
+              "impulse_kPa_ms": 495.1,
+              "peak_kPa": 3705.0
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 0.693,
+              "impulse_all_positive_kPa_ms": 634.7,
+              "impulse_kPa_ms": 590.9,
+              "peak_kPa": 4449.2
+            },
+            "3 (corner)": {
+              "arrival_ms": 0.765,
+              "impulse_all_positive_kPa_ms": 494.0,
+              "impulse_kPa_ms": 494.0,
+              "peak_kPa": 3708.3
+            },
+            "4 (corner)": {
+              "arrival_ms": 0.765,
+              "impulse_all_positive_kPa_ms": 494.9,
+              "impulse_kPa_ms": 494.8,
+              "peak_kPa": 3706.2
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 0.693,
+              "impulse_all_positive_kPa_ms": 605.9,
+              "impulse_kPa_ms": 591.9,
+              "peak_kPa": 4449.5
+            },
+            "6 (corner)": {
+              "arrival_ms": 0.765,
+              "impulse_all_positive_kPa_ms": 496.0,
+              "impulse_kPa_ms": 496.0,
+              "peak_kPa": 3702.7
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 0.693,
+              "impulse_all_positive_kPa_ms": 640.6,
+              "impulse_kPa_ms": 591.9,
+              "peak_kPa": 4449.5
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 0.693,
+              "impulse_all_positive_kPa_ms": 634.6,
+              "impulse_kPa_ms": 590.9,
+              "peak_kPa": 4449.2
+            },
+            "centre": {
+              "arrival_ms": 0.618,
+              "impulse_all_positive_kPa_ms": 1015.6,
+              "impulse_kPa_ms": 786.7,
+              "peak_kPa": 5393.0
+            },
+            "under the centre": {
+              "arrival_ms": 1.885,
+              "impulse_all_positive_kPa_ms": 624.0,
+              "impulse_kPa_ms": 517.5,
+              "peak_kPa": 1808.7
+            }
+          },
+          "highest_rise_mm": -0.0,
+          "last_100_ms_range_mm": [
+            16.74,
+            17.24
+          ],
+          "peak_displacement_mm": 17.64,
+          "peak_time_ms": 133.46,
+          "wall_seconds": 1016
+        },
+        "4": {
+          "air_slept_ms": 78.4,
+          "blast_peak_mm": 4.64,
+          "blast_peak_time_ms": 3.9,
+          "blew_up": false,
+          "collapses": false,
+          "damage": {
+            "bar_elements_ruptured": 0,
+            "bars_span": true,
+            "bottom_face_scabbed_m2": 0,
+            "concrete_spans": true,
+            "elements_bare": 0,
+            "elements_removed": 0,
+            "largest_piece_share": 1,
+            "pieces": 1,
+            "top_face_crushed_m2": 0,
+            "top_face_spalled_m2": 0,
+            "widest_bottom_crack_mm": 4.044,
+            "widest_top_crack_mm": 1.234
+          },
+          "end_displacement_last_sample_mm": 23.59,
+          "end_displacement_mm": 23.58,
+          "gauges": {
+            "1 (corner)": {
+              "arrival_ms": 1.563,
+              "impulse_all_positive_kPa_ms": 272.5,
+              "impulse_kPa_ms": 272.5,
+              "peak_kPa": 1206.6
+            },
+            "2 (mid-side)": {
+              "arrival_ms": 1.488,
+              "impulse_all_positive_kPa_ms": 353.0,
+              "impulse_kPa_ms": 344.2,
+              "peak_kPa": 1316.4
+            },
+            "3 (corner)": {
+              "arrival_ms": 1.563,
+              "impulse_all_positive_kPa_ms": 272.4,
+              "impulse_kPa_ms": 272.4,
+              "peak_kPa": 1206.6
+            },
+            "4 (corner)": {
+              "arrival_ms": 1.563,
+              "impulse_all_positive_kPa_ms": 272.7,
+              "impulse_kPa_ms": 272.6,
+              "peak_kPa": 1206.4
+            },
+            "5 (mid-side)": {
+              "arrival_ms": 1.488,
+              "impulse_all_positive_kPa_ms": 352.8,
+              "impulse_kPa_ms": 349.2,
+              "peak_kPa": 1316.6
+            },
+            "6 (corner)": {
+              "arrival_ms": 1.563,
+              "impulse_all_positive_kPa_ms": 272.6,
+              "impulse_kPa_ms": 272.6,
+              "peak_kPa": 1206.4
+            },
+            "7 (mid-side)": {
+              "arrival_ms": 1.488,
+              "impulse_all_positive_kPa_ms": 353.2,
+              "impulse_kPa_ms": 349.4,
+              "peak_kPa": 1316.6
+            },
+            "8 (mid-side)": {
+              "arrival_ms": 1.488,
+              "impulse_all_positive_kPa_ms": 353.4,
+              "impulse_kPa_ms": 344.2,
+              "peak_kPa": 1316.4
+            },
+            "centre": {
+              "arrival_ms": 1.412,
+              "impulse_all_positive_kPa_ms": 643.4,
+              "impulse_kPa_ms": 468.4,
+              "peak_kPa": 1445.0
+            },
+            "under the centre": {
+              "arrival_ms": 2.851,
+              "impulse_all_positive_kPa_ms": 447.9,
+              "impulse_kPa_ms": 393.5,
+              "peak_kPa": 847.6
+            }
+          },
+          "highest_rise_mm": 38.14,
+          "last_100_ms_range_mm": [
+            23.34,
+            23.76
+          ],
+          "peak_displacement_mm": 25.13,
+          "peak_time_ms": 194.81,
+          "wall_seconds": 824
+        }
+      }
+    }
+  },
+  "test": "Blind test 2 (docs/blind-tests.md): Mendon\u00e7a et al. 2020, slabs 1, 2, 4, 5, 7, 9, 10",
+  "units": "mm, ms, kPa, kPa ms; displacement down positive, of the bottom face's centre, from the start"
+}

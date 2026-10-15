@@ -417,6 +417,12 @@ These need runs, sources or a decision, not wording.
    set, not a validation set. Running one documented test blind on frozen defaults, judged by
    a session that did not choose them (the contest's high-strength slab, or Hrynyk's slabs),
    would be the strongest single addition.
+   *Status, 14 October 2026:* two run ([register](blind-tests.md#register)). Hrynyk's slabs
+   scored *between*, with punching missed. Mendonça's slabs under an open-air charge scored
+   *worse*: the two that collapsed were left standing, the blast bent the rest a tenth to a quarter
+   as far as measured, and the declared peaks that agreed were made by the sleeping air. Both err
+   on the unsafe side. The second also shows that a default (the air's sleep) can manufacture
+   agreement, so a structure still moving when the air sleeps should be flagged.
 2. **Convergence of the structural results.** Contest slab (finding 2), Saatci and Ando on
    16 against 24 elements (finding 3), the chamber's 25 mm mesh, the close-in slab whose hinge
    breaks on 8 elements and holds on 6. No structural result has been shown to converge on

@@ -42,15 +42,16 @@ struct IFCBatchReviewTests {
             _ = try await IFCImporter.convert(prepared, includedIDs: prepared.defaultIDs)
             Issue.record("Invalid duplex solids were accepted")
         } catch let review as IFCImporter.ElementFailures { failures = review }
+        // Most of its open doors and windows are remade as closed solids; those that cannot be
+        // are reviewed.
         let review = try #require(failures)
-        #expect(review.failures.count > 2)
-        #expect(review.failures.contains { $0.id == "1hOSvn6df7F8_7GcBWlRGQ" })
-        #expect(review.failures.contains { $0.id == "1hOSvn6df7F8_7GcBWlR72" })
+        #expect(review.failures.count >= 2)
         let ids = prepared.defaultIDs.subtracting(review.failures.map(\.id))
         let source = try await IFCImporter.convert(prepared, includedIDs: ids)
         #expect(Set(source.buildingSelection?.includedIDs ?? []) == ids)
-        #expect(source.parts.count == review.inspectedElements - review.failures.count)
-        #expect(source.buildingElements?.allSatisfy { ids.contains($0.globalID) } == true)
+        #expect(source.parts.count >= review.inspectedElements - review.failures.count)
+        #expect(source.buildingElements?.allSatisfy { ids.contains($0.assembly?.id ?? $0.globalID) } == true)
+        #expect(source.buildingNotes?.contains { $0.contains("were remade as the") } == true)
         #expect(source.buildingSourceData == prepared.data)
     }
     @Test(

@@ -381,8 +381,10 @@ shocks" switch (ratio 2) and, under it, "Twice over again" (two levels); `blastb
 
 - **Where.** The grid is cut into blocks of 4 × 4 × 4 cells. A block is refined where the
   pressures of two neighbouring cells in it differ by more than `refinementThreshold` (10%) of
-  the lower, and so is any block within two cells of such a pair: a shock moves under half a
-  cell a step, and the blocks are placed afresh every step, so it cannot outrun them. Each
+  the lower, and so is any block within a cell of such a pair (`refinementMargin`; two cells
+  until October 2026, which moved the validation's peaks by under 1.3% and cost a fifth more
+  blocks): a shock moves under half a cell a step, and the blocks are placed afresh every step,
+  so it cannot outrun them. Each
   refined block is a patch of (4r)³ fine cells, taken from a pool of fixed size
   (`refinementMemory`, 1 GB by default, about 63 kB a patch at ratio 2 and 364 kB at ratio 4).
   Where the shock would need more, the rest of it stays coarse.
@@ -511,6 +513,15 @@ exists because a collapsing structure keeps disturbing the air near it through t
 mask, so the pressure test alone may never be met. The threshold is not lower because the
 winds left behind by a blast die away slowly: a second after a 50 kg charge, some cells were
 still 0.8 kPa from ambient.
+
+The solid outline still follows the structure while the air sleeps. A body moving on is loaded by
+the frozen air beside where it now is, and a cell it leaves is filled from its neighbours, as
+when the air is awake. Until 2026-10-15 the outline froze with the air. A face that had moved
+back through it then read solid cells, so no air, on one side and frozen air on the other: in
+blind test 2 Mendonça's slabs, thrown up off their trestles, were driven down at about 11 g as
+they came back (see [validation](validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge)).
+Where nothing crosses a cell's centre the outline and the air are left exactly as they were,
+and with several bodies the frozen air takes no new coupling pages.
 
 ## Verification and validation
 

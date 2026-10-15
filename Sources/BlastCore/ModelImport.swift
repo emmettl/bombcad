@@ -622,13 +622,21 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
         }
     }
 
+    /// An IFC file's largest size, in bytes: past 20 MB, conversion and saving are slower, and
+    /// the import says so.
+    public static let ifcSourceLimit = 100_000_000
+    /// An IFC building's most triangles, over all its elements.
+    public static let buildingTriangleLimit = 400_000
+
     public init(
         buildingElements elements: [BuildingElement], notes: [String] = [], origin: SIMD3<Double>? = nil,
         sourceData: Data? = nil, selection: BuildingSelection? = nil
     ) throws {
-        guard !elements.isEmpty, elements.count <= 1024,
+        // At most 1,024 chosen elements, each of up to 64 parts or repaired pieces; the triangle
+        // limit below bounds the whole.
+        guard !elements.isEmpty, elements.count <= 16_384,
             Set(elements.map(\.globalID)).count == elements.count,
-            (sourceData?.count ?? 0) <= 20_000_000,
+            (sourceData?.count ?? 0) <= Self.ifcSourceLimit,
             notes.count <= 100, notes.allSatisfy({ $0.count <= 2000 }),
             origin.map({ [$0.x, $0.y, $0.z].allSatisfy(\.isFinite) }) ?? true
         else { throw ImportError.invalid("IFC source metadata is invalid or too large.") }
@@ -647,9 +655,9 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
                 )
                     ?? true,
                 element.mesh.buildingElements == nil,
-                triangles.count + element.mesh.triangles.count <= 100_000
+                triangles.count + element.mesh.triangles.count <= Self.buildingTriangleLimit
             else {
-                throw ImportError.invalid("Invalid IFC element or model exceeds the 100,000-triangle limit.")
+                throw ImportError.invalid("Invalid IFC element or model exceeds the 400,000-triangle limit.")
             }
             try element.mesh.validateGeometry()
             let start = triangles.count
@@ -664,7 +672,16 @@ public struct ImportedMesh: Sendable, Hashable, Codable {
         guard Set(parts.map(\.id)).count == parts.count else {
             throw ImportError.invalid("IFC element identifiers collide; cannot preserve part ownership.")
         }
-        if let selection { try selection.validate(converted: Set(sorted.map(\.globalID))) }
+        if let selection {
+            // A piece of an element (a part, or a solid of one taken apart) is chosen with it.
+            let chosen = Set(selection.includedIDs)
+            try selection.validate(
+                converted: Set(
+                    sorted.map { element in
+                        chosen.contains(element.globalID)
+                            ? element.globalID : (element.assembly?.id ?? element.globalID)
+                    }))
+        }
         buildingSelection = selection
         buildingElements = sorted
         buildingNotes = notes

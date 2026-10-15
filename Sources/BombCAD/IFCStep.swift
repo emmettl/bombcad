@@ -144,6 +144,20 @@ enum IFCStep {
         }
     }
 
+    /// Each storey's elevation as the IFC gives it (in its length unit), by GlobalId.
+    static func storeyElevations(_ data: Data) -> [String: Double] {
+        var result: [String: Double] = [:]
+        for entity in entities(data, where: { $0 == "IFCBUILDINGSTOREY" }).values
+        where entity.arguments.count >= 10 {
+            guard let id = entity.arguments.first.flatMap(string), let elevation = Double(entity.arguments[9])
+            else {
+                continue
+            }
+            result[id] = elevation
+        }
+        return result
+    }
+
     static let prefixes: [String: Double] = [
         "EXA": 1e18, "PETA": 1e15, "TERA": 1e12, "GIGA": 1e9, "MEGA": 1e6, "KILO": 1e3, "HECTO": 1e2,
         "DECA": 1e1, "DECI": 1e-1, "CENTI": 1e-2, "MILLI": 1e-3, "MICRO": 1e-6, "NANO": 1e-9, "PICO": 1e-12,

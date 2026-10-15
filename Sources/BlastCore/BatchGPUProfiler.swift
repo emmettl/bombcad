@@ -8,16 +8,24 @@ public struct BatchGPUProfile: Codable, Sendable {
     public var mechanicsS: Double = 0
     public var couplingS: Double = 0
     public var observationS: Double = 0
+    /// With detailed profiling (`BlastSolver.enableGPUProfiling(_:detailed:)`), the GPU seconds of
+    /// each stage, named "phase/stage": the coarse sweeps, and each refined level's ghosts,
+    /// sweeps, refluxing, regridding and the rest, each in an encoder of its own.
+    public var stages: [String: Double] = [:]
     public init() {}
 }
 
 final class BatchGPUProfiler {
     let device: MTLDevice
     let samples: MTLCounterSampleBuffer
+    /// Whether stages within the phases get encoders of their own.
+    let detailed: Bool
+    /// Encoders a batch can time; those beyond are not timed.
+    let capacity: Int
     var phases: [String] = []
     var clock: (cpu: MTLTimestamp, gpu: MTLTimestamp) = (0, 0)
 
-    init(device: MTLDevice) throws {
+    init(device: MTLDevice, detailed: Bool = false) throws {
         guard device.supportsCounterSampling(.atStageBoundary),
             let set = device.counterSets?.first(where: { $0.name == MTLCommonCounterSet.timestamp.rawValue })
         else { throw BlastError.allocationFailed("GPU stage timestamp counters unavailable") }
@@ -25,7 +33,10 @@ final class BatchGPUProfiler {
         let descriptor = MTLCounterSampleBufferDescriptor()
         descriptor.counterSet = set
         descriptor.storageMode = .shared
-        descriptor.sampleCount = 2 * (6 * BlastSolver.maxStepsPerBatch + 2)
+        self.detailed = detailed
+        // A sample buffer holds at most 32 KB, 4,096 timestamps.
+        capacity = detailed ? 2048 : 6 * BlastSolver.maxStepsPerBatch + 2
+        descriptor.sampleCount = 2 * capacity
         descriptor.label = "Diagnostic solver stages"
         samples = try device.makeCounterSampleBuffer(descriptor: descriptor)
     }
@@ -36,6 +47,12 @@ final class BatchGPUProfiler {
     }
 
     func encoder(command: MTLCommandBuffer, phase: String) -> MTLComputeCommandEncoder? {
+        guard phases.count < capacity else {
+            // Past the sample buffer's room: untimed.
+            let encoder = command.makeComputeCommandEncoder()
+            encoder?.label = phase
+            return encoder
+        }
         let descriptor = MTLComputePassDescriptor()
         let attachment = descriptor.sampleBufferAttachments[0]!
         attachment.sampleBuffer = samples
@@ -62,7 +79,8 @@ final class BatchGPUProfiler {
                 let b = bytes.loadUnaligned(fromByteOffset: 16 * index + 8, as: UInt64.self)
                 guard a != UInt64.max, b != UInt64.max, b >= a else { return nil }
                 let elapsed = Double(b - a) * secondsPerTick
-                switch phase {
+                if detailed { result.stages[phase, default: 0] += elapsed }
+                switch phase.split(separator: "/").first.map(String.init) ?? phase {
                 case "air": result.airS += elapsed
                 case "mechanics": result.mechanicsS += elapsed
                 case "coupling": result.couplingS += elapsed

@@ -1,3 +1,4 @@
+import ContactSearchMetal
 import Foundation
 import Metal
 import simd
@@ -463,6 +464,10 @@ public struct StructureModel: Sendable, Hashable, Codable {
     public var shellElementSize: Float?
     /// Layers of concrete (or other material) through the thickness of each shell.
     public var shellLayers: Int = 8
+    /// With shells, whether members that touch but share no node of the mesh (layers stacked
+    /// face to face, a beam meeting a column off its centreline) are tied at their nearest
+    /// nodes. Set for structures from IFC; nil (no) otherwise.
+    public var tiesTouching: Bool?
     /// Regions in which the structure is held still: nodes inside any of them do not move
     /// (beyond the ground plane, which `fixedBase` holds). For walls built into rigid scenery.
     public var supports: [Box] = []
@@ -1097,6 +1102,8 @@ struct CouplingUniforms {
     var deepThreshold: UInt32 = 1
     var deepPatchOffset: UInt32 = 0
     var deepCellOffset: UInt32 = 0
+    /// 1 while the air sleeps: points in coupling pages not allocated are left out quietly.
+    var quietCoverage: UInt32 = 0
 }
 
 /// When nodes of the structure repel each other.
@@ -1108,6 +1115,83 @@ public enum ContactMode: UInt32, Sendable {
     case always = 2
 }
 
+/// How the kernels round their arithmetic. Results before failure agree between these to about
+/// 1%; after failure, where one element's removal decides the next, they spread, and the spread
+/// is the scatter any change to the arithmetic, the compiler or the GPU would give (see
+/// "Results after failure move with the rounding" in docs/validation.md). A run chooses one with
+/// `KernelRounding.$current.withValue(_:)`; otherwise the kernels are built as by default, or as
+/// the environment's `BuildProbe` says.
+public enum KernelRounding: String, Codable, Sendable, CaseIterable {
+    /// Metal's fast math, as always.
+    case standard = "default"
+    /// Fast math without fused multiply-adds (`#pragma METAL fp contract(off)`).
+    case unfused
+    /// Relaxed math: fast math's reassociation and approximate functions, but honouring
+    /// infinities and NaNs.
+    case relaxed
+
+    /// The rounding the kernels built in this task use; nil leaves them as the environment says.
+    @TaskLocal public static var current: KernelRounding?
+
+    var mathMode: MTLMathMode? { self == .relaxed ? .relaxed : nil }
+    var contract: String? { self == .unfused ? "off" : nil }
+
+    /// The environment variables that build the kernels this way (`BuildProbe`), for a process to
+    /// set before it builds any; the default sets none, and those set otherwise are cleared.
+    public var environment: [String: String] {
+        switch self {
+        case .standard: [:]
+        case .unfused: ["BOMBCAD_KERNEL_CONTRACT": "off"]
+        case .relaxed: ["BOMBCAD_KERNEL_MATH": "relaxed"]
+        }
+    }
+
+    /// As the ensemble prints it.
+    public var name: String {
+        switch self {
+        case .standard: "default"
+        case .unfused: "no fused multiply-adds"
+        case .relaxed: "relaxed math"
+        }
+    }
+}
+
+/// How the kernels are compiled, for measuring what fast math does to results: unchanged unless
+/// set in the environment. `BOMBCAD_KERNEL_MATH` (fast, relaxed or safe) sets the math mode,
+/// `BOMBCAD_KERNEL_CONTRACT` (off, on or fast) prepends Metal's contraction pragma, and
+/// `BOMBCAD_STATE_PADDING` adds that many unused floats to the structure's element state, a change
+/// to the source that alters no arithmetic, as an unrelated edit would: at its end, or with
+/// `BOMBCAD_STATE_PADDING_AT=middle` after `compaction` (the last field read from Swift), which
+/// moves the fields after it. `BOMBCAD_KERNEL_PERTURB`, a comma-separated list, makes other such
+/// edits: `branch` a test in the element kernel that never passes, `kernel` an unused kernel calling
+/// the element kernel's helpers. See "Fast math and the build" in docs/performance.md.
+struct BuildProbe {
+    var mathMode: MTLMathMode?
+    var contract: String?
+    var statePadding = 0
+    var padInMiddle = false
+    var perturbations: Set<String> = []
+
+    static let current: BuildProbe = {
+        let environment = ProcessInfo.processInfo.environment
+        var probe = BuildProbe()
+        switch environment["BOMBCAD_KERNEL_MATH"] {
+        case "fast": probe.mathMode = .fast
+        case "relaxed": probe.mathMode = .relaxed
+        case "safe": probe.mathMode = .safe
+        default: break
+        }
+        if let contract = environment["BOMBCAD_KERNEL_CONTRACT"], ["off", "on", "fast"].contains(contract) {
+            probe.contract = contract
+        }
+        probe.statePadding = max(0, environment["BOMBCAD_STATE_PADDING"].flatMap(Int.init) ?? 0)
+        probe.padInMiddle = environment["BOMBCAD_STATE_PADDING_AT"] == "middle"
+        probe.perturbations = Set(
+            (environment["BOMBCAD_KERNEL_PERTURB"] ?? "").split(separator: ",").map(String.init))
+        return probe
+    }()
+}
+
 /// Loads and compiles the compute kernels shared by the fluid and structural solvers.
 enum ShaderLibrary {
     static func make(device: MTLDevice) throws -> MTLLibrary {
@@ -1117,7 +1201,12 @@ enum ShaderLibrary {
             "Gravity",
             "Deflagration", "Mixing",
         ]
-        let source = try files.map { name in
+        var probe = BuildProbe.current
+        if let rounding = KernelRounding.current {
+            probe.mathMode = rounding.mathMode
+            probe.contract = rounding.contract
+        }
+        var source = try files.map { name in
             guard
                 let url = Bundle.module.url(
                     forResource: name, withExtension: "metal", subdirectory: "Shaders")
@@ -1126,7 +1215,61 @@ enum ShaderLibrary {
             }
             return try String(contentsOf: url, encoding: .utf8)
         }.joined(separator: "\n")
-        return try device.makeLibrary(source: source, options: nil)
+        // Contact's table and search are ContinuumKit's (`ContactSearchMetal`), compiled ahead of
+        // the kernels that use them.
+        source = try MetalContactSearch.functionSource() + "\n" + source
+        if probe.statePadding > 0 {
+            // Unused floats in the element state: a change to the source that alters no
+            // arithmetic, to see what results a rebuild moves.
+            let padding = "    float unusedPadding[\(probe.statePadding)];\n"
+            let size = "sizeof(ElementState) == \(StructureSolver.stateStride - 4 * probe.statePadding)"
+            guard source.contains(size) else { throw BlastError.missingShader("ElementState's size check") }
+            source = source.replacingOccurrences(
+                of: size, with: "sizeof(ElementState) == \(StructureSolver.stateStride)")
+            if probe.padInMiddle {
+                let anchor =
+                    "    float compaction;  // concrete: largest volumetric compression so far, mu = V0 / V - 1\n"
+                guard let field = source.range(of: anchor) else {
+                    throw BlastError.missingShader("ElementState's compaction, to pad after")
+                }
+                source.insert(contentsOf: padding, at: field.upperBound)
+            } else {
+                guard let start = source.range(of: "struct ElementState {"),
+                    let end = source.range(of: "\n};", range: start.upperBound..<source.endIndex)
+                else { throw BlastError.missingShader("ElementState's end, to pad") }
+                source.insert(contentsOf: "\n" + padding.dropLast(), at: end.lowerBound)
+            }
+        }
+        if probe.perturbations.contains("branch") {
+            let load = "    ElementState state = states[compact];\n"
+            guard source.contains(load) else {
+                throw BlastError.missingShader("the element kernel's state load")
+            }
+            source = source.replacingOccurrences(
+                of: load, with: load + "    if (state.plasticStrain < -1.0e30f) { state.display = 0.5f; }\n")
+        }
+        if probe.perturbations.contains("kernel") {
+            source += """
+
+                kernel void unusedProbe(device float *values [[buffer(0)]],
+                                        constant MaterialParameters *materials [[buffer(1)]],
+                                        uint id [[thread_position_in_grid]]) {
+                    float3 eigen;
+                    float3x3 vectors;
+                    symmetricEigen(float3x3(values[id]), eigen, vectors);
+                    values[id] = eigen.x + tensionEnvelope(values[id + 1], 1.0f, materials[0])
+                        + compressionIncrease(values[id + 2], materials[0]);
+                }
+
+                """
+        }
+        if let contract = probe.contract { source = "#pragma METAL fp contract(\(contract))\n" + source }
+        guard let mathMode = probe.mathMode else {
+            return try device.makeLibrary(source: source, options: nil)
+        }
+        let options = MTLCompileOptions()
+        options.mathMode = mathMode
+        return try device.makeLibrary(source: source, options: options)
     }
 
     /// Index of the optional function constant that compiles a kernel for one gas model
@@ -1232,7 +1375,7 @@ extension StructureModel {
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
         case pressedInterlock, regimeOverride, loadingOverride, regimeDefaults
         case hourglassFollowsCracking, hourglassCapsSteel, discreteBars, barsAsTrusses, trussDiameter
-        case crackAveraging, rubbleParticles, strainRateWindow
+        case crackAveraging, rubbleParticles, strainRateWindow, tiesTouching
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -1271,6 +1414,7 @@ extension StructureModel {
         if strainRateWindow != Self.defaultStrainRateWindow {
             try container.encode(strainRateWindow ?? 0, forKey: .strainRateWindow)
         }
+        try container.encodeIfPresent(tiesTouching, forKey: .tiesTouching)
         if rubbleParticles { try container.encode(rubbleParticles, forKey: .rubbleParticles) }
         try container.encodeIfPresent(bondSlip, forKey: .bondSlip)
         try container.encode(solidElementKind, forKey: .solidElementKind)
@@ -1300,6 +1444,7 @@ extension StructureModel {
             try container.decodeIfPresent([SourcePart?].self, forKey: .solidSourceParts) ?? []
         elementKind = try container.decodeIfPresent(ElementKind.self, forKey: .elementKind) ?? .solid
         shellLayers = try container.decodeIfPresent(Int.self, forKey: .shellLayers) ?? 8
+        tiesTouching = try container.decodeIfPresent(Bool.self, forKey: .tiesTouching)
         supports = try container.decodeIfPresent([Box].self, forKey: .supports) ?? []
         supportAnchorages = try container.decodeIfPresent([Anchorage?].self, forKey: .supportAnchorages) ?? []
         secondCracks = try container.decodeIfPresent(Bool.self, forKey: .secondCracks) ?? true

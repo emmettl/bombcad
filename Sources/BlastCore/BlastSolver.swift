@@ -99,9 +99,12 @@ public final class BlastSolver {
 
     /// Splits compute encoders at stage boundaries for diagnostic GPU timestamps.
     /// Run throughput benchmarks separately with this disabled.
-    public func enableGPUProfiling(_ enabled: Bool) throws {
+    /// With `detailed`, the air's stages each get an encoder of their own too (see
+    /// `BatchGPUProfile.stages`); keep batches to a few steps, as a batch times at most 2,048
+    /// encoders.
+    public func enableGPUProfiling(_ enabled: Bool, detailed: Bool = false) throws {
         precondition(!batchInFlight)
-        gpuProfiler = enabled ? try BatchGPUProfiler(device: device) : nil
+        gpuProfiler = enabled ? try BatchGPUProfiler(device: device, detailed: detailed) : nil
         lastBatchGPUProfile = nil
     }
     /// One pressure history per gauge, in the order passed to `setGauges`.
@@ -295,6 +298,8 @@ public final class BlastSolver {
     private(set) var refinement: AirRefinement?
     /// The second finer level, refining the first, with `SolverConfiguration.refinementLevels` 2.
     private(set) var finerRefinement: AirRefinement?
+    /// With detailed GPU profiling, while a batch is encoded: the encoder now open.
+    private var liveEncoder: (() -> MTLComputeCommandEncoder)?
     /// The refined levels, finest last.
     var refinementLevels: [AirRefinement] { [refinement, finerRefinement].compactMap { $0 } }
     /// Bound in place of the refinement's buffers while the air is not refined.
@@ -1169,10 +1174,15 @@ public final class BlastSolver {
 
     /// Encodes one update of the solid mask from the structure's current shape, and of the fine
     /// cells' outline too where the air is refined, unless `fine` is false.
-    private func encodeRemask(_ encoder: MTLComputeCommandEncoder, fine: Bool = true) {
+    /// With `allocate` false (the air asleep), only the coupling pages already allocated follow the
+    /// structure: frozen-air mechanics take no new pages.
+    private func encodeRemask(_ encoder: MTLComputeCommandEncoder, fine: Bool = true, allocate: Bool = true) {
         guard hasBody, let region = couplingRegion, let occupancyBuffer else { return }
-        encodeAllocateCoupling(encoder)
+        // A refined level's call may move detailed profiling on to another encoder.
+        var encoder = encoder
+        if allocate { encodeAllocateCoupling(encoder) }
         var uniforms = couplingUniforms(region)
+        uniforms.quietCoverage = allocate ? 0 : 1
         if !fine { (uniforms.refineRatio, uniforms.deepRatio) = (0, 0) }
         let length = MemoryLayout<CouplingUniforms>.stride
         let patches = refinement?.patchOfTile ?? refinementPlaceholder
@@ -1180,6 +1190,7 @@ public final class BlastSolver {
 
         for body in bodies {
             uniforms = couplingUniforms(region, body: body)
+            uniforms.quietCoverage = allocate ? 0 : 1
             if !fine { (uniforms.refineRatio, uniforms.deepRatio) = (0, 0) }
             if let structure = body.solids {
                 encoder.setComputePipelineState(splatPipeline)
@@ -1260,10 +1271,12 @@ public final class BlastSolver {
                             encoder, threshold: uniforms.deepThreshold, interaction: interactionBuffer,
                             uniforms: deep)
                     }
+                    encoder = liveEncoder?() ?? encoder
                 }
             }
         }
         uniforms = couplingUniforms(region)
+        uniforms.quietCoverage = allocate ? 0 : 1
         if !fine { (uniforms.refineRatio, uniforms.deepRatio) = (0, 0) }
         let composed = combinedOccupancyBuffer ?? occupancyBuffer
         if fine, bodies.count > 1 {
@@ -1271,6 +1284,7 @@ public final class BlastSolver {
             if let deep = finerUniforms(makeUniforms()) {
                 finerRefinement?.encodePublishBodies(encoder, uniforms: deep)
             }
+            encoder = liveEncoder?() ?? encoder
         }
 
         let size = couplingSize(region)
@@ -1661,10 +1675,29 @@ public final class BlastSolver {
                 ?? commandBuffer.makeComputeCommandEncoder()
         else { return nil }
         var encoder = initialEncoder
+        var currentPhase = "observation"
         func phase(_ name: String) {
-            guard let gpuProfiler else { return }
+            guard let gpuProfiler, name != currentPhase || !gpuProfiler.detailed else { return }
             encoder.endEncoding()
             encoder = gpuProfiler.encoder(command: commandBuffer, phase: name)!
+            currentPhase = name
+        }
+        // With detailed profiling, a stage of the air of its own encoder.
+        func airStage(_ name: String) {
+            if gpuProfiler?.detailed == true { phase("air/" + name) }
+        }
+        if gpuProfiler?.detailed == true {
+            for level in refinementLevels {
+                level.stage = { name in
+                    airStage(name)
+                    return encoder
+                }
+            }
+            liveEncoder = { encoder }
+        }
+        defer {
+            for level in refinementLevels { level.stage = nil }
+            liveEncoder = nil
         }
         // In flight from the first part's encoding until `completeBatch()`.
         defer { if first { batchInFlight = true } }
@@ -1705,6 +1738,7 @@ public final class BlastSolver {
             if !airIsAsleep { encodeAllocateCoupling(encoder) }
             if tiledCoupling != nil { encodeInteractionCheck(encoder) }
             phase("air")
+            airStage("prepare")
             let globalStep = stepCount + step
             let ramp = min(1, Float(globalStep + 1) / Float(max(configuration.startupSteps, 1)))
             var uniforms = makeUniforms(cfl: configuration.cfl * ramp)
@@ -1773,6 +1807,7 @@ public final class BlastSolver {
             var axes = order.filter { extents[$0] > 1 }
             if axes.isEmpty { axes = [0] }
 
+            airStage("coarse sweeps")
             encoder.setComputePipelineState(tilesEnabled ? kernels.sweepTiles : kernels.sweep)
             encoder.setBuffer(maskBuffer, offset: 0, index: 2)
             encoder.setBuffer(peakBuffer, offset: 0, index: 3)
@@ -1817,6 +1852,7 @@ public final class BlastSolver {
                 refinement.encodeRefluxAndRestrict(
                     encoder, axes: axes, parent: coarse, control: controlBuffer, uniforms: uniforms)
             }
+            airStage("other")
             if let radiativeCoolingStage, !asleep {
                 // Every few steps, and at the batch's end, the luminous gas loses what it has
                 // radiated since, in the coarse cells; the fine cells under them each lose as much a
@@ -1898,9 +1934,16 @@ public final class BlastSolver {
                 if !asleep {
                     encodeDebrisExchange(encoder)
                 }
-                if configuration.twoWayCoupling && !asleep {
-                    encodeRemask(encoder)
-                    encodeInteractionCheck(encoder)
+                // The solid outline follows the structure even while the air sleeps: the air is frozen,
+                // but a body still moving reads the frozen air beside where it now is. Frozen where
+                // it was when the air went to sleep, a face that had moved back through that outline
+                // read solid cells, and no air, on one side and frozen air on the other (Mendonça's
+                // slabs, thrown up and landing, were pushed down at about 11 g). Where nothing
+                // crosses a cell's centre the outline and the air are left exactly as they were.
+                // Asleep, it takes no new coupling pages, and the interaction check above stands.
+                if configuration.twoWayCoupling {
+                    encodeRemask(encoder, allocate: !asleep)
+                    if !asleep { encodeInteractionCheck(encoder) }
                 }
                 if let refinement, refining {
                     refinement.encodeSync(
@@ -2345,6 +2388,7 @@ public final class BlastSolver {
         uniforms.stillEnergy = stillCell.energy
         uniforms.airModel = configuration.airModel.rawValue
         refinement?.configure(&uniforms, threshold: configuration.refinementThreshold)
+        uniforms.refineMargin = UInt32(max(configuration.refinementMargin, 0))
         if let finerRefinement {
             uniforms.childTileNx = UInt32(finerRefinement.tileDims.x)
             uniforms.childTileNy = UInt32(finerRefinement.tileDims.y)

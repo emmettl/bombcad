@@ -63,6 +63,59 @@ struct RunCostTests {
                 && RunCost.refinementReach(threshold: 0.1) < 21_000)
     }
 
+    @Test(
+        "Close in, a level whose patches would hold a quarter of the domain gives way to its cells throughout"
+    )
+    func uniformCloseIn() {
+        // `blastbench profile --closein --width`: 1 kg 0.5 m above rigid ground.
+        func closeIn(width: Float) -> Scenario {
+            let height = max(width, 1.4)
+            var scenario = Scenario(
+                name: "Close-in reflection", domainSize: SIMD3(width, width, height), boxes: [],
+                charge: Charge(mass: 1, position: SIMD3(width / 2, width / 2, 0.5)))
+            scenario.reflectiveFaces = .ground
+            return scenario
+        }
+        // Until the blast has crossed the domain; 1.5 m across, `closeair`'s 5.5 ms, as measured.
+        func duration(_ scenario: Scenario) -> Double {
+            scenario.domainSize.x == 1.5
+                ? 0.5 / 340 + 0.004
+                : Double(simd_length(scenario.domainSize * SIMD3(0.5, 0.5, 1) - SIMD3(0, 0, 0.5))) / 340
+                    + 0.004
+        }
+        func standIn(_ scenario: Scenario, _ current: AdvisorSetting) -> AdvisorSetting? {
+            let stand = RunAdvisor.standIn(
+                for: current, scenario, configuration: SolverConfiguration(), duration: duration(scenario),
+                memory: 32 << 30, maximumCells: 400_000_000)
+            return stand.setting == current ? nil : stand.setting
+        }
+        let once = AdvisorSetting(cellSize: 0.04, refinement: 2)
+        let twice = AdvisorSetting(cellSize: 0.04, refinement: 2, levels: 2)
+        // Measured: uniform 0.02 m 1.37 times faster than 0.04 m refined once 2 m across, the two
+        // alike 2.5 m across, and refined once 1.6 times faster 3.5 m across; with two levels,
+        // uniform 0.01 m cells cheapest 1.5 m across, 0.02 m refined once 2 m across.
+        #expect(standIn(closeIn(width: 2), once) == AdvisorSetting(cellSize: 0.02))
+        #expect(standIn(closeIn(width: 3.5), once) == nil)
+        #expect(standIn(closeIn(width: 1.5), twice) == AdvisorSetting(cellSize: 0.01))
+        #expect(standIn(closeIn(width: 2), twice) == AdvisorSetting(cellSize: 0.02, refinement: 2))
+        // The model's share against the runs' (0.63, 0.31 and 0.15 of the domain's blocks).
+        for (width, measured) in [(Float(1.5), 0.63), (2, 0.31), (3.5, 0.15)] {
+            var configuration = SolverConfiguration()
+            configuration.refinement = 2
+            let scenario = closeIn(width: width)
+            let share = RunCost.estimate(
+                scenario, cellSize: 0.04, configuration: configuration, duration: duration(scenario)
+            ).refinedShare.x
+            #expect(abs(share / measured - 1) < 0.2, "\(width) m: \(share) against \(measured)")
+        }
+        // In the open, nothing changes.
+        let open = ScenarioPreset.openGround.scenario
+        let stand = RunAdvisor.standIn(
+            for: AdvisorSetting(cellSize: 0.5, refinement: 2), open, configuration: SolverConfiguration(),
+            duration: open.acousticCrossingTime, memory: 32 << 30, maximumCells: 400_000_000)
+        #expect(stand.setting == AdvisorSetting(cellSize: 0.5, refinement: 2))
+    }
+
     @Test("Targets read from the command line")
     func targets() {
         #expect(AdvisorTarget(text: "peak:20%") == .fidelity(.peak, within: 0.2))
