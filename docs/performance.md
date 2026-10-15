@@ -150,6 +150,62 @@ the farthest range, 27.8 m (6 m/kg^(1/3)), where the incident and reflected peak
 and 79% of Kingery–Bulmash to 70%. So for blasts that matter close in, a threshold of 0.2 halves
 the cost.
 
+### Where a refined run's GPU time goes
+
+```bash
+swift run -c release blastbench profile --preset open --refine 2 --refine-levels 2
+```
+
+`blastbench profile` runs a whole event with each of the air's stages in a compute encoder of its
+own and sums their GPU time (the sums leave out the gaps between encoders), counts how closely the
+patches fit the jumps the threshold flags, and times an empty dispatch; `--closein` takes
+`closeair`'s burst at Z = 0.5. On a quiet Studio (October 2026), 0.5 m cells (40 mm close in),
+refined by 2, the GPU time against the same grid unrefined, and its shares:
+
+| Run | Against unrefined | Fine sweeps | Ghost fills | Coarse sweeps | Halo, reflux, restrict | Regridding |
+|---|---|---|---|---|---|---|
+| Open ground, one level | 5.4× | 52% | 15% | 19% | 9% | 4% |
+| Open ground, afterburning | – | 49% | 18% | 20% | 9% | 4% |
+| Street, one level | 5.3× | 45% | 18% | 19% | 11% | 5% |
+| Close in, one level | 17× | 55% | 20% | 7% | 12% | 6% |
+| Open ground, two levels | 30× | 56% | 21% | 4% | 16% | 3% |
+| Street, two levels | 41× | 54% | 23% | 3% | 17% | 3% |
+| Close in, two levels | 165× | 58% | 22% | 1% | 16% | 3% |
+
+With the deformable wall on 0.25 m cells, the structure takes 34% of a run refined by 2 and the
+fine cells' outline and the debris' trade with them (remask and sync) 7% more. Afterburning makes
+a fine cell's update 13% dearer and its ghosts 30%.
+
+- **Per cell, a fine update costs about twice a coarse one**: a coarse cell 0.16 to 0.22 ns a
+  sweep, a fine cell 0.22 to 0.30 ns, and its share of the ghost fills 0.08 to 0.12 ns more.
+  The ghosts, two cells either side of a patch along each sweep, half again as many cells as
+  the patch, are re-filled before every sweep; those over unrefined air are each interpolated
+  afresh from seven coarse cells at two times.
+- **Half the patches are margin.** Of the refined blocks, 44% to 67% hold a pair of cells
+  whose pressures differ by more than the threshold; the rest are there because they lie within
+  `refineReach` (two coarse cells) of one, or, for the first of two levels, around the second.
+  Only 12% to 30% of the refined cells lie in such a pair: a shock smeared over two or three
+  cells cuts through blocks four cells across.
+- **Launching is cheap**: an empty dispatch takes 2.2 µs of GPU time, about 30 dispatches a step
+  with one level and 75 with two, so 1% to 3% of a step, and 8% close in with one level.
+- **Close in, the patches cover most of the domain** (70% of its blocks), so they hardly pay:
+  uniform 20 mm cells take 0.31 s against 0.46 s for 40 mm cells refined by 2, and uniform
+  10 mm cells 4.3 s against 4.5 s refined twice. Over `closeair`'s four distances, whose
+  domains grow with the distance, 40 mm cells refined twice take 28 s against 48 s on uniform
+  10 mm cells.
+
+What might be done, with the speed-up each might give a refined run, from these shares:
+
+| | Change | Estimate | Risk |
+|---|---|---|---|
+| 1 | A margin of one coarse cell instead of two | 1.15 to 1.3 | The shock nearer the coarse ghosts; peaks to be re-checked |
+| 2 | Cheaper ghosts: neighbouring patches read in the sweep, the coarse interpolation once per coarse cell and substep | 1.08 to 1.12 | Low |
+| 3 | A uniform finer grid where the patches would cover most of the domain | Up to 1.5 close in | None to the answers |
+| 4 | Two levels: halo of the ring only, refluxing in one dispatch | 1.05 to 1.08 | Low |
+| 5 | Each level only the substeps its own waves need (tried, not merged) | 1.15 and 1.3 on open ground with one and two levels; 1.0 on the street; 0.93 close in | Measured; none to the answers |
+| 6 | A fine sweep specialised for cells away from the patch's faces | 1.05 to 1.1 | Low |
+| 7 | Longer coarse steps where the fastest wave is in a patch | Under 1.03 | |
+
 ## Structural solver
 
 ```bash
@@ -429,17 +485,17 @@ a candidate (cells finer than any grid compared count as the finest compared), i
   threshold's reach (`ValidationTables.refinementReach`, 2 × threshold × ambient), no more at a time
   than the pool of refined blocks holds (a third of it for the first level and two thirds for the
   second), each fine update 1.6 times a coarse one;
-- 0.4 ms a step whatever the grid, and 1.5 ms more with two levels of refinement;
+- 1.2 ms a step more with two levels of refinement (a step of its own costs nothing measurable);
 - the structure's element-updates at 300 million a second;
 - 57 bytes a cell (73 with afterburning), plus the refined blocks' pool.
 
-`blastbench advise --calibrate` sets it against the runs timed above: every whole event in the
-tables of this page comes within a factor of two (0.53 to 1.46, street and open ground, uniform,
-refined once and twice, with and without afterburning; the pool's cap is what brings the two-level
-runs in). The large scenes' runs read 2 to 6 times the estimate, but they were timed while the Mac
-was loaded with other work: timed again in one session beside the street on 0.25 m cells, and
-scaled by that run's slowdown, the 500 t runs on 2.2 million cells came 1.7 to 2.5 times the
-estimate, which is the error to expect at kilometre scale until they are timed on a quiet Mac.
+`blastbench advise --calibrate --time` sets it against runs timed on a quiet Mac (load under 2,
+nothing else on the GPU; two rounds that agreed within 5%), the street and open ground of this
+page and the large scenes' 500 t bursts alike: every one comes within 0.62 to 1.40 times the
+estimate (uniform, refined once and twice, with and without afterburning; the pool's cap is what
+brings the two-level runs in). The street reads low because more of its air is skipped than the
+model's arrival times allow, behind its blocks. The large scenes' runs first recorded, on a Mac
+loaded with other work, had taken 4 to 7 times as long.
 Every finished `BombCAD run` records its wall time against its estimate in
 `~/Library/Caches/BombCAD/run-costs.json`, and the advisor shows, beside the unloaded estimate,
 what the median of this Mac's recent runs makes of it.
@@ -448,6 +504,40 @@ Limitations: only peaks, impulse and deflection are weighed; the cost of a struc
 (elements from its solids' volumes, a critical step of the element's size over 7,000 m/s); the
 refined shell's thickness is one figure for every scene; and wall times on a shared Mac vary by a
 factor of four whatever the model says.
+
+## Fast math and the build
+
+The kernels are compiled as one library with Metal's default, fast math. Environment switches
+build them another way for measuring (`BuildProbe` in StructureTypes.swift; unset, nothing
+changes): `BOMBCAD_KERNEL_MATH=relaxed` or `safe`, `BOMBCAD_KERNEL_CONTRACT=off` (Metal's
+`fp contract` pragma: no fused multiply-adds), and edits that change no arithmetic,
+`BOMBCAD_STATE_PADDING=n` (unused floats in the element state, at its end or with
+`BOMBCAD_STATE_PADDING_AT=middle` after `compaction`) and `BOMBCAD_KERNEL_PERTURB=branch,kernel`
+(a test in the element kernel that never passes; an unused kernel calling its helpers). Every
+variant compiles and specialises its function constants as before.
+
+**Edits that change no arithmetic move nothing.** Each of those edits left `blastbench digest`,
+the quick Hupfauf (SN142, SN131), Janney and Chiquito P7 cases and the three Keys walls bit for
+bit as the plain build (14 October 2026). An unused field in the middle of the element state
+moves every later field, as `compactionStart` did, and still changed nothing.
+
+**A different rounding moves results after failure,** as it would on another GPU or compiler.
+Before failure the variants agree to about 1%; after it, see
+[validation](validation.md#convergence-on-todays-defaults). Relaxed math changes no air result;
+safe math changes the air's too.
+
+**Cost,** against fast math, as the median of three interleaved rounds in a shared GPU slot
+(the Mac's load 3–10, so steps per second were about a third of the figures above):
+
+| Build | Structure alone | With contact | Three-storey building, coupled (0.5 / 0.25 / 0.125 m) |
+|-------|-----------------|--------------|-------------------------------------------------------|
+| Relaxed math | 1.00× the speed | 1.02× | 0.99 / 1.03 / 1.10× the time |
+| Contraction off | 0.93× | 0.98× | 1.01 / 1.01 / 1.04× |
+| Safe math | 0.82× | 0.86× | 1.19 / 1.24 / 1.40× |
+
+The switches apply to the whole library, air included: on 0.125 m cells, where the air is most
+of the work, safe math costs 1.4 times, so the air's kernels slow at least as much as the
+structure's.
 
 ## Other Macs
 
