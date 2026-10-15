@@ -127,9 +127,9 @@ report stays under **Edit layout → Structure from IFC**.
   the ground). Without footings the base is tied to the ground by it. Members standing on a
   slab on grade, and walls and columns of the lowest storey with nothing under them in the IFC
   (their foundation left out), are tied to the ground at their foot the same way; slabs on the
-  ground rest on it, as do slabs within 1.5 m of the lowest level with little under them, of
-  the lowest storey (foundation slabs above a pit) or within walls standing on the ground
-  (slabs on fill inside their foundation walls). Beams lying on the ground are tied at
+  ground rest on it, as do slabs near the lowest level with little under them: foundation
+  slabs above a pit, and slabs on fill inside or beside their foundation walls (see the [IFC
+  corpus](ifc-import-corpus.md#what-broke-and-what-was-done), item 11). Beams lying on the ground are tied at
   their underside, and members standing on an element kept rigid are held by it. Each is
   listed. Change them under **Restraints** once imported; that
   detaches the structure from its source. Members tied to nothing that stands on a support

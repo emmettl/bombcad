@@ -67,7 +67,75 @@ The full table, per file, is `corpus5-table.md` in `/Volumes/StudioData/bombcad/
 
 ### Under gravity
 
-@@GRAVITY_AFTER@@
+The real buildings that convert were stood under gravity for 0.3 s, damped
+(`BOMBCAD_IFC_CORPUS_GRAVITY=1`, through `gpu-slot`), before round 2 and after it. "Weight
+carried" is the supports' reaction over the weight. A building counts as standing when it
+carries at least 95%. "Still" is the share of the weight on nodes that moved under 10 mm, which
+tells sagging from falling; it was recorded only after round 2. A peak of 54.9 mm is a body
+falling freely against the damping for the whole 0.3 s.
+
+**8 of the 19 stood before round 2. 12 stand after it**, the Schependomlaan structural model
+among them. The Schependomlaan design model, too large before, now imports and carries 57% of
+its weight.
+
+| Building | Shells / beams after | Carried before | Carried after | Still after | Peak after (mm) |
+|---|---|---|---|---|---|
+| buildingSMART house | 648 / 0 | 100% | 100% | 100% | 0.0 |
+| buildingSMART structural house | 1,044 / 0 | 100% | 100% | 100% | 0.5 |
+| Schependomlaan precast floor | 4,095 / 0 | 100% | 100% | 100% | 0.0 |
+| Schependomlaan walls, ground floor | 6,579 / 11 | 100% | 100% | 100% | 12.0 |
+| Schependomlaan walls, first floor | 6,362 / 10 | 100% | 100% | 100% | 0.2 |
+| Schependomlaan walls, second floor | 4,469 / 9 | 100% | 100% | 100% | 0.1 |
+| Schependomlaan hollow-core floor | 11,185 / 227 | 100% | 100% | 100% | 73.8 |
+| Clinic, architectural | 27,888 / 0 | 59% | **100%** | 100% | 0.4 |
+| Esplanades | 210,321 / 11 | 42% | **99%** | 99% | 75.7 |
+| Schependomlaan stairs and landings | 386 / 30 | 0% | **100%** | 100% | 46.9 |
+| Schependomlaan precast elements | 394 / 48 | 0% | **98%** | 98% | 54.9 |
+| Schependomlaan structural model | 86,599 / 675 | 1% | **97%** | 95% | 65.5 |
+| Schependomlaan balconies | 8 / 18 | 88% | 88% | 88% | 54.9 |
+| Schependomlaan steelwork | 222 / 541 | 9% | 86% | 71% | 82.1 |
+| Amersfoort sports hall | 46,350 / 1,445 (21,465 / 746 before) | 99% | 68% | 62% | 87.1 |
+| Duplex (architectural) | 19,814 / 220 | 64% | 65% | 65% | 53.0 |
+| buildingSMART bridge | 4,287 / 0 | 5% | 54% | 48% | 59.2 |
+| buildingSMART road | 16,896 / 0 | 22% | 41% | 29% | 83.0 |
+| Clinic, structural | 94,172 / 4,479 (27,646 / 363 before) | 2% | 79% | 78% | 68.1 |
+| Schependomlaan design model | 67,702 / 1,038 | — | 57% | 48% | 128.8 |
+
+Some peaks exceed 10 mm while nearly all the weight is still: a few light pieces fall, such as
+the hollow-core floor's 59 loose members (under 1% of it), and the rest stands.
+
+What changed for each:
+- **Now standing:**
+  - The Clinic's architectural model and Esplanades stand after the repairs and contact ties
+    (items 9 and 10).
+  - The stairs and precast elements stand on the new support rules (item 11).
+  - The sand-lime walls are still now (peaks of 66–80 mm before). On the second floor, three
+    walls moved 65 mm without the contact ties and 0.1 mm with them.
+- **Better but not standing:**
+  - The steelwork rests its base plates on the ground (item 11). Six members are still loose.
+  - On the bridge, the spandrel walls stand on the arch.
+  - On the road, its courses are tied.
+- **The sports hall** is no longer comparable: the higher triangle limit converts three
+  storeys, not the first alone, and the upper ones do not all stand.
+- **The Duplex:** its slabs on grade and porch slabs now rest on the ground (item 11). What
+  moves is the top floor: a 7.5 m W310 steel beam carries the masonry party wall and the green
+  roof, and sags 47 mm. That is its elastic deflection by hand, so it bends rather than
+  falling. The wall erodes as it cracks over the beam, and at 0.3 s the structure is still
+  settling. The beam may have a post under it that the IFC or the converted elements leave
+  out.
+- **The two structural models.** The Schependomlaan structural model now stands. Its pit's
+  floor is a storey of its own, so the foundation slabs, which are of the next storey, were not
+  taken to rest on the ground until the rule took in storeys starting near the lowest level
+  (item 11). Before that it carried 34%, the building sinking about 60 mm, nearly free fall.
+  The Clinic's slab on grade, 52 × 56 m and two thirds of the model's weight, lies on fill
+  between foundation walls that stand on footings, 1.8 m above the lowest level. It is now
+  taken to rest on the ground, and the model carries 79%. What still moves has not been traced.
+  The likely cause is the steel frame: the 461 bar joists and 188 coped beams left out as open
+  meshes (see "What is left") leave floors and roofs without the joists between their girders.
+
+The "before" run counted a tied node's mass twice (the solver adds it to its master's), so it
+understated weight carried by the share of tied nodes. That is a fraction of a percent for most
+buildings. The "after" run counts it once.
 
 ## What broke, and what was done
 
@@ -137,11 +205,18 @@ The full table, per file, is `corpus5-table.md` in `/Volumes/StudioData/bombcad/
     leaves the pair apart.
 11. **Foundations the IFC leaves out.** A lift pit's floor 0.4 m below the foundation slabs set
     Schependomlaan's lowest level, so the whole structural model hung from it (1% of its weight
-    carried). The Duplex's slabs on grade lie on fill between its foundation walls, 1.1 m above
-    their footings, and are of the storey above the walls'. Slabs within 1.5 m of the lowest
-    level, with less than half their plan on anything, now rest on the ground at their soffit,
-    where they are of the lowest storey or lie within walls standing on the ground. Beams lying on the ground
-    (base plates, ground beams) are tied at their underside, since the ground's connection holds
+    carried). The pit's floor is a storey of its own, so the foundation slabs were not of the
+    lowest storey. The Duplex's and the Clinic's slabs on grade lie on fill between their
+    foundation walls, which stand on footings or the ground, and are of the storey above the
+    walls'. A slab with less than half its plan on anything now rests on the ground at its
+    soffit in three cases:
+    - it is of the lowest storey and within 1.5 m of the lowest level;
+    - it is of another storey that starts within 1.5 m of it, with nothing at all under it;
+    - it lies within or against walls that start within 1.5 m of the lowest level, its soffit
+      within 1.5 m of their base and their tops at least as high as its mid-thickness.
+
+    A floor on top of crawl-space walls bears on them and stays carried by them. Beams lying on
+    the ground (base plates, ground beams) are tied at their underside, since the ground's connection holds
     only nodes at ground level, and theirs are above it. Members standing on an element kept
     rigid (an arch, an inclined roof) are held by it, as it does not move. Each support reaches
     half an element above and below the foot, since the mesh may move a member's end or
