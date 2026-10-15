@@ -8,7 +8,14 @@ import simd
 /// control without the staircase, the flat ground itself with the shock tilted to meet it at the
 /// slope's angle. Measured where the shock's foot has run `distance` metres along the surface.
 public struct WedgeReflectionStudy: Sendable {
-    public enum Surface: String, Sendable, CaseIterable { case terrain, tilted }
+    public enum Surface: String, Sendable, CaseIterable {
+        /// The slope as terrain, a staircase of whole cells; as terrain in cut cells; and, without
+        /// either, the flat ground with the shock tilted.
+        case terrain, cut, tilted
+
+        /// The slope is terrain.
+        var isTerrain: Bool { self != .tilted }
+    }
 
     public var shockMach: Double = 2
     /// The slope's angle to the shock's direction of travel, degrees.
@@ -43,6 +50,8 @@ public struct WedgeReflectionStudy: Sendable {
         /// The largest pressure on the surface behind the foot over the pressure ahead, and
         /// two-shock theory's for regular reflection (nil where it is impossible).
         public var surfacePressure: Double
+        /// The median pressure over the surface just behind the foot, over the pressure ahead.
+        public var surfaceMedian: Double
         public var regularPressure: Double?
         /// The terrain's incident shock as measured high above the slope, less where its speed
         /// puts it, metres.
@@ -65,7 +74,7 @@ public struct WedgeReflectionStudy: Sendable {
         var scenario: Scenario
         var foot: Float
         switch surface {
-        case .terrain:
+        case .terrain, .cut:
             foot = 0.15 * ell
             let length = foot + ell * Float(cos(theta)) + 0.25 * ell
             let height = ell * (Float(sin(theta)) + 0.65)
@@ -81,14 +90,16 @@ public struct WedgeReflectionStudy: Sendable {
                 name: "Tilted shock", domainSize: SIMD3(length, Float(width) * dx, ell), boxes: [],
                 charge: Charge(mass: 0, position: SIMD3(0, 0, ell)))
         }
+        var configuration = configuration
+        configuration.terrainCutCells = surface == .cut
         let solver = try BlastSolver(
             device: device, scenario: scenario, cellSize: dx, configuration: configuration)
         let grid = solver.grid
         // The terrain's shock starts two cells before the foot, moving along x; the tilted one meets
         // the ground at the foot, its normal (cos θ, 0, −sin θ).
         let normal =
-            surface == .terrain ? SIMD3<Float>(1, 0, 0) : SIMD3(Float(cos(theta)), 0, -Float(sin(theta)))
-        let start = surface == .terrain ? SIMD3(foot - 2 * dx, 0, 0) : SIMD3(foot, 0, 0)
+            surface.isTerrain ? SIMD3<Float>(1, 0, 0) : SIMD3(Float(cos(theta)), 0, -Float(sin(theta)))
+        let start = surface.isTerrain ? SIMD3(foot - 2 * dx, 0, 0) : SIMD3(foot, 0, 0)
         let post = Primitive(
             density: Float(behind.density), velocity: normal * Float(behind.speed),
             pressure: Float(behind.pressure))
@@ -97,8 +108,8 @@ public struct WedgeReflectionStudy: Sendable {
             simd_dot(grid.cellCentre(i, j, k) - start, normal) < 0 ? post : still
         }
         // Until the shock's foot, were it regular, has run `distance` along the surface.
-        let footSpeed = behind.shockSpeed / (surface == .terrain ? 1 : cos(theta))
-        let travel = surface == .terrain ? Double(foot - start.x) + Double(ell) * cos(theta) : Double(ell)
+        let footSpeed = behind.shockSpeed / (surface.isTerrain ? 1 : cos(theta))
+        let travel = surface.isTerrain ? Double(foot - start.x) + Double(ell) * cos(theta) : Double(ell)
         let clock = Date()
         let advanced = solver.advance(until: travel / footSpeed)
         let seconds = Date().timeIntervalSince(clock)
@@ -127,7 +138,7 @@ public struct WedgeReflectionStudy: Sendable {
                 surfacePoints.append((x, solver.primitive(i, j, k).pressure))
             }
             let kp = min(Int((Float(sin(theta)) * ell + probe) / dx), grid.nz - 1)
-            if surface == .terrain, !solver.isSolid(i, j, kp) {
+            if surface.isTerrain, !solver.isSolid(i, j, kp) {
                 probePoints.append((x, solver.primitive(i, j, kp).pressure))
             }
         }
@@ -137,14 +148,14 @@ public struct WedgeReflectionStudy: Sendable {
         // high above the terrain's slope it agrees within a fifth of a cell; the tilted shock is
         // bent near the open top, so it is not measured there.)
         let incidentX =
-            surface == .terrain
+            surface.isTerrain
             ? Double(start.x) + behind.shockSpeed * solver.time
             : Double(foot) + behind.shockSpeed * solver.time / cos(theta)
-        probeOffset = surface == .terrain ? front(probePoints) - incidentX : nil
+        probeOffset = surface.isTerrain ? front(probePoints) - incidentX : nil
         let lead: Double
         let footRun: Double
         switch surface {
-        case .terrain:
+        case .terrain, .cut:
             // Along the surface, from where the plane x = incidentX meets it.
             lead = (footX - incidentX) / cos(theta)
             footRun = (footX - Double(foot)) / cos(theta)
@@ -154,12 +165,20 @@ public struct WedgeReflectionStudy: Sendable {
         }
         let chi = atan(max(lead, 0) / (footRun * tan(theta))) * 180 / .pi
         let peak = surfacePoints.filter { $0.position < footX }.map(\.pressure).max() ?? 0
+        // The median over a stretch of surface just behind the foot, where regular reflection's
+        // pressure is uniform: a fifth of the run back, from three cells behind the foot.
+        let stretch = surfacePoints.filter {
+            $0.position < footX - 3 * Double(dx)
+                && $0.position > footX - 0.2 * Double(ell) * (surface.isTerrain ? cos(theta) : 1)
+        }.map(\.pressure).sorted()
+        let median = stretch.isEmpty ? 0 : stretch[stretch.count / 2]
         return Result(
             wedge: wedge, surface: surface, cellSize: dx, lead: lead, footRun: footRun, chi: chi,
             theoryChi: ShockReflectionTheory.triplePointAngle(shock: shockMach, wedge: theta).map {
                 $0 * 180 / .pi
             },
             surfacePressure: Double(peak) / ambient.pressure,
+            surfaceMedian: Double(median) / ambient.pressure,
             regularPressure: ShockReflectionTheory.regularReflectionPressure(shock: shockMach, wedge: theta),
             probeOffset: probeOffset,
             cells: grid.cellCount, steps: advanced.steps, seconds: seconds)

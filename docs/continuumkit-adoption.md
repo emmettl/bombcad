@@ -185,6 +185,25 @@ Built from the same tree with and without the shared functions:
   building, the shell building, the solid building with its front wall breaking up (4,625
   elements broken), and the terraced houses in contact.
 
+## Terrain cut cells — 15 October 2026
+
+Before the terrain's [cut cells](terrain.md#cut-cells) were written, ContinuumKit, its
+extraction notes and open branches, and Edgerton were checked for anything to reuse. Nothing
+fitted: CompressibleFlow is a CPU, first-order (Rusanov) fractional-volume flux for
+prescribed geometry, with moving cut cells on its roadmap; Edgerton has no flow solver; BombCAD's
+own CPU fractional-volume code (`FractionalBoxGeometry`, merging connected small cells) is for
+moving boxes and not on the GPU. The new scheme is a Metal kernel inside BombCAD's split
+MUSCL–HLLC sweeps: static heightfield geometry, apertures by quadrature, a mirrored-Riemann
+wall pressure and flux redistribution per column once a step.
+
+**A candidate, not yet.** The geometry (`TerrainCutGeometry`: α, apertures and walls of a
+heightfield, by quadrature) is pure Swift with its own tests and would sit naturally beside
+CompressibleFlow's fractional geometry. The kernel is bound to BombCAD's state layout, sweeps,
+tiles and gravity table, and has one consumer. Propose the geometry, and the redistribution as
+a reference CPU routine, once cut cells work with refinement and have become the terrain's
+default, and if a second consumer (ContinuumKit's own moving cut cells, or Edgerton) wants
+them.
+
 ## Overlap with Edgerton and candidates for ContinuumKit — 14 October 2026
 
 A read-only audit of three repositories:

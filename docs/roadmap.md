@@ -112,8 +112,7 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
   terrain ([terrain](terrain.md)); bursts checked to 40 m/kg^(1/3) ([large scenes](large-scenes.md)).
 - **Next:** a refinement criterion that follows weak shocks over kilometres; close in, a mapped
   one-dimensional start or the products' own composition for the hottest gas.
-- **Deferred:** cut cells for moving solids and terrain's slopes, which would now buy geometric
-  precision only.
+- **Deferred:** cut cells for moving solids.
 
 ### Structures and supports
 
@@ -163,7 +162,7 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   OpenStreetMap footprints; a cost-against-fidelity advisor reading the error bands
   ([choosing settings](performance.md#choosing-settings)), its costs re-timed on an unloaded Mac
   at kilometre scale.
-- **Next:** terrain's slopes as cut cells; a cheaper damage model for envelope buildings
+- **Next:** terrain's cut cells ([option](terrain.md#cut-cells), uniform grids) with refinement; a cheaper damage model for envelope buildings
   (single-degree-of-freedom, pressure–impulse or fragility), once its errors against the detailed
   model and measurement, and the cost of not venting, are known
   ([damage for envelope buildings](building-envelopes.md#future-work-damage-for-envelope-buildings)).

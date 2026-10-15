@@ -1287,6 +1287,17 @@ enum ShaderLibrary {
     /// a kernel (`burnLimitConstant` in Solver.metal).
     static let burnLimitConstant = 7
 
+    /// Index of the optional function constant that compiles the terrain's cut cells into a kernel
+    /// (`cutCellsConstant` in Solver.metal).
+    static let cutCellsConstant = 13
+
+    /// `constants` with the terrain's cut cells compiled in.
+    static func withCutCells(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {
+        var on = true
+        constants.setConstantValue(&on, type: .bool, index: cutCellsConstant)
+        return constants
+    }
+
     /// `constants` with afterburning's extinction limit compiled in.
     static func withBurnLimit(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {
         var on = true
