@@ -224,6 +224,14 @@ Since, on 15 October 2026:
   patches would hold more than a quarter of the domain, it weighs the grid of that level's cells
   instead: 1.37 times faster 2 m across. From two levels it stops at 0.02 m refined once where
   uniform 0.01 m cells would take 2.1 to 2.5 times as long, and goes to them only 1.5 m across.
+- **The second did not pay**, and is on the branch `claude/cheaper-ghosts`, not merged. Its
+  results are bit-identical (`digest`, refined by 2 and 4, once and twice), but the work moved
+  rather than shrank: the ghost kernel got cheaper on open ground, while the fine sweeps, which
+  now rebuild a ghost over unrefined air from its coarse cell's basis (96 bytes) and look up a
+  neighbouring patch on every read, where a MUSCL stencil reads each ghost two or three times,
+  got 5% to 25% dearer. Close in it was 1.1 to 1.2 times slower, on open ground no faster
+  (five interleaved rounds each). As first built, with the bases worked out in a dispatch of
+  their own before each sweep, it was 1.1 to 1.4 times slower than before.
 
 ## Structural solver
 
