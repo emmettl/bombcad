@@ -1,0 +1,5 @@
+b524a9dd567645e2d97dd888c5cd2e35604386ee
+
+The frozen commit for blind test 3 (docs/blind-tests.md): v0.3.0, build 7, the released build,
+named by the orchestrator with the user's approval on 2026-10-15. The predictor runs its harness
+on this commit's model and defaults, whatever later commits change.

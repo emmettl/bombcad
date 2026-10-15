@@ -183,10 +183,72 @@ stood on clay, and the source's pre-test check found the supports moving in it, 
 supports in the model leave out; and the displacement meters are pull-wires whose records the judge
 reads as they stand, by a rule fixed before any prediction.
 
+## Test 3: high-strength slabs in the blast load simulator (Reynolds 2015)
+
+**Source.** K. A. Reynolds, *Experimental behavior of high strength concrete slabs subjected to
+shock loading*, MS thesis, University of Missouri-Kansas City, 2015 (hdl:10355/48353). Inputs:
+[Samples/Reynolds2015](../Samples/Reynolds2015/README.md). Sealed:
+`/Volumes/StudioData/bombcad/blind/reynolds-sealed/`, checked by
+`Samples/Reynolds2015/SEALED.sha256`.
+
+**Why this test.** The calibrated contest slab's own rig and fixture, with a different
+concrete and bar. Six panels, 64 in. long and 4 in. thick, of 15 ksi (about 100 MPa) concrete,
+stronger than any concrete in the record, with one layer of No. 3 vanadium bars at 4 in. or 8 in.
+Each was loaded once by the blast load simulator's shock wave. With the rig held, the test
+asks whether the calibrated slab's agreement carries to another material and to half the
+steel. It judges the released build. No session had read the source; Vasudevan's thesis on the
+same series stays sealed and unread.
+
+**Frozen commit.** `b524a9d` (v0.3.0, build 7), named in `Samples/Reynolds2015/FROZEN`.
+
+**What to predict**, for each of the six slabs, each run until the slab has come to rest (at
+least 150 ms):
+
+| # | Quantity | Units |
+|---|---|---|
+| 1 | Peak deflection of the centre of the face away from the blast, and its time from the load's arrival | mm, ms |
+| 2 | Residual deflection of that point, the slab at rest | mm |
+| 3 | Whether the slab fails: breaks through, a bar ruptures, or it leaves its supports | fails / holds |
+| 4 | The damage: whether and where the blast face crushes or spalls, and where the main cracks run on the other face | words, and an image of each face's crack field if the harness draws one |
+
+Also committed: the centre's displacement history (0–150 ms) as CSV, and the predictor's own
+estimate of the uncertainty of quantity 1 if it has one.
+
+**Scoring.** Against the thesis's tabulated peaks and residuals, the judge's reading of its
+laser records for the times, and its descriptions and photographs of the damage, all fixed
+before any prediction:
+
+- **Primary score**: quantity 1's peak, as the ratio of predicted to measured on each slab,
+  and as each bar spacing's geometric mean (HSCV1–3 at 4 in., HSCV4–6 at 8 in.).
+- **Secondary scores**:
+  - quantity 2 as ratios;
+  - quantity 1's time as the difference in milliseconds;
+  - quantity 3 as a match or not;
+  - quantity 4 against the thesis's descriptions.
+- **Questioned readings.** A measured value that the source itself questions is scored as
+  given, and the scores are also reported without it; the verdict uses all six.
+- **Against the calibrated record.** In this rig the contest's normal-strength slab peaks at
+  104–115% of measured under its own load on solid elements and 79–88% under its lower shot.
+  The standing's band for it is 0.79–1.19. The blind result is read as follows:
+  - *as good as the calibrated record* if both spacings' geometric-mean ratios lie within
+    0.79–1.19 and every slab's ratio within 0.67–1.5;
+  - *worse* if a spacing's mean lies outside 0.67–1.5 or any slab's ratio outside 0.5–2;
+  - *between* otherwise.
+
+  The numbers are reported as well as the verdict.
+
+**Known limits of the test.** One shot a slab. Only HSCV1 and HSCV2 are nominal repeats, with
+loads within 1%. The source is a master's thesis whose text, tables and drawings disagree in
+places: the slab's width, the span against the clear distance between the supports, and the
+bars' layout (the inputs list each). The concrete's strength on the day and its tensile
+strength are not given. The loads are the thesis's averages and the judge's digitisation of
+its figures. The laser displacement record can jump when debris crosses its beam, which the
+judge reads past by a rule fixed before any prediction.
+
 ## Register
 
 | # | Test | Frozen commit | Predictions committed | Revealed | Result |
 |---|---|---|---|---|---|
 | 1 | Hrynyk 2013, plain slabs TH2, TH6, TH7 | `1c85774` (2026-10-11) | `69d5352` (2026-10-12) | 2026-10-12, sealed folder checked against its manifest | *Between*: first impacts 1.15–1.29 of the measured peak; later impacts 0.56–0.83; no punching predicted where all three slabs punched ([validation](validation.md#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight)) |
 | 2 | Mendonça et al. 2020, unretrofitted slabs 1, 2, 4, 5, 7, 9, 10 | `047cee3` (2026-10-12, after test 1's reveal) | `96083e6` (2026-10-14; runs finished 2026-10-13) | 2026-10-14, sealed folder checked against its manifest | *Worse*: 5 of 7 outcomes, both collapses missed; declared peaks' group ratios A 0.40, B 0.99, B's made by an artefact of the sleeping air on landing; the blast's own peak 0.10–0.25 of the meters' ([validation](validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge)) |
-| 3 | *Reserved candidate:* K. A. Reynolds, UMKC MS thesis, 2015 (probably the contest's high-strength slabs, on the calibrated slab's rig). Unread; moved to `/Volumes/StudioData/bombcad/blind/reynolds-sealed/` on 2026-10-11. No session opens it, or the contest's high-strength results anywhere, until the judge has assessed it after test 1's reveal. A. K. Vasudevan's UMKC MS thesis (2012), on the contest's slab series, sealed unread beside it in `/Volumes/StudioData/bombcad/blind/vasudevan-sealed/` as a possible companion or source of leaks; released back to `data/` if the assessment finds it unrelated | | | | |
+| 3 | Reynolds 2015, high-strength slabs HSCV1–6 in the blast load simulator ([inputs](../Samples/Reynolds2015/README.md)); A. K. Vasudevan's UMKC thesis (2012) stays sealed and unread in `/Volumes/StudioData/bombcad/blind/vasudevan-sealed/` | `b524a9d` (v0.3.0, 2026-10-15) | | | |
