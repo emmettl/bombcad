@@ -52,6 +52,10 @@ public struct ErrorBand: Codable, Hashable, Sendable {
     /// For a structure, the mesh (and step) the band was derived on: no structural result
     /// converges on today's defaults, so a band holds only there; nil for the air's bands.
     public var derivedMesh: String? = nil
+    /// For a result after failure, its half-range across roundings of the same arithmetic (the
+    /// default build, without fused multiply-adds, and with relaxed math) as a fraction: such a
+    /// result is one draw among roundings; nil where it does not move.
+    public var roundingSpread: Double? = nil
 
     /// Which way the model errs.
     public var reads: String {
@@ -84,11 +88,15 @@ public struct ErrorBand: Codable, Hashable, Sendable {
     public var relativeHalfWidth: Double { (high - low) / (high + low) }
 
     /// The band's half-width and the inputs' 5–95% half-range (1.645 coefficients of variation)
-    /// added in quadrature: the model's error and its spread from uncertain inputs are separate.
+    /// added in quadrature, with the roundings' half-range: the model's error, its spread from
+    /// uncertain inputs and its spread from rounding are separate.
     public var combinedHalfWidth: Double {
         let inputs = 1.645 * (inputSpread ?? 0)
         let reference = 1.645 * (referenceScatter ?? 0)
-        return (relativeHalfWidth * relativeHalfWidth + inputs * inputs + reference * reference).squareRoot()
+        let rounding = roundingSpread ?? 0
+        return
+            (relativeHalfWidth * relativeHalfWidth + inputs * inputs + reference * reference
+            + rounding * rounding).squareRoot()
     }
 
     /// Whether the model's error lies within the reference's own scatter (one standard deviation),
@@ -107,9 +115,11 @@ public struct ErrorBand: Codable, Hashable, Sendable {
     }
 
     /// Where a measured value would lie for a model value: the band, with the inputs' spread and
-    /// the reference's own scatter (each at 5–95%) added in quadrature.
+    /// the reference's own scatter (each at 5–95%) and the roundings' spread added in quadrature.
     public func expectedWithInputs(_ value: Double) -> ClosedRange<Double> {
-        guard inputSpread != nil || referenceScatter != nil else { return expected(value) }
+        guard inputSpread != nil || referenceScatter != nil || roundingSpread != nil else {
+            return expected(value)
+        }
         let centre = value / ((low + high) / 2)
         return centre * (1 - combinedHalfWidth)...centre * (1 + combinedHalfWidth)
     }
@@ -432,6 +442,41 @@ public enum ValidationTables {
     ]
 
     public static func scatter(_ id: String) -> Double { scatters.first { $0.id == id }!.sigma }
+
+    /// A result after failure across three roundings of the same arithmetic: the default build,
+    /// without fused multiply-adds, and with relaxed math (validation.md, "Results after failure
+    /// move with the rounding, not with harmless edits").
+    public struct Rounding: Sendable {
+        public var id: String
+        public var values: [Double]
+        public var document: String
+        /// The record's row; must lie under `document`'s heading and hold every value.
+        public var quote: String
+        /// Half the range over its middle.
+        public var halfRange: Double {
+            let low = values.min()!
+            let high = values.max()!
+            return (high - low) / (high + low)
+        }
+    }
+
+    public static let roundings: [Rounding] = [
+        Rounding(
+            id: "hupfaufSN142", values: [119.4, 120.9, 116.0],
+            document: "validation.md#convergence-on-todays-defaults",
+            quote:
+                "| Hupfauf SN142: far face (m/s), elements failed | 119.4, 2,336 | 120.9, 2,307 | 116.0, 2,290 |"
+        ),
+        Rounding(
+            id: "hupfaufSN131", values: [16.0, 15.2, 18.7],
+            document: "validation.md#convergence-on-todays-defaults",
+            quote: "| Hupfauf SN131 | 16.0, 758 | 15.2, 815 | 18.7, 761 |"),
+    ]
+
+    /// The widest half-range among `ids`.
+    public static func rounding(_ ids: String...) -> Double {
+        roundings.filter { ids.contains($0.id) }.map(\.halfRange).max()!
+    }
 }
 
 // MARK: - Reading a band from a table
@@ -1124,18 +1169,18 @@ extension StandingScene {
                     "Shear strength was compared only for reinforced concrete solid elements on defaults.")
             }
             if regime == "in contact" {
+                var debris = figure(
+                    "debrisSpeed", .debrisSpeed, "Far face's speed against the debris's",
+                    low: "debris too slow",
+                    high: "debris too fast",
+                    validity:
+                        "slabs 20–30 cm under contact charges, 12 elements through; after failure, so one draw "
+                        + "among roundings (the far face 116–121 m/s on SN142, 15–19 on SN131)",
+                    check: "Hupfauf's slabs under contact charges")
+                debris.roundingSpread = ValidationTables.rounding("hupfaufSN142", "hupfaufSN131")
                 bands +=
-                    onMesh(
-                        figure(
-                            "debrisSpeed", .debrisSpeed, "Far face's speed against the debris's",
-                            low: "debris too slow",
-                            high: "debris too fast",
-                            validity:
-                                "slabs 20–30 cm under contact charges, 12 elements through; after failure, so one "
-                                + "draw among builds (SN142's far face 145 or 119 m/s between two)",
-                            check: "Hupfauf's slabs under contact charges"),
-                        derived: "12 elements through only", meshes: 12...12, unbanded: &unbanded
-                    ).map { [$0] } ?? []
+                    onMesh(debris, derived: "12 elements through only", meshes: 12...12, unbanded: &unbanded)
+                    .map { [$0] } ?? []
             }
             unbanded.append("Failed elements and collapse have no band.")
         case .envelopeExposure:

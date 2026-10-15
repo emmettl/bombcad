@@ -158,6 +158,17 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
             }
         }
         #expect(Set(ValidationTables.figures.map(\.id)).count == ValidationTables.figures.count)
+        // Results after failure across roundings: each row under its heading, holding its values.
+        for rounding in ValidationTables.roundings {
+            let text = try section(rounding.document)
+            #expect(
+                text.contains(normalised(rounding.quote)),
+                "\(rounding.id): row not under \(rounding.document)")
+            let found = numbers(rounding.quote)
+            for value in rounding.values {
+                #expect(found.contains { abs($0 - value) < 1e-9 }, "\(rounding.id): \(value) not in its row")
+            }
+        }
         // The references' own scatter: each quote under its heading, holding the figure.
         for scatter in ValidationTables.scatters {
             let text = try section(scatter.document)
@@ -315,6 +326,17 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
             open[.structuralResponse]?.unbanded?.contains { $0.contains("bent 10–25% as far as measured") }
                 == true)
         #expect(wall[.structuralResponse]?.resolution.contains { $0.contains("keep the air awake") } == true)
+
+        // In contact, on 12 elements through: the debris band, one draw among roundings, widened by
+        // SN131's far face (15.2–18.7 m/s).
+        var contact = ScenarioPreset.blastWall.scenario
+        contact.charge = Charge(
+            mass: 1, position: SIMD3(solid.min.x - 0.1, (solid.min.y + solid.max.y) / 2, 0.5))
+        contact.structure?.elementSize = (solid.max.x - solid.min.x) / 12
+        let debris = try #require(
+            SceneStanding(StandingInputs(scenario: contact, cellSize: 0.25)).band(.debrisSpeed))
+        #expect(abs((debris.roundingSpread ?? 0) - 3.5 / 33.9) < 1e-9)
+        #expect(debris.expectedWithInputs(100) != debris.expected(100))
     }
 
     /// Mirrored: the convergence study's OA1 row holds every mesh's value and the measurement.

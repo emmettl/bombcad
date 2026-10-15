@@ -123,7 +123,9 @@ standing says why.
   2 kg) and, from 2 kg, Chiquito's deflection left (a third to a half); confined, the chamber's
   wall pressures (0.9 to 1.6 times). Strength in shear follows OA1 on 12 to 48 elements through, 32% strong on 12 and 4–11% on 24 to 48, spanning the meshes either side of the scene's. Any structural option the tests were not run with
   removes the band. Footings, debris under contact charges, a closed room's gas, the fireball's
-  radiated energy and the cloud's top have bands of their own.
+  radiated energy and the cloud's top have bands of their own. The debris band, after failure,
+  is widened by its spread across roundings of the same arithmetic (`roundingSpread`, ±10% from
+  Hupfauf's far faces).
 - **In the app** the popover gives each band and, for the value shown, where the measurement
   would lie; under each gauge's peak and the structure's largest deflection a line says what to
   expect, rounded to two figures: "68 mm: expect 59–65 mm (model reads high: too flexible)".
@@ -206,9 +208,11 @@ changes, change the table with it and advance `SceneStanding.currentTable`.
   far out share a peak-overpressure standing, with the nearest gauge's distance among its notes.
 - **Damage is coarse.** Structural damage and failure is an approximation throughout, with
   collapse named as compared once, blind, and missed, and debris as compared once; it does not tell a spall from a
-  breach. Results after failure move between builds of the structure's GPU code (fast math), so
-  the standing gives them as one draw among builds
-  ([convergence](validation.md#convergence-on-todays-defaults)).
+  breach. Results after failure move with any change to how their arithmetic rounds (a changed
+  model, compiler or GPU), so the standing gives them as one draw among roundings
+  ([convergence](validation.md#convergence-on-todays-defaults)). Beams broken by an impact also
+  follow the strain-rate window's length, steeply and not monotonically (Ando's at 90 to 105 µs),
+  far more than rounding moves them, and the standing says so.
 - **Building surface records** exported as JSON are a list and carry no standing of their own;
   `--standing` covers them.
 - **Blind tests judge the defaults frozen for them.** Tests 1 (`1c85774`) and 2 (`047cee3`) were

@@ -4940,6 +4940,7 @@ do {
     case "slab": try runSlab()
     case "tie": try runTie()
     case "prism": try runPrism()
+    case "shearband": try runShearBand(device: device)
     case "beam": try runBeam()
     case "shear": try runShearBeam()
     case "pushoff": try runPushOff()

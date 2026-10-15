@@ -140,7 +140,9 @@ struct ShownValue: Equatable {
     func expectation(_ band: ErrorBand) -> String {
         let inputs = band.inputSpread.map { String(format: "; inputs ±%.0f%%", 164.5 * $0) } ?? ""
         let reference = band.referenceScatter.map { String(format: "; tests ±%.0f%%", 164.5 * $0) } ?? ""
-        return "expect \(range(band.expectedWithInputs(value))) (model \(band.reads)\(inputs)\(reference))"
+        let rounding = band.roundingSpread.map { String(format: "; roundings ±%.0f%%", 100 * $0) } ?? ""
+        return
+            "expect \(range(band.expectedWithInputs(value))) (model \(band.reads)\(inputs)\(reference)\(rounding))"
     }
 }
 
@@ -341,6 +343,16 @@ struct StandingDetail: View {
                                 spread * 100, spread * 164.5)
                         )
                         .foregroundStyle(.secondary)
+                    }
+                    if let rounding = band.roundingSpread {
+                        Text(
+                            String(
+                                format:
+                                    "After failure, one draw among roundings of the same arithmetic: ±%.0f%%, added to the band.",
+                                rounding * 100)
+                        )
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                     }
                     if let verdict = band.againstReference {
                         Label(

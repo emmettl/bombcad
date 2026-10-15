@@ -1567,6 +1567,13 @@ struct StandingScene {
                         + "reactions up to 40% low; the rate laws were chosen on these tests",
                     "validation.md#beams-struck-by-a-falling-weight"),
                 StandingEvidence(
+                    "Beams without stirrups struck at rising speeds (Ando)",
+                    "Within the 2 mm reading at 1 m/s and 15% at 3 m/s, 22% on average beyond on 16 elements. "
+                        + "Once broken, at 5–6 m/s, they follow the strain-rate window's length steeply and not "
+                        + "monotonically: windows of 90 to 105 µs give A24-5 30–44 mm, B48-5 65–85 and B36-5 44–55, "
+                        + "where rounding moves them 2 mm at most; a broken beam is as uncertain as that choice",
+                    "validation.md#convergence-on-todays-defaults"),
+                StandingEvidence(
                     "Blind: Hrynyk's slabs struck repeatedly by a falling weight (defaults frozen at 1c85774, "
                         + "before the 100 µs strain-rate window; predicted before the measurements were unsealed)",
                     "First impacts 15–29% too flexible, as the calibrated beams were; once damaged, 17–44% too "
@@ -1754,10 +1761,10 @@ struct StandingScene {
                 "Concrete broken under a close-in charge is never removed, so no hole opens.",
                 "Debris is pushed crudely by the air, as cubes with a fixed drag.",
                 "Collapse is chaotic: a slightly different input gives a different pattern of debris.",
-                "Results after failure move with the build of the structure's GPU code, which uses fast math: "
-                    + "failed elements, debris speeds and residuals are one draw among builds (Hupfauf's SN131 "
-                    + "254 or 758 elements failed, Janney's moment past failure 9.7 or 29.4 kN m). Everything up "
-                    + "to failure repeats.",
+                "Results after failure are one draw among roundings of the same arithmetic: another model, "
+                    + "compiler or GPU draws again, a harmless rebuild does not. Failed elements, debris speeds "
+                    + "and residuals move by about Hupfauf's SN131 758–815 elements failed, SN142's far face "
+                    + "116–121 m/s and Janney's moment at 60 mm 29–38 kN m; before failure they agree to about 1%.",
             ],
             documents: [
                 "concrete-model.md#limitations", "structural-model.md#limitations",

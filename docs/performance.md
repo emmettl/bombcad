@@ -505,6 +505,40 @@ Limitations: only peaks, impulse and deflection are weighed; the cost of a struc
 refined shell's thickness is one figure for every scene; and wall times on a shared Mac vary by a
 factor of four whatever the model says.
 
+## Fast math and the build
+
+The kernels are compiled as one library with Metal's default, fast math. Environment switches
+build them another way for measuring (`BuildProbe` in StructureTypes.swift; unset, nothing
+changes): `BOMBCAD_KERNEL_MATH=relaxed` or `safe`, `BOMBCAD_KERNEL_CONTRACT=off` (Metal's
+`fp contract` pragma: no fused multiply-adds), and edits that change no arithmetic,
+`BOMBCAD_STATE_PADDING=n` (unused floats in the element state, at its end or with
+`BOMBCAD_STATE_PADDING_AT=middle` after `compaction`) and `BOMBCAD_KERNEL_PERTURB=branch,kernel`
+(a test in the element kernel that never passes; an unused kernel calling its helpers). Every
+variant compiles and specialises its function constants as before.
+
+**Edits that change no arithmetic move nothing.** Each of those edits left `blastbench digest`,
+the quick Hupfauf (SN142, SN131), Janney and Chiquito P7 cases and the three Keys walls bit for
+bit as the plain build (14 October 2026). An unused field in the middle of the element state
+moves every later field, as `compactionStart` did, and still changed nothing.
+
+**A different rounding moves results after failure,** as it would on another GPU or compiler.
+Before failure the variants agree to about 1%; after it, see
+[validation](validation.md#convergence-on-todays-defaults). Relaxed math changes no air result;
+safe math changes the air's too.
+
+**Cost,** against fast math, as the median of three interleaved rounds in a shared GPU slot
+(the Mac's load 3–10, so steps per second were about a third of the figures above):
+
+| Build | Structure alone | With contact | Three-storey building, coupled (0.5 / 0.25 / 0.125 m) |
+|-------|-----------------|--------------|-------------------------------------------------------|
+| Relaxed math | 1.00× the speed | 1.02× | 0.99 / 1.03 / 1.10× the time |
+| Contraction off | 0.93× | 0.98× | 1.01 / 1.01 / 1.04× |
+| Safe math | 0.82× | 0.86× | 1.19 / 1.24 / 1.40× |
+
+The switches apply to the whole library, air included: on 0.125 m cells, where the air is most
+of the work, safe math costs 1.4 times, so the air's kernels slow at least as much as the
+structure's.
+
 ## Other Macs
 
 Measured on the CI Mac mini (M4, 10-core GPU, 120 GB/s, 24 GB) on 7 and 8 October 2026, against
