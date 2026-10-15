@@ -14,7 +14,17 @@ enum IFCStep {
     /// The DATA section's entities whose class `keep` accepts, by id.
     static func entities(_ data: Data, where keep: (String) -> Bool) -> [Int: Entity] {
         var result: [Int: Entity] = [:]
+        statements(data) { statement, _ in
+            if let entity = parse(statement, keep: keep) { result[entity.id] = entity }
+        }
+        return result
+    }
+
+    /// Each statement's bytes, comments and line breaks left out, and the range of the file it
+    /// takes, its `;` included.
+    static func statements(_ data: Data, _ visit: ([UInt8], Range<Int>) -> Void) {
         var statement: [UInt8] = []
+        var start = 0
         var inString = false
         data.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
             var index = 0
@@ -43,15 +53,136 @@ enum IFCStep {
                         index += 1
                     }
                     index += 2
-                } else if byte == UInt8(ascii: "'") {
-                    inString = true
-                    statement.append(byte)
                 } else if byte == UInt8(ascii: ";") {
-                    if let entity = parse(statement, keep: keep) { result[entity.id] = entity }
+                    visit(statement, start..<index)
                     statement.removeAll(keepingCapacity: true)
                 } else if byte != 10 && byte != 13 {
+                    if statement.isEmpty {
+                        if byte == UInt8(ascii: " ") || byte == 9 { continue }
+                        start = index - 1
+                    }
+                    if byte == UInt8(ascii: "'") { inString = true }
                     statement.append(byte)
                 }
+            }
+        }
+    }
+
+    /// The curves a profile's outline is built from, and what they are placed by.
+    static let curveClasses: Set<String> = [
+        "IFCCOMPOSITECURVE", "IFCCOMPOSITECURVESEGMENT", "IFCREPARAMETRISEDCOMPOSITECURVESEGMENT",
+        "IFCTRIMMEDCURVE", "IFCCIRCLE", "IFCELLIPSE", "IFCLINE", "IFCVECTOR", "IFCPOLYLINE",
+        "IFCINDEXEDPOLYCURVE", "IFCOFFSETCURVE2D", "IFCBSPLINECURVEWITHKNOTS",
+        "IFCRATIONALBSPLINECURVEWITHKNOTS", "IFCAXIS2PLACEMENT2D", "IFCAXIS2PLACEMENT3D",
+    ]
+
+    /// `data` with each composite curve given copies of its own of the segments it shares with
+    /// others, and how many were copied. Exporters write a segment that two profiles have in common
+    /// once (Revit, a steel section's fillet arcs); the converter then builds its edge for the
+    /// first profile and reuses it in the next, whose own segments meet it a little apart, and
+    /// that profile's end faces are lost, its mesh left open. The copies, and the curves and
+    /// placements under them, are new entities after the curve; points and directions stay shared.
+    static func unsharingCurveSegments(_ data: Data) -> (data: Data, copies: Int) {
+        var curves: [Int: Entity] = [:]
+        var ranges: [Int: Range<Int>] = [:]
+        var last = 0
+        statements(data) { statement, range in
+            guard let entity = parse(statement, keep: { _ in true }) else { return }
+            last = max(last, entity.id)
+            guard curveClasses.contains(entity.name) else { return }
+            curves[entity.id] = entity
+            if entity.name == "IFCCOMPOSITECURVE" { ranges[entity.id] = range }
+        }
+        var uses: [Int: Int] = [:]
+        for id in ranges.keys {
+            for segment in Set(references(curves[id]!.arguments.first ?? "")) {
+                uses[segment, default: 0] += 1
+            }
+        }
+        guard uses.values.contains(where: { $0 > 1 }) else { return (data, 0) }
+        var next = last + 1
+        var copies = 0
+        var seen = Set<Int>()
+        // New statements in place of each composite curve that had to change.
+        var replaced: [Int: String] = [:]
+        for id in ranges.keys.sorted() {
+            var curve = curves[id]!
+            var added: [String] = []
+            var copied: [Int: Int] = [:]
+            func copy(_ n: Int) -> Int {
+                guard let entity = curves[n] else { return n }
+                if let done = copied[n] { return done }
+                let new = next
+                next += 1
+                copied[n] = new
+                let arguments = entity.arguments.map { rewriting($0, copy) }
+                added.append("#\(new)=\(entity.name)(\(arguments.joined(separator: ",")));")
+                return new
+            }
+            guard let list = curve.arguments.first else { continue }
+            var changed = false
+            curve.arguments[0] = rewriting(list) { segment in
+                guard uses[segment, default: 0] > 1 else { return segment }
+                if seen.insert(segment).inserted { return segment }
+                changed = true
+                copies += 1
+                copied = [:]
+                return copy(segment)
+            }
+            if changed {
+                replaced[id] =
+                    "#\(id)=IFCCOMPOSITECURVE(\(curve.arguments.joined(separator: ",")));\n"
+                    + added.joined(separator: "\n")
+            }
+        }
+        var result = Data()
+        result.reserveCapacity(data.count + replaced.values.reduce(0) { $0 + $1.utf8.count })
+        var position = data.startIndex
+        for (id, text) in replaced.sorted(by: { ranges[$0.key]!.lowerBound < ranges[$1.key]!.lowerBound }) {
+            let range = ranges[id]!
+            result.append(data[position..<(data.startIndex + range.lowerBound)])
+            result.append(Data(text.utf8))
+            position = data.startIndex + range.upperBound
+        }
+        result.append(data[position...])
+        return (result, copies)
+    }
+
+    /// The entity references (#n) in an argument, outside its strings.
+    static func references(_ argument: String) -> [Int] {
+        var found: [Int] = []
+        _ = rewriting(argument) {
+            found.append($0)
+            return $0
+        }
+        return found
+    }
+
+    /// `argument` with each reference #n outside its strings replaced by #`map(n)`.
+    static func rewriting(_ argument: String, _ map: (Int) -> Int) -> String {
+        var result = ""
+        var inString = false
+        var characters = argument.makeIterator()
+        var pending = characters.next()
+        while let character = pending {
+            pending = characters.next()
+            if inString {
+                result.append(character)
+                if character == "'" { inString = false }
+                continue
+            }
+            if character == "'" {
+                inString = true
+                result.append(character)
+            } else if character == "#", let first = pending, first.isASCII, first.isNumber {
+                var digits = ""
+                while let digit = pending, digit.isASCII, digit.isNumber {
+                    digits.append(digit)
+                    pending = characters.next()
+                }
+                result += "#\(map(Int(digits)!))"
+            } else {
+                result.append(character)
             }
         }
         return result

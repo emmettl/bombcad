@@ -71,6 +71,9 @@ struct IFCCorpusTests {
         /// own) leaves out; and the share of the weight on nodes that moved under 10 mm.
         var gravityClamped: Float?
         var gravityHeld: Float?
+        /// The mean speed (m/s) of the weight that moved over 10 mm, at 0.25 s and at the end: one
+        /// falling keeps g over the damping rate, about 0.2 m/s; one deflecting comes to rest.
+        var gravitySettling: [Float]?
         var gravityError: String?
     }
 
@@ -321,7 +324,24 @@ struct IFCCorpusTests {
                         }
                         let solver = try ShellSolver(device: device, model: model)
                         solver.damping = 50
-                        solver.advance(steps: Int(0.3 / Double(solver.criticalTimeStep)))
+                        // The mean speed of the weight on non-tied nodes that moved over 10 mm.
+                        func moving() -> Float {
+                            var weight: Float = 0
+                            var momentum: Float = 0
+                            solver.mutateNodes { nodes in
+                                for node in nodes
+                                where node.flags & 128 == 0 && simd_length(node.displacement) >= 0.01 {
+                                    weight += node.mass
+                                    momentum += node.mass * simd_length(SIMD3(node.vx, node.vy, node.vz))
+                                }
+                            }
+                            return weight > 0 ? momentum / weight : 0
+                        }
+                        let steps = Int(0.3 / Double(solver.criticalTimeStep))
+                        solver.advance(steps: steps * 5 / 6)
+                        let early = moving()
+                        solver.advance(steps: steps - steps * 5 / 6)
+                        row.gravitySettling = [early, moving()]
                         var mass: Float = 0
                         // A tied node's mass is added to its master's, so it is counted once, there.
                         solver.mutateNodes {
