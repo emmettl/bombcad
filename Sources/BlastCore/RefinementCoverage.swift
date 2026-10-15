@@ -8,7 +8,7 @@ public struct RefinementCoverage: Sendable {
         /// Blocks refined, of 4 x 4 x 4 cells of the grid the level refines.
         public var refined = 0
         /// Of those, blocks holding a pair of neighbouring cells whose pressures differ by more
-        /// than the threshold: the shock itself. The rest are the margin around it (`refineReach`)
+        /// than the threshold: the shock itself. The rest are the margin around it (`refinementMargin`)
         /// and, for the first level of two, the nesting around the second.
         public var core = 0
         /// Blocks holding such a pair that are not refined (the pool used up).

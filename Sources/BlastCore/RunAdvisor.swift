@@ -97,6 +97,20 @@ public struct AdvisorSetting: Sendable, Hashable, Codable {
         return configuration
     }
 
+    /// This setting without its first level of refinement: the coarse grid on that level's cells,
+    /// refined once more if there were two levels.
+    public var withoutFirstLevel: AdvisorSetting {
+        guard refinement > 1 else { return self }
+        var setting = self
+        setting.cellSize = cellSize / Float(refinement)
+        if levels > 1 {
+            setting.levels = levels - 1
+        } else {
+            setting = AdvisorSetting(cellSize: setting.cellSize, afterburning: afterburning)
+        }
+        return setting
+    }
+
     public var summary: String {
         var text = String(format: "%g m cells", Double(cellSize))
         if refinement > 1 {
@@ -117,6 +131,11 @@ public struct AdvisorCandidate: Sendable, Equatable {
     public var error: [AdvisorQuantity: Double]
     /// Why a quantity has no expected error: outside what the validation record compared.
     public var unbanded: [AdvisorQuantity: String]
+    /// The refined setting this one stands in for, and the share of the domain that setting's first
+    /// level was expected to hold: so much that a grid of its cells throughout costs less
+    /// (`RunAdvisor.uniformShare`).
+    public var standsFor: AdvisorSetting? = nil
+    public var standsForShare = 0.0
 }
 
 /// The advice for a scene and a target.
@@ -132,6 +151,18 @@ public struct Advice: Sendable, Equatable {
     public var unmet: [String]
     /// Every candidate weighed, cheapest first.
     public var candidates: [AdvisorCandidate]
+    /// When the settings as they are refine so much of the domain that a grid of the refined cells
+    /// throughout costs less, the candidate that stands for them.
+    public var currentStandIn: AdvisorCandidate? = nil
+
+    /// A line saying so, when the settings as they are refine most of the domain.
+    public var standInNote: String? {
+        guard let standIn = currentStandIn, let refined = standIn.standsFor else { return nil }
+        return String(
+            format:
+                "As set (%@), the patches would hold about %.0f%% of the domain: %@ cost less, with the same cells at the shock.",
+            refined.summary, standIn.standsForShare * 100, standIn.setting.summary)
+    }
 
     public var summary: String {
         guard let chosen else { return "No setting fits this Mac's memory." }
@@ -148,6 +179,15 @@ public enum RunAdvisor {
     public static let scaledCells: [Float] = [0.4, 0.2, 0.1, 0.05, 0.025]
     public static let presetCells: [Float] = [0.5, 0.25, 0.125]
     public static let thresholds: [Float] = [0.1, 0.02, 0.005]
+    /// The share of the domain a level of refinement's patches may hold, on average over the run
+    /// (`RunCostEstimate.refinedShare`), beyond which the coarse grid on that level's cells costs
+    /// less than the level: close in, where the shock, the fireball and the reflections behind it
+    /// fill most of the domain. Measured: 1 kg 0.5 m above rigid ground in domains 2 to 3.5 m
+    /// across, 0.04 m cells refined once against uniform 0.02 m cells, the two cost the same where
+    /// the patches hold 25% (docs/performance.md, "Uniform when the patches cover most"). The
+    /// per-cell costs alone put it near 47%, but the uniform grid sweeps only the air the blast has
+    /// reached and a refined run also fills halos, refluxes, restricts and regrids every step.
+    public static let uniformShare = 0.25
 
     /// The settings worth weighing for `scenario`: cells scaled to its charge and the presets,
     /// unrefined or refined once or twice at each threshold, with and without afterburning, and
@@ -187,16 +227,21 @@ public enum RunAdvisor {
         current: AdvisorSetting, memory: Int, maximumCells: Int,
         evaluate: (AdvisorSetting) -> (error: [AdvisorQuantity: Double], unbanded: [AdvisorQuantity: String])
     ) -> Advice {
-        let weighed = candidates(scenario, maximumCells: maximumCells).compactMap {
-            setting -> AdvisorCandidate? in
-            let cost = RunCost.estimate(
-                scenario, cellSize: setting.cellSize, configuration: setting.applied(to: configuration),
-                duration: duration)
-            guard cost.memory <= memory else { return nil }
-            let fidelity = evaluate(setting)
+        func weigh(_ setting: AdvisorSetting) -> AdvisorCandidate? {
+            let stand = standIn(
+                for: setting, scenario, configuration: configuration, duration: duration, memory: memory,
+                maximumCells: maximumCells)
+            guard stand.cost.memory <= memory else { return nil }
+            let fidelity = evaluate(stand.setting)
             return AdvisorCandidate(
-                setting: setting, cost: cost, error: fidelity.error, unbanded: fidelity.unbanded)
+                setting: stand.setting, cost: stand.cost, error: fidelity.error, unbanded: fidelity.unbanded,
+                standsFor: stand.setting == setting ? nil : setting, standsForShare: stand.share)
+        }
+        var seen = Set<AdvisorSetting>()
+        let weighed = candidates(scenario, maximumCells: maximumCells).compactMap(weigh).filter {
+            seen.insert($0.setting).inserted
         }.sorted { $0.cost.seconds < $1.cost.seconds }
+        let stoodIn = weigh(current).flatMap { $0.standsFor == nil ? nil : $0 }
         func closeness(_ a: AdvisorSetting) -> Int {
             (a.afterburning == current.afterburning ? 0 : 4) + (a.refinement == current.refinement ? 0 : 2)
                 + (a.levels == current.levels ? 0 : 1)
@@ -211,7 +256,7 @@ public enum RunAdvisor {
             }) {
                 return Advice(
                     target: target, kind: .cheapestMeeting, chosen: cheapest, met: true, unmet: [],
-                    candidates: weighed)
+                    candidates: weighed, currentStandIn: stoodIn)
             }
             // Nothing meets it: the nearest, and why.
             let banded = weighed.filter { $0.error[quantity] != nil }
@@ -234,7 +279,7 @@ public enum RunAdvisor {
             let fallback = weighed.first { $0.setting == current } ?? weighed.first
             return Advice(
                 target: target, kind: .cheapestMeeting, chosen: nearest ?? fallback, met: false, unmet: unmet,
-                candidates: weighed)
+                candidates: weighed, currentStandIn: stoodIn)
         case .seconds(let budget):
             let affordable = weighed.filter { $0.cost.seconds <= budget }
             guard !affordable.isEmpty else {
@@ -243,7 +288,7 @@ public enum RunAdvisor {
                     unmet: [
                         "Even the cheapest setting is expected to take \(Self.duration(weighed.first?.cost.seconds ?? 0))."
                     ],
-                    candidates: weighed)
+                    candidates: weighed, currentStandIn: stoodIn)
             }
             // The best of the peaks, impulse and deflection the scene has bands for, the worst of them
             // weighed first; where none has one, or they tie, the finest cells near the shock.
@@ -257,8 +302,39 @@ public enum RunAdvisor {
             }!
             return Advice(
                 target: target, kind: .bestWithinBudget, chosen: best, met: true, unmet: [],
-                candidates: weighed)
+                candidates: weighed, currentStandIn: stoodIn)
         }
+    }
+
+    /// What the advisor weighs in place of `setting`, and its cost: `setting` itself, or, where its
+    /// first level would hold more of the domain than `uniformShare`, the grid of that level's
+    /// cells (refined once if there were two levels, and so on while the share stays as high), as
+    /// long as that grid is one the advisor may weigh. The cells at the shock are the same, and finer
+    /// elsewhere, for less. `share` is the first level's share of `setting` when it gave way.
+    public static func standIn(
+        for setting: AdvisorSetting, _ scenario: Scenario, configuration: SolverConfiguration,
+        duration: Double, memory: Int, maximumCells: Int
+    ) -> (setting: AdvisorSetting, cost: RunCostEstimate, share: Double) {
+        func cost(_ setting: AdvisorSetting) -> RunCostEstimate {
+            RunCost.estimate(
+                scenario, cellSize: setting.cellSize, configuration: setting.applied(to: configuration),
+                duration: duration)
+        }
+        var chosen = setting
+        var estimate = cost(setting)
+        var share = 0.0
+        while chosen.refinement > 1, estimate.refinedShare.x >= uniformShare {
+            let finer = chosen.withoutFirstLevel
+            let grid = scenario.grid(cellSize: finer.cellSize)
+            guard finer.cellSize >= 0.01, grid.cellCount <= maximumCells,
+                max(grid.nx, grid.ny, grid.nz) <= 2048
+            else { break }
+            let finerEstimate = cost(finer)
+            guard finerEstimate.memory <= memory else { break }
+            if chosen == setting { share = estimate.refinedShare.x }
+            (chosen, estimate) = (finer, finerEstimate)
+        }
+        return (chosen, estimate, share)
     }
 
     /// Two significant figures.

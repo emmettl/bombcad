@@ -885,6 +885,7 @@ enum HeadlessRun {
         if let now = advice.candidates.first(where: { $0.setting == current }) {
             lines.append("  Now: " + describe(now))
         }
+        if let note = advice.standInNote { lines.append("  " + note) }
         // The cheapest that do better on the target, for comparison.
         let better = advice.candidates.filter { candidate in
             guard candidate.setting != advice.chosen?.setting else { return false }

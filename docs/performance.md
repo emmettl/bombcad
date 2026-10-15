@@ -183,7 +183,7 @@ a fine cell's update 13% dearer and its ghosts 30%.
   afresh from seven coarse cells at two times.
 - **Half the patches are margin.** Of the refined blocks, 44% to 67% hold a pair of cells
   whose pressures differ by more than the threshold; the rest are there because they lie within
-  `refineReach` (two coarse cells) of one, or, for the first of two levels, around the second.
+  the margin (two coarse cells, then) of one, or, for the first of two levels, around the second.
   Only 12% to 30% of the refined cells lie in such a pair: a shock smeared over two or three
   cells cuts through blocks four cells across.
 - **Launching is cheap**: an empty dispatch takes 2.2 µs of GPU time, about 30 dispatches a step
@@ -205,6 +205,25 @@ What might be done, with the speed-up each might give a refined run, from these 
 | 5 | Each level only the substeps its own waves need (tried, not merged) | 1.15 and 1.3 on open ground with one and two levels; 1.0 on the street; 0.93 close in | Measured; none to the answers |
 | 6 | A fine sweep specialised for cells away from the patch's faces | 1.05 to 1.1 | Low |
 | 7 | Longer coarse steps where the fastest wave is in a patch | Under 1.03 | |
+
+The fifth is built and tested but not merged, as it gains only on open ground: it is on the
+branch `claude/own-level-steps` (`SolverConfiguration.refinementOwnSteps`, `--refine-own-steps`).
+There the fastest wave is usually in the fireball's hot middle, which is smooth and so left
+coarse, and the patches take 1.2 of their 2 substeps a step; on the street, among the
+buildings, 1.9; and close in, where the patches hold the fastest wave, all of them.
+
+Since, on 15 October 2026:
+
+- **The first is the default** (`SolverConfiguration.refinementMargin` 1): it refines 15% to 23%
+  fewer blocks, and runs take 1.18 to 1.33 times less on open ground and the street refined once,
+  1.14 to 1.17 on the street refined twice and 1.02 on open ground refined twice, whose second
+  level's pool is full either way (`throughput`, two interleaved rounds). Against a margin of two,
+  no peak or impulse of `validate` (refined once and twice) or `closeair` (0.04 m refined twice,
+  0.02 m once) moved by more than 1.3%, against reference scatters of 6.4% to 8%.
+- **The third is the advisor's** (below, "Uniform when the patches cover most"): where a level's
+  patches would hold more than a quarter of the domain, it weighs the grid of that level's cells
+  instead: 1.37 times faster 2 m across. From two levels it stops at 0.02 m refined once where
+  uniform 0.01 m cells would take 2.1 to 2.5 times as long, and goes to them only 1.5 m across.
 
 ## Structural solver
 
@@ -484,7 +503,8 @@ a candidate (cells finer than any grid compared count as the finest compared), i
 - refined updates over a shell 18 cells thick about the shock while it is stronger than the
   threshold's reach (`ValidationTables.refinementReach`, 2 × threshold × ambient), no more at a time
   than the pool of refined blocks holds (a third of it for the first level and two thirds for the
-  second), each fine update 1.6 times a coarse one;
+  second), each fine update 1.6 times a coarse one; close in, the air within 0.8 m/kg^(1/3) of
+  the charge refined from the shock's arrival to 6 ms/kg^(1/3) after the burst (below);
 - 1.2 ms a step more with two levels of refinement (a step of its own costs nothing measurable);
 - the structure's element-updates at 300 million a second;
 - 57 bytes a cell (73 with afterburning), plus the refined blocks' pool.
@@ -502,8 +522,51 @@ what the median of this Mac's recent runs makes of it.
 
 Limitations: only peaks, impulse and deflection are weighed; the cost of a structure is rough
 (elements from its solids' volumes, a critical step of the element's size over 7,000 m/s); the
-refined shell's thickness is one figure for every scene; and wall times on a shared Mac vary by a
-factor of four whatever the model says.
+refined shell's thickness is one figure for every scene, and the close-in hold was fitted to one
+burst, 0.5 m/kg^(1/3) above rigid ground; and wall times on a shared Mac vary by a factor of four
+whatever the model says.
+
+### Uniform when the patches cover most
+
+Close in, the shock, the fireball and the reflections behind them fill most of the domain, the
+patches stay where they are, and a level of refinement costs more than the grid of its cells
+everywhere: its cells are each about twice a coarse cell's work with their ghosts, and every step
+it fills halos, refluxes, restricts and regrids. So where a level's patches would hold more than
+a quarter of the domain on average over the run (`RunAdvisor.uniformShare`), the advisor weighs
+the grid of that level's cells in its place (refined once more if there were two levels, and so on
+while the share stays as high), which has the same cells at the shock and finer ones elsewhere.
+When the settings as they are fall in that case, it says so, in the Run tab and in `--advise`.
+
+The threshold is where the two cost the same, measured on `blastbench profile --closein --width`,
+1 kg 0.5 m above rigid ground in a domain the given width across and as high, run until the blast
+has crossed it (1.5 m across, for `closeair`'s 5.5 ms), on 15 October 2026 (GPU time in the
+stages, two rounds agreeing within 3%, the Mac shared with other work, so as ratios):
+
+| Width | Patches' share | Uniform 0.02 m | 0.04 m refined once | 0.02 m refined once | 0.04 m refined twice | Uniform 0.01 m |
+|---|---|---|---|---|---|---|
+| 1.5 m | 0.63 | | | 11.4 s | 12.7 s | 10.9 s |
+| 2 m | 0.31 | 2.6 s | 3.6 s | 14.2 s | 16.6 s | 30.4 s |
+| 2.5 m | 0.25 | 4.8 s | 5.0 s | 23.3 s | 23.8 s | 58.6 s |
+| 3 m | 0.19 | 7.8 s | 6.3 s | | | |
+| 3.5 m | 0.15 | 12.8 s | 8.0 s | | | |
+
+The share is of the domain's blocks refined once from 0.04 m, on average over the run. One level
+and the grid of its cells cost the same at a share of 0.25; the per-cell costs alone would put it
+near 0.47, but the uniform grid sweeps only the air the blast has reached, and the refined run's
+halos, refluxing, restriction and regridding take 13% to 18% of its time besides. A level of
+finer cells holds less: refined once from 0.02 m, 0.31, 0.16 and 0.11 of the domain at 1.5, 2
+and 2.5 m, as the second level does from 0.04 m, since the smooth air behind the shock differs
+less from one small cell to the next. So with two levels from 0.04 m, the rule gives uniform
+0.01 m cells at 1.5 m and 0.02 m refined once at 2 m, the cheapest of the three in each.
+
+For the share, `RunCost` holds the air within 0.8 m/kg^(1/3) of a charge refined from the
+shock's arrival until 6 ms/kg^(1/3) after the burst, for a level of 0.04 m/kg^(1/3) cells, and
+within a range that falls as the square root of the cells' size for finer ones (0.57 for 0.02;
+coarser cells are held at 0.8, as the open ground's refined runs show nothing more). Fitted to the
+shares above and at 4 and 6 m (0.117 and 0.056), it gives 0.72, 0.30, 0.22, 0.17, 0.15, 0.13 and
+0.09 at 1.5 to 6 m, 0.37, 0.15 and 0.10 refined once from 0.02 m, and 0.37, 0.14 and 0.06 for
+the second level at 1.5, 2 and 3 m (0.32, 0.16 and 0.10 measured); the shell alone gave two fifths
+of the share at 1.5 m. The open ground and the street are unchanged.
 
 ## Fast math and the build
 
