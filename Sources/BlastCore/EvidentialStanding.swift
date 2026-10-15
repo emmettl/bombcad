@@ -1648,10 +1648,12 @@ struct StandingScene {
             evidence.append(
                 StandingEvidence(
                     "Brick walls' debris (Keys, 2016)",
-                    "Loads within 15%; the walls break into too few pieces, falling at full length in the open and "
-                        + "thrown half as far as measured in a shock tube", "validation.md#brick-walls-debris"
+                    "Loads within 15%; the walls crack at the measured heights but fall as one column, lying "
+                        + "1.5–2 m too far out in the open and thrown half as far as measured in a shock tube",
+                    "validation.md#brick-walls-debris"
                 ))
-            parts.append("masonry's joints verified; brick walls under blasts break into too few pieces")
+            parts.append(
+                "masonry's joints verified; brick walls under blasts fall as one column, not in pieces")
         }
         if classes.contains(.glass) {
             level = max(level, .approximation)
@@ -1779,8 +1781,8 @@ struct StandingScene {
         if materialClasses.contains(.glass) || materialClasses.contains(.masonry) {
             level = .illustrative
             summary +=
-                " Masonry breaks into too few pieces: brick walls fall at full length in the open and are thrown "
-                + "half as far as measured in a shock tube. Glass breaking up has no comparison."
+                " Masonry breaks into too few pieces: brick walls fall as one column, lying 1.5–2 m too far out in "
+                + "the open, and are thrown half as far as measured in a shock tube. Glass breaking up has no comparison."
         }
         return result(
             .structuralDamage, level, summary, evidence: evidence,

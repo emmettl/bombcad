@@ -2639,60 +2639,83 @@ broken off or not. Three things had to be put right first, each found by these w
 
 ### Results
 
-The blast beside the walls, model / measured: 97.5 / 115 kPa and 278 / 263 kPa ms at 10.6 m,
-64.5 / 73 and 237 / 241 at 13 m, 49.1 / 53 and 222 / 234 at 15 m; in the tunnel, an impulse of
-4,171 / 3,952 and 3,702 / 3,362 kPa ms at the inlet and a face peak of 149 / 131 and 141 /
-124 kPa (the inlet gauges' peaks, 80 and 99 kPa against 60 and 57, catch the wall's reflection).
+Rerun 15 October 2026 on the day's defaults (the debris had been 1.9 m out for WR1A before; a
+build of 11 October, 66ffaee, gives 2.06 m, so nothing in between moved it). The blast beside
+the walls, model / measured: 97.5 / 115 kPa and 278 / 263 kPa ms at 10.6 m, 64.5 / 73 and
+236 / 241 at 13 m, 49.1 / 53 and 206 / 234 at 15 m; in the tunnel, an impulse of 4,171 / 3,952
+kPa ms at BWL2C's inlet and a face peak of 149 / 131 kPa (the inlet gauge's peak, 80 kPa against
+60, catches the wall's reflection).
 
 The debris, distances along the radial or tunnel from the wall's upstream face, mass-weighted
-(the 90% figure is the bin by which nine tenths of the mass has been counted):
+(the 90% figure is the bin by which nine tenths of the mass has been counted), on the hard
+ground and, for the walls in the open, on soft ground (below):
 
-| Wall | Mean, model / measured | 90% within | Furthest |
-|------|------------------------|------------|----------|
-| WR1A, 10.6 m | 1.90 / 0.23 m | 5.25 / 1.25 m | 7.5 / 3.0 m |
-| WR1B, 13 m | −1.95 / 0.64 m | −0.25 / 2.25 m | 0.5 / 6.0 m |
-| WR2C, 15 m | −1.41 / 0.42 m | 0.75 / 1.75 m | 1.0 / 3.5 m |
-| BWL2C, tunnel | 3.99 / 6.34 m | 7.25 / 8.25 m | 10 / 13 m |
-| BWL3B, tunnel | 3.19 / 5.99 m | 6.75 / 9.75 m | 15 / 15 m |
+| Wall | Mean, model / measured | 90% within | Furthest | Soft ground: mean, 90% within |
+|------|------------------------|------------|----------|-------------------------------|
+| WR1A, 10.6 m | 2.10 / 0.23 m | 4.75 / 1.25 m | 7.5 / 3.0 m | 1.36 m, 3.25 m |
+| WR1B, 13 m | 2.15 / 0.64 m | 4.25 / 2.25 m | 6.0 / 6.0 m | 1.36 m, 2.75 m |
+| WR2C, 15 m | −1.14 / 0.42 m | −0.25 / 1.75 m | 0.5 / 3.5 m | −1.05 m, −0.25 m |
+| BWL2C, tunnel | 3.47 / 6.34 m | 6.75 / 8.25 m | 9.0 / 13 m | |
+| BWL3B, tunnel | 3.27 / 5.99 m | 6.75 / 9.75 m | 9.5 / 15 m | |
 
-**In the open the walls break the wrong way.** WR1A cracked along bed joints at 0.5 m and
-mid-height within 20 ms and folded into three pieces about the base and the upper crack, landing
-mostly within a metre of where it stood. The model's walls ride out the 10 ms blast leaning by
-centimetres, their foot cracked, and topple as one piece over 1.5 s: WR1A away from the charge,
-WR1B and WR2C towards it, so that the whole wall lies at full length on one side. On a stronger
-base (a concrete construction joint, or clamped) WR1A cracks one bed joint low down within
-100 ms and the rest topples downstream in one piece: a mean of 1.0–1.3 m and 90% within
-2.75–3.25 m, nearer; WR1B on that base still falls towards the charge (−1.76 m), and WR2C is
-not broken at all, standing still by 0.7 s where the test's wall broke. The breakage, not the
-blast, sets these distances, and the model makes too few cracks: one joint opens and the wall
-turns about it as a body, or none does.
+**In the open the walls crack in the right places but do not fold.** WR1A cracked along bed
+joints at 0.5 m within 5 ms and at mid-height by 20 ms, and folded into three pieces about the
+base and the upper crack, landing mostly within a metre of where it stood. The model's WR1A
+opens bed joints at 0.47, 0.69 and 0.92 m by 20 ms (none by 10 ms), WR1B at 0.54 and 0.77 m,
+WR2C at 0.69 and 0.84 m by 50 ms: the heights are right. But the courses between the cracks do
+not move apart. The wall is left leaning by centimetres at 1 m/s at most, rocks on its cracked
+joints as one column and topples over 1.1–1.2 s, gaining 2–3 kJ as it falls, then shatters as
+it strikes the ground: about two fifths of its elements are removed within 0.1 s of landing,
+and the pieces skid out to 7.5 m. WR1A and WR1B fall away from the charge (WR1B fell towards
+it in the earlier run), WR2C stands still until 1.3 s and then falls towards it. The spread
+beyond the wall's own length is the landing's, not the blast's.
 
-**In the tunnel the walls are thrown 50–60% as far.** BWL2C is pushed downstream at about
-4.5 m/s, opens bed joints at 0.62–0.69 m by 50 ms (measured 0.5 and 1.5 m), falls flat by 0.6 s
-and spreads from 1 to 9 m, where the measured debris lay mostly from 4.5 to 8 m (and would have
-gone further but for the lights). BWL3B, twice as wide, likewise. The loads match within 6–14%,
-so the shortfall is in what the debris feels in flight or how it breaks: the model's debris is
-mostly large intact pieces loaded on their faces, and loose nodes pushed as cubes, while 80% of
-the measured bricks stayed whole in pieces the wind carried on.
+Two changes were tried for this, each as an option, on WR1A with the model's rounding
+scatter for scale (the default, unfused and relaxed roundings give means of 1.99–2.32 m):
+
+- **Soft ground** (`StructureSolver.groundStiffness`, a Winkler bed; see
+  [On the ground](structural-model.md#on-the-ground)). At 5×10⁷ Pa/m, firm soil, the falling
+  wall is no longer stopped dead: WR1A loses 799 elements rather than 1,747, lands in 20 pieces
+  over 1 kg rather than 37, and its debris comes 0.7 m nearer (1.36 m, 90% within 3.25 m,
+  nothing past 3.5 m). WR1B likewise; WR2C, which hardly breaks, is unchanged. The breakup
+  before landing is the same.
+- **Bed joints that part sooner** (a cracked joint's tension cut once it had opened 2 or 5 mm,
+  so a cracked stack could separate). No change on either ground (2.17–2.30 m hard, 1.20–1.59 m
+  soft): the cracked joints rock, opening on one face while the other stays in compression,
+  and never open across. Withdrawn.
+
+**In the tunnel the walls are thrown 55% as far.** BWL2C is pushed downstream at up to 8 m/s,
+opens bed joints at 0.47–0.69 m by 50 ms (measured 0.5 and 1.5 m), falls flat by 0.55 s,
+shatters as it lands and spreads from 0 to 9 m, where the measured debris lay mostly from 4.5
+to 8 m (and would have gone further but for the lights). BWL3B, twice as wide, likewise. The
+loads match within 6–14%, so the shortfall is in what the debris feels in flight or how it
+breaks: the model's debris is a whole wall loaded on its face until it lands, while 80% of the
+measured bricks stayed whole in pieces the wind carried on. The tunnel's floor is concrete,
+so soft ground is not for it.
 
 ### What this does and does not show
 
 It shows the loads are right beside these walls and in the tunnel (peaks within 15%, impulses
-within 10%), and that the model's masonry breaks into too few pieces: one or two joints open
-and the wall moves as a body, so in the open it falls at full length one way or the other, and
-in the tunnel it is thrown about half as far. Three faults in general use came to light and
-have options or fixes: open faces near a structure drain the air (keep them several metres
-away), debris did not come to rest on the ground (Coulomb friction, an option), and debris was
-loaded only within 4 m of where its structure stood (`debrisReach`). Two faults remain: a node
-of BWL3B's debris was flung at 1.1 km/s from 0.6 s (as broken blockwork's nodes are, under
-[perimeter walls](#perimeter-walls-under-field-blasts)), and the toppled walls ring on the
-ground with 100–200 J that nothing damps. Single tests of each wall; which way the open-air
-walls fall is decided by centimetres of lean, so a small change of input may turn it.
+within 12%), and that the model's brickwork cracks at the right heights but does not come
+apart there: the cracked joints rock, and the wall falls as one column. In the open the debris
+then lies 1.5–2 m too far out, mostly because the falling wall shatters on a rigid ground;
+in the tunnel it goes about half as far, being one large body rather than bricks in the wind.
+Faults in general use found by these walls, each with an option or fix: open faces near a
+structure drain the air (keep them several metres away), debris did not come to rest on the
+ground (Coulomb friction), debris was loaded only within 4 m of where its structure stood
+(`debrisReach`), and debris landing on earth is smashed by a rigid ground (soft ground). The
+toppled walls still ring on the ground with 50–100 J that nothing damps. Single tests of each
+wall; which way the open-air walls fall is decided by centimetres of lean, and has turned
+between runs.
 
-For later: why the model's brickwork opens one joint where the walls opened two or three (the
-joints' bond, 0.25 MPa from Lourenço and Rots, against mortar a few days old; the base's
-strength; the element size); the tunnel walls of the 4.9 m section, thrown 20–50 m; the drag
-on broken pieces in flight.
+Proposal: soft ground as the setting for debris landing on soil, not a default (it narrows
+WR1A's and WR1B's spread by a third but not to the measured, and it is wrong on paving or a
+slab). The breakup itself, three pieces by 100 ms in the test against one rocking column, is
+not answered by the joints' strength or by letting cracked joints part, and is left: what
+separates the courses in the test (the pieces' own momentum through an open joint, sliding on
+it, or the brick-mortar interface's dynamic strength) needs the high-speed film's motion, not
+only its cracks. Also for later: the tunnel walls of the 4.9 m section, thrown 20–50 m, and the
+drag on broken pieces in flight.
 
 ## Blast loads against empirical references
 
