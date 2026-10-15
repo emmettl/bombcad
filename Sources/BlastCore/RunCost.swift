@@ -20,6 +20,9 @@ public struct RunCostEstimate: Sendable, Equatable {
     public var memory: Int
     /// Seconds on an unloaded M4 Max.
     public var seconds: Double
+    /// The share of the domain each level of refinement's patches hold, first and second, on
+    /// average over the run; zero unrefined.
+    public var refinedShare: SIMD2<Double> = .zero
 }
 
 public enum RunCost {
@@ -51,6 +54,26 @@ public enum RunCost {
     /// of its own costs nothing measurable and a step in two levels 1.2 ms.
     public static let stepOverhead = 0.0
     public static let twoLevelStepOverhead = 0.0012
+    /// Close in, the patches do not move on with the shock: the fireball, the secondary shock and
+    /// the ground's reflections keep the air refined from the shock's arrival until `coreTime`
+    /// s/kg^(1/3) after the burst, within `coreRange` m/kg^(1/3) of the charge for a level of
+    /// cells 0.04 m/kg^(1/3) across, and as the square root of the cells' size within a level of
+    /// finer ones (0.57 for 0.02 m/kg^(1/3)), where the smooth air between the jumps differs less
+    /// from cell to cell. Fitted to the refined share of 1 kg 0.5 m above rigid ground in domains
+    /// 1.5 to 6 m across (`blastbench profile --closein --width`, refined once and twice from
+    /// 0.04 m and once from 0.02 m; docs/performance.md, "Uniform when the patches cover most").
+    /// Coarser cells than those are held at `coreRange`: the open ground's refined runs show
+    /// nothing more.
+    public static let coreTime = 0.006
+    public static let coreRange = 0.8
+    public static let coreRangeExponent = 0.5
+
+    /// The scaled range within which a level of cells of `cell` m is held close in, for a charge
+    /// of `scale` kg^(1/3), in metres.
+    static func coreRange(cell: Double, scale: Double) -> Double {
+        coreRange * min(1, pow(cell / scale / 0.04, coreRangeExponent)) * scale
+    }
+
     /// GPU memory a block of refined air takes, ratio 2 (`SolverConfiguration.refinementMemory`).
     public static let blockBytes = 63_000.0
     /// Air bytes a cell: 57, with the fuel and oxygen 73 (docs/large-scenes.md).
@@ -89,19 +112,28 @@ public enum RunCost {
                 threshold: configuration.refinementFinerThreshold ?? configuration.refinementThreshold)
             : .infinity
         var swept = 0.0
+        let levelCells = [Double(cellSize), Double(cellSize) / Double(max(configuration.refinement, 1))]
         // The refined air over the run, in bins of time: how many samples each level holds on
         // average through each bin.
         let bins = 256
         let binWidth = duration / Double(bins)
         var held = [[Double]](repeating: [Double](repeating: 0, count: bins), count: 2)
+        // Bins held throughout, as differences: +1 where a run of them starts and -1 past its end.
+        var whole = [[Double]](repeating: [Double](repeating: 0, count: bins + 1), count: 2)
         func hold(_ level: Int, from start: Double, for length: Double) {
             let low = max(start, 0)
             let high = min(start + length, duration)
             guard high > low else { return }
-            for bin in max(Int(low / binWidth), 0)...min(Int(high / binWidth), bins - 1) {
-                let overlap = min(high, Double(bin + 1) * binWidth) - max(low, Double(bin) * binWidth)
-                if overlap > 0 { held[level][bin] += overlap / binWidth }
+            let first = min(max(Int(low / binWidth), 0), bins - 1)
+            let last = min(Int(high / binWidth), bins - 1)
+            guard last > first else {
+                held[level][first] += (high - low) / binWidth
+                return
             }
+            held[level][first] += (Double(first + 1) * binWidth - low) / binWidth
+            held[level][last] += max(high - Double(last) * binWidth, 0) / binWidth
+            whole[level][first + 1] += 1
+            whole[level][last] -= 1
         }
         let count = samples.x * samples.y * samples.z
         for k in 0..<samples.z {
@@ -111,24 +143,41 @@ public enum RunCost {
                         (SIMD3<Float>(Float(i), Float(j), Float(k)) + 0.5) / SIMD3<Float>(samples) * domain
                     var arrival = Double.infinity
                     var overpressure = 0.0
+                    // Until when each level is held near a charge, past the shell (`coreRange`).
+                    var core = SIMD2<Double>.zero
                     for charge in charges where charge.mass > 0 {
                         let range = Double(simd_distance(point, charge.position))
                         let blast = Self.blast(range: range, mass: Double(charge.mass))
                         arrival = min(arrival, blast.arrival)
                         overpressure = max(overpressure, blast.overpressure)
+                        let scale = cbrt(Double(charge.mass))
+                        for level in 0..<2 where range < coreRange(cell: levelCells[level], scale: scale) {
+                            core[level] = max(core[level], coreTime * scale)
+                        }
                     }
                     guard arrival < duration else { continue }
                     swept += 1 - arrival / duration
                     if Float(overpressure) >= reach && configuration.refinement > 1 {
-                        hold(0, from: arrival, for: Double(shellCells * cellSize / soundSpeed))
+                        hold(
+                            0, from: arrival,
+                            for: max(Double(shellCells * cellSize / soundSpeed), core.x - arrival))
                         if Float(overpressure) >= finerReach {
                             hold(
                                 1, from: arrival,
-                                for: Double(
-                                    shellCells * cellSize / Float(configuration.refinement) / soundSpeed))
+                                for: max(
+                                    Double(
+                                        shellCells * cellSize / Float(configuration.refinement) / soundSpeed),
+                                    core.y - arrival))
                         }
                     }
                 }
+            }
+        }
+        for level in 0..<2 {
+            var running = 0.0
+            for bin in 0..<bins {
+                running += whole[level][bin]
+                held[level][bin] += running
             }
         }
         let cells = Double(grid.cellCount)
@@ -138,6 +187,7 @@ public enum RunCost {
         // level's cells to a coarse cell and the steps it takes to each coarse one.
         let r = Double(configuration.refinement)
         var fineUpdates = 0.0
+        var refinedShare = SIMD2<Double>.zero
         if configuration.refinement > 1 {
             let levels = configuration.refinementLevels > 1 ? 2 : 1
             let blocks = Double(configuration.refinementMemory) / blockBytes
@@ -151,6 +201,7 @@ public enum RunCost {
                 for bin in 0..<bins {
                     let refined = min(cells * held[level][bin] / Double(count), capacity[level])
                     fineUpdates += refined * perCoarse[level] * binWidth / dt
+                    refinedShare[level] += refined / cells / Double(bins)
                 }
             }
         }
@@ -187,7 +238,7 @@ public enum RunCost {
             + elementUpdates / elementUpdatesPerSecond + overhead
         return RunCostEstimate(
             cells: grid.cellCount, steps: steps, coarseUpdates: coarseUpdates, fineUpdates: fineUpdates,
-            elementUpdates: elementUpdates, memory: memory, seconds: seconds)
+            elementUpdates: elementUpdates, memory: memory, seconds: seconds, refinedShare: refinedShare)
     }
 
     /// The blast's arrival time (s) and incident overpressure (Pa) at `range` from a surface burst
