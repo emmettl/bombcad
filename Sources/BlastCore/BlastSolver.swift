@@ -1182,6 +1182,7 @@ public final class BlastSolver {
         var encoder = encoder
         if allocate { encodeAllocateCoupling(encoder) }
         var uniforms = couplingUniforms(region)
+        uniforms.quietCoverage = allocate ? 0 : 1
         if !fine { (uniforms.refineRatio, uniforms.deepRatio) = (0, 0) }
         let length = MemoryLayout<CouplingUniforms>.stride
         let patches = refinement?.patchOfTile ?? refinementPlaceholder
@@ -1189,6 +1190,7 @@ public final class BlastSolver {
 
         for body in bodies {
             uniforms = couplingUniforms(region, body: body)
+            uniforms.quietCoverage = allocate ? 0 : 1
             if !fine { (uniforms.refineRatio, uniforms.deepRatio) = (0, 0) }
             if let structure = body.solids {
                 encoder.setComputePipelineState(splatPipeline)
@@ -1274,6 +1276,7 @@ public final class BlastSolver {
             }
         }
         uniforms = couplingUniforms(region)
+        uniforms.quietCoverage = allocate ? 0 : 1
         if !fine { (uniforms.refineRatio, uniforms.deepRatio) = (0, 0) }
         let composed = combinedOccupancyBuffer ?? occupancyBuffer
         if fine, bodies.count > 1 {

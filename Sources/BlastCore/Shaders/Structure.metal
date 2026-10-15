@@ -3213,6 +3213,9 @@ struct CouplingUniforms {
     uint deepThreshold;
     uint deepPatchOffset;
     uint deepCellOffset;
+    // 1 while the air sleeps: a point in a coupling page not allocated is left out quietly, as the
+    // frozen air takes no new pages, rather than flagging the pool as exhausted.
+    uint quietCoverage;
 };
 
 // Decode a compact slot for remasking/exchange, or the historical dense-region coordinate.
@@ -3232,8 +3235,10 @@ static inline int3 couplingWorldCell(uint3 tid, constant CouplingUniforms &u, co
 }
 static inline int coarseCouplingSlot(int3 local, constant CouplingUniforms &u, device atomic_uint *map) {
     if (u.couplingMapCount != 0u) {
-        return checkedCouplingSlot(local + int3(u.regionX, u.regionY, u.regionZ),
-            int3(u.fluidNx, u.fluidNy, u.fluidNz), map);
+        int3 cell = local + int3(u.regionX, u.regionY, u.regionZ);
+        int3 dims = int3(u.fluidNx, u.fluidNy, u.fluidNz);
+        return u.quietCoverage != 0u ? sparseCouplingSlot(cell, dims, (const device uint *)map)
+                                     : checkedCouplingSlot(cell, dims, map);
     }
     return local.x + int(u.regionNx) * (local.y + int(u.regionNy) * local.z);
 }
