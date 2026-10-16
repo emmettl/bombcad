@@ -166,6 +166,12 @@ extension Scenario {
             }
             let (envelope, report) = try model.buildingEnvelope(openings: openings[id] ?? [])
             let object = try copy.addEnvelopeObject(envelope, name: model.name)
+            let layers =
+                (try? model.transformedSource().buildingElements)??
+                .filter { !ImportedModel.openingClasses.contains($0.ifcClass) }.compactMap(\.materials) ?? []
+            if let construction = EnvelopeConstruction.fromIFC(objectID: object, elementLayers: layers) {
+                copy.setEnvelopeConstruction(construction)
+            }
             copy.envelopeSources =
                 (copy.envelopeSources ?? []) + [
                     EnvelopeSource(

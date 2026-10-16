@@ -93,6 +93,57 @@ resolved exposed face per owner. It refuses a pre-existing destination. Unavaila
 recording does not prevent ordinary blast runs, but an explicitly requested surface export
 fails with its reason instead of writing absent results as zeros.
 
+## Envelope components and their pressure histories
+
+For damage estimates on envelope buildings ([future work](#future-work-damage-for-envelope-buildings)),
+`BlastSolver.configureEnvelopeComponents(objects:options:)` records the load on each part of a
+building that responds on its own: stage 1 of that work. The definitions are agreed with the
+damage model that reads them (`/Volumes/StudioData/bombcad/envelope-damage/component-spec.md`, v1.2).
+
+**Components** (`BuildingEnvelope.components(owner:cellSize:)`, from the geometry alone):
+
+- A solid whose smallest size is at most 1 m and at most half its middle one is a **wall** (thin
+  in x or y) or a **slab** or **roof** (thin in z; a roof when nothing of the building stands
+  above it). It is cut at its supports first: a wall where a slab crosses its height or another
+  wall meets it inside its length, a slab or roof where walls meet it from below. Then each piece
+  is cut into equal panels at most 6 m wide, and 3 m tall where no slab or roof holds the wall;
+  slabs and roofs at most 6 × 6 m. Cuts are snapped to the air grid. Each panel is a component,
+  with which of its four edges are supported (on another solid or the ground).
+- Other solids are **blocks** (map buildings): each side in **façade** strips a storey (3 m) tall,
+  a remainder under a metre joining the strip below, and a **roof**. Columns are left out.
+- **Panes** (`BuildingEnvelope.panes`, new) are glazing, solid in the air: a one-way damage model
+  takes a pane as closed until it fails, so it records the reflected load the glass carries. Each
+  is one component, held on four edges. A detailed structure's annealed glass becomes panes when it
+  is converted to an envelope, and scenes with panes save at scene encoding 10.
+
+Ids are `<owner>/<kind>/<source>.<panel>`. The street study's buildings come out as one panel a
+wall and one roof panel.
+
+**Histories** (`envelopeComponentHistories()`): after every complete fluid step, each component's
+two sides, the faces whose normal points outward and those pointing in, are averaged over their
+faces (the surface recorder's cell-centre pressures, by one GPU thread a component in a fixed
+order). Each step's value is integrated into 0.1 ms bins by its overlap with them, so the impulse is
+exact whatever the step; the peak of each side, and of the net (outer less inner, pushing inward),
+is kept from every step. Options: the bin width; the window; a memory budget (256 MB by default)
+that widens the bins to a whole multiple when needed and says so; per-bin maxima (twice the
+memory); and openings recorded as panes in the open opening, for what the inside sees once glass
+has gone. Steps past the window are not binned and the history says `truncated`.
+
+Headless runs write them with `--envelope-histories <file.json>`; kept runs do not store them yet.
+Recording leaves the air bit-identical, and each side's binned impulse equals the mean of its faces'
+own integrals (tests in `EnvelopeComponentTests.swift`).
+
+**Cost.** Memory is components × bins × 8 bytes, plus 12 bytes a face: at 0.25 m, the street's
+4 buildings (20 components, 120 ms) take 0.37 MB, the 64-building neighbourhood (320 components,
+60 ms) 4.4 MB. Each step, a thread a face reads its cell (or, in a tile of still air, the still air,
+the same bits) and a SIMD group a component sums them. Timed with `scenebench envelope-histories
+--dx 0.25 --rounds 7` against the same runs with the surface recorder alone, interleaved, on
+16 October 2026 with the Mac's load at 15–80: the street's median pair ratio was 1.06–1.12 and
+the neighbourhood's 1.2–1.3, with pairs scattered ±15–30%, too loaded to settle a 5% target. The
+neighbourhood's 60 ms is the worst case for it: its air is mostly asleep (0.07–0.36 s of air
+work for the whole run), so per-face work, the surface recorder's too, weighs most there. An
+early-returning kernel cost nothing measurable, so the cost is the face reads, not the dispatch.
+
 ## Matched building study
 
 ```sh
@@ -373,6 +424,64 @@ not erosion, marks a concrete wall's damage here. These are references on one me
 not measured damage, and the brick walls after cracking are the least trustworthy of them
 ([brick walls](validation.md#brick-walls-debris)).
 
+## One-way damage: single degree of freedom
+
+Each component of an envelope (a wall panel, a roof, a glazing pane) can be given an equivalent
+single degree of freedom driven by the load the air puts on it, the air still seeing the building
+whole: `SDOFSystem` integrates K_LM m ẍ + R(x) = p(t) per unit area after Biggs (1964) as UFC
+3-340-02 (2008) gives it, with a multi-linear resistance, elastic unloading, rebound, and UFC's
+load–mass factors through yield. `EnvelopePanel` builds the systems:
+
+- **Reinforced concrete**: the yield-line resistance of a two-way panel on the bars' and concrete's
+  dynamic strengths (UFC Table 4-1: 1.17 and 1.19), the stiffness of a clamped or simply supported
+  plate (Timoshenko) on the mean of the gross and cracked sections, elastic–perfectly plastic.
+- **Unreinforced masonry**: elastic until the largest moment reaches f_t t²/6, then rocking with
+  the resistance falling to nothing at a deflection of its thickness; no arching.
+- **Annealed glass**: elastic until the largest bending stress reaches its strength (the same 45 MPa
+  as the detailed model's), then nothing; membrane stiffening is left out, so it breaks early.
+
+It matches UFC's worked examples 3A-5, 3A-6(a) and 4A-1 within 1% (`EnvelopeSDOFTests`).
+
+```sh
+swift build -c release --product scenebench
+.build/release/scenebench envelope-sdof <damage references> [--edges=fixed|simple] [--out=<file.json>]
+```
+
+Driven by each component's load on the envelope twins of the [damage references](#damage-references)
+and set against the same component of the detailed building free to respond (summaries in
+[`Benchmarks/EnvelopeDamage/sdof-fixed.json`](../Benchmarks/EnvelopeDamage/sdof-fixed.json) and
+[`sdof-simple.json`](../Benchmarks/EnvelopeDamage/sdof-simple.json)), 16 October 2026:
+
+- **The loads are not the error.** SDOF on the envelope's loads and on the detailed run's own give
+  the same rotation (median ratio 1.02 over 87 components past 0.05°); they part only on the side
+  and back walls of buildings already breached.
+- **Glass**: of 52 panes, SDOF breaks the 45 the detailed buildings break, a median 1.7 ms early
+  (0.59–1.20 of the detailed time), and 7 more that the detailed buildings keep, all under the
+  lightest loads (a peak net pressure of 7.3 kPa at most): wrong on the safe side.
+- **Concrete walls** (34 past 0.1°): with fixed edges SDOF gives a median 0.59 of the detailed
+  rotation, unsafe; with simply supported edges 1.19. The facing wall lies between the two
+  (at 50, 200 and 500 kg: 0.61/1.19, 0.70/1.24 and 1.03/1.87 of the detailed); side walls of a
+  building whose front fails, and roofs under heavy loads (0.16–0.37 at 200–500 kg fixed, 0.27–0.60
+  simple), go further than either, as the frame acts and its junctions erode, which no single panel
+  sees.
+- **Brick walls** (14 past 0.1°): a median 1.10 of the detailed rotation (0.82–2.54), 2.5 times on the facing
+  wall at 50 kg where the shells hold on longer than the rocking mechanism (which the masonry
+  references after cracking are least trusted on anyway).
+- **Under 0.1°** the detailed panels sit on a floor of 0.02–0.04° that SDOF does not have.
+- **Cost**: the detailed building adds 14–35 s a building to a 150 ms event on the M4 Max (the
+  air alone takes 10–15 s); SDOF takes under 1 ms a building.
+- **Not venting**: the envelope's inside stays at ambient, where the detailed buildings' rise to
+  0.1–0.4 kPa with concrete walls whole (1.0 kPa behind cracked brick at 50 kg), 1–2.6 kPa once panes break at 10–50 kg and 11–22 kPa at 200–500 kg.
+  A one-way fill (each pane an orifice into the room once SDOF breaks it, driven by its outer
+  pressure, the room's air compressing adiabatically) gives 2.1, 5.7, 11.3 and 19.5 kPa against
+  the detailed gauges' 1.0, 2.6, 11.0 and 22.4 at 10, 50, 200 and 500 kg (0.87–2.23 times the
+  detailed peaks), mostly above. It cannot see a breached concrete wall (1.6 and 6.5 kPa at 200 and 500 kg).
+
+These are comparisons with the detailed model on one mesh, not with measurement: open tests of
+window glass under blast are listed in [data wanted](data-wanted.md#3h-window-glass-breaking-under-a-blast)
+but not yet read. Freestanding walls (Alsubaei's, Keys's) would need cantilever systems, and remain
+to be compared.
+
 ## Future work: damage for envelope buildings
 
 Envelopes make district-scale scenes possible: the air is cheap at that scale (a 3.3 km domain of
@@ -404,8 +513,8 @@ What decides whether it is worth building, to answer before any of it is:
    leave the inside loads wrong; set against the detailed run's internal loads, this says how far
    a one-way model can be trusted, and whether failed openings must be opened in the air.
 4. **Its cost per building against the air's**, which should be small: the recorder's faces
-   already hold peak and impulse, but a single-degree-of-freedom model needs each component's
-   pressure history, which the recorder would have to keep.
+   already hold peak and impulse, and a single-degree-of-freedom model's pressure histories are
+   now kept per component ([above](#envelope-components-and-their-pressure-histories)).
 
 Until those comparisons are made, its results would stand as an approximation where a chart or
 curve applies and as illustrative otherwise (see [standing](standing.md)).

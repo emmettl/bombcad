@@ -390,6 +390,20 @@ final class SimulationModel {
         do { try settings.scenario.removeObject(id: id) } catch { errorMessage = error.localizedDescription }
     }
 
+    /// Sets what an envelope's walls are built of, as the user's choice, keeping its other
+    /// properties (or the default's).
+    func setEnvelopeWalls(id: UUID, to walls: EnvelopeConstruction.Kind) {
+        guard settings.scenario.object(id: id)?.envelope != nil else { return }
+        let old = settings.scenario.envelopeConstruction(for: id)
+        guard old.walls != walls || old.source != .user else { return }
+        settings.scenario.setEnvelopeConstruction(
+            EnvelopeConstruction(
+                objectID: id, walls: walls,
+                wallThicknessM: walls == old.walls ? old.wallThicknessM : nil, roof: old.roof,
+                roofThicknessM: old.roofThicknessM, reinforcementRatio: old.reinforcementRatio,
+                glassThicknessM: old.glassThicknessM, source: .user, detail: "chosen in the editor"))
+    }
+
     var inspectedImportID: UUID?
     /// While set, a click on the ground in the view moves the charge there.
     var isPlacingCharge = false
@@ -564,10 +578,23 @@ final class SimulationModel {
     private(set) var groundShockLive: GroundShockResult?
     private(set) var envelopeExposure: [EnvelopeExposureSummary] = []
     private(set) var envelopeExposureStatus = ""
+    /// Record each envelope component's pressure history too (headless `--envelope-histories`);
+    /// nil records none, at no cost.
+    @ObservationIgnored var envelopeHistoryOptions: EnvelopeHistoryOptions?
 
     var canExportEnvelopeExposure: Bool {
         !isRunning && !batchInFlight && !isLoadingInputs && !rebuildPending
             && settings.scenario == scenario && stepCount > 0 && !envelopeExposure.isEmpty
+    }
+
+    /// Each envelope component's pressure history, as `--envelope-histories` writes it.
+    func envelopeHistoriesData() throws -> Data {
+        guard canExportEnvelopeExposure, let histories = solver?.envelopeComponentHistories() else {
+            throw ProjectFileError.invalid("Pause a run with envelope component histories before exporting.")
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        return try encoder.encode(histories)
     }
 
     func envelopeResultsData() throws -> Data {
@@ -2192,6 +2219,10 @@ final class SimulationModel {
                 if scenario.structuralObjects.isEmpty {
                     do {
                         try solver.configureEnvelopeExposure(objects: scenario.envelopeObjects)
+                        if let options = envelopeHistoryOptions {
+                            try solver.configureEnvelopeComponents(
+                                objects: scenario.envelopeObjects, options: options)
+                        }
                         envelopeExposure = solver.envelopeExposureSummaries() ?? []
                     } catch {
                         envelopeExposureStatus = "Surface results unavailable: \(error.localizedDescription)"

@@ -22,6 +22,8 @@ public enum BandMeasure: String, Codable, CaseIterable, Sendable {
     case radiatedEnergy
     case cloudTop
     case ventedPressure
+    case breakageTime
+    case insidePressure
 }
 
 /// How far a model result has been from measurement, as model/measured, and where that holds.
@@ -277,6 +279,26 @@ public enum ValidationTables {
     /// heading and holds the figure's numbers.
     public static let figures: [Figure] = [
         Figure(
+            id: "envelopeGlassBreak", low: 0.59, high: 1.20,
+            document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
+            quote: "(0.59–1.20 of the detailed time)"),
+        Figure(
+            id: "envelopeConcreteFixed", low: 0.61, high: 1.03,
+            document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
+            quote: "0.61/1.19", "1.03/1.87"),
+        Figure(
+            id: "envelopeConcreteSimple", low: 1.19, high: 1.87,
+            document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
+            quote: "0.61/1.19", "1.03/1.87"),
+        Figure(
+            id: "envelopeBrick", low: 0.82, high: 2.54,
+            document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
+            quote: "(0.82–2.54)"),
+        Figure(
+            id: "envelopeInsideFill", low: 0.87, high: 2.23,
+            document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
+            quote: "(0.87–2.23 times the detailed peaks)"),
+        Figure(
             id: "slabSolid", low: 1.04, high: 1.15, document: "validation.md#summary",
             quote: "solid elements 113–125 mm (104–115%) on 4 to 32 elements through"),
         Figure(
@@ -287,6 +309,10 @@ public enum ValidationTables {
             id: "slabLowerShot", low: 0.79, high: 0.88,
             document: "validation.md#the-contests-repeat-its-lower-shot-and-its-other-entries",
             quote: "the model reaches 79–88% of the measured peak on 4 to 16 elements"),
+        Figure(
+            id: "slabBlindHighStrength", low: 0.77, high: 1.06,
+            document: "validation.md#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator",
+            quote: "every ratio within 0.77–1.06"),
         Figure(
             id: "slabBlindOpenAir", low: 0.10, high: 0.25,
             document: "validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge",
@@ -355,19 +381,19 @@ public enum ValidationTables {
             id: "cloudTop", low: 0.79, high: 1.21, document: "fireball-rise.md",
             quote: "to 4% on average and 21% shot by shot"),
         Figure(
-            id: "ventedBackWall", low: 0.8, high: 1.6, document: "validation.md#summary",
-            quote: "lit at the back wall, 0.8–1.6 times the measured peaks"),
+            id: "ventedBackWall", low: 0.9, high: 1.8, document: "validation.md#summary",
+            quote: "lit at the back wall, 0.9–1.8 times the measured peaks"),
         Figure(
-            id: "ventedMiddle", low: 0.4, high: 0.4, document: "validation.md#summary",
-            quote: "lit in the middle, about 0.4"),
+            id: "ventedMiddle", low: 0.4, high: 0.6, document: "validation.md#summary",
+            quote: "lit in the middle, 0.4–0.6"),
     ]
 
     public static func figure(_ id: String) -> Figure { figures.first { $0.id == id }! }
 
     /// The scaled distance (m/kg^(1/3)) within which the contest slab's band is withheld: blind,
-    /// open-air slabs at 0.93 to 1.44 bent a tenth to a quarter as far as measured, and the two
-    /// nearest collapsed where the model's stood. The contest's load was a shock tube's, long and
-    /// uniform.
+    /// open-air slabs at 0.93 to 1.44 read a tenth to a quarter of meters that likely include the
+    /// supports' movement, and the two nearest collapsed where the model's stood. The contest's load
+    /// was a shock tube's, long and uniform.
     public static let blindSlabReach: Float = 1.5
 
     /// A result on a sequence of meshes against one measurement, from the convergence study on
@@ -1140,8 +1166,8 @@ extension StandingScene {
                     String(
                         format:
                             "Peak deflection: %.2f m/kg^(1/3) from the charge, where blind open-air slabs "
-                            + "(Mendonça, 0.93 to 1.44, on the ideal gas of the frozen 047cee3) bent %.0f–%.0f%% as "
-                            + "far as measured and the two nearest, "
+                            + "(Mendonça, 0.93 to 1.44, on the ideal gas of the frozen 047cee3) read %.0f–%.0f%% of "
+                            + "meters that likely include the supports' or rigid-body movement, and the two nearest, "
                             + "which collapsed, were left standing. The contest slab's band, from a shock tube's "
                             + "long uniform load, is not given within %.1f.",
                         distance, blind.low * 100, blind.high * 100, ValidationTables.blindSlabReach))
@@ -1166,8 +1192,16 @@ extension StandingScene {
                         + "a scaled record; 93–99% under the earlier rate laws. The mesh that agreed, 8 through, is "
                         + "the coarse end. Not allowed for: the test's bearings were 4–5 in wide where the model "
                         + "holds lines of nodes, and 1 in bearings already lower the peak 15–25%. Blind, open-air "
-                        + "slabs at 0.93 to 1.44 m/kg^(1/3) bent a tenth to a quarter as far, so it is not given "
-                        + "within 1.5",
+                        + "slabs at 0.93 to 1.44 m/kg^(1/3) collapsed where the model's stood, the rest reading a "
+                        + "tenth to a quarter of meters that likely include the supports' movement, so it is not "
+                        + "given within 1.5. Blind in the same rig, high-strength slabs (v0.3.0) read "
+                        + String(
+                            format: "%.0f–%.0f%%",
+                            ValidationTables.figure("slabBlindHighStrength").low * 100,
+                            ValidationTables.figure("slabBlindHighStrength").high * 100)
+                        + " where they held, a little stiff, and one lightly reinforced slab broke through where "
+                        + "the test held (the safe side). Against the lower shot's tabulated 80.5 mm, the upper "
+                        + "reading the record does not keep, the model reads 71–78%",
                     check: "A reinforced slab under a blast, and its lower shot")
                 band.low = ValidationTables.figure("slabLowerShot").low
                 band.high = ValidationTables.figure("slabExtrapolated").high
@@ -1295,6 +1329,40 @@ extension StandingScene {
                 unbanded.append(airComparable ?? "No building faces.")
             }
             unbanded.append("Faces shielded or turned from the charge were not compared.")
+        case .envelopeDamage:
+            let page = "building-envelopes.md#one-way-damage-single-degree-of-freedom"
+            let check = "The same buildings free to respond, 0.125 m shells"
+            bands += [
+                figure(
+                    "envelopeGlassBreak", .breakageTime, "When a pane breaks", lowIsUnsafe: false,
+                    low: "too early",
+                    high: "too late", validity: "6 mm annealed panes 1.5 × 1.25 m, 2–500 kg", check: check),
+                figure(
+                    "envelopeConcreteFixed", .peakDeflection, "Concrete wall rotation, fixed edges",
+                    low: "too stiff",
+                    high: "too soft", validity: "the wall facing the charge, 0.2 m, 50–500 kg", check: check),
+                figure(
+                    "envelopeConcreteSimple", .peakDeflection,
+                    "Concrete wall rotation, simply supported edges",
+                    low: "too stiff", high: "too soft",
+                    validity: "the wall facing the charge, 0.2 m, 50–500 kg",
+                    check: check),
+                figure(
+                    "envelopeBrick", .peakDeflection, "Brick wall rotation", low: "too stiff",
+                    high: "too soft",
+                    validity: "0.215 m smeared brick, 2–50 kg, past 0.1°", check: check),
+                figure(
+                    "envelopeInsideFill", .insidePressure, "Inside peak through broken panes",
+                    low: "under-read",
+                    high: "over-read", validity: "a 6 × 6 × 4 m room behind four panes, 10–500 kg",
+                    check: check),
+            ].map { band in
+                var band = band
+                band.derivedMesh = "0.125 m shells, 8 layers"
+                band.document = page
+                return band
+            }
+            unbanded.append("Roofs, and walls beside a failing one, go beyond both concrete bounds: no band.")
         case .thermal:
             if !burning {
                 unbanded.append(
@@ -1466,8 +1534,8 @@ extension StandingScene {
                     has(.afterburning) ? nil : "Turn afterburning on where the incident impulse matters.",
                     has(.afterburning) ? ValidationTables.burningDocument : "validation.md#afterburning")
             }
-        case .envelopeExposure, .freestandingMotion, .thermal, .surfaceHeating, .cloud, .fragments,
-            .groundShock:
+        case .envelopeExposure, .envelopeDamage, .freestandingMotion, .thermal, .surfaceHeating, .cloud,
+            .fragments, .groundShock:
             break
         }
         return advice

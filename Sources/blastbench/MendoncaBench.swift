@@ -49,6 +49,10 @@ func runMendonca(device: MTLDevice) throws {
     if let capacity = option("support-capacity").flatMap({ Float($0) }) {
         settings.softSupportCapacity = capacity
     }
+    // `--record 0.06`: the gauges' pressures kept to 60 ms; `--hold-down`: the slab tied to its
+    // bearings, unable to lift off.
+    if let record = option("record").flatMap({ Double($0) }) { settings.pressureRecord = record }
+    if flag("hold-down") { settings.holdDown = true }
     let names = option("slabs")?.split(separator: ",").map(String.init)
     let slabs = inputs.slabs.filter { names?.contains($0.name) ?? true }
     let out = URL(filePath: option("out") ?? "/Volumes/StudioData/bombcad/mendonca-prediction/run")
@@ -127,6 +131,22 @@ func runMendonca(device: MTLDevice) throws {
         let result = try MendoncaSlabTest.run(
             device: device, slab: slab, inputs: inputs, settings: settings,
             adjust: { scenario in
+                // `--top-grid 5`: gauges on a 5 x 5 grid over the top face too, at the centres of
+                // equal zones, to export the load the slab took (for another code to apply). Lifted
+                // 5 mm off the face as the dataset's gauges are: a point on the face reads as
+                // below it, and follows the underside.
+                if let count = option("top-grid").flatMap({ Int($0) }) {
+                    let box = MendoncaSlabTest.slabBox(inputs: inputs, settings: settings)
+                    let size = (box.max.x - box.min.x) / Float(count)
+                    for a in 0..<count {
+                        for b in 0..<count {
+                            let point = SIMD3(
+                                box.min.x + (Float(a) + 0.5) * size, box.min.y + (Float(b) + 0.5) * size,
+                                box.max.z + 0.005)
+                            scenario.gauges.append(Gauge("zone x\(a + 1) y\(b + 1)", at: point))
+                        }
+                    }
+                }
                 guard var model = scenario.structure else { return }
                 if flag("no-rate") { model.material.rateDependent = false }
                 if let bond = chosenBondSlip(diameter: inputs.meshBar) { model.bondSlip = bond }
@@ -136,6 +156,16 @@ func runMendonca(device: MTLDevice) throws {
             configure: { solver in
                 if flag("afterburn") {
                     solver.configuration.afterburning = true
+                    solver.configuration.mappedCharge = false
+                }
+                // `--far-field`: open faces that stand ambient air beyond them, not copies of the cells
+                // inside; `--recommended`: the recommended air (hot air, afterburning, far-field faces).
+                if flag("far-field") { solver.configuration.openFaces = .farField }
+                if flag("recommended") {
+                    let recommended = SolverConfiguration.recommended
+                    solver.configuration.airModel = recommended.airModel
+                    solver.configuration.afterburning = recommended.afterburning
+                    solver.configuration.openFaces = recommended.openFaces
                     solver.configuration.mappedCharge = false
                 }
             },

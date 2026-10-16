@@ -31,7 +31,9 @@ The earlier comparison (0.2 against 0.1 m uniform cells: upward impulse 8.2 agai
   (a test at factors 2 and 4).
 - **Late flow.** After about 0.4 s, with the car well tilted, the air's load on it differs
   between grids in sign and size (sideways −4.0 to +1.3 kN s between 0.4 and 0.7 s), while
-  from 0.1 to 0.4 s it agrees (−0.1 to −0.5 kN s). It is the blast's load that converges.
+  from 0.1 to 0.4 s it agrees (−0.1 to −0.5 kN s). It is the blast's load that converges. Most
+  of the late disagreement was the domain's copying faces (see [Far-field
+  faces](#far-field-faces-16-october-2026)).
 
 ### 10 kg
 
@@ -61,6 +63,31 @@ instead of 0.15 s changes no outcome.
 
 How far the answer is from its threshold: on 0.05 m cells the car still overturns with 90% of
 the air's load and rocks back with 80% (peak 38.8°); the finer grids tip it faster.
+
+### Far-field faces (16 October 2026)
+
+The runs above copied the cells inside at the domain's open faces, which drains the cropped
+domain: it lost 20–38% of its gas by the end. The study now puts ambient air beyond them
+(`--copy-faces` for the old runs). Full runs, 10 kg, the air's impulses to 50 ms:
+
+| Near-car cells (outer) | Up (kN s) | Sideways (kN s) | Tilt at 0.5 s | Past 35.3° | Outcome |
+| --- | ---: | ---: | ---: | ---: | --- |
+| 0.2 m uniform | 4.04 | 5.56 | 44.3° | 0.40 s | overturns |
+| 0.1 m uniform | 2.85 | 5.41 | 29.1° | 0.63 s | rocks back from 44.5° |
+| 0.075 m (0.15 m × 2) | 4.99 | 5.83 | 40.8° | 0.43 s | overturns |
+| 0.05 m (0.1 m × 2) | 4.72 | 5.86 | 49.9° | 0.36 s | overturns |
+| 0.05 m (0.2 m × 4) | 4.68 | 5.87 | 50.1° | 0.36 s | overturns |
+| 0.0375 m (0.15 m × 4) | 4.53 | 5.88 | 53.5° | 0.35 s | overturns |
+
+- **The late flow's disagreement was the copying faces'.** The one refined grid that rocked back
+  (0.05 m on 0.1 m air, 52° with today's code) overturns, and every refined grid now passes the
+  balance angle within 0.35–0.43 s. The domain lost 12.5% of its gas, the same on every grid.
+- **The blast pushes harder**: the sideways impulse rises by a fifth, to 5.8–5.9 kN s, the same
+  within 1% on the four refined grids, and the upward one by 13%, still falling about 5% with
+  each refinement.
+- **The row** (`--car-row --cases=0.2x4 --nearest-only`) is the same in kind: the first car slides
+  0.94 m into the second, which props it at 30.8° (19.6° with copying faces) and is shoved 0.32 m
+  (0.20 m).
 
 ### 5 and 1 kg
 
