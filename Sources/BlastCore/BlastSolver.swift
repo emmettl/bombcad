@@ -2335,10 +2335,11 @@ public final class BlastSolver {
         encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 9)
         encoder.setBytes(
             &parameters, length: MemoryLayout<EnvelopeComponentRecorder.Parameters>.stride, index: 10)
-        encoder.dispatchThreads(
-            MTLSize(width: recorder.components.count, height: 1, depth: 1),
-            threadsPerThreadgroup: MTLSize(width: recorder.pipeline.threadExecutionWidth, height: 1, depth: 1)
-        )
+        // A SIMD group of 32 lanes a component, a few to a threadgroup (Solver.metal).
+        let perGroup = EnvelopeComponentRecorder.componentsPerGroup
+        encoder.dispatchThreadgroups(
+            MTLSize(width: (recorder.components.count + perGroup - 1) / perGroup, height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: 32 * perGroup, height: 1, depth: 1))
     }
 
     private func encodeExposure(_ encoder: MTLComputeCommandEncoder, initial: Bool) {

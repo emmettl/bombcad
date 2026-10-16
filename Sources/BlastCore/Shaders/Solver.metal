@@ -2015,9 +2015,11 @@ kernel void sampleEnvelopeExposure(const device Cell *state [[buffer(0)]],
 }
 
 // Envelope components (EnvelopeComponentRecorder): after each complete fluid step, each
-// component's two sides' area-weighted mean overpressure (its faces all have the cell's area),
-// summed by one thread in a fixed order. Each step's value, its right endpoint, is integrated
-// into the bins it overlaps, [i w, (i + 1) w) from t = 0; the peaks are kept from every step.
+// component's two sides' area-weighted mean overpressure (its faces all have the cell's area). A
+// SIMD group of 32 lanes a component, `componentsPerGroup` to a threadgroup: each lane sums every
+// 32nd face, then a fixed tree of shuffles adds the lanes' sums, so the result repeats bit for bit. Each step's value, its right
+// endpoint, is integrated into the bins it overlaps, [i w, (i + 1) w) from t = 0; the peaks are
+// kept from every step.
 struct ComponentRecording {
     uint components;
     uint capacity;
@@ -2028,21 +2030,18 @@ struct ComponentRecording {
     float binWidth;
 };
 
-static inline float sideMean(const device Cell *state, const device uchar *mask, const device uint2 *faces,
-                             uint first, uint count, constant SolverUniforms &u, thread bool &invalid) {
-    float sum = 0.0f;
-    for (uint n = 0; n < count; ++n) {
-        uint2 face = faces[first + n];
-        if (mask[face.x] != 0 || (face.y != 0xFFFFFFFFu && mask[face.y] == 0)) {
-            invalid = true;
-            continue;
-        }
-        Cell c = state[face.x];
-        float rho = max(c.rho, u.densityFloor);
-        float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / rho;
-        sum += gasPressure(rho, c.energy - kinetic, u.airModel, u.gamma) - u.ambientPressure;
+constant uint componentLanes = 32;
+
+static inline float facePressure(const device Cell *state, const device uchar *mask, uint2 face,
+                                 constant SolverUniforms &u, thread bool &invalid) {
+    if (mask[face.x] != 0 || (face.y != 0xFFFFFFFFu && mask[face.y] == 0)) {
+        invalid = true;
+        return 0.0f;
     }
-    return count > 0 ? sum / float(count) : 0.0f;
+    Cell c = state[face.x];
+    float rho = max(c.rho, u.densityFloor);
+    float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / rho;
+    return gasPressure(rho, c.energy - kinetic, u.airModel, u.gamma) - u.ambientPressure;
 }
 
 kernel void sampleEnvelopeComponents(const device Cell *state [[buffer(0)]],
@@ -2056,17 +2055,34 @@ kernel void sampleEnvelopeComponents(const device Cell *state [[buffer(0)]],
                                      device atomic_uint *truncated [[buffer(8)]],
                                      constant SolverUniforms &u [[buffer(9)]],
                                      constant ComponentRecording &r [[buffer(10)]],
-                                     uint index [[thread_position_in_grid]]) {
+                                     uint group [[threadgroup_position_in_grid]],
+                                     uint simd [[simdgroup_index_in_threadgroup]],
+                                     uint groups [[simdgroups_per_threadgroup]],
+                                     uint lane [[thread_index_in_simdgroup]]) {
+    uint index = group * groups + simd;
     if (index >= r.components || (control.dt <= 0 && r.initial == 0)) return;
     uint4 side = sides[index];
     bool invalid = false;
-    float outer = sideMean(state, mask, faces, side.x, side.y, u, invalid);
-    float inner = sideMean(state, mask, faces, side.z, side.w, u, invalid);
+    float2 sum = 0.0f;
+    for (uint n = lane; n < side.y; n += componentLanes) {
+        sum.x += facePressure(state, mask, faces[side.x + n], u, invalid);
+    }
+    for (uint n = lane; n < side.w; n += componentLanes) {
+        sum.y += facePressure(state, mask, faces[side.z + n], u, invalid);
+    }
+    uint broken = invalid ? 1u : 0u;
+    for (ushort offset = componentLanes / 2; offset > 0; offset /= 2) {
+        sum += simd_shuffle_down(sum, offset);
+        broken |= simd_shuffle_down(broken, offset);
+    }
+    if (lane != 0) return;
+    float outer = side.y > 0 ? sum.x / float(side.y) : 0.0f;
+    float inner = side.w > 0 ? sum.y / float(side.w) : 0.0f;
     float4 peak = peaks[index];
     peak.x = max(peak.x, outer);
     peak.y = max(peak.y, inner);
     peak.z = max(peak.z, outer - inner);
-    peak.w = invalid ? 1.0f : peak.w;
+    peak.w = broken != 0 ? 1.0f : peak.w;
     peaks[index] = peak;
     float dt = r.initial != 0 ? 0.0f : control.dt;
     // The step, in seconds from the start of the batch's first bin.

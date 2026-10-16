@@ -348,7 +348,7 @@ public struct EnvelopeComponentHistory: Codable, Sendable {
 
 /// Records each envelope component's two sides through a run, on the GPU after every complete
 /// fluid step, as the surface recorder records faces: the same cell-centre pressures, the same
-/// right-endpoint rule. One thread a component sums its faces in a fixed order, so the result
+/// right-endpoint rule. A SIMD group a component sums its faces in a fixed order, so the result
 /// repeats bit for bit.
 final class EnvelopeComponentRecorder {
     /// A component's faces: outer side then inner, as ranges into `faces`.
@@ -364,6 +364,8 @@ final class EnvelopeComponentRecorder {
         var solid: UInt32
     }
     static let noSolid = UInt32.max
+    /// Components to a threadgroup, a SIMD group of 32 lanes each (Solver.metal).
+    static let componentsPerGroup = 4
 
     let components: [EnvelopeComponent]
     let sides: [Sides]

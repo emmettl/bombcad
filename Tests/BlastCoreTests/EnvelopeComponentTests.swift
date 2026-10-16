@@ -151,8 +151,19 @@ struct EnvelopeComponentHistoryTests {
 
     @Test("Each side's binned impulse is the mean of its faces' own integrals")
     func againstFaces() throws {
-        var scene = try scene()
-        scene.charge = Charge(mass: 0.05, position: SIMD3(4, 1.5, 1))
+        // The street study's building, four walls and a roof: components in more than one
+        // threadgroup.
+        var scene = Scenario(
+            name: "Building", domainSize: SIMD3(12, 12, 6), boxes: [],
+            charge: Charge(mass: 0.05, position: SIMD3(6, 1.5, 1)))
+        scene.reflectiveFaces = .all
+        let solids = [
+            Box(min: SIMD3(3, 3, 0), max: SIMD3(9, 3.5, 4)), Box(min: SIMD3(3, 8.5, 0), max: SIMD3(9, 9, 4)),
+            Box(min: SIMD3(3, 3.5, 0), max: SIMD3(3.5, 8.5, 4)),
+            Box(min: SIMD3(8.5, 3.5, 0), max: SIMD3(9, 8.5, 4)),
+            Box(min: SIMD3(3, 3, 4), max: SIMD3(9, 9, 4.5)),
+        ]
+        try scene.addEnvelopeObject(BuildingEnvelope(solids: solids), name: "Building")
         let solver = try BlastSolver(
             device: #require(MTLCreateSystemDefaultDevice()), scenario: scene, cellSize: 0.25)
         try solver.configureEnvelopeExposure(objects: scene.envelopeObjects)
@@ -161,6 +172,7 @@ struct EnvelopeComponentHistoryTests {
         _ = solver.advance(steps: 60)
         let faces = try #require(solver.envelopeExposureSnapshot()?.first?.surfaces)
         let histories = try #require(solver.envelopeComponentHistories())
+        #expect(histories.count == 5 && histories.contains { $0.peakOuterPa > 1000 })
         for history in histories {
             let component = history.component
             for (outward, binned) in [
@@ -179,7 +191,7 @@ struct EnvelopeComponentHistoryTests {
                 #expect(
                     abs(sum - mean) <= 1e-4 * abs(mean) + 1e-6, "\(component.id) \(outward): \(sum) \(mean)")
             }
-            #expect(!history.truncated && history.peakOuterPa > 0)
+            #expect(!history.truncated)
             #expect(history.outerMaxPa?.count == history.outerImpulsePaS.count)
             #expect(history.outerMaxPa?.max() == history.peakOuterPa)
         }
