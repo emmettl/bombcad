@@ -458,7 +458,8 @@ public enum MendoncaSlabTest {
         func followSlab() {
             var moved = cells
             for (n, point) in points.enumerated() {
-                let above = point.z > s.max.z
+                // The face nearer the gauge as placed: one placed on the top face follows the top.
+                let above = point.z >= (s.min.z + s.max.z) / 2
                 let (i, j) = (index(point.x, 0), index(point.y, 1))
                 guard structure.storedNode(i, j, above ? top : bottom) != nil,
                     attached(i, j, above ? top : bottom)

@@ -538,6 +538,12 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// compression but no tension, and leaves the body's nodes. Off, a failed element's mass stays
     /// on its nodes. Solid elements only; off by default.
     public var rubbleParticles = false
+    /// Whether an element with a free face cracks when that face reaches the tensile strength,
+    /// its bending across its depth read from its hourglass modes, rather than when its centre
+    /// does. Off, the bottom layer of a slab n elements deep cracks at about 1 + 1/n times the
+    /// section's cracking moment, which decides a lightly reinforced slab's strength. Solid
+    /// elements only; off by default.
+    public var extremeFibreCracking = false
     /// Whether a crack's faces, riding up on their aggregate as it slides, press on whatever holds
     /// it from opening, and pressed, carry more shear: Walraven and Reinhardt's relations between
     /// a crack's opening, slip, shear and the stress across it (HERON 26(1A), 1981, eqs. 1a and
@@ -1387,7 +1393,7 @@ extension StructureModel {
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
         case pressedInterlock, regimeOverride, loadingOverride, regimeDefaults
         case hourglassFollowsCracking, hourglassCapsSteel, discreteBars, barsAsTrusses, trussDiameter
-        case crackAveraging, rubbleParticles, strainRateWindow, tiesTouching
+        case crackAveraging, rubbleParticles, strainRateWindow, tiesTouching, extremeFibreCracking
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -1428,6 +1434,7 @@ extension StructureModel {
         }
         try container.encodeIfPresent(tiesTouching, forKey: .tiesTouching)
         if rubbleParticles { try container.encode(rubbleParticles, forKey: .rubbleParticles) }
+        if extremeFibreCracking { try container.encode(extremeFibreCracking, forKey: .extremeFibreCracking) }
         try container.encodeIfPresent(bondSlip, forKey: .bondSlip)
         try container.encode(solidElementKind, forKey: .solidElementKind)
         try container.encodeIfPresent(shellElementSize, forKey: .shellElementSize)
@@ -1479,6 +1486,8 @@ extension StructureModel {
             try container.decodeIfPresent(Float.self, forKey: .strainRateWindow)
             .map { $0 > 0 ? $0 : nil } ?? Self.defaultStrainRateWindow
         rubbleParticles = try container.decodeIfPresent(Bool.self, forKey: .rubbleParticles) ?? false
+        extremeFibreCracking =
+            try container.decodeIfPresent(Bool.self, forKey: .extremeFibreCracking) ?? false
         bondSlip = try container.decodeIfPresent(BondSlip.self, forKey: .bondSlip)
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)
