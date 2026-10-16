@@ -288,6 +288,10 @@ public enum ValidationTables {
             document: "validation.md#the-contests-repeat-its-lower-shot-and-its-other-entries",
             quote: "the model reaches 79–88% of the measured peak on 4 to 16 elements"),
         Figure(
+            id: "slabBlindHighStrength", low: 0.77, high: 1.06,
+            document: "validation.md#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator",
+            quote: "every ratio within 0.77–1.06"),
+        Figure(
             id: "slabBlindOpenAir", low: 0.10, high: 0.25,
             document: "validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge",
             quote: "the model's blast peak is a tenth to a quarter"),
@@ -1168,7 +1172,14 @@ extension StandingScene {
                         + "holds lines of nodes, and 1 in bearings already lower the peak 15–25%. Blind, open-air "
                         + "slabs at 0.93 to 1.44 m/kg^(1/3) collapsed where the model's stood, the rest reading a "
                         + "tenth to a quarter of meters that likely include the supports' movement, so it is not "
-                        + "given within 1.5",
+                        + "given within 1.5. Blind in the same rig, high-strength slabs (v0.3.0) read "
+                        + String(
+                            format: "%.0f–%.0f%%",
+                            ValidationTables.figure("slabBlindHighStrength").low * 100,
+                            ValidationTables.figure("slabBlindHighStrength").high * 100)
+                        + " where they held, a little stiff, and one lightly reinforced slab broke through where "
+                        + "the test held (the safe side). Against the lower shot's tabulated 80.5 mm, the upper "
+                        + "reading the record does not keep, the model reads 71–78%",
                     check: "A reinforced slab under a blast, and its lower shot")
                 band.low = ValidationTables.figure("slabLowerShot").low
                 band.high = ValidationTables.figure("slabExtrapolated").high

@@ -123,7 +123,8 @@ standing says why.
   ([Mendonça](validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge)): the two nearest
   collapsed where the model's stood, and the rest read a tenth to a quarter of meters that likely
   include the supports' movement; the model's slab responds as its own load would have it, so the
-  gap lies in that load or the meters. No structural result converges on today's defaults
+  gap lies in that load or the meters. Blind in the contest's own rig (test 3), high-strength slabs
+  read 0.77–1.06 where they held. No structural result converges on today's defaults
   ([convergence](validation.md#convergence-on-todays-defaults)): the meshes that agree are the
   coarse end, and the bands say so; close in, Wu's slabs (40–70% under charges to 0.8 kg, −20% to +7% to
   2 kg) and, from 2 kg, Chiquito's deflection left (a third to a half); confined, the chamber's
@@ -223,8 +224,9 @@ changes, change the table with it and advance `SceneStanding.currentTable`.
   `--standing` covers them.
 - **Blind tests judge the defaults frozen for them.** Tests 1 (`1c85774`) and 2 (`047cee3`) were
   frozen before the 100 µs strain-rate window became the default on 12 October 2026, so their
-  results apply to the 50-step average it replaced, and the standing says so beside them; test 3
-  would judge today's ([convergence](validation.md#convergence-on-todays-defaults)).
+  results apply to the 50-step average it replaced, and the standing says so beside them
+  ([convergence](validation.md#convergence-on-todays-defaults)). Test 3 judged v0.3.0 (`b524a9d`),
+  with the window and afterburning and hot air.
 - **The sleeping air.** Once the air is quiet, or late, it sleeps. Since 15 October 2026 its
   outline follows the structure ([freezing the air](air-blast-model.md#freezing-the-air)), so a
   structure moving on is loaded by the frozen air beside where it is; before, the frozen outline
