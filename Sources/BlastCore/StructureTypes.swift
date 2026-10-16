@@ -41,9 +41,12 @@ public struct SteelProperties: Sendable, Hashable, Codable {
         ]
     }
 
-    /// Typical ribbed bar with a 500 MPa characteristic yield.
+    /// Typical ribbed bar with a 500 MPa characteristic yield. Its rupture strain is a typical
+    /// bar's plastic elongation at fracture over the 100 mm window rupture is judged over (its
+    /// uniform elongation plus its neck's extension over the window): 15%, since 16 October 2026
+    /// (12% before, about a characteristic bar's). See concrete-model.md#reinforcement.
     public static let grade500 = SteelProperties(
-        yieldStress: 500e6, ultimateStress: 575e6, ultimateStrain: 0.075, ruptureStrain: 0.12)
+        yieldStress: 500e6, ultimateStress: 575e6, ultimateStrain: 0.075, ruptureStrain: 0.15)
 }
 
 /// The units masonry is laid in and the mortar joints between them, laid in running bond: each

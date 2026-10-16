@@ -1691,7 +1691,8 @@ struct StandingScene {
                         + "before the measurements were unsealed)",
                     "Either way, a little stiff: five slabs 0.77–1.06 of the measured peak (0.87 on average with "
                         + "the closer bars); the sixth, lightly reinforced under the larger load, broken through "
-                        + "where the test held at 182 mm (the safe side, its bars' rupture strain assumed)",
+                        + "where the test held at 182 mm (the safe side, its bars' rupture strain assumed); with a "
+                        + "typical bar's, calibrated after the reveal, it holds at 161 mm (0.89)",
                     "validation.md#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator"),
                 StandingEvidence(
                     "A reinforced beam bent to failure",
@@ -1924,6 +1925,9 @@ struct StandingScene {
                 "Concrete broken under a close-in charge is never removed, so no hole opens.",
                 "Debris is pushed crudely by the air, as cubes with a fixed drag.",
                 "Collapse is chaotic: a slightly different input gives a different pattern of debris.",
+                "Bars rupture at a typical bar's elongation at fracture over a 100 mm window (15% for the "
+                    + "default steel): checked only on the side of holding, where the record's bars held, since "
+                    + "no test in the record ruptured its bars. Weaker or characteristic bars break sooner.",
                 "Results after failure are one draw among roundings of the same arithmetic: another model, "
                     + "compiler or GPU draws again, a harmless rebuild does not. Failed elements, debris speeds "
                     + "and residuals move by about Hupfauf's SN131 758–815 elements failed, SN142's far face "
