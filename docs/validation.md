@@ -365,12 +365,29 @@ and by far.
   moved towards its anchor may add to it. How much of each measured peak is bending cannot be told
   from the records, so the ratios of a tenth to a quarter overstate the bending gap by an unknown
   factor. The scored result stands as pre-registered.
-- **The slabs still bent and broke far more than the model's.** No movement of the supports
-  explains the two collapses. The same check bounds the bending without the meters: under the
-  model's own centre impulse at 2.0 m (477 Pa s, from the diagnosis below), that section peaks at
-  about 16 mm with the 350 MPa bars and about 9 mm with 600 MPa bars (interpolated in its table). That is two to four times
-  the model's 4.3 mm, in line with the model's implied resistance of about 220 kPa against the
-  section's 50–85 kPa.
+- **Group B's scored readings come after a lift-off.** On slabs 4, 7 and 9 each meter's most
+  negative reading, the scored value, comes after the slab had risen back to or above where it started (up to
+  29 mm above, on slab 4) and come down again: 250–290 ms after onset on slab 7 and one of slab 4's
+  meters, and 590–850 ms on slab 9 and slab 4's other, where the record has settled. Each record
+  ends within 1 mm of its scored value. Those slabs'
+  first downward peaks, 16.9, 22.3 and 22.1 mm (the secondary reading's), are 2–4 mm less. Group
+  A's scored readings are their first peaks, at 15 and about 40 ms, slab 5 never rising above its
+  start.
+  So group B's scored values include whatever offset the landing left, at the meters' hooks, the
+  trestles or the ground ([phases.json](../Samples/Mendonca2020/reveal/phases.json)).
+- **The model's slab responds as its load would have it.** The same check (its addendum), run on the
+  model's own top-face load, gives 3.2–5.9 mm at 3.6–5.3 ms for any resistance from 47 to 90 kPa,
+  as the model's 4.3 mm at 4 ms. That load is the nine top gauges, area-weighted, 330–350 Pa s
+  positive, then −884 Pa s of suction in the first 50 ms. On the positive phase alone, 47 kPa gives
+  9.1 mm. So the model's structure is consistent with its load. This qualifies the diagnosis below,
+  whose rigid-plastic reading of about 220 kPa took the centre's impulse and ignored the suction.
+  The gap to the meters lies in the load, in the meters, or in both:
+  - the suction, 2.5 times the positive impulse, is being checked as a possible artefact of the
+    domain or the gauges;
+  - the five strongest measured gauges are 20–65% above the model's at the same places, though the
+    eight-gauge mean is within 10%.
+- **The collapses stand.** No movement of the supports explains them. At 1.3 and 1.6 m the
+  model's load or its strength, or both, are wrong on the unsafe side.
 
 **Read against the calibrated record.** The calibrated open-air slabs were 40–70% too stiff under
 Wu's small charges and a third to a half as far down close in (Chiquito). Here the blast peak is
