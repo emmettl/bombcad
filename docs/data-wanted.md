@@ -763,13 +763,17 @@ Ten values in the code were written from memory and should be checked against th
   detailed model's panes, see [one-way damage](building-envelopes.md#one-way-damage-single-degree-of-freedom)):
   the glass (annealed or tempered, its thickness), each pane's size and frame, the load on it
   (reflected pressure history, or peak, duration and impulse), and whether and when it broke.
-- **Found, 16 October 2026, not yet read:**
-  - S. Monk and S. Clubley (University of Southampton), an ISIEMS paper on sixteen 4 mm annealed
-    windows in eight trials in the air blast tunnel at MOD Shoeburyness, with break times
-    against aspect ratio (eprints.soton.ac.uk/413793; the PDF returned 403 here).
-  - OSTI 658184: annealed and tempered glass sheets under blast waves at several overpressures
-    and impulses at EMRTC, Socorro (osti.gov refused the connection here).
-- Until one is read, glass breakage has no comparison with measurement.
+- **Read, 16 October 2026:** S. Monk and S. Clubley (University of Southampton), an ISIEMS paper
+  on sixteen 4 mm annealed windows in eight trials in the air blast tunnel at MOD Shoeburyness,
+  supplied by hand ([Fixtures/MonkClubley](../Fixtures/MonkClubley/README.md),
+  [validation](validation.md#window-glass)). Every pane broke under about 33 kPa reflected, so it
+  times the breaking but not its threshold.
+- **Still wanted:** tests near the threshold, panes that held beside panes that broke, which
+  decide how far out windows are lost: the same group's later trials at lower overpressures, which
+  the paper announces; R. Johns and S. K. Clubley's annealed glazing under long-duration blast
+  (*J. Struct. Eng.* 2016; *Int. J. Solids Struct.* 97–98, 2016); and OSTI 658184, annealed and
+  tempered sheets at several overpressures and impulses at EMRTC, Socorro (osti.gov refused the
+  connection here). Tempered and laminated glass, and short-duration waves, have no comparison.
 
 ## 3g. The reference curves' own scatter
 

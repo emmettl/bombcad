@@ -279,9 +279,8 @@ public enum ValidationTables {
     /// heading and holds the figure's numbers.
     public static let figures: [Figure] = [
         Figure(
-            id: "envelopeGlassBreak", low: 0.59, high: 1.20,
-            document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
-            quote: "(0.59–1.20 of the detailed time)"),
+            id: "envelopeGlassBreak", low: 0.40, high: 0.46, document: "validation.md#window-glass",
+            quote: "0.40–0.46 of the measured time with fixed edges"),
         Figure(
             id: "envelopeConcreteFixed", low: 0.61, high: 1.03,
             document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
@@ -1344,11 +1343,14 @@ extension StandingScene {
         case .envelopeDamage:
             let page = "building-envelopes.md#one-way-damage-single-degree-of-freedom"
             let check = "The same buildings free to respond, 0.125 m shells"
-            bands += [
+            bands.append(
                 figure(
                     "envelopeGlassBreak", .breakageTime, "When a pane breaks", lowIsUnsafe: false,
-                    low: "too early",
-                    high: "too late", validity: "6 mm annealed panes 1.5 × 1.25 m, 2–500 kg", check: check),
+                    low: "too early", high: "too late",
+                    validity: "4 mm annealed panes of 0.89 m² in a rigid frame, every one broken by a long "
+                        + "wave reflected at about 33 kPa",
+                    check: "Monk and Clubley's twelve timed panes, Shoeburyness"))
+            bands += [
                 figure(
                     "envelopeConcreteFixed", .peakDeflection, "Concrete wall rotation, fixed edges",
                     low: "too stiff",
