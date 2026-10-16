@@ -1129,6 +1129,10 @@ extension SceneStanding {
 struct StandingScene {
     /// The Kingery–Bulmash comparison's grids for 100 kg, by name, as the tables' columns.
     static let columns = ["0.5": 0, "0.25": 1, "0.125": 2]
+    /// The close-in comparison's column for cells of `cells` per kg^(1/3).
+    static func closeColumn(_ cells: Float) -> Int? {
+        ValidationTables.closeGrids.firstIndex { abs($0 - Double(cells)) < 1e-6 }
+    }
     let inputs: StandingInputs
     let options: [ModelOption]
     let structures: [StructureModel]
@@ -1443,22 +1447,23 @@ struct StandingScene {
         }
         var resolution: [String] = []
         if closeIn, let first = gaugeDistances.first, first < 0.75 {
-            let closeAir: [Float: String] = [
-                0.005: "92–104%", 0.01: "78–98%", 0.02: "45–72%", 0.04: "25–49%",
-            ]
-            if let cells = closeInCells {
+            let table =
+                burning ? ValidationTables.closeBurningReflectedPeak : ValidationTables.closeReflectedPeak
+            if let cells = closeInCells, let column = Self.closeColumn(cells) {
                 evidence.append(
                     StandingEvidence(
-                        "1 kg burst above rigid ground, 0.3 to 1 m/kg^(1/3), the ideal gas only (blastbench closeair)",
-                        "Reflected peak \(closeAir[cells]!) on \(millimetres(cells)) cells per kg^(1/3)",
+                        "1 kg burst above rigid ground, 0.3 to 1 m/kg^(1/3)"
+                            + (burning ? ", on today's air" : ", the ideal gas") + " (blastbench closeair)",
+                        "Reflected peak \(ValidationTables.span(table, grid: column)) on \(millimetres(cells)) "
+                            + "cells per kg^(1/3)",
                         "validation.md#close-in"))
             } else {
                 level = max(level, .approximation)
                 resolution.append(
                     String(
                         format: "A gauge %.2f m/kg^(1/3) from the charge is close in, where 40 mm cells per "
-                            + "kg^(1/3), the coarsest compared, gave a quarter to a half of the reflected peak.",
-                        first))
+                            + "kg^(1/3), the coarsest compared, gave %@ of the reflected peak.",
+                        first, ValidationTables.span(table, grid: 0)))
             }
         }
         resolution.append(
@@ -1554,20 +1559,23 @@ struct StandingScene {
         }
         var resolution: [String] = []
         if closeIn {
-            let closeAir: [Float: String] = [
-                0.005: "94–103%", 0.01: "92–106%", 0.02: "79–94%", 0.04: "65–89%",
-            ]
-            if let cells = closeInCells {
+            let table =
+                burning
+                ? ValidationTables.closeBurningReflectedImpulse : ValidationTables.closeReflectedImpulse
+            if let cells = closeInCells, let column = Self.closeColumn(cells) {
                 evidence.append(
                     StandingEvidence(
-                        "1 kg burst above rigid ground, 0.3 to 1 m/kg^(1/3), the ideal gas only (blastbench closeair)",
-                        "Reflected impulse \(closeAir[cells]!) on \(millimetres(cells)) cells per kg^(1/3)",
+                        "1 kg burst above rigid ground, 0.3 to 1 m/kg^(1/3)"
+                            + (burning ? ", on today's air" : ", the ideal gas") + " (blastbench closeair)",
+                        "Reflected impulse \(ValidationTables.span(table, grid: column)) on \(millimetres(cells)) "
+                            + "cells per kg^(1/3)",
                         "validation.md#close-in"))
             } else {
                 level = max(level, .approximation)
                 resolution.append(
-                    "Close in, 40 mm cells per kg^(1/3), the coarsest compared, gave 65–89% of the reflected "
-                        + "impulse; these are coarser.")
+                    "Close in, 40 mm cells per kg^(1/3), the coarsest compared, gave "
+                        + "\(ValidationTables.span(table, grid: 0)) of the reflected impulse; these are coarser."
+                )
             }
         }
         evidence += terrainEvidence
@@ -1657,9 +1665,10 @@ struct StandingScene {
                     "validation.md#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight"),
                 StandingEvidence(
                     "An internal explosion in a reinforced concrete chamber",
-                    "Unsafe side, too stiff: its roof's edge left 25 mm up against 95 mm measured (a quarter) "
-                        + "with the confined regime's pressed interlock, 15 mm without; not converged on 25 mm "
-                        + "elements",
+                    "Unsafe side, too stiff: its roof's edge left 55–57 mm up against 95 mm measured (three "
+                        + "fifths) on today's air, afterburning nearly doubling its rise, and 25 mm (a quarter) on "
+                        + "the ideal gas, with the confined regime's pressed interlock; not converged on 25 mm "
+                        + "elements; the wall pressures 1.0 to 1.6 times those measured",
                     "validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber"),
             ]
             parts.append(
@@ -1742,8 +1751,8 @@ struct StandingScene {
                 StandingEvidence(
                     "Wu et al.'s slabs with steel in both faces",
                     "Unsafe side under 0.2–0.8 kg, too stiff: 40–70% of the measured peak (S5 and D5 alike with "
-                        + "afterburning and hot air); within −20% to +7% under 1.6 kg, two shots on one mesh, on the "
-                        + "ideal gas only",
+                        + "afterburning and hot air); 0.91 and 1.18–1.19 times under 1.6 kg on today's build, two "
+                        + "shots on one mesh, either air",
                     "validation.md#slabs-with-steel-in-both-faces"))
             resolution.append(
                 String(
@@ -1829,9 +1838,9 @@ struct StandingScene {
             evidence.append(
                 StandingEvidence(
                     "Slabs under contact charges (Hupfauf, 2024)",
-                    "The far face thrown 1.1–1.7 times as fast as the debris at first without afterburning (with "
-                        + "it, today's default, the 20 cm slabs' far faces 63–78 m/s against 69–84 measured); the "
-                        + "loose layer held back rather than thrown, and no slab holed where four were",
+                    "The far face on the axis 0.88–1.82 times the fit on today's air, the 20 cm slabs near it "
+                        + "(1.1–1.7 times on the ideal gas); the loose layer held back rather than thrown, and no "
+                        + "slab holed where four were",
                     "validation.md#slabs-under-contact-charges"))
             summary +=
                 " Close in, unsafe again: slabs spall too little, hold their debris back and are holed only by "
@@ -1973,11 +1982,10 @@ struct StandingScene {
         ]
         if !has(.afterburning) {
             assumptions.append("The comparison with Church's clouds was made with afterburning on.")
-        } else if has(.hotAir) {
+        } else if !has(.hotAir) {
             assumptions.append(
-                "The comparison with Church's clouds was made with afterburning alone; hot air, on by default "
-                    + "since 15 October 2026, was not run against them (the street's cloud tops 453 m with both, "
-                    + "304 m with neither).")
+                "The comparison with Church's clouds was made with afterburning and hot air together, today's "
+                    + "defaults; afterburning alone was not run against them.")
         }
         return result(
             .cloud, .illustrative,
