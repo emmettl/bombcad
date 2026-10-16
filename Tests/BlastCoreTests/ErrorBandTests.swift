@@ -357,7 +357,7 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
         let open = SceneStanding(StandingInputs(scenario: blind, cellSize: 0.25))
         #expect(open.band(.peakDeflection) == nil)
         #expect(
-            open[.structuralResponse]?.unbanded?.contains { $0.contains("bent 10–25% as far as measured") }
+            open[.structuralResponse]?.unbanded?.contains { $0.contains("read 10–25% of meters") }
                 == true)
         #expect(wall[.structuralResponse]?.resolution.contains { $0.contains("keep the air awake") } == true)
 
