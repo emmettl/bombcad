@@ -382,10 +382,34 @@ and by far.
   9.1 mm. So the model's structure is consistent with its load. This qualifies the diagnosis below,
   whose rigid-plastic reading of about 220 kPa took the centre's impulse and ignored the suction.
   The gap to the meters lies in the load, in the meters, or in both:
-  - the suction, 2.5 times the positive impulse, is being checked as a possible artefact of the
-    domain or the gauges;
+  - the suction, 2.5 times the positive impulse, is an artefact of the copying open faces
+    (checked 16 October 2026, below);
   - the five strongest measured gauges are 20–65% above the model's at the same places, though the
     eight-gauge mean is within 10%.
+- **The top face's suction was the open faces'.** The harness copies the cells inside at its
+  open faces, which drains the domain below ambient after the shock leaves; the slab sits 1 m
+  from them. Slab 4 on 25 mm air, refined by 2 and kept awake, the top face's mean impulse over
+  the first 50 ms (positive / negative, Pa s), each run's peak and its lift-off:
+
+  | Run | Top face | Peak | Lift-off |
+  |---|---|---|---|
+  | Copying faces, as the blind harness | +321 / −1625 | 4.15 mm | 74 mm |
+  | Copying faces, domain doubled | +357 / −448 | 4.14 mm | 42 mm |
+  | Far-field faces | +402 / −212 | 4.19 mm | 19.5 mm |
+  | Far-field faces, domain doubled | +414 / −302 | 4.14 mm | 33 mm |
+  | Far-field, recommended air (afterburning, hot air) | +457 / −133 | 4.31 mm | 9.8 mm |
+  | Slab held down, copying / far-field faces | +320 / −1632, +400 / −209 | 3.57, 3.58 mm | |
+
+  UFC 3-340-02's Figure 2-8 gives about 320 Pa s of reflected negative impulse at Z = 3.63. The
+  measured records cannot say: their suction dips to −82 to −198 kPa, below a vacuum, so it is
+  the gauges'. So the suction was the domain's, as was most of the lift-off, and the blast's own
+  peak, at 3.9 ms, before any of it arrives, barely moves (4.15 to 4.19 mm). Post-reveal Mendonça
+  studies use far-field faces with at least 2.5 m of margin. The far-field load, both runs, is
+  exported for the Edgerton check
+  (`/Volumes/StudioData/bombcad/edgerton-exchange/mendonca-slab4/bombcad-blast-farfield/`). Other
+  copying-face users: the vented rooms moved and now default to far-field faces
+  ([deflagration](deflagration.md#vented-rooms-against-the-correlations)); the rigid box is
+  closed; the app has used far-field faces since 15 October.
 - **The collapses stand.** No movement of the supports explains them. At 1.3 and 1.6 m the
   model's load or its strength, or both, are wrong on the unsafe side.
 

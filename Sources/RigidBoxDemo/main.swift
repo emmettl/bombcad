@@ -841,7 +841,7 @@ do {
                     cellSize: cell, refinement: ratio, large: arguments.contains("--large"),
                     remapMode: arguments.contains("--transport") ? .connectedTransport : .redistribution)
                 study.airUntil = option("air-until")?.first.flatMap(Double.init)
-                if arguments.contains("--far-field") { study.farField = true }
+                if arguments.contains("--copy-faces") { study.openFaces = .copy }
                 return study
             }.flatMap { study -> [ExperimentalRigidCarStudy.Case] in
                 (option("scale")?.compactMap(Double.init) ?? [1]).map { scale in
