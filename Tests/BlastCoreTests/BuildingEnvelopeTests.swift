@@ -133,6 +133,44 @@ struct BuildingEnvelopeTests {
         for face in result.surfaces { #expect(abs(face.positiveImpulsePaS - 0.02) < 1e-5) }
     }
 
+    @Test("A face in still air reads the still air: the same bits as its cell, ambient or not")
+    func stillTiles() throws {
+        var scene = Scenario(
+            name: "Two walls", domainSize: SIMD3(24, 8, 6), boxes: [],
+            charge: Charge(mass: 0.05, position: SIMD3(2, 4, 1)))
+        for x: Float in [5, 19] {
+            try scene.addEnvelopeObject(
+                BuildingEnvelope(solids: [Box(min: SIMD3(x, 2, 0), max: SIMD3(x + 0.5, 6, 3))]),
+                name: "Wall \(x)")
+        }
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        // At ambient, and in air filled above it, where the still air's overpressure is not zero.
+        for filled in [false, true] {
+            func surfaces(skipping: Bool) throws -> [EnvelopeSurfaceExposure] {
+                let solver = try BlastSolver(device: device, scenario: scene, cellSize: 0.25)
+                if filled {
+                    solver.fill(uniform: Primitive(density: 1.225, pressure: 103_325))
+                    solver.restart()
+                }
+                try solver.configureEnvelopeExposure(objects: scene.envelopeObjects)
+                solver.envelopeExposure?.skipStillTiles = skipping
+                _ = solver.advance(steps: 40)
+                return try #require(solver.envelopeExposureSnapshot()).flatMap(\.surfaces)
+            }
+            let skipped = try surfaces(skipping: true)
+            let read = try surfaces(skipping: false)
+            #expect(skipped.count == read.count)
+            for (a, b) in zip(skipped, read) {
+                #expect(
+                    [a.overpressurePa, a.peakPositivePa, a.positiveImpulsePaS, a.signedImpulsePaS].map(
+                        \.bitPattern)
+                        == [b.overpressurePa, b.peakPositivePa, b.positiveImpulsePaS, b.signedImpulsePaS].map(
+                            \.bitPattern)
+                        && a.invalid == b.invalid, "filled \(filled)")
+            }
+        }
+    }
+
     @Test("Recording leaves coarse and refined air bit-identical", arguments: [1, 2])
     func passive(refinement: Int) throws {
         var scene = try scene()

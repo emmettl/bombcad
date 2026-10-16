@@ -5,10 +5,13 @@ import Metal
 /// `SceneBench envelope-histories [--dx 0.25] [--rounds 5] [--out file.json]`: what recording each
 /// envelope component's pressure history costs. The street's four buildings (120 ms) and the
 /// 64-building neighbourhood (60 ms), each run with the surface recorder alone, as every
-/// envelope-only run is, and with the histories too, in alternating order, `rounds` times.
+/// envelope-only run is, and with the histories too, in alternating order, `rounds` times; and the
+/// surface recorder as it was before it skipped still air (`before`), to show what that saved.
 enum EnvelopeHistoryBenchmark {
     struct Run: Codable {
         var scene: String
+        /// "before" (the surface recorder reading every face), "surfaces" or "histories".
+        var variant: String
         var histories: Bool
         var round: Int
         var wallS: Double
@@ -32,8 +35,10 @@ enum EnvelopeHistoryBenchmark {
         var runs: [Run] = []
         for round in 0..<rounds {
             for (name, scene, duration) in scenes {
-                let order = round.isMultiple(of: 2) ? [false, true] : [true, false]
-                for histories in order {
+                let variants = ["before", "surfaces", "histories"]
+                let order = round.isMultiple(of: 2) ? variants : variants.reversed()
+                for variant in order {
+                    let histories = variant == "histories"
                     let solver = try BlastSolver(device: device, scenario: scene, cellSize: dx)
                     try solver.configureEnvelopeExposure(objects: scene.envelopeObjects)
                     let before = solver.memoryFootprint
@@ -42,40 +47,63 @@ enum EnvelopeHistoryBenchmark {
                             objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: duration)
                         )
                     }
+                    solver.envelopeStillTileSkipping = variant != "before"
                     let start = ContinuousClock.now
                     let result = solver.advance(until: duration)
                     let took = start.duration(to: .now)
                     let seconds =
                         Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18
                     let run = Run(
-                        scene: name, histories: histories, round: round, wallS: seconds, steps: result.steps,
-                        solverBytes: solver.memoryFootprint,
+                        scene: name, variant: variant, histories: histories, round: round, wallS: seconds,
+                        steps: result.steps, solverBytes: solver.memoryFootprint,
                         components: solver.envelopeComponents()?.count ?? 0,
                         historyBytes: solver.memoryFootprint - before)
                     runs.append(run)
                     print(
-                        "\(name) round \(round + 1) \(histories ? "with" : "without") histories: "
+                        "\(name) round \(round + 1) \(variant): "
                             + String(format: "%.3f s, %d steps", seconds, result.steps)
                             + (histories ? ", \(run.components) components, \(run.historyBytes) bytes" : ""))
                 }
             }
         }
         for (name, _, _) in scenes {
-            let without = runs.filter { $0.scene == name && !$0.histories }.map(\.wallS).sorted()
-            let with = runs.filter { $0.scene == name && $0.histories }.map(\.wallS).sorted()
-            let ratios = (0..<rounds).compactMap { round -> Double? in
-                guard let a = runs.first(where: { $0.scene == name && $0.round == round && !$0.histories }),
-                    let b = runs.first(where: { $0.scene == name && $0.round == round && $0.histories })
-                else { return nil }
-                return b.wallS / a.wallS
-            }.sorted()
+            func median(_ values: [Double]) -> Double { values.sorted()[values.count / 2] }
+            func wall(_ variant: String) -> Double {
+                median(runs.filter { $0.scene == name && $0.variant == variant }.map(\.wallS))
+            }
+            /// The median, over rounds, of `variant`'s time over `base`'s in the same round.
+            func ratio(_ variant: String, _ base: String) -> (Double, [Double]) {
+                let ratios = (0..<rounds).compactMap { round -> Double? in
+                    guard
+                        let a = runs.first(where: {
+                            $0.scene == name && $0.round == round && $0.variant == base
+                        }),
+                        let b = runs.first(where: {
+                            $0.scene == name && $0.round == round && $0.variant == variant
+                        })
+                    else { return nil }
+                    return b.wallS / a.wallS
+                }.sorted()
+                return (ratios[ratios.count / 2], ratios)
+            }
             let memory = runs.first { $0.scene == name && $0.histories }
+            let skip = ratio("surfaces", "before")
+            let histories = ratio("histories", "surfaces")
+            let both = ratio("histories", "before")
             print(
-                "\(name): median \(String(format: "%.3f", without[without.count / 2])) s without, "
-                    + "\(String(format: "%.3f", with[with.count / 2])) s with; median pair ratio "
-                    + String(format: "%.3f", ratios[ratios.count / 2])
-                    + " (\(ratios.map { String(format: "%.3f", $0) }.joined(separator: ", "))); "
-                    + "\(memory?.components ?? 0) components, \(memory?.historyBytes ?? 0) bytes")
+                "\(name): median "
+                    + String(
+                        format: "%.3f / %.3f / %.3f s", wall("before"), wall("surfaces"), wall("histories"))
+                    + " before / surfaces / with histories; surfaces over before "
+                    + String(
+                        format: "%.3f (%@)", skip.0,
+                        skip.1.map { String(format: "%.3f", $0) }.joined(separator: ", "))
+                    + "; histories over surfaces "
+                    + String(
+                        format: "%.3f (%@)", histories.0,
+                        histories.1.map { String(format: "%.3f", $0) }.joined(separator: ", "))
+                    + String(format: "; histories over before %.3f", both.0)
+                    + "; \(memory?.components ?? 0) components, \(memory?.historyBytes ?? 0) bytes")
         }
         // The GPU's own seconds, by stage, summed over every batch, `rounds` times in alternating
         // order: the histories' kernel is part of the observation stage.

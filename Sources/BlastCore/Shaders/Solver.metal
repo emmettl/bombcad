@@ -2007,23 +2007,49 @@ kernel void sampleEnvelopeExposure(const device Cell *state [[buffer(0)]],
                                   device float4 *records [[buffer(4)]],
                                   device float *signedImpulse [[buffer(5)]],
                                   constant SolverUniforms &u [[buffer(6)]],
-                                  constant uint2 &parameters [[buffer(7)]],
+                                  constant uint4 &parameters [[buffer(7)]],
+                                  const device uchar *tileFlags [[buffer(8)]],
                                   uint index [[thread_position_in_grid]]) {
     if (index >= parameters.x || (control.dt <= 0 && parameters.y == 0)) return;
     uint4 face = faces[index];
-    float4 record = records[index];
-    if (mask[face.x] == 0 || mask[face.y] != 0) {
+    // A face whose air is in a still tile has held the still air since the start (tiles do not
+    // fall asleep again): read that, not the cell; and where it is ambient, nothing changes at all.
+    bool still = false;
+    if (parameters.z != 0 && u.tileNx > 0) {
+        uint i = face.y % u.nx;
+        uint j = (face.y / u.nx) % u.ny;
+        uint k = face.y / (u.nx * u.ny);
+        still = tileFlags[i / 8 + u.tileNx * (j / 8 + u.tileNy * (k / 8))] == tileStill;
+    }
+    if (!still && (mask[face.x] == 0 || mask[face.y] != 0)) {
+        float4 record = records[index];
         record.w = 1;
+        records[index] = record;
+        return;
+    }
+    float rho;
+    float3 momentum;
+    float energy;
+    if (still) {
+        rho = u.stillRho;
+        momentum = float3(u.stillMx, u.stillMy, u.stillMz);
+        energy = u.stillEnergy;
     } else {
         Cell c = state[face.y];
-        float rho = max(c.rho, u.densityFloor);
-        float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / rho;
-        float p = gasPressure(rho, c.energy - kinetic, u.airModel, u.gamma) - u.ambientPressure;
-        record.x = p;
-        record.y = max(record.y, max(p, 0.0f));
-        record.z += max(p, 0.0f) * control.dt;
-        signedImpulse[index] += p * control.dt;
+        rho = c.rho;
+        momentum = float3(c.mx, c.my, c.mz);
+        energy = c.energy;
     }
+    rho = max(rho, u.densityFloor);
+    float kinetic = 0.5f * (momentum.x * momentum.x + momentum.y * momentum.y + momentum.z * momentum.z) / rho;
+    float p = gasPressure(rho, energy - kinetic, u.airModel, u.gamma) - u.ambientPressure;
+    // Zero, its record stays as it is, as it would adding nothing.
+    if (still && as_type<uint>(p) == 0u) return;
+    float4 record = records[index];
+    record.x = p;
+    record.y = max(record.y, max(p, 0.0f));
+    record.z += max(p, 0.0f) * control.dt;
+    signedImpulse[index] += p * control.dt;
     records[index] = record;
 }
 

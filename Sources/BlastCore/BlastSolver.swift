@@ -27,7 +27,7 @@ public final class BlastSolver {
     public private(set) var stepCount = 0
     private var exposurePlane: ExposurePlane?
     private var exposureNeedsInitialSample = false
-    private var envelopeExposure: EnvelopeExposure?
+    private(set) var envelopeExposure: EnvelopeExposure?
     private var envelopeNeedsInitialSample = false
     private(set) var envelopeComponentRecorder: EnvelopeComponentRecorder?
     private var componentsNeedInitialSample = false
@@ -92,6 +92,16 @@ public final class BlastSolver {
     public func envelopeExposureSnapshot() -> [EnvelopeExposureSnapshot]? {
         precondition(!batchInFlight, "Cannot read observers during a batch")
         return envelopeExposure?.snapshot(grid: grid, elapsed: time)
+    }
+
+    /// Whether the envelope recorders read a face whose air is in a still tile as the still air
+    /// (the default; the same bits) or from its cell, for measuring what that saves.
+    public var envelopeStillTileSkipping: Bool {
+        get { envelopeExposure?.skipStillTiles ?? envelopeComponentRecorder?.skipStillTiles ?? true }
+        set {
+            envelopeExposure?.skipStillTiles = newValue
+            envelopeComponentRecorder?.skipStillTiles = newValue
+        }
     }
 
     public func envelopeExposureSummaries() -> [EnvelopeExposureSummary]? {
@@ -2355,7 +2365,10 @@ public final class BlastSolver {
     private func encodeEnvelopeExposure(_ encoder: MTLComputeCommandEncoder, initial: Bool) {
         guard let observer = envelopeExposure else { return }
         var uniforms = makeUniforms()
-        var parameters = SIMD2<UInt32>(UInt32(observer.faces.count), initial ? 1 : 0)
+        // Faces in still tiles read the still air; under gravity it is not uniform.
+        var parameters = SIMD4<UInt32>(
+            UInt32(observer.faces.count), initial ? 1 : 0,
+            observer.skipStillTiles && configuration.gravity == nil ? 1 : 0, 0)
         encoder.setComputePipelineState(observer.pipeline)
         encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
         encoder.setBuffer(maskBuffer, offset: 0, index: 1)
@@ -2364,7 +2377,8 @@ public final class BlastSolver {
         encoder.setBuffer(observer.values, offset: 0, index: 4)
         encoder.setBuffer(observer.signed, offset: 0, index: 5)
         encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 6)
-        encoder.setBytes(&parameters, length: 8, index: 7)
+        encoder.setBytes(&parameters, length: 16, index: 7)
+        encoder.setBuffer(tileFlagBuffer, offset: 0, index: 8)
         encoder.dispatchThreads(
             MTLSize(width: observer.faces.count, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: observer.pipeline.threadExecutionWidth, height: 1, depth: 1)
