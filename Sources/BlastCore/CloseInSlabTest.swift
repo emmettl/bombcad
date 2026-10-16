@@ -159,6 +159,7 @@ public enum CloseInSlabTest {
         duration: Double = 0.3,
         refinement: Int = 1, mappedCharge: Bool = true,
         afterburning: Bool = SolverConfiguration.recommended.afterburning,
+        airModel: AirModel? = nil, openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
         heldLengthwise: Bool = true, stepsPerSample: Int = 16,
         adjust: (inout Scenario) -> Void = { _ in }, progress: ((String) -> Void)? = nil,
         inspect: ((StructureSolver, Double) -> Void)? = nil, prepare: ((StructureSolver) -> Void)? = nil
@@ -168,9 +169,9 @@ public enum CloseInSlabTest {
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
         solver.configuration.mappedCharge = mappedCharge && !afterburning
         solver.configuration.afterburning = afterburning
-        solver.configuration.openFaces = SolverConfiguration.recommended.openFaces
+        solver.configuration.openFaces = openFaces
         // As the app's "Afterburning and hot air": both or neither.
-        solver.configuration.airModel = afterburning ? .thermallyPerfect : .idealGas
+        solver.configuration.airModel = airModel ?? (afterburning ? .thermallyPerfect : .idealGas)
         solver.configuration.refinement = refinement
         try solver.load(scenario)
         guard let structure = solver.structure else { throw BlastError.allocationFailed("structure") }

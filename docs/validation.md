@@ -3064,7 +3064,7 @@ same peaks:
 
 | Comparison | Before (ideal gas, copying faces) | Today's defaults |
 |---|---|---|
-| Open-air loads, 0.25 m, from 1 m/kg^(1/3) | Incident peak 76–82%, impulse 78–86%, reflected impulse 91–102% | 80–86%, 96–101%, 98–115% |
+| Open-air loads, 0.25 m, from 1 m/kg^(1/3) | Incident peak 76–82%, impulse 78–86%, reflected impulse 91–102% | 74–84%, 94–100%, 93–113% |
 | Rooms (UFC 2-152) | 48–114% | 98–108% |
 | Wu S5, D5, 0.2 kg at 0.25 m: peak | 2.0, 2.8 mm (measured 4.0, 4.1) | 2.3, 2.3 mm |
 | Wang: gauges' impulse | 75–82% | 81–86% |
@@ -3093,6 +3093,21 @@ validate`), as a percentage of the reference (the bands' tables since 15 October
 | 27.8 m | 6 | 75% | 85% | 93% | 103% | 98% | 94% | 75% | 87% | 95% | 112% | 108% | 104% |
 
 The arrival on 0.25 m cells comes at 92, 91, 89, 92, 93, 96, 96 and 97% of the reference's time.
+
+Every harness that takes its load from the air starts from `SolverConfiguration.recommended`
+and takes `--no-afterburn`, `--air ideal|thermal|dissociating` and `--copy-faces`; those left on
+the bare core are listed in its documentation, each for a reason (numerical studies, the
+deflagrations' own gas, Keys' inflow-driven tunnel, the blind tests' frozen air). An audit on 16
+October found two benches that had slipped: `blastbench validate` and `blastbench chamber` set
+afterburning but left the ideal gas and copying faces of the bare core, from the day the default
+became the preset until then, and the open-air row above, first recorded from that run, was
+afterburning alone: on hot air and far-field faces, as runs now ship, the incident peaks are 2–6
+points lower and the impulses 1–5 (hot air's known effect), and the row and the table that
+follows give those. The chamber on the fixed bench leaves the roof's edge at 50 mm peak and 27
+mm (25 mm on the earlier default; 95 mm measured), its wall pressures still 0.9–1.6 times those
+measured. The coupled anchorage wall (`blastbench anchorage --air`, 0.5 s) sways 27 and 28 mm
+clamped and on starter bars at 10 m, against 22 mm on the earlier air in
+[the structural model's table](structural-model.md), which ran 1 s.
 
 Two faults were found and fixed on the way. The far-field ghost first let hot air's
 temperature go to NaN beside contact charges, where air drawn back hard into the rarefaction gave

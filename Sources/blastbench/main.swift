@@ -196,6 +196,23 @@ func chosenAirModel() -> AirModel? {
     }
 }
 
+/// The air's gas as the command line asks: `--air`, or hot air while afterburning and the ideal
+/// gas with `--no-afterburn`.
+func chosenGas() -> AirModel { chosenAirModel() ?? SolverConfiguration.recommended.airModel }
+
+/// The open faces as the command line asks: far field, or `--copy-faces` for those before
+/// 15 October 2026.
+func chosenFaces() -> OpenFaces { flag("copy-faces") ? .copy : SolverConfiguration.recommended.openFaces }
+
+/// The air every run ships with (`SolverConfiguration.recommended`) as the command line changes
+/// it: `--no-afterburn`, `--air` and `--copy-faces`. Every bench that runs a scene starts here;
+/// those that pin the bare core for numerics say so.
+func applyChosenAir(_ configuration: inout SolverConfiguration) {
+    configuration.afterburning = burning
+    configuration.airModel = chosenGas()
+    configuration.openFaces = chosenFaces()
+}
+
 /// `--fracture-rate 0.5`: how the fracture energy follows the tensile strain-rate law, and the
 /// like, for any command that builds concrete.
 func applyRateOptions(_ material: inout StructureMaterial) {
@@ -876,7 +893,7 @@ func runChamber() throws {
         device: device, scenario: scenario, cellSize: cellSize, duration: duration,
         afterburning: burning,
         afterburnEnergy: option("afterburn-energy").flatMap { Float($0) }.map { $0 * 1e6 },
-        airModel: chosenAirModel() ?? .idealGas,
+        airModel: chosenGas(), openFaces: chosenFaces(),
         refinement: option("refine").flatMap { Int($0) } ?? 1,
         contact: flag("no-contact") ? .off : nil,
         // `--progress` reports every 10 ms of a long run.
@@ -985,11 +1002,8 @@ func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver 
     configuration.gravity = chosenGravity()
     configuration.mixing = chosenMixing()
     configuration.afterburnLimit = chosenBurnLimit()
-    configuration.afterburning = burning
-    if let air = chosenAirModel() { configuration.airModel = air }
+    applyChosenAir(&configuration)
     if flag("mapped") { configuration.mappedCharge = true }
-    // `--copy-faces`: open faces that copy the air inside outward, as before 15 October 2026.
-    if flag("copy-faces") { configuration.openFaces = .copy }
     if let time = option("burn-time").flatMap({ Float($0) }) { configuration.afterburnTime = time / 1000 }
     if let energy = option("afterburn-energy").flatMap({ Float($0) }) {
         configuration.afterburnEnergy = energy * 1e6
@@ -1071,8 +1085,7 @@ func runValidation() throws {
             solver.configuration.minimumBalloonCells = cells
         }
         if flag("hll") { solver.configuration.riemannSolver = .hll }
-        solver.configuration.afterburning = burning
-        if let air = chosenAirModel() { solver.configuration.airModel = air }
+        applyChosenAir(&solver.configuration)
         if flag("mapped") { solver.configuration.mappedCharge = true }
         if let time = option("burn-time").flatMap({ Float($0) }) {
             solver.configuration.afterburnTime = time / 1000
@@ -2255,8 +2268,7 @@ func runContact() throws {
                     scenario.structure = structure
                 }
             },
-            afterburning: burning, airModel: option("air") == nil ? nil : chosenAirModel(),
-            openFaces: flag("copy-faces") ? .copy : .farField,
+            afterburning: burning, airModel: chosenGas(), openFaces: chosenFaces(),
             progress: flag("progress")
                 ? { line in
                     print("  " + line)
@@ -2535,7 +2547,8 @@ func runTwoFace() throws {
                 device: device, test: test, cellSize: cellSize,
                 refinement: option("refine").flatMap { Int($0) } ?? 2, elementSize: elementSize,
                 duration: duration,
-                heldLengthwise: flag("held"), afterburning: burning, adjust: adjust,
+                heldLengthwise: flag("held"), afterburning: burning, airModel: chosenGas(),
+                openFaces: chosenFaces(), adjust: adjust,
                 prepare: { solver in
                     prepareTrace(solver)
                     lastStructure = solver
@@ -2596,7 +2609,7 @@ func runTwoFace() throws {
                 elementSize: elementSize, duration: duration,
                 edges: option("edges").flatMap { TwoFaceSlabTests.WangEdges(rawValue: $0) }
                     ?? (flag("hinged") ? .hinged : .fixed),
-                afterburning: burning,
+                afterburning: burning, airModel: chosenGas(), openFaces: chosenFaces(),
                 adjust: { scenario in
                     adjust(&scenario)
                     if let bond = chosenBondSlip(diameter: test.bar) { scenario.structure?.bondSlip = bond }
@@ -2666,6 +2679,7 @@ func runCloseIn() throws {
         let result = try CloseInSlabTest.run(
             device: device, test: test, cellSize: cellSize, elementSize: elementSize, duration: duration,
             refinement: refinement, mappedCharge: !flag("no-map"), afterburning: burning,
+            airModel: chosenGas(), openFaces: chosenFaces(),
             heldLengthwise: !flag("sliding"), stepsPerSample: option("trace") != nil ? 1 : 16,
             adjust: { scenario in
                 if flag("no-rate") { scenario.structure?.material.rateDependent = false }
@@ -3993,6 +4007,11 @@ func runAnchorage() throws {
                     cellSize: option("cell").flatMap { Float($0) } ?? 0.25, elementSize: h,
                     margin: option("margin").flatMap { Float($0) } ?? 12,
                     domainHeight: option("height").flatMap { Float($0) } ?? 18, soil: soil,
+                    air: {
+                        var air = SolverConfiguration.recommended
+                        applyChosenAir(&air)
+                        return air
+                    }(),
                     progress: flag("progress") ? { print("    " + $0) } : nil)
                 : flag("panel")
                     ? try AnchorageStudy.run(
