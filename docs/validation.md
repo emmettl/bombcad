@@ -74,7 +74,7 @@ swift run -c release blastbench perimeter --study wall
 | Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof's edge is left 25 mm up against 95 mm measured, a quarter, and peaks at 48 mm against 87 mm in the paper's own model, with the confined regime's pressed interlock (15 and 38 mm without); on 25 mm elements the peak rises to 65 mm and the wall tops tear, so it has not converged | Unsafe side, too stiff: the roof's edge left a quarter as far up as measured (low); the joints' inclined cracking decides it, and the crack models disagree |
 | Fireball radiation   | Two TNT shots by one group (DREO), with afterburning and hot air, today's air (copying faces, which leave the street's share unchanged): 100 t, whose total a 100 kg run scaled by the cube root exceeds three to five and a half times (afterburning alone radiates more, 29% against 21%); Dial Pack, 500 t, against which the pulse is a sixth as bright at its first maximum, dark from 40 to 350 ms and two to five times too bright after 1 s, 3.9% radiated by 2 s against 2.4%; with gravity it rises but stays as hot, with or without sub-grid mixing | Too bright in all (three to five and a half times), too faint early: illustrative; afterburning keeps the fireball near the flame temperature |
 | Cloud               | Church's tops of 22 TNT clouds of 54 to 1,270 kg: within 4% on average for the first two minutes (a geometric spread of 21% shot by shot), falling behind later; with afterburning, whose burning time was fitted to the open blast, and an entrainment coefficient whose plausible range moves the tops by −9% to +13% | Either way, within 4% on average (21% shot by shot): illustrative; see [the fireball's rise](fireball-rise.md#against-churchs-measured-clouds) |
-| Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; laminar rise times within 1–3% at 48 cells across the radius (the default flame, cellular, 13–14% ahead); K_G 60 against 76 on 96 cells, unable to converge on a four-cell front. FM Global's six tests (digitised): lit at the back wall, 0.8–1.6 times the measured peaks; lit in the middle, about 0.4, the flame stalling towards the back wall. Vented rooms: a ninth to a twenty-fifth of Molkov's correlation, which those tests show conservative | Verified for a laminar flame in a closed vessel; illustrative for vented rooms |
+| Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; laminar rise times within 1–3% at 48 cells across the radius (the default flame, cellular, 13–14% ahead); K_G 60 against 76 on 96 cells, unable to converge on a four-cell front. FM Global's six tests (digitised): lit at the back wall, 0.9–1.8 times the measured peaks; lit in the middle, 0.4–0.6, the flame stalling towards the back wall. Vented rooms: a seventh to a twenty-second of Molkov's correlation, which those tests show conservative | Verified for a laminar flame in a closed vessel; illustrative for vented rooms |
 | Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 11% to 14 mrad of rotation (against the larger of its two directions), 5–14% low beyond; settlement 1.3–1.7 times that measured. The same footing shaken (FoRDy, eight events on three structures): settlement 0.4–1.3 times (0.6–1.3 but for the embedded footing's first event), the surface footing's peak rotation within 10% where the test did not lurch one way (the embedded footing's first event a quarter); energy a cycle 0.5–1.2 times slowly and 0.3–1.2 times shaken, damping ratios 10–27% against 17–32%. Both on sand of 80 MPa, an estimate, twice the default's; the sand's heave set on the slow test | Rocking moment either way to 14 mrad and 5–14% low beyond (moderate); settlement within a factor of 1.7 (moderate); energy too little, a sixth to two thirds of a shaken event's (low), as for a footing that lurches; on a sand twice the default's |
 | Held out (blind)     | Hrynyk's three plain slabs struck repeatedly by a falling weight, predicted on frozen defaults before the measurements were unsealed: first impacts 1.15–1.29 times the measured peak (too flexible, as the calibrated beams were); later impacts 0.56–0.83, residuals a seventh to a third, and none of the three slabs' punching failures predicted. Mendonça's seven slabs under an open-air charge: the two nearest the charge collapsed, the model leaving them standing; the declared peaks 0.31–1.23 of measured on the survivors, those near 1 made by an artefact of the sleeping air as the slabs landed after the blast threw them up; the blast's own peak a tenth to a quarter of the meters'. Reynolds's six high-strength slabs in the contest slab's rig (v0.3.0): peaks 0.77–1.06 of measured on the five that held in the model, 0.87 on average at 4 in; the sixth, the lightly reinforced slab under the larger load, broken through where the test held at 182 mm; the blast face never crushed where four of the standing slabs' tests were | Hrynyk: between, by the protocol's rule, the calibrated error on undamaged slabs, much worse and on the unsafe side once they are damaged. Mendonça: worse, by the rule, far too stiff and too strong, the unsafe side. Reynolds: worse, by the rule, on the one broken slab (the safe side); the others within the calibrated band, a little stiff |
 | Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.1–1.7 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own. [Brick walls](#brick-walls-debris) (Keys, 2016): loads within 15%, but the walls break into too few pieces, falling at full length in the open (means of −2 to +2 m against +0.2 to +0.6 m) and thrown half as far as measured in a shock tube. Collapse once, blind: [Mendonça's slabs](#blind-test-2-mendonças-slabs-under-an-open-air-charge), the two that collapsed left standing | Unsafe side for debris: held back rather than thrown, slabs never holed, brick walls thrown short (low); collapse missed in both slabs that collapsed (blind) |
@@ -386,6 +386,30 @@ and by far.
   - the suction, 2.5 times the positive impulse, turned out to be the domain's (below);
   - the five strongest measured gauges are 20–65% above the model's at the same places, though the
     eight-gauge mean is within 10%.
+- **The top face's suction was the open faces'.** The harness copies the cells inside at its
+  open faces, which drains the domain below ambient after the shock leaves; the slab sits 1 m
+  from them. Slab 4 on 25 mm air, refined by 2 and kept awake, the top face's mean impulse over
+  the first 50 ms (positive / negative, Pa s), each run's peak and its lift-off:
+
+  | Run | Top face | Peak | Lift-off |
+  |---|---|---|---|
+  | Copying faces, as the blind harness | +321 / −1625 | 4.15 mm | 74 mm |
+  | Copying faces, domain doubled | +357 / −448 | 4.14 mm | 42 mm |
+  | Far-field faces | +402 / −212 | 4.19 mm | 19.5 mm |
+  | Far-field faces, domain doubled | +414 / −302 | 4.14 mm | 33 mm |
+  | Far-field, recommended air (afterburning, hot air) | +457 / −133 | 4.31 mm | 9.8 mm |
+  | Slab held down, copying / far-field faces | +320 / −1632, +400 / −209 | 3.57, 3.58 mm | |
+
+  UFC 3-340-02's Figure 2-8 gives about 320 Pa s of reflected negative impulse at Z = 3.63. The
+  measured records cannot say: their suction dips to −82 to −198 kPa, below a vacuum, so it is
+  the gauges'. So the suction was the domain's, as was most of the lift-off, and the blast's own
+  peak, at 3.9 ms, before any of it arrives, barely moves (4.15 to 4.19 mm). Post-reveal Mendonça
+  studies use far-field faces with at least 2.5 m of margin. The far-field load, both runs, is
+  exported for the Edgerton check
+  (`/Volumes/StudioData/bombcad/edgerton-exchange/mendonca-slab4/bombcad-blast-farfield/`). Other
+  copying-face users: the vented rooms moved and now default to far-field faces
+  ([deflagration](deflagration.md#vented-rooms-against-the-correlations)); the rigid box is
+  closed; the app has used far-field faces since 15 October.
 - **The collapses stand.** No movement of the supports explains them. At 1.3 and 1.6 m the
   model's load or its strength, or both, are wrong on the unsafe side.
 
@@ -3909,13 +3933,14 @@ A premixed methane or propane cloud lit at a point (see [Gas deflagrations](defl
   pressure goes as the flame's speed to about the sixth power, and the young flame was the
   shortfall, mostly its missing instability. Against Bauwens et al.'s six tests in that chamber,
   digitised from the paper's plots:
-  - Lit at the back wall, the model reaches 0.8–1.6 times the measured peaks (their LES 0.26–0.62),
+  - Lit at the back wall, the model reaches 0.9–1.8 times the measured peaks (their LES 0.26–0.62),
     with the measured flame speeds to 2 m and a third fast beyond. The sub-grid wrinkling's one
     constant was fitted by Bauwens et al. in this chamber, and the instability's onset measured
     there.
-  - Lit in the middle it reaches about 0.4 (their LES within a third), the back of its flame stalling
+  - Lit in the middle it reaches 0.4–0.6 (their LES within a third), the back of its flame stalling
     where the tests' ran at 3 m/s, and without the acoustically driven peaks.
-  - The model-to-measured ratio's geometric mean is 0.65, against 0.30 before the instability.
+  - The model-to-measured ratio's geometric mean is 0.76 (0.65 with the copying open faces the
+    checks first used), against 0.30 before the instability.
 
   Against the correlations it is a ninth to a twenty-fifth of Molkov's and below NFPA 68's, which
   are conservative for this room (the tests measured a tenth to a quarter of Molkov's). Obstacles

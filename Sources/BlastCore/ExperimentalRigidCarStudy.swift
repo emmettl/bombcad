@@ -17,6 +17,9 @@ public enum ExperimentalRigidCarStudy {
         /// Scales the air's load on the car (see `ExperimentalRigidCarSimulation.airLoadScale`).
         public var airLoadScale = 1.0
         public var remapMode: ExperimentalBoxRemap = .redistribution
+        /// The domain's open faces: ambient air beyond them (since 16 October 2026), or copies of the
+        /// cells inside, which drained the domain and turned the late flow.
+        public var openFaces: OpenFaces = .farField
         public init(
             cellSize: Float, refinement: Int, large: Bool = false,
             remapMode: ExperimentalBoxRemap = .redistribution
@@ -35,6 +38,7 @@ public enum ExperimentalRigidCarStudy {
                 + (remapMode == .redistribution ? "" : ", connected transport")
                 + (airUntil.map { String(format: ", air for %.2f s", $0) } ?? "")
                 + (airLoadScale == 1 ? "" : String(format: ", air load × %.2f", airLoadScale))
+                + (openFaces == .farField ? "" : ", copying faces")
         }
     }
 
@@ -106,6 +110,7 @@ public enum ExperimentalRigidCarStudy {
     public static func configuration(for study: Case) -> SolverConfiguration {
         var config = SolverConfiguration()
         config.refinement = study.refinement
+        config.openFaces = study.openFaces
         if study.refinement > 1 { config.refinementMemory = 2 << 30 }
         return config
     }

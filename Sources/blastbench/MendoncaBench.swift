@@ -49,6 +49,10 @@ func runMendonca(device: MTLDevice) throws {
     if let capacity = option("support-capacity").flatMap({ Float($0) }) {
         settings.softSupportCapacity = capacity
     }
+    // `--record 0.06`: the gauges' pressures kept to 60 ms; `--hold-down`: the slab tied to its
+    // bearings, unable to lift off.
+    if let record = option("record").flatMap({ Double($0) }) { settings.pressureRecord = record }
+    if flag("hold-down") { settings.holdDown = true }
     let names = option("slabs")?.split(separator: ",").map(String.init)
     let slabs = inputs.slabs.filter { names?.contains($0.name) ?? true }
     let out = URL(filePath: option("out") ?? "/Volumes/StudioData/bombcad/mendonca-prediction/run")
@@ -152,6 +156,16 @@ func runMendonca(device: MTLDevice) throws {
             configure: { solver in
                 if flag("afterburn") {
                     solver.configuration.afterburning = true
+                    solver.configuration.mappedCharge = false
+                }
+                // `--far-field`: open faces that stand ambient air beyond them, not copies of the cells
+                // inside; `--recommended`: the recommended air (hot air, afterburning, far-field faces).
+                if flag("far-field") { solver.configuration.openFaces = .farField }
+                if flag("recommended") {
+                    let recommended = SolverConfiguration.recommended
+                    solver.configuration.airModel = recommended.airModel
+                    solver.configuration.afterburning = recommended.afterburning
+                    solver.configuration.openFaces = recommended.openFaces
                     solver.configuration.mappedCharge = false
                 }
             },
