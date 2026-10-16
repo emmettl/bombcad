@@ -1635,6 +1635,13 @@ struct StandingScene {
                         + "since (the blast's own peak unchanged)",
                     "validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge"),
                 StandingEvidence(
+                    "Blind: Reynolds's high-strength slabs in the contest slab's rig (v0.3.0, b524a9d; predicted "
+                        + "before the measurements were unsealed)",
+                    "Either way, a little stiff: five slabs 0.77–1.06 of the measured peak (0.87 on average with "
+                        + "the closer bars); the sixth, lightly reinforced under the larger load, broken through "
+                        + "where the test held at 182 mm (the safe side, its bars' rupture strain assumed)",
+                    "validation.md#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator"),
+                StandingEvidence(
                     "A reinforced beam bent to failure",
                     "Peak moment 100–101% on 12 and 24 elements through, failing at 44 mm on 12 and holding on "
                         + "24, against 42 mm; breaking at 11 and 7 mm on 36 and 48 (17% strong, the unsafe side, "
@@ -1821,6 +1828,11 @@ struct StandingScene {
                 "Unsafe side: the two slabs nearest the charge collapsed in the test; the model left both "
                     + "standing, barely cracked",
                 "validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge"),
+            StandingEvidence(
+                "Blind: Reynolds's high-strength slabs (v0.3.0)",
+                "Either way: one slab broken through where the test held (the safe side), and no blast face "
+                    + "crushed where four of the tests' were (the unsafe side)",
+                "validation.md#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator"),
         ]
         var level = EvidenceLevel.approximation
         var summary =
