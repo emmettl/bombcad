@@ -220,6 +220,16 @@ func applyChosenAir(_ configuration: inout SolverConfiguration) {
 /// `--fracture-rate 0.5`: how the fracture energy follows the tensile strain-rate law, and the
 /// like, for any command that builds concrete.
 func applyRateOptions(_ material: inout StructureMaterial) {
+    // `--rupture 0.15`: the bars' plastic strain at rupture, over the debonded window; with a
+    // measured curve, its last point moved there (the bar breaks at the last point).
+    if let rupture = option("rupture").flatMap({ Float($0) }), var steel = material.steel {
+        steel.ruptureStrain = rupture
+        if var curve = steel.measuredCurve, curve.count >= 2 {
+            curve[curve.count - 1].x = max(rupture, curve[curve.count - 2].x * 1.001)
+            steel.measuredCurve = curve
+        }
+        material.steel = steel
+    }
     if let residual = option("crack-residual").flatMap({ Float($0) }) { material.crackResidual = residual }
     if let dilatancy = option("dilatancy").flatMap({ Float($0) }) { material.crackDilatancy = dilatancy }
     // `--steel-plateau`: the bars' measured curve held at its peak instead of falling after it
