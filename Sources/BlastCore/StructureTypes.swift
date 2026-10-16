@@ -1486,7 +1486,8 @@ extension StructureModel {
             try container.decodeIfPresent(Float.self, forKey: .strainRateWindow)
             .map { $0 > 0 ? $0 : nil } ?? Self.defaultStrainRateWindow
         rubbleParticles = try container.decodeIfPresent(Bool.self, forKey: .rubbleParticles) ?? false
-        extremeFibreCracking = try container.decodeIfPresent(Bool.self, forKey: .extremeFibreCracking) ?? false
+        extremeFibreCracking =
+            try container.decodeIfPresent(Bool.self, forKey: .extremeFibreCracking) ?? false
         bondSlip = try container.decodeIfPresent(BondSlip.self, forKey: .bondSlip)
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)

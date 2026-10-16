@@ -632,6 +632,20 @@ the bottom layer's centroid (×1.14) and the tensile strength's rate gain.
   of the tensile strength the static resistance falls by a quarter, but the blast run's first peak
   moved by 5% (the diagnosis above).
 
+**Cracking at the extreme fibre, tried** (16 October 2026).
+- **What it does:** judging crack onset at a free face, an option
+  ([concrete model](concrete-model.md#cracking-at-the-extreme-fibre)), brings the static slab to
+  66 kPa without the rate laws (from 76; hand 62) and 77 kPa with them (from 89).
+- **The guards:** they hold within a few per cent, except Janney's beam, whose moment falls from
+  100% to 94%. Not proposed as a default.
+- **The blast load, checked independently:** Mendonça's slab 4, its geometry, the model's own load
+  (a 5 × 5 grid of zones over the top face) and its static curves went to an independent check, in
+  `/Volumes/StudioData/bombcad/edgerton-exchange/mendonca-slab4/`. A hand section with a Biggs single
+  degree of freedom gives 3.2–5.9 mm under the model's load, across 47–90 kPa of resistance. So the
+  model's 4.3 mm follows from its load, and Mendonça's gap lies in the load or the measurement (a
+  flexural response peaks at 3–10 ms; the records' 15–45 ms suggest the supports or the slab moving
+  as a body).
+
 ## Structural response against a real test
 
 ### The test
