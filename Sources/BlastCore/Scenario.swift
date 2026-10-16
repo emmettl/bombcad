@@ -135,6 +135,9 @@ public struct Scenario: Sendable, Hashable, Codable {
     public var attributions: [String]?
     /// Which envelopes were made from imports or map data, and how. Not part of the numerical input.
     public var envelopeSources: [EnvelopeSource]?
+    /// What envelopes are built of, for their one-way damage (`envelopeConstruction(for:)`); an
+    /// envelope without one takes the assumed default. The air never sees it.
+    public var envelopeConstructions: [EnvelopeConstruction]?
     /// A premixed gas cloud ignited at a point: when set, it is the scene's source and the
     /// charges are not fired. (Optional so that layouts saved before it existed still open.)
     public var deflagration: Deflagration?
@@ -196,7 +199,7 @@ extension Scenario {
         case name, domainSize, boxes, rigidObjects, rigidCars, importNotes, importedModels, charge,
             additionalCharges, gauges, structure, atmosphere, reflectiveFaces, objectOwnership,
             additionalStructures, buildingEnvelopes, terrain, deflagration, ventPanels, attributions,
-            envelopeSources
+            envelopeSources, envelopeConstructions
     }
 
     private struct Ownership: Codable {
@@ -235,6 +238,8 @@ extension Scenario {
         terrain = try c.decodeIfPresent(Terrain.self, forKey: .terrain)
         attributions = try c.decodeIfPresent([String].self, forKey: .attributions)
         envelopeSources = try c.decodeIfPresent([EnvelopeSource].self, forKey: .envelopeSources)
+        envelopeConstructions = try c.decodeIfPresent(
+            [EnvelopeConstruction].self, forKey: .envelopeConstructions)
         deflagration = try c.decodeIfPresent(Deflagration.self, forKey: .deflagration)
         ventPanels = try c.decodeIfPresent([VentPanel].self, forKey: .ventPanels)
         let additional =
@@ -298,6 +303,7 @@ extension Scenario {
             try c.encodeIfPresent(attributions, forKey: .attributions)
             try c.encodeIfPresent(envelopeSources, forKey: .envelopeSources)
         }
+        try c.encodeIfPresent(envelopeConstructions, forKey: .envelopeConstructions)
         if !envelopeObjects.isEmpty {
             try c.encode(
                 envelopeObjects.map {

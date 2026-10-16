@@ -373,6 +373,64 @@ not erosion, marks a concrete wall's damage here. These are references on one me
 not measured damage, and the brick walls after cracking are the least trustworthy of them
 ([brick walls](validation.md#brick-walls-debris)).
 
+## One-way damage: single degree of freedom
+
+Each component of an envelope (a wall panel, a roof, a glazing pane) can be given an equivalent
+single degree of freedom driven by the load the air puts on it, the air still seeing the building
+whole: `SDOFSystem` integrates K_LM m ẍ + R(x) = p(t) per unit area after Biggs (1964) as UFC
+3-340-02 (2008) gives it, with a multi-linear resistance, elastic unloading, rebound, and UFC's
+load–mass factors through yield. `EnvelopePanel` builds the systems:
+
+- **Reinforced concrete**: the yield-line resistance of a two-way panel on the bars' and concrete's
+  dynamic strengths (UFC Table 4-1: 1.17 and 1.19), the stiffness of a clamped or simply supported
+  plate (Timoshenko) on the mean of the gross and cracked sections, elastic–perfectly plastic.
+- **Unreinforced masonry**: elastic until the largest moment reaches f_t t²/6, then rocking with
+  the resistance falling to nothing at a deflection of its thickness; no arching.
+- **Annealed glass**: elastic until the largest bending stress reaches its strength (the same 45 MPa
+  as the detailed model's), then nothing; membrane stiffening is left out, so it breaks early.
+
+It matches UFC's worked examples 3A-5, 3A-6(a) and 4A-1 within 1% (`EnvelopeSDOFTests`).
+
+```sh
+swift build -c release --product scenebench
+.build/release/scenebench envelope-sdof <damage references> [--edges=fixed|simple] [--out=<file.json>]
+```
+
+Driven by each component's load on the envelope twins of the [damage references](#damage-references)
+and set against the same component of the detailed building free to respond (summaries in
+[`Benchmarks/EnvelopeDamage/sdof-fixed.json`](../Benchmarks/EnvelopeDamage/sdof-fixed.json) and
+[`sdof-simple.json`](../Benchmarks/EnvelopeDamage/sdof-simple.json)), 16 October 2026:
+
+- **The loads are not the error.** SDOF on the envelope's loads and on the detailed run's own give
+  the same rotation (median ratio 1.02 over 87 components past 0.05°); they part only on the side
+  and back walls of buildings already breached.
+- **Glass**: of 52 panes, SDOF breaks the 45 the detailed buildings break, a median 1.7 ms early
+  (0.59–1.20 of the detailed time), and 7 more that the detailed buildings keep, all under the
+  lightest loads (a peak net pressure of 7.3 kPa at most): wrong on the safe side.
+- **Concrete walls** (34 past 0.1°): with fixed edges SDOF gives a median 0.59 of the detailed
+  rotation, unsafe; with simply supported edges 1.19. The facing wall lies between the two
+  (at 50, 200 and 500 kg: 0.61/1.19, 0.70/1.24 and 1.03/1.87 of the detailed); side walls of a
+  building whose front fails, and roofs under heavy loads (0.16–0.37 at 200–500 kg fixed, 0.27–0.60
+  simple), go further than either, as the frame acts and its junctions erode, which no single panel
+  sees.
+- **Brick walls** (14 past 0.1°): a median 1.10 of the detailed rotation (0.82–2.54), 2.5 times on the facing
+  wall at 50 kg where the shells hold on longer than the rocking mechanism (which the masonry
+  references after cracking are least trusted on anyway).
+- **Under 0.1°** the detailed panels sit on a floor of 0.02–0.04° that SDOF does not have.
+- **Cost**: the detailed building adds 14–35 s a building to a 150 ms event on the M4 Max (the
+  air alone takes 10–15 s); SDOF takes under 1 ms a building.
+- **Not venting**: the envelope's inside stays at ambient, where the detailed buildings' rise to
+  0.1–0.4 kPa with concrete walls whole (1.0 kPa behind cracked brick at 50 kg), 1–2.6 kPa once panes break at 10–50 kg and 11–22 kPa at 200–500 kg.
+  A one-way fill (each pane an orifice into the room once SDOF breaks it, driven by its outer
+  pressure, the room's air compressing adiabatically) gives 2.1, 5.7, 11.3 and 19.5 kPa against
+  the detailed gauges' 1.0, 2.6, 11.0 and 22.4 at 10, 50, 200 and 500 kg (0.87–2.23 times the
+  detailed peaks), mostly above. It cannot see a breached concrete wall (1.6 and 6.5 kPa at 200 and 500 kg).
+
+These are comparisons with the detailed model on one mesh, not with measurement: open tests of
+window glass under blast are listed in [data wanted](data-wanted.md#3h-window-glass-breaking-under-a-blast)
+but not yet read. Freestanding walls (Alsubaei's, Keys's) would need cantilever systems, and remain
+to be compared.
+
 ## Future work: damage for envelope buildings
 
 Envelopes make district-scale scenes possible: the air is cheap at that scale (a 3.3 km domain of
