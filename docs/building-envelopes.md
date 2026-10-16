@@ -522,7 +522,7 @@ one way as the run goes, at most once a second and again when it stops:
     for each building.
 
 These are comparisons with the detailed model on one mesh, not with measurement: open tests of
-window glass under blast are listed in [data wanted](data-wanted.md#3h-window-glass-breaking-under-a-blast)
+window glass under blast are listed in [data survey](data-survey.md#3h-window-glass-breaking-under-a-blast)
 but not yet read. Freestanding walls (Alsubaei's, Keys's) would need cantilever systems, and remain
 to be compared.
 
