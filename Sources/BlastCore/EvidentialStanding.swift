@@ -685,15 +685,18 @@ public enum StandingTable {
             return Entry(
                 title: "Crushed bare elements removed", affects: structure, limit: .approximation,
                 note: "Bare concrete elements squeezed below a quarter of their volume are removed, as "
-                    + "softer materials' are; being judged on the case matrix.",
-                document: "structural-model.md#coupling-to-the-air")
+                    + "softer materials' are. It stops a runaway under contact charges, but sends Hupfauf's SN131 "
+                    + "far face to 53 m/s against 21.5 by default and 14.6 measured, so it is not a default.",
+                document: "concrete-model.md#crushed-bare-elements-two-options-neither-a-default")
         case .releasesCrushedBareHourglass:
             return Entry(
                 title: "Crushed bare elements without hourglass control", affects: structure,
                 limit: .approximation,
                 note: "Bare concrete elements squeezed below a quarter of their volume keep their bars but "
-                    + "lose their hourglass control; being judged on the case matrix.",
-                document: "structural-model.md#coupling-to-the-air")
+                    + "lose their hourglass control. It stops a runaway under contact charges, but sends "
+                    + "Hupfauf's SN131 far face to 46 m/s against 21.5 by default and 14.6 measured, so it is not "
+                    + "a default.",
+                document: "concrete-model.md#crushed-bare-elements-two-options-neither-a-default")
         case .pressedInterlock:
             return Entry(
                 title: "Pressed interlock", affects: structure, limit: .approximation,
@@ -1918,11 +1921,18 @@ struct StandingScene {
                     "Slabs under contact charges (Hupfauf, 2024)",
                     "The far face on the axis 0.88–1.82 times the fit on today's air, the 20 cm slabs near it "
                         + "(1.1–1.7 times on the ideal gas); the loose layer held back rather than thrown, and no "
-                        + "slab holed where four were",
+                        + "slab holed where four were. SN131's close agreement rests partly on crushed bare "
+                        + "elements' hourglass forces, not a physical tie",
                     "validation.md#slabs-under-contact-charges"))
             summary +=
                 " Close in, unsafe again: slabs spall too little, hold their debris back and are holed only by "
                 + "an option, at a stable step to a half and a third of the measured size."
+            if distance < 0.15 {
+                summary +=
+                    " In contact a crushed bare element can run away in some roundings and outlines (two of six "
+                    + "of SN144's runs threw nodes at about 2 km/s); two options stop it but move the debris "
+                    + "away from the tests."
+            }
         }
         if materialClasses.contains(.glass) || materialClasses.contains(.masonry) {
             level = .illustrative
@@ -1941,8 +1951,9 @@ struct StandingScene {
                     + "no test in the record ruptured its bars. Weaker or characteristic bars break sooner.",
                 "Results after failure are one draw among roundings of the same arithmetic: another model, "
                     + "compiler or GPU draws again, a harmless rebuild does not. Failed elements, debris speeds "
-                    + "and residuals move by about Hupfauf's SN131 758–815 elements failed, SN142's far face "
-                    + "116–121 m/s and Janney's moment at 60 mm 29–38 kN m; before failure they agree to about 1%.",
+                    + "and residuals move by about Hupfauf's SN142 far face 61.5–106.3 m/s and SN131's 22.4–27.7 "
+                    + "on today's air, and Janney's moment at 60 mm 29–38 kN m; before failure they agree to "
+                    + "about 1%.",
             ],
             documents: [
                 "concrete-model.md#limitations", "structural-model.md#limitations",

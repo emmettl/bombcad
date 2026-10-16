@@ -383,6 +383,15 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
         burns.airModel = .idealGas
         let alone = SceneStanding(StandingInputs(scenario: contact, cellSize: 0.25, configuration: burns))
         #expect(alone.band(.debrisSpeed) == nil)
+        // An option the slabs were not run with, such as removing crushed bare elements, withholds it.
+        var eroding = contact
+        eroding.structure?.erodesCrushedBare = true
+        burns.airModel = .thermallyPerfect
+        let options = SceneStanding(StandingInputs(scenario: eroding, cellSize: 0.25, configuration: burns))
+        #expect(options.band(.debrisSpeed) == nil)
+        #expect(
+            options[.structuralDamage]?.unbanded?.contains { $0.contains("Crushed bare elements removed") }
+                == true)
     }
 
     /// Mirrored: the convergence study's OA1 row holds every mesh's value and the measurement.

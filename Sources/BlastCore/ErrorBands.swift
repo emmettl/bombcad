@@ -1275,7 +1275,11 @@ extension StandingScene {
                 unbanded.append(
                     "Shear strength was compared only for reinforced concrete solid elements on defaults.")
             }
-            if regime == "in contact" {
+            if regime == "in contact", !unmeasuredStructuralOptions.isEmpty {
+                unbanded.append(
+                    "Far face's speed against the debris's: compared on the defaults; set here: "
+                        + unmeasuredStructuralOptions.joined(separator: ", ") + ".")
+            } else if regime == "in contact" {
                 var debris = figure(
                     "debrisSpeed", .debrisSpeed, "Far face's speed against the debris's",
                     low: "debris too slow",
@@ -1294,7 +1298,10 @@ extension StandingScene {
                         validity:
                             "slabs 20–30 cm under contact charges, 12 elements through, on today's air (the 20 cm "
                             + "slabs near the fit, 0.9–1.2, where on the ideal gas 1.2–1.9); after failure, so one "
-                            + "draw among roundings (the far face 61.5–106.3 m/s on SN142, 22.4–27.7 on SN131)",
+                            + "draw among roundings (the far face 61.5–106.3 m/s on SN142, 22.4–27.7 on SN131); "
+                            + "SN131's close agreement rests partly on crushed bare elements' hourglass forces, not a "
+                            + "physical tie, and those forces run SN144 away in two of six roundings and outlines "
+                            + "(two options stop it, neither a default)",
                         check: "Hupfauf's slabs under contact charges")
                     debris.roundingSpread = ValidationTables.rounding(
                         "hupfaufSN142Burning", "hupfaufSN131Burning")
