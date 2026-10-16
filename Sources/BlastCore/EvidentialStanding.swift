@@ -63,6 +63,7 @@ public enum ResultKind: String, Codable, CaseIterable, Sendable, Identifiable {
     case structuralResponse
     case structuralDamage
     case envelopeExposure
+    case envelopeDamage
     case freestandingMotion
     case thermal
     case surfaceHeating
@@ -79,6 +80,7 @@ public enum ResultKind: String, Codable, CaseIterable, Sendable, Identifiable {
         case .structuralResponse: "Structural deflection"
         case .structuralDamage: "Structural damage and failure"
         case .envelopeExposure: "Building surface exposure"
+        case .envelopeDamage: "Envelope building damage"
         case .freestandingMotion: "Freestanding objects' motion"
         case .thermal: "Thermal radiation"
         case .surfaceHeating: "Surface heating and ignition"
@@ -264,6 +266,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case afterburnLimit
     case shockRefinement
     case twoLevelRefinement
+    case adaptiveSubsteps
     case mappedCharge
     case structureFixedInAir
     case stationaryWalls
@@ -339,6 +342,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .afterburnLimit: return config.afterburning && config.afterburnLimit != nil
         case .shockRefinement: return config.refinement > 1 && config.refinementLevels == 1
         case .twoLevelRefinement: return config.refinement > 1 && config.refinementLevels > 1
+        case .adaptiveSubsteps: return config.refinement > 1 && config.refinementOwnSteps
         case .mappedCharge: return config.mappedCharge
         case .structureFixedInAir: return !structures.isEmpty && !config.twoWayCoupling
         case .stationaryWalls: return !structures.isEmpty && !config.movingWalls
@@ -506,6 +510,14 @@ public enum StandingTable {
                 limit: nil,
                 note: "Two levels by 2 give the peaks and impulses of a grid four times as fine, within 3%.",
                 document: "validation.md#with-refinement")
+        case .adaptiveSubsteps:
+            return Entry(
+                title: "Adaptive substeps", affects: air + structure + [.envelopeExposure], limit: nil,
+                note: "Each refined level takes only the substeps its own waves need: the open blast's peaks "
+                    + "move 1 to 2.5% (up, towards Kingery-Bulmash), impulses and arrivals under 1%, inside the "
+                    + "6 to 8% scatter of the references; close in, where the patches hold the fastest wave, "
+                    + "nothing changes.",
+                document: "air-blast-model.md#refining-near-the-shock")
         case .mappedCharge:
             return Entry(
                 title: "Finely resolved start", affects: air, limit: nil,
@@ -857,6 +869,16 @@ public enum StandingTable {
         "EnvelopeSource.objectID": .input,
         "EnvelopeSource.kind": .option([.importedEnvelopes, .mapBuildings]),
         "EnvelopeSource.detail": .input,
+        "Scenario.envelopeConstructions": .input,
+        "EnvelopeConstruction.objectID": .input,
+        "EnvelopeConstruction.walls": .input,
+        "EnvelopeConstruction.wallThicknessM": .input,
+        "EnvelopeConstruction.roof": .input,
+        "EnvelopeConstruction.roofThicknessM": .input,
+        "EnvelopeConstruction.reinforcementRatio": .input,
+        "EnvelopeConstruction.glassThicknessM": .input,
+        "EnvelopeConstruction.source": .input,
+        "EnvelopeConstruction.detail": .input,
         "Scenario.deflagration": .option([.deflagration, .terrainStaircase]),
         "Scenario.ventPanels": .option([.ventPanels]),
         "Deflagration.gas": .input,
@@ -910,6 +932,7 @@ public enum StandingTable {
         "SolverConfiguration.refinementThreshold": .numerical,
         "SolverConfiguration.refinementMargin": .numerical,
         "SolverConfiguration.refinementLevels": .option([.twoLevelRefinement]),
+        "SolverConfiguration.refinementOwnSteps": .option([.adaptiveSubsteps]),
         "SolverConfiguration.refinementFinerThreshold": .numerical,
         "SolverConfiguration.refinementMemory": .numerical,
         "SolverConfiguration.structureMaskSampling": .numerical,
@@ -1100,7 +1123,9 @@ extension SceneStanding {
         let scene = StandingScene(inputs)
         var results = [scene.peakOverpressure(), scene.impulse()]
         if !scene.structures.isEmpty { results += [scene.structuralResponse(), scene.structuralDamage()] }
-        if !inputs.scenario.envelopeObjects.isEmpty { results.append(scene.envelopeExposure()) }
+        if !inputs.scenario.envelopeObjects.isEmpty {
+            results += [scene.envelopeExposure(), scene.envelopeDamage()]
+        }
         if scene.options.contains(.freestandingBoxes) || scene.options.contains(.freestandingCars) {
             results.append(scene.freestandingMotion())
         }
@@ -1636,18 +1661,21 @@ struct StandingScene {
                         + "in its repeat (104–115% of the first), on 4 to 32 solid elements through, rising with the "
                         + "mesh towards about 119% and not converged (32 holding on half the step); shells 135 mm (124%); a 5% "
                         + "change in its hand-read load moves it 13–14%, a source's 68 ksi bar yield 9%. Under the "
-                        + "contest's lower shot (a scaled record) 79–88% of the peak: too stiff, the unsafe side",
+                        + "contest's lower shot (a scaled record) 79–88% of the peak: too stiff, the unsafe side, "
+                        + "though on another shot's shape it reads 97%, so the shortfall may be the scaled record's. "
+                        + "Open, the same rig's 8 in slabs (RSCR4–6) 91–106%",
                     "validation.md#structural-response-against-a-real-test"),
                 StandingEvidence(
                     "Blind: Mendonça's slabs under an open-air charge (defaults frozen at 047cee3, before the "
                         + "100 µs window; predicted before the measurements were unsealed)",
                     "Unsafe side: the two slabs nearest the charge collapsed, the model's barely cracked. The "
                         + "blast's own peak a tenth to a quarter of meters that likely include the supports' or "
-                        + "rigid-body movement, while the model's slab responds as its own load would have a single "
-                        + "degree of freedom do: the gap lies in the load (its suction, 2.5 times the positive "
-                        + "impulse, being checked) or the meters. The declared peaks near the measured were made "
-                        + "by an artefact of the sleeping air on landing, fixed since, and group B's scored readings "
-                        + "came after a lift-off",
+                        + "rigid-body movement. The model's slab responds as its load would have it; that load's "
+                        + "large suction was the harness's copying faces at 047cee3, which today's far-field faces "
+                        + "do not have, and no bending slab under it reaches the meters, so what remains lies "
+                        + "outside the slab's bending (an offset after lift-off, the underside's push, or the load). "
+                        + "The declared peaks near the measured were made by an artefact of the sleeping air on "
+                        + "landing, fixed since, and group B's scored readings came after a lift-off",
                     "validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge"),
                 StandingEvidence(
                     "Blind: Reynolds's high-strength slabs in the contest slab's rig (v0.3.0, b524a9d; predicted "
@@ -1896,6 +1924,43 @@ struct StandingScene {
                 "concrete-model.md#limitations", "structural-model.md#limitations",
                 "validation.md#what-is-missing", "validation.md#convergence-on-todays-defaults",
             ])
+    }
+
+    func envelopeDamage() -> ResultStanding {
+        let envelopes = inputs.scenario.envelopeObjects.map(\.id)
+        let assumed = envelopes.filter { inputs.scenario.envelopeConstruction(for: $0).source == .assumed }
+            .count
+        return result(
+            .envelopeDamage, .approximation,
+            "One way, from each component's load, with the air seeing the building whole: glass breakage "
+                + "and its time, and concrete panels' rotation between fixed and simply supported edges, as "
+                + "approximations; brick and the inside pressure through broken panes illustrative.",
+            evidence: [
+                StandingEvidence(
+                    "UFC 3-340-02's worked examples 3A-5, 3A-6(a) and 4A-1", "Within 1%",
+                    "building-envelopes.md#one-way-damage-single-degree-of-freedom"),
+                StandingEvidence(
+                    "The same buildings free to respond (19 runs, 2–500 kg)",
+                    "Glass: all 45 panes the detailed buildings break, a median 1.7 ms early, and 7 more; "
+                        + "concrete walls between the fixed and simply supported bounds",
+                    "building-envelopes.md#one-way-damage-single-degree-of-freedom"),
+            ],
+            assumptions: [
+                "Not covered: freestanding (cantilever) walls; no comparison with measurement for concrete, "
+                    + "brick or glass; references on one mesh and one air grid.",
+                "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
+                    + "2° is flagged as beyond the one-way model.",
+                "Glass is annealed, elastic until it breaks, without membrane stiffening; fragments' hazard "
+                    + "is not graded.",
+                "Concrete by ASCE/SEI 59-11's limits for single-reinforced slabs; brick cracked or fallen, with "
+                    + "no arching.",
+            ]
+                + (assumed > 0
+                    ? [
+                        "\(assumed) of \(envelopes.count) envelopes' construction assumed (0.2 m concrete, 0.3%)."
+                    ]
+                    : []),
+            documents: ["building-envelopes.md#one-way-damage-single-degree-of-freedom"])
     }
 
     func envelopeExposure() -> ResultStanding {

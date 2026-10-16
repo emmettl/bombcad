@@ -79,42 +79,9 @@ final class EnvelopeExposure {
         guard !objects.isEmpty, Set(objects.map(\.id)).count == objects.count else {
             throw BlastError.allocationFailed("unique stationary envelope observer owners")
         }
-        let geometry = try objects.map { object -> BuildingEnvelope in
-            if let envelope = object.envelope { return envelope }
-            guard let body = object.structure else { throw SceneObjectError.unsupportedRepresentation }
-            return try BuildingEnvelope(solids: body.solids, openings: body.openings)
-        }
-        let blocks = geometry.map(\.blocks)
-        var faces: [Face] = []
-        var owners: [Int] = []
-        for k in 0..<grid.nz {
-            for j in 0..<grid.ny {
-                for i in 0..<grid.nx {
-                    let cell = grid.index(i, j, k)
-                    guard mask[cell] != 0 else { continue }
-                    let point = grid.cellCentre(i, j, k)
-                    let matches = blocks.indices.filter { owner in
-                        blocks[owner].contains { $0.contains(point) }
-                    }
-                    guard matches.count <= 1 else { throw SceneObjectError.interObjectContact }
-                    guard let owner = matches.first else { continue }
-                    for axis in 0..<3 {
-                        for side in [-1, 1] {
-                            var neighbour = SIMD3(i, j, k)
-                            neighbour[axis] += side
-                            guard grid.contains(neighbour.x, neighbour.y, neighbour.z) else { continue }
-                            let fluid = grid.index(neighbour.x, neighbour.y, neighbour.z)
-                            guard mask[fluid] == 0 else { continue }
-                            faces.append(
-                                Face(
-                                    solid: UInt32(cell), fluid: UInt32(fluid),
-                                    axis: UInt32(axis), positive: side > 0 ? 1 : 0))
-                            owners.append(owner)
-                        }
-                    }
-                }
-            }
-        }
+        let resolved = try Self.resolvedFaces(grid: grid, mask: mask, objects: objects)
+        let faces = resolved.faces.map(\.face)
+        let owners = resolved.faces.map(\.owner)
         guard !faces.isEmpty, Set(owners).count == objects.count,
             let faceBuffer = device.makeBuffer(bytes: faces, length: faces.count * MemoryLayout<Face>.stride),
             let values = device.makeBuffer(length: faces.count * 16, options: .storageModeShared),
@@ -131,6 +98,54 @@ final class EnvelopeExposure {
     }
 
     var memoryFootprint: Int { faceBuffer.length + values.length + signed.length }
+
+    /// Every owned solid cell face next to a fluid cell, with its owner and the block of the
+    /// owner's envelope holding the solid cell; and each owner's envelope.
+    static func resolvedFaces(
+        grid: Grid, mask: UnsafeBufferPointer<UInt8>, objects: [SceneObject]
+    ) throws -> (faces: [(face: Face, owner: Int, block: Int)], geometry: [BuildingEnvelope]) {
+        let geometry = try objects.map { object -> BuildingEnvelope in
+            if let envelope = object.envelope { return envelope }
+            guard let body = object.structure else { throw SceneObjectError.unsupportedRepresentation }
+            return try BuildingEnvelope(structure: body)
+        }
+        let blocks = geometry.map(\.blocks)
+        var faces: [(face: Face, owner: Int, block: Int)] = []
+        for k in 0..<grid.nz {
+            for j in 0..<grid.ny {
+                for i in 0..<grid.nx {
+                    let cell = grid.index(i, j, k)
+                    guard mask[cell] != 0 else { continue }
+                    let point = grid.cellCentre(i, j, k)
+                    var matches: [(owner: Int, block: Int)] = []
+                    for owner in blocks.indices {
+                        if let block = blocks[owner].firstIndex(where: { $0.contains(point) }) {
+                            matches.append((owner, block))
+                        }
+                    }
+                    guard matches.count <= 1 else { throw SceneObjectError.interObjectContact }
+                    guard let match = matches.first else { continue }
+                    for axis in 0..<3 {
+                        for side in [-1, 1] {
+                            var neighbour = SIMD3(i, j, k)
+                            neighbour[axis] += side
+                            guard grid.contains(neighbour.x, neighbour.y, neighbour.z) else { continue }
+                            let fluid = grid.index(neighbour.x, neighbour.y, neighbour.z)
+                            guard mask[fluid] == 0 else { continue }
+                            faces.append(
+                                (
+                                    Face(
+                                        solid: UInt32(cell), fluid: UInt32(fluid),
+                                        axis: UInt32(axis), positive: side > 0 ? 1 : 0),
+                                    match.owner, match.block
+                                ))
+                        }
+                    }
+                }
+            }
+        }
+        return (faces, geometry)
+    }
 
     func reset() {
         memset(values.contents(), 0, values.length)

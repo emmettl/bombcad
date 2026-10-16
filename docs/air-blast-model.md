@@ -492,6 +492,25 @@ shocks" switch (ratio 2) and, under it, "Twice over again" (two levels); `blastb
   all taken, reach both. A third of `refinementMemory` goes to the first level and two thirds to
   the second, whose blocks are an eighth the volume; at the shock it needs four to six times as
   many. A gauge reads the finest cell holding its point.
+- **Each level's own steps.** By default every level takes r substeps in each step of the grid
+  above it, so that each level's Courant number is the coarse grid's, set by the fastest wave
+  anywhere. That wave is often in the hot middle of the fireball, which is smooth and so left
+  coarse once the shock has gone, while the patches follow the slower shock: they are then
+  stepped more often than they need. With `refinementOwnSteps` (`--refine-own-steps`) each level
+  takes only as many of its r substeps as its own fastest wave needs, n = ⌈r Δt v / (C h)⌉ for a
+  step Δt above, its cells h and C the Courant number; the first level counts the second's waves
+  too, so that the second never needs more than r. The speeds are those the level's sweeps
+  recorded in the step before, and a new patch's cells count from its first step. The counts
+  are worked out on the GPU each step: the CPU encodes all r substeps, those not taken get
+  dispatches of no threadgroups, and where a level takes an odd number of sweeps its state is
+  copied back into its first buffer. The coarse step is unchanged, and refluxing, which adds up
+  the fine fluxes over the substeps taken, keeps the gas conserved across every level's edge.
+  It is off by default; the advisor turns it on for refined runs where it expects a level to
+  take under 1.6 of 2 substeps (in the app, "Adaptive substeps" under "Sharpen shocks"). On the
+  recommended air it makes refined runs 1.19 to 1.33 times faster on open ground and 1.07 on the
+  street, and moves the peaks of `validate` up by 1 to 2.5%, towards Kingery–Bulmash, and
+  impulses and arrivals under 1%; close in, where every substep is taken, nothing changes (see
+  [Performance](performance.md#refinement)).
 - **Exactness.** It is all done on the GPU, with no round trip to the CPU between steps, and
   every sum runs in a fixed order: runs repeat exactly, uniform air refined everywhere stays
   exactly uniform, and mass and energy in a closed box are conserved to rounding (within 10⁻⁴,

@@ -29,12 +29,42 @@ public final class BlastSolver {
     private var exposureNeedsInitialSample = false
     private var envelopeExposure: EnvelopeExposure?
     private var envelopeNeedsInitialSample = false
+    private(set) var envelopeComponentRecorder: EnvelopeComponentRecorder?
+    private var componentsNeedInitialSample = false
     private var gpuProfiler: BatchGPUProfiler?
     public private(set) var lastBatchGPUProfile: BatchGPUProfile?
 
     /// Records stationary voxel-face exposure. Deformable reference bodies must be fully pinned.
     /// Must be configured at time zero after loading. Ordinary runs allocate no recorder.
     public func configureEnvelopeExposure(objects: [SceneObject]) throws {
+        let mask = try stationaryMask()
+        envelopeExposure = try EnvelopeExposure(
+            device: device, library: library, grid: grid,
+            mask: mask, objects: objects)
+        envelopeNeedsInitialSample = true
+    }
+
+    /// Records each envelope component's load through the run (`EnvelopeComponent`,
+    /// `EnvelopeComponentHistory`), on the same terms as `configureEnvelopeExposure`; it can run
+    /// beside it or alone. Ordinary runs allocate no recorder.
+    public func configureEnvelopeComponents(objects: [SceneObject], options: EnvelopeHistoryOptions) throws {
+        let mask = try stationaryMask()
+        envelopeComponentRecorder = try EnvelopeComponentRecorder(
+            device: device, library: library, grid: grid, mask: mask, objects: objects, options: options)
+        componentsNeedInitialSample = true
+    }
+
+    /// The components recorded, in the order of their histories.
+    public func envelopeComponents() -> [EnvelopeComponent]? { envelopeComponentRecorder?.components }
+
+    /// Each component's history up to now.
+    public func envelopeComponentHistories() -> [EnvelopeComponentHistory]? {
+        precondition(!batchInFlight, "Cannot read observers during a batch")
+        return envelopeComponentRecorder?.histories(elapsed: time)
+    }
+
+    /// The air's mask, at time zero with every body stationary, for the envelope recorders.
+    private func stationaryMask() throws -> UnsafeBufferPointer<UInt8> {
         precondition(!batchInFlight, "Cannot configure observers during a batch")
         guard time == 0, experimentalBoxes.isEmpty,
             bodies.allSatisfy({ body in
@@ -54,14 +84,9 @@ public final class BlastSolver {
                 return fixed
             })
         else { throw BlastError.allocationFailed("stationary envelope observation at time zero") }
-        let mask = UnsafeBufferPointer(
-            start: maskBuffer.contents().bindMemory(
-                to: UInt8.self,
-                capacity: grid.cellCount), count: grid.cellCount)
-        envelopeExposure = try EnvelopeExposure(
-            device: device, library: library, grid: grid,
-            mask: mask, objects: objects)
-        envelopeNeedsInitialSample = true
+        return UnsafeBufferPointer(
+            start: maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount),
+            count: grid.cellCount)
     }
 
     public func envelopeExposureSnapshot() -> [EnvelopeExposureSnapshot]? {
@@ -77,6 +102,8 @@ public final class BlastSolver {
     func clearEnvelopeExposure() {
         envelopeExposure = nil
         envelopeNeedsInitialSample = false
+        envelopeComponentRecorder = nil
+        componentsNeedInitialSample = false
     }
 
     /// Enables fixed spatial probes before stepping. Does not change the air solution.
@@ -406,7 +433,9 @@ public final class BlastSolver {
         peakBuffer = try buffer(cells * MemoryLayout<Float>.stride, "peak overpressure")
         impulseBuffer = try buffer(cells * MemoryLayout<Float>.stride, "impulse")
         controlBuffer = try buffer(MemoryLayout<StepControl>.stride, "step control")
-        maxSpeedBuffer = try buffer(2 * MemoryLayout<UInt32>.stride, "max wave speed and overpressure")
+        // The fastest wave and the largest overpressure; with refined levels' own steps, each
+        // level's fastest wave.
+        maxSpeedBuffer = try buffer(4 * MemoryLayout<UInt32>.stride, "max wave speed and overpressure")
         gaugeLogBuffer = try buffer(
             (Self.maxStepsPerBatch + 1) * (Self.maxGauges + 1) * MemoryLayout<Float>.stride, "gauge log")
         gaugeCellBuffer = try buffer(Self.maxGauges * MemoryLayout<UInt32>.stride, "gauge cells")
@@ -1383,6 +1412,8 @@ public final class BlastSolver {
         exposureNeedsInitialSample = exposurePlane != nil
         envelopeExposure?.reset()
         envelopeNeedsInitialSample = envelopeExposure != nil
+        envelopeComponentRecorder?.reset()
+        componentsNeedInitialSample = envelopeComponentRecorder != nil
         lastBatchGPUProfile = nil
         lastFluidStep = 0
         checkpointSubsteps = 0
@@ -1652,12 +1683,20 @@ public final class BlastSolver {
         }
         refinement.encodePlace(
             encoder, parent: coarseView(species: species), control: controlBuffer, tileFlags: tileFlagBuffer,
-            uniforms: uniforms, boxDefinition: experimentalBoxDefinition)
+            uniforms: uniforms, boxDefinition: experimentalBoxDefinition, maxSpeed: maxSpeedBuffer)
         if let finerRefinement, let deep {
             finerRefinement.encodePlace(
                 encoder, parent: refinement.view(), control: controlBuffer, tileFlags: tileFlagBuffer,
-                uniforms: deep)
+                uniforms: deep, maxSpeed: maxSpeedBuffer)
         }
+    }
+
+    /// Whether each refined level takes only the substeps its own waves need
+    /// (`SolverConfiguration.refinementOwnSteps`); not with the experimental box, which follows
+    /// the first level's substeps itself, nor with the terrain's cut cells, whose differences are
+    /// shared out after every substep's final sweep.
+    private var ownLevelSteps: Bool {
+        configuration.refinementOwnSteps && experimentalBoxes.isEmpty && refinement?.cutTerrain != true
     }
 
     // MARK: - Stepping
@@ -1748,6 +1787,10 @@ public final class BlastSolver {
                 encodeEnvelopeExposure(encoder, initial: true)
                 envelopeNeedsInitialSample = false
             }
+            if componentsNeedInitialSample {
+                encodeEnvelopeComponents(encoder, initial: true)
+                componentsNeedInitialSample = false
+            }
         }
 
         let extents = [grid.nx, grid.ny, grid.nz]
@@ -1826,6 +1869,11 @@ public final class BlastSolver {
 
             if !asleep { encodeEddyViscosity(encoder, uniforms: uniforms) }
             let refining = refinement != nil && !asleep
+            if let refinement, refining, ownLevelSteps {
+                refinement.encodeLevelSteps(
+                    encoder, control: controlBuffer, maxSpeed: maxSpeedBuffer, uniforms: uniforms,
+                    child: finerRefinement)
+            }
             if let refinement, refining {
                 refinement.encodeSaveHalo(
                     encoder, parent: coarseView(species: currentSpecies), uniforms: uniforms,
@@ -2036,6 +2084,7 @@ public final class BlastSolver {
             phase("observation")
             encodeExposure(encoder, initial: false)
             encodeEnvelopeExposure(encoder, initial: false)
+            encodeEnvelopeComponents(encoder, initial: false)
         }
         guard last else {
             encoder.endEncoding()
@@ -2156,6 +2205,8 @@ public final class BlastSolver {
             isStable: control.batchTime.isFinite && control.dt.isFinite,
             maxOverpressure: control.maxOverpressure, sweptFraction: swept,
             refinedTiles: refinement?.patchCount ?? 0, finerRefinedTiles: finerRefinement?.patchCount ?? 0,
+            firstLevelSubsteps: levelSubsteps(control, level: 0),
+            secondLevelSubsteps: levelSubsteps(control, level: 1),
             stoppedShort: control.stopped == 1,
             reachedLimit: control.stopped == 2, unsupportedInteraction: interObjectContactDetected,
             contactStarted: contactStarted, couplingCapacityExceeded: couplingCapacityExceeded)
@@ -2195,6 +2246,7 @@ public final class BlastSolver {
             if encoded == 0 { break }
             let result = completeBatch()
             total.sweptFraction = Self.mergeSwept(total, result)
+            (total.firstLevelSubsteps, total.secondLevelSubsteps) = Self.mergeSubsteps(total, result)
             total.steps += result.steps
             total.elapsed += result.elapsed
             total.lastTimeStep = result.lastTimeStep
@@ -2241,6 +2293,7 @@ public final class BlastSolver {
         while endTime - time > 1e-7 * max(endTime, 1e-3) {
             let result = advance(steps: 64, timeLimit: endTime)
             total.sweptFraction = Self.mergeSwept(total, result)
+            (total.firstLevelSubsteps, total.secondLevelSubsteps) = Self.mergeSubsteps(total, result)
             total.steps += result.steps
             total.elapsed += result.elapsed
             total.lastTimeStep = result.lastTimeStep
@@ -2253,6 +2306,28 @@ public final class BlastSolver {
         total.unsupportedInteraction = interObjectContactDetected
         total.couplingCapacityExceeded = couplingCapacityExceeded
         return total
+    }
+
+    /// The substeps each refined level took per step in the last batch (see `BatchResult`).
+    private func levelSubsteps(_ control: StepControl, level: Int) -> Double {
+        let levels = refinementLevels
+        guard level < levels.count, let ratio = refinement?.ratio else { return 0 }
+        guard ownLevelSteps, control.activeSteps > 0 else {
+            return Double(level == 0 ? ratio : ratio * ratio)
+        }
+        let sum = level == 0 ? control.levelSubstepSum0 : control.levelSubstepSum1
+        return Double(sum) / Double(control.activeSteps)
+    }
+
+    /// The levels' substeps per step of two runs of steps together, weighted by their steps.
+    private static func mergeSubsteps(_ total: BatchResult, _ result: BatchResult) -> (Double, Double) {
+        let steps = Double(total.steps + result.steps)
+        guard steps > 0 else { return (result.firstLevelSubsteps, result.secondLevelSubsteps) }
+        let (a, b) = (Double(total.steps), Double(result.steps))
+        return (
+            (total.firstLevelSubsteps * a + result.firstLevelSubsteps * b) / steps,
+            (total.secondLevelSubsteps * a + result.secondLevelSubsteps * b) / steps
+        )
     }
 
     /// The swept fraction of two runs of steps together, weighted by their steps.
@@ -2294,6 +2369,59 @@ public final class BlastSolver {
             MTLSize(width: observer.faces.count, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: observer.pipeline.threadExecutionWidth, height: 1, depth: 1)
         )
+    }
+
+    private func encodeEnvelopeComponents(_ encoder: MTLComputeCommandEncoder, initial: Bool) {
+        guard let recorder = envelopeComponentRecorder, !recorder.faces.isEmpty else { return }
+        var uniforms = makeUniforms()
+        var parameters = recorder.parameters(time: time, initial: initial)
+        // Faces in still tiles read the still air; under gravity it is not uniform.
+        parameters.skipStill = recorder.skipStillTiles && configuration.gravity == nil ? 1 : 0
+        let perGroup = EnvelopeComponentRecorder.componentsPerGroup
+        let groups = MTLSize(
+            width: (recorder.components.count + perGroup - 1) / perGroup, height: 1, depth: 1)
+        let groupSize = MTLSize(width: 32 * perGroup, height: 1, depth: 1)
+        // Which components' air has woken: a SIMD group a component (Solver.metal).
+        encoder.setComputePipelineState(recorder.markPipeline)
+        encoder.setBuffer(controlBuffer, offset: 0, index: 2)
+        encoder.setBuffer(recorder.tileRanges, offset: 0, index: 3)
+        encoder.setBuffer(recorder.tiles, offset: 0, index: 4)
+        encoder.setBuffer(tileFlagBuffer, offset: 0, index: 7)
+        encoder.setBuffer(recorder.awake, offset: 0, index: 8)
+        encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 9)
+        encoder.setBytes(
+            &parameters, length: MemoryLayout<EnvelopeComponentRecorder.Parameters>.stride, index: 10)
+        encoder.dispatchThreadgroups(groups, threadsPerThreadgroup: groupSize)
+        // Their faces' pressures, a thread a face, and 32 more for the still air.
+        encoder.setComputePipelineState(recorder.facePipeline)
+        encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
+        encoder.setBuffer(maskBuffer, offset: 0, index: 1)
+        encoder.setBuffer(recorder.faceBuffer, offset: 0, index: 3)
+        encoder.setBuffer(recorder.pressures, offset: 0, index: 4)
+        encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 5)
+        encoder.setBytes(
+            &parameters, length: MemoryLayout<EnvelopeComponentRecorder.Parameters>.stride, index: 6)
+        encoder.setBuffer(recorder.faceComponents, offset: 0, index: 8)
+        encoder.setBuffer(recorder.awake, offset: 0, index: 9)
+        encoder.setBuffer(recorder.stillPressure, offset: 0, index: 10)
+        encoder.dispatchThreads(
+            MTLSize(width: recorder.faces.count + 32, height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(
+                width: recorder.facePipeline.threadExecutionWidth, height: 1, depth: 1))
+        // Then each component's sides: a SIMD group of 32 lanes a component, a few to a threadgroup.
+        encoder.setComputePipelineState(recorder.pipeline)
+        encoder.setBuffer(recorder.pressures, offset: 0, index: 0)
+        encoder.setBuffer(recorder.awake, offset: 0, index: 1)
+        encoder.setBuffer(recorder.sideBuffer, offset: 0, index: 3)
+        encoder.setBuffer(recorder.peaks, offset: 0, index: 5)
+        encoder.setBuffer(recorder.bins, offset: 0, index: 6)
+        // Not written without maxima.
+        encoder.setBuffer(recorder.maxima ?? recorder.bins, offset: 0, index: 7)
+        encoder.setBuffer(recorder.flags, offset: 0, index: 8)
+        encoder.setBytes(
+            &parameters, length: MemoryLayout<EnvelopeComponentRecorder.Parameters>.stride, index: 10)
+        encoder.setBuffer(recorder.stillPressure, offset: 0, index: 11)
+        encoder.dispatchThreadgroups(groups, threadsPerThreadgroup: groupSize)
     }
 
     private func encodeExposure(_ encoder: MTLComputeCommandEncoder, initial: Bool) {
@@ -2422,6 +2550,7 @@ public final class BlastSolver {
         return buffers.reduce(0) { $0 + $1.length } + grid.cellCount * 8
             + (exposurePlane?.buffer.length ?? 0)
             + (envelopeExposure?.memoryFootprint ?? 0)
+            + (envelopeComponentRecorder?.memoryFootprint ?? 0)
             + bodies.reduce(0) { $0 + $1.memoryFootprint }
             + refinementLevels.reduce(0) { $0 + $1.memoryFootprint }
             + (experimentalBoxDefinition?.length ?? 0) + (experimentalBoxMask?.length ?? 0)
@@ -2476,6 +2605,11 @@ public final class BlastSolver {
             uniforms.childTileNx = UInt32(finerRefinement.tileDims.x)
             uniforms.childTileNy = UInt32(finerRefinement.tileDims.y)
             uniforms.childTileNz = UInt32(finerRefinement.tileDims.z)
+        }
+        if refinement != nil, ownLevelSteps {
+            uniforms.ownSteps = 1
+            uniforms.refineLevel = 1
+            uniforms.sweepAxes = UInt32(max(1, [grid.nx, grid.ny, grid.nz].filter { $0 > 1 }.count))
         }
         if hasFlame {
             uniforms.deflagration = 1

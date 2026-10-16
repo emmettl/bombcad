@@ -22,6 +22,8 @@ public enum BandMeasure: String, Codable, CaseIterable, Sendable {
     case radiatedEnergy
     case cloudTop
     case ventedPressure
+    case breakageTime
+    case insidePressure
 }
 
 /// How far a model result has been from measurement, as model/measured, and where that holds.
@@ -277,6 +279,26 @@ public enum ValidationTables {
     /// heading and holds the figure's numbers.
     public static let figures: [Figure] = [
         Figure(
+            id: "envelopeGlassBreak", low: 0.59, high: 1.20,
+            document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
+            quote: "(0.59–1.20 of the detailed time)"),
+        Figure(
+            id: "envelopeConcreteFixed", low: 0.61, high: 1.03,
+            document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
+            quote: "0.61/1.19", "1.03/1.87"),
+        Figure(
+            id: "envelopeConcreteSimple", low: 1.19, high: 1.87,
+            document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
+            quote: "0.61/1.19", "1.03/1.87"),
+        Figure(
+            id: "envelopeBrick", low: 0.82, high: 2.54,
+            document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
+            quote: "(0.82–2.54)"),
+        Figure(
+            id: "envelopeInsideFill", low: 0.87, high: 2.23,
+            document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
+            quote: "(0.87–2.23 times the detailed peaks)"),
+        Figure(
             id: "slabSolid", low: 1.04, high: 1.15, document: "validation.md#summary",
             quote: "solid elements 113–125 mm (104–115%) on 4 to 32 elements through"),
         Figure(
@@ -287,6 +309,10 @@ public enum ValidationTables {
             id: "slabLowerShot", low: 0.79, high: 0.88,
             document: "validation.md#the-contests-repeat-its-lower-shot-and-its-other-entries",
             quote: "the model reaches 79–88% of the measured peak on 4 to 16 elements"),
+        Figure(
+            id: "slabReynoldsOpen", low: 0.91, high: 1.06,
+            document: "validation.md#structural-response-against-a-real-test",
+            quote: "within 0.91–1.06, peaking at 27–30 ms"),
         Figure(
             id: "slabBlindHighStrength", low: 0.77, high: 1.06,
             document: "validation.md#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator",
@@ -1179,7 +1205,15 @@ extension StandingScene {
                             ValidationTables.figure("slabBlindHighStrength").high * 100)
                         + " where they held, a little stiff, and one lightly reinforced slab broke through where "
                         + "the test held (the safe side). Against the lower shot's tabulated 80.5 mm, the upper "
-                        + "reading the record does not keep, the model reads 71–78%",
+                        + "reading the record does not keep, the model reads 71–78%. Open in the same rig, the "
+                        + "contest's 8 in slabs (RSCR4–6) read "
+                        + String(
+                            format: "%.0f–%.0f%%",
+                            ValidationTables.figure("slabReynoldsOpen").low * 100,
+                            ValidationTables.figure("slabReynoldsOpen").high * 100)
+                        + " on another shot's shape; on such a shape the lower shot reads 97% of its plateau, so "
+                        + "the band's low edge may be the scaled record's shape more than the slab, which rests "
+                        + "on that borrowed shape and is left as recorded",
                     check: "A reinforced slab under a blast, and its lower shot")
                 band.low = ValidationTables.figure("slabLowerShot").low
                 band.high = ValidationTables.figure("slabExtrapolated").high
@@ -1307,6 +1341,40 @@ extension StandingScene {
                 unbanded.append(airComparable ?? "No building faces.")
             }
             unbanded.append("Faces shielded or turned from the charge were not compared.")
+        case .envelopeDamage:
+            let page = "building-envelopes.md#one-way-damage-single-degree-of-freedom"
+            let check = "The same buildings free to respond, 0.125 m shells"
+            bands += [
+                figure(
+                    "envelopeGlassBreak", .breakageTime, "When a pane breaks", lowIsUnsafe: false,
+                    low: "too early",
+                    high: "too late", validity: "6 mm annealed panes 1.5 × 1.25 m, 2–500 kg", check: check),
+                figure(
+                    "envelopeConcreteFixed", .peakDeflection, "Concrete wall rotation, fixed edges",
+                    low: "too stiff",
+                    high: "too soft", validity: "the wall facing the charge, 0.2 m, 50–500 kg", check: check),
+                figure(
+                    "envelopeConcreteSimple", .peakDeflection,
+                    "Concrete wall rotation, simply supported edges",
+                    low: "too stiff", high: "too soft",
+                    validity: "the wall facing the charge, 0.2 m, 50–500 kg",
+                    check: check),
+                figure(
+                    "envelopeBrick", .peakDeflection, "Brick wall rotation", low: "too stiff",
+                    high: "too soft",
+                    validity: "0.215 m smeared brick, 2–50 kg, past 0.1°", check: check),
+                figure(
+                    "envelopeInsideFill", .insidePressure, "Inside peak through broken panes",
+                    low: "under-read",
+                    high: "over-read", validity: "a 6 × 6 × 4 m room behind four panes, 10–500 kg",
+                    check: check),
+            ].map { band in
+                var band = band
+                band.derivedMesh = "0.125 m shells, 8 layers"
+                band.document = page
+                return band
+            }
+            unbanded.append("Roofs, and walls beside a failing one, go beyond both concrete bounds: no band.")
         case .thermal:
             if !burning {
                 unbanded.append(
@@ -1478,8 +1546,8 @@ extension StandingScene {
                     has(.afterburning) ? nil : "Turn afterburning on where the incident impulse matters.",
                     has(.afterburning) ? ValidationTables.burningDocument : "validation.md#afterburning")
             }
-        case .envelopeExposure, .freestandingMotion, .thermal, .surfaceHeating, .cloud, .fragments,
-            .groundShock:
+        case .envelopeExposure, .envelopeDamage, .freestandingMotion, .thermal, .surfaceHeating, .cloud,
+            .fragments, .groundShock:
             break
         }
         return advice

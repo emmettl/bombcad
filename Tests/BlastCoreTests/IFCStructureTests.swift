@@ -166,6 +166,16 @@ struct IFCStructureTests {
         let glass = structure.model.solids[pane]
         #expect(abs(glass.size.y - 0.006) < 1e-5 && abs(0.5 * (glass.min.y + glass.max.y) - 0.1) < 1e-5)
         #expect(structure.model.solidMaterial[pane] == .annealedGlass)
+        // A window that names no glass, as most IFC files' do, is glazed all the same, flagged.
+        let plain = try element(
+            2, "Window", "IfcWindow", [box(SIMD3(1, 0.05, 0.75), SIMD3(2.5, 0.15, 2.25))])
+        let assumed = try #require(
+            try IFCStructure(elements: [wall, plain], options: .init(elementSize: 0.25)).members.first {
+                $0.name == "Window"
+            })
+        #expect(
+            assumed.role == .pane && assumed.assumed
+                && assumed.notes.contains { $0.contains("taken as glazed") })
         // A door's opening stays open.
         let door = try element(2, "Door", "IfcDoor", [box(SIMD3(1, 0.05, 0), SIMD3(2.5, 0.15, 2.25))])
         let open = try IFCStructure(elements: [wall, door])

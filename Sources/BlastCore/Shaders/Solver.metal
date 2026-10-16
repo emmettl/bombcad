@@ -116,6 +116,11 @@ struct SolverUniforms {
     // How close, in cells of the grid a level refines, a sharp jump must come to a block for it to
     // be refined (see `flagAround`).
     uint refineMargin;
+    // Refined levels' own steps (see `refineLevelSteps`; 0 when every level takes r substeps of
+    // the grid above): the level these uniforms are for (1 or 2), and the sweeps in a step.
+    uint ownSteps;
+    uint refineLevel;
+    uint sweepAxes;
 };
 
 // Whether the air carries species, for afterburning or a deflagration.
@@ -164,6 +169,14 @@ struct StepControl {
     uint tileSweeps;        // tiles swept, summed over the batch's steps
     uint stopped;           // 1 once a step has stopped short of the time limit, 2 once one reached it
     float lastStep;         // the last step that advanced, before any clipping to the time limit
+    // With refined levels' own steps: each level's substeps in a step of the grid above, their
+    // length, and the substeps taken, summed over the batch (the second level's per coarse step).
+    uint levelSubsteps0;
+    uint levelSubsteps1;
+    float levelStep0;
+    float levelStep1;
+    uint levelSubstepSum0;
+    uint levelSubstepSum1;
 };
 
 // The gas's equation of state. An ideal gas has p = (gamma - 1) times the internal energy per
@@ -2012,6 +2025,191 @@ kernel void sampleEnvelopeExposure(const device Cell *state [[buffer(0)]],
         signedImpulse[index] += p * control.dt;
     }
     records[index] = record;
+}
+
+// Envelope components (EnvelopeComponentRecorder): after each complete fluid step, each
+// component's two sides' area-weighted mean overpressure (its faces all have the cell's area).
+// First every face's pressure, a thread a face, into a list laid out a component and a side at a
+// time; then a SIMD group of 32 lanes a component, `componentsPerGroup` to a threadgroup, each lane
+// summing every 32nd of its side's faces, a fixed tree of shuffles adding the lanes' sums, so the
+// result repeats bit for bit. Each step's value, its right endpoint, is integrated into the bins
+// it overlaps, [i w, (i + 1) w) from t = 0; the peaks are kept from every step.
+struct ComponentRecording {
+    uint components;
+    uint capacity;
+    uint initial;
+    uint maxima;
+    uint startBin;         // the bin the batch starts in
+    float startFraction;   // and how far into it, in seconds
+    float binWidth;
+    uint faces;
+    uint skipStill;        // 1: read a face in a still tile as the still air (no gravity)
+};
+
+constant uint componentLanes = 32;
+// A face whose solid/fluid pair has changed, compared by its bits (fast math may drop a NaN test).
+constant uint brokenFace = 0xFFFFFFFFu;
+
+// Whether each component's air has woken: a SIMD group a component reads the flags of the tiles
+// its faces lie in. A component whose tiles are all still holds the still air on every face.
+kernel void markEnvelopeComponents(const device StepControl &control [[buffer(2)]],
+                                   const device uint2 *tileRanges [[buffer(3)]],
+                                   const device uint *tiles [[buffer(4)]],
+                                   const device uchar *tileFlags [[buffer(7)]],
+                                   device uint *awake [[buffer(8)]],
+                                   constant SolverUniforms &u [[buffer(9)]],
+                                   constant ComponentRecording &r [[buffer(10)]],
+                                   uint group [[threadgroup_position_in_grid]],
+                                   uint simd [[simdgroup_index_in_threadgroup]],
+                                   uint groups [[simdgroups_per_threadgroup]],
+                                   uint lane [[thread_index_in_simdgroup]]) {
+    uint index = group * groups + simd;
+    if (index >= r.components || (control.dt <= 0 && r.initial == 0)) return;
+    bool woken = r.skipStill == 0 || u.tileNx == 0;
+    uint2 range = tileRanges[index];
+    for (uint n = lane; !woken && n < range.y; n += componentLanes) {
+        woken = tileFlags[tiles[range.x + n]] != tileStill;
+    }
+    woken = simd_any(woken);
+    if (lane == 0) awake[index] = woken ? 1u : 0u;
+}
+
+// Every face's pressure, a thread a face, faces of components still asleep left out; the 32
+// threads after the last take the still air, through the same instructions, for those components.
+kernel void sampleEnvelopeComponentFaces(const device Cell *state [[buffer(0)]],
+                                         const device uchar *mask [[buffer(1)]],
+                                         const device StepControl &control [[buffer(2)]],
+                                         const device uint2 *faces [[buffer(3)]],
+                                         device float *pressures [[buffer(4)]],
+                                         constant SolverUniforms &u [[buffer(5)]],
+                                         constant ComponentRecording &r [[buffer(6)]],
+                                         const device uchar *tileFlags [[buffer(7)]],
+                                         const device uint *faceComponent [[buffer(8)]],
+                                         const device uint *awake [[buffer(9)]],
+                                         device float *stillPressure [[buffer(10)]],
+                                         uint index [[thread_position_in_grid]]) {
+    if (index >= r.faces + componentLanes || (control.dt <= 0 && r.initial == 0)) return;
+    bool still = index >= r.faces;
+    uint2 face = still ? uint2(0) : faces[index];
+    if (!still) {
+        if (awake[faceComponent[index]] == 0) return;
+        if (mask[face.x] != 0 || (face.y != 0xFFFFFFFFu && mask[face.y] == 0)) {
+            pressures[index] = as_type<float>(brokenFace);
+            return;
+        }
+        // A cell in a still tile holds the still air: read that, not the cell.
+        uint i = face.x % u.nx;
+        uint j = (face.x / u.nx) % u.ny;
+        uint k = face.x / (u.nx * u.ny);
+        still = r.skipStill != 0 && u.tileNx > 0
+                && tileFlags[i / 8 + u.tileNx * (j / 8 + u.tileNy * (k / 8))] == tileStill;
+    }
+    float rho;
+    float3 momentum;
+    float energy;
+    if (still) {
+        rho = u.stillRho;
+        momentum = float3(u.stillMx, u.stillMy, u.stillMz);
+        energy = u.stillEnergy;
+    } else {
+        Cell c = state[face.x];
+        rho = c.rho;
+        momentum = float3(c.mx, c.my, c.mz);
+        energy = c.energy;
+    }
+    rho = max(rho, u.densityFloor);
+    float kinetic = 0.5f * (momentum.x * momentum.x + momentum.y * momentum.y + momentum.z * momentum.z) / rho;
+    float p = gasPressure(rho, energy - kinetic, u.airModel, u.gamma) - u.ambientPressure;
+    if (index >= r.faces) {
+        stillPressure[index - r.faces] = p;
+    } else {
+        pressures[index] = p;
+    }
+}
+
+static inline float sideSum(const device float *pressures, uint first, uint count, uint lane, thread uint &broken) {
+    float sum = 0.0f;
+    for (uint n = lane; n < count; n += componentLanes) {
+        float p = pressures[first + n];
+        if (as_type<uint>(p) == brokenFace) {
+            broken = 1u;
+        } else {
+            sum += p;
+        }
+    }
+    return sum;
+}
+
+// The same sum for a side whose faces all hold the still air, without reading them: the value
+// comes from a row of copies, an entry a turn, so that fast math cannot fold the additions.
+static inline float stillSum(const device float *still, uint count, uint lane) {
+    float sum = 0.0f;
+    for (uint n = lane; n < count; n += componentLanes) {
+        sum += still[(n / componentLanes) % componentLanes];
+    }
+    return sum;
+}
+
+kernel void sampleEnvelopeComponents(const device float *pressures [[buffer(0)]],
+                                     const device uint *awake [[buffer(1)]],
+                                     const device StepControl &control [[buffer(2)]],
+                                     const device uint4 *sides [[buffer(3)]],
+                                     device float4 *peaks [[buffer(5)]],
+                                     device float2 *bins [[buffer(6)]],
+                                     device float2 *maxima [[buffer(7)]],
+                                     device atomic_uint *truncated [[buffer(8)]],
+                                     constant ComponentRecording &r [[buffer(10)]],
+                                     const device float *stillPressure [[buffer(11)]],
+                                     uint group [[threadgroup_position_in_grid]],
+                                     uint simd [[simdgroup_index_in_threadgroup]],
+                                     uint groups [[simdgroups_per_threadgroup]],
+                                     uint lane [[thread_index_in_simdgroup]]) {
+    uint index = group * groups + simd;
+    if (index >= r.components || (control.dt <= 0 && r.initial == 0)) return;
+    uint4 side = sides[index];
+    uint broken = 0u;
+    float2 sum;
+    if (awake[index] != 0) {
+        sum = float2(sideSum(pressures, side.x, side.y, lane, broken),
+                     sideSum(pressures, side.z, side.w, lane, broken));
+    } else {
+        sum = float2(stillSum(stillPressure, side.y, lane), stillSum(stillPressure, side.w, lane));
+    }
+    for (ushort offset = componentLanes / 2; offset > 0; offset /= 2) {
+        sum += simd_shuffle_down(sum, offset);
+        broken |= simd_shuffle_down(broken, offset);
+    }
+    if (lane != 0) return;
+    float outer = side.y > 0 ? sum.x / float(side.y) : 0.0f;
+    float inner = side.w > 0 ? sum.y / float(side.w) : 0.0f;
+    float4 peak = peaks[index];
+    peak.x = max(peak.x, outer);
+    peak.y = max(peak.y, inner);
+    peak.z = max(peak.z, outer - inner);
+    peak.w = broken != 0 ? 1.0f : peak.w;
+    peaks[index] = peak;
+    float dt = r.initial != 0 ? 0.0f : control.dt;
+    // The step, in seconds from the start of the batch's first bin.
+    float end = r.startFraction + (r.initial != 0 ? 0.0f : control.batchTime);
+    float begin = end - dt;
+    int first = int(floor(begin / r.binWidth));
+    int last = r.initial != 0 ? first : int(ceil(end / r.binWidth)) - 1;
+    for (int k = max(first, 0); k <= last; ++k) {
+        float overlap = min(end, float(k + 1) * r.binWidth) - max(begin, float(k) * r.binWidth);
+        if (overlap <= 0.0f && r.initial == 0) continue;
+        uint slot = r.startBin + uint(k);
+        if (slot >= r.capacity) {
+            atomic_store_explicit(truncated, 1u, memory_order_relaxed);
+            break;
+        }
+        ulong at = ulong(index) * ulong(r.capacity) + slot;
+        float2 bin = bins[at];
+        bin += float2(outer, inner) * max(overlap, 0.0f);
+        bins[at] = bin;
+        if (r.maxima != 0) {
+            maxima[at] = max(maxima[at], float2(outer, inner));
+        }
+    }
 }
 
 // Seeds the wave-speed maximum from the initial condition.

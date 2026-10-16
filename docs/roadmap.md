@@ -163,10 +163,10 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   OpenStreetMap footprints; a cost-against-fidelity advisor reading the error bands
   ([choosing settings](performance.md#choosing-settings)), its costs re-timed on an unloaded Mac
   at kilometre scale.
-- **Next:** a cheaper damage model for envelope buildings
-  (single-degree-of-freedom, pressure–impulse or fragility), once its errors against the detailed
-  model and measurement, and the cost of not venting, are known
-  ([damage for envelope buildings](building-envelopes.md#future-work-damage-for-envelope-buildings)).
+- **Next:** a cheaper damage model for envelope buildings. Its single-degree-of-freedom form is
+  built and judged against the detailed buildings, with the cost of not venting
+  ([one-way damage](building-envelopes.md#one-way-damage-single-degree-of-freedom)), and since
+  16 October in the app (glass and concrete as approximations, brick and the inside illustrative).
 
 ### Distributed computing
 

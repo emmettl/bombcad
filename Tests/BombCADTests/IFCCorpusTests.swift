@@ -71,6 +71,9 @@ struct IFCCorpusTests {
         /// own) leaves out; and the share of the weight on nodes that moved under 10 mm.
         var gravityClamped: Float?
         var gravityHeld: Float?
+        /// Panes of glass, and the shell elements the mesh gives them.
+        var panes = 0
+        var paneElements = 0
         /// The mean speed (m/s) of the weight that moved over 10 mm, at 0.25 s and at the end: one
         /// falling keeps g over the damping rate, about 0.2 m/s; one deflecting comes to rest.
         var gravitySettling: [Float]?
@@ -297,6 +300,23 @@ struct IFCCorpusTests {
                     }
                 }
                 let shellMesh = try ShellMesh(model: structure.model)
+                let paneSolids = Set(structure.members.filter { $0.role == .pane }.compactMap(\.solid))
+                row.panes = paneSolids.count
+                row.paneElements = shellMesh.elements.filter { paneSolids.contains($0.solid) }.count
+                if ProcessInfo.processInfo.environment["BOMBCAD_IFC_CORPUS_PANES"] != nil {
+                    for member in structure.members where member.role == .pane {
+                        guard let solid = member.solid else { continue }
+                        let box = structure.model.solids[solid]
+                        let holding = structure.model.openings.filter { $0.holds(box) }.count
+                        let crossing = structure.model.openings.filter { o in
+                            (0..<3).allSatisfy { o.max[$0] > box.min[$0] && o.min[$0] < box.max[$0] }
+                        }
+                        let elements = shellMesh.elements.filter { $0.solid == solid }.count
+                        print(
+                            "PANES \(member.name) \(box) holding \(holding) crossing \(crossing) elements \(elements) notes \(member.notes.suffix(2))"
+                        )
+                    }
+                }
                 let owner = { (solid: Int) in
                     structure.members.first { $0.solid == solid }?.name ?? "solid \(solid)"
                 }
