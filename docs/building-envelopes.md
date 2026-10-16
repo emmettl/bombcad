@@ -413,7 +413,7 @@ and set against the same component of the detailed building free to respond (sum
   building whose front fails, and roofs under heavy loads (0.16–0.37 at 200–500 kg fixed, 0.27–0.60
   simple), go further than either, as the frame acts and its junctions erode, which no single panel
   sees.
-- **Brick walls** (14 past 0.1°): a median 1.10 of the detailed rotation, 2.5 times on the facing
+- **Brick walls** (14 past 0.1°): a median 1.10 of the detailed rotation (0.82–2.54), 2.5 times on the facing
   wall at 50 kg where the shells hold on longer than the rocking mechanism (which the masonry
   references after cracking are least trusted on anyway).
 - **Under 0.1°** the detailed panels sit on a floor of 0.02–0.04° that SDOF does not have.
@@ -423,8 +423,8 @@ and set against the same component of the detailed building free to respond (sum
   0.1–0.4 kPa with concrete walls whole (1.0 kPa behind cracked brick at 50 kg), 1–2.6 kPa once panes break at 10–50 kg and 11–22 kPa at 200–500 kg.
   A one-way fill (each pane an orifice into the room once SDOF breaks it, driven by its outer
   pressure, the room's air compressing adiabatically) gives 2.1, 5.7, 11.3 and 19.5 kPa against
-  the detailed gauges' 1.0, 2.6, 11.0 and 22.4 at 10, 50, 200 and 500 kg: within a factor of about
-  2.3, mostly above. It cannot see a breached concrete wall (1.6 and 6.5 kPa at 200 and 500 kg).
+  the detailed gauges' 1.0, 2.6, 11.0 and 22.4 at 10, 50, 200 and 500 kg (0.87–2.23 times the
+  detailed peaks), mostly above. It cannot see a breached concrete wall (1.6 and 6.5 kPa at 200 and 500 kg).
 
 These are comparisons with the detailed model on one mesh, not with measurement. Freestanding walls
 (Alsubaei's, Keys's) would need cantilever systems, and remain to be compared.
