@@ -3280,8 +3280,8 @@ It shows that the app's glass breaks when it should under a strong long-duration
 about 20% of the measured time, and that its plate gives E1300's stresses within 8%. Its
 threshold is the flaw model's with the whole pane stressed, a third lower than E1300's design
 resistance: more panes broken at a distance, the safe side. Measured thresholds, panes that held
-beside panes that broke, are still wanted (see [data
-wanted](data-wanted.md#3h-window-glass-breaking-under-a-blast)), and tempered or laminated glass,
+beside panes that broke, are still wanted (see the [data
+survey](data-survey.md#3h-window-glass-breaking-under-a-blast)), and tempered or laminated glass,
 fixed or yielding frames and short-duration waves have no comparison. The load is read off a
 figure, 5–7% under the impulses table 2 gives at the break. One facility and one glass, with
 intrinsic strength scatter the paper puts above the aspect ratio's effect.
@@ -3838,7 +3838,7 @@ measured in nearly closed rooms (scaled vent area under 0.015), with a standard 
 11%. The model's 98% to 108% with afterburning and hot air is inside that scatter, so it agrees
 with the curve about as well as the tests do; the default's 48% at the lightest charge is far
 outside it. The tests behind the curve are still wanted
-([Data wanted](data-wanted.md#3g-the-reference-curves-own-scatter)).
+([Data survey](data-survey.md#3g-the-reference-curves-own-scatter)).
 
 Cooper (*Explosives Engineering*, pp. 153–158) works a closed vessel through by hand: 2 kg of
 TNT burnt completely in 14.1 m³ of air (0.14 kg/m³) leaves 7.35 atm of overpressure, 0.745 MPa.
