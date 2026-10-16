@@ -54,6 +54,10 @@ enum SceneBench {
             try EnvelopeBenchmark.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "envelope-sdof" {
+            try EnvelopeSDOFStudy.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "envelope-damage" {
             try EnvelopeDamageBenchmark.run(Array(args.dropFirst()))
             return

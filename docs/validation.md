@@ -633,6 +633,20 @@ the bottom layer's centroid (×1.14) and the tensile strength's rate gain.
   of the tensile strength the static resistance falls by a quarter, but the blast run's first peak
   moved by 5% (the diagnosis above).
 
+**Cracking at the extreme fibre, tried** (16 October 2026).
+- **What it does:** judging crack onset at a free face, an option
+  ([concrete model](concrete-model.md#cracking-at-the-extreme-fibre)), brings the static slab to
+  66 kPa without the rate laws (from 76; hand 62) and 77 kPa with them (from 89).
+- **The guards:** they hold within a few per cent, except Janney's beam, whose moment falls from
+  100% to 94%. Not proposed as a default.
+- **The blast load, checked independently:** Mendonça's slab 4, its geometry, the model's own load
+  (a 5 × 5 grid of zones over the top face) and its static curves went to an independent check, in
+  `/Volumes/StudioData/bombcad/edgerton-exchange/mendonca-slab4/`. A hand section with a Biggs single
+  degree of freedom gives 3.2–5.9 mm under the model's load, across 47–90 kPa of resistance. So the
+  model's 4.3 mm follows from its load, and Mendonça's gap lies in the load or the measurement (a
+  flexural response peaks at 3–10 ms; the records' 15–45 ms suggest the supports or the slab moving
+  as a body).
+
 ## Blind test 3: Reynolds's high-strength slabs in the blast load simulator
 
 **Blind.** The record's third held-out test, under [the blind-test protocol](blind-tests.md), and the
@@ -4302,7 +4316,7 @@ removed. Those failures come from elsewhere, the crack and removal laws that reg
 element being the next suspect. **Made the default** at 100 µs on 12 October 2026, the user's decision:
 it removes a dependence on the step that has no physical basis and changes the agreeing meshes by
 a few per cent, but it is not a cure for the mesh dependence of failure. Blind test 2 was frozen
-before it, at `047cee3`, and judges the earlier defaults; test 3 would judge this one. The rest
+before it, at `047cee3`, and judges the earlier defaults; [test 3](#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator) judged this one, on the released v0.3.0 (`b524a9d`). The rest
 of this section, above, is on the defaults of 11 October.
 
 **What the new default moved.** The case matrix on its derived meshes (`Scripts/concrete-matrix.py`,
