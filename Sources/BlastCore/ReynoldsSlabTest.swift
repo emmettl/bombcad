@@ -93,7 +93,7 @@ public enum ReynoldsSlabTest {
     static func traces(from url: URL) throws -> [(String, [SIMD2<Float>])] {
         let text = try String(contentsOf: url, encoding: .utf8)
         var traces: [(String, [SIMD2<Float>])] = []
-        for line in text.split(separator: "\n").dropFirst() {
+        for line in text.split(whereSeparator: \.isNewline).dropFirst() {
             // "name",time_ms,pressure_psi,pressure_kPa
             guard let close = line.lastIndex(of: "\"") else { continue }
             let name = String(line[line.index(after: line.startIndex)..<close])
