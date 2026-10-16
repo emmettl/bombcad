@@ -533,6 +533,11 @@ geometric standard deviation, leaving out the shot P3, as he did:
 | Afterburning, a guess at the turbulence | 1.01 (1.22) | 0.99 (1.19) | 0.97 (1.24) | 0.88 (1.27) | 0.74 (1.51) | 0.65 (1.33) |
 | Default gas, the 15 shots of 140, 560 and 1,600 lb | 0.72 (1.23) | 0.70 (1.19) | 0.68 (1.23) | 0.62 (1.26) | 0.61 (1.59) | 0.46 (1.31) |
 
+The hand-overs were made with afterburning and hot air together, the app's one setting for both
+then and now; remade on 16 October 2026 with today's far-field faces as well, they hold 0.2–4.6%
+more buoyancy, and the tops are 1.06, 1.06, 1.04, 0.95, 0.84 and 0.69 times Church's at ½ to 5
+minutes, with the same spreads as the first row.
+
 **For the first two minutes the model is as close as Church's own fit, and accounts for the
 air's stability.** Two minutes after, its tops are 4% above his on average, scattered by a factor
 of 1.21, against his fit's 1.24 on the same shots, within what he gives for his measurements. His

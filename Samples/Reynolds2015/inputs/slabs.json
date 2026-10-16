@@ -1,0 +1,90 @@
+{
+  "source": "K. A. Reynolds, Experimental behavior of high strength concrete slabs subjected to shock loading, MS thesis, University of Missouri-Kansas City, 2015 (hdl:10355/48353). Inputs only: no measured response is given here. Page numbers are the thesis's own.",
+  "rig": {
+    "facility": "The compressed-gas blast load simulator (BLS) at ERDC, Vicksburg: a driver of compressed air/helium, a vented cone, transition pieces and a target vessel holding the slab. The same rig and fixture as the contest's normal-strength slab already in the validation record (docs/validation.md, 'Structural response against a real test'), which the thesis calls RSCR; these are its high-strength companions, HSCV (pp. 7-8, 70).",
+    "load": "A shock wave of approximately uniform reflected pressure over the slab's blast face, with positive and negative phases (pp. 8, 15)."
+  },
+  "slabs": {
+    "count": 6,
+    "names": ["HSCV1", "HSCV2", "HSCV3", "HSCV4", "HSCV5", "HSCV6"],
+    "one_shot_each": true,
+    "size": {
+      "text": "64 x 36 x 4 in. (1625 x 915 x 101.6 mm) (p. 9)",
+      "figures": "Figs 3 and 4 (p. 10) draw the slab 64 in. long and 33.75 in. wide; Figs 5 and 6 (p. 12) also give 33.75 in. between the side framing plates, with a 1/8 in. gap between each side angle and the slab. Schwer (2015), on the contest's slabs, gives 1625.6 x 958.85 x 101.6 mm (37.75 in. wide). The widths disagree; the predictor chooses and says why.",
+      "orientation": "Stood vertically in the target vessel, the 64 in. length vertical and spanning between the supports; blast on one face, the steel near the other (the tensile face)."
+    },
+    "orientation_of_span": "One-way: supported along the two short (36 in.) ends, the long sides free (p. 8)."
+  },
+  "concrete": {
+    "design_strength": "15 ksi (103.4 MPa) (p. 14)",
+    "cylinders": [
+      {"age_days": 14, "fc_psi": 10676.67, "fc_MPa": 73.6, "density_pcf": 152.0, "density_kg_m3": 2434.8},
+      {"age_days": 28, "fc_psi": 13473.33, "fc_MPa": 92.9, "density_pcf": 151.9, "density_kg_m3": 2433.2},
+      {"age_days": 56, "fc_psi": 15756.67, "fc_MPa": 108.6, "density_pcf": 153.2, "density_kg_m3": 2454.0}
+    ],
+    "cylinder_note": "Three cylinders at each age, averages (p. 14). The slabs' age when tested is not stated.",
+    "fresh": "Slump 9 in. (228.6 mm), unit weight 156.4 pcf (2,505.3 kg/m3), air 2.5%, 81 F (p. 14).",
+    "not_given": "Tensile strength, modulus, fracture energy, aggregate size. (The thesis's own SDOF calculation assumes a modulus of 48,133 MPa for 103 MPa concrete and an effective moment of inertia of 70% of gross, p. 36; these are its assumptions, not measurements.)"
+  },
+  "reinforcement": {
+    "bars": "No. 3 (9.5 mm, 71 mm2) vanadium steel, one layer on the tensile face (the face away from the blast), 1/2 in. (12.7 mm) clear cover, typical (p. 9).",
+    "yield": "83 ksi (572.3 MPa) 'after tensile testing' (pp. 9, 14). Ultimate strength, strain at it and elongation not given.",
+    "longitudinal": {
+      "HSCV1, HSCV2, HSCV3": "No. 3 at 4 in. centre to centre (101.6 mm); reinforcement ratio 0.69% (p. 9).",
+      "HSCV4, HSCV5, HSCV6": "No. 3 at 8 in. centre to centre (203.2 mm); reinforcement ratio 0.35% (p. 9).",
+      "bar_length": "62.5 in. (Figs 3, 4)",
+      "layout_as_drawn": "Fig 3 (4 in.): across the 33.75 in. width the dimensions read 3/4 in. at the edge, then 2 in., six of 4 in., 2 in., and 2.875 in. Fig 4 (8 in.): 3/4 in., 6, 8, 8, 6 in. and 2.875 in. The drawn dimensions do not sum to the width, and the bar count is not stated; the predictor decides and says why."
+    },
+    "transverse": {
+      "spacing": "Both layouts: the first 8 in. from the slab's end, then 12 in. centre to centre (Figs 3, 4).",
+      "bar_length": "32.35 in. (Figs 3, 4)",
+      "level": "Same single layer; which bars lie nearer the face is not stated."
+    },
+    "regular_strength_companions": "Not part of this test: the RSCR slabs (the record's contest slab) had Grade 60 bars in the same two layouts."
+  },
+  "supports": {
+    "text": "Pinned within a steel frame bolted into the target vessel. The slabs were set on a cardboard foam-like material with a compressible honeycomb structure. Hollow structural steel (HSS) tubes at the top and bottom of the slab, on the long ends of the blast face, were taken as simple supports, to keep the slab from falling during a possible rebound. The short sides were unsupported, gaps being left between the slab and the loading frame (p. 8).",
+    "span": "58 in. (1,473 mm), 'the longitudinal (long) center-to-center distance between the simple HSS tube supports' (p. 23; marked on the photograph of Fig 7, p. 13).",
+    "figures": "Fig 5 (blast face): a structural tube 3 x 3 x 5/16 in. in front across each end, 'deformable material top & bottom', 52 in. between the end members' inner edges, 6 in. from each to the slab's end, 70.75 in. overall. Fig 6 (face away from the blast): a structural tube 6 x 8 x 5/8 in. across each end, 8 in. wide, 52 in. clear between them; 1.5 in. steel plates on three sides.",
+    "record_note": "The validation record's contest slab, in this fixture, found 52 in. between bearings consistent with the photographs and a 58 in. span collapsing its model ('The span', docs/validation.md). The thesis's 58 in. and the figures' 52 in. clear disagree in the same way here; the predictor chooses and says why."
+  },
+  "loads": {
+    "description": "Reflected pressure recorded at six gauges in the frame around the slab (four at the corners, two at mid-sides, Figs 5 and 6), 1000 kHz; the BLS is designed to give approximately uniform pressure (p. 15).",
+    "table1_average": {
+      "note": "Table 1 (p. 24): the average of each gauge's peak pressure and the average impulse, per slab.",
+      "HSCV1": {"peak_psi": 49.7, "peak_kPa": 342.7, "impulse_psi_ms": 1013.3, "impulse_kPa_ms": 6986.5},
+      "HSCV2": {"peak_psi": 49.2, "peak_kPa": 339.2, "impulse_psi_ms": 997.6, "impulse_kPa_ms": 6878.2},
+      "HSCV3": {"peak_psi": 39.9, "peak_kPa": 275.1, "impulse_psi_ms": 773.9, "impulse_kPa_ms": 5335.8},
+      "HSCV4": {"peak_psi": 41.1, "peak_kPa": 283.4, "impulse_psi_ms": 753.9, "impulse_kPa_ms": 5198.0},
+      "HSCV5": {"peak_psi": 31.0, "peak_kPa": 213.7, "impulse_psi_ms": 511.6, "impulse_kPa_ms": 3527.4},
+      "HSCV6": {"peak_psi": 35.4, "peak_kPa": 244.1, "impulse_psi_ms": 576.1, "impulse_kPa_ms": 3972.1}
+    },
+    "table6_7_points": {
+      "note": "Tables 6 and 7 (pp. 49-50): each slab's average pressure history as the thesis entered it in SBEDS, at its peak and every 10 ms. Time ms: pressure psi.",
+      "HSCV1": [[0, 11.431], [6.926, 49.671], [10, 34.840], [20, 14.309], [30, 12.775], [40, 10.748], [50, 6.059], [60, 0]],
+      "HSCV2": [[0, 4.357], [6.575, 49.183], [10, 35.392], [20, 15.895], [30, 11.818], [40, 10.170], [50, 5.563], [60, 0]],
+      "HSCV3": [[0, 6.724], [7.212, 39.928], [10, 28.195], [20, 12.860], [30, 11.177], [40, 6.518], [50, 3.283], [60, 0]],
+      "HSCV4": [[0, 6.743], [7.487, 41.128], [10, 28.491], [20, 12.546], [30, 11.514], [40, 5.941], [50, 2.677], [60, 0]],
+      "HSCV5": [[0, 6.118], [2.649, 31.004], [10, 17.485], [20, 7.873], [30, 6.943], [40, 2.296], [50, 1.265], [60, 0]],
+      "HSCV6": [[0, 0.730], [2.617, 35.399], [10, 20.299], [20, 10.755], [30, 6.237], [40, 2.916], [50, 1.504], [60, 0]],
+      "caution": "The thesis's Tables 2 and 3 repeat HSCV1's and HSCV3's points with the peak at 2.65 ms instead of 6.9 and 7.2 ms; Figs 9 and 10 and Tables 6 and 7 agree with each other, so Tables 2 and 3 are left out."
+    },
+    "digitised_histories": {
+      "file": "loads.csv",
+      "note": "The average reflected pressure histories of Figs 9 and 10 (pp. 18-19), digitised by the judge from the thesis's embedded images: the curves' markers, one a millisecond, found by grey level after erosion and picked as the smoothest path (scripts in digitise/). In Fig 9 HSCV1 and HSCV2 overlap within about 1-2 psi and are given as one trace, read from both curves' markers. Each trace starts at 0 at t = 0; the figures show the pressure rising within the first millisecond. Read to about +/-0.5 psi.",
+      "check": "Integrated, the traces give HSCV1/2 949, HSCV3 734, HSCV4 737, HSCV5 507 and HSCV6 560 psi-ms over 54-58 ms, against the figures' own impulse curves at their ends (read from the same images) of about 964 (HSCV1), 925 (HSCV2), 755, 747, 510 and 572, and Table 1's averages above, which are higher by 2-7%.",
+      "which_is_primary": "Not prescribed: the predictor may use the digitised traces, Table 6-7's points or a shape scaled to Table 1, and says which and why."
+    },
+    "gauges_HSCV1": {
+      "note": "Fig 8 (p. 16): each gauge's peak pressure and impulse on HSCV1, showing the spread over the face. P1-P6 in the frame beside the slab, PD and PE further out.",
+      "peak_psi": {"P1": 48.97, "P2": 54.72, "P3": 52.39, "P4": 53.1, "P5": 53.48, "P6": 53.04, "PD": 53.2, "PE": 53.65},
+      "impulse_psi_ms": {"P1": 994.16, "P2": 1142.59, "P3": 998.72, "P4": 966.49, "P5": 978.36, "P6": 996.94, "PD": 986.16, "PE": 1042.8},
+      "driver": "Driver pressure 1150 psi, driver length 5.5 ft, HE/air 0/100, gap 2 in. (HSCV1 only)."
+    }
+  },
+  "instruments": {
+    "deflection": "A laser displacement sensor pointing at the centre of the face away from the blast, 1000 kHz, and an accelerometer beside it (p. 11). The thesis reports the laser's reading; debris crossing the beam can make it jump (p. 20).",
+    "strain": "Two surface strain gauges on the tensile face at quarter span, along the span (pp. 11, 28).",
+    "cameras": "Four high-speed cameras, 1000 frames a second (p. 11)."
+  }
+}

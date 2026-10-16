@@ -9,7 +9,8 @@ extension ProjectRunSettings {
     /// the standing both take them from here.
     static func configureAir(
         _ configuration: inout SolverConfiguration, detailedCharge: Bool, sharpShocks: Bool, shockLevels: Int,
-        gravity: Bool = false, shockThreshold: Float = 0.1, terrainCutCells: Bool = true
+        gravity: Bool = false, shockThreshold: Float = 0.1, terrainCutCells: Bool = true,
+        groundStiffness: Float? = nil
     ) {
         configuration.afterburning = detailedCharge
         configuration.airModel = detailedCharge ? .thermallyPerfect : .idealGas
@@ -20,6 +21,7 @@ extension ProjectRunSettings {
         configuration.refinementThreshold = shockThreshold
         configuration.gravity = gravity ? AirGravity() : nil
         configuration.terrainCutCells = terrainCutCells
+        configuration.groundStiffness = groundStiffness
     }
 
     /// What the standing of a run of `scenario` under these settings is derived from.
@@ -31,7 +33,7 @@ extension ProjectRunSettings {
         Self.configureAir(
             &configuration, detailedCharge: detailedCharge, sharpShocks: sharpShocks,
             shockLevels: shockLevels ?? 1, gravity: gravity ?? false, shockThreshold: shockThreshold ?? 0.1,
-            terrainCutCells: cutsTerrain(over: scenario))
+            terrainCutCells: cutsTerrain(over: scenario), groundStiffness: groundStiffness)
         return StandingInputs(
             scenario: scenario, cellSize: (Resolution(rawValue: resolution) ?? .medium).cellSize,
             configuration: configuration, thermal: thermal, cloud: cloud, fragments: fragments,
