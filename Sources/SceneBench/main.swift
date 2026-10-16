@@ -54,6 +54,10 @@ enum SceneBench {
             try EnvelopeBenchmark.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "envelope-histories" {
+            try EnvelopeHistoryBenchmark.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "envelope-sdof" {
             try EnvelopeSDOFStudy.run(Array(args.dropFirst()))
             return

@@ -578,10 +578,23 @@ final class SimulationModel {
     private(set) var groundShockLive: GroundShockResult?
     private(set) var envelopeExposure: [EnvelopeExposureSummary] = []
     private(set) var envelopeExposureStatus = ""
+    /// Record each envelope component's pressure history too (headless `--envelope-histories`);
+    /// nil records none, at no cost.
+    @ObservationIgnored var envelopeHistoryOptions: EnvelopeHistoryOptions?
 
     var canExportEnvelopeExposure: Bool {
         !isRunning && !batchInFlight && !isLoadingInputs && !rebuildPending
             && settings.scenario == scenario && stepCount > 0 && !envelopeExposure.isEmpty
+    }
+
+    /// Each envelope component's pressure history, as `--envelope-histories` writes it.
+    func envelopeHistoriesData() throws -> Data {
+        guard canExportEnvelopeExposure, let histories = solver?.envelopeComponentHistories() else {
+            throw ProjectFileError.invalid("Pause a run with envelope component histories before exporting.")
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        return try encoder.encode(histories)
     }
 
     func envelopeResultsData() throws -> Data {
@@ -2206,6 +2219,10 @@ final class SimulationModel {
                 if scenario.structuralObjects.isEmpty {
                     do {
                         try solver.configureEnvelopeExposure(objects: scenario.envelopeObjects)
+                        if let options = envelopeHistoryOptions {
+                            try solver.configureEnvelopeComponents(
+                                objects: scenario.envelopeObjects, options: options)
+                        }
                         envelopeExposure = solver.envelopeExposureSummaries() ?? []
                     } catch {
                         envelopeExposureStatus = "Surface results unavailable: \(error.localizedDescription)"
