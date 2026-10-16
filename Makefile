@@ -1,4 +1,4 @@
-.PHONY: build build-strict app run test test-core release-smoke lint format icons ifc-converter ci-test check check-light check-remote check-anywhere release-check release
+.PHONY: build build-strict app app-smoke run test test-core release-smoke lint format icons ifc-converter ci-test check check-light check-remote check-anywhere release-check release
 
 CONFIGURATION ?= release
 
@@ -19,6 +19,11 @@ app:
 run: app
 	open dist/BombCAD.app
 
+# The packaged app run headless from inside its bundle, as a downloaded copy starts: its resource
+# bundles all there and the solver built from them.
+app-smoke: app
+	python3 Scripts/release.py smoke dist/BombCAD.app
+
 ifc-converter:
 	python3 Scripts/prepare-ifc-converter.py
 
@@ -37,7 +42,7 @@ test-core: ifc-converter
 
 # The solvers built as a release is, run for a few seconds each: solid and shell elements, bars
 # that slip and base connections. `swift test` builds for debugging, and the optimiser has
-# miscompiled code that ran correctly there.
+# miscompiled code that ran correctly there. Then the packaged app, run from inside its bundle.
 release-smoke:
 	swift build -c release --product blastbench
 	.build/release/blastbench shear --layers 12
@@ -45,6 +50,7 @@ release-smoke:
 	.build/release/blastbench slab --shells 1
 	.build/release/blastbench anchorage --standoff 25 --bases clamped,dowelled,soil,footing --time 0.05
 	.build/release/blastbench anchorage --shells --standoff 25 --bases clamped,soil --time 0.05
+	$(MAKE) app-smoke
 
 lint:
 	swift format lint --strict --recursive Package.swift Sources Tests Scripts

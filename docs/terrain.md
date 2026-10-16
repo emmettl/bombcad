@@ -386,6 +386,18 @@ On the Mac mini, unloaded, 2.2 million cells (the ridges on 0.25 m cells):
   plain sweep won back a few percent more but moved results by rounding, and was left out. The number of steps is the same
   within 1%, except the 8 m ridge's (6% more on cut cells, where the staircase pushed the
   hottest gas out of the domain).
+- **Refined once on the recommended air** (`blastbench profile --preset open --dx 0.25 --terrain
+  slope --refine 2`, the mini unloaded, three runs each): the slope's cut cells take 80–82 s of GPU
+  time against the staircase's 69–71 s (+15%, +24% a step, 7% fewer steps), but finish sooner by
+  the clock (61–62 s against 77–79 s), the staircase keeping nearly twice the patches along the
+  surface (5,886 against 3,157 on average). The difference is the fine sweep: about three times
+  the staircase's per patch, of which most (5,040 down to 2,200 per patch) is the fine cut cells'
+  own update, two more Riemann problems a sweep each (the wall's pressure and the rounding taken
+  out for air at rest), on hot air's costly equation of state; the patches lie on the surface,
+  so nearly every group of 32 threads waits on a cut cell. Not its thread limit (1,024 either
+  way), nor the geometry worked out for cells beyond a patch (a tenth). Recorded, not fixed: doing
+  the cut cells' update in a pass of its own would compile differently and move results by
+  rounding.
 - **Refined**, the ridges cost within 5% of the staircase refined alike once (6.3–6.6 ms a step
   on 0.25 m cells refined by 2) and within the mini's noise twice (0.7 to 1.1 times, 28–36 ms a
   step): the fine cells' geometry is worked out once a patch is placed, and patches along the
