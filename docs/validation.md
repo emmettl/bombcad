@@ -533,6 +533,33 @@ construction, as what holds these slabs. What does is not found on these meshes.
 - **The bands stand:** Mendonça's bands, tied to their derived meshes, hold on any of these meshes.
 - **Cost:** the 24-element runs cost nine and eight times the 8-element ones.
 
+**Statically, twice as strong as its yield line** (16 October 2026).
+- **The test:** slab 4 on its trestles as the harness holds it, without air, under a uniform
+  pressure rising over 0.5 s and 1 s (halving the rate moves the figures by 1–4%), on 8 elements.
+- **The tool:** `blastbench mendonca-static`, on branch `claude/mendonca-static`, not on main.
+- **The reference:** a yield line for a one-way slab over the 0.9 m between the bearings' centres.
+  With the inputs' bars (5 mm at 100 mm, 55 mm deep) at their stated 350 MPa, m_p is about
+  3.7 kN m/m and q = 8 m_p / L² about 37 kPa. The concrete's own cracking moment (f_t 4.7 MPa on
+  the gross section) gives about 49 kPa, above the yield line, so a slab this lightly reinforced
+  should fail as it cracks.
+
+| Concrete | First crack | Bars first yield | Pressure at 5 / 10 / 20 mm |
+|---|---|---|---|
+| As the inputs give it | 89 kPa | 89 kPa | 90 / 91 / 92 kPa: cracks, yields and runs away at once |
+| A quarter of its tensile strength | 22 kPa | 58 kPa | 67 / 70 / 73 kPa |
+
+- **Static resistance is several times 40 kPa, and the dynamic excess goes beyond it.** The
+  model's slab holds 2.4 times its yield line uncracked, and 1.9 times it fully cracked, with its
+  tensile strength cut to a quarter. So part of the excess is in the concrete or the element's
+  kinematics, before any rate or inertia.
+- **Cracking.** It comes at 1.8 times the hand estimate (the bottom layer's centroid, an eighth of
+  the depth in, accounts for about 1.14 of that).
+- **The cracked slab.** It goes on carrying about twice the yield line's moment.
+- **Dynamics.** The blast run's equivalent of about 220 kPa is a further factor of about 2.5 above
+  the static 89 kPa.
+- **Next:** resistance curves from the same slab in a code with another element (Edgerton's tets
+  and crack band), to tell the concrete from the element.
+
 ## Structural response against a real test
 
 ### The test
