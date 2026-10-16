@@ -127,6 +127,22 @@ func runMendonca(device: MTLDevice) throws {
         let result = try MendoncaSlabTest.run(
             device: device, slab: slab, inputs: inputs, settings: settings,
             adjust: { scenario in
+                // `--top-grid 5`: gauges on a 5 x 5 grid over the top face too, at the centres of
+                // equal zones, to export the load the slab took (for another code to apply). Lifted
+                // 5 mm off the face as the dataset's gauges are: a point on the face reads as
+                // below it, and follows the underside.
+                if let count = option("top-grid").flatMap({ Int($0) }) {
+                    let box = MendoncaSlabTest.slabBox(inputs: inputs, settings: settings)
+                    let size = (box.max.x - box.min.x) / Float(count)
+                    for a in 0..<count {
+                        for b in 0..<count {
+                            let point = SIMD3(
+                                box.min.x + (Float(a) + 0.5) * size, box.min.y + (Float(b) + 0.5) * size,
+                                box.max.z + 0.005)
+                            scenario.gauges.append(Gauge("zone x\(a + 1) y\(b + 1)", at: point))
+                        }
+                    }
+                }
                 guard var model = scenario.structure else { return }
                 if flag("no-rate") { model.material.rateDependent = false }
                 if let bond = chosenBondSlip(diameter: inputs.meshBar) { model.bondSlip = bond }

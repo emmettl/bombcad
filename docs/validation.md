@@ -383,12 +383,43 @@ and by far.
   9.1 mm. So the model's structure is consistent with its load. This qualifies the diagnosis below,
   whose rigid-plastic reading of about 220 kPa took the centre's impulse and ignored the suction.
   The gap to the meters lies in the load, in the meters, or in both:
-  - the suction, 2.5 times the positive impulse, is being checked as a possible artefact of the
-    domain or the gauges;
+  - the suction, 2.5 times the positive impulse, turned out to be the domain's (below);
   - the five strongest measured gauges are 20–65% above the model's at the same places, though the
     eight-gauge mean is within 10%.
 - **The collapses stand.** No movement of the supports explains them. At 1.3 and 1.6 m the
   model's load or its strength, or both, are wrong on the unsafe side.
+
+**Closing diagnosis of the 2.0 m slabs** (16 October 2026, from the Edgerton session's third
+addendum to its independent check, the same `results.md`). The check was repeated on slab 4's load
+re-run with far-field faces and twice the domain (`bombcad-blast-farfield/` beside it).
+- **The suction was the domain's.** The blind harness's 1 m of air beyond the slab, on the
+  frozen commit's copying faces, drained below ambient after the shock left. With ambient air
+  beyond the faces, the top face keeps only the physical negative phase, about −260 Pa s in
+  10 ms, near UFC 3-340-02's 320.
+- **The model's dynamics still match its load.** The far-field load is +509 Pa s on the top face
+  and +582 Pa s of underside push, the ground's reflection, within 50 ms. On it the SDOF peaks at
+  3.7–4.7 mm at 3.8–3.9 ms for any resistance from 47 to 90 kPa, as the model's 4.3 mm at 4 ms.
+- **No bending slab under this load reaches the measured readings.** Net of the underside, even
+  zero resistance gives about 6 mm, the push from beneath reversing the motion. The top face
+  alone would need a resistance of about 13 kPa to reach 18.7 mm, a quarter of the bars' own
+  capacity.
+
+So the remaining difference lies outside the slab's bending, in one or more of:
+1. **the measured reading:** a downward offset after the lift-off, at the meters' hooks, the
+   trestles or the ground. The records end at their scored values and swing furthest upwards;
+2. **the underside load:** the test's slabs had open sides, timber trestles and a steel box of
+   unstated size on clay beneath them (the inputs). A much weaker push from beneath than the
+   model's rigid ground gives would leave the top-only response, still at most about 7–8 mm;
+3. **the top load:** about 1.5 times the model's positive impulse with little negative phase
+   would be needed.
+
+None of these can be settled from the sources.
+
+**What the suction touched.** It came from the harness's small domain on the copying faces that
+were the default at `047cee3`. Since 15 October 2026 (v0.3.0) the default is far-field faces, so
+a scene on today's defaults is not affected. The
+blind result stands as scored. **The gap that stands is the two collapses**, at 0.93 and 1.16
+m/kg^(1/3), on the unsafe side.
 
 **Read against the calibrated record.** The calibrated open-air slabs were 40–70% too stiff under
 Wu's small charges and a third to a half as far down close in (Chiquito). Here the blast peak is
@@ -632,6 +663,20 @@ the bottom layer's centroid (×1.14) and the tensile strength's rate gain.
 - **It does not reach the blast gap.** The dynamic gap remains four to nine times: with a quarter
   of the tensile strength the static resistance falls by a quarter, but the blast run's first peak
   moved by 5% (the diagnosis above).
+
+**Cracking at the extreme fibre, tried** (16 October 2026).
+- **What it does:** judging crack onset at a free face, an option
+  ([concrete model](concrete-model.md#cracking-at-the-extreme-fibre)), brings the static slab to
+  66 kPa without the rate laws (from 76; hand 62) and 77 kPa with them (from 89).
+- **The guards:** they hold within a few per cent, except Janney's beam, whose moment falls from
+  100% to 94%. Not proposed as a default.
+- **The blast load, checked independently:** Mendonça's slab 4, its geometry, the model's own load
+  (a 5 × 5 grid of zones over the top face) and its static curves went to an independent check, in
+  `/Volumes/StudioData/bombcad/edgerton-exchange/mendonca-slab4/`. A hand section with a Biggs single
+  degree of freedom gives 3.2–5.9 mm under the model's load, across 47–90 kPa of resistance. So the
+  model's 4.3 mm follows from its load, and Mendonça's gap lies in the load or the measurement (a
+  flexural response peaks at 3–10 ms; the records' 15–45 ms suggest the supports or the slab moving
+  as a body).
 
 ## Blind test 3: Reynolds's high-strength slabs in the blast load simulator
 

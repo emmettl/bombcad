@@ -287,6 +287,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case nonlocalCracking
     case nonDefaultRateWindow
     case rubbleParticles
+    case extremeFibreCracking
     case pressedInterlock
     case hourglassSecant
     case hourglassWithoutSteel
@@ -366,6 +367,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .nonDefaultRateWindow:
             return any { $0.strainRateWindow != StructureModel.defaultStrainRateWindow }
         case .rubbleParticles: return !concrete.isEmpty && any { $0.rubbleParticles }
+        case .extremeFibreCracking: return !concrete.isEmpty && any { $0.extremeFibreCracking }
         case .pressedInterlock: return any { $0.pressedInterlock }
         case .hourglassSecant: return !concrete.isEmpty && any { $0.hourglassFollowsCracking }
         case .hourglassWithoutSteel: return !concrete.isEmpty && any { !$0.hourglassCapsSteel }
@@ -656,6 +658,12 @@ public enum StandingTable {
                 note: "Failed concrete keeps its mass as particles in contact: Hupfauf's debris thrown at "
                     + "about 22% from the measured speed against 45%, but no slab holed that the tests holed.",
                 document: "validation.md#rubble-kept-as-particles-stage-3")
+        case .extremeFibreCracking:
+            return Entry(
+                title: "Cracking at the extreme fibre", affects: structure, limit: .approximation,
+                note: "Elements with a free face crack when that face reaches the tensile strength; "
+                    + "being judged on the case matrix.",
+                document: "concrete-model.md#cracking-at-the-extreme-fibre")
         case .pressedInterlock:
             return Entry(
                 title: "Pressed interlock", affects: structure, limit: .approximation,
@@ -944,6 +952,7 @@ public enum StandingTable {
         "StructureModel.crackAveraging": .option([.nonlocalCracking]),
         "StructureModel.strainRateWindow": .option([.nonDefaultRateWindow]),
         "StructureModel.rubbleParticles": .option([.rubbleParticles]),
+        "StructureModel.extremeFibreCracking": .option([.extremeFibreCracking]),
         "StructureModel.pressedInterlock": .option([.pressedInterlock]),
         "StructureModel.hourglassFollowsCracking": .option([.hourglassSecant]),
         "StructureModel.hourglassCapsSteel": .option([.hourglassWithoutSteel]),
@@ -1631,11 +1640,12 @@ struct StandingScene {
                         + "100 µs window; predicted before the measurements were unsealed)",
                     "Unsafe side: the two slabs nearest the charge collapsed, the model's barely cracked. The "
                         + "blast's own peak a tenth to a quarter of meters that likely include the supports' or "
-                        + "rigid-body movement, while the model's slab responds as its own load would have a single "
-                        + "degree of freedom do: the gap lies in the load (its suction, 2.5 times the positive "
-                        + "impulse, being checked) or the meters. The declared peaks near the measured were made "
-                        + "by an artefact of the sleeping air on landing, fixed since, and group B's scored readings "
-                        + "came after a lift-off",
+                        + "rigid-body movement. The model's slab responds as its load would have it; that load's "
+                        + "large suction was the harness's copying faces at 047cee3, which today's far-field faces "
+                        + "do not have, and no bending slab under it reaches the meters, so what remains lies "
+                        + "outside the slab's bending (an offset after lift-off, the underside's push, or the load). "
+                        + "The declared peaks near the measured were made by an artefact of the sleeping air on "
+                        + "landing, fixed since, and group B's scored readings came after a lift-off",
                     "validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge"),
                 StandingEvidence(
                     "Blind: Reynolds's high-strength slabs in the contest slab's rig (v0.3.0, b524a9d; predicted "
