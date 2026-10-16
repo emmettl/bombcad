@@ -497,6 +497,14 @@ static inline float3 cutNormalOf(int3 cell, const device uint4 *columns, const d
     return toSweep(walls[column.x + uint(cell.z) - column.y].xyz, axis);
 }
 
+// Whether `cell` is one of its column's cut cells, and so has a wall and a normal of its own. A
+// whole cell beside the terrain's solid cells (above ground lying on a cell's face, or beside a
+// cliff) meets them across its face, as a staircase does.
+static inline bool cutCellHere(int3 cell, const device uint4 *columns, constant SolverUniforms &u) {
+    uint4 column = cutColumnOf(cell, columns, u);
+    return cell.z >= int(column.y) && cell.z < int(column.z);
+}
+
 // Whether `cell` is inside the domain and solid by the terrain, below its column's cut cells.
 static inline bool terrainSolid(int3 cell, const device uint4 *columns, constant SolverUniforms &u) {
     return all(cell >= 0) && cell.x < int(u.nx) && cell.y < int(u.ny) && cell.z < int(u.nz)
@@ -1205,22 +1213,23 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
         below[axis] -= 1;
         above2[axis] += 2;
         below2[axis] -= 2;
-        if (kindP1 == kindWall && terrainSolid(above, cutColumns, u)) {
+        bool cutHere = cutCellHere(cell, cutColumns, u);
+        if (kindP1 == kindWall && cutHere && terrainSolid(above, cutColumns, u)) {
             float3 normal = cutNormalOf(cell, cutColumns, cutWalls, axis, u);
             wP1 = mirroredAbout(w0, normal);
             wP2 = mirroredAbout(wM1, normal);
         }
-        if (kindM1 == kindWall && terrainSolid(below, cutColumns, u)) {
+        if (kindM1 == kindWall && cutHere && terrainSolid(below, cutColumns, u)) {
             float3 normal = cutNormalOf(cell, cutColumns, cutWalls, axis, u);
             wM1 = mirroredAbout(w0, normal);
             wM2 = mirroredAbout(wP1, normal);
         }
         if (kindP1 == kindFluid && classify(mask, index, 2, stride, i, n, lowWall, highWall) == kindWall
-            && terrainSolid(above2, cutColumns, u)) {
+            && terrainSolid(above2, cutColumns, u) && cutCellHere(above, cutColumns, u)) {
             wP2 = mirroredAbout(wP1, cutNormalOf(above, cutColumns, cutWalls, axis, u));
         }
         if (kindM1 == kindFluid && classify(mask, index, -2, stride, i, n, lowWall, highWall) == kindWall
-            && terrainSolid(below2, cutColumns, u)) {
+            && terrainSolid(below2, cutColumns, u) && cutCellHere(below, cutColumns, u)) {
             wM2 = mirroredAbout(wM1, cutNormalOf(below, cutColumns, cutWalls, axis, u));
         }
     }

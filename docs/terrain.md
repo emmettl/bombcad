@@ -235,7 +235,10 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell
   aperture; its wall pushes with the pressure of the Riemann problem between the cell's gas and
   its mirror about the wall's normal (a deviation from the hydrostatic pressure under gravity).
   Solid cells beside a cut cell take its gas mirrored about its wall, not about the cell face,
-  so the reconstruction sees the slope.
+  so the reconstruction sees the slope; beside a whole cell (over ground lying on a cell's face,
+  or a cliff) they mirror it across the face, as on the staircase. (Until 16 October such a cell
+  took another column's wall: a closed box over a plateau on cells' faces gained 0.24% of its
+  mass in 200 steps.)
 - **The small cells.** A cell with α far below one cannot take its own conservative update at
   the solver's time step. It takes the whole cell's update instead, and the difference between
   that and its conservative one is kept and, once a step (after the last sweep, so that
