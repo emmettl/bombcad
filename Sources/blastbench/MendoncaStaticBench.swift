@@ -21,6 +21,17 @@ func runMendoncaStatic(device: MTLDevice) throws {
     let scenario = MendoncaSlabTest.scenario(slab, inputs: inputs, settings: settings)
     guard var model = scenario.structure else { return }
     applyRateOptions(&model)
+    // `--no-rate`: the materials without their strain-rate laws.
+    if flag("no-rate") {
+        model.material.rateDependent = false
+        model.solidMaterial = model.solidMaterial.map {
+            $0.map {
+                var m = $0
+                m.rateDependent = false
+                return m
+            }
+        }
+    }
     let solver = try StructureSolver(device: device, model: model)
     solver.gravity = 0
     solver.groundContact = false
@@ -50,6 +61,62 @@ func runMendoncaStatic(device: MTLDevice) throws {
             }
         }
     }
+    // `--account`: the work by mechanism at first cracking, 5 mm and 20 mm.
+    let accounting = flag("account")
+    if accounting { solver.tracesWork = true }
+    var accounted: Set<String> = []
+    func account(_ label: String) {
+        let key = String(label.prefix(while: { $0 != "(" }))
+        guard accounting, !accounted.contains(key) else { return }
+        accounted.insert(key)
+        let totals = solver.workTotals()
+        typealias C = StructureSolver.WorkChannel
+        let groups: [(String, [C])] = [
+            ("concrete in tension, uncracked", [.tensionNormal]),
+            ("between cracks (hairline)", [.tensionHairline]),
+            ("across open cracks", [.tensionCracked]),
+            ("compression", [.compressionNormal, .compressionCrushed]),
+            ("shear", [.uncrackedShear, .crackShear, .crackShearPressed, .interlock, .interlockPressed]),
+            ("bars", [.bars, .bond, .dowel, .kink]),
+            ("hourglass", [.hourglass, .hourglassCapped]),
+            ("other", [.other, .viscosity]),
+        ]
+        let all = totals.reduce(0, +)
+        print(
+            "    work at \(label) (J, share): "
+                + groups.map { name, channels in
+                    let w = channels.reduce(0.0) { $0 + totals[$1.rawValue] }
+                    return "\(name) \(format(w, 1)) (\(format(100 * w / all, 0))%)"
+                }.joined(separator: "; "))
+    }
+    // The bending moment across the mid-span section (N m): what statics needs, from the support
+    // reactions beside it and the load on that side, against what the elements' stresses (concrete
+    // and bars) carry; the rest is the hourglass control's.
+    let column = ci
+    let middle = solver.origin.x + (Float(column) + 0.5) * h
+    let rows = index(s.min.y, 1)..<index(s.max.y, 1)
+    func moments(_ pressure: Double) -> (statics: Double, stresses: Double) {
+        var statics = 0.0
+        for j in low...high {
+            for i in near...(near + bearing) {
+                guard solver.storedNode(i, j, bottom) != nil else { continue }
+                let x = solver.origin.x + Float(i) * h
+                statics -= Double(solver.nodalForce(i, j, bottom).z) * Double(middle - x)
+            }
+        }
+        let half = Double(middle - s.min.x)
+        statics -= pressure * 1000 * Double(inputs.plan) * half * half / 2
+        var stresses = 0.0
+        let centre = (s.min.z + s.max.z) / 2
+        for j in rows {
+            for k in bottom..<top {
+                let z = solver.origin.z + (Float(k) + 0.5) * h - centre
+                stresses -= Double(solver.stress(column, j, k)[0]) * Double(z) * Double(h * h)
+            }
+        }
+        return (statics, stresses)
+    }
+    var nextMoment = 0.0
     let ramp = option("ramp").flatMap { Double($0) } ?? 0.5
     let peak = (option("to").flatMap { Float($0) } ?? 200) * 1000
     solver.appliedLoad = PressureLoad(
@@ -84,7 +151,20 @@ func runMendoncaStatic(device: MTLDevice) throws {
                 }
             }
         }
-        if firstCrack == nil && cracked > 0 { firstCrack = pressure }
+        if firstCrack == nil && cracked > 0 {
+            firstCrack = pressure
+            account("first cracking (\(format(pressure, 1)) kPa)")
+        }
+        if centre >= 5 { account("5 mm (\(format(pressure, 1)) kPa)") }
+        if centre >= 20 { account("20 mm (\(format(pressure, 1)) kPa)") }
+        if pressure >= nextMoment {
+            nextMoment += 10
+            let (statics, stresses) = moments(pressure)
+            print(
+                "    mid-span moment: statics \(format(statics / 1000, 2)) kN m, the elements' stresses "
+                    + "\(format(stresses / 1000, 2)) (\(format(100 * stresses / statics, 0))%), hourglass the rest"
+            )
+        }
         if firstYield == nil && yielded > 0 { firstYield = pressure }
         for mark in [5.0, 10, 20] where marks[mark] == nil && centre >= mark { marks[mark] = pressure }
         print(
