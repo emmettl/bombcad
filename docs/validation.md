@@ -351,12 +351,26 @@ and by far.
 - **The meters may include the supports.** They measure the centre's absolute movement, so part of
   the measured peak may be the trestles pressed into the clay. The source's own pre-test check found
   the supports moving, and the authors put slab 2's 25 mm residual down to them.
-- **The timing fits either cause.** The meters' first peaks come 40–45 ms after onset on four
-  slabs, ten times the model's time to peak. That fits a slab far softer than the model's, or
-  moving supports.
-- **Either way the slabs bent and broke far more than the model's.** Each residual is within 4 mm
-  of the first peak on slabs 4, 5, 7 and 9, after the slab had risen and landed again. No movement
-  of the supports explains the two collapses.
+- **The timing is not bending alone** (added 16 October 2026, after an independent check). The
+  meters' first peaks come 15–45 ms after onset, 40–45 ms on four slabs. A hand section and Biggs
+  single-degree-of-freedom check by the user's Edgerton session
+  (`/Volumes/StudioData/bombcad/edgerton-exchange/mendonca-slab4/edgerton/results.md`) shows why:
+  - a flexural slab of this section peaks at 3–10 ms for any plausible resistance, from the bars
+    alone at the estimated 350 MPa yield (about 50 kPa) to the model's cracked plateau (about
+    90 kPa);
+  - peaking at 40 ms would need a resistance of about 5 kPa, against 1.75 kPa of self-weight.
+
+  So the meters, referenced to a box on the ground beneath slabs resting on trestles over clay,
+  most likely record support or rigid-body motion as well as bending. A pull-wire's lag as the slab
+  moved towards its anchor may add to it. How much of each measured peak is bending cannot be told
+  from the records, so the ratios of a tenth to a quarter overstate the bending gap by an unknown
+  factor. The scored result stands as pre-registered.
+- **The slabs still bent and broke far more than the model's.** No movement of the supports
+  explains the two collapses. The same check bounds the bending without the meters: under the
+  model's own centre impulse at 2.0 m (477 Pa s, from the diagnosis below), that section peaks at
+  about 16 mm with the 350 MPa bars and about 9 mm with 600 MPa bars (interpolated in its table). That is two to four times
+  the model's 4.3 mm, in line with the model's implied resistance of about 220 kPa against the
+  section's 50–85 kPa.
 
 **Read against the calibrated record.** The calibrated open-air slabs were 40–70% too stiff under
 Wu's small charges and a third to a half as far down close in (Chiquito). Here the blast peak is
