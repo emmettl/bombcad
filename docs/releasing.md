@@ -102,6 +102,7 @@ The whole path has been run for real, with the `BombCAD-notary` profile, from 20
 | 0.2.0 (5)  | `6eef870` | `678f1bcd-04bc-4c3d-a2d2-f2fad6ffdc29` | Superseded, not published     |
 | 0.2.0 (6)  | `5d930d7` | `7dcc4ec3-0956-4be4-9e4b-972c2e29abca` | Published as v0.2.0           |
 | 0.3.0 (7)  | `b524a9d` | `de90ca6f-1803-4cd9-998b-525980d409c6` | Published as v0.3.0; crashes  |
+| 0.3.1 (8)  | `c874a6a` | `21d1ff1a-9ebd-45cf-98d6-712264341f22` | Made with the fix, not published |
 
 For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
 assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
@@ -149,12 +150,18 @@ ticket, passed `codesign --verify --deep --strict`, was accepted by `spctl` as
 passed. Its notes, reviewed independently, are in `docs/release-notes/0.3.0.md`. Its ZIP, checksum
 and manifest are attached to the GitHub release `v0.3.0`, tagged on `b524a9d`.
 
-Build 7 crashes on New Document, or whenever it first builds a solver: ContinuumKit 0.1.0-alpha.25
+Build 7 crashes on New Document, or whenever it first builds a structure's solver: ContinuumKit 0.1.0-alpha.25
 added a resource bundle (its contact search) that `build-app.sh`'s fixed list never copied, and
 the release checked only BombCAD's two bundles, and never ran the packaged app. "Both shader
 bundles" above was true and not enough. The bundles now come from the binary, and the release runs
 the packaged app (above); run headless from inside its bundle, build 7 stops with "unable to find
 bundle named ContinuumKit_ContactSearchMetal", the same as the crash reports.
+
+Build 8 (0.3.1) was made on 2026-10-16 with the fix, from a commit not on main, to try it: all
+300 app and 922 core tests passed, the packaged app ran the small project before signing, signed,
+and from a fresh expansion of its ZIP, which Apple accepted and Gatekeeper assessed as
+`Notarized Developer ID`. It was not published: no one was using 0.3.0 yet, so 0.3.1 waits for
+the normal process, and takes build 9 or later.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
