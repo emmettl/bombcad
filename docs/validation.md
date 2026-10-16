@@ -3249,7 +3249,7 @@ effect.
 Proposal: a large-deflection resistance for glass, from Moore's nonlinear plate curves (JPL
 80-34, digitised in UFC 3-340-02's figures 6-52 and 6-53, both open), in place of the linear
 backbone, judged on these twelve panes and the detailed model's 52; and a threshold series
-(see [data wanted](data-wanted.md#3h-window-glass-breaking-under-a-blast)) before the glass is
+(see [data survey](data-survey.md#3h-window-glass-breaking-under-a-blast)) before the glass is
 called more than an approximation.
 
 ## Blast loads against empirical references
@@ -3804,7 +3804,7 @@ measured in nearly closed rooms (scaled vent area under 0.015), with a standard 
 11%. The model's 98% to 108% with afterburning and hot air is inside that scatter, so it agrees
 with the curve about as well as the tests do; the default's 48% at the lightest charge is far
 outside it. The tests behind the curve are still wanted
-([Data wanted](data-wanted.md#3g-the-reference-curves-own-scatter)).
+([Data survey](data-survey.md#3g-the-reference-curves-own-scatter)).
 
 Cooper (*Explosives Engineering*, pp. 153–158) works a closed vessel through by hand: 2 kg of
 TNT burnt completely in 14.1 m³ of air (0.14 kg/m³) leaves 7.35 atm of overpressure, 0.745 MPa.
