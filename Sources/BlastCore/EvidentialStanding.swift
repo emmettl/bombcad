@@ -1647,7 +1647,9 @@ struct StandingScene {
                         + "in its repeat (104–115% of the first), on 4 to 32 solid elements through, rising with the "
                         + "mesh towards about 119% and not converged (32 holding on half the step); shells 135 mm (124%); a 5% "
                         + "change in its hand-read load moves it 13–14%, a source's 68 ksi bar yield 9%. Under the "
-                        + "contest's lower shot (a scaled record) 79–88% of the peak: too stiff, the unsafe side",
+                        + "contest's lower shot (a scaled record) 79–88% of the peak: too stiff, the unsafe side, "
+                        + "though on another shot's shape it reads 97%, so the shortfall may be the scaled record's. "
+                        + "Open, the same rig's 8 in slabs (RSCR4–6) 91–106%",
                     "validation.md#structural-response-against-a-real-test"),
                 StandingEvidence(
                     "Blind: Mendonça's slabs under an open-air charge (defaults frozen at 047cee3, before the "

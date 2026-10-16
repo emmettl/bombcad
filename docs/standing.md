@@ -125,7 +125,9 @@ standing says why.
   include the supports' movement; the model's slab responds as its own load would have it, and
   that load's large suction was the harness's copying faces, not today's far-field ones, so what
   remains lies outside the slab's bending. Blind in the contest's own rig (test 3), high-strength slabs
-  read 0.77–1.06 where they held. No structural result converges on today's defaults
+  read 0.77–1.06 where they held; open in it, the 8 in normal-strength slabs (RSCR4–6) 0.91–1.06.
+  The low edge, the lower shot's 79%, may be its scaled record's shape: on another shot's shape it
+  reads 97%. It is left as recorded, since that rests on a borrowed shape. No structural result converges on today's defaults
   ([convergence](validation.md#convergence-on-todays-defaults)): the meshes that agree are the
   coarse end, and the bands say so; close in, Wu's slabs (40–70% under charges to 0.8 kg, −20% to +7% to
   2 kg) and, from 2 kg, Chiquito's deflection left (a third to a half); confined, the chamber's

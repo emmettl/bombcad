@@ -9,6 +9,12 @@ import Metal
 //                       [--span 52] [--bar-depth 1.0625] [--nominal-bars] [--bearings 0.0254]
 //                       [--inputs Samples/Reynolds2015/inputs/slabs.json] [--out dir]
 //                       [--ensemble 8 [--seed 3] [--samples 1-8]]   (the inputs' spread)
+//   blastbench reynolds --series rscr [--contest-shape] [--fc 41.4] ...
+//                       (the open comparison after the reveal: the normal-strength 8 in slabs
+//                       RSCR4–6 (and RSCR1–3, the contest slab's three shots, with --slabs) from
+//                       Samples/Reynolds2015/rscr/inputs.json, on the contest slab's
+//                       material, its bars 1 in from the face, each load a shape scaled to its
+//                       Table 15 impulse; --fc sets the concrete's strength in MPa)
 //
 // Writes each slab's result as JSON, its centre's displacement and the applied load as CSV and its
 // faces' cracks as PNG and text into --out (default
@@ -16,9 +22,19 @@ import Metal
 // without its histories, into its ensemble folder.
 
 func runReynolds(device: MTLDevice) throws {
-    let inputs = try ReynoldsSlabTest.inputs(
+    var inputs = try ReynoldsSlabTest.inputs(
         from: URL(filePath: option("inputs") ?? "Samples/Reynolds2015/inputs/slabs.json"))
     var settings = ReynoldsSlabTest.Settings()
+    if option("series") == "rscr" {
+        inputs = try ReynoldsSlabTest.rscrInputs(
+            from: URL(filePath: option("rscr-inputs") ?? "Samples/Reynolds2015/rscr/inputs.json"),
+            hscv: inputs,
+            contestShape: flag("contest-shape"))
+        settings.contestMaterial = true
+        settings.barDepthInches = 1
+        settings.load = .given
+    }
+    if let fc = option("fc").flatMap({ Double($0) }) { settings.sample["fc"] = fc * 1e6 }
     if let layers = option("layers").flatMap({ Int($0) }) { settings.elementsThroughDepth = layers }
     if let time = option("time").flatMap({ Double($0) }) { settings.duration = time }
     if let shape = option("load").flatMap({ ReynoldsSlabTest.LoadShape(rawValue: $0) }) {
@@ -28,7 +44,9 @@ func runReynolds(device: MTLDevice) throws {
     if let depth = option("bar-depth").flatMap({ Float($0) }) { settings.barDepthInches = depth }
     if flag("nominal-bars") { settings.nominalSpacing = true }
     if let width = option("bearings").flatMap({ Float($0) }) { settings.bearingWidth = width }
-    let names = option("slabs")?.split(separator: ",").map(String.init)
+    let names =
+        option("slabs")?.split(separator: ",").map(String.init)
+        ?? (option("series") == "rscr" ? ["RSCR4", "RSCR5", "RSCR6"] : nil)
     let slabs = inputs.slabs.filter { names?.contains($0.name) ?? true }
     let out = URL(filePath: option("out") ?? "/Volumes/StudioData/bombcad/reynolds-prediction/run")
     try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
@@ -93,12 +111,21 @@ func runReynolds(device: MTLDevice) throws {
         print(
             String(
                 format:
-                    "%@: bars at %.0f in (%.3f mm²/mm), load peak %.1f kPa, impulse %.0f kPa ms, ends %.1f ms",
+                    "%@: bars at %.0f in (%.3f mm²/mm), load peak %.1f kPa (tabulated %.1f), impulse %.0f kPa ms, "
+                    + "ends %.1f ms; %@",
                 slab.name, slab.barSpacingInches, ReynoldsSlabTest.barArea(slab, settings: settings) * 1000,
-                (load.history.map(\.y).max() ?? 0) / 1000, load.impulse, (load.history.last?.x ?? 0) * 1000))
+                (load.history.map(\.y).max() ?? 0) / 1000, slab.tablePeak / 1000, load.impulse,
+                (load.history.last?.x ?? 0) * 1000, slab.traceName))
         let result = try ReynoldsSlabTest.run(
             device: device, slab: slab, inputs: inputs, settings: settings, progress: { print("  " + $0) })
         print(line(result))
+        if let peak = slab.measuredPeak, let residual = slab.measuredResidual {
+            print(
+                String(
+                    format: "    measured: peak %.1f mm (ratio %.2f), residual %.1f mm (ratio %.2f)",
+                    peak * 1000,
+                    result.peak / peak, residual * 1000, result.residual / residual))
+        }
         try encoder.encode(result).write(to: out.appending(path: "\(slab.name).json"))
         let displacement =
             "time_ms,centre_displacement_mm\n"
