@@ -310,6 +310,10 @@ public enum ValidationTables {
             document: "validation.md#the-contests-repeat-its-lower-shot-and-its-other-entries",
             quote: "the model reaches 79–88% of the measured peak on 4 to 16 elements"),
         Figure(
+            id: "slabReynoldsOpen", low: 0.91, high: 1.06,
+            document: "validation.md#structural-response-against-a-real-test",
+            quote: "within 0.91–1.06, peaking at 27–30 ms"),
+        Figure(
             id: "slabBlindHighStrength", low: 0.77, high: 1.06,
             document: "validation.md#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator",
             quote: "every ratio within 0.77–1.06"),
@@ -1201,7 +1205,15 @@ extension StandingScene {
                             ValidationTables.figure("slabBlindHighStrength").high * 100)
                         + " where they held, a little stiff, and one lightly reinforced slab broke through where "
                         + "the test held (the safe side). Against the lower shot's tabulated 80.5 mm, the upper "
-                        + "reading the record does not keep, the model reads 71–78%",
+                        + "reading the record does not keep, the model reads 71–78%. Open in the same rig, the "
+                        + "contest's 8 in slabs (RSCR4–6) read "
+                        + String(
+                            format: "%.0f–%.0f%%",
+                            ValidationTables.figure("slabReynoldsOpen").low * 100,
+                            ValidationTables.figure("slabReynoldsOpen").high * 100)
+                        + " on another shot's shape; on such a shape the lower shot reads 97% of its plateau, so "
+                        + "the band's low edge may be the scaled record's shape more than the slab, which rests "
+                        + "on that borrowed shape and is left as recorded",
                     check: "A reinforced slab under a blast, and its lower shot")
                 band.low = ValidationTables.figure("slabLowerShot").low
                 band.high = ValidationTables.figure("slabExtrapolated").high
