@@ -209,11 +209,13 @@ func chosenGas() -> AirModel { chosenAirModel() ?? SolverConfiguration.recommend
 func chosenFaces() -> OpenFaces { flag("copy-faces") ? .copy : SolverConfiguration.recommended.openFaces }
 
 /// The structure's outline in the air as the command line sets it: `--mask-sampling 2`,
-/// `--mask-fill 0.5`, `--mask-overlap` (see `SolverConfiguration.structureMaskOverlap`).
+/// `--mask-fill 0.5`, `--no-mask-overlap` for the elements counted at their centres, as before
+/// 16 October 2026 (see `SolverConfiguration.structureMaskOverlap`).
 func applyChosenMask(_ configuration: inout SolverConfiguration) {
     if let n = option("mask-sampling").flatMap({ Int($0) }) { configuration.structureMaskSampling = n }
     if let f = option("mask-fill").flatMap({ Float($0) }) { configuration.structureMaskFill = f }
     if flag("mask-overlap") { configuration.structureMaskOverlap = true }
+    if flag("no-mask-overlap") { configuration.structureMaskOverlap = false }
 }
 
 /// The air every run ships with (`SolverConfiguration.recommended`) as the command line changes

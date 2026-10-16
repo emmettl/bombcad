@@ -179,8 +179,9 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// rather than whole in the cell holding its centre: a cell then fills as the structure moves
     /// into it, and one whose face a layer of centres lies on does not flicker. A cell then turns
     /// solid an eighth above the fill threshold and opens an eighth below it, so that a fill lying
-    /// on the threshold does not flicker either. Off by default.
-    public var structureMaskOverlap = false
+    /// on the threshold does not flicker either. On by default since 16 October 2026; off, the
+    /// outline counts each element at its centre, as before.
+    public var structureMaskOverlap = true
     /// The luminous gas losing the heat it radiates (see `RadiativeCooling`); nil, the default,
     /// for none. Read at `restart()`.
     public var radiativeCooling: RadiativeCooling?

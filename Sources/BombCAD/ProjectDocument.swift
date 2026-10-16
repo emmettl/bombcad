@@ -32,6 +32,10 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// Soft ground under the structures' debris, the soil's subgrade modulus in Pa/m; nil, and left
     /// out of the file and the fingerprint, for the hard ground.
     var groundStiffness: Float?
+    /// False when the structures' outline in the air counted each element at its centre, as every
+    /// run did before 16 October 2026; true when by overlap; nil, and left out of the file and the
+    /// fingerprint, where the scene has no structure, or for a run saved before then.
+    var outlineByOverlap: Bool?
     var solidElementSize: Float
     var duration: Double
 
@@ -46,6 +50,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         terrainCutCells =
             settings.terrainCutCells && settings.scenario.terrain.map { !$0.isFlat } == true ? true : nil
         groundStiffness = settings.softGround ? settings.groundStiffness : nil
+        outlineByOverlap = settings.scenario.structuralObjects.isEmpty ? nil : settings.outlineByOverlap
         solidElementSize = settings.solidElementSize
         self.duration = duration
     }
@@ -60,6 +65,13 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// without, so that terrain added later is cut.
     func cutsTerrain(over scenario: Scenario) -> Bool {
         terrainCutCells ?? !(scenario.terrain.map { !$0.isFlat } ?? false)
+    }
+
+    /// Whether a run of `scenario` under these settings counts the structures' outline by overlap:
+    /// as recorded over structures, where nil (a run saved before 16 October 2026) is each element
+    /// at its centre; by default without, so that structures added later are counted by overlap.
+    func countsByOverlap(over scenario: Scenario) -> Bool {
+        outlineByOverlap ?? scenario.structuralObjects.isEmpty
     }
 
     /// The grid as people say it: a preset's name ("medium") or its cells ("4 m").

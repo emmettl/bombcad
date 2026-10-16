@@ -161,6 +161,10 @@ struct SimulationSettings: Equatable {
     /// The terrain cut through the cells where the air is not refined; false for a staircase of
     /// whole cells.
     var terrainCutCells = true
+    /// The structures' outline in the air counted by each element's overlap with the cells, as
+    /// since 16 October 2026 (`SolverConfiguration.structureMaskOverlap`); false for each element
+    /// counted at its centre, as before.
+    var outlineByOverlap = true
     /// Debris lands on soil, a Winkler bed of `groundStiffness` (Pa/m), instead of the hard ground.
     var softGround = false
     var groundStiffness = SolverConfiguration.soilSubgradeModulus
@@ -747,6 +751,7 @@ final class SimulationModel {
                 settings.adaptiveSubsteps = run.adaptiveSubsteps ?? false
                 settings.gravity = run.gravity ?? false
                 settings.terrainCutCells = run.cutsTerrain(over: scenario)
+                settings.outlineByOverlap = run.countsByOverlap(over: scenario)
                 settings.softGround = run.groundStiffness != nil
                 settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
                 settings.solidElementSize = run.solidElementSize
@@ -889,6 +894,7 @@ final class SimulationModel {
             settings.adaptiveSubsteps = run.adaptiveSubsteps ?? false
             settings.gravity = run.gravity ?? false
             settings.terrainCutCells = run.cutsTerrain(over: document.scenario)
+            settings.outlineByOverlap = run.countsByOverlap(over: document.scenario)
             settings.softGround = run.groundStiffness != nil
             settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
             settings.solidElementSize = run.solidElementSize
@@ -1094,6 +1100,7 @@ final class SimulationModel {
         settings.adaptiveSubsteps = inputs.settings.adaptiveSubsteps ?? false
         settings.gravity = inputs.settings.gravity ?? false
         settings.terrainCutCells = inputs.settings.cutsTerrain(over: inputs.scenario)
+        settings.outlineByOverlap = inputs.settings.countsByOverlap(over: inputs.scenario)
         settings.softGround = inputs.settings.groundStiffness != nil
         settings.groundStiffness = inputs.settings.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
         settings.solidElementSize = inputs.settings.solidElementSize
@@ -2220,7 +2227,8 @@ final class SimulationModel {
             shockLevels: settings.shockLevels, gravity: settings.gravity,
             shockThreshold: settings.shockThreshold, adaptiveSubsteps: settings.adaptiveSubsteps,
             terrainCutCells: settings.terrainCutCells,
-            groundStiffness: settings.softGround ? settings.groundStiffness : nil)
+            groundStiffness: settings.softGround ? settings.groundStiffness : nil,
+            outlineByOverlap: settings.outlineByOverlap)
     }
 
     private func rebuild() {

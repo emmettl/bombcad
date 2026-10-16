@@ -322,6 +322,13 @@ struct SidebarView: View {
                     "Burns the charge's products in the air they mix with, and lets hot air store energy "
                         + "in molecular vibration. Closer to tests of charges in rooms and in the open; "
                         + "about twice as slow.")
+            if !model.settings.scenario.structuralObjects.isEmpty {
+                Toggle("Outline structures by overlap", isOn: $model.settings.outlineByOverlap)
+                    .help(
+                        "Counts each element of a structure into the air's cells by how much of it lies in "
+                            + "each, so that its outline in the air does not flicker as it moves. Off, as before "
+                            + "16 October 2026, each element counts where its centre is.")
+            }
             Toggle("Gravity in the air", isOn: $model.settings.gravity)
                 .help(
                     "Lets hot gas rise: the air starts at rest in a standard atmosphere and the fireball "
