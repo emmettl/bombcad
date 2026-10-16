@@ -281,6 +281,7 @@ public enum TwoFaceSlabTests {
         device: MTLDevice, scenario: Scenario, slab: Box, thicknessAxis: Int,
         probes: [(String, SIMD3<Float>)],
         cellSize: Float, refinement: Int, duration: Double, chargeTowardsLow: Bool, afterburning: Bool,
+        airModel: AirModel?, openFaces: OpenFaces,
         hold: (StructureSolver, UnsafeMutableBufferPointer<StructureNode>, (Float, Int) -> Int) -> Void,
         prepare: ((StructureSolver) -> Void)?, progress: ((String) -> Void)?,
         inspect: ((StructureSolver, Double) -> Void)? = nil
@@ -288,9 +289,9 @@ public enum TwoFaceSlabTests {
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
         solver.configuration.mappedCharge = !afterburning
         solver.configuration.afterburning = afterburning
-        solver.configuration.openFaces = SolverConfiguration.recommended.openFaces
+        solver.configuration.openFaces = openFaces
         // As the app's "Afterburning and hot air": both or neither.
-        solver.configuration.airModel = afterburning ? .thermallyPerfect : .idealGas
+        solver.configuration.airModel = airModel ?? (afterburning ? .thermallyPerfect : .idealGas)
         solver.configuration.refinement = refinement
         try solver.load(scenario)
         guard let structure = solver.structure else { throw BlastError.allocationFailed("structure") }
@@ -413,6 +414,7 @@ public enum TwoFaceSlabTests {
         elementSize: Float = 0.0125,
         duration: Double = 0.1, heldLengthwise: Bool = false,
         afterburning: Bool = SolverConfiguration.recommended.afterburning,
+        airModel: AirModel? = nil, openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
         adjust: (inout Scenario) -> Void = { _ in },
         prepare: ((StructureSolver) -> Void)? = nil, progress: ((String) -> Void)? = nil,
         inspect: ((StructureSolver, Double) -> Void)? = nil
@@ -427,6 +429,7 @@ public enum TwoFaceSlabTests {
             device: device, scenario: scenario, slab: wuSlab, thicknessAxis: 2, probes: probes,
             cellSize: cellSize,
             refinement: refinement, duration: duration, chargeTowardsLow: false, afterburning: afterburning,
+            airModel: airModel, openFaces: openFaces,
             hold: { structure, nodes, index in
                 let h = structure.model.elementSize
                 let bottom = index(wuSlab.min.z, 2)
@@ -474,6 +477,7 @@ public enum TwoFaceSlabTests {
         device: MTLDevice, test: WangTest, cellSize: Float = 0.025, refinement: Int = 1,
         elementSize: Float = 0.0125, duration: Double = 0.1, edges: WangEdges = .fixed,
         afterburning: Bool = SolverConfiguration.recommended.afterburning,
+        airModel: AirModel? = nil, openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
         adjust: (inout Scenario) -> Void = { _ in },
         prepare: ((StructureSolver) -> Void)? = nil, progress: ((String) -> Void)? = nil,
         inspect: ((StructureSolver, Double) -> Void)? = nil
@@ -488,6 +492,7 @@ public enum TwoFaceSlabTests {
             device: device, scenario: scenario, slab: wangSlab, thicknessAxis: 1, probes: probes,
             cellSize: cellSize,
             refinement: refinement, duration: duration, chargeTowardsLow: true, afterburning: afterburning,
+            airModel: airModel, openFaces: openFaces,
             hold: { structure, nodes, index in
                 let h = structure.model.elementSize
                 if edges == .hinged {

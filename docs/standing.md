@@ -48,8 +48,8 @@ The standing is worked out from the scene's actual settings each time they chang
   control that softens with cracking. An option the regime set is a default, not the user's
   choice (`pressedInterlockFromRegime`, `hourglassFromRegime`).
 - **Afterburning.** On by default since 15 October 2026, with hot air and far-field faces: the
-  incident impulse within 4% beyond 1 m/kg^(1/3) on 0.25 m cells, with the burning time fitted to
-  it, and the reflected impulse 8–15% high; off, the incident impulse is 13–22% low. A band
+  incident impulse within 6% beyond 1 m/kg^(1/3) on 0.25 m cells, with the burning time fitted to
+  it, and the reflected impulse 6–13% high; off, the incident impulse is 13–22% low. A band
   derived without it is withheld under it until derived again (Hupfauf's debris). Reflecting
   domain faces bring in the closed-room comparison, whose agreement depends on both options.
 - **Materials.** Reinforced concrete has been compared with measurement; plain concrete, steel and masonry
@@ -120,8 +120,10 @@ standing says why.
   119%; 79–88% under its lower shot), with the contest's repeat, 3%, as the tests' scatter (124%
   on shells). That band came from a shock tube's long, uniform load. It is withheld within
   1.5 m/kg^(1/3) of a charge: there, blind test 2's open-air slabs
-  ([Mendonça](validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge)) bent a tenth to
-  a quarter as far as measured, and the two nearest collapsed where the model's stood. No structural result converges on today's defaults
+  ([Mendonça](validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge)): the two nearest
+  collapsed where the model's stood, and the rest read a tenth to a quarter of meters that likely
+  include the supports' movement; the model's slab responds as its own load would have it, so the
+  gap lies in that load or the meters. No structural result converges on today's defaults
   ([convergence](validation.md#convergence-on-todays-defaults)): the meshes that agree are the
   coarse end, and the bands say so; close in, Wu's slabs (40–70% under charges to 0.8 kg, −20% to +7% to
   2 kg) and, from 2 kg, Chiquito's deflection left (a third to a half); confined, the chamber's
@@ -234,7 +236,6 @@ changes, change the table with it and advance `SceneStanding.currentTable`.
   Wang's and Wu's slabs, Chiquito's, Hupfauf's debris and the chamber's wall pressures have been
   run again on them, and the fireball's radiation and Church's clouds were compared on them
   already. Each takes its own band on its own air; afterburning without hot air, compared only
-  on 0.25 m cells, takes few. On today's air afterburning nearly doubles the chamber roof's rise
-  (83–85 mm against 48).
+  on 0.25 m cells, takes few.
 - **Not a judgement of safety.** Nothing here is validated for engineering decisions or for
   judging the safety of a real structure, and the standing says so.

@@ -380,6 +380,50 @@ windows, collapse, debris or evolving shielding. This establishes stationary exp
 behaviour and its computational cost; it does not validate invented buildings against
 measurements or establish kilogram-to-kiloton physical coverage.
 
+## Damage references
+
+For a damage model on envelope buildings (below), the street study's layouts are run with the
+detailed buildings free to respond: `scenebench envelope-damage`, which records each component (wall,
+roof, glazing pane) under the ids the envelope's components will have. The buildings and the charge's
+standoff are the street study's, in a domain enlarged to 56 × 48 × 16 m so that afterburning products
+are not trapped, on the recommended air at 0.25 m. Each building's walls are 0.2 m reinforced concrete
+(one central mesh, 0.3% each way), 0.215 m brick (smeared masonry: shells have no units and joints),
+or the concrete with a 6 mm annealed pane 1.5 × 1.25 m in each wall, under a 0.2 m concrete roof, as
+shells of 0.125 m in 8 layers, settled under their weight before the blast. Each component records its
+deflection history relative to its support edges, rotation, residual, failed share and, for a pane,
+when it broke; and, under the same rules on the detailed run and on its envelope twin (the same scene
+with each building exposure-only), the area-mean pressure on each face of it, binned as impulse.
+
+```sh
+swift build -c release --product scenebench
+.build/release/scenebench envelope-damage <dir> --layouts=isolated,street --walls=rc,brick,glass \
+    --charges=2,10,50 --representations=detailed,envelope
+python3 Scripts/summarize-envelope-damage.py <dir> --out Benchmarks/EnvelopeDamage/summary.json
+```
+
+The 19 runs of 16 October 2026 (isolated building at 2 to 500 kg, the four-building street at 10 and
+50 kg, the pair at 50 kg) are summarised in [`Benchmarks/EnvelopeDamage/summary.json`](../Benchmarks/EnvelopeDamage/summary.json);
+the records, with their histories, geometry and material inputs, are kept off the repository. On the
+isolated building, the wall facing the charge:
+
+| Charge | Concrete: peak, rotation | Brick | Glass (the facing pane) | Inside, detailed / envelope |
+| ---: | --- | --- | --- | --- |
+| 2 kg | 1.3 mm, 0.04° | 2.9 mm, 0.08° | broken at 27 ms | 0.1–0.2 kPa / 0 |
+| 10 kg | 3.4 mm, 0.10° | 10.9 mm, 0.31° | broken at 20 ms | 0.2–1.0 kPa / 0 |
+| 50 kg | 15 mm, 0.43° | 52 mm, 1.49° | broken at 13 ms | 0.4–2.6 kPa / 0 |
+| 200 kg | 73 mm, 2.1° | | broken at 8 ms | 1.6–11 kPa / 0 |
+| 500 kg | 209 mm, 6.0° | | broken at 6 ms | 6.5–22 kPa / 0 |
+
+Before anything breaks, the envelope twin's loads on each component match the detailed run's within
+about 2% (peak net pressure and positive impulse on the facing wall within 0.5–1.6%), so the one-way
+model's input is the detailed building's own. The envelope stays sealed: its inside stays at ambient,
+where the detailed buildings' insides rise as panes break and walls move, which is the error a one-way
+model makes by not venting. The shells' junctions erode first (the walls' top rows at the roof, a
+corner column), even at 0.4°; the panels themselves lose no interior element up to 6°, so rotation,
+not erosion, marks a concrete wall's damage here. These are references on one mesh and one air grid,
+not measured damage, and the brick walls after cracking are the least trustworthy of them
+([brick walls](validation.md#brick-walls-debris)).
+
 ## Future work: damage for envelope buildings
 
 Envelopes make district-scale scenes possible: the air is cheap at that scale (a 3.3 km domain of
@@ -401,9 +445,9 @@ recorded on their faces, one way at first, with the air still seeing a rigid bui
 What decides whether it is worth building, to answer before any of it is:
 
 1. **Its error against the detailed model.** The matched pairs above use pinned detailed
-   references, so they compare loads, not damage. The same isolated, paired and four-building
-   layouts (and the [street study's](street-interaction.md)) would be run with the detailed
-   buildings free to respond, and the reduced model's damage per component set against theirs.
+   references, so they compare loads, not damage; the [damage references](#damage-references) run
+   the same layouts with the detailed buildings free to respond, for the reduced model's damage per
+   component to be set against theirs.
 2. **Its error against measurement**, where data exist: the [perimeter walls](validation.md#perimeter-walls-under-field-blasts)
    (Alsubaei), the [brick walls](validation.md#brick-walls-debris) (Keys), and UFC 3-340-02's
    charts as they are digitised in `UFC340.swift`.

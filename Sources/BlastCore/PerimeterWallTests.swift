@@ -215,7 +215,9 @@ public enum PerimeterWallTests {
         device: MTLDevice, layout: Layout, anfo: Float, wall: Bool, cellSize: Float = 0.05,
         refinement: Int = 1,
         columnWidth: Float? = nil, wallLength: Float? = nil, duration: Double? = nil,
-        afterburning: Bool = SolverConfiguration.recommended.afterburning, progress: ((String) -> Void)? = nil
+        afterburning: Bool = SolverConfiguration.recommended.afterburning,
+        airModel: AirModel? = nil, openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
+        progress: ((String) -> Void)? = nil
     ) throws -> AirResult {
         let started = ContinuousClock.now
         let scenario = scenario(
@@ -224,9 +226,9 @@ public enum PerimeterWallTests {
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
         solver.configuration.mappedCharge = !afterburning
         solver.configuration.afterburning = afterburning
-        solver.configuration.openFaces = SolverConfiguration.recommended.openFaces
+        solver.configuration.openFaces = openFaces
         // As the app's "Afterburning and hot air": both or neither.
-        solver.configuration.airModel = afterburning ? .thermallyPerfect : .idealGas
+        solver.configuration.airModel = airModel ?? (afterburning ? .thermallyPerfect : .idealGas)
         solver.configuration.refinement = refinement
         try solver.load(scenario)
         // The wave runs faster than sound, so by sound's time to the last column and 20 ms more
@@ -485,7 +487,9 @@ public enum PerimeterWallTests {
         elementSize: Float = 0.05, duration: Double = 0.2, gap: Float = 0.05, bars: Bool = true,
         joints: Bool = true,
         crackWidth: Float = 0.1e-3, footing: SIMD2<Float>? = nil, clearance: Float = 3,
-        afterburning: Bool = SolverConfiguration.recommended.afterburning, progress: ((String) -> Void)? = nil
+        afterburning: Bool = SolverConfiguration.recommended.afterburning,
+        airModel: AirModel? = nil, openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
+        progress: ((String) -> Void)? = nil
     ) throws -> WallResult {
         let started = ContinuousClock.now
         let layout = wall.layout
@@ -577,9 +581,9 @@ public enum PerimeterWallTests {
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
         solver.configuration.mappedCharge = !afterburning
         solver.configuration.afterburning = afterburning
-        solver.configuration.openFaces = SolverConfiguration.recommended.openFaces
+        solver.configuration.openFaces = openFaces
         // As the app's "Afterburning and hot air": both or neither.
-        solver.configuration.airModel = afterburning ? .thermallyPerfect : .idealGas
+        solver.configuration.airModel = airModel ?? (afterburning ? .thermallyPerfect : .idealGas)
         try solver.load(scenario)
         guard let structure = solver.structure else { throw BlastError.allocationFailed("structure") }
         let h = structure.model.elementSize

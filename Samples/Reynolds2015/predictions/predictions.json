@@ -1,0 +1,3522 @@
+{
+  "primary": {
+    "HSCV1": {
+      "peak_mm": 94.18,
+      "peak_time_ms": 26.4,
+      "residual_mm": 74.94,
+      "rest_range_mm": 0.57,
+      "fails": false,
+      "concrete_spans": true,
+      "bar_elements_ruptured": 0,
+      "elements_removed": 0,
+      "elements_bare": 0,
+      "blast_face_crushed_m2": 0,
+      "blast_face_crushed_from_to_mm": [
+        null,
+        null
+      ],
+      "blast_face_spalled_m2": 0,
+      "back_face_scabbed_m2": 0,
+      "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+        [
+          -286,
+          0.22
+        ],
+        [
+          -222,
+          0.5
+        ],
+        [
+          -184,
+          0.9
+        ],
+        [
+          -133,
+          1.24
+        ],
+        [
+          -108,
+          1.09
+        ],
+        [
+          -57,
+          1.08
+        ],
+        [
+          -19,
+          1.8
+        ],
+        [
+          19,
+          1.42
+        ],
+        [
+          57,
+          1.15
+        ],
+        [
+          95,
+          0.92
+        ],
+        [
+          133,
+          0.89
+        ],
+        [
+          222,
+          0.57
+        ]
+      ],
+      "applied_peak_kPa": 341.3,
+      "applied_impulse_kPa_ms": 6986.0,
+      "load_ends_ms": 76.3,
+      "run_ms": 300,
+      "wall_seconds": 106
+    },
+    "HSCV2": {
+      "peak_mm": 94.18,
+      "peak_time_ms": 26.4,
+      "residual_mm": 74.66,
+      "rest_range_mm": 0.49,
+      "fails": false,
+      "concrete_spans": true,
+      "bar_elements_ruptured": 0,
+      "elements_removed": 0,
+      "elements_bare": 0,
+      "blast_face_crushed_m2": 0,
+      "blast_face_crushed_from_to_mm": [
+        null,
+        null
+      ],
+      "blast_face_spalled_m2": 0,
+      "back_face_scabbed_m2": 0,
+      "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+        [
+          -286,
+          0.22
+        ],
+        [
+          -222,
+          0.5
+        ],
+        [
+          -184,
+          0.9
+        ],
+        [
+          -133,
+          1.24
+        ],
+        [
+          -108,
+          1.09
+        ],
+        [
+          -57,
+          1.08
+        ],
+        [
+          -19,
+          1.8
+        ],
+        [
+          19,
+          1.42
+        ],
+        [
+          57,
+          1.15
+        ],
+        [
+          95,
+          0.92
+        ],
+        [
+          133,
+          0.89
+        ],
+        [
+          222,
+          0.57
+        ]
+      ],
+      "applied_peak_kPa": 341.3,
+      "applied_impulse_kPa_ms": 6878.0,
+      "load_ends_ms": 70.8,
+      "run_ms": 300,
+      "wall_seconds": 167
+    },
+    "HSCV3": {
+      "peak_mm": 52.44,
+      "peak_time_ms": 21.1,
+      "residual_mm": 34.08,
+      "rest_range_mm": 0.68,
+      "fails": false,
+      "concrete_spans": true,
+      "bar_elements_ruptured": 0,
+      "elements_removed": 0,
+      "elements_bare": 0,
+      "blast_face_crushed_m2": 0,
+      "blast_face_crushed_from_to_mm": [
+        null,
+        null
+      ],
+      "blast_face_spalled_m2": 0,
+      "back_face_scabbed_m2": 0,
+      "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+        [
+          -235,
+          0.24
+        ],
+        [
+          -159,
+          0.77
+        ],
+        [
+          -70,
+          0.63
+        ],
+        [
+          -44,
+          1.03
+        ],
+        [
+          -6,
+          0.94
+        ],
+        [
+          32,
+          0.65
+        ],
+        [
+          57,
+          0.95
+        ],
+        [
+          83,
+          0.77
+        ],
+        [
+          108,
+          0.64
+        ],
+        [
+          146,
+          0.62
+        ],
+        [
+          235,
+          0.24
+        ]
+      ],
+      "applied_peak_kPa": 263.0,
+      "applied_impulse_kPa_ms": 5336.0,
+      "load_ends_ms": 90.1,
+      "run_ms": 300,
+      "wall_seconds": 122
+    },
+    "HSCV4": {
+      "peak_mm": 678.3,
+      "peak_time_ms": 113.28,
+      "residual_mm": -543.03,
+      "rest_range_mm": 281.68,
+      "fails": true,
+      "concrete_spans": false,
+      "bar_elements_ruptured": 271,
+      "elements_removed": 754,
+      "elements_bare": 107,
+      "blast_face_crushed_m2": 0,
+      "blast_face_crushed_from_to_mm": [
+        null,
+        null
+      ],
+      "blast_face_spalled_m2": 0.01565,
+      "back_face_scabbed_m2": 0.01871,
+      "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+        [
+          -337,
+          0.15
+        ],
+        [
+          -311,
+          0.19
+        ],
+        [
+          -235,
+          0.99
+        ],
+        [
+          -210,
+          1.27
+        ],
+        [
+          -133,
+          2.08
+        ],
+        [
+          -83,
+          3.53
+        ],
+        [
+          -32,
+          1.13
+        ],
+        [
+          32,
+          2.1
+        ],
+        [
+          95,
+          2.03
+        ],
+        [
+          121,
+          1.59
+        ],
+        [
+          197,
+          0.89
+        ],
+        [
+          222,
+          0.47
+        ],
+        [
+          311,
+          0.16
+        ]
+      ],
+      "applied_peak_kPa": 261.8,
+      "applied_impulse_kPa_ms": 5198,
+      "load_ends_ms": 73.5,
+      "run_ms": 300,
+      "wall_seconds": 226
+    },
+    "HSCV5": {
+      "peak_mm": 66.27,
+      "peak_time_ms": 26.0,
+      "residual_mm": 50.95,
+      "rest_range_mm": 0.69,
+      "fails": false,
+      "concrete_spans": true,
+      "bar_elements_ruptured": 0,
+      "elements_removed": 0,
+      "elements_bare": 0,
+      "blast_face_crushed_m2": 0,
+      "blast_face_crushed_from_to_mm": [
+        null,
+        null
+      ],
+      "blast_face_spalled_m2": 0,
+      "back_face_scabbed_m2": 0,
+      "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+        [
+          -210,
+          0.86
+        ],
+        [
+          -171,
+          0.26
+        ],
+        [
+          -95,
+          1.28
+        ],
+        [
+          -70,
+          1.03
+        ],
+        [
+          19,
+          1.22
+        ],
+        [
+          44,
+          1.33
+        ],
+        [
+          95,
+          0.84
+        ],
+        [
+          121,
+          0.84
+        ],
+        [
+          210,
+          0.38
+        ]
+      ],
+      "applied_peak_kPa": 206.2,
+      "applied_impulse_kPa_ms": 3527.0,
+      "load_ends_ms": 77.3,
+      "run_ms": 300,
+      "wall_seconds": 170
+    },
+    "HSCV6": {
+      "peak_mm": 91.23,
+      "peak_time_ms": 29.46,
+      "residual_mm": 71.05,
+      "rest_range_mm": 0.52,
+      "fails": false,
+      "concrete_spans": true,
+      "bar_elements_ruptured": 0,
+      "elements_removed": 0,
+      "elements_bare": 0,
+      "blast_face_crushed_m2": 0,
+      "blast_face_crushed_from_to_mm": [
+        null,
+        null
+      ],
+      "blast_face_spalled_m2": 0,
+      "back_face_scabbed_m2": 0,
+      "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+        [
+          -222,
+          0.65
+        ],
+        [
+          -108,
+          2.01
+        ],
+        [
+          -83,
+          1.79
+        ],
+        [
+          6,
+          1.93
+        ],
+        [
+          44,
+          1.73
+        ],
+        [
+          70,
+          2.05
+        ],
+        [
+          95,
+          1.4
+        ],
+        [
+          133,
+          1.01
+        ],
+        [
+          235,
+          0.21
+        ],
+        [
+          260,
+          0.15
+        ]
+      ],
+      "applied_peak_kPa": 228.1,
+      "applied_impulse_kPa_ms": 3972.0,
+      "load_ends_ms": 128.9,
+      "run_ms": 300,
+      "wall_seconds": 188
+    }
+  },
+  "ensemble": {
+    "HSCV1": {
+      "samples": [
+        {
+          "sample": 1,
+          "values": {
+            "barArea": 0.9657370033605551,
+            "barDepth": 0.9532050646000627,
+            "bearing": 0.42294866214650734,
+            "fc": 114692584.67423314,
+            "ft": 1.0384673721051076,
+            "fu": 1.0524366706039963,
+            "fy": 0.9549940162888588,
+            "gf": 1.329002977604466,
+            "load": 1.0030323168732045
+          },
+          "peak_mm": 90.23,
+          "peak_time_ms": 25.91,
+          "residual_mm_last_50ms": 70.57,
+          "fails": false
+        },
+        {
+          "sample": 2,
+          "values": {
+            "barArea": 0.8697576066453943,
+            "barDepth": 0.6952720128041495,
+            "bearing": 0.8611189720815514,
+            "fc": 94256560.03210725,
+            "ft": 1.143657046708016,
+            "fu": 0.9226045725514549,
+            "fy": 1.0150936663548848,
+            "gf": 1.517488198712361,
+            "load": 0.9925947555721627
+          },
+          "peak_mm": 82.74,
+          "peak_time_ms": 25.46,
+          "residual_mm_last_50ms": 52.79,
+          "fails": false
+        },
+        {
+          "sample": 3,
+          "values": {
+            "barArea": 0.853004621553473,
+            "barDepth": 0.9862547462787883,
+            "bearing": 0.17736813314216077,
+            "fc": 98117062.47206563,
+            "ft": 1.348084533856985,
+            "fu": 0.9762993405428843,
+            "fy": 1.0039169831121915,
+            "gf": 0.8545746492421825,
+            "load": 1.054248356734958
+          },
+          "peak_mm": 676.12,
+          "peak_time_ms": 90.11,
+          "residual_mm_last_50ms": 404.46,
+          "fails": true
+        },
+        {
+          "sample": 4,
+          "values": {
+            "barArea": 0.9304465097224934,
+            "barDepth": 0.8007946835988861,
+            "bearing": 0.33219300169984395,
+            "fc": 105879429.85167122,
+            "ft": 1.1194449192937375,
+            "fu": 1.0657206518494875,
+            "fy": 0.9845642677992661,
+            "gf": 1.0145721429897667,
+            "load": 0.9893158249186823
+          },
+          "peak_mm": 80.9,
+          "peak_time_ms": 24.56,
+          "residual_mm_last_50ms": 60.24,
+          "fails": false
+        },
+        {
+          "sample": 5,
+          "values": {
+            "barArea": 0.9173953688350135,
+            "barDepth": 0.7448487364868479,
+            "bearing": 0.6344576128931769,
+            "fc": 100391585.79454742,
+            "ft": 0.9566402791879247,
+            "fu": 0.9331098367946081,
+            "fy": 1.037341157858789,
+            "gf": 1.1552483292491256,
+            "load": 0.91
+          },
+          "peak_mm": 56.6,
+          "peak_time_ms": 21.39,
+          "residual_mm_last_50ms": 27.1,
+          "fails": false
+        },
+        {
+          "sample": 6,
+          "values": {
+            "barArea": 0.8908309972413403,
+            "barDepth": 0.840429912110527,
+            "bearing": 0.6068207067252559,
+            "fc": 110801454.44245017,
+            "ft": 0.824633890046137,
+            "fu": 1.1050044605479201,
+            "fy": 1.0290506110042235,
+            "gf": 0.9733502088470936,
+            "load": 1.0329800325984353
+          },
+          "peak_mm": 87.26,
+          "peak_time_ms": 25.06,
+          "residual_mm_last_50ms": 53.44,
+          "fails": false
+        },
+        {
+          "sample": 7,
+          "values": {
+            "barArea": 0.9985109657580893,
+            "barDepth": 1.028329122687282,
+            "bearing": 0.039173313494819964,
+            "fc": 102115701.64794126,
+            "ft": 0.7782428246459449,
+            "fu": 1.0080377125670017,
+            "fy": 0.9747167766255127,
+            "gf": 0.69438549334703,
+            "load": 0.9719038463210119
+          },
+          "peak_mm": 92.66,
+          "peak_time_ms": 26.16,
+          "residual_mm_last_50ms": 73.14,
+          "fails": false
+        },
+        {
+          "sample": 8,
+          "values": {
+            "barArea": 0.9570889884007867,
+            "barDepth": 0.9146626911603075,
+            "bearing": 0.9474520160307172,
+            "fc": 108694273.6265657,
+            "ft": 0.9375449359738753,
+            "fu": 1.1291299613971104,
+            "fy": 0.9940398948557847,
+            "gf": 0.7509977316638985,
+            "load": 1.0115091794853632
+          },
+          "peak_mm": 77.42,
+          "peak_time_ms": 23.56,
+          "residual_mm_last_50ms": 39.29,
+          "fails": false
+        }
+      ],
+      "median_peak_mm": 85.0,
+      "low_high_ratio_to_median": [
+        0.666,
+        7.954
+      ],
+      "primary_band_mm": [
+        62.7,
+        749.1
+      ],
+      "failing_samples": 1
+    },
+    "HSCV2": {
+      "samples": [
+        {
+          "sample": 1,
+          "values": {
+            "barArea": 0.9657370033605551,
+            "barDepth": 0.9532050646000627,
+            "bearing": 0.42294866214650734,
+            "fc": 114692584.67423314,
+            "ft": 1.0384673721051076,
+            "fu": 1.0524366706039963,
+            "fy": 0.9549940162888588,
+            "gf": 1.329002977604466,
+            "load": 1.0030323168732045
+          },
+          "peak_mm": 90.23,
+          "peak_time_ms": 25.91,
+          "residual_mm_last_50ms": 71.8,
+          "fails": false
+        },
+        {
+          "sample": 2,
+          "values": {
+            "barArea": 0.8697576066453943,
+            "barDepth": 0.6952720128041495,
+            "bearing": 0.8611189720815514,
+            "fc": 94256560.03210725,
+            "ft": 1.143657046708016,
+            "fu": 0.9226045725514549,
+            "fy": 1.0150936663548848,
+            "gf": 1.517488198712361,
+            "load": 0.9925947555721627
+          },
+          "peak_mm": 82.74,
+          "peak_time_ms": 25.46,
+          "residual_mm_last_50ms": 54.87,
+          "fails": false
+        },
+        {
+          "sample": 3,
+          "values": {
+            "barArea": 0.853004621553473,
+            "barDepth": 0.9862547462787883,
+            "bearing": 0.17736813314216077,
+            "fc": 98117062.47206563,
+            "ft": 1.348084533856985,
+            "fu": 0.9762993405428843,
+            "fy": 1.0039169831121915,
+            "gf": 0.8545746492421825,
+            "load": 1.054248356734958
+          },
+          "peak_mm": 676.12,
+          "peak_time_ms": 90.81,
+          "residual_mm_last_50ms": 429.62,
+          "fails": true
+        },
+        {
+          "sample": 4,
+          "values": {
+            "barArea": 0.9304465097224934,
+            "barDepth": 0.8007946835988861,
+            "bearing": 0.33219300169984395,
+            "fc": 105879429.85167122,
+            "ft": 1.1194449192937375,
+            "fu": 1.0657206518494875,
+            "fy": 0.9845642677992661,
+            "gf": 1.0145721429897667,
+            "load": 0.9893158249186823
+          },
+          "peak_mm": 80.9,
+          "peak_time_ms": 24.56,
+          "residual_mm_last_50ms": 61.65,
+          "fails": false
+        },
+        {
+          "sample": 5,
+          "values": {
+            "barArea": 0.9173953688350135,
+            "barDepth": 0.7448487364868479,
+            "bearing": 0.6344576128931769,
+            "fc": 100391585.79454742,
+            "ft": 0.9566402791879247,
+            "fu": 0.9331098367946081,
+            "fy": 1.037341157858789,
+            "gf": 1.1552483292491256,
+            "load": 0.91
+          },
+          "peak_mm": 56.6,
+          "peak_time_ms": 21.39,
+          "residual_mm_last_50ms": 23.26,
+          "fails": false
+        },
+        {
+          "sample": 6,
+          "values": {
+            "barArea": 0.8908309972413403,
+            "barDepth": 0.840429912110527,
+            "bearing": 0.6068207067252559,
+            "fc": 110801454.44245017,
+            "ft": 0.824633890046137,
+            "fu": 1.1050044605479201,
+            "fy": 1.0290506110042235,
+            "gf": 0.9733502088470936,
+            "load": 1.0329800325984353
+          },
+          "peak_mm": 87.26,
+          "peak_time_ms": 25.06,
+          "residual_mm_last_50ms": 58.91,
+          "fails": false
+        },
+        {
+          "sample": 7,
+          "values": {
+            "barArea": 0.9985109657580893,
+            "barDepth": 1.028329122687282,
+            "bearing": 0.039173313494819964,
+            "fc": 102115701.64794126,
+            "ft": 0.7782428246459449,
+            "fu": 1.0080377125670017,
+            "fy": 0.9747167766255127,
+            "gf": 0.69438549334703,
+            "load": 0.9719038463210119
+          },
+          "peak_mm": 92.66,
+          "peak_time_ms": 26.16,
+          "residual_mm_last_50ms": 72.39,
+          "fails": false
+        },
+        {
+          "sample": 8,
+          "values": {
+            "barArea": 0.9570889884007867,
+            "barDepth": 0.9146626911603075,
+            "bearing": 0.9474520160307172,
+            "fc": 108694273.6265657,
+            "ft": 0.9375449359738753,
+            "fu": 1.1291299613971104,
+            "fy": 0.9940398948557847,
+            "gf": 0.7509977316638985,
+            "load": 1.0115091794853632
+          },
+          "peak_mm": 77.42,
+          "peak_time_ms": 23.56,
+          "residual_mm_last_50ms": 44.31,
+          "fails": false
+        }
+      ],
+      "median_peak_mm": 85.0,
+      "low_high_ratio_to_median": [
+        0.666,
+        7.954
+      ],
+      "primary_band_mm": [
+        62.7,
+        749.1
+      ],
+      "failing_samples": 1
+    },
+    "HSCV3": {
+      "samples": [
+        {
+          "sample": 1,
+          "values": {
+            "barArea": 0.9657370033605551,
+            "barDepth": 0.9532050646000627,
+            "bearing": 0.42294866214650734,
+            "fc": 114692584.67423314,
+            "ft": 1.0384673721051076,
+            "fu": 1.0524366706039963,
+            "fy": 0.9549940162888588,
+            "gf": 1.329002977604466,
+            "load": 1.0030323168732045
+          },
+          "peak_mm": 50.7,
+          "peak_time_ms": 21.05,
+          "residual_mm_last_50ms": 33.89,
+          "fails": false
+        },
+        {
+          "sample": 2,
+          "values": {
+            "barArea": 0.8697576066453943,
+            "barDepth": 0.6952720128041495,
+            "bearing": 0.8611189720815514,
+            "fc": 94256560.03210725,
+            "ft": 1.143657046708016,
+            "fu": 0.9226045725514549,
+            "fy": 1.0150936663548848,
+            "gf": 1.517488198712361,
+            "load": 0.9925947555721627
+          },
+          "peak_mm": 43.93,
+          "peak_time_ms": 20.01,
+          "residual_mm_last_50ms": 28.17,
+          "fails": false
+        },
+        {
+          "sample": 3,
+          "values": {
+            "barArea": 0.853004621553473,
+            "barDepth": 0.9862547462787883,
+            "bearing": 0.17736813314216077,
+            "fc": 98117062.47206563,
+            "ft": 1.348084533856985,
+            "fu": 0.9762993405428843,
+            "fy": 1.0039169831121915,
+            "gf": 0.8545746492421825,
+            "load": 1.054248356734958
+          },
+          "peak_mm": 74.37,
+          "peak_time_ms": 25.2,
+          "residual_mm_last_50ms": 57.09,
+          "fails": false
+        },
+        {
+          "sample": 4,
+          "values": {
+            "barArea": 0.9304465097224934,
+            "barDepth": 0.8007946835988861,
+            "bearing": 0.33219300169984395,
+            "fc": 105879429.85167122,
+            "ft": 1.1194449192937375,
+            "fu": 1.0657206518494875,
+            "fy": 0.9845642677992661,
+            "gf": 1.0145721429897667,
+            "load": 0.9893158249186823
+          },
+          "peak_mm": 45.49,
+          "peak_time_ms": 19.97,
+          "residual_mm_last_50ms": 28.41,
+          "fails": false
+        },
+        {
+          "sample": 5,
+          "values": {
+            "barArea": 0.9173953688350135,
+            "barDepth": 0.7448487364868479,
+            "bearing": 0.6344576128931769,
+            "fc": 100391585.79454742,
+            "ft": 0.9566402791879247,
+            "fu": 0.9331098367946081,
+            "fy": 1.037341157858789,
+            "gf": 1.1552483292491256,
+            "load": 0.91
+          },
+          "peak_mm": 31.09,
+          "peak_time_ms": 17.33,
+          "residual_mm_last_50ms": 14.6,
+          "fails": false
+        },
+        {
+          "sample": 6,
+          "values": {
+            "barArea": 0.8908309972413403,
+            "barDepth": 0.840429912110527,
+            "bearing": 0.6068207067252559,
+            "fc": 110801454.44245017,
+            "ft": 0.824633890046137,
+            "fu": 1.1050044605479201,
+            "fy": 1.0290506110042235,
+            "gf": 0.9733502088470936,
+            "load": 1.0329800325984353
+          },
+          "peak_mm": 49.5,
+          "peak_time_ms": 20.37,
+          "residual_mm_last_50ms": 27.22,
+          "fails": false
+        },
+        {
+          "sample": 7,
+          "values": {
+            "barArea": 0.9985109657580893,
+            "barDepth": 1.028329122687282,
+            "bearing": 0.039173313494819964,
+            "fc": 102115701.64794126,
+            "ft": 0.7782428246459449,
+            "fu": 1.0080377125670017,
+            "fy": 0.9747167766255127,
+            "gf": 0.69438549334703,
+            "load": 0.9719038463210119
+          },
+          "peak_mm": 52.89,
+          "peak_time_ms": 21.19,
+          "residual_mm_last_50ms": 34.26,
+          "fails": false
+        },
+        {
+          "sample": 8,
+          "values": {
+            "barArea": 0.9570889884007867,
+            "barDepth": 0.9146626911603075,
+            "bearing": 0.9474520160307172,
+            "fc": 108694273.6265657,
+            "ft": 0.9375449359738753,
+            "fu": 1.1291299613971104,
+            "fy": 0.9940398948557847,
+            "gf": 0.7509977316638985,
+            "load": 1.0115091794853632
+          },
+          "peak_mm": 44.64,
+          "peak_time_ms": 19.36,
+          "residual_mm_last_50ms": 21.29,
+          "fails": false
+        }
+      ],
+      "median_peak_mm": 47.5,
+      "low_high_ratio_to_median": [
+        0.655,
+        1.566
+      ],
+      "primary_band_mm": [
+        34.3,
+        82.1
+      ],
+      "failing_samples": 0
+    },
+    "HSCV4": {
+      "samples": [
+        {
+          "sample": 1,
+          "values": {
+            "barArea": 0.9657370033605551,
+            "barDepth": 0.9532050646000627,
+            "bearing": 0.42294866214650734,
+            "fc": 114692584.67423314,
+            "ft": 1.0384673721051076,
+            "fu": 1.0524366706039963,
+            "fy": 0.9549940162888588,
+            "gf": 1.329002977604466,
+            "load": 1.0030323168732045
+          },
+          "peak_mm": 680.07,
+          "peak_time_ms": 136.74,
+          "residual_mm_last_50ms": 659.2,
+          "fails": true
+        },
+        {
+          "sample": 2,
+          "values": {
+            "barArea": 0.8697576066453943,
+            "barDepth": 0.6952720128041495,
+            "bearing": 0.8611189720815514,
+            "fc": 94256560.03210725,
+            "ft": 1.143657046708016,
+            "fu": 0.9226045725514549,
+            "fy": 1.0150936663548848,
+            "gf": 1.517488198712361,
+            "load": 0.9925947555721627
+          },
+          "peak_mm": 655.36,
+          "peak_time_ms": 84.83,
+          "residual_mm_last_50ms": 349.8,
+          "fails": true
+        },
+        {
+          "sample": 3,
+          "values": {
+            "barArea": 0.853004621553473,
+            "barDepth": 0.9862547462787883,
+            "bearing": 0.17736813314216077,
+            "fc": 98117062.47206563,
+            "ft": 1.348084533856985,
+            "fu": 0.9762993405428843,
+            "fy": 1.0039169831121915,
+            "gf": 0.8545746492421825,
+            "load": 1.054248356734958
+          },
+          "peak_mm": 669.13,
+          "peak_time_ms": 74.87,
+          "residual_mm_last_50ms": 89.94,
+          "fails": true
+        },
+        {
+          "sample": 4,
+          "values": {
+            "barArea": 0.9304465097224934,
+            "barDepth": 0.8007946835988861,
+            "bearing": 0.33219300169984395,
+            "fc": 105879429.85167122,
+            "ft": 1.1194449192937375,
+            "fu": 1.0657206518494875,
+            "fy": 0.9845642677992661,
+            "gf": 1.0145721429897667,
+            "load": 0.9893158249186823
+          },
+          "peak_mm": 675.22,
+          "peak_time_ms": 150.04,
+          "residual_mm_last_50ms": 623.4,
+          "fails": true
+        },
+        {
+          "sample": 5,
+          "values": {
+            "barArea": 0.9173953688350135,
+            "barDepth": 0.7448487364868479,
+            "bearing": 0.6344576128931769,
+            "fc": 100391585.79454742,
+            "ft": 0.9566402791879247,
+            "fu": 0.9331098367946081,
+            "fy": 1.037341157858789,
+            "gf": 1.1552483292491256,
+            "load": 0.91
+          },
+          "peak_mm": 656.38,
+          "peak_time_ms": 101.24,
+          "residual_mm_last_50ms": 566.23,
+          "fails": true
+        },
+        {
+          "sample": 6,
+          "values": {
+            "barArea": 0.8908309972413403,
+            "barDepth": 0.840429912110527,
+            "bearing": 0.6068207067252559,
+            "fc": 110801454.44245017,
+            "ft": 0.824633890046137,
+            "fu": 1.1050044605479201,
+            "fy": 1.0290506110042235,
+            "gf": 0.9733502088470936,
+            "load": 1.0329800325984353
+          },
+          "peak_mm": 667.28,
+          "peak_time_ms": 102.48,
+          "residual_mm_last_50ms": 658.38,
+          "fails": true
+        },
+        {
+          "sample": 7,
+          "values": {
+            "barArea": 0.9985109657580893,
+            "barDepth": 1.028329122687282,
+            "bearing": 0.039173313494819964,
+            "fc": 102115701.64794126,
+            "ft": 0.7782428246459449,
+            "fu": 1.0080377125670017,
+            "fy": 0.9747167766255127,
+            "gf": 0.69438549334703,
+            "load": 0.9719038463210119
+          },
+          "peak_mm": 678.66,
+          "peak_time_ms": 111.86,
+          "residual_mm_last_50ms": 641.5,
+          "fails": true
+        },
+        {
+          "sample": 8,
+          "values": {
+            "barArea": 0.9570889884007867,
+            "barDepth": 0.9146626911603075,
+            "bearing": 0.9474520160307172,
+            "fc": 108694273.6265657,
+            "ft": 0.9375449359738753,
+            "fu": 1.1291299613971104,
+            "fy": 0.9940398948557847,
+            "gf": 0.7509977316638985,
+            "load": 1.0115091794853632
+          },
+          "peak_mm": 652.56,
+          "peak_time_ms": 150.07,
+          "residual_mm_last_50ms": 588.56,
+          "fails": true
+        }
+      ],
+      "median_peak_mm": 668.2,
+      "low_high_ratio_to_median": [
+        0.977,
+        1.018
+      ],
+      "primary_band_mm": [
+        662.4,
+        690.3
+      ],
+      "failing_samples": 8
+    },
+    "HSCV5": {
+      "samples": [
+        {
+          "sample": 1,
+          "values": {
+            "barArea": 0.9657370033605551,
+            "barDepth": 0.9532050646000627,
+            "bearing": 0.42294866214650734,
+            "fc": 114692584.67423314,
+            "ft": 1.0384673721051076,
+            "fu": 1.0524366706039963,
+            "fy": 0.9549940162888588,
+            "gf": 1.329002977604466,
+            "load": 1.0030323168732045
+          },
+          "peak_mm": 64.55,
+          "peak_time_ms": 25.88,
+          "residual_mm_last_50ms": 50.83,
+          "fails": false
+        },
+        {
+          "sample": 2,
+          "values": {
+            "barArea": 0.8697576066453943,
+            "barDepth": 0.6952720128041495,
+            "bearing": 0.8611189720815514,
+            "fc": 94256560.03210725,
+            "ft": 1.143657046708016,
+            "fu": 0.9226045725514549,
+            "fy": 1.0150936663548848,
+            "gf": 1.517488198712361,
+            "load": 0.9925947555721627
+          },
+          "peak_mm": 60.48,
+          "peak_time_ms": 25.48,
+          "residual_mm_last_50ms": 44.65,
+          "fails": false
+        },
+        {
+          "sample": 3,
+          "values": {
+            "barArea": 0.853004621553473,
+            "barDepth": 0.9862547462787883,
+            "bearing": 0.17736813314216077,
+            "fc": 98117062.47206563,
+            "ft": 1.348084533856985,
+            "fu": 0.9762993405428843,
+            "fy": 1.0039169831121915,
+            "gf": 0.8545746492421825,
+            "load": 1.054248356734958
+          },
+          "peak_mm": 93.0,
+          "peak_time_ms": 31.36,
+          "residual_mm_last_50ms": 73.43,
+          "fails": true
+        },
+        {
+          "sample": 4,
+          "values": {
+            "barArea": 0.9304465097224934,
+            "barDepth": 0.8007946835988861,
+            "bearing": 0.33219300169984395,
+            "fc": 105879429.85167122,
+            "ft": 1.1194449192937375,
+            "fu": 1.0657206518494875,
+            "fy": 0.9845642677992661,
+            "gf": 1.0145721429897667,
+            "load": 0.9893158249186823
+          },
+          "peak_mm": 59.06,
+          "peak_time_ms": 24.39,
+          "residual_mm_last_50ms": 45.27,
+          "fails": false
+        },
+        {
+          "sample": 5,
+          "values": {
+            "barArea": 0.9173953688350135,
+            "barDepth": 0.7448487364868479,
+            "bearing": 0.6344576128931769,
+            "fc": 100391585.79454742,
+            "ft": 0.9566402791879247,
+            "fu": 0.9331098367946081,
+            "fy": 1.037341157858789,
+            "gf": 1.1552483292491256,
+            "load": 0.91
+          },
+          "peak_mm": 42.63,
+          "peak_time_ms": 21.69,
+          "residual_mm_last_50ms": 25.8,
+          "fails": false
+        },
+        {
+          "sample": 6,
+          "values": {
+            "barArea": 0.8908309972413403,
+            "barDepth": 0.840429912110527,
+            "bearing": 0.6068207067252559,
+            "fc": 110801454.44245017,
+            "ft": 0.824633890046137,
+            "fu": 1.1050044605479201,
+            "fy": 1.0290506110042235,
+            "gf": 0.9733502088470936,
+            "load": 1.0329800325984353
+          },
+          "peak_mm": 65.01,
+          "peak_time_ms": 25.37,
+          "residual_mm_last_50ms": 45.95,
+          "fails": false
+        },
+        {
+          "sample": 7,
+          "values": {
+            "barArea": 0.9985109657580893,
+            "barDepth": 1.028329122687282,
+            "bearing": 0.039173313494819964,
+            "fc": 102115701.64794126,
+            "ft": 0.7782428246459449,
+            "fu": 1.0080377125670017,
+            "fy": 0.9747167766255127,
+            "gf": 0.69438549334703,
+            "load": 0.9719038463210119
+          },
+          "peak_mm": 69.9,
+          "peak_time_ms": 26.82,
+          "residual_mm_last_50ms": 52.25,
+          "fails": false
+        },
+        {
+          "sample": 8,
+          "values": {
+            "barArea": 0.9570889884007867,
+            "barDepth": 0.9146626911603075,
+            "bearing": 0.9474520160307172,
+            "fc": 108694273.6265657,
+            "ft": 0.9375449359738753,
+            "fu": 1.1291299613971104,
+            "fy": 0.9940398948557847,
+            "gf": 0.7509977316638985,
+            "load": 1.0115091794853632
+          },
+          "peak_mm": 57.23,
+          "peak_time_ms": 23.7,
+          "residual_mm_last_50ms": 33.92,
+          "fails": false
+        }
+      ],
+      "median_peak_mm": 62.52,
+      "low_high_ratio_to_median": [
+        0.682,
+        1.488
+      ],
+      "primary_band_mm": [
+        45.2,
+        98.6
+      ],
+      "failing_samples": 1
+    },
+    "HSCV6": {
+      "samples": [
+        {
+          "sample": 1,
+          "values": {
+            "barArea": 0.9657370033605551,
+            "barDepth": 0.9532050646000627,
+            "bearing": 0.42294866214650734,
+            "fc": 114692584.67423314,
+            "ft": 1.0384673721051076,
+            "fu": 1.0524366706039963,
+            "fy": 0.9549940162888588,
+            "gf": 1.329002977604466,
+            "load": 1.0030323168732045
+          },
+          "peak_mm": 88.2,
+          "peak_time_ms": 29.05,
+          "residual_mm_last_50ms": 70.19,
+          "fails": false
+        },
+        {
+          "sample": 2,
+          "values": {
+            "barArea": 0.8697576066453943,
+            "barDepth": 0.6952720128041495,
+            "bearing": 0.8611189720815514,
+            "fc": 94256560.03210725,
+            "ft": 1.143657046708016,
+            "fu": 0.9226045725514549,
+            "fy": 1.0150936663548848,
+            "gf": 1.517488198712361,
+            "load": 0.9925947555721627
+          },
+          "peak_mm": 648.61,
+          "peak_time_ms": 150.08,
+          "residual_mm_last_50ms": 593.5,
+          "fails": true
+        },
+        {
+          "sample": 3,
+          "values": {
+            "barArea": 0.853004621553473,
+            "barDepth": 0.9862547462787883,
+            "bearing": 0.17736813314216077,
+            "fc": 98117062.47206563,
+            "ft": 1.348084533856985,
+            "fu": 0.9762993405428843,
+            "fy": 1.0039169831121915,
+            "gf": 0.8545746492421825,
+            "load": 1.054248356734958
+          },
+          "peak_mm": 669.66,
+          "peak_time_ms": 149.84,
+          "residual_mm_last_50ms": 633.59,
+          "fails": true
+        },
+        {
+          "sample": 4,
+          "values": {
+            "barArea": 0.9304465097224934,
+            "barDepth": 0.8007946835988861,
+            "bearing": 0.33219300169984395,
+            "fc": 105879429.85167122,
+            "ft": 1.1194449192937375,
+            "fu": 1.0657206518494875,
+            "fy": 0.9845642677992661,
+            "gf": 1.0145721429897667,
+            "load": 0.9893158249186823
+          },
+          "peak_mm": 80.13,
+          "peak_time_ms": 27.78,
+          "residual_mm_last_50ms": 62.67,
+          "fails": false
+        },
+        {
+          "sample": 5,
+          "values": {
+            "barArea": 0.9173953688350135,
+            "barDepth": 0.7448487364868479,
+            "bearing": 0.6344576128931769,
+            "fc": 100391585.79454742,
+            "ft": 0.9566402791879247,
+            "fu": 0.9331098367946081,
+            "fy": 1.037341157858789,
+            "gf": 1.1552483292491256,
+            "load": 0.91
+          },
+          "peak_mm": 57.44,
+          "peak_time_ms": 24.67,
+          "residual_mm_last_50ms": 43.59,
+          "fails": false
+        },
+        {
+          "sample": 6,
+          "values": {
+            "barArea": 0.8908309972413403,
+            "barDepth": 0.840429912110527,
+            "bearing": 0.6068207067252559,
+            "fc": 110801454.44245017,
+            "ft": 0.824633890046137,
+            "fu": 1.1050044605479201,
+            "fy": 1.0290506110042235,
+            "gf": 0.9733502088470936,
+            "load": 1.0329800325984353
+          },
+          "peak_mm": 86.68,
+          "peak_time_ms": 28.54,
+          "residual_mm_last_50ms": 67.07,
+          "fails": false
+        },
+        {
+          "sample": 7,
+          "values": {
+            "barArea": 0.9985109657580893,
+            "barDepth": 1.028329122687282,
+            "bearing": 0.039173313494819964,
+            "fc": 102115701.64794126,
+            "ft": 0.7782428246459449,
+            "fu": 1.0080377125670017,
+            "fy": 0.9747167766255127,
+            "gf": 0.69438549334703,
+            "load": 0.9719038463210119
+          },
+          "peak_mm": 91.47,
+          "peak_time_ms": 29.7,
+          "residual_mm_last_50ms": 69.49,
+          "fails": false
+        },
+        {
+          "sample": 8,
+          "values": {
+            "barArea": 0.9570889884007867,
+            "barDepth": 0.9146626911603075,
+            "bearing": 0.9474520160307172,
+            "fc": 108694273.6265657,
+            "ft": 0.9375449359738753,
+            "fu": 1.1291299613971104,
+            "fy": 0.9940398948557847,
+            "gf": 0.7509977316638985,
+            "load": 1.0115091794853632
+          },
+          "peak_mm": 77.41,
+          "peak_time_ms": 26.95,
+          "residual_mm_last_50ms": 58.13,
+          "fails": false
+        }
+      ],
+      "median_peak_mm": 87.44,
+      "low_high_ratio_to_median": [
+        0.657,
+        7.659
+      ],
+      "primary_band_mm": [
+        59.9,
+        698.7
+      ],
+      "failing_samples": 2
+    }
+  },
+  "secondary": {
+    "1-scaled-load": {
+      "HSCV1": {
+        "peak_mm": 108.26,
+        "peak_time_ms": 27.7,
+        "residual_mm": 76.68,
+        "rest_range_mm": 3.67,
+        "fails": false,
+        "concrete_spans": true,
+        "bar_elements_ruptured": 0,
+        "elements_removed": 0,
+        "elements_bare": 0,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0,
+        "back_face_scabbed_m2": 0,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -337,
+            0.11
+          ],
+          [
+            -248,
+            0.49
+          ],
+          [
+            -210,
+            0.93
+          ],
+          [
+            -146,
+            0.98
+          ],
+          [
+            -121,
+            1.17
+          ],
+          [
+            -83,
+            1.11
+          ],
+          [
+            -44,
+            2.19
+          ],
+          [
+            -6,
+            1.22
+          ],
+          [
+            44,
+            1.31
+          ],
+          [
+            70,
+            1.08
+          ],
+          [
+            108,
+            1.1
+          ],
+          [
+            133,
+            0.93
+          ],
+          [
+            159,
+            0.86
+          ],
+          [
+            235,
+            0.55
+          ]
+        ],
+        "applied_peak_kPa": 358.0,
+        "applied_impulse_kPa_ms": 6987.0,
+        "load_ends_ms": 60.0,
+        "run_ms": 150,
+        "wall_seconds": 100
+      },
+      "HSCV2": {
+        "peak_mm": 103.93,
+        "peak_time_ms": 27.3,
+        "residual_mm": 74.32,
+        "rest_range_mm": 3.09,
+        "fails": false,
+        "concrete_spans": true,
+        "bar_elements_ruptured": 0,
+        "elements_removed": 0,
+        "elements_bare": 0,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0,
+        "back_face_scabbed_m2": 0,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -286,
+            0.17
+          ],
+          [
+            -197,
+            0.78
+          ],
+          [
+            -95,
+            1.85
+          ],
+          [
+            -70,
+            1.22
+          ],
+          [
+            -19,
+            1.9
+          ],
+          [
+            19,
+            1.38
+          ],
+          [
+            44,
+            1.31
+          ],
+          [
+            70,
+            1.12
+          ],
+          [
+            108,
+            1.12
+          ],
+          [
+            133,
+            0.99
+          ],
+          [
+            222,
+            0.6
+          ],
+          [
+            298,
+            0.1
+          ]
+        ],
+        "applied_peak_kPa": 352.4,
+        "applied_impulse_kPa_ms": 6878.0,
+        "load_ends_ms": 60.0,
+        "run_ms": 150,
+        "wall_seconds": 99
+      },
+      "HSCV3": {
+        "peak_mm": 59.93,
+        "peak_time_ms": 22.2,
+        "residual_mm": 39.26,
+        "rest_range_mm": 1.66,
+        "fails": false,
+        "concrete_spans": true,
+        "bar_elements_ruptured": 0,
+        "elements_removed": 0,
+        "elements_bare": 0,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0,
+        "back_face_scabbed_m2": 0,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -248,
+            0.14
+          ],
+          [
+            -146,
+            0.53
+          ],
+          [
+            -95,
+            1.24
+          ],
+          [
+            -6,
+            1.1
+          ],
+          [
+            32,
+            0.9
+          ],
+          [
+            70,
+            0.81
+          ],
+          [
+            95,
+            0.83
+          ],
+          [
+            146,
+            0.58
+          ],
+          [
+            184,
+            0.37
+          ],
+          [
+            260,
+            0.14
+          ]
+        ],
+        "applied_peak_kPa": 274.7,
+        "applied_impulse_kPa_ms": 5336.0,
+        "load_ends_ms": 60.0,
+        "run_ms": 150,
+        "wall_seconds": 109
+      },
+      "HSCV4": {
+        "peak_mm": 677.68,
+        "peak_time_ms": 97.66,
+        "residual_mm": 557.17,
+        "rest_range_mm": 327.31,
+        "fails": true,
+        "concrete_spans": false,
+        "bar_elements_ruptured": 385,
+        "elements_removed": 664,
+        "elements_bare": 108,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0.01081,
+        "back_face_scabbed_m2": 0.02435,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -654,
+            0.1
+          ],
+          [
+            -311,
+            0.32
+          ],
+          [
+            -197,
+            1.09
+          ],
+          [
+            -121,
+            2.4
+          ],
+          [
+            -83,
+            1.81
+          ],
+          [
+            -19,
+            2.21
+          ],
+          [
+            32,
+            3.8
+          ],
+          [
+            70,
+            2.08
+          ],
+          [
+            95,
+            1.5
+          ],
+          [
+            133,
+            1.15
+          ],
+          [
+            248,
+            0.51
+          ],
+          [
+            273,
+            0.16
+          ],
+          [
+            298,
+            0.13
+          ]
+        ],
+        "applied_peak_kPa": 266.9,
+        "applied_impulse_kPa_ms": 5198.0,
+        "load_ends_ms": 60.0,
+        "run_ms": 150,
+        "wall_seconds": 131
+      },
+      "HSCV5": {
+        "peak_mm": 70.07,
+        "peak_time_ms": 26.59,
+        "residual_mm": 54.04,
+        "rest_range_mm": 1.91,
+        "fails": false,
+        "concrete_spans": true,
+        "bar_elements_ruptured": 0,
+        "elements_removed": 0,
+        "elements_bare": 0,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0,
+        "back_face_scabbed_m2": 0,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -260,
+            0.12
+          ],
+          [
+            -235,
+            0.17
+          ],
+          [
+            -197,
+            0.46
+          ],
+          [
+            -159,
+            0.77
+          ],
+          [
+            -121,
+            1.46
+          ],
+          [
+            -32,
+            1.55
+          ],
+          [
+            19,
+            1.58
+          ],
+          [
+            57,
+            1.17
+          ],
+          [
+            95,
+            0.82
+          ],
+          [
+            121,
+            1.07
+          ],
+          [
+            222,
+            0.26
+          ],
+          [
+            248,
+            0.17
+          ]
+        ],
+        "applied_peak_kPa": 207.8,
+        "applied_impulse_kPa_ms": 3527.0,
+        "load_ends_ms": 60.0,
+        "run_ms": 150,
+        "wall_seconds": 91
+      },
+      "HSCV6": {
+        "peak_mm": 99.43,
+        "peak_time_ms": 30.64,
+        "residual_mm": 77.15,
+        "rest_range_mm": 1.67,
+        "fails": false,
+        "concrete_spans": true,
+        "bar_elements_ruptured": 0,
+        "elements_removed": 0,
+        "elements_bare": 0,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0,
+        "back_face_scabbed_m2": 0,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -260,
+            0.2
+          ],
+          [
+            -235,
+            0.28
+          ],
+          [
+            -171,
+            1.63
+          ],
+          [
+            -133,
+            0.63
+          ],
+          [
+            -108,
+            0.83
+          ],
+          [
+            -19,
+            2.59
+          ],
+          [
+            44,
+            2.44
+          ],
+          [
+            108,
+            1.51
+          ],
+          [
+            146,
+            1.16
+          ],
+          [
+            171,
+            0.91
+          ],
+          [
+            248,
+            0.29
+          ]
+        ],
+        "applied_peak_kPa": 234.4,
+        "applied_impulse_kPa_ms": 3972.0,
+        "load_ends_ms": 60.0,
+        "run_ms": 150,
+        "wall_seconds": 95
+      }
+    },
+    "2-main-bars-outermost": {
+      "HSCV1": {
+        "peak_mm": 70.35,
+        "peak_time_ms": 22.46,
+        "residual_mm": 49.86,
+        "rest_range_mm": 1.3,
+        "fails": false,
+        "concrete_spans": true,
+        "bar_elements_ruptured": 0,
+        "elements_removed": 0,
+        "elements_bare": 0,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0,
+        "back_face_scabbed_m2": 0,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -222,
+            0.35
+          ],
+          [
+            -184,
+            0.32
+          ],
+          [
+            -146,
+            0.77
+          ],
+          [
+            -95,
+            0.94
+          ],
+          [
+            -32,
+            0.99
+          ],
+          [
+            6,
+            0.98
+          ],
+          [
+            44,
+            0.82
+          ],
+          [
+            70,
+            0.81
+          ],
+          [
+            95,
+            0.72
+          ],
+          [
+            171,
+            0.56
+          ],
+          [
+            210,
+            0.28
+          ],
+          [
+            248,
+            0.14
+          ]
+        ],
+        "applied_peak_kPa": 341.3,
+        "applied_impulse_kPa_ms": 6986.0,
+        "load_ends_ms": 76.3,
+        "run_ms": 150,
+        "wall_seconds": 118
+      },
+      "HSCV2": {
+        "peak_mm": 70.35,
+        "peak_time_ms": 22.46,
+        "residual_mm": 49.18,
+        "rest_range_mm": 1.1,
+        "fails": false,
+        "concrete_spans": true,
+        "bar_elements_ruptured": 0,
+        "elements_removed": 0,
+        "elements_bare": 0,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0,
+        "back_face_scabbed_m2": 0,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -222,
+            0.35
+          ],
+          [
+            -184,
+            0.32
+          ],
+          [
+            -146,
+            0.77
+          ],
+          [
+            -95,
+            0.94
+          ],
+          [
+            -32,
+            0.99
+          ],
+          [
+            6,
+            0.98
+          ],
+          [
+            44,
+            0.82
+          ],
+          [
+            70,
+            0.81
+          ],
+          [
+            95,
+            0.72
+          ],
+          [
+            171,
+            0.56
+          ],
+          [
+            210,
+            0.28
+          ],
+          [
+            248,
+            0.14
+          ]
+        ],
+        "applied_peak_kPa": 341.3,
+        "applied_impulse_kPa_ms": 6878.0,
+        "load_ends_ms": 70.8,
+        "run_ms": 150,
+        "wall_seconds": 119
+      },
+      "HSCV3": {
+        "peak_mm": 39.64,
+        "peak_time_ms": 18.4,
+        "residual_mm": 23.12,
+        "rest_range_mm": 1.73,
+        "fails": false,
+        "concrete_spans": true,
+        "bar_elements_ruptured": 0,
+        "elements_removed": 0,
+        "elements_bare": 0,
+        "blast_face_crushed_m2": 0.00032,
+        "blast_face_crushed_from_to_mm": [
+          -44,
+          -44
+        ],
+        "blast_face_spalled_m2": 0,
+        "back_face_scabbed_m2": 0,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -210,
+            0.17
+          ],
+          [
+            -159,
+            0.29
+          ],
+          [
+            -133,
+            0.38
+          ],
+          [
+            -95,
+            0.33
+          ],
+          [
+            -70,
+            0.58
+          ],
+          [
+            -44,
+            0.61
+          ],
+          [
+            -6,
+            0.56
+          ],
+          [
+            44,
+            0.53
+          ],
+          [
+            70,
+            0.47
+          ],
+          [
+            95,
+            0.36
+          ],
+          [
+            121,
+            0.43
+          ],
+          [
+            146,
+            0.29
+          ],
+          [
+            222,
+            0.12
+          ]
+        ],
+        "applied_peak_kPa": 263.0,
+        "applied_impulse_kPa_ms": 5336.0,
+        "load_ends_ms": 90.1,
+        "run_ms": 150,
+        "wall_seconds": 104
+      },
+      "HSCV4": {
+        "peak_mm": 672.42,
+        "peak_time_ms": 99.77,
+        "residual_mm": 529.51,
+        "rest_range_mm": 379.12,
+        "fails": true,
+        "concrete_spans": false,
+        "bar_elements_ruptured": 385,
+        "elements_removed": 531,
+        "elements_bare": 71,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0.01081,
+        "back_face_scabbed_m2": 0.01758,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -235,
+            0.71
+          ],
+          [
+            -210,
+            0.52
+          ],
+          [
+            -184,
+            0.88
+          ],
+          [
+            -159,
+            1.14
+          ],
+          [
+            -121,
+            1.43
+          ],
+          [
+            -95,
+            1.76
+          ],
+          [
+            -44,
+            1.96
+          ],
+          [
+            -19,
+            1.8
+          ],
+          [
+            6,
+            2.28
+          ],
+          [
+            44,
+            1.72
+          ],
+          [
+            70,
+            1.35
+          ],
+          [
+            95,
+            1.1
+          ],
+          [
+            171,
+            1.03
+          ],
+          [
+            248,
+            0.29
+          ],
+          [
+            286,
+            0.15
+          ]
+        ],
+        "applied_peak_kPa": 261.8,
+        "applied_impulse_kPa_ms": 5198,
+        "load_ends_ms": 73.5,
+        "run_ms": 150,
+        "wall_seconds": 140
+      },
+      "HSCV5": {
+        "peak_mm": 53.15,
+        "peak_time_ms": 22.72,
+        "residual_mm": 39.59,
+        "rest_range_mm": 1.01,
+        "fails": false,
+        "concrete_spans": true,
+        "bar_elements_ruptured": 0,
+        "elements_removed": 0,
+        "elements_bare": 0,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0,
+        "back_face_scabbed_m2": 0,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -222,
+            0.24
+          ],
+          [
+            -121,
+            0.67
+          ],
+          [
+            -57,
+            1.27
+          ],
+          [
+            32,
+            1.24
+          ],
+          [
+            108,
+            0.9
+          ],
+          [
+            171,
+            0.47
+          ]
+        ],
+        "applied_peak_kPa": 206.2,
+        "applied_impulse_kPa_ms": 3527.0,
+        "load_ends_ms": 77.3,
+        "run_ms": 150,
+        "wall_seconds": 105
+      },
+      "HSCV6": {
+        "peak_mm": 71.34,
+        "peak_time_ms": 25.88,
+        "residual_mm": 54.81,
+        "rest_range_mm": 1.36,
+        "fails": false,
+        "concrete_spans": true,
+        "bar_elements_ruptured": 0,
+        "elements_removed": 0,
+        "elements_bare": 0,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0,
+        "back_face_scabbed_m2": 0,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -210,
+            0.36
+          ],
+          [
+            -146,
+            0.95
+          ],
+          [
+            -32,
+            2.43
+          ],
+          [
+            44,
+            1.45
+          ],
+          [
+            70,
+            1.07
+          ],
+          [
+            95,
+            0.96
+          ],
+          [
+            159,
+            0.76
+          ],
+          [
+            184,
+            0.48
+          ],
+          [
+            210,
+            0.37
+          ]
+        ],
+        "applied_peak_kPa": 228.1,
+        "applied_impulse_kPa_ms": 3972.0,
+        "load_ends_ms": 128.9,
+        "run_ms": 150,
+        "wall_seconds": 121
+      }
+    },
+    "3-nominal-bars": {
+      "HSCV1": {
+        "peak_mm": 107.51,
+        "peak_time_ms": 28.44,
+        "residual_mm": 86.72,
+        "rest_range_mm": 1.98,
+        "fails": false,
+        "concrete_spans": true,
+        "bar_elements_ruptured": 0,
+        "elements_removed": 0,
+        "elements_bare": 0,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0,
+        "back_face_scabbed_m2": 0,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -273,
+            0.21
+          ],
+          [
+            -248,
+            0.4
+          ],
+          [
+            -197,
+            1.07
+          ],
+          [
+            -146,
+            1.33
+          ],
+          [
+            -121,
+            1.33
+          ],
+          [
+            -32,
+            3.01
+          ],
+          [
+            6,
+            1.51
+          ],
+          [
+            70,
+            1.49
+          ],
+          [
+            95,
+            1.13
+          ],
+          [
+            133,
+            1.13
+          ],
+          [
+            184,
+            1.18
+          ],
+          [
+            273,
+            0.24
+          ]
+        ],
+        "applied_peak_kPa": 341.3,
+        "applied_impulse_kPa_ms": 6986.0,
+        "load_ends_ms": 76.3,
+        "run_ms": 150,
+        "wall_seconds": 108
+      },
+      "HSCV2": {
+        "peak_mm": 107.51,
+        "peak_time_ms": 28.44,
+        "residual_mm": 84.47,
+        "rest_range_mm": 1.77,
+        "fails": false,
+        "concrete_spans": true,
+        "bar_elements_ruptured": 0,
+        "elements_removed": 0,
+        "elements_bare": 0,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0,
+        "back_face_scabbed_m2": 0,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -273,
+            0.21
+          ],
+          [
+            -248,
+            0.4
+          ],
+          [
+            -197,
+            1.07
+          ],
+          [
+            -146,
+            1.33
+          ],
+          [
+            -121,
+            1.33
+          ],
+          [
+            -32,
+            3.01
+          ],
+          [
+            6,
+            1.51
+          ],
+          [
+            70,
+            1.49
+          ],
+          [
+            95,
+            1.13
+          ],
+          [
+            133,
+            1.13
+          ],
+          [
+            184,
+            1.18
+          ],
+          [
+            273,
+            0.24
+          ]
+        ],
+        "applied_peak_kPa": 341.3,
+        "applied_impulse_kPa_ms": 6878.0,
+        "load_ends_ms": 70.8,
+        "run_ms": 150,
+        "wall_seconds": 112
+      },
+      "HSCV3": {
+        "peak_mm": 59.78,
+        "peak_time_ms": 22.79,
+        "residual_mm": 41.58,
+        "rest_range_mm": 2.61,
+        "fails": false,
+        "concrete_spans": true,
+        "bar_elements_ruptured": 0,
+        "elements_removed": 0,
+        "elements_bare": 0,
+        "blast_face_crushed_m2": 0.00016,
+        "blast_face_crushed_from_to_mm": [
+          -32,
+          -32
+        ],
+        "blast_face_spalled_m2": 0,
+        "back_face_scabbed_m2": 0,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -260,
+            0.2
+          ],
+          [
+            -197,
+            0.47
+          ],
+          [
+            -159,
+            0.6
+          ],
+          [
+            -133,
+            0.79
+          ],
+          [
+            -57,
+            1.01
+          ],
+          [
+            -32,
+            0.97
+          ],
+          [
+            6,
+            1.13
+          ],
+          [
+            44,
+            0.75
+          ],
+          [
+            70,
+            1.0
+          ],
+          [
+            159,
+            0.6
+          ],
+          [
+            184,
+            0.13
+          ],
+          [
+            210,
+            0.33
+          ],
+          [
+            235,
+            0.2
+          ]
+        ],
+        "applied_peak_kPa": 263.0,
+        "applied_impulse_kPa_ms": 5336.0,
+        "load_ends_ms": 90.1,
+        "run_ms": 150,
+        "wall_seconds": 121
+      },
+      "HSCV4": {
+        "peak_mm": 675.47,
+        "peak_time_ms": 89.25,
+        "residual_mm": 439.77,
+        "rest_range_mm": 521.38,
+        "fails": true,
+        "concrete_spans": false,
+        "bar_elements_ruptured": 240,
+        "elements_removed": 651,
+        "elements_bare": 73,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0.01081,
+        "back_face_scabbed_m2": 0.01919,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -337,
+            0.24
+          ],
+          [
+            -260,
+            0.76
+          ],
+          [
+            -235,
+            0.93
+          ],
+          [
+            -171,
+            2.13
+          ],
+          [
+            -108,
+            0.54
+          ],
+          [
+            -83,
+            0.69
+          ],
+          [
+            -32,
+            3.3
+          ],
+          [
+            44,
+            2.62
+          ],
+          [
+            95,
+            1.83
+          ],
+          [
+            133,
+            1.1
+          ],
+          [
+            235,
+            0.47
+          ],
+          [
+            286,
+            0.14
+          ]
+        ],
+        "applied_peak_kPa": 261.8,
+        "applied_impulse_kPa_ms": 5198,
+        "load_ends_ms": 73.5,
+        "run_ms": 150,
+        "wall_seconds": 171
+      },
+      "HSCV5": {
+        "peak_mm": 88.73,
+        "peak_time_ms": 31.11,
+        "residual_mm": 66.73,
+        "rest_range_mm": 1.99,
+        "fails": false,
+        "concrete_spans": true,
+        "bar_elements_ruptured": 0,
+        "elements_removed": 0,
+        "elements_bare": 0,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0,
+        "back_face_scabbed_m2": 0,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -298,
+            0.15
+          ],
+          [
+            -210,
+            0.52
+          ],
+          [
+            -121,
+            1.44
+          ],
+          [
+            -83,
+            1.77
+          ],
+          [
+            6,
+            1.77
+          ],
+          [
+            44,
+            2.05
+          ],
+          [
+            70,
+            1.49
+          ],
+          [
+            121,
+            1.2
+          ],
+          [
+            235,
+            0.13
+          ],
+          [
+            260,
+            0.14
+          ]
+        ],
+        "applied_peak_kPa": 206.2,
+        "applied_impulse_kPa_ms": 3527.0,
+        "load_ends_ms": 77.3,
+        "run_ms": 150,
+        "wall_seconds": 109
+      },
+      "HSCV6": {
+        "peak_mm": 598.31,
+        "peak_time_ms": 150.08,
+        "residual_mm": 524.63,
+        "rest_range_mm": 161.96,
+        "fails": true,
+        "concrete_spans": false,
+        "bar_elements_ruptured": 191,
+        "elements_removed": 496,
+        "elements_bare": 77,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0.01113,
+        "back_face_scabbed_m2": 0.01097,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -337,
+            0.13
+          ],
+          [
+            -235,
+            0.41
+          ],
+          [
+            -210,
+            0.94
+          ],
+          [
+            -95,
+            1.36
+          ],
+          [
+            -70,
+            1.56
+          ],
+          [
+            -19,
+            2.3
+          ],
+          [
+            32,
+            1.72
+          ],
+          [
+            57,
+            2.03
+          ],
+          [
+            95,
+            1.44
+          ],
+          [
+            121,
+            1.89
+          ],
+          [
+            210,
+            0.7
+          ],
+          [
+            298,
+            0.11
+          ]
+        ],
+        "applied_peak_kPa": 228.1,
+        "applied_impulse_kPa_ms": 3972.0,
+        "load_ends_ms": 128.9,
+        "run_ms": 150,
+        "wall_seconds": 139
+      }
+    },
+    "4-span-58": {
+      "HSCV1": {
+        "peak_mm": 754.05,
+        "peak_time_ms": 81.6,
+        "residual_mm": 181.51,
+        "rest_range_mm": 810.49,
+        "fails": true,
+        "concrete_spans": false,
+        "bar_elements_ruptured": 398,
+        "elements_removed": 807,
+        "elements_bare": 135,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0.01081,
+        "back_face_scabbed_m2": 0.03048,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -387,
+            0.16
+          ],
+          [
+            -311,
+            0.3
+          ],
+          [
+            -273,
+            0.62
+          ],
+          [
+            -248,
+            0.76
+          ],
+          [
+            -222,
+            1.02
+          ],
+          [
+            -146,
+            1.61
+          ],
+          [
+            -70,
+            2.03
+          ],
+          [
+            -19,
+            1.37
+          ],
+          [
+            44,
+            1.61
+          ],
+          [
+            83,
+            1.26
+          ],
+          [
+            108,
+            1.18
+          ],
+          [
+            133,
+            1.01
+          ],
+          [
+            159,
+            0.95
+          ],
+          [
+            197,
+            0.79
+          ],
+          [
+            222,
+            0.87
+          ],
+          [
+            311,
+            0.21
+          ],
+          [
+            337,
+            0.18
+          ],
+          [
+            438,
+            0.1
+          ]
+        ],
+        "applied_peak_kPa": 341.3,
+        "applied_impulse_kPa_ms": 6986.0,
+        "load_ends_ms": 76.3,
+        "run_ms": 150,
+        "wall_seconds": 143
+      },
+      "HSCV2": {
+        "peak_mm": 754.04,
+        "peak_time_ms": 81.8,
+        "residual_mm": 199.63,
+        "rest_range_mm": 790.65,
+        "fails": true,
+        "concrete_spans": false,
+        "bar_elements_ruptured": 399,
+        "elements_removed": 816,
+        "elements_bare": 153,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0.01129,
+        "back_face_scabbed_m2": 0.02855,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -387,
+            0.16
+          ],
+          [
+            -311,
+            0.3
+          ],
+          [
+            -273,
+            0.62
+          ],
+          [
+            -248,
+            0.76
+          ],
+          [
+            -222,
+            1.02
+          ],
+          [
+            -146,
+            1.61
+          ],
+          [
+            -70,
+            2.14
+          ],
+          [
+            -6,
+            1.38
+          ],
+          [
+            44,
+            1.61
+          ],
+          [
+            83,
+            1.26
+          ],
+          [
+            108,
+            1.18
+          ],
+          [
+            133,
+            1.0
+          ],
+          [
+            159,
+            0.95
+          ],
+          [
+            197,
+            0.79
+          ],
+          [
+            222,
+            0.87
+          ],
+          [
+            311,
+            0.21
+          ],
+          [
+            337,
+            0.18
+          ],
+          [
+            438,
+            0.1
+          ]
+        ],
+        "applied_peak_kPa": 341.3,
+        "applied_impulse_kPa_ms": 6878.0,
+        "load_ends_ms": 70.8,
+        "run_ms": 150,
+        "wall_seconds": 121
+      },
+      "HSCV3": {
+        "peak_mm": 112.01,
+        "peak_time_ms": 30.2,
+        "residual_mm": 85.54,
+        "rest_range_mm": 3.62,
+        "fails": false,
+        "concrete_spans": true,
+        "bar_elements_ruptured": 0,
+        "elements_removed": 0,
+        "elements_bare": 0,
+        "blast_face_crushed_m2": 0.00016,
+        "blast_face_crushed_from_to_mm": [
+          -44,
+          -44
+        ],
+        "blast_face_spalled_m2": 0,
+        "back_face_scabbed_m2": 0,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -324,
+            0.12
+          ],
+          [
+            -260,
+            0.49
+          ],
+          [
+            -222,
+            0.72
+          ],
+          [
+            -184,
+            0.9
+          ],
+          [
+            -95,
+            1.73
+          ],
+          [
+            -44,
+            1.37
+          ],
+          [
+            -19,
+            1.22
+          ],
+          [
+            19,
+            1.12
+          ],
+          [
+            70,
+            1.29
+          ],
+          [
+            95,
+            0.98
+          ],
+          [
+            121,
+            0.88
+          ],
+          [
+            197,
+            0.86
+          ],
+          [
+            260,
+            0.38
+          ],
+          [
+            286,
+            0.18
+          ],
+          [
+            337,
+            0.12
+          ]
+        ],
+        "applied_peak_kPa": 263.0,
+        "applied_impulse_kPa_ms": 5336.0,
+        "load_ends_ms": 90.1,
+        "run_ms": 150,
+        "wall_seconds": 103
+      },
+      "HSCV4": {
+        "peak_mm": 756.21,
+        "peak_time_ms": 85.8,
+        "residual_mm": 420.82,
+        "rest_range_mm": 678.94,
+        "fails": true,
+        "concrete_spans": false,
+        "bar_elements_ruptured": 341,
+        "elements_removed": 682,
+        "elements_bare": 48,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0.01129,
+        "back_face_scabbed_m2": 0.01919,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -730,
+            0.1
+          ],
+          [
+            -464,
+            0.13
+          ],
+          [
+            -387,
+            0.31
+          ],
+          [
+            -311,
+            0.51
+          ],
+          [
+            -273,
+            0.8
+          ],
+          [
+            -222,
+            1.26
+          ],
+          [
+            -146,
+            2.17
+          ],
+          [
+            -108,
+            1.7
+          ],
+          [
+            -19,
+            1.83
+          ],
+          [
+            6,
+            1.27
+          ],
+          [
+            44,
+            2.25
+          ],
+          [
+            70,
+            1.69
+          ],
+          [
+            108,
+            1.48
+          ],
+          [
+            133,
+            1.35
+          ],
+          [
+            171,
+            1.43
+          ],
+          [
+            286,
+            0.54
+          ],
+          [
+            311,
+            0.65
+          ],
+          [
+            362,
+            0.25
+          ],
+          [
+            438,
+            0.12
+          ]
+        ],
+        "applied_peak_kPa": 261.8,
+        "applied_impulse_kPa_ms": 5198,
+        "load_ends_ms": 73.5,
+        "run_ms": 150,
+        "wall_seconds": 181
+      },
+      "HSCV5": {
+        "peak_mm": 135.36,
+        "peak_time_ms": 37.56,
+        "residual_mm": 80.22,
+        "rest_range_mm": 3.15,
+        "fails": true,
+        "concrete_spans": false,
+        "bar_elements_ruptured": 0,
+        "elements_removed": 0,
+        "elements_bare": 0,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0,
+        "back_face_scabbed_m2": 0,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -362,
+            0.12
+          ],
+          [
+            -286,
+            0.17
+          ],
+          [
+            -260,
+            0.27
+          ],
+          [
+            -184,
+            1.13
+          ],
+          [
+            -95,
+            2.45
+          ],
+          [
+            -57,
+            2.43
+          ],
+          [
+            6,
+            1.99
+          ],
+          [
+            44,
+            1.67
+          ],
+          [
+            70,
+            1.61
+          ],
+          [
+            108,
+            1.81
+          ],
+          [
+            146,
+            1.08
+          ],
+          [
+            171,
+            0.9
+          ],
+          [
+            222,
+            0.17
+          ],
+          [
+            260,
+            0.54
+          ],
+          [
+            286,
+            0.15
+          ]
+        ],
+        "applied_peak_kPa": 206.2,
+        "applied_impulse_kPa_ms": 3527.0,
+        "load_ends_ms": 77.3,
+        "run_ms": 150,
+        "wall_seconds": 115
+      },
+      "HSCV6": {
+        "peak_mm": 739.35,
+        "peak_time_ms": 150.05,
+        "residual_mm": 673.44,
+        "rest_range_mm": 160.57,
+        "fails": true,
+        "concrete_spans": false,
+        "bar_elements_ruptured": 277,
+        "elements_removed": 571,
+        "elements_bare": 51,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0.01113,
+        "back_face_scabbed_m2": 0.01258,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -222,
+            0.82
+          ],
+          [
+            -108,
+            2.78
+          ],
+          [
+            -32,
+            2.08
+          ],
+          [
+            6,
+            2.08
+          ],
+          [
+            44,
+            2.46
+          ],
+          [
+            70,
+            1.7
+          ],
+          [
+            95,
+            2.35
+          ],
+          [
+            146,
+            1.14
+          ],
+          [
+            171,
+            0.97
+          ],
+          [
+            210,
+            0.82
+          ],
+          [
+            286,
+            0.52
+          ],
+          [
+            362,
+            0.14
+          ]
+        ],
+        "applied_peak_kPa": 228.1,
+        "applied_impulse_kPa_ms": 3972.0,
+        "load_ends_ms": 128.9,
+        "run_ms": 150,
+        "wall_seconds": 176
+      }
+    },
+    "5-layers-16": {
+      "HSCV1": {
+        "peak_mm": 97.57,
+        "peak_time_ms": 26.6,
+        "residual_mm": 74.29,
+        "rest_range_mm": 0.96,
+        "fails": false,
+        "concrete_spans": true,
+        "bar_elements_ruptured": 0,
+        "elements_removed": 0,
+        "elements_bare": 0,
+        "blast_face_crushed_m2": 0.00048,
+        "blast_face_crushed_from_to_mm": [
+          -35,
+          22
+        ],
+        "blast_face_spalled_m2": 0,
+        "back_face_scabbed_m2": 0,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -276,
+            0.2
+          ],
+          [
+            -257,
+            0.16
+          ],
+          [
+            -225,
+            1.13
+          ],
+          [
+            -194,
+            0.44
+          ],
+          [
+            -181,
+            0.54
+          ],
+          [
+            -162,
+            0.45
+          ],
+          [
+            -149,
+            1.16
+          ],
+          [
+            -130,
+            0.64
+          ],
+          [
+            -111,
+            1.85
+          ],
+          [
+            -92,
+            0.74
+          ],
+          [
+            -73,
+            0.86
+          ],
+          [
+            -60,
+            1.24
+          ],
+          [
+            -35,
+            0.72
+          ],
+          [
+            -10,
+            0.58
+          ],
+          [
+            16,
+            1.05
+          ],
+          [
+            35,
+            1.99
+          ],
+          [
+            54,
+            0.68
+          ],
+          [
+            73,
+            1.21
+          ],
+          [
+            86,
+            0.63
+          ],
+          [
+            98,
+            0.47
+          ],
+          [
+            124,
+            0.77
+          ],
+          [
+            143,
+            0.62
+          ],
+          [
+            168,
+            0.86
+          ],
+          [
+            187,
+            0.32
+          ],
+          [
+            200,
+            0.31
+          ],
+          [
+            213,
+            0.35
+          ],
+          [
+            225,
+            0.21
+          ],
+          [
+            333,
+            0.14
+          ],
+          [
+            422,
+            0.14
+          ]
+        ],
+        "applied_peak_kPa": 341.3,
+        "applied_impulse_kPa_ms": 6986.0,
+        "load_ends_ms": 76.3,
+        "run_ms": 150,
+        "wall_seconds": 1415
+      },
+      "HSCV4": {
+        "peak_mm": 677.89,
+        "peak_time_ms": 107.03,
+        "residual_mm": 589.87,
+        "rest_range_mm": 274.51,
+        "fails": true,
+        "concrete_spans": false,
+        "bar_elements_ruptured": 860,
+        "elements_removed": 2678,
+        "elements_bare": 252,
+        "blast_face_crushed_m2": 0,
+        "blast_face_crushed_from_to_mm": [
+          null,
+          null
+        ],
+        "blast_face_spalled_m2": 0.00585,
+        "back_face_scabbed_m2": 0.00798,
+        "back_face_main_cracks_mm_from_midspan_and_mean_opening_mm": [
+          [
+            -276,
+            0.3
+          ],
+          [
+            -251,
+            0.19
+          ],
+          [
+            -225,
+            1.23
+          ],
+          [
+            -213,
+            0.39
+          ],
+          [
+            -194,
+            2.45
+          ],
+          [
+            -175,
+            0.74
+          ],
+          [
+            -162,
+            0.88
+          ],
+          [
+            -137,
+            1.31
+          ],
+          [
+            -111,
+            7.76
+          ],
+          [
+            -86,
+            1.77
+          ],
+          [
+            -73,
+            0.46
+          ],
+          [
+            -60,
+            1.78
+          ],
+          [
+            -48,
+            0.66
+          ],
+          [
+            -35,
+            0.95
+          ],
+          [
+            -22,
+            1.16
+          ],
+          [
+            -10,
+            1.32
+          ],
+          [
+            3,
+            1.08
+          ],
+          [
+            16,
+            1.69
+          ],
+          [
+            35,
+            2.35
+          ],
+          [
+            67,
+            1.01
+          ],
+          [
+            79,
+            1.16
+          ],
+          [
+            92,
+            0.75
+          ],
+          [
+            111,
+            0.67
+          ],
+          [
+            124,
+            1.65
+          ],
+          [
+            149,
+            1.36
+          ],
+          [
+            175,
+            0.44
+          ],
+          [
+            187,
+            0.36
+          ],
+          [
+            200,
+            0.37
+          ],
+          [
+            213,
+            0.31
+          ],
+          [
+            225,
+            0.26
+          ],
+          [
+            244,
+            0.12
+          ],
+          [
+            257,
+            0.11
+          ],
+          [
+            270,
+            0.11
+          ],
+          [
+            308,
+            0.16
+          ],
+          [
+            352,
+            0.15
+          ],
+          [
+            397,
+            0.17
+          ]
+        ],
+        "applied_peak_kPa": 261.8,
+        "applied_impulse_kPa_ms": 5198,
+        "load_ends_ms": 73.5,
+        "run_ms": 150,
+        "wall_seconds": 1163
+      }
+    }
+  }
+}

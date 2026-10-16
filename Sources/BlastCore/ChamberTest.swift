@@ -276,6 +276,7 @@ public enum ChamberTest {
         ties: Bool = true, elastic: Bool = false, chargeScale: Float = 1,
         afterburning: Bool = SolverConfiguration.recommended.afterburning,
         afterburnEnergy: Float? = nil, airModel: AirModel = SolverConfiguration.recommended.airModel,
+        openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
         duration: Double = 0.3, refinement: Int = 1
     ) throws -> Result {
         try run(
@@ -284,7 +285,8 @@ public enum ChamberTest {
                 elementSize: elementSize, downstand: downstand, ties: ties, elastic: elastic,
                 chargeScale: chargeScale),
             cellSize: cellSize, duration: duration, afterburning: afterburning,
-            afterburnEnergy: afterburnEnergy, airModel: airModel, refinement: refinement)
+            afterburnEnergy: afterburnEnergy, airModel: airModel, openFaces: openFaces, refinement: refinement
+        )
     }
 
     /// The chamber with its vent closed and no charge, filled with air at `overpressure` (Pa)
@@ -308,17 +310,18 @@ public enum ChamberTest {
         device: MTLDevice, scenario: Scenario, cellSize: Float, duration: Double,
         interiorOverpressure: Float = 0, afterburning: Bool = SolverConfiguration.recommended.afterburning,
         afterburnEnergy: Float? = nil,
-        airModel: AirModel = SolverConfiguration.recommended.airModel, refinement: Int = 1,
+        airModel: AirModel = SolverConfiguration.recommended.airModel,
+        openFaces: OpenFaces = SolverConfiguration.recommended.openFaces, refinement: Int = 1,
         contact: ContactMode? = nil,
         progress: ((String) -> Void)? = nil, prepare: ((StructureSolver) -> Void)? = nil
     ) throws -> Result {
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
         let defaults = SolverConfiguration()
-        if afterburning != defaults.afterburning || airModel != defaults.airModel || refinement > 1
-            || afterburnEnergy != nil
+        if afterburning != defaults.afterburning || airModel != defaults.airModel
+            || openFaces != defaults.openFaces || refinement > 1 || afterburnEnergy != nil
         {
             solver.configuration.afterburning = afterburning
-            solver.configuration.openFaces = SolverConfiguration.recommended.openFaces
+            solver.configuration.openFaces = openFaces
             solver.configuration.airModel = airModel
             solver.configuration.refinement = refinement
             if let afterburnEnergy { solver.configuration.afterburnEnergy = afterburnEnergy }
