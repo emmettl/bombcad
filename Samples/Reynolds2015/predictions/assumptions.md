@@ -183,4 +183,23 @@ Each on all six slabs, 150 ms unless stated, changing one choice:
 
 ## Changes after running
 
-(none yet)
+1. **`loads.csv`'s lines end in CR LF** (2026-10-16, harness `1ec6085`). The first attempt
+   stopped before building any slab: the harness split the file on LF alone, which in Swift
+   leaves CR LF lines unsplit, so it found no trace. It now splits on either. A reading error,
+   not an assumption; no model ran before it. (A second attempt also stopped before any
+   simulation, the copied `blastbench` lacking its resource bundles; the binary was copied again
+   with them. Every run reported here used `blastbench` built at `1ec6085`.)
+
+No assumption was changed after any run. Two notes on reading the declared quantities, made
+after the runs and changing nothing in them:
+
+- **The uncertainty of quantity 1 with failing samples.** Where an ensemble sample breaks
+  through, its "peak" is the runaway of a broken slab (650–680 mm), and the declared band
+  (smallest and largest of the eight as ratios to their median) then runs to 7–8 times the
+  median. The declared band is reported as declared; beside it the README gives the range of
+  the samples that stand and how many break through.
+- **"Fails" by the 1 mm rule with no bar broken.** In one ensemble sample (HSCV5 sample 3, peak
+  93 mm) and one secondary run (HSCV5 on 58 in, peak 135 mm) the declared rule counts the slab
+  as failed because cracks wider than 1 mm run through its whole depth across the width,
+  though no bar ruptures, no element is removed and the slab stands at rest. In every other
+  failing run bars rupture and the slab breaks through. The README says which is which.
