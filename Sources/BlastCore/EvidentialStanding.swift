@@ -1969,8 +1969,9 @@ struct StandingScene {
         return result(
             .envelopeDamage, .approximation,
             "One way, from each component's load, with the air seeing the building whole: glass breakage "
-                + "and its time, and concrete panels' rotation between fixed and simply supported edges, as "
-                + "approximations; brick and the inside pressure through broken panes illustrative.",
+                + "and its time, concrete panels' rotation between fixed and simply supported edges, and "
+                + "freestanding walls as cantilevers from their foot, as approximations; brick panels and the "
+                + "inside pressure through broken panes illustrative.",
             evidence: [
                 StandingEvidence(
                     "UFC 3-340-02's worked examples 3A-5, 3A-6(a) and 4A-1", "Within 1%",
@@ -1980,10 +1981,23 @@ struct StandingScene {
                     "Glass: all 45 panes the detailed buildings break, a median 1.7 ms early, and 7 more; "
                         + "concrete walls between the fixed and simply supported bounds",
                     "building-envelopes.md#one-way-damage-single-degree-of-freedom"),
+                StandingEvidence(
+                    "Freestanding walls against measurement: Alsubaei's perimeter walls and Keys's brick walls",
+                    "6 of 7 outcomes as measured, built as tested; the blockwork's top within 16% (32 mm "
+                        + "against 28); the half-scale concrete wall 5.4° where light cracking was seen, the safe "
+                        + "side (the detailed model 2.1°)",
+                    "building-envelopes.md#freestanding-walls"),
+                StandingEvidence(
+                    "One-way reinforced masonry walls under measured loads (Hayman, 2014)",
+                    "1.16–1.91 times the measured mid-height displacement, a level worse on four of five, the "
+                        + "one that blew out failed: the safe side",
+                    "building-envelopes.md#one-way-walls"),
             ],
             assumptions: [
-                "Not covered: freestanding (cantilever) walls; no comparison with measurement for concrete, "
-                    + "brick or glass; references on one mesh and one air grid.",
+                "Compared with measurement only as freestanding and one-way walls: panels held on all their "
+                    + "edges, and glass, have none; references on one mesh and one air grid.",
+                "A freestanding wall's cap or canopy adds no mass, and reinforced blockwork is taken as "
+                    + "concrete: the measured walls were judged as built.",
                 "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
                     + "2° is flagged as beyond the one-way model.",
                 "Glass is annealed, elastic until it breaks, without membrane stiffening; fragments' hazard "

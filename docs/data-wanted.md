@@ -215,8 +215,10 @@ the user's agreement (see [Downloaded, not yet in use](#downloaded-not-yet-in-us
     connection; needs the user to obtain. What was measured is not known.
   - M. Hayman, *Response of one-way reinforced masonry flexural walls under blast loading*,
     MASc thesis, McMaster University, 2014 (MacSphere 11375/16312), six scaled walls under 5
-    to 25 kg at 5 m with reflected and free-field pressures and displacement histories, the
-    charges apparently rising on each wall; and M. ElSayed's McMaster thesis (11375/16041),
+    to 25 kg at 5 m with reflected and free-field pressures and displacement histories (each wall
+    shot once, as it turned out); obtained by the user 2026-10-17 and used for envelope damage's
+    one-way walls ([Fixtures/Hayman2014](../Fixtures/Hayman2014/README.md),
+    [one-way walls](building-envelopes.md#one-way-walls)); and M. ElSayed's McMaster thesis (11375/16041),
     twelve third-scale grouted masonry walls under free-field blasts. MacSphere refused
     automated access; needs the user to obtain.
   - Y. Hao et al., *International Journal of Structural Stability and Dynamics* 17(9),

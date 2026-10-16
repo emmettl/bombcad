@@ -153,4 +153,136 @@ public enum EnvelopePanel {
             loadMassPlastic: factors.elastic,
             backbone: [SIMD2(breakAt, resistance), SIMD2(breakAt * (1 + 1e-6), 0)], reboundFactor: 1, span: a)
     }
+
+    // MARK: Cantilevers
+
+    /// UFC 3-340-02 Table 3-12 (after Biggs 1964, Table 5.1) for a cantilever under a uniform
+    /// load: K_LM 0.65 elastic, 0.66 plastic. The plastic factor is a rigid rotation about the
+    /// base (K_L 1/2, K_M 1/3), so it serves a rocking wall too.
+    public static let cantileverLoadMass = (elastic: 0.65, plastic: 0.66)
+
+    /// A reinforced concrete wall fixed at its base and free at its top, `height` high, with
+    /// `steelArea` m² of vertical bars per metre at `depth` from the compression face (UFC §4):
+    /// the base's moment capacity on dynamic strengths (Table 4-1), the ultimate unit resistance
+    /// of a cantilever under a uniform load r_u = 2 M_N / L² (UFC Table 3-1), the elastic stiffness
+    /// 8 E I / L⁴ (Table 3-8) on the mean of the gross and cracked sections (§4-14);
+    /// elastic–perfectly plastic. The deflection is the top's; the system's `span` is twice the
+    /// height, so that its support rotation atan(x / (span / 2)) is the cantilever's atan(x / L)
+    /// (UFC Table 3-5).
+    ///
+    /// `topMass` (kg per metre of wall) is a mass carried at the top, a cap or canopy: moving
+    /// with the top, it adds M / (K_M L) to the mass per area, K_M the plastic mass factor (1/3).
+    public static func reinforcedConcreteCantilever(
+        thickness: Double, depth: Double, steelArea: Double, material: StructureMaterial, height: Double,
+        topMass: Double = 0
+    ) -> SDOFSystem {
+        let fc = Double(material.compressiveStrength)
+        let fy = Double(material.steel?.yieldStress ?? 500e6)
+        let concrete = Double(material.youngsModulus)
+        let steel = Double(material.steel?.youngsModulus ?? 200e9)
+        let force = steelArea * fy * reinforcementFlexureIncrease
+        let block = force / (0.85 * fc * concreteFlexureIncrease)
+        let capacity = force * (depth - block / 2)
+        let resistance = 2 * capacity / (height * height)
+        let n = steel / concrete
+        let rho = steelArea / depth
+        let k = (2 * n * rho + n * n * rho * rho).squareRoot() - n * rho
+        let cracked = pow(k * depth, 3) / 3 + n * steelArea * pow(depth - k * depth, 2)
+        let gross = pow(thickness, 3) / 12
+        let stiffness = 8 * concrete * (gross + cracked) / 2 / pow(height, 4)
+        return .elasticPlastic(
+            massPerArea: Double(material.density) * thickness + 3 * topMass / height, stiffness: stiffness,
+            ultimate: resistance,
+            loadMassElastic: cantileverLoadMass.elastic, loadMassPlastic: cantileverLoadMass.plastic,
+            span: 2 * height)
+    }
+
+    /// An unreinforced masonry wall standing free, `height` high: elastic on its gross section
+    /// (8 E I / L⁴) until the base cracks, at the moment (f_t + σ) t² / 6, σ = ρ g L its weight's
+    /// stress at the base and f_t its bond (none if `bondedBase` is false, a wall stood on the
+    /// ground); then it rocks about the leeward edge of its base as a rigid block, which its
+    /// weight resists by ρ g t (t − x) / L per area at a top deflection x, falling to nothing as x
+    /// reaches the thickness and its weight passes over the edge (statics of a rigid block, as
+    /// SBEDS treats a cracked unreinforced wall held only by its axial load; PDC-TR 06-01, 2008).
+    /// The deflection is the top's; `span` is twice the height, as for the concrete cantilever.
+    public static func unreinforcedMasonryCantilever(
+        thickness: Double, material: StructureMaterial, height: Double, bondedBase: Bool = true,
+        gravity: Double = 9.81
+    ) -> SDOFSystem {
+        let rho = Double(material.density)
+        let stiffness = 8 * Double(material.youngsModulus) * pow(thickness, 3) / 12 / pow(height, 4)
+        let weight = rho * gravity * thickness  // per area of the wall's face, Pa
+        func rocking(_ x: Double) -> Double { max(weight * (thickness - x) / height, 0) }
+        let bond = bondedBase ? Double(material.tensileStrength) : 0
+        let cracking = 2 * (bond + rho * gravity * height) * thickness * thickness / 6 / (height * height)
+        var backbone: [SIMD2<Double>]
+        if cracking > rocking(cracking / stiffness) {
+            // Bonded: elastic to cracking, then down to the rocking line.
+            let x = cracking / stiffness
+            backbone = [SIMD2(x, cracking), SIMD2(x * (1 + 1e-6), rocking(x)), SIMD2(thickness, 0)]
+        } else {
+            // Unbonded (or weakly bonded): elastic until it meets the rocking line, then down it.
+            let x = weight * thickness / (height * stiffness + weight)
+            backbone = [SIMD2(x, rocking(x)), SIMD2(thickness, 0)]
+        }
+        return SDOFSystem(
+            massPerArea: rho * thickness, loadMassElastic: cantileverLoadMass.elastic,
+            loadMassPlastic: cantileverLoadMass.plastic, backbone: backbone, span: 2 * height)
+    }
+
+    // MARK: One-way panels
+
+    /// UFC 3-340-02 Table 3-12 (Biggs 1964, Table 5.1) for a one-way member under a uniform load:
+    /// simply supported 0.78 elastic, 0.66 plastic; both ends fixed 0.77 elastic, 0.66 plastic.
+    public static func oneWayLoadMass(_ edges: Edges) -> (elastic: Double, plastic: Double) {
+        edges == .fixed ? (0.77, 0.66) : (0.78, 0.66)
+    }
+
+    /// A reinforced concrete or masonry strip spanning `span` between two opposite supports, the
+    /// other two edges free, `steelArea` m² of bars per metre at `depth` from the compression face
+    /// (the same either way for a central mat): the moment capacity on dynamic strengths, r_u =
+    /// 8 M_N / L² simply supported or 8 (M_N + M_P) / L² fixed (UFC Table 3-1), the stiffness
+    /// 384 E I / (5 L⁴) or 384 E I / L⁴ (Table 3-8) on the mean of the gross and cracked sections;
+    /// elastic–perfectly plastic. Its span is the system's, so atan(x / (L/2)) is its rotation.
+    public static func reinforcedOneWay(
+        thickness: Double, depth: Double, steelArea: Double, material: StructureMaterial, span: Double,
+        edges: Edges = .simplySupported
+    ) -> SDOFSystem {
+        let fc = Double(material.compressiveStrength)
+        let fy = Double(material.steel?.yieldStress ?? 500e6)
+        let modulus = Double(material.youngsModulus)
+        let steel = Double(material.steel?.youngsModulus ?? 200e9)
+        let force = steelArea * fy * reinforcementFlexureIncrease
+        let block = force / (0.85 * fc * concreteFlexureIncrease)
+        let capacity = force * (depth - block / 2)
+        let resistance = 8 * capacity * (edges == .fixed ? 2 : 1) / (span * span)
+        let n = steel / modulus
+        let rho = steelArea / depth
+        let k = (2 * n * rho + n * n * rho * rho).squareRoot() - n * rho
+        let cracked = pow(k * depth, 3) / 3 + n * steelArea * pow(depth - k * depth, 2)
+        let gross = pow(thickness, 3) / 12
+        let stiffness = 384 * modulus * (gross + cracked) / 2 / ((edges == .fixed ? 1 : 5) * pow(span, 4))
+        let factors = oneWayLoadMass(edges)
+        return .elasticPlastic(
+            massPerArea: Double(material.density) * thickness, stiffness: stiffness, ultimate: resistance,
+            loadMassElastic: factors.elastic, loadMassPlastic: factors.plastic, span: span)
+    }
+
+    /// An unreinforced masonry strip spanning `span` between two opposite supports, without
+    /// arching: elastic on its gross section until the largest moment reaches f_t t² / 6 (at the
+    /// middle simply supported, w L² / 8; at the supports fixed, w L² / 12), then a mechanism whose
+    /// resistance falls to nothing when the middle deflects by the thickness.
+    public static func unreinforcedMasonryOneWay(
+        thickness: Double, material: StructureMaterial, span: Double, edges: Edges = .simplySupported
+    ) -> SDOFSystem {
+        let modulus = Double(material.youngsModulus)
+        let stiffness = 384 * modulus * pow(thickness, 3) / 12 / ((edges == .fixed ? 1 : 5) * pow(span, 4))
+        let cracking = Double(material.tensileStrength) * thickness * thickness / 6
+        let resistance = cracking * (edges == .fixed ? 12 : 8) / (span * span)
+        let factors = oneWayLoadMass(edges)
+        return SDOFSystem(
+            massPerArea: Double(material.density) * thickness, loadMassElastic: factors.elastic,
+            loadMassPlastic: factors.plastic,
+            backbone: [SIMD2(resistance / stiffness, resistance), SIMD2(thickness, 0)], span: span)
+    }
 }
