@@ -713,6 +713,8 @@ func applyRateOptions(_ model: inout StructureModel) {
     if flag("fragments") { model.removesFragments = true }
     // `--rubble`: failed concrete becomes particles that keep its mass (`rubbleParticles`).
     if flag("rubble") { model.rubbleParticles = true }
+    // `--crushed-bare`: bare concrete squeezed below a quarter of its volume is removed.
+    if flag("crushed-bare") { model.erodesCrushedBare = true }
     // `--no-crack-slip`: cracks spring back from sliding, as before slip was stored.
     if flag("no-crack-slip") { model.crackSlip = false }
     // `--pressed-interlock`: cracks press as they slide, and carry more shear pressed.

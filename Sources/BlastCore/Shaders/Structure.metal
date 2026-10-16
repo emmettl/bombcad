@@ -289,6 +289,10 @@ constant bool hourglassWithoutSteel [[function_constant(9)]];
 // in only when chosen.
 constant bool extremeFibreConstant [[function_constant(19)]];
 constant bool extremeFibreCracking = is_function_constant_defined(extremeFibreConstant) && extremeFibreConstant;
+// Bare elements of structural concrete removed once squeezed below `minVolumeRatio`, as softer
+// materials' are (`StructureModel.erodesCrushedBare`), compiled in only when chosen.
+constant bool crushedBareConstant [[function_constant(20)]];
+constant bool erodesCrushedBare = is_function_constant_defined(crushedBareConstant) && crushedBareConstant;
 // Gravity turned from straight down (`gravityDirection`); otherwise the node kernels pull down
 // exactly as they always have, since the fast-math compiler can round another expression differently.
 constant bool turnedGravityConstant [[function_constant(4)]];
@@ -1986,7 +1990,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         bool collapsed = compactionScale(m.lambda + 2.0f * m.mu / 3.0f) < 1.0f
             && volume < u.minVolumeRatio * referenceVolume;
         if (bare) {
-            eroded = !anySteel || collapsed;
+            eroded = !anySteel || collapsed || (erodesCrushedBare && volume < u.minVolumeRatio * referenceVolume);
         } else if (eroded && anySteel && u.bareBars != 0 && !collapsed) {
             flags[element] = elementBaring;
             failureGate[0] = 1;
