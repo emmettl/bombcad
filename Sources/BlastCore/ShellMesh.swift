@@ -129,6 +129,24 @@ struct ShellMesh {
                     high: high))
         }
 
+        // A pane set in a wall's opening (a solid the opening holds whole, in the plane of a wall
+        // it cuts) lies on the wall's midsurface and fills the opening to its reveal, so that it
+        // shares the wall's nodes round the opening, keeping its own thickness and material.
+        for n in plates.indices {
+            let axis = plates[n].axis
+            guard let opening = model.openings.first(where: { $0.holds(plates[n].box) }),
+                let wall = plates.first(where: { wall in
+                    wall.axis == axis && !opening.holds(wall.box)
+                        && (0..<3).allSatisfy { opening.max[$0] > wall.box.min[$0] && opening.min[$0] < wall.box.max[$0] }
+                })
+            else { continue }
+            plates[n].mid = wall.mid
+            for k in 0..<3 {
+                plates[n].low[k] = k == axis ? wall.mid : max(opening.min[k], wall.box.min[k])
+                plates[n].high[k] = k == axis ? wall.mid : min(opening.max[k], wall.box.max[k])
+            }
+        }
+
         // A plate edge that lies within (or on the face of) another plate it touches ends on that
         // plate's midsurface instead.
         func touches(_ p: Plate, _ q: Plate, along k: Int) -> Bool {
@@ -256,7 +274,7 @@ struct ShellMesh {
                     centre[k] = plate.mid
                     centre[first] = 0.5 * (grid[first][u] + grid[first][u + 1])
                     centre[second] = 0.5 * (grid[second][v] + grid[second][v + 1])
-                    if model.openings.contains(where: { $0.contains(centre) }) { continue }
+                    if model.openings.contains(where: { $0.contains(centre) && !$0.holds(plate.box) }) { continue }
                     var keys: [SIMD3<Int32>] = []
                     for (du, dv) in [(0, 0), (1, 0), (1, 1), (0, 1)] {
                         var key = SIMD3<Int32>(repeating: 0)

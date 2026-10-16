@@ -244,6 +244,20 @@ buildings. The "after" run counts it once.
     segments it shares with others, with their curves and placements (`IFCStep`). Points and
     directions stay shared, and nothing else in the file changes. All the Clinic's wide-flange
     beams and columns now come in closed.
+15. **Windows.** A glazed window became a pane of glass on its wall's midsurface, but every
+    pane was lost when meshed. The wall's hole was an opening, and an opening removed every
+    element in it, the pane's too. Few windows were taken as glazed anyway: only one in the
+    whole corpus, since a window became a pane only where the IFC names glass for it, and most
+    name no material at all. Three changes:
+    - An opening now keeps a solid it holds whole. A pane in a wall's opening is put on the
+      wall's midsurface and fills the opening to its reveal, sharing the wall's nodes there.
+    - Each pane is sized to the hole it sits in rather than to the window, whose frame overlaps
+      the wall round it.
+    - A window naming no glass is taken as glazed, the glass flagged as assumed.
+
+    The real buildings now mesh 250 panes: the Duplex 22 (1,148 elements), the Clinic's
+    architectural model 22 (980), Esplanades 131 (10,403), the sports hall 55 (2,756) and the
+    Schependomlaan design model 20 (283). None is loose.
 
 The task's list also named mapped items, extruded-solid variants, boolean openings and
 georeferencing. The corpus showed none of these breaking the importer:
