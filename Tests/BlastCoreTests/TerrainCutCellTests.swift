@@ -171,6 +171,27 @@ struct TerrainCutCellTests {
         #expect(try BlastSolver(device: device, scenario: scenario, cellSize: 0.5).terrainCut == nil)
     }
 
+    @Test("Over a plateau lying on cells' faces, beside a hill, the gas is conserved to round-off")
+    func plateau() throws {
+        var scenario = Scenario(
+            name: "Plateau", domainSize: SIMD3(16, 8, 8), boxes: [],
+            charge: Charge(mass: 2, position: SIMD3(4, 4, 2.5)))
+        scenario.reflectiveFaces = .all
+        // Level at exactly 1 m (four cells), where the cells above it are whole and the cells below
+        // solid, rising to a hill: whole cells meet the solid ground across their faces.
+        scenario.terrain = .sampled(domain: scenario.domainSize, spacing: 0.25) { p in
+            max(1, 4 * exp(-simd_length_squared(p - SIMD2(10, 4)) / 6.25))
+        }
+        var configuration = cut()
+        configuration.afterburning = true
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 0.25, configuration: configuration)
+        let before = solver.totals()
+        _ = solver.advance(steps: 200)
+        let after = solver.totals()
+        #expect(abs(after.mass / before.mass - 1) < 1e-5, "mass \(after.mass / before.mass - 1)")
+    }
+
     @Test("Under gravity, a burst over a hill conserves its mass to round-off")
     func gravityMass() throws {
         var configuration = cut()

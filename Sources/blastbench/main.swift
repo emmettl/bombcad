@@ -73,11 +73,14 @@ import simd
 //   blastbench advise --calibrate [--time]   (the cost-against-fidelity advisor; see AdvisorBench.swift)
 //   blastbench hrynyk [--slabs TH2,TH6,TH7] [--layers 16] [--impacts 4] [--ensemble 16]   (blind test 1; see HrynykBench.swift)
 //   blastbench contact-profile [--cases solid,shell,debris,terraced] [--steps 2000]
+//   blastbench profile [--preset open] [--dx 0.5] [--closein] [--refine 2] [--terrain ridge|slope|hill] [--staircase]
+//                      (GPU time per stage, on the recommended air)
 //                        (where contact's time goes; see ContactBench.swift)
 //   blastbench mendonca [--slabs 1,2,4,5,7,9,10] [--layers 8] [--dx 0.0125] [--ensemble 8]   (blind test 2; see MendoncaBench.swift)
 //   blastbench buildings [--dx 0.5] [--duration 0.12] [--mass 50] [--out f.json]
 //                        (three buildings across a street, together and each alone; see BuildingsBench.swift)
-//   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80] [--terrain flat]   (hashes of short runs, to compare builds)
+//   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80] [--terrain flat|hill|ridge|slope] [--recommended]
+//                     [--gravity]   (hashes of short runs, to compare builds)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 let command = arguments.first.flatMap { $0.hasPrefix("--") ? nil : $0 } ?? "throughput"
@@ -4676,19 +4679,22 @@ func runDigest() throws {
         ("open", .openGround, 0.5, false, false), ("street", .streetCanyon, 0.5, false, false),
         ("street, afterburning", .streetCanyon, 0.5, true, false), ("wall", .blastWall, 0.25, false, false),
         ("wall as shells", .blastWall, 0.25, false, true),
-        // Afterburning with hot air and far-field faces, as runs start from.
-        ("street, recommended air", .streetCanyon, 0.5, true, false),
     ]
     for (name, preset, cellSize, afterburning, shells) in cases {
-        var configuration =
-            name.hasSuffix("recommended air") ? SolverConfiguration.recommended : SolverConfiguration()
+        // `--recommended` starts from the recommended air (afterburning throughout), `--gravity` adds
+        // gravity in the air.
+        var configuration = flag("recommended") ? SolverConfiguration.recommended : SolverConfiguration()
         configureRefinement(&configuration)
-        configuration.afterburning = afterburning
+        configuration.afterburning = afterburning || flag("recommended")
+        configuration.gravity = chosenGravity()
         var scenario = preset.scenario
         if shells { scenario.structure?.elementKind = .shell }
-        // `--terrain flat` lays the floor down as a heightfield, which must change nothing.
+        // `--terrain flat` lays the floor down as a heightfield, which must change nothing; another
+        // shape (`hill`, `ridge`, `slope`) lays it on the preset's ground.
         if option("terrain") == "flat" {
             scenario.terrain = .flat(domain: scenario.domainSize, spacing: cellSize)
+        } else if let terrain = option("terrain") {
+            applyTerrain(terrain, to: &scenario)
         }
         let solver = try BlastSolver(
             device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
@@ -4931,6 +4937,8 @@ func runProfile() throws {
         end = width == 1.5 ? 0.5 / 340 + 0.004 : Double(farthest) / 340 + 0.004
     } else {
         scenario = preset(named: option("preset")).scenario
+        // `--terrain hill|ridge|slope|flat|file`, on the preset's ground (cut cells, or `--staircase`).
+        if let terrain = option("terrain") { applyTerrain(terrain, to: &scenario) }
         end = scenario.structure == nil ? scenario.acousticCrossingTime : 0.05
     }
     let solver = try makeAirSolver(scenario, cellSize: cellSize)
