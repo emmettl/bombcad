@@ -2014,6 +2014,84 @@ kernel void sampleEnvelopeExposure(const device Cell *state [[buffer(0)]],
     records[index] = record;
 }
 
+// Envelope components (EnvelopeComponentRecorder): after each complete fluid step, each
+// component's two sides' area-weighted mean overpressure (its faces all have the cell's area),
+// summed by one thread in a fixed order. Each step's value, its right endpoint, is integrated
+// into the bins it overlaps, [i w, (i + 1) w) from t = 0; the peaks are kept from every step.
+struct ComponentRecording {
+    uint components;
+    uint capacity;
+    uint initial;
+    uint maxima;
+    uint startBin;         // the bin the batch starts in
+    float startFraction;   // and how far into it, in seconds
+    float binWidth;
+};
+
+static inline float sideMean(const device Cell *state, const device uchar *mask, const device uint2 *faces,
+                             uint first, uint count, constant SolverUniforms &u, thread bool &invalid) {
+    float sum = 0.0f;
+    for (uint n = 0; n < count; ++n) {
+        uint2 face = faces[first + n];
+        if (mask[face.x] != 0 || (face.y != 0xFFFFFFFFu && mask[face.y] == 0)) {
+            invalid = true;
+            continue;
+        }
+        Cell c = state[face.x];
+        float rho = max(c.rho, u.densityFloor);
+        float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / rho;
+        sum += gasPressure(rho, c.energy - kinetic, u.airModel, u.gamma) - u.ambientPressure;
+    }
+    return count > 0 ? sum / float(count) : 0.0f;
+}
+
+kernel void sampleEnvelopeComponents(const device Cell *state [[buffer(0)]],
+                                     const device uchar *mask [[buffer(1)]],
+                                     const device StepControl &control [[buffer(2)]],
+                                     const device uint4 *sides [[buffer(3)]],
+                                     const device uint2 *faces [[buffer(4)]],
+                                     device float4 *peaks [[buffer(5)]],
+                                     device float2 *bins [[buffer(6)]],
+                                     device float2 *maxima [[buffer(7)]],
+                                     device atomic_uint *truncated [[buffer(8)]],
+                                     constant SolverUniforms &u [[buffer(9)]],
+                                     constant ComponentRecording &r [[buffer(10)]],
+                                     uint index [[thread_position_in_grid]]) {
+    if (index >= r.components || (control.dt <= 0 && r.initial == 0)) return;
+    uint4 side = sides[index];
+    bool invalid = false;
+    float outer = sideMean(state, mask, faces, side.x, side.y, u, invalid);
+    float inner = sideMean(state, mask, faces, side.z, side.w, u, invalid);
+    float4 peak = peaks[index];
+    peak.x = max(peak.x, outer);
+    peak.y = max(peak.y, inner);
+    peak.z = max(peak.z, outer - inner);
+    peak.w = invalid ? 1.0f : peak.w;
+    peaks[index] = peak;
+    float dt = r.initial != 0 ? 0.0f : control.dt;
+    // The step, in seconds from the start of the batch's first bin.
+    float end = r.startFraction + (r.initial != 0 ? 0.0f : control.batchTime);
+    float begin = end - dt;
+    int first = int(floor(begin / r.binWidth));
+    int last = r.initial != 0 ? first : int(ceil(end / r.binWidth)) - 1;
+    for (int k = max(first, 0); k <= last; ++k) {
+        float overlap = min(end, float(k + 1) * r.binWidth) - max(begin, float(k) * r.binWidth);
+        if (overlap <= 0.0f && r.initial == 0) continue;
+        uint slot = r.startBin + uint(k);
+        if (slot >= r.capacity) {
+            atomic_store_explicit(truncated, 1u, memory_order_relaxed);
+            break;
+        }
+        ulong at = ulong(index) * ulong(r.capacity) + slot;
+        float2 bin = bins[at];
+        bin += float2(outer, inner) * max(overlap, 0.0f);
+        bins[at] = bin;
+        if (r.maxima != 0) {
+            maxima[at] = max(maxima[at], float2(outer, inner));
+        }
+    }
+}
+
 // Seeds the wave-speed maximum from the initial condition.
 kernel void measureWaveSpeed(const device Cell *state [[buffer(0)]],
                              const device uchar *mask [[buffer(1)]],
