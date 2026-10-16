@@ -477,6 +477,32 @@ and set against the same component of the detailed building free to respond (sum
   the detailed gauges' 1.0, 2.6, 11.0 and 22.4 at 10, 50, 200 and 500 kg (0.87–2.23 times the
   detailed peaks), mostly above. It cannot see a breached concrete wall (1.6 and 6.5 kPa at 200 and 500 kg).
 
+**In the app.** Runs of envelope-only scenes record each component's load (the
+[recorder](#surface-exposure-and-loads) keeps both sides' histories at 0.1 ms) and judge every building
+one way as the run goes, at most once a second and again when it stops:
+
+- **Construction.** Each envelope's walls are reinforced concrete or unreinforced masonry, with a
+  thickness, a concrete roof, a reinforcement ratio and annealed glass. These are read from an IFC
+  import's material layers or a map building's `building:material` tag; otherwise the default is
+  assumed (0.2 m concrete, 0.3% each way, 6 mm glass) and the standing says how many were assumed.
+  The editor's Exposure-only buildings section changes them, and projects save them.
+- **Levels.**
+  - Concrete is a range of support rotation between fixed and simply supported edges, judged by
+    ASCE/SEI 59-11's limits for single-reinforced slabs: moderate to 2°, heavy to 5°, hazardous to
+    10°, failed beyond.
+  - Brick is cracked or fallen (deflected past its thickness). No citable limits for unreinforced
+    masonry without arching were found.
+  - Glass is broken or whole, with the time it broke; the fragments' hazard is not graded.
+  - A building with a panel past 2° is flagged as beyond the one-way model.
+- **Shown.**
+  - The sidebar's Envelope building damage section lists each building's levels, its panes broken
+    and when, and the inside through them, with the result's standing. Export damage writes it as
+    JSON.
+  - The view colours each envelope by the worse end of its range: green none, blue glass broken
+    alone, yellow moderate, orange heavy, red hazardous, purple failed.
+  - Headless, `BombCAD run … --envelope-damage <file.json>` writes the same JSON and prints a line
+    for each building.
+
 These are comparisons with the detailed model on one mesh, not with measurement: open tests of
 window glass under blast are listed in [data wanted](data-wanted.md#3h-window-glass-breaking-under-a-blast)
 but not yet read. Freestanding walls (Alsubaei's, Keys's) would need cantilever systems, and remain
