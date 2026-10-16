@@ -36,11 +36,21 @@ struct BuildingEnvelopeTests {
         #expect(throws: SceneObjectError.self) {
             try BuildingEnvelope(solids: [Box(min: .zero, max: SIMD3(1, 1, 0))])
         }
+        // Openings that cut a solid away between them leave nothing; one that holds it whole leaves
+        // it alone, as a pane set in an opening.
         #expect(throws: SceneObjectError.self) {
             try BuildingEnvelope(
                 solids: [Box(min: .zero, max: SIMD3(1, 1, 1))],
-                openings: [Box(min: .zero, max: SIMD3(1, 1, 1))])
+                openings: [
+                    Box(min: SIMD3(-1, -1, -1), max: SIMD3(0.5, 2, 2)),
+                    Box(min: SIMD3(0.5, -1, -1), max: SIMD3(2, 2, 2)),
+                ])
         }
+        #expect(
+            try BuildingEnvelope(
+                solids: [Box(min: .zero, max: SIMD3(1, 1, 1))],
+                openings: [Box(min: .zero, max: SIMD3(1, 1, 1))]
+            ).blocks.count == 1)
     }
 
     @Test("Conversion and encoding preserve owner, openings and physics fingerprint semantics")

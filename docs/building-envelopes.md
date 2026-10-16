@@ -15,7 +15,9 @@ geometry editor yet. Source-owned imports keep their existing import workflow.
 `BuildingEnvelope` and its approximation rules belong to BlastCore in BombCAD. It uses the
 existing ContinuumKit `Box` geometry; this milestone introduces no shared-core contract or
 package release. Openings are subtracted into bounded box fragments using the same half-open
-boundary convention as the air rasteriser. Limits are 2,048 solids/fragments per building,
+boundary convention as the air rasteriser. An opening cuts the solids it crosses but not one it
+holds whole, as a detailed structure's openings do: a door or a window's glass set in its opening
+stays solid in the air, and a detailed structure's annealed glass in an opening becomes a pane. Limits are 2,048 solids/fragments per building,
 256 openings per building and 2,048 rigid fragments across a scene containing envelopes.
 Unlike deformable bodies, envelopes have no sixteen-building mechanics limit. Air memory and
 resolution still constrain useful scene size.
