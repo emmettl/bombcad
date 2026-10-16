@@ -578,7 +578,7 @@ final class EnvelopeComponentRecorder {
         var tileList: [UInt32] = []
         let tileNx = (grid.nx + 7) / 8
         let tileNy = (grid.ny + 7) / 8
-        for (n, side) in sides.enumerated() {
+        for side in sides {
             let own = faces[Int(side.outerFirst)..<Int(side.innerFirst + side.innerCount)]
             let tiles = Set(
                 own.map { face -> UInt32 in
