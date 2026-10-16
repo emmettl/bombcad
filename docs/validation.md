@@ -79,6 +79,7 @@ swift run -c release blastbench perimeter --study wall
 | Held out (blind)     | Hrynyk's three plain slabs struck repeatedly by a falling weight, predicted on frozen defaults before the measurements were unsealed: first impacts 1.15–1.29 times the measured peak (too flexible, as the calibrated beams were); later impacts 0.56–0.83, residuals a seventh to a third, and none of the three slabs' punching failures predicted. Mendonça's seven slabs under an open-air charge: the two nearest the charge collapsed, the model leaving them standing; the declared peaks 0.31–1.23 of measured on the survivors, those near 1 made by an artefact of the sleeping air as the slabs landed after the blast threw them up; the blast's own peak a tenth to a quarter of the meters'. Reynolds's six high-strength slabs in the contest slab's rig (v0.3.0): peaks 0.77–1.06 of measured on the five that held in the model, 0.87 on average at 4 in; the sixth, the lightly reinforced slab under the larger load, broken through where the test held at 182 mm; the blast face never crushed where four of the standing slabs' tests were | Hrynyk: between, by the protocol's rule, the calibrated error on undamaged slabs, much worse and on the unsafe side once they are damaged. Mendonça: worse, by the rule, far too stiff and too strong, the unsafe side. Reynolds: worse, by the rule, on the one broken slab (the safe side); the others within the calibrated band, a little stiff |
 | Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.1–1.7 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own. [Brick walls](#brick-walls-debris) (Keys, 2016): loads within 15%, but the walls break into too few pieces, falling at full length in the open (means of −2 to +2 m against +0.2 to +0.6 m) and thrown half as far as measured in a shock tube. Collapse once, blind: [Mendonça's slabs](#blind-test-2-mendonças-slabs-under-an-open-air-charge), the two that collapsed left standing | Unsafe side for debris: held back rather than thrown, slabs never holed, brick walls thrown short (low); collapse missed in both slabs that collapsed (blind) |
 | Window glass         | Monk and Clubley's annealed windows in the Shoeburyness tunnel (4 mm, 0.89 m², four aspect ratios, about 33 kPa reflected for longer than they lasted): the one-way model breaks every pane, as every pane broke, at 0.40–0.46 of the twelve measured times with the app's fixed edges (0.71–0.84 simply supported), at a fifth of the measured deflection: small-deflection theory without membrane action | Safe side, early by half (moderate for timing under a strong load); the threshold of breaking untested |
+| Fragments            | [Cooper (1996)](#fragments-against-coopers-data): his worked Mott and Gurney examples to rounding; one counted cast-iron bomb within a factor of 1.36 (rms) by Mott's form, 1.12 by Grady's; drag now the measured curve for tumbling cubes, 5% from the previous law. No arena test of launch speeds or ranges | Masses either way within a factor of 1.4 (moderate, one test); speeds and ranges untested (low) |
 | Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 1–2%, structural responses 4–20%, residual deflections and failure 17–28%; the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
 
 No structural result has yet been shown to converge on today's defaults: the meshes quoted as
@@ -3251,6 +3252,18 @@ Proposal: a large-deflection resistance for glass, from Moore's nonlinear plate 
 backbone, judged on these twelve panes and the detailed model's 52; and a threshold series
 (see [data survey](data-survey.md#3h-window-glass-breaking-under-a-blast)) before the glass is
 called more than an approximation.
+
+## Fragments against Cooper's data
+
+A cased charge's fragments ([Fragments](fragments.md#against-coopers-data)) against the data in
+Cooper's *Explosives Engineering* (1996), digitised in `Fixtures/Cooper1996/`: his worked
+examples are reproduced (Mott's 140.6 fragments from a 1 in cylinder, Gurney's 0.898 km/s); the
+one counted test, a cast-iron aerial bomb, is within a factor of 1.36 (rms) of Mott's form from
+0.13 to 8.8 g, and within 1.12 of Grady's exponential (`massExponent` 1). The drag is now
+Hansche and Rinehart's measured curve for tumbling cubes, which moves the distance a fragment
+keeps 79 J by under 5%; Hoerner's fixed-orientation curves span 30% shorter to 50% longer. Cooper
+covers mild steel cylinders and 13 explosives; no arena test of launch speeds or ranges has been
+compared ([wanted](data-wanted.md#to-fetch)).
 
 ## Blast loads against empirical references
 

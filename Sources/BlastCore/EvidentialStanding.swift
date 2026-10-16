@@ -135,7 +135,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-7"
+    public static let currentTable = "standing-table-8"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -1118,6 +1118,11 @@ public enum StandingTable {
         "FragmentSpec.tracers": .input,
         "FragmentSpec.tracerRegion": .input,
         "FragmentSpec.seed": .numerical,
+        "FragmentSpec.wallThickness": .input,
+        "FragmentSpec.innerDiameter": .input,
+        "FragmentSpec.explosive": .input,
+        "FragmentSpec.mottCoefficient": .input,
+        "FragmentSpec.massExponent": .input,
         "GroundShockSpec.soil": .input,
         "GroundShockSpec.points": .input,
         "GroundShockSpec.line": .input,
@@ -2138,13 +2143,41 @@ struct StandingScene {
     }
 
     func fragments() -> ResultStanding {
-        result(
-            .fragments, .illustrative, "Textbook ingredients; nothing compared with a fragmentation test.",
+        let evidence = [
+            StandingEvidence(
+                "Cooper's worked examples 27.7 and 27.8 (Mott's counts, Gurney's speed)",
+                "The same, to rounding",
+                "fragments.md#against-coopers-data"),
+            StandingEvidence(
+                "Cooper's Fig. 27.13: a cast-iron aerial bomb's counted fragments, 0.13 to 8.8 g",
+                "Mott's form within a factor of 1.36 (rms), too many small and too many of the largest; "
+                    + "Grady's exponential (massExponent 1) within 1.12", "fragments.md#against-coopers-data"),
+            StandingEvidence(
+                "Hansche and Rinehart's measured drag of tumbling cubes, Mach 0.5 to 3.5 (as Moxnes et al. 2017 restate it)",
+                "The drag curve itself; Hoerner's fixed orientations (Cooper's Figs. 27.15–27.18) put the "
+                    + "distance to 79 J 30% shorter to 50% longer", "fragments.md#against-coopers-data"),
+        ]
+        let shared = [
+            "One way: fragments do not push back on the air or the structure, and stop where they first hit.",
+            "Tumbling cubes of the casing's steel; no break-up, ricochet or penetration.",
+        ]
+        guard inputs.fragments?.mottFactor != nil else {
+            return result(
+                .fragments, .illustrative,
+                "Their number is chosen, not derived: give the casing's thickness and diameter for Mott's.",
+                evidence: evidence,
+                assumptions: ["The number of fragments is the description's, sharing the casing's mass."]
+                    + shared,
+                documents: ["fragments.md#limitations"])
+        }
+        return result(
+            .fragments, .approximation,
+            "Mott's masses and number, Gurney's speed and measured drag: the recognised method, checked against "
+                + "Cooper's data; no arena test of speeds or ranges.",
+            evidence: evidence,
             assumptions: [
-                "Gurney launch speeds and Mott masses; drag from the blast.",
-                "One way: fragments do not push back on the air or the structure.",
-                "Not for ranges or hazards.",
-            ], documents: ["fragments.md#limitations"])
+                "Mott's B for mild steel cylinders, Cooper's Table 27.2; other metals and shapes are not covered."
+            ] + shared, documents: ["fragments.md#limitations"])
     }
 
     func groundShock() -> ResultStanding {

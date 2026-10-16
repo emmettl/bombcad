@@ -5,9 +5,12 @@ them, they do not push back. The app draws them over a run as it goes; headless 
 The model can run on this Mac's CPU or on another Mac, fed the air a frame at a time over SSH, which is what it was built to try: a live one-way consumer, the first
 of the separable models in [Distributed computing](distributed-computing.md#separate-models-on-separate-machines).
 
-**Standing: illustrative.** Each ingredient is a textbook approximation, and nothing here has
-been compared with a fragmentation test. Use it to see how fragments and a blast relate in a
-scene, not for ranges or hazards.
+**Standing: approximation when the casing's thickness and diameter are given, illustrative
+otherwise.** With the casing's dimensions, the masses and their number are Mott's, the launch
+speed Gurney's and the drag measured, the recognised method; it reproduces Cooper's worked
+examples and is within a factor of 1.36 of his counted bomb fragments ([below](#against-coopers-data)).
+No arena test of speeds or ranges has been compared. Without them the number of fragments is
+chosen, not derived, and the result is illustrative.
 
 ```bash
 swift run -c release BombCAD run street.bombcad --fragments casing.json --consumer my-mac.local --usd street.usda --vdb street.volumes --fragment-results impacts.json
@@ -24,6 +27,9 @@ any field left out takes its default:
   "axis": [0, 0, 1],
   "spread": 0.25,
   "gurneyVelocity": 2440,
+  "wallThickness": 0.012,
+  "innerDiameter": 0.25,
+  "explosive": "TNT",
   "fragmentDensity": 7850,
   "tracers": 500,
   "tracerRegion": {"min": [22, 21, 0.5], "max": [38, 37, 6]},
@@ -33,25 +39,39 @@ any field left out takes its default:
 
 ## The model
 
-- **Masses** follow Mott's distribution, P(mass > m) = exp(−√(m/μ)), scaled so that the
-  fragments add up to the casing's mass. Many fragments are tiny; the largest of 2,000 from a 50 kg
-  casing is about 0.7 kg.
+- **Masses** follow Mott's distribution, P(mass > m) = exp(−√(m/μ)). Given the casing's wall
+  thickness t and inside diameter d (`wallThickness`, `innerDiameter`, in metres), μ is Mott's,
+  M_K = B t^(5/6) d^(1/3) (1 + t/d) in pounds and inches, the mean mass 2 M_K², and the real
+  number of fragments the casing's mass over it (Cooper's §27.3; his t^(5/16) is a misprint, as his
+  Example 27.7 shows). B is the explosive's for mild steel (Cooper's Table 27.2), or
+  `mottCoefficient`. Each fragment flown then stands for as many real ones as share the casing's
+  mass, its weight in the results. Without the dimensions, `count` fragments share the casing's
+  mass and each stands for one. `massExponent` (½, Mott's) generalises the form to
+  exp(−(m/μ)^β); 1 is Grady's exponential, which fits Cooper's bomb better (below). The largest of
+  2,000 from a 50 kg casing is about 0.7 kg.
+- **The explosive** (`explosive`: TNT, Composition B, Composition A-3, Cyclotol (75/25), H-6 or
+  Tetryl) sets √(2E) and B together, from Cooper's Tables 27.1 and 27.2; `gurneyVelocity` and
+  `mottCoefficient` override them.
 - **Launch speed** is the Gurney equation's, √(2E) / √(M/C + ½) for a cylinder and
   √(2E) / √(M/C + ³⁄₅) for a sphere, M the casing's mass and C the charge's; √(2E) is 2,440 m/s
   for TNT. A cylinder sprays its fragments out round its axis within `spread` of square to it, a
   sphere evenly. They start at the charge's radius.
 - **Flight** is gravity and drag from the local air, ½ ρ C_d A |u − v| (u − v): the blast's
   density and wind act on each fragment. A fragment is taken as a tumbling cube, whose mean
-  presented area is a quarter of its surface, with C_d 0.9 below Mach 0.8, rising to 1.3 at
-  Mach 1.2, and easing to 1.1 above. Drag is integrated exactly for a rate held over each step,
-  so the stiff drag on the smallest fragments does not limit the step.
+  presented area is a quarter of its surface, 1.5 e². C_d is the measured curve for tumbling
+  fragments on that area, Hansche and Rinehart's for tumbling cubes from Mach 0.5 to 3.5, as Moxnes
+  et al. (2017) restate it: 0.82 at Mach 0.5, held below (their cubes' drag fell further there),
+  rising to 1.25 at Mach 1.25, down to 1.1 at Mach 3 and 1.1 beyond. Drag is integrated exactly for a rate held over each step, so the stiff
+  drag on the smallest fragments does not limit the step.
 - **Tracers** are massless and go with the air.
 - **Impacts** are recorded where a fragment first meets the ground, a rigid block or the
   structure's starting outline: the point, time, speed and energy. A fragment does not load what
   it hits, and the structure's outline does not move. Every independent structure contributes
   its starting regions; impacts in multiple-structure scenes include the stable `objectID`.
   The optional owner table and impact ID preserve decoding of older single-structure streams
-  and results. Beyond the air's domain the air is still.
+  and results. Beyond the air's domain the air is still, and fragments still in flight when the
+  run ends fly on in still air until they land (up to five minutes more), so the results count
+  every fragment's landing.
 
 ## In the app
 
@@ -139,6 +159,39 @@ it past the blocks; the tracers (light) are carried in it. Rendered in Blender 5
 the export, the fragments enlarged by a geometry-nodes modifier: at true size they are millimetres
 to centimetres across.
 
+## Against Cooper's data
+
+Cooper (1996, ch. 27) gives the data digitised in `Fixtures/Cooper1996/`: B for mild steel
+cylinders and 13 explosives (Table 27.2), √(2E) for 25 (Table 27.1), one counted fragmentation
+test (Fig. 27.13, a cast-iron aerial bomb from Strømsøe and Ingebrigtsen, its geometry not
+given), and Hoerner's drag against Mach for idealised shapes (Figs. 27.15–27.18). Steel
+cylinders and the common military explosives, then; nothing for other metals, spheres,
+pre-formed fragments or improvised casings. `FragmentCloudTests` check the first two.
+
+- **His worked examples.** A 1 in steel cylinder with a quarter-inch wall round Detasheet
+  (B 0.08) gives M_K 0.0315 and 140.6 fragments, of them over 10, 5, 1 and 0.1 g 1.3, 5.0, 31.7
+  and 87.7, his 1, 5, 31 and 87, rounded down; Gurney for M/C 6.39 and √(2E) 2,357 m/s gives his
+  0.898 km/s.
+- **The counted bomb.** Mott's form fitted to the points, N₀ 686 and μ 0.252 g, is within a
+  factor of 1.36 (rms) across 0.13 to 8.8 g: too many of the smallest and the largest, too few
+  in between. The generalised form fits with β 0.94 within 1.12, so set `massExponent` 1 for cast
+  iron and other brittle casings; Mott's ½ stays the default, as fitted to steel shells.
+- **Velocity decay.** The distances steel cubes launched at 1,500 m/s fly to half their speed,
+  and until they carry less than 79 J (the hazardous-fragment energy), at sea level:
+
+  | Drag | 1 g | 11 g | 100 g |
+  |---|---|---|---|
+  | The previous law (0.9, 1.3, 1.1) | 26.5 m, 48 m | 58.8 m, 228 m | 123 m, 721 m |
+  | The measured tumbling curve (now the default) | 26.7 m, 49 m | 59.4 m, 234 m | 124 m, 756 m |
+  | Hoerner's cube face-on, on e² | 27.0 m, 51 m | | |
+  | Hoerner's cube edge-on, on e² | 40.6 m, 75 m | | |
+  | Hoerner's cube face-on, on 1.5 e² | 18.0 m, 34 m | | |
+
+  Hoerner's curves are for a fixed orientation, and turned into a tumbling fragment's drag they
+  span 30% shorter to 50% longer, depending on the area and orientation assumed. The measured
+  tumbling curve needs no such choice, so it is now the default; it moves the distances by under
+  5%.
+
 ## Output
 
 - **The USD scene** (`--usd`) gains `/Scene/Fragments` and `/Scene/Tracers`, Points prims whose
@@ -150,7 +203,11 @@ to centimetres across.
 
 ## Limitations
 
-- Illustrative, as above: no test data, and the drag law, presented area and spray are rough.
+- Masses checked against one counted bomb and Cooper's examples; launch speeds and ranges against
+  no arena test. The spray's angles are rough, and every fragment is a tumbling cube of the
+  casing's steel.
+- Mott's B is for mild steel cylinders; other metals, spheres, pre-formed and improvised casings
+  need their own `mottCoefficient` and `massExponent`, which nothing here supplies.
 - One way: fragments do not load the structure or the air, and the structure they can hit is its
   starting outline.
 - The casing's own energy is not taken from the air's: the blast is the bare charge's.
@@ -165,4 +222,10 @@ to centimetres across.
 - R. W. Gurney, *The initial velocities of fragments from bombs, shells and grenades*, BRL Report
   405, 1943.
 - N. F. Mott, Fragmentation of shell cases, *Proceedings of the Royal Society A* 189 (1947) 300–308.
-- P. W. Cooper, *Explosives Engineering*, Wiley-VCH, 1996: Gurney's equations and constants.
+- P. W. Cooper, *Explosives Engineering*, Wiley-VCH, 1996: Gurney's equations and constants
+  (Table 27.1), Mott's B (Table 27.2), Fig. 27.13's counted fragments, Hoerner's drag curves.
+- J. F. Moxnes, Ø. Frøyland, I. J. Øye et al., Projected area and drag coefficient of high
+  velocity irregular fragments that rotate or tumble, *Defence Technology* 13 (2017) 269–280,
+  doi:10.1016/j.dt.2017.03.008: the projected area of a tumbling body (a quarter of its surface)
+  and Hansche and Rinehart's measured drag of tumbling cubes, Mach 0.5 to 3.5.
+- D. E. Grady, *Fragmentation of Rings and Shells*, Springer, 2006: the exponential form.

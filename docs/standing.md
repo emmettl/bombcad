@@ -14,8 +14,8 @@ which remain the authority.
 |---|---|---|
 | Compared with measurement | Compared with measurements, and how close it came, which way and how far it errs; not that it agrees | Reflected impulse on a wall within 6% either way of Kingery–Bulmash on fine enough air; a close-in slab left a third to a half as far down as measured |
 | Verified against theory | The equations are solved correctly against exact or textbook solutions; no measurement | A steel structure: wave speed, deflection and period within 5% of theory |
-| Approximation | A recognised approximation with stated assumptions; nothing says how close it comes here | Structural damage and failure; building surface exposure |
-| Illustrative | Plausible-looking, or compared too loosely to rely on | Thermal radiation, the cloud, fragments, ground shock, simplified cars |
+| Approximation | A recognised approximation with stated assumptions; nothing says how close it comes here | Structural damage and failure; building surface exposure; fragments from a casing of given dimensions |
+| Illustrative | Plausible-looking, or compared too loosely to rely on | Thermal radiation, the cloud, fragments of a chosen number, ground shock, simplified cars |
 
 Until 11 October 2026 the top level's name spoke of agreement; it names a kind of evidence, not
 agreement, and a result compared with measurement can be far off it. Standings saved with the old
