@@ -3395,15 +3395,14 @@ approximate, and peaks this close to a charge change sharply with position, so t
 loose: the model is between 0.9 and 1.6 times the measured range.
 
 **On today's air** (afterburning, hot air and far-field faces, the defaults since 15 October
-2026; rerun 16 October): 6.9 and 4.3 MPa on the side walls and 3.4 MPa on the roof, so the peak
-wall pressures are 1.0 to 1.6 times those measured on today's air. The roof is another matter:
-its free edge rises 83–85 mm and is left 55–57 mm up across the three roundings (73–78
-elements removed),
-against 48 and 25 mm on the ideal gas with today's other defaults, 33 and 15 mm with hot air
-alone and the same 83 and 55 mm with the old open faces. Afterburning, in a chamber whose vent
-keeps the burning products in, now nearly doubles the roof's rise, where before the confined
-regime's defaults it made no difference (below), and brings it close to the paper's model's 87
-and 62 mm and the measured 95 mm residual.
+2026; `blastbench chamber` on the fixed bench, 16 October): 6.5 and 3.8 MPa on the side walls and
+3.5 MPa on the roof, 0.9 to 1.6 times those measured, as on the ideal gas. The roof's free edge
+rises 50 mm and is left 27 mm up (11 elements removed), against 48 and 25 mm on the ideal gas
+with today's other defaults: still about half the paper's model's 87 and 62 mm and the measured
+95 mm residual. An earlier run of this paragraph, which took 83–85 mm and 55–57 mm left for
+today's air, had the bench's gas left ideal: that is afterburning alone, and hot air alone gives
+33 and 15 mm. Afterburning alone, in a chamber whose vent keeps the burning products in, nearly
+doubles the roof's rise; hot air with it takes that back.
 
 **The roof.** At the test's charge the roof's free edge rises 38 mm and settles back to 7 mm
 with the default gas (ideal, no afterburning), and rises 37 mm and settles to 8 mm with
