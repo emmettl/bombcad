@@ -426,8 +426,10 @@ and set against the same component of the detailed building free to respond (sum
   the detailed gauges' 1.0, 2.6, 11.0 and 22.4 at 10, 50, 200 and 500 kg (0.87–2.23 times the
   detailed peaks), mostly above. It cannot see a breached concrete wall (1.6 and 6.5 kPa at 200 and 500 kg).
 
-These are comparisons with the detailed model on one mesh, not with measurement. Freestanding walls
-(Alsubaei's, Keys's) would need cantilever systems, and remain to be compared.
+These are comparisons with the detailed model on one mesh, not with measurement: open tests of
+window glass under blast are listed in [data wanted](data-wanted.md#3h-window-glass-breaking-under-a-blast)
+but not yet read. Freestanding walls (Alsubaei's, Keys's) would need cantilever systems, and remain
+to be compared.
 
 ## Future work: damage for envelope buildings
 

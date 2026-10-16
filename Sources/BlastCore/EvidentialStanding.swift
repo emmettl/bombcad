@@ -1930,8 +1930,8 @@ struct StandingScene {
                     "building-envelopes.md#one-way-damage-single-degree-of-freedom"),
             ],
             assumptions: [
-                "Not covered: freestanding (cantilever) walls; no comparison with measurement for concrete or "
-                    + "brick; references on one mesh and one air grid.",
+                "Not covered: freestanding (cantilever) walls; no comparison with measurement for concrete, "
+                    + "brick or glass; references on one mesh and one air grid.",
                 "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
                     + "2° is flagged as beyond the one-way model.",
                 "Glass is annealed, elastic until it breaks, without membrane stiffening; fragments' hazard "
