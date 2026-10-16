@@ -757,6 +757,20 @@ Ten values in the code were written from memory and should be checked against th
     CC BY-NC-ND 4.0.
 - **Not searched** (allowance spent): Cooper, Fairweather and Tite (1986); Kasmani.
 
+## 3h. Window glass breaking under a blast
+
+- **Needed** (for the one-way glass breakage on envelope buildings, so far compared only with the
+  detailed model's panes, see [one-way damage](building-envelopes.md#one-way-damage-single-degree-of-freedom)):
+  the glass (annealed or tempered, its thickness), each pane's size and frame, the load on it
+  (reflected pressure history, or peak, duration and impulse), and whether and when it broke.
+- **Found, 16 October 2026, not yet read:**
+  - S. Monk and S. Clubley (University of Southampton), an ISIEMS paper on sixteen 4 mm annealed
+    windows in eight trials in the air blast tunnel at MOD Shoeburyness, with break times
+    against aspect ratio (eprints.soton.ac.uk/413793; the PDF returned 403 here).
+  - OSTI 658184: annealed and tempered glass sheets under blast waves at several overpressures
+    and impulses at EMRTC, Socorro (osti.gov refused the connection here).
+- Until one is read, glass breakage has no comparison with measurement.
+
 ## 3g. The reference curves' own scatter
 
 - **Needed:** the scatter of the tests behind Kingery–Bulmash, UFC 3-340-02's gas pressure and

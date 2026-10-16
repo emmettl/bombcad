@@ -390,6 +390,20 @@ final class SimulationModel {
         do { try settings.scenario.removeObject(id: id) } catch { errorMessage = error.localizedDescription }
     }
 
+    /// Sets what an envelope's walls are built of, as the user's choice, keeping its other
+    /// properties (or the default's).
+    func setEnvelopeWalls(id: UUID, to walls: EnvelopeConstruction.Kind) {
+        guard settings.scenario.object(id: id)?.envelope != nil else { return }
+        let old = settings.scenario.envelopeConstruction(for: id)
+        guard old.walls != walls || old.source != .user else { return }
+        settings.scenario.setEnvelopeConstruction(
+            EnvelopeConstruction(
+                objectID: id, walls: walls,
+                wallThicknessM: walls == old.walls ? old.wallThicknessM : nil, roof: old.roof,
+                roofThicknessM: old.roofThicknessM, reinforcementRatio: old.reinforcementRatio,
+                glassThicknessM: old.glassThicknessM, source: .user, detail: "chosen in the editor"))
+    }
+
     var inspectedImportID: UUID?
     /// While set, a click on the ground in the view moves the charge there.
     var isPlacingCharge = false
