@@ -293,6 +293,11 @@ constant bool extremeFibreCracking = is_function_constant_defined(extremeFibreCo
 // materials' are (`StructureModel.erodesCrushedBare`), compiled in only when chosen.
 constant bool crushedBareConstant [[function_constant(20)]];
 constant bool erodesCrushedBare = is_function_constant_defined(crushedBareConstant) && crushedBareConstant;
+// Bare elements of structural concrete crushed below `minVolumeRatio` keep their bars but lose their
+// hourglass control (`StructureModel.releasesCrushedBareHourglass`), compiled in only when chosen.
+constant bool crushedBareHourglassConstant [[function_constant(21)]];
+constant bool releasesCrushedBareHourglass =
+    is_function_constant_defined(crushedBareHourglassConstant) && crushedBareHourglassConstant;
 // Gravity turned from straight down (`gravityDirection`); otherwise the node kernels pull down
 // exactly as they always have, since the fast-math compiler can round another expression differently.
 constant bool turnedGravityConstant [[function_constant(4)]];
@@ -2117,11 +2122,27 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         }
         state.hourglass[mode] = q;
     }
+    // With `releasesCrushedBareHourglass`, a bare element (its bars alone) crushed below
+    // `minVolumeRatio` of its volume keeps its bars but loses its hourglass control. The modes'
+    // shapes are projected with the element's current shape-function gradients, which grow as one
+    // over its volume: squeezed to an eighth of its height, Hupfauf's SN144 threw its nodes at
+    // 2,000 m/s through capped hourglass forces on those shapes. Its bars, which tie what is left
+    // around a crater, stay.
+    bool hourglassReleased = releasesCrushedBareHourglass && bare && volume < u.minVolumeRatio * referenceVolume;
+    if (releasesCrushedBareHourglass && hourglassReleased) {
+        for (uint mode = 0; mode < 4; ++mode) {
+            state.hourglass[mode] = float3(0.0f);
+            rate[mode] = float3(0.0f);
+            atCap[mode] = false;
+        }
+    }
 
     for (uint a = 0; a < 8; ++a) {
         float3 f = -volume * (forceStress * b[a]);
-        for (uint mode = 0; mode < 4; ++mode) {
-            f -= float3(state.hourglass[mode]) * gamma[mode][a];
+        if (!(releasesCrushedBareHourglass && hourglassReleased)) {
+            for (uint mode = 0; mode < 4; ++mode) {
+                f -= float3(state.hourglass[mode]) * gamma[mode][a];
+            }
         }
         out.force[a] = f;
     }

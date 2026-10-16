@@ -715,6 +715,8 @@ func applyRateOptions(_ model: inout StructureModel) {
     if flag("rubble") { model.rubbleParticles = true }
     // `--crushed-bare`: bare concrete squeezed below a quarter of its volume is removed.
     if flag("crushed-bare") { model.erodesCrushedBare = true }
+    // `--crushed-bare-hourglass`: crushed bare elements keep their bars but lose their hourglass control.
+    if flag("crushed-bare-hourglass") { model.releasesCrushedBareHourglass = true }
     // `--no-crack-slip`: cracks spring back from sliding, as before slip was stored.
     if flag("no-crack-slip") { model.crackSlip = false }
     // `--pressed-interlock`: cracks press as they slide, and carry more shear pressed.
@@ -2351,6 +2353,40 @@ func runContact() throws {
                 }
                 if flag("fastest") { fastest(structure, time) }
                 if flag("column") { column(structure, time) }
+                // `--watch 48,48,9 [--watch-from 0.00019 --watch-to 0.000215]`: one element's state
+                // each sample: its flag, volume against its reference, stress, bars' plastic
+                // strain, hourglass forces and its corners' vertical speeds.
+                if let spec = option("watch")?.split(separator: ",").compactMap({ Int($0) }), spec.count == 3,
+                    time >= (option("watch-from").flatMap { Double($0) } ?? 0),
+                    time <= (option("watch-to").flatMap { Double($0) } ?? 1)
+                {
+                    let (i, j, k) = (spec[0], spec[1], spec[2])
+                    let h = structure.model.elementSize
+                    var c = [SIMD3<Float>](repeating: .zero, count: 3)
+                    var speeds: [Float] = []
+                    for a in 0..<8 {
+                        let s = SIMD3<Float>(
+                            a & 1 == 0 ? -1 : 1, (a >> 1) & 1 == 0 ? -1 : 1, (a >> 2) & 1 == 0 ? -1 : 1)
+                        let p = structure.position(i + (a & 1), j + ((a >> 1) & 1), k + ((a >> 2) & 1))
+                        c[0] += p * s.x / 8
+                        c[1] += p * s.y / 8
+                        c[2] += p * s.z / 8
+                        speeds.append(
+                            structure.node(i + (a & 1), j + ((a >> 1) & 1), k + ((a >> 2) & 1)).velocity.z)
+                    }
+                    let volume = 8 * simd_dot(c[0], simd_cross(c[1], c[2])) / (h * h * h)
+                    let st = structure.stress(i, j, k)
+                    let bars = structure.barPlasticStrain(i, j, k)
+                    let q = structure.hourglassForces(i, j, k).map { simd_length($0) }
+                    print(
+                        String(
+                            format:
+                                "  W %.2f us %@ V/V0 %.3f szz %.0f sxx %.0f MPa bars-plastic %.3g %.3g %.3g |q| %.0f %.0f %.0f %.0f N  vz %@",
+                            time * 1e6, "\(structure.flag(i, j, k))", volume, st[2] / 1e6, st[0] / 1e6,
+                            bars.x, bars.y,
+                            bars.z, q[0], q[1], q[2], q[3],
+                            speeds.map { String(format: "%.0f", $0) }.joined(separator: ",")))
+                }
             }, configure: applyChosenMask)
         print(
             "\(test.name): \(format(Double(test.thickness) * 100, 0)) cm, \(format(Double(test.semtex) * 1000, 0)) g SEMTEX 10 "

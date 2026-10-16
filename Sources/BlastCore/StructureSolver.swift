@@ -272,6 +272,8 @@ public final class StructureSolver {
         if fibre { constants.setConstantValue(&fibre, type: .bool, index: 19) }
         var crushedBare = model.erodesCrushedBare
         if crushedBare { constants.setConstantValue(&crushedBare, type: .bool, index: 20) }
+        var bareHourglass = model.releasesCrushedBareHourglass
+        if bareHourglass { constants.setConstantValue(&bareHourglass, type: .bool, index: 21) }
         elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
         traceElementPipeline = {
             let tracing = MTLFunctionConstantValues()
@@ -293,6 +295,8 @@ public final class StructureSolver {
             if fibre { tracing.setConstantValue(&fibre, type: .bool, index: 19) }
             var crushedBare = crushedBare
             if crushedBare { tracing.setConstantValue(&crushedBare, type: .bool, index: 20) }
+            var bareHourglass = bareHourglass
+            if bareHourglass { tracing.setConstantValue(&bareHourglass, type: .bool, index: 21) }
             return try? ShaderLibrary.pipeline("structureElements", in: library, constants: tracing)
         }
         // Keep the general connection law out of kernels for ordinary clamped/free bodies.
@@ -1188,6 +1192,11 @@ public final class StructureSolver {
 
     /// Concrete: the plastic strain of its bars along the lattice axes (positive stretched; a
     /// ruptured set reads 1e9).
+    /// The hourglass control's four mode forces (N) on element (i, j, k), as last stepped.
+    public func hourglassForces(_ i: Int, _ j: Int, _ k: Int) -> [SIMD3<Float>] {
+        (0..<4).map { mode in SIMD3((0..<3).map { stateValue(i, j, k, offset: 32 + 12 * mode + 4 * $0) }) }
+    }
+
     public func barPlasticStrain(_ i: Int, _ j: Int, _ k: Int) -> SIMD3<Float> {
         SIMD3((0..<3).map { stateValue(i, j, k, offset: 92 + 4 * $0) })
     }

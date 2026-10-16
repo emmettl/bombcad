@@ -292,6 +292,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case rubbleParticles
     case extremeFibreCracking
     case erodesCrushedBare
+    case releasesCrushedBareHourglass
     case pressedInterlock
     case hourglassSecant
     case hourglassWithoutSteel
@@ -374,6 +375,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .rubbleParticles: return !concrete.isEmpty && any { $0.rubbleParticles }
         case .extremeFibreCracking: return !concrete.isEmpty && any { $0.extremeFibreCracking }
         case .erodesCrushedBare: return !concrete.isEmpty && any { $0.erodesCrushedBare }
+        case .releasesCrushedBareHourglass:
+            return !concrete.isEmpty && any { $0.releasesCrushedBareHourglass }
         case .pressedInterlock: return any { $0.pressedInterlock }
         case .hourglassSecant: return !concrete.isEmpty && any { $0.hourglassFollowsCracking }
         case .hourglassWithoutSteel: return !concrete.isEmpty && any { !$0.hourglassCapsSteel }
@@ -684,6 +687,13 @@ public enum StandingTable {
                 note: "Bare concrete elements squeezed below a quarter of their volume are removed, as "
                     + "softer materials' are; being judged on the case matrix.",
                 document: "structural-model.md#coupling-to-the-air")
+        case .releasesCrushedBareHourglass:
+            return Entry(
+                title: "Crushed bare elements without hourglass control", affects: structure,
+                limit: .approximation,
+                note: "Bare concrete elements squeezed below a quarter of their volume keep their bars but "
+                    + "lose their hourglass control; being judged on the case matrix.",
+                document: "structural-model.md#coupling-to-the-air")
         case .pressedInterlock:
             return Entry(
                 title: "Pressed interlock", affects: structure, limit: .approximation,
@@ -988,6 +998,7 @@ public enum StandingTable {
         "StructureModel.rubbleParticles": .option([.rubbleParticles]),
         "StructureModel.extremeFibreCracking": .option([.extremeFibreCracking]),
         "StructureModel.erodesCrushedBare": .option([.erodesCrushedBare]),
+        "StructureModel.releasesCrushedBareHourglass": .option([.releasesCrushedBareHourglass]),
         "StructureModel.pressedInterlock": .option([.pressedInterlock]),
         "StructureModel.hourglassFollowsCracking": .option([.hourglassSecant]),
         "StructureModel.hourglassCapsSteel": .option([.hourglassWithoutSteel]),

@@ -1069,6 +1069,38 @@ elements smaller than 10 mm both removed concrete at narrower cracks than intend
 3 mm elements, which made the finest meshes of the validation slab shed their cover and
 collapse.
 
+### Crushed bare elements (two options, neither a default)
+
+**The trigger.** A bare element (concrete gone, bars left) of structural concrete is not removed
+when crushed; softer materials' bare elements are, below a quarter of their volume. Under
+Hupfauf's SN144 charge, one was squeezed to about an eighth of its height, and two of six runs (two
+outlines, three roundings) ran away, throwing nodes at 1,932 and 2,387 m/s.
+- **Traced (16 October 2026, `blastbench contact --watch i,j,k`):** the bars were not running away
+  (plastic strains of 7% and 4.5%, stretched). Its hourglass control was the cause. The modes' shapes
+  are projected with the element's current shape-function gradients, which grow as one over its
+  volume, so as it flattens, even its capped hourglass forces (about 1,170 N) put enormous forces on
+  its corners.
+
+**The two remedies, as options:**
+- **`erodesCrushedBare`** (`--crushed-bare`, function constant 20): removes the crushed bare element.
+- **`releasesCrushedBareHourglass`** (`--crushed-bare-hourglass`, function constant 21): keeps it and
+  its bars, without its hourglass control.
+
+Both stop the runaway. Off, both are bit-identical. Judged on SN144's six runs and the quick case
+matrix with its rounding variants:
+
+| | SN144, fastest node / slab's energy | SN131 far face (measured 14.6 m/s) | SN142 (measured 71) |
+|---|---|---|---|
+| Neither | 884–994 m/s / 47–50 kJ; two runaways (1,932 and 2,387 m/s; 168 and 372 kJ) | 21.5 m/s (21.5–38) | 61.2 (61.2–70.9) |
+| Removed | 655–743 m/s / 38–41 kJ | 53.3 (52.2–54.4) | 60.6 (60.6–76.4) |
+| Hourglass released | 940–987 m/s / 59–64 kJ | 45.7 (41.8–46.7) | 60.5 (60.5–71.9) |
+
+**Neither is a default.** Every other case of the matrix stays within its rounding spread with
+either one, but both send SN131's debris two to three times further from the test. That case's
+close agreement today rests in part on the crushed bare elements' hourglass forces, the same forces
+that throw SN144's nodes. A fix that holds both would have to give the crushed element's tie to the
+debris a physical basis, such as the bars' buckled strength, rather than the hourglass control's.
+
 ## Defaults by regime
 
 The validation cases fall into regimes that the options split along (see the
