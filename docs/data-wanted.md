@@ -22,8 +22,7 @@ fails, search the number at [discover.dtic.mil](https://discover.dtic.mil/).
 | Prairie Flat: earth motion and stress, WES TR N-72-2, 3.17 MB | [ERDC 11681/6813](https://erdc-library.erdc.dren.mil/jspui/handle/11681/6813) | ERDC's browser check | `data/PrairieFlat/` | Gauges at depth either side of the superseismic limit under 500 t on the surface: the soil column's first measured test |
 | Kasun-III: Forsén et al., DDESB 2010 | [DTIC ADA532249](https://apps.dtic.mil/sti/pdfs/ADA532249.pdf) | DTIC, HTTP 403 | `data/Kasun2010/` | The cubes, charges and debris of the best debris benchmark known ([3c](data-survey.md#3c-collapse-and-debris)); the database itself is by request, below |
 | Its companion: concrete breaking up under internal blast, DDESB 2010 | [DTIC ADA532261](https://apps.dtic.mil/sti/pdfs/ADA532261.pdf) | DTIC, HTTP 403 | `data/Kasun2010/` | How concrete walls break up and are thrown under an internal charge |
-| Monk and Clubley: 4 mm annealed windows in the Shoeburyness air blast tunnel (ISIEMS) | [Southampton eprint 413793](https://eprints.soton.ac.uk/413793/) | The PDF returns 403 | `envelope-damage/sources/` | Glass breakage's first comparison with measurement: sixteen windows, break times against aspect ratio ([3h](data-survey.md#3h-window-glass-breaking-under-a-blast)) |
-| Annealed and tempered glass under blast waves, EMRTC, Socorro | [OSTI 658184](https://www.osti.gov/biblio/658184) | osti.gov refuses the connection | `envelope-damage/sources/` | Breakage against overpressure and impulse over a range: a threshold to test the panes' model against |
+| Annealed and tempered glass under blast waves, EMRTC, Socorro | [OSTI 658184](https://www.osti.gov/biblio/658184) | osti.gov refuses the connection | `envelope-damage/sources/` | Panes that held beside panes that broke, over a range of overpressure and impulse: the breaking threshold, which Monk and Clubley's tests, all broken, cannot give ([3h](data-survey.md#3h-window-glass-breaking-under-a-blast)) |
 
 **Then**, when convenient:
 
@@ -62,6 +61,7 @@ fails, search the number at [discover.dtic.mil](https://discover.dtic.mil/).
 | Murzyn, Sims, Krier and Glumac, *Optics and Lasers in Engineering* 110 (2018) | [doi:10.1016/j.optlaseng.2018.06.005](https://doi.org/10.1016/j.optlaseng.2018.06.005) | Gas temperatures inside a fireball against time |
 | van der Voort and Weerheijm, debris dispersion, *IJIE* 59 (2013) | Elsevier | Kasun's debris statistics |
 | Netherton and Stewart, blast load variability, *IJPS* 1(4) (2010) | SAGE | Model error of blast-load predictions |
+| Johns and Clubley, annealed glazing under long-duration blast, *J. Struct. Eng.* (2016) and *Int. J. Solids Struct.* 97–98 (2016) | ASCE; Elsevier | Glass near its threshold under long pulses ([3h](data-survey.md#3h-window-glass-breaking-under-a-blast)) |
 
 The survey names a few more, each under its item: Hao et al. (2017), Ross and Krawinkler (1985),
 Kiger and Slawson (1984), Bauwens et al.'s propane and hydrogen papers, Kingery and Bulmash
@@ -99,6 +99,7 @@ means an open paper whose numbers were transcribed into the code. The survey's
 | Reynolds 2015: the contest's high-strength slabs | `Reynolds2015` (sealed) | [Blind test 3](validation.md#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator) |
 | Pattman 1971: Dial Pack's thermal radiation | `DialPack1971` | [Thermal radiation](thermal-radiation.md#against-dial-pack) |
 | Bauwens, Chaffee and Dorofeev 2008: a vented methane deflagration | `Bauwens2008` | [Gas deflagrations](deflagration.md#bauwens-chaffee-and-dorofeev-2008) |
+| Monk and Clubley: annealed windows in the Shoeburyness air blast tunnel (supplied by hand) | – (`Fixtures/MonkClubley`) | [Validation](validation.md#window-glass) |
 | Bradley, Lawes and Mumby, cellular flame instabilities; Molkov et al., IChemE Symposium Series 150 (2004) | `Bradley-instability`, `Molkov-LES` | [Gas deflagrations](deflagration.md) |
 | Alsubaei 2015: perimeter walls under field blasts | `Alsubaei2015` | [Validation](validation.md#perimeter-walls-under-field-blasts) |
 | Keys and Clubley 2017, Keys 2016: masonry panels' debris | `KeysClubley2017`, `Keys2016` | [Validation](validation.md#brick-walls-debris) |
