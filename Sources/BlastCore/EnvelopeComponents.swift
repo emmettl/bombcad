@@ -381,12 +381,14 @@ final class EnvelopeComponentRecorder {
     let faceBuffer: MTLBuffer
     /// Each face's pressure, as the last step left it.
     let pressures: MTLBuffer
-    /// Each face's component; each component's tiles of the air (ranges into `tiles`), whether
-    /// any has woken this step, and the still air's pressure, in 32 copies.
-    let faceComponents: MTLBuffer
+    /// Each component's tiles of the air (ranges into `tiles`), whether any has woken this step,
+    /// the awake components and the faces' pass's threadgroups (an indirect dispatch: one for the
+    /// still air, then one an awake component), and the still air's pressure, in 32 copies.
     let tileRanges: MTLBuffer
     let tiles: MTLBuffer
     let awake: MTLBuffer
+    let awakeList: MTLBuffer
+    let dispatch: MTLBuffer
     let stillPressure: MTLBuffer
     let peaks: MTLBuffer
     let bins: MTLBuffer
@@ -571,15 +573,13 @@ final class EnvelopeComponentRecorder {
         guard !options.binMaxima || maxima != nil else {
             throw BlastError.allocationFailed("envelope component bin maxima")
         }
-        // Each component's faces and the tiles of the air they lie in (as the solver's, 8 cells).
-        var faceComponent: [UInt32] = []
+        // The tiles of the air each component's faces lie in (as the solver's, 8 cells).
         var ranges: [SIMD2<UInt32>] = []
         var tileList: [UInt32] = []
         let tileNx = (grid.nx + 7) / 8
         let tileNy = (grid.ny + 7) / 8
         for (n, side) in sides.enumerated() {
             let own = faces[Int(side.outerFirst)..<Int(side.innerFirst + side.innerCount)]
-            faceComponent += Array(repeating: UInt32(n), count: own.count)
             let tiles = Set(
                 own.map { face -> UInt32 in
                     let cell = Int(face.fluid)
@@ -592,19 +592,21 @@ final class EnvelopeComponentRecorder {
         }
         guard
             let pressures = device.makeBuffer(length: max(1, faces.count) * 4, options: .storageModePrivate),
-            let faceComponents = device.makeBuffer(
-                bytes: faceComponent.isEmpty ? [0] : faceComponent, length: max(1, faceComponent.count) * 4),
             let tileRanges = device.makeBuffer(bytes: ranges, length: max(1, ranges.count) * 8),
             let tiles = device.makeBuffer(
                 bytes: tileList.isEmpty ? [0] : tileList, length: max(1, tileList.count) * 4),
             let awake = device.makeBuffer(length: components.count * 4, options: .storageModePrivate),
+            let awakeList = device.makeBuffer(
+                length: (components.count + 1) * 4, options: .storageModePrivate),
+            let dispatch = device.makeBuffer(bytes: [UInt32(1), 1, 1], length: 12),
             let stillPressure = device.makeBuffer(length: 32 * 4, options: .storageModePrivate)
         else { throw BlastError.allocationFailed("envelope component face pressures") }
         self.pressures = pressures
-        self.faceComponents = faceComponents
         self.tileRanges = tileRanges
         self.tiles = tiles
         self.awake = awake
+        self.awakeList = awakeList
+        self.dispatch = dispatch
         self.stillPressure = stillPressure
         markPipeline = try ShaderLibrary.pipeline("markEnvelopeComponents", in: library)
         facePipeline = try ShaderLibrary.pipeline("sampleEnvelopeComponentFaces", in: library)
@@ -614,7 +616,8 @@ final class EnvelopeComponentRecorder {
 
     var memoryFootprint: Int {
         [
-            sideBuffer, faceBuffer, pressures, faceComponents, tileRanges, tiles, awake, stillPressure, peaks,
+            sideBuffer, faceBuffer, pressures, tileRanges, tiles, awake, awakeList, dispatch, stillPressure,
+            peaks,
             bins, flags,
         ]
         .reduce(0) { $0 + $1.length } + (maxima?.length ?? 0)
@@ -630,6 +633,7 @@ final class EnvelopeComponentRecorder {
             for n in 0..<(maxima.length / 4) { values[n] = lowest }
         }
         memset(flags.contents(), 0, flags.length)
+        for n in 0..<3 { dispatch.contents().storeBytes(of: UInt32(1), toByteOffset: 4 * n, as: UInt32.self) }
     }
 
     /// The recording parameters for a batch starting at `time`.

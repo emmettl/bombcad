@@ -133,16 +133,28 @@ Headless runs write them with `--envelope-histories <file.json>`; kept runs do n
 Recording leaves the air bit-identical, and each side's binned impulse equals the mean of its faces'
 own integrals (tests in `EnvelopeComponentTests.swift`).
 
-**Cost.** Memory is components × bins × 8 bytes, plus 12 bytes a face: at 0.25 m, the street's
-4 buildings (20 components, 120 ms) take 0.37 MB, the 64-building neighbourhood (320 components,
-60 ms) 4.4 MB. Each step, a thread a face reads its cell (or, in a tile of still air, the still air,
-the same bits) and a SIMD group a component sums them. Timed with `scenebench envelope-histories
---dx 0.25 --rounds 7` against the same runs with the surface recorder alone, interleaved, on
-16 October 2026 with the Mac's load at 15–80: the street's median pair ratio was 1.06–1.12 and
-the neighbourhood's 1.2–1.3, with pairs scattered ±15–30%, too loaded to settle a 5% target. The
-neighbourhood's 60 ms is the worst case for it: its air is mostly asleep (0.07–0.36 s of air
-work for the whole run), so per-face work, the surface recorder's too, weighs most there. An
-early-returning kernel cost nothing measurable, so the cost is the face reads, not the dispatch.
+**Cost.** Memory is components × bins × 8 bytes, plus about 13 bytes a face: at 0.25 m, the
+street's 4 buildings (20 components, 120 ms) take 0.37 MB, the 64-building neighbourhood
+(320 components, 60 ms) 4.4 MB. Each step, a SIMD group a component reads the flags of the tiles of
+air its faces lie in; a component whose air is all still is not read but made from the still air's
+pressure, added as its faces would be (the same bits, tested). The awake ones are listed for an
+indirect dispatch, a threadgroup of 256 a component reading its faces (a face in a still tile reads
+the still air), and a SIMD group a component sums them in a fixed order.
+
+Timed with `scenebench envelope-histories --dx 0.25 --rounds 7`, against the same runs with the
+surface recorder alone, interleaved, on a quiet M4 Max (every GPU slot free, load under 4; 16 October
+2026), as the median of seven pairs:
+
+| Version | Street, 120 ms | Neighbourhood, 60 ms |
+|---|---|---|
+| A thread a component | +80–130% (loaded) | |
+| A thread a face, then summed | +5.2% | +14.4% |
+| As now: still components skipped, awake ones read 256 threads at a time | +6.3% | +10.5% |
+
+What remains is 18–22 µs a step: these runs' steps are short (0.27 and 0.22 ms), and the
+neighbourhood's air is mostly asleep, so the surface recorder alone already takes about a quarter of
+its run. Sharing the surface recorder's face reads would not remove it: only awake components read
+cells at all, and their faces cost little next to the three dispatches a step.
 
 ## Matched building study
 

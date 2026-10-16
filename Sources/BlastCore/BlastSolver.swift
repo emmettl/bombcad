@@ -2327,7 +2327,7 @@ public final class BlastSolver {
         let groups = MTLSize(
             width: (recorder.components.count + perGroup - 1) / perGroup, height: 1, depth: 1)
         let groupSize = MTLSize(width: 32 * perGroup, height: 1, depth: 1)
-        // Which components' air has woken: a SIMD group a component (Solver.metal).
+        // Which components' air has woken, and a list of them: a SIMD group a component (Solver.metal).
         encoder.setComputePipelineState(recorder.markPipeline)
         encoder.setBuffer(controlBuffer, offset: 0, index: 2)
         encoder.setBuffer(recorder.tileRanges, offset: 0, index: 3)
@@ -2337,8 +2337,10 @@ public final class BlastSolver {
         encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 9)
         encoder.setBytes(
             &parameters, length: MemoryLayout<EnvelopeComponentRecorder.Parameters>.stride, index: 10)
+        encoder.setBuffer(recorder.dispatch, offset: 0, index: 11)
+        encoder.setBuffer(recorder.awakeList, offset: 0, index: 12)
         encoder.dispatchThreadgroups(groups, threadsPerThreadgroup: groupSize)
-        // Their faces' pressures, a thread a face, and 32 more for the still air.
+        // Their faces' pressures: a threadgroup an awake component, and one for the still air.
         encoder.setComputePipelineState(recorder.facePipeline)
         encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
         encoder.setBuffer(maskBuffer, offset: 0, index: 1)
@@ -2347,13 +2349,12 @@ public final class BlastSolver {
         encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 5)
         encoder.setBytes(
             &parameters, length: MemoryLayout<EnvelopeComponentRecorder.Parameters>.stride, index: 6)
-        encoder.setBuffer(recorder.faceComponents, offset: 0, index: 8)
-        encoder.setBuffer(recorder.awake, offset: 0, index: 9)
+        encoder.setBuffer(recorder.sideBuffer, offset: 0, index: 8)
+        encoder.setBuffer(recorder.awakeList, offset: 0, index: 9)
         encoder.setBuffer(recorder.stillPressure, offset: 0, index: 10)
-        encoder.dispatchThreads(
-            MTLSize(width: recorder.faces.count + 32, height: 1, depth: 1),
-            threadsPerThreadgroup: MTLSize(
-                width: recorder.facePipeline.threadExecutionWidth, height: 1, depth: 1))
+        encoder.dispatchThreadgroups(
+            indirectBuffer: recorder.dispatch, indirectBufferOffset: 0,
+            threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
         // Then each component's sides: a SIMD group of 32 lanes a component, a few to a threadgroup.
         encoder.setComputePipelineState(recorder.pipeline)
         encoder.setBuffer(recorder.pressures, offset: 0, index: 0)
@@ -2367,6 +2368,7 @@ public final class BlastSolver {
         encoder.setBytes(
             &parameters, length: MemoryLayout<EnvelopeComponentRecorder.Parameters>.stride, index: 10)
         encoder.setBuffer(recorder.stillPressure, offset: 0, index: 11)
+        encoder.setBuffer(recorder.dispatch, offset: 0, index: 12)
         encoder.dispatchThreadgroups(groups, threadsPerThreadgroup: groupSize)
     }
 
