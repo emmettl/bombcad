@@ -590,8 +590,12 @@ public struct StructureModel: Sendable, Hashable, Codable {
         self.fixedBase = fixedBase
     }
 
+    /// Whether a solid fills `point`. An opening cuts the solids it crosses but not one it holds
+    /// whole: a pane of glass set in a wall's opening stays.
     public func occupies(_ point: SIMD3<Float>) -> Bool {
-        solids.contains { $0.contains(point) } && !openings.contains { $0.contains(point) }
+        solids.contains { solid in
+            solid.contains(point) && !openings.contains { $0.contains(point) && !$0.holds(solid) }
+        }
     }
 
     public var bounds: Box {
@@ -1111,6 +1115,11 @@ struct CouplingUniforms {
     var deepCellOffset: UInt32 = 0
     /// 1 while the air sleeps: points in coupling pages not allocated are left out quietly.
     var quietCoverage: UInt32 = 0
+    /// 0: elements counted as points; otherwise each sample as a box, by its overlap with each
+    /// cell, in these units (see `SolverConfiguration.structureMaskOverlap`).
+    var overlapUnits: UInt32 = 0
+    /// 1: a cell turns solid an eighth above `threshold` and opens an eighth below it.
+    var maskHysteresis: UInt32 = 0
 }
 
 /// When nodes of the structure repel each other.
@@ -1574,5 +1583,12 @@ extension StructureModel {
             for note in found where seen.insert(note).inserted { notes.append(note) }
         }
         return notes
+    }
+}
+
+extension Box {
+    /// Whether `inner` lies within this box, to a millimetre: a pane set in an opening.
+    func holds(_ inner: Box) -> Bool {
+        (0..<3).allSatisfy { inner.min[$0] >= min[$0] - 1e-3 && inner.max[$0] <= max[$0] + 1e-3 }
     }
 }

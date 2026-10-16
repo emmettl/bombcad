@@ -154,10 +154,33 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// The jump that refines the second level, as `refinementThreshold` does the first; nil
     /// for the same.
     public var refinementFinerThreshold: Float?
+    /// Let each refined level take only as many of its r substeps, in each step of the grid above
+    /// it, as its own fastest wave needs, rather than always r: the step is set by the fastest
+    /// wave anywhere, which is often in the hot, unrefined middle of the fireball, while the
+    /// patches follow the slower shock. The coarse step is unchanged; mass, momentum and energy
+    /// stay conserved across every level's edge. Off by default.
+    public var refinementOwnSteps = false
     /// GPU memory for the refined blocks, in bytes; where the shock would need more, the rest of
     /// it stays coarse. About 63 kB a block at ratio 2, 364 kB at ratio 4. With two levels, a third
     /// of it goes to the first and two thirds to the second.
     public var refinementMemory = 1 << 30
+    /// How finely solid elements are sampled for the air's outline: points per air cell along each
+    /// axis, of each level's cells. nil, the default, samples each element once, at its centre, or
+    /// at points a cell apart where it is larger: a layer of elements then fills whichever cell
+    /// its centres fall in, and centres on a cell's face flip it with microns of movement. 2 or 4
+    /// counts each element's volume to half or a quarter of a cell.
+    public var structureMaskSampling: Int?
+    /// The share of an air cell the structure's samples must fill for the cell to be solid. nil,
+    /// the default, for a third, which keeps a layer a third of a cell thick but puts the wall a
+    /// sixth of a cell outside the face on average; a half places it without bias, losing thinner
+    /// layers.
+    public var structureMaskFill: Float?
+    /// Count each sample of an element as a box, by the share of it in each air cell it overlaps,
+    /// rather than whole in the cell holding its centre: a cell then fills as the structure moves
+    /// into it, and one whose face a layer of centres lies on does not flicker. A cell then turns
+    /// solid an eighth above the fill threshold and opens an eighth below it, so that a fill lying
+    /// on the threshold does not flicker either. Off by default.
+    public var structureMaskOverlap = false
     /// The luminous gas losing the heat it radiates (see `RadiativeCooling`); nil, the default,
     /// for none. Read at `restart()`.
     public var radiativeCooling: RadiativeCooling?
@@ -305,6 +328,9 @@ struct SolverUniforms {
     /// Sub-grid mixing's model: 0 Smagorinsky's, 1 the σ-model (see `SubgridMixing.Model`).
     var mixingModel: UInt32 = 0
     var refineMargin: UInt32 = 1
+    var ownSteps: UInt32 = 0
+    var refineLevel: UInt32 = 0
+    var sweepAxes: UInt32 = 0
 }
 
 /// Layout matches `StepControl` in `Solver.metal`.
@@ -319,6 +345,12 @@ struct StepControl {
     var tileSweeps: UInt32 = 0
     var stopped: UInt32 = 0
     var lastStep: Float = 0
+    var levelSubsteps0: UInt32 = 0
+    var levelSubsteps1: UInt32 = 0
+    var levelStep0: Float = 0
+    var levelStep1: Float = 0
+    var levelSubstepSum0: UInt32 = 0
+    var levelSubstepSum1: UInt32 = 0
 }
 
 /// Pressure history recorded at a gauge cell, one sample per solver step.
@@ -467,6 +499,11 @@ public struct BatchResult: Sendable {
     public var refinedTiles = 0
     /// Blocks of the second level refined at the end of the batch (0 without one).
     public var finerRefinedTiles = 0
+    /// Substeps the first refined level took per step, and the second per step of the coarse
+    /// grid, averaged over the batch's steps: r and r squared unless they take their own
+    /// (`SolverConfiguration.refinementOwnSteps`); 0 without the level.
+    public var firstLevelSubsteps = 0.0
+    public var secondLevelSubsteps = 0.0
     /// True when the batch stopped just short of its time limit, leaving the last step up to it
     /// for another batch; its unused steps did nothing.
     public var stoppedShort = false

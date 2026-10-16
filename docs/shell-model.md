@@ -39,8 +39,12 @@ Anything else, a block as long as it is wide, cannot be meshed this way.
    moments of those forces about it) and their mass. The column then bears on the slab over its
    whole section. Through a single node, the slabs of the two-storey frame were torn off every
    column by the blast.
-6. A shell whose centre lies in an opening is left out. Where two plates in the same plane
-   overlap, the later one's element wins.
+6. A shell whose centre lies in an opening is left out, unless its plate lies whole within that
+   opening. A window's glass is such a plate, a pane set in a wall's opening. It is moved onto
+   the wall's midsurface and made to fill the opening to its reveal, so that it shares the
+   wall's nodes round the opening, and it keeps its own thickness and material. Its edges are
+   then held as the wall holds them, rigidly; a real pane sits in a frame, more loosely. Where
+   two plates in the same plane overlap, the later one's element wins.
 7. Each reinforcement region that crosses a plate becomes a layer of bars at its own depth, with
    bar area per unit width along each of the plate's axes, up to four layers per element. In a
    column, a region filling the section (a column's smeared steel) becomes four corner bars at

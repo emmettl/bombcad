@@ -78,6 +78,23 @@ public enum RunCost {
         coreRange * min(1, pow(cell / scale / 0.04, coreRangeExponent)) * scale
     }
 
+    /// With adaptive substeps (`SolverConfiguration.refinementOwnSteps`), the share of its
+    /// substeps a refined level is expected to take: all of them while the patches hold the
+    /// fireball close in (until `coreTime` s/kg^(1/3) after the burst, as for the refined share),
+    /// and `ownStepsLaterShare` of them after, once the fireball, smooth and left coarse, holds the
+    /// fastest wave. Against `blastbench profile --refine-own-steps` on the recommended air: 1.0,
+    /// 0.84, 0.76 and 0.70 for the close-in burst 1.5, 2, 3.5 and 6 m across (1.0, 0.82, 0.76 and
+    /// 0.67 measured), 0.67 for open ground and 0.66 for the street (0.63 and 0.70).
+    public static let ownStepsLaterShare = 0.6
+
+    public static func ownStepsShare(_ scenario: Scenario, duration: Double) -> Double {
+        guard duration > 0 else { return 1 }
+        let charges = [scenario.charge] + (scenario.additionalCharges ?? [])
+        let held = charges.filter { $0.mass > 0 }.map { coreTime * cbrt(Double($0.mass)) }.max() ?? 0
+        let early = min(held, duration) / duration
+        return early + (1 - early) * ownStepsLaterShare
+    }
+
     /// GPU memory a block of refined air takes, ratio 2 (`SolverConfiguration.refinementMemory`).
     public static let blockBytes = 63_000.0
     /// Air bytes a cell: 57, with the fuel and oxygen 73 (docs/large-scenes.md).
@@ -239,6 +256,9 @@ public enum RunCost {
             * (configuration.cutsTerrain(of: scenario) ? terrainCutUpdateCost : 1)
         let twoLevels = configuration.refinement > 1 && configuration.refinementLevels > 1
         let overhead = Double(steps) * (stepOverhead + (twoLevels ? twoLevelStepOverhead : 0))
+        if configuration.refinement > 1 && configuration.refinementOwnSteps {
+            fineUpdates *= ownStepsShare(scenario, duration: duration)
+        }
         let seconds =
             (coarseUpdates + fineUpdates * fineUpdateCost) * updateCost / cellUpdatesPerSecond
             + elementUpdates / elementUpdatesPerSecond + overhead

@@ -32,7 +32,8 @@ stops where bodies come close. See [contact between bodies](multiple-object-scen
 ## Mesh
 
 The structure is the union of axis-aligned boxes (walls, slabs, columns) minus other boxes
-(openings), filled with cubic elements on a regular lattice. An element exists wherever a
+(openings), filled with cubic elements on a regular lattice. An opening cuts the boxes it
+crosses but not one it holds whole, so a pane set in a wall's opening stays. An element exists wherever a
 lattice cell's centre lies inside the body. The built-in layouts use elements of 62.5 mm, or
 125 mm for the two-storey frame.
 
@@ -829,6 +830,55 @@ on 0.05 m air cells was left porous, every other cell open, and the blast went t
 solid mask therefore travels with a wall that
 is pushed along, and opens where a wall breaks, letting the blast through. A cell that opens is
 filled with the average of its fluid neighbours.
+
+**Where the outline sits** (traced 16 October 2026). Counting each element at its centre puts
+the air's wall on the face of whichever cell the outermost layer's centres fall in, so it can sit
+up to a cell off the structure's face, and a sixth of a cell outside it on average.
+- **Where those centres lie exactly on a cell's face, microns of movement flip the cell above
+  the face between air and solid.** The structure's elements sit on a lattice snapped to multiples
+  of their size, so this happens wherever h/(2c), for element h and cell c, has an odd
+  denominator in lowest terms. Mendonça's 80 mm slabs of 8 elements on 12.5 and 25 mm air are one
+  case; the column close-in and block wall presets on 0.125 m air refined by 4 are two more.
+- **What it moved in slab 4** (25 mm air refined by 2): the slab resting free and held down,
+  identical until the shock, were 2.94 and 2.85 mm down at 3 ms, and their gauges read 1,118
+  against 1,440 kPa at the centre.
+- **`SolverConfiguration.structureMaskOverlap`, an option, counts each sample as a box**, by the
+  share of it in each cell it overlaps. A cell then turns solid an eighth above the fill threshold
+  and opens an eighth below it. Without that band, a cell the face left exactly a third full, 8 mm
+  of 24, flipped as the wall vibrated.
+  - Where elements tile the cells, as Wu's and Wang's slabs on 25 mm air, the close-in slab and
+    Alsubaei's walls do, the outline is unchanged, bit for bit.
+  - With it, slab 4 free and held down agree at every gauge and within 0.3% at 3 ms.
+  - On the blind harness's own air it moves slab 4's peak from 4.30 to 4.14 mm.
+  - On Hupfauf's eight contact slabs (`blastbench contact --time 0.0005`) the slab's momentum
+    moves by −1 to +3%.
+    - The far face's speed under the charge moves by −18 to +46%. That is no more than rounding
+      moves these post-failure figures (62.9 to 106.3 m/s for SN142, [Validation](validation.md)).
+    - On SN144 one node ran away, the slab's kinetic energy 372 kJ against 49; it is not traced.
+  - Not run: Keys's brick walls (37.5 mm elements on 0.1 m air, so they will move).
+  - Its cost is not measurable: 0.94 to 1.06 times the default's in alternating runs.
+- **Through a cell, the structure's response moves less than its gauges.** Each case was run on
+  air cells from 24 to 26 mm, which sweeps the face through more than a cell, with the response's
+  spread (max − min over mean):
+
+  | Case | Default | Overlap |
+  |---|---|---|
+  | Slab 4 held down, peak | 2.5% | 4.3% |
+  | Wang's slab A (a wall), its middle gauge's peak | 35% | 12% |
+  | Slab 4, centre gauge's reflected peak | 29% | 32% |
+  | Slab 4, the nine top gauges' positive impulse to 10 ms | 12% | 13% |
+
+  The gauges' spread is in how the harnesses read them, not in the outline.
+  - Mendonça's gauges follow the face into the first coarse air cell and read the fine cell
+    holding that cell's centre: one of its two fine children, on their shared face. Where the
+    coarse cell above the face is solid but its fine upper half is air, the gauge reads a fine cell
+    or two from the fine wall: about 1,110 kPa there, against about 1,460 next to it.
+  - Wang's gauges are fixed 10 mm in front of the face, often inside the partly solid cell
+    holding it. When that cell closes, they read its stale state.
+- **Neither the finer samples nor the threshold help.** `structureMaskSampling` samples elements
+  more finely; `structureMaskFill` sets the share of a cell that must be filled, a third by
+  default. A half places the wall without bias but loses layers thinner than half a cell, and
+  through a cell it spread slab 4's gauges as much (28% against 29%).
 
 **Debris.** A node with no intact element left around it is loose debris, and the air loads it
 directly, since it no longer belongs to any face. It stands for a lump of volume *V*, an eighth

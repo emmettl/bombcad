@@ -44,6 +44,10 @@ func runReynolds(device: MTLDevice) throws {
     if let depth = option("bar-depth").flatMap({ Float($0) }) { settings.barDepthInches = depth }
     if flag("nominal-bars") { settings.nominalSpacing = true }
     if let width = option("bearings").flatMap({ Float($0) }) { settings.bearingWidth = width }
+    // `--rupture 0.15 --ultimate-strain 0.08`: the bars' plastic strain at rupture and at their
+    // ultimate strength, in place of the predictor's declared 9.1% and 7% (calibration, after the reveal).
+    if let rupture = option("rupture").flatMap({ Float($0) }) { settings.ruptureStrain = rupture }
+    if let ultimate = option("ultimate-strain").flatMap({ Float($0) }) { settings.ultimateStrain = ultimate }
     let names =
         option("slabs")?.split(separator: ",").map(String.init)
         ?? (option("series") == "rscr" ? ["RSCR4", "RSCR5", "RSCR6"] : nil)

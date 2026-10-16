@@ -133,16 +133,28 @@ Headless runs write them with `--envelope-histories <file.json>`; kept runs do n
 Recording leaves the air bit-identical, and each side's binned impulse equals the mean of its faces'
 own integrals (tests in `EnvelopeComponentTests.swift`).
 
-**Cost.** Memory is components × bins × 8 bytes, plus 12 bytes a face: at 0.25 m, the street's
-4 buildings (20 components, 120 ms) take 0.37 MB, the 64-building neighbourhood (320 components,
-60 ms) 4.4 MB. Each step, a thread a face reads its cell (or, in a tile of still air, the still air,
-the same bits) and a SIMD group a component sums them. Timed with `scenebench envelope-histories
---dx 0.25 --rounds 7` against the same runs with the surface recorder alone, interleaved, on
-16 October 2026 with the Mac's load at 15–80: the street's median pair ratio was 1.06–1.12 and
-the neighbourhood's 1.2–1.3, with pairs scattered ±15–30%, too loaded to settle a 5% target. The
-neighbourhood's 60 ms is the worst case for it: its air is mostly asleep (0.07–0.36 s of air
-work for the whole run), so per-face work, the surface recorder's too, weighs most there. An
-early-returning kernel cost nothing measurable, so the cost is the face reads, not the dispatch.
+**Cost.** Memory is components × bins × 8 bytes, plus about 13 bytes a face: at 0.25 m, the
+street's 4 buildings (20 components, 120 ms) take 0.37 MB, the 64-building neighbourhood
+(320 components, 60 ms) 4.4 MB. Each step, a SIMD group a component reads the flags of the tiles of
+air its faces lie in; a component whose air is all still is not read but made from the still air's
+pressure, added as its faces would be (the same bits, tested). The awake ones are listed for an
+indirect dispatch, a threadgroup of 256 a component reading its faces (a face in a still tile reads
+the still air), and a SIMD group a component sums them in a fixed order.
+
+Timed with `scenebench envelope-histories --dx 0.25 --rounds 7`, against the same runs with the
+surface recorder alone, interleaved, on a quiet M4 Max (every GPU slot free, load under 4; 16 October
+2026), as the median of seven pairs:
+
+| Version | Street, 120 ms | Neighbourhood, 60 ms |
+|---|---|---|
+| A thread a component | +80–130% (loaded) | |
+| A thread a face, then summed | +5.2% | +14.4% |
+| As now: still components skipped, awake ones read 256 threads at a time | +6.3% | +10.5% |
+
+What remains is 18–22 µs a step: these runs' steps are short (0.27 and 0.22 ms), and the
+neighbourhood's air is mostly asleep, so the surface recorder alone already takes about a quarter of
+its run. Sharing the surface recorder's face reads would not remove it: only awake components read
+cells at all, and their faces cost little next to the three dispatches a step.
 
 ## Matched building study
 
@@ -476,6 +488,32 @@ and set against the same component of the detailed building free to respond (sum
   pressure, the room's air compressing adiabatically) gives 2.1, 5.7, 11.3 and 19.5 kPa against
   the detailed gauges' 1.0, 2.6, 11.0 and 22.4 at 10, 50, 200 and 500 kg (0.87–2.23 times the
   detailed peaks), mostly above. It cannot see a breached concrete wall (1.6 and 6.5 kPa at 200 and 500 kg).
+
+**In the app.** Runs of envelope-only scenes record each component's load (the
+[recorder](#surface-exposure-and-loads) keeps both sides' histories at 0.1 ms) and judge every building
+one way as the run goes, at most once a second and again when it stops:
+
+- **Construction.** Each envelope's walls are reinforced concrete or unreinforced masonry, with a
+  thickness, a concrete roof, a reinforcement ratio and annealed glass. These are read from an IFC
+  import's material layers or a map building's `building:material` tag; otherwise the default is
+  assumed (0.2 m concrete, 0.3% each way, 6 mm glass) and the standing says how many were assumed.
+  The editor's Exposure-only buildings section changes them, and projects save them.
+- **Levels.**
+  - Concrete is a range of support rotation between fixed and simply supported edges, judged by
+    ASCE/SEI 59-11's limits for single-reinforced slabs: moderate to 2°, heavy to 5°, hazardous to
+    10°, failed beyond.
+  - Brick is cracked or fallen (deflected past its thickness). No citable limits for unreinforced
+    masonry without arching were found.
+  - Glass is broken or whole, with the time it broke; the fragments' hazard is not graded.
+  - A building with a panel past 2° is flagged as beyond the one-way model.
+- **Shown.**
+  - The sidebar's Envelope building damage section lists each building's levels, its panes broken
+    and when, and the inside through them, with the result's standing. Export damage writes it as
+    JSON.
+  - The view colours each envelope by the worse end of its range: green none, blue glass broken
+    alone, yellow moderate, orange heavy, red hazardous, purple failed.
+  - Headless, `BombCAD run … --envelope-damage <file.json>` writes the same JSON and prints a line
+    for each building.
 
 These are comparisons with the detailed model on one mesh, not with measurement: open tests of
 window glass under blast are listed in [data wanted](data-wanted.md#3h-window-glass-breaking-under-a-blast)

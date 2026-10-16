@@ -153,6 +153,9 @@ struct SimulationSettings: Equatable {
     /// With `sharpShocks`, the jump across a cell that refines it, as a share of its pressure:
     /// lower follows a weakening shock further, at a cost (see docs/large-scenes.md).
     var shockThreshold: Float = 0.1
+    /// With `sharpShocks`, each refined level takes only the substeps its own waves need
+    /// (`SolverConfiguration.refinementOwnSteps`): the advisor turns it on where it pays.
+    var adaptiveSubsteps = false
     /// Gravity in the air: it starts at rest in a hydrostatic atmosphere and hot gas rises.
     var gravity = false
     /// The terrain cut through the cells where the air is not refined; false for a staircase of
@@ -581,6 +584,9 @@ final class SimulationModel {
     /// Record each envelope component's pressure history too (headless `--envelope-histories`);
     /// nil records none, at no cost.
     @ObservationIgnored var envelopeHistoryOptions: EnvelopeHistoryOptions?
+    /// Whether runs of envelopes record their components' histories, for their one-way damage,
+    /// without `envelopeHistoryOptions` asking: the app's runs do; headless runs only when asked.
+    @ObservationIgnored var envelopeHistoriesByDefault = true
 
     var canExportEnvelopeExposure: Bool {
         !isRunning && !batchInFlight && !isLoadingInputs && !rebuildPending
@@ -606,6 +612,54 @@ final class SimulationModel {
         encoder.outputFormatting = [.sortedKeys]
         return try encoder.encode(snapshots)
     }
+    /// Each envelope building's one-way damage from its components' loads so far
+    /// (`EnvelopeDamageAssessment`), and why there is none when there is none.
+    private(set) var envelopeDamage: [EnvelopeBuildingDamage] = []
+    private(set) var envelopeDamageStatus = ""
+    /// Whether the view colours envelopes by their damage (over the air's paint) once judged.
+    var showsEnvelopeDamage = true {
+        didSet { applyEnvelopeDamageColours() }
+    }
+
+    private func applyEnvelopeDamageColours() {
+        renderer?.setEnvelopeDamage(
+            showsEnvelopeDamage
+                ? Dictionary(
+                    uniqueKeysWithValues: envelopeDamage.map { ($0.id, EnvelopeDamageColour.code($0)) })
+                : [:])
+    }
+
+    @ObservationIgnored private var lastEnvelopeDamage = ContinuousClock.now
+
+    /// Judges each envelope building from the recorder's histories so far, if it records them.
+    func refreshEnvelopeDamage() {
+        lastEnvelopeDamage = .now
+        guard let histories = solver?.envelopeComponentHistories(), !histories.isEmpty else { return }
+        updateEnvelopeDamage(loads: histories.filter { !$0.invalid }.map(EnvelopeComponentLoad.init))
+    }
+
+    /// Judges each envelope building from its components' loads, and colours it in the view.
+    func updateEnvelopeDamage(loads: [EnvelopeComponentLoad]) {
+        let scenario = settings.scenario
+        let rooms = Dictionary(
+            uniqueKeysWithValues: scenario.envelopeObjects.map {
+                ($0.id, EnvelopeDamageAssessment.roomVolume(of: $0.envelope!))
+            })
+        envelopeDamage = EnvelopeDamageAssessment.assess(
+            loads: loads, constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms)
+        applyEnvelopeDamageColours()
+    }
+
+    func envelopeDamageData() throws -> Data {
+        guard !envelopeDamage.isEmpty else {
+            throw ProjectFileError.invalid(
+                "Run a scene with envelope buildings before exporting their damage.")
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
+        return try encoder.encode(envelopeDamage)
+    }
+
     private(set) var groundShockStatus = ""
     @ObservationIgnored private(set) var groundShock: (any FrameConsumer)?
     @ObservationIgnored private var groundShockTime = -1.0
@@ -690,6 +744,7 @@ final class SimulationModel {
                 settings.sharpShocks = run.sharpShocks
                 settings.shockLevels = run.shockLevels ?? 1
                 settings.shockThreshold = run.shockThreshold ?? 0.1
+                settings.adaptiveSubsteps = run.adaptiveSubsteps ?? false
                 settings.gravity = run.gravity ?? false
                 settings.terrainCutCells = run.cutsTerrain(over: scenario)
                 settings.softGround = run.groundStiffness != nil
@@ -831,6 +886,7 @@ final class SimulationModel {
             settings.sharpShocks = run.sharpShocks
             settings.shockLevels = run.shockLevels ?? 1
             settings.shockThreshold = run.shockThreshold ?? 0.1
+            settings.adaptiveSubsteps = run.adaptiveSubsteps ?? false
             settings.gravity = run.gravity ?? false
             settings.terrainCutCells = run.cutsTerrain(over: document.scenario)
             settings.softGround = run.groundStiffness != nil
@@ -1035,6 +1091,7 @@ final class SimulationModel {
         settings.sharpShocks = inputs.settings.sharpShocks
         settings.shockLevels = inputs.settings.shockLevels ?? 1
         settings.shockThreshold = inputs.settings.shockThreshold ?? 0.1
+        settings.adaptiveSubsteps = inputs.settings.adaptiveSubsteps ?? false
         settings.gravity = inputs.settings.gravity ?? false
         settings.terrainCutCells = inputs.settings.cutsTerrain(over: inputs.scenario)
         settings.softGround = inputs.settings.groundStiffness != nil
@@ -2144,6 +2201,7 @@ final class SimulationModel {
 
     private func requestRebuild() {
         envelopeExposure = []
+        envelopeDamage = []
         envelopeExposureStatus = ""
         if batchInFlight {
             isLoadingInputs = true
@@ -2160,7 +2218,8 @@ final class SimulationModel {
         ProjectRunSettings.configureAir(
             &solver.configuration, detailedCharge: settings.detailedCharge, sharpShocks: settings.sharpShocks,
             shockLevels: settings.shockLevels, gravity: settings.gravity,
-            shockThreshold: settings.shockThreshold, terrainCutCells: settings.terrainCutCells,
+            shockThreshold: settings.shockThreshold, adaptiveSubsteps: settings.adaptiveSubsteps,
+            terrainCutCells: settings.terrainCutCells,
             groundStiffness: settings.softGround ? settings.groundStiffness : nil)
     }
 
@@ -2170,6 +2229,7 @@ final class SimulationModel {
         stopFragments()
         stopGroundShock()
         envelopeExposure = []
+        envelopeDamage = []
         envelopeExposureStatus = ""
         stopThermal()
         stopCloud()
@@ -2219,7 +2279,11 @@ final class SimulationModel {
                 if scenario.structuralObjects.isEmpty {
                     do {
                         try solver.configureEnvelopeExposure(objects: scenario.envelopeObjects)
-                        if let options = envelopeHistoryOptions {
+                        // The components' histories feed their one-way damage, so the app keeps them for
+                        // every run of envelopes; headless runs only when asked.
+                        if let options = envelopeHistoryOptions
+                            ?? (envelopeHistoriesByDefault ? EnvelopeHistoryOptions(windowS: duration) : nil)
+                        {
                             try solver.configureEnvelopeComponents(
                                 objects: scenario.envelopeObjects, options: options)
                         }
@@ -2523,6 +2587,9 @@ final class SimulationModel {
         guard let solver else { return }
         lastTracePublication = .now
         envelopeExposure = solver.envelopeExposureSummaries() ?? []
+        // SDOF over every component is cheap but not free: at most once a second while running,
+        // and once more when the run stops.
+        if !isRunning || ContinuousClock.now - lastEnvelopeDamage > .seconds(1) { refreshEnvelopeDamage() }
         recordSampleIfDue(solver)
         structureSummary = solver.bodySummary()
         bodySummaries = Dictionary(

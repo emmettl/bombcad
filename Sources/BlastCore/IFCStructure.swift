@@ -12,8 +12,9 @@ import simd
 ///   holes through them (the converter cuts openings out) become openings of the structure;
 /// - columns, beams and members square to the axes and at least twice as long as they are wide
 ///   become beams of their bounding section, its width scaled to keep the element's volume;
-/// - windows of glass become panes of annealed glass in the wall's opening, 6 mm thick unless the
-///   IFC says otherwise; doors leave their opening open;
+/// - windows become panes of annealed glass in the wall's opening (glass assumed where the IFC
+///   names none), 6 mm thick unless the IFC says otherwise, joined to the opening's reveal; doors
+///   leave their opening open;
 /// - footings become rigid footings on soil under the walls and columns that stand on them, set
 ///   into the soil by their own depth, and the building stands with its base on the ground;
 /// - anything else (inclined elements, stairs, railings, shapes that are not plates or members)
@@ -514,12 +515,13 @@ public struct IFCStructure: Sendable {
                 let glass = (layers.map(\.name) + [element.name]).contains {
                     Self.classify($0) == .glass || $0.localizedCaseInsensitiveContains("glaz")
                 }
-                if glass {
-                    member.role = .pane
-                    member.notes.append("Glazed: a pane of annealed glass in its opening.")
-                } else {
-                    member.notes.append("No glass named in the IFC: its opening is left open.")
-                }
+                // Windows are glazed: most IFC files name no material for them at all.
+                member.role = .pane
+                member.notes.append(
+                    glass
+                        ? "Glazed: a pane of annealed glass in its opening."
+                        : "No glass named in the IFC: taken as glazed, a pane of annealed glass in its opening (assumed)."
+                )
             case .door:
                 member.role = .opening
                 member.notes.append("A door: its opening is left open.")
@@ -551,7 +553,10 @@ public struct IFCStructure: Sendable {
             if layers.first(where: { Self.classify($0.name) == .glass })?.thickness == nil {
                 members[n].notes.append("Its glass taken as \(Self.millimetres(thickness)) thick (assumed).")
             }
-            var pane = window.box
+            // It fills the hole it sits in (the window's frame overlaps the wall round it), so
+            // that the opening holds it whole and the mesh joins it to the reveal.
+            let hole = openings.first { $0.contains(window.box.centre) }
+            var pane = hole ?? window.box
             for k in 0..<3 where k != axis {
                 pane.min[k] = max(pane.min[k], wall.min[k])
                 pane.max[k] = min(pane.max[k], wall.max[k])
@@ -567,7 +572,9 @@ public struct IFCStructure: Sendable {
             let index = add(pane, .annealedGlass, window)
             members[n].solid = index
             members[n].material = StructureMaterial.annealedGlass.name
-            members[n].materialSource = "IFC: glazed"
+            let named = !members[n].notes.contains { $0.hasPrefix("No glass named") }
+            members[n].materialSource = named ? "IFC: glazed" : "assumed: a window"
+            members[n].assumed = !named
             panes.append((index, n))
         }
 

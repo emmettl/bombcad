@@ -208,6 +208,14 @@ func chosenGas() -> AirModel { chosenAirModel() ?? SolverConfiguration.recommend
 /// 15 October 2026.
 func chosenFaces() -> OpenFaces { flag("copy-faces") ? .copy : SolverConfiguration.recommended.openFaces }
 
+/// The structure's outline in the air as the command line sets it: `--mask-sampling 2`,
+/// `--mask-fill 0.5`, `--mask-overlap` (see `SolverConfiguration.structureMaskOverlap`).
+func applyChosenMask(_ configuration: inout SolverConfiguration) {
+    if let n = option("mask-sampling").flatMap({ Int($0) }) { configuration.structureMaskSampling = n }
+    if let f = option("mask-fill").flatMap({ Float($0) }) { configuration.structureMaskFill = f }
+    if flag("mask-overlap") { configuration.structureMaskOverlap = true }
+}
+
 /// The air every run ships with (`SolverConfiguration.recommended`) as the command line changes
 /// it: `--no-afterburn`, `--air` and `--copy-faces`. Every bench that runs a scene starts here;
 /// those that pin the bare core for numerics say so.
@@ -220,6 +228,16 @@ func applyChosenAir(_ configuration: inout SolverConfiguration) {
 /// `--fracture-rate 0.5`: how the fracture energy follows the tensile strain-rate law, and the
 /// like, for any command that builds concrete.
 func applyRateOptions(_ material: inout StructureMaterial) {
+    // `--rupture 0.15`: the bars' plastic strain at rupture, over the debonded window; with a
+    // measured curve, its last point moved there (the bar breaks at the last point).
+    if let rupture = option("rupture").flatMap({ Float($0) }), var steel = material.steel {
+        steel.ruptureStrain = rupture
+        if var curve = steel.measuredCurve, curve.count >= 2 {
+            curve[curve.count - 1].x = max(rupture, curve[curve.count - 2].x * 1.001)
+            steel.measuredCurve = curve
+        }
+        material.steel = steel
+    }
     if let residual = option("crack-residual").flatMap({ Float($0) }) { material.crackResidual = residual }
     if let dilatancy = option("dilatancy").flatMap({ Float($0) }) { material.crackDilatancy = dilatancy }
     // `--steel-plateau`: the bars' measured curve held at its peak instead of falling after it
@@ -770,6 +788,7 @@ func runThroughput() throws {
             var refined = 0.0
             var finer = 0.0
             var (most, finerMost) = (0, 0)
+            var substeps = SIMD2<Double>.zero
             var batches = 0
             while solver.time < event {
                 let result = solver.advance(steps: 64, timeLimit: event)
@@ -782,8 +801,11 @@ func runThroughput() throws {
                 finer += Double(result.finerRefinedTiles)
                 most = max(most, result.refinedTiles)
                 finerMost = max(finerMost, result.finerRefinedTiles)
+                substeps +=
+                    SIMD2(result.firstLevelSubsteps, result.secondLevelSubsteps) * Double(result.steps)
                 batches += 1
             }
+            substeps /= Double(max(steps, 1))
             let blocks = Double(
                 ((solver.grid.nx + 3) / 4) * ((solver.grid.ny + 3) / 4) * ((solver.grid.nz + 3) / 4))
             print(
@@ -791,7 +813,9 @@ func runThroughput() throws {
                     + "at most \(most) (room for \(solver.refinementPatchCapacity)), of \(Int(blocks))"
                     + (solver.configuration.refinementLevels > 1
                         ? "; at the second level \(format(finer / Double(max(batches, 1)), 0)) on average, "
-                            + "at most \(finerMost) (room for \(solver.finerRefinementPatchCapacity))" : ""))
+                            + "at most \(finerMost) (room for \(solver.finerRefinementPatchCapacity))" : "")
+                    + "; substeps per step \(format(substeps.x, 2))"
+                    + (solver.configuration.refinementLevels > 1 ? " and \(format(substeps.y, 2))" : ""))
         } else if runWholeEvent {
             let result = solver.advance(until: event)
             (steps, swept) = (result.steps, result.sweptFraction)
@@ -940,7 +964,8 @@ func runChamber() throws {
 /// Gas pressure in a closed room against UFC 3-340-02 Figure 2-152.
 /// A solver for `scenario`, with the air options given on the command line (`--afterburn`).
 /// The air's refinement from `--refine 2|4`, `--refine-levels 1|2`, `--refine-margin 1|2` (cells of
-/// margin around the shock), `--refine-threshold`,
+/// margin around the shock), `--refine-own-steps` (each level takes only the substeps its own waves
+/// need), `--refine-threshold`,
 /// `--refine-finer-threshold` (the second level's) and `--refine-memory` (MB).
 func configureRefinement(_ configuration: inout SolverConfiguration) {
     // The terrain's ground is cut through the cells by default (TerrainCutCells.swift); `--staircase`
@@ -953,6 +978,7 @@ func configureRefinement(_ configuration: inout SolverConfiguration) {
     }
     if let levels = option("refine-levels").flatMap({ Int($0) }) { configuration.refinementLevels = levels }
     if let margin = option("refine-margin").flatMap({ Int($0) }) { configuration.refinementMargin = margin }
+    if flag("refine-own-steps") { configuration.refinementOwnSteps = true }
     if let threshold = option("refine-finer-threshold").flatMap({ Float($0) }) {
         configuration.refinementFinerThreshold = threshold
     }
@@ -1270,6 +1296,11 @@ func runValidation() throws {
 
 func runSnapshot() throws {
     var scenario = chosenScenario()
+    // `--street-envelopes`: the street study's four buildings as exposure-only envelopes.
+    if flag("street-envelopes") {
+        scenario = try StreetInteractionStudy.make(.street)
+        for object in scenario.structuralObjects { try scenario.useEnvelope(id: object.id) }
+    }
     if let mass = option("mass").flatMap({ Float($0) }) { scenario.charge.mass = mass }
     // `--fit-reach 10` fits an open scene to its charge as the app's Domain section does; a
     // `--terrain` is laid again over the domain it fits.
@@ -1375,6 +1406,13 @@ func runSnapshot() throws {
     // The fireball cut out on the GPU at the end of each batch that lands on a frame, as a
     // headless run does.
     if let thermal { solver.frameRequest = FrameRequest(thermal: thermal.spec) }
+    // `--envelope-damage`: each envelope judged one way from its components' histories, and
+    // coloured by it, as the app does.
+    let judgesEnvelopes = flag("envelope-damage") && !scenario.envelopeObjects.isEmpty
+    if judgesEnvelopes {
+        try solver.configureEnvelopeComponents(
+            objects: scenario.envelopeObjects, options: EnvelopeHistoryOptions(windowS: time))
+    }
     while solver.time < time - 1e-9 {
         let result = solver.advance(
             steps: 64,
@@ -1391,6 +1429,24 @@ func runSnapshot() throws {
 
     let renderer = try SceneRenderer(device: device)
     renderer.setScene(scenario, solver: solver)
+    if judgesEnvelopes, let histories = solver.envelopeComponentHistories() {
+        let rooms = Dictionary(
+            uniqueKeysWithValues: scenario.envelopeObjects.map {
+                ($0.id, EnvelopeDamageAssessment.roomVolume(of: $0.envelope!))
+            })
+        let damage = EnvelopeDamageAssessment.assess(
+            loads: histories.map(EnvelopeComponentLoad.init),
+            constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms)
+        renderer.setEnvelopeDamage(
+            Dictionary(uniqueKeysWithValues: damage.map { ($0.id, EnvelopeDamageColour.code($0)) }))
+        for building in damage {
+            let name = scenario.object(id: building.id)?.name ?? "Building"
+            print(
+                "\(name): code \(EnvelopeDamageColour.code(building)), \(building.structuralLevels.lowerBound.label)"
+                    + "–\(building.structuralLevels.upperBound.label), panes \(building.panesBroken)/\(building.panes)"
+            )
+        }
+    }
     // Vent panels that have released are not drawn.
     let panels = (scenario.ventPanels ?? []).filter { $0.releasePressure > 0 }
     renderer.setVentPanels(zip(panels, solver.ventPanelOpenTimes).compactMap { $1 == nil ? $0.box : nil })
@@ -2293,7 +2349,7 @@ func runContact() throws {
                 }
                 if flag("fastest") { fastest(structure, time) }
                 if flag("column") { column(structure, time) }
-            })
+            }, configure: applyChosenMask)
         print(
             "\(test.name): \(format(Double(test.thickness) * 100, 0)) cm, \(format(Double(test.semtex) * 1000, 0)) g SEMTEX 10 "
                 + "(\(format(Double(test.tntSphere) * 1000, 0)) g TNT sphere), T_W \(format(Double(test.scaledThickness), 2))"
@@ -2570,7 +2626,7 @@ func runTwoFace() throws {
                     shownBreakdown = true
                     printHourglassBreakdown(
                         solver, label: "\(test.name) at \(format(time * 1000, 1)) ms", near: wuNear(solver))
-                })
+                }, configure: applyChosenMask)
             shownBreakdown = false
             if let structure = lastStructure, structure.tracesWork, breakdownAt != nil {
                 printHourglassBreakdown(structure, label: "\(test.name) at the end", near: wuNear(structure))
@@ -2624,7 +2680,7 @@ func runTwoFace() throws {
                     ? {
                         print("  " + $0)
                         fflush(stdout)
-                    } : nil)
+                    } : nil, configure: applyChosenMask)
             print("Slab \(test.name), \(format(Double(test.bar) * 1000, 0)) mm bars: \(test.remark)")
             print("  gauge   peak, measured/model (mm)   residual (mm)")
             for n in result.probes.indices {
@@ -4977,6 +5033,7 @@ func runProfile() throws {
     var stages: [String: Double] = [:]
     var (steps, sweptCells) = (0, 0.0)
     var blocks = SIMD2<Double>.zero
+    var substeps = SIMD2<Double>.zero
     var coverage: [RefinementCoverage.Level] = []
     var sampled = 0
     let start = ContinuousClock.now
@@ -4990,6 +5047,7 @@ func runProfile() throws {
         steps += result.steps
         sweptCells += result.sweptFraction * Double(solver.grid.cellCount) * n
         blocks += SIMD2(Double(result.refinedTiles), Double(result.finerRefinedTiles)) * n
+        substeps += SIMD2(result.firstLevelSubsteps, result.secondLevelSubsteps) * n
         // The fit of the patches, at a few moments through the event.
         if levels > 0, Double(sampled) < Double(samples) * solver.time / end,
             let now = solver.refinementCoverage()
@@ -5033,7 +5091,9 @@ func runProfile() throws {
     if levels > 0 {
         print(
             "\nRefined blocks on average: \(format(blocks.x / Double(max(steps, 1)), 0))"
-                + (levels > 1 ? ", \(format(blocks.y / Double(max(steps, 1)), 0)) at the second level" : ""))
+                + (levels > 1 ? ", \(format(blocks.y / Double(max(steps, 1)), 0)) at the second level" : "")
+                + "; substeps per step \(format(substeps.x / Double(max(steps, 1)), 2))"
+                + (levels > 1 ? " and \(format(substeps.y / Double(max(steps, 1)), 2))" : ""))
         for (l, level) in coverage.enumerated() {
             print(
                 "Level \(l + 1), over \(sampled) moments: \(format(100 * Double(level.core) / Double(max(level.refined, 1)), 1))%"

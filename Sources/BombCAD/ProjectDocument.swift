@@ -20,6 +20,9 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// The jump that refines the air, as a share of the pressure, when it is not the usual 0.1;
     /// nil, and left out of the file and the fingerprint, when it is.
     var shockThreshold: Float?
+    /// True when each refined level takes only the substeps its own waves need; nil, and left out
+    /// of the file and the fingerprint, when every level takes all of them.
+    var adaptiveSubsteps: Bool?
     /// Gravity in the air when on; nil, and left out of the file and the fingerprint, when off.
     var gravity: Bool?
     /// True when the scene's terrain is cut through the cells (where the air is not refined); nil,
@@ -38,6 +41,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         sharpShocks = settings.sharpShocks
         shockLevels = settings.shockLevels > 1 ? settings.shockLevels : nil
         shockThreshold = settings.shockThreshold != 0.1 ? settings.shockThreshold : nil
+        adaptiveSubsteps = settings.sharpShocks && settings.adaptiveSubsteps ? true : nil
         gravity = settings.gravity ? true : nil
         terrainCutCells =
             settings.terrainCutCells && settings.scenario.terrain.map { !$0.isFlat } == true ? true : nil

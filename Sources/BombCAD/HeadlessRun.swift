@@ -18,7 +18,8 @@ enum HeadlessRun {
                            [--thermal <spec.json> [--thermal-results <file.json>]]
                            [--cloud <spec.json> [--sounding <sounding.csv>] [--cloud-results <file.json>]]
                            [--ground-shock <spec.json> [--ground-results <file.json>]]
-                           [--envelope-results <file.json>] [--envelope-histories <file.json>] [--standing <file.json>]
+                           [--envelope-results <file.json>] [--envelope-histories <file.json>] [--envelope-damage <file.json>]
+                           [--standing <file.json>]
                            [--consumer <ssh host> | auto | fragments=<where>,thermal=<where>,ground=<where>]
                            [--worker <ssh host>]…
 
@@ -33,7 +34,9 @@ enum HeadlessRun {
         surface records as JSON; scenes with only envelopes collect compact surface summaries in kept
         runs and CSV too. --envelope-histories writes each building component's pressure history
         (wall, slab and roof panels, panes, façade strips; both sides, 0.1 ms bins) as JSON, for a
-        damage model.
+        damage model. --envelope-damage judges each envelope building one way from those histories
+        (concrete panels' levels between fixed and simply supported edges, panes broken and when,
+        the inside through them) and writes it as JSON; each building's line is printed too.
         --thermal reckons the fireball's thermal radiation on the ground and the scene's faces,
         frame by frame; the receivers go into the USD scene and, with --thermal-results, a JSON
         file. --cloud hands the hot gas left at the end of the run over to a model of the
@@ -92,6 +95,7 @@ enum HeadlessRun {
         var envelopeResults: URL?
         /// Where each envelope component's pressure history goes, as JSON.
         var envelopeHistories: URL?
+        var envelopeDamage: URL?
         var groundResults: URL?
         /// Where the standing of the run's results goes, as JSON.
         var standing: URL?
@@ -121,7 +125,7 @@ enum HeadlessRun {
                             "vdb-fields", "fragments",
                             "consumer", "fragment-results", "thermal", "thermal-results", "cloud",
                             "cloud-results", "sounding", "ground-shock", "ground-results", "envelope-results",
-                            "envelope-histories",
+                            "envelope-histories", "envelope-damage",
                             "frame-interval", "worker", "standing", "advise", "ground",
                         ]
                         .contains(key)
@@ -146,6 +150,7 @@ enum HeadlessRun {
             options.csv = values["csv"].map { URL(filePath: $0) }
             options.envelopeResults = values["envelope-results"].map { URL(filePath: $0) }
             options.envelopeHistories = values["envelope-histories"].map { URL(filePath: $0) }
+            options.envelopeDamage = values["envelope-damage"].map { URL(filePath: $0) }
             options.standing = values["standing"].map { URL(filePath: $0) }
             if let text = values["advise"] {
                 guard let target = AdvisorTarget(text: text) else {
@@ -312,7 +317,7 @@ enum HeadlessRun {
             for url in [
                 options.out, options.csv, options.usd, options.vdb, options.fragmentResults,
                 options.thermalResults, options.cloudResults, options.groundResults, options.envelopeResults,
-                options.envelopeHistories, options.standing,
+                options.envelopeHistories, options.envelopeDamage, options.standing,
             ]
             .compactMap({ $0 })
             where FileManager.default.fileExists(atPath: url.path) {
@@ -444,6 +449,7 @@ enum HeadlessRun {
         for (option, asked) in [
             ("--envelope-results", options.envelopeResults),
             ("--envelope-histories", options.envelopeHistories),
+            ("--envelope-damage", options.envelopeDamage),
         ] where asked != nil {
             guard !inputs.scenario.envelopeObjects.isEmpty, inputs.scenario.structuralObjects.isEmpty else {
                 throw ProjectFileError.invalid(
@@ -476,11 +482,15 @@ enum HeadlessRun {
         // Before the inputs load, which sets the first sample time. The cloud needs only the
         // last sample, at the end of the run, which then stops nowhere else.
         model.airSampleInterval = framed || options.cloud == nil ? interval : inputs.settings.duration
+        model.envelopeHistoriesByDefault = false
         model.envelopeHistoryOptions =
-            options.envelopeHistories == nil ? nil : EnvelopeHistoryOptions(windowS: inputs.settings.duration)
+            options.envelopeHistories == nil && options.envelopeDamage == nil
+            ? nil : EnvelopeHistoryOptions(windowS: inputs.settings.duration)
         model.applyExperimentInputs(inputs)
         try await waitUntil(model) { model.experimentIsReady }
-        if options.envelopeResults != nil || options.envelopeHistories != nil, model.envelopeExposure.isEmpty
+        if options.envelopeResults != nil || options.envelopeHistories != nil
+            || options.envelopeDamage != nil,
+            model.envelopeExposure.isEmpty
         {
             throw ProjectFileError.invalid(model.envelopeExposureStatus)
         }
@@ -746,6 +756,14 @@ enum HeadlessRun {
         document.savedRuns = model.savedRuns
         let envelopeData = try options.envelopeResults.map { _ in try model.envelopeResultsData() }
         let historyData = try options.envelopeHistories.map { _ in try model.envelopeHistoriesData() }
+        if let url = options.envelopeDamage {
+            model.refreshEnvelopeDamage()
+            try model.envelopeDamageData().write(to: url, options: .withoutOverwriting)
+            streams += model.envelopeDamage.map { building in
+                let name = inputs.scenario.object(id: building.id)?.name ?? "Building"
+                return "\(name): " + EnvelopeDamageSection.summary(building)
+            }
+        }
         return (
             run, document, fragments, streams, thermalResult, cloud, groundResult, envelopeData,
             model.blastGPUSeconds, standing, historyData

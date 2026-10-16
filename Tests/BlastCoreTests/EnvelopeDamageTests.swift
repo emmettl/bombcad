@@ -82,4 +82,17 @@ struct EnvelopeDamageTests {
         #expect(light?.levels == .heavy ... .heavy)
         #expect(heavy?.levels == .failed ... .failed && heavy?.failedAtS != nil)
     }
+
+    @Test("The view's shader draws the same six colours as the palette")
+    func shaderPalette() throws {
+        let shader = try String(
+            contentsOf: URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+                .deletingLastPathComponent().appending(path: "Sources/BlastRender/Shaders/Render.metal"),
+            encoding: .utf8)
+        for colour in EnvelopeDamageColour.palette {
+            let text = String(format: "float3(%.3ff, %.3ff, %.3ff)", colour.x, colour.y, colour.z)
+            #expect(shader.contains(text), "\(text) not in Render.metal")
+        }
+        #expect(EnvelopeDamageColour.labels.count == EnvelopeDamageColour.palette.count)
+    }
 }
