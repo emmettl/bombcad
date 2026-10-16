@@ -446,9 +446,9 @@ ruptures when its plastic strain averaged along its axis over the crack spacing 
 default, `bondSpreading`) passes the rupture strain, using the neighbours' values from the
 previous substep and counting the window's end elements in part so its length is exact. A
 single crack therefore breaks its bars at an opening of about the rupture strain times the
-crack spacing, 12 mm for the default steel, on any mesh: a reinforced tie with one weak slice
-fails at 13 and 11 mm on 20 and 10 mm elements, where judged element by element it failed at
-3.4 and 2.2 mm. Averaging the strain itself, not just the rupture check, was tried first; it
+crack spacing, 15 mm for the default steel, on any mesh: a reinforced tie with one weak slice
+failed at 13 and 11 mm on 20 and 10 mm elements (with the earlier 12% default), where judged
+element by element it failed at 3.4 and 2.2 mm. Averaging the strain itself, not just the rupture check, was tried first; it
 leaves bars no resistance to a sawtooth pattern of strain along their length, and the slab
 collapsed.
 
@@ -469,9 +469,15 @@ A615 Grade 60 9% and Grade 80 7% over 8 in for small bars, A706 14% and 12%; EN 
 and C 5% and 7.5% at peak stress) is a floor: mill means run 12–13% over 8 in for A615 and 14–16%
 for A706, with uniform elongations of 9–12% (A706 Grade 80: 9.5% at peak stress, 5th percentile
 8.5%, over 788 bars; S. Overby, M. Kowalsky and R. Seracino, Caltrans CA16-2563, 2015; and an
-8 in elongation taken as the window's strain halves its necking. The default steel's 12% (7.5%
-uniform) is about a characteristic bar's: uniform elongation at class C's minimum plus a 12 mm
-bar's neck over the window.
+8 in elongation taken as the window's strain halves its necking.
+
+**The default, 15%** (since 16 October 2026; 12% before) is a typical bar's fracture elongation
+over the window: a uniform plastic elongation of about 9–10% (the measured means above) plus a
+12 mm bar's neck over 100 mm. It is checked only on the holding side: where the record's bars
+held, at 15% they hold (below), and no test in the record ruptured its bars. The earlier 12% is
+about a characteristic bar's, class C's minimum uniform elongation plus the neck; use lower
+values for weaker or characteristic bars (a specification's minimum, converted from its gauge as
+above), and a test's own measured elongation, converted, where there is one.
 
 **Where it decides the result.** Across the slabs and beams in the [validation](validation.md)
 record, set at 10%, 12%, 15% and 20% on their own meshes (16 October 2026): the contest slab
@@ -501,7 +507,8 @@ In the slab test the bars at mid-span reach 850 MPa at peak deflection. Without 
 they then unloaded elastically to between −230 and −380 MPa while the crack around them was
 still open; with it they reach about −100 MPa.
 
-The default steel has a 500 MPa yield, 575 MPa ultimate at 7.5% strain and rupture at 12%.
+The default steel has a 500 MPa yield, 575 MPa ultimate at 7.5% strain and rupture at 15% over
+the window (12% before 16 October 2026).
 
 ### Bars that slip (an option)
 
