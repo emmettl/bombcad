@@ -149,7 +149,8 @@ LIGHT on the mini. `check-anywhere` never waits: when the mini is taken it runs 
 ### The nightly comparison
 
 `Scripts/nightly.py` runs `blastbench throughput` and `structure`, the reproduction commands
-listed in [Validation](validation.md), and a street snapshot. Each night's output goes into
+listed in [Validation](validation.md), a Hupfauf slab ending on steps of zero length (`contact-sn144`,
+which once went NaN there), and a street snapshot. Each night's output goes into
 `~/bombcad-nightly/<time>-<commit>/` on the runner, and is uploaded with the run.
 
 - **Results.** Each validation command's output is compared, as text with the wall times masked,

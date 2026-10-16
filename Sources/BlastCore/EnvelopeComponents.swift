@@ -382,13 +382,15 @@ final class EnvelopeComponentRecorder {
     /// Each face's pressure, as the last step left it.
     let pressures: MTLBuffer
     /// Each component's tiles of the air (ranges into `tiles`), whether any has woken this step,
-    /// the awake components and the faces' pass's threadgroups (an indirect dispatch: one for the
-    /// still air, then one an awake component), and the still air's pressure, in 32 copies.
+    /// the components listed for the faces' pass and for the sums with their threadgroups (two
+    /// indirect dispatches), and the still air's pressure, in 32 copies.
     let tileRanges: MTLBuffer
     let tiles: MTLBuffer
     let awake: MTLBuffer
-    let awakeList: MTLBuffer
-    let dispatch: MTLBuffer
+    let faceList: MTLBuffer
+    let faceDispatch: MTLBuffer
+    let sumList: MTLBuffer
+    let sumDispatch: MTLBuffer
     let stillPressure: MTLBuffer
     let peaks: MTLBuffer
     let bins: MTLBuffer
@@ -596,17 +598,20 @@ final class EnvelopeComponentRecorder {
             let tiles = device.makeBuffer(
                 bytes: tileList.isEmpty ? [0] : tileList, length: max(1, tileList.count) * 4),
             let awake = device.makeBuffer(length: components.count * 4, options: .storageModePrivate),
-            let awakeList = device.makeBuffer(
-                length: (components.count + 1) * 4, options: .storageModePrivate),
-            let dispatch = device.makeBuffer(bytes: [UInt32(1), 1, 1], length: 12),
+            let faceList = device.makeBuffer(length: components.count * 4, options: .storageModePrivate),
+            let faceDispatch = device.makeBuffer(length: 12),
+            let sumList = device.makeBuffer(length: components.count * 4, options: .storageModePrivate),
+            let sumDispatch = device.makeBuffer(length: 12),
             let stillPressure = device.makeBuffer(length: 32 * 4, options: .storageModePrivate)
         else { throw BlastError.allocationFailed("envelope component face pressures") }
         self.pressures = pressures
         self.tileRanges = tileRanges
         self.tiles = tiles
         self.awake = awake
-        self.awakeList = awakeList
-        self.dispatch = dispatch
+        self.faceList = faceList
+        self.faceDispatch = faceDispatch
+        self.sumList = sumList
+        self.sumDispatch = sumDispatch
         self.stillPressure = stillPressure
         markPipeline = try ShaderLibrary.pipeline("markEnvelopeComponents", in: library)
         facePipeline = try ShaderLibrary.pipeline("sampleEnvelopeComponentFaces", in: library)
@@ -616,7 +621,8 @@ final class EnvelopeComponentRecorder {
 
     var memoryFootprint: Int {
         [
-            sideBuffer, faceBuffer, pressures, tileRanges, tiles, awake, awakeList, dispatch, stillPressure,
+            sideBuffer, faceBuffer, pressures, tileRanges, tiles, awake, faceList, faceDispatch, sumList,
+            sumDispatch, stillPressure,
             peaks,
             bins, flags,
         ]
@@ -633,7 +639,13 @@ final class EnvelopeComponentRecorder {
             for n in 0..<(maxima.length / 4) { values[n] = lowest }
         }
         memset(flags.contents(), 0, flags.length)
-        for n in 0..<3 { dispatch.contents().storeBytes(of: UInt32(1), toByteOffset: 4 * n, as: UInt32.self) }
+        // The first sample's faces' pass has one threadgroup to make the still air's row; the sums
+        // none until components are listed.
+        for (buffer, count) in [(faceDispatch, UInt32(1)), (sumDispatch, 0)] {
+            for (n, value) in [count, 1, 1].enumerated() {
+                buffer.contents().storeBytes(of: value, toByteOffset: 4 * n, as: UInt32.self)
+            }
+        }
     }
 
     /// The recording parameters for a batch starting at `time`.

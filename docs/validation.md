@@ -810,7 +810,9 @@ plastic strain 9.1% at its peak stress and 13% over 8 in, breaks at about 17%. A
 inputs as declared, every slab holds: HSCV4 peaks at 161 mm and is left 132 mm down (0.89 and 0.93
 of 182 and 142), 161.1–161.5 mm across the three roundings, and the other five are unchanged
 (their bars never near rupture), so all six peaks lie within 0.77–1.06 and the geometric means
-are 0.87 at 4 in and 0.90 at 8 in. Outputs: `/Volumes/StudioData/bombcad/rupture/`.
+are 0.87 at 4 in and 0.90 at 8 in. Outputs: `/Volumes/StudioData/bombcad/rupture/`. 15% has been
+the default steel's rupture strain since (16 October 2026); test 3's harness keeps the predictor's
+declared steel, so `blastbench reynolds --rupture 0.15` reproduces this.
 
 ## Structural response against a real test
 

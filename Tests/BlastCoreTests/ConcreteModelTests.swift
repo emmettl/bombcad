@@ -423,7 +423,7 @@ struct ConcreteModelTests {
 
         // Stretched beyond the steel's rupture strain, the element is lost.
         let (broken, brokenSolver) = try strainCube(
-            size: 0.05, material: material, steelRatio: ratio, to: [0.14])
+            size: 0.05, material: material, steelRatio: ratio, to: [steel.ruptureStrain + 0.03])
         #expect(brokenSolver.flag(0, 0, 0) == .eroded)
         #expect(abs(broken.last?.stress ?? 1) < 1)
         // The peak load reached the steel's ultimate strength.
@@ -529,7 +529,7 @@ struct ConcreteModelTests {
         let coarse = try failureOpening(elementSize: 0.02)
         let fine = try failureOpening(elementSize: 0.01)
         // Both reach the slice's bar strength, and lose it at the same opening, well beyond the
-        // 0.12 h (2.4 mm and 1.2 mm) at which a bar strained only in the cracked element would
+        // 0.15 h (3 mm and 1.5 mm) at which a bar strained only in the cracked element would
         // break.
         let strength = 0.008 * 0.1 * 0.1 * SteelProperties.grade500.ultimateStress
         #expect(

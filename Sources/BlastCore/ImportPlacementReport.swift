@@ -38,9 +38,11 @@ public struct ImportPlacementReport: Sendable, Hashable {
         var boxes: [Box]
         var complete: Bool
     }
+    /// `solid` less the openings that cross it; an opening that holds it whole (a pane set in a
+    /// wall's opening) leaves it alone, as in `StructureModel.occupies`.
     static func subtracting(_ openings: [Box], from solid: Box, limit: Int) -> Subtraction {
         var parts = [solid]
-        for opening in openings {
+        for opening in openings where !opening.holds(solid) {
             var next: [Box] = []
             for part in parts {
                 guard let cut = intersection(part, opening) else {

@@ -57,6 +57,12 @@ before then carry no key and open with the new default, so they run with the 100
 the window to the 50-step average (`strainRateWindow = nil`) to reproduce them as they ran. The
 encoding version is unchanged, as for the regime's defaults.
 
+A material's steel is saved with all its values, so the default steel's rupture strain moving from
+12% to 15% (16 October 2026; see [the concrete model](concrete-model.md#reinforcement)) changes
+only structures made since: a project saved before then keeps its 12% and runs as it did. To give
+an older structure the new default, set its steel's rupture strain to 0.15. The encoding version
+is unchanged.
+
 The versioned `scenario.objectOwnership` record stores fixed-block and structural-object IDs
 and names, structural component IDs, an optional retained source reference and object order.
 It accompanies the existing geometry without duplicating numerical inputs. Legacy inputs
