@@ -2,9 +2,10 @@ import Foundation
 import simd
 
 /// Stationary opaque geometry for exposure studies. No mass, deformation or failure law.
-/// Solids describe walls/roofs; openings remove material from every intersecting solid. Panes are
-/// glazing, solid in the air as the solids are: a one-way damage model takes a pane as closed
-/// until it fails (docs/building-envelopes.md, "Envelope components").
+/// Solids describe walls/roofs; openings remove material from every solid they cross, but not from
+/// one they hold whole (a door or a window's glass set in its opening). Panes are glazing, solid in
+/// the air as the solids are: a one-way damage model takes a pane as closed until it fails
+/// (docs/building-envelopes.md, "Envelope components").
 public struct BuildingEnvelope: Hashable, Sendable, Codable {
     public let solids: [Box]
     public let openings: [Box]
@@ -35,7 +36,7 @@ public struct BuildingEnvelope: Hashable, Sendable, Codable {
         var sources: [BlockSource] = []
         for (index, solid) in solids.enumerated() {
             var pieces = [solid]
-            for opening in openings {
+            for opening in openings where !opening.holds(solid) {
                 pieces = pieces.flatMap { Self.subtract(opening, from: $0) }
                 guard pieces.count + compiled.count <= 2048 else { throw SceneObjectError.invalidOwnership }
             }
@@ -80,8 +81,9 @@ public struct BuildingEnvelope: Hashable, Sendable, Codable {
     }
 
     public func occupies(_ point: SIMD3<Float>) -> Bool {
-        solids.contains { $0.contains(point) } && !openings.contains { $0.contains(point) }
-            || panes.contains { $0.contains(point) }
+        solids.contains { solid in
+            solid.contains(point) && !openings.contains { $0.contains(point) && !$0.holds(solid) }
+        } || panes.contains { $0.contains(point) }
     }
 
     private static func subtract(_ hole: Box, from solid: Box) -> [Box] {

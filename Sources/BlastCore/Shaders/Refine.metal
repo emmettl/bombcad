@@ -538,6 +538,11 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
                          const device float *terrainHeights [[buffer(21)]],
                          constant TerrainUniforms &terrain [[buffer(22)]],
                          uint gid [[thread_position_in_grid]]) {
+    // A step of zero length reads no ghosts (see `fineSweepCell`), and adds nothing to the
+    // registers.
+    if (control.dt <= 0.0f) {
+        return;
+    }
     uint side = uint(patchSize) * u.refineRatio;
     uint perPatch = 4u * side * side;
     uint patch = patchList[gid / perPatch];
@@ -669,6 +674,17 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
     uint base = patch * uint(side * side * side);
     uint index = base + uint(local.x + side * (local.y + side * local.z));
     if ((fineMask[index] & 1) != 0) {
+        return;
+    }
+    // A step of zero length (a batch stopped short) leaves the cell as it was, as on the coarse
+    // grid: its fluxes are not worked out at all, since a ghost may then read a halo saved before
+    // the structure's outline last moved (only a real step saves it), and zero times a flux that
+    // is not finite would not be zero.
+    if (control.dt <= 0.0f) {
+        fineDst[index] = fineSrc[index];
+        if (u.afterburnEnergy > 0.0f) {
+            speciesDst[index] = speciesSrc[index];
+        }
         return;
     }
 

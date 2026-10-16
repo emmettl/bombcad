@@ -41,9 +41,12 @@ public struct SteelProperties: Sendable, Hashable, Codable {
         ]
     }
 
-    /// Typical ribbed bar with a 500 MPa characteristic yield.
+    /// Typical ribbed bar with a 500 MPa characteristic yield. Its rupture strain is a typical
+    /// bar's plastic elongation at fracture over the 100 mm window rupture is judged over (its
+    /// uniform elongation plus its neck's extension over the window): 15%, since 16 October 2026
+    /// (12% before, about a characteristic bar's). See concrete-model.md#reinforcement.
     public static let grade500 = SteelProperties(
-        yieldStress: 500e6, ultimateStress: 575e6, ultimateStrain: 0.075, ruptureStrain: 0.12)
+        yieldStress: 500e6, ultimateStress: 575e6, ultimateStrain: 0.075, ruptureStrain: 0.15)
 }
 
 /// The units masonry is laid in and the mortar joints between them, laid in running bond: each
@@ -544,6 +547,16 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// section's cracking moment, which decides a lightly reinforced slab's strength. Solid
     /// elements only; off by default.
     public var extremeFibreCracking = false
+    /// Whether a bare element of structural concrete (its bars alone, `bareBars`) is removed once
+    /// squeezed below a quarter of its volume, as softer materials' are. Flattened or turned inside
+    /// out across its bars' plane, its bars' strains blow up and fling its nodes apart: in Hupfauf's
+    /// SN144 one was thrown at 2,400 m/s (docs/structural-model.md). Off by default.
+    public var erodesCrushedBare = false
+    /// Whether a bare element of structural concrete crushed below a quarter of its volume keeps
+    /// its bars but loses its hourglass control, whose mode shapes grow as one over the element's
+    /// volume and fling its nodes (Hupfauf's SN144). Off by default; an alternative to
+    /// `erodesCrushedBare`, which removes the element and its bars' tie.
+    public var releasesCrushedBareHourglass = false
     /// Whether a crack's faces, riding up on their aggregate as it slides, press on whatever holds
     /// it from opening, and pressed, carry more shear: Walraven and Reinhardt's relations between
     /// a crack's opening, slip, shear and the stress across it (HERON 26(1A), 1981, eqs. 1a and
@@ -1402,7 +1415,8 @@ extension StructureModel {
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
         case pressedInterlock, regimeOverride, loadingOverride, regimeDefaults
         case hourglassFollowsCracking, hourglassCapsSteel, discreteBars, barsAsTrusses, trussDiameter
-        case crackAveraging, rubbleParticles, strainRateWindow, tiesTouching, extremeFibreCracking
+        case crackAveraging, rubbleParticles, strainRateWindow, tiesTouching, extremeFibreCracking,
+            erodesCrushedBare, releasesCrushedBareHourglass
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -1444,6 +1458,10 @@ extension StructureModel {
         try container.encodeIfPresent(tiesTouching, forKey: .tiesTouching)
         if rubbleParticles { try container.encode(rubbleParticles, forKey: .rubbleParticles) }
         if extremeFibreCracking { try container.encode(extremeFibreCracking, forKey: .extremeFibreCracking) }
+        if erodesCrushedBare { try container.encode(erodesCrushedBare, forKey: .erodesCrushedBare) }
+        if releasesCrushedBareHourglass {
+            try container.encode(releasesCrushedBareHourglass, forKey: .releasesCrushedBareHourglass)
+        }
         try container.encodeIfPresent(bondSlip, forKey: .bondSlip)
         try container.encode(solidElementKind, forKey: .solidElementKind)
         try container.encodeIfPresent(shellElementSize, forKey: .shellElementSize)
@@ -1497,6 +1515,9 @@ extension StructureModel {
         rubbleParticles = try container.decodeIfPresent(Bool.self, forKey: .rubbleParticles) ?? false
         extremeFibreCracking =
             try container.decodeIfPresent(Bool.self, forKey: .extremeFibreCracking) ?? false
+        erodesCrushedBare = try container.decodeIfPresent(Bool.self, forKey: .erodesCrushedBare) ?? false
+        releasesCrushedBareHourglass =
+            try container.decodeIfPresent(Bool.self, forKey: .releasesCrushedBareHourglass) ?? false
         bondSlip = try container.decodeIfPresent(BondSlip.self, forKey: .bondSlip)
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)

@@ -446,9 +446,9 @@ ruptures when its plastic strain averaged along its axis over the crack spacing 
 default, `bondSpreading`) passes the rupture strain, using the neighbours' values from the
 previous substep and counting the window's end elements in part so its length is exact. A
 single crack therefore breaks its bars at an opening of about the rupture strain times the
-crack spacing, 12 mm for the default steel, on any mesh: a reinforced tie with one weak slice
-fails at 13 and 11 mm on 20 and 10 mm elements, where judged element by element it failed at
-3.4 and 2.2 mm. Averaging the strain itself, not just the rupture check, was tried first; it
+crack spacing, 15 mm for the default steel, on any mesh: a reinforced tie with one weak slice
+failed at 13 and 11 mm on 20 and 10 mm elements (with the earlier 12% default), where judged
+element by element it failed at 3.4 and 2.2 mm. Averaging the strain itself, not just the rupture check, was tried first; it
 leaves bars no resistance to a sawtooth pattern of strain along their length, and the slab
 collapsed.
 
@@ -469,9 +469,15 @@ A615 Grade 60 9% and Grade 80 7% over 8 in for small bars, A706 14% and 12%; EN 
 and C 5% and 7.5% at peak stress) is a floor: mill means run 12–13% over 8 in for A615 and 14–16%
 for A706, with uniform elongations of 9–12% (A706 Grade 80: 9.5% at peak stress, 5th percentile
 8.5%, over 788 bars; S. Overby, M. Kowalsky and R. Seracino, Caltrans CA16-2563, 2015; and an
-8 in elongation taken as the window's strain halves its necking. The default steel's 12% (7.5%
-uniform) is about a characteristic bar's: uniform elongation at class C's minimum plus a 12 mm
-bar's neck over the window.
+8 in elongation taken as the window's strain halves its necking.
+
+**The default, 15%** (since 16 October 2026; 12% before) is a typical bar's fracture elongation
+over the window: a uniform plastic elongation of about 9–10% (the measured means above) plus a
+12 mm bar's neck over 100 mm. It is checked only on the holding side: where the record's bars
+held, at 15% they hold (below), and no test in the record ruptured its bars. The earlier 12% is
+about a characteristic bar's, class C's minimum uniform elongation plus the neck; use lower
+values for weaker or characteristic bars (a specification's minimum, converted from its gauge as
+above), and a test's own measured elongation, converted, where there is one.
 
 **Where it decides the result.** Across the slabs and beams in the [validation](validation.md)
 record, set at 10%, 12%, 15% and 20% on their own meshes (16 October 2026): the contest slab
@@ -501,7 +507,8 @@ In the slab test the bars at mid-span reach 850 MPa at peak deflection. Without 
 they then unloaded elastically to between −230 and −380 MPa while the crack around them was
 still open; with it they reach about −100 MPa.
 
-The default steel has a 500 MPa yield, 575 MPa ultimate at 7.5% strain and rupture at 12%.
+The default steel has a 500 MPa yield, 575 MPa ultimate at 7.5% strain and rupture at 15% over
+the window (12% before 16 October 2026).
 
 ### Bars that slip (an option)
 
@@ -860,6 +867,21 @@ moves only the onset would keep that. Either way, the option does not reach Mend
 (the gap there lies in the load or the measurement:
 [validation](validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge)).
 
+**The onset-only variant, considered (16 October 2026).** It would crack at the face's strain and
+keep the full envelope after cracking. In this law it is the same as the option off.
+- **Why:** a cracked plane carries the envelope at the largest strain it has reached, scaled back
+  along a line through the origin (σ = env(h) ε / h). An element marked cracked at the face's strain
+  but keeping the full envelope has not yet passed the envelope's peak at its centre. It carries
+  E ε, as uncracked, until its centre reaches the full onset, and the full envelope from there:
+  nothing changes.
+- **So:** earlier cracking lowers the element's stress only through a lower envelope, which is the
+  option above and what moves Janney's beam.
+- **A middle way, not built:** a lower peak with its softening stretched to keep the fracture
+  energy, so that the concrete between cracks carries as much tension once open. It would need the
+  face's share stored per element.
+
+It stops here: the option stays an option, and neither variant is a default.
+
 ## Strain-rate effects
 
 Blast loads strain materials at 0.1 to 100 per second, and both concrete and steel are stronger
@@ -1046,6 +1068,38 @@ The crack strain used to be capped at 0.5, and any element stretched past 100% r
 elements smaller than 10 mm both removed concrete at narrower cracks than intended, 1.6 mm on
 3 mm elements, which made the finest meshes of the validation slab shed their cover and
 collapse.
+
+### Crushed bare elements (two options, neither a default)
+
+**The trigger.** A bare element (concrete gone, bars left) of structural concrete is not removed
+when crushed; softer materials' bare elements are, below a quarter of their volume. Under
+Hupfauf's SN144 charge, one was squeezed to about an eighth of its height, and two of six runs (two
+outlines, three roundings) ran away, throwing nodes at 1,932 and 2,387 m/s.
+- **Traced (16 October 2026, `blastbench contact --watch i,j,k`):** the bars were not running away
+  (plastic strains of 7% and 4.5%, stretched). Its hourglass control was the cause. The modes' shapes
+  are projected with the element's current shape-function gradients, which grow as one over its
+  volume, so as it flattens, even its capped hourglass forces (about 1,170 N) put enormous forces on
+  its corners.
+
+**The two remedies, as options:**
+- **`erodesCrushedBare`** (`--crushed-bare`, function constant 20): removes the crushed bare element.
+- **`releasesCrushedBareHourglass`** (`--crushed-bare-hourglass`, function constant 21): keeps it and
+  its bars, without its hourglass control.
+
+Both stop the runaway. Off, both are bit-identical. Judged on SN144's six runs and the quick case
+matrix with its rounding variants:
+
+| | SN144, fastest node / slab's energy | SN131 far face (measured 14.6 m/s) | SN142 (measured 71) |
+|---|---|---|---|
+| Neither | 884–994 m/s / 47–50 kJ; two runaways (1,932 and 2,387 m/s; 168 and 372 kJ) | 21.5 m/s (21.5–38) | 61.2 (61.2–70.9) |
+| Removed | 655–743 m/s / 38–41 kJ | 53.3 (52.2–54.4) | 60.6 (60.6–76.4) |
+| Hourglass released | 940–987 m/s / 59–64 kJ | 45.7 (41.8–46.7) | 60.5 (60.5–71.9) |
+
+**Neither is a default.** Every other case of the matrix stays within its rounding spread with
+either one, but both send SN131's debris two to three times further from the test. That case's
+close agreement today rests in part on the crushed bare elements' hourglass forces, the same forces
+that throw SN144's nodes. A fix that holds both would have to give the crushed element's tie to the
+debris a physical basis, such as the bars' buckled strength, rather than the hourglass control's.
 
 ## Defaults by regime
 
