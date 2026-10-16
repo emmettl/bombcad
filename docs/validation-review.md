@@ -50,7 +50,7 @@ published laws, 93% to 115%, is the honest measure of the model's uncertainty on
 Mitigation, which the record also gives: the CEB's law for bars is supported independently
 by Lin et al.'s tension tests of HRB400 bars (within 7%, concrete-model.md, strain-rate
 effects). The Model Code's tensile law has no such independent support here, and is itself
-written from memory ([data wanted §3](data-wanted.md#3-formulae-quoted-from-memory); its two
+written from memory ([data survey §3](data-survey.md#3-formulae-quoted-from-memory); its two
 branches do meet at 10 per second, 1.336, which checks it a little).
 
 The slab test is not independent of the model either: concrete-model.md's
@@ -239,7 +239,7 @@ scatter, so "within 6%" cannot be weighed against it. The agreement may well be 
 reference's own uncertainty, which would make the match less informative than it looks.
 *Partly fixed* (a9fb98e): the references' own scatter is now in validation.md beside each
 comparison, and the standing's bands carry it ([standing](standing.md#error-bands)); the top level
-is now "compared with measurement". Still needing the user ([data wanted 3g](data-wanted.md#3g-the-reference-curves-own-scatter)):
+is now "compared with measurement". Still needing the user ([data survey 3g](data-survey.md#3g-the-reference-curves-own-scatter)):
 Kingery's BRL 1344 data by distance, Kingery and Bulmash's 1984 air-burst sources, Bogosian et
 al. (2002) and Netherton and Stewart (2010) on ConWep's error, Oswald (2017) and Keenan and
 Tancreto's NCEL TR-828 behind Figure 2-152. Kinney and Graham give no scatter of their own

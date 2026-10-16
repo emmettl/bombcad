@@ -147,7 +147,7 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [Save files](docs/save-files.md)            | Versioned project packages, assets and persisted settings       |
 | [Long-term vision](docs/long-term-vision.md) | All explosions great and small: the product direction           |
 | [Roadmap](docs/roadmap.md)                  | Known limitations in order of importance, and planned work      |
-| [Data wanted](docs/data-wanted.md)          | Measurements that would test the model, ranked, and what has been fetched |
+| [Data wanted](docs/data-wanted.md)          | Documents to fetch, datasets to request, and what has been fetched and used; the ranked survey behind it in [Data survey](docs/data-survey.md) |
 | [ContinuumKit adoption](docs/continuumkit-adoption.md) | Shared numerical components adopted from ContinuumKit       |
 | [Native interface review](docs/native-interface-review.md) | Checks of the app's panels in native windows          |
 | [Releasing](docs/releasing.md)              | Signed, notarized builds                                        |
