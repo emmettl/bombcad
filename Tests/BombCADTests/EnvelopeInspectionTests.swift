@@ -106,12 +106,21 @@ struct EnvelopeInspectionTests {
         let input = folder.appending(path: "input.bombcad")
         let output = folder.appending(path: "output.bombcad")
         let surfaces = folder.appending(path: "surfaces.json")
+        let histories = folder.appending(path: "histories.json")
         try document().makeArchive().fileWrapper().write(to: input, originalContentsURL: nil)
         let options = try HeadlessRun.Options.parse([
             input.path, "--out", output.path,
-            "--envelope-results", surfaces.path,
+            "--envelope-results", surfaces.path, "--envelope-histories", histories.path,
         ])
         let result = try await HeadlessRun.execute(options)
+        // Each building is a wall 4 m tall that nothing holds: two panels, both sides binned at
+        // 0.1 ms over the 8 ms run.
+        let components = try JSONDecoder().decode(
+            [EnvelopeComponentHistory].self, from: Data(contentsOf: histories))
+        #expect(
+            components.count == 4 && components.allSatisfy { $0.component.kind == .wall && !$0.truncated })
+        #expect(components.allSatisfy { (80...81).contains($0.outerImpulsePaS.count) })
+        #expect(components.contains { $0.peakOuterPa > 0 })
         let raw = try JSONDecoder().decode([EnvelopeExposureSnapshot].self, from: Data(contentsOf: surfaces))
         #expect(raw.count == 2 && raw.allSatisfy { abs($0.elapsedS - 0.008) < 1e-6 && !$0.surfaces.isEmpty })
         #expect(result.run.envelopeExposure?.count == 2)
