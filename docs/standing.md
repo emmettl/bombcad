@@ -48,8 +48,8 @@ The standing is worked out from the scene's actual settings each time they chang
   control that softens with cracking. An option the regime set is a default, not the user's
   choice (`pressedInterlockFromRegime`, `hourglassFromRegime`).
 - **Afterburning.** On by default since 15 October 2026, with hot air and far-field faces: the
-  incident impulse within 4% beyond 1 m/kg^(1/3) on 0.25 m cells, with the burning time fitted to
-  it, and the reflected impulse 8–15% high; off, the incident impulse is 13–22% low. A band
+  incident impulse within 6% beyond 1 m/kg^(1/3) on 0.25 m cells, with the burning time fitted to
+  it, and the reflected impulse 6–13% high; off, the incident impulse is 13–22% low. A band
   derived without it is withheld under it until derived again (Hupfauf's debris). Reflecting
   domain faces bring in the closed-room comparison, whose agreement depends on both options.
 - **Materials.** Reinforced concrete has been compared with measurement; plain concrete, steel and masonry
@@ -234,7 +234,6 @@ changes, change the table with it and advance `SceneStanding.currentTable`.
   Wang's and Wu's slabs, Chiquito's, Hupfauf's debris and the chamber's wall pressures have been
   run again on them, and the fireball's radiation and Church's clouds were compared on them
   already. Each takes its own band on its own air; afterburning without hot air, compared only
-  on 0.25 m cells, takes few. On today's air afterburning nearly doubles the chamber roof's rise
-  (83–85 mm against 48).
+  on 0.25 m cells, takes few.
 - **Not a judgement of safety.** Nothing here is validated for engineering decisions or for
   judging the safety of a real structure, and the standing says so.

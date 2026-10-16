@@ -63,7 +63,7 @@ swift run -c release blastbench perimeter --study wall
 | Area                 | Evidence                                             | Confidence                         |
 |----------------------|------------------------------------------------------|------------------------------------|
 | Air solver numerics  | Exact solutions                                      | High                               |
-| Blast loads          | Kingery–Bulmash curves from 0.75 to 6 m/kg^(1/3). On today's defaults, afterburning, hot air and far-field faces ([since 15 October](#the-defaults-since-15-october)): impulse on a wall 8–15% high on 0.25 m cells beyond 1.5 m/kg^(1/3), the incident impulse within 4% from 1 m/kg^(1/3) (fitted), the incident peak 78–86% and the reflected 38–87% on 0.25 m cells. On the ideal gas: impulse on a wall within 6% on 0.25 m cells beyond 1.5 m/kg^(1/3), the incident impulse 13–22% low. Refinement gives the next finer grid's peaks | Peaks read low, the unsafe side (under-resolved), refinement helping; impulse on walls 8–15% high on today's defaults (the safe side), within 6% on the ideal gas, good; incident impulse within 4% on today's defaults (fitted), 13–22% low on the ideal gas (the unsafe side for what the wave passes over) |
+| Blast loads          | Kingery–Bulmash curves from 0.75 to 6 m/kg^(1/3). On today's defaults, afterburning, hot air and far-field faces ([since 15 October](#the-defaults-since-15-october)): impulse on a wall 6–13% high on 0.25 m cells beyond 1.5 m/kg^(1/3), the incident impulse within 6% from 1 m/kg^(1/3) (fitted), the incident peak 72–84% and the reflected 32–86% on 0.25 m cells. On the ideal gas: impulse on a wall within 6% on 0.25 m cells beyond 1.5 m/kg^(1/3), the incident impulse 13–22% low. Refinement gives the next finer grid's peaks | Peaks read low, the unsafe side (under-resolved), refinement helping; impulse on walls 6–13% high on today's defaults (the safe side), within 6% on the ideal gas, good; incident impulse within 6% on today's defaults (fitted), 13–22% low on the ideal gas (the unsafe side for what the wave passes over) |
 | Gas in a closed room | UFC 3-340-02's design curve (read off its chart by hand): 48% to 114% by default; 98% to 108% with afterburning and hot air; 90% of Cooper's closed vessel, burnt out | Either way within 8% with afterburning and hot air, good, the fitted burning time hardly mattering, against a design curve whose scatter is not given; by default low for light charges (half, the unsafe side) |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
@@ -3132,16 +3132,16 @@ validate`), as a percentage of the reference (the bands' tables since 15 October
 
 | Range | Z | Incident peak: 0.5 m | 0.25 m | 0.125 m | Incident impulse: 0.5 m | 0.25 m | 0.125 m | Reflected peak: 0.5 m | 0.25 m | 0.125 m | Reflected impulse: 0.5 m | 0.25 m | 0.125 m |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 3.5 m | 0.75 | 60% | 78% | 98% | 138% | 122% | 121% | 20% | 38% | 67% | 80% | 90% | 100% |
-| 4.6 m | 1 | 60% | 80% | 95% | 102% | 96% | 96% | 26% | 45% | 69% | 86% | 98% | 107% |
-| 7.0 m | 1.5 | 71% | 86% | 96% | 104% | 97% | 90% | 38% | 61% | 85% | 100% | 110% | 115% |
-| 9.3 m | 2 | 68% | 80% | 89% | 99% | 96% | 92% | 49% | 70% | 86% | 106% | 113% | 114% |
-| 13.9 m | 3 | 73% | 84% | 90% | 103% | 101% | 97% | 63% | 81% | 92% | 113% | 115% | 113% |
-| 18.6 m | 4 | 71% | 84% | 92% | 102% | 100% | 97% | 69% | 85% | 95% | 114% | 113% | 109% |
-| 23.2 m | 5 | 73% | 85% | 93% | 103% | 100% | 96% | 74% | 85% | 95% | 113% | 110% | 106% |
-| 27.8 m | 6 | 75% | 85% | 93% | 103% | 98% | 94% | 75% | 87% | 95% | 112% | 108% | 104% |
+| 3.5 m | 0.75 | 54% | 72% | 90% | 133% | 116% | 114% | 17% | 32% | 59% | 75% | 85% | 94% |
+| 4.6 m | 1 | 55% | 74% | 89% | 101% | 94% | 92% | 23% | 39% | 63% | 82% | 93% | 103% |
+| 7.0 m | 1.5 | 67% | 82% | 93% | 102% | 95% | 89% | 35% | 56% | 82% | 96% | 106% | 114% |
+| 9.3 m | 2 | 66% | 78% | 87% | 97% | 94% | 91% | 47% | 67% | 84% | 103% | 110% | 113% |
+| 13.9 m | 3 | 71% | 83% | 88% | 101% | 100% | 97% | 61% | 79% | 90% | 110% | 113% | 112% |
+| 18.6 m | 4 | 70% | 82% | 90% | 100% | 98% | 96% | 67% | 83% | 93% | 111% | 110% | 107% |
+| 23.2 m | 5 | 72% | 84% | 92% | 101% | 98% | 95% | 72% | 84% | 94% | 110% | 107% | 104% |
+| 27.8 m | 6 | 73% | 84% | 92% | 102% | 97% | 95% | 73% | 86% | 94% | 109% | 106% | 103% |
 
-The arrival on 0.25 m cells comes at 92, 91, 89, 92, 93, 96, 96 and 97% of the reference's time.
+The arrival comes at 85, 100, 89, 92, 92, 98, 97 and 97% of the reference's time on 0.5 m cells, 100, 95, 91, 95, 95, 97, 97 and 98% on 0.25 m and 100, 95, 91, 94, 96, 97, 98 and 98% on 0.125 m. (The table first held afterburning alone on the ideal gas, from a bench that left out hot air and the far-field faces; corrected on 16 October.)
 
 Every harness that takes its load from the air starts from `SolverConfiguration.recommended`
 and takes `--no-afterburn`, `--air ideal|thermal|dissociating` and `--copy-faces`; those left on

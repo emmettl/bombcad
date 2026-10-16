@@ -213,18 +213,18 @@ public enum ValidationTables {
     /// With afterburning, hot air and far-field faces, the defaults since 15 October 2026
     /// (validation.md, "The defaults since 15 October").
     public static let burningIncidentPeak = Table(byGrid: [
-        [60, 60, 71, 68, 73, 71, 73, 75], [78, 80, 86, 80, 84, 84, 85, 85], [98, 95, 96, 89, 90, 92, 93, 93],
+        [54, 55, 67, 66, 71, 70, 72, 73], [72, 74, 82, 78, 83, 82, 84, 84], [90, 89, 93, 87, 88, 90, 92, 92],
     ])
     public static let burningIncidentImpulse = Table(byGrid: [
-        [138, 102, 104, 99, 103, 102, 103, 103], [122, 96, 97, 96, 101, 100, 100, 98],
-        [121, 96, 90, 92, 97, 97, 96, 94],
+        [133, 101, 102, 97, 101, 100, 101, 102], [116, 94, 95, 94, 100, 98, 98, 97],
+        [114, 92, 89, 91, 97, 96, 95, 95],
     ])
     public static let burningReflectedPeak = Table(byGrid: [
-        [20, 26, 38, 49, 63, 69, 74, 75], [38, 45, 61, 70, 81, 85, 85, 87], [67, 69, 85, 86, 92, 95, 95, 95],
+        [17, 23, 35, 47, 61, 67, 72, 73], [32, 39, 56, 67, 79, 83, 84, 86], [59, 63, 82, 84, 90, 93, 94, 94],
     ])
     public static let burningReflectedImpulse = Table(byGrid: [
-        [80, 86, 100, 106, 113, 114, 113, 112], [90, 98, 110, 113, 115, 113, 110, 108],
-        [100, 107, 115, 114, 113, 109, 106, 104],
+        [75, 82, 96, 103, 110, 111, 110, 109], [85, 93, 106, 110, 113, 110, 107, 106],
+        [94, 103, 114, 113, 112, 107, 104, 103],
     ])
     /// Where the burning tables are recorded.
     public static let burningDocument = "validation.md#the-defaults-since-15-october"
@@ -304,10 +304,6 @@ public enum ValidationTables {
             id: "wuLargeToday", low: 0.91, high: 1.19,
             document: "validation.md#slabs-with-steel-in-both-faces",
             quote: "0.91 and 1.18–1.19 times the measured peak"),
-        Figure(
-            id: "chamberPressureBurning", low: 1.0, high: 1.6,
-            document: "validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber",
-            quote: "the peak wall pressures are 1.0 to 1.6 times those measured on today's air"),
         Figure(
             id: "debrisSpeedBurning", low: 0.88, high: 1.82,
             document: "validation.md#slabs-under-contact-charges",
@@ -1069,14 +1065,14 @@ extension StandingScene {
             } else if regime == "confined" {
                 bands.append(
                     figure(
-                        burning ? "chamberPressureBurning" : "chamberPressure", .wallPressure,
+                        "chamberPressure", .wallPressure,
                         "Peak wall pressure inside", low: "under-read",
                         high: "over-read",
                         validity:
                             "a full-scale chamber; 0.1 m cells and elements; its roof's peak rises with the mesh "
                             + "(48 to 57 mm on 50 mm elements, the ideal gas) and on 25 mm elements the solution "
-                            + "breaks down; with afterburning and hot air the roof rises 83–85 mm and is left "
-                            + "55–57 mm up, against 48 and 25 on the ideal gas",
+                            + "breaks down; with afterburning and hot air the wall pressures alike and the roof "
+                            + "rising 50 mm, left 27 mm up, against 48 and 25 on the ideal gas",
                         check: "An internal explosion in a reinforced concrete chamber"))
                 if let structure = structures.first, abs(structure.elementSize - 0.1) > 0.01 {
                     bands.removeLast()
@@ -1463,8 +1459,8 @@ extension StandingScene {
                 add(
                     "Afterburning", nil,
                     has(.afterburning)
-                        ? "In the open the incident impulse is within 4% beyond 1 m/kg^(1/3) on 0.25 m cells "
-                            + "(fitted), but the reflected impulse on walls 8–15% high in the middle ranges."
+                        ? "In the open the incident impulse is within 6% beyond 1 m/kg^(1/3) on 0.25 m cells "
+                            + "(fitted), but the reflected impulse on walls 6–13% high in the middle ranges."
                         : "In the open the reflected impulse on walls is within 6%, but the incident impulse 13–22% low: "
                             + "low for objects the wave passes over.",
                     has(.afterburning) ? nil : "Turn afterburning on where the incident impulse matters.",
