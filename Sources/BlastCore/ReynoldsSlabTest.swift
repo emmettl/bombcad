@@ -26,6 +26,10 @@ public enum ReynoldsSlabTest {
         /// The digitised average reflected pressure (s, Pa), from `loads.csv`.
         public var trace: [SIMD2<Float>]
         public var traceName: String
+        /// The measured peak and residual (m), where the inputs give them (the open RSCR
+        /// comparison; never for the blind HSCV slabs).
+        public var measuredPeak: Float?
+        public var measuredResidual: Float?
     }
 
     public struct Inputs: Sendable {
@@ -109,6 +113,56 @@ public enum ReynoldsSlabTest {
         return traces
     }
 
+    /// The open comparison after blind test 3's reveal: Reynolds's normal-strength 8 in slabs
+    /// RSCR4–6, from `Samples/Reynolds2015/rscr/inputs.json`. The thesis gives each one's average
+    /// peak and impulse but no history, so each takes a shape scaled to its impulse: with
+    /// `contestShape` the contest slab's record (`SlabBenchmark.load`, as the record scaled it for
+    /// the lower shot), otherwise the HSCV 8 in slab's load (its trace and tail, see `LoadShape.tail`)
+    /// whose impulse is nearest. Run with `LoadShape.given`.
+    public static func rscrInputs(from url: URL, hscv: Inputs, contestShape: Bool = false) throws -> Inputs {
+        let data = try Data(contentsOf: url)
+        guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let loads = (root["loads"] as? [String: Any])?["table15"] as? [String: Any],
+            let measured = root["measured"] as? [String: Any]
+        else { throw InputError(message: "rscr/inputs.json lacks its loads or measurements") }
+        func number(_ value: Any?) throws -> Float {
+            guard let number = value as? NSNumber else {
+                throw InputError(message: "not a number: \(value ?? "nil")")
+            }
+            return number.floatValue
+        }
+        let donors = hscv.slabs.filter { $0.barSpacingInches > 6 }
+        let slabs = try ["RSCR4", "RSCR5", "RSCR6"].map { name -> Slab in
+            guard let row = loads[name] as? [String: Any], let result = measured[name] as? [String: Any]
+            else {
+                throw InputError(message: "no Table 15 row for \(name)")
+            }
+            let impulse = try number(row["impulse_kPa_ms"])
+            let shape: PressureLoad
+            let shapeName: String
+            if contestShape {
+                shape = SlabBenchmark.load
+                shapeName = "the contest slab's record (load 1a)"
+            } else {
+                guard
+                    let donor = donors.min(by: {
+                        abs($0.tableImpulse - impulse) < abs($1.tableImpulse - impulse)
+                    })
+                else { throw InputError(message: "no HSCV 8 in slab to take a shape from") }
+                shape = load(donor, settings: Settings())
+                shapeName = "\(donor.name)'s load (trace and tail)"
+            }
+            let scale = impulse / shape.impulse
+            return Slab(
+                name: name, barSpacingInches: 8, tablePeak: try number(row["peak_kPa"]) * 1000,
+                tableImpulse: impulse, trace: shape.history.map { SIMD2($0.x, $0.y * scale) },
+                traceName: String(format: "%@ × %.3f", shapeName, scale),
+                measuredPeak: try number(result["peak_mm"]) / 1000,
+                measuredResidual: try number(result["residual_mm"]) / 1000)
+        }
+        return Inputs(slabs: slabs, cylinders: [], barYield: hscv.barYield)
+    }
+
     /// How the load is taken from the inputs.
     public enum LoadShape: String, Sendable, Codable, CaseIterable {
         /// The digitised trace as read, then falling linearly from its last point to zero so that
@@ -119,6 +173,8 @@ public enum ReynoldsSlabTest {
         case scaled
         /// The digitised trace as read, then to zero at 60 ms.
         case raw
+        /// The slab's `trace` as it stands (the RSCR slabs' shapes, already scaled).
+        case given
     }
 
     public struct Settings: Sendable, Codable {
@@ -150,6 +206,9 @@ public enum ReynoldsSlabTest {
         public var brokenOpening: Float = 0.001
         /// Values of `ensembleInputs` where this run is an ensemble sample.
         public var sample: [String: Double] = [:]
+        /// The contest slab's material (`SlabBenchmark.material`: 5,400 psi and its bars' measured
+        /// Grade 60 curve) in place of the HSCV concrete and steel; the RSCR comparison's.
+        public var contestMaterial = false
         public init() {}
     }
 
@@ -166,6 +225,8 @@ public enum ReynoldsSlabTest {
             } else {
                 history.append(SIMD2(max(last.x + 0.001, 0.06), 0))
             }
+            load.history = history
+        case .given:
             load.history = history
         case .scaled, .raw:
             history.append(SIMD2(max(last.x + 0.001, 0.06), 0))
@@ -186,6 +247,9 @@ public enum ReynoldsSlabTest {
     }
 
     public static func material(inputs: Inputs, settings: Settings) -> StructureMaterial {
+        if settings.contestMaterial {
+            return ValidationEnsemble.perturbed(SlabBenchmark.material(rate: .strainRate), settings.sample)
+        }
         var material = StructureMaterial.concrete(
             name: "Reynolds HSCV", compressiveStrength: settings.compressiveStrength,
             density: settings.density,
