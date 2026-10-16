@@ -5212,6 +5212,7 @@ do {
     case "heating": try runHeating()
     case "terrain": try runTerrain(device: device)
     case "landscape": try runLandscape(device: device)
+    case "groundmotion": try runGroundMotion(device: device)
     case "advise": try runAdvise(device: device)
     case "hrynyk": try runHrynyk(device: device)
     case "mendonca": try runMendonca(device: device)

@@ -334,6 +334,7 @@ public struct GroundShockConsumer: Sendable {
             column.peakStress, column.peakVelocity, column.peakDisplacement, column.displacements
         )
         let arrivals = column.arrivals
+        let (downward, upward) = (column.peakAcceleration, column.peakUpwardAcceleration)
         let surface = max(column.peakLoad, 0)
         func at(_ depth: Float) -> (stress: Float, velocity: Float, displacement: Float, residual: Float) {
             let z = Double(depth)
@@ -361,7 +362,9 @@ public struct GroundShockConsumer: Sendable {
             return GroundResponse(
                 depth: depth, stress: peak.stress, verticalVelocity: peak.velocity,
                 verticalDisplacement: peak.displacement, horizontalVelocity: horizontal, arrival: arrival,
-                residualDisplacement: peak.residual, history: motions[n][d])
+                residualDisplacement: peak.residual, history: motions[n][d],
+                verticalAcceleration: Float(column.atNodes(downward, depth: Double(depth))),
+                upwardAcceleration: Float(column.atNodes(upward, depth: Double(depth))))
         }
         let deepest = spec.depths.max() ?? 0
         let levels = (0..<GroundDepthProfile.levels).map {

@@ -81,6 +81,14 @@ struct SoilColumnTests {
         let work = 3 * peak * peak * duration / 8 / impedance
         #expect(abs(column.work / work - 1) < 0.002)
         #expect(abs(column.radiated / column.work - 1) < 0.002)
+        // The fastest the pulse's load rises, πP/t_d, over the impedance is the peak downward
+        // acceleration, here and at 3 m; it falls as fast.
+        let fastest = Double.pi * peak / duration / impedance
+        for depth in [0.0, 3] {
+            let n = node(column, at: depth)
+            #expect(abs(column.peakAcceleration[n] / fastest - 1) < 0.01)
+            #expect(abs(column.peakUpwardAcceleration[n] / fastest - 1) < 0.01)
+        }
     }
 
     @Test("Two layers send back and pass on the analytical shares of the stress")
@@ -293,6 +301,26 @@ struct SoilColumnTests {
         }
         #expect(abs(rising.integral(from: 0, to: 0.005) / impulses[5] - 1) < 2e-3)
         #expect(rising.knots.map(\.pressure).max() == load.knots.map(\.pressure).max())
+        // Frames closer together than the rise: the rise is kept whole, running past the frame
+        // it starts in, and the impulse to within its share.
+        var close = GroundLoad()
+        (kept, impulse) = (0, 0)
+        t = 0
+        for frame in 0...100 {
+            let time = Double(frame) * 2e-4
+            while t < time - fine / 2 {
+                let p = pressure(t + fine / 2)
+                kept = max(kept, p)
+                impulse += max(p, 0) * fine
+                t += fine
+            }
+            close.append(
+                time: time, overpressure: Float(pressure(time)), peak: Float(kept), impulse: Float(impulse),
+                rise: 6e-4)
+        }
+        let top = close.knots.indices.max { close.knots[$0].pressure < close.knots[$1].pressure }!
+        #expect(abs(close.knots[top].time - close.knots[top - 1].time - 6e-4) < 1e-9)
+        #expect(abs(close.integral(from: 0, to: 0.0053) / load.integral(from: 0, to: 0.0053) - 1) < 0.03)
         // Through the positive phase, frame by frame, the solver's impulse.
         for frame in 3...5 {
             let rebuilt = load.integral(from: 0, to: Double(frame) * 1e-3)
