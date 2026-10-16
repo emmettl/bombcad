@@ -1423,25 +1423,6 @@ public final class BlastSolver {
         tilesEnabled = configuration.skipStillAir && deflagrationStage == nil
         memset(tileFlagBuffer.contents(), 0, tileFlagBuffer.length)
         tileCountBuffer.contents().storeBytes(of: 0, as: UInt32.self)
-        if tilesEnabled, let cut = terrainCut?.geometry {
-            // A cut cell passes its difference up its column, perhaps into the tile above: their tiles
-            // are always swept.
-            let flags = tileFlagBuffer.contents().bindMemory(to: UInt8.self, capacity: tileFlagBuffer.length)
-            for j in 0..<grid.ny {
-                for i in 0..<grid.nx {
-                    let column = cut.column(i, j)
-                    let top = max(Int(column.z), Int(column.w))
-                    guard top > Int(column.y) else { continue }
-                    for k in max(Int(column.y) - 2, 0)...min(top + 1, grid.nz - 1) {
-                        for (di, dj) in [(-2, 0), (2, 0), (0, -2), (0, 2), (0, 0)] {
-                            let x = min(max(i + di, 0), grid.nx - 1) / Self.tileSize
-                            let y = min(max(j + dj, 0), grid.ny - 1) / Self.tileSize
-                            flags[x + tileDims.x * (y + tileDims.y * (k / Self.tileSize))] = 1
-                        }
-                    }
-                }
-            }
-        }
         if tilesEnabled, tiledCoupling == nil, let region = couplingRegion {
             // Around the structure the mask moves and debris trades with the air, so those
             // tiles are always swept.
@@ -1867,6 +1848,7 @@ public final class BlastSolver {
             encoder.setBuffer(terrainCut?.records ?? noSpecies, offset: 0, index: 21)
             encoder.setBuffer(terrainCut?.walls ?? noSpecies, offset: 0, index: 22)
             encoder.setBuffer(terrainCut?.defects ?? noSpecies, offset: 0, index: 23)
+            encoder.setBuffer(terrainCut?.ceilings ?? noSpecies, offset: 0, index: 24)
             for (n, axis) in axes.enumerated() where !asleep {
                 if configuration.periodicSides { encodePeriodicHalo(encoder, uniforms: uniforms) }
                 uniforms.axis = UInt32(axis)
@@ -2586,6 +2568,7 @@ public final class BlastSolver {
         encoder.setBuffer(refined?.fineSpecies[0] ?? cut.columns, offset: 0, index: 16)
         encoder.setBuffer(refined?.fineMask ?? cut.columns, offset: 0, index: 17)
         encoder.setBuffer(refined?.gravityTable ?? cut.columns, offset: 0, index: 18)
+        encoder.setBuffer(tileFlagBuffer, offset: 0, index: 19)
         let width = min(pipeline.maxTotalThreadsPerThreadgroup, 64)
         encoder.dispatchThreads(
             MTLSize(width: Int(count), height: 1, depth: 1),

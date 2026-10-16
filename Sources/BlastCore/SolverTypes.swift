@@ -39,6 +39,15 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// out of a domain hardly bigger than the fireball (docs/validation.md, "Afterburning by
     /// default"). `SolverConfiguration()` stays the bare numerical core: an ideal gas, no
     /// afterburning and faces that copy, which the exact solutions and conservation checks test.
+    /// The harnesses that start here, each with an explicit choice of gas and faces: the air
+    /// benches (`validate`, `gas`, `throughput`), rooms (`ChamberTest`), Wu and Wang
+    /// (`TwoFaceSlabTests`), Chiquito (`CloseInSlabTest`), Hupfauf (`ContactSlabTest`), Alsubaei
+    /// (`PerimeterWallTests`), Keys in the open (`MasonryDebrisTests.run`), the coupled anchorage
+    /// wall, the validation ensemble's wall, Dial Pack, the landscape, buildings and terrain
+    /// profiles. On the bare core, deliberately: the numerical studies (the wedge's reflection, the
+    /// bubble, the mixing layer, the digest, the experimental rigid bodies), the deflagrations,
+    /// whose gas is their own, Keys' tunnel, driven by an inflow at an open face, and the blind
+    /// tests, which keep the air of their frozen commits.
     public static var recommended: SolverConfiguration {
         var configuration = SolverConfiguration()
         configuration.afterburning = true
@@ -165,8 +174,20 @@ public struct SolverConfiguration: Sendable, Hashable {
     public var afterburnLimit: AfterburnLimit?
     /// The terrain's ground surface as cut cells rather than whole ones (see `TerrainCutGeometry`):
     /// slopes are slopes, not staircases. On by default; false for the staircase. Read when a scene
-    /// is loaded, and only where the air is not refined (see `cutsTerrain(of:)`).
+    /// is loaded (see `cutsTerrain(of:)`).
     public var terrainCutCells = true
+    /// Soft ground under the structures' debris (`StructureSolver.groundStiffness`): the soil's
+    /// subgrade modulus in Pa/m, a Winkler bed the debris lands on, or nil for the hard ground (the
+    /// default). For debris falling on earth, not on paving or a slab; compared once, on Keys's
+    /// brick walls (docs/validation.md#brick-walls-debris). The air sees the ground as hard either
+    /// way. Read when a scene is loaded.
+    public var groundStiffness: Float?
+
+    /// The soil's subgrade modulus for soft ground: medium dense sand under a footing about a metre
+    /// wide (as `Anchorage.soil`), and the range foundation texts give from loose sand to dense
+    /// sand and stiff clay (J. E. Bowles, *Foundation Analysis and Design*; from memory).
+    public static let soilSubgradeModulus: Float = 50e6
+    public static let soilSubgradeRange: ClosedRange<Float> = 10e6...150e6
 
     public init() {}
 

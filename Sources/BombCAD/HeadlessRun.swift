@@ -12,7 +12,7 @@ enum HeadlessRun {
         Usage: BombCAD run <project.bombcad | layout.json> [--name <name>] [--out <new.bombcad>]
                            [--csv <file.csv>] [--resolution coarse|medium|fine|<metres>] [--mass <kg TNT>]
                            [--advise peak:20%|impulse:15%|deflection:30%|time:10m]
-                           [--duration <seconds>] [--usd <scene.usda>] [--vdb <folder>
+                           [--duration <seconds>] [--ground rigid|soil|<MN/m³>] [--usd <scene.usda>] [--vdb <folder>
                            [--vdb-fields overpressure,shock,peak,impulse]] [--frame-interval <ms>]
                            [--fragments <spec.json> [--fragment-results <file.json>]]
                            [--thermal <spec.json> [--thermal-results <file.json>]]
@@ -49,8 +49,9 @@ enum HeadlessRun {
         at it than the time it would take from the blast here).
         --advise prints the cheapest settings of the air that meet a fidelity target, or the best
         within a time, by the standing's error bands and the cost model, and does not run.
-        --resolution and --mass change the inputs as a sweep case would; the project itself is
-        never modified. The summary ends with the standing of each result (docs/standing.md), which
+        --resolution and --mass change the inputs as a sweep case would, and --ground what the
+        structures' debris lands on: the hard ground, or soil (50 MN/m³ unless a subgrade modulus is
+        given, 10 to 150); the project itself is never modified. The summary ends with the standing of each result (docs/standing.md), which
         --standing writes as JSON and the USD scene, the volumes and the results files carry too.
         """
 
@@ -62,6 +63,9 @@ enum HeadlessRun {
         var resolution: Resolution?
         var mass: Float?
         var duration: Double?
+        /// With `--ground`, what the structures' debris lands on: soil of this subgrade modulus
+        /// (Pa/m), or, as `.some(nil)`, the hard ground.
+        var ground: Float??
         var usd: URL?
         /// A new folder for the air's volumes, one OpenVDB file a frame, and their grids.
         var vdb: URL?
@@ -113,7 +117,7 @@ enum HeadlessRun {
                             "vdb-fields", "fragments",
                             "consumer", "fragment-results", "thermal", "thermal-results", "cloud",
                             "cloud-results", "sounding", "ground-shock", "ground-results", "envelope-results",
-                            "frame-interval", "worker", "standing", "advise",
+                            "frame-interval", "worker", "standing", "advise", "ground",
                         ]
                         .contains(key)
                     else {
@@ -154,6 +158,20 @@ enum HeadlessRun {
             if let text = values["mass"] {
                 guard let mass = Float(text) else { throw ProjectFileError.invalid("Mass must be a number.") }
                 options.mass = mass
+            }
+            if let text = values["ground"] {
+                switch text {
+                case "rigid": options.ground = .some(nil)
+                case "soil": options.ground = .some(SolverConfiguration.soilSubgradeModulus)
+                default:
+                    guard let modulus = Float(text).map({ $0 * 1e6 }),
+                        SolverConfiguration.soilSubgradeRange.contains(modulus)
+                    else {
+                        throw ProjectFileError.invalid(
+                            "--ground takes rigid, soil or a subgrade modulus from 10 to 150 MN/m³.")
+                    }
+                    options.ground = .some(modulus)
+                }
             }
             if let text = values["duration"] {
                 guard let duration = Double(text), duration.isFinite, duration > 0 else {
@@ -320,6 +338,9 @@ enum HeadlessRun {
         }
         if let duration = options.duration {
             inputs.settings.duration = duration
+        }
+        if let ground = options.ground {
+            inputs.settings.groundStiffness = ground
         }
         try inputs.validate()
         return inputs

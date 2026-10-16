@@ -160,10 +160,13 @@ heat raises the pressure less than in cold air. `SolverConfiguration.airModel =
 - Internal energy per kilogram is e(T) = 5/2 R T + e_vib(T), with N2 and O2 (0.79 and 0.21 by
   moles) as harmonic oscillators of characteristic temperatures 3390 K and 2270 K:
   e_vib = R Σ x θ / (exp(θ/T) − 1). Pressure is ρ R T, R = 287.05 J/(kg K).
-- The temperature is found from e by two Newton steps from the temperature without
-  vibration, which reach single precision from room temperature to 20,000 K. The speed of
-  sound uses the ratio of specific heats at that temperature, which falls from 1.4 to about
-  1.29 near 3000 K. The Riemann solver's averaged sound speed is the Roe average of the two
+- The temperature is found from e by one Newton step from a rational function of the
+  temperature without vibration, which lies within 10⁻⁴ of it from 1 K to 60,000 K; the step
+  brings it within 2 × 10⁻¹⁰. The speed of sound uses the ratio of specific heats, which falls
+  from 1.4 to about 1.29 near 3000 K, from the heat capacity at the first guess (within
+  2 × 10⁻⁶). Until October 2026 it took two steps from the temperature without vibration and
+  evaluated the heat capacity again at the root: three evaluations of the exponentials where
+  one does (docs/performance.md, "What the recommended air costs"). The Riemann solver's averaged sound speed is the Roe average of the two
   sides' speeds.
 - Below about 500 K it is the ideal gas within 0.1%, so tests in units where the gas is cold
   (the shock tube, the point blast) are unchanged. Dissociation, above about 2500 K, is left

@@ -57,7 +57,10 @@ Line** lays gauges outward from the charge at the Kingery–Bulmash scaled dista
 64 gauges are recorded. The Thermal section sets how far apart its ground receivers stand, at
 most 250,000 of them. See [Large scenes](large-scenes.md) for which grid to choose.
 Under Sharpen shocks, **Follow the shock** sets how weak a shock the refined air still follows
-(above 20, 5 or 1 kPa).
+(above 20, 5 or 1 kPa). Under Terrain, **Debris lands on** chooses the rigid ground (the default)
+or soil, a bed of the stiffness set below it (50 MN/m³, medium dense sand, by default), for a
+structure's debris falling on earth; `BombCAD run --ground soil` does the same for one run (see
+[On the ground](structural-model.md#on-the-ground)).
 
 **Advisor.** In the Run tab, choose a target (peaks, impulse or deflection within a percentage,
 or a run under so many minutes) and **Suggest**: the advisor weighs grids, refinement and

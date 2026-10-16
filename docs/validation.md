@@ -63,7 +63,7 @@ swift run -c release blastbench perimeter --study wall
 | Area                 | Evidence                                             | Confidence                         |
 |----------------------|------------------------------------------------------|------------------------------------|
 | Air solver numerics  | Exact solutions                                      | High                               |
-| Blast loads          | Kingery–Bulmash curves from 0.75 to 6 m/kg^(1/3). On today's defaults, afterburning, hot air and far-field faces ([since 15 October](#the-defaults-since-15-october)): impulse on a wall 8–15% high on 0.25 m cells beyond 1.5 m/kg^(1/3), the incident impulse within 4% from 1 m/kg^(1/3) (fitted), the incident peak 78–86% and the reflected 38–87% on 0.25 m cells. On the ideal gas: impulse on a wall within 6% on 0.25 m cells beyond 1.5 m/kg^(1/3), the incident impulse 13–22% low. Refinement gives the next finer grid's peaks | Peaks read low, the unsafe side (under-resolved), refinement helping; impulse on walls 8–15% high on today's defaults (the safe side), within 6% on the ideal gas, good; incident impulse within 4% on today's defaults (fitted), 13–22% low on the ideal gas (the unsafe side for what the wave passes over) |
+| Blast loads          | Kingery–Bulmash curves from 0.75 to 6 m/kg^(1/3). On today's defaults, afterburning, hot air and far-field faces ([since 15 October](#the-defaults-since-15-october)): impulse on a wall 6–13% high on 0.25 m cells beyond 1.5 m/kg^(1/3), the incident impulse within 6% from 1 m/kg^(1/3) (fitted), the incident peak 72–84% and the reflected 32–86% on 0.25 m cells. On the ideal gas: impulse on a wall within 6% on 0.25 m cells beyond 1.5 m/kg^(1/3), the incident impulse 13–22% low. Refinement gives the next finer grid's peaks | Peaks read low, the unsafe side (under-resolved), refinement helping; impulse on walls 6–13% high on today's defaults (the safe side), within 6% on the ideal gas, good; incident impulse within 6% on today's defaults (fitted), 13–22% low on the ideal gas (the unsafe side for what the wave passes over) |
 | Gas in a closed room | UFC 3-340-02's design curve (read off its chart by hand): 48% to 114% by default; 98% to 108% with afterburning and hot air; 90% of Cooper's closed vessel, burnt out | Either way within 8% with afterburning and hot air, good, the fitted burning time hardly mattering, against a design curve whose scatter is not given; by default low for light charges (half, the unsafe side) |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
@@ -512,6 +512,94 @@ held along both edges, are the one benchmark that could arch, and they agree tod
 **The stiffness line ends here.** The load, the supports, the bars, the bond, the cracked concrete's
 strength and stiffness, the hourglass control and arching are each ruled out, by runs or by
 construction, as what holds these slabs. What does is not found on these meshes.
+
+**Nor is it the mesh** (16 October 2026). Slabs 4 and 1 were run to their first peaks on 8, 16 and
+24 elements through, the elements kept cubic (10, 5 and 3.3 mm).
+- **The air:** the harness's own (an ideal gas without afterburning, as in every Mendonça run so
+  far), kept awake. The harness does not take the recommended air the benches now start from.
+- **The step:** the structure's falls with the element, at about 1.2, 0.6 and 0.4 µs.
+- **Rounding:** nothing failed before the first peaks, so no post-failure figure needed the
+  rounding variant.
+
+| Elements through | Elements | Slab 4, first peak | Slab 1, first peak and first 30 ms | Wall time (20 / 30 ms) |
+|---|---|---|---|---|
+| 8 | 80,000 | 4.30 mm at 4.0 ms | 10.07 mm, stands | 184 / 219 s |
+| 16 | 640,000 | 4.19 mm at 3.9 ms | 9.17 mm, stands | 419 / 602 s |
+| 24 | 2,160,000 | 4.32 mm at 3.9 ms | 10.02 mm, stands (702 elements removed) | 1,594 / 1,742 s |
+| Measured | | 20.4 mm (meters 18.7, 22.2) | collapsed | |
+
+- **No trend:** the first peaks move by under 10% with no direction, at a fifth and less of the
+  measured, so nothing extrapolates towards the tests.
+- **The bands stand:** Mendonça's bands, tied to their derived meshes, hold on any of these meshes.
+- **Cost:** the 24-element runs cost nine and eight times the 8-element ones.
+
+**Statically, twice as strong as its yield line** (16 October 2026).
+- **The test:** slab 4 on its trestles as the harness holds it, without air, under a uniform
+  pressure rising over 0.5 s and 1 s (halving the rate moves the figures by 1–4%), on 8 elements.
+- **The tool:** `blastbench mendonca-static`, on branch `claude/mendonca-static`, not on main.
+- **The reference:** a yield line for a one-way slab over the 0.9 m between the bearings' centres.
+  With the inputs' bars (5 mm at 100 mm, 55 mm deep) at their stated 350 MPa, m_p is about
+  3.7 kN m/m and q = 8 m_p / L² about 37 kPa. The concrete's own cracking moment (f_t 4.7 MPa on
+  the gross section) gives about 49 kPa, above the yield line, so a slab this lightly reinforced
+  should fail as it cracks.
+
+| Concrete | First crack | Bars first yield | Pressure at 5 / 10 / 20 mm |
+|---|---|---|---|
+| As the inputs give it | 89 kPa | 89 kPa | 90 / 91 / 92 kPa: cracks, yields and runs away at once |
+| A quarter of its tensile strength | 22 kPa | 58 kPa | 67 / 70 / 73 kPa |
+
+- **Static resistance is several times 40 kPa, and the dynamic excess goes beyond it.** The
+  model's slab holds 2.4 times its yield line uncracked, and 1.9 times it fully cracked, with its
+  tensile strength cut to a quarter. So part of the excess is in the concrete or the element's
+  kinematics, before any rate or inertia.
+- **Cracking.** It comes at 1.8 times the hand estimate (the bottom layer's centroid, an eighth of
+  the depth in, accounts for about 1.14 of that).
+- **The cracked slab.** It goes on carrying about twice the yield line's moment.
+- **Dynamics.** The blast run's equivalent of about 220 kPa is a further factor of about 2.5 above
+  the static 89 kPa.
+- **Next:** resistance curves from the same slab in a code with another element (Edgerton's tets
+  and crack band), to tell the concrete from the element.
+
+**Where the static strength comes from** (16 October 2026).
+- **The method:** the same bench with the work by mechanism, and the mid-span section's bending
+  moment split. Statics gives the moment from the bearings' reactions; the elements' stresses
+  (concrete and bars) carry their share; the hourglass control carries the rest.
+- **The span:** the slab pivots on the inner edges of its 0.1 m bearings (the statical moment is
+  0.075 q per metre, not 0.10 q), so its span is 0.8 m. That raises the yield line to about
+  47 kPa and the cracking load to about 62 kPa.
+- **Uncracked**, the elements' stresses carry 98–99% of the moment, so the hourglass control hides
+  none. The cracking load builds up as follows:
+
+| Step | Pressure |
+|---|---|
+| Hand cracking load, span 0.8 m | about 62 kPa |
+| The bottom layer's centroid an eighth of the depth in (×1.14) | about 71 kPa |
+| The model with its rate laws off | 76 kPa |
+| The model with them on: the CEB law's gain at the ramp's real rate, about 10⁻⁴/s (×1.17) | 89 kPa |
+
+- **Cracked** (f_t ×0.25, rate laws off), it holds 61 / 63 / 66 kPa at 5 / 10 / 20 mm, 1.3–1.4
+  times the yield line.
+  - The hourglass control carries about 11% of the moment.
+  - The bars do 68–81% of the work (Grade 500's hardening, f_u / f_y = 1.15, scaled to 350 MPa,
+    and their strain gathered into one element's crack).
+  - The concrete between cracks does 3–12%, fading as the slab bends.
+
+**Against OA1.** OA1, bent statically to failure, agrees at 97–99%: its bars give it a plastic
+moment far above its cracking moment, so cracking does not decide it. Mendonça's light mat gives a
+plastic moment below the cracking moment (3.7 against 5.0 kN m/m), so the slab's strength is its
+cracking load, and whatever raises cracking raises the strength one for one. On 8 elements that is
+the bottom layer's centroid (×1.14) and the tensile strength's rate gain.
+
+**What this means.**
+- **The static excess is largely real.** Of the 2.4 times the naive yield line, a factor of about
+  1.7 is the slab's own mechanics (the span its bearings give it, and cracking above yield). About
+  1.14 is the element's centroid, and the rest is the rate law as written.
+- **The candidate fix:** judging crack onset at the extreme fibre of elements at a tensile face
+  would bring the static cracking load to the hand estimate on any mesh. That is a modest
+  correction for lightly reinforced slabs and walls.
+- **It does not reach the blast gap.** The dynamic gap remains four to nine times: with a quarter
+  of the tensile strength the static resistance falls by a quarter, but the blast run's first peak
+  moved by 5% (the diagnosis above).
 
 ## Structural response against a real test
 
@@ -2060,6 +2148,12 @@ With 12 elements through as well, S6 reaches 4.1 mm and still does not spall, so
 under the small charges is not the mesh either, and is left open. The model never springs up past where it started: the tests' upward swing is
 the rig's, or the slab lifting in its clamps, which the model holds down.
 
+On today's air (afterburning, hot air and far-field faces, the defaults since 15 October 2026;
+rerun 16 October), S8 peaks at 16.3–16.4 mm against 18.0 and D8 at 16.4–16.5 against 13.9
+across the three roundings, left 8.2–8.9 mm down: 0.91 and 1.18–1.19 times the measured peak. The air is not what moved
+them: on the ideal gas the same build gives 16.1 and 16.3 mm. The change from the 14.4 and
+14.9 mm above comes from changes to the structural model since, not traced here.
+
 One layer or two: the tests' single layer near the underside did better under the small
 charges and worse under the large (18.0 mm against 13.9 at 1.6 kg). The model hardly tells
 them apart (14.4 against 14.9 mm). Traced by mechanism (`--work`), at the peak under 1.6 kg the
@@ -2202,6 +2296,33 @@ the face's plane, between the face and the bars, opened past 0.5 mm); and the br
 
 (The measured tip velocities are within a few m/s of the fit: 76–84, 69–72.5, 46–55.5, 41.5–46,
 23.4–25 and 14.7–15 m/s.)
+
+On today's air (afterburning, hot air and far-field faces, the defaults since 15 October 2026;
+rerun 16 October, the three roundings), the far face on the axis at 0.5 ms against the fit,
+all eight slabs:
+
+| Slab | T_W | On the axis, m/s | Fit | Model / fit |
+|------|-----|------------------|-----|-------------|
+| SN174 | 1.63 | 74–79 (to 86 at 4 cm) | 81 | 0.92–0.98 |
+| SN142 | 1.73 | 63–84 | 71 | 0.88–1.18 |
+| SN144 | 1.97 | 65–66 | 51 | 1.28–1.30 |
+| SN128 | 2.04 | 68–82 | 45 | 1.50–1.82 |
+| SN175 | 2.16 | 68–79 | 37 | 1.82–2.12 |
+| SN147 | 2.36 | 26–27 | 26 | 1.02–1.04 |
+| SN145 | 2.45 | 31–32 | 21 | 1.45–1.49 |
+| SN131 | 2.59 | 23–24 | 15 | 1.60–1.63 |
+
+The burning products load the slab more slowly, and the 20 cm slabs' far faces now move at
+about the measured tips' speed (0.9–1.2 times the fit) where on the ideal gas they moved 1.2 to
+1.9 times; the 25 and 30 cm slabs are left 1.0 to 2.1 times. On the six slabs of the table
+above, the far face on the axis is 0.88–1.82 times the fit on today's air. As before, nothing is
+holed, and the face 14–16 cm out moves at 12–30 m/s at 0.5 ms. Across the roundings, as in
+[the convergence section](#convergence-on-todays-defaults), on today's air:
+
+| Case, after failure, on today's air | Default | No fused multiply-adds | Relaxed math |
+|-------------------------------------|---------|------------------------|--------------|
+| Hupfauf SN142 on today's air: far face (m/s), elements failed | 62.9, 2,478 | 106.3, 2,773 | 61.5, 2,272 |
+| Hupfauf SN131 on today's air | 22.4, 824 | 27.7, 881 | 22.6, 786 |
 
 At first, then, the far face under the charge moves 1.2 to 1.9 times as fast as the debris did,
 its profile narrower than the measured on the thinner slabs and about as wide on the thicker,
@@ -2925,6 +3046,22 @@ gas is brought to rest, so that two cells out the record is a third of the surfa
 (`blastbench closeair` puts it a quarter of the finest cell up; a quarter of a coarse cell up,
 40 mm cells refined to 10 mm read a third low).
 
+On today's air (afterburning, hot air and far-field faces, the defaults since 15 October 2026;
+rerun 16 October), the same bursts, the 10 mm column on uniform 10 mm cells:
+
+| Z (free air) | Reference peak | 40 mm | 20 mm | 10 mm | 5 mm | Reference impulse | 40 mm | 20 mm | 10 mm | 5 mm |
+|--------------|----------------|-------|-------|-------|------|-------------------|-------|-------|-------|------|
+| 0.3          | 70.0 MPa       | 20%   | 36%   | 64%   | 107% | 3,168 Pa s        | 66%   | 84%   | 99%   | 103% |
+| 0.5          | 26.6 MPa       | 25%   | 54%   | 83%   | 101% | 1,459 Pa s        | 77%   | 85%   | 96%   | 104% |
+| 0.75         | 10.4 MPa       | 36%   | 61%   | 90%   | 98%  | 824 Pa s          | 88%   | 100%  | 111%  | 105% |
+| 1            | 4.7 MPa        | 46%   | 69%   | 88%   | 104% | 561 Pa s          | 99%   | 103%  | 102%  | 104% |
+
+On the finest air the peaks are within 7% and the impulses 3–5% high, against 92–104% and
+94–103% on the ideal gas; on coarser cells the peaks are lower than the ideal gas's (the hot
+air's shock is smeared over more cells) and the impulses about the same. 40 mm cells refined
+twice give the 10 mm column within 2% (64, 81, 89 and 88% of the peaks; 99, 97, 110 and 102%
+of the impulses).
+
 ### Afterburning
 
 With [afterburning](air-blast-model.md#afterburning) on (`--afterburn`), and with it and
@@ -3044,7 +3181,7 @@ same peaks:
 
 | Comparison | Before (ideal gas, copying faces) | Today's defaults |
 |---|---|---|
-| Open-air loads, 0.25 m, from 1 m/kg^(1/3) | Incident peak 76–82%, impulse 78–86%, reflected impulse 91–102% | 80–86%, 96–101%, 98–115% |
+| Open-air loads, 0.25 m, from 1 m/kg^(1/3) | Incident peak 76–82%, impulse 78–86%, reflected impulse 91–102% | 74–84%, 94–100%, 93–113% |
 | Rooms (UFC 2-152) | 48–114% | 98–108% |
 | Wu S5, D5, 0.2 kg at 0.25 m: peak | 2.0, 2.8 mm (measured 4.0, 4.1) | 2.3, 2.3 mm |
 | Wang: gauges' impulse | 75–82% | 81–86% |
@@ -3063,16 +3200,31 @@ validate`), as a percentage of the reference (the bands' tables since 15 October
 
 | Range | Z | Incident peak: 0.5 m | 0.25 m | 0.125 m | Incident impulse: 0.5 m | 0.25 m | 0.125 m | Reflected peak: 0.5 m | 0.25 m | 0.125 m | Reflected impulse: 0.5 m | 0.25 m | 0.125 m |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 3.5 m | 0.75 | 60% | 78% | 98% | 138% | 122% | 121% | 20% | 38% | 67% | 80% | 90% | 100% |
-| 4.6 m | 1 | 60% | 80% | 95% | 102% | 96% | 96% | 26% | 45% | 69% | 86% | 98% | 107% |
-| 7.0 m | 1.5 | 71% | 86% | 96% | 104% | 97% | 90% | 38% | 61% | 85% | 100% | 110% | 115% |
-| 9.3 m | 2 | 68% | 80% | 89% | 99% | 96% | 92% | 49% | 70% | 86% | 106% | 113% | 114% |
-| 13.9 m | 3 | 73% | 84% | 90% | 103% | 101% | 97% | 63% | 81% | 92% | 113% | 115% | 113% |
-| 18.6 m | 4 | 71% | 84% | 92% | 102% | 100% | 97% | 69% | 85% | 95% | 114% | 113% | 109% |
-| 23.2 m | 5 | 73% | 85% | 93% | 103% | 100% | 96% | 74% | 85% | 95% | 113% | 110% | 106% |
-| 27.8 m | 6 | 75% | 85% | 93% | 103% | 98% | 94% | 75% | 87% | 95% | 112% | 108% | 104% |
+| 3.5 m | 0.75 | 54% | 72% | 90% | 133% | 116% | 114% | 17% | 32% | 59% | 75% | 85% | 94% |
+| 4.6 m | 1 | 55% | 74% | 89% | 101% | 94% | 92% | 23% | 39% | 63% | 82% | 93% | 103% |
+| 7.0 m | 1.5 | 67% | 82% | 93% | 102% | 95% | 89% | 35% | 56% | 82% | 96% | 106% | 114% |
+| 9.3 m | 2 | 66% | 78% | 87% | 97% | 94% | 91% | 47% | 67% | 84% | 103% | 110% | 113% |
+| 13.9 m | 3 | 71% | 83% | 88% | 101% | 100% | 97% | 61% | 79% | 90% | 110% | 113% | 112% |
+| 18.6 m | 4 | 70% | 82% | 90% | 100% | 98% | 96% | 67% | 83% | 93% | 111% | 110% | 107% |
+| 23.2 m | 5 | 72% | 84% | 92% | 101% | 98% | 95% | 72% | 84% | 94% | 110% | 107% | 104% |
+| 27.8 m | 6 | 73% | 84% | 92% | 102% | 97% | 95% | 73% | 86% | 94% | 109% | 106% | 103% |
 
-The arrival on 0.25 m cells comes at 92, 91, 89, 92, 93, 96, 96 and 97% of the reference's time.
+The arrival comes at 85, 100, 89, 92, 92, 98, 97 and 97% of the reference's time on 0.5 m cells, 100, 95, 91, 95, 95, 97, 97 and 98% on 0.25 m and 100, 95, 91, 94, 96, 97, 98 and 98% on 0.125 m. (The table first held afterburning alone on the ideal gas, from a bench that left out hot air and the far-field faces; corrected on 16 October.)
+
+Every harness that takes its load from the air starts from `SolverConfiguration.recommended`
+and takes `--no-afterburn`, `--air ideal|thermal|dissociating` and `--copy-faces`; those left on
+the bare core are listed in its documentation, each for a reason (numerical studies, the
+deflagrations' own gas, Keys' inflow-driven tunnel, the blind tests' frozen air). An audit on 16
+October found two benches that had slipped: `blastbench validate` and `blastbench chamber` set
+afterburning but left the ideal gas and copying faces of the bare core, from the day the default
+became the preset until then, and the open-air row above, first recorded from that run, was
+afterburning alone: on hot air and far-field faces, as runs now ship, the incident peaks are 2–6
+points lower and the impulses 1–5 (hot air's known effect), and the row and the table that
+follows give those. The chamber on the fixed bench leaves the roof's edge at 50 mm peak and 27
+mm (25 mm on the earlier default; 95 mm measured), its wall pressures still 0.9–1.6 times those
+measured. The coupled anchorage wall (`blastbench anchorage --air`, 0.5 s) sways 27 and 28 mm
+clamped and on starter bars at 10 m, against 22 mm on the earlier air in
+[the structural model's table](structural-model.md), which ran 1 s.
 
 Two faults were found and fixed on the way. The far-field ghost first let hot air's
 temperature go to NaN beside contact charges, where air drawn back hard into the rarefaction gave
@@ -3309,6 +3461,16 @@ up, with 9 of 116,760 elements removed.
 walls and 3.2 MPa on the roof, against 3.2 to 4.4 MPa measured. The gauge positions are
 approximate, and peaks this close to a charge change sharply with position, so this check is
 loose: the model is between 0.9 and 1.6 times the measured range.
+
+**On today's air** (afterburning, hot air and far-field faces, the defaults since 15 October
+2026; `blastbench chamber` on the fixed bench, 16 October): 6.5 and 3.8 MPa on the side walls and
+3.5 MPa on the roof, 0.9 to 1.6 times those measured, as on the ideal gas. The roof's free edge
+rises 50 mm and is left 27 mm up (11 elements removed), against 48 and 25 mm on the ideal gas
+with today's other defaults: still about half the paper's model's 87 and 62 mm and the measured
+95 mm residual. An earlier run of this paragraph, which took 83–85 mm and 55–57 mm left for
+today's air, had the bench's gas left ideal: that is afterburning alone, and hot air alone gives
+33 and 15 mm. Afterburning alone, in a chamber whose vent keeps the burning products in, nearly
+doubles the roof's rise; hot air with it takes that back.
 
 **The roof.** At the test's charge the roof's free edge rises 38 mm and settles back to 7 mm
 with the default gas (ideal, no afterburning), and rises 37 mm and settles to 8 mm with

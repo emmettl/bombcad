@@ -196,6 +196,29 @@ public struct TerrainCutGeometry: Sendable, Equatable {
         return share < 1e-6 ? 0 : share
     }
 
+    /// For each column of tiles of `tileSize` cells (x fastest), the height in cells below which the
+    /// sweeps have cut-cell work: the highest of the first whole cell and two above the first cell of
+    /// air (whose solid neighbours a ghost mirrors) over its columns and two each side. Above it a
+    /// cell skips that work (`sweepCell`'s `nearCut`).
+    public func tileCeilings(tileSize: Int) -> [UInt32] {
+        let tilesX = (nx + tileSize - 1) / tileSize
+        let tilesY = (ny + tileSize - 1) / tileSize
+        var ceilings = [UInt32](repeating: 0, count: tilesX * tilesY)
+        for ty in 0..<tilesY {
+            for tx in 0..<tilesX {
+                var ceiling: UInt32 = 0
+                for j in max(ty * tileSize - 2, 0)...min(ty * tileSize + tileSize + 1, ny) {
+                    for i in max(tx * tileSize - 2, 0)...min(tx * tileSize + tileSize + 1, nx) {
+                        let c = column(i, j)
+                        ceiling = max(ceiling, c.z, c.y + 2)
+                    }
+                }
+                ceilings[tx + tilesX * ty] = ceiling
+            }
+        }
+        return ceilings
+    }
+
     /// The first cell of air in each column of the domain, x fastest (cells below are solid).
     public var firstAirCells: [Int32] {
         var cells = [Int32](repeating: 0, count: nx * ny)
@@ -221,6 +244,8 @@ final class TerrainCutBuffers {
     /// Each cut cell's difference over the step so far: mass and momentum, then fuel, oxygen and energy.
     let defects: MTLBuffer
     let cutColumns: MTLBuffer
+    /// `geometry.tileCeilings` for the sweeps' tiles.
+    let ceilings: MTLBuffer
 
     init(geometry: TerrainCutGeometry, device: MTLDevice) throws {
         func buffer<T>(_ values: [T], _ label: String) throws -> MTLBuffer {
@@ -243,5 +268,6 @@ final class TerrainCutBuffers {
         defects = try buffer(
             [SIMD4<Float>](repeating: .zero, count: 2 * geometry.records.count), "cut-cell differences")
         cutColumns = try buffer(geometry.cutColumns, "columns with cut cells")
+        ceilings = try buffer(geometry.tileCeilings(tileSize: BlastSolver.tileSize), "cut cells' ceilings")
     }
 }
