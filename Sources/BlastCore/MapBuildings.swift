@@ -22,11 +22,15 @@ public struct MapBuilding: Sendable, Equatable {
     public var levels: Float?
     public var roofLevels: Float?
     public var minLevel: Float?
+    /// The `building:material` tag, for its envelope's construction (`EnvelopeConstruction.fromMap`).
+    public var material: String?
 
     public init(
         id: String, name: String? = nil, kind: String = "yes", rings: [[SIMD2<Double>]], height: Float? = nil,
-        minHeight: Float? = nil, levels: Float? = nil, roofLevels: Float? = nil, minLevel: Float? = nil
+        minHeight: Float? = nil, levels: Float? = nil, roofLevels: Float? = nil, minLevel: Float? = nil,
+        material: String? = nil
     ) {
+        self.material = material
         self.id = id
         self.name = name
         self.kind = kind
@@ -88,7 +92,7 @@ public struct MapBuilding: Sendable, Equatable {
             id: id, name: tags["name"], kind: kind, rings: rings, height: tags["height"].flatMap(length),
             minHeight: tags["min_height"].flatMap(length), levels: tags["building:levels"].flatMap(length),
             roofLevels: tags["roof:levels"].flatMap(length),
-            minLevel: tags["building:min_level"].flatMap(length))
+            minLevel: tags["building:min_level"].flatMap(length), material: tags["building:material"])
     }
 }
 
@@ -489,6 +493,9 @@ extension Scenario {
             let id = try copy.addEnvelopeObject(
                 try BuildingEnvelope(solids: boxes), name: building.name ?? "\(building.kind) \(building.id)")
             taken.formUnion(cells)
+            if let construction = EnvelopeConstruction.fromMap(objectID: id, material: building.material) {
+                copy.setEnvelopeConstruction(construction)
+            }
             copy.envelopeSources =
                 (copy.envelopeSources ?? []) + [
                     EnvelopeSource(
