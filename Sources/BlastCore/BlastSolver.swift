@@ -2323,25 +2323,41 @@ public final class BlastSolver {
         var parameters = recorder.parameters(time: time, initial: initial)
         // Faces in still tiles read the still air; under gravity it is not uniform.
         parameters.skipStill = recorder.skipStillTiles && configuration.gravity == nil ? 1 : 0
-        // Every face's pressure, a thread a face.
+        let perGroup = EnvelopeComponentRecorder.componentsPerGroup
+        let groups = MTLSize(
+            width: (recorder.components.count + perGroup - 1) / perGroup, height: 1, depth: 1)
+        let groupSize = MTLSize(width: 32 * perGroup, height: 1, depth: 1)
+        // Which components' air has woken: a SIMD group a component (Solver.metal).
+        encoder.setComputePipelineState(recorder.markPipeline)
+        encoder.setBuffer(controlBuffer, offset: 0, index: 2)
+        encoder.setBuffer(recorder.tileRanges, offset: 0, index: 3)
+        encoder.setBuffer(recorder.tiles, offset: 0, index: 4)
+        encoder.setBuffer(tileFlagBuffer, offset: 0, index: 7)
+        encoder.setBuffer(recorder.awake, offset: 0, index: 8)
+        encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 9)
+        encoder.setBytes(
+            &parameters, length: MemoryLayout<EnvelopeComponentRecorder.Parameters>.stride, index: 10)
+        encoder.dispatchThreadgroups(groups, threadsPerThreadgroup: groupSize)
+        // Their faces' pressures, a thread a face, and 32 more for the still air.
         encoder.setComputePipelineState(recorder.facePipeline)
         encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
         encoder.setBuffer(maskBuffer, offset: 0, index: 1)
-        encoder.setBuffer(controlBuffer, offset: 0, index: 2)
         encoder.setBuffer(recorder.faceBuffer, offset: 0, index: 3)
         encoder.setBuffer(recorder.pressures, offset: 0, index: 4)
         encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 5)
         encoder.setBytes(
             &parameters, length: MemoryLayout<EnvelopeComponentRecorder.Parameters>.stride, index: 6)
-        encoder.setBuffer(tileFlagBuffer, offset: 0, index: 7)
+        encoder.setBuffer(recorder.faceComponents, offset: 0, index: 8)
+        encoder.setBuffer(recorder.awake, offset: 0, index: 9)
+        encoder.setBuffer(recorder.stillPressure, offset: 0, index: 10)
         encoder.dispatchThreads(
-            MTLSize(width: recorder.faces.count, height: 1, depth: 1),
+            MTLSize(width: recorder.faces.count + 32, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(
                 width: recorder.facePipeline.threadExecutionWidth, height: 1, depth: 1))
-        // Then each component's sides: a SIMD group of 32 lanes a component, a few to a
-        // threadgroup (Solver.metal).
+        // Then each component's sides: a SIMD group of 32 lanes a component, a few to a threadgroup.
         encoder.setComputePipelineState(recorder.pipeline)
         encoder.setBuffer(recorder.pressures, offset: 0, index: 0)
+        encoder.setBuffer(recorder.awake, offset: 0, index: 1)
         encoder.setBuffer(recorder.sideBuffer, offset: 0, index: 3)
         encoder.setBuffer(recorder.peaks, offset: 0, index: 5)
         encoder.setBuffer(recorder.bins, offset: 0, index: 6)
@@ -2350,10 +2366,8 @@ public final class BlastSolver {
         encoder.setBuffer(recorder.flags, offset: 0, index: 8)
         encoder.setBytes(
             &parameters, length: MemoryLayout<EnvelopeComponentRecorder.Parameters>.stride, index: 10)
-        let perGroup = EnvelopeComponentRecorder.componentsPerGroup
-        encoder.dispatchThreadgroups(
-            MTLSize(width: (recorder.components.count + perGroup - 1) / perGroup, height: 1, depth: 1),
-            threadsPerThreadgroup: MTLSize(width: 32 * perGroup, height: 1, depth: 1))
+        encoder.setBuffer(recorder.stillPressure, offset: 0, index: 11)
+        encoder.dispatchThreadgroups(groups, threadsPerThreadgroup: groupSize)
     }
 
     private func encodeExposure(_ encoder: MTLComputeCommandEncoder, initial: Bool) {

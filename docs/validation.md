@@ -796,6 +796,18 @@ would hold is calibration, for later.
 
 Outputs and the scoring script: `/Volumes/StudioData/bombcad/blind-results/reynolds/`.
 
+**Calibrated after the reveal** (16 October 2026; not the blind result, which stands as scored).
+HSCV4's bars, judged over the model's 100 mm window, reach a plastic strain of about 13.5%: at a
+rupture strain of 13% some rupture (119 bar elements, the slab still spanning at 164 mm), at 14%
+and above none do. The predictor's 9.1% was Grade 80's minimum elongation, a fracture elongation
+over an 8 in gauge and a floor rather than a typical bar; converted to the window (below,
+[rupture over a debonded length](concrete-model.md#reinforcement)), a typical No. 3 Grade 80 bar,
+plastic strain 9.1% at its peak stress and 13% over 8 in, breaks at about 17%. At 15%, the other
+inputs as declared, every slab holds: HSCV4 peaks at 161 mm and is left 132 mm down (0.89 and 0.93
+of 182 and 142), 161.1–161.5 mm across the three roundings, and the other five are unchanged
+(their bars never near rupture), so all six peaks lie within 0.77–1.06 and the geometric means
+are 0.87 at 4 in and 0.90 at 8 in. Outputs: `/Volumes/StudioData/bombcad/rupture/`.
+
 ## Structural response against a real test
 
 ### The test
