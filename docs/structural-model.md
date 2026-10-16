@@ -842,8 +842,9 @@ up to a cell off the structure's face, and a sixth of a cell outside it on avera
 - **What it moved in slab 4** (25 mm air refined by 2): the slab resting free and held down,
   identical until the shock, were 2.94 and 2.85 mm down at 3 ms, and their gauges read 1,118
   against 1,440 kPa at the centre.
-- **`SolverConfiguration.structureMaskOverlap`, an option, counts each sample as a box**, by the
-  share of it in each cell it overlaps. A cell then turns solid an eighth above the fill threshold
+- **`SolverConfiguration.structureMaskOverlap` counts each sample as a box** (the default since
+  16 October 2026; off, `--no-mask-overlap` or the app's "Outline structures by overlap", for the
+  centres as before, and a saved run records which), by the share of it in each cell it overlaps. A cell then turns solid an eighth above the fill threshold
   and opens an eighth below it. Without that band, a cell the face left exactly a third full, 8 mm
   of 24, flipped as the wall vibrated.
   - Where elements tile the cells, as Wu's and Wang's slabs on 25 mm air, the close-in slab and
@@ -854,8 +855,16 @@ up to a cell off the structure's face, and a sixth of a cell outside it on avera
     moves by −1 to +3%.
     - The far face's speed under the charge moves by −18 to +46%. That is no more than rounding
       moves these post-failure figures (62.9 to 106.3 m/s for SN142, [Validation](validation.md)).
-    - On SN144 one node ran away, the slab's kinetic energy 372 kJ against 49; it is not traced.
-  - Not run: Keys's brick walls (37.5 mm elements on 0.1 m air, so they will move).
+    - On SN144 one node ran away, the slab's kinetic energy 372 kJ against 49. Traced, it is a
+      bare element of structural concrete squeezed flat and flinging its nodes apart, which the
+      unfused rounding shows without the overlap too (168 kJ): see `StructureModel.erodesCrushedBare`,
+      an option the concrete session is judging.
+  - On the case matrix (quick, three roundings) Chiquito's slab, Wu's S8 and Wang's A are bit for
+    bit the same, Wu's D8 moves 0.1 mm and the chamber's roof stays at 27 mm (27–28 across the
+    roundings). Hupfauf's SN142 and SN131 far faces, 61 and 22 m/s, become 77 and 27 m/s, within
+    the scatter of their roundings (61–71 and 22–38 before, 69–78 and 27–37 with).
+  - Keys's brick walls (37.5 mm elements on 0.1 m air): their debris's mean distance moves by −1
+    to +3% (1.72, 1.61 and 1.58 m become 1.71, 1.60 and 1.63), its median not at all.
   - Its cost is not measurable: 0.94 to 1.06 times the default's in alternating runs.
 - **Through a cell, the structure's response moves less than its gauges.** Each case was run on
   air cells from 24 to 26 mm, which sweeps the face through more than a cell, with the response's
@@ -875,6 +884,22 @@ up to a cell off the structure's face, and a sixth of a cell outside it on avera
     or two from the fine wall: about 1,110 kPa there, against about 1,460 next to it.
   - Wang's gauges are fixed 10 mm in front of the face, often inside the partly solid cell
     holding it. When that cell closes, they read its stale state.
+
+  Since 16 October 2026 a gauge whose cell is solid, at the finest level it reads or on the
+  coarse grid, reads the fluid cell beside it nearest its point, and Mendonça's gauges are kept a
+  quarter of the finest cell beyond the face, read where that point is. Through the same cells the
+  spread falls:
+
+  | Case, overlap outline | Before | After |
+  |---|---|---|
+  | Slab 4, centre gauge's reflected peak | 32% | 16% |
+  | Slab 4, the nine top gauges' positive impulse to 10 ms | 13% | 7% |
+  | Slab 4, the 25 zones' signed impulse to 10 ms | 28% | 9% |
+  | Wang's slab A, the three gauges' impulse | 46% | 5% |
+
+  On the validated runs it moves only Mendonça's gauges, the corners' impulses by 1–1.5% on the
+  blind harness's air; Wang's and Alsubaei's gauges, the chamber's and the close-in slab's read
+  the same, bit for bit.
 - **Neither the finer samples nor the threshold help.** `structureMaskSampling` samples elements
   more finely; `structureMaskFill` sets the share of a cell that must be filled, a third by
   default. A half places the wall without bias but loses layers thinner than half a cell, and
