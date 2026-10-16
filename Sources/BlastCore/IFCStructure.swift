@@ -520,7 +520,8 @@ public struct IFCStructure: Sendable {
                 member.notes.append(
                     glass
                         ? "Glazed: a pane of annealed glass in its opening."
-                        : "No glass named in the IFC: taken as glazed, a pane of annealed glass in its opening (assumed).")
+                        : "No glass named in the IFC: taken as glazed, a pane of annealed glass in its opening (assumed)."
+                )
             case .door:
                 member.role = .opening
                 member.notes.append("A door: its opening is left open.")

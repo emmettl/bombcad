@@ -312,7 +312,9 @@ struct IFCCorpusTests {
                             (0..<3).allSatisfy { o.max[$0] > box.min[$0] && o.min[$0] < box.max[$0] }
                         }
                         let elements = shellMesh.elements.filter { $0.solid == solid }.count
-                        print("PANES \(member.name) \(box) holding \(holding) crossing \(crossing) elements \(elements) notes \(member.notes.suffix(2))")
+                        print(
+                            "PANES \(member.name) \(box) holding \(holding) crossing \(crossing) elements \(elements) notes \(member.notes.suffix(2))"
+                        )
                     }
                 }
                 let owner = { (solid: Int) in

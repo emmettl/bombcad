@@ -173,7 +173,9 @@ struct IFCStructureTests {
             try IFCStructure(elements: [wall, plain], options: .init(elementSize: 0.25)).members.first {
                 $0.name == "Window"
             })
-        #expect(assumed.role == .pane && assumed.assumed && assumed.notes.contains { $0.contains("taken as glazed") })
+        #expect(
+            assumed.role == .pane && assumed.assumed
+                && assumed.notes.contains { $0.contains("taken as glazed") })
         // A door's opening stays open.
         let door = try element(2, "Door", "IfcDoor", [box(SIMD3(1, 0.05, 0), SIMD3(2.5, 0.15, 2.25))])
         let open = try IFCStructure(elements: [wall, door])

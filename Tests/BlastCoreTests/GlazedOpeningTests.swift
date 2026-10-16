@@ -32,14 +32,17 @@ struct GlazedOpeningTests {
     static func pane(in mesh: ShellMesh, solid: Int, wall: Int) -> (elements: Int, joined: Bool) {
         let elements = mesh.elements.filter { $0.solid == solid }
         guard let axis = elements.first?.axis else { return (0, false) }
-        let wallNodes = Set(mesh.elements.filter { $0.solid == wall }.flatMap { e in (0..<4).map { e.nodes[$0] } })
+        let wallNodes = Set(
+            mesh.elements.filter { $0.solid == wall }.flatMap { e in (0..<4).map { e.nodes[$0] } })
         let nodes = Set(elements.flatMap { e in (0..<4).map { e.nodes[$0] } })
         let points = nodes.map { mesh.positions[Int($0)] }
         let low = points.reduce(SIMD3<Float>(repeating: .infinity), simd_min)
         let high = points.reduce(SIMD3<Float>(repeating: -.infinity), simd_max)
         let edge = nodes.filter { n in
             let p = mesh.positions[Int(n)]
-            return (0..<3).contains { k in k != axis && (abs(p[k] - low[k]) < 1e-5 || abs(p[k] - high[k]) < 1e-5) }
+            return (0..<3).contains { k in
+                k != axis && (abs(p[k] - low[k]) < 1e-5 || abs(p[k] - high[k]) < 1e-5)
+            }
         }
         return (elements.count, !edge.isEmpty && edge.isSubset(of: wallNodes))
     }
@@ -77,8 +80,10 @@ struct GlazedOpeningTests {
         let wall = ImportedMesh.BuildingElement(
             globalID: String(format: "%022d", 1), name: "Wall", ifcClass: "IfcWall", storey: "Ground",
             mesh: try Self.mesh([
-                Box(min: SIMD3(0, 0, 0), max: SIMD3(1, 0.2, 3)), Box(min: SIMD3(2.5, 0, 0), max: SIMD3(4, 0.2, 3)),
-                Box(min: SIMD3(1, 0, 0), max: SIMD3(2.5, 0.2, 0.75)), Box(min: SIMD3(1, 0, 2.25), max: SIMD3(2.5, 0.2, 3)),
+                Box(min: SIMD3(0, 0, 0), max: SIMD3(1, 0.2, 3)),
+                Box(min: SIMD3(2.5, 0, 0), max: SIMD3(4, 0.2, 3)),
+                Box(min: SIMD3(1, 0, 0), max: SIMD3(2.5, 0.2, 0.75)),
+                Box(min: SIMD3(1, 0, 2.25), max: SIMD3(2.5, 0.2, 3)),
             ]))
         let window = ImportedMesh.BuildingElement(
             globalID: String(format: "%022d", 2), name: "Window", ifcClass: "IfcWindow", storey: "Ground",
@@ -90,7 +95,10 @@ struct GlazedOpeningTests {
         let mesh = try ShellMesh(model: structure.model)
         let (elements, joined) = Self.pane(in: mesh, solid: pane, wall: host)
         #expect(elements > 0 && joined, "\(elements) pane elements")
-        #expect(mesh.elements.filter { $0.solid == pane }.allSatisfy { structure.model.materials[$0.material] == .annealedGlass })
+        #expect(
+            mesh.elements.filter { $0.solid == pane }.allSatisfy {
+                structure.model.materials[$0.material] == .annealedGlass
+            })
     }
 
     /// A closed OBJ mesh of `boxes`, each drawn in by half a millimetre where there are several,
@@ -108,7 +116,9 @@ struct GlazedOpeningTests {
                     k & 4 == 0 ? box.min.z : box.max.z)
                 text += "v \(p.x) \(p.y) \(p.z)\n"
             }
-            for face in [[0, 2, 3, 1], [4, 5, 7, 6], [0, 1, 5, 4], [2, 6, 7, 3], [0, 4, 6, 2], [1, 3, 7, 5]] {
+            for face in [
+                [0, 2, 3, 1], [4, 5, 7, 6], [0, 1, 5, 4], [2, 6, 7, 3], [0, 4, 6, 2], [1, 3, 7, 5],
+            ] {
                 let v = face.map { 8 * n + $0 + 1 }
                 text += "f \(v[0]) \(v[1]) \(v[2])\nf \(v[0]) \(v[2]) \(v[3])\n"
             }
@@ -119,7 +129,9 @@ struct GlazedOpeningTests {
     /// The wall facing a charge 3 m away, for 30 ms: how many of the glass's elements fail.
     /// `workaround` models the window as the envelope-damage references did before panes in
     /// openings were kept: no opening, the pane a plate in the wall's plane over the wall.
-    static func glassFailed(charge: Float, workaround: Bool, device: MTLDevice) throws -> (failed: Int, of: Int) {
+    static func glassFailed(charge: Float, workaround: Bool, device: MTLDevice) throws -> (
+        failed: Int, of: Int
+    ) {
         var model = wall()
         if workaround {
             model.openings = []
@@ -135,17 +147,24 @@ struct GlazedOpeningTests {
         return (glass.filter { shells.flag($0) == .eroded }.count, glass.count)
     }
 
-    @Test("The glass in a wall's opening breaks in a modest blast, as the plate workaround's did, and survives a faint one")
+    @Test(
+        "The glass in a wall's opening breaks in a modest blast, as the plate workaround's did, and survives a faint one"
+    )
     func breaks() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let pane = try Self.glassFailed(charge: 1, workaround: false, device: device)
         let plate = try Self.glassFailed(charge: 1, workaround: true, device: device)
         let faint = try Self.glassFailed(charge: 0.0005, workaround: false, device: device)
-        print("Glass failed at 1 kg, 3 m: \(pane.failed) of \(pane.of) in the opening, \(plate.failed) of \(plate.of) as a plate")
+        print(
+            "Glass failed at 1 kg, 3 m: \(pane.failed) of \(pane.of) in the opening, \(plate.failed) of \(plate.of) as a plate"
+        )
         #expect(pane.of == 64 && plate.of == 64)
-        #expect(pane.failed > 0 && plate.failed > 0, "pane \(pane.failed), plate \(plate.failed) of 64 failed")
+        #expect(
+            pane.failed > 0 && plate.failed > 0, "pane \(pane.failed), plate \(plate.failed) of 64 failed")
         // The same window both ways: as many of its elements fail, within a quarter.
-        #expect(abs(pane.failed - plate.failed) <= max(4, plate.failed / 4), "pane \(pane.failed), plate \(plate.failed)")
+        #expect(
+            abs(pane.failed - plate.failed) <= max(4, plate.failed / 4),
+            "pane \(pane.failed), plate \(plate.failed)")
         #expect(faint.failed == 0, "\(faint.failed) failed in a faint blast")
     }
 }
