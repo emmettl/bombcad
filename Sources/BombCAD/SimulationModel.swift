@@ -593,6 +593,34 @@ final class SimulationModel {
         encoder.outputFormatting = [.sortedKeys]
         return try encoder.encode(snapshots)
     }
+    /// Each envelope building's one-way damage from its components' loads so far
+    /// (`EnvelopeDamageAssessment`), and why there is none when there is none.
+    private(set) var envelopeDamage: [EnvelopeBuildingDamage] = []
+    private(set) var envelopeDamageStatus = ""
+
+    /// Judges each envelope building from its components' loads, and colours it in the view.
+    func updateEnvelopeDamage(loads: [EnvelopeComponentLoad]) {
+        let scenario = settings.scenario
+        let rooms = Dictionary(
+            uniqueKeysWithValues: scenario.envelopeObjects.map {
+                ($0.id, EnvelopeDamageAssessment.roomVolume(of: $0.envelope!))
+            })
+        envelopeDamage = EnvelopeDamageAssessment.assess(
+            loads: loads, constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms)
+        renderer?.setEnvelopeDamage(
+            Dictionary(uniqueKeysWithValues: envelopeDamage.map { ($0.id, EnvelopeDamageSection.code($0)) }))
+    }
+
+    func envelopeDamageData() throws -> Data {
+        guard !envelopeDamage.isEmpty else {
+            throw ProjectFileError.invalid(
+                "Run a scene with envelope buildings before exporting their damage.")
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
+        return try encoder.encode(envelopeDamage)
+    }
+
     private(set) var groundShockStatus = ""
     @ObservationIgnored private(set) var groundShock: (any FrameConsumer)?
     @ObservationIgnored private var groundShockTime = -1.0
@@ -2131,6 +2159,7 @@ final class SimulationModel {
 
     private func requestRebuild() {
         envelopeExposure = []
+        envelopeDamage = []
         envelopeExposureStatus = ""
         if batchInFlight {
             isLoadingInputs = true
@@ -2157,6 +2186,7 @@ final class SimulationModel {
         stopFragments()
         stopGroundShock()
         envelopeExposure = []
+        envelopeDamage = []
         envelopeExposureStatus = ""
         stopThermal()
         stopCloud()

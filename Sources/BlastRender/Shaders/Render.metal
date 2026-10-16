@@ -217,7 +217,14 @@ fragment SceneOut sceneFragment(VertexOut in [[stage_in]],
             // Faint storey lines give the blocks a sense of scale.
             float storey = normal.z == 0.0f ? smoothstep(0.42f, 0.5f, abs(fract(p.z / 3.0f) - 0.5f)) : 0.0f;
             float light = (0.50f + 0.50f * diffuse) * (1.0f - 0.10f * storey);
-            colour = fieldTint(float3(0.80f, 0.79f, 0.76f), light, field.sample(linearSampler, uvw), u);
+            // An envelope's one-way damage, when judged: none, glass broken alone, then moderate,
+            // heavy, hazardous and failed.
+            const float3 damage[6] = {
+                float3(0.62f, 0.78f, 0.60f), float3(0.55f, 0.75f, 0.92f), float3(0.95f, 0.85f, 0.35f),
+                float3(0.96f, 0.60f, 0.25f), float3(0.88f, 0.28f, 0.22f), float3(0.55f, 0.12f, 0.35f)};
+            int code = int(boxes[n].low.w + 0.5f);
+            float3 base = code >= 1 && code <= 6 ? damage[code - 1] : float3(0.80f, 0.79f, 0.76f);
+            colour = fieldTint(base, light, field.sample(linearSampler, uvw), u);
         }
     }
 
