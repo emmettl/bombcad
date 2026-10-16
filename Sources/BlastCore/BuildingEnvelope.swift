@@ -2,51 +2,86 @@ import Foundation
 import simd
 
 /// Stationary opaque geometry for exposure studies. No mass, deformation or failure law.
-/// Solids describe walls/roofs; openings remove material from every intersecting solid.
+/// Solids describe walls/roofs; openings remove material from every intersecting solid. Panes are
+/// glazing, solid in the air as the solids are: a one-way damage model takes a pane as closed
+/// until it fails (docs/building-envelopes.md, "Envelope components").
 public struct BuildingEnvelope: Hashable, Sendable, Codable {
     public let solids: [Box]
     public let openings: [Box]
-    /// Disjoint fragments within each solid, using Box's half-open boundary convention.
+    public let panes: [Box]
+    /// Disjoint fragments within each solid, using Box's half-open boundary convention, then the
+    /// panes.
     public let blocks: [Box]
-    private enum CodingKeys: String, CodingKey { case solids, openings }
+    /// Where each block came from.
+    public let blockSources: [BlockSource]
+    private enum CodingKeys: String, CodingKey { case solids, openings, panes }
 
-    public init(solids: [Box], openings: [Box] = []) throws {
-        guard !solids.isEmpty, solids.count <= 2048, openings.count <= 256,
-            (solids + openings).allSatisfy({ box in
+    /// A block's source: a solid or a pane, by index.
+    public enum BlockSource: Hashable, Sendable {
+        case solid(Int)
+        case pane(Int)
+    }
+
+    public init(solids: [Box], openings: [Box] = [], panes: [Box] = []) throws {
+        guard !(solids + panes).isEmpty, solids.count <= 2048, openings.count <= 256, panes.count <= 256,
+            (solids + openings + panes).allSatisfy({ box in
                 (0..<3).allSatisfy { box.min[$0].isFinite && box.max[$0].isFinite && box.size[$0] > 0 }
             })
         else { throw SceneObjectError.invalidOwnership }
         self.solids = solids
         self.openings = openings
+        self.panes = panes
         var compiled: [Box] = []
-        for solid in solids {
+        var sources: [BlockSource] = []
+        for (index, solid) in solids.enumerated() {
             var pieces = [solid]
             for opening in openings {
                 pieces = pieces.flatMap { Self.subtract(opening, from: $0) }
                 guard pieces.count + compiled.count <= 2048 else { throw SceneObjectError.invalidOwnership }
             }
             compiled.append(contentsOf: pieces)
+            sources.append(contentsOf: Array(repeating: .solid(index), count: pieces.count))
             guard compiled.count <= 2048 else { throw SceneObjectError.invalidOwnership }
         }
-        guard !compiled.isEmpty else { throw SceneObjectError.invalidOwnership }
+        compiled.append(contentsOf: panes)
+        sources.append(contentsOf: panes.indices.map { .pane($0) })
+        guard !compiled.isEmpty, compiled.count <= 2048 + 256 else { throw SceneObjectError.invalidOwnership }
         blocks = compiled
+        blockSources = sources
+    }
+
+    /// A detailed structure's envelope: its solids and openings, with its annealed-glass solids as
+    /// panes.
+    public init(structure: StructureModel) throws {
+        let glass = structure.solids.indices.map { index in
+            index < structure.solidMaterial.count
+                && structure.solidMaterial[index]?.name == StructureMaterial.annealedGlass.name
+        }
+        try self.init(
+            solids: structure.solids.indices.filter { !glass[$0] }.map { structure.solids[$0] },
+            openings: structure.openings,
+            panes: structure.solids.indices.filter { glass[$0] }.map { structure.solids[$0] })
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(
             solids: c.decode([Box].self, forKey: .solids),
-            openings: c.decode([Box].self, forKey: .openings))
+            openings: c.decode([Box].self, forKey: .openings),
+            panes: c.decodeIfPresent([Box].self, forKey: .panes) ?? [])
     }
 
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(solids, forKey: .solids)
         try c.encode(openings, forKey: .openings)
+        // Written only when there are some, so that envelopes without glass encode as before.
+        if !panes.isEmpty { try c.encode(panes, forKey: .panes) }
     }
 
     public func occupies(_ point: SIMD3<Float>) -> Bool {
         solids.contains { $0.contains(point) } && !openings.contains { $0.contains(point) }
+            || panes.contains { $0.contains(point) }
     }
 
     private static func subtract(_ hole: Box, from solid: Box) -> [Box] {
@@ -75,6 +110,8 @@ public struct BuildingEnvelope: Hashable, Sendable, Codable {
 
 extension Scenario {
     public var envelopeObjects: [SceneObject] { objects.filter { $0.envelope != nil } }
+    /// Whether any envelope has glazing (`BuildingEnvelope.panes`), which older readers would drop.
+    public var hasEnvelopePanes: Bool { envelopeObjects.contains { !($0.envelope?.panes.isEmpty ?? true) } }
 
     @discardableResult
     public mutating func addEnvelopeObject(
@@ -94,6 +131,6 @@ extension Scenario {
         else { throw SceneObjectError.unsupportedRepresentation }
         objects[index] = SceneObject(
             id: id, name: objects[index].name,
-            representation: .envelope(try BuildingEnvelope(solids: body.solids, openings: body.openings)))
+            representation: .envelope(try BuildingEnvelope(structure: body)))
     }
 }

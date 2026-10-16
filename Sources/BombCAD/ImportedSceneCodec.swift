@@ -16,21 +16,24 @@ enum ImportedSceneCodec {
             // Older readers must not silently discard durable object/component ownership, nor
             // stand a base on the ground that stands on a footing, nor turn a joint face down, nor
             // read a joint at an angle as one under the body, nor lay flat ground over a terrain, nor
-            // lose the rigid obstacles an IFC structure of shells and beams keeps.
+            // lose the rigid obstacles an IFC structure of shells and beams keeps, nor drop an envelope's
+            // glass.
             encodingVersion =
-                scenario.importedModels?.contains(where: \.isStructural) == true
+                scenario.hasEnvelopePanes
+                ? 10
+                : scenario.importedModels?.contains(where: \.isStructural) == true
                     || imports?.contains(where: { $0.behavior == .deformable && $0.structuralReport != nil })
                         == true
-                ? 9
-                : scenario.terrain != nil
-                    ? 8
-                    : scenario.hasLaterConnections
-                        ? 7
-                        : !scenario.envelopeObjects.isEmpty
-                            ? 6
-                            : scenario.hasFootingsOrTurnedJoints
-                                ? 5
-                                : scenario.structuralObjects.count > 1 ? 4 : 3
+                    ? 9
+                    : scenario.terrain != nil
+                        ? 8
+                        : scenario.hasLaterConnections
+                            ? 7
+                            : !scenario.envelopeObjects.isEmpty
+                                ? 6
+                                : scenario.hasFootingsOrTurnedJoints
+                                    ? 5
+                                    : scenario.structuralObjects.count > 1 ? 4 : 3
         }
     }
 
@@ -181,7 +184,7 @@ enum ImportedSceneCodec {
             var encodingVersion: Int
         }
         let header = try JSONDecoder().decode(Header.self, from: data)
-        guard header.format == "dev.bombcad.scene", (1...9).contains(header.encodingVersion) else {
+        guard header.format == "dev.bombcad.scene", (1...10).contains(header.encodingVersion) else {
             throw ProjectFileError.invalid(
                 "Unsupported scene encoding: \(header.format), version \(header.encodingVersion).")
         }
@@ -196,14 +199,16 @@ enum ImportedSceneCodec {
         let structural =
             payload.imports?.contains { $0.behavior == .deformable && $0.structuralReport != nil } == true
         let expected =
-            structural
-            ? 9
-            : payload.scenario.terrain != nil
-                ? 8
-                : payload.scenario.hasLaterConnections
-                    ? 7
-                    : hasEnvelopes
-                        ? 6 : hasFootings ? 5 : payload.scenario.structuralObjects.count > 1 ? 4 : 3
+            payload.scenario.hasEnvelopePanes
+            ? 10
+            : structural
+                ? 9
+                : payload.scenario.terrain != nil
+                    ? 8
+                    : payload.scenario.hasLaterConnections
+                        ? 7
+                        : hasEnvelopes
+                            ? 6 : hasFootings ? 5 : payload.scenario.structuralObjects.count > 1 ? 4 : 3
         // The unmerged envelope prototype also wrote v5 before footing support landed on main.
         // Its geometry is explicit and can migrate to v6 without discarding either feature.
         let prototypeEnvelope = header.encodingVersion == 5 && hasEnvelopes

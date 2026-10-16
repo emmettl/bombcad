@@ -93,6 +93,57 @@ resolved exposed face per owner. It refuses a pre-existing destination. Unavaila
 recording does not prevent ordinary blast runs, but an explicitly requested surface export
 fails with its reason instead of writing absent results as zeros.
 
+## Envelope components and their pressure histories
+
+For damage estimates on envelope buildings ([future work](#future-work-damage-for-envelope-buildings)),
+`BlastSolver.configureEnvelopeComponents(objects:options:)` records the load on each part of a
+building that responds on its own: stage 1 of that work. The definitions are agreed with the
+damage model that reads them (`/Volumes/StudioData/bombcad/envelope-damage/component-spec.md`, v1.2).
+
+**Components** (`BuildingEnvelope.components(owner:cellSize:)`, from the geometry alone):
+
+- A solid whose smallest size is at most 1 m and at most half its middle one is a **wall** (thin
+  in x or y) or a **slab** or **roof** (thin in z; a roof when nothing of the building stands
+  above it). It is cut at its supports first: a wall where a slab crosses its height or another
+  wall meets it inside its length, a slab or roof where walls meet it from below. Then each piece
+  is cut into equal panels at most 6 m wide, and 3 m tall where no slab or roof holds the wall;
+  slabs and roofs at most 6 × 6 m. Cuts are snapped to the air grid. Each panel is a component,
+  with which of its four edges are supported (on another solid or the ground).
+- Other solids are **blocks** (map buildings): each side in **façade** strips a storey (3 m) tall,
+  a remainder under a metre joining the strip below, and a **roof**. Columns are left out.
+- **Panes** (`BuildingEnvelope.panes`, new) are glazing, solid in the air: a one-way damage model
+  takes a pane as closed until it fails, so it records the reflected load the glass carries. Each
+  is one component, held on four edges. A detailed structure's annealed glass becomes panes when it
+  is converted to an envelope, and scenes with panes save at scene encoding 10.
+
+Ids are `<owner>/<kind>/<source>.<panel>`. The street study's buildings come out as one panel a
+wall and one roof panel.
+
+**Histories** (`envelopeComponentHistories()`): after every complete fluid step, each component's
+two sides, the faces whose normal points outward and those pointing in, are averaged over their
+faces (the surface recorder's cell-centre pressures, by one GPU thread a component in a fixed
+order). Each step's value is integrated into 0.1 ms bins by its overlap with them, so the impulse is
+exact whatever the step; the peak of each side, and of the net (outer less inner, pushing inward),
+is kept from every step. Options: the bin width; the window; a memory budget (256 MB by default)
+that widens the bins to a whole multiple when needed and says so; per-bin maxima (twice the
+memory); and openings recorded as panes in the open opening, for what the inside sees once glass
+has gone. Steps past the window are not binned and the history says `truncated`.
+
+Headless runs write them with `--envelope-histories <file.json>`; kept runs do not store them yet.
+Recording leaves the air bit-identical, and each side's binned impulse equals the mean of its faces'
+own integrals (tests in `EnvelopeComponentTests.swift`).
+
+**Cost.** Memory is components × bins × 8 bytes, plus 12 bytes a face: at 0.25 m, the street's
+4 buildings (20 components, 120 ms) take 0.37 MB, the 64-building neighbourhood (320 components,
+60 ms) 4.4 MB. Each step, a thread a face reads its cell (or, in a tile of still air, the still air,
+the same bits) and a SIMD group a component sums them. Timed with `scenebench envelope-histories
+--dx 0.25 --rounds 7` against the same runs with the surface recorder alone, interleaved, on
+16 October 2026 with the Mac's load at 15–80: the street's median pair ratio was 1.06–1.12 and
+the neighbourhood's 1.2–1.3, with pairs scattered ±15–30%, too loaded to settle a 5% target. The
+neighbourhood's 60 ms is the worst case for it: its air is mostly asleep (0.07–0.36 s of air
+work for the whole run), so per-face work, the surface recorder's too, weighs most there. An
+early-returning kernel cost nothing measurable, so the cost is the face reads, not the dispatch.
+
 ## Matched building study
 
 ```sh
@@ -462,8 +513,8 @@ What decides whether it is worth building, to answer before any of it is:
    leave the inside loads wrong; set against the detailed run's internal loads, this says how far
    a one-way model can be trusted, and whether failed openings must be opened in the air.
 4. **Its cost per building against the air's**, which should be small: the recorder's faces
-   already hold peak and impulse, but a single-degree-of-freedom model needs each component's
-   pressure history, which the recorder would have to keep.
+   already hold peak and impulse, and a single-degree-of-freedom model's pressure histories are
+   now kept per component ([above](#envelope-components-and-their-pressure-histories)).
 
 Until those comparisons are made, its results would stand as an approximation where a chart or
 curve applies and as illustrative otherwise (see [standing](standing.md)).
