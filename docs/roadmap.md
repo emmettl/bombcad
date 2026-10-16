@@ -165,8 +165,8 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   at kilometre scale.
 - **Next:** a cheaper damage model for envelope buildings. Its single-degree-of-freedom form is
   built and judged against the detailed buildings, with the cost of not venting
-  ([one-way damage](building-envelopes.md#one-way-damage-single-degree-of-freedom)); whether it goes
-  into the app is the user's decision.
+  ([one-way damage](building-envelopes.md#one-way-damage-single-degree-of-freedom)), and since
+  16 October in the app (glass and concrete as approximations, brick and the inside illustrative).
 
 ### Distributed computing
 

@@ -107,10 +107,12 @@ struct EnvelopeInspectionTests {
         let output = folder.appending(path: "output.bombcad")
         let surfaces = folder.appending(path: "surfaces.json")
         let histories = folder.appending(path: "histories.json")
+        let damage = folder.appending(path: "damage.json")
         try document().makeArchive().fileWrapper().write(to: input, originalContentsURL: nil)
         let options = try HeadlessRun.Options.parse([
             input.path, "--out", output.path,
             "--envelope-results", surfaces.path, "--envelope-histories", histories.path,
+            "--envelope-damage", damage.path,
         ])
         let result = try await HeadlessRun.execute(options)
         // Each building is a wall 4 m tall that nothing holds: two panels, both sides binned at
@@ -121,6 +123,12 @@ struct EnvelopeInspectionTests {
             components.count == 4 && components.allSatisfy { $0.component.kind == .wall && !$0.truncated })
         #expect(components.allSatisfy { (80...81).contains($0.outerImpulsePaS.count) })
         #expect(components.contains { $0.peakOuterPa > 0 })
+        // Each building judged one way from those histories, on the assumed construction.
+        let judged = try JSONDecoder().decode([EnvelopeBuildingDamage].self, from: Data(contentsOf: damage))
+        #expect(
+            judged.count == 2
+                && judged.allSatisfy { $0.components.count == 2 && $0.construction.source == .assumed })
+        #expect(result.streams.filter { $0.contains("reinforced concrete, assumed") }.count == 2)
         let raw = try JSONDecoder().decode([EnvelopeExposureSnapshot].self, from: Data(contentsOf: surfaces))
         #expect(raw.count == 2 && raw.allSatisfy { abs($0.elapsedS - 0.008) < 1e-6 && !$0.surfaces.isEmpty })
         #expect(result.run.envelopeExposure?.count == 2)
