@@ -5019,6 +5019,7 @@ do {
     case "advise": try runAdvise(device: device)
     case "hrynyk": try runHrynyk(device: device)
     case "mendonca": try runMendonca(device: device)
+    case "mendonca-static": try runMendoncaStatic(device: device)
     case "deflagration": try runDeflagration()
     case "perimeter": try runPerimeter(device: device)
     case "keys": try runKeys(device: device)
