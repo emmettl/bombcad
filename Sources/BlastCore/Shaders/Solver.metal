@@ -1088,8 +1088,12 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
                              device float *coarseSpeciesFlux, const device uchar *boxMask, device float *boxImpulse,
                              const device float4 *gravityTable, const device float *viscosity,
                              const device uint4 *cutColumns, const device float4 *cutRecords,
-                             const device float4 *cutWalls, device float4 *cutDefects) {
+                             const device float4 *cutWalls, device float4 *cutDefects, const device uint *cutCeilings) {
     int index = cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z);
+    // With cut cells, whether this cell lies below the highest the cut cells' work reaches over its
+    // tile's columns (`TerrainCutGeometry.tileCeilings`): above it there is none to do.
+    bool nearCut = cutCells
+        && cell.z < int(cutCeilings[uint(cell.x / tileSize) + (u.nx + uint(tileSize) - 1u) / uint(tileSize) * uint(cell.y / tileSize)]);
     if (control.dt <= 0.0f) {
         // A step that does nothing (past the time limit) swaps the two buffers' cells, solid
         // ones included, as the host swaps the buffers: the air is then exactly as if the step
@@ -1192,7 +1196,7 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
     // the sweep: a ghost beside a cut cell mirrors that cell's state (or, two away, the state as far
     // the other side of it) about the cut cell's normal. Every thread that needs a ghost builds it
     // by the same rule from the same cell, so both cells beside a face work out the same flux.
-    if (cutCells) {
+    if (nearCut) {
         int3 above = cell;
         int3 below = cell;
         int3 above2 = cell;
@@ -1308,7 +1312,7 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
     Flux cutHigh = fluxHigh;
     float cutShare = 1.0f;
     float registerAperture = 1.0f;
-    if (cutCells) {
+    if (nearCut) {
         uint4 column = cutColumnOf(cell, cutColumns, u);
         if (cell.z < int(column.z)) {
             cutRecord = int(column.x + uint(cell.z) - column.y);
@@ -1480,13 +1484,14 @@ kernel void sweep(device Cell *src [[buffer(0)]],
                   const device float4 *cutRecords [[buffer(21)]],
                   const device float4 *cutWalls [[buffer(22)]],
                   device float4 *cutDefects [[buffer(23)]],
+                  const device uint *cutCeilings [[buffer(24)]],
                   uint3 tid [[thread_position_in_grid]]) {
     if (tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz) {
         return;
     }
     sweepCell(int3(tid), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags,
               speciesSrc, speciesDst, patchOfTile, coarseFlux, coarseSpeciesFlux, boxMask, boxImpulse,
-              gravityTable, viscosity, cutColumns, cutRecords, cutWalls, cutDefects);
+              gravityTable, viscosity, cutColumns, cutRecords, cutWalls, cutDefects, cutCeilings);
 }
 
 // Sweeps the cells of the tiles listed in `tiles`, one threadgroup per tile; each thread takes
@@ -1515,6 +1520,7 @@ kernel void sweepTiles(device Cell *src [[buffer(0)]],
                        const device float4 *cutRecords [[buffer(21)]],
                        const device float4 *cutWalls [[buffer(22)]],
                        device float4 *cutDefects [[buffer(23)]],
+                       const device uint *cutCeilings [[buffer(24)]],
                        uint3 group [[threadgroup_position_in_grid]],
                        uint3 local [[thread_position_in_threadgroup]],
                        uint3 groupSize [[threads_per_threadgroup]]) {
@@ -1526,7 +1532,7 @@ kernel void sweepTiles(device Cell *src [[buffer(0)]],
         if (cell.x < u.nx && cell.y < u.ny && cell.z < u.nz) {
             sweepCell(int3(cell), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags,
                       speciesSrc, speciesDst, patchOfTile, coarseFlux, coarseSpeciesFlux, boxMask, boxImpulse,
-                      gravityTable, viscosity, cutColumns, cutRecords, cutWalls, cutDefects);
+                      gravityTable, viscosity, cutColumns, cutRecords, cutWalls, cutDefects, cutCeilings);
         }
     }
 }
@@ -1559,6 +1565,7 @@ kernel void redistributeCutDefects(device Cell *state [[buffer(0)]],
                                    device float2 *fineSpecies [[buffer(16)]],
                                    const device uchar *fineMask [[buffer(17)]],
                                    const device float4 *fineGravityTable [[buffer(18)]],
+                                   device uchar *tileFlags [[buffer(19)]],
                                    uint gid [[thread_position_in_grid]]) {
     if (!cutCells || gid >= columnCount) {
         return;
@@ -1635,6 +1642,10 @@ kernel void redistributeCutDefects(device Cell *state [[buffer(0)]],
         float ambient = airGravity ? gravityAmbientOf(gravityTable, k, u) : u.ambientPressure;
         peak[index] = max(peak[index], pressure - ambient);
         recordCell(maxSpeed, momentum, c.rho, pressure, u, ambient);
+        // A cell changed here, perhaps in a tile asleep (the cell above a sliver), is swept next step.
+        if (u.tileNx != 0) {
+            wakeTilesAround(cell, tileFlags, tileWoken, u);
+        }
     };
     // What each cell above the first gets from those below it, carried up the column.
     float4 passed = float4(0.0f);
