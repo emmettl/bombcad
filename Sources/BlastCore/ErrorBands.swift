@@ -288,6 +288,10 @@ public enum ValidationTables {
             document: "validation.md#the-contests-repeat-its-lower-shot-and-its-other-entries",
             quote: "the model reaches 79–88% of the measured peak on 4 to 16 elements"),
         Figure(
+            id: "slabBlindHighStrength", low: 0.77, high: 1.06,
+            document: "validation.md#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator",
+            quote: "every ratio within 0.77–1.06"),
+        Figure(
             id: "slabBlindOpenAir", low: 0.10, high: 0.25,
             document: "validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge",
             quote: "the model's blast peak is a tenth to a quarter"),
@@ -365,9 +369,9 @@ public enum ValidationTables {
     public static func figure(_ id: String) -> Figure { figures.first { $0.id == id }! }
 
     /// The scaled distance (m/kg^(1/3)) within which the contest slab's band is withheld: blind,
-    /// open-air slabs at 0.93 to 1.44 bent a tenth to a quarter as far as measured, and the two
-    /// nearest collapsed where the model's stood. The contest's load was a shock tube's, long and
-    /// uniform.
+    /// open-air slabs at 0.93 to 1.44 read a tenth to a quarter of meters that likely include the
+    /// supports' movement, and the two nearest collapsed where the model's stood. The contest's load
+    /// was a shock tube's, long and uniform.
     public static let blindSlabReach: Float = 1.5
 
     /// A result on a sequence of meshes against one measurement, from the convergence study on
@@ -1140,8 +1144,8 @@ extension StandingScene {
                     String(
                         format:
                             "Peak deflection: %.2f m/kg^(1/3) from the charge, where blind open-air slabs "
-                            + "(Mendonça, 0.93 to 1.44, on the ideal gas of the frozen 047cee3) bent %.0f–%.0f%% as "
-                            + "far as measured and the two nearest, "
+                            + "(Mendonça, 0.93 to 1.44, on the ideal gas of the frozen 047cee3) read %.0f–%.0f%% of "
+                            + "meters that likely include the supports' or rigid-body movement, and the two nearest, "
                             + "which collapsed, were left standing. The contest slab's band, from a shock tube's "
                             + "long uniform load, is not given within %.1f.",
                         distance, blind.low * 100, blind.high * 100, ValidationTables.blindSlabReach))
@@ -1166,8 +1170,16 @@ extension StandingScene {
                         + "a scaled record; 93–99% under the earlier rate laws. The mesh that agreed, 8 through, is "
                         + "the coarse end. Not allowed for: the test's bearings were 4–5 in wide where the model "
                         + "holds lines of nodes, and 1 in bearings already lower the peak 15–25%. Blind, open-air "
-                        + "slabs at 0.93 to 1.44 m/kg^(1/3) bent a tenth to a quarter as far, so it is not given "
-                        + "within 1.5",
+                        + "slabs at 0.93 to 1.44 m/kg^(1/3) collapsed where the model's stood, the rest reading a "
+                        + "tenth to a quarter of meters that likely include the supports' movement, so it is not "
+                        + "given within 1.5. Blind in the same rig, high-strength slabs (v0.3.0) read "
+                        + String(
+                            format: "%.0f–%.0f%%",
+                            ValidationTables.figure("slabBlindHighStrength").low * 100,
+                            ValidationTables.figure("slabBlindHighStrength").high * 100)
+                        + " where they held, a little stiff, and one lightly reinforced slab broke through where "
+                        + "the test held (the safe side). Against the lower shot's tabulated 80.5 mm, the upper "
+                        + "reading the record does not keep, the model reads 71–78%",
                     check: "A reinforced slab under a blast, and its lower shot")
                 band.low = ValidationTables.figure("slabLowerShot").low
                 band.high = ValidationTables.figure("slabExtrapolated").high

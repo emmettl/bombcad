@@ -1629,11 +1629,21 @@ struct StandingScene {
                 StandingEvidence(
                     "Blind: Mendonça's slabs under an open-air charge (defaults frozen at 047cee3, before the "
                         + "100 µs window; predicted before the measurements were unsealed)",
-                    "Unsafe side, too stiff and too strong: the blast's own peak a tenth to a quarter of the "
-                        + "measured; the two slabs nearest the charge collapsed, the model's barely cracked; the "
-                        + "declared peaks near the measured made by an artefact of the sleeping air on landing, fixed "
-                        + "since (the blast's own peak unchanged)",
+                    "Unsafe side: the two slabs nearest the charge collapsed, the model's barely cracked. The "
+                        + "blast's own peak a tenth to a quarter of meters that likely include the supports' or "
+                        + "rigid-body movement, while the model's slab responds as its own load would have a single "
+                        + "degree of freedom do: the gap lies in the load (its suction, 2.5 times the positive "
+                        + "impulse, being checked) or the meters. The declared peaks near the measured were made "
+                        + "by an artefact of the sleeping air on landing, fixed since, and group B's scored readings "
+                        + "came after a lift-off",
                     "validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge"),
+                StandingEvidence(
+                    "Blind: Reynolds's high-strength slabs in the contest slab's rig (v0.3.0, b524a9d; predicted "
+                        + "before the measurements were unsealed)",
+                    "Either way, a little stiff: five slabs 0.77–1.06 of the measured peak (0.87 on average with "
+                        + "the closer bars); the sixth, lightly reinforced under the larger load, broken through "
+                        + "where the test held at 182 mm (the safe side, its bars' rupture strain assumed)",
+                    "validation.md#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator"),
                 StandingEvidence(
                     "A reinforced beam bent to failure",
                     "Peak moment 100–101% on 12 and 24 elements through, failing at 44 mm on 12 and holding on "
@@ -1675,8 +1685,10 @@ struct StandingScene {
                 "reinforced concrete errs mostly on the unsafe side, towards too little damage: too strong in "
                     + "shear, too stiff in a full-scale chamber and close in. In bending one slab reads either way, "
                     + "4–15% high under the contest's load and 12–21% low under its lower shot, not converged, and its beams struck on 16 elements come within 12–23%; it "
-                    + "springs back too far. Blind, open-air slabs bent a tenth to a quarter as far as measured, "
-                    + "and the two that collapsed were left standing")
+                    + "springs back too far. Blind, open-air slabs that collapsed were left standing, the rest "
+                    + "reading a tenth to a quarter of meters that likely include the supports' movement; blind "
+                    + "in the contest's rig, high-strength slabs read 0.77–1.06 where they held and one broke "
+                    + "through where the test held")
         }
         if classes.contains(.plainConcrete) {
             level = max(level, .verified)
@@ -1784,8 +1796,8 @@ struct StandingScene {
                 "The defaults were chosen with these tests in view: a calibration set as much as a validation "
                     + "set, none run blind.",
                 "Blind tests judge the defaults frozen for them: tests 1 (1c85774) and 2 (047cee3) the 50-step "
-                    + "strain-rate average that the 100 µs window replaced on 12 October 2026; test 3 would judge "
-                    + "today's.",
+                    + "strain-rate average that the 100 µs window replaced on 12 October 2026; test 3 judged v0.3.0 "
+                    + "(b524a9d), with the window and afterburning and hot air.",
                 "Supports are assumed in every structural test, and move the results by 15–25% or more.",
                 "Most tests are single specimens.",
                 "Lattice-aligned geometry, a staircase of whole cells to the air.",
@@ -1821,6 +1833,11 @@ struct StandingScene {
                 "Unsafe side: the two slabs nearest the charge collapsed in the test; the model left both "
                     + "standing, barely cracked",
                 "validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge"),
+            StandingEvidence(
+                "Blind: Reynolds's high-strength slabs (v0.3.0)",
+                "Either way: one slab broken through where the test held (the safe side), and no blast face "
+                    + "crushed where four of the tests' were (the unsafe side)",
+                "validation.md#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator"),
         ]
         var level = EvidenceLevel.approximation
         var summary =
