@@ -89,7 +89,7 @@ enum SceneBench {
         }
         guard let output = args.first else {
             print(
-                "Usage: scenebench <output.json> [--quick] [--layouts=dense,tiled,automatic]\n       scenebench --example <layout.json>\n       scenebench street <directory> [--quick] [--source-revision=<sha>]\n       scenebench envelopes <directory> [--quick] [--source-revision=<sha>]\n       scenebench envelope-damage <directory> [--layouts=isolated,pair,street] [--walls=rc,brick,glass] [--charges=2,10,50] [--dx=0.25] [--duration=0.15]"
+                "Usage: scenebench <output.json> [--quick] [--layouts=dense,tiled,automatic]\n       scenebench --example <layout.json>\n       scenebench street <directory> [--quick] [--source-revision=<sha>]\n       scenebench envelopes <directory> [--quick] [--source-revision=<sha>]\n       scenebench envelope-damage <directory> [--layouts=isolated,pair,street] [--walls=rc,brick,glass] [--charges=2,10,50] [--dx=0.25] [--duration=0.15] [--representations=detailed,envelope]"
             )
             return
         }

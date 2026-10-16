@@ -25,6 +25,8 @@ enum EnvelopeDamageBenchmark {
         var sourceRevision: String
         var device: String
         var layout: String
+        /// "detailed" (free to respond) or "envelope" (exposure-only, the one-way model's loads).
+        var representation: String
         var wall: Wall
         var chargeKg: Float
         var chargePosition: SIMD3<Float>
@@ -248,15 +250,17 @@ enum EnvelopeDamageBenchmark {
     }
 
     static func track(
-        owner: SceneObject, model: StructureModel, shells: ShellSolver, wall: Wall, grid: Grid
+        owner: SceneObject, model: StructureModel, shells: ShellSolver?, wall: Wall, grid: Grid
     ) -> [Tracked] {
         let h = model.shellElementSize ?? model.elementSize
         let glassFrom = wall == .glass ? 5 : model.solids.count
         let panes = Array(model.solids[glassFrom...])
         let bounds = model.bounds
         let centreOfBuilding = (bounds.min + bounds.max) / 2
-        let references = shells.referencePositions
-        let centres = (0..<shells.elementCount).map { shells.elementCentre($0) }
+        // An envelope has no mesh: its components carry only their faces.
+        let references = shells?.referencePositions ?? []
+        let centres =
+            shells.map { shells in (0..<shells.elementCount).map { shells.elementCentre($0) } } ?? []
         var result: [Tracked] = []
         for (index, box) in model.solids.enumerated() {
             let size = box.max - box.min
@@ -315,14 +319,15 @@ enum EnvelopeDamageBenchmark {
                     "  solid \(index) \(kind) axis \(axis): \(nodes.count) nodes, \(edges.count) edges, \(elements.count) elements, box \(box.min) \(box.max)"
                 )
             }
-            guard let centre else { continue }
+            guard let centre = centre ?? (shells == nil ? 0 : nil) else { continue }
             let component = Component(
                 id: "\(owner.id.uuidString)/\(kind)/\(source).0", owner: owner.id, building: owner.name,
                 kind: kind,
                 region: [box.min, box.max], axis: axis, outward: outward,
                 material: isPane
                     ? "annealedGlass" : wall == .brick && index < 4 ? "masonry" : "reinforcedConcrete",
-                shortSpanM: spans.min()!, longSpanM: spans.max()!, centreNode: references[centre],
+                shortSpanM: spans.min()!, longSpanM: spans.max()!,
+                centreNode: shells == nil ? middle : references[centre],
                 supportEdgeNodes: edges.count, deflectionM: [], peakInwardM: 0, peakOutwardM: 0, peakM: 0,
                 residualM: 0, rotationDeg: 0, elements: elements.count, failedShare: 0, shearFailedShare: 0,
                 punchedShare: 0, broken: isPane ? false : nil, brokenAtS: nil)
@@ -398,9 +403,12 @@ enum EnvelopeDamageBenchmark {
 
     static func runOne(
         device: MTLDevice, layout: StreetInteractionStudy.Layout, wall: Wall, charge: Float, dx: Float,
-        duration: Double, bin: Double, revision: String, directory: URL
+        duration: Double, bin: Double, revision: String, directory: URL, envelope: Bool
     ) throws {
-        let scene = try scene(layout: layout, wall: wall, charge: charge)
+        let detailed = try scene(layout: layout, wall: wall, charge: charge)
+        // The envelope twin: the same scene with each building exposure-only, its glass solid.
+        var scene = detailed
+        if envelope { for object in detailed.structuralObjects { try scene.useEnvelope(id: object.id) } }
         var config = SolverConfiguration.recommended
         config.airSleepThreshold = 0
         config.airSleepCrossings = 0
@@ -408,6 +416,13 @@ enum EnvelopeDamageBenchmark {
         let solver = try BlastSolver(device: device, scenario: scene, cellSize: dx, configuration: config)
         var tracked: [(SceneObject, [Tracked])] = []
         var settledSpeed: [String: Float] = [:]
+        for object in detailed.structuralObjects where envelope {
+            tracked.append(
+                (
+                    object,
+                    track(owner: object, model: object.structure!, shells: nil, wall: wall, grid: solver.grid)
+                ))
+        }
         for object in scene.structuralObjects {
             guard let body = solver.body(id: object.id), let shells = body.shells else {
                 throw BlastError.allocationFailed("shell body for \(object.name)")
@@ -543,7 +558,7 @@ enum EnvelopeDamageBenchmark {
         }
         var components: [Component] = []
         for (b, entry) in tracked.enumerated() {
-            let shells = solver.body(id: entry.0.id)!.shells!
+            let shells = solver.body(id: entry.0.id)?.shells
             for t in entry.1 {
                 var c = t.component
                 c.deflectionM = binned(t.samples, bin: bin, duration: duration)
@@ -557,9 +572,11 @@ enum EnvelopeDamageBenchmark {
                 c.residualM = tail.isEmpty ? 0 : tail.reduce(0, +) / Float(tail.count)
                 c.rotationDeg = atan(c.peakM / (c.shortSpanM / 2)) * 180 / .pi
                 let count = Float(max(t.elements.count, 1))
-                c.failedShare = Float(t.elements.filter { shells.flag($0) != .active }.count) / count
-                c.shearFailedShare = Float(t.elements.filter { shells.hasShearFailed($0) }.count) / count
-                c.punchedShare = Float(t.elements.filter { shells.isPunched($0) }.count) / count
+                if let shells {
+                    c.failedShare = Float(t.elements.filter { shells.flag($0) != .active }.count) / count
+                    c.shearFailedShare = Float(t.elements.filter { shells.hasShearFailed($0) }.count) / count
+                    c.punchedShare = Float(t.elements.filter { shells.isPunched($0) }.count) / count
+                }
                 c.outerAreaM2 = t.loads.outerArea
                 c.innerAreaM2 = t.loads.innerArea
                 c.outerImpulsePaS = t.loads.outer
@@ -567,7 +584,7 @@ enum EnvelopeDamageBenchmark {
                 c.peakOuterPa = t.loads.peakOuter
                 c.peakInnerPa = t.loads.peakInner
                 c.peakNetPa = t.loads.peakNet
-                if c.kind == "pane" {
+                if c.kind == "pane", shells != nil {
                     c.broken = t.brokenAt != nil
                     c.brokenAtS = t.brokenAt
                 }
@@ -589,7 +606,8 @@ enum EnvelopeDamageBenchmark {
                     history.map { ($0.time, $0.pressure - ambient) }, bin: bin, duration: duration))
         }
         let record = Record(
-            sourceRevision: revision, device: device.name, layout: layout.rawValue, wall: wall,
+            sourceRevision: revision, device: device.name, layout: layout.rawValue,
+            representation: envelope ? "envelope" : "detailed", wall: wall,
             chargeKg: charge,
             chargePosition: scene.charge.position, domainSize: scene.domainSize, offset: offset,
             air: Air(
@@ -605,7 +623,7 @@ enum EnvelopeDamageBenchmark {
             notes: notes(wall), components: components, gauges: gauges)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
-        let name = "\(layout.rawValue)-\(wall.rawValue)-\(Int(charge))"
+        let name = "\(layout.rawValue)-\(wall.rawValue)-\(Int(charge))" + (envelope ? "-envelope" : "")
         try encoder.encode(record).write(to: directory.appending(path: "\(name).json"))
         print("\(name): \(String(format: "%.0f", record.wallClockS)) s, stable \(stable)")
         for c in components {
@@ -654,7 +672,7 @@ enum EnvelopeDamageBenchmark {
             let device = MTLCreateSystemDefaultDevice()
         else {
             throw BlastError.allocationFailed(
-                "usage: scenebench envelope-damage <directory> [--layouts=isolated,pair,street] [--walls=rc,brick,glass] [--charges=2,10,50] [--dx=0.25] [--duration=0.15]"
+                "usage: scenebench envelope-damage <directory> [--layouts=isolated,pair,street] [--walls=rc,brick,glass] [--charges=2,10,50] [--dx=0.25] [--duration=0.15] [--representations=detailed,envelope]"
             )
         }
         func value(_ name: String) -> String? {
@@ -670,13 +688,16 @@ enum EnvelopeDamageBenchmark {
         let dx = value("dx").flatMap { Float($0) } ?? 0.25
         let duration = value("duration").flatMap { Double($0) } ?? 0.15
         let revision = value("source-revision") ?? "working-tree"
+        let representations = (value("representations") ?? "detailed").split(separator: ",").map(String.init)
         for layout in layouts {
             for wall in walls {
                 for charge in charges {
-                    try runOne(
-                        device: device, layout: layout, wall: wall, charge: charge, dx: dx,
-                        duration: duration,
-                        bin: 1e-4, revision: revision, directory: directory)
+                    for representation in representations {
+                        try runOne(
+                            device: device, layout: layout, wall: wall, charge: charge, dx: dx,
+                            duration: duration, bin: 1e-4, revision: revision, directory: directory,
+                            envelope: representation == "envelope")
+                    }
                 }
             }
         }
