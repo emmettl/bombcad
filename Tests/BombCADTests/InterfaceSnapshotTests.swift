@@ -171,6 +171,50 @@ struct InterfaceSnapshotTests {
             appearance: appearance, to: folder.appending(path: "standing-readout.png"))
     }
 
+    @Test("Render envelope buildings' damage at the sidebar's width", arguments: ["light", "dark"])
+    func envelopeDamage(style: String) throws {
+        let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
+        let folder = URL(filePath: output, directoryHint: .isDirectory).appending(path: style)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        var scene = try StreetInteractionStudy.make(.street)
+        for object in scene.structuralObjects { try scene.useEnvelope(id: object.id) }
+        var document = ProjectDocument(scenario: scene)
+        document.runSettings?.resolution = "coarse"
+        let model = SimulationModel(document: document)
+        // Each building loaded harder than the last, the first two with a pane, so that the
+        // section shows each level, glass broken and the flag.
+        var loads: [EnvelopeComponentLoad] = []
+        for (index, object) in scene.envelopeObjects.enumerated() {
+            let peak = [3e3, 60e3, 250e3, 900e3][index]
+            for component in object.envelope!.components(owner: object.id, cellSize: 0.25) {
+                let pulse = (0..<800).map { bin in
+                    let t = (Double(bin) + 0.5) * 1e-4
+                    return t < 0.004 ? peak * (1 - t / 0.004) : 0
+                }
+                loads.append(
+                    EnvelopeComponentLoad(
+                        id: component.id, owner: object.id,
+                        kind: EnvelopeComponentLoad.Kind(rawValue: component.kind.rawValue) ?? .wall,
+                        region: component.region, axis: component.axis, binS: 1e-4, outerPa: pulse,
+                        innerPa: []))
+            }
+            if index < 2, let wall = loads.last(where: { $0.owner == object.id && $0.kind == .wall }) {
+                var pane = wall
+                pane.id = "\(object.id)/pane/0.0"
+                pane.kind = .pane
+                pane.region = Box(min: wall.region.min, max: wall.region.min + SIMD3(1.5, 1.5, 1.25))
+                pane.region.max[wall.axis] = wall.region.min[wall.axis] + 0.006
+                loads.append(pane)
+            }
+        }
+        model.updateEnvelopeDamage(loads: loads)
+        let appearance: NSAppearance.Name = style == "dark" ? .darkAqua : .aqua
+        try snapshot(
+            Form { EnvelopeDamageSection(model: model) }.formStyle(.grouped).frame(width: 310),
+            size: CGSize(width: 310, height: 700), appearance: appearance,
+            to: folder.appending(path: "envelope-damage.png"))
+    }
+
     /// A blast wall on a hill, with freestanding objects and every companion model in use, so
     /// that each of the Run sidebar's sections shows its settings.
     private func everySection() throws -> ProjectDocument {

@@ -613,6 +613,18 @@ final class SimulationModel {
     /// (`EnvelopeDamageAssessment`), and why there is none when there is none.
     private(set) var envelopeDamage: [EnvelopeBuildingDamage] = []
     private(set) var envelopeDamageStatus = ""
+    /// Whether the view colours envelopes by their damage (over the air's paint) once judged.
+    var showsEnvelopeDamage = true {
+        didSet { applyEnvelopeDamageColours() }
+    }
+
+    private func applyEnvelopeDamageColours() {
+        renderer?.setEnvelopeDamage(
+            showsEnvelopeDamage
+                ? Dictionary(
+                    uniqueKeysWithValues: envelopeDamage.map { ($0.id, EnvelopeDamageColour.code($0)) })
+                : [:])
+    }
 
     @ObservationIgnored private var lastEnvelopeDamage = ContinuousClock.now
 
@@ -632,8 +644,7 @@ final class SimulationModel {
             })
         envelopeDamage = EnvelopeDamageAssessment.assess(
             loads: loads, constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms)
-        renderer?.setEnvelopeDamage(
-            Dictionary(uniqueKeysWithValues: envelopeDamage.map { ($0.id, EnvelopeDamageSection.code($0)) }))
+        applyEnvelopeDamageColours()
     }
 
     func envelopeDamageData() throws -> Data {

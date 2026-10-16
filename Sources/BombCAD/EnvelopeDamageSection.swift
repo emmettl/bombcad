@@ -13,6 +13,9 @@ struct EnvelopeDamageSection: View {
         if !model.settings.scenario.envelopeObjects.isEmpty {
             Section("Envelope building damage") {
                 StandingRow(model: model, kinds: [.envelopeDamage])
+                Toggle("Show damage in the view", isOn: $model.showsEnvelopeDamage)
+                    .help("Colour each envelope by its damage instead of the air's pressure.")
+                Legend()
                 if model.envelopeDamage.isEmpty {
                     Text(
                         model.envelopeDamageStatus.isEmpty
@@ -39,14 +42,16 @@ struct EnvelopeDamageSection: View {
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             HStack {
-                                Circle().fill(Self.colour(Self.code(building))).frame(width: 9, height: 9)
+                                Circle().fill(Self.colour(Self.code(building)))
+                                    .overlay(Circle().stroke(.secondary.opacity(0.5)))
+                                    .frame(width: 9, height: 9)
                                 Text(model.settings.scenario.object(id: building.id)?.name ?? "Building")
                                 Spacer()
                                 Text(Self.levels(building.structuralLevels))
                             }
                             if building.panes > 0 {
                                 Text(
-                                    "\(building.panesBroken) of \(building.panes) panes broken"
+                                    "\(building.panesBroken) of \(building.panes) pane\(building.panes == 1 ? "" : "s") broken"
                                         + (building.firstPaneBrokenAtS.map {
                                             String(format: ", first at %.1f ms", $0 * 1000)
                                         }
@@ -103,7 +108,8 @@ struct EnvelopeDamageSection: View {
             "\(levels(building.structuralLevels).lowercased()) (\(building.construction.walls.label.lowercased()), "
             + "\(building.construction.source.rawValue))"
         if building.panes > 0 {
-            line += "; \(building.panesBroken) of \(building.panes) panes broken"
+            line +=
+                "; \(building.panesBroken) of \(building.panes) pane\(building.panes == 1 ? "" : "s") broken"
             if let first = building.firstPaneBrokenAtS {
                 line += String(format: ", first at %.1f ms", first * 1000)
             }
@@ -115,21 +121,38 @@ struct EnvelopeDamageSection: View {
         return line
     }
 
-    /// The viewport's colour code for a building (`SceneRenderer.setEnvelopeDamage`): the worse end
-    /// of its concrete range, or glass broken alone.
-    static func code(_ building: EnvelopeBuildingDamage) -> Int {
-        let worst = building.structuralLevels.upperBound
-        if worst == .none { return building.panesBroken > 0 ? 2 : 1 }
-        return worst.rawValue + 2
-    }
+    static func code(_ building: EnvelopeBuildingDamage) -> Int { EnvelopeDamageColour.code(building) }
 
     static func colour(_ code: Int) -> Color {
-        let colours: [Color] = [
-            Color(red: 0.62, green: 0.78, blue: 0.60), Color(red: 0.55, green: 0.75, blue: 0.92),
-            Color(red: 0.95, green: 0.85, blue: 0.35), Color(red: 0.96, green: 0.60, blue: 0.25),
-            Color(red: 0.88, green: 0.28, blue: 0.22), Color(red: 0.55, green: 0.12, blue: 0.35),
-        ]
-        return (1...6).contains(code) ? colours[code - 1] : .gray
+        guard (1...6).contains(code) else { return .gray }
+        let c = EnvelopeDamageColour.palette[code - 1]
+        return Color(.sRGB, red: Double(c.x), green: Double(c.y), blue: Double(c.z))
+    }
+
+    /// The six colours with their meanings, three to a row.
+    struct Legend: View {
+        var body: some View {
+            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 4) {
+                ForEach(0..<2, id: \.self) { row in
+                    GridRow {
+                        ForEach(1...3, id: \.self) { column in
+                            let code = row * 3 + column
+                            HStack(spacing: 4) {
+                                RoundedRectangle(cornerRadius: 2).fill(EnvelopeDamageSection.colour(code))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 2).stroke(.secondary.opacity(0.5))
+                                    )
+                                    .frame(width: 12, height: 12)
+                                Text(EnvelopeDamageColour.labels[code - 1]).lineLimit(1)
+                            }
+                        }
+                    }
+                }
+            }
+            .font(.caption)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Colours: none, glass broken, moderate, heavy, hazardous, failed")
+        }
     }
 
     static func levels(_ range: ClosedRange<EnvelopeDamageLevel>) -> String {

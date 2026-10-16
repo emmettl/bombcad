@@ -1270,6 +1270,11 @@ func runValidation() throws {
 
 func runSnapshot() throws {
     var scenario = chosenScenario()
+    // `--street-envelopes`: the street study's four buildings as exposure-only envelopes.
+    if flag("street-envelopes") {
+        scenario = try StreetInteractionStudy.make(.street)
+        for object in scenario.structuralObjects { try scenario.useEnvelope(id: object.id) }
+    }
     if let mass = option("mass").flatMap({ Float($0) }) { scenario.charge.mass = mass }
     // `--fit-reach 10` fits an open scene to its charge as the app's Domain section does; a
     // `--terrain` is laid again over the domain it fits.
@@ -1375,6 +1380,13 @@ func runSnapshot() throws {
     // The fireball cut out on the GPU at the end of each batch that lands on a frame, as a
     // headless run does.
     if let thermal { solver.frameRequest = FrameRequest(thermal: thermal.spec) }
+    // `--envelope-damage`: each envelope judged one way from its components' histories, and
+    // coloured by it, as the app does.
+    let judgesEnvelopes = flag("envelope-damage") && !scenario.envelopeObjects.isEmpty
+    if judgesEnvelopes {
+        try solver.configureEnvelopeComponents(
+            objects: scenario.envelopeObjects, options: EnvelopeHistoryOptions(windowS: time))
+    }
     while solver.time < time - 1e-9 {
         let result = solver.advance(
             steps: 64,
@@ -1391,6 +1403,24 @@ func runSnapshot() throws {
 
     let renderer = try SceneRenderer(device: device)
     renderer.setScene(scenario, solver: solver)
+    if judgesEnvelopes, let histories = solver.envelopeComponentHistories() {
+        let rooms = Dictionary(
+            uniqueKeysWithValues: scenario.envelopeObjects.map {
+                ($0.id, EnvelopeDamageAssessment.roomVolume(of: $0.envelope!))
+            })
+        let damage = EnvelopeDamageAssessment.assess(
+            loads: histories.map(EnvelopeComponentLoad.init),
+            constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms)
+        renderer.setEnvelopeDamage(
+            Dictionary(uniqueKeysWithValues: damage.map { ($0.id, EnvelopeDamageColour.code($0)) }))
+        for building in damage {
+            let name = scenario.object(id: building.id)?.name ?? "Building"
+            print(
+                "\(name): code \(EnvelopeDamageColour.code(building)), \(building.structuralLevels.lowerBound.label)"
+                    + "–\(building.structuralLevels.upperBound.label), panes \(building.panesBroken)/\(building.panes)"
+            )
+        }
+    }
     // Vent panels that have released are not drawn.
     let panels = (scenario.ventPanels ?? []).filter { $0.releasePressure > 0 }
     renderer.setVentPanels(zip(panels, solver.ventPanelOpenTimes).compactMap { $1 == nil ? $0.box : nil })

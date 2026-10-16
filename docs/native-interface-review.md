@@ -172,6 +172,53 @@ Keyboard focus and tab order cannot be checked offscreen: in the test process th
 active, so SwiftUI's focus system takes no Tab keystrokes and its accessibility tree stays empty, and
 making the window key would mean activating it on screen. They are listed below for a person.
 
+## Envelope damage: colours, legend and section
+
+On 16 October 2026 the envelope damage display was checked offscreen, without a screen.
+
+**The view.** `blastbench snapshot --street-envelopes --envelope-damage --mass 50|500 --time 0.08`
+renders the street study's four buildings as envelopes, judged one way after the run, through the
+app's renderer. At 50 kg the two buildings facing the charge are moderate and the far two none; at
+500 kg the facing two are failed (hazardous with fixed edges) and the far two moderate. The view
+has one appearance; the app's light and dark settings do not change it.
+
+**The section.** `swift test --filter InterfaceSnapshotTests.envelopeDamage`, with
+`BOMBCAD_INTERFACE_REVIEW` set, captures the sidebar's Envelope building damage section at its
+310-point width, in light and dark. Synthetic loads give four buildings: none, glass broken alone,
+moderate, and heavy with the 2° flag.
+
+**The palette.** Each pair of the six colours was set apart in CIELAB under Machado et al.'s
+(2009) simulations of protanopia, deuteranopia and tritanopia, at full severity. The closest pair
+under each:
+
+| Palette | Normal | Protanopia | Deuteranopia | Tritanopia |
+| --- | ---: | ---: | ---: | ---: |
+| First | 36.7 | 21.5 | 13.8 | 16.2 |
+| Now | 37.5 | 32.4 | 21.4 | 24.5 |
+
+- In the first palette, yellow and orange were 13.8 apart under deuteranopia, and none and glass
+  broken 16.2 apart under tritanopia.
+- The closest pair now is yellow and orange under deuteranopia, at 21.4. The colours also darken
+  as the damage grows.
+
+Found and fixed:
+
+- **The air's paint hid the damage.** Buildings were painted with peak overpressure over their
+  damage colour, so failed buildings read orange. A judged building is now drawn in its own
+  colour, lit, without the paint. A "Show damage in the view" switch, on by default, gives the
+  paint back.
+- **No legend.** The section now shows the six colours with their meanings, three to a row.
+- **Failed hardly showed on dark backgrounds.** It was nearly black (L* 12) against the dark
+  sidebar and the view's ground. It is lighter now (L* 26), with no pair any closer, and the
+  swatches and dots have an outline.
+- **The none dot vanished on the light background.** It now has the same outline.
+- **"0 of 1 panes broken"** now reads "pane".
+
+Passed: every line fits at 310 points in both appearances, the flag's sentence included.
+
+Not checked: how the colours look on a real display, and VoiceOver. The legend has one combined
+accessibility label naming the six levels.
+
 ## Remaining checks
 
 For a person at a real screen (with Full Keyboard Access on, in System Settings ▸ Keyboard):
