@@ -119,8 +119,10 @@ Tried and dropped:
   the stencils that read it: bit-identical, but 1.07 to 1.29 times slower, as 18 kB a tile of
   shared memory leaves too few threads to hide the memory's latency.
 
-Left: storing the fuel and oxygen in 16 bits would save 8 bytes a cell (11% of the memory) and
-about half their cost a cell, but they would no longer be conserved exactly.
+Not done, by the user's choice on 16 October 2026: storing the fuel and oxygen in 16 bits would
+save 8 bytes a cell (73 to 65, 11% of the air's memory) and about half of their 17% a
+cell-update, but they would no longer be conserved exactly (rounding of about 10⁻⁵ of a mass
+fraction a step). To revisit only if city-scale grids reach the memory's ceiling.
 
 ## Refinement
 
@@ -253,15 +255,22 @@ What might be done, with the speed-up each might give a refined run, from these 
 | 2 | Cheaper ghosts: neighbouring patches read in the sweep, the coarse interpolation once per coarse cell and substep | 1.08 to 1.12 | Low |
 | 3 | A uniform finer grid where the patches would cover most of the domain | Up to 1.5 close in | None to the answers |
 | 4 | Two levels: halo of the ring only, refluxing in one dispatch | 1.05 to 1.08 | Low |
-| 5 | Each level only the substeps its own waves need (tried, not merged) | 1.15 and 1.3 on open ground with one and two levels; 1.0 on the street; 0.93 close in | Measured; none to the answers |
+| 5 | Each level only the substeps its own waves need (now the advisor's, below) | 1.15 and 1.3 on open ground with one and two levels; 1.0 on the street; 0.93 close in | Measured; none to the answers |
 | 6 | A fine sweep specialised for cells away from the patch's faces | 1.05 to 1.1 | Low |
 | 7 | Longer coarse steps where the fastest wave is in a patch | Under 1.03 | |
 
-The fifth is built and tested but not merged, as it gains only on open ground: it is on the
-branch `claude/own-level-steps` (`SolverConfiguration.refinementOwnSteps`, `--refine-own-steps`).
-There the fastest wave is usually in the fireball's hot middle, which is smooth and so left
-coarse, and the patches take 1.2 of their 2 substeps a step; on the street, among the
-buildings, 1.9; and close in, where the patches hold the fastest wave, all of them.
+The fifth was built then and left unmerged, as on the ideal gas it gained only on open ground:
+there the fastest wave is usually in the fireball's hot middle, which is smooth and so left
+coarse, and the patches took 1.2 of their 2 substeps a step; on the street, among the
+buildings, 1.9; and close in, where the patches hold the fastest wave, all of them. On the
+recommended air (16 October 2026) the street's patches take 1.39 of 2, and in three quiet
+spells (`throughput`, wall time, rounds agreeing within 1%) refined runs took 1.19 times less on
+open ground with one level and 1.31 to 1.33 with two, and 1.07 to 1.08 on the street; the
+peaks of `validate` moved up by 1 to 2.5% (towards Kingery–Bulmash), impulses under 1%, and
+`closeair` not at all. It is now `SolverConfiguration.refinementOwnSteps` (`--refine-own-steps`),
+which the advisor turns on ("Choosing settings", below). Detailed profiling makes it look
+slower, as each stage's encoder of its own weighs on its extra dispatches: time it with
+`throughput`.
 
 Since, on 15 October 2026:
 
@@ -565,6 +574,13 @@ a candidate (cells finer than any grid compared count as the finest compared), i
   second), each fine update 1.6 times a coarse one; close in, the air within 0.8 m/kg^(1/3) of
   the charge refined from the shock's arrival to 6 ms/kg^(1/3) after the burst (below);
 - 1.2 ms a step more with two levels of refinement (a step of its own costs nothing measurable);
+- with adaptive substeps, the refined updates times the share of substeps a level is expected to
+  take (`RunCost.ownStepsShare`): all of them while the patches hold the fireball close in, until
+  6 ms/kg^(1/3) after the burst, and 0.6 of them after; within 0.05 of the shares measured on
+  open ground, the street and the close-in burst 1.5 to 6 m across. The advisor turns them on
+  for its refined settings where that share is under 0.8 (1.6 of 2 substeps;
+  `RunAdvisor.ownStepsShare`), which is the open and the street but not close in, and the Run
+  tab's "Adaptive substeps" can turn them off;
 - the structure's element-updates at 300 million a second;
 - 57 bytes a cell (73 with afterburning), plus the refined blocks' pool.
 

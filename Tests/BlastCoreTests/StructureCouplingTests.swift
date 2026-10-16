@@ -627,6 +627,77 @@ struct StructureCouplingTests {
         let free = Float(0.5 * 9.81 * end * end)
         #expect(abs(fallen / free - 1) < 0.03, "fell \(fallen) m, freely \(free) m")
     }
+
+    @Test("Counted by overlap, a layer of element centres on a cell's face fills it by what lies inside")
+    func overlapMaskIgnoresMicrons() throws {
+        // A block of 0.1 m elements in 0.25 m cells, its top layer's centres at z = 0.75, a cell's
+        // face. The cell above the top face (z 0.75 to 1.0) is a fifth full, so air; the one below,
+        // full. Counted as points, a micron's movement decides which of the two the top layer's
+        // centres fall in (Mendonça's slab 4 flickered so); counted by overlap, neither changes.
+        func cells(shift: Float) throws -> (above: Bool, below: Bool) {
+            var scenario = Scenario(
+                name: "Block on a face", domainSize: SIMD3(1.25, 1.25, 2), boxes: [],
+                charge: Charge(mass: 0, position: SIMD3(0.1, 0.1, 0.1)),
+                structure: StructureModel(
+                    solids: [Box(min: SIMD3(0.375, 0.375, 0.4), max: SIMD3(0.875, 0.875, 0.8))],
+                    material: Self.elastic, elementSize: 0.1, fixedBase: false))
+            scenario.reflectiveFaces = .all
+            var configuration = SolverConfiguration()
+            configuration.skipStillAir = false
+            configuration.structureMaskOverlap = true
+            let solver = try BlastSolver(
+                device: device, scenario: scenario, cellSize: 0.25, configuration: configuration)
+            let structure = try #require(solver.structure)
+            structure.mutateNodes { nodes in
+                for n in nodes.indices { nodes[n].uz = shift }
+            }
+            solver.advance(steps: 1)
+            return (solver.isSolid(2, 2, 3), solver.isSolid(2, 2, 2))
+        }
+        for shift: Float in [-1e-6, 1e-6] {
+            let counted = try cells(shift: shift)
+            #expect(!counted.above && counted.below, "shifted \(shift) m")
+        }
+    }
+
+    @Test(
+        "Counted by overlap, a cell turns solid above the fill threshold and opens below it, keeping its state between"
+    )
+    func overlapMaskHysteresis() throws {
+        // A block of 0.1 m elements whose top face, at z = 0.7, leaves the 0.3 m cell above
+        // (z 0.6 to 0.9) a third full: on the threshold. Raised 35 mm it is 46% full and solid;
+        // lowered to 8 mm up (36%) it stays solid, where a cell met afresh at 36% is air; at 30 mm
+        // down (23%) it opens.
+        func solver() throws -> (BlastSolver, StructureSolver) {
+            var scenario = Scenario(
+                name: "Block on the threshold", domainSize: SIMD3(1.2, 1.2, 1.5), boxes: [],
+                charge: Charge(mass: 0, position: SIMD3(0.1, 0.1, 0.1)),
+                structure: StructureModel(
+                    solids: [Box(min: SIMD3(0.3, 0.3, 0.3), max: SIMD3(0.9, 0.9, 0.7))],
+                    material: Self.elastic,
+                    elementSize: 0.1, fixedBase: false))
+            scenario.reflectiveFaces = .all
+            var configuration = SolverConfiguration()
+            configuration.skipStillAir = false
+            configuration.structureMaskOverlap = true
+            let solver = try BlastSolver(
+                device: device, scenario: scenario, cellSize: 0.3, configuration: configuration)
+            return (solver, try #require(solver.structure))
+        }
+        func cellAfter(_ shift: Float, _ solver: BlastSolver, _ structure: StructureSolver) -> Bool {
+            structure.mutateNodes { nodes in
+                for n in nodes.indices { nodes[n].uz = shift }
+            }
+            solver.advance(steps: 1)
+            return solver.isSolid(1, 1, 2)
+        }
+        let (moved, structure) = try solver()
+        #expect(cellAfter(0.035, moved, structure))
+        #expect(cellAfter(0.008, moved, structure), "solid, it stays so at 36% full")
+        #expect(!cellAfter(-0.03, moved, structure), "it opens at 23% full")
+        let (fresh, other) = try solver()
+        #expect(!cellAfter(0.008, fresh, other), "met afresh, 36% full is air")
+    }
 }
 
 /// A larger structure: the two-storey frame, on its own under gravity.

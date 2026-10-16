@@ -219,12 +219,15 @@ fragment SceneOut sceneFragment(VertexOut in [[stage_in]],
             float light = (0.50f + 0.50f * diffuse) * (1.0f - 0.10f * storey);
             // An envelope's one-way damage, when judged: none, glass broken alone, then moderate,
             // heavy, hazardous and failed.
+            // EnvelopeDamageColour.palette; a test keeps the two the same.
             const float3 damage[6] = {
-                float3(0.62f, 0.78f, 0.60f), float3(0.55f, 0.75f, 0.92f), float3(0.95f, 0.85f, 0.35f),
-                float3(0.96f, 0.60f, 0.25f), float3(0.88f, 0.28f, 0.22f), float3(0.55f, 0.12f, 0.35f)};
+                float3(0.851f, 0.910f, 0.824f), float3(0.310f, 0.659f, 0.878f), float3(0.949f, 0.871f, 0.227f),
+                float3(0.878f, 0.541f, 0.000f), float3(0.702f, 0.227f, 0.039f), float3(0.420f, 0.118f, 0.333f)};
+            // Drawn in its own colour, lit but without the air's paint, which would hide it.
             int code = int(boxes[n].low.w + 0.5f);
-            float3 base = code >= 1 && code <= 6 ? damage[code - 1] : float3(0.80f, 0.79f, 0.76f);
-            colour = fieldTint(base, light, field.sample(linearSampler, uvw), u);
+            colour = code >= 1 && code <= 6
+                ? damage[code - 1] * light
+                : fieldTint(float3(0.80f, 0.79f, 0.76f), light, field.sample(linearSampler, uvw), u);
         }
     }
 

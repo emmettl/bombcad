@@ -126,6 +126,26 @@ public struct EnvelopeBuildingDamage: Codable, Sendable, Identifiable {
     public var insideImpulsePaS: Double
 }
 
+/// How an envelope building's damage is shown: one colour for each of six codes, the view's
+/// (`SceneRenderer.setEnvelopeDamage`, Render.metal) and the app's alike.
+public enum EnvelopeDamageColour {
+    /// sRGB, by code 1–6: none, glass broken alone, moderate, heavy, hazardous, failed. Chosen to
+    /// stay apart under protanopia, deuteranopia and tritanopia (every pair at least ΔE 21 in
+    /// Machado et al.'s simulations; native-interface-review.md), and to darken as damage grows.
+    public static let palette: [SIMD3<Float>] = [
+        SIMD3(0.851, 0.910, 0.824), SIMD3(0.310, 0.659, 0.878), SIMD3(0.949, 0.871, 0.227),
+        SIMD3(0.878, 0.541, 0.000), SIMD3(0.702, 0.227, 0.039), SIMD3(0.420, 0.118, 0.333),
+    ]
+    public static let labels = ["None", "Glass broken", "Moderate", "Heavy", "Hazardous", "Failed"]
+
+    /// A building's code: the worse end of its concrete range, or glass broken alone.
+    public static func code(_ building: EnvelopeBuildingDamage) -> Int {
+        let worst = building.structuralLevels.upperBound
+        if worst == .none { return building.panesBroken > 0 ? 2 : 1 }
+        return worst.rawValue + 2
+    }
+}
+
 /// The one-way damage of envelope components from their loads, by what each building is built of.
 /// The air never sees it: envelopes stay whole in the air (see building-envelopes.md).
 public enum EnvelopeDamageAssessment {

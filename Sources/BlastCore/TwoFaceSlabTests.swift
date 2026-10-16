@@ -284,7 +284,8 @@ public enum TwoFaceSlabTests {
         airModel: AirModel?, openFaces: OpenFaces,
         hold: (StructureSolver, UnsafeMutableBufferPointer<StructureNode>, (Float, Int) -> Int) -> Void,
         prepare: ((StructureSolver) -> Void)?, progress: ((String) -> Void)?,
-        inspect: ((StructureSolver, Double) -> Void)? = nil
+        inspect: ((StructureSolver, Double) -> Void)? = nil,
+        configure: (inout SolverConfiguration) -> Void = { _ in }
     ) throws -> Result {
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
         solver.configuration.mappedCharge = !afterburning
@@ -293,6 +294,7 @@ public enum TwoFaceSlabTests {
         // As the app's "Afterburning and hot air": both or neither.
         solver.configuration.airModel = airModel ?? (afterburning ? .thermallyPerfect : .idealGas)
         solver.configuration.refinement = refinement
+        configure(&solver.configuration)
         try solver.load(scenario)
         guard let structure = solver.structure else { throw BlastError.allocationFailed("structure") }
         let h = structure.model.elementSize
@@ -417,7 +419,8 @@ public enum TwoFaceSlabTests {
         airModel: AirModel? = nil, openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
         adjust: (inout Scenario) -> Void = { _ in },
         prepare: ((StructureSolver) -> Void)? = nil, progress: ((String) -> Void)? = nil,
-        inspect: ((StructureSolver, Double) -> Void)? = nil
+        inspect: ((StructureSolver, Double) -> Void)? = nil,
+        configure: (inout SolverConfiguration) -> Void = { _ in }
     ) throws -> Result {
         var scenario = scenario(test, elementSize: elementSize)
         adjust(&scenario)
@@ -455,7 +458,7 @@ public enum TwoFaceSlabTests {
                         }
                     }
                 }
-            }, prepare: prepare, progress: progress, inspect: inspect)
+            }, prepare: prepare, progress: progress, inspect: inspect, configure: configure)
     }
 
     /// How Wang's slabs are held at their edges.
@@ -480,7 +483,8 @@ public enum TwoFaceSlabTests {
         airModel: AirModel? = nil, openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
         adjust: (inout Scenario) -> Void = { _ in },
         prepare: ((StructureSolver) -> Void)? = nil, progress: ((String) -> Void)? = nil,
-        inspect: ((StructureSolver, Double) -> Void)? = nil
+        inspect: ((StructureSolver, Double) -> Void)? = nil,
+        configure: (inout SolverConfiguration) -> Void = { _ in }
     ) throws -> Result {
         var scenario = scenario(test, elementSize: elementSize)
         adjust(&scenario)
@@ -530,6 +534,6 @@ public enum TwoFaceSlabTests {
                         }
                     }
                 }
-            }, prepare: prepare, progress: progress, inspect: inspect)
+            }, prepare: prepare, progress: progress, inspect: inspect, configure: configure)
     }
 }

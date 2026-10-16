@@ -81,8 +81,9 @@ deflects" where that weight is under half the falling speed and slowing, and "fa
 Every building below that carries under 95% falls: what moves is still going at 0.10–0.20 m/s.
 
 **8 of the 19 stood before round 2. 12 stand after it**, the Schependomlaan structural model
-among them. The Schependomlaan design model, too large before, now imports and carries 57% of
-its weight.
+among them. The Schependomlaan design model, too large before, now imports and carries 58% of
+its weight. The five buildings with windows were run again with their glass in (item 15); none
+changed its verdict.
 
 | Building | Shells / beams after | Carried before | Carried after | Still after | Peak after (mm) |
 |---|---|---|---|---|---|
@@ -93,19 +94,19 @@ its weight.
 | Schependomlaan walls, first floor | 6,362 / 10 | 100% | 100% | 100% | 0.2 |
 | Schependomlaan walls, second floor | 4,469 / 9 | 100% | 100% | 100% | 0.1 |
 | Schependomlaan hollow-core floor | 11,185 / 227 | 100% | 100% | 100% | 73.8 |
-| Clinic, architectural | 27,888 / 0 | 59% | **100%** | 100% | 0.4 |
-| Esplanades | 210,321 / 11 | 42% | **99%** | 99% | 75.7 |
+| Clinic, architectural | 28,847 / 0 | 59% | **100%** | 100% | 0.4 |
+| Esplanades | 220,315 / 11 | 42% | **99%** | 99% | 75.7 |
 | Schependomlaan stairs and landings | 386 / 30 | 0% | **100%** | 100% | 46.9 |
 | Schependomlaan precast elements | 394 / 48 | 0% | **98%** | 98% | 54.9 |
 | Schependomlaan structural model | 86,599 / 675 | 1% | **97%** | 95% | 65.5 |
 | Schependomlaan balconies | 8 / 18 | 88% | 88% | 88% | 54.9 |
 | Schependomlaan steelwork | 222 / 541 | 9% | 86% | 71% | 82.1 |
-| Amersfoort sports hall | 46,350 / 1,445 (21,465 / 746 before) | 99% | 68% | 62% | 87.1 |
-| Duplex (architectural) | 19,814 / 220 | 64% | 65% | 65% | 53.0 |
+| Amersfoort sports hall | 48,964 / 1,445 (21,465 / 746 before) | 99% | 66% | 62% | 85.0 |
+| Duplex (architectural) | 20,214 / 218 | 64% | 65% | 65% | 48.8 |
 | buildingSMART bridge | 4,287 / 0 | 5% | 54% | 48% | 59.2 |
 | buildingSMART road | 16,896 / 0 | 22% | 41% | 29% | 83.0 |
 | Clinic, structural | 97,102 / 10,080 (27,646 / 363 before) | 2% | 77% | 75% | 73.8 |
-| Schependomlaan design model | 67,702 / 1,038 | — | 57% | 48% | 128.8 |
+| Schependomlaan design model | 68,079 / 1,040 | — | 58% | 48% | 114.6 |
 
 Some peaks exceed 10 mm while nearly all the weight is still: a few light pieces fall, such as
 the hollow-core floor's 59 loose members (under 1% of it), and the rest stands.
@@ -244,6 +245,20 @@ buildings. The "after" run counts it once.
     segments it shares with others, with their curves and placements (`IFCStep`). Points and
     directions stay shared, and nothing else in the file changes. All the Clinic's wide-flange
     beams and columns now come in closed.
+15. **Windows.** A glazed window became a pane of glass on its wall's midsurface, but every
+    pane was lost when meshed. The wall's hole was an opening, and an opening removed every
+    element in it, the pane's too. Few windows were taken as glazed anyway: only one in the
+    whole corpus, since a window became a pane only where the IFC names glass for it, and most
+    name no material at all. Three changes:
+    - An opening now keeps a solid it holds whole. A pane in a wall's opening is put on the
+      wall's midsurface and fills the opening to its reveal, sharing the wall's nodes there.
+    - Each pane is sized to the hole it sits in rather than to the window, whose frame overlaps
+      the wall round it.
+    - A window naming no glass is taken as glazed, the glass flagged as assumed.
+
+    The real buildings now mesh 250 panes: the Duplex 22 (1,148 elements), the Clinic's
+    architectural model 22 (980), Esplanades 131 (10,403), the sports hall 55 (2,756) and the
+    Schependomlaan design model 20 (283). None is loose.
 
 The task's list also named mapped items, extruded-solid variants, boolean openings and
 georeferencing. The corpus showed none of these breaking the importer:
