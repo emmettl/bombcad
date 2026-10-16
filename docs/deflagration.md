@@ -13,8 +13,8 @@ explosions damaging is the flame speeding up through turbulence, instabilities a
 flame here is wrinkled by the turbulence the grid cannot resolve, through the correlation and
 sub-grid model of FM Global's own LES of these rooms, and by the flow round obstacles the grid
 does resolve, and by its own cellular instability from the onset radius measured in that chamber.
-- Lit at the back wall of FM Global's chamber, the peak pressure is 0.8–1.6 times the tests'.
-- Lit in the middle, it is about 0.4 times theirs: the half of the flame facing the back wall
+- Lit at the back wall of FM Global's chamber, the peak pressure is 0.9–1.8 times the tests'.
+- Lit in the middle, it is 0.4–0.6 times theirs: the half of the flame facing the back wall
   stalls, and the acoustically driven peaks are not reproduced.
 - Every result is below the venting correlations of EN 14994 and NFPA 68, which are conservative
   for this room (the tests measured a tenth to a quarter of them).
@@ -280,8 +280,10 @@ deflagration vessel --cells 12,24,48,96`, a laminar flame and (`--accelerated`) 
 
 ### Where a vented room's pressure was lost
 
-Before the cellular instability was added, FM Global's chamber reached a seventh of test 1's
-measured peak and the correlations' were thirty to fifty times the model's. Traced, item by item:
+The trace was run with copying open faces, which drained the domain; far-field faces raise the
+peaks by 10–30% (see below). Before the cellular instability was added, FM Global's chamber
+reached a seventh of test 1's measured peak and the correlations' were thirty to fifty times the
+model's. Traced, item by item:
 
 - **Early pressure goes as the flame's speed to about the sixth power.** Before the burnt gas
   reaches the vent, the overpressure is set by the volume the flame makes, which goes as S r² with
@@ -327,14 +329,17 @@ FM Global's 63.7 m³ chamber as Bauwens et al. used it: 4.6 × 4.6 × 3.0 m insi
 the middle of a 4.6 × 3 m wall, stoichiometric methane, lit in the middle. The walls and roof are
 0.2 m thick, with 2 m of air round the room and 5 m beyond the vent. P_red is the peak overpressure
 at the middle of the back wall, after a 1/80 s moving average, as Bauwens et al. filtered theirs
-at 80 Hz. `blastbench deflagration vented --vent 2.7,4,5.4,8 --dx 0.1`, open vents:
+at 80 Hz. `blastbench deflagration vented --vent 2.7,4,5.4,8 --dx 0.1`, open vents. The domain's
+open faces have ambient air beyond them; until 16 October 2026 they copied the cells inside, which
+drained the domain below ambient and lowered the peaks by 10–30% (the copying faces' columns
+below, `--copy-faces`):
 
-| Vent, m² | Default | Sub-grid turbulence alone | Laminar | Molkov | Bartknecht | NFPA 68 |
-|---|---|---|---|---|---|---|
-| 2.7 | 3.05 kPa | 1.36 | 0.9 | 77 | 94 | 179 |
-| 4.0 | 1.51 | 0.55 | | 35 | 48 | 81 |
-| 5.4 | 1.12 | 0.41 | 0.3 | 19 | 29 | 45 |
-| 8.0 | 0.91 | 0.29 | | 8 | 15 | 20 |
+| Vent, m² | Default | Default, copying faces | Sub-grid turbulence alone, copying | Laminar, copying | Molkov | Bartknecht | NFPA 68 |
+|---|---|---|---|---|---|---|---|
+| 2.7 | 3.48 kPa | 3.05 | 1.36 | 0.9 | 77 | 94 | 179 |
+| 4.0 | 1.94 | 1.51 | 0.55 | | 35 | 48 | 81 |
+| 5.4 | 1.53 | 1.12 | 0.41 | 0.3 | 19 | 29 | 45 |
+| 8.0 | 1.27 | 0.91 | 0.29 | | 8 | 15 | 20 |
 
 The correlations, for the same room, vent and gas:
 
@@ -350,13 +355,13 @@ The correlations, for the same room, vent and gas:
 - **NFPA 68** (2002) for low-strength enclosures: A_v = C A_s/√P_red, C = 0.037 bar^½ for methane.
   It is an envelope, meant to be conservative.
 
-- **The model's pressures are below the correlations'**: a ninth to a twenty-fifth of Molkov's
-  best fit, and a twentieth to a sixtieth of NFPA 68's.
-- **The trend with vent area is flatter than the correlations'**: the pressure falls as A_v^−1.1
+- **The model's pressures are below the correlations'**: a seventh to a twenty-second of Molkov's
+  best fit, and a sixteenth to a fiftieth of NFPA 68's.
+- **The trend with vent area is flatter than the correlations'**: the pressure falls as A_v^−0.9
   against A_v^−2 for NFPA 68 and Molkov. The large vent's peak, the burnt gas leaving, falls least.
 - **The correlations are conservative for this room.** The tests below, in the same chamber,
   measured a tenth to a quarter of Molkov's fit, and a twentieth to an eighth of NFPA 68's. Lit in
-  the middle the model is below the tests too (1.1 kPa against 2.2–2.7 for the large vent, 3.1
+  the middle the model is below the tests too (1.5 kPa against 2.2–2.7 for the large vent, 3.5
   against 7.2 for the small), so there it is on the unsafe side of both.
 
 **Obstacles.** With square posts 0.2 m wide from floor to ceiling on a 1 m grid in the room (`--posts
@@ -374,16 +379,16 @@ The peaks are plotted only (the back wall's pressure, P1, filtered at 80 Hz, and
 along the vent's axis), and were digitised here from the PDF's vector paths
 (`/Volumes/StudioData/bombcad/data/Bauwens2008/digitised/`, calibrated on 5–11 labelled ticks an
 axis, to 0.01 kPa). `blastbench deflagration vented --vent 5.4 --percent 9.0 --speeds` and so on,
-0.1 m cells:
+0.1 m cells, far-field faces (the copying faces' runs alongside):
 
-| Test | Methane | Ignition | Vent, m² | Measured, kPa | Their LES | Model | Sub-grid turbulence alone | Molkov |
-|---|---|---|---|---|---|---|---|---|
-| 1 | 9.0% | middle | 5.4 | 2.17 (0.47 s) | 1.82 | 0.89 | 0.30 | 19 |
-| 2 | 10.3% | middle | 5.4 | 2.71 (1.08 s) | 1.82 | 1.19 | 0.40 | 19 |
-| 3 | 9.8% | back wall | 5.4 | 5.35 (0.57 s) | 1.39 | 4.30 | 2.93 | 19 |
-| 4 | 9.5% | back wall | 5.4 | 4.79 (0.52 s) | 1.39 | 4.20 | 2.88 | 19 |
-| 5 | 9.2% | middle | 2.7 | 7.23 (1.22 s) | 8.49 | 2.69 | 1.30 | 77 |
-| 6 | 9.2% | back wall | 2.7 | 7.94 (0.58 s) | 4.90 | 12.9 | 4.49 | 77 |
+| Test | Methane | Ignition | Vent, m² | Measured, kPa | Their LES | Model | Model, copying faces | Sub-grid turbulence alone, copying | Molkov |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | 9.0% | middle | 5.4 | 2.17 (0.47 s) | 1.82 | 1.17 | 0.89 | 0.30 | 19 |
+| 2 | 10.3% | middle | 5.4 | 2.71 (1.08 s) | 1.82 | 1.57 | 1.19 | 0.40 | 19 |
+| 3 | 9.8% | back wall | 5.4 | 5.35 (0.57 s) | 1.39 | 4.75 | 4.30 | 2.93 | 19 |
+| 4 | 9.5% | back wall | 5.4 | 4.79 (0.52 s) | 1.39 | 4.63 | 4.20 | 2.88 | 19 |
+| 5 | 9.2% | middle | 2.7 | 7.23 (1.22 s) | 8.49 | 2.98 | 2.69 | 1.30 | 77 |
+| 6 | 9.2% | back wall | 2.7 | 7.94 (0.58 s) | 4.90 | 14.2 | 12.9 | 4.49 | 77 |
 
 Their LES ran one mixture, 9.5%, for each figure, so tests 1 and 2 share a value, and so do 3 and 4.
 
@@ -392,19 +397,22 @@ floor, as their thermocouples were; m/s, against distance from the ignition poin
 
 | | at 1 m | 2 m | 3 m | largest |
 |---|---|---|---|---|
-| Test 1, measured / model | 6.8 / 6.1 | 18.7 / 14.9 | 19.7 / 22.5 | 20 / 24 |
-| Test 4, measured / model | 6.4 / 4.9 | 11.9 / 11.9 | 20.2 / 28.2 | 45 / 96 |
-| Test 6, measured / model | 5.7 / 4.5 | 11.2 / 10.7 | 20.0 / 25.8 | 125 / 140 |
-| Test 1, towards the back wall | −2.6 to −3.6 / −2.8 to −4.8 beyond 1 m | | | |
+| Test 1, measured / model | 6.8 / 6.0 | 18.7 / 14.9 | 19.7 / 22.0 | 20 / 23 |
+| Test 4, measured / model | 6.4 / 4.9 | 11.9 / 11.9 | 20.2 / 28.0 | 45 / 96 |
+| Test 6, measured / model | 5.7 / 4.5 | 11.2 / 10.7 | 20.0 / 25.8 | 125 / 212 |
+| Test 1, towards the back wall | −2.6 to −3.6 / −2.3 to −3.9 beyond 1 m | | | |
 
-- **Overall the model is within a factor of 2.7 of every test**, against a factor of 7 before:
-  the model-to-measured ratio's geometric mean over the six is 0.65 (0.30 with sub-grid
-  turbulence alone).
-- **Lit at the back wall it is closest on the large vent**: 80–90% of the measured peaks, nearer
-  than their LES (1.4 kPa). On the small vent (test 6) it is 1.6 times the measured peak. Its flame
+Test 6's largest leaves out two arrivals within a step of their neighbours' (over 1,000 m/s). The
+speeds are those of the far-field runs; the copying faces' were within 2% inside the room.
+
+- **Overall the model is within a factor of 2.5 of every test**, against a factor of 7 before:
+  the model-to-measured ratio's geometric mean over the six is 0.76 (0.65 with copying faces, 0.30
+  with sub-grid turbulence alone and copying faces).
+- **Lit at the back wall it is closest on the large vent**: 89–97% of the measured peaks, nearer
+  than their LES (1.4 kPa). On the small vent (test 6) it is 1.8 times the measured peak. Its flame
   speeds match the measured ones to 2 m, run a third fast at 3 m, and are too fast leaving through
   the vent (96 m/s against 45 in test 4).
-- **Lit in the middle it is low**, 0.37–0.44 of the measured peaks, where their LES came within
+- **Lit in the middle it is low**, 0.41–0.58 of the measured peaks, where their LES came within
   a third. Its flame speeds inside the room are within a fifth of the measured ones, but the back of
   the flame still stalls between 0.5 and 1 m from the ignition point (see the trace above), before
   running at the tests' speed beyond. Their measured maxima for tests 2 and 5 are the acoustically
@@ -430,7 +438,7 @@ floor, as their thermocouples were; m/s, against distance from the ignition poin
   Scaling by the front's own curvature fed back on the grid's corrugations, convex parts burning
   faster and growing.
 - **The flame's speed in a vented room converges; its peak pressure roughly does.** Test 1 on
-  0.2, 0.1 and 0.05 m cells, the default flame:
+  0.2, 0.1 and 0.05 m cells, the default flame, copying faces (as run before 16 October 2026):
 
   | Cells | P_red | Speed at 1.25 / 1.75 / 2.25 / 2.75 m |
   |---|---|---|
@@ -457,8 +465,8 @@ floor, as their thermocouples were; m/s, against distance from the ignition poin
      may accelerate further.
    - The Taylor instability and the external vortex's extra wrinkling are not modelled; the
      latter is an option (Molkov and Makarov's factor of 2).
-   - Lit in the middle of FM Global's chamber the peaks are about 0.4 of the tests', and the
-     flame stalls towards the back wall; lit at a back wall, 0.8–1.6 of them.
+   - Lit in the middle of FM Global's chamber the peaks are 0.4–0.6 of the tests', and the
+     flame stalls towards the back wall; lit at a back wall, 0.9–1.8 of them.
 2. **A young flame is slow**: until it is about seventeen cells in radius, a front four cells thick
    burns over too small an area (55–83% of it from three to ten cells). On 0.1 m cells that is most
    of a room. The tests' initial turbulence (u′ ≈ 0.1 m/s) is not carried.

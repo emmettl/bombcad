@@ -818,6 +818,48 @@ elements) or the strain it moves.
 Punching under impact therefore stays declared as not predicted. In the standing, the cone forms
 but cannot slide out.
 
+### Cracking at the extreme fibre
+
+An option (`StructureModel.extremeFibreCracking`; `blastbench ... --extreme-fibre`), behind function
+constant 19, so bodies without it are unchanged. It is not a default.
+
+**What it fixes.** A one-point element judges cracking at its centre. The bottom layer of a slab n
+elements deep has its centre 1/(2n) of the depth in, so the section cracks at about 1 + 1/n times its
+cracking moment: 1.14 on 8 elements. Most members are unaffected, since their bars give them a plastic
+moment well above their cracking moment. A lightly reinforced slab or wall is different: its plastic
+moment lies below its cracking moment (Mendonça's slabs: 3.7 against 5.0 kN m/m), so its strength is
+its cracking load, and the factor carries straight into it.
+
+**How.** An element with a free face (air, or a failed neighbour, beyond it) cracks when that face
+reaches the tensile strength.
+- Its bending across its depth is the hourglass mode with corner signs s_a s_f, for in-plane axis a
+  and the face's axis f. The mode's amplitude A (the corners' displacements along a against those
+  signs, over 8) stretches the face by 2A/h more than the centre.
+- Where that adds tension, the element's tensile strength is scaled by the centre's strain over the
+  face's, to no less than half, and frozen with the rate's factor when it first cracks.
+- Its stiffness is unchanged.
+
+**What it does.**
+- **Mendonça's slab 4, static** (`blastbench mendonca-static`):
+  - Rate laws off: cracks at 66 kPa against 76, the hand estimate being 62 over its 0.8 m span.
+  - Rate laws on: 77 kPa against 89.
+- **The guard cases** (quick meshes, with the rounding variants; off → on):
+
+| Case | Off | On |
+|---|---|---|
+| Contest slab | 105% | 106% |
+| Janney's beam | 100%, failing at 44 mm | 94%, failing at 46 mm (the test at 42) |
+| OA1 | 132% | 130% |
+| Saatci SS0a-1 / SS1b-1 | 181% / 99% | 183% / 99% |
+| Peterson's beams | | within 0–8% |
+| Chiquito P7 | 32% | 33% |
+
+**Why not a default.** Janney's moment falls 6%. The frozen strength also lowers the face elements'
+tension once cracked, the concrete between cracks, not only where cracking begins. A version that
+moves only the onset would keep that. Either way, the option does not reach Mendonça's blast peaks
+(the gap there lies in the load or the measurement:
+[validation](validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge)).
+
 ## Strain-rate effects
 
 Blast loads strain materials at 0.1 to 100 per second, and both concrete and steel are stronger
