@@ -1686,7 +1686,9 @@ struct StandingScene {
                     + "shear, too stiff in a full-scale chamber and close in. In bending one slab reads either way, "
                     + "4–15% high under the contest's load and 12–21% low under its lower shot, not converged, and its beams struck on 16 elements come within 12–23%; it "
                     + "springs back too far. Blind, open-air slabs that collapsed were left standing, the rest "
-                    + "reading a tenth to a quarter of meters that likely include the supports' movement")
+                    + "reading a tenth to a quarter of meters that likely include the supports' movement; blind "
+                    + "in the contest's rig, high-strength slabs read 0.77–1.06 where they held and one broke "
+                    + "through where the test held")
         }
         if classes.contains(.plainConcrete) {
             level = max(level, .verified)
@@ -1794,8 +1796,8 @@ struct StandingScene {
                 "The defaults were chosen with these tests in view: a calibration set as much as a validation "
                     + "set, none run blind.",
                 "Blind tests judge the defaults frozen for them: tests 1 (1c85774) and 2 (047cee3) the 50-step "
-                    + "strain-rate average that the 100 µs window replaced on 12 October 2026; test 3 would judge "
-                    + "today's.",
+                    + "strain-rate average that the 100 µs window replaced on 12 October 2026; test 3 judged v0.3.0 "
+                    + "(b524a9d), with the window and afterburning and hot air.",
                 "Supports are assumed in every structural test, and move the results by 15–25% or more.",
                 "Most tests are single specimens.",
                 "Lattice-aligned geometry, a staircase of whole cells to the air.",
