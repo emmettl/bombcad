@@ -377,7 +377,14 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
         burns.airModel = .thermallyPerfect
         let burning = SceneStanding(StandingInputs(scenario: contact, cellSize: 0.25, configuration: burns))
         let today = try #require(burning.band(.debrisSpeed))
-        #expect(today.ratio == "88–182%")
+        #expect(today.ratio == "90–230%")
+        // With the outline at the elements' centres, as before 16 October.
+        var centres = burns
+        centres.structureMaskOverlap = false
+        let atCentres = try #require(
+            SceneStanding(StandingInputs(scenario: contact, cellSize: 0.25, configuration: centres)).band(
+                .debrisSpeed))
+        #expect(atCentres.ratio == "88–182%")
         #expect(abs((today.roundingSpread ?? 0) - 44.8 / 167.8) < 1e-9)
         // Afterburning without hot air was compared on neither.
         burns.airModel = .idealGas

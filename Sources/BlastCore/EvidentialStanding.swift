@@ -1919,8 +1919,9 @@ struct StandingScene {
             evidence.append(
                 StandingEvidence(
                     "Slabs under contact charges (Hupfauf, 2024)",
-                    "The far face on the axis 0.88–1.82 times the fit on today's air, the 20 cm slabs near it "
-                        + "(1.1–1.7 times on the ideal gas); the loose layer held back rather than thrown, and no "
+                    "The far face on the axis 0.9–2.3 times the fit on today's air, with the outline counted by "
+                        + "overlap (0.9–1.3 on the 20 cm slabs; 0.88–1.82 at the elements' centres, 1.1–1.7 on the "
+                        + "ideal gas), moving as much between builds as between outlines; the loose layer held back rather than thrown, and no "
                         + "slab holed where four were. SN131's close agreement rests partly on crushed bare "
                         + "elements' hourglass forces, not a physical tie",
                     "validation.md#slabs-under-contact-charges"))

@@ -335,6 +335,10 @@ public enum ValidationTables {
             document: "validation.md#slabs-with-steel-in-both-faces",
             quote: "0.91 and 1.18–1.19 times the measured peak"),
         Figure(
+            id: "debrisSpeedOverlap", low: 0.9, high: 2.3,
+            document: "validation.md#slabs-under-contact-charges",
+            quote: "the 20 cm slabs' far faces move 0.9–1.3 times the fit and the thicker 1.0–2.3"),
+        Figure(
             id: "debrisSpeedBurning", low: 0.88, high: 1.82,
             document: "validation.md#slabs-under-contact-charges",
             quote: "the far face on the axis is 0.88–1.82 times the fit on today's air"),
@@ -1290,14 +1294,21 @@ extension StandingScene {
                     check: "Hupfauf's slabs under contact charges")
                 debris.roundingSpread = ValidationTables.rounding("hupfaufSN142", "hupfaufSN131")
                 if burning {
-                    // Derived again on today's air: the far face on the axis at 0.5 ms against the fit.
+                    // Derived again on today's air: the far face on the axis at 0.5 ms against the fit,
+                    // with the outline counted by overlap (the default since 16 October) or at centres.
+                    let overlap = inputs.configuration.structureMaskOverlap
                     debris = figure(
-                        "debrisSpeedBurning", .debrisSpeed, "Far face's speed against the debris's",
+                        overlap ? "debrisSpeedOverlap" : "debrisSpeedBurning", .debrisSpeed,
+                        "Far face's speed against the debris's",
                         low: "debris too slow",
                         high: "debris too fast",
                         validity:
-                            "slabs 20–30 cm under contact charges, 12 elements through, on today's air (the 20 cm "
-                            + "slabs near the fit, 0.9–1.2, where on the ideal gas 1.2–1.9); after failure, so one "
+                            "slabs 20–30 cm under contact charges, 12 elements through, on today's air "
+                            + (overlap
+                                ? "with the outline counted by overlap (the 20 cm slabs 0.9–1.3 of the fit, the thicker "
+                                    + "1.0–2.3, moving as much between builds as between outlines)"
+                                : "with the outline at the elements' centres (the 20 cm slabs near the fit, 0.9–1.2, "
+                                    + "where on the ideal gas 1.2–1.9)") + "; after failure, so one "
                             + "draw among roundings (the far face 61.5–106.3 m/s on SN142, 22.4–27.7 on SN131); "
                             + "SN131's close agreement rests partly on crushed bare elements' hourglass forces, not a "
                             + "physical tie, and those forces run SN144 away in two of six roundings and outlines "
