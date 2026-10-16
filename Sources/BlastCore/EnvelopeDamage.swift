@@ -1,4 +1,5 @@
 import Foundation
+import simd
 
 /// The load on one envelope component through a run, as the recorder bins it: area-mean
 /// pressures per bin on its outer and inner faces (net = outer − inner pushes it inward).
@@ -27,6 +28,17 @@ public struct EnvelopeComponentLoad: Sendable {
         self.binS = binS
         self.outerPa = outerPa
         self.innerPa = innerPa
+    }
+
+    /// A recorded history's load: its bins' impulses over the bin width.
+    public init(_ history: EnvelopeComponentHistory) {
+        let kind = Kind(rawValue: history.component.kind.rawValue) ?? .wall
+        self.init(
+            id: history.component.id, owner: history.component.owner, kind: kind,
+            region: history.component.region,
+            axis: history.component.axis, binS: history.binS,
+            outerPa: history.outerImpulsePaS.map { Double($0) / history.binS },
+            innerPa: history.innerImpulsePaS.map { Double($0) / history.binS })
     }
 
     /// The region's two in-plane sizes, shorter first, m.
@@ -220,6 +232,16 @@ public enum EnvelopeDamageAssessment {
             let rotation = Self.rotation(response, span: a)
             return damage(.unreinforcedMasonry, rotation...rotation, level...level, response.lostResistanceAt)
         }
+    }
+
+    /// The air inside an envelope, m³: its solids' bounds less the solids (their disjoint blocks).
+    /// Nothing for a solid block, which has no inside to fill.
+    public static func roomVolume(of envelope: BuildingEnvelope) -> Double {
+        let low = envelope.solids.map(\.min).reduce(SIMD3<Float>(repeating: .infinity)) { simd_min($0, $1) }
+        let high = envelope.solids.map(\.max).reduce(SIMD3<Float>(repeating: -.infinity)) { simd_max($0, $1) }
+        let bounds = SIMD3<Double>(high - low)
+        let solid = envelope.blocks.reduce(0.0) { $0 + Double($1.size.x * $1.size.y * $1.size.z) }
+        return max(bounds.x * bounds.y * bounds.z - solid, 0)
     }
 
     /// Inside overpressure of a sealed room of `volume` m³ filled through orifices that open
