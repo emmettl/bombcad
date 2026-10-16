@@ -49,12 +49,13 @@ credentials are only tried on submission.
    rethrows, inlined into an initialiser that throws, handed back a corrupt error from a closure
    that cannot throw), so that every structure crashed in a release build only (see
    `BufferCopy.swift`); then `make app-smoke`, the app built and a small project run from inside
-   it;
+   it, and a new document's window and sidebar drawn offscreen while its source switches between a
+   charge and a gas cloud (`BombCAD interface-smoke`);
 3. builds `dist/BombCAD.app` in release, and checks that the checkout is still clean, that the
    app's version matches the source, that every resource bundle the binary links (read from the
    binary, as each accessor names its own) and the licence text are inside it, and that it is
    arm64; then runs a small project from inside it (`BombCAD run`), which builds the solver and
-   its shaders;
+   its shaders, and draws its views through a change of source (`BombCAD interface-smoke`);
 4. signs it with the hardened runtime and a secure timestamp, with no entitlement exceptions
    (the shaders are compiled at run time by Metal's own compiler service, which needs none);
 5. submits a ZIP to Apple and waits up to 30 minutes, writing Apple's reply to
@@ -162,6 +163,11 @@ Build 8 (0.3.1) was made on 2026-10-16 with the fix, from a commit not on main, 
 and from a fresh expansion of its ZIP, which Apple accepted and Gatekeeper assessed as
 `Notarized Developer ID`. It was not published: no one was using 0.3.0 yet, so 0.3.1 waits for
 the normal process, and takes build 9 or later.
+
+Build 9 (0.4.0) was begun on 2026-10-16 from `92ac96d7` and stopped during its tests, before signing
+or notarization: a crash on removing the gas cloud had just been found on main. It was never made or
+published; 0.4.0 takes build 10, which also draws a new document's views through a change of source
+before signing and again before archiving (`BombCAD interface-smoke`, part of `make app-smoke`).
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
