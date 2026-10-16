@@ -235,6 +235,9 @@ public struct VentedRoomStudy: Sendable {
     public var cellSize: Float = 0.1
     public var acceleration = FlameAcceleration()
     public var airModel: AirModel = .idealGas
+    /// The domain's open faces: ambient air beyond them (since 16 October 2026; copies of the cells
+    /// inside drained the domain below ambient, which raised test 1's peak by 30% when removed).
+    public var openFaces: OpenFaces = .farField
     /// The walls' and roof's thickness, m: the same at every resolution.
     public var wallThickness: Float = 0.2
     /// The longest the run may go on, s.
@@ -385,6 +388,7 @@ public struct VentedRoomStudy: Sendable {
         let scenario = scenario()
         var configuration = SolverConfiguration()
         configuration.airModel = airModel
+        configuration.openFaces = openFaces
         let solver = try BlastSolver(
             device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
         // The flame's arrival at points along the vent's axis, from the unburnt share there every

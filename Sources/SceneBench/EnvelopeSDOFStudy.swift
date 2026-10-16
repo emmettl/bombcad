@@ -54,45 +54,6 @@ enum EnvelopeSDOFStudy {
         var fillImpulsePaS: [Double]
     }
 
-    /// Inside overpressure of a sealed room of `volume` m³ filled through orifices that open
-    /// when their panes break: each `(area m², opens at s, outer mean pressures per bin Pa)`.
-    /// Mass flows as through a sharp-edged orifice (discharge 0.6) on the pressure difference,
-    /// at the upstream side's isentropic density; the room's air compresses adiabatically.
-    static func fill(volume: Double, openings: [(area: Double, opens: Double, outer: [Double])], bin: Double)
-        -> (peak: Double, impulse: Double)
-    {
-        let ambient = 101_325.0
-        let density = 1.204
-        let gamma = 1.4
-        let count = openings.map(\.outer.count).max() ?? 0
-        var mass = density * volume
-        var peak = 0.0
-        var impulse = 0.0
-        let substeps = 20
-        let h = bin / Double(substeps)
-        for index in 0..<count {
-            for sub in 0..<substeps {
-                let time = Double(index) * bin + Double(sub) * h
-                let inside = ambient * pow(mass / (density * volume), gamma)
-                var flow = 0.0
-                for opening in openings where time >= opening.opens && index < opening.outer.count {
-                    let outside = ambient + opening.outer[index]
-                    let difference = outside - inside
-                    let upstream = max(outside, inside)
-                    let rho = density * pow(upstream / ambient, 1 / gamma)
-                    flow +=
-                        (difference >= 0 ? 1 : -1) * 0.6 * opening.area
-                        * (2 * rho * abs(difference)).squareRoot()
-                }
-                mass = max(mass + flow * h, 1e-3)
-                let over = ambient * pow(mass / (density * volume), gamma) - ambient
-                peak = max(peak, over)
-                impulse += max(over, 0) * h
-            }
-        }
-        return (peak, impulse)
-    }
-
     struct Summary: Codable {
         var edges: String
         var notes: [String]
@@ -214,7 +175,7 @@ enum EnvelopeSDOFStudy {
                 }
                 let size = SIMD3<Double>(high - low) - SIMD3(0.4, 0.4, 0.2)
                 fills.append(
-                    fill(
+                    EnvelopeDamageAssessment.fill(
                         volume: size.x * size.y * size.z, openings: openings[owner] ?? [], bin: envelope.binS)
                 )
             }

@@ -22,6 +22,8 @@ public enum BandMeasure: String, Codable, CaseIterable, Sendable {
     case radiatedEnergy
     case cloudTop
     case ventedPressure
+    case breakageTime
+    case insidePressure
 }
 
 /// How far a model result has been from measurement, as model/measured, and where that holds.
@@ -277,6 +279,26 @@ public enum ValidationTables {
     /// heading and holds the figure's numbers.
     public static let figures: [Figure] = [
         Figure(
+            id: "envelopeGlassBreak", low: 0.59, high: 1.20,
+            document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
+            quote: "(0.59–1.20 of the detailed time)"),
+        Figure(
+            id: "envelopeConcreteFixed", low: 0.61, high: 1.03,
+            document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
+            quote: "0.61/1.19", "1.03/1.87"),
+        Figure(
+            id: "envelopeConcreteSimple", low: 1.19, high: 1.87,
+            document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
+            quote: "0.61/1.19", "1.03/1.87"),
+        Figure(
+            id: "envelopeBrick", low: 0.82, high: 2.54,
+            document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
+            quote: "(0.82–2.54)"),
+        Figure(
+            id: "envelopeInsideFill", low: 0.87, high: 2.23,
+            document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
+            quote: "(0.87–2.23 times the detailed peaks)"),
+        Figure(
             id: "slabSolid", low: 1.04, high: 1.15, document: "validation.md#summary",
             quote: "solid elements 113–125 mm (104–115%) on 4 to 32 elements through"),
         Figure(
@@ -359,11 +381,11 @@ public enum ValidationTables {
             id: "cloudTop", low: 0.79, high: 1.21, document: "fireball-rise.md",
             quote: "to 4% on average and 21% shot by shot"),
         Figure(
-            id: "ventedBackWall", low: 0.8, high: 1.6, document: "validation.md#summary",
-            quote: "lit at the back wall, 0.8–1.6 times the measured peaks"),
+            id: "ventedBackWall", low: 0.9, high: 1.8, document: "validation.md#summary",
+            quote: "lit at the back wall, 0.9–1.8 times the measured peaks"),
         Figure(
-            id: "ventedMiddle", low: 0.4, high: 0.4, document: "validation.md#summary",
-            quote: "lit in the middle, about 0.4"),
+            id: "ventedMiddle", low: 0.4, high: 0.6, document: "validation.md#summary",
+            quote: "lit in the middle, 0.4–0.6"),
     ]
 
     public static func figure(_ id: String) -> Figure { figures.first { $0.id == id }! }
@@ -1307,6 +1329,40 @@ extension StandingScene {
                 unbanded.append(airComparable ?? "No building faces.")
             }
             unbanded.append("Faces shielded or turned from the charge were not compared.")
+        case .envelopeDamage:
+            let page = "building-envelopes.md#one-way-damage-single-degree-of-freedom"
+            let check = "The same buildings free to respond, 0.125 m shells"
+            bands += [
+                figure(
+                    "envelopeGlassBreak", .breakageTime, "When a pane breaks", lowIsUnsafe: false,
+                    low: "too early",
+                    high: "too late", validity: "6 mm annealed panes 1.5 × 1.25 m, 2–500 kg", check: check),
+                figure(
+                    "envelopeConcreteFixed", .peakDeflection, "Concrete wall rotation, fixed edges",
+                    low: "too stiff",
+                    high: "too soft", validity: "the wall facing the charge, 0.2 m, 50–500 kg", check: check),
+                figure(
+                    "envelopeConcreteSimple", .peakDeflection,
+                    "Concrete wall rotation, simply supported edges",
+                    low: "too stiff", high: "too soft",
+                    validity: "the wall facing the charge, 0.2 m, 50–500 kg",
+                    check: check),
+                figure(
+                    "envelopeBrick", .peakDeflection, "Brick wall rotation", low: "too stiff",
+                    high: "too soft",
+                    validity: "0.215 m smeared brick, 2–50 kg, past 0.1°", check: check),
+                figure(
+                    "envelopeInsideFill", .insidePressure, "Inside peak through broken panes",
+                    low: "under-read",
+                    high: "over-read", validity: "a 6 × 6 × 4 m room behind four panes, 10–500 kg",
+                    check: check),
+            ].map { band in
+                var band = band
+                band.derivedMesh = "0.125 m shells, 8 layers"
+                band.document = page
+                return band
+            }
+            unbanded.append("Roofs, and walls beside a failing one, go beyond both concrete bounds: no band.")
         case .thermal:
             if !burning {
                 unbanded.append(
@@ -1478,8 +1534,8 @@ extension StandingScene {
                     has(.afterburning) ? nil : "Turn afterburning on where the incident impulse matters.",
                     has(.afterburning) ? ValidationTables.burningDocument : "validation.md#afterburning")
             }
-        case .envelopeExposure, .freestandingMotion, .thermal, .surfaceHeating, .cloud, .fragments,
-            .groundShock:
+        case .envelopeExposure, .envelopeDamage, .freestandingMotion, .thermal, .surfaceHeating, .cloud,
+            .fragments, .groundShock:
             break
         }
         return advice

@@ -63,6 +63,7 @@ public enum ResultKind: String, Codable, CaseIterable, Sendable, Identifiable {
     case structuralResponse
     case structuralDamage
     case envelopeExposure
+    case envelopeDamage
     case freestandingMotion
     case thermal
     case surfaceHeating
@@ -79,6 +80,7 @@ public enum ResultKind: String, Codable, CaseIterable, Sendable, Identifiable {
         case .structuralResponse: "Structural deflection"
         case .structuralDamage: "Structural damage and failure"
         case .envelopeExposure: "Building surface exposure"
+        case .envelopeDamage: "Envelope building damage"
         case .freestandingMotion: "Freestanding objects' motion"
         case .thermal: "Thermal radiation"
         case .surfaceHeating: "Surface heating and ignition"
@@ -565,8 +567,8 @@ public enum StandingTable {
                 limit: .illustrative,
                 note: "A methane or propane cloud's flame: checked against the thin-flame model in a closed "
                     + "vessel and wrinkled by sub-grid turbulence and its measured cellular instability; in FM "
-                    + "Global's vented chamber it reaches 0.8–1.6 times the tests' peaks lit at the back wall, "
-                    + "about 0.4 lit in the middle, and below the (conservative) venting correlations.",
+                    + "Global's vented chamber it reaches 0.9–1.8 times the tests' peaks lit at the back wall, "
+                    + "0.4–0.6 lit in the middle, and below the (conservative) venting correlations.",
                 document: "deflagration.md#limitations")
         case .importedEnvelopes:
             return Entry(
@@ -857,6 +859,16 @@ public enum StandingTable {
         "EnvelopeSource.objectID": .input,
         "EnvelopeSource.kind": .option([.importedEnvelopes, .mapBuildings]),
         "EnvelopeSource.detail": .input,
+        "Scenario.envelopeConstructions": .input,
+        "EnvelopeConstruction.objectID": .input,
+        "EnvelopeConstruction.walls": .input,
+        "EnvelopeConstruction.wallThicknessM": .input,
+        "EnvelopeConstruction.roof": .input,
+        "EnvelopeConstruction.roofThicknessM": .input,
+        "EnvelopeConstruction.reinforcementRatio": .input,
+        "EnvelopeConstruction.glassThicknessM": .input,
+        "EnvelopeConstruction.source": .input,
+        "EnvelopeConstruction.detail": .input,
         "Scenario.deflagration": .option([.deflagration, .terrainStaircase]),
         "Scenario.ventPanels": .option([.ventPanels]),
         "Deflagration.gas": .input,
@@ -1097,7 +1109,9 @@ extension SceneStanding {
         let scene = StandingScene(inputs)
         var results = [scene.peakOverpressure(), scene.impulse()]
         if !scene.structures.isEmpty { results += [scene.structuralResponse(), scene.structuralDamage()] }
-        if !inputs.scenario.envelopeObjects.isEmpty { results.append(scene.envelopeExposure()) }
+        if !inputs.scenario.envelopeObjects.isEmpty {
+            results += [scene.envelopeExposure(), scene.envelopeDamage()]
+        }
         if scene.options.contains(.freestandingBoxes) || scene.options.contains(.freestandingCars) {
             results.append(scene.freestandingMotion())
         }
@@ -1381,13 +1395,13 @@ struct StandingScene {
                 "deflagration.md#a-closed-sphere"),
             StandingEvidence(
                 "Vented rooms against EN 14994, NFPA 68 and Molkov (blastbench deflagration vented)",
-                "A ninth to a twenty-fifth of Molkov's best fit, which FM Global's tests show conservative; "
-                    + "trend with vent area A^-1.1 against A^-2",
+                "A seventh to a twenty-second of Molkov's best fit, which FM Global's tests show conservative; "
+                    + "trend with vent area A^-0.9 against A^-2",
                 "deflagration.md#vented-rooms-against-the-correlations"),
             StandingEvidence(
                 "FM Global's 63.7 m³ chamber, Bauwens et al. 2008 (six tests, digitised)",
-                "Lit at the back wall, 0.8–1.6 times the measured peaks; lit in the middle, about 0.4, the "
-                    + "flame stalling towards the back wall; geometric mean 0.65",
+                "Lit at the back wall, 0.9–1.8 times the measured peaks; lit in the middle, 0.4–0.6, the "
+                    + "flame stalling towards the back wall; geometric mean 0.76",
                 "deflagration.md#bauwens-chaffee-and-dorofeev-2008"),
         ]
     }
@@ -1400,8 +1414,8 @@ struct StandingScene {
         }
         return result(
             kind, .illustrative,
-            "Reads low, the unsafe side, where a vented room is lit in the middle: about 0.4 of FM Global's "
-                + "tests (0.8–1.6 lit at the back wall), the back of the flame stalling; all fall below EN 14994 "
+            "Reads low, the unsafe side, where a vented room is lit in the middle: 0.4–0.6 of FM Global's "
+                + "tests (0.9–1.8 lit at the back wall), the back of the flame stalling; all fall below EN 14994 "
                 + "and NFPA 68, and a peak is uncertain by about ±20% on 0.1 m cells. The wrinkling's one "
                 + "constant was fitted, and the instability's onset measured, in that chamber. In a closed "
                 + "vessel the laminar rise times come within 1–3% of the thin-flame model, partly two errors "
@@ -1894,6 +1908,43 @@ struct StandingScene {
                 "concrete-model.md#limitations", "structural-model.md#limitations",
                 "validation.md#what-is-missing", "validation.md#convergence-on-todays-defaults",
             ])
+    }
+
+    func envelopeDamage() -> ResultStanding {
+        let envelopes = inputs.scenario.envelopeObjects.map(\.id)
+        let assumed = envelopes.filter { inputs.scenario.envelopeConstruction(for: $0).source == .assumed }
+            .count
+        return result(
+            .envelopeDamage, .approximation,
+            "One way, from each component's load, with the air seeing the building whole: glass breakage "
+                + "and its time, and concrete panels' rotation between fixed and simply supported edges, as "
+                + "approximations; brick and the inside pressure through broken panes illustrative.",
+            evidence: [
+                StandingEvidence(
+                    "UFC 3-340-02's worked examples 3A-5, 3A-6(a) and 4A-1", "Within 1%",
+                    "building-envelopes.md#one-way-damage-single-degree-of-freedom"),
+                StandingEvidence(
+                    "The same buildings free to respond (19 runs, 2–500 kg)",
+                    "Glass: all 45 panes the detailed buildings break, a median 1.7 ms early, and 7 more; "
+                        + "concrete walls between the fixed and simply supported bounds",
+                    "building-envelopes.md#one-way-damage-single-degree-of-freedom"),
+            ],
+            assumptions: [
+                "Not covered: freestanding (cantilever) walls; no comparison with measurement for concrete, "
+                    + "brick or glass; references on one mesh and one air grid.",
+                "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
+                    + "2° is flagged as beyond the one-way model.",
+                "Glass is annealed, elastic until it breaks, without membrane stiffening; fragments' hazard "
+                    + "is not graded.",
+                "Concrete by ASCE/SEI 59-11's limits for single-reinforced slabs; brick cracked or fallen, with "
+                    + "no arching.",
+            ]
+                + (assumed > 0
+                    ? [
+                        "\(assumed) of \(envelopes.count) envelopes' construction assumed (0.2 m concrete, 0.3%)."
+                    ]
+                    : []),
+            documents: ["building-envelopes.md#one-way-damage-single-degree-of-freedom"])
     }
 
     func envelopeExposure() -> ResultStanding {
