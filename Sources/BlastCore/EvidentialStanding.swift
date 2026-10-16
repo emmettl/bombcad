@@ -1510,7 +1510,7 @@ struct StandingScene {
                 "On walls, either way: Kingery–Bulmash's reflected impulse \(reflected[key]!) on the comparison's "
                 + "\(grid.cells) for 100 kg ("
                 + (burning
-                    ? "4–15% high beyond 1.5 m/kg^(1/3) on 0.25 m or finer, not fitted"
+                    ? "3–14% high beyond 1.5 m/kg^(1/3) on 0.25 m or finer, not fitted"
                     : "within 6% beyond 1.5 m/kg^(1/3) on 0.25 m or finer") + "); \(incident)."
             evidence.append(
                 StandingEvidence(
@@ -1665,10 +1665,10 @@ struct StandingScene {
                     "validation.md#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight"),
                 StandingEvidence(
                     "An internal explosion in a reinforced concrete chamber",
-                    "Unsafe side, too stiff: its roof's edge left 55–57 mm up against 95 mm measured (three "
-                        + "fifths) on today's air, afterburning nearly doubling its rise, and 25 mm (a quarter) on "
-                        + "the ideal gas, with the confined regime's pressed interlock; not converged on 25 mm "
-                        + "elements; the wall pressures 1.0 to 1.6 times those measured",
+                    "Unsafe side, too stiff: its roof's edge left 25 mm up against 95 mm measured (a quarter) "
+                        + "with the confined regime's pressed interlock, 27 mm with afterburning and hot air; not "
+                        + "converged on 25 mm elements; the wall pressures 0.9 to 1.6 times those measured on either "
+                        + "air",
                     "validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber"),
             ]
             parts.append(
