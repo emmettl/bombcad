@@ -67,7 +67,7 @@ swift run -c release blastbench perimeter --study wall
 | Gas in a closed room | UFC 3-340-02's design curve (read off its chart by hand): 48% to 114% by default; 98% to 108% with afterburning and hot air; 90% of Cooper's closed vessel, burnt out | Either way within 8% with afterburning and hot air, good, the fitted burning time hardly mattering, against a design curve whose scatter is not given; by default low for light charges (half, the unsafe side) |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
-| Structural response  | One slab test: solid elements 113–125 mm (104–115%) on 4 to 32 elements through, rising with refinement and not converged, the same on 32 with half the step (on the earlier 50-step average of the strain rate it, and a strip of it, ran away there; 92–98% under the earlier strain-rate laws), shells 135 mm (124%), against 109 mm; the test's repeat peaked at 113 mm, a scatter of about ±2%; a 5% change in its hand-read load moves the peak 13–14%, and a source's 68 ksi yield for the bars, against the measured curve's 72, 9%. The contest's lower shot, run openly with a scaled record, reached about 80% of its peak. One beam bent to failure: peak moment 101% on 12 elements, failing at 44 mm against 42 mm, 100% on 24, holding to 60 mm, but breaking at 11 and 7 mm on 36 and 48, before the test's yield (12 October defaults; see [convergence](#convergence-on-todays-defaults)). One beam without stirrups failing in shear: 104–111% on 24 to 48 elements, 132% on 12, not converged, failing suddenly as the test did. Seven drop-weight impacts on beams: with stirrups within 12–23% under light drops and −5% to −1% under heavy ones on 16 elements (+2% to +18% and +17% to +28% on 24), struck about twice as hard as measured, the reactions up to 40% low under the heavy drops and 48% high under the light; the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived. Nineteen on beams without stirrups at rising speeds: within the 2 mm reading at 1 m/s and 15% at 3 m/s, 22% on average beyond on 16 elements (16% before the strain-rate window, the beams that broke moving by up to two thirds either way) and 53% on 24 on the earlier defaults, springing back too far, and decided by how the ends were held (clamped, stiffer than the test's static stiffness). Eighteen short beams struck to shear failure (Peterson et al., 2026): forces as measured at a shear span of one depth (the impact force set by a pad fitted to it), the deep beams too stiff; the beams with stirrups that crushed their strut in the tests hold | Unsafe side in shear: 4–11% too strong on 24 to 48 elements, 32% on 12, not converged, struck beams failing by the wrong mechanism and Peterson's struts holding where the tests crushed (low: one static test); 6 elements through 17% strong in bending. Bending of one slab either way by load: 4–15% high under the contest's load, rising towards 19% as the mesh is refined, 12–21% low (too stiff, the unsafe side) under its lower shot, not converged (moderate, on the meshes that agreed); impact either way on 16 elements but not on finer meshes, which settle 12–75% high, where the strain-rate laws, chosen among published laws on these tests, decide it (moderate on one mesh). Every structural figure here holds on the mesh it was found on ([convergence](#convergence-on-todays-defaults)) |
+| Structural response  | One slab test: solid elements 113–125 mm (104–115%) on 4 to 32 elements through, rising with refinement and not converged, the same on 32 with half the step (on the earlier 50-step average of the strain rate it, and a strip of it, ran away there; 92–98% under the earlier strain-rate laws), shells 135 mm (124%), against 109 mm; the test's repeat peaked at 113 mm, a scatter of about ±2%; a 5% change in its hand-read load moves the peak 13–14%, and a source's 68 ksi yield for the bars, against the measured curve's 72, 9%. The contest's lower shot, run openly with a scaled record, reached about 80% of its peak. Its series' three slabs with half the steel (Reynolds's RSCR4–6), run openly after blind test 3 on shots of the same rig: peaks 0.91–1.06 of measured, all standing as tested; on such a shot's shape in place of the scaled record the lower shot reaches 87–97% ([below](#reynoldss-8-in-slabs-and-the-lower-shots-shape)). One beam bent to failure: peak moment 101% on 12 elements, failing at 44 mm against 42 mm, 100% on 24, holding to 60 mm, but breaking at 11 and 7 mm on 36 and 48, before the test's yield (12 October defaults; see [convergence](#convergence-on-todays-defaults)). One beam without stirrups failing in shear: 104–111% on 24 to 48 elements, 132% on 12, not converged, failing suddenly as the test did. Seven drop-weight impacts on beams: with stirrups within 12–23% under light drops and −5% to −1% under heavy ones on 16 elements (+2% to +18% and +17% to +28% on 24), struck about twice as hard as measured, the reactions up to 40% low under the heavy drops and 48% high under the light; the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived. Nineteen on beams without stirrups at rising speeds: within the 2 mm reading at 1 m/s and 15% at 3 m/s, 22% on average beyond on 16 elements (16% before the strain-rate window, the beams that broke moving by up to two thirds either way) and 53% on 24 on the earlier defaults, springing back too far, and decided by how the ends were held (clamped, stiffer than the test's static stiffness). Eighteen short beams struck to shear failure (Peterson et al., 2026): forces as measured at a shear span of one depth (the impact force set by a pad fitted to it), the deep beams too stiff; the beams with stirrups that crushed their strut in the tests hold | Unsafe side in shear: 4–11% too strong on 24 to 48 elements, 32% on 12, not converged, struck beams failing by the wrong mechanism and Peterson's struts holding where the tests crushed (low: one static test); 6 elements through 17% strong in bending. Bending of one slab either way by load: 4–15% high under the contest's load, rising towards 19% as the mesh is refined, 12–21% low (too stiff, the unsafe side) under its lower shot, not converged (moderate, on the meshes that agreed); impact either way on 16 elements but not on finer meshes, which settle 12–75% high, where the strain-rate laws, chosen among published laws on these tests, decide it (moderate on one mesh). Every structural figure here holds on the mesh it was found on ([convergence](#convergence-on-todays-defaults)) |
 | Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of the paper's text (55–60% of its Figure 9), the impulse under the charge 84–95% of Kingery–Bulmash's, for charges given as TNT equivalents; the slab left a third to a half as far down as measured, spalled only under the charge (on fine air and 12 elements through), and not holed | Unsafe side for damage: the slab bends a third to a half as far, spalls too little and is never holed (low); the load either way within 8%, good |
 | Steel in both faces | Wu et al. (2023): 2 m slabs, one layer or two, within −20% to +7% at the peak under 1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh, 40–70% (too stiff) in the six under 0.2–0.8 kg where the tests spalled; contact charges hole them at a stable step to a half and a third of the measured size (the larger holes at the default step were the step running away). Wang et al. (2022): an aluminised charge's impulse 75–82% as its stated 10 kg of TNT, 81–86% with afterburning and hot air; the slabs several times too stiff as supported | Unsafe side under the small charges: 40–70%, too stiff (low); either way under the larger, −20% to +7% (moderate, two shots); holes a half and a third of the size; low for one layer against two and spall |
 | Walls in the open    | Alsubaei (2015), ANFO before perimeter walls: column peaks with no wall within about 10% from 9 m out (a quarter to two thirds high at 8.2 m, where the measured are low); the wall's shielding bracketed, not tested, as the wing walls' length is unknown; walls crack where seen but more widely, rock or slide on their footings in sand; reinforced blockwork top 31 mm against 28 mm as one material, running away as units and joints | Moderate for peaks in the open; low for shielding and for the walls
@@ -1051,6 +1051,101 @@ repeated shot ranged from 38% short to 99% beyond the measured peaks, and suspec
 better ones were tuned to their authors' single-degree-of-freedom results. BombCAD's 104–114%
 would sit among the better entries, but it is not comparable with them: they were blind, and this
 model has been developed against this very slab.
+
+### Reynolds's 8 in slabs, and the lower shot's shape
+
+*Open, calibrated evidence* (16 October 2026, after [blind test 3](#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator)'s
+reveal). The contest slab's series, RSCR in Reynolds's thesis, includes three slabs with half its
+steel: No. 3 Grade 60 bars at 8 in (RSCR4–6), shot once each in the same rig under 3.4–3.8 MPa ms.
+None had been compared before. The judge transcribed Table 15 into
+[Samples/Reynolds2015/rscr](../Samples/Reynolds2015/rscr/README.md):
+- each slab's average peak and impulse;
+- the measured peak and residual (no times, no histories);
+- the RSCR cylinders;
+- Chapter 8's words on the damage.
+
+The measurements were in view, so this is calibration, and nothing was tuned to it.
+
+**The model** (`blastbench reynolds --series rscr`, run on main at `77d6479`; the choices were
+fixed before the first run):
+- **Unchanged from the contest slab's harness and its band:** 8 solid elements through, lines of
+  nodes 52 in apart, the pressure applied to the face. No air is computed, so the recommended air
+  (afterburning, hot air) does not enter.
+- **The material:** the contest slab's own, 5,400 psi with the bars' measured Grade 60 curve. The
+  thesis gives no bar curve for these slabs.
+- **The bars:** five as Fig 4 draws them, smeared over 33.75 in, 1 in from the back face, as the
+  contest slab's nine.
+- **The load.** The thesis gives no pressure history for any RSCR slab, so each takes a shape
+  scaled to its Table 15 impulse. The shape is the load blind test 3 applied to the HSCV 8 in
+  slab of nearest impulse: HSCV5's (3.53 MPa ms) for RSCR4 and 6, HSCV6's (3.97) for RSCR5. Those
+  are shots in the same rig at the same level. The alternative, the contest's load 1a record
+  scaled down as the record scaled it for the lower shot, is a secondary run.
+
+**Results**, predicted against measured (Table 15), 300 ms runs:
+
+| Slab | Load (kPa, applied / tabulated; kPa ms) | Peak, mm (ratio) | Residual, mm (ratio) | Outcome |
+|---|---|---|---|---|
+| RSCR4 | 199 / 230; 3,409 | 77.6 / 85.3 (**0.91**) | 49.0 / 81.0 (0.60) | holds / holds |
+| RSCR5 | 218 / 240; 3,789 | 96.6 / 91.4 (**1.06**) | 63.4 / 40.1 (1.58) | holds / holds |
+| RSCR6 | 205 / 232; 3,509 | 82.8 / 80.5 (**1.03**) | 52.6 / 49.3 (1.07) | holds / holds |
+
+- **The peaks:** a geometric mean of **1.00**, within 0.91–1.06, peaking at 27–30 ms. All three
+  hold, as in the tests.
+- **The residuals scatter, 0.60–1.58, as the tests' own do.** The judge notes that RSCR4 kept
+  95% of its peak where RSCR5 and 6 kept 44% and 61%.
+- **The damage.** The blast face is hardly crushed: one element on RSCR4 and RSCR5, none on RSCR6.
+  The thesis likewise reports no significant crushing. The back faces crack across the width
+  about mid-span, widest 1.1–1.4 mm averaged across it, "resembling" the HSCV slabs', as Chapter 8
+  says.
+
+So the 8 in slabs the blind test broke (HSCV4, on assumed high-strength bars) stand here on the
+contest slab's measured Grade 60 curve, and within the slab band.
+
+**Sensitivity** (peaks' ratios, RSCR4 / 5 / 6):
+
+| Run | Ratios | Mean |
+|---|---|---|
+| As above | 0.91 / 1.06 / 1.03 | 1.00 |
+| The load 1a record scaled to each impulse | 0.56 / 0.68 / 0.64 | 0.62 |
+| The concrete at the RSCR 28-day cylinders' 41.4 MPa | 0.89 / 1.04 / 1.01 | 0.98 |
+| The bars by the nominal 8 in spacing (4.2 in the width, not 5) | 1.18 / 1.37 / 1.36 | 1.30 |
+| 16 elements through (RSCR5 only) | – / 1.08 / – | |
+
+- **The load's shape decides it.** Scaled down to these impulses, the long load 1a record peaks
+  at only 167–185 kPa against the tabulated 230–240. HSCV5's and HSCV6's shapes peak at 199–218
+  kPa. The shorter, lower shots of this rig are not load 1a made smaller.
+- **The bar count comes next.** The drawn count is kept: Schwer's drawing gives the same layout
+  for the contest slab's nine bars.
+- **16 elements** move RSCR5's peak +2.5%, but crush a 0.22 m² band of its blast face that 8 do
+  not.
+
+**The contest slab's three shots on the same footing.** Run the same way, RSCR1–3 (load 1a, its
+repeat and the lower shot) take Table 15's impulses and the 4 in HSCV shape of nearest impulse
+(HSCV2's for RSCR1 and 2, HSCV3's for RSCR3):
+
+| Slab | Shape | Peak, mm | Against Table 15 | Against the record |
+|---|---|---|---|---|
+| RSCR1 (load 1a) | HSCV2's | 103.5 | 109.0 (0.95) | |
+| RSCR1 | load 1a record, × 0.957 | 101.0 | (0.93) | |
+| RSCR2 (1aa) | HSCV2's | 110.0 | 113.0 (0.97) | |
+| RSCR3 (lower shot) | HSCV3's | 70.0 | 80.5 (0.87) | about 72 (0.97) |
+| RSCR3 | load 1a record, × 0.770 | 59.7 | (0.74) | (0.83) |
+
+- **At load 1a the shape hardly matters** (101 against 103.5 mm). Table 15's 976 psi ms is 4%
+  below the stated 1,020 the record uses, so these runs sit at 0.93–0.97 rather than the record's
+  1.04.
+- **At the lower shot it does.** The scaled record reproduces the record's 57–63 mm (its 79–88%).
+  HSCV3's shape, a measured shot of this rig at nearly the same impulse (5.34 against 5.41 MPa ms),
+  gives 70 mm: 97% of the 72 mm plateau, 87% of Table 15's reading.
+
+So most of the lower shot's shortfall, which sets the low end of the slab band ("too stiff under
+its lower shot"), appears to come from the load's scaled shape rather than the slab model. This is
+only suggestive: the shape is another shot's, and the lower shot's own pressure record has not
+been found. The band is left as it is until that record, or the RSCR series' first report
+(Thiagarajan and Johnson, ACI Structural Journal 111(6), 2014, which may hold the histories), is
+in hand.
+
+Outputs: `/Volumes/StudioData/bombcad/reynolds-prediction/rscr/`.
 
 ### Its cracks
 
