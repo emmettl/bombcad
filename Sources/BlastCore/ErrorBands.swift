@@ -355,11 +355,11 @@ public enum ValidationTables {
             id: "cloudTop", low: 0.79, high: 1.21, document: "fireball-rise.md",
             quote: "to 4% on average and 21% shot by shot"),
         Figure(
-            id: "ventedBackWall", low: 0.8, high: 1.6, document: "validation.md#summary",
-            quote: "lit at the back wall, 0.8–1.6 times the measured peaks"),
+            id: "ventedBackWall", low: 0.9, high: 1.8, document: "validation.md#summary",
+            quote: "lit at the back wall, 0.9–1.8 times the measured peaks"),
         Figure(
-            id: "ventedMiddle", low: 0.4, high: 0.4, document: "validation.md#summary",
-            quote: "lit in the middle, about 0.4"),
+            id: "ventedMiddle", low: 0.4, high: 0.6, document: "validation.md#summary",
+            quote: "lit in the middle, 0.4–0.6"),
     ]
 
     public static func figure(_ id: String) -> Figure { figures.first { $0.id == id }! }

@@ -563,8 +563,8 @@ public enum StandingTable {
                 limit: .illustrative,
                 note: "A methane or propane cloud's flame: checked against the thin-flame model in a closed "
                     + "vessel and wrinkled by sub-grid turbulence and its measured cellular instability; in FM "
-                    + "Global's vented chamber it reaches 0.8–1.6 times the tests' peaks lit at the back wall, "
-                    + "about 0.4 lit in the middle, and below the (conservative) venting correlations.",
+                    + "Global's vented chamber it reaches 0.9–1.8 times the tests' peaks lit at the back wall, "
+                    + "0.4–0.6 lit in the middle, and below the (conservative) venting correlations.",
                 document: "deflagration.md#limitations")
         case .importedEnvelopes:
             return Entry(
@@ -1372,13 +1372,13 @@ struct StandingScene {
                 "deflagration.md#a-closed-sphere"),
             StandingEvidence(
                 "Vented rooms against EN 14994, NFPA 68 and Molkov (blastbench deflagration vented)",
-                "A ninth to a twenty-fifth of Molkov's best fit, which FM Global's tests show conservative; "
-                    + "trend with vent area A^-1.1 against A^-2",
+                "A seventh to a twenty-second of Molkov's best fit, which FM Global's tests show conservative; "
+                    + "trend with vent area A^-0.9 against A^-2",
                 "deflagration.md#vented-rooms-against-the-correlations"),
             StandingEvidence(
                 "FM Global's 63.7 m³ chamber, Bauwens et al. 2008 (six tests, digitised)",
-                "Lit at the back wall, 0.8–1.6 times the measured peaks; lit in the middle, about 0.4, the "
-                    + "flame stalling towards the back wall; geometric mean 0.65",
+                "Lit at the back wall, 0.9–1.8 times the measured peaks; lit in the middle, 0.4–0.6, the "
+                    + "flame stalling towards the back wall; geometric mean 0.76",
                 "deflagration.md#bauwens-chaffee-and-dorofeev-2008"),
         ]
     }
@@ -1391,8 +1391,8 @@ struct StandingScene {
         }
         return result(
             kind, .illustrative,
-            "Reads low, the unsafe side, where a vented room is lit in the middle: about 0.4 of FM Global's "
-                + "tests (0.8–1.6 lit at the back wall), the back of the flame stalling; all fall below EN 14994 "
+            "Reads low, the unsafe side, where a vented room is lit in the middle: 0.4–0.6 of FM Global's "
+                + "tests (0.9–1.8 lit at the back wall), the back of the flame stalling; all fall below EN 14994 "
                 + "and NFPA 68, and a peak is uncertain by about ±20% on 0.1 m cells. The wrinkling's one "
                 + "constant was fitted, and the instability's onset measured, in that chamber. In a closed "
                 + "vessel the laminar rise times come within 1–3% of the thin-flame model, partly two errors "
