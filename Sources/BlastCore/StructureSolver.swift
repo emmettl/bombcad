@@ -270,6 +270,8 @@ public final class StructureSolver {
         if rubble { constants.setConstantValue(&rubble, type: .bool, index: 12) }
         var fibre = model.extremeFibreCracking
         if fibre { constants.setConstantValue(&fibre, type: .bool, index: 19) }
+        var crushedBare = model.erodesCrushedBare
+        if crushedBare { constants.setConstantValue(&crushedBare, type: .bool, index: 20) }
         elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
         traceElementPipeline = {
             let tracing = MTLFunctionConstantValues()
@@ -289,6 +291,8 @@ public final class StructureSolver {
             if rubble { tracing.setConstantValue(&rubble, type: .bool, index: 12) }
             var fibre = fibre
             if fibre { tracing.setConstantValue(&fibre, type: .bool, index: 19) }
+            var crushedBare = crushedBare
+            if crushedBare { tracing.setConstantValue(&crushedBare, type: .bool, index: 20) }
             return try? ShaderLibrary.pipeline("structureElements", in: library, constants: tracing)
         }
         // Keep the general connection law out of kernels for ordinary clamped/free bodies.
