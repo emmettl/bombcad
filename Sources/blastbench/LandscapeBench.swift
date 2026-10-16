@@ -132,8 +132,7 @@ private func runLandscapeBurst(device: MTLDevice, out: URL) throws {
     configureRefinement(&configuration)
     configuration.gravity = chosenGravity()
     // As the app's "Afterburning and hot air", on unless `--no-afterburn`.
-    configuration.afterburning = burning
-    if let air = chosenAirModel() { configuration.airModel = air }
+    applyChosenAir(&configuration)
     print(
         String(
             format:

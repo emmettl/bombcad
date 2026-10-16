@@ -15,8 +15,14 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = "dist/BombCAD.app"
 EXECUTABLE = "BombCAD"
 MINIMUM_MACOS = "15.0"
-# The shaders are compiled at run time from these bundles; an app without them cannot start.
-RESOURCE_BUNDLES = ["BombCAD_BlastCore.bundle", "BombCAD_BlastRender.bundle"]
+# The shaders are compiled at run time from SwiftPM resource bundles; a target whose bundle is
+# missing stops the app the first time it is used (0.3.0 crashed on New Document without
+# ContinuumKit's contact search). Each target's generated accessor names its own bundle in the
+# message it stops with, so the binary itself says which bundles it needs.
+BUNDLE_REFERENCE = re.compile(rb"unable to find bundle named ([A-Za-z0-9_.-]+)")
+# A small project, run headless from inside the packaged app: it builds the solver, which
+# compiles the shaders of every bundle the air and the structures use.
+SMOKE_PROJECT = "Samples/Neighborhood/layout.json"
 
 
 def run(*arguments, capture=False):
@@ -59,6 +65,28 @@ def write_checksums(archive, manifest):
     archive.with_suffix(".json").write_text(json.dumps({**manifest, "sha256": checksum}, indent=2) + "\n")
 
 
+def linked_bundles(binary):
+    """The resource bundles a binary loads, by the names their accessors stop with."""
+    names = sorted({name.decode() + ".bundle" for name in BUNDLE_REFERENCE.findall(Path(binary).read_bytes())})
+    if not names:
+        raise ValueError(f"{binary} names no resource bundles; the shaders would be missing.")
+    return names
+
+
+def missing_bundles(app):
+    binary = app / "Contents/MacOS" / EXECUTABLE
+    if not binary.is_file():
+        return ["the executable"]
+    return [name for name in linked_bundles(binary) if not (app / "Contents/Resources" / name).is_dir()]
+
+
+def smoke(app):
+    """Runs a small project from inside the app, as a user's copy would start a document."""
+    with tempfile.TemporaryDirectory(prefix="bombcad-smoke-") as temporary:
+        run(str(app / "Contents/MacOS" / EXECUTABLE), "run", str(ROOT / SMOKE_PROJECT),
+            "--resolution", "coarse", "--duration", "0.002", "--out", str(Path(temporary) / "smoke.bombcad"))
+
+
 def preflight(args):
     identity = choose_identity(run("security", "find-identity", "-v", "-p", "codesigning", capture=True), args.identity)
     if not args.notary_profile:
@@ -88,9 +116,10 @@ def release(args):
     built = metadata(plistlib.loads((app / "Contents/Info.plist").read_bytes()))
     if any(info[key] != built[key] for key in built):
         raise ValueError("Built application metadata differs from the release source.")
-    missing = [name for name in RESOURCE_BUNDLES if not (app / "Contents/Resources" / name).is_dir()]
+    missing = missing_bundles(app)
     if missing:
         raise ValueError(f"The app lacks its shader bundles: {', '.join(missing)}.")
+    smoke(app)
     if not (app / "Contents/Resources/LICENSE").is_file():
         raise ValueError("The app lacks its licence text, which must ship with every copy.")
     architecture = run("lipo", "-archs", str(app / "Contents/MacOS" / EXECUTABLE), capture=True).strip()
@@ -114,6 +143,7 @@ def release(args):
     run("xcrun", "stapler", "validate", str(app))
     run("codesign", "--verify", "--deep", "--strict", str(app))
     run("spctl", "--assess", "--type", "execute", "--verbose=4", str(app))
+    smoke(app)
     run("ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", str(app), str(archive))
     write_checksums(archive, {**info, "signing": "Developer ID Application", "notarized": True})
     print(f"Ready for review: {archive}. No tag or release has been created.")
@@ -121,12 +151,23 @@ def release(args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["check", "prepare"])
+    parser.add_argument("command", choices=["check", "prepare", "bundles", "smoke"])
+    parser.add_argument("path", nargs="?", help="bundles: the binary; smoke: the app")
     parser.add_argument("--identity", default=os.environ.get("BOMBCAD_SIGNING_IDENTITY"))
     parser.add_argument("--notary-profile", default=os.environ.get("BOMBCAD_NOTARY_PROFILE"))
     args = parser.parse_args()
     try:
-        release(args)
+        if args.command == "bundles":
+            print("\n".join(linked_bundles(args.path)))
+        elif args.command == "smoke":
+            app = Path(args.path)
+            missing = missing_bundles(app)
+            if missing:
+                raise ValueError(f"The app lacks its shader bundles: {', '.join(missing)}.")
+            smoke(app)
+            print(f"{app} ran a project from inside its bundle.")
+        else:
+            release(args)
     except (ValueError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"Release preparation stopped: {error}\n")
 

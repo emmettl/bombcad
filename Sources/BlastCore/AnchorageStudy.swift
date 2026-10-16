@@ -210,7 +210,8 @@ public enum AnchorageStudy {
     public static func runCoupled(
         device: MTLDevice, base: BaseConnection, mass: Float = 50, standoff: Float = 10,
         duration: Double = 0.5, cellSize: Float = 0.25, elementSize: Float = 0.0625, margin: Float = 12,
-        domainHeight: Float = 18, soil: Soil? = nil, progress: ((String) -> Void)? = nil
+        domainHeight: Float = 18, soil: Soil? = nil, air: SolverConfiguration = .recommended,
+        progress: ((String) -> Void)? = nil
     ) throws -> Result {
         let started = ContinuousClock.now
         let wallLength: Float = 12
@@ -229,8 +230,8 @@ public enum AnchorageStudy {
             boxes: [], charge: Charge(mass: mass, position: SIMD3(margin, middle, 0)),
             gauges: [Gauge("Face, mid-height", at: face), Gauge("Back, mid-height", at: back)],
             structure: model)
-        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
-        try solver.load(scenario)
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: cellSize, configuration: air)
         guard let structure = solver.structure else { throw BlastError.allocationFailed("structure") }
         let top = structure.nodeIndex(0, structure.ey / 2, structure.ez)
         func sway() -> Float {
