@@ -321,17 +321,27 @@ static inline float2 vibration(float temperature) {
     return airGasConstant * sum;
 }
 
-// Temperature of thermally perfect air of internal energy `e` per kilogram: Newton's method
-// from the temperature without vibration, which lies above the root; two steps reach single
-// precision everywhere from room temperature to 20,000 K.
-static inline float airTemperature(float e) {
-    float t = max(e, 0.0f) / (2.5f * airGasConstant);
-    for (int n = 0; n < 2; ++n) {
-        float2 v = vibration(t);
-        t -= (2.5f * airGasConstant * t + v.x - e) / (2.5f * airGasConstant + v.y);
-    }
-    return max(t, 0.0f);
+// Temperature (x) of thermally perfect air of internal energy `e` per kilogram, and its
+// vibrational heat capacity (y) at the first guess: a rational function of the temperature
+// without vibration, y = e / (5/2 R), within 10^-4 of the root from 1 K to 60,000 K (and exact as
+// y falls to nothing), then one step of Newton's method, which brings it within 2 x 10^-10. The
+// heat capacity at the guess gives the ratio of specific heats within 2 x 10^-6. (Until October
+// 2026 two steps from y itself, and the heat capacity evaluated again at the root: three
+// evaluations of the vibration's exponentials where one does, which hot air spent a tenth of a
+// cell's update on.)
+static inline float2 airTemperatureAndHeat(float e) {
+    float y = max(e, 0.0f) / (2.5f * airGasConstant);
+    float z = y * (1.0f / 3000.0f);
+    float p = 1.0f + z * (3.3791424f + z * (20.550920f + z * (137.42716f + z * 249.79498f)));
+    float q = 1.0f + z * (3.3600479f + z * (21.645931f + z * (118.98650f + z * 349.70334f)));
+    float t = y * p / q;
+    float2 v = vibration(t);
+    t -= (2.5f * airGasConstant * t + v.x - e) / (2.5f * airGasConstant + v.y);
+    return float2(max(t, 0.0f), v.y);
 }
+
+// Temperature of thermally perfect air of internal energy `e` per kilogram.
+static inline float airTemperature(float e) { return airTemperatureAndHeat(e).x; }
 
 // Pressure from density and internal energy per volume.
 static inline float gasPressure(float rho, float internalEnergy, uint model, float gamma) {
@@ -357,13 +367,13 @@ static inline float2 gasState(float rho, float internalEnergy, uint model, float
         return float2((gamma - 1.0f) * internalEnergy, gamma);
     }
     float e = internalEnergy / rho;
-    float t = airTemperature(e);
+    float2 th = airTemperatureAndHeat(e);
     if (model == airDissociating) {
-        t = dissociatingTemperature(rho, e, t);
+        float t = dissociatingTemperature(rho, e, th.x);
         DissociatingAir air = dissociatingAir(rho, t);
         return float2(rho * air.gasConstant * t, 1.0f + air.gasConstant / air.frozenHeat);
     }
-    return float2(rho * airGasConstant * t, 1.0f + airGasConstant / (2.5f * airGasConstant + vibration(t).y));
+    return float2(rho * airGasConstant * th.x, 1.0f + airGasConstant / (2.5f * airGasConstant + th.y));
 }
 
 // Internal energy per volume from density and pressure.
