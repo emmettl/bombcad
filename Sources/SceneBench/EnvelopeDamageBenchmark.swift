@@ -102,6 +102,9 @@ enum EnvelopeDamageBenchmark {
         var rotationDeg: Float
         var elements: Int
         var failedShare: Float
+        /// The same over elements more than one element from the region's edges: the panel's own
+        /// failure, without the joints'.
+        var interiorFailedShare: Float = 0
         var shearFailedShare: Float
         var punchedShare: Float
         var broken: Bool?
@@ -221,6 +224,8 @@ enum EnvelopeDamageBenchmark {
         /// `axis` searched for its solid: §2's faces are the fluid cells either side of it.
         var columns: [SIMD2<Int32>] = []
         var span: ClosedRange<Int> = 0...0
+        /// Elements more than an element from the region's edges: its panel, not its joints.
+        var interior: [Int] = []
         var loads = Loads()
     }
 
@@ -311,8 +316,16 @@ enum EnvelopeDamageBenchmark {
             var outline = box
             outline.min[axis] -= h / 2
             outline.max[axis] += h / 2
+            // Only elements in the member's own mid-surface: a wall's top row is not the roof's.
             let elements = centres.indices.filter { e in
-                isPane ? outline.contains(centres[e]) : grown.contains(centres[e]) && !inPane(centres[e])
+                abs(centres[e][axis] - middle[axis]) < h / 4
+                    && (isPane
+                        ? outline.contains(centres[e]) : grown.contains(centres[e]) && !inPane(centres[e]))
+            }
+            let interior = elements.filter { e in
+                plane.indices.allSatisfy { k in
+                    centres[e][plane[k]] > low[k] + h && centres[e][plane[k]] < high[k] - h
+                }
             }
             if ProcessInfo.processInfo.environment["ENVELOPE_DAMAGE_DEBUG"] != nil {
                 print(
@@ -366,7 +379,7 @@ enum EnvelopeDamageBenchmark {
             result.append(
                 Tracked(
                     component: component, axis: axis, centre: centre, edges: edges, elements: elements,
-                    columns: columns, span: lo...hi))
+                    columns: columns, span: lo...hi, interior: interior))
         }
         return result
     }
@@ -572,8 +585,23 @@ enum EnvelopeDamageBenchmark {
                 c.residualM = tail.isEmpty ? 0 : tail.reduce(0, +) / Float(tail.count)
                 c.rotationDeg = atan(c.peakM / (c.shortSpanM / 2)) * 180 / .pi
                 let count = Float(max(t.elements.count, 1))
+                if let shells, ProcessInfo.processInfo.environment["ENVELOPE_DAMAGE_DEBUG"] != nil {
+                    var histogram: [UInt8: Int] = [:]
+                    var heights: [Float] = []
+                    for e in t.elements {
+                        let raw = shells.flagBuffer.contents().load(fromByteOffset: e, as: UInt8.self)
+                        histogram[raw, default: 0] += 1
+                        if raw != 1 { heights.append(shells.elementCentre(e)[(t.axis + 1) % 3]) }
+                    }
+                    print(
+                        "  \(c.id.suffix(10)) flags \(histogram) heights \(heights.sorted().prefix(6)) … \(heights.sorted().suffix(3))"
+                    )
+                }
                 if let shells {
                     c.failedShare = Float(t.elements.filter { shells.flag($0) != .active }.count) / count
+                    c.interiorFailedShare =
+                        Float(t.interior.filter { shells.flag($0) != .active }.count)
+                        / Float(max(t.interior.count, 1))
                     c.shearFailedShare = Float(t.elements.filter { shells.hasShearFailed($0) }.count) / count
                     c.punchedShare = Float(t.elements.filter { shells.isPunched($0) }.count) / count
                 }
@@ -652,6 +680,7 @@ enum EnvelopeDamageBenchmark {
             "Invented buildings under invented charges: numerical references for the one-way model, not measured damage.",
             "Walls and roof as shells at their mid-surfaces; deflection relative to the support edges' mean, positive inward.",
             "Every edge of every member is a support edge here (ground, neighbouring members, the wall around a pane).",
+            "Elements count for a member only in its own mid-surface; failedShare includes its edge rows, where the shell junctions erode first, interiorFailedShare leaves them out.",
             "Under gravity, settled first for 0.25 s with mass-proportional damping of 300/s, then undamped; deflections are from the settled state.",
             "Component loads follow spec §2–§3, sampled by this harness on the detailed run: the fluid cells either side of each component's solid cells, every fluid step, binned as impulse.",
         ]
