@@ -53,6 +53,8 @@ func runMendonca(device: MTLDevice) throws {
     // bearings, unable to lift off.
     if let record = option("record").flatMap({ Double($0) }) { settings.pressureRecord = record }
     if flag("hold-down") { settings.holdDown = true }
+    // `--slab-lift 0.003`: the slab, bearings and charge raised off the air cells' faces.
+    if let lift = option("slab-lift").flatMap({ Float($0) }) { settings.slabLift = lift }
     let names = option("slabs")?.split(separator: ",").map(String.init)
     let slabs = inputs.slabs.filter { names?.contains($0.name) ?? true }
     let out = URL(filePath: option("out") ?? "/Volumes/StudioData/bombcad/mendonca-prediction/run")

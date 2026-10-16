@@ -159,6 +159,11 @@ public enum MendoncaSlabTest {
         /// A study after the reveal: the bearings' nodes held vertically as well, so that the slab
         /// cannot lift off its trestles.
         public var holdDown = false
+        /// A study after the reveal: the slab, its bearings and the charge raised this far. With 8
+        /// elements through, the top layer's centres lie on the faces of 12.5 and 25 mm air cells, so
+        /// microns of movement flip which cell counts them and the cell above the face flickers solid;
+        /// 3 mm takes them off.
+        public var slabLift: Float = 0
         /// The crack opening (largest reached) that counts an element broken across.
         public var brokenOpening: Float = 0.001
         public var sampleInterval: Double = 1e-4
@@ -201,8 +206,9 @@ public enum MendoncaSlabTest {
     public static func slabBox(inputs: Inputs, settings: Settings = Settings()) -> Box {
         let m = settings.margin
         return Box(
-            min: SIMD3(m, m, inputs.height),
-            max: SIMD3(m + inputs.plan, m + inputs.plan, inputs.height + inputs.thickness))
+            min: SIMD3(m, m, inputs.height + settings.slabLift),
+            max: SIMD3(m + inputs.plan, m + inputs.plan, inputs.height + settings.slabLift + inputs.thickness)
+        )
     }
 
     /// The blind runs' domain, 3.0 × 3.0 × 3.2 m.
