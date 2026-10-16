@@ -264,6 +264,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case afterburnLimit
     case shockRefinement
     case twoLevelRefinement
+    case adaptiveSubsteps
     case mappedCharge
     case structureFixedInAir
     case stationaryWalls
@@ -338,6 +339,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .afterburnLimit: return config.afterburning && config.afterburnLimit != nil
         case .shockRefinement: return config.refinement > 1 && config.refinementLevels == 1
         case .twoLevelRefinement: return config.refinement > 1 && config.refinementLevels > 1
+        case .adaptiveSubsteps: return config.refinement > 1 && config.refinementOwnSteps
         case .mappedCharge: return config.mappedCharge
         case .structureFixedInAir: return !structures.isEmpty && !config.twoWayCoupling
         case .stationaryWalls: return !structures.isEmpty && !config.movingWalls
@@ -504,6 +506,14 @@ public enum StandingTable {
                 limit: nil,
                 note: "Two levels by 2 give the peaks and impulses of a grid four times as fine, within 3%.",
                 document: "validation.md#with-refinement")
+        case .adaptiveSubsteps:
+            return Entry(
+                title: "Adaptive substeps", affects: air + structure + [.envelopeExposure], limit: nil,
+                note: "Each refined level takes only the substeps its own waves need: the open blast's peaks "
+                    + "move 1 to 2.5% (up, towards Kingery-Bulmash), impulses and arrivals under 1%, inside the "
+                    + "6 to 8% scatter of the references; close in, where the patches hold the fastest wave, "
+                    + "nothing changes.",
+                document: "air-blast-model.md#refining-near-the-shock")
         case .mappedCharge:
             return Entry(
                 title: "Finely resolved start", affects: air, limit: nil,
@@ -902,6 +912,7 @@ public enum StandingTable {
         "SolverConfiguration.refinementThreshold": .numerical,
         "SolverConfiguration.refinementMargin": .numerical,
         "SolverConfiguration.refinementLevels": .option([.twoLevelRefinement]),
+        "SolverConfiguration.refinementOwnSteps": .option([.adaptiveSubsteps]),
         "SolverConfiguration.refinementFinerThreshold": .numerical,
         "SolverConfiguration.refinementMemory": .numerical,
         "SolverConfiguration.radiativeCooling": .option([.radiativeCooling]),

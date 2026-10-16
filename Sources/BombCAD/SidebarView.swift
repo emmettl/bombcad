@@ -352,6 +352,13 @@ struct SidebarView: View {
                     "How weak a shock the refined air still follows: a jump of 10%, 2% or 0.5% of the pressure "
                         + "across a cell. Beyond it the peaks fall to the coarse cells' share; following further "
                         + "costs more (see Large scenes).")
+                Toggle("Adaptive substeps", isOn: $model.settings.adaptiveSubsteps)
+                    .padding(.leading, 20)
+                    .help(
+                        "Lets the refined air take fewer, longer substeps where its own waves are slower than the "
+                            + "fastest in the coarse air, as in the open after the fireball has spread: 1.1 to 1.3 "
+                            + "times faster there, peaks 1 to 2.5% higher (towards the references). The advisor "
+                            + "turns it on where it pays.")
             }
             LabeledSlider(
                 title: "X", value: axisBinding(\.x), range: 1...Double(model.domainSize.x - 1),

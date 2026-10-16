@@ -4963,6 +4963,7 @@ func runProfile() throws {
     var stages: [String: Double] = [:]
     var (steps, sweptCells) = (0, 0.0)
     var blocks = SIMD2<Double>.zero
+    var substeps = SIMD2<Double>.zero
     var coverage: [RefinementCoverage.Level] = []
     var sampled = 0
     let start = ContinuousClock.now
@@ -4976,6 +4977,7 @@ func runProfile() throws {
         steps += result.steps
         sweptCells += result.sweptFraction * Double(solver.grid.cellCount) * n
         blocks += SIMD2(Double(result.refinedTiles), Double(result.finerRefinedTiles)) * n
+        substeps += SIMD2(result.firstLevelSubsteps, result.secondLevelSubsteps) * n
         // The fit of the patches, at a few moments through the event.
         if levels > 0, Double(sampled) < Double(samples) * solver.time / end,
             let now = solver.refinementCoverage()
@@ -5019,7 +5021,9 @@ func runProfile() throws {
     if levels > 0 {
         print(
             "\nRefined blocks on average: \(format(blocks.x / Double(max(steps, 1)), 0))"
-                + (levels > 1 ? ", \(format(blocks.y / Double(max(steps, 1)), 0)) at the second level" : ""))
+                + (levels > 1 ? ", \(format(blocks.y / Double(max(steps, 1)), 0)) at the second level" : "")
+                + "; substeps per step \(format(substeps.x / Double(max(steps, 1)), 2))"
+                + (levels > 1 ? " and \(format(substeps.y / Double(max(steps, 1)), 2))" : ""))
         for (l, level) in coverage.enumerated() {
             print(
                 "Level \(l + 1), over \(sampled) moments: \(format(100 * Double(level.core) / Double(max(level.refined, 1)), 1))%"

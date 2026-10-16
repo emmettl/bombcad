@@ -116,6 +116,57 @@ struct RunCostTests {
         #expect(stand.setting == AdvisorSetting(cellSize: 0.5, refinement: 2))
     }
 
+    @Test("Adaptive substeps: the share taken as measured, and the advisor turns them on in the open only")
+    func adaptiveSubsteps() {
+        func closeIn(width: Float) -> (Scenario, Double) {
+            let height = max(width, 1.4)
+            var scenario = Scenario(
+                name: "Close-in reflection", domainSize: SIMD3(width, width, height), boxes: [],
+                charge: Charge(mass: 1, position: SIMD3(width / 2, width / 2, 0.5)))
+            scenario.reflectiveFaces = .ground
+            let duration =
+                width == 1.5
+                ? 0.5 / 340 + 0.004
+                : Double(simd_length(SIMD3(width / 2, width / 2, height - 0.5))) / 340 + 0.004
+            return (scenario, duration)
+        }
+        // `blastbench profile --refine 2 --refine-own-steps` on the recommended air: substeps taken
+        // of 2.
+        let open = ScenarioPreset.openGround.scenario
+        let street = ScenarioPreset.streetCanyon.scenario
+        var cases = [(open, open.acousticCrossingTime, 0.625), (street, street.acousticCrossingTime, 0.695)]
+        for (width, measured) in [(Float(1.5), 1.0), (2, 0.82), (3.5, 0.755), (6, 0.665)] {
+            let (scenario, duration) = closeIn(width: width)
+            cases.append((scenario, duration, measured))
+        }
+        for (scenario, duration, measured) in cases {
+            let predicted = RunCost.ownStepsShare(scenario, duration: duration)
+            #expect(abs(predicted - measured) < 0.06, "\(scenario.name): \(predicted) against \(measured)")
+        }
+        // Taking fewer substeps costs less.
+        var configuration = SolverConfiguration.recommended
+        configuration.refinement = 2
+        let all = RunCost.estimate(
+            open, cellSize: 0.5, configuration: configuration, duration: open.acousticCrossingTime)
+        configuration.refinementOwnSteps = true
+        let fewer = RunCost.estimate(
+            open, cellSize: 0.5, configuration: configuration, duration: open.acousticCrossingTime)
+        #expect(fewer.fineUpdates < 0.7 * all.fineUpdates && fewer.seconds < all.seconds)
+        // The advisor's refined settings take them in the open, and not close in.
+        func refinedTakeThem(_ scenario: Scenario, _ duration: Double) -> Bool {
+            let advice = RunAdvisor.advise(
+                scenario, configuration: .recommended, duration: duration, target: .seconds(3600),
+                current: AdvisorSetting(cellSize: 0.5), memory: 32 << 30, maximumCells: 2_000_000
+            ) { _ in ([.peak: 0.1], [:]) }
+            let refined = advice.candidates.filter { $0.setting.refinement > 1 }
+            #expect(!refined.isEmpty)
+            return refined.allSatisfy(\.setting.ownSteps)
+        }
+        #expect(refinedTakeThem(open, open.acousticCrossingTime))
+        let (near, nearDuration) = closeIn(width: 1.5)
+        #expect(!refinedTakeThem(near, nearDuration))
+    }
+
     @Test("Targets read from the command line")
     func targets() {
         #expect(AdvisorTarget(text: "peak:20%") == .fidelity(.peak, within: 0.2))

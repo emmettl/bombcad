@@ -153,6 +153,9 @@ struct SimulationSettings: Equatable {
     /// With `sharpShocks`, the jump across a cell that refines it, as a share of its pressure:
     /// lower follows a weakening shock further, at a cost (see docs/large-scenes.md).
     var shockThreshold: Float = 0.1
+    /// With `sharpShocks`, each refined level takes only the substeps its own waves need
+    /// (`SolverConfiguration.refinementOwnSteps`): the advisor turns it on where it pays.
+    var adaptiveSubsteps = false
     /// Gravity in the air: it starts at rest in a hydrostatic atmosphere and hot gas rises.
     var gravity = false
     /// The terrain cut through the cells where the air is not refined; false for a staircase of
@@ -663,6 +666,7 @@ final class SimulationModel {
                 settings.sharpShocks = run.sharpShocks
                 settings.shockLevels = run.shockLevels ?? 1
                 settings.shockThreshold = run.shockThreshold ?? 0.1
+                settings.adaptiveSubsteps = run.adaptiveSubsteps ?? false
                 settings.gravity = run.gravity ?? false
                 settings.terrainCutCells = run.cutsTerrain(over: scenario)
                 settings.softGround = run.groundStiffness != nil
@@ -804,6 +808,7 @@ final class SimulationModel {
             settings.sharpShocks = run.sharpShocks
             settings.shockLevels = run.shockLevels ?? 1
             settings.shockThreshold = run.shockThreshold ?? 0.1
+            settings.adaptiveSubsteps = run.adaptiveSubsteps ?? false
             settings.gravity = run.gravity ?? false
             settings.terrainCutCells = run.cutsTerrain(over: document.scenario)
             settings.softGround = run.groundStiffness != nil
@@ -1008,6 +1013,7 @@ final class SimulationModel {
         settings.sharpShocks = inputs.settings.sharpShocks
         settings.shockLevels = inputs.settings.shockLevels ?? 1
         settings.shockThreshold = inputs.settings.shockThreshold ?? 0.1
+        settings.adaptiveSubsteps = inputs.settings.adaptiveSubsteps ?? false
         settings.gravity = inputs.settings.gravity ?? false
         settings.terrainCutCells = inputs.settings.cutsTerrain(over: inputs.scenario)
         settings.softGround = inputs.settings.groundStiffness != nil
@@ -2133,7 +2139,8 @@ final class SimulationModel {
         ProjectRunSettings.configureAir(
             &solver.configuration, detailedCharge: settings.detailedCharge, sharpShocks: settings.sharpShocks,
             shockLevels: settings.shockLevels, gravity: settings.gravity,
-            shockThreshold: settings.shockThreshold, terrainCutCells: settings.terrainCutCells,
+            shockThreshold: settings.shockThreshold, adaptiveSubsteps: settings.adaptiveSubsteps,
+            terrainCutCells: settings.terrainCutCells,
             groundStiffness: settings.softGround ? settings.groundStiffness : nil)
     }
 

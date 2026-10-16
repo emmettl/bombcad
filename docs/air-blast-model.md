@@ -503,7 +503,12 @@ shocks" switch (ratio 2) and, under it, "Twice over again" (two levels); `blastb
   dispatches of no threadgroups, and where a level takes an odd number of sweeps its state is
   copied back into its first buffer. The coarse step is unchanged, and refluxing, which adds up
   the fine fluxes over the substeps taken, keeps the gas conserved across every level's edge.
-  It is off by default; see [Performance](performance.md#refinement) for what it saves.
+  It is off by default; the advisor turns it on for refined runs where it expects a level to
+  take under 1.6 of 2 substeps (in the app, "Adaptive substeps" under "Sharpen shocks"). On the
+  recommended air it makes refined runs 1.19 to 1.33 times faster on open ground and 1.07 on the
+  street, and moves the peaks of `validate` up by 1 to 2.5%, towards Kingery–Bulmash, and
+  impulses and arrivals under 1%; close in, where every substep is taken, nothing changes (see
+  [Performance](performance.md#refinement)).
 - **Exactness.** It is all done on the GPU, with no round trip to the CPU between steps, and
   every sum runs in a fixed order: runs repeat exactly, uniform air refined everywhere stays
   exactly uniform, and mass and energy in a closed box are conserved to rounding (within 10⁻⁴,
