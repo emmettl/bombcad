@@ -809,21 +809,27 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
             at[axis] += offset;
             return cutGeometryAt(at, dxFineCut, cutSamples(u, terrain), terrain, terrainHeights);
         };
-        if (kindP1 == kindWall && groundP1) {
+        if (kindP1 == kindWall && groundP1 && cut) {
             float3 normal = toSweep(cutGeometryNormal(here), axis);
             wP1 = mirroredAbout(w0, normal);
             wP2 = mirroredAbout(wM1, normal);
         }
-        if (kindM1 == kindWall && groundM1) {
+        if (kindM1 == kindWall && groundM1 && cut) {
             float3 normal = toSweep(cutGeometryNormal(here), axis);
             wM1 = mirroredAbout(w0, normal);
             wM2 = mirroredAbout(wP1, normal);
         }
         if (kindP1 == kindFluid && groundP2) {
-            wP2 = mirroredAbout(wP1, toSweep(cutGeometryNormal(geometryAt(1)), axis));
+            CutGeometry next = geometryAt(1);
+            if (cutGeometryCut(next)) {
+                wP2 = mirroredAbout(wP1, toSweep(cutGeometryNormal(next), axis));
+            }
         }
         if (kindM1 == kindFluid && groundM2) {
-            wM2 = mirroredAbout(wM1, toSweep(cutGeometryNormal(geometryAt(-1)), axis));
+            CutGeometry previous = geometryAt(-1);
+            if (cutGeometryCut(previous)) {
+                wM2 = mirroredAbout(wM1, toSweep(cutGeometryNormal(previous), axis));
+            }
         }
     }
 

@@ -31,6 +31,55 @@ struct AirModelTests {
         }
     }
 
+    @Test("The GPU's first guess at the temperature is within 10^-4, and one Newton step within 10^-6")
+    func temperatureGuess() throws {
+        // The shader's own coefficients, read from Solver.metal.
+        let shader = try String(
+            contentsOf: URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+                .deletingLastPathComponent().appending(path: "Sources/BlastCore/Shaders/Solver.metal"),
+            encoding: .utf8)
+        func coefficients(_ name: String) throws -> [Double] {
+            let line = try #require(
+                shader.split(separator: "\n").first { $0.contains("float \(name) = 1.0f + z * (") })
+            return line.split(whereSeparator: { " ()*+;".contains($0) }).compactMap {
+                $0.hasSuffix("f") ? Double($0.dropLast()) : nil
+            }.filter { $0 != 1 }
+        }
+        let p = try coefficients("p")
+        let q = try coefficients("q")
+        #expect(p.count == 4 && q.count == 4)
+        let r = Double(AirModel.gasConstant)
+        func vibration(_ t: Double) -> (energy: Double, heat: Double) {
+            var energy = 0.0
+            var heat = 0.0
+            for (theta, share) in [(3390.0, 0.79), (2270.0, 0.21)] {
+                let x = min(theta / max(t, 1), 80)
+                let below = 1 / (exp(x) - 1)
+                energy += r * share * theta * below
+                heat += r * share * x * x * exp(x) * below * below
+            }
+            return (energy, heat)
+        }
+        var temperature = 1.0
+        while temperature < 60_000 {
+            let e = 2.5 * r * temperature + vibration(temperature).energy
+            let y = e / (2.5 * r)
+            let z = y / 3000
+            let guess =
+                y * (1 + z * (p[0] + z * (p[1] + z * (p[2] + z * p[3]))))
+                / (1 + z * (q[0] + z * (q[1] + z * (q[2] + z * q[3]))))
+            #expect(abs(guess / temperature - 1) < 1e-4, "\(temperature) K: guess \(guess)")
+            let v = vibration(guess)
+            let step = guess - (2.5 * r * guess + v.energy - e) / (2.5 * r + v.heat)
+            #expect(abs(step / temperature - 1) < 1e-6, "\(temperature) K: after a step \(step)")
+            // The ratio of specific heats from the heat capacity at the guess.
+            let gamma = 1 + r / (2.5 * r + v.heat)
+            let exact = 1 + r / (2.5 * r + vibration(temperature).heat)
+            #expect(abs(gamma / exact - 1) < 3e-6, "\(temperature) K: gamma \(gamma) against \(exact)")
+            temperature *= 1.01
+        }
+    }
+
     @Test("A shock tube in units where the gas is cold gives the ideal gas's answer")
     func coldShockTubeMatchesIdealGas() throws {
         var results: [[Float]] = []

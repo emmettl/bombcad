@@ -26,6 +26,9 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// and left out of the file and the fingerprint, for a staircase of whole cells, as every run
     /// over terrain was before cut cells, or for a scene without terrain.
     var terrainCutCells: Bool?
+    /// Soft ground under the structures' debris, the soil's subgrade modulus in Pa/m; nil, and left
+    /// out of the file and the fingerprint, for the hard ground.
+    var groundStiffness: Float?
     var solidElementSize: Float
     var duration: Double
 
@@ -38,6 +41,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         gravity = settings.gravity ? true : nil
         terrainCutCells =
             settings.terrainCutCells && settings.scenario.terrain.map { !$0.isFlat } == true ? true : nil
+        groundStiffness = settings.softGround ? settings.groundStiffness : nil
         solidElementSize = settings.solidElementSize
         self.duration = duration
     }
@@ -63,7 +67,8 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     func validate() throws {
         guard Resolution(rawValue: resolution) != nil, solidElementSize.isFinite, solidElementSize > 0,
             duration.isFinite, duration > 0, shockLevels.map({ $0 == 2 }) ?? true,
-            shockThreshold.map({ $0.isFinite && $0 > 0 && $0 <= 1 }) ?? true
+            shockThreshold.map({ $0.isFinite && $0 > 0 && $0 <= 1 }) ?? true,
+            groundStiffness.map({ $0.isFinite && $0 > 0 }) ?? true
         else { throw ProjectFileError.invalid("Project simulation settings are invalid.") }
     }
 }

@@ -171,8 +171,20 @@ public struct SolverConfiguration: Sendable, Hashable {
     public var afterburnLimit: AfterburnLimit?
     /// The terrain's ground surface as cut cells rather than whole ones (see `TerrainCutGeometry`):
     /// slopes are slopes, not staircases. On by default; false for the staircase. Read when a scene
-    /// is loaded, and only where the air is not refined (see `cutsTerrain(of:)`).
+    /// is loaded (see `cutsTerrain(of:)`).
     public var terrainCutCells = true
+    /// Soft ground under the structures' debris (`StructureSolver.groundStiffness`): the soil's
+    /// subgrade modulus in Pa/m, a Winkler bed the debris lands on, or nil for the hard ground (the
+    /// default). For debris falling on earth, not on paving or a slab; compared once, on Keys's
+    /// brick walls (docs/validation.md#brick-walls-debris). The air sees the ground as hard either
+    /// way. Read when a scene is loaded.
+    public var groundStiffness: Float?
+
+    /// The soil's subgrade modulus for soft ground: medium dense sand under a footing about a metre
+    /// wide (as `Anchorage.soil`), and the range foundation texts give from loose sand to dense
+    /// sand and stiff clay (J. E. Bowles, *Foundation Analysis and Design*; from memory).
+    public static let soilSubgradeModulus: Float = 50e6
+    public static let soilSubgradeRange: ClosedRange<Float> = 10e6...150e6
 
     public init() {}
 

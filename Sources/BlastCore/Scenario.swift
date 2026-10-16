@@ -414,6 +414,8 @@ extension BlastSolver {
                 if let model = object.structure { object.setStructure(model.detectingRegime(in: scenario)) }
                 return object
             })
+        // Soft ground, if chosen, under every structure's solid elements (shells keep the hard ground).
+        for body in bodies { body.solids?.groundStiffness = configuration.groundStiffness ?? 0 }
 
         try loadDeflagration(scenario)
         fill(

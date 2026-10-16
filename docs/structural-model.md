@@ -923,7 +923,12 @@ step, and Keys's toppled walls shatter as they land (about two fifths of WR1A's 
 removed in 0.1 s); on a 5×10⁷ Pa/m bed WR1A loses under half as many (799 against 1747) and
 lands in about 20 pieces over 1 kg rather than 37. The modulus is the soil's,
 not the brickwork's, so the option fits debris falling on earth, not on paving or a slab. The
-air sees the ground as hard either way. See [Validation](validation.md#brick-walls-debris).
+air sees the ground as hard either way. See [Validation](validation.md#brick-walls-debris). In
+the app it is Run ▸ Terrain ▸ Debris lands on ▸ Soil (`SolverConfiguration.groundStiffness`,
+saved with the project, `--ground` for a headless run), 10–150 MN/m³ from loose sand to dense
+sand (50 by default, as a footing's soil), on solid elements only; the rigid ground stays the
+default, the one comparison (Keys's walls in the open, one run each) narrowing the debris by a
+third but not to what was measured. The standing names it ("Soft ground under debris").
 
 ## Verification
 

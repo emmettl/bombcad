@@ -56,11 +56,9 @@ Street-canyon scenario: 64 × 64 × 32 m, 100 kg TNT equivalent, 170 ms simulate
   and the visualisation volume.
 - The time step is about a third of what still air would allow, because the hot gas left by
   the fireball has a high sound speed for the whole event.
-- **Afterburning and hot air** (`--afterburn --air thermal`) cost about twice as much: the
-  street event at 0.25 m takes 7.5 s instead of 3.5 s in one session, from more work per cell
-  (the fuel and oxygen, and a temperature solved by two Newton steps for each pressure), a
-  shorter step in the hotter gas, and more of the air reached. Hot air alone costs about a
-  quarter.
+- **Afterburning and hot air**, the recommended air since 15 October 2026, cost 1.3 to 1.85 times
+  as much, from more work per cell, a shorter step in the hotter gas, and more of the air
+  reached (below, "What the recommended air costs").
 - Without `--full`, the finest figure is extrapolated from a timed sample of 192 steps of full
   sweeps, scaled by the swept fraction of the 0.25 m run (an estimate of 39 s, against 46 s
   measured).
@@ -70,6 +68,59 @@ Street-canyon scenario: 64 × 64 × 32 m, 100 kg TNT equivalent, 170 ms simulate
   sweeps (coarse and fine) and the tile list are now compiled for the configured gas alone,
   which wins that back. The rest of the slowdown since, about 6%, came in small steps with
   later features.
+
+### What the recommended air costs
+
+Since 15 October 2026 runs start from `SolverConfiguration.recommended`: afterburning, hot air
+and far-field faces. A run takes 1.3 to 1.85 times as long as on the ideal gas with copying
+faces, the least when refined, and holds 73 bytes a cell instead of 57. Measured on 16 October
+2026 with `blastbench profile` (by stage, each air against the others) and `blastbench aircost`
+(a cell's update under each air, the street at 0.5 m with every cell swept, the airs stepped in
+turn a few steps at a time; the minimum of 40 rounds, in a quiet spell where the minimum,
+quartile and median agreed within 1%):
+
+| Air | ns a cell-update | Against the ideal gas |
+|---|---|---|
+| Ideal gas, copying faces | 0.144 | 1.00 |
+| Hot air alone | 0.199 | 1.38 |
+| Afterburning with the ideal gas | 0.168 | 1.17 |
+| Recommended | 0.215 | 1.50 |
+
+- **Hot air's equation of state was most of a cell's extra cost.** With its vibration term made
+  free (a throwaway build), hot air cost 1.04 times the ideal gas and the recommended air 1.20.
+  Each update found a temperature from an energy six times (the five cells of its stencil and
+  its own new state), each by two Newton steps and a third evaluation for the ratio of specific
+  heats, and the energies of its two faces' four states: 21 evaluations, of two exponentials
+  each.
+- **Afterburning's fuel and oxygen** cost 1.17 a cell-update (16 bytes a cell more read and
+  written each sweep, and the burn), and are the whole of the memory's growth: their two
+  buffers, 8 bytes each.
+- **The rest is more work**: on the street, 25% more cell-updates than the ideal gas's run (16%
+  more steps, as the burning fireball is hotter and its sound faster, and 9% more cells swept a
+  step); on open ground 3% more. Far-field faces cost nothing measurable.
+
+Done: the temperature now comes from one Newton step from a rational first guess within 10⁻⁴
+(Solver.metal, `airTemperatureAndHeat`), whose own evaluation gives the ratio of specific heats,
+so each primitive state takes one evaluation instead of three. A cell-update on hot air costs
+1.24 times the ideal gas's instead of 1.38, and on the recommended air 1.37 instead of 1.50
+(the same quiet spell). Whole runs on the recommended air (`profile`, the old build and the new
+in turn, in three quiet spells) take 1.05 to 1.08 times less on open ground and the street,
+1.02 to 1.06 times less refined once there, and 1.04 to 1.07 times less close in refined once
+(close in unrefined is too short to time). Results move in the last bits only: no peak, impulse or arrival
+of `validate` (0.25 m, and 0.5 m refined once and twice) or `closeair` changed in the figures
+printed, and the digests of the recommended air change.
+
+Tried and dropped:
+
+- **A table of the vibration term** (40 kB every 4 K, or 3 kB every 50 K with cubic
+  interpolation), read from constant memory: 1.55 and 1.86 times the ideal gas, slower than the
+  exponentials, as the threads of a group read scattered entries.
+- **Each cell's state worked out once a sweep** and shared through the threadgroup's memory with
+  the stencils that read it: bit-identical, but 1.07 to 1.29 times slower, as 18 kB a tile of
+  shared memory leaves too few threads to hide the memory's latency.
+
+Left: storing the fuel and oxygen in 16 bits would save 8 bytes a cell (11% of the memory) and
+about half their cost a cell, but they would no longer be conserved exactly.
 
 ## Refinement
 
