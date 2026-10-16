@@ -353,6 +353,9 @@ public final class BlastSolver {
     /// Per gauge: the finest cell of its cell that holds its point, as x + R (y + R z) for R
     /// finest cells along a coarse cell's edge, or `UInt32.max` to read the coarse cell.
     private let gaugeChildBuffer: MTLBuffer
+    /// Each gauge's point (w 1) or none (w 0): a gauge whose cell turns solid reads the fluid cell
+    /// beside it nearest the point.
+    private let gaugePointBuffer: MTLBuffer
     private var gaugePoints: [SIMD3<Float>?] = []
     /// The scenario's rigid blocks, whose outline the refined air follows at its own resolution;
     /// What to cut out of the air on the GPU at the end of each batch that reaches its time limit,
@@ -441,6 +444,7 @@ public final class BlastSolver {
         gaugeCellBuffer = try buffer(Self.maxGauges * MemoryLayout<UInt32>.stride, "gauge cells")
         gaugeChildBuffer = try buffer(Self.maxGauges * MemoryLayout<UInt32>.stride, "gauge fine cells")
         memset(gaugeChildBuffer.contents(), 0xFF, gaugeChildBuffer.length)
+        gaugePointBuffer = try buffer(Self.maxGauges * MemoryLayout<SIMD4<Float>>.stride, "gauge points")
         refinementPlaceholder = try buffer(64, "no refinement")
         memset(refinementPlaceholder.contents(), 0xFF, refinementPlaceholder.length)
         let tile = Self.tileSize
@@ -748,6 +752,25 @@ public final class BlastSolver {
         gaugeCount = cells.count
         gaugeHistories = Array(repeating: [], count: gaugeCount)
         gaugePoints = (0..<cells.count).map { points?[$0] }
+        let placed = gaugePointBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: Self.maxGauges)
+        for n in 0..<Self.maxGauges {
+            placed[n] = n < gaugePoints.count ? gaugePoints[n].map { SIMD4($0, 1) } ?? .zero : .zero
+        }
+        updateGaugeChildren()
+    }
+
+    /// Moves the gauges set by `setGauges` to new cells and points, keeping what they have recorded:
+    /// for gauges that follow a moving face.
+    public func moveGauges(cells: [(i: Int, j: Int, k: Int)], points: [SIMD3<Float>]) {
+        precondition(cells.count == gaugeCount && points.count == gaugeCount, "Move every gauge")
+        let pointer = gaugeCellBuffer.contents().bindMemory(to: UInt32.self, capacity: Self.maxGauges)
+        let placed = gaugePointBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: Self.maxGauges)
+        for (n, cell) in cells.enumerated() {
+            precondition(grid.contains(cell.i, cell.j, cell.k), "Gauge outside the grid")
+            pointer[n] = UInt32(grid.index(cell.i, cell.j, cell.k))
+            placed[n] = SIMD4(points[n], 1)
+        }
+        gaugePoints = points
         updateGaugeChildren()
     }
 
@@ -1863,6 +1886,8 @@ public final class BlastSolver {
             encoder.setBuffer(gaugeChildBuffer, offset: 0, index: 10)
             encoder.setBuffer(refinement?.fineMask ?? refinementPlaceholder, offset: 0, index: 11)
             encodeFinerGaugeBuffers(encoder)
+            encoder.setBuffer(maskBuffer, offset: 0, index: 16)
+            encoder.setBuffer(gaugePointBuffer, offset: 0, index: 17)
             encoder.dispatchThreads(
                 MTLSize(width: 1, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
@@ -2105,6 +2130,8 @@ public final class BlastSolver {
             encoder.setBuffer(gaugeChildBuffer, offset: 0, index: 10)
             encoder.setBuffer(refinement?.fineMask ?? refinementPlaceholder, offset: 0, index: 11)
             encodeFinerGaugeBuffers(encoder)
+            encoder.setBuffer(maskBuffer, offset: 0, index: 16)
+            encoder.setBuffer(gaugePointBuffer, offset: 0, index: 17)
             encoder.dispatchThreads(
                 MTLSize(width: 1, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))

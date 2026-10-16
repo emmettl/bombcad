@@ -453,14 +453,15 @@ public enum MendoncaSlabTest {
             return -structure.displacement(ci, cj, k).z
         }
 
-        // The gauges sat on the slab and moved with it: each reads the first air cell beyond the
-        // slab's face at its point as it is now, and is moved there whenever that changes (a cell
-        // the face has moved into is solid, and holds a stale state).
-        let dx = solver.grid.cellSize
+        // The gauges sat on the slab and moved with it: each is kept a quarter of the finest air
+        // cell beyond the slab's face at its point as it is now, and reads the cell holding that
+        // point at the finest level there, or the fluid cell beside it where that cell is solid.
+        let finest = solver.grid.cellSize / Float(max(settings.refinement, 1))
         let points = scenario.gauges.map(\.position)
+        var placed = points
         var cells = points.map { solver.nearestFluidCell(to: $0) }
         func followSlab() {
-            var moved = cells
+            var moved = placed
             for (n, point) in points.enumerated() {
                 // The face nearer the gauge as placed: one placed on the top face follows the top.
                 let above = point.z >= (s.min.z + s.max.z) / 2
@@ -469,18 +470,12 @@ public enum MendoncaSlabTest {
                     attached(i, j, above ? top : bottom)
                 else { continue }
                 let face = structure.position(i, j, above ? top : bottom).z
-                var k = Int((face / dx).rounded(.down))
-                let c = cells[n]
-                while k >= 0, k < solver.grid.nz, solver.isSolid(c.i, c.j, k) { k += above ? 1 : -1 }
-                moved[n].k = min(max(k, 0), solver.grid.nz - 1)
+                moved[n] = SIMD3(point.x, point.y, face + (above ? 0.25 : -0.25) * finest)
             }
-            guard moved.map(\.k) != cells.map(\.k) else { return }
-            let histories = solver.gaugeHistories
-            cells = moved
-            solver.setGauges(
-                cells: cells,
-                points: zip(points, cells).map { SIMD3($0.0.x, $0.0.y, (Float($0.1.k) + 0.5) * dx) })
-            for (n, samples) in histories.enumerated() { solver.prependGaugeHistory(n, samples) }
+            guard moved != placed else { return }
+            placed = moved
+            cells = placed.map { solver.grid.cell(containing: $0) }
+            solver.moveGauges(cells: cells, points: placed)
         }
 
         func meanLift() -> Float {

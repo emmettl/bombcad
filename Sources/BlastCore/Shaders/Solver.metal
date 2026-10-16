@@ -1791,11 +1791,17 @@ static inline void logGauges(device float *gaugeLog, uint row, float dt, const d
                              const device int *patchOfTile, const device Cell *fine,
                              const device uint *gaugeChildren, const device uchar *fineMask,
                              const device int *childPatches, const device Cell *childFine,
-                             const device uchar *childMask, const device float4 *gravityTable) {
+                             const device uchar *childMask, const device float4 *gravityTable,
+                             const device uchar *mask, const device float4 *gaugePoints) {
     row *= u.gaugeCount + 1;
     gaugeLog[row] = dt;
     for (uint g = 0; g < u.gaugeCount; ++g) {
         Cell c = state[gaugeCells[g]];
+        // A gauge whose cell a structure has moved into reads the fluid cell beside it nearest its
+        // point, at the finest level it can, rather than the solid cell's stale state.
+        bool read = mask[gaugeCells[g]] == 0;
+        float3 point = gaugePoints[g].xyz;
+        bool placed = gaugePoints[g].w != 0.0f;
         // Where the gauge's cell is refined, the finest cell holding the gauge's point: `child`
         // numbers the finest cells of its coarse cell.
         uint child = gaugeChildren[g];
@@ -1829,6 +1835,46 @@ static inline void logGauges(device float *gaugeLog, uint row, float dt, const d
                 uint at = uint(patch) * uint(side * side * side) + uint(local.x + side * (local.y + side * local.z));
                 if ((fineMask[at] & 1) == 0) {
                     c = fine[at];
+                    found = true;
+                } else {
+                    // The fine cell is solid: the fluid one beside it in the patch nearest the point.
+                    float fineCell = u.dx / float(r);
+                    float3 origin = float3(cell / patchSize * patchSize) * u.dx;
+                    float best = INFINITY;
+                    for (int n = 0; n < 6; ++n) {
+                        int3 q = local;
+                        q[n / 2] += (n % 2) * 2 - 1;
+                        if (any(q < 0) || any(q >= side)) { continue; }
+                        uint there = uint(patch) * uint(side * side * side) + uint(q.x + side * (q.y + side * q.z));
+                        if ((fineMask[there] & 1) != 0) { continue; }
+                        float3 centre = origin + (float3(q) + 0.5f) * fineCell;
+                        float distance = placed ? distance_squared(centre, point) : float(n);
+                        if (distance < best) {
+                            best = distance;
+                            c = fine[there];
+                            found = true;
+                        }
+                    }
+                }
+            }
+            read = read || found;
+        }
+        if (!read) {
+            // The coarse cell is solid and no fine cell stood in: its fluid neighbour nearest the point.
+            uint index = gaugeCells[g];
+            int3 cell = int3(index % u.nx, (index / u.nx) % u.ny, index / (u.nx * u.ny));
+            float best = INFINITY;
+            for (int n = 0; n < 6; ++n) {
+                int3 q = cell;
+                q[n / 2] += (n % 2) * 2 - 1;
+                if (any(q < 0) || any(q >= int3(u.nx, u.ny, u.nz))) { continue; }
+                uint there = uint(q.x) + u.nx * (uint(q.y) + u.ny * uint(q.z));
+                if (mask[there] != 0) { continue; }
+                float3 centre = (float3(q) + 0.5f) * u.dx;
+                float distance = placed ? distance_squared(centre, point) : float(n);
+                if (distance < best) {
+                    best = distance;
+                    c = state[there];
                 }
             }
         }
@@ -1862,6 +1908,8 @@ kernel void prepareStep(device StepControl &control [[buffer(0)]],
                         const device Cell *childFine [[buffer(13)]],
                         const device uchar *childMask [[buffer(14)]],
                         const device float4 *gravityTable [[buffer(15)]],
+                        const device uchar *mask [[buffer(16)]],
+                        const device float4 *gaugePoints [[buffer(17)]],
                         uint tid [[thread_position_in_grid]]) {
     if (tid != 0) {
         return;
@@ -1911,7 +1959,7 @@ kernel void prepareStep(device StepControl &control [[buffer(0)]],
     }
 
     logGauges(gaugeLog, control.stepIndex, dt, state, gaugeCells, u, patchOfTile, fine, gaugeChildren, fineMask,
-              childPatches, childFine, childMask, gravityTable);
+              childPatches, childFine, childMask, gravityTable, mask, gaugePoints);
 
     control.dt = dt;
     control.batchTime += dt;
@@ -1934,10 +1982,12 @@ kernel void sampleGauges(const device StepControl &control [[buffer(0)]],
                          const device Cell *childFine [[buffer(13)]],
                          const device uchar *childMask [[buffer(14)]],
                          const device float4 *gravityTable [[buffer(15)]],
+                         const device uchar *mask [[buffer(16)]],
+                         const device float4 *gaugePoints [[buffer(17)]],
                          uint tid [[thread_position_in_grid]]) {
     if (tid == 0) {
         logGauges(gaugeLog, control.stepIndex, 0.0f, state, gaugeCells, u, patchOfTile, fine, gaugeChildren, fineMask,
-                  childPatches, childFine, childMask, gravityTable);
+                  childPatches, childFine, childMask, gravityTable, mask, gaugePoints);
     }
 }
 
