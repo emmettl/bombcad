@@ -77,6 +77,7 @@ import simd
 //                      (GPU time per stage, on the recommended air)
 //                        (where contact's time goes; see ContactBench.swift)
 //   blastbench mendonca [--slabs 1,2,4,5,7,9,10] [--layers 8] [--dx 0.0125] [--ensemble 8]   (blind test 2; see MendoncaBench.swift)
+//   blastbench reynolds [--slabs HSCV1,HSCV4] [--layers 8] [--load tail] [--ensemble 8]   (blind test 3; see ReynoldsBench.swift)
 //   blastbench buildings [--dx 0.5] [--duration 0.12] [--mass 50] [--out f.json]
 //                        (three buildings across a street, together and each alone; see BuildingsBench.swift)
 //   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80] [--terrain flat|hill|ridge|slope] [--recommended]
@@ -199,9 +200,36 @@ func chosenAirModel() -> AirModel? {
     }
 }
 
+/// The air's gas as the command line asks: `--air`, or hot air while afterburning and the ideal
+/// gas with `--no-afterburn`.
+func chosenGas() -> AirModel { chosenAirModel() ?? SolverConfiguration.recommended.airModel }
+
+/// The open faces as the command line asks: far field, or `--copy-faces` for those before
+/// 15 October 2026.
+func chosenFaces() -> OpenFaces { flag("copy-faces") ? .copy : SolverConfiguration.recommended.openFaces }
+
+/// The air every run ships with (`SolverConfiguration.recommended`) as the command line changes
+/// it: `--no-afterburn`, `--air` and `--copy-faces`. Every bench that runs a scene starts here;
+/// those that pin the bare core for numerics say so.
+func applyChosenAir(_ configuration: inout SolverConfiguration) {
+    configuration.afterburning = burning
+    configuration.airModel = chosenGas()
+    configuration.openFaces = chosenFaces()
+}
+
 /// `--fracture-rate 0.5`: how the fracture energy follows the tensile strain-rate law, and the
 /// like, for any command that builds concrete.
 func applyRateOptions(_ material: inout StructureMaterial) {
+    // `--rupture 0.15`: the bars' plastic strain at rupture, over the debonded window; with a
+    // measured curve, its last point moved there (the bar breaks at the last point).
+    if let rupture = option("rupture").flatMap({ Float($0) }), var steel = material.steel {
+        steel.ruptureStrain = rupture
+        if var curve = steel.measuredCurve, curve.count >= 2 {
+            curve[curve.count - 1].x = max(rupture, curve[curve.count - 2].x * 1.001)
+            steel.measuredCurve = curve
+        }
+        material.steel = steel
+    }
     if let residual = option("crack-residual").flatMap({ Float($0) }) { material.crackResidual = residual }
     if let dilatancy = option("dilatancy").flatMap({ Float($0) }) { material.crackDilatancy = dilatancy }
     // `--steel-plateau`: the bars' measured curve held at its peak instead of falling after it
@@ -246,6 +274,8 @@ func applyRateOptions(_ material: inout StructureMaterial) {
 func applyHourglassOptions(_ model: inout StructureModel) {
     if flag("hourglass-secant") { model.hourglassFollowsCracking = true }
     if flag("hourglass-no-steel") { model.hourglassCapsSteel = false }
+    // `--extreme-fibre`: elements with a free face crack when that face reaches the tensile strength.
+    if flag("extreme-fibre") { model.extremeFibreCracking = true }
     // `--nonlocal 0.05`: cracks soften by their strain averaged over that length either side.
     if let length = option("nonlocal").flatMap({ Float($0) }) { model.crackAveraging = length }
     // `--rate-window 120` (µs): the strain-rate laws see the rate averaged over that time
@@ -885,7 +915,7 @@ func runChamber() throws {
         device: device, scenario: scenario, cellSize: cellSize, duration: duration,
         afterburning: burning,
         afterburnEnergy: option("afterburn-energy").flatMap { Float($0) }.map { $0 * 1e6 },
-        airModel: chosenAirModel() ?? .idealGas,
+        airModel: chosenGas(), openFaces: chosenFaces(),
         refinement: option("refine").flatMap { Int($0) } ?? 1,
         contact: flag("no-contact") ? .off : nil,
         // `--progress` reports every 10 ms of a long run.
@@ -996,11 +1026,8 @@ func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver 
     configuration.gravity = chosenGravity()
     configuration.mixing = chosenMixing()
     configuration.afterburnLimit = chosenBurnLimit()
-    configuration.afterburning = burning
-    if let air = chosenAirModel() { configuration.airModel = air }
+    applyChosenAir(&configuration)
     if flag("mapped") { configuration.mappedCharge = true }
-    // `--copy-faces`: open faces that copy the air inside outward, as before 15 October 2026.
-    if flag("copy-faces") { configuration.openFaces = .copy }
     if let time = option("burn-time").flatMap({ Float($0) }) { configuration.afterburnTime = time / 1000 }
     if let energy = option("afterburn-energy").flatMap({ Float($0) }) {
         configuration.afterburnEnergy = energy * 1e6
@@ -1082,8 +1109,7 @@ func runValidation() throws {
             solver.configuration.minimumBalloonCells = cells
         }
         if flag("hll") { solver.configuration.riemannSolver = .hll }
-        solver.configuration.afterburning = burning
-        if let air = chosenAirModel() { solver.configuration.airModel = air }
+        applyChosenAir(&solver.configuration)
         if flag("mapped") { solver.configuration.mappedCharge = true }
         if let time = option("burn-time").flatMap({ Float($0) }) {
             solver.configuration.afterburnTime = time / 1000
@@ -1262,6 +1288,11 @@ func runValidation() throws {
 
 func runSnapshot() throws {
     var scenario = chosenScenario()
+    // `--street-envelopes`: the street study's four buildings as exposure-only envelopes.
+    if flag("street-envelopes") {
+        scenario = try StreetInteractionStudy.make(.street)
+        for object in scenario.structuralObjects { try scenario.useEnvelope(id: object.id) }
+    }
     if let mass = option("mass").flatMap({ Float($0) }) { scenario.charge.mass = mass }
     // `--fit-reach 10` fits an open scene to its charge as the app's Domain section does; a
     // `--terrain` is laid again over the domain it fits.
@@ -1367,6 +1398,13 @@ func runSnapshot() throws {
     // The fireball cut out on the GPU at the end of each batch that lands on a frame, as a
     // headless run does.
     if let thermal { solver.frameRequest = FrameRequest(thermal: thermal.spec) }
+    // `--envelope-damage`: each envelope judged one way from its components' histories, and
+    // coloured by it, as the app does.
+    let judgesEnvelopes = flag("envelope-damage") && !scenario.envelopeObjects.isEmpty
+    if judgesEnvelopes {
+        try solver.configureEnvelopeComponents(
+            objects: scenario.envelopeObjects, options: EnvelopeHistoryOptions(windowS: time))
+    }
     while solver.time < time - 1e-9 {
         let result = solver.advance(
             steps: 64,
@@ -1383,6 +1421,24 @@ func runSnapshot() throws {
 
     let renderer = try SceneRenderer(device: device)
     renderer.setScene(scenario, solver: solver)
+    if judgesEnvelopes, let histories = solver.envelopeComponentHistories() {
+        let rooms = Dictionary(
+            uniqueKeysWithValues: scenario.envelopeObjects.map {
+                ($0.id, EnvelopeDamageAssessment.roomVolume(of: $0.envelope!))
+            })
+        let damage = EnvelopeDamageAssessment.assess(
+            loads: histories.map(EnvelopeComponentLoad.init),
+            constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms)
+        renderer.setEnvelopeDamage(
+            Dictionary(uniqueKeysWithValues: damage.map { ($0.id, EnvelopeDamageColour.code($0)) }))
+        for building in damage {
+            let name = scenario.object(id: building.id)?.name ?? "Building"
+            print(
+                "\(name): code \(EnvelopeDamageColour.code(building)), \(building.structuralLevels.lowerBound.label)"
+                    + "–\(building.structuralLevels.upperBound.label), panes \(building.panesBroken)/\(building.panes)"
+            )
+        }
+    }
     // Vent panels that have released are not drawn.
     let panels = (scenario.ventPanels ?? []).filter { $0.releasePressure > 0 }
     renderer.setVentPanels(zip(panels, solver.ventPanelOpenTimes).compactMap { $1 == nil ? $0.box : nil })
@@ -2266,8 +2322,7 @@ func runContact() throws {
                     scenario.structure = structure
                 }
             },
-            afterburning: burning, airModel: option("air") == nil ? nil : chosenAirModel(),
-            openFaces: flag("copy-faces") ? .copy : .farField,
+            afterburning: burning, airModel: chosenGas(), openFaces: chosenFaces(),
             progress: flag("progress")
                 ? { line in
                     print("  " + line)
@@ -2546,7 +2601,8 @@ func runTwoFace() throws {
                 device: device, test: test, cellSize: cellSize,
                 refinement: option("refine").flatMap { Int($0) } ?? 2, elementSize: elementSize,
                 duration: duration,
-                heldLengthwise: flag("held"), afterburning: burning, adjust: adjust,
+                heldLengthwise: flag("held"), afterburning: burning, airModel: chosenGas(),
+                openFaces: chosenFaces(), adjust: adjust,
                 prepare: { solver in
                     prepareTrace(solver)
                     lastStructure = solver
@@ -2607,7 +2663,7 @@ func runTwoFace() throws {
                 elementSize: elementSize, duration: duration,
                 edges: option("edges").flatMap { TwoFaceSlabTests.WangEdges(rawValue: $0) }
                     ?? (flag("hinged") ? .hinged : .fixed),
-                afterburning: burning,
+                afterburning: burning, airModel: chosenGas(), openFaces: chosenFaces(),
                 adjust: { scenario in
                     adjust(&scenario)
                     if let bond = chosenBondSlip(diameter: test.bar) { scenario.structure?.bondSlip = bond }
@@ -2677,6 +2733,7 @@ func runCloseIn() throws {
         let result = try CloseInSlabTest.run(
             device: device, test: test, cellSize: cellSize, elementSize: elementSize, duration: duration,
             refinement: refinement, mappedCharge: !flag("no-map"), afterburning: burning,
+            airModel: chosenGas(), openFaces: chosenFaces(),
             heldLengthwise: !flag("sliding"), stepsPerSample: option("trace") != nil ? 1 : 16,
             adjust: { scenario in
                 if flag("no-rate") { scenario.structure?.material.rateDependent = false }
@@ -4004,6 +4061,11 @@ func runAnchorage() throws {
                     cellSize: option("cell").flatMap { Float($0) } ?? 0.25, elementSize: h,
                     margin: option("margin").flatMap { Float($0) } ?? 12,
                     domainHeight: option("height").flatMap { Float($0) } ?? 18, soil: soil,
+                    air: {
+                        var air = SolverConfiguration.recommended
+                        applyChosenAir(&air)
+                        return air
+                    }(),
                     progress: flag("progress") ? { print("    " + $0) } : nil)
                 : flag("panel")
                     ? try AnchorageStudy.run(
@@ -5105,6 +5167,8 @@ do {
     case "advise": try runAdvise(device: device)
     case "hrynyk": try runHrynyk(device: device)
     case "mendonca": try runMendonca(device: device)
+    case "mendonca-static": try runMendoncaStatic(device: device)
+    case "reynolds": try runReynolds(device: device)
     case "deflagration": try runDeflagration()
     case "perimeter": try runPerimeter(device: device)
     case "keys": try runKeys(device: device)

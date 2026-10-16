@@ -348,6 +348,22 @@ public final class SceneRenderer {
         }
     }
 
+    /// Colours each envelope's blocks by its damage: `codes[id]` 1 for none, 2 for glass broken
+    /// alone, 3 to 6 for moderate, heavy, hazardous and failed (`EnvelopeDamageLevel` + 2);
+    /// envelopes without a code, and every other block, keep the plain colour.
+    public func setEnvelopeDamage(_ codes: [UUID: Int]) {
+        guard let scenario else { return }
+        let boxes = boxBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: Self.maxBoxes * 2)
+        var index = scenario.boxes.count
+        for object in scenario.envelopeObjects {
+            let code = Float(codes[object.id] ?? 0)
+            for _ in object.envelope!.blocks where index < rigidBoxCount {
+                boxes[2 * index].w = code
+                index += 1
+            }
+        }
+    }
+
     /// The vent panels still closed, drawn as blocks after the scenario's own.
     public func setVentPanels(_ panels: [Box]) {
         let count = min(panels.count, Self.maxBoxes - rigidBoxCount)

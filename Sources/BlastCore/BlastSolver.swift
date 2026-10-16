@@ -29,12 +29,42 @@ public final class BlastSolver {
     private var exposureNeedsInitialSample = false
     private var envelopeExposure: EnvelopeExposure?
     private var envelopeNeedsInitialSample = false
+    private(set) var envelopeComponentRecorder: EnvelopeComponentRecorder?
+    private var componentsNeedInitialSample = false
     private var gpuProfiler: BatchGPUProfiler?
     public private(set) var lastBatchGPUProfile: BatchGPUProfile?
 
     /// Records stationary voxel-face exposure. Deformable reference bodies must be fully pinned.
     /// Must be configured at time zero after loading. Ordinary runs allocate no recorder.
     public func configureEnvelopeExposure(objects: [SceneObject]) throws {
+        let mask = try stationaryMask()
+        envelopeExposure = try EnvelopeExposure(
+            device: device, library: library, grid: grid,
+            mask: mask, objects: objects)
+        envelopeNeedsInitialSample = true
+    }
+
+    /// Records each envelope component's load through the run (`EnvelopeComponent`,
+    /// `EnvelopeComponentHistory`), on the same terms as `configureEnvelopeExposure`; it can run
+    /// beside it or alone. Ordinary runs allocate no recorder.
+    public func configureEnvelopeComponents(objects: [SceneObject], options: EnvelopeHistoryOptions) throws {
+        let mask = try stationaryMask()
+        envelopeComponentRecorder = try EnvelopeComponentRecorder(
+            device: device, library: library, grid: grid, mask: mask, objects: objects, options: options)
+        componentsNeedInitialSample = true
+    }
+
+    /// The components recorded, in the order of their histories.
+    public func envelopeComponents() -> [EnvelopeComponent]? { envelopeComponentRecorder?.components }
+
+    /// Each component's history up to now.
+    public func envelopeComponentHistories() -> [EnvelopeComponentHistory]? {
+        precondition(!batchInFlight, "Cannot read observers during a batch")
+        return envelopeComponentRecorder?.histories(elapsed: time)
+    }
+
+    /// The air's mask, at time zero with every body stationary, for the envelope recorders.
+    private func stationaryMask() throws -> UnsafeBufferPointer<UInt8> {
         precondition(!batchInFlight, "Cannot configure observers during a batch")
         guard time == 0, experimentalBoxes.isEmpty,
             bodies.allSatisfy({ body in
@@ -54,14 +84,9 @@ public final class BlastSolver {
                 return fixed
             })
         else { throw BlastError.allocationFailed("stationary envelope observation at time zero") }
-        let mask = UnsafeBufferPointer(
-            start: maskBuffer.contents().bindMemory(
-                to: UInt8.self,
-                capacity: grid.cellCount), count: grid.cellCount)
-        envelopeExposure = try EnvelopeExposure(
-            device: device, library: library, grid: grid,
-            mask: mask, objects: objects)
-        envelopeNeedsInitialSample = true
+        return UnsafeBufferPointer(
+            start: maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount),
+            count: grid.cellCount)
     }
 
     public func envelopeExposureSnapshot() -> [EnvelopeExposureSnapshot]? {
@@ -77,6 +102,8 @@ public final class BlastSolver {
     func clearEnvelopeExposure() {
         envelopeExposure = nil
         envelopeNeedsInitialSample = false
+        envelopeComponentRecorder = nil
+        componentsNeedInitialSample = false
     }
 
     /// Enables fixed spatial probes before stepping. Does not change the air solution.
@@ -1372,6 +1399,8 @@ public final class BlastSolver {
         exposureNeedsInitialSample = exposurePlane != nil
         envelopeExposure?.reset()
         envelopeNeedsInitialSample = envelopeExposure != nil
+        envelopeComponentRecorder?.reset()
+        componentsNeedInitialSample = envelopeComponentRecorder != nil
         lastBatchGPUProfile = nil
         lastFluidStep = 0
         checkpointSubsteps = 0
@@ -1745,6 +1774,10 @@ public final class BlastSolver {
                 encodeEnvelopeExposure(encoder, initial: true)
                 envelopeNeedsInitialSample = false
             }
+            if componentsNeedInitialSample {
+                encodeEnvelopeComponents(encoder, initial: true)
+                componentsNeedInitialSample = false
+            }
         }
 
         let extents = [grid.nx, grid.ny, grid.nz]
@@ -2038,6 +2071,7 @@ public final class BlastSolver {
             phase("observation")
             encodeExposure(encoder, initial: false)
             encodeEnvelopeExposure(encoder, initial: false)
+            encodeEnvelopeComponents(encoder, initial: false)
         }
         guard last else {
             encoder.endEncoding()
@@ -2324,6 +2358,59 @@ public final class BlastSolver {
         )
     }
 
+    private func encodeEnvelopeComponents(_ encoder: MTLComputeCommandEncoder, initial: Bool) {
+        guard let recorder = envelopeComponentRecorder, !recorder.faces.isEmpty else { return }
+        var uniforms = makeUniforms()
+        var parameters = recorder.parameters(time: time, initial: initial)
+        // Faces in still tiles read the still air; under gravity it is not uniform.
+        parameters.skipStill = recorder.skipStillTiles && configuration.gravity == nil ? 1 : 0
+        let perGroup = EnvelopeComponentRecorder.componentsPerGroup
+        let groups = MTLSize(
+            width: (recorder.components.count + perGroup - 1) / perGroup, height: 1, depth: 1)
+        let groupSize = MTLSize(width: 32 * perGroup, height: 1, depth: 1)
+        // Which components' air has woken: a SIMD group a component (Solver.metal).
+        encoder.setComputePipelineState(recorder.markPipeline)
+        encoder.setBuffer(controlBuffer, offset: 0, index: 2)
+        encoder.setBuffer(recorder.tileRanges, offset: 0, index: 3)
+        encoder.setBuffer(recorder.tiles, offset: 0, index: 4)
+        encoder.setBuffer(tileFlagBuffer, offset: 0, index: 7)
+        encoder.setBuffer(recorder.awake, offset: 0, index: 8)
+        encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 9)
+        encoder.setBytes(
+            &parameters, length: MemoryLayout<EnvelopeComponentRecorder.Parameters>.stride, index: 10)
+        encoder.dispatchThreadgroups(groups, threadsPerThreadgroup: groupSize)
+        // Their faces' pressures, a thread a face, and 32 more for the still air.
+        encoder.setComputePipelineState(recorder.facePipeline)
+        encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
+        encoder.setBuffer(maskBuffer, offset: 0, index: 1)
+        encoder.setBuffer(recorder.faceBuffer, offset: 0, index: 3)
+        encoder.setBuffer(recorder.pressures, offset: 0, index: 4)
+        encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 5)
+        encoder.setBytes(
+            &parameters, length: MemoryLayout<EnvelopeComponentRecorder.Parameters>.stride, index: 6)
+        encoder.setBuffer(recorder.faceComponents, offset: 0, index: 8)
+        encoder.setBuffer(recorder.awake, offset: 0, index: 9)
+        encoder.setBuffer(recorder.stillPressure, offset: 0, index: 10)
+        encoder.dispatchThreads(
+            MTLSize(width: recorder.faces.count + 32, height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(
+                width: recorder.facePipeline.threadExecutionWidth, height: 1, depth: 1))
+        // Then each component's sides: a SIMD group of 32 lanes a component, a few to a threadgroup.
+        encoder.setComputePipelineState(recorder.pipeline)
+        encoder.setBuffer(recorder.pressures, offset: 0, index: 0)
+        encoder.setBuffer(recorder.awake, offset: 0, index: 1)
+        encoder.setBuffer(recorder.sideBuffer, offset: 0, index: 3)
+        encoder.setBuffer(recorder.peaks, offset: 0, index: 5)
+        encoder.setBuffer(recorder.bins, offset: 0, index: 6)
+        // Not written without maxima.
+        encoder.setBuffer(recorder.maxima ?? recorder.bins, offset: 0, index: 7)
+        encoder.setBuffer(recorder.flags, offset: 0, index: 8)
+        encoder.setBytes(
+            &parameters, length: MemoryLayout<EnvelopeComponentRecorder.Parameters>.stride, index: 10)
+        encoder.setBuffer(recorder.stillPressure, offset: 0, index: 11)
+        encoder.dispatchThreadgroups(groups, threadsPerThreadgroup: groupSize)
+    }
+
     private func encodeExposure(_ encoder: MTLComputeCommandEncoder, initial: Bool) {
         guard let plane = exposurePlane else { return }
         var uniforms = makeUniforms()
@@ -2450,6 +2537,7 @@ public final class BlastSolver {
         return buffers.reduce(0) { $0 + $1.length } + grid.cellCount * 8
             + (exposurePlane?.buffer.length ?? 0)
             + (envelopeExposure?.memoryFootprint ?? 0)
+            + (envelopeComponentRecorder?.memoryFootprint ?? 0)
             + bodies.reduce(0) { $0 + $1.memoryFootprint }
             + refinementLevels.reduce(0) { $0 + $1.memoryFootprint }
             + (experimentalBoxDefinition?.length ?? 0) + (experimentalBoxMask?.length ?? 0)

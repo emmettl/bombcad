@@ -1,0 +1,73 @@
+{
+ "source": "K. A. Reynolds, Experimental behavior of high strength concrete slabs subjected to shock loading, MS thesis, UMKC, 2015 (hdl:10355/48353): Table 1 (p. 24), Table 8 (p. 51, the same experimental values), Figs 8, 11, 12, 28-31, Chapters 8 and 9.",
+ "failure": "None: 'The panels were able to withstand the imposed design impulses and pressures without exhibiting signs of complete and catastrophic failure' (Chapter 9).",
+ "groups": {
+  "4 in. spacing": [
+   "HSCV1",
+   "HSCV2",
+   "HSCV3"
+  ],
+  "8 in. spacing": [
+   "HSCV4",
+   "HSCV5",
+   "HSCV6"
+  ]
+ },
+ "slabs": {
+  "HSCV1": {
+   "peak_mm": 98.8,
+   "peak_in": 3.89,
+   "residual_mm": 51.3,
+   "residual_in": 2.02,
+   "time_of_peak_ms": 25,
+   "record_note": "Fig 11: peaks 3.81 in at about 25 ms, then falls to about 3.0-3.4 in by 60 ms; Fig 8 gives the laser's peak as 3.89 in and the accelerometer's (integrated) as 3.97 in.",
+   "damage": "Chapter 8: extensive tensile cracking and clear crushing of the concrete on the blast face (no photograph)."
+  },
+  "HSCV2": {
+   "peak_mm": 114.3,
+   "peak_in": 4.5,
+   "residual_mm": 88.9,
+   "residual_in": 3.5,
+   "time_of_peak_ms": 36,
+   "record_note": "Fig 11: rises to a plateau of about 4.46 in at 35-37 ms; the laser record then jumps to 5.07 in at 39.5 ms and back to 3.98 in at 57 ms, read as debris crossing the laser (the thesis says such jumps occur). Table 1's 4.50 in is used. The thesis's text says HSCV2 took the higher pressure and deflected less than HSCV1, which contradicts its Table 1 (HSCV2 49.2 psi and 4.50 in, HSCV1 49.7 psi and 3.89 in), and puts the difference down to 'experimental construction defects or some other unforeseen reason'.",
+   "damage": "Chapter 8 as HSCV1. Fig 28: on the blast face a band of crushed concrete right across the width near mid-span; on the back face many cracks across the width, branching and inclined, over the middle half of the span."
+  },
+  "HSCV3": {
+   "peak_mm": 62.7,
+   "peak_in": 2.47,
+   "residual_mm": 34.8,
+   "residual_in": 1.37,
+   "time_of_peak_ms": 20,
+   "record_note": "Fig 11: peaks about 2.43 in at about 20 ms, settling near 1.9-2.0 in by 60 ms.",
+   "damage": "Chapter 8: lower levels of tension cracking and compression crushing. Fig 29: blast face shows little; back face fine cracks across the width over the middle of the span."
+  },
+  "HSCV4": {
+   "peak_mm": 181.9,
+   "peak_in": 7.16,
+   "residual_mm": 142.0,
+   "residual_in": 5.59,
+   "time_of_peak_ms": null,
+   "record_note": "Fig 12: rises to about 6.95 in at 36 ms with spikes of 7.7 in at 38 ms and 8.9 in at 50 ms (debris), about 6.3 in at 60 ms; no clear time of peak. The thesis calls this slab's peak 'the erroneous experimental peak deflection' in Chapter 8 while using it throughout; Table 1's 7.16 in is used.",
+   "damage": "Chapter 8: did not crack as much in tension, no significant compression crushing. Fig 30 (which shows more than the text): on the blast face a dark band of crushed and spalled concrete across the width at mid-span, narrowest at the centre; on the back face a few wide cracks across the width about mid-span, opened by millimetres, the concrete between them loosened."
+  },
+  "HSCV5": {
+   "peak_mm": 86.4,
+   "peak_in": 3.4,
+   "residual_mm": 38.9,
+   "residual_in": 1.53,
+   "time_of_peak_ms": 31,
+   "record_note": "Fig 12: peaks about 3.31 in at about 31 ms, falling to about 1.75 in by 60 ms.",
+   "damage": "Chapter 8 as HSCV4. Fig 31: thin cracks on the blast face's side; on the back face cracks across the width, spaced along the middle of the span."
+  },
+  "HSCV6": {
+   "peak_mm": 85.9,
+   "peak_in": 3.38,
+   "residual_mm": 48.3,
+   "residual_in": 1.9,
+   "time_of_peak_ms": 29,
+   "record_note": "Fig 12: peaks about 3.27 in at about 29 ms, about 2.37 in at 60 ms.",
+   "damage": "Chapter 8: lower levels of both tension and compression crushing (no photograph)."
+  }
+ },
+ "processing_rule": "Peaks and residuals from Table 1 as printed; times of peak read by eye from Figs 11-12; fixed on 2026-10-15 before any prediction."
+}

@@ -48,16 +48,19 @@ credentials are only tried on submission.
    Swift 6.4's optimiser once miscompiled the solvers' initialisers (`withUnsafeBytes`, which
    rethrows, inlined into an initialiser that throws, handed back a corrupt error from a closure
    that cannot throw), so that every structure crashed in a release build only (see
-   `BufferCopy.swift`);
+   `BufferCopy.swift`); then `make app-smoke`, the app built and a small project run from inside
+   it;
 3. builds `dist/BombCAD.app` in release, and checks that the checkout is still clean, that the
-   app's version matches the source, that both shader bundles and the licence text are inside
-   it and that it is arm64;
+   app's version matches the source, that every resource bundle the binary links (read from the
+   binary, as each accessor names its own) and the licence text are inside it, and that it is
+   arm64; then runs a small project from inside it (`BombCAD run`), which builds the solver and
+   its shaders;
 4. signs it with the hardened runtime and a secure timestamp, with no entitlement exceptions
    (the shaders are compiled at run time by Metal's own compiler service, which needs none);
 5. submits a ZIP to Apple and waits up to 30 minutes, writing Apple's reply to
    `dist/notarization.json`; it stops unless the status is `Accepted`;
-6. staples the ticket, validates it, re-verifies the signature and asks Gatekeeper to assess
-   the app;
+6. staples the ticket, validates it, re-verifies the signature, asks Gatekeeper to assess
+   the app and runs the small project from inside the signed app again;
 7. only then writes the release archive, its checksum and a manifest:
 
 ```text
@@ -83,8 +86,9 @@ opening and saving a layout.
 ## Checked so far
 
 The release tests (`make ci-test`) exercise the script with every external tool stubbed out:
-a rejected notarization, a Gatekeeper refusal, a missing shader bundle and a missing licence
-each stop it before an archive is written. On the development Mac `blastbench`, signed with the
+a rejected notarization, a Gatekeeper refusal, a missing shader bundle (including one the binary
+links that a fixed list would have missed) and a missing licence each stop it before an archive
+is written, and the packaged app is run before signing and before archiving. On the development Mac `blastbench`, signed with the
 Developer ID identity and the hardened runtime, compiles the shaders and runs.
 
 The whole path has been run for real, with the `BombCAD-notary` profile, from 2026-10-05:
@@ -97,7 +101,8 @@ The whole path has been run for real, with the `BombCAD-notary` profile, from 20
 | 0.1.2 (4)  | `239a67e` | `aa446aa3-ba2e-486b-9ef3-ad5651ec6948` | Published as v0.1.2           |
 | 0.2.0 (5)  | `6eef870` | `678f1bcd-04bc-4c3d-a2d2-f2fad6ffdc29` | Superseded, not published     |
 | 0.2.0 (6)  | `5d930d7` | `7dcc4ec3-0956-4be4-9e4b-972c2e29abca` | Published as v0.2.0           |
-| 0.3.0 (7)  | `b524a9d` | `de90ca6f-1803-4cd9-998b-525980d409c6` | Published as v0.3.0           |
+| 0.3.0 (7)  | `b524a9d` | `de90ca6f-1803-4cd9-998b-525980d409c6` | Published as v0.3.0; crashes  |
+| 0.3.1 (8)  | `c874a6a` | `21d1ff1a-9ebd-45cf-98d6-712264341f22` | Made with the fix, not published |
 
 For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
 assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
@@ -144,6 +149,19 @@ ticket, passed `codesign --verify --deep --strict`, was accepted by `spctl` as
 `Notarized Developer ID`, and holds the licence text and both shader bundles; `make release-smoke`
 passed. Its notes, reviewed independently, are in `docs/release-notes/0.3.0.md`. Its ZIP, checksum
 and manifest are attached to the GitHub release `v0.3.0`, tagged on `b524a9d`.
+
+Build 7 crashes on New Document, or whenever it first builds a structure's solver: ContinuumKit 0.1.0-alpha.25
+added a resource bundle (its contact search) that `build-app.sh`'s fixed list never copied, and
+the release checked only BombCAD's two bundles, and never ran the packaged app. "Both shader
+bundles" above was true and not enough. The bundles now come from the binary, and the release runs
+the packaged app (above); run headless from inside its bundle, build 7 stops with "unable to find
+bundle named ContinuumKit_ContactSearchMetal", the same as the crash reports.
+
+Build 8 (0.3.1) was made on 2026-10-16 with the fix, from a commit not on main, to try it: all
+300 app and 922 core tests passed, the packaged app ran the small project before signing, signed,
+and from a fresh expansion of its ZIP, which Apple accepted and Gatekeeper assessed as
+`Notarized Developer ID`. It was not published: no one was using 0.3.0 yet, so 0.3.1 waits for
+the normal process, and takes build 9 or later.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.

@@ -78,8 +78,8 @@ More evidence is worth more than more features.
 - **Done:** blind test 2, slabs under an open-air charge (Mendonça et al.), frozen at `047cee3`,
   scored *worse* ([validation](validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge));
   test 3, Reynolds's high-strength slabs in the contest's blast load simulator, frozen at the
-  released v0.3.0 (`b524a9d`) and being predicted
-  ([test 3](blind-tests.md#test-3-high-strength-slabs-in-the-blast-load-simulator-reynolds-2015)).
+  released v0.3.0 (`b524a9d`), scored *worse* on one broken slab, the rest within the band
+  ([validation](validation.md#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator)).
 - **Blocked on the user:** the sources marked *needs the user to obtain* in
   [data wanted](data-wanted.md), chiefly ACI SP-306 for the high-strength slabs, Saatci's
   records, Kasun-III's mapped debris for fragment sizes, shear across cracks at high rates, a
@@ -148,7 +148,7 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   estimate or a layered soil column; [gas deflagrations](deflagration.md), started: FM Global's
   vented tests within 0.4–1.6 of the measured peaks, with sub-grid turbulence and the measured
   cellular instability.
-- **Now:** why the deflagration's flame stalls when lit in the middle (about 0.4 there), a young
+- **Now:** why the deflagration's flame stalls when lit in the middle (0.4–0.6 there), a young
   flame's speed on coarse cells, and a thinner front, without which K_G cannot converge.
 - **Paused:** the fireball's radiation, about 21% radiated against Dial Pack's 5.1%; if it
   resumes, flame sheets round a fuel-rich core and the missing hot shock layer.
@@ -163,10 +163,10 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   OpenStreetMap footprints; a cost-against-fidelity advisor reading the error bands
   ([choosing settings](performance.md#choosing-settings)), its costs re-timed on an unloaded Mac
   at kilometre scale.
-- **Next:** a cheaper damage model for envelope buildings
-  (single-degree-of-freedom, pressure–impulse or fragility), once its errors against the detailed
-  model and measurement, and the cost of not venting, are known
-  ([damage for envelope buildings](building-envelopes.md#future-work-damage-for-envelope-buildings)).
+- **Next:** a cheaper damage model for envelope buildings. Its single-degree-of-freedom form is
+  built and judged against the detailed buildings, with the cost of not venting
+  ([one-way damage](building-envelopes.md#one-way-damage-single-degree-of-freedom)), and since
+  16 October in the app (glass and concrete as approximations, brick and the inside illustrative).
 
 ### Distributed computing
 

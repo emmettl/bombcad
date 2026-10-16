@@ -63,6 +63,7 @@ public enum ResultKind: String, Codable, CaseIterable, Sendable, Identifiable {
     case structuralResponse
     case structuralDamage
     case envelopeExposure
+    case envelopeDamage
     case freestandingMotion
     case thermal
     case surfaceHeating
@@ -79,6 +80,7 @@ public enum ResultKind: String, Codable, CaseIterable, Sendable, Identifiable {
         case .structuralResponse: "Structural deflection"
         case .structuralDamage: "Structural damage and failure"
         case .envelopeExposure: "Building surface exposure"
+        case .envelopeDamage: "Envelope building damage"
         case .freestandingMotion: "Freestanding objects' motion"
         case .thermal: "Thermal radiation"
         case .surfaceHeating: "Surface heating and ignition"
@@ -288,6 +290,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case nonlocalCracking
     case nonDefaultRateWindow
     case rubbleParticles
+    case extremeFibreCracking
     case pressedInterlock
     case hourglassSecant
     case hourglassWithoutSteel
@@ -368,6 +371,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .nonDefaultRateWindow:
             return any { $0.strainRateWindow != StructureModel.defaultStrainRateWindow }
         case .rubbleParticles: return !concrete.isEmpty && any { $0.rubbleParticles }
+        case .extremeFibreCracking: return !concrete.isEmpty && any { $0.extremeFibreCracking }
         case .pressedInterlock: return any { $0.pressedInterlock }
         case .hourglassSecant: return !concrete.isEmpty && any { $0.hourglassFollowsCracking }
         case .hourglassWithoutSteel: return !concrete.isEmpty && any { !$0.hourglassCapsSteel }
@@ -573,8 +577,8 @@ public enum StandingTable {
                 limit: .illustrative,
                 note: "A methane or propane cloud's flame: checked against the thin-flame model in a closed "
                     + "vessel and wrinkled by sub-grid turbulence and its measured cellular instability; in FM "
-                    + "Global's vented chamber it reaches 0.8–1.6 times the tests' peaks lit at the back wall, "
-                    + "about 0.4 lit in the middle, and below the (conservative) venting correlations.",
+                    + "Global's vented chamber it reaches 0.9–1.8 times the tests' peaks lit at the back wall, "
+                    + "0.4–0.6 lit in the middle, and below the (conservative) venting correlations.",
                 document: "deflagration.md#limitations")
         case .importedEnvelopes:
             return Entry(
@@ -666,6 +670,12 @@ public enum StandingTable {
                 note: "Failed concrete keeps its mass as particles in contact: Hupfauf's debris thrown at "
                     + "about 22% from the measured speed against 45%, but no slab holed that the tests holed.",
                 document: "validation.md#rubble-kept-as-particles-stage-3")
+        case .extremeFibreCracking:
+            return Entry(
+                title: "Cracking at the extreme fibre", affects: structure, limit: .approximation,
+                note: "Elements with a free face crack when that face reaches the tensile strength; "
+                    + "being judged on the case matrix.",
+                document: "concrete-model.md#cracking-at-the-extreme-fibre")
         case .pressedInterlock:
             return Entry(
                 title: "Pressed interlock", affects: structure, limit: .approximation,
@@ -859,6 +869,16 @@ public enum StandingTable {
         "EnvelopeSource.objectID": .input,
         "EnvelopeSource.kind": .option([.importedEnvelopes, .mapBuildings]),
         "EnvelopeSource.detail": .input,
+        "Scenario.envelopeConstructions": .input,
+        "EnvelopeConstruction.objectID": .input,
+        "EnvelopeConstruction.walls": .input,
+        "EnvelopeConstruction.wallThicknessM": .input,
+        "EnvelopeConstruction.roof": .input,
+        "EnvelopeConstruction.roofThicknessM": .input,
+        "EnvelopeConstruction.reinforcementRatio": .input,
+        "EnvelopeConstruction.glassThicknessM": .input,
+        "EnvelopeConstruction.source": .input,
+        "EnvelopeConstruction.detail": .input,
         "Scenario.deflagration": .option([.deflagration, .terrainStaircase]),
         "Scenario.ventPanels": .option([.ventPanels]),
         "Deflagration.gas": .input,
@@ -955,6 +975,7 @@ public enum StandingTable {
         "StructureModel.crackAveraging": .option([.nonlocalCracking]),
         "StructureModel.strainRateWindow": .option([.nonDefaultRateWindow]),
         "StructureModel.rubbleParticles": .option([.rubbleParticles]),
+        "StructureModel.extremeFibreCracking": .option([.extremeFibreCracking]),
         "StructureModel.pressedInterlock": .option([.pressedInterlock]),
         "StructureModel.hourglassFollowsCracking": .option([.hourglassSecant]),
         "StructureModel.hourglassCapsSteel": .option([.hourglassWithoutSteel]),
@@ -1099,7 +1120,9 @@ extension SceneStanding {
         let scene = StandingScene(inputs)
         var results = [scene.peakOverpressure(), scene.impulse()]
         if !scene.structures.isEmpty { results += [scene.structuralResponse(), scene.structuralDamage()] }
-        if !inputs.scenario.envelopeObjects.isEmpty { results.append(scene.envelopeExposure()) }
+        if !inputs.scenario.envelopeObjects.isEmpty {
+            results += [scene.envelopeExposure(), scene.envelopeDamage()]
+        }
         if scene.options.contains(.freestandingBoxes) || scene.options.contains(.freestandingCars) {
             results.append(scene.freestandingMotion())
         }
@@ -1383,13 +1406,13 @@ struct StandingScene {
                 "deflagration.md#a-closed-sphere"),
             StandingEvidence(
                 "Vented rooms against EN 14994, NFPA 68 and Molkov (blastbench deflagration vented)",
-                "A ninth to a twenty-fifth of Molkov's best fit, which FM Global's tests show conservative; "
-                    + "trend with vent area A^-1.1 against A^-2",
+                "A seventh to a twenty-second of Molkov's best fit, which FM Global's tests show conservative; "
+                    + "trend with vent area A^-0.9 against A^-2",
                 "deflagration.md#vented-rooms-against-the-correlations"),
             StandingEvidence(
                 "FM Global's 63.7 m³ chamber, Bauwens et al. 2008 (six tests, digitised)",
-                "Lit at the back wall, 0.8–1.6 times the measured peaks; lit in the middle, about 0.4, the "
-                    + "flame stalling towards the back wall; geometric mean 0.65",
+                "Lit at the back wall, 0.9–1.8 times the measured peaks; lit in the middle, 0.4–0.6, the "
+                    + "flame stalling towards the back wall; geometric mean 0.76",
                 "deflagration.md#bauwens-chaffee-and-dorofeev-2008"),
         ]
     }
@@ -1402,8 +1425,8 @@ struct StandingScene {
         }
         return result(
             kind, .illustrative,
-            "Reads low, the unsafe side, where a vented room is lit in the middle: about 0.4 of FM Global's "
-                + "tests (0.8–1.6 lit at the back wall), the back of the flame stalling; all fall below EN 14994 "
+            "Reads low, the unsafe side, where a vented room is lit in the middle: 0.4–0.6 of FM Global's "
+                + "tests (0.9–1.8 lit at the back wall), the back of the flame stalling; all fall below EN 14994 "
                 + "and NFPA 68, and a peak is uncertain by about ±20% on 0.1 m cells. The wrinkling's one "
                 + "constant was fitted, and the instability's onset measured, in that chamber. In a closed "
                 + "vessel the laminar rise times come within 1–3% of the thin-flame model, partly two errors "
@@ -1521,7 +1544,7 @@ struct StandingScene {
                 "On walls, either way: Kingery–Bulmash's reflected impulse \(reflected[key]!) on the comparison's "
                 + "\(grid.cells) for 100 kg ("
                 + (burning
-                    ? "4–15% high beyond 1.5 m/kg^(1/3) on 0.25 m or finer, not fitted"
+                    ? "3–14% high beyond 1.5 m/kg^(1/3) on 0.25 m or finer, not fitted"
                     : "within 6% beyond 1.5 m/kg^(1/3) on 0.25 m or finer") + "); \(incident)."
             evidence.append(
                 StandingEvidence(
@@ -1635,16 +1658,29 @@ struct StandingScene {
                         + "in its repeat (104–115% of the first), on 4 to 32 solid elements through, rising with the "
                         + "mesh towards about 119% and not converged (32 holding on half the step); shells 135 mm (124%); a 5% "
                         + "change in its hand-read load moves it 13–14%, a source's 68 ksi bar yield 9%. Under the "
-                        + "contest's lower shot (a scaled record) 79–88% of the peak: too stiff, the unsafe side",
+                        + "contest's lower shot (a scaled record) 79–88% of the peak: too stiff, the unsafe side, "
+                        + "though on another shot's shape it reads 97%, so the shortfall may be the scaled record's. "
+                        + "Open, the same rig's 8 in slabs (RSCR4–6) 91–106%",
                     "validation.md#structural-response-against-a-real-test"),
                 StandingEvidence(
                     "Blind: Mendonça's slabs under an open-air charge (defaults frozen at 047cee3, before the "
                         + "100 µs window; predicted before the measurements were unsealed)",
-                    "Unsafe side, too stiff and too strong: the blast's own peak a tenth to a quarter of the "
-                        + "measured; the two slabs nearest the charge collapsed, the model's barely cracked; the "
-                        + "declared peaks near the measured made by an artefact of the sleeping air on landing, fixed "
-                        + "since (the blast's own peak unchanged)",
+                    "Unsafe side: the two slabs nearest the charge collapsed, the model's barely cracked. The "
+                        + "blast's own peak a tenth to a quarter of meters that likely include the supports' or "
+                        + "rigid-body movement. The model's slab responds as its load would have it; that load's "
+                        + "large suction was the harness's copying faces at 047cee3, which today's far-field faces "
+                        + "do not have, and no bending slab under it reaches the meters, so what remains lies "
+                        + "outside the slab's bending (an offset after lift-off, the underside's push, or the load). "
+                        + "The declared peaks near the measured were made by an artefact of the sleeping air on "
+                        + "landing, fixed since, and group B's scored readings came after a lift-off",
                     "validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge"),
+                StandingEvidence(
+                    "Blind: Reynolds's high-strength slabs in the contest slab's rig (v0.3.0, b524a9d; predicted "
+                        + "before the measurements were unsealed)",
+                    "Either way, a little stiff: five slabs 0.77–1.06 of the measured peak (0.87 on average with "
+                        + "the closer bars); the sixth, lightly reinforced under the larger load, broken through "
+                        + "where the test held at 182 mm (the safe side, its bars' rupture strain assumed)",
+                    "validation.md#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator"),
                 StandingEvidence(
                     "A reinforced beam bent to failure",
                     "Peak moment 100–101% on 12 and 24 elements through, failing at 44 mm on 12 and holding on "
@@ -1676,18 +1712,20 @@ struct StandingScene {
                     "validation.md#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight"),
                 StandingEvidence(
                     "An internal explosion in a reinforced concrete chamber",
-                    "Unsafe side, too stiff: its roof's edge left 55–57 mm up against 95 mm measured (three "
-                        + "fifths) on today's air, afterburning nearly doubling its rise, and 25 mm (a quarter) on "
-                        + "the ideal gas, with the confined regime's pressed interlock; not converged on 25 mm "
-                        + "elements; the wall pressures 1.0 to 1.6 times those measured",
+                    "Unsafe side, too stiff: its roof's edge left 25 mm up against 95 mm measured (a quarter) "
+                        + "with the confined regime's pressed interlock, 27 mm with afterburning and hot air; not "
+                        + "converged on 25 mm elements; the wall pressures 0.9 to 1.6 times those measured on either "
+                        + "air",
                     "validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber"),
             ]
             parts.append(
                 "reinforced concrete errs mostly on the unsafe side, towards too little damage: too strong in "
                     + "shear, too stiff in a full-scale chamber and close in. In bending one slab reads either way, "
                     + "4–15% high under the contest's load and 12–21% low under its lower shot, not converged, and its beams struck on 16 elements come within 12–23%; it "
-                    + "springs back too far. Blind, open-air slabs bent a tenth to a quarter as far as measured, "
-                    + "and the two that collapsed were left standing")
+                    + "springs back too far. Blind, open-air slabs that collapsed were left standing, the rest "
+                    + "reading a tenth to a quarter of meters that likely include the supports' movement; blind "
+                    + "in the contest's rig, high-strength slabs read 0.77–1.06 where they held and one broke "
+                    + "through where the test held")
         }
         if classes.contains(.plainConcrete) {
             level = max(level, .verified)
@@ -1795,8 +1833,8 @@ struct StandingScene {
                 "The defaults were chosen with these tests in view: a calibration set as much as a validation "
                     + "set, none run blind.",
                 "Blind tests judge the defaults frozen for them: tests 1 (1c85774) and 2 (047cee3) the 50-step "
-                    + "strain-rate average that the 100 µs window replaced on 12 October 2026; test 3 would judge "
-                    + "today's.",
+                    + "strain-rate average that the 100 µs window replaced on 12 October 2026; test 3 judged v0.3.0 "
+                    + "(b524a9d), with the window and afterburning and hot air.",
                 "Supports are assumed in every structural test, and move the results by 15–25% or more.",
                 "Most tests are single specimens.",
                 "Lattice-aligned geometry, a staircase of whole cells to the air.",
@@ -1832,6 +1870,11 @@ struct StandingScene {
                 "Unsafe side: the two slabs nearest the charge collapsed in the test; the model left both "
                     + "standing, barely cracked",
                 "validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge"),
+            StandingEvidence(
+                "Blind: Reynolds's high-strength slabs (v0.3.0)",
+                "Either way: one slab broken through where the test held (the safe side), and no blast face "
+                    + "crushed where four of the tests' were (the unsafe side)",
+                "validation.md#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator"),
         ]
         var level = EvidenceLevel.approximation
         var summary =
@@ -1878,6 +1921,43 @@ struct StandingScene {
                 "concrete-model.md#limitations", "structural-model.md#limitations",
                 "validation.md#what-is-missing", "validation.md#convergence-on-todays-defaults",
             ])
+    }
+
+    func envelopeDamage() -> ResultStanding {
+        let envelopes = inputs.scenario.envelopeObjects.map(\.id)
+        let assumed = envelopes.filter { inputs.scenario.envelopeConstruction(for: $0).source == .assumed }
+            .count
+        return result(
+            .envelopeDamage, .approximation,
+            "One way, from each component's load, with the air seeing the building whole: glass breakage "
+                + "and its time, and concrete panels' rotation between fixed and simply supported edges, as "
+                + "approximations; brick and the inside pressure through broken panes illustrative.",
+            evidence: [
+                StandingEvidence(
+                    "UFC 3-340-02's worked examples 3A-5, 3A-6(a) and 4A-1", "Within 1%",
+                    "building-envelopes.md#one-way-damage-single-degree-of-freedom"),
+                StandingEvidence(
+                    "The same buildings free to respond (19 runs, 2–500 kg)",
+                    "Glass: all 45 panes the detailed buildings break, a median 1.7 ms early, and 7 more; "
+                        + "concrete walls between the fixed and simply supported bounds",
+                    "building-envelopes.md#one-way-damage-single-degree-of-freedom"),
+            ],
+            assumptions: [
+                "Not covered: freestanding (cantilever) walls; no comparison with measurement for concrete, "
+                    + "brick or glass; references on one mesh and one air grid.",
+                "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
+                    + "2° is flagged as beyond the one-way model.",
+                "Glass is annealed, elastic until it breaks, without membrane stiffening; fragments' hazard "
+                    + "is not graded.",
+                "Concrete by ASCE/SEI 59-11's limits for single-reinforced slabs; brick cracked or fallen, with "
+                    + "no arching.",
+            ]
+                + (assumed > 0
+                    ? [
+                        "\(assumed) of \(envelopes.count) envelopes' construction assumed (0.2 m concrete, 0.3%)."
+                    ]
+                    : []),
+            documents: ["building-envelopes.md#one-way-damage-single-degree-of-freedom"])
     }
 
     func envelopeExposure() -> ResultStanding {

@@ -285,6 +285,10 @@ constant bool discreteBars = is_function_constant_defined(discreteBarsConstant) 
 // compiled in only when chosen, so that without them the element kernel is unchanged.
 constant bool hourglassSecant [[function_constant(8)]];
 constant bool hourglassWithoutSteel [[function_constant(9)]];
+// Crack onset judged at an element's free face (`StructureModel.extremeFibreCracking`), compiled
+// in only when chosen.
+constant bool extremeFibreConstant [[function_constant(19)]];
+constant bool extremeFibreCracking = is_function_constant_defined(extremeFibreConstant) && extremeFibreConstant;
 // Gravity turned from straight down (`gravityDirection`); otherwise the node kernels pull down
 // exactly as they always have, since the fast-math compiler can round another expression differently.
 constant bool turnedGravityConstant [[function_constant(4)]];
@@ -1124,6 +1128,49 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float tensionFactor = state.crackingFactor;
         if (tensionFactor <= 0.0f) {
             tensionFactor = tensionIncrease(state.strainRate, m);
+            // With `extremeFibreCracking`, an element with a free face (air or a failed neighbour
+            // beyond it) cracks when that face, not its centre, reaches the tensile strength. Its
+            // bending across its depth is one of its hourglass modes: for in-plane axis a and the
+            // face's axis f, the mode with corner signs s_a s_f, whose amplitude A (the corners'
+            // displacements along a against those signs, over 8) stretches the face along a by
+            // 2 A / h more than the centre. Where that adds tension, the element's tensile
+            // strength is scaled by the centre's strain over the face's (to no less than half),
+            // and frozen with the rate's factor when it first cracks: the bottom layer of a slab
+            // eight elements deep, whose centre lies an eighth of the depth in, otherwise cracks
+            // at 1.14 times the section's cracking moment. Its stiffness is unchanged.
+            if (extremeFibreCracking && joints == 0u) {
+                float share = 1.0f;
+                int3 dims = int3(u.ex, u.ey, u.ez);
+                for (int f = 0; f < 3; ++f) {
+                    for (int side = 0; side < 2; ++side) {
+                        int3 beyond = int3(tid);
+                        beyond[f] += side == 0 ? -1 : 1;
+                        bool inside = all(beyond >= 0) && all(beyond < dims);
+                        if (inside && wholeThisPass(flags[beyond.x + dims.x * (beyond.y + dims.y * beyond.z)])) {
+                            continue;
+                        }
+                        float facing = side == 0 ? -1.0f : 1.0f;
+                        for (int a = 0; a < 3; ++a) {
+                            if (a == f) {
+                                continue;
+                            }
+                            float content = 0.0f;
+                            for (uint corner = 0; corner < 8; ++corner) {
+                                float3 sign = cornerSign(corner);
+                                uint3 at = tid + uint3(corner & 1u, (corner >> 1) & 1u, (corner >> 2) & 1u);
+                                float moved = x[corner][a] - (origin[a] + float(at[a]) * u.h);
+                                content += moved * sign[a] * sign[f];
+                            }
+                            float extra = facing * content / (4.0f * u.h);
+                            float centre = latticeStrain[a][a];
+                            if (centre > 0.0f && extra > 0.0f) {
+                                share = min(share, centre / (centre + extra));
+                            }
+                        }
+                    }
+                }
+                tensionFactor *= max(share, 0.5f);
+            }
             if (worst > m.crackOnset * tensionFactor) {
                 state.crackingFactor = tensionFactor;
             }

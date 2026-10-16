@@ -452,6 +452,37 @@ fails at 13 and 11 mm on 20 and 10 mm elements, where judged element by element 
 leaves bars no resistance to a sawtooth pattern of strain along their length, and the slab
 collapsed.
 
+**What the rupture strain means, and how to set it.** The rupture strain is therefore a bar's
+plastic elongation at fracture over a 100 mm gauge straddling the crack (the window, the crack
+spacing), not a strain in one element and not a tensile test's elongation over its own gauge. A
+bar's elongation at fracture is its uniform elongation (at its peak stress) plus the neck's
+extension, a length of a few millimetres concentrated at the break, so the shorter the gauge the
+larger the elongation (Barba's law; the neck adds about 0.45 √A₀, 4 mm on a No. 3 bar and 5 mm on
+a 12 mm one, by the Caltrans A706 Grade 80 data's means). A fracture elongation A over a gauge L,
+with uniform plastic elongation A_u, converts to the window as
+
+ε<sub>rupture</sub> = A_u + (A − A_u) L / 100 mm
+
+so 8 in (203 mm) elongations are worth about twice their excess over A_u, and 5d elongations of
+bars under 20 mm somewhat less. Two errors push the input low. A specification's minimum (ASTM
+A615 Grade 60 9% and Grade 80 7% over 8 in for small bars, A706 14% and 12%; EN 10080 classes B
+and C 5% and 7.5% at peak stress) is a floor: mill means run 12–13% over 8 in for A615 and 14–16%
+for A706, with uniform elongations of 9–12% (A706 Grade 80: 9.5% at peak stress, 5th percentile
+8.5%, over 788 bars; S. Overby, M. Kowalsky and R. Seracino, Caltrans CA16-2563, 2015; and an
+8 in elongation taken as the window's strain halves its necking. The default steel's 12% (7.5%
+uniform) is about a characteristic bar's: uniform elongation at class C's minimum plus a 12 mm
+bar's neck over the window.
+
+**Where it decides the result.** Across the slabs and beams in the [validation](validation.md)
+record, set at 10%, 12%, 15% and 20% on their own meshes (16 October 2026): the contest slab
+(113 mm on 8 elements at every value), Chiquito's P2 and P7, Wu's 1.6 kg slabs, Janney's beam
+and two of Hupfauf's slabs (no breach at any value; SN147's far face 28–32 m/s, within the scatter
+after failure) keep their outcome.
+Only Reynolds's lightly reinforced HSCV4 does: it breaks through below about 13.5% and holds,
+as the test did, at 14% and above ([blind test 3](validation.md#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator)).
+No test in the record ruptured its bars where the model must, so a higher rupture strain is
+checked only on the side of holding.
+
 **Cyclic loading.** Once a bar that has yielded is loaded back by more than a tenth of its yield
 strain, it follows the Menegotto–Pinto curve with the constants of Filippou, Popov and Bertero:
 
@@ -786,6 +817,48 @@ elements) or the strain it moves.
 
 Punching under impact therefore stays declared as not predicted. In the standing, the cone forms
 but cannot slide out.
+
+### Cracking at the extreme fibre
+
+An option (`StructureModel.extremeFibreCracking`; `blastbench ... --extreme-fibre`), behind function
+constant 19, so bodies without it are unchanged. It is not a default.
+
+**What it fixes.** A one-point element judges cracking at its centre. The bottom layer of a slab n
+elements deep has its centre 1/(2n) of the depth in, so the section cracks at about 1 + 1/n times its
+cracking moment: 1.14 on 8 elements. Most members are unaffected, since their bars give them a plastic
+moment well above their cracking moment. A lightly reinforced slab or wall is different: its plastic
+moment lies below its cracking moment (Mendonça's slabs: 3.7 against 5.0 kN m/m), so its strength is
+its cracking load, and the factor carries straight into it.
+
+**How.** An element with a free face (air, or a failed neighbour, beyond it) cracks when that face
+reaches the tensile strength.
+- Its bending across its depth is the hourglass mode with corner signs s_a s_f, for in-plane axis a
+  and the face's axis f. The mode's amplitude A (the corners' displacements along a against those
+  signs, over 8) stretches the face by 2A/h more than the centre.
+- Where that adds tension, the element's tensile strength is scaled by the centre's strain over the
+  face's, to no less than half, and frozen with the rate's factor when it first cracks.
+- Its stiffness is unchanged.
+
+**What it does.**
+- **Mendonça's slab 4, static** (`blastbench mendonca-static`):
+  - Rate laws off: cracks at 66 kPa against 76, the hand estimate being 62 over its 0.8 m span.
+  - Rate laws on: 77 kPa against 89.
+- **The guard cases** (quick meshes, with the rounding variants; off → on):
+
+| Case | Off | On |
+|---|---|---|
+| Contest slab | 105% | 106% |
+| Janney's beam | 100%, failing at 44 mm | 94%, failing at 46 mm (the test at 42) |
+| OA1 | 132% | 130% |
+| Saatci SS0a-1 / SS1b-1 | 181% / 99% | 183% / 99% |
+| Peterson's beams | | within 0–8% |
+| Chiquito P7 | 32% | 33% |
+
+**Why not a default.** Janney's moment falls 6%. The frozen strength also lowers the face elements'
+tension once cracked, the concrete between cracks, not only where cracking begins. A version that
+moves only the onset would keep that. Either way, the option does not reach Mendonça's blast peaks
+(the gap there lies in the load or the measurement:
+[validation](validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge)).
 
 ## Strain-rate effects
 
