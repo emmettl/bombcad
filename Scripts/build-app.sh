@@ -22,9 +22,16 @@ cp Support/Info.plist "$app/Contents/Info.plist"
 cp Support/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 # The MIT licence asks for its notice to travel with every copy.
 cp LICENSE "$app/Contents/Resources/LICENSE"
-# The shaders, compiled at run time. SwiftPM's resource accessor looks for its bundles in the
-# app's Resources directory first; nothing may sit at the app's root, or signing fails.
-for bundle in BombCAD_BlastCore.bundle BombCAD_BlastRender.bundle ContinuumKit_SceneRender.bundle; do
+# The shaders, compiled at run time: every resource bundle the binary links, read from the
+# binary itself, so that a package's new bundle cannot be left behind. SwiftPM's resource
+# accessor looks in the app's Resources directory first; nothing may sit at the app's root, or
+# signing fails.
+bundles="$(python3 Scripts/release.py bundles "$binary_directory/BombCAD")"
+for bundle in $bundles; do
+  if [ ! -d "$binary_directory/$bundle" ]; then
+    echo "The build made no $bundle, which the app links." >&2
+    exit 1
+  fi
   cp -R "$binary_directory/$bundle" "$app/Contents/Resources/$bundle"
 done
 # The IFC translator is a separate, checksum-pinned native helper, never a runtime download.

@@ -39,6 +39,15 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// out of a domain hardly bigger than the fireball (docs/validation.md, "Afterburning by
     /// default"). `SolverConfiguration()` stays the bare numerical core: an ideal gas, no
     /// afterburning and faces that copy, which the exact solutions and conservation checks test.
+    /// The harnesses that start here, each with an explicit choice of gas and faces: the air
+    /// benches (`validate`, `gas`, `throughput`), rooms (`ChamberTest`), Wu and Wang
+    /// (`TwoFaceSlabTests`), Chiquito (`CloseInSlabTest`), Hupfauf (`ContactSlabTest`), Alsubaei
+    /// (`PerimeterWallTests`), Keys in the open (`MasonryDebrisTests.run`), the coupled anchorage
+    /// wall, the validation ensemble's wall, Dial Pack, the landscape, buildings and terrain
+    /// profiles. On the bare core, deliberately: the numerical studies (the wedge's reflection, the
+    /// bubble, the mixing layer, the digest, the experimental rigid bodies), the deflagrations,
+    /// whose gas is their own, Keys' tunnel, driven by an inflow at an open face, and the blind
+    /// tests, which keep the air of their frozen commits.
     public static var recommended: SolverConfiguration {
         var configuration = SolverConfiguration()
         configuration.afterburning = true

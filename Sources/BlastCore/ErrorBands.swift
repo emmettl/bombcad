@@ -213,18 +213,18 @@ public enum ValidationTables {
     /// With afterburning, hot air and far-field faces, the defaults since 15 October 2026
     /// (validation.md, "The defaults since 15 October").
     public static let burningIncidentPeak = Table(byGrid: [
-        [60, 60, 71, 68, 73, 71, 73, 75], [78, 80, 86, 80, 84, 84, 85, 85], [98, 95, 96, 89, 90, 92, 93, 93],
+        [54, 55, 67, 66, 71, 70, 72, 73], [72, 74, 82, 78, 83, 82, 84, 84], [90, 89, 93, 87, 88, 90, 92, 92],
     ])
     public static let burningIncidentImpulse = Table(byGrid: [
-        [138, 102, 104, 99, 103, 102, 103, 103], [122, 96, 97, 96, 101, 100, 100, 98],
-        [121, 96, 90, 92, 97, 97, 96, 94],
+        [133, 101, 102, 97, 101, 100, 101, 102], [116, 94, 95, 94, 100, 98, 98, 97],
+        [114, 92, 89, 91, 97, 96, 95, 95],
     ])
     public static let burningReflectedPeak = Table(byGrid: [
-        [20, 26, 38, 49, 63, 69, 74, 75], [38, 45, 61, 70, 81, 85, 85, 87], [67, 69, 85, 86, 92, 95, 95, 95],
+        [17, 23, 35, 47, 61, 67, 72, 73], [32, 39, 56, 67, 79, 83, 84, 86], [59, 63, 82, 84, 90, 93, 94, 94],
     ])
     public static let burningReflectedImpulse = Table(byGrid: [
-        [80, 86, 100, 106, 113, 114, 113, 112], [90, 98, 110, 113, 115, 113, 110, 108],
-        [100, 107, 115, 114, 113, 109, 106, 104],
+        [75, 82, 96, 103, 110, 111, 110, 109], [85, 93, 106, 110, 113, 110, 107, 106],
+        [94, 103, 114, 113, 112, 107, 104, 103],
     ])
     /// Where the burning tables are recorded.
     public static let burningDocument = "validation.md#the-defaults-since-15-october"
@@ -244,6 +244,14 @@ public enum ValidationTables {
     ])
     public static let closeReflectedImpulse = Table(byGrid: [
         [65, 75, 83, 89], [79, 86, 93, 94], [93, 98, 106, 92], [99, 103, 97, 94],
+    ])
+    /// The same bursts on today's air, afterburning, hot air and far-field faces (validation.md,
+    /// "Close in", the second table).
+    public static let closeBurningReflectedPeak = Table(byGrid: [
+        [20, 25, 36, 46], [36, 54, 61, 69], [64, 83, 90, 88], [107, 101, 98, 104],
+    ])
+    public static let closeBurningReflectedImpulse = Table(byGrid: [
+        [66, 77, 88, 99], [84, 85, 100, 103], [99, 96, 111, 102], [103, 104, 105, 104],
     ])
 
     /// A band read from the record as a single figure, with the words it is read from.
@@ -293,8 +301,13 @@ public enum ValidationTables {
             id: "closeInPermanent", low: 0.33, high: 0.5, document: "validation.md#summary",
             quote: "the slab left a third to a half as far down as measured"),
         Figure(
-            id: "wuLarge", low: 0.8, high: 1.07, document: "validation.md#summary",
-            quote: "within −20% to +7% at the peak under 1.6 kg at 0.43 m/kg^(1/3)"),
+            id: "wuLargeToday", low: 0.91, high: 1.19,
+            document: "validation.md#slabs-with-steel-in-both-faces",
+            quote: "0.91 and 1.18–1.19 times the measured peak"),
+        Figure(
+            id: "debrisSpeedBurning", low: 0.88, high: 1.82,
+            document: "validation.md#slabs-under-contact-charges",
+            quote: "the far face on the axis is 0.88–1.82 times the fit on today's air"),
         Figure(
             id: "wuSmall", low: 0.4, high: 0.7, document: "validation.md#summary",
             quote: "40–70% (too stiff) in the six under 0.2–0.8 kg where the tests spalled"),
@@ -486,6 +499,16 @@ public enum ValidationTables {
             id: "hupfaufSN131", values: [16.0, 15.2, 18.7],
             document: "validation.md#convergence-on-todays-defaults",
             quote: "| Hupfauf SN131 | 16.0, 758 | 15.2, 815 | 18.7, 761 |"),
+        Rounding(
+            id: "hupfaufSN142Burning", values: [62.9, 106.3, 61.5],
+            document: "validation.md#slabs-under-contact-charges",
+            quote:
+                "| Hupfauf SN142 on today's air: far face (m/s), elements failed | 62.9, 2,478 | 106.3, 2,773 | 61.5, 2,272 |"
+        ),
+        Rounding(
+            id: "hupfaufSN131Burning", values: [22.4, 27.7, 22.6],
+            document: "validation.md#slabs-under-contact-charges",
+            quote: "| Hupfauf SN131 on today's air | 22.4, 824 | 27.7, 881 | 22.6, 786 |"),
     ]
 
     /// The widest half-range among `ids`.
@@ -648,19 +671,26 @@ extension StandingScene {
                         "Incident pressure close in was not compared; the curves rest on few tests there."
                     return bands
                 }
-                guard !has(.afterburning) else {
-                    bands.note = "Close in, the comparison was without afterburning."
+                guard burning || !has(.afterburning) else {
+                    bands.note = "Close in, afterburning was compared only with hot air."
                     return bands
                 }
-                let check = "1 kg burst above rigid ground, reflected beneath it (blastbench closeair)"
+                let check =
+                    "1 kg burst above rigid ground, reflected beneath it (blastbench closeair"
+                    + (burning ? ", afterburning, hot air and far-field faces)" : ")")
                 bands.onSurface = true
                 bands.peak = band(
-                    ValidationTables.closeReflectedPeak, ValidationTables.closeGrids,
+                    burning
+                        ? ValidationTables.closeBurningReflectedPeak : ValidationTables.closeReflectedPeak,
+                    ValidationTables.closeGrids,
                     ValidationTables.closeDistances, measure: .peakOverpressure,
                     quantity: "Reflected peak overpressure",
                     check: check, document: "validation.md#close-in", low: "under-resolved")
                 bands.impulse = band(
-                    ValidationTables.closeReflectedImpulse, ValidationTables.closeGrids,
+                    burning
+                        ? ValidationTables.closeBurningReflectedImpulse
+                        : ValidationTables.closeReflectedImpulse,
+                    ValidationTables.closeGrids,
                     ValidationTables.closeDistances, measure: .impulse, quantity: "Reflected impulse",
                     check: check,
                     document: "validation.md#close-in", low: "under-read")
@@ -853,7 +883,7 @@ extension StandingScene {
     ) -> ErrorBand {
         let figure = ValidationTables.figure(id)
         // The cases the ensemble ran, by the figure they share.
-        let spreads = ["slabSolid": "slab", "wuSmall": "wuPeak", "wuLarge": "wuPeak"]
+        let spreads = ["slabSolid": "slab", "wuSmall": "wuPeak", "wuLargeToday": "wuPeak"]
         // References whose own scatter is known: UFC 3-340-02's rooms.
         let scatters = ["roomDefault": "room", "roomBurning": "room", "roomBurningHot": "room"]
         return ErrorBand(
@@ -1035,13 +1065,14 @@ extension StandingScene {
             } else if regime == "confined" {
                 bands.append(
                     figure(
-                        "chamberPressure", .wallPressure, "Peak wall pressure inside", low: "under-read",
+                        "chamberPressure", .wallPressure,
+                        "Peak wall pressure inside", low: "under-read",
                         high: "over-read",
                         validity:
                             "a full-scale chamber; 0.1 m cells and elements; its roof's peak rises with the mesh "
-                            + "(48 to 57 mm on 50 mm elements) and on 25 mm elements the solution breaks down; "
-                            + "the wall pressures compared on the ideal gas only, the roof alike with afterburning "
-                            + "and hot air (37 mm against 38)",
+                            + "(48 to 57 mm on 50 mm elements, the ideal gas) and on 25 mm elements the solution "
+                            + "breaks down; with afterburning and hot air the wall pressures alike and the roof "
+                            + "rising 50 mm, left 27 mm up, against 48 and 25 on the ideal gas",
                         check: "An internal explosion in a reinforced concrete chamber"))
                 if let structure = structures.first, abs(structure.elementSize - 0.1) > 0.01 {
                     bands.removeLast()
@@ -1074,11 +1105,12 @@ extension StandingScene {
                     bands +=
                         onMesh(
                             figure(
-                                "wuLarge", .peakDeflection, "Peak deflection close in", low: "too stiff",
+                                "wuLargeToday", .peakDeflection, "Peak deflection close in", low: "too stiff",
                                 high: "too flexible",
                                 validity:
                                     "1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh (8 through), held at one edge; "
-                                    + "on the ideal gas only, not run again with afterburning and hot air",
+                                    + "on today's build, either air (16.3–16.5 mm on today's, 16.1–16.3 on the ideal "
+                                    + "gas, against 18.0 and 13.9), the record's earlier −20% to +7% from an older one",
                                 check: "Wu et al.'s slabs with steel in both faces"),
                             derived: "8 elements through only", meshes: 8...8, unbanded: &unbanded
                         ).map { [$0] } ?? []
@@ -1207,12 +1239,24 @@ extension StandingScene {
                         + "among roundings (the far face 116–121 m/s on SN142, 15–19 on SN131)",
                     check: "Hupfauf's slabs under contact charges")
                 debris.roundingSpread = ValidationTables.rounding("hupfaufSN142", "hupfaufSN131")
-                if has(.afterburning) {
-                    // Derived without it; with it the far faces slowed by about a third.
+                if burning {
+                    // Derived again on today's air: the far face on the axis at 0.5 ms against the fit.
+                    debris = figure(
+                        "debrisSpeedBurning", .debrisSpeed, "Far face's speed against the debris's",
+                        low: "debris too slow",
+                        high: "debris too fast",
+                        validity:
+                            "slabs 20–30 cm under contact charges, 12 elements through, on today's air (the 20 cm "
+                            + "slabs near the fit, 0.9–1.2, where on the ideal gas 1.2–1.9); after failure, so one "
+                            + "draw among roundings (the far face 61.5–106.3 m/s on SN142, 22.4–27.7 on SN131)",
+                        check: "Hupfauf's slabs under contact charges")
+                    debris.roundingSpread = ValidationTables.rounding(
+                        "hupfaufSN142Burning", "hupfaufSN131Burning")
+                }
+                if has(.afterburning) && !burning {
                     unbanded.append(
-                        "Far face's speed against the debris's: derived without afterburning. With it, today's "
-                            + "default, the 20 cm slabs' far faces reach 63–78 m/s against 69–84 measured, where "
-                            + "they had reached 114–118; not given until derived again.")
+                        "Far face's speed against the debris's: compared on the ideal gas and with afterburning "
+                            + "and hot air together, not afterburning alone.")
                 } else {
                     bands +=
                         onMesh(
@@ -1267,10 +1311,10 @@ extension StandingScene {
                 unbanded.append("Only the volume's radiation was compared with a measurement.")
             }
         case .cloud:
-            if has(.afterburning) && has(.hotAir) {
+            if has(.afterburning) && !has(.hotAir) {
                 unbanded.append(
-                    "Cloud's top: Church's clouds were compared with afterburning alone; hot air, on by default "
-                        + "since 15 October 2026, was not run against them.")
+                    "Cloud's top: Church's clouds were compared with afterburning and hot air together, today's "
+                        + "defaults; afterburning alone was not run against them.")
             } else if has(.afterburning) {
                 bands.append(
                     figure(
@@ -1415,8 +1459,8 @@ extension StandingScene {
                 add(
                     "Afterburning", nil,
                     has(.afterburning)
-                        ? "In the open the incident impulse is within 4% beyond 1 m/kg^(1/3) on 0.25 m cells "
-                            + "(fitted), but the reflected impulse on walls 8–15% high in the middle ranges."
+                        ? "In the open the incident impulse is within 6% beyond 1 m/kg^(1/3) on 0.25 m cells "
+                            + "(fitted), but the reflected impulse on walls 6–13% high in the middle ranges."
                         : "In the open the reflected impulse on walls is within 6%, but the incident impulse 13–22% low: "
                             + "low for objects the wave passes over.",
                     has(.afterburning) ? nil : "Turn afterburning on where the incident impulse matters.",

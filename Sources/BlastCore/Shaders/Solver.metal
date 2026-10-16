@@ -321,17 +321,27 @@ static inline float2 vibration(float temperature) {
     return airGasConstant * sum;
 }
 
-// Temperature of thermally perfect air of internal energy `e` per kilogram: Newton's method
-// from the temperature without vibration, which lies above the root; two steps reach single
-// precision everywhere from room temperature to 20,000 K.
-static inline float airTemperature(float e) {
-    float t = max(e, 0.0f) / (2.5f * airGasConstant);
-    for (int n = 0; n < 2; ++n) {
-        float2 v = vibration(t);
-        t -= (2.5f * airGasConstant * t + v.x - e) / (2.5f * airGasConstant + v.y);
-    }
-    return max(t, 0.0f);
+// Temperature (x) of thermally perfect air of internal energy `e` per kilogram, and its
+// vibrational heat capacity (y) at the first guess: a rational function of the temperature
+// without vibration, y = e / (5/2 R), within 10^-4 of the root from 1 K to 60,000 K (and exact as
+// y falls to nothing), then one step of Newton's method, which brings it within 2 x 10^-10. The
+// heat capacity at the guess gives the ratio of specific heats within 2 x 10^-6. (Until October
+// 2026 two steps from y itself, and the heat capacity evaluated again at the root: three
+// evaluations of the vibration's exponentials where one does, which hot air spent a tenth of a
+// cell's update on.)
+static inline float2 airTemperatureAndHeat(float e) {
+    float y = max(e, 0.0f) / (2.5f * airGasConstant);
+    float z = y * (1.0f / 3000.0f);
+    float p = 1.0f + z * (3.3791424f + z * (20.550920f + z * (137.42716f + z * 249.79498f)));
+    float q = 1.0f + z * (3.3600479f + z * (21.645931f + z * (118.98650f + z * 349.70334f)));
+    float t = y * p / q;
+    float2 v = vibration(t);
+    t -= (2.5f * airGasConstant * t + v.x - e) / (2.5f * airGasConstant + v.y);
+    return float2(max(t, 0.0f), v.y);
 }
+
+// Temperature of thermally perfect air of internal energy `e` per kilogram.
+static inline float airTemperature(float e) { return airTemperatureAndHeat(e).x; }
 
 // Pressure from density and internal energy per volume.
 static inline float gasPressure(float rho, float internalEnergy, uint model, float gamma) {
@@ -357,13 +367,13 @@ static inline float2 gasState(float rho, float internalEnergy, uint model, float
         return float2((gamma - 1.0f) * internalEnergy, gamma);
     }
     float e = internalEnergy / rho;
-    float t = airTemperature(e);
+    float2 th = airTemperatureAndHeat(e);
     if (model == airDissociating) {
-        t = dissociatingTemperature(rho, e, t);
+        float t = dissociatingTemperature(rho, e, th.x);
         DissociatingAir air = dissociatingAir(rho, t);
         return float2(rho * air.gasConstant * t, 1.0f + air.gasConstant / air.frozenHeat);
     }
-    return float2(rho * airGasConstant * t, 1.0f + airGasConstant / (2.5f * airGasConstant + vibration(t).y));
+    return float2(rho * airGasConstant * th.x, 1.0f + airGasConstant / (2.5f * airGasConstant + th.y));
 }
 
 // Internal energy per volume from density and pressure.
@@ -495,6 +505,14 @@ static inline float3 cutNormalOf(int3 cell, const device uint4 *columns, const d
                                  constant SolverUniforms &u) {
     uint4 column = cutColumnOf(cell, columns, u);
     return toSweep(walls[column.x + uint(cell.z) - column.y].xyz, axis);
+}
+
+// Whether `cell` is one of its column's cut cells, and so has a wall and a normal of its own. A
+// whole cell beside the terrain's solid cells (above ground lying on a cell's face, or beside a
+// cliff) meets them across its face, as a staircase does.
+static inline bool cutCellHere(int3 cell, const device uint4 *columns, constant SolverUniforms &u) {
+    uint4 column = cutColumnOf(cell, columns, u);
+    return cell.z >= int(column.y) && cell.z < int(column.z);
 }
 
 // Whether `cell` is inside the domain and solid by the terrain, below its column's cut cells.
@@ -1088,8 +1106,12 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
                              device float *coarseSpeciesFlux, const device uchar *boxMask, device float *boxImpulse,
                              const device float4 *gravityTable, const device float *viscosity,
                              const device uint4 *cutColumns, const device float4 *cutRecords,
-                             const device float4 *cutWalls, device float4 *cutDefects) {
+                             const device float4 *cutWalls, device float4 *cutDefects, const device uint *cutCeilings) {
     int index = cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z);
+    // With cut cells, whether this cell lies below the highest the cut cells' work reaches over its
+    // tile's columns (`TerrainCutGeometry.tileCeilings`): above it there is none to do.
+    bool nearCut = cutCells
+        && cell.z < int(cutCeilings[uint(cell.x / tileSize) + (u.nx + uint(tileSize) - 1u) / uint(tileSize) * uint(cell.y / tileSize)]);
     if (control.dt <= 0.0f) {
         // A step that does nothing (past the time limit) swaps the two buffers' cells, solid
         // ones included, as the host swaps the buffers: the air is then exactly as if the step
@@ -1192,7 +1214,7 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
     // the sweep: a ghost beside a cut cell mirrors that cell's state (or, two away, the state as far
     // the other side of it) about the cut cell's normal. Every thread that needs a ghost builds it
     // by the same rule from the same cell, so both cells beside a face work out the same flux.
-    if (cutCells) {
+    if (nearCut) {
         int3 above = cell;
         int3 below = cell;
         int3 above2 = cell;
@@ -1201,22 +1223,23 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
         below[axis] -= 1;
         above2[axis] += 2;
         below2[axis] -= 2;
-        if (kindP1 == kindWall && terrainSolid(above, cutColumns, u)) {
+        bool cutHere = cutCellHere(cell, cutColumns, u);
+        if (kindP1 == kindWall && cutHere && terrainSolid(above, cutColumns, u)) {
             float3 normal = cutNormalOf(cell, cutColumns, cutWalls, axis, u);
             wP1 = mirroredAbout(w0, normal);
             wP2 = mirroredAbout(wM1, normal);
         }
-        if (kindM1 == kindWall && terrainSolid(below, cutColumns, u)) {
+        if (kindM1 == kindWall && cutHere && terrainSolid(below, cutColumns, u)) {
             float3 normal = cutNormalOf(cell, cutColumns, cutWalls, axis, u);
             wM1 = mirroredAbout(w0, normal);
             wM2 = mirroredAbout(wP1, normal);
         }
         if (kindP1 == kindFluid && classify(mask, index, 2, stride, i, n, lowWall, highWall) == kindWall
-            && terrainSolid(above2, cutColumns, u)) {
+            && terrainSolid(above2, cutColumns, u) && cutCellHere(above, cutColumns, u)) {
             wP2 = mirroredAbout(wP1, cutNormalOf(above, cutColumns, cutWalls, axis, u));
         }
         if (kindM1 == kindFluid && classify(mask, index, -2, stride, i, n, lowWall, highWall) == kindWall
-            && terrainSolid(below2, cutColumns, u)) {
+            && terrainSolid(below2, cutColumns, u) && cutCellHere(below, cutColumns, u)) {
             wM2 = mirroredAbout(wM1, cutNormalOf(below, cutColumns, cutWalls, axis, u));
         }
     }
@@ -1308,7 +1331,7 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
     Flux cutHigh = fluxHigh;
     float cutShare = 1.0f;
     float registerAperture = 1.0f;
-    if (cutCells) {
+    if (nearCut) {
         uint4 column = cutColumnOf(cell, cutColumns, u);
         if (cell.z < int(column.z)) {
             cutRecord = int(column.x + uint(cell.z) - column.y);
@@ -1480,13 +1503,14 @@ kernel void sweep(device Cell *src [[buffer(0)]],
                   const device float4 *cutRecords [[buffer(21)]],
                   const device float4 *cutWalls [[buffer(22)]],
                   device float4 *cutDefects [[buffer(23)]],
+                  const device uint *cutCeilings [[buffer(24)]],
                   uint3 tid [[thread_position_in_grid]]) {
     if (tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz) {
         return;
     }
     sweepCell(int3(tid), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags,
               speciesSrc, speciesDst, patchOfTile, coarseFlux, coarseSpeciesFlux, boxMask, boxImpulse,
-              gravityTable, viscosity, cutColumns, cutRecords, cutWalls, cutDefects);
+              gravityTable, viscosity, cutColumns, cutRecords, cutWalls, cutDefects, cutCeilings);
 }
 
 // Sweeps the cells of the tiles listed in `tiles`, one threadgroup per tile; each thread takes
@@ -1515,6 +1539,7 @@ kernel void sweepTiles(device Cell *src [[buffer(0)]],
                        const device float4 *cutRecords [[buffer(21)]],
                        const device float4 *cutWalls [[buffer(22)]],
                        device float4 *cutDefects [[buffer(23)]],
+                       const device uint *cutCeilings [[buffer(24)]],
                        uint3 group [[threadgroup_position_in_grid]],
                        uint3 local [[thread_position_in_threadgroup]],
                        uint3 groupSize [[threads_per_threadgroup]]) {
@@ -1526,7 +1551,7 @@ kernel void sweepTiles(device Cell *src [[buffer(0)]],
         if (cell.x < u.nx && cell.y < u.ny && cell.z < u.nz) {
             sweepCell(int3(cell), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags,
                       speciesSrc, speciesDst, patchOfTile, coarseFlux, coarseSpeciesFlux, boxMask, boxImpulse,
-                      gravityTable, viscosity, cutColumns, cutRecords, cutWalls, cutDefects);
+                      gravityTable, viscosity, cutColumns, cutRecords, cutWalls, cutDefects, cutCeilings);
         }
     }
 }
@@ -1559,6 +1584,7 @@ kernel void redistributeCutDefects(device Cell *state [[buffer(0)]],
                                    device float2 *fineSpecies [[buffer(16)]],
                                    const device uchar *fineMask [[buffer(17)]],
                                    const device float4 *fineGravityTable [[buffer(18)]],
+                                   device uchar *tileFlags [[buffer(19)]],
                                    uint gid [[thread_position_in_grid]]) {
     if (!cutCells || gid >= columnCount) {
         return;
@@ -1635,6 +1661,10 @@ kernel void redistributeCutDefects(device Cell *state [[buffer(0)]],
         float ambient = airGravity ? gravityAmbientOf(gravityTable, k, u) : u.ambientPressure;
         peak[index] = max(peak[index], pressure - ambient);
         recordCell(maxSpeed, momentum, c.rho, pressure, u, ambient);
+        // A cell changed here, perhaps in a tile asleep (the cell above a sliver), is swept next step.
+        if (u.tileNx != 0) {
+            wakeTilesAround(cell, tileFlags, tileWoken, u);
+        }
     };
     // What each cell above the first gets from those below it, carried up the column.
     float4 passed = float4(0.0f);

@@ -84,6 +84,30 @@ class ReleaseTests(unittest.TestCase):
         (app / "Info.plist").write_bytes(plistlib.dumps(self.info))
         self.assert_never_signed("shader bundles")
 
+    def test_a_bundle_the_binary_links_but_the_app_lacks_is_never_signed(self):
+        # 0.3.0 shipped without ContinuumKit's contact-search bundle, from a fixed list.
+        self.make_app()
+        (self.root / "dist/BombCAD.app/Contents/Resources/ContinuumKit_ContactSearchMetal.bundle").rmdir()
+        self.assert_never_signed("ContinuumKit_ContactSearchMetal.bundle")
+
+    def test_linked_bundles_are_read_from_the_binary(self):
+        binary = self.root / "BombCAD"
+        binary.write_bytes(self.binary())
+        self.assertEqual(release.linked_bundles(binary), [name + ".bundle" for name in self.LINKED])
+        binary.write_bytes(b"no accessors")
+        with self.assertRaisesRegex(ValueError, "names no resource bundles"):
+            release.linked_bundles(binary)
+
+    def test_the_app_is_run_from_inside_its_bundle_before_signing_and_before_archiving(self):
+        calls = self.complete_pipeline(gatekeeper_accepts=True)
+        executable = str(self.root / "dist/BombCAD.app/Contents/MacOS/BombCAD")
+        runs = [index for index, call in enumerate(calls) if call[:2] == (executable, "run")]
+        signing = next(index for index, call in enumerate(calls) if call[0] == "codesign")
+        archiving = max(index for index, call in enumerate(calls) if call[0] == "ditto")
+        self.assertEqual(len(runs), 2)
+        self.assertLess(runs[0], signing)
+        self.assertTrue(signing < runs[1] < archiving)
+
     def test_an_app_without_its_licence_is_never_signed(self):
         self.make_app()
         (self.root / "dist/BombCAD.app/Contents/Resources/LICENSE").unlink()
@@ -103,12 +127,20 @@ class ReleaseTests(unittest.TestCase):
                 release.release(args)
         self.assertFalse(any(call[0] == "codesign" for call in calls))
 
+    LINKED = ["BombCAD_BlastCore", "BombCAD_BlastRender", "ContinuumKit_ContactSearchMetal",
+              "ContinuumKit_SceneRender"]
+
+    def binary(self):
+        return b"\0".join(b"unable to find bundle named " + name.encode() for name in self.LINKED)
+
     def make_app(self):
         app = self.root / "dist/BombCAD.app/Contents"
         app.mkdir(parents=True)
         (app / "Info.plist").write_bytes(plistlib.dumps(self.info))
-        for name in release.RESOURCE_BUNDLES:
-            (app / "Resources" / name).mkdir(parents=True)
+        (app / "MacOS").mkdir()
+        (app / "MacOS/BombCAD").write_bytes(self.binary())
+        for name in self.LINKED:
+            (app / "Resources" / (name + ".bundle")).mkdir(parents=True)
         (app / "Resources/LICENSE").write_text("MIT")
 
     def complete_pipeline(self, gatekeeper_accepts):
@@ -143,6 +175,7 @@ class ReleaseTests(unittest.TestCase):
             self.assertTrue(json.loads(archive.with_suffix(".json").read_text())["notarized"])
             subprocess.run(["shasum", "-a", "256", "-c", archive.name + ".sha256"],
                            cwd=archive.parent, check=True, capture_output=True)
+        return calls
 
 
 if __name__ == "__main__":
