@@ -71,15 +71,18 @@ private func numbers(_ text: String) -> [Double] {
     return found
 }
 
-/// The rows of the first table under `link` whose header contains `header`, as cells.
-private func table(_ link: String, header: String) throws -> [[String]] {
+/// The rows of the first table under `link` whose header contains `header`, as cells; after the
+/// first line under it that begins with `after`, where given.
+private func table(_ link: String, header: String, after: String? = nil) throws -> [[String]] {
     let parts = link.split(separator: "#", maxSplits: 1).map(String.init)
     let lines = try String(contentsOf: docs.appending(path: parts[0]), encoding: .utf8)
         .split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
     let start = try #require(
         lines.firstIndex { $0.hasPrefix("#") && anchor($0.drop { $0 == "#" }.drop { $0 == " " }) == parts[1] }
     )
-    let head = try #require(lines[start...].firstIndex { $0.hasPrefix("|") && $0.contains(header) })
+    let from =
+        try after.map { prefix in try #require(lines[start...].firstIndex { $0.hasPrefix(prefix) }) } ?? start
+    let head = try #require(lines[from...].firstIndex { $0.hasPrefix("|") && $0.contains(header) })
     return lines[(head + 2)...].prefix { $0.hasPrefix("|") }.map {
         $0.split(separator: "|").map { $0.trimmingCharacters(in: .whitespaces) }
     }
@@ -119,11 +122,6 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
                     "burning column \(first + grid)")
             }
         }
-        // The debris band's note quotes the re-run's row for Hupfauf's 20 cm slabs.
-        #expect(
-            try section(ValidationTables.burningDocument).contains(
-                normalised(
-                    "| Hupfauf, 20 cm slabs: far face's tip | 114–118 m/s (measured 69–84) | 63–78 m/s |")))
         // Close in: four cell sizes, peaks then impulses.
         let close = try table("validation.md#close-in", header: "Z (free air)")
         #expect(close.map { Double($0[0]) } == ValidationTables.closeDistances.map(Optional.some))
@@ -134,6 +132,18 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
             #expect(
                 close.map { percent($0[7 + grid]) }
                     == ValidationTables.closeReflectedImpulse.byGrid[grid]!.map(Optional.some))
+        }
+        // The same on today's air, the second table.
+        let today = try table(
+            "validation.md#close-in", header: "Z (free air)", after: "On today's air (afterburning")
+        #expect(today.map { Double($0[0]) } == ValidationTables.closeDistances.map(Optional.some))
+        for grid in 0..<4 {
+            #expect(
+                today.map { percent($0[2 + grid]) }
+                    == ValidationTables.closeBurningReflectedPeak.byGrid[grid]!.map(Optional.some))
+            #expect(
+                today.map { percent($0[7 + grid]) }
+                    == ValidationTables.closeBurningReflectedImpulse.byGrid[grid]!.map(Optional.some))
         }
     }
 
@@ -218,6 +228,24 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
         #expect(
             ValidationTables.read(table, grids: grids, distances: distances, cell: grids[1], distance: 8)
                 == nil)
+    }
+
+    /// Close in, on today's air: the reruns' own table, and afterburning alone none.
+    @Test func closeInGaugesOnTodaysAir() throws {
+        var scenario = ScenarioPreset.openGround.scenario
+        scenario.charge = Charge(mass: 1, position: SIMD3(10, 10, 0.5))
+        scenario.gauges = [Gauge("Beneath", at: SIMD3(10, 10, 0.01))]
+        var config = SolverConfiguration()
+        config.afterburning = true
+        config.airModel = .thermallyPerfect
+        let today = SceneStanding(StandingInputs(scenario: scenario, cellSize: 0.01, configuration: config))
+        let beneath = try #require(today.gauge("Beneath"))
+        let peak = try #require(beneath.peak)
+        #expect(peak.document == "validation.md#close-in" && peak.check.contains("afterburning"))
+        #expect(peak.low >= 0.64 - 1e-9 && peak.high <= 0.90 + 1e-9)
+        config.airModel = .idealGas
+        let alone = SceneStanding(StandingInputs(scenario: scenario, cellSize: 0.01, configuration: config))
+        #expect(alone.gauge("Beneath")?.peak == nil && alone.gauge("Beneath")?.note != nil)
     }
 
     @Test func gaugesTakeTheirOwnBands() throws {
@@ -343,20 +371,23 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
             SceneStanding(StandingInputs(scenario: contact, cellSize: 0.25)).band(.debrisSpeed))
         #expect(abs((debris.roundingSpread ?? 0) - 3.5 / 33.9) < 1e-9)
         #expect(debris.expectedWithInputs(100) != debris.expected(100))
-        // Derived without afterburning: with it, today's default, withheld and said why.
+        // Derived again on today's air, with its own roundings (SN142's 61.5–106.3 m/s).
         var burns = SolverConfiguration()
         burns.afterburning = true
         burns.airModel = .thermallyPerfect
         let burning = SceneStanding(StandingInputs(scenario: contact, cellSize: 0.25, configuration: burns))
-        #expect(burning.band(.debrisSpeed) == nil)
-        #expect(
-            burning[.structuralDamage]?.unbanded?.contains { $0.contains("derived without afterburning") }
-                == true)
+        let today = try #require(burning.band(.debrisSpeed))
+        #expect(today.ratio == "88–182%")
+        #expect(abs((today.roundingSpread ?? 0) - 44.8 / 167.8) < 1e-9)
+        // Afterburning without hot air was compared on neither.
+        burns.airModel = .idealGas
+        let alone = SceneStanding(StandingInputs(scenario: contact, cellSize: 0.25, configuration: burns))
+        #expect(alone.band(.debrisSpeed) == nil)
     }
 
     /// Mirrored: the convergence study's OA1 row holds every mesh's value and the measurement.
-    /// The fireball's radiation was compared on today's air, Church's clouds on afterburning alone:
-    /// each band holds only on the air it came from.
+    /// The fireball's radiation and Church's clouds were compared on today's air, afterburning and
+    /// hot air: each band holds only on the air it came from.
     @Test func radiationAndCloudFollowTheAirTheyWereComparedOn() throws {
         func standing(afterburning: Bool, hotAir: Bool) -> SceneStanding {
             var config = SolverConfiguration()
@@ -368,11 +399,10 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
                     thermal: ThermalSpec(), cloud: CloudSpec()))
         }
         let today = standing(afterburning: true, hotAir: true)
-        #expect(today.band(.radiatedEnergy) != nil)
-        #expect(today.band(.cloudTop) == nil)
-        #expect(today[.cloud]?.unbanded?.contains { $0.contains("afterburning alone") } == true)
+        #expect(today.band(.radiatedEnergy) != nil && today.band(.cloudTop) != nil)
         let alone = standing(afterburning: true, hotAir: false)
-        #expect(alone.band(.radiatedEnergy) == nil && alone.band(.cloudTop) != nil)
+        #expect(alone.band(.radiatedEnergy) == nil && alone.band(.cloudTop) == nil)
+        #expect(alone[.cloud]?.unbanded?.contains { $0.contains("afterburning alone") } == true)
         let ideal = standing(afterburning: false, hotAir: false)
         #expect(ideal.band(.radiatedEnergy) == nil && ideal.band(.cloudTop) == nil)
     }
