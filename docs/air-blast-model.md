@@ -51,7 +51,9 @@ the app paints on the ground and on rigid blocks.
 
 - Rigid blocks and the structure are voxelised into a solid mask. A block cell is solid when
   its centre is inside the block; a structure cell is solid when at least a third of it is
-  filled by intact elements (see [Structural model](structural-model.md#coupling-to-the-air)).
+  filled by intact elements (see [Structural model](structural-model.md#coupling-to-the-air)). Counted
+  at the elements' centres, a structure's outline can flicker where those centres lie on cell
+  faces; counting them by overlap, an option, stops it (16 October 2026, the same section).
 - At a solid cell or a reflecting domain face, the stencil is filled with mirrored ghost states
   (normal velocity reversed). The Riemann problem at the wall then has zero mass flux, so walls
   are exactly conservative and can be one cell thick.
