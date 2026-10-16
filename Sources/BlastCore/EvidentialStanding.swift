@@ -1978,7 +1978,8 @@ struct StandingScene {
                 StandingEvidence(
                     "The same buildings free to respond (19 runs, 2–500 kg)",
                     "Glass: all 45 panes the detailed buildings break, a median 1.7 ms early, and 7 more; "
-                        + "concrete walls between the fixed and simply supported bounds",
+                        + "the walls facing the charge between the fixed and simply supported bounds, roofs "
+                        + "and walls beside a failing one beyond both",
                     "building-envelopes.md#one-way-damage-single-degree-of-freedom"),
             ],
             assumptions: [
@@ -2010,10 +2011,9 @@ struct StandingScene {
                     "Agrees, with suction; uniform "
                         + "pressure cancels", "building-envelopes.md#scope-and-verification"),
                 StandingEvidence(
-                    "Kingery–Bulmash, a rigid wall facing the charge",
-                    "Reflected impulse within 6% beyond 1.5 "
-                        + "m/kg^(1/3) on 0.25 m cells or finer",
-                    "validation.md#kingerybulmash-the-design-practice-standard"),
+                    "Kingery–Bulmash, a rigid wall facing the charge, on the shipped air",
+                    "Reflected impulse 93–113% from 1 m/kg^(1/3) on 0.25 m cells",
+                    ValidationTables.burningDocument),
             ],
             assumptions: [
                 "Fixed geometry: no broken windows, deformation, collapse or changing shielding.",

@@ -107,6 +107,11 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(len(runs), 2)
         self.assertLess(runs[0], signing)
         self.assertTrue(signing < runs[1] < archiving)
+        # Its views drawn through a change of source, each time too.
+        drawn = [index for index, call in enumerate(calls) if call[:2] == (executable, "interface-smoke")]
+        self.assertEqual(len(drawn), 2)
+        self.assertLess(drawn[0], signing)
+        self.assertTrue(signing < drawn[1] < archiving)
 
     def test_an_app_without_its_licence_is_never_signed(self):
         self.make_app()
