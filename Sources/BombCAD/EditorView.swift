@@ -119,8 +119,27 @@ struct EditorView: View {
                                     "\(object.envelope!.solids.count) walls/roofs · \(object.envelope!.openings.count) openings"
                                 )
                                 .font(.caption).foregroundStyle(.secondary)
+                                let construction = model.settings.scenario.envelopeConstruction(
+                                    for: object.id)
+                                Text(construction.detail).font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
+                            Picker(
+                                "Walls",
+                                selection: Binding(
+                                    get: {
+                                        model.settings.scenario.envelopeConstruction(for: object.id).walls
+                                    },
+                                    set: { model.setEnvelopeWalls(id: object.id, to: $0) })
+                            ) {
+                                ForEach(EnvelopeConstruction.Kind.allCases, id: \.self) {
+                                    Text($0.label).tag($0)
+                                }
+                            }
+                            .labelsHidden().fixedSize()
+                            .help(
+                                "What the walls are built of, for the building's one-way damage. The air never sees it."
+                            )
                             Button("Remove", systemImage: "trash") { model.removeEnvelope(id: object.id) }
                                 .labelStyle(.iconOnly)
                         }
@@ -129,7 +148,7 @@ struct EditorView: View {
                     Text("Exposure-only buildings")
                 } footer: {
                     Text(
-                        "Stationary envelopes reflect the shared blast. They have no deformation or failure model. Undo restores a converted structure."
+                        "Stationary envelopes reflect the shared blast and stay whole in the air; their walls, roofs and panes are judged one way, from their loads, by what they are built of (read from IFC or map tags, else assumed). Undo restores a converted structure."
                     )
                 }
             }
