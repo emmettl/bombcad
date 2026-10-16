@@ -4316,7 +4316,7 @@ removed. Those failures come from elsewhere, the crack and removal laws that reg
 element being the next suspect. **Made the default** at 100 µs on 12 October 2026, the user's decision:
 it removes a dependence on the step that has no physical basis and changes the agreeing meshes by
 a few per cent, but it is not a cure for the mesh dependence of failure. Blind test 2 was frozen
-before it, at `047cee3`, and judges the earlier defaults; test 3 would judge this one. The rest
+before it, at `047cee3`, and judges the earlier defaults; [test 3](#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator) judged this one, on the released v0.3.0 (`b524a9d`). The rest
 of this section, above, is on the defaults of 11 October.
 
 **What the new default moved.** The case matrix on its derived meshes (`Scripts/concrete-matrix.py`,

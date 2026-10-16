@@ -1,0 +1,47 @@
+{
+  "source": "K. A. Reynolds, Experimental behavior of high strength concrete slabs subjected to shock loading, MS thesis, UMKC, 2015 (hdl:10355/48353), transcribed by the judge after blind test 3's reveal. The RSCR slabs were first reported by G. Thiagarajan and C. F. Johnson, 'Experimental behavior of reinforced concrete slabs subjected to shock loading', ACI Structural Journal 111(6), 2014, pp. 1407-18, which is not in hand. Page numbers are the thesis's own. An open comparison, not a blind test: the measurements are given here.",
+  "rig": "The ERDC blast load simulator and fixture of blind test 3 and of the record's contest slab (the RSCR slabs are the contest's normal-strength series). Geometry, supports and instruments as in ../inputs/slabs.json.",
+  "slabs": {
+    "geometry": "As the HSCV slabs (../inputs/slabs.json): 64 in. long, 4 in. thick, the same frame; the thesis compares RSCR4-6 with HSCV4-6 as the same 8 in. layout (p. 70).",
+    "bars": "No. 3 at 8 in. centre to centre along the span, one layer on the tensile face, 1/2 in. clear cover; the layout of Fig 4 (p. 10), as transcribed in ../inputs/slabs.json ('8 in.'). 'Conventional Grade 60 (413.7 MPa) steel' (p. 15). No yield, ultimate or elongation is given for these slabs. The record's contest slab (RSCR1) uses ERDC's measured curve for its Grade 60 bars (SlabBenchmark: 72 ksi yield; Schwer gives 68 ksi). The thesis does not say whether RSCR4-6's bars came from the same batch."
+  },
+  "concrete": {
+    "design_strength": "5 ksi (34.5 MPa) (p. 14)",
+    "fresh": "Slump 6.25 in. (158.8 mm), unit weight 149.0 pcf (2,386.8 kg/m3), air 4.4%, 80 F (p. 14)",
+    "cylinders": [
+      {"age_days": 7, "fc_psi": 5040, "fc_MPa": 34.7, "density_pcf": 148.7, "density_kg_m3": 2381.9},
+      {"age_days": 14, "fc_psi": 5380, "fc_MPa": 37.1, "density_pcf": 148.7, "density_kg_m3": 2381.9},
+      {"age_days": 28, "fc_psi": 6003, "fc_MPa": 41.4, "density_pcf": 148.7, "density_kg_m3": 2381.9}
+    ],
+    "note": "Three cylinders at each age, averages (pp. 14-15). Age at test not stated. These are the thesis's RSCR cylinders; the record's contest slab takes its concrete from ERDC's characterisation, and whether that is the same pour is not stated."
+  },
+  "loads": {
+    "table15": {
+      "note": "Table 15 (p. 71): the average of each gauge's peak reflected pressure and the average impulse, as for the HSCV slabs' Table 1.",
+      "RSCR4": {"peak_psi": 33.4, "peak_kPa": 230.3, "impulse_psi_ms": 494.4, "impulse_kPa_ms": 3408.8},
+      "RSCR5": {"peak_psi": 34.8, "peak_kPa": 239.9, "impulse_psi_ms": 549.5, "impulse_kPa_ms": 3788.7},
+      "RSCR6": {"peak_psi": 33.7, "peak_kPa": 232.4, "impulse_psi_ms": 509.0, "impulse_kPa_ms": 3509.4}
+    },
+    "history": "Not given. The thesis tabulates and plots pressure histories only for the HSCV slabs (Tables 2-7, Figs 9-10). Shapes available: the record's contest-slab record (load 1a) scaled to each impulse, as the record did for the lower shot; or the digitised HSCV5 and HSCV6 traces (../inputs/loads.csv), whose averages (213.7 and 244.1 kPa; 3,527 and 3,972 kPa ms) bracket these. The choice is the comparison's, and should be said."
+  },
+  "measured": {
+    "note": "Table 15 (p. 71); times of peak and histories are not given for the RSCR slabs.",
+    "RSCR4": {"peak_in": 3.36, "peak_mm": 85.3, "residual_in": 3.19, "residual_mm": 81.0},
+    "RSCR5": {"peak_in": 3.6, "peak_mm": 91.4, "residual_in": 1.58, "residual_mm": 40.1},
+    "RSCR6": {"peak_in": 3.17, "peak_mm": 80.5, "residual_in": 1.94, "residual_mm": 49.3},
+    "time_of_peak": "Not given.",
+    "damage": "Chapter 8 (p. 73): the RSCR crack patterns resembled the HSCV slabs'. RSCR4 and RSCR5 'did not crack as much in tension and they did not show a significant amount of compression crushing'; RSCR6 showed 'lower levels of both tension and compression crushing'. No photographs of the RSCR slabs.",
+    "failure": "None stated. The thesis's conclusions say the panels withstood their loads without catastrophic failure, speaking of the HSCV slabs; nothing says any RSCR slab failed."
+  },
+  "questioned": {
+    "by_the_thesis": "Nothing about RSCR4-6. Comparing HSCV4 with RSCR4, the thesis calls HSCV4's peak erroneous and calls 'a 113% larger peak deflection' under a 23% greater peak pressure 'an acceptable result' (pp. 72-73).",
+    "judges_note": "RSCR4's residual, 81.0 mm, is 95% of its 85.3 mm peak, where RSCR5's and RSCR6's are 44% and 61%. The thesis says nothing of it, and no history is given to check it."
+  },
+  "reference_rows": {
+    "note": "Table 15's other RSCR rows, for reference: the record's contest slab and its repeat (load 1a), and the lower shot (load 1b).",
+    "RSCR1": {"peak_kPa": 366.1, "impulse_kPa_ms": 6730.7, "peak_mm": 109.0, "residual_mm": 85.3},
+    "RSCR2": {"peak_kPa": 361.3, "impulse_kPa_ms": 6897.5, "peak_mm": 113.0, "residual_mm": 84.3},
+    "RSCR3": {"peak_kPa": 304.7, "impulse_kPa_ms": 5414.5, "peak_mm": 80.5, "residual_mm": 49.8,
+              "record": "The record keeps about 72 mm peak and 54 mm left, read from Schwer's Fig 4 (docs/validation.md, 'The lower shot' and 'Reynolds's table of these shots'). Table 15's 80.5 mm matches the top of the spikes on that record, which Schwer's figure shows reaching about 80 mm."}
+  }
+}
