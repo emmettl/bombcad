@@ -2392,52 +2392,63 @@ public final class BlastSolver {
         // Faces in still tiles read the still air; under gravity it is not uniform.
         parameters.skipStill = recorder.skipStillTiles && configuration.gravity == nil ? 1 : 0
         let perGroup = EnvelopeComponentRecorder.componentsPerGroup
-        let groups = MTLSize(
-            width: (recorder.components.count + perGroup - 1) / perGroup, height: 1, depth: 1)
-        let groupSize = MTLSize(width: 32 * perGroup, height: 1, depth: 1)
-        // Which components' air has woken, and a list of them: a SIMD group a component (Solver.metal).
+        let length = MemoryLayout<EnvelopeComponentRecorder.Parameters>.stride
+        // Which components' air has woken; those still asleep finished there, the rest listed
+        // (Solver.metal). With nothing awake this is the step's only work.
         encoder.setComputePipelineState(recorder.markPipeline)
         encoder.setBuffer(controlBuffer, offset: 0, index: 2)
         encoder.setBuffer(recorder.tileRanges, offset: 0, index: 3)
         encoder.setBuffer(recorder.tiles, offset: 0, index: 4)
+        encoder.setBuffer(recorder.sideBuffer, offset: 0, index: 5)
         encoder.setBuffer(tileFlagBuffer, offset: 0, index: 7)
         encoder.setBuffer(recorder.awake, offset: 0, index: 8)
         encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 9)
-        encoder.setBytes(
-            &parameters, length: MemoryLayout<EnvelopeComponentRecorder.Parameters>.stride, index: 10)
-        encoder.setBuffer(recorder.dispatch, offset: 0, index: 11)
-        encoder.setBuffer(recorder.awakeList, offset: 0, index: 12)
-        encoder.dispatchThreadgroups(groups, threadsPerThreadgroup: groupSize)
-        // Their faces' pressures: a threadgroup an awake component, and one for the still air.
+        encoder.setBytes(&parameters, length: length, index: 10)
+        encoder.setBuffer(recorder.faceDispatch, offset: 0, index: 11)
+        encoder.setBuffer(recorder.faceList, offset: 0, index: 12)
+        encoder.setBuffer(recorder.sumDispatch, offset: 0, index: 13)
+        encoder.setBuffer(recorder.sumList, offset: 0, index: 14)
+        encoder.setBuffer(recorder.stillPressure, offset: 0, index: 15)
+        encoder.setBuffer(recorder.peaks, offset: 0, index: 16)
+        encoder.setBuffer(recorder.bins, offset: 0, index: 17)
+        // Not written without maxima.
+        encoder.setBuffer(recorder.maxima ?? recorder.bins, offset: 0, index: 18)
+        encoder.setBuffer(recorder.flags, offset: 0, index: 19)
+        encoder.dispatchThreadgroups(
+            MTLSize(width: (recorder.components.count + perGroup - 1) / perGroup, height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: 32 * perGroup, height: 1, depth: 1))
+        // The listed components' faces: a threadgroup each (and at the first sample one for the
+        // still air's row).
         encoder.setComputePipelineState(recorder.facePipeline)
         encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
         encoder.setBuffer(maskBuffer, offset: 0, index: 1)
         encoder.setBuffer(recorder.faceBuffer, offset: 0, index: 3)
         encoder.setBuffer(recorder.pressures, offset: 0, index: 4)
         encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 5)
-        encoder.setBytes(
-            &parameters, length: MemoryLayout<EnvelopeComponentRecorder.Parameters>.stride, index: 6)
+        encoder.setBytes(&parameters, length: length, index: 6)
         encoder.setBuffer(recorder.sideBuffer, offset: 0, index: 8)
-        encoder.setBuffer(recorder.awakeList, offset: 0, index: 9)
+        encoder.setBuffer(recorder.faceList, offset: 0, index: 9)
         encoder.setBuffer(recorder.stillPressure, offset: 0, index: 10)
         encoder.dispatchThreadgroups(
-            indirectBuffer: recorder.dispatch, indirectBufferOffset: 0,
+            indirectBuffer: recorder.faceDispatch, indirectBufferOffset: 0,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
-        // Then each component's sides: a SIMD group of 32 lanes a component, a few to a threadgroup.
+        // And their sums, a SIMD group each.
         encoder.setComputePipelineState(recorder.pipeline)
         encoder.setBuffer(recorder.pressures, offset: 0, index: 0)
         encoder.setBuffer(recorder.awake, offset: 0, index: 1)
         encoder.setBuffer(recorder.sideBuffer, offset: 0, index: 3)
+        encoder.setBuffer(recorder.sumList, offset: 0, index: 4)
         encoder.setBuffer(recorder.peaks, offset: 0, index: 5)
         encoder.setBuffer(recorder.bins, offset: 0, index: 6)
-        // Not written without maxima.
         encoder.setBuffer(recorder.maxima ?? recorder.bins, offset: 0, index: 7)
         encoder.setBuffer(recorder.flags, offset: 0, index: 8)
-        encoder.setBytes(
-            &parameters, length: MemoryLayout<EnvelopeComponentRecorder.Parameters>.stride, index: 10)
+        encoder.setBytes(&parameters, length: length, index: 10)
         encoder.setBuffer(recorder.stillPressure, offset: 0, index: 11)
-        encoder.setBuffer(recorder.dispatch, offset: 0, index: 12)
-        encoder.dispatchThreadgroups(groups, threadsPerThreadgroup: groupSize)
+        encoder.setBuffer(recorder.faceDispatch, offset: 0, index: 12)
+        encoder.setBuffer(recorder.sumDispatch, offset: 0, index: 13)
+        encoder.dispatchThreadgroups(
+            indirectBuffer: recorder.sumDispatch, indirectBufferOffset: 0,
+            threadsPerThreadgroup: MTLSize(width: 32, height: 1, depth: 1))
     }
 
     private func encodeExposure(_ encoder: MTLComputeCommandEncoder, initial: Bool) {
