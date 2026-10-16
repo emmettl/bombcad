@@ -260,6 +260,7 @@ private func runVented(device: MTLDevice, gas: FlammableGas, concentration: Floa
     base.ignition = option("ignition") == "back" ? .backWall : .centre
     base.airModel = chosenAirModel() ?? .idealGas
     if flag("laminar") { base.acceleration = .laminar }
+    if flag("far-field") { base.openFaces = .farField }
     if let scale = option("turbulence").flatMap({ Float($0) }) {
         base.acceleration.turbulence = scale > 0 ? FlameTurbulence(scale: scale) : nil
     }

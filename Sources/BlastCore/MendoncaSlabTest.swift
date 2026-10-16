@@ -156,6 +156,9 @@ public enum MendoncaSlabTest {
         /// at `softSupportCapacity` (Pa), for trestles on clay; nil for the rigid bearings.
         public var softSupportModulus: Float?
         public var softSupportCapacity: Float = 600e3
+        /// A study after the reveal: the bearings' nodes held vertically as well, so that the slab
+        /// cannot lift off its trestles.
+        public var holdDown = false
         /// The crack opening (largest reached) that counts an element broken across.
         public var brokenOpening: Float = 0.001
         public var sampleInterval: Double = 1e-4
@@ -425,6 +428,7 @@ public enum MendoncaSlabTest {
                     for i in Array(near...(near + bearing)) + Array((far - bearing)...far) {
                         guard let n = structure.storedNode(i, j, seat) else { continue }
                         nodes[n].restsOnSupport = true
+                        if settings.holdDown { nodes[n].restrain(z: true) }
                         if i == near + bearing / 2 { nodes[n].restrain(x: true) }
                         if j == cj && (i == near + bearing / 2 || i == far - bearing / 2) {
                             nodes[n].restrain(y: true)
