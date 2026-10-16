@@ -860,6 +860,21 @@ moves only the onset would keep that. Either way, the option does not reach Mend
 (the gap there lies in the load or the measurement:
 [validation](validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge)).
 
+**The onset-only variant, considered (16 October 2026).** It would crack at the face's strain and
+keep the full envelope after cracking. In this law it is the same as the option off.
+- **Why:** a cracked plane carries the envelope at the largest strain it has reached, scaled back
+  along a line through the origin (σ = env(h) ε / h). An element marked cracked at the face's strain
+  but keeping the full envelope has not yet passed the envelope's peak at its centre. It carries
+  E ε, as uncracked, until its centre reaches the full onset, and the full envelope from there:
+  nothing changes.
+- **So:** earlier cracking lowers the element's stress only through a lower envelope, which is the
+  option above and what moves Janney's beam.
+- **A middle way, not built:** a lower peak with its softening stretched to keep the fracture
+  energy, so that the concrete between cracks carries as much tension once open. It would need the
+  face's share stored per element.
+
+It stops here: the option stays an option, and neither variant is a default.
+
 ## Strain-rate effects
 
 Blast loads strain materials at 0.1 to 100 per second, and both concrete and steel are stronger
