@@ -279,8 +279,8 @@ public enum ValidationTables {
     /// heading and holds the figure's numbers.
     public static let figures: [Figure] = [
         Figure(
-            id: "envelopeGlassBreak", low: 0.40, high: 0.46, document: "validation.md#window-glass",
-            quote: "0.40–0.46 of the measured time with fixed edges"),
+            id: "envelopeGlassBreak", low: 0.82, high: 1.07, document: "validation.md#window-glass",
+            quote: "0.82–1.07 of the measured time"),
         Figure(
             id: "envelopeConcreteFixed", low: 0.61, high: 1.03,
             document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
@@ -294,9 +294,9 @@ public enum ValidationTables {
             document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
             quote: "(0.82–2.54)"),
         Figure(
-            id: "envelopeInsideFill", low: 0.87, high: 2.23,
+            id: "envelopeInsideFill", low: 0.75, high: 1.60,
             document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
-            quote: "(0.87–2.23 times the detailed peaks)"),
+            quote: "(0.75–1.60 times the"),
         Figure(
             id: "slabSolid", low: 1.04, high: 1.15, document: "validation.md#summary",
             quote: "solid elements 113–125 mm (104–115%) on 4 to 32 elements through"),

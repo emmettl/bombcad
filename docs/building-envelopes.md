@@ -455,14 +455,20 @@ load–mass factors through yield. `EnvelopePanel` builds the systems:
   plate (Timoshenko) on the mean of the gross and cracked sections, elastic–perfectly plastic.
 - **Unreinforced masonry**: elastic until the largest moment reaches f_t t²/6, then rocking with
   the resistance falling to nothing at a deflection of its thickness; no arching.
-- **Annealed glass**: elastic until the largest bending stress reaches its strength (the same 45 MPa
-  as the detailed model's), then nothing; membrane stiffening is left out, so it breaks early.
+- **Annealed glass** (since 17 October): D. M. Moore's large-deflection plate (JPL 80-34) as UFC
+  3-340-02's figures 6-52 and 6-53 give it, simply supported, membrane action stiffening it; it
+  breaks when its largest principal stress, weighed over time by glass's static fatigue (Brown's
+  integral, exponent 16), reaches the median 60 s strength of ASTM E1300's flaw model with the
+  whole pane at that stress, or at ten thicknesses' deflection. Before, it was elastic on
+  small-deflection theory until its bending stress reached 45 MPa, which broke Monk and Clubley's
+  panes at 0.40–0.46 of the measured time ([validation](validation.md#window-glass)).
 
 It matches UFC's worked examples 3A-5, 3A-6(a) and 4A-1 within 1% (`EnvelopeSDOFTests`).
 
 ```sh
 swift build -c release --product scenebench
-.build/release/scenebench envelope-sdof <damage references> [--edges=fixed|simple] [--out=<file.json>]
+.build/release/scenebench envelope-sdof <damage references> [--edges=fixed|simple] \
+    [--glass=large|small|large-at-45] [--out=<file.json>]
 ```
 
 Driven by each component's load on the envelope twins of the [damage references](#damage-references)
@@ -473,9 +479,10 @@ and set against the same component of the detailed building free to respond (sum
 - **The loads are not the error.** SDOF on the envelope's loads and on the detailed run's own give
   the same rotation (median ratio 1.02 over 87 components past 0.05°); they part only on the side
   and back walls of buildings already breached.
-- **Glass**: of 52 panes, SDOF breaks the 45 the detailed buildings break, a median 1.7 ms early
-  (0.59–1.20 of the detailed time), and 7 more that the detailed buildings keep, all under the
-  lightest loads (a peak net pressure of 7.3 kPa at most): wrong on the safe side.
+- **Glass**: of 52 panes, SDOF breaks the 45 the detailed buildings break, a median 0.3 ms
+  later (0.67–1.31 of the detailed time), and 6 more that the detailed buildings keep, all under
+  light loads (a peak net pressure of 3.7–7.3 kPa). The small-deflection panes before it (with
+  fixed edges) broke the same 45 a median 1.7 ms early (0.59–1.20) and 7 more.
 - **Concrete walls** (34 past 0.1°): with fixed edges SDOF gives a median 0.59 of the detailed
   rotation, unsafe; with simply supported edges 1.19. The facing wall lies between the two
   (at 50, 200 and 500 kg: 0.61/1.19, 0.70/1.24 and 1.03/1.87 of the detailed); side walls of a
@@ -491,9 +498,10 @@ and set against the same component of the detailed building free to respond (sum
 - **Not venting**: the envelope's inside stays at ambient, where the detailed buildings' rise to
   0.1–0.4 kPa with concrete walls whole (1.0 kPa behind cracked brick at 50 kg), 1–2.6 kPa once panes break at 10–50 kg and 11–22 kPa at 200–500 kg.
   A one-way fill (each pane an orifice into the room once SDOF breaks it, driven by its outer
-  pressure, the room's air compressing adiabatically) gives 2.1, 5.7, 11.3 and 19.5 kPa against
-  the detailed gauges' 1.0, 2.6, 11.0 and 22.4 at 10, 50, 200 and 500 kg (0.87–2.23 times the
-  detailed peaks), mostly above. It cannot see a breached concrete wall (1.6 and 6.5 kPa at 200 and 500 kg).
+  pressure, the room's air compressing adiabatically) gives 0.9, 4.1, 9.1 and 16.7 kPa against
+  the detailed gauges' 1.0, 2.6, 11.0 and 22.4 at 10, 50, 200 and 500 kg (0.75–1.60 times the
+  detailed peaks; 0.87–2.23 with the small-deflection panes, which broke sooner). It cannot see a
+  breached concrete wall (1.6 and 6.5 kPa at 200 and 500 kg).
 
 **In the app.** Runs of envelope-only scenes record each component's load (the
 [recorder](#surface-exposure-and-loads) keeps both sides' histories at 0.1 ms) and judge every building
@@ -521,10 +529,11 @@ one way as the run goes, at most once a second and again when it stops:
   - Headless, `BombCAD run … --envelope-damage <file.json>` writes the same JSON and prints a line
     for each building.
 
-These are comparisons with the detailed model on one mesh, but for glass, which has one with
-measurement: Monk and Clubley's twelve timed annealed panes in the Shoeburyness tunnel, all
-broken, which the app's glass breaks at 0.40–0.46 of the measured time, at a fifth of the
-measured deflection, as membrane action is left out ([validation](validation.md#window-glass)).
+These are comparisons with the detailed model on one mesh, but for glass, which has two with
+measurement and a design standard: Monk and Clubley's twelve timed annealed panes in the
+Shoeburyness tunnel, all broken, which the app's glass breaks at 0.82–1.07 of the measured time,
+and ASTM E1300's load resistance, whose stresses it gives within 8% and which it breaks at
+0.57–0.72 of ([validation](validation.md#window-glass)).
 Freestanding walls (Alsubaei's, Keys's) would need cantilever systems, and remain
 to be compared.
 
