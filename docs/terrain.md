@@ -235,7 +235,10 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell
   aperture; its wall pushes with the pressure of the Riemann problem between the cell's gas and
   its mirror about the wall's normal (a deviation from the hydrostatic pressure under gravity).
   Solid cells beside a cut cell take its gas mirrored about its wall, not about the cell face,
-  so the reconstruction sees the slope.
+  so the reconstruction sees the slope; beside a whole cell (over ground lying on a cell's face,
+  or a cliff) they mirror it across the face, as on the staircase. (Until 16 October such a cell
+  took another column's wall: a closed box over a plateau on cells' faces gained 0.24% of its
+  mass in 200 steps.)
 - **The small cells.** A cell with α far below one cannot take its own conservative update at
   the solver's time step. It takes the whole cell's update instead, and the difference between
   that and its conservative one is kept and, once a step (after the last sweep, so that
@@ -369,10 +372,18 @@ least half air. Ratios to flat ground on the same cells, staircase / cut cells:
 
 On the Mac mini, unloaded, 2.2 million cells (the ridges on 0.25 m cells):
 
-- **Per step**, 6–13% more than the staircase without gravity and 15–25% with it at 500 t
-  (every swept cell looks up its column; the cut cells' fluxes, wall pressure and differences;
-  one redistribution kernel over the cut columns once a step). Tiles holding cut cells are
-  swept from the start rather than when the blast wakes them. The number of steps is the same
+- **Per step**, 6–13% more than the staircase without gravity and 15–25% with it at 500 t, as
+  first written (every swept cell looked up its column several times a sweep, and the tiles
+  holding cut cells were swept from the start). Since 16 October a cell above its tile's
+  columns' cut cells (`TerrainCutGeometry.tileCeilings`) skips that work, and those tiles wake
+  when the blast or a cell's difference reaches them, bit-identical in 72 digests (ridge, slope
+  and hill; uniform, refined once and twice; with gravity or without). On the recommended air,
+  `blastbench profile --preset open --dx 0.25 --terrain ridge|slope`, the ridge went from 25% to
+  15% more a step than the staircase and the slope from 20% to 13%; the cut cells take 5–7%
+  fewer steps, so over the run 10% and 6%. What is left is the sweep compiled for cut cells:
+  with every cell skipping their work it costs as much (14.65 against 14.5 ms a step on the
+  ridge), and the redistribution next to nothing; sweeping the tiles clear of them with the
+  plain sweep won back a few percent more but moved results by rounding, and was left out. The number of steps is the same
   within 1%, except the 8 m ridge's (6% more on cut cells, where the staircase pushed the
   hottest gas out of the domain).
 - **Refined**, the ridges cost within 5% of the staircase refined alike once (6.3–6.6 ms a step

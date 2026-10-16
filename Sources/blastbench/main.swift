@@ -73,11 +73,14 @@ import simd
 //   blastbench advise --calibrate [--time]   (the cost-against-fidelity advisor; see AdvisorBench.swift)
 //   blastbench hrynyk [--slabs TH2,TH6,TH7] [--layers 16] [--impacts 4] [--ensemble 16]   (blind test 1; see HrynykBench.swift)
 //   blastbench contact-profile [--cases solid,shell,debris,terraced] [--steps 2000]
+//   blastbench profile [--preset open] [--dx 0.5] [--closein] [--refine 2] [--terrain ridge|slope|hill] [--staircase]
+//                      (GPU time per stage, on the recommended air)
 //                        (where contact's time goes; see ContactBench.swift)
 //   blastbench mendonca [--slabs 1,2,4,5,7,9,10] [--layers 8] [--dx 0.0125] [--ensemble 8]   (blind test 2; see MendoncaBench.swift)
 //   blastbench buildings [--dx 0.5] [--duration 0.12] [--mass 50] [--out f.json]
 //                        (three buildings across a street, together and each alone; see BuildingsBench.swift)
-//   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80] [--terrain flat]   (hashes of short runs, to compare builds)
+//   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80] [--terrain flat|hill|ridge|slope] [--recommended]
+//                     [--gravity]   (hashes of short runs, to compare builds)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 let command = arguments.first.flatMap { $0.hasPrefix("--") ? nil : $0 } ?? "throughput"
@@ -4697,14 +4700,20 @@ func runDigest() throws {
         ("wall as shells", .blastWall, 0.25, false, true),
     ]
     for (name, preset, cellSize, afterburning, shells) in cases {
-        var configuration = SolverConfiguration()
+        // `--recommended` starts from the recommended air (afterburning throughout), `--gravity` adds
+        // gravity in the air.
+        var configuration = flag("recommended") ? SolverConfiguration.recommended : SolverConfiguration()
         configureRefinement(&configuration)
-        configuration.afterburning = afterburning
+        configuration.afterburning = afterburning || flag("recommended")
+        configuration.gravity = chosenGravity()
         var scenario = preset.scenario
         if shells { scenario.structure?.elementKind = .shell }
-        // `--terrain flat` lays the floor down as a heightfield, which must change nothing.
+        // `--terrain flat` lays the floor down as a heightfield, which must change nothing; another
+        // shape (`hill`, `ridge`, `slope`) lays it on the preset's ground.
         if option("terrain") == "flat" {
             scenario.terrain = .flat(domain: scenario.domainSize, spacing: cellSize)
+        } else if let terrain = option("terrain") {
+            applyTerrain(terrain, to: &scenario)
         }
         let solver = try BlastSolver(
             device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
@@ -4867,6 +4876,68 @@ func runSoilColumn() throws {
 /// event (each in an encoder of its own, so the sums leave out the gaps between them), the work
 /// each did per cell, how closely the patches fit the jumps the threshold flags, and the GPU's
 /// cost of an empty dispatch.
+/// `blastbench aircost [--preset street] [--dx 0.5] [--rounds 40] [--steps 4] [--skip]`: the GPU time
+/// of a cell's update under each air: the ideal gas with copying faces (the core), hot air alone,
+/// afterburning with the ideal gas, and the recommended air (afterburning, hot air and far-field
+/// faces). Every cell is swept (with `--skip`, still air is skipped, as runs do, and the times
+/// follow the air the blast has reached). The airs are stepped in turn, a few steps at a time, so
+/// that whatever else the GPU is doing falls on them alike: the minimum over the rounds is the
+/// unloaded cost, and the quartile and median beside it show how loaded the GPU was.
+func runAirCost() throws {
+    let scenario = preset(named: option("preset")).scenario
+    let cellSize = option("dx").flatMap { Float($0) } ?? 0.5
+    let rounds = option("rounds").flatMap { Int($0) } ?? 40
+    let batch = option("steps").flatMap { Int($0) } ?? 4
+    var core = SolverConfiguration()
+    core.skipStillAir = flag("skip")
+    var hot = core
+    hot.airModel = .thermallyPerfect
+    var burning = core
+    burning.afterburning = true
+    var recommended = SolverConfiguration.recommended
+    recommended.skipStillAir = flag("skip")
+    let airs = [
+        ("ideal gas, copying faces", core), ("hot air", hot), ("afterburning, ideal gas", burning),
+        ("recommended", recommended),
+    ]
+    let solvers = try airs.map { _, configuration in
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
+        try solver.enableGPUProfiling(true)
+        _ = solver.advance(steps: 8)
+        return solver
+    }
+    let cells = Double(solvers[0].grid.cellCount)
+    print(
+        "\(scenario.name), \(format(Double(cellSize), 3)) m cells, "
+            + (flag("skip") ? "still air skipped" : "every cell swept")
+            + "; \(rounds) rounds of \(batch) steps")
+    var times = [[Double]](repeating: [], count: airs.count)
+    for _ in 0..<rounds {
+        for (n, solver) in solvers.enumerated() {
+            let result = solver.advance(steps: batch)
+            if let air = solver.lastBatchGPUProfile?.airS, result.steps > 0 {
+                times[n].append(air / Double(result.steps))
+            }
+        }
+    }
+    print(
+        "\n" + pad("air", 26) + pad("ns/update min", 15) + pad("q25", 8) + pad("median", 8)
+            + pad("against core", 14)
+            + pad("bytes/cell", 12))
+    let base = times[0].min() ?? 1
+    for (n, (name, _)) in airs.enumerated() {
+        let sorted = times[n].sorted()
+        guard let low = sorted.first else { continue }
+        // A step sweeps each cell along each axis.
+        func perUpdate(_ seconds: Double) -> String { format(seconds / cells / 3 * 1e9, 3) }
+        print(
+            pad(name, 26) + pad(perUpdate(low), 15) + pad(perUpdate(sorted[sorted.count / 4]), 8)
+                + pad(perUpdate(sorted[sorted.count / 2]), 8) + pad(format(low / base, 2), 14)
+                + pad(format(Double(solvers[n].memoryFootprint) / cells, 1), 12))
+    }
+}
+
 func runProfile() throws {
     var scenario: Scenario
     var cellSize = option("dx").flatMap { Float($0) } ?? 0.5
@@ -4885,6 +4956,8 @@ func runProfile() throws {
         end = width == 1.5 ? 0.5 / 340 + 0.004 : Double(farthest) / 340 + 0.004
     } else {
         scenario = preset(named: option("preset")).scenario
+        // `--terrain hill|ridge|slope|flat|file`, on the preset's ground (cut cells, or `--staircase`).
+        if let terrain = option("terrain") { applyTerrain(terrain, to: &scenario) }
         end = scenario.structure == nil ? scenario.acousticCrossingTime : 0.05
     }
     let solver = try makeAirSolver(scenario, cellSize: cellSize)
@@ -5001,6 +5074,7 @@ do {
     switch command {
     case "digest": try runDigest()
     case "profile": try runProfile()
+    case "aircost": try runAirCost()
     case "buildings": try runBuildings()
     case "contact-profile": try runContactProfile()
     case "slab": try runSlab()
