@@ -1992,16 +1992,21 @@ struct StandingScene {
                     "1.16–1.91 times the measured mid-height displacement, a level worse on four of five, the "
                         + "one that blew out failed: the safe side",
                     "building-envelopes.md#one-way-walls"),
+                StandingEvidence(
+                    "Monk and Clubley's annealed windows in the Shoeburyness tunnel (12 timed panes)",
+                    "Every pane broken, as in the tests, at 0.40–0.46 of the measured time: early, at a fifth of "
+                        + "the measured deflection", "validation.md#window-glass"),
             ],
             assumptions: [
-                "Compared with measurement only as freestanding and one-way walls: panels held on all their "
-                    + "edges, and glass, have none; references on one mesh and one air grid.",
+                "Compared with measurement as freestanding and one-way walls, and glass only under a load far "
+                    + "past what breaks it: panels held on all their edges have none; references on one mesh and "
+                    + "one air grid.",
                 "A freestanding wall's cap or canopy adds no mass, and reinforced blockwork is taken as "
                     + "concrete: the measured walls were judged as built.",
                 "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
                     + "2° is flagged as beyond the one-way model.",
-                "Glass is annealed, elastic until it breaks, without membrane stiffening; fragments' hazard "
-                    + "is not graded.",
+                "Glass is annealed, elastic until it breaks, without membrane stiffening, so it breaks early; "
+                    + "fragments' hazard is not graded.",
                 "Concrete by ASCE/SEI 59-11's limits for single-reinforced slabs; brick cracked or fallen, with "
                     + "no arching.",
             ]

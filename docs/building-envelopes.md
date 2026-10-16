@@ -521,10 +521,11 @@ one way as the run goes, at most once a second and again when it stops:
   - Headless, `BombCAD run … --envelope-damage <file.json>` writes the same JSON and prints a line
     for each building.
 
-Panels held on their edges and glass are compared with the detailed model on one mesh, not with
-measurement: open tests of window glass under blast are listed in
-[data wanted](data-wanted.md#3h-window-glass-breaking-under-a-blast) but not yet read. Freestanding
-walls are compared with measured walls (below).
+These are comparisons with the detailed model on one mesh, but for glass, which has one with
+measurement: Monk and Clubley's twelve timed annealed panes in the Shoeburyness tunnel, all
+broken, which the app's glass breaks at 0.40–0.46 of the measured time, at a fifth of the
+measured deflection, as membrane action is left out ([validation](validation.md#window-glass)).
+Freestanding walls and walls spanning one way are compared with measured walls (below).
 
 ## Freestanding walls
 

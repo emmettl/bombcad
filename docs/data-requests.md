@@ -1,6 +1,6 @@
 # Data requests
 
-Draft requests for the closed sources ranked in [Data wanted](data-wanted.md#where-to-start-the-open-leads-ranked),
+Draft requests for the closed sources ranked in [Data survey](data-survey.md#where-to-start-the-open-leads-ranked),
 for the user to send in their own name if they choose. Nothing here has been sent. Contacts
 and access were checked on 11 October 2026 from repositories' landing pages and search
 listings; DTIC was down for maintenance that day and the ERDC library sits behind a browser
