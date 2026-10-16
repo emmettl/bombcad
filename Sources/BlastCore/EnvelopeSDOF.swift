@@ -154,7 +154,7 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
                 response.peakTime = time
             }
             response.reboundDeflection = min(response.reboundDeflection, x)
-            if response.lostResistanceAt == nil, backbone.last!.y == 0, x >= backbone.last!.x {
+            if response.lostResistanceAt == nil, backbone.last!.y == 0, abs(x) >= backbone.last!.x {
                 response.lostResistanceAt = time
             }
         }
@@ -178,7 +178,8 @@ public struct SDOFResponse: Codable, Hashable, Sendable {
     public var reboundDeflection = 0.0
     /// Permanent set at the end, m.
     public var residualDeflection = 0.0
-    /// When the deflection passed the backbone's last point with no resistance left, if it did.
+    /// When the deflection, either way, passed the backbone's last point with no resistance left,
+    /// if it did.
     public var lostResistanceAt: Double?
 
     /// Peak deflection over X_E (UFC §3-14.2).
