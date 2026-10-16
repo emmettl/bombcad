@@ -71,6 +71,9 @@ final class EnvelopeExposure {
     let values: MTLBuffer
     let signed: MTLBuffer
     let pipeline: MTLComputePipelineState
+    /// Whether a face whose air is in a still tile reads the still air rather than its cell, which
+    /// holds the same; off only to show that the two agree.
+    var skipStillTiles = true
 
     init(
         device: MTLDevice, library: MTLLibrary, grid: Grid, mask: UnsafeBufferPointer<UInt8>,

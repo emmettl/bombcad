@@ -38,7 +38,8 @@ extension ProjectRunSettings {
         Self.configureAir(
             &configuration, detailedCharge: detailedCharge, sharpShocks: sharpShocks,
             shockLevels: shockLevels ?? 1, gravity: gravity ?? false, shockThreshold: shockThreshold ?? 0.1,
-            adaptiveSubsteps: adaptiveSubsteps ?? false, terrainCutCells: cutsTerrain(over: scenario))
+            adaptiveSubsteps: adaptiveSubsteps ?? false, terrainCutCells: cutsTerrain(over: scenario),
+            outlineByOverlap: countsByOverlap(over: scenario))
         return RunCost.estimate(
             scenario, cellSize: (Resolution(rawValue: resolution) ?? .medium).cellSize,
             configuration: configuration,
@@ -56,7 +57,8 @@ extension SimulationInputs {
             shockLevels: settings.shockLevels ?? 1, gravity: settings.gravity ?? false,
             shockThreshold: settings.shockThreshold ?? 0.1,
             adaptiveSubsteps: settings.adaptiveSubsteps ?? false,
-            terrainCutCells: settings.cutsTerrain(over: scenario))
+            terrainCutCells: settings.cutsTerrain(over: scenario),
+            outlineByOverlap: settings.countsByOverlap(over: scenario))
         return RunAdvisor.advise(
             scenario, configuration: configuration, duration: settings.duration, target: target,
             current: settings.advisorSetting, memory: memory, maximumCells: ProjectDocument.maximumCells

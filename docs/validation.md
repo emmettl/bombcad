@@ -341,7 +341,11 @@ blamed an artefact of the frozen air. Checked:
 - **Fixed since (2026-10-15), not re-scored.** The solid outline now follows the structure while
   the air sleeps (see [freezing the air](air-blast-model.md#freezing-the-air)). On today's main,
   at the primary's settings, slabs 4, 5 and 7's largest downward displacement is the blast's own,
-  4.3, 3.7 and 4.1 mm at 4 ms, where the landing gave 17.6, 15.0 and 18.0 mm. Thrown up 40–50 mm,
+  4.3, 3.7 and 4.1 mm at 4 ms, where the landing gave 17.6, 15.0 and 18.0 mm. With the outline
+  counted by overlap (the default since 16 October; [coupling to the
+  air](structural-model.md#coupling-to-the-air)) the seven slabs' peaks move by −7% to +2%: slabs
+  4, 7 and 9, the same slab at the same stand-off, read 4.30, 4.13 and 4.41 mm counted at the
+  elements' centres, which lie on the air cells' faces, and 4.14, 4.14 and 4.11 mm by overlap. Thrown up 40–50 mm,
   they fall freely and are still bouncing on the rigid trestles at 500 ms. The blind record above
   stands as scored at its frozen commit.
 
@@ -2639,6 +2643,27 @@ holed, and the face 14–16 cm out moves at 12–30 m/s at 0.5 ms. Across the ro
 |-------------------------------------|---------|------------------------|--------------|
 | Hupfauf SN142 on today's air: far face (m/s), elements failed | 62.9, 2,478 | 106.3, 2,773 | 61.5, 2,272 |
 | Hupfauf SN131 on today's air | 22.4, 824 | 27.7, 881 | 22.6, 786 |
+
+Rerun later on 16 October with the structures' outline counted by overlap, the default since
+then ([coupling to the air](structural-model.md#coupling-to-the-air); `blastbench contact --time
+0.0006`, read at 0.5 ms, the three roundings), and on the same build with the outline at the
+elements' centres:
+
+| Slab | Fit | Centres, m/s | Overlap, m/s | Overlap / fit |
+|------|-----|--------------|--------------|---------------|
+| SN174 | 81 | 75–84 | 94–106 | 1.16–1.31 |
+| SN142 | 71 | 62–72 | 62–79 | 0.87–1.11 |
+| SN144 | 51 | 46–60 | 53–67 | 1.03–1.32 |
+| SN128 | 45 | 50–228 | 44–48 | 0.97–1.06 |
+| SN175 | 37 | 44–57 | 41–42 | 1.12–1.13 |
+| SN147 | 26 | 28–31 | 33 | 1.27 |
+| SN145 | 21 | 30 | 28 | 1.33–1.34 |
+| SN131 | 15 | 22–27 | 25–35 | 1.64–2.30 |
+
+Counted by overlap the 20 cm slabs' far faces move 0.9–1.3 times the fit and the thicker 1.0–2.3;
+at the centres, one rounding of SN128 ran away to 228 m/s. These figures move as much between
+builds as between the outlines: the first table's, on an earlier build, are in neither column's
+range for several slabs.
 
 At first, then, the far face under the charge moves 1.2 to 1.9 times as fast as the debris did,
 its profile narrower than the measured on the thinner slabs and about as wide on the thicker,
