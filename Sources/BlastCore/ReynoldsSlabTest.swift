@@ -113,17 +113,19 @@ public enum ReynoldsSlabTest {
         return traces
     }
 
-    /// The open comparison after blind test 3's reveal: Reynolds's normal-strength 8 in slabs
-    /// RSCR4–6, from `Samples/Reynolds2015/rscr/inputs.json`. The thesis gives each one's average
-    /// peak and impulse but no history, so each takes a shape scaled to its impulse: with
+    /// The open comparison after blind test 3's reveal: Reynolds's normal-strength slabs, from
+    /// `Samples/Reynolds2015/rscr/inputs.json`: RSCR4–6 (8 in) and, for reference, RSCR1–3 (4 in,
+    /// the contest slab, its repeat and its lower shot). The thesis gives each one's average peak
+    /// and impulse but no history, so each takes a shape scaled to its impulse: with
     /// `contestShape` the contest slab's record (`SlabBenchmark.load`, as the record scaled it for
-    /// the lower shot), otherwise the HSCV 8 in slab's load (its trace and tail, see `LoadShape.tail`)
-    /// whose impulse is nearest. Run with `LoadShape.given`.
+    /// the lower shot), otherwise the load (trace and tail, see `LoadShape.tail`) of the HSCV slab
+    /// of the same bar spacing whose impulse is nearest. Run with `LoadShape.given`.
     public static func rscrInputs(from url: URL, hscv: Inputs, contestShape: Bool = false) throws -> Inputs {
         let data = try Data(contentsOf: url)
         guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
             let loads = (root["loads"] as? [String: Any])?["table15"] as? [String: Any],
-            let measured = root["measured"] as? [String: Any]
+            let measured = root["measured"] as? [String: Any],
+            let reference = root["reference_rows"] as? [String: Any]
         else { throw InputError(message: "rscr/inputs.json lacks its loads or measurements") }
         func number(_ value: Any?) throws -> Float {
             guard let number = value as? NSNumber else {
@@ -131,12 +133,12 @@ public enum ReynoldsSlabTest {
             }
             return number.floatValue
         }
-        let donors = hscv.slabs.filter { $0.barSpacingInches > 6 }
-        let slabs = try ["RSCR4", "RSCR5", "RSCR6"].map { name -> Slab in
-            guard let row = loads[name] as? [String: Any], let result = measured[name] as? [String: Any]
-            else {
-                throw InputError(message: "no Table 15 row for \(name)")
-            }
+        let slabs = try (1...6).map { "RSCR\($0)" }.map { name -> Slab in
+            let spacing: Float = name < "RSCR4" ? 4 : 8
+            guard let row = (loads[name] ?? reference[name]) as? [String: Any],
+                let result = (measured[name] ?? reference[name]) as? [String: Any]
+            else { throw InputError(message: "no Table 15 row for \(name)") }
+            let donors = hscv.slabs.filter { $0.barSpacingInches == spacing }
             let impulse = try number(row["impulse_kPa_ms"])
             let shape: PressureLoad
             let shapeName: String
@@ -148,13 +150,13 @@ public enum ReynoldsSlabTest {
                     let donor = donors.min(by: {
                         abs($0.tableImpulse - impulse) < abs($1.tableImpulse - impulse)
                     })
-                else { throw InputError(message: "no HSCV 8 in slab to take a shape from") }
+                else { throw InputError(message: "no HSCV slab to take a shape from") }
                 shape = load(donor, settings: Settings())
                 shapeName = "\(donor.name)'s load (trace and tail)"
             }
             let scale = impulse / shape.impulse
             return Slab(
-                name: name, barSpacingInches: 8, tablePeak: try number(row["peak_kPa"]) * 1000,
+                name: name, barSpacingInches: spacing, tablePeak: try number(row["peak_kPa"]) * 1000,
                 tableImpulse: impulse, trace: shape.history.map { SIMD2($0.x, $0.y * scale) },
                 traceName: String(format: "%@ × %.3f", shapeName, scale),
                 measuredPeak: try number(result["peak_mm"]) / 1000,

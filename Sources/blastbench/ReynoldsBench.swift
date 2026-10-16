@@ -11,7 +11,8 @@ import Metal
 //                       [--ensemble 8 [--seed 3] [--samples 1-8]]   (the inputs' spread)
 //   blastbench reynolds --series rscr [--contest-shape] [--fc 41.4] ...
 //                       (the open comparison after the reveal: the normal-strength 8 in slabs
-//                       RSCR4–6 from Samples/Reynolds2015/rscr/inputs.json, on the contest slab's
+//                       RSCR4–6 (and RSCR1–3, the contest slab's three shots, with --slabs) from
+//                       Samples/Reynolds2015/rscr/inputs.json, on the contest slab's
 //                       material, its bars 1 in from the face, each load a shape scaled to its
 //                       Table 15 impulse; --fc sets the concrete's strength in MPa)
 //
@@ -43,7 +44,9 @@ func runReynolds(device: MTLDevice) throws {
     if let depth = option("bar-depth").flatMap({ Float($0) }) { settings.barDepthInches = depth }
     if flag("nominal-bars") { settings.nominalSpacing = true }
     if let width = option("bearings").flatMap({ Float($0) }) { settings.bearingWidth = width }
-    let names = option("slabs")?.split(separator: ",").map(String.init)
+    let names =
+        option("slabs")?.split(separator: ",").map(String.init)
+        ?? (option("series") == "rscr" ? ["RSCR4", "RSCR5", "RSCR6"] : nil)
     let slabs = inputs.slabs.filter { names?.contains($0.name) ?? true }
     let out = URL(filePath: option("out") ?? "/Volumes/StudioData/bombcad/reynolds-prediction/run")
     try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
