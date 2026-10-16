@@ -30,6 +30,17 @@ public struct EnvelopeComponentLoad: Sendable {
         self.innerPa = innerPa
     }
 
+    /// A recorded history's load: its bins' impulses over the bin width.
+    public init(_ history: EnvelopeComponentHistory) {
+        let kind = Kind(rawValue: history.component.kind.rawValue) ?? .wall
+        self.init(
+            id: history.component.id, owner: history.component.owner, kind: kind,
+            region: history.component.region,
+            axis: history.component.axis, binS: history.binS,
+            outerPa: history.outerImpulsePaS.map { Double($0) / history.binS },
+            innerPa: history.innerImpulsePaS.map { Double($0) / history.binS })
+    }
+
     /// The region's two in-plane sizes, shorter first, m.
     public var spans: (short: Double, long: Double) {
         let sizes = (0..<3).filter { $0 != axis }.map { Double(region.size[$0]) }.sorted()

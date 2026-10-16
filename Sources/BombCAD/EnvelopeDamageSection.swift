@@ -97,6 +97,24 @@ struct EnvelopeDamageSection: View {
         }
     }
 
+    /// One line for a building, as headless runs print it.
+    static func summary(_ building: EnvelopeBuildingDamage) -> String {
+        var line =
+            "\(levels(building.structuralLevels).lowercased()) (\(building.construction.walls.label.lowercased()), "
+            + "\(building.construction.source.rawValue))"
+        if building.panes > 0 {
+            line += "; \(building.panesBroken) of \(building.panes) panes broken"
+            if let first = building.firstPaneBrokenAtS {
+                line += String(format: ", first at %.1f ms", first * 1000)
+            }
+            if building.insidePeakPa > 0 {
+                line += String(format: ", inside %.1f kPa", building.insidePeakPa / 1000)
+            }
+        }
+        if building.beyondOneWay { line += "; beyond the one-way model (a panel past 2°)" }
+        return line
+    }
+
     /// The viewport's colour code for a building (`SceneRenderer.setEnvelopeDamage`): the worse end
     /// of its concrete range, or glass broken alone.
     static func code(_ building: EnvelopeBuildingDamage) -> Int {
