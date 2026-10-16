@@ -903,18 +903,28 @@ public final class BlastSolver {
             let h = structure.model.elementSize
             // A cell is solid when at least a third of it is filled with intact elements. Elements
             // larger than the cells are sampled at points no further apart than a cell.
-            let coarse = max(1, Int((h / grid.cellSize - 1e-3).rounded(.up)))
+            let sampling = Float(configuration.structureMaskSampling ?? 1)
+            let fill = configuration.structureMaskFill
+            let coarse = max(1, Int((sampling * h / grid.cellSize - 1e-3).rounded(.up)))
             uniforms.coarseSamples = UInt32(coarse)
             let perCell = pow(grid.cellSize * Float(coarse) / h, 3)
-            uniforms.threshold = UInt32(max(1, (perCell / 3).rounded(.up)))
+            // As boxes, a sample counts `units` when wholly inside a cell.
+            let units: UInt32 = configuration.structureMaskOverlap ? 16 : 0
+            uniforms.overlapUnits = units
+            uniforms.maskHysteresis = configuration.structureMaskOverlap ? 1 : 0
+            let scale = Float(max(units, 1))
+            uniforms.threshold = UInt32(
+                max(1, (fill.map { perCell * scale * $0 } ?? perCell * scale / 3).rounded(.up)))
             if let refinement {
                 // For the fine cells, each element is sampled at points no further apart than a
                 // cell of the finest level, and a fine cell of each level is solid when a third
                 // of it is covered.
                 let finest = grid.cellSize / Float(refinementLevels.reduce(1) { $0 * $1.ratio })
-                let samples = max(1, Int((h / finest - 1e-3).rounded(.up)))
+                let samples = max(1, Int((sampling * h / finest - 1e-3).rounded(.up)))
                 func threshold(_ cell: Float) -> UInt32 {
-                    UInt32(max(1, (pow(cell * Float(samples) / h, 3) / 3).rounded(.up)))
+                    let perCell = pow(cell * Float(samples) / h, 3)
+                    return UInt32(
+                        max(1, (fill.map { perCell * scale * $0 } ?? perCell * scale / 3).rounded(.up)))
                 }
                 uniforms.fineSamples = UInt32(samples)
                 uniforms.fineThreshold = threshold(grid.cellSize / Float(refinement.ratio))
@@ -1328,12 +1338,15 @@ public final class BlastSolver {
         encoder.dispatchThreads(size, threadsPerThreadgroup: group)
 
         if fine, let refinement {
+            // Bit 31 asks the fine outline for the coarse one's hysteresis.
+            let hysteresis: UInt32 = uniforms.maskHysteresis != 0 ? 1 << 31 : 0
             refinement.encodeRemask(
-                encoder, parent: coarseView(species: currentSpecies), threshold: uniforms.fineThreshold,
-                uniforms: makeUniforms())
+                encoder, parent: coarseView(species: currentSpecies),
+                threshold: uniforms.fineThreshold | hysteresis, uniforms: makeUniforms())
             if let finerRefinement, let deep = finerUniforms(makeUniforms()) {
                 finerRefinement.encodeRemask(
-                    encoder, parent: refinement.view(), threshold: uniforms.deepThreshold, uniforms: deep)
+                    encoder, parent: refinement.view(), threshold: uniforms.deepThreshold | hysteresis,
+                    uniforms: deep)
             }
         }
     }

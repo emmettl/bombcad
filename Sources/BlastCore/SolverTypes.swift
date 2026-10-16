@@ -158,6 +158,23 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// it stays coarse. About 63 kB a block at ratio 2, 364 kB at ratio 4. With two levels, a third
     /// of it goes to the first and two thirds to the second.
     public var refinementMemory = 1 << 30
+    /// How finely solid elements are sampled for the air's outline: points per air cell along each
+    /// axis, of each level's cells. nil, the default, samples each element once, at its centre, or
+    /// at points a cell apart where it is larger: a layer of elements then fills whichever cell
+    /// its centres fall in, and centres on a cell's face flip it with microns of movement. 2 or 4
+    /// counts each element's volume to half or a quarter of a cell.
+    public var structureMaskSampling: Int?
+    /// The share of an air cell the structure's samples must fill for the cell to be solid. nil,
+    /// the default, for a third, which keeps a layer a third of a cell thick but puts the wall a
+    /// sixth of a cell outside the face on average; a half places it without bias, losing thinner
+    /// layers.
+    public var structureMaskFill: Float?
+    /// Count each sample of an element as a box, by the share of it in each air cell it overlaps,
+    /// rather than whole in the cell holding its centre: a cell then fills as the structure moves
+    /// into it, and one whose face a layer of centres lies on does not flicker. A cell then turns
+    /// solid an eighth above the fill threshold and opens an eighth below it, so that a fill lying
+    /// on the threshold does not flicker either. Off by default.
+    public var structureMaskOverlap = false
     /// The luminous gas losing the heat it radiates (see `RadiativeCooling`); nil, the default,
     /// for none. Read at `restart()`.
     public var radiativeCooling: RadiativeCooling?

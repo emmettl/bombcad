@@ -1111,6 +1111,11 @@ struct CouplingUniforms {
     var deepCellOffset: UInt32 = 0
     /// 1 while the air sleeps: points in coupling pages not allocated are left out quietly.
     var quietCoverage: UInt32 = 0
+    /// 0: elements counted as points; otherwise each sample as a box, by its overlap with each
+    /// cell, in these units (see `SolverConfiguration.structureMaskOverlap`).
+    var overlapUnits: UInt32 = 0
+    /// 1: a cell turns solid an eighth above `threshold` and opens an eighth below it.
+    var maskHysteresis: UInt32 = 0
 }
 
 /// When nodes of the structure repel each other.

@@ -208,6 +208,14 @@ func chosenGas() -> AirModel { chosenAirModel() ?? SolverConfiguration.recommend
 /// 15 October 2026.
 func chosenFaces() -> OpenFaces { flag("copy-faces") ? .copy : SolverConfiguration.recommended.openFaces }
 
+/// The structure's outline in the air as the command line sets it: `--mask-sampling 2`,
+/// `--mask-fill 0.5`, `--mask-overlap` (see `SolverConfiguration.structureMaskOverlap`).
+func applyChosenMask(_ configuration: inout SolverConfiguration) {
+    if let n = option("mask-sampling").flatMap({ Int($0) }) { configuration.structureMaskSampling = n }
+    if let f = option("mask-fill").flatMap({ Float($0) }) { configuration.structureMaskFill = f }
+    if flag("mask-overlap") { configuration.structureMaskOverlap = true }
+}
+
 /// The air every run ships with (`SolverConfiguration.recommended`) as the command line changes
 /// it: `--no-afterburn`, `--air` and `--copy-faces`. Every bench that runs a scene starts here;
 /// those that pin the bare core for numerics say so.
@@ -2293,7 +2301,7 @@ func runContact() throws {
                 }
                 if flag("fastest") { fastest(structure, time) }
                 if flag("column") { column(structure, time) }
-            })
+            }, configure: applyChosenMask)
         print(
             "\(test.name): \(format(Double(test.thickness) * 100, 0)) cm, \(format(Double(test.semtex) * 1000, 0)) g SEMTEX 10 "
                 + "(\(format(Double(test.tntSphere) * 1000, 0)) g TNT sphere), T_W \(format(Double(test.scaledThickness), 2))"
@@ -2570,7 +2578,7 @@ func runTwoFace() throws {
                     shownBreakdown = true
                     printHourglassBreakdown(
                         solver, label: "\(test.name) at \(format(time * 1000, 1)) ms", near: wuNear(solver))
-                })
+                }, configure: applyChosenMask)
             shownBreakdown = false
             if let structure = lastStructure, structure.tracesWork, breakdownAt != nil {
                 printHourglassBreakdown(structure, label: "\(test.name) at the end", near: wuNear(structure))
@@ -2624,7 +2632,7 @@ func runTwoFace() throws {
                     ? {
                         print("  " + $0)
                         fflush(stdout)
-                    } : nil)
+                    } : nil, configure: applyChosenMask)
             print("Slab \(test.name), \(format(Double(test.bar) * 1000, 0)) mm bars: \(test.remark)")
             print("  gauge   peak, measured/model (mm)   residual (mm)")
             for n in result.probes.indices {
