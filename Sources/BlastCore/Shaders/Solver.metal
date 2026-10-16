@@ -2015,11 +2015,12 @@ kernel void sampleEnvelopeExposure(const device Cell *state [[buffer(0)]],
 }
 
 // Envelope components (EnvelopeComponentRecorder): after each complete fluid step, each
-// component's two sides' area-weighted mean overpressure (its faces all have the cell's area). A
-// SIMD group of 32 lanes a component, `componentsPerGroup` to a threadgroup: each lane sums every
-// 32nd face, then a fixed tree of shuffles adds the lanes' sums, so the result repeats bit for bit. Each step's value, its right
-// endpoint, is integrated into the bins it overlaps, [i w, (i + 1) w) from t = 0; the peaks are
-// kept from every step.
+// component's two sides' area-weighted mean overpressure (its faces all have the cell's area).
+// First every face's pressure, a thread a face, into a list laid out a component and a side at a
+// time; then a SIMD group of 32 lanes a component, `componentsPerGroup` to a threadgroup, each lane
+// summing every 32nd of its side's faces, a fixed tree of shuffles adding the lanes' sums, so the
+// result repeats bit for bit. Each step's value, its right endpoint, is integrated into the bins
+// it overlaps, [i w, (i + 1) w) from t = 0; the peaks are kept from every step.
 struct ComponentRecording {
     uint components;
     uint capacity;
@@ -2028,32 +2029,73 @@ struct ComponentRecording {
     uint startBin;         // the bin the batch starts in
     float startFraction;   // and how far into it, in seconds
     float binWidth;
+    uint faces;
+    uint skipStill;        // 1: read a face in a still tile as the still air (no gravity)
 };
 
 constant uint componentLanes = 32;
+// A face whose solid/fluid pair has changed, compared by its bits (fast math may drop a NaN test).
+constant uint brokenFace = 0xFFFFFFFFu;
 
-static inline float facePressure(const device Cell *state, const device uchar *mask, uint2 face,
-                                 constant SolverUniforms &u, thread bool &invalid) {
+kernel void sampleEnvelopeComponentFaces(const device Cell *state [[buffer(0)]],
+                                         const device uchar *mask [[buffer(1)]],
+                                         const device StepControl &control [[buffer(2)]],
+                                         const device uint2 *faces [[buffer(3)]],
+                                         device float *pressures [[buffer(4)]],
+                                         constant SolverUniforms &u [[buffer(5)]],
+                                         constant ComponentRecording &r [[buffer(6)]],
+                                         const device uchar *tileFlags [[buffer(7)]],
+                                         uint index [[thread_position_in_grid]]) {
+    if (index >= r.faces || (control.dt <= 0 && r.initial == 0)) return;
+    uint2 face = faces[index];
     if (mask[face.x] != 0 || (face.y != 0xFFFFFFFFu && mask[face.y] == 0)) {
-        invalid = true;
-        return 0.0f;
+        pressures[index] = as_type<float>(brokenFace);
+        return;
     }
-    Cell c = state[face.x];
-    float rho = max(c.rho, u.densityFloor);
-    float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / rho;
-    return gasPressure(rho, c.energy - kinetic, u.airModel, u.gamma) - u.ambientPressure;
+    // A cell in a still tile holds the still air: read that, not the cell (most of a large
+    // scene's faces, until the blast reaches them).
+    float rho;
+    float3 momentum;
+    float energy;
+    uint i = face.x % u.nx;
+    uint j = (face.x / u.nx) % u.ny;
+    uint k = face.x / (u.nx * u.ny);
+    if (r.skipStill != 0 && u.tileNx > 0
+        && tileFlags[i / 8 + u.tileNx * (j / 8 + u.tileNy * (k / 8))] == tileStill) {
+        rho = u.stillRho;
+        momentum = float3(u.stillMx, u.stillMy, u.stillMz);
+        energy = u.stillEnergy;
+    } else {
+        Cell c = state[face.x];
+        rho = c.rho;
+        momentum = float3(c.mx, c.my, c.mz);
+        energy = c.energy;
+    }
+    rho = max(rho, u.densityFloor);
+    float kinetic = 0.5f * (momentum.x * momentum.x + momentum.y * momentum.y + momentum.z * momentum.z) / rho;
+    pressures[index] = gasPressure(rho, energy - kinetic, u.airModel, u.gamma) - u.ambientPressure;
 }
 
-kernel void sampleEnvelopeComponents(const device Cell *state [[buffer(0)]],
-                                     const device uchar *mask [[buffer(1)]],
+static inline float sideSum(const device float *pressures, uint first, uint count, uint lane, thread uint &broken) {
+    float sum = 0.0f;
+    for (uint n = lane; n < count; n += componentLanes) {
+        float p = pressures[first + n];
+        if (as_type<uint>(p) == brokenFace) {
+            broken = 1u;
+        } else {
+            sum += p;
+        }
+    }
+    return sum;
+}
+
+kernel void sampleEnvelopeComponents(const device float *pressures [[buffer(0)]],
                                      const device StepControl &control [[buffer(2)]],
                                      const device uint4 *sides [[buffer(3)]],
-                                     const device uint2 *faces [[buffer(4)]],
                                      device float4 *peaks [[buffer(5)]],
                                      device float2 *bins [[buffer(6)]],
                                      device float2 *maxima [[buffer(7)]],
                                      device atomic_uint *truncated [[buffer(8)]],
-                                     constant SolverUniforms &u [[buffer(9)]],
                                      constant ComponentRecording &r [[buffer(10)]],
                                      uint group [[threadgroup_position_in_grid]],
                                      uint simd [[simdgroup_index_in_threadgroup]],
@@ -2062,15 +2104,9 @@ kernel void sampleEnvelopeComponents(const device Cell *state [[buffer(0)]],
     uint index = group * groups + simd;
     if (index >= r.components || (control.dt <= 0 && r.initial == 0)) return;
     uint4 side = sides[index];
-    bool invalid = false;
-    float2 sum = 0.0f;
-    for (uint n = lane; n < side.y; n += componentLanes) {
-        sum.x += facePressure(state, mask, faces[side.x + n], u, invalid);
-    }
-    for (uint n = lane; n < side.w; n += componentLanes) {
-        sum.y += facePressure(state, mask, faces[side.z + n], u, invalid);
-    }
-    uint broken = invalid ? 1u : 0u;
+    uint broken = 0u;
+    float2 sum = float2(sideSum(pressures, side.x, side.y, lane, broken),
+                        sideSum(pressures, side.z, side.w, lane, broken));
     for (ushort offset = componentLanes / 2; offset > 0; offset /= 2) {
         sum += simd_shuffle_down(sum, offset);
         broken |= simd_shuffle_down(broken, offset);

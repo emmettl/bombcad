@@ -29,7 +29,7 @@ public final class BlastSolver {
     private var exposureNeedsInitialSample = false
     private var envelopeExposure: EnvelopeExposure?
     private var envelopeNeedsInitialSample = false
-    private var envelopeComponentRecorder: EnvelopeComponentRecorder?
+    private(set) var envelopeComponentRecorder: EnvelopeComponentRecorder?
     private var componentsNeedInitialSample = false
     private var gpuProfiler: BatchGPUProfiler?
     public private(set) var lastBatchGPUProfile: BatchGPUProfile?
@@ -2318,24 +2318,38 @@ public final class BlastSolver {
     }
 
     private func encodeEnvelopeComponents(_ encoder: MTLComputeCommandEncoder, initial: Bool) {
-        guard let recorder = envelopeComponentRecorder else { return }
+        guard let recorder = envelopeComponentRecorder, !recorder.faces.isEmpty else { return }
         var uniforms = makeUniforms()
         var parameters = recorder.parameters(time: time, initial: initial)
-        encoder.setComputePipelineState(recorder.pipeline)
+        // Faces in still tiles read the still air; under gravity it is not uniform.
+        parameters.skipStill = recorder.skipStillTiles && configuration.gravity == nil ? 1 : 0
+        // Every face's pressure, a thread a face.
+        encoder.setComputePipelineState(recorder.facePipeline)
         encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
         encoder.setBuffer(maskBuffer, offset: 0, index: 1)
         encoder.setBuffer(controlBuffer, offset: 0, index: 2)
+        encoder.setBuffer(recorder.faceBuffer, offset: 0, index: 3)
+        encoder.setBuffer(recorder.pressures, offset: 0, index: 4)
+        encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 5)
+        encoder.setBytes(
+            &parameters, length: MemoryLayout<EnvelopeComponentRecorder.Parameters>.stride, index: 6)
+        encoder.setBuffer(tileFlagBuffer, offset: 0, index: 7)
+        encoder.dispatchThreads(
+            MTLSize(width: recorder.faces.count, height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(
+                width: recorder.facePipeline.threadExecutionWidth, height: 1, depth: 1))
+        // Then each component's sides: a SIMD group of 32 lanes a component, a few to a
+        // threadgroup (Solver.metal).
+        encoder.setComputePipelineState(recorder.pipeline)
+        encoder.setBuffer(recorder.pressures, offset: 0, index: 0)
         encoder.setBuffer(recorder.sideBuffer, offset: 0, index: 3)
-        encoder.setBuffer(recorder.faceBuffer, offset: 0, index: 4)
         encoder.setBuffer(recorder.peaks, offset: 0, index: 5)
         encoder.setBuffer(recorder.bins, offset: 0, index: 6)
         // Not written without maxima.
         encoder.setBuffer(recorder.maxima ?? recorder.bins, offset: 0, index: 7)
         encoder.setBuffer(recorder.flags, offset: 0, index: 8)
-        encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 9)
         encoder.setBytes(
             &parameters, length: MemoryLayout<EnvelopeComponentRecorder.Parameters>.stride, index: 10)
-        // A SIMD group of 32 lanes a component, a few to a threadgroup (Solver.metal).
         let perGroup = EnvelopeComponentRecorder.componentsPerGroup
         encoder.dispatchThreadgroups(
             MTLSize(width: (recorder.components.count + perGroup - 1) / perGroup, height: 1, depth: 1),

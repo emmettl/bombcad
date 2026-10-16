@@ -348,7 +348,7 @@ public struct EnvelopeComponentHistory: Codable, Sendable {
 
 /// Records each envelope component's two sides through a run, on the GPU after every complete
 /// fluid step, as the surface recorder records faces: the same cell-centre pressures, the same
-/// right-endpoint rule. A SIMD group a component sums its faces in a fixed order, so the result
+/// right-endpoint rule. Every face's pressure is taken a thread a face, then a SIMD group a component sums them in a fixed order, so the result
 /// repeats bit for bit.
 final class EnvelopeComponentRecorder {
     /// A component's faces: outer side then inner, as ranges into `faces`.
@@ -364,21 +364,28 @@ final class EnvelopeComponentRecorder {
         var solid: UInt32
     }
     static let noSolid = UInt32.max
+    /// Whether a face in a tile of still air reads the still air rather than its cell, which
+    /// holds the same; off only to show that the two agree.
+    var skipStillTiles = true
     /// Components to a threadgroup, a SIMD group of 32 lanes each (Solver.metal).
     static let componentsPerGroup = 4
 
     let components: [EnvelopeComponent]
     let sides: [Sides]
+    let faces: [Face]
     let binS: Double
     let capacity: Int
     let binMaxima: Bool
     let cellSize: Float
     let sideBuffer: MTLBuffer
     let faceBuffer: MTLBuffer
+    /// Each face's pressure, as the last step left it.
+    let pressures: MTLBuffer
     let peaks: MTLBuffer
     let bins: MTLBuffer
     let maxima: MTLBuffer?
     let flags: MTLBuffer
+    let facePipeline: MTLComputePipelineState
     let pipeline: MTLComputePipelineState
 
     init(
@@ -540,6 +547,7 @@ final class EnvelopeComponentRecorder {
         else { throw BlastError.allocationFailed("envelope component histories") }
         self.components = components
         self.sides = sides
+        self.faces = faces
         binS = width
         capacity = count
         binMaxima = options.binMaxima
@@ -555,12 +563,17 @@ final class EnvelopeComponentRecorder {
         guard !options.binMaxima || maxima != nil else {
             throw BlastError.allocationFailed("envelope component bin maxima")
         }
+        guard let pressures = device.makeBuffer(length: max(1, faces.count) * 4, options: .storageModePrivate)
+        else { throw BlastError.allocationFailed("envelope component face pressures") }
+        self.pressures = pressures
+        facePipeline = try ShaderLibrary.pipeline("sampleEnvelopeComponentFaces", in: library)
         pipeline = try ShaderLibrary.pipeline("sampleEnvelopeComponents", in: library)
         reset()
     }
 
     var memoryFootprint: Int {
-        sideBuffer.length + faceBuffer.length + peaks.length + bins.length + (maxima?.length ?? 0)
+        sideBuffer.length + faceBuffer.length + pressures.length + peaks.length + bins.length
+            + (maxima?.length ?? 0)
             + flags.length
     }
 
@@ -582,7 +595,7 @@ final class EnvelopeComponentRecorder {
         return Parameters(
             components: UInt32(components.count), capacity: UInt32(capacity), initial: initial ? 1 : 0,
             maxima: binMaxima ? 1 : 0, startBin: UInt32(min(start, Double(UInt32.max))),
-            startFraction: Float(time - start * binS), binWidth: Float(binS))
+            startFraction: Float(time - start * binS), binWidth: Float(binS), faces: UInt32(faces.count))
     }
 
     struct Parameters {
@@ -593,6 +606,8 @@ final class EnvelopeComponentRecorder {
         var startBin: UInt32
         var startFraction: Float
         var binWidth: Float
+        var faces: UInt32
+        var skipStill: UInt32 = 0
     }
 
     func histories(elapsed: Double) -> [EnvelopeComponentHistory] {

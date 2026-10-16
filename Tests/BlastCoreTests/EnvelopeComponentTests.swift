@@ -197,6 +197,38 @@ struct EnvelopeComponentHistoryTests {
         }
     }
 
+    @Test("A face in still air reads the still air: the same bits as reading its cell")
+    func stillTiles() throws {
+        var scene = Scenario(
+            name: "Two walls", domainSize: SIMD3(24, 8, 6), boxes: [],
+            charge: Charge(mass: 0.05, position: SIMD3(2, 4, 1)))
+        for x: Float in [5, 19] {
+            try scene.addEnvelopeObject(
+                BuildingEnvelope(solids: [Box(min: SIMD3(x, 2, 0), max: SIMD3(x + 0.5, 6, 3))]),
+                name: "Wall \(x)")
+        }
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        func histories(skipping: Bool) throws -> [EnvelopeComponentHistory] {
+            let solver = try BlastSolver(device: device, scenario: scene, cellSize: 0.25)
+            try solver.configureEnvelopeComponents(
+                objects: scene.envelopeObjects,
+                options: EnvelopeHistoryOptions(windowS: 0.05, binMaxima: true))
+            solver.envelopeComponentRecorder?.skipStillTiles = skipping
+            _ = solver.advance(steps: 40)
+            return try #require(solver.envelopeComponentHistories())
+        }
+        let skipped = try histories(skipping: true)
+        let read = try histories(skipping: false)
+        // The far wall stays in still air through the run, the near one does not.
+        #expect(skipped.first!.peakOuterPa != skipped.last!.peakOuterPa)
+        for (a, b) in zip(skipped, read) {
+            #expect(a.outerImpulsePaS.map(\.bitPattern) == b.outerImpulsePaS.map(\.bitPattern))
+            #expect(a.innerImpulsePaS.map(\.bitPattern) == b.innerImpulsePaS.map(\.bitPattern))
+            #expect(a.outerMaxPa!.map(\.bitPattern) == b.outerMaxPa!.map(\.bitPattern))
+            #expect(a.peakNetPa.bitPattern == b.peakNetPa.bitPattern)
+        }
+    }
+
     @Test("Recording leaves coarse and refined air bit-identical", arguments: [1, 2])
     func passive(refinement: Int) throws {
         var scene = try scene()

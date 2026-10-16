@@ -77,32 +77,41 @@ enum EnvelopeHistoryBenchmark {
                     + " (\(ratios.map { String(format: "%.3f", $0) }.joined(separator: ", "))); "
                     + "\(memory?.components ?? 0) components, \(memory?.historyBytes ?? 0) bytes")
         }
-        // The GPU's own seconds, by stage, summed over every batch: the histories' kernel is part
-        // of the observation stage.
+        // The GPU's own seconds, by stage, summed over every batch, `rounds` times in alternating
+        // order: the histories' kernel is part of the observation stage.
         for (name, scene, duration) in scenes {
-            var line = "\(name) GPU stages:"
-            for histories in [false, true] {
-                let solver = try BlastSolver(device: device, scenario: scene, cellSize: dx)
-                try solver.configureEnvelopeExposure(objects: scene.envelopeObjects)
-                if histories {
-                    try solver.configureEnvelopeComponents(
-                        objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: duration))
-                }
-                try solver.enableGPUProfiling(true)
-                var total = BatchGPUProfile()
-                while duration - solver.time > 1e-7 {
-                    let result = solver.advance(steps: 64, timeLimit: duration)
-                    if let profile = solver.lastBatchGPUProfile {
-                        total.airS += profile.airS
-                        total.observationS += profile.observationS
+            var stages: [Bool: [(air: Double, observation: Double)]] = [:]
+            for round in 0..<rounds {
+                for histories in round.isMultiple(of: 2) ? [false, true] : [true, false] {
+                    let solver = try BlastSolver(device: device, scenario: scene, cellSize: dx)
+                    try solver.configureEnvelopeExposure(objects: scene.envelopeObjects)
+                    if histories {
+                        try solver.configureEnvelopeComponents(
+                            objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: duration)
+                        )
                     }
-                    if result.steps == 0 { break }
+                    try solver.enableGPUProfiling(true)
+                    var total = BatchGPUProfile()
+                    while duration - solver.time > 1e-7 {
+                        let result = solver.advance(steps: 64, timeLimit: duration)
+                        if let profile = solver.lastBatchGPUProfile {
+                            total.airS += profile.airS
+                            total.observationS += profile.observationS
+                        }
+                        if result.steps == 0 { break }
+                    }
+                    stages[histories, default: []].append((total.airS, total.observationS))
                 }
-                line += String(
-                    format: " %@ air %.3f s, observation %.4f s;", histories ? "with" : "without", total.airS,
-                    total.observationS)
             }
-            print(line)
+            func median(_ values: [Double]) -> Double { values.sorted()[values.count / 2] }
+            let without = stages[false] ?? []
+            let with = stages[true] ?? []
+            print(
+                String(
+                    format:
+                        "%@ GPU stages, medians of %d: air %.3f / %.3f s, observation %.4f / %.4f s without / with",
+                    name, rounds, median(without.map(\.air)), median(with.map(\.air)),
+                    median(without.map(\.observation)), median(with.map(\.observation))))
         }
         if let out = value("out") {
             let encoder = JSONEncoder()
