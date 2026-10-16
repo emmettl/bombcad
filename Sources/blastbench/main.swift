@@ -263,6 +263,8 @@ func applyRateOptions(_ material: inout StructureMaterial) {
 func applyHourglassOptions(_ model: inout StructureModel) {
     if flag("hourglass-secant") { model.hourglassFollowsCracking = true }
     if flag("hourglass-no-steel") { model.hourglassCapsSteel = false }
+    // `--extreme-fibre`: elements with a free face crack when that face reaches the tensile strength.
+    if flag("extreme-fibre") { model.extremeFibreCracking = true }
     // `--nonlocal 0.05`: cracks soften by their strain averaged over that length either side.
     if let length = option("nonlocal").flatMap({ Float($0) }) { model.crackAveraging = length }
     // `--rate-window 120` (µs): the strain-rate laws see the rate averaged over that time
