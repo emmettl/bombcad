@@ -264,6 +264,8 @@ func applyRateOptions(_ material: inout StructureMaterial) {
 func applyHourglassOptions(_ model: inout StructureModel) {
     if flag("hourglass-secant") { model.hourglassFollowsCracking = true }
     if flag("hourglass-no-steel") { model.hourglassCapsSteel = false }
+    // `--extreme-fibre`: elements with a free face crack when that face reaches the tensile strength.
+    if flag("extreme-fibre") { model.extremeFibreCracking = true }
     // `--nonlocal 0.05`: cracks soften by their strain averaged over that length either side.
     if let length = option("nonlocal").flatMap({ Float($0) }) { model.crackAveraging = length }
     // `--rate-window 120` (µs): the strain-rate laws see the rate averaged over that time
@@ -5113,6 +5115,7 @@ do {
     case "advise": try runAdvise(device: device)
     case "hrynyk": try runHrynyk(device: device)
     case "mendonca": try runMendonca(device: device)
+    case "mendonca-static": try runMendoncaStatic(device: device)
     case "reynolds": try runReynolds(device: device)
     case "deflagration": try runDeflagration()
     case "perimeter": try runPerimeter(device: device)

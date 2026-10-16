@@ -268,6 +268,8 @@ public final class StructureSolver {
         // Without rubble the constant stays undefined, so the kernels are as before.
         var rubble = model.rubbleParticles
         if rubble { constants.setConstantValue(&rubble, type: .bool, index: 12) }
+        var fibre = model.extremeFibreCracking
+        if fibre { constants.setConstantValue(&fibre, type: .bool, index: 19) }
         elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
         traceElementPipeline = {
             let tracing = MTLFunctionConstantValues()
@@ -285,6 +287,8 @@ public final class StructureSolver {
             if nonlocal { tracing.setConstantValue(&nonlocal, type: .bool, index: 11) }
             var rubble = rubble
             if rubble { tracing.setConstantValue(&rubble, type: .bool, index: 12) }
+            var fibre = fibre
+            if fibre { tracing.setConstantValue(&fibre, type: .bool, index: 19) }
             return try? ShaderLibrary.pipeline("structureElements", in: library, constants: tracing)
         }
         // Keep the general connection law out of kernels for ordinary clamped/free bodies.
