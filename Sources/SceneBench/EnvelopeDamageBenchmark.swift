@@ -81,6 +81,15 @@ enum EnvelopeDamageBenchmark {
         var supportEdgeNodes: Int
         /// Deflection under the building's weight once settled (m), from which `deflectionM` is measured.
         var settledDeflectionM: Float = 0
+        /// §2–§3 on the detailed run itself: areas at the start, then per bin ∫ pOuter dt and
+        /// ∫ pInner dt (Pa s), and their peaks (Pa); net = outer − inner pushes inward.
+        var outerAreaM2: Float = 0
+        var innerAreaM2: Float = 0
+        var outerImpulsePaS: [Float] = []
+        var innerImpulsePaS: [Float] = []
+        var peakOuterPa: Float = 0
+        var peakInnerPa: Float = 0
+        var peakNetPa: Float = 0
         /// Deflection along `axis` at the centre node less the support edges' mean, positive
         /// inward (towards the building's inside, or down for the roof), sampled at each bin's end.
         var deflectionM: [Float]
@@ -206,10 +215,40 @@ enum EnvelopeDamageBenchmark {
         var samples: [(time: Double, value: Float)] = []
         var brokenAt: Double?
         var baseline: Float = 0
+        /// The air cell columns across the component, in-plane cell (u, v), and the cells along
+        /// `axis` searched for its solid: §2's faces are the fluid cells either side of it.
+        var columns: [SIMD2<Int32>] = []
+        var span: ClosedRange<Int> = 0...0
+        var loads = Loads()
+    }
+
+    /// §2–§3 of the specification: area-mean overpressure on each side, binned as impulse.
+    struct Loads {
+        var outer: [Float] = []
+        var inner: [Float] = []
+        var peakOuter: Float = 0
+        var peakInner: Float = 0
+        var peakNet: Float = 0
+        var outerArea: Float = 0
+        var innerArea: Float = 0
+
+        /// A step from `start` to `end` holding `p` (its right endpoint) adds p times its overlap
+        /// with each bin it crosses.
+        static func add(_ p: Float, from start: Double, to end: Double, bin: Double, into bins: inout [Float])
+        {
+            var t = start
+            while t < end - 1e-15 {
+                let index = Int((t / bin + 1e-9).rounded(.down))
+                guard index < bins.count else { return }
+                let stop = min(end, Double(index + 1) * bin)
+                bins[index] += p * Float(stop - t)
+                t = stop
+            }
+        }
     }
 
     static func track(
-        owner: SceneObject, model: StructureModel, shells: ShellSolver, wall: Wall
+        owner: SceneObject, model: StructureModel, shells: ShellSolver, wall: Wall, grid: Grid
     ) -> [Tracked] {
         let h = model.shellElementSize ?? model.elementSize
         let glassFrom = wall == .glass ? 5 : model.solids.count
@@ -287,8 +326,42 @@ enum EnvelopeDamageBenchmark {
                 supportEdgeNodes: edges.count, deflectionM: [], peakInwardM: 0, peakOutwardM: 0, peakM: 0,
                 residualM: 0, rotationDeg: 0, elements: elements.count, failedShare: 0, shearFailedShare: 0,
                 punchedShare: 0, broken: isPane ? false : nil, brokenAtS: nil)
+            // The air's columns across the component: cells whose centres lie in its outline,
+            // without a coplanar pane's for a wall, searched one cell beyond its thickness.
+            let dx = grid.cellSize
+            let counts = [grid.nx, grid.ny, grid.nz]
+            func cells(_ a: Int) -> [Int] {
+                (0..<counts[a]).filter { i in
+                    let c = (Float(i) + 0.5) * dx
+                    return c >= box.min[a] && c < box.max[a]
+                }
+            }
+            func covered(_ point: SIMD3<Float>) -> Bool {
+                !isPane
+                    && panes.contains { pane in
+                        let inA =
+                            pane.min[plane[0]] <= point[plane[0]] && point[plane[0]] < pane.max[plane[0]]
+                        let inB =
+                            pane.min[plane[1]] <= point[plane[1]] && point[plane[1]] < pane.max[plane[1]]
+                        return inA && inB && pane.min[axis] >= box.min[axis]
+                            && pane.max[axis] <= box.max[axis]
+                    }
+            }
+            var columns: [SIMD2<Int32>] = []
+            for u in cells(plane[0]) {
+                for v in cells(plane[1]) {
+                    var point = middle
+                    point[plane[0]] = (Float(u) + 0.5) * dx
+                    point[plane[1]] = (Float(v) + 0.5) * dx
+                    if !covered(point) { columns.append(SIMD2(Int32(u), Int32(v))) }
+                }
+            }
+            let lo = max(Int((box.min[axis] / dx).rounded(.down)) - 1, 0)
+            let hi = min(Int((box.max[axis] / dx).rounded(.down)) + 1, counts[axis] - 1)
             result.append(
-                Tracked(component: component, axis: axis, centre: centre, edges: edges, elements: elements))
+                Tracked(
+                    component: component, axis: axis, centre: centre, edges: edges, elements: elements,
+                    columns: columns, span: lo...hi))
         }
         return result
     }
@@ -349,7 +422,12 @@ enum EnvelopeDamageBenchmark {
             for n in 0..<shells.nodeCount { fastest = max(fastest, simd_length(shells.node(n).velocity)) }
             settledSpeed[object.name] = fastest
             tracked.append(
-                (object, track(owner: object, model: object.structure!, shells: shells, wall: wall)))
+                (
+                    object,
+                    track(
+                        owner: object, model: object.structure!, shells: shells, wall: wall, grid: solver.grid
+                    )
+                ))
         }
         func sample() {
             for (b, entry) in tracked.enumerated() {
@@ -365,6 +443,81 @@ enum EnvelopeDamageBenchmark {
                 }
             }
         }
+        let ambient = scene.atmosphere.pressure
+        let grid = solver.grid
+        let bins = Int((duration / bin).rounded())
+        for b in tracked.indices {
+            for c in tracked[b].1.indices {
+                tracked[b].1[c].loads.outer = Array(repeating: 0, count: bins)
+                tracked[b].1[c].loads.inner = Array(repeating: 0, count: bins)
+            }
+        }
+        // §2: each side's area-mean overpressure over the fluid cells beside the component's
+        // solid, from the moving mask as it stands; §3: binned as impulse.
+        func record(from start: Double, to end: Double) {
+            solver.withState { state in
+                for b in tracked.indices {
+                    for c in tracked[b].1.indices {
+                        let t = tracked[b].1[c]
+                        let axis = t.axis
+                        let plane = [0, 1, 2].filter { $0 != axis }
+                        var outer: Float = 0
+                        var inner: Float = 0
+                        var outerCount = 0
+                        var innerCount = 0
+                        func index(_ column: SIMD2<Int32>, _ along: Int) -> (Int, Int, Int) {
+                            var ijk = [0, 0, 0]
+                            ijk[plane[0]] = Int(column.x)
+                            ijk[plane[1]] = Int(column.y)
+                            ijk[axis] = along
+                            return (ijk[0], ijk[1], ijk[2])
+                        }
+                        for column in t.columns {
+                            var first: Int?
+                            var last: Int?
+                            for along in t.span {
+                                let (i, j, k) = index(column, along)
+                                if solver.isSolid(i, j, k) {
+                                    if first == nil { first = along }
+                                    last = along
+                                }
+                            }
+                            guard let first, let last else { continue }
+                            let high = last + 1
+                            let low = first - 1
+                            let sides =
+                                t.component.outward > 0
+                                ? (outer: high, inner: low) : (outer: low, inner: high)
+                            for (side, along) in [(0, sides.outer), (1, sides.inner)] {
+                                let (i, j, k) = index(column, along)
+                                guard grid.contains(i, j, k), !solver.isSolid(i, j, k) else { continue }
+                                let p = solver.primitive(of: state[grid.index(i, j, k)]).pressure - ambient
+                                if side == 0 {
+                                    outer += p
+                                    outerCount += 1
+                                } else {
+                                    inner += p
+                                    innerCount += 1
+                                }
+                            }
+                        }
+                        let pOuter = outerCount > 0 ? outer / Float(outerCount) : 0
+                        let pInner = innerCount > 0 ? inner / Float(innerCount) : 0
+                        var loads = t.loads
+                        Loads.add(pOuter, from: start, to: end, bin: bin, into: &loads.outer)
+                        Loads.add(pInner, from: start, to: end, bin: bin, into: &loads.inner)
+                        loads.peakOuter = max(loads.peakOuter, pOuter)
+                        loads.peakInner = max(loads.peakInner, pInner)
+                        loads.peakNet = max(loads.peakNet, pOuter - pInner)
+                        if start == 0 {
+                            loads.outerArea = Float(outerCount) * grid.cellSize * grid.cellSize
+                            loads.innerArea = Float(innerCount) * grid.cellSize * grid.cellSize
+                        }
+                        tracked[b].1[c].loads = loads
+                    }
+                }
+            }
+        }
         // Each component's settled deflection, from which the blast's is measured.
         for (b, entry) in tracked.enumerated() {
             guard let shells = solver.body(id: entry.0.id)?.shells else { continue }
@@ -374,12 +527,14 @@ enum EnvelopeDamageBenchmark {
         var stable = true
         var lastReport = 0.0
         while solver.time < duration - 1e-9 {
-            let result = solver.advance(steps: 2, timeLimit: duration)
+            let before = solver.time
+            let result = solver.advance(steps: 1, timeLimit: duration)
             if !result.isStable {
                 stable = false
                 break
             }
             if result.steps == 0 { break }
+            record(from: before, to: solver.time)
             sample()
             if solver.time - lastReport >= 0.01 {
                 lastReport = solver.time
@@ -405,6 +560,13 @@ enum EnvelopeDamageBenchmark {
                 c.failedShare = Float(t.elements.filter { shells.flag($0) != .active }.count) / count
                 c.shearFailedShare = Float(t.elements.filter { shells.hasShearFailed($0) }.count) / count
                 c.punchedShare = Float(t.elements.filter { shells.isPunched($0) }.count) / count
+                c.outerAreaM2 = t.loads.outerArea
+                c.innerAreaM2 = t.loads.innerArea
+                c.outerImpulsePaS = t.loads.outer
+                c.innerImpulsePaS = t.loads.inner
+                c.peakOuterPa = t.loads.peakOuter
+                c.peakInnerPa = t.loads.peakInner
+                c.peakNetPa = t.loads.peakNet
                 if c.kind == "pane" {
                     c.broken = t.brokenAt != nil
                     c.brokenAtS = t.brokenAt
@@ -413,7 +575,6 @@ enum EnvelopeDamageBenchmark {
             }
             _ = b
         }
-        let ambient = scene.atmosphere.pressure
         let gauges = scene.gauges.enumerated().map { index, gauge -> GaugeRecord in
             let history = solver.gaugeHistories[index]
             var impulse: Float = 0
@@ -474,7 +635,7 @@ enum EnvelopeDamageBenchmark {
             "Walls and roof as shells at their mid-surfaces; deflection relative to the support edges' mean, positive inward.",
             "Every edge of every member is a support edge here (ground, neighbouring members, the wall around a pane).",
             "Under gravity, settled first for 0.25 s with mass-proportional damping of 300/s, then undamped; deflections are from the settled state.",
-            "Component loads (pOuter/pInner) come from the stage 1 recorder; this record keeps the inside gauges.",
+            "Component loads follow spec §2–§3, sampled by this harness on the detailed run: the fluid cells either side of each component's solid cells, every fluid step, binned as impulse.",
         ]
         if wall == .brick {
             notes.append(
