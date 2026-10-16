@@ -560,6 +560,47 @@ construction, as what holds these slabs. What does is not found on these meshes.
 - **Next:** resistance curves from the same slab in a code with another element (Edgerton's tets
   and crack band), to tell the concrete from the element.
 
+**Where the static strength comes from** (16 October 2026).
+- **The method:** the same bench with the work by mechanism, and the mid-span section's bending
+  moment split. Statics gives the moment from the bearings' reactions; the elements' stresses
+  (concrete and bars) carry their share; the hourglass control carries the rest.
+- **The span:** the slab pivots on the inner edges of its 0.1 m bearings (the statical moment is
+  0.075 q per metre, not 0.10 q), so its span is 0.8 m. That raises the yield line to about
+  47 kPa and the cracking load to about 62 kPa.
+- **Uncracked**, the elements' stresses carry 98–99% of the moment, so the hourglass control hides
+  none. The cracking load builds up as follows:
+
+| Step | Pressure |
+|---|---|
+| Hand cracking load, span 0.8 m | about 62 kPa |
+| The bottom layer's centroid an eighth of the depth in (×1.14) | about 71 kPa |
+| The model with its rate laws off | 76 kPa |
+| The model with them on: the CEB law's gain at the ramp's real rate, about 10⁻⁴/s (×1.17) | 89 kPa |
+
+- **Cracked** (f_t ×0.25, rate laws off), it holds 61 / 63 / 66 kPa at 5 / 10 / 20 mm, 1.3–1.4
+  times the yield line.
+  - The hourglass control carries about 11% of the moment.
+  - The bars do 68–81% of the work (Grade 500's hardening, f_u / f_y = 1.15, scaled to 350 MPa,
+    and their strain gathered into one element's crack).
+  - The concrete between cracks does 3–12%, fading as the slab bends.
+
+**Against OA1.** OA1, bent statically to failure, agrees at 97–99%: its bars give it a plastic
+moment far above its cracking moment, so cracking does not decide it. Mendonça's light mat gives a
+plastic moment below the cracking moment (3.7 against 5.0 kN m/m), so the slab's strength is its
+cracking load, and whatever raises cracking raises the strength one for one. On 8 elements that is
+the bottom layer's centroid (×1.14) and the tensile strength's rate gain.
+
+**What this means.**
+- **The static excess is largely real.** Of the 2.4 times the naive yield line, a factor of about
+  1.7 is the slab's own mechanics (the span its bearings give it, and cracking above yield). About
+  1.14 is the element's centroid, and the rest is the rate law as written.
+- **The candidate fix:** judging crack onset at the extreme fibre of elements at a tensile face
+  would bring the static cracking load to the hand estimate on any mesh. That is a modest
+  correction for lightly reinforced slabs and walls.
+- **It does not reach the blast gap.** The dynamic gap remains four to nine times: with a quarter
+  of the tensile strength the static resistance falls by a quarter, but the blast run's first peak
+  moved by 5% (the diagnosis above).
+
 ## Structural response against a real test
 
 ### The test
