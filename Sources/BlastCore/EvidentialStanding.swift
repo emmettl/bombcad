@@ -1926,13 +1926,20 @@ struct StandingScene {
             evidence.append(
                 StandingEvidence(
                     "Cross-laminated timber panels in the Ottawa shock tube (Poulin, 2019)",
-                    "Static stiffness within 4–13%, peak 12–25% high (flexure, as tested); shots that left the "
-                        + "panels elastic stay elastic (0.72–1.21 of the peak deflection), nine of twelve that broke "
-                        + "them break or split the model's and three near the threshold hold; the dynamic increase "
-                        + "of 1.28 comes from the same shots",
+                    "Strength along the grain calibrated on the static tests (stiffness within 4–13%); all twenty "
+                        + "shots classified as tested, the eight that left the panels elastic at 0.72–1.21 of the "
+                        + "peak deflection; flexure always breaks first, where five broke in rolling shear; the "
+                        + "dynamic increase of 1.28 comes from the same shots",
                     "validation.md#cross-laminated-timber-panels-in-a-shock-tube"))
+            evidence.append(
+                StandingEvidence(
+                    "Glulam beams in the Ottawa shock tube (Lacroix, 2017)",
+                    "Calibrated on the static tests; the 137 mm beams' elastic shots 1.06–1.30 of measured, all "
+                        + "five destructive shots broken at 28–29 mm against 21–31; deep narrow beams meshed as "
+                        + "walls 43% too stiff in their plane",
+                    "validation.md#glulam-beams-in-a-shock-tube"))
             parts.append(
-                "timber compared on CLT panels in a shock tube: stiffness close, strength 12–25% high")
+                "timber compared on CLT panels and glulam beams in a shock tube, its strength calibrated")
         }
         var resolution: [String] = []
         if let through = elementsThrough, through <= 6, through >= 4, classes.contains(.reinforcedConcrete) {
