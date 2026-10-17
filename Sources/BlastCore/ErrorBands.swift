@@ -1429,8 +1429,7 @@ extension StandingScene {
             // vented, or the one-way fill's, which stands in where venting cannot run.
             let ufc = "UFC 3-340-02 §2-15.4's loads on the walls inside"
             let box = "a rigid box struck head-on through an open front window, 14–23% of the wall, 2–16 psi"
-            if inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes && inputs.configuration.gravity == nil
-            {
+            if inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes {
                 bands.removeAll { $0.quantity == "Inside peak through broken panes" }
                 bands.append(
                     figure(

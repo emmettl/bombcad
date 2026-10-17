@@ -167,7 +167,7 @@ struct SimulationSettings: Equatable {
     var outlineByOverlap = true
     /// Envelopes' glazing breaks in the air and the blast fills their rooms
     /// (`BlastSolver.configureEnvelopeVenting`), by default since 17 October 2026; off, or where it
-    /// cannot run (gravity in the air), the one-way fill.
+    /// cannot run, the one-way fill.
     var ventsGlazing = true
     /// The structures brought to rest under their own weight before the blast
     /// (`SolverConfiguration.settlesStructures`), as since 17 October 2026; false for their weight
@@ -424,7 +424,7 @@ final class SimulationModel {
         var construction = old
         construction.walls = walls
         if walls != old.walls {
-            construction.wallThicknessM = walls == .unreinforcedMasonry ? 0.215 : 0.2
+            construction.wallThicknessM = EnvelopeConstruction.defaultThickness(walls)
         }
         construction.source = .user
         construction.detail = "chosen in the editor"
@@ -686,7 +686,7 @@ final class SimulationModel {
         // A vented pane's faces open with its glass: its history up to then is its load.
         let vented = solver?.envelopeVentingSnapshot()
         updateEnvelopeDamage(
-            loads: histories.filter { !$0.invalid || (vented != nil && $0.component.kind == .pane) }
+            loads: histories.filter { !$0.invalid || vented?.keeps($0) == true }
                 .map(EnvelopeComponentLoad.init),
             vented: vented)
     }
@@ -1450,6 +1450,25 @@ final class SimulationModel {
     /// Sets the material of one piece of the structure; nil returns it to the structure's own.
     func setMaterial(_ material: StructureMaterial?, ofSolid index: Int, objectID: UUID? = nil) {
         editStructure(objectID: objectID) { $0.setMaterial(material, of: index) }
+    }
+
+    /// Makes one piece a profiled steel sheet of `profile` (nil: a plain piece again), its ribs
+    /// along `ribAxis` or, if nil, as cladding and roofs usually run. A sheet is meshed as shells,
+    /// of structural steel unless the piece is already of a steel.
+    func setSheet(_ profile: SheetProfile?, ribAxis: Int? = nil, ofSolid index: Int, objectID: UUID? = nil) {
+        if profile != nil { setElementKind(.shell, ofSolid: index, objectID: objectID) }
+        editStructure(objectID: objectID) { structure in
+            guard let profile, structure.solids.indices.contains(index) else {
+                structure.setSheet(nil, of: index)
+                return
+            }
+            var sheet = SheetAssignment(profile: profile, on: structure.solids[index])
+            if let ribAxis { sheet.ribAxis = ribAxis }
+            structure.setSheet(sheet, of: index)
+            if structure.material(of: index).model != .vonMises {
+                structure.setMaterial(.structuralSteel, of: index)
+            }
+        }
     }
 
     /// Meshes one piece of the structure with solid elements or shells. A structure of both
@@ -2407,9 +2426,7 @@ final class SimulationModel {
                                 }
                             } catch {
                                 envelopeVentingStatus =
-                                    settings.gravity
-                                    ? "Glazing not vented with gravity in the air: the inside is the one-way fill's."
-                                    : "Glazing not vented (\(error.localizedDescription)): the inside is the one-way fill's."
+                                    "Glazing not vented (\(error.localizedDescription)): the inside is the one-way fill's."
                             }
                         }
                     }

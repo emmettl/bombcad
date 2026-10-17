@@ -342,13 +342,12 @@ struct SidebarView: View {
                         + "they are; runs that long need a tall domain.")
             if model.settings.scenario.hasEnvelopePanes {
                 Toggle("Vent broken glazing", isOn: $model.settings.ventsGlazing)
-                    .disabled(model.settings.gravity)
                     .help(
                         "Opens envelope buildings' windows in the air when their glass breaks, so that the blast "
                             + "fills the rooms and loads the walls from inside, as UFC 3-340-02 has it within 0.3 to "
                             + "1.2 times; off, a one-way fill the air never sees, which gives the walls inside a "
-                            + "sixth to under half of that. The inside stays illustrative. Not with gravity, which "
-                            + "takes the fill; about 1.03 to 1.07 times the run's time.")
+                            + "sixth to under half of that. Walls, roofs and slabs judged failed open too. The inside "
+                            + "stays illustrative; about 1.03 to 1.07 times the run's time.")
             }
             Toggle("Sharpen shocks", isOn: $model.settings.sharpShocks)
                 .help(

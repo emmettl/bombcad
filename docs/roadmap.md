@@ -125,11 +125,15 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
 - **Next:** the rebound after a slab's peak; a shaken footing's lurch, and the rest of its
   energy (sand crushed across the whole contact, the shaken sand's own); pads' and dowels'
   laws; footings on a slope.
+- **Done, illustrative:** [profiled steel sheeting](profiled-sheeting.md), as a skin with its ribs
+  as beams in the structure editor, and as an envelope construction by UFC's method for cold-formed
+  panels with its screws' pull-out. Against Langdon's corrugated panels its elastic peaks are
+  0.5–1.3 of those measured, but its plastic response is wrong by up to three times either way.
+- **Next, for sheeting:** connections fitted to Langdon's connection tests, a softening hinge for
+  ribs that buckle locally, and screws that pull out in the shells.
 - **Planned, new materials** ([new materials](new-materials.md)): timber, solid and engineered
   (glulam, CLT, plywood), orthotropic with failure along and across the grain, rate effects and
-  connections, its elastic part adopted from ContinuumKit's `OrthotropicPlaneStress`; and thin
-  profiled metal sheeting for cladding and roofing, as a steel shell with rib beams, with fastener
-  pull-out and pull-over.
+  connections, its elastic part adopted from ContinuumKit's `OrthotropicPlaneStress`.
 - **Blocked:** a footing or connection under fast loading ([data survey 3b](data-survey.md#3b-a-footing-or-connection-under-fast-loading)).
 
 ### Freestanding objects and supports
@@ -197,8 +201,10 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
 - **Planned, building types** (what each needs is in [new materials](new-materials.md#what-each-building-type-needs)):
   - UK terraced brick houses: cavity walls of two brick leaves with ties, timber joist floors and a
     timber roof. Needs timber, wall ties, joist bearings and roof coverings as debris.
-  - Steel portal-frame warehouses with profiled metal cladding. Needs profiled sheeting, a fastener
-    law for pull-out and pull-over, and local buckling of thin cold-formed members.
+  - Steel portal-frame warehouses with profiled metal cladding: a sample is built
+    ([warehouse](profiled-sheeting.md#the-portal-frame-warehouse-sample)), its sheeting
+    illustrative; still needs fasteners that pull out in the shells and local buckling of thin
+    cold-formed members.
   - Transport hubs with long-span steel and glass roofs. Needs laminated glass that holds together
     when broken, glass falling from overhead, and a check of slender members buckling under blast.
 

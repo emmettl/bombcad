@@ -56,7 +56,7 @@ enum VentingChecks {
             let seconds = Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18
             let snapshot = solver.envelopeVentingSnapshot()
             let histories = solver.envelopeComponentHistories() ?? []
-            let loads = histories.filter { !$0.invalid || (snapshot != nil && $0.component.kind == .pane) }
+            let loads = histories.filter { !$0.invalid || snapshot?.keeps($0) == true }
                 .map(EnvelopeComponentLoad.init)
             let rooms = Dictionary(
                 uniqueKeysWithValues: scene.envelopeObjects.map {

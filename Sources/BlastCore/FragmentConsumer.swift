@@ -220,6 +220,6 @@ public struct FragmentConsumer: Sendable {
             frames: frames, fragmentCount: cloud.fragmentCount,
             frameInterval: frameInterval, misses: cloud.misses, lost: cloud.lost,
             weights: fragments.allSatisfy { $0.weight == 1 } ? nil : fragments.map(\.weight),
-            hazard: GroundHazard(impacts: cloud.impacts, centre: centre))
+            hazard: GroundHazard(impacts: cloud.impacts, centre: centre, crossings: cloud.crossings))
     }
 }

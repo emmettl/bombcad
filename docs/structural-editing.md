@@ -37,6 +37,9 @@ After detachment, part material edits affect surviving owned regions; the retain
 record remains an inspection reference. Mixed region materials are reported before a choice
 replaces them across the whole part.
 
+A selected piece of a body can also be made **profiled steel sheeting** of a cited profile, its
+ribs along a chosen axis, meshed as shells ([profiled steel sheeting](profiled-sheeting.md)).
+
 ## Local edits and detachment
 
 Changing sampled geometry, a region's material, reinforcement, element formulation, openings

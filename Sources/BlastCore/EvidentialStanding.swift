@@ -137,7 +137,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-17"
+    public static let currentTable = "standing-table-21"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -305,6 +305,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case hourglassWithoutSteel
     case interfaceBond
     case smearedMasonry
+    case profiledSheets
     case inclinedBars
     case baseConnections
     case jointsBetweenParts
@@ -372,7 +373,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
                 || !inputs.scenario.envelopeSources(.mesh).isEmpty
         case .mapBuildings: return !inputs.scenario.envelopeSources(.map).isEmpty
         case .ventedGlazing:
-            return inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes && config.gravity == nil
+            return inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes
         case .shellElements:
             return any { $0.elementKind == .shell || $0.solidElementKind.contains(.shell) }
         case .shellSectionShear: return any { $0.shellSectionShear }
@@ -395,6 +396,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .hourglassWithoutSteel: return !concrete.isEmpty && any { !$0.hourglassCapsSteel }
         case .interfaceBond: return any { $0.interfaceBond != nil }
         case .smearedMasonry: return materials.contains { $0.units != nil } && any { !$0.unitJoints }
+        case .profiledSheets: return any { $0.solidSheets.contains { $0 != nil } }
         case .inclinedBars: return any { !$0.inclinedBars.isEmpty }
         case .baseConnections:
             return any { s in
@@ -624,9 +626,8 @@ public enum StandingTable {
                 title: "Congestion below the grid", affects: air + structure + [.envelopeExposure],
                 limit: .illustrative,
                 note:
-                    "Pipes and bars too small for the cells take room and resist the air, as PDRFoam's porous "
-                    + "cells do; the turbulence they make and the flame's folding are not yet modelled, and it is "
-                    + "compared with no test.",
+                    "Pipes and bars too small for the cells take room, resist the air, make turbulence and fold "
+                    + "a flame, as PDRFoam's porous cells and sub-grid flame do; it is compared with no test yet.",
                 document: "congestion-model.md")
         case .ventedGlazing:
             return Entry(
@@ -635,7 +636,8 @@ public enum StandingTable {
                 note:
                     "Envelopes' panes break in the air when their one-way glass does (within 0.3 ms on its own "
                     + "loads) and open their windows whole, so the blast fills the rooms and loads the walls from "
-                    + "inside; the default where it can run. The inside stays illustrative: the detailed "
+                    + "inside; walls, roofs and slabs judged failed open too; the default where it can run. The "
+                    + "inside stays illustrative: the detailed "
                     + "references let broken glass go element by element and cannot judge it; against UFC "
                     + "3-340-02's loads through open windows the walls inside come at 0.31 to 1.22 of the UFC's "
                     + "(the back walls within 25%), where the one-way fill gives 0.15 to 0.42.",
@@ -764,6 +766,14 @@ public enum StandingTable {
                 title: "Masonry without unit joints", affects: [.structuralDamage], limit: .approximation,
                 note: "Masonry is smeared as a weak concrete, without its mortar joints.",
                 document: "concrete-model.md#masonry-as-units-and-mortar-joints")
+        case .profiledSheets:
+            return Entry(
+                title: "Profiled steel sheeting", affects: [.structuralDamage], limit: .illustrative,
+                note: "Sheets are a skin with their ribs as beams, fixed to their rails and purlins without "
+                    + "pull-out. Against Langdon's corrugated panels the elastic peaks are 0.5–1.3 of those "
+                    + "measured, but plastic ones scatter from a tenth to three times, the connections give "
+                    + "way above 2 bar where the panels held, and local buckling is not modelled.",
+                document: "profiled-sheeting.md#against-langdons-corrugated-panels")
         case .inclinedBars:
             return Entry(
                 title: "Inclined bars", affects: structure, limit: nil,
@@ -965,6 +975,12 @@ public enum StandingTable {
         "EnvelopeConstruction.blockworkGrouted": .input,
         "EnvelopeConstruction.masonryStrengthMPa": .input,
         "EnvelopeConstruction.capMassKgPerM": .input,
+        "EnvelopeConstruction.wallSheet": .input,
+        "EnvelopeConstruction.roofSheet": .input,
+        "EnvelopeConstruction.sheetSpanM": .input,
+        "EnvelopeConstruction.sheetContinuous": .input,
+        "EnvelopeConstruction.screwsPerM": .input,
+        "EnvelopeConstruction.railThicknessM": .input,
         "Scenario.deflagration": .option([.deflagration]),
         "Scenario.ventPanels": .option([.ventPanels]),
         "Scenario.congestion": .option([.congestion]),
@@ -1067,6 +1083,7 @@ public enum StandingTable {
         "StructureModel.supportAnchorages": .option([.baseConnections, .footings]),
         "StructureModel.interfaceBond": .option([.interfaceBond]),
         "StructureModel.unitJoints": .option([.smearedMasonry]),
+        "StructureModel.solidSheets": .option([.profiledSheets]),
         "StructureModel.shellSectionShear": .option([.shellSectionShear]),
         "StructureModel.secondCracks": .option([.noSecondCracks]),
         "StructureModel.bareBars": .option([.noBareBars]),
@@ -2122,8 +2139,7 @@ struct StandingScene {
                     $0.x > 0 && $0.y > 0
                 } != false
         }.count
-        let vented =
-            inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes && inputs.configuration.gravity == nil
+        let vented = inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes
         return result(
             .envelopeDamage, .approximation,
             "One way, from each component's load, "
@@ -2132,8 +2148,8 @@ struct StandingScene {
                         + "it breaks: "
                     : "with the air seeing the building whole and the inside a one-way fill: ")
                 + "glass breakage and its time, concrete panels' rotation between fixed and simply supported "
-                + "edges, and freestanding walls as cantilevers from their foot, as approximations; brick panels "
-                + "and the inside pressure through broken panes illustrative.",
+                + "edges, and freestanding walls as cantilevers from their foot, as approximations; brick panels, "
+                + "profiled steel sheeting and the inside pressure through broken panes illustrative.",
             evidence: [
                 StandingEvidence(
                     "UFC 3-340-02 §2-15.4's loads on the walls inside, through an open front window (16 cases, "
@@ -2184,6 +2200,10 @@ struct StandingScene {
                     + "one air grid.",
                 "Reinforced blockwork is judged as a concrete of the masonry's strength, graded by the "
                     + "concrete's limits; a freestanding wall's cap adds only the mass its construction gives.",
+                "Profiled steel sheeting spans one way between its rails or purlins by UFC 3-340-02's method for "
+                    + "cold-formed panels on the maker's effective section, graded by PDC-TR 06-08's limits for "
+                    + "deck whose membrane action its fixings limit, and blown off when its dynamic reaction passes "
+                    + "what its screws hold by EN 1993-1-3; no blast test of cladding or its fixings compared.",
                 "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
                     + "2° is flagged as beyond the one-way model.",
                 "Glass is annealed, on Moore's large-deflection plate, simply supported, breaking at E1300's "
@@ -2366,6 +2386,12 @@ struct StandingScene {
                     + "plate equation against THOR's mild steel",
                 "The examples within 1%; the two steel methods' speeds to perforate within 2%; no "
                     + "penetration test compared", "fragments.md#what-fragments-do-to-what-they-strike"),
+            StandingEvidence(
+                "DoD 4145.26-M's hazardous fragment distances for single items in the open, from DDESB's test "
+                    + "protocol (a 155 mm projectile 126.5 m, a 500 lb bomb 204.2 m), the items from public totals",
+                "0.43–0.77 and 0.57–0.84 in flight, short (the unsafe side), as the walls assumed go from thick "
+                    + "to thin; landings on the ground alone would be a sixth to a fifteenth",
+                "fragments.md#against-dods-distances"),
         ]
         let shared = [
             "One way: fragments do not push back on the air or the structure, and stop where they first hit.",
@@ -2373,8 +2399,10 @@ struct StandingScene {
                 + "way by UFC 3-340-02 (concrete; masonry as concrete of its strength, for want of its own "
                 + "method), THOR (metal plates) and a measured breaking momentum (glass); a fragment stops at "
                 + "the first surface, through or not, and does not load it.",
-            "Hazard distance: the DDESB's, where landings of 79 J or more on open ground fall below one per "
-                + "55.7 m², in 8 directions; as good as the ranges, which no arena test has checked.",
+            "Hazard distance: the DDESB's, where fragments of 79 J or more fall below one per 55.7 m² on a "
+                + "surface across their paths near the horizontal (or on open ground, if further), in 8 directions; "
+                + "0.43–0.84 of DoD's test-derived distances for two items, short (the unsafe side), the casing's "
+                + "wall deciding; no fragment-by-fragment arena data compared.",
         ]
         guard inputs.fragments?.mottFactor != nil else {
             return result(

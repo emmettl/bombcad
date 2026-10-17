@@ -278,6 +278,12 @@ public struct FragmentCloud: Sendable {
 
     public private(set) var particles: [Particle]
     public private(set) var impacts: [FragmentImpact] = []
+    /// Hazardous fragments crossing spheres round `centre` near the horizontal, as they fly.
+    public private(set) var crossings = FragmentCrossings()
+    /// Where the spheres are centred: the charge.
+    let centre: SIMD3<Float>
+    /// Each particle's next sphere to cross, by index in `crossings.radii`.
+    private var nextSphere: [Int] = []
     public private(set) var time: Double = 0
     /// Samples taken inside the domain but outside the air given: the slice was too small.
     public private(set) var misses = 0
@@ -304,6 +310,7 @@ public struct FragmentCloud: Sendable {
         let charge = scene.charge
         let speed = spec.launchSpeed(chargeMass: charge.mass)
         launchSpeed = speed
+        centre = charge.position
         blocks = scene.blocks
         structure = scene.structure
         structureOwners = scene.structureOwners?.count == scene.structure.count ? scene.structureOwners : nil
@@ -368,8 +375,9 @@ public struct FragmentCloud: Sendable {
     init(
         particles: [Particle], blocks: [Box] = [], structure: [Box] = [], structureOwners: [UUID]? = nil,
         terrain: Terrain? = nil, blockTargets: [FragmentTarget?] = [],
-        structureTargets: [FragmentTarget?] = []
+        structureTargets: [FragmentTarget?] = [], centre: SIMD3<Float> = .zero
     ) {
+        self.centre = centre
         self.particles = particles
         launchSpeed = 0
         self.blocks = blocks
@@ -444,7 +452,9 @@ public struct FragmentCloud: Sendable {
                     lost += 1
                     break
                 }
-                if let hit = hit(from: start, to: particle.position) {
+                let struck = hit(from: start, to: particle.position)
+                if particle.mass > 0 { cross(index, to: struck?.point ?? particle.position, particle) }
+                if let hit = struck {
                     particle.position = hit.point
                     particle.landed = true
                     if particle.mass > 0 {
@@ -576,6 +586,33 @@ public struct FragmentCloud: Sendable {
         return (start + (end - start) * best.fraction, best.surface, best.objectID, best.struck)
     }
 
+    /// Counts the spheres `particle` has crossed on its way to `point`, if hazardous and near the
+    /// horizontal there (`FragmentCrossings`).
+    private mutating func cross(_ index: Int, to point: SIMD3<Float>, _ particle: Particle) {
+        if nextSphere.count != particles.count {
+            nextSphere = particles.map { p in
+                let r = simd_distance(p.position, centre)
+                return crossings.radii.firstIndex { $0 > r } ?? crossings.radii.count
+            }
+        }
+        let offset = point - centre
+        let r = simd_length(offset)
+        var next = nextSphere[index]
+        guard next < crossings.radii.count, r >= crossings.radii[next] else { return }
+        let speed = simd_length(particle.velocity)
+        let hazardous = 0.5 * particle.mass * speed * speed >= HazardCriteria.hazardousEnergyJ
+        let level = abs(asin(max(min(offset.z / max(r, 1e-6), 1), -1))) <= crossings.band
+        let sector = FragmentCrossings.sector(of: SIMD2(offset.x, offset.y), sectors: crossings.sectors)
+        while next < crossings.radii.count, r >= crossings.radii[next] {
+            if hazardous, level {
+                crossings.counts[next * crossings.sectors + sector] += particle.weight
+                crossings.samples[next * crossings.sectors + sector] += 1
+            }
+            next += 1
+        }
+        nextSphere[index] = next
+    }
+
     /// A block or structural region struck, by index.
     enum Struck {
         case block(Int)
@@ -610,10 +647,11 @@ public struct FragmentCloud: Sendable {
         }
         let speed = simd_length(particle.velocity)
         let cosine = speed > 0 ? abs(particle.velocity[axis]) / speed : 1
-        let result = target.assess(
+        var result = target.assess(
             mass: particle.mass, area: particle.area, speed: speed,
             thickness: target.thickness ?? box.size[axis],
             obliquity: acos(min(cosine, 1)))
+        if result.outcome == .perforated { result.holeAreaM2 = particle.area }
         return (result, target)
     }
 
