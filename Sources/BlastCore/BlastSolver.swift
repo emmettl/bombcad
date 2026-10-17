@@ -25,6 +25,9 @@ public final class BlastSolver {
     /// Simulated time in seconds since the last `restart()`.
     public private(set) var time: Double = 0
     public private(set) var stepCount = 0
+    /// The run's clock on the GPU, in ticks of 2^-40 s (`StepControl.clock`), carried from batch to
+    /// batch: the steps' times it gives are the same however the run is batched.
+    private var clockTicks: UInt64 = 0
     private var exposurePlane: ExposurePlane?
     private var exposureNeedsInitialSample = false
     private(set) var envelopeExposure: EnvelopeExposure?
@@ -1483,6 +1486,98 @@ public final class BlastSolver {
         gaugeHistories[index] = samples + gaugeHistories[index]
     }
 
+    /// How one body was brought to rest under its own weight before the blast.
+    public struct Settlement: Sendable {
+        public var name: String
+        /// Whether its motion died away; if not, it starts undeformed, as without settling.
+        public var settled: Bool
+        /// Time it was given, s, and the steps that took.
+        public var time: Double
+        public var steps: Int
+        /// The wall-clock time it took, s.
+        public var seconds: Double
+        /// Its mean (mass-weighted root-mean-square) speed at the end, as a share of the largest
+        /// on the way, and its largest displacement then, m.
+        public var residualSpeed: Double
+        public var displacement: Float
+    }
+
+    /// The bodies' settlements since the last `restart()`, once `settleStructures()` has run.
+    public private(set) var settlements: [Settlement] = []
+    /// Whether `settleStructures()` has run since the last `restart()`.
+    public private(set) var structuresSettled = false
+
+    /// Settling's mass-proportional damping (1/s), the least time it gives a body, the time it
+    /// gives a body at most, and how still a body must be, as its mean speed's share of the
+    /// largest on the way.
+    public static let settleDamping: Float = 50
+    public static let settleMinimum = 0.02
+    public static let settleLimit = 1.0
+    public static let settleTolerance = 0.01
+
+    /// Brings each body to rest under its own weight, alone and without the air, before the
+    /// first step (the first batch does it if no one has): heavily damped until its motion has
+    /// died away, then stopped where it is, its clock back at zero. Its deformation, stresses and
+    /// any cracking from its own weight stay. A body that does not come to rest within
+    /// `settleLimit` (one falling, or not standing) is put back undeformed and starts as it
+    /// would without settling. Nothing is done with `configuration.settlesStructures` off (or
+    /// `BOMBCAD_SETTLE=off` in the environment, for benches), once the run has started, or for a
+    /// body without gravity, with motion set by the scene, or no longer as loaded (moved, set
+    /// moving or broken since).
+    public func settleStructures() {
+        guard configuration.settlesStructures, !structuresSettled, time == 0, stepCount == 0,
+            ProcessInfo.processInfo.environment["BOMBCAD_SETTLE"] != "off"
+        else { return }
+        precondition(!batchInFlight, "Cannot settle while a batch is in flight")
+        structuresSettled = true
+        var moved = false
+        for body in bodies where body.gravity > 0 && !body.hasSetMotion && body.isAsLoaded {
+            let start = Date()
+            let step = Double(body.criticalTimeStep)
+            let chunk = max(1, Int((0.005 / step).rounded(.up)))
+            let damping = body.damping
+            body.damping = Self.settleDamping
+            var elapsed = 0.0
+            var steps = 0
+            var peak = 0.0
+            var speed = 0.0
+            var settled = false
+            while elapsed < Self.settleLimit {
+                body.advanceAlone(steps: chunk)
+                steps += chunk
+                elapsed += Double(chunk) * step
+                let (energy, mass) = body.motion()
+                speed = mass > 0 ? (2 * energy / mass).squareRoot() : 0
+                peak = max(peak, speed)
+                if elapsed >= Self.settleMinimum && speed <= Self.settleTolerance * peak {
+                    settled = true
+                    break
+                }
+            }
+            body.damping = damping
+            if settled {
+                body.holdStill()
+            } else {
+                body.reset()
+            }
+            moved = true
+            settlements.append(
+                Settlement(
+                    name: body.name, settled: settled, time: elapsed, steps: steps,
+                    seconds: Date().timeIntervalSince(start), residualSpeed: peak > 0 ? speed / peak : 0,
+                    displacement: body.summary()?.maxDisplacement ?? 0))
+        }
+        guard moved, let commandBuffer = commandQueue.makeCommandBuffer(),
+            let encoder = commandBuffer.makeComputeCommandEncoder()
+        else { return }
+        // Mark the settled structure in the solid mask.
+        encodeBodyEnvelopes(encoder, clear: true)
+        encodeRemask(encoder, fine: false)
+        encoder.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+    }
+
     /// Resets time, histories and the peak/impulse fields, treating the current state as initial.
     /// The structure, if any, returns to its undeformed state.
     public func restart() {
@@ -1490,6 +1585,7 @@ public final class BlastSolver {
         frameExtractor?.invalidate()
         time = 0
         stepCount = 0
+        clockTicks = 0
         exposurePlane?.reset()
         exposureNeedsInitialSample = exposurePlane != nil
         envelopeExposure?.reset()
@@ -1501,6 +1597,8 @@ public final class BlastSolver {
         checkpointSubsteps = 0
         setUpRadiativeCooling()
         for body in bodies { body.reset() }
+        settlements = []
+        structuresSettled = false
         if let plan = tiledCoupling {
             let header = wallVelocityBuffer.contents().bindMemory(to: UInt32.self, capacity: 2)
             header[0] = min(header[0], UInt32(plan.capacity))
@@ -1722,7 +1820,8 @@ public final class BlastSolver {
         }
         for level in refinementLevels {
             level.reset()
-            level.setBoxes(rigidBoxes)
+            let fine = grid.cellSize / Float(level.parentScale * level.ratio)
+            level.setBoxes(rigidBoxes?.map { $0.holdingCells(of: fine) })
             level.setTerrain(rigidBoxes == nil ? nil : terrain)
         }
         for level in refinementLevels { level.coarseCut = cut ? terrainCut : nil }
@@ -1819,6 +1918,7 @@ public final class BlastSolver {
         if first {
             precondition(!batchInFlight, "completeBatch() must be called before encoding another batch")
             guard !interObjectContactDetected && !couplingCapacityExceeded else { return nil }
+            settleStructures()
             assignGravityTables()
             gpuProfiler?.beginBatch()
         }
@@ -1860,6 +1960,8 @@ public final class BlastSolver {
             if let timeLimit {
                 control.timeLimit = Float(max(timeLimit - time, 0))
             }
+            control.clockLow = UInt32(truncatingIfNeeded: clockTicks)
+            control.clockHigh = UInt32(truncatingIfNeeded: clockTicks >> 32)
             controlBuffer.contents().storeBytes(of: control, as: StepControl.self)
             if exposureNeedsInitialSample {
                 encodeExposure(encoder, initial: true)
@@ -2216,6 +2318,7 @@ public final class BlastSolver {
         batchInFlight = false
         lastBatchGPUProfile = gpuProfiler?.resolve()
         let control = controlBuffer.contents().load(as: StepControl.self)
+        clockTicks = control.clock
         // A row per step, and one for the state the batch ended in.
         let rows = Int(control.stepIndex) + (gaugeCount > 0 ? 1 : 0)
         let rowStride = gaugeCount + 1
@@ -2237,7 +2340,7 @@ public final class BlastSolver {
             if step > 0 { lastStep = step }
         }
         let elapsed = time - start
-        deflagrationStage?.complete(batchStart: start)
+        deflagrationStage?.complete()
         for body in bodies {
             body.time = time
             if bodies.count > 1 {

@@ -127,7 +127,9 @@ damage model that reads them (`/Volumes/StudioData/bombcad/envelope-damage/compo
   else the one its middle plane crosses. They are solid from the start and carry the pane's load.
   Before, a pane in a cut opening crossed no cell's centre, so its window was open in the air and
   the pane recorded nothing, and glass set in a wall had its load counted as the wall's (see
-  [validation](validation.md#glazing-in-the-air) for what that changes).
+  [validation](validation.md#glazing-in-the-air) for what that changes). In refined air's patches
+  the pane takes the layer of finer cells its middle lies in (`Box.holdingCells`), so its window is
+  closed there too.
 
 Ids are `<owner>/<kind>/<source>.<panel>`. The street study's buildings come out as one panel a
 wall and one roof panel.
@@ -407,7 +409,9 @@ Project tests cover mixed scenes, version rejection and Undo/Redo restoring the 
 structure. Existing ownership, project and multi-body checks cover compatibility.
 
 The envelopes inherit the existing idealised blast model and grid-dependent geometry.
-Unresolved openings and thin walls can disappear. Fixed geometry cannot represent broken
+Openings narrower than a cell can close. Walls and slabs thinner than a cell take the layer of
+cells their middle lies in (since 17 October 2026: before, a wall between two cell centres vanished, its faces
+recorded nothing and the blast passed through it), so they are a cell thick in the air. Fixed geometry cannot represent broken
 windows, collapse, debris or evolving shielding. This establishes stationary exposure
 behaviour and its computational cost; it does not validate invented buildings against
 measurements or establish kilogram-to-kiloton physical coverage.

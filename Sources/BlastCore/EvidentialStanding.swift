@@ -961,6 +961,10 @@ public enum StandingTable {
         "SolverConfiguration.startupSteps": .numerical,
         "SolverConfiguration.twoWayCoupling": .option([.structureFixedInAir]),
         "SolverConfiguration.movingWalls": .option([.stationaryWalls]),
+        // Off, a structure swings under its own weight as the blast arrives; the comparisons that
+        // carry their weight move by 1 mm or less with it (structural-model.md, "Settling under
+        // its own weight").
+        "SolverConfiguration.settlesStructures": .numerical,
         "SolverConfiguration.skipStillAir": .numerical,
         "SolverConfiguration.airModel": .option([.hotAir, .dissociatingAir]),
         "SolverConfiguration.afterburning": .option([.afterburning]),
