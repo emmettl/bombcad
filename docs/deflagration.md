@@ -209,7 +209,9 @@ mixture is carried through each face's open part. On a 30° slope the staircase 
 A panel is a box whose cells (those a block or the ground does not already fill) are solid until
 the largest overpressure in a fluid cell beside any of them reaches its release pressure. Then all
 its cells are cleared from the mask, and from the rigid mask a deformable structure's remasking
-starts from. The panel has no mass and goes at once, an idealised vent cover. Its cells become
+starts from. With a deformable structure in the scene the panel's cells are put in that rigid
+mask as well when they are placed, after the structure: until 17 October 2026 they were not, and
+the structure's first remask opened every panel at once. The panel has no mass and goes at once, an idealised vent cover. Its cells become
 still air at the ambient state, a sliver of gas the room did not have. When it opened is recorded
 (`BlastSolver.ventPanelOpenTimes`). A panel with a release pressure of zero or less is an open vent
 and is never solid.
