@@ -139,7 +139,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-32"
+    public static let currentTable = "standing-table-33"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -1554,7 +1554,7 @@ struct StandingScene {
                     "deflagration.md#checks"),
                 StandingEvidence(
                     "HySEA's 20 ft containers, lean hydrogen of 15% and 21% (Skjold et al., 2017)",
-                    "Vented through the doors within the repeats' scatter (0.72–1.42); through the roof 0.20–0.53, "
+                    "Vented through the doors within the repeats' scatter (0.72–1.42); through the roof 0.19–0.45, "
                         + "the unsafe side",
                     "deflagration.md#checks"),
             ]
@@ -1622,7 +1622,7 @@ struct StandingScene {
         let fuel =
             gas == .hydrogen
             ? "Lean hydrogen, with its flame's 1/Le response, reads 1.24–2.96 of FM Global's vented tests and "
-                + "within the scatter of HySEA's containers vented through their doors, but 0.20–0.53 of those vented "
+                + "within the scatter of HySEA's containers vented through their doors, but 0.19–0.45 of those vented "
                 + "through their roof, the unsafe side; K_G in a closed sphere 0.89–0.99 of the measured. For methane, "
             : gas == .townGas
                 ? "Town gas, half hydrogen, was compared only in a closed sphere (K_G about 0.77 of the measured) "

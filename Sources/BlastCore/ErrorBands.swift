@@ -1108,7 +1108,7 @@ extension StandingScene {
                             ? "FM Global's 63.7 m³ chamber, 12.1–19.7% hydrogen lit in the middle and at the back "
                                 + "wall, 0.1 m cells, with the flame's 1/Le response, nothing fitted; HySEA's "
                                 + "containers vented through their doors within their scatter, through their roof "
-                                + "0.20–0.53 of the measured"
+                                + "0.19–0.45 of the measured"
                             : "FM Global's 63.7 m³ chamber, 12.1–19.7% hydrogen lit in the middle and at the back "
                                 + "wall, 0.1 m cells; lean hydrogen's measured growth law, without the flame's "
                                 + "thermodiffusive response",
