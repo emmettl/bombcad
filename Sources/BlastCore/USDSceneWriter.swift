@@ -234,6 +234,23 @@ public final class USDSceneWriter {
             values: values)
     }
 
+    /// Adds a hazard distance as a ring of points on the ground round the charge, about a metre
+    /// apart: `/Scene/<name>`, carrying its `hazardDistance` (m). Nothing without one.
+    public func addHazard(_ hazard: GroundHazard, name: String) {
+        guard let distance = hazard.hazardDistance else { return }
+        let count = min(max(Int((2 * .pi * distance).rounded(.up)), 64), 4096)
+        let ring = (0..<count).map { n -> SIMD3<Float> in
+            let angle = 2 * Float.pi * Float(n) / Float(count)
+            let xy = hazard.centre + distance * SIMD2(cos(angle), sin(angle))
+            let point = SIMD3(xy, 0)
+            return SIMD3(xy, (scenario.terrain?.height(at: point) ?? 0) + 0.05)
+        }
+        addPoints(
+            name, frames: [ring], widths: [Float](repeating: 0.3, count: count),
+            colour: SIMD3(0.86, 0.1, 0.24),
+            values: [("hazardDistance", [Float](repeating: distance, count: count))])
+    }
+
     /// Adds the cloud after the run, a sphere rising and drifting with one frame every
     /// `secondsPerFrame` of simulated time from the first sample. Its frames follow the run's on
     /// the timeline, at that slower rate, and it is hidden until then.

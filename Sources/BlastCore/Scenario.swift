@@ -376,6 +376,13 @@ extension BlastSolver {
                     }
                 }
             }
+            // Glazing closes its window even where it is thinner than a cell (`paneCells`).
+            for object in scenario.envelopeObjects {
+                guard let envelope = object.envelope else { continue }
+                for pane in envelope.panes.indices {
+                    for cell in envelope.paneCells(pane, grid: grid) { mask[cell] = 1 }
+                }
+            }
         }
         var cut: TerrainCutGeometry?
         if let terrain = scenario.terrain, configuration.cutsTerrain(of: scenario) {

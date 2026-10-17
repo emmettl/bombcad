@@ -14,8 +14,9 @@ At its core are two solvers, both on the GPU:
   elements, faster shells and beams, or both in one body. Broken pieces collide, fall and come
   to rest, and the air flows through the gaps they leave.
 
-Around them sit freestanding objects, terrain, effects beside the blast (fragments, the
-fireball's heat, its cloud, ground shock) and a second kind of source, a gas deflagration. Every
+Around them sit freestanding objects, terrain, building envelopes judged for damage, effects
+beside the blast (fragments, the fireball's heat, its cloud, ground shock, craters) and a second
+kind of source, a gas deflagration. Every
 result carries its [evidential standing](docs/standing.md): compared with measurement, verified against
 theory, an approximation, or illustrative.
 
@@ -31,6 +32,8 @@ it should be used to judge the safety of a real structure.
 ![A twelve-storey tower 2 s after 4 tonnes beside it: its floors punching off their columns](docs/twelve-storey.png)
 
 ![A twelve-storey steel and glass office 250 ms after a tonne at the kerb: its curtain wall blown in, glass and frame thrown into the street](docs/office-tower.png)
+
+The [steel and glass office](docs/office-tower.md) is one of the app's built-in layouts.
 
 ## Download
 
@@ -61,18 +64,18 @@ including `BombCAD run` and the `blastbench` command-line tool.
 
 | Area | What is there | Document |
 |------|---------------|----------|
-| Air | Blast waves round obstacles; refinement near the shock in one or two levels; afterburning, hot and dissociating air; gravity and sub-grid mixing as options | [Air-blast model](docs/air-blast-model.md) |
-| Terrain | A heightfield ground the blast, receivers, objects and footings see, imported from a DEM | [Terrain](docs/terrain.md) |
+| Air | Blast waves round obstacles; by default afterburning, hot and dissociating air and far-field open faces; refinement near the shock in one or two levels, each with its own substeps as an option; gravity and sub-grid mixing as options | [Air-blast model](docs/air-blast-model.md) |
+| Terrain | A heightfield ground the blast, receivers, objects and footings see, imported from a DEM, cut through the air's cells so slopes reflect as slopes, under a deflagration too | [Terrain](docs/terrain.md) |
 | Structures | Solid, shell and beam elements; concrete cracking, crushing, bond and dowel action; masonry as units and joints; steel; glass | [Structural model](docs/structural-model.md), [concrete](docs/concrete-model.md), [shells](docs/shell-model.md) |
-| Supports | Fixed bases, breakable connections at any angle, footings on layered soil with embedment | [Structural model](docs/structural-model.md#footings) |
+| Supports | Fixed bases, breakable connections at any angle, footings on layered soil with embedment; debris landing on soil instead of a rigid ground | [Structural model](docs/structural-model.md#footings) |
 | Freestanding objects | Boxes and cars that slide, lift, tip and collide, each in the air; car parks and furnished rooms | [Freestanding objects](docs/freestanding-objects.md) |
-| Fragments | A cased charge's fragments flown through the blast | [Fragments](docs/fragments.md) |
+| Fragments | A cased charge's fragments, with Mott's masses from the casing, Gurney's speed and a measured drag, flown through the blast; hazard outputs to come | [Fragments](docs/fragments.md) |
 | Thermal | The fireball's radiation on surfaces, ray-marched on the GPU, and the surfaces' heating; paused as illustrative | [Thermal radiation](docs/thermal-radiation.md), [surface heating](docs/surface-heating.md) |
 | Cloud | The fireball's rise, condensation, rain and spread in a measured or standard atmosphere | [Fireball rise](docs/fireball-rise.md) |
 | Ground shock | The design manuals' estimate, or a layered soil column under each point | [Ground shock](docs/ground-shock.md) |
-| Craters | An empirical crater for each charge on earth or rock, after the blast, and the energy soft ground takes from the air | [Cratering](docs/cratering.md) |
-| Gas deflagrations | A methane or propane cloud lit in a room, with vent panels | [Gas deflagrations](docs/deflagration.md) |
-| Scale | Exposure-only building envelopes and neighbourhoods of them | [Building envelopes](docs/building-envelopes.md), [street interactions](docs/street-interaction.md) |
+| Craters | An empirical crater for each charge on earth or rock, kept shallow below a water table, after the blast; and the energy soft ground takes from the air | [Cratering](docs/cratering.md) |
+| Gas deflagrations | A methane or propane cloud lit in a room, with vent panels; a vapour cloud explosion at a process plant beside its buildings, after Texas City 2005 | [Gas deflagrations](docs/deflagration.md), [process plant](docs/process-plant-explosion.md) |
+| Building envelopes | Exposure-only buildings, up to neighbourhoods of them, each wall, roof and pane judged for damage as it goes: glass, concrete and brick panels, freestanding and one-way walls, slabs, and the pressure let inside | [Building envelopes](docs/building-envelopes.md#one-way-damage-single-degree-of-freedom), [street interactions](docs/street-interaction.md) |
 | Other Macs | Sweeps and the effects beside the blast placed on other Macs by cost | [Distributed computing](docs/distributed-computing.md) |
 
 ## Headline results
@@ -110,6 +113,8 @@ damage; an [independent review](docs/validation-review.md) weighs the claims:
 | Internal explosion | Unsafe side: the chamber's roof left a quarter as far up as measured, too stiff, and not converged. Low |
 | Foundations | Either way for a footing's rocking moment; settlement 1.7–2.3 times too much; energy a sixth to a half. Moderate, low for energy |
 | Debris | Unsafe side: held back rather than thrown, slabs never holed. Low: one comparison; collapse has none |
+| Envelope damage | Either way: panes break at 0.82–1.07 of the measured time (Monk and Clubley), at 0.57–0.72 of ASTM E1300's design resistance; six of seven freestanding walls' outcomes as measured; concrete panels' rotation a range, the fixed edge reading low. Approximation |
+| Fragments and craters | A counted bomb's fragments within a factor of 1.36; five of six craters' diameters within a third, their depths within 0.84–1.41 with a water table. Approximation where given the casing or the ground |
 | Fireball radiation and gas deflagrations | Radiation too bright, vented peaks too low (the unsafe side). Illustrative |
 
 The [roadmap](docs/roadmap.md) lists the limitations in order of importance and the work on them;
@@ -135,7 +140,8 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [Standing of results](docs/standing.md)     | Each result's evidential standing, derived from the scene and carried with runs and exports |
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |
 | [Street interactions](docs/street-interaction.md) | Matched neighbourhood comparisons, spatial exposure maps and resolution sensitivity |
-| [Building envelopes](docs/building-envelopes.md) | Stationary exposure-only buildings, surface loading, matched detailed references and scaling through 64 buildings |
+| [Building envelopes](docs/building-envelopes.md) | Stationary exposure-only buildings, surface loading, one-way damage to their walls, roofs and glass, matched detailed references and scaling through 64 buildings |
+| [Process plant explosion](docs/process-plant-explosion.md) | A vapour cloud explosion beside a blast-resistant module, a cabin and envelope buildings, after the CSB's Texas City report |
 | [Multiple-object scenes](docs/multiple-object-scene.md) | Scene requirements and the boundary with ContinuumKit; [scaling](docs/multi-object-scaling.md) |
 | [Fragments](docs/fragments.md) | A cased charge's fragments flown one way through the blast and drawn over it, here or on another Mac |
 | [Thermal radiation](docs/thermal-radiation.md) | The fireball's radiant heat on the ground and the scene's faces, from the air model's hot gas, here or on another Mac |
@@ -143,7 +149,8 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [The fireball's rise and cloud](docs/fireball-rise.md) | The hot gas left after the blast, followed as a rising, entraining cloud that spreads once it stops, carried by the wind |
 | [Gas deflagrations](docs/deflagration.md) | An illustrative second source: a methane or propane cloud lit in a room, and vent panels that release at a pressure |
 | [Ground shock](docs/ground-shock.md) | An illustrative estimate of the ground's shaking away from the charge, or a layered soil column, fed the overpressure on the ground |
-| [Cratering](docs/cratering.md) | The crater each charge digs in earth or rock, by empirical scaling, and the share of its energy the air keeps |
+| [Cratering](docs/cratering.md) | The crater each charge digs in earth or rock, by empirical scaling, kept shallow below a water table, and the share of its energy the air keeps |
+| [The steel and glass office](docs/office-tower.md) | A sample layout of modern construction: how it is meshed, stands under gravity and takes a tonne at the kerb |
 | [Distributed computing](docs/distributed-computing.md) | Sweeps on several Macs, and the effects beside the blast placed on other Macs by cost |
 | [Run comparison](docs/run-comparison.md)    | Saved runs, comparing them, and headless runs                   |
 | [USD export](docs/usd-export.md) | Writing a run over time as USD and OpenVDB volumes, for rendering in Blender and elsewhere |
@@ -152,7 +159,8 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [Long-term vision](docs/long-term-vision.md) | All explosions great and small: the product direction           |
 | [Roadmap](docs/roadmap.md)                  | Known limitations in order of importance, and planned work      |
 | [Data wanted](docs/data-wanted.md)          | Documents to fetch, datasets to request, and what has been fetched and used; the ranked survey behind it in [Data survey](docs/data-survey.md) |
-| [ContinuumKit adoption](docs/continuumkit-adoption.md) | Shared numerical components adopted from ContinuumKit       |
+| [ContinuumKit adoption](docs/continuumkit-adoption.md) | Shared numerical components adopted from ContinuumKit, among them the structures' contact search |
+| [Release notes](docs/release-notes/0.4.0.md) | What each release changed, with [0.3.0](docs/release-notes/0.3.0.md) and [0.2.0](docs/release-notes/0.2.0.md) |
 | [Native interface review](docs/native-interface-review.md) | Checks of the app's panels in native windows          |
 | [Releasing](docs/releasing.md)              | Signed, notarized builds                                        |
 | [Continuous integration](docs/continuous-integration.md) | The Mac mini runner, nightly validation and benchmarks |
