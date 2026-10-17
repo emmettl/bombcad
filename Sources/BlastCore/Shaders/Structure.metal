@@ -983,11 +983,17 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
 
     ElementState state = states[compact];
     bool eroded = volume < u.minVolumeRatio * referenceVolume;
+    // Flattened to nothing: all eight nodes in one plane, as when an element is pressed flat on the
+    // hard ground, which sets each node that reaches it exactly on it (`structureNodes`). It has no
+    // shape-function gradients, and is removed whatever else would keep it (a bare element's bars,
+    // `bareBars`): its forces would be infinite.
+    bool flattened = !(fabs(detJ) > 0.0f);
 
     // Shape-function gradients b_a = J^-T xi_a / 8.
-    float3 r0 = cross(c1, c2) / detJ;
-    float3 r1 = cross(c2, c0) / detJ;
-    float3 r2 = cross(c0, c1) / detJ;
+    float divisor = flattened ? 1.0f : detJ;
+    float3 r0 = cross(c1, c2) / divisor;
+    float3 r1 = cross(c2, c0) / divisor;
+    float3 r2 = cross(c0, c1) / divisor;
     float3 b[8];
     float3 lx = float3(0.0f);
     float3 ly = float3(0.0f);
@@ -1995,8 +2001,9 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         bool collapsed = compactionScale(m.lambda + 2.0f * m.mu / 3.0f) < 1.0f
             && volume < u.minVolumeRatio * referenceVolume;
         if (bare) {
-            eroded = !anySteel || collapsed || (erodesCrushedBare && volume < u.minVolumeRatio * referenceVolume);
-        } else if (eroded && anySteel && u.bareBars != 0 && !collapsed) {
+            eroded = !anySteel || collapsed || flattened
+                || (erodesCrushedBare && volume < u.minVolumeRatio * referenceVolume);
+        } else if (eroded && anySteel && u.bareBars != 0 && !collapsed && !flattened) {
             flags[element] = elementBaring;
             failureGate[0] = 1;
             eroded = false;
@@ -3306,6 +3313,7 @@ struct CouplingUniforms {
     uint quietCoverage;
     uint overlapUnits;  // 0: elements counted as points; else each sample box by its overlap, in these units
     uint maskHysteresis;  // 1: a cell turns solid an eighth above `threshold` and opens an eighth below
+    uint keepsAir;  // 1: cells marked in `keptAir` (beside stationary envelopes' recorded faces) stay air
 };
 
 // Decode a compact slot for remasking/exchange, or the historical dense-region coordinate.
@@ -3508,6 +3516,7 @@ kernel void remaskPrepare(device uchar *mask [[buffer(0)]],
                           constant CouplingUniforms &u [[buffer(4)]],
                           device float *wallVelocity [[buffer(5)]],
                           const device uint *couplingTiles [[buffer(6)]],
+                          const device uchar *keptAir [[buffer(7)]],
                           uint3 tid [[thread_position_in_grid]]) {
     int3 cell = couplingWorldCell(tid, u, couplingTiles);
     if (any(cell < 0)) { return; }
@@ -3517,6 +3526,11 @@ kernel void remaskPrepare(device uchar *mask [[buffer(0)]],
     uint count = occupancy[4 * local];
     bool wasSolid = (mask[index] & 1) != 0;
     uint need = maskThreshold(u.threshold, u.maskHysteresis != 0u, wasSolid);
+    // The air beside a stationary envelope's recorded faces is never taken by a moving body: the
+    // recorders read it, and the envelope is one way, its debris passing it by.
+    if (u.keepsAir != 0u && keptAir[index] != 0) {
+        count = 0u;
+    }
     bool solid = rigid[index] != 0 || count >= need;
 
     // The air sees a solid cell moving at the mean velocity of the elements in it.

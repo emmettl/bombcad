@@ -271,6 +271,12 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell
   to 2–4e-8 over 120 steps, refined once (650 patches along the slope) or twice (4,200 at the
   second level), also with afterburning and gravity (`TerrainCutCellTests`). Without terrain, or
   with cut cells off, the refined runs' digests are unchanged to the bit, once or twice.
+- **A block on a sliver.** A cell less than half air with a block standing on the cell above it
+  is solid (since 17 October 2026): its air would be shut in between the ground and the block,
+  and the difference its column passes up would come back to it, magnified (1 − α)/α times, every
+  step. A building whose base lay below the ground made such cells in Beirut's district stage
+  (a twelfth air under the silo, 500 t 70 m off), and the run went to NaN. A structure that comes
+  to rest on a sliver during a run is not caught by this rule.
 - **A deflagration's air** is cut too, since 17 October 2026 (it kept the staircase before). Its
   mixture is carried across cut cells at the same limited linear mass fractions on both sides of
   each face, with the sub-grid mixing's carrying through each face's open part, and near the cut
@@ -498,7 +504,9 @@ surface cross a cell a metre. The GPU and the CPU agree on every receiver.
    under-read the triple point's angle by 20–75% on 100–400 cells along a run (above), converging
    at first order. [Cut cells](#cut-cells), the default, remove this; refined, the triple point
    reads up to 0.5° lower than on a uniform grid of the finest cells.
-2. **Rigid, smooth and reflecting.** No cratering, no soil that gives or absorbs, no vegetation or
+2. **Rigid, smooth and reflecting.** No crater cut during the run (an empirical one is estimated
+   and drawn after it, see [cratering](cratering.md)), no soil that gives or absorbs (soft ground
+   takes a share of a charge's energy before the run, the same place), no vegetation or
    roughness besides the staircase's, no snow or water. The floor under the terrain still reflects.
 3. **Refinement near the surface.** Placing a patch gains still air on one side of the surface and
    gives up gas on the other (0.08% of a closed box's gas in 120 steps over a hill). Patches along

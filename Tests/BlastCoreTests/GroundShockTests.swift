@@ -256,15 +256,19 @@ struct GroundShockTests {
         let profile = try #require(point.profile)
         #expect(profile.depths.count == GroundDepthProfile.levels && profile.depths.last == 3)
         // Elastic uniform soil: the plane-wave relation at every depth, as the estimate gives at
-        // the surface; the impulse over ρc sinks every depth.
+        // the surface, of the load averaged over the column's window (twelve steps, 0.6 ms),
+        // which shaves a falling triangle's peak by w/(2t_d); the impulse over ρc sinks every
+        // depth.
         let soil = spec.soil
+        let window = GroundShockConsumer.riseSteps * Double(SoilProfile.defaultTimeStep)
+        let shaved = Float(1 - window / (2 * duration))
         for response in point.responses {
-            #expect(abs(response.verticalVelocity / (Float(peak) / soil.impedance) - 1) < 0.03)
-            #expect(abs(response.stress / Float(peak) - 1) < 0.03)
+            #expect(abs(response.verticalVelocity / (shaved * Float(peak) / soil.impedance) - 1) < 0.015)
+            #expect(abs(response.stress / (shaved * Float(peak)) - 1) < 0.015 || response.depth == 0)
             #expect(
                 abs(response.verticalDisplacement / (Float(peak * duration / 2) / soil.impedance) - 1) < 0.01)
             #expect(response.history?.count == 41)
-            // The shock rises over a dozen of the column's steps, 0.6 ms, centred on its arrival.
+            // The shock rises over the window, centred on its arrival.
             let expected = arrival + Double(response.depth) / 300
             #expect(abs(response.arrival! - expected) < 3.5e-4 || response.depth == 0)
         }

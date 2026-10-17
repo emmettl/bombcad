@@ -165,9 +165,22 @@ struct SimulationSettings: Equatable {
     /// since 16 October 2026 (`SolverConfiguration.structureMaskOverlap`); false for each element
     /// counted at its centre, as before.
     var outlineByOverlap = true
+    /// Envelopes' glazing breaks in the air and the blast fills their rooms
+    /// (`BlastSolver.configureEnvelopeVenting`), instead of the one-way fill: an option.
+    var ventsGlazing = false
+    /// The structures brought to rest under their own weight before the blast
+    /// (`SolverConfiguration.settlesStructures`), as since 17 October 2026; false for their weight
+    /// taken as the run starts, as before.
+    var settlesStructures = true
     /// Debris lands on soil, a Winkler bed of `groundStiffness` (Pa/m), instead of the hard ground.
     var softGround = false
     var groundStiffness = SolverConfiguration.soilSubgradeModulus
+    /// What the ground is made of: rigid, or earth or rock that a charge near it digs a crater in
+    /// and gives part of its energy to.
+    var ground = GroundType.rigid
+    /// The water table under it, metres down, where shallow enough to cut the crater's depth; nil
+    /// where deep.
+    var waterTable: Float?
 
     var chargeMass: Float {
         get { scenario.charge.mass }
@@ -293,6 +306,10 @@ final class SimulationModel {
     /// Observed: `canKeepRun` reads nothing else until a run completes, so a view showing it
     /// must learn of the completion through this.
     private var completedRunSettings: ProjectRunSettings?
+
+    /// The craters the finished run's charges dug, to shade into the ground; none before a run ends,
+    /// for a crater forms after the blast, or on rigid ground.
+    var craters: [CraterEstimate] { completedRunSettings?.craters(over: scenario) ?? [] }
     static let structureSampleInterval = 0.001
     /// Called with the solver every `structureSampleInterval` of simulated time from time zero,
     /// while no batch is in flight. A run with a structure stops there anyway to sample it; one
@@ -403,12 +420,27 @@ final class SimulationModel {
         guard settings.scenario.object(id: id)?.envelope != nil else { return }
         let old = settings.scenario.envelopeConstruction(for: id)
         guard old.walls != walls || old.source != .user else { return }
-        settings.scenario.setEnvelopeConstruction(
-            EnvelopeConstruction(
-                objectID: id, walls: walls,
-                wallThicknessM: walls == old.walls ? old.wallThicknessM : nil, roof: old.roof,
-                roofThicknessM: old.roofThicknessM, reinforcementRatio: old.reinforcementRatio,
-                glassThicknessM: old.glassThicknessM, source: .user, detail: "chosen in the editor"))
+        var construction = old
+        construction.walls = walls
+        if walls != old.walls {
+            construction.wallThicknessM = walls == .unreinforcedMasonry ? 0.215 : 0.2
+        }
+        construction.source = .user
+        construction.detail = "chosen in the editor"
+        settings.scenario.setEnvelopeConstruction(construction)
+    }
+
+    /// Changes an envelope's construction as the user's choice: `edit` applied to the one
+    /// recorded for it (or the default).
+    func editEnvelopeConstruction(id: UUID, _ edit: (inout EnvelopeConstruction) -> Void) {
+        guard settings.scenario.object(id: id)?.envelope != nil else { return }
+        let old = settings.scenario.envelopeConstruction(for: id)
+        var construction = old
+        edit(&construction)
+        construction.source = .user
+        construction.detail = "set in the editor"
+        guard construction != old else { return }
+        settings.scenario.setEnvelopeConstruction(construction)
     }
 
     var inspectedImportID: UUID?
@@ -519,6 +551,15 @@ final class SimulationModel {
     var fragmentsHost: String?
     /// Where the fragments of the run stand: how many are in flight and landed.
     private(set) var fragmentStatus = ""
+    /// Where the run's fragments landed against the hazardous-fragment criteria, once the run has
+    /// ended and those still in flight have been flown on to land.
+    private(set) var fragmentHazard: GroundHazard?
+    /// The fragments whose holes open panes in the air, with venting on, when not the project's
+    /// own (`fragmentSpec`): a headless run's `--fragments`.
+    @ObservationIgnored var paneHoleSpec: FragmentSpec?
+    /// The run's fragments that struck something judged (`FragmentImpact.penetration`), once
+    /// landed; while the run goes, the live ones stand in. Envelope damage takes them.
+    @ObservationIgnored var fragmentStrikes: [FragmentImpact]?
     /// The run's fragments, in flight and landed, to draw.
     private(set) var fragmentLive: FragmentLive?
     @ObservationIgnored private(set) var fragments: (any FrameConsumer)?
@@ -620,6 +661,8 @@ final class SimulationModel {
     /// (`EnvelopeDamageAssessment`), and why there is none when there is none.
     private(set) var envelopeDamage: [EnvelopeBuildingDamage] = []
     private(set) var envelopeDamageStatus = ""
+    /// Why the glazing is not vented though asked to be, or empty.
+    private(set) var envelopeVentingStatus = ""
     /// Whether the view colours envelopes by their damage (over the air's paint) once judged.
     var showsEnvelopeDamage = true {
         didSet { applyEnvelopeDamageColours() }
@@ -639,20 +682,35 @@ final class SimulationModel {
     func refreshEnvelopeDamage() {
         lastEnvelopeDamage = .now
         guard let histories = solver?.envelopeComponentHistories(), !histories.isEmpty else { return }
-        updateEnvelopeDamage(loads: histories.filter { !$0.invalid }.map(EnvelopeComponentLoad.init))
+        // A vented pane's faces open with its glass: its history up to then is its load.
+        let vented = solver?.envelopeVentingSnapshot()
+        updateEnvelopeDamage(
+            loads: histories.filter { !$0.invalid || (vented != nil && $0.component.kind == .pane) }
+                .map(EnvelopeComponentLoad.init),
+            vented: vented)
     }
 
-    /// Judges each envelope building from its components' loads, and colours it in the view.
-    func updateEnvelopeDamage(loads: [EnvelopeComponentLoad]) {
+    /// Judges each envelope building from its components' loads (and with venting the air's
+    /// panes and rooms), and colours it in the view.
+    func updateEnvelopeDamage(loads: [EnvelopeComponentLoad], vented: EnvelopeVentingSnapshot? = nil) {
         let scenario = settings.scenario
         let rooms = Dictionary(
             uniqueKeysWithValues: scenario.envelopeObjects.map {
                 ($0.id, EnvelopeDamageAssessment.roomVolume(of: $0.envelope!))
             })
+        // Fragments striking the buildings: the landed ones once in, the live ones meanwhile.
+        let strikes =
+            fragmentStrikes
+            ?? (fragments?.fragmentLive ?? fragmentLive)?.impacts.filter { $0.penetration != nil }
         envelopeDamage = EnvelopeDamageAssessment.assess(
-            loads: loads, constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms)
+            loads: loads, constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms,
+            strikes: strikes, vented: vented)
         applyEnvelopeDamageColours()
     }
+
+    /// The structures' rubble flown on to where it lands, judged as a hazard; nil unless a
+    /// structure makes rubble (`StructureModel.rubbleParticles`).
+    func debrisResult() -> DebrisResult? { solver?.debris(scenario: scenario) }
 
     func envelopeDamageData() throws -> Data {
         guard !envelopeDamage.isEmpty else {
@@ -752,8 +810,12 @@ final class SimulationModel {
                 settings.gravity = run.gravity ?? false
                 settings.terrainCutCells = run.cutsTerrain(over: scenario)
                 settings.outlineByOverlap = run.countsByOverlap(over: scenario)
+                settings.ventsGlazing = run.ventsGlazing ?? false
+                settings.settlesStructures = run.settlesStructures(over: scenario)
                 settings.softGround = run.groundStiffness != nil
                 settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
+                settings.ground = run.ground ?? .rigid
+                settings.waterTable = run.waterTable
                 settings.solidElementSize = run.solidElementSize
                 duration = run.duration
             }
@@ -802,6 +864,9 @@ final class SimulationModel {
         }
         completedRunSettings = nil
         if solver?.time == 0, lastSampleTime == nil {
+            // The structures at rest under their own weight first, so that the first sample, and
+            // every deflection after it, starts from them as they stood.
+            solver?.settleStructures()
             if structureRecord.isEmpty, let summary = structureSummary {
                 structureRecord = [
                     StructureSample(id: 0, time: 0, deflection: Double(summary.maxDisplacement) * 1000)
@@ -823,6 +888,7 @@ final class SimulationModel {
             bodyHistories = bodyRecords
             if let solver {
                 placeAutomatically()
+                setFragmentPaneHoles(solver)
                 startFragments(solver)
                 startGroundShock(solver)
                 startThermal(solver)
@@ -895,8 +961,12 @@ final class SimulationModel {
             settings.gravity = run.gravity ?? false
             settings.terrainCutCells = run.cutsTerrain(over: document.scenario)
             settings.outlineByOverlap = run.countsByOverlap(over: document.scenario)
+            settings.ventsGlazing = run.ventsGlazing ?? false
+            settings.settlesStructures = run.settlesStructures(over: document.scenario)
             settings.softGround = run.groundStiffness != nil
             settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
+            settings.ground = run.ground ?? .rigid
+            settings.waterTable = run.waterTable
             settings.solidElementSize = run.solidElementSize
             duration = run.duration
         }
@@ -1101,8 +1171,12 @@ final class SimulationModel {
         settings.gravity = inputs.settings.gravity ?? false
         settings.terrainCutCells = inputs.settings.cutsTerrain(over: inputs.scenario)
         settings.outlineByOverlap = inputs.settings.countsByOverlap(over: inputs.scenario)
+        settings.ventsGlazing = inputs.settings.ventsGlazing ?? false
+        settings.settlesStructures = inputs.settings.settlesStructures(over: inputs.scenario)
         settings.softGround = inputs.settings.groundStiffness != nil
         settings.groundStiffness = inputs.settings.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
+        settings.ground = inputs.settings.ground ?? .rigid
+        settings.waterTable = inputs.settings.waterTable
         settings.solidElementSize = inputs.settings.solidElementSize
         duration = inputs.settings.duration
         handledSettings = settings
@@ -1657,7 +1731,7 @@ final class SimulationModel {
             }
             flown = SavedSimulationRun.Fragments(
                 spec: spec, launchSpeed: Double(fragmentLaunchSpeed), impacts: live.impacts,
-                airborne: (0..<live.fragmentCount).filter { !live.landed[$0] }.count)
+                airborne: (0..<live.fragmentCount).filter { !live.landed[$0] }.count, hazard: fragmentHazard)
         }
         var reckoned: ThermalResult?
         if let thermal, let spec = reckonedSpec {
@@ -1860,6 +1934,21 @@ final class SimulationModel {
     // MARK: - Fragments
 
     /// Starts flying the project's fragments for a run beginning now, if it has any.
+    /// With glazing vented, the panes the run's fragments hole open in the air when they do: the
+    /// fragments flown first in still air to find when (`FragmentCloud.paneHoles`), so the air is
+    /// the same however the run is batched and however the fragments' consumer keeps up.
+    private func setFragmentPaneHoles(_ solver: BlastSolver) {
+        guard solver.ventsGlazing else { return }
+        guard let spec = paneHoleSpec ?? fragmentSpec, spec.count > 0, (try? spec.validate()) != nil else {
+            solver.setEnvelopePaneHoles([:])
+            return
+        }
+        solver.setEnvelopePaneHoles(
+            FragmentCloud.paneHoles(
+                spec: spec, scene: FragmentScene(scenario), density: scenario.atmosphere.density,
+                pressure: scenario.atmosphere.pressure, until: duration))
+    }
+
     private func startFragments(_ solver: BlastSolver) {
         guard let spec = fragmentSpec, spec.count + spec.tracers > 0, (try? spec.validate()) != nil else {
             return
@@ -1890,6 +1979,8 @@ final class SimulationModel {
         fragments = nil
         flownSpec = nil
         fragmentLive = nil
+        fragmentHazard = nil
+        fragmentStrikes = nil
         fragmentStatus = ""
     }
 
@@ -1923,6 +2014,14 @@ final class SimulationModel {
         }
         let place = fragments?.placement ?? ""
         if !place.isEmpty { text += " ·" + place }
+        if let hazard = fragmentHazard {
+            text +=
+                hazard.hazardDistance.map {
+                    String(format: ". Hazardous fragment distance %.0f m", $0)
+                        + (hazard.samplesAtDistance < GroundHazard.wellSampled
+                            ? " (few flown; fly more)" : "")
+                } ?? ". Nowhere over 1 hazardous fragment per 55.7 m²"
+        }
         fragmentStatus = text
     }
 
@@ -2210,6 +2309,7 @@ final class SimulationModel {
         envelopeExposure = []
         envelopeDamage = []
         envelopeExposureStatus = ""
+        envelopeVentingStatus = ""
         if batchInFlight {
             isLoadingInputs = true
             // The GPU still owns the solver's buffers; rebuild when the batch lands.
@@ -2228,7 +2328,8 @@ final class SimulationModel {
             shockThreshold: settings.shockThreshold, adaptiveSubsteps: settings.adaptiveSubsteps,
             terrainCutCells: settings.terrainCutCells,
             groundStiffness: settings.softGround ? settings.groundStiffness : nil,
-            outlineByOverlap: settings.outlineByOverlap)
+            ground: settings.ground == .rigid ? nil : settings.ground,
+            outlineByOverlap: settings.outlineByOverlap, settlesStructures: settings.settlesStructures)
     }
 
     private func rebuild() {
@@ -2239,6 +2340,7 @@ final class SimulationModel {
         envelopeExposure = []
         envelopeDamage = []
         envelopeExposureStatus = ""
+        envelopeVentingStatus = ""
         stopThermal()
         stopCloud()
         completedRunSettings = nil
@@ -2284,24 +2386,30 @@ final class SimulationModel {
                 solver = created
             }
             if let solver, !scenario.envelopeObjects.isEmpty {
-                if scenario.structuralObjects.isEmpty {
-                    do {
-                        try solver.configureEnvelopeExposure(objects: scenario.envelopeObjects)
-                        // The components' histories feed their one-way damage, so the app keeps them for
-                        // every run of envelopes; headless runs only when asked.
-                        if let options = envelopeHistoryOptions
-                            ?? (envelopeHistoriesByDefault ? EnvelopeHistoryOptions(windowS: duration) : nil)
-                        {
-                            try solver.configureEnvelopeComponents(
-                                objects: scenario.envelopeObjects, options: options)
+                // Envelopes are stationary whatever else moves: a structure beside them never takes
+                // the air at their faces, and its debris passes them by (one way).
+                do {
+                    try solver.configureEnvelopeExposure(objects: scenario.envelopeObjects)
+                    // The components' histories feed their one-way damage, so the app keeps them for
+                    // every run of envelopes; headless runs only when asked.
+                    if let options = envelopeHistoryOptions
+                        ?? (envelopeHistoriesByDefault ? EnvelopeHistoryOptions(windowS: duration) : nil)
+                    {
+                        try solver.configureEnvelopeComponents(
+                            objects: scenario.envelopeObjects, options: options)
+                        if settings.ventsGlazing && scenario.hasEnvelopePanes {
+                            do {
+                                try solver.configureEnvelopeVenting(objects: scenario.envelopeObjects) {
+                                    scenario.envelopeConstruction(for: $0)
+                                }
+                            } catch {
+                                envelopeVentingStatus = "Glazing not vented: \(error.localizedDescription)"
+                            }
                         }
-                        envelopeExposure = solver.envelopeExposureSummaries() ?? []
-                    } catch {
-                        envelopeExposureStatus = "Surface results unavailable: \(error.localizedDescription)"
                     }
-                } else {
-                    envelopeExposureStatus =
-                        "Surface results require a scene containing only stationary envelopes. This scene also has deformable structures."
+                    envelopeExposure = solver.envelopeExposureSummaries() ?? []
+                } catch {
+                    envelopeExposureStatus = "Surface results unavailable: \(error.localizedDescription)"
                 }
             }
             errorMessage = nil
@@ -2510,7 +2618,18 @@ final class SimulationModel {
                 while fragments.report.frame < fragments.sent - 1, ContinuousClock.now < deadline {
                     try? await Task.sleep(for: .milliseconds(20))
                 }
-                if self?.fragments === fragments { self?.updateFragmentStatus() }
+                guard self?.fragments === fragments else { return }
+                self?.updateFragmentStatus()
+                // Those still in flight fly on to land, for the hazard: the run is over, and
+                // another starts afresh with new fragments.
+                let landed = try? await fragments.fragments(frameInterval: Self.fragmentFrameInterval)
+                guard let self, self.fragments === fragments, let landed, let hazard = landed.hazard else {
+                    return
+                }
+                self.fragmentHazard = hazard
+                self.fragmentStrikes = landed.impacts.filter { $0.penetration != nil }
+                self.updateFragmentStatus()
+                if !self.envelopeDamage.isEmpty { self.refreshEnvelopeDamage() }
             }
         }
         if let thermal {
@@ -2639,9 +2758,18 @@ final class SimulationModel {
 }
 
 extension SimulationModel {
-    /// Draws the run's particles: in flight, coloured by speed; tracers; and where fragments
-    /// landed, coloured by their energy. Each is a position and a code, the kind (0 a fragment, 1
-    /// a tracer, 2 a landing) plus a value from 0 to 1.
+    /// The hazardous fragment distance on the ground (`HazardOverlay`), once the run's
+    /// fragments have landed.
+    func hazardLines() -> [SIMD4<Float>] {
+        guard let fragmentHazard else { return [] }
+        let terrain = scenario.terrain
+        return HazardOverlay.lines(fragmentHazard) { terrain?.height(at: SIMD3($0, 0)) ?? 0 }
+    }
+
+    /// Draws the run's particles: in flight, coloured by speed; tracers; where fragments landed,
+    /// coloured by their energy; and where they struck a judged target, by what they did. Each is
+    /// a position and a code, the kind (0 a fragment, 1 a tracer, 2 a landing, 4 a strike) plus a
+    /// value from 0 to 1.
     func fragmentDots(showFragments: Bool, showTracers: Bool) -> [SIMD4<Float>] {
         // Straight from the consumer, so the dots move with every frame drawn.
         guard let live = fragments?.fragmentLive ?? fragmentLive else { return [] }
@@ -2657,6 +2785,12 @@ extension SimulationModel {
         }
         if showFragments {
             for impact in live.impacts {
+                if let outcome = impact.penetration?.outcome {
+                    // A strike on a judged target, by what it did (Render.metal's kind 4).
+                    let value: Float = outcome == .stopped ? 0.1 : outcome == .spalled ? 0.5 : 0.9
+                    dots.append(SIMD4(impact.position, 4 + value))
+                    continue
+                }
                 // log10 of the energy over 7 decades: 1 J to 10 MJ.
                 dots.append(SIMD4(impact.position, 2 + min(max(log10(max(impact.energy, 1)) / 7, 0), 0.999)))
             }

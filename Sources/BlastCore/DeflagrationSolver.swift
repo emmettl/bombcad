@@ -108,7 +108,7 @@ final class DeflagrationStage {
             peaks: try buffer(panels.count * 4, "vent panel peaks"),
             releases: try buffer(panels.count * 4, "vent release pressures"),
             opened: try buffer(panels.count * 4, "vent panels opened"),
-            openedAt: try buffer(panels.count * 4, "vent opening times"))
+            openedAt: try buffer(panels.count * 8, "vent opening times"))
         let entries = resources.panelCells.contents().bindMemory(
             to: SIMD2<UInt32>.self, capacity: max(panelCells.count, 1))
         for (n, entry) in panelCells.enumerated() {
@@ -275,12 +275,15 @@ final class DeflagrationStage {
     }
 
     /// Notes the panels that opened during the batch that started at `start`.
-    func complete(batchStart start: Double) {
+    /// Reads which panels opened in the batch just completed, and when on the run's clock (the same
+    /// however the run is batched).
+    func complete() {
         guard !panels.isEmpty else { return }
         let opened = panelOpenedBuffer.contents().bindMemory(to: UInt32.self, capacity: panels.count)
-        let at = openedAtBuffer.contents().bindMemory(to: Float.self, capacity: panels.count)
+        let at = openedAtBuffer.contents().bindMemory(to: UInt32.self, capacity: 2 * panels.count)
         for n in panels.indices where openTimes[n] == nil && opened[n] != 0 {
-            openTimes[n] = start + Double(at[n])
+            let ticks = UInt64(at[2 * n]) | UInt64(at[2 * n + 1]) << 32
+            openTimes[n] = Double(ticks) * StepControl.tick
         }
     }
 }

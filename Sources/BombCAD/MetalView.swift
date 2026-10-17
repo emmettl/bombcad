@@ -93,9 +93,11 @@ struct MetalView: NSViewRepresentable {
             _ = model.sceneVersion
             _ = model.fragmentLive
             _ = model.thermalReckoned
+            _ = model.fragmentHazard
             var settings = model.renderSettings
             settings.showCharge = model.time == 0
             settings.highlight = model.highlightedBox
+            settings.craters = model.craters.map(CraterMark.init)
             // The ground points read the project's points and the run's estimate, both observed.
             let dots =
                 model.fragmentDots(showFragments: settings.showFragments, showTracers: settings.showTracers)
@@ -103,8 +105,9 @@ struct MetalView: NSViewRepresentable {
             let paint = settings.thermal.flatMap { model.thermalPaint($0) }
             // The cloud's outlines are its silhouettes from the eye, so they follow the camera.
             let lines =
-                settings.showCloud
-                ? model.cloud.map { CloudOverlay.lines($0, eye: model.camera.eye) } ?? [] : []
+                (settings.showCloud
+                    ? model.cloud.map { CloudOverlay.lines($0, eye: model.camera.eye) } ?? [] : [])
+                + (settings.showHazard ? model.hazardLines() : [])
             return Frame(
                 settings: settings, dots: dots, paint: paint, lines: lines, camera: model.camera,
                 freestanding: model.freestandingBoxes())

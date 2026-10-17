@@ -32,10 +32,25 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// Soft ground under the structures' debris, the soil's subgrade modulus in Pa/m; nil, and left
     /// out of the file and the fingerprint, for the hard ground.
     var groundStiffness: Float?
+    /// What the ground is made of, for the crater and the share of the charge's energy the air
+    /// keeps; nil, and left out of the file and the fingerprint, for the rigid ground.
+    var ground: GroundType?
+    /// How far below the surface the water table is, metres, where it cuts the crater's depth;
+    /// nil, and left out of the file and the fingerprint, where it is deep or the ground rigid.
+    /// The crater's alone: the air does not see it.
+    var waterTable: Float?
     /// False when the structures' outline in the air counted each element at its centre, as every
     /// run did before 16 October 2026; true when by overlap; nil, and left out of the file and the
     /// fingerprint, where the scene has no structure, or for a run saved before then.
     var outlineByOverlap: Bool?
+    /// True when envelopes' glazing breaks in the air and the blast fills their rooms; nil, and
+    /// left out of the file and the fingerprint, for the one-way fill, or where no envelope is glazed.
+    var ventsGlazing: Bool?
+    /// True when the structures were brought to rest under their own weight before the blast
+    /// (`SolverConfiguration.settlesStructures`), as since 17 October 2026; false when they took
+    /// it as the run started; nil, and left out of the file and the fingerprint, where the scene
+    /// has no structure, or for a run saved before then.
+    var settlesStructures: Bool?
     var solidElementSize: Float
     var duration: Double
 
@@ -50,7 +65,11 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         terrainCutCells =
             settings.terrainCutCells && settings.scenario.terrain.map { !$0.isFlat } == true ? true : nil
         groundStiffness = settings.softGround ? settings.groundStiffness : nil
+        ground = settings.ground == .rigid ? nil : settings.ground
+        waterTable = settings.ground == .rigid ? nil : settings.waterTable
         outlineByOverlap = settings.scenario.structuralObjects.isEmpty ? nil : settings.outlineByOverlap
+        ventsGlazing = settings.ventsGlazing && settings.scenario.hasEnvelopePanes ? true : nil
+        settlesStructures = settings.scenario.structuralObjects.isEmpty ? nil : settings.settlesStructures
         solidElementSize = settings.solidElementSize
         self.duration = duration
     }
@@ -74,6 +93,20 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         outlineByOverlap ?? scenario.structuralObjects.isEmpty
     }
 
+    /// Whether a run of `scenario` under these settings settles its structures under their own
+    /// weight first: as recorded over structures, where nil (a run saved before 17 October 2026)
+    /// is not; by default it does, so that structures added later are settled.
+    func settlesStructures(over scenario: Scenario) -> Bool {
+        settlesStructures ?? scenario.structuralObjects.isEmpty
+    }
+
+    /// The craters the charges of `scenario` dig in the ground these settings name; none on the
+    /// rigid ground. They form after the blast, so they are worked out from the scene, not the run.
+    func craters(over scenario: Scenario) -> [CraterEstimate] {
+        guard let ground else { return [] }
+        return CraterEstimate.craters(of: scenario, ground: ground, waterTable: waterTable)
+    }
+
     /// The grid as people say it: a preset's name ("medium") or its cells ("4 m").
     var gridName: String {
         guard let grid = Resolution(rawValue: resolution), !grid.isPreset else { return resolution }
@@ -84,7 +117,8 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         guard Resolution(rawValue: resolution) != nil, solidElementSize.isFinite, solidElementSize > 0,
             duration.isFinite, duration > 0, shockLevels.map({ $0 == 2 }) ?? true,
             shockThreshold.map({ $0.isFinite && $0 > 0 && $0 <= 1 }) ?? true,
-            groundStiffness.map({ $0.isFinite && $0 > 0 }) ?? true
+            groundStiffness.map({ $0.isFinite && $0 > 0 }) ?? true,
+            waterTable.map({ $0.isFinite && $0 >= 0 && $0 <= 1000 }) ?? true
         else { throw ProjectFileError.invalid("Project simulation settings are invalid.") }
     }
 }

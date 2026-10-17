@@ -126,8 +126,14 @@ extension GroundShockSpec {
     /// The rectangle of ground to send, (x, y) in metres: the points' bounds and a cell round them.
     public func region(cellSize: Float) -> (low: SIMD2<Float>, high: SIMD2<Float>) {
         let points = allPoints
-        let low = points.dropFirst().reduce(points[0], simd_min)
-        let high = points.dropFirst().reduce(points[0], simd_max)
+        var low = points.dropFirst().reduce(points[0], simd_min)
+        var high = points.dropFirst().reduce(points[0], simd_max)
+        // The half-space takes the ground's air round the whole disc it spans.
+        if model == .halfspace, let setup = halfSpace {
+            let reach = Float(HalfSpaceGroundShock.reach(points: points, centre: setup.centre))
+            low = simd_min(low, setup.centre - reach)
+            high = simd_max(high, setup.centre + reach)
+        }
         return (low - cellSize, high + cellSize)
     }
 
@@ -180,11 +186,12 @@ public struct GroundShockResult: Codable, Sendable, Equatable {
         let transseismic = open.filter { $0.regime == .transseismic }.count
         let outrunning = open.filter { $0.regime == .outrunning }.count
         var text: String
-        if model == .column, let profile {
+        if model == .column || model == .halfspace, let profile {
             text = String(
-                format: "Ground shock at %d points, a column of %d layer%@ from %.0f kg/m³ at %.0f m/s",
-                points.count, profile.layers.count, profile.layers.count == 1 ? "" : "s",
-                profile.surface.density, profile.surface.waveSpeed)
+                format: "Ground shock at %d points, %@ of %d layer%@ from %.0f kg/m³ at %.0f m/s",
+                points.count, (model == .column ? "a column" : "a half-space") as NSString,
+                profile.layers.count,
+                profile.layers.count == 1 ? "" : "s", profile.surface.density, profile.surface.waveSpeed)
         } else {
             text = String(
                 format: "Ground shock at %d points, soil %.0f kg/m³ at %.0f m/s", points.count, soil.density,
@@ -228,9 +235,11 @@ public struct GroundShockConsumer: Sendable {
     /// downward velocity at each depth at each frame.
     private var loads: [GroundLoad] = []
     private var columns: [SoilColumn] = []
+    /// The half-space's, where it is the model and its charge is known.
+    private var halfSpace: HalfSpaceGroundShock?
     private var motions: [[[Float]]] = []
 
-    /// The fewest of the column's steps a shock rises over.
+    /// The fewest of the column's steps the load is averaged over, so the fastest a shock rises.
     public static let riseSteps = 12.0
 
     public init(spec: GroundShockSpec) {
@@ -247,6 +256,9 @@ public struct GroundShockConsumer: Sendable {
             loads = Array(repeating: GroundLoad(), count: points.count)
             columns = Array(repeating: column, count: points.count)
             motions = Array(repeating: Array(repeating: [], count: spec.depths.count), count: points.count)
+        }
+        if spec.model == .halfspace, let setup = spec.halfSpace {
+            halfSpace = try? HalfSpaceGroundShock(spec: spec, setup: setup)
         }
     }
 
@@ -268,23 +280,26 @@ public struct GroundShockConsumer: Sendable {
             peaks[n] = max(peaks[n], sample.peak, sample.overpressure)
             if arrivals[n] == nil, peaks[n] >= spec.arrivalThreshold { arrivals[n] = slice.time }
         }
+        if let halfSpace {
+            halfSpace.consume(slice)
+            return
+        }
         guard !columns.isEmpty else { return }
         for n in points.indices {
             // Nothing for a point never yet open; one under a block or the structure for a frame
             // carries nothing then.
             guard let sample = latest[n] else { continue }
-            // A shock rises over the time its front takes to cross a cell, and over no fewer than
-            // a dozen of the column's steps: faster, and the surface's node rings, up to two
-            // fifths too fast in soil that unloads stiffly.
-            let speed = AirInducedGroundShock.frontSpeed(
-                overpressure: peaks[n], ambientPressure: air.pressure, ambientDensity: air.density,
-                gamma: air.gamma)
-            let rise = max(Double(slice.cellSize / speed), Self.riseSteps * columns[n].timeStep)
+            // The column takes the load averaged over a dozen of its steps: a shock or a kink
+            // sharper than that makes the surface's node ring, up to two fifths too fast in soil
+            // that unloads stiffly. The average keeps the impulse. (The solver's own shock is
+            // already a cell wide in the peak and impulse it keeps, so the window is not widened
+            // to a cell's crossing: that would smear it twice.)
+            let window = Self.riseSteps * columns[n].timeStep
             loads[n].append(
                 time: slice.time, overpressure: histories[n].last ?? 0, peak: peaks[n],
-                impulse: max(sample.impulse, 0), rise: rise)
-            columns[n].advance(to: slice.time, load: loads[n])
-            loads[n].forget(before: columns[n].time - columns[n].timeStep)
+                impulse: max(sample.impulse, 0))
+            columns[n].advance(to: slice.time, load: loads[n], window: window)
+            loads[n].forget(before: columns[n].time - window)
             let velocity = columns[n].velocities
             if motions[n][0].count < histories[n].count - 1 {
                 // Still before it was first open.
@@ -319,12 +334,13 @@ public struct GroundShockConsumer: Sendable {
             if !columns.isEmpty, sample != nil {
                 columnResponse(n, frontSpeed: speed, into: &result)
             }
+            if let halfSpace, sample != nil { result.responses = halfSpace.responses(n) }
             return result
         }
         return GroundShockResult(
             soil: spec.soil, depths: spec.depths, frameInterval: frameInterval, frames: frame + 1,
             points: points, airBytes: bytes, model: spec.model,
-            profile: spec.model == .column ? spec.columnProfile : nil, frameTimes: times)
+            profile: spec.model == .estimate ? nil : spec.columnProfile, frameTimes: times)
     }
 
     /// The column's peaks at the depths asked for and down its profile.
@@ -334,6 +350,7 @@ public struct GroundShockConsumer: Sendable {
             column.peakStress, column.peakVelocity, column.peakDisplacement, column.displacements
         )
         let arrivals = column.arrivals
+        let (downward, upward) = (column.peakAcceleration, column.peakUpwardAcceleration)
         let surface = max(column.peakLoad, 0)
         func at(_ depth: Float) -> (stress: Float, velocity: Float, displacement: Float, residual: Float) {
             let z = Double(depth)
@@ -361,7 +378,9 @@ public struct GroundShockConsumer: Sendable {
             return GroundResponse(
                 depth: depth, stress: peak.stress, verticalVelocity: peak.velocity,
                 verticalDisplacement: peak.displacement, horizontalVelocity: horizontal, arrival: arrival,
-                residualDisplacement: peak.residual, history: motions[n][d])
+                residualDisplacement: peak.residual, history: motions[n][d],
+                verticalAcceleration: Float(column.atNodes(downward, depth: Double(depth))),
+                upwardAcceleration: Float(column.atNodes(upward, depth: Double(depth))))
         }
         let deepest = spec.depths.max() ?? 0
         let levels = (0..<GroundDepthProfile.levels).map {

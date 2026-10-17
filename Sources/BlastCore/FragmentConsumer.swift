@@ -56,6 +56,9 @@ public struct FragmentResult: Codable, Sendable, Equatable {
     /// How many real fragments each flown stands for, by fragment, when a casing's dimensions set
     /// their number (`FragmentSpec.wallThickness`); nil when each is one.
     public var weights: [Float]?
+    /// Where they landed on open ground round the charge, against the hazardous-fragment
+    /// criteria; nil in results saved before it.
+    public var hazard: GroundHazard?
 
     /// How many real fragments the flown ones stand for.
     public var representedCount: Double {
@@ -65,7 +68,8 @@ public struct FragmentResult: Codable, Sendable, Equatable {
     /// The trajectories are left out of JSON, which they would swamp: they travel as
     /// `trajectoryData` and are in the USD scene.
     private enum CodingKeys: String, CodingKey {
-        case launchSpeed, masses, impacts, airborne, fragmentCount, frameInterval, misses, lost, weights
+        case launchSpeed, masses, impacts, airborne, fragmentCount, frameInterval, misses, lost, weights,
+            hazard
     }
 
     public init(from decoder: Decoder) throws {
@@ -80,6 +84,7 @@ public struct FragmentResult: Codable, Sendable, Equatable {
         misses = try c.decode(Int.self, forKey: .misses)
         lost = try c.decodeIfPresent(Int.self, forKey: .lost) ?? 0
         weights = try c.decodeIfPresent([Float].self, forKey: .weights)
+        hazard = try c.decodeIfPresent(GroundHazard.self, forKey: .hazard)
     }
 
     /// Every frame's positions as little-endian 32-bit floats, after the frame and particle counts.
@@ -123,7 +128,8 @@ public struct FragmentResult: Codable, Sendable, Equatable {
     public init(
         launchSpeed: Float, masses: [Float], impacts: [FragmentImpact], airborne: Int,
         frames: [[SIMD3<Float>]],
-        fragmentCount: Int, frameInterval: Double, misses: Int, lost: Int = 0, weights: [Float]? = nil
+        fragmentCount: Int, frameInterval: Double, misses: Int, lost: Int = 0, weights: [Float]? = nil,
+        hazard: GroundHazard? = nil
     ) {
         self.launchSpeed = launchSpeed
         self.masses = masses
@@ -135,6 +141,7 @@ public struct FragmentResult: Codable, Sendable, Equatable {
         self.misses = misses
         self.lost = lost
         self.weights = weights
+        self.hazard = hazard
     }
 
     public var summary: String {
@@ -146,6 +153,22 @@ public struct FragmentResult: Codable, Sendable, Equatable {
             fragmentCount, launchSpeed, impacts.count, surfaces.isEmpty ? "none" : surfaces, energy)
             + (misses > 0 ? "; \(misses) samples fell outside the air sent" : "")
             + (lost > 0 ? "; \(lost) lost to the numerics" : "")
+            + (hazard.map { "; " + $0.summary } ?? "")
+            + strikeSummary
+    }
+
+    /// The fragments judged against what they struck (`FragmentImpact.penetration`), real
+    /// counts: stopped, spalled and through.
+    public var strikeSummary: String {
+        let judged = impacts.filter { $0.penetration != nil }
+        guard !judged.isEmpty else { return "" }
+        func count(_ outcome: PenetrationResult.Outcome) -> Float {
+            judged.filter { $0.penetration?.outcome == outcome }.reduce(0) { $0 + $1.count }
+        }
+        return String(
+            format: "; struck targets: %.0f stopped, %.0f spalled, %.0f through", count(.stopped),
+            count(.spalled),
+            count(.perforated))
     }
 }
 
@@ -160,10 +183,13 @@ public struct FragmentConsumer: Sendable {
     private let tracerSpeed: Float
     /// Whether every frame's positions are kept, for an export; a live view needs only the last.
     private let keepsFrames: Bool
+    /// The charge on the map, which the hazard's rings are round.
+    private let centre: SIMD2<Float>
 
     public init(spec: FragmentSpec, scene: FragmentScene, keepsFrames: Bool = true) {
         self.keepsFrames = keepsFrames
         cloud = FragmentCloud(spec: spec, scene: scene)
+        centre = SIMD2(scene.charge.position.x, scene.charge.position.y)
         // The blast wind close to a charge can pass 2 km/s.
         tracerSpeed = spec.tracers > 0 ? 2500 : 0
     }
@@ -193,6 +219,7 @@ public struct FragmentConsumer: Sendable {
             impacts: cloud.impacts, airborne: cloud.airborne - cloud.particles.filter { $0.mass <= 0 }.count,
             frames: frames, fragmentCount: cloud.fragmentCount,
             frameInterval: frameInterval, misses: cloud.misses, lost: cloud.lost,
-            weights: fragments.allSatisfy { $0.weight == 1 } ? nil : fragments.map(\.weight))
+            weights: fragments.allSatisfy { $0.weight == 1 } ? nil : fragments.map(\.weight),
+            hazard: GroundHazard(impacts: cloud.impacts, centre: centre))
     }
 }

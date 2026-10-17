@@ -64,6 +64,9 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
         var impacts: [FragmentImpact]
         /// Fragments still in flight when the run ended.
         var airborne: Int
+        /// Where they landed, those in flight flown on, against the hazardous-fragment criteria;
+        /// nil in runs kept before it, or kept before they had landed.
+        var hazard: GroundHazard? = nil
         /// Joules.
         var hardest: Double { Double(impacts.map(\.energy).max() ?? 0) }
 
@@ -76,6 +79,9 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                     hardest >= 1e6
                     ? String(format: ", hardest %.1f MJ", hardest / 1e6)
                     : String(format: ", hardest %.0f kJ", hardest / 1e3)
+            }
+            if let distance = hazard?.hazardDistance {
+                text += String(format: "; hazardous fragment distance %.0f m", distance)
             }
             return text
         }
@@ -166,14 +172,20 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
             let owners = scenario.envelopeObjects
             let dx = Resolution(rawValue: settings.resolution)!.cellSize
             let cells = scenario.grid(cellSize: dx).cellCount
-            guard !results.isEmpty, scenario.structuralObjects.isEmpty,
-                results.count == owners.count, Set(results.map(\.id)).count == results.count,
+            // Structures may stand beside the envelopes (since 17 October 2026). Vented glazing opens
+            // its faces when it breaks, and they leave the results.
+            let vented = settings.ventsGlazing == true
+            guard !results.isEmpty, results.count == owners.count,
+                Set(results.map(\.id)).count == results.count,
                 Set(results.map(\.id)) == Set(owners.map(\.id)),
                 results.allSatisfy({ r in
                     r.name == scenario.object(id: r.id)?.name && r.elapsedS.isFinite
                         && abs(r.elapsedS - elapsedTime) < 1e-6 && r.airCellSizeM == dx
-                        && r.faceCount > 0 && r.faceCount <= 6 * cells && r.invalidFaceCount == 0
-                        && r.areaM2.isFinite && r.areaM2 > 0 && r.validAreaM2 == r.areaM2
+                        && r.faceCount > 0 && r.faceCount <= 6 * cells
+                        && (vented ? r.invalidFaceCount <= r.faceCount : r.invalidFaceCount == 0)
+                        && r.areaM2.isFinite && r.areaM2 > 0
+                        && (vented
+                            ? r.validAreaM2 >= 0 && r.validAreaM2 <= r.areaM2 : r.validAreaM2 == r.areaM2)
                         && abs(r.areaM2 - Double(r.faceCount) * Double(dx * dx)) < max(1e-6, r.areaM2 * 1e-6)
                         && r.peakPositivePa.isFinite && r.peakPositivePa >= 0
                         && r.surfacePositiveImpulseNS.isFinite && r.surfacePositiveImpulseNS >= 0
@@ -223,7 +235,8 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                 result.depths == groundShock.spec.depths,
                 result.soil == groundShock.spec.soil,
                 (result.model ?? .estimate) == groundShock.spec.model, result.frameTimes == nil,
-                result.profile == (groundShock.spec.model == .column ? groundShock.spec.columnProfile : nil),
+                result.profile
+                    == (groundShock.spec.model == .estimate ? nil : groundShock.spec.columnProfile),
                 result.points.allSatisfy({ point in
                     finite(point.peakOverpressure) && finite(point.impulse) && finite(point.duration)
                         && finite(point.frontSpeed) && point.history.isEmpty
@@ -235,6 +248,8 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                                 && (response.horizontalVelocity.map { finite($0) } ?? true)
                                 && (response.arrival.map(\.isFinite) ?? true)
                                 && (response.residualDisplacement?.isFinite ?? true)
+                                && (response.verticalAcceleration.map { finite($0) } ?? true)
+                                && (response.upwardAcceleration.map { finite($0) } ?? true)
                                 && response.history == nil
                         }
                         && (point.profile.map { profile in
@@ -374,6 +389,17 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
             let label = field("Fragment \(impact.fragment) on \(impact.surface)")
             lines.append("\(field(name)),\(label),\(impact.time * 1000),\(impact.energy),J")
         }
+        // The hazard is of the landings, not of a moment: its rows leave the time empty.
+        if let hazard = fragments?.hazard {
+            lines.append(
+                "\(field(name)),\"Hazardous fragment distance\",,\(hazard.hazardDistance ?? 0),m")
+            for (sector, distance) in hazard.sectorDistances.enumerated() {
+                let bearing = Int((Double(sector) * 360 / Double(hazard.sectors)).rounded())
+                lines.append(
+                    "\(field(name)),\(field("Hazardous fragment distance towards \(bearing)° from +x")),,\(distance ?? 0),m"
+                )
+            }
+        }
         for building in envelopeExposure ?? [] {
             let label = "\(building.name) [\(building.id.uuidString)]"
             let measurements = [
@@ -410,6 +436,16 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
         for frame in thermal?.fireball ?? [] {
             lines.append(
                 "\(field(name)),\"Fireball temperature\",\(frame.time * 1000),\(frame.temperature),K")
+        }
+        // The craters, after the blast: at the run's end, as the scene shows them.
+        for (n, crater) in settings.craters(over: scenario).enumerated() {
+            let label = n == 0 ? "Crater" : "Crater \(n + 1)"
+            for (series, value) in [
+                ("apparent diameter", crater.apparentDiameter), ("apparent depth", crater.apparentDepth),
+                ("lip height", crater.lipHeight),
+            ] {
+                lines.append("\(field(name)),\(field(label + " " + series)),\(elapsedTime * 1000),\(value),m")
+            }
         }
         // The credits the scene's data asks for, without a time or a value.
         for credit in scenario.attributions ?? [] {

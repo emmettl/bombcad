@@ -11,7 +11,8 @@ extension ProjectRunSettings {
         _ configuration: inout SolverConfiguration, detailedCharge: Bool, sharpShocks: Bool, shockLevels: Int,
         gravity: Bool = false, shockThreshold: Float = 0.1, adaptiveSubsteps: Bool = false,
         terrainCutCells: Bool = true,
-        groundStiffness: Float? = nil, outlineByOverlap: Bool = true
+        groundStiffness: Float? = nil, ground: GroundType? = nil, outlineByOverlap: Bool = true,
+        settlesStructures: Bool = true
     ) {
         configuration.afterburning = detailedCharge
         configuration.airModel = detailedCharge ? .thermallyPerfect : .idealGas
@@ -24,7 +25,9 @@ extension ProjectRunSettings {
         configuration.gravity = gravity ? AirGravity() : nil
         configuration.terrainCutCells = terrainCutCells
         configuration.groundStiffness = groundStiffness
+        configuration.ground = ground
         configuration.structureMaskOverlap = outlineByOverlap
+        configuration.settlesStructures = settlesStructures
     }
 
     /// What the standing of a run of `scenario` under these settings is derived from.
@@ -37,11 +40,12 @@ extension ProjectRunSettings {
             &configuration, detailedCharge: detailedCharge, sharpShocks: sharpShocks,
             shockLevels: shockLevels ?? 1, gravity: gravity ?? false, shockThreshold: shockThreshold ?? 0.1,
             adaptiveSubsteps: adaptiveSubsteps ?? false, terrainCutCells: cutsTerrain(over: scenario),
-            groundStiffness: groundStiffness, outlineByOverlap: countsByOverlap(over: scenario))
+            groundStiffness: groundStiffness, ground: ground,
+            outlineByOverlap: countsByOverlap(over: scenario))
         return StandingInputs(
             scenario: scenario, cellSize: (Resolution(rawValue: resolution) ?? .medium).cellSize,
             configuration: configuration, thermal: thermal, cloud: cloud, fragments: fragments,
-            groundShock: groundShock)
+            groundShock: groundShock, ventsGlazing: ventsGlazing ?? false)
     }
 }
 

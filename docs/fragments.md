@@ -78,7 +78,14 @@ any field left out takes its default:
 Turn on **Cased charge** in the Run tab's Fragments section. It starts with a casing a tenth of
 the charge's mass, 2,000 fragments and 300 tracers across 16 m round the charge, and sets the
 casing's mass, the number of fragments and tracers, and the casing's shape; the launch speed it
-gives is shown. The description is saved with the project (as `fragments.json`), takes effect
+gives is shown. **Casing metal** is steel (Mott's distribution) or cast iron (Grady's exponential,
+`massExponent` 1, at 7,200 kg/m³), as [below](#against-coopers-data). **Casing dimensions** sets
+the wall's thickness and the inside diameter. Turned on, they start from a casing that holds the
+charge (TNT at 1,600 kg/m³, a cylinder twice as long as wide, or a sphere) and weighs the casing's
+mass as a thin wall. With them the fragments' number and sizes follow Mott's scaling, a caption
+gives how many there are and their mean mass, and the fragments' standing becomes an
+approximation. `BombCAD run --fragments casing.json --casing 0.006,0.25,castIron` does the same
+for a headless run, in metres. The description is saved with the project (as `fragments.json`), takes effect
 from the next run, and is undone and redone with the layout's edits (⌘Z). With Macs set for sweeps in Settings, **Fly on** sends the fragments to
 the one chosen, over a connection kept open between runs and shared with any other model run
 there; should that Mac drop, they carry on here.
@@ -192,12 +199,108 @@ pre-formed fragments or improvised casings. `FragmentCloudTests` check the first
   tumbling curve needs no such choice, so it is now the default; it moves the distances by under
   5%.
 
+## Hazard
+
+Where the fragments land on open ground is judged as the US explosives safety standards judge an
+arena test (`GroundHazard`):
+
+- **Hazardous fragments** strike with 79 J (58 ft-lb) or more, and the **hazardous fragment
+  distance** is where they fall below one per 55.7 m² (600 ft²) of ground, a 1% chance of one
+  striking a person's 0.56 m² (6 ft²): DoD 6055.09-M, equation V3.E3.T2-1 (now DESR 6055.09),
+  as FAA Guide 437.53-1 (2011) restates it. Fragments of 14.9 J (11 ft-lb) or more, FAA's
+  threshold for serious injury, are counted too.
+- Landings are binned in rings round the charge (the first a metre across, each after a tenth
+  wider, so the distance is found to within 10% at any range) and eight directions, each landing counting for the real fragments it stands for. Each
+  direction's distance is the outer edge of its furthest cell at or over the criterion; the
+  hazard distance is the largest. Fragments stopped by a structure or block are counted apart:
+  they do not reach the open ground behind it.
+- **Sampling.** The density in a far cell rests on the few fragments flown that land there. When
+  fewer than ten set the distance, the summary says so: fly more fragments (`count`) and the
+  distance settles.
+
+**An example**: 100 kg of TNT in a 150 kg steel cylinder (12 mm wall, 250 mm bore, its axis
+level along x), 1 m above open ground. Mott gives 18,400 fragments of a mean 8 g, launched at
+1,725 m/s. With 200,000 flown, every one landed, 42% of them hazardous and the furthest
+hazardous one 1,334 m out. The hazardous fragment distance is 49.8 m side-on to the casing,
+where its spray goes (set by 38 and 46 fragments flown), and within the first metre elsewhere,
+where only those thrown down land close. With 20,000 flown it was 50–55 m, set by 5–6 fragments
+and flagged to fly more. Most hazardous fragments go far, but thinly: past 50 m they are under
+one per 55.7 m². (`/Volumes/StudioData/bombcad/fragments/hazard/`.)
+
+Shown in the summary printed, in `--fragment-results` (`hazard`: the cells, the directions'
+distances, the shares hazardous and injurious, the furthest hazardous landing), in the USD scene
+as a ring of points (`/Scene/FragmentHazard`), and in the app (below).
+
+**In the app**, once a run ends, the fragments still in flight are flown on to land, and the line
+under the Fragments section gives the hazardous fragment distance. Under Display, **Hazardous
+fragment distance** draws it on the ground: a red circle at the distance, and a lighter arc in
+each direction that falls short of it, at its own distance. A kept run keeps the hazard: Compare
+gives the distance, and the CSV a row for it and for each direction.
+
+The same criteria judge [debris](structural-model.md#debris-as-a-hazard) where a run makes it (rubble particles,
+`StructureModel.rubbleParticles`), flown on from where the run leaves it (`DebrisResult`,
+`BombCAD run --debris-results`), and the [glass of envelope buildings](building-envelopes.md#one-way-damage-single-degree-of-freedom)
+is graded by GSA's and ASTM's window hazard levels.
+
+## What fragments do to what they strike
+
+Each fragment that strikes a block or a structure whose material the scene knows is judged there,
+one way (`FragmentPenetration`, `FragmentTarget`), by the standard empirical methods:
+
+| Target | Method | Gives |
+|---|---|---|
+| Concrete | UFC 3-340-02 §4-60: Equations 4-198 and 4-199 (the modified NDRC form, x/d = 2√G or G + 1) for UFC's standard fragment of the same weight (d = 0.695 W^(1/3), in and oz), 4-202 for the strength, Table 4-16's 0.7 for mild steel | The depth into thick concrete; the thicknesses that prevent perforation (4-204) and spalling (4-207); the speed beyond (4-205, 4-206) |
+| Masonry | The same, at the masonry's compressive strength | As concrete: no method of its own was found |
+| Steel and aluminium plates | Project THOR (Technical Report 47, 1961), with the fragment's mean presented area and its angle to the plate | The speed just to perforate and the speed beyond |
+| Glass | Kim et al. (2025): steel balls always broke 5 mm annealed glass at 0.084–0.087 N s of momentum, and neither did at less | Broken and holed past 0.085 N s, not slowed |
+
+Concrete and masonry are judged nose-on, as UFC designs (the standard fragment is the critical
+shape); THOR's fragments were compact cubes and short cylinders, like these. UFC's own steel plate
+equation (5-65) is kept as a check. Each impact carries its outcome (`penetration`: stopped,
+spalled or perforated, the depth, the thicknesses, the speed beyond), and an envelope's impacts
+name the building and the pane.
+
+**Against the methods' own examples.** UFC's Examples 4A-10 to 4A-12 are reproduced within 1%:
+30 oz at 3,500 fps is stopped by 18 in of 4,000 psi concrete (T_pf 15.2 in), 20 oz at 4,700 fps
+goes through 12 in of 4,500 psi keeping 0.55 of its speed, and an armour-piercing 40 oz at
+3,000 fps spalls 19 in of 5,000 psi (T_sp 20.3 in). For a 1 oz fragment on a quarter-inch mild
+steel plate, UFC's Equation 5-65 and THOR give speeds to perforate of 1,154 and 1,130 fps, and
+speeds beyond within 10% of each other. No penetration test has been compared
+([wanted](data-wanted.md#to-fetch)).
+
+**Envelope buildings.** A fragment that holes a pane breaks it then, if before the blast does,
+and its glass is pushed in from rest by the load that follows ([glazing hazard](building-envelopes.md#one-way-damage-single-degree-of-freedom));
+the inside fills through it from then. Each building's damage counts the panes fragments broke,
+those before the blast reached them (its load first past a hundredth of its peak), and the
+fragments striking its walls and roofs, spalling them and going through, judged at the
+construction's thickness, 30 MPa for concrete and 8 MPa for masonry. In the app's envelope
+damage line, `--envelope-damage` and its JSON.
+
+**Holed panes vent.** With **Vent broken glazing** (building-envelopes.md), a pane a fragment
+holes also opens in the air when it is holed, and the blast enters through it. When is known
+before the run: the same fragments (the description's seed) are flown first in still air
+(`FragmentCloud.paneHoles`), and each pane they hole opens on the step the run's clock reaches
+the time (`BlastSolver.setEnvelopePaneHoles`), through the same path as glass that breaks. So the
+air is the same however the run is batched and however the fragments' consumer keeps up with
+it. Ahead of the blast the air is still, and a fragment that holes a pane before the blast
+reaches it flies mostly ahead of it; behind the shock the wind would carry it a little faster.
+A cased kilogram 5 m in front of a glazed window (`FragmentVentingTests`, 0.25 m cells) holes
+its pane at 3.15 ms, which opens on that step; the blast alone breaks the glass at 13.0 ms. By
+20 ms the room's mean has peaked at 1.47 kPa through the hole (past 1 kPa at 15.6 ms), against
+75 Pa with the glass left to the blast, and the run is the same to the bit however its steps
+are batched.
+
+**In the app** a strike on a judged target is drawn larger than a landing: grey where the
+fragment stopped, amber where it spalled the far face, crimson where it went through. The
+summary printed counts them (`struck targets: … stopped, … spalled, … through`).
+
 ## Output
 
 - **The USD scene** (`--usd`) gains `/Scene/Fragments` and `/Scene/Tracers`, Points prims whose
   positions follow the frames; a fragment's width is its edge. Blender imports them as point clouds.
-- **`--fragment-results`** writes the impacts, masses and counts as JSON, without the
-  trajectories, which are in the scene.
+- **`--fragment-results`** writes the impacts, masses, counts and [hazard](#hazard) as JSON,
+  without the trajectories, which are in the scene; `/Scene/FragmentHazard` rings the hazard
+  distance.
 - The summary printed gives the fragments landed on each surface and the highest impact energy,
   and how much air was sent and how long the run waited.
 
@@ -211,11 +314,19 @@ pre-formed fragments or improvised casings. `FragmentCloudTests` check the first
 - One way: fragments do not load the structure or the air, and the structure they can hit is its
   starting outline.
 - The casing's own energy is not taken from the air's: the blast is the bare charge's.
-- No break-up, no ricochet, no penetration; a fragment stops where it first hits.
+- No break-up and no ricochet; a fragment stops where it first hits, through or not, and does
+  not load or hole what it hits (the structure's outline and the air are unchanged). Its
+  penetration is judged by design methods for nose-on impact; masonry borrows concrete's.
+- With **Vent broken glazing** the holes come from the fragments flown before the run in still
+  air (below), not from the run's own fragments, which the blast's wind carries a little faster.
 - Only the coarse grid's air, also where refinement sharpens the shock.
 - In the app, frames fall at the ends of batches, just past each millisecond, so its fragments vary
   a little from run to run (above).
 - A kept run keeps the fragments' impacts, not their paths.
+- The hazard distance is as good as the ranges, which no arena test has checked, and counts only
+  landings on open ground: no ricochet, no fragments stopped by people or vegetation, and the
+  density of fragments passing through the air above a person is not counted, only where they
+  land.
 
 ## Sources
 
@@ -228,4 +339,16 @@ pre-formed fragments or improvised casings. `FragmentCloudTests` check the first
   velocity irregular fragments that rotate or tumble, *Defence Technology* 13 (2017) 269–280,
   doi:10.1016/j.dt.2017.03.008: the projected area of a tumbling body (a quarter of its surface)
   and Hansche and Rinehart's measured drag of tumbling cubes, Mach 0.5 to 3.5.
+- UFC 3-340-02, *Structures to Resist the Effects of Accidental Explosions*, US Department of
+  Defense, 2008: §2-17.5 (the standard fragment), §4-60 and Examples 4A-10 to 4A-12 (concrete),
+  §5-49 (steel plates).
+- Project THOR, *The resistance of various metallic materials to perforation by steel fragments*,
+  Technical Report 47, Johns Hopkins University, 1961, its constants as T. Deniz, *Ballistic
+  penetration of hardened steel plates*, MSc thesis, Middle East Technical University, 2010,
+  Tables 3.2 and 3.3, reproduces them.
+- S. Kim, J.-H. Mun, S. Park, C. Choi and S. Hong, Damage limit velocity and fracture patterns in
+  single glass plates impacted by steel balls of varying diameters, *Applied Sciences* 15 (2025)
+  386, doi:10.3390/app15010386.
+- FAA, *Calculation of Safety Clear Zones for Experimental Permits*, Guide 437.53-1 (2011): the
+  hazardous fragment's 79 J and 600 ft² from DoD 6055.09-M, and its own 11 ft-lb.
 - D. E. Grady, *Fragmentation of Rings and Shells*, Springer, 2006: the exponential form.

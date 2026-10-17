@@ -19,7 +19,66 @@ struct RenderUniforms {
     float4 clip;       // x = near plane, y = far plane
     float4 highlightLow;   // xyz = low corner of the box to outline, w = 1 to draw it
     float4 highlightHigh;  // xyz = its high corner
+    float4 craters[4];     // xy = centre, z = apparent radius, w = depth
+    float4 lips[4];        // x = lip crest's height, y = how far the ejecta reach, z = 1 where there
+                           // is a crater, w = the crest's radius
 };
+
+// The craters a run left, shaded into the ground rather than built: the ground's slope from each
+// crater's profile (as `CraterEstimate.change`: a paraboloid bowl up to the original ground at the
+// apparent radius, the lip rising on to its crest, the ejecta beyond thinning as r^-3.86), and how
+// far into a crater the point is, 1 at the bottom of the bowl, for darkening it. Returns
+// (dz/dx, dz/dy, darkness, earth).
+static inline float4 craterRelief(float2 p, constant RenderUniforms &u) {
+    float2 slope = float2(0.0f);
+    float dark = 0.0f;
+    float earth = 0.0f;
+    for (int n = 0; n < 4; ++n) {
+        if (u.lips[n].z < 0.5f) {
+            continue;
+        }
+        float2 offset = p - u.craters[n].xy;
+        float r = length(offset);
+        float radius = u.craters[n].z;
+        float depth = u.craters[n].w;
+        float lip = u.lips[n].x;
+        float reach = u.lips[n].y;
+        float crest = max(u.lips[n].w, radius * 1.0001f);
+        if (r >= reach || radius <= 0.0f) {
+            continue;
+        }
+        float2 along = r > 1e-6f ? offset / r : float2(0.0f);
+        float rate;
+        if (r < radius) {
+            float s = r / radius;
+            rate = 2.0f * depth * r / (radius * radius);
+            dark = max(dark, 1.0f - s * s);
+        } else if (r < crest) {
+            float s = (r - radius) / (crest - radius);
+            rate = 2.0f * lip * (1.0f - s) / (crest - radius);
+        } else {
+            float edge = pow(crest / reach, 3.86f);
+            rate = -lip * 3.86f * pow(crest / r, 3.86f) / r / (1.0f - edge);
+        }
+        slope += rate * along;
+        earth = max(earth, 1.0f - smoothstep(0.85f * reach, reach, r));
+    }
+    return float4(slope, dark, earth);
+}
+
+// The ground's colour and light where it is cratered, from the relief above; returns how much of
+// a crater the point is in, for laying its earth back over the air's paint.
+static inline float shadeCrater(float2 p, constant RenderUniforms &u, thread float3 &base, thread float &light) {
+    float4 relief = craterRelief(p, u);
+    if (relief.w <= 0.0f) {
+        return 0.0f;
+    }
+    float3 normal = normalize(float3(-relief.x, -relief.y, 1.0f));
+    float3 earth = float3(0.45f, 0.39f, 0.32f) * (1.0f - 0.35f * relief.z);
+    base = mix(base, earth, relief.w);
+    light = mix(light, 0.40f + 0.60f * max(dot(normal, u.sun.xyz), 0.0f), relief.w);
+    return relief.w;
+}
 
 struct MeshUniforms {
     float4 eye;
@@ -190,6 +249,7 @@ fragment SceneOut sceneFragment(VertexOut in [[stage_in]],
             float grid = 1.0f - clamp(min(line.x, line.y), 0.0f, 1.0f);
             base = mix(base, base * 1.3f, grid * (inside ? 0.6f : 0.3f));
             float light = 0.45f + 0.55f * max(sun.z, 0.0f);
+            float crater = inside ? shadeCrater(p.xy, u, base, light) : 0.0f;
             if (occluded(p + float3(0.0f, 0.0f, 0.01f), sun, boxes, boxCount)) {
                 light *= 0.62f;
             }
@@ -197,6 +257,8 @@ fragment SceneOut sceneFragment(VertexOut in [[stage_in]],
             if (inside) {
                 float3 uvw = float3(p.xy, 0.5f * cellSize) / domain;
                 colour = fieldTint(base, light, field.sample(linearSampler, uvw), u);
+                // The crater's earth over the paint, so that it reads once the run has left it.
+                colour = mix(colour, base * light, 0.7f * crater);
             }
         }
     }
@@ -514,13 +576,18 @@ vertex DotOut dotVertex(uint vertexID [[vertex_id]],
     const float2 corners[6] = {float2(-1, -1), float2(1, -1), float2(1, 1),
                                float2(-1, -1), float2(1, 1), float2(-1, 1)};
     float2 corner = corners[vertexID];
-    float size = viewport.z * (kind > 2.5f ? 1.15f : (kind > 1.5f ? 1.3f : (kind > 0.5f ? 0.7f : 1.0f)));
+    float size = viewport.z * (kind > 3.5f ? 1.6f : (kind > 2.5f ? 1.15f : (kind > 1.5f ? 1.3f : (kind > 0.5f ? 0.7f : 1.0f))));
     clip.xy += corner * size / viewport.xy * clip.w;
 
     DotOut out;
     out.position = clip;
     out.corner = corner;
-    if (kind > 2.5f) {
+    if (kind > 3.5f) {
+        // A fragment's strike on a judged target: grey where it stopped, amber where it spalled
+        // the far face, crimson where it went through.
+        out.colour = value < 0.33f ? float3(0.62f, 0.64f, 0.68f)
+            : value < 0.67f ? float3(0.98f, 0.66f, 0.12f) : float3(0.86f, 0.08f, 0.32f);
+    } else if (kind > 2.5f) {
         // A ground point: grey until the blast arrives, then from blue at a millimetre a second,
         // through violet, to near white at ten metres a second.
         out.colour = value < 0.0005f ? float3(0.55f, 0.55f, 0.58f)
@@ -678,7 +745,7 @@ vertex LineOut lineVertex(uint vertexID [[vertex_id]],
     const float2 corners[6] = {float2(0, -1), float2(1, -1), float2(1, 1),
                                float2(0, -1), float2(1, 1), float2(0, 1)};
     float2 corner = corners[vertexID];
-    const float widths[5] = {3.0f, 1.6f, 3.0f, 1.6f, 1.6f};
+    const float widths[7] = {3.0f, 1.6f, 3.0f, 1.6f, 1.6f, 3.0f, 2.0f};
     // Half the width in pixels, and half a pixel more to smooth its edge.
     float halfWidth = 0.5f * widths[kind] * viewport.z + 0.5f;
     float4 clip = corner.x > 0.5f ? cb : ca;
@@ -686,9 +753,10 @@ vertex LineOut lineVertex(uint vertexID [[vertex_id]],
     out.position = clip;
     out.across = corner.y * halfWidth;
     out.edge = halfWidth;
-    const float3 colours[5] = {float3(0.97f, 0.97f, 0.95f), float3(0.92f, 0.93f, 0.95f),
+    const float3 colours[7] = {float3(0.97f, 0.97f, 0.95f), float3(0.92f, 0.93f, 0.95f),
                                float3(1.00f, 0.62f, 0.12f), float3(0.16f, 0.18f, 0.22f),
-                               float3(0.36f, 0.80f, 0.86f)};
+                               float3(0.36f, 0.80f, 0.86f), float3(0.86f, 0.10f, 0.24f),
+                               float3(1.00f, 0.42f, 0.52f)};
     out.colour = colours[kind];
     return out;
 }
@@ -768,10 +836,11 @@ fragment float4 terrainFragment(TerrainOut in [[stage_in]],
     base = mix(base, base * 0.75f, (1.0f - clamp(line, 0.0f, 1.0f)) * 0.5f);
     float3 normal = normalize(in.normal);
     float light = 0.45f + 0.55f * max(dot(normal, u.sun.xyz), 0.0f);
+    float crater = inside ? shadeCrater(p.xy, u, base, light) : 0.0f;
     float3 colour = base * light;
     if (inside && t.dims.z != 0) {
         float3 uvw = (p + float3(0.0f, 0.0f, 0.5f * u.domain.w)) / domain;
-        colour = fieldTint(base, light, field.sample(linearSampler, uvw), u);
+        colour = mix(fieldTint(base, light, field.sample(linearSampler, uvw), u), base * light, 0.7f * crater);
     }
     if (inside && t.dims.w != 0) {
         const device float4 *patch = patches + 4 * (t.dims.w - 1);

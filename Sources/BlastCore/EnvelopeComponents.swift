@@ -322,16 +322,21 @@ public struct EnvelopeHistoryOptions: Codable, Hashable, Sendable {
     /// outside it in the open opening (ids "<owner>/opening/<i>"): what the inside sees once glass
     /// has gone.
     public var openingsAsPanes: Bool
+    /// Start each component's window when the air at its faces first moves, rather than at t = 0,
+    /// so that `windowS` need only cover the load on one component, not the blast's crossing of a
+    /// district: a building 2 km out keeps the few hundred milliseconds that load it.
+    public var windowFromArrival: Bool
 
     public init(
         windowS: Double, binS: Double = 1e-4, memoryBudget: Int = 256 << 20, binMaxima: Bool = false,
-        openingsAsPanes: Bool = false
+        openingsAsPanes: Bool = false, windowFromArrival: Bool = false
     ) {
         self.binS = binS
         self.windowS = windowS
         self.memoryBudget = memoryBudget
         self.binMaxima = binMaxima
         self.openingsAsPanes = openingsAsPanes
+        self.windowFromArrival = windowFromArrival
     }
 }
 
@@ -345,8 +350,11 @@ public struct EnvelopeComponentHistory: Codable, Sendable {
     public var innerAreaM2: Double
     public var faceCount: Int
     public var binS: Double
-    /// ∫ pOuter dt and ∫ pInner dt over each bin [i binS, (i + 1) binS), in Pa s, up to the time
-    /// recorded (the last bin may be partial). A step of width dt holding pressure p (its right
+    /// Where the bins start, with `windowFromArrival`: the start of the bin in which the air at the
+    /// component first moved; nil when they start at t = 0, or when it never did.
+    public var windowStartS: Double?
+    /// ∫ pOuter dt and ∫ pInner dt over each bin [i binS, (i + 1) binS) from the window's start, in
+    /// Pa s, up to the time recorded (the last bin may be partial). A step of width dt holding pressure p (its right
     /// endpoint) adds p times its overlap with each bin it crosses, so the impulse is exact
     /// whatever the step and bin widths. A side with no faces reads 0.
     public var outerImpulsePaS: [Float]
@@ -414,10 +422,19 @@ final class EnvelopeComponentRecorder {
     let sumList: MTLBuffer
     let sumDispatch: MTLBuffer
     let stillPressure: MTLBuffer
+    /// The bin the coming step starts in and how far into it (`ComponentClock`), kept on the GPU.
+    let clock: MTLBuffer
+    /// Each component's first bin: 0, or with `windowFromArrival` the clock's bin when its air
+    /// first moved (`UInt32.max` until then).
+    let starts: MTLBuffer
+    let fromArrival: Bool
+    let clockPipeline: MTLComputePipelineState
     let peaks: MTLBuffer
     let bins: MTLBuffer
     let maxima: MTLBuffer?
     let flags: MTLBuffer
+    /// Each component's two sides' mean overpressures in the step just taken, for venting.
+    let current: MTLBuffer
     let markPipeline: MTLComputePipelineState
     let facePipeline: MTLComputePipelineState
     let pipeline: MTLComputePipelineState
@@ -434,15 +451,27 @@ final class EnvelopeComponentRecorder {
         var components: [EnvelopeComponent] = []
         var outer: [[Face]] = []
         var inner: [[Face]] = []
-        // The components of each owner, and those of each source, to find a face's.
-        var bySource: [String: [Int]] = [:]
+        // Each owner's components by their source (a solid or a pane), and its façade strips, to
+        // find a face's: a district holds thousands of owners.
+        struct Source: Hashable {
+            var owner: Int
+            var pane: Bool
+            var index: Int
+        }
+        var bySource: [Source: [Int]] = [:]
+        var facades: [[Int]] = Array(repeating: [], count: objects.count)
         for (owner, object) in objects.enumerated() {
             let envelope = resolved.geometry[owner]
             for laid in envelope.componentLayout(owner: object.id, cellSize: dx) {
-                let key =
-                    "\(owner)/\(laid.component.kind == .pane ? "pane" : "solid")/\(laid.component.source)"
-                    + (laid.component.kind == .facade ? "/facade" : "")
-                bySource[key, default: []].append(components.count)
+                if laid.component.kind == .facade {
+                    facades[owner].append(components.count)
+                } else {
+                    bySource[
+                        Source(
+                            owner: owner, pane: laid.component.kind == .pane, index: laid.component.source),
+                        default: []
+                    ].append(components.count)
+                }
                 components.append(laid.component)
                 outer.append([])
                 inner.append([])
@@ -451,9 +480,32 @@ final class EnvelopeComponentRecorder {
         func contains(_ region: Box, _ point: SIMD3<Float>) -> Bool {
             (0..<3).allSatisfy { point[$0] >= region.min[$0] && point[$0] <= region.max[$0] }
         }
+        // The cells standing for each pane (`BuildingEnvelope.paneCells`) carry its load, whichever
+        // block holds them.
+        var paneOfCell: [Int: Int] = [:]
+        for (owner, _) in objects.enumerated() {
+            let envelope = resolved.geometry[owner]
+            for pane in envelope.panes.indices {
+                guard let component = bySource[Source(owner: owner, pane: true, index: pane)]?.first else {
+                    continue
+                }
+                for cell in envelope.paneCells(pane, grid: grid) { paneOfCell[cell] = component }
+            }
+        }
         for face in resolved.faces {
             let envelope = resolved.geometry[face.owner]
             let cell = Int(face.face.solid)
+            if let pane = paneOfCell[cell] {
+                guard components[pane].axis == Int(face.face.axis) else { continue }
+                let entry = Face(fluid: face.face.fluid, solid: face.face.solid)
+                let sign = face.face.positive != 0 ? 1 : -1
+                if sign == components[pane].outward {
+                    outer[pane].append(entry)
+                } else {
+                    inner[pane].append(entry)
+                }
+                continue
+            }
             let point = grid.cellCentre(
                 cell % grid.nx, (cell / grid.nx) % grid.ny, cell / (grid.nx * grid.ny))
             let axis = Int(face.face.axis)
@@ -461,21 +513,14 @@ final class EnvelopeComponentRecorder {
             let candidates: [Int]
             switch envelope.blockSources[face.block] {
             case .pane(let index):
-                candidates = bySource["\(face.owner)/pane/\(index)"] ?? []
+                candidates = bySource[Source(owner: face.owner, pane: true, index: index)] ?? []
             case .solid(let index):
+                let own = bySource[Source(owner: face.owner, pane: false, index: index)] ?? []
                 switch BuildingEnvelope.role(envelope.solids[index]) {
-                case .plate: candidates = bySource["\(face.owner)/solid/\(index)"] ?? []
+                case .plate: candidates = own
                 case .column: candidates = []
                 case .block:
-                    candidates =
-                        axis == 2
-                        ? (bySource["\(face.owner)/solid/\(index)"] ?? []).filter {
-                            components[$0].kind == .roof
-                        }
-                        : (bySource.filter {
-                            $0.key.hasPrefix("\(face.owner)/solid/") && $0.key.hasSuffix("/facade")
-                        }
-                        .values.flatMap { $0 })
+                    candidates = axis == 2 ? own.filter { components[$0].kind == .roof } : facades[face.owner]
                 }
             }
             // Its own component: on the thin axis, holding the cell; a block's façade strip or roof
@@ -549,6 +594,12 @@ final class EnvelopeComponentRecorder {
                 }
             }
         }
+        // Components with no face on the air (a block's sides against its neighbours, a wall buried
+        // in the terrain) are left out: a district's map buildings have many.
+        let kept = components.indices.filter { !outer[$0].isEmpty || !inner[$0].isEmpty }
+        components = kept.map { components[$0] }
+        outer = kept.map { outer[$0] }
+        inner = kept.map { inner[$0] }
         var faces: [Face] = []
         var sides: [Sides] = []
         for n in components.indices {
@@ -577,7 +628,9 @@ final class EnvelopeComponentRecorder {
                 length: max(1, faces.count) * MemoryLayout<Face>.stride),
             let peaks = device.makeBuffer(length: components.count * 16, options: .storageModeShared),
             let bins = device.makeBuffer(length: components.count * count * 8, options: .storageModeShared),
-            let flags = device.makeBuffer(length: 4, options: .storageModeShared)
+            let flags = device.makeBuffer(length: 4, options: .storageModeShared),
+            let current = device.makeBuffer(
+                length: max(components.count * 8, 16), options: .storageModeShared)
         else { throw BlastError.allocationFailed("envelope component histories") }
         self.components = components
         self.sides = sides
@@ -591,6 +644,7 @@ final class EnvelopeComponentRecorder {
         self.peaks = peaks
         self.bins = bins
         self.flags = flags
+        self.current = current
         maxima =
             options.binMaxima
             ? device.makeBuffer(length: components.count * count * 8, options: .storageModeShared) : nil
@@ -624,7 +678,9 @@ final class EnvelopeComponentRecorder {
             let faceDispatch = device.makeBuffer(length: 12),
             let sumList = device.makeBuffer(length: components.count * 4, options: .storageModePrivate),
             let sumDispatch = device.makeBuffer(length: 12),
-            let stillPressure = device.makeBuffer(length: 32 * 4, options: .storageModePrivate)
+            let stillPressure = device.makeBuffer(length: 32 * 4, options: .storageModePrivate),
+            let clock = device.makeBuffer(length: 8, options: .storageModeShared),
+            let starts = device.makeBuffer(length: max(1, components.count) * 4, options: .storageModeShared)
         else { throw BlastError.allocationFailed("envelope component face pressures") }
         self.pressures = pressures
         self.tileRanges = tileRanges
@@ -635,6 +691,10 @@ final class EnvelopeComponentRecorder {
         self.sumList = sumList
         self.sumDispatch = sumDispatch
         self.stillPressure = stillPressure
+        self.clock = clock
+        self.starts = starts
+        fromArrival = options.windowFromArrival
+        clockPipeline = try ShaderLibrary.pipeline("advanceEnvelopeClock", in: library)
         markPipeline = try ShaderLibrary.pipeline("markEnvelopeComponents", in: library)
         facePipeline = try ShaderLibrary.pipeline("sampleEnvelopeComponentFaces", in: library)
         pipeline = try ShaderLibrary.pipeline("sampleEnvelopeComponents", in: library)
@@ -644,9 +704,9 @@ final class EnvelopeComponentRecorder {
     var memoryFootprint: Int {
         [
             sideBuffer, faceBuffer, pressures, tileRanges, tiles, awake, faceList, faceDispatch, sumList,
-            sumDispatch, stillPressure,
+            sumDispatch, stillPressure, clock, starts,
             peaks,
-            bins, flags,
+            bins, flags, current,
         ]
         .reduce(0) { $0 + $1.length } + (maxima?.length ?? 0)
     }
@@ -656,11 +716,14 @@ final class EnvelopeComponentRecorder {
         let peak = peaks.contents().bindMemory(to: SIMD4<Float>.self, capacity: components.count)
         for n in components.indices { peak[n] = SIMD4(lowest, lowest, lowest, 0) }
         memset(bins.contents(), 0, bins.length)
+        memset(current.contents(), 0, current.length)
         if let maxima {
             let values = maxima.contents().bindMemory(to: Float.self, capacity: maxima.length / 4)
             for n in 0..<(maxima.length / 4) { values[n] = lowest }
         }
         memset(flags.contents(), 0, flags.length)
+        memset(clock.contents(), 0, clock.length)
+        memset(starts.contents(), fromArrival ? 0xFF : 0, starts.length)
         // The first sample's faces' pass has one threadgroup to make the still air's row; the sums
         // none until components are listed.
         for (buffer, count) in [(faceDispatch, UInt32(1)), (sumDispatch, 0)] {
@@ -670,13 +733,12 @@ final class EnvelopeComponentRecorder {
         }
     }
 
-    /// The recording parameters for a batch starting at `time`.
-    func parameters(time: Double, initial: Bool) -> Parameters {
-        let start = (time / binS).rounded(.down)
-        return Parameters(
+    /// The recording parameters for a step, or the first sample.
+    func parameters(initial: Bool) -> Parameters {
+        Parameters(
             components: UInt32(components.count), capacity: UInt32(capacity), initial: initial ? 1 : 0,
-            maxima: binMaxima ? 1 : 0, startBin: UInt32(min(start, Double(UInt32.max))),
-            startFraction: Float(time - start * binS), binWidth: Float(binS), faces: UInt32(faces.count))
+            maxima: binMaxima ? 1 : 0, binWidth: Float(binS), faces: UInt32(faces.count),
+            fromArrival: fromArrival ? 1 : 0)
     }
 
     struct Parameters {
@@ -684,10 +746,9 @@ final class EnvelopeComponentRecorder {
         var capacity: UInt32
         var initial: UInt32
         var maxima: UInt32
-        var startBin: UInt32
-        var startFraction: Float
         var binWidth: Float
         var faces: UInt32
+        var fromArrival: UInt32
         var skipStill: UInt32 = 0
     }
 
@@ -700,14 +761,19 @@ final class EnvelopeComponentRecorder {
         let truncated = flags.contents().load(as: UInt32.self) != 0
         let area = Double(cellSize * cellSize)
         func finite(_ value: Float) -> Float { value == -.greatestFiniteMagnitude ? 0 : value }
+        let elapsedBins = Int((elapsed / binS - 1e-9).rounded(.up))
+        let first = starts.contents().bindMemory(to: UInt32.self, capacity: components.count)
         return components.indices.map { n in
             let base = n * capacity
-            let values = (0..<max(recorded, 0)).map { binned[base + $0] }
-            let largest = maximum.map { m in (0..<max(recorded, 0)).map { m[base + $0] } }
+            let start = first[n] == .max ? nil : Int(first[n])
+            let count = fromArrival ? start.map { min(capacity, max(elapsedBins - $0, 0)) } ?? 0 : recorded
+            let values = (0..<max(count, 0)).map { binned[base + $0] }
+            let largest = maximum.map { m in (0..<max(count, 0)).map { m[base + $0] } }
             return EnvelopeComponentHistory(
                 component: components[n], outerAreaM2: Double(sides[n].outerCount) * area,
                 innerAreaM2: Double(sides[n].innerCount) * area,
                 faceCount: Int(sides[n].outerCount + sides[n].innerCount), binS: binS,
+                windowStartS: fromArrival ? start.map { Double($0) * binS } : nil,
                 outerImpulsePaS: values.map(\.x), innerImpulsePaS: values.map(\.y),
                 peakOuterPa: finite(peak[n].x), peakInnerPa: finite(peak[n].y), peakNetPa: finite(peak[n].z),
                 outerMaxPa: largest?.map { finite($0.x) }, innerMaxPa: largest?.map { finite($0.y) },

@@ -154,12 +154,36 @@ public struct RenderSettings: Sendable, Hashable {
     public var dotSize: Float = 5
     /// Where the fireball's cloud went, when a run follows it.
     public var showCloud = true
+    /// The hazardous fragment distance on the ground, when a run's fragments have landed.
+    public var showHazard = true
     /// A box to outline in the view, such as the one being edited.
     public var highlight: Box?
+    /// Craters to shade into the ground (see `CraterMark`), up to four, once a run has dug them.
+    public var craters: [CraterMark] = []
 
     public init() {}
 
     public var surfaceScale: Float { mode == .impulse ? impulseScale : pressureScale }
+}
+
+/// A crater as the view shades it into the ground: its centre in the plane, the apparent crater's
+/// radius and depth, and its lip's height and reach (see `CraterEstimate`).
+public struct CraterMark: Sendable, Hashable {
+    public var centre: SIMD2<Float>
+    public var radius: Float
+    public var depth: Float
+    public var lipHeight: Float
+    public var lipCrestRadius: Float
+    public var lipRadius: Float
+
+    public init(_ crater: CraterEstimate) {
+        centre = SIMD2(crater.centre.x, crater.centre.y)
+        radius = crater.apparentRadius
+        depth = crater.apparentDepth
+        lipHeight = crater.lipHeight
+        lipCrestRadius = crater.lipCrestRadius
+        lipRadius = crater.lipRadius
+    }
 }
 
 /// Layout matches `RenderUniforms` in `Render.metal`.
@@ -176,6 +200,9 @@ private struct RenderUniforms {
     var clip: SIMD4<Float>
     var highlightLow: SIMD4<Float>
     var highlightHigh: SIMD4<Float>
+    /// Up to four craters: centre, radius and depth, then lip height, reach and 1 where one is.
+    var craters: (SIMD4<Float>, SIMD4<Float>, SIMD4<Float>, SIMD4<Float>)
+    var lips: (SIMD4<Float>, SIMD4<Float>, SIMD4<Float>, SIMD4<Float>)
 }
 
 /// Layout matches `MeshUniforms` in `Render.metal`.
@@ -403,9 +430,24 @@ public final class SceneRenderer {
     public var pixelsPerPoint: Float = 1
 
     /// Dots to draw over the scene: each a position and a code, its kind (0 a fragment in flight,
-    /// 1 a tracer, 2 a fragment's landing, 3 a ground point) plus a value from 0 to 1 that
-    /// colours it (a fragment's speed, a landing's energy, how fast the ground under a point has
-    /// moved).
+    /// 1 a tracer, 2 a fragment's landing, 3 a ground point, 4 a fragment's strike on a judged
+    /// target) plus a value from 0 to 1 that colours it (a fragment's speed, a landing's energy,
+    /// how fast the ground under a point has moved, a strike's outcome: under ⅓ stopped, under ⅔
+    /// spalled, above through).
+    /// The first four craters packed for `RenderUniforms`, empty slots zero.
+    private static func craterSlots(_ marks: [CraterMark]) -> (
+        craters: (SIMD4<Float>, SIMD4<Float>, SIMD4<Float>, SIMD4<Float>),
+        lips: (SIMD4<Float>, SIMD4<Float>, SIMD4<Float>, SIMD4<Float>)
+    ) {
+        var craters = [SIMD4<Float>](repeating: .zero, count: 4)
+        var lips = [SIMD4<Float>](repeating: .zero, count: 4)
+        for (n, mark) in marks.prefix(4).enumerated() {
+            craters[n] = SIMD4(mark.centre.x, mark.centre.y, mark.radius, mark.depth)
+            lips[n] = SIMD4(mark.lipHeight, max(mark.lipRadius, mark.radius), 1, mark.lipCrestRadius)
+        }
+        return ((craters[0], craters[1], craters[2], craters[3]), (lips[0], lips[1], lips[2], lips[3]))
+    }
+
     public func setDots(_ dots: [SIMD4<Float>]) {
         dotCount = dots.count
         guard !dots.isEmpty else { return }
@@ -456,9 +498,9 @@ public final class SceneRenderer {
         }
     }
 
-    /// Lines to draw over the scene while `settings.showCloud` is set, of a width on screen
-    /// whatever their length: each two vectors, one end and a kind (0 to 4, as
-    /// `CloudOverlay.Kind`), and the other end and 0.
+    /// Lines to draw over the scene, of a width on screen whatever their length: each two vectors,
+    /// one end and a kind (0 to 4, as `CloudOverlay.Kind`; 5 and 6, as `HazardOverlay.Kind`), and
+    /// the other end and 0. The caller leaves out the kinds its settings hide.
     public func setLines(_ lines: [SIMD4<Float>]) {
         lineCount = lines.count / 2
         guard lineCount > 0 else { return }
@@ -535,7 +577,9 @@ public final class SceneRenderer {
             sun: sun,
             clip: SIMD4(Self.nearPlane, Self.farPlane, 0, 0),
             highlightLow: SIMD4(settings.highlight?.min ?? .zero, settings.highlight == nil ? 0 : 1),
-            highlightHigh: SIMD4(settings.highlight?.max ?? .zero, 0))
+            highlightHigh: SIMD4(settings.highlight?.max ?? .zero, 0),
+            craters: Self.craterSlots(settings.craters).craters, lips: Self.craterSlots(settings.craters).lips
+        )
 
         // Pass 1: ground, blocks and markers, then the structure's mesh, sharing a depth buffer.
         let scenePass = MTLRenderPassDescriptor()
@@ -703,7 +747,7 @@ public final class SceneRenderer {
             sceneEncoder.drawPrimitives(
                 type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: dotCount)
         }
-        if settings.showCloud, lineCount > 0, let lineBuffer {
+        if lineCount > 0, let lineBuffer {
             var mesh = MeshUniforms(
                 eye: SIMD4(eye, 1), right: SIMD4(right, 0), up: SIMD4(up, 0), forward: SIMD4(forward, 0),
                 projection: SIMD4(

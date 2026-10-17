@@ -70,6 +70,7 @@ public enum ResultKind: String, Codable, CaseIterable, Sendable, Identifiable {
     case cloud
     case fragments
     case groundShock
+    case crater
 
     public var id: Self { self }
 
@@ -87,6 +88,7 @@ public enum ResultKind: String, Codable, CaseIterable, Sendable, Identifiable {
         case .cloud: "Rise and cloud"
         case .fragments: "Fragments"
         case .groundShock: "Ground shock"
+        case .crater: "Crater"
         }
     }
 }
@@ -135,7 +137,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-8"
+    public static let currentTable = "standing-table-14"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -232,11 +234,13 @@ public struct StandingInputs: Sendable, Equatable {
     public var cloud: CloudSpec?
     public var fragments: FragmentSpec?
     public var groundShock: GroundShockSpec?
+    /// Envelopes' glazing breaks in the air (`BlastSolver.configureEnvelopeVenting`).
+    public var ventsGlazing: Bool
 
     public init(
         scenario: Scenario, cellSize: Float, configuration: SolverConfiguration = SolverConfiguration(),
         thermal: ThermalSpec? = nil, cloud: CloudSpec? = nil, fragments: FragmentSpec? = nil,
-        groundShock: GroundShockSpec? = nil
+        groundShock: GroundShockSpec? = nil, ventsGlazing: Bool = false
     ) {
         self.scenario = scenario
         self.cellSize = cellSize
@@ -245,6 +249,7 @@ public struct StandingInputs: Sendable, Equatable {
         self.cloud = cloud
         self.fragments = fragments
         self.groundShock = groundShock
+        self.ventsGlazing = ventsGlazing
     }
 
     /// The model options these inputs set.
@@ -278,6 +283,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case ventPanels
     case importedEnvelopes
     case mapBuildings
+    case ventedGlazing
     // The structure.
     case shellElements
     case shellSectionShear
@@ -303,6 +309,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case jointsBetweenParts
     case footings
     case softGround
+    /// Earth or rock under the charge (`SolverConfiguration.ground`): less of its energy for the air.
+    case groundCoupling
     case cyclicSand
     case freeBase
     case importedStructure
@@ -320,6 +328,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case measuredSounding
     case cloudSpread
     case soilColumn
+    case halfSpace
     case freestandingBoxes
     case freestandingCars
 
@@ -360,6 +369,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
             return !inputs.scenario.envelopeSources(.ifc).isEmpty
                 || !inputs.scenario.envelopeSources(.mesh).isEmpty
         case .mapBuildings: return !inputs.scenario.envelopeSources(.map).isEmpty
+        case .ventedGlazing:
+            return inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes
         case .shellElements:
             return any { $0.elementKind == .shell || $0.solidElementKind.contains(.shell) }
         case .shellSectionShear: return any { $0.shellSectionShear }
@@ -399,6 +410,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
                     || s.supportAnchorages.contains { $0?.footing != nil }
             }
         case .softGround: return config.groundStiffness != nil && !structures.isEmpty
+        case .groundCoupling: return config.ground.map { $0 != .rigid } ?? false
         case .cyclicSand:
             return any { s in
                 (s.fixedBase && s.baseAnchorage?.footing?.soil.cyclic != nil)
@@ -421,6 +433,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .measuredSounding: return inputs.cloud?.sounding != nil
         case .cloudSpread: return inputs.cloud?.spread == true
         case .soilColumn: return inputs.groundShock?.model == .column
+        case .halfSpace: return inputs.groundShock?.model == .halfspace
         case .freestandingBoxes: return !(inputs.scenario.rigidObjects ?? []).isEmpty
         case .freestandingCars: return !(inputs.scenario.rigidCars ?? []).isEmpty
         }
@@ -583,7 +596,9 @@ public enum StandingTable {
                 note: "A methane or propane cloud's flame: checked against the thin-flame model in a closed "
                     + "vessel and wrinkled by sub-grid turbulence and its measured cellular instability; in FM "
                     + "Global's vented chamber it reaches 0.9–1.8 times the tests' peaks lit at the back wall, "
-                    + "0.4–0.6 lit in the middle, and below the (conservative) venting correlations.",
+                    + "0.4–0.6 lit in the middle, and below the (conservative) venting correlations. An open, "
+                    + "congested cloud, as at a process plant, has been compared with no test: congestion speeds "
+                    + "real flames to hundreds of metres a second, beyond what it resolves.",
                 document: "deflagration.md#limitations")
         case .importedEnvelopes:
             return Entry(
@@ -602,6 +617,17 @@ public enum StandingTable {
                     + "assumed two levels: no openings, interiors or roof shapes, and positions and heights as "
                     + "accurate as the map.",
                 document: "building-envelopes.md#buildings-from-map-data")
+        case .ventedGlazing:
+            return Entry(
+                title: "Glazing vented in the air", affects: [.envelopeExposure, .envelopeDamage],
+                limit: nil,
+                note:
+                    "Envelopes' panes break in the air when their one-way glass does (within 0.3 ms on its own "
+                    + "loads) and open their windows whole, so the blast fills the rooms and loads the walls from "
+                    + "inside. The inside stays illustrative: the detailed references let broken glass go element "
+                    + "by element and cannot judge it; against UFC 3-340-02's loads through open windows the "
+                    + "back walls come within 25%, the side walls and the front's inside at 0.3 to 0.7 of the UFC's.",
+                document: "building-envelopes.md#venting-glazing-that-breaks-in-the-air")
         case .ventPanels:
             return Entry(
                 title: "Vent panels", affects: air + structure + [.envelopeExposure], limit: .approximation,
@@ -763,6 +789,15 @@ public enum StandingTable {
                     + "from 2.15 to 1.36 m against 0.64 m. Not for paving or slabs; the air sees the ground as "
                     + "hard.",
                 document: "validation.md#brick-walls-debris")
+        case .groundCoupling:
+            return Entry(
+                title: "Ground that takes energy", affects: air, limit: .approximation,
+                note:
+                    "On earth or rock, a charge on the surface acts on the air as 1.8 times its mass in "
+                    + "free air rather than rigid ground's 2, the middle of Kinney and Graham's 1.5 to 2, tapering "
+                    + "back with height as the share going into the ground falls (Cooper). The same for every soil; "
+                    + "nothing compared here with a burst measured over soft ground.",
+                document: "cratering.md#the-air-on-soft-ground")
         case .cyclicSand:
             return Entry(
                 title: "Sand that settles under cycles", affects: structure, limit: nil,
@@ -852,8 +887,17 @@ public enum StandingTable {
             return Entry(
                 title: "Layered soil column", affects: [.groundShock], limit: .illustrative,
                 note: "A layered soil column under each point, solved through the ground's overpressure "
-                    + "history; checked against closed-form solutions, not against a measurement.",
+                    + "history; checked against closed-form solutions; against Xia's 1 t burst its vertical "
+                    + "velocity 20 to 80 times the measured.",
                 document: "ground-shock.md#the-soil-column")
+        case .halfSpace:
+            return Entry(
+                title: "Elastic half-space", affects: [.groundShock], limit: .illustrative,
+                note:
+                    "An axisymmetric elastic half-space under the charge, driven by the air's ground pressures "
+                    + "and a calibrated direct source; checked against Lamb's problem, Cole and Huth's moving load "
+                    + "and Haskell's dispersion; against Xia's 1 t burst still far too high in the vertical.",
+                document: "ground-shock-outrunning.md")
         case .freestandingBoxes:
             return Entry(
                 title: "Freestanding boxes", affects: [.freestandingMotion], limit: .verified,
@@ -900,8 +944,24 @@ public enum StandingTable {
         "EnvelopeConstruction.glassThicknessM": .input,
         "EnvelopeConstruction.source": .input,
         "EnvelopeConstruction.detail": .input,
+        "EnvelopeConstruction.barsInBothFaces": .input,
+        "EnvelopeConstruction.barCoverM": .input,
+        "EnvelopeConstruction.concreteStrengthMPa": .input,
+        "EnvelopeConstruction.barYieldMPa": .input,
+        "EnvelopeConstruction.blockworkGrouted": .input,
+        "EnvelopeConstruction.masonryStrengthMPa": .input,
+        "EnvelopeConstruction.capMassKgPerM": .input,
         "Scenario.deflagration": .option([.deflagration]),
         "Scenario.ventPanels": .option([.ventPanels]),
+        // What the standing is derived from: the scene and the specs above, and one choice of its own.
+        "StandingInputs.scenario": .input,
+        "StandingInputs.cellSize": .input,
+        "StandingInputs.configuration": .input,
+        "StandingInputs.thermal": .input,
+        "StandingInputs.cloud": .input,
+        "StandingInputs.fragments": .input,
+        "StandingInputs.groundShock": .input,
+        "StandingInputs.ventsGlazing": .option([.ventedGlazing]),
         "Deflagration.gas": .input,
         "Deflagration.concentration": .input,
         "Deflagration.region": .input,
@@ -938,6 +998,10 @@ public enum StandingTable {
         "SolverConfiguration.startupSteps": .numerical,
         "SolverConfiguration.twoWayCoupling": .option([.structureFixedInAir]),
         "SolverConfiguration.movingWalls": .option([.stationaryWalls]),
+        // Off, a structure swings under its own weight as the blast arrives; the comparisons that
+        // carry their weight move by 1 mm or less with it (structural-model.md, "Settling under
+        // its own weight").
+        "SolverConfiguration.settlesStructures": .numerical,
         "SolverConfiguration.skipStillAir": .numerical,
         "SolverConfiguration.airModel": .option([.hotAir, .dissociatingAir]),
         "SolverConfiguration.afterburning": .option([.afterburning]),
@@ -966,6 +1030,7 @@ public enum StandingTable {
         "SolverConfiguration.afterburnLimit": .option([.afterburnLimit]),
         "SolverConfiguration.terrainCutCells": .option([.terrainStaircase]),
         "SolverConfiguration.groundStiffness": .option([.softGround]),
+        "SolverConfiguration.ground": .option([.groundCoupling]),
         // The structure.
         "StructureModel.solids": .input,
         "StructureModel.openings": .input,
@@ -1128,7 +1193,8 @@ public enum StandingTable {
         "GroundShockSpec.line": .input,
         "GroundShockSpec.depths": .input,
         "GroundShockSpec.arrivalThreshold": .input,
-        "GroundShockSpec.model": .option([.soilColumn]),
+        "GroundShockSpec.model": .option([.soilColumn, .halfSpace]),
+        "GroundShockSpec.halfSpace": .input,
         "GroundShockSpec.profile": .input,
         "GroundSoil.density": .input,
         "GroundSoil.waveSpeed": .input,
@@ -1162,6 +1228,7 @@ extension SceneStanding {
         if inputs.cloud != nil { results.append(scene.cloud()) }
         if inputs.fragments != nil { results.append(scene.fragments()) }
         if inputs.groundShock != nil { results.append(scene.groundShock()) }
+        if scene.options.contains(.groundCoupling) { results.append(scene.crater()) }
         // Each set option caps the results it touches and is named on them.
         for option in scene.options {
             let entry = StandingTable.entry(for: option)
@@ -1445,6 +1512,12 @@ struct StandingScene {
                 "Lit at the back wall, 0.9–1.8 times the measured peaks; lit in the middle, 0.4–0.6, the "
                     + "flame stalling towards the back wall; geometric mean 0.76",
                 "deflagration.md#bauwens-chaffee-and-dorofeev-2008"),
+            StandingEvidence(
+                "BP Texas City 2005 (CSB), a layout after it",
+                "The model's own flame gives 0.01 psi at 37 m against the CSB's 2.5–2.8: congestion's "
+                    + "acceleration is not resolved. With the burning velocity times 6.5, fitted there: 2.4 psi, "
+                    + "the brick control room failing at 1.6 psi (1.5–2.5, heavily damaged)",
+                "process-plant-explosion.md#results"),
         ]
     }
 
@@ -1454,6 +1527,12 @@ struct StandingScene {
         if !(inputs.scenario.ventPanels ?? []).isEmpty {
             resolution.append("Vent panels have no mass and release at once.")
         }
+        if let factor = inputs.scenario.deflagration?.acceleration.factor, factor != 1 {
+            resolution.append(
+                "The burning velocity is raised \(String(format: "%g", factor)) times, a fit standing for what "
+                    + "the model does not resolve: the pressures follow it steeply, as about its third power."
+            )
+        }
         return result(
             kind, .illustrative,
             "Reads low, the unsafe side, where a vented room is lit in the middle: 0.4–0.6 of FM Global's "
@@ -1461,7 +1540,10 @@ struct StandingScene {
                 + "and NFPA 68, and a peak is uncertain by about ±20% on 0.1 m cells. The wrinkling's one "
                 + "constant was fitted, and the instability's onset measured, in that chamber. In a closed "
                 + "vessel the laminar rise times come within 1–3% of the thin-flame model, partly two errors "
-                + "crossing, and K_G cannot converge on the four-cell front.",
+                + "crossing, and K_G cannot converge on the four-cell front. An open, congested cloud (a process "
+                + "plant's racks and vessels) has been compared with no test: there congestion speeds a real "
+                + "flame to Mach 0.4–0.7 (Baker–Strehlow–Tang, medium to high congestion), which the flame "
+                + "here does not reach, so its pressures are a lower bound, possibly several times low.",
             evidence: deflagrationEvidence + terrainEvidence,
             assumptions: [
                 "Burnt and unburnt gas are treated as air; the heat released is the share of the heat of "
@@ -1470,7 +1552,11 @@ struct StandingScene {
                     + "correlation, and by its cellular instability from the onset radius measured in FM Global's "
                     + "chamber, held beyond four onset radii; a young flame is slow until it is about seventeen "
                     + "cells across.",
-            ], resolution: resolution, documents: ["deflagration.md#checks", "deflagration.md#limitations"])
+            ], resolution: resolution,
+            documents: [
+                "deflagration.md#checks", "deflagration.md#limitations",
+                "process-plant-explosion.md#what-the-model-can-and-cannot-represent",
+            ])
     }
 
     func peakOverpressure() -> ResultStanding {
@@ -1535,6 +1621,14 @@ struct StandingScene {
             "Air: \(cellDescription); the comparison's 0.5, 0.25 and 0.125 m cells for 100 kg were 0.108, 0.054 "
                 + "and 0.027 m/kg^(1/3).")
         if let range = gaugeRange { resolution.append("Gauges lie \(range) from the charge.") }
+        if let distance = structureDistance, (0.75...1.3).contains(distance) {
+            evidence.append(
+                StandingEvidence(
+                    "Yao et al.'s 4 × 5 m slabs, the reflected pressure at the top face's centre, 0.8 to 1.26 "
+                        + "m/kg^(1/3) on today's air",
+                    "Within 11% at 1.0 and 1.26 m/kg^(1/3), 19% low at 0.8; read off plots",
+                    "validation.md#yaos-large-slabs"))
+        }
         evidence += terrainEvidence
         return result(
             .peakOverpressure, level, summary, evidence: evidence, assumptions: sourceAssumptions,
@@ -1923,6 +2017,12 @@ struct StandingScene {
                         + "holed", "validation.md#slabs-under-close-in-charges"))
             evidence.append(
                 StandingEvidence(
+                    "Yao et al.'s 20 kg over a 4 × 5 m slab, 0.22 m/kg^(1/3)",
+                    "Unsafe side: its top face undamaged where the test's cratered 1.02 × 0.76 m, bars exposed, "
+                        + "and spalled wider beneath; one test, no measured deflection",
+                    "validation.md#yaos-large-slabs"))
+            evidence.append(
+                StandingEvidence(
                     "Slabs under contact charges (Hupfauf, 2024)",
                     "The far face on the axis 0.9–2.3 times the fit on today's air, with the outline counted by "
                         + "overlap (0.9–1.3 on the 20 cm slabs; 0.88–1.82 at the elements' centres, 1.1–1.7 on the "
@@ -1951,6 +2051,9 @@ struct StandingScene {
             assumptions: [
                 "Concrete broken under a close-in charge is never removed, so no hole opens.",
                 "Debris is pushed crudely by the air, as cubes with a fixed drag.",
+                "Debris hazard (with rubble particles): pieces still moving at the end fly on in still air to "
+                    + "where they land; those that had already landed are taken as they lie, with the energy "
+                    + "they then had, which undercounts hazardous debris near the structure.",
                 "Collapse is chaotic: a slightly different input gives a different pattern of debris.",
                 "Bars rupture at a typical bar's elongation at fracture over a 100 mm window (15% for the "
                     + "default steel): checked only on the side of holding, where the record's bars held, since "
@@ -1966,6 +2069,11 @@ struct StandingScene {
                 "validation.md#what-is-missing", "validation.md#convergence-on-todays-defaults",
             ])
     }
+
+    /// Said of the envelopes in a scene with structures, which may move beside them.
+    static let envelopesBesideStructures =
+        "Beside moving structures, one way: a structure never takes the air at an envelope's faces, and its "
+        + "debris passes the envelopes by, neither loading nor damaging them."
 
     func envelopeDamage() -> ResultStanding {
         let envelopes = inputs.scenario.envelopeObjects.map(\.id)
@@ -1984,7 +2092,8 @@ struct StandingScene {
                 StandingEvidence(
                     "The same buildings free to respond (19 runs, 2–500 kg)",
                     "Glass: all 45 panes the detailed buildings break, a median 0.3 ms later, and 6 more; "
-                        + "concrete walls between the fixed and simply supported bounds",
+                        + "the walls facing the charge between the fixed and simply supported bounds, roofs "
+                        + "and walls beside a failing one beyond both",
                     "building-envelopes.md#one-way-damage-single-degree-of-freedom"),
                 StandingEvidence(
                     "Freestanding walls against measurement: Alsubaei's perimeter walls and Keys's brick walls",
@@ -1998,6 +2107,12 @@ struct StandingScene {
                         + "one that blew out failed: the safe side",
                     "building-envelopes.md#one-way-walls"),
                 StandingEvidence(
+                    "Slabs held on their edges against measurement (the contest slab, Reynolds, Wu, Wang, Mendonça)",
+                    "Under measured loads the measured peak between the fixed and simply supported bounds on all "
+                        + "eight; under the model's own close-in loads under-read, as the detailed model is, and "
+                        + "Mendonça's two collapses missed",
+                    "building-envelopes.md#slabs-held-on-their-edges"),
+                StandingEvidence(
                     "Monk and Clubley's annealed windows in the Shoeburyness tunnel (12 timed panes)",
                     "Every pane broken, as in the tests, at 0.82–1.07 of the measured time and 0.69–1.15 of the "
                         + "deflection", "validation.md#window-glass"),
@@ -2007,15 +2122,23 @@ struct StandingScene {
                     "validation.md#the-threshold-against-astm-e1300"),
             ],
             assumptions: [
-                "Compared with measurement as freestanding and one-way walls, and glass only under a load far "
-                    + "past what breaks it (its threshold against E1300's design resistance): panels held on all "
-                    + "their edges have none; references on one mesh and one air grid.",
-                "A freestanding wall's cap or canopy adds no mass, and reinforced blockwork is taken as "
-                    + "concrete: the measured walls were judged as built.",
+                "Compared with measurement as freestanding and one-way walls, as slabs held on their edges "
+                    + "(mostly on two; one panel clamped all round), and glass only under a load far past what "
+                    + "breaks it (its threshold against E1300's design resistance); references on one mesh and "
+                    + "one air grid.",
+                "Reinforced blockwork is judged as a concrete of the masonry's strength, graded by the "
+                    + "concrete's limits; a freestanding wall's cap adds only the mass its construction gives.",
                 "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
                     + "2° is flagged as beyond the one-way model.",
                 "Glass is annealed, on Moore's large-deflection plate, simply supported, breaking at E1300's "
-                    + "median strength with the whole pane at its largest stress; fragments' hazard is not graded.",
+                    + "median strength with the whole pane at its largest stress.",
+                "The glass's hazard is graded by GSA's conditions and ASTM F1642's ratings from where it "
+                    + "would land, thrown whole from the pane's middle at its speed on breaking, the load pushing "
+                    + "it on, over a 0.9 m sill; no test's fragments compared. A cased charge's fragments hole a "
+                    + "pane past Kim et al.'s breaking momentum, breaking it then if first. With glazing vented "
+                    + "it opens in the air then, at a time from the fragments flown in still air before the run, "
+                    + "independent of the blast's effect on their flight: fine near the charge, where fragments "
+                    + "lead the shock.",
                 "Concrete by ASCE/SEI 59-11's limits for single-reinforced slabs; brick cracked or fallen, with "
                     + "no arching.",
             ]
@@ -2023,7 +2146,8 @@ struct StandingScene {
                     ? [
                         "\(assumed) of \(envelopes.count) envelopes' construction assumed (0.2 m concrete, 0.3%)."
                     ]
-                    : []),
+                    : [])
+                + (inputs.scenario.structuralObjects.isEmpty ? [] : [Self.envelopesBesideStructures]),
             documents: ["building-envelopes.md#one-way-damage-single-degree-of-freedom"])
     }
 
@@ -2038,15 +2162,15 @@ struct StandingScene {
                     "Agrees, with suction; uniform "
                         + "pressure cancels", "building-envelopes.md#scope-and-verification"),
                 StandingEvidence(
-                    "Kingery–Bulmash, a rigid wall facing the charge",
-                    "Reflected impulse within 6% beyond 1.5 "
-                        + "m/kg^(1/3) on 0.25 m cells or finer",
-                    "validation.md#kingerybulmash-the-design-practice-standard"),
+                    "Kingery–Bulmash, a rigid wall facing the charge, on the shipped air",
+                    "Reflected impulse 93–113% from 1 m/kg^(1/3) on 0.25 m cells",
+                    ValidationTables.burningDocument),
             ],
             assumptions: [
                 "Fixed geometry: no broken windows, deformation, collapse or changing shielding.",
                 "Openings and walls thinner than a cell can vanish.",
-            ], documents: ["building-envelopes.md#scope-and-verification"])
+            ] + (inputs.scenario.structuralObjects.isEmpty ? [] : [Self.envelopesBesideStructures]),
+            documents: ["building-envelopes.md#scope-and-verification"])
     }
 
     func freestandingMotion() -> ResultStanding {
@@ -2174,10 +2298,20 @@ struct StandingScene {
                 "Hansche and Rinehart's measured drag of tumbling cubes, Mach 0.5 to 3.5 (as Moxnes et al. 2017 restate it)",
                 "The drag curve itself; Hoerner's fixed orientations (Cooper's Figs. 27.15–27.18) put the "
                     + "distance to 79 J 30% shorter to 50% longer", "fragments.md#against-coopers-data"),
+            StandingEvidence(
+                "UFC 3-340-02's worked Examples 4A-10 to 4A-12 (fragments into concrete), and its steel "
+                    + "plate equation against THOR's mild steel",
+                "The examples within 1%; the two steel methods' speeds to perforate within 2%; no "
+                    + "penetration test compared", "fragments.md#what-fragments-do-to-what-they-strike"),
         ]
         let shared = [
             "One way: fragments do not push back on the air or the structure, and stop where they first hit.",
-            "Tumbling cubes of the casing's steel; no break-up, ricochet or penetration.",
+            "Tumbling cubes of the casing's steel, no break-up or ricochet. What they strike is judged one "
+                + "way by UFC 3-340-02 (concrete; masonry as concrete of its strength, for want of its own "
+                + "method), THOR (metal plates) and a measured breaking momentum (glass); a fragment stops at "
+                + "the first surface, through or not, and does not load it.",
+            "Hazard distance: the DDESB's, where landings of 79 J or more on open ground fall below one per "
+                + "55.7 m², in 8 directions; as good as the ranges, which no arena test has checked.",
         ]
         guard inputs.fragments?.mottFactor != nil else {
             return result(
@@ -2198,24 +2332,85 @@ struct StandingScene {
             ] + shared, documents: ["fragments.md#limitations"])
     }
 
+    func crater() -> ResultStanding {
+        result(
+            .crater, .approximation,
+            "Cooper's cube-root scaling for the apparent crater's radius by soil and height of burst, with "
+                + "Kinney and Graham's one-sigma scatter of a third; the depth is a rule of thumb, slumped below a "
+                + "shallow water table.",
+            evidence: [
+                StandingEvidence(
+                    "Six measured craters: three 500-ton TNT shots at Suffield, Sailor Hat, Minor Scale and Beirut",
+                    "Five of six apparent diameters within a third (the Suffield shots 1.04–1.26); the three wet "
+                        + "sites' depths 0.84–1.41 of the estimate with the water table near the surface",
+                    "cratering.md#against-measured-craters")
+            ],
+            assumptions: [
+                "The crater does not act on the blast: it forms after the blast has gone, so the air keeps the "
+                    + "ground as it was.",
+                "Bursts on or above the ground, not buried ones.",
+                "Depth and lip are rules of thumb; below a water table the walls are taken to slump to 10–15°, "
+                    + "and flowing fill can leave a shallower crater still.",
+            ], documents: ["cratering.md#limitations"])
+    }
+
+    func halfSpaceGroundShock() -> ResultStanding {
+        result(
+            .groundShock, .illustrative,
+            "An elastic half-space about the charge, checked against Lamb's problem, Cole and Huth and Haskell; "
+                + "against one measured surface burst, its vertical velocity 15 to 60 times too high (the safe "
+                + "side), its horizontal within one and a half times at 21 m but 15 to 20 times too high at 42 m.",
+            evidence: [
+                StandingEvidence(
+                    "The axisymmetric solver against Lamb's problem, Cole and Huth's moving load and Haskell's "
+                        + "Rayleigh dispersion",
+                    "Within 8% of Lamb's surface pulse; 5–8% behind a superseismic front; 4% in phase speed",
+                    "ground-shock-outrunning.md#stage-1-the-solver-and-its-checks"),
+                StandingEvidence(
+                    "Xia et al.'s 1 t surface burst, 0.5 m deep at 21 and 42 m",
+                    "Vertical 15–60 times the measured accelerations' integral; horizontal 1.5 times at 21 m, "
+                        + "15–20 times at 42 m",
+                    "ground-shock-outrunning.md#stage-2-against-xia-et-al"),
+            ],
+            assumptions: [
+                "Elastic and axisymmetric about the charge: no yielding near it, no buildings or terrain.",
+                "The charge's direct source calibrated once against UFC 3-340-01 at 8 ft/lb^(1/3); its waves fall "
+                    + "away as r^(-1/2) against UFC's r^(-2.5).",
+                "One way: the ground stays rigid for the air.",
+                "Not for design, buried services or vibration limits.",
+            ], documents: ["ground-shock-outrunning.md"])
+    }
+
     func groundShock() -> ResultStanding {
         let column = has(.soilColumn)
+        if has(.halfSpace) { return halfSpaceGroundShock() }
         return result(
             .groundShock, .illustrative,
             column
-                ? "A layered soil column under each point, checked against closed-form solutions; nothing "
-                    + "compared with a ground shock measurement."
-                : "The design manuals' one-dimensional air-induced ground shock; nothing compared with a "
-                    + "measurement.",
-            evidence: column
+                ? "A layered soil column under each point, checked against closed-form solutions; against "
+                    + "one measured surface burst, its vertical velocity 20 to 80 times too high (the safe side), "
+                    + "while the horizontal motion that dominated it is not modelled (the unsafe side)."
+                : "The design manuals' one-dimensional air-induced ground shock; against one measured surface "
+                    + "burst, its vertical velocity 20 to 80 times too high (the safe side), while the horizontal "
+                    + "motion that dominated it is not modelled (the unsafe side).",
+            evidence: (column
                 ? [
                     StandingEvidence(
                         "Uniform, layered and bilinear soil columns against closed-form solutions",
                         "Within 1% for pulses, reflections and resonance; 3–8% for bilinear unloading",
                         "ground-shock.md#checks")
-                ] : [],
+                ] : [])
+                + [
+                    StandingEvidence(
+                        "Xia et al.'s 1 t surface burst, 0.5 m deep at 21 and 42 m",
+                        "Vertical velocity 20–30 and 50–80 times the measured accelerations' integral; "
+                            + "within three times a clipped velocity gauge; the measured motion mostly horizontal",
+                        "ground-shock.md#against-measured-ground-motion")
+                ],
             assumptions: [
                 "Away from the charge only; no direct-induced shock or crater.",
+                "No motion carried by the ground's own wave where it outruns the air, which dominated the one "
+                    + "measured test.",
                 "The ground stays rigid for the air.",
                 "Not for design, buried services or vibration limits.",
             ], documents: ["ground-shock.md#limitations"])
@@ -2226,7 +2421,10 @@ struct StandingScene {
     func unsupported() -> [String] {
         var effects = [
             "Nothing here is validated for engineering decisions or for judging the safety of a real structure.",
-            "The ground is rigid and reflecting: no crater, displaced soil or ground coupling to the air.",
+            options.contains(.groundCoupling)
+                ? "The crater is estimated, not modelled: no displaced soil, ejecta or ground shock driven by the "
+                    + "charge, and the air keeps the ground as it was before the blast."
+                : "The ground is rigid and reflecting: no crater, displaced soil or ground coupling to the air.",
         ]
         if !structures.isEmpty {
             effects.append(

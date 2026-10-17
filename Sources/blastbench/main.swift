@@ -47,9 +47,11 @@ import simd
 //                      [--elastic | --elastic-share 0.12 --memory 0 --heave 0]   (the sand's settling; also for shaking)
 //   blastbench shaking [--tests ssg04-dsw,ssg04-shw,ssg03-dsw] [--shear 80] [--bearing 814] [--samples Samples/FoRDy]
 //                      [--history out-%.csv] [--massless] [--damping 0.2]   (a wall on a footing shaken at its base, against FoRDy's SSG03/SSG04)
+//   blastbench gravity [--preset office] [--time 0.3] [--damping 50]
+//                      (a layout's structure under gravity alone, damped: stands, deflects or falls)
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mass kg] [--fit-reach Z]
 //                       [--mode peak|now|impulse|fluence|irradiance]
-//                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
+//                       [--fragments spec.json [--dot 5] [--hazard]] [--ground-shock spec.json] [--ground <type> [--explosive anfo]]
 //                       [--thermal spec.json [--thermal-compare [--thermal-compare-with shape]]
 //                        [--thermal-variants a.json,b.json]]
 //                       [--air thermal] [--afterburn] [--radiate [--absorption 0.1] [--soot-yield 0.185]]
@@ -107,6 +109,7 @@ func preset(named name: String?) -> ScenarioPreset {
     case "storeys": .threeStorey
     case "tall": .tallFrame
     case "tower": .coreTower
+    case "office": .officeTower
     case "column": .columnCloseIn
     case "protected": .protectedBuilding
     case "glass": .glassFacade
@@ -118,6 +121,7 @@ func preset(named name: String?) -> ScenarioPreset {
     case "gasroom": .ventedGasRoom
     case "panel-gas": .largePanelGas
     case "panel-street": .largePanelStreet
+    case "plant": .processPlantExplosion
     default: .streetCanyon
     }
 }
@@ -126,6 +130,10 @@ func preset(named name: String?) -> ScenarioPreset {
 /// (0.25 when given without a size) if asked.
 func chosenScenario() -> Scenario {
     var scenario = preset(named: option("preset")).scenario
+    // `--flame-factor 12`: a gas cloud's burning velocity times this (`FlameAcceleration.factor`).
+    if let factor = option("flame-factor").flatMap({ Float($0) }) {
+        scenario.deflagration?.acceleration.factor = factor
+    }
     if flag("shells") || option("shells") != nil, var structure = scenario.structure {
         structure.elementKind = .shell
         structure.elementSize = option("shells").flatMap { Float($0) } ?? 0.25
@@ -761,6 +769,9 @@ if let name = option("rounding") {
     unsetenv("BOMBCAD_KERNEL_CONTRACT")
     for (key, value) in rounding.environment { setenv(key, value, 1) }
 }
+// `--no-settle`: structures take their weight as the run starts, as before 17 October 2026, in
+// any bench (`BOMBCAD_SETTLE=off`, read by `BlastSolver.settleStructures()`).
+if flag("no-settle") { setenv("BOMBCAD_SETTLE", "off", 1) }
 
 func runThroughput() throws {
     let scenario = chosenScenario()
@@ -1304,6 +1315,37 @@ func runValidation() throws {
     }
 }
 
+/// A layout's structure stood under gravity alone, damped, and judged as the IFC corpus judges
+/// imported buildings (`GravityCheck`).
+func runGravity(device: MTLDevice) throws {
+    let preset = preset(named: option("preset"))
+    guard let model = preset.scenario.structure else {
+        print("\(preset.title) has no structure.")
+        exit(2)
+    }
+    let duration = option("time").flatMap { Double($0) } ?? GravityCheck.duration
+    let damping = option("damping").flatMap { Float($0) } ?? GravityCheck.damping
+    let started = ContinuousClock.now
+    var counts = (shells: 0, beams: 0)
+    let check = try GravityCheck.run(model, device: device, duration: duration, damping: damping) {
+        counts = ($0.elementCount, $0.beamCount)
+    }
+    let seconds = (ContinuousClock.now - started) / .seconds(1)
+    print(
+        "\(preset.title): \(counts.shells) shells, \(counts.beams) beams, \(String(format: "%.0f", check.weight / 1000)) kN"
+    )
+    print(
+        String(
+            format:
+                "%.2f s under gravity, damped at %.0f/s: %.1f%% of the weight carried, %.1f%% still, peak %.1f mm, %d eroded",
+            duration, damping, 100 * check.carried, 100 * check.still, 1000 * check.peak, check.eroded))
+    print(
+        String(
+            format: "moving weight at %.2f s %.3f m/s, at %.2f s %.3f m/s (falling: %.3f m/s): %@ (%.0f s)",
+            duration * 5 / 6, check.settling.early, duration, check.settling.late, 9.81 / damping,
+            check.verdict.rawValue, seconds))
+}
+
 func runSnapshot() throws {
     var scenario = chosenScenario()
     // `--street-envelopes`: the street study's four buildings as exposure-only envelopes.
@@ -1312,6 +1354,8 @@ func runSnapshot() throws {
         for object in scenario.structuralObjects { try scenario.useEnvelope(id: object.id) }
     }
     if let mass = option("mass").flatMap({ Float($0) }) { scenario.charge.mass = mass }
+    // `--charge-z`: the charge's height above the ground, m.
+    if let z = option("charge-z").flatMap({ Float($0) }) { scenario.charge.position.z = z }
     // `--fit-reach 10` fits an open scene to its charge as the app's Domain section does; a
     // `--terrain` is laid again over the domain it fits.
     if let reach = option("fit-reach").flatMap({ Float($0) }) {
@@ -1423,249 +1467,310 @@ func runSnapshot() throws {
         try solver.configureEnvelopeComponents(
             objects: scenario.envelopeObjects, options: EnvelopeHistoryOptions(windowS: time))
     }
-    while solver.time < time - 1e-9 {
-        let result = solver.advance(
-            steps: 64,
-            timeLimit: fragments == nil && thermal == nil ? time : min(time, solver.time + 0.001))
-        feedFragments()
-        feedGround()
-        feedThermal()
-        if solver.airIsAsleep, sleptAt == nil { sleptAt = solver.time }
-        if let summary = solver.bodySummary() { largest = max(largest, summary.maxDisplacement) }
-        if result.steps == 0 || !result.isStable { break }
+    func advance(to end: Double) {
+        while solver.time < end - 1e-9 {
+            let result = solver.advance(
+                steps: 64,
+                timeLimit: fragments == nil && thermal == nil ? end : min(end, solver.time + 0.001))
+            feedFragments()
+            feedGround()
+            feedThermal()
+            if solver.airIsAsleep, sleptAt == nil { sleptAt = solver.time }
+            if let summary = solver.bodySummary() { largest = max(largest, summary.maxDisplacement) }
+            if result.steps == 0 || !result.isStable { break }
+        }
     }
+    // `--frames 0.05,0.5,1`: a snapshot at each of these times too, `out` with the time in it.
+    let frames = (option("frames")?.split(separator: ",").compactMap { Double($0) } ?? []).filter {
+        $0 < time
+    }
+    for frameTime in frames.sorted() {
+        advance(to: frameTime)
+        let stem = (output as NSString).deletingPathExtension
+        try writeSnapshot(to: "\(stem)-\(format(frameTime * 1000, 0))ms.png")
+    }
+    advance(to: time)
     let wall = ContinuousClock.now - started
-    solver.refreshVisualization()
+    try writeSnapshot(to: output)
 
-    let renderer = try SceneRenderer(device: device)
-    renderer.setScene(scenario, solver: solver)
-    if judgesEnvelopes, let histories = solver.envelopeComponentHistories() {
-        let rooms = Dictionary(
-            uniqueKeysWithValues: scenario.envelopeObjects.map {
-                ($0.id, EnvelopeDamageAssessment.roomVolume(of: $0.envelope!))
-            })
-        let damage = EnvelopeDamageAssessment.assess(
-            loads: histories.map(EnvelopeComponentLoad.init),
-            constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms)
-        renderer.setEnvelopeDamage(
-            Dictionary(uniqueKeysWithValues: damage.map { ($0.id, EnvelopeDamageColour.code($0)) }))
-        for building in damage {
-            let name = scenario.object(id: building.id)?.name ?? "Building"
-            print(
-                "\(name): code \(EnvelopeDamageColour.code(building)), \(building.structuralLevels.lowerBound.label)"
-                    + "–\(building.structuralLevels.upperBound.label), panes \(building.panesBroken)/\(building.panes)"
-            )
-        }
-    }
-    // Vent panels that have released are not drawn.
-    let panels = (scenario.ventPanels ?? []).filter { $0.releasePressure > 0 }
-    renderer.setVentPanels(zip(panels, solver.ventPanelOpenTimes).compactMap { $1 == nil ? $0.box : nil })
-    switch option("mode") {
-    case "now": renderer.settings.mode = .overpressure
-    case "impulse": renderer.settings.mode = .impulse
-    case "fluence": renderer.settings.thermal = .fluence
-    case "irradiance": renderer.settings.thermal = .peakIrradiance
-    case "temperature": renderer.settings.thermal = .surfaceTemperature
-    case "ignition": renderer.settings.thermal = .ignition
-    default: renderer.settings.mode = .peakOverpressure
-    }
-    renderer.settings.showWave = !flag("no-wave")
-    if flag("highlight") {
-        renderer.settings.highlight = scenario.structure?.solids.first ?? scenario.boxes.first
-    }
-    if let opacity = option("opacity").flatMap({ Float($0) }) { renderer.settings.waveOpacity = opacity }
-    if let scale = option("scale").flatMap({ Float($0) }) { renderer.settings.pressureScale = scale }
-    renderer.settings.showCharge = time == 0
-    var dots: [SIMD4<Float>] = []
-    if let ground {
-        var result = ground.result(frameInterval: 0)
-        result.place(on: scenario.terrain)
-        dots += result.dots
-        print("  " + result.summary)
-    }
-    if let thermal {
-        // Painted onto the surfaces with --mode fluence, irradiance, temperature or ignition, as
-        // the app paints them.
-        let quantity = renderer.settings.thermal ?? .fluence
-        let heating = thermal.result.heating
-        let values: [Float] =
-            switch quantity {
-            case .fluence: thermal.fluence.map { Float($0) }
-            case .peakIrradiance: thermal.peakIrradiance
-            case .surfaceTemperature: heating.map { h in h.peakTemperature.map { $0 - h.ambient } } ?? []
-            case .ignition: heating?.ignition.map(Float.init) ?? []
-            }
-        renderer.setSurfacePaint(
-            SurfacePaint(
-                grids: ThermalExposure.surfaceGrids(scene: FragmentScene(scenario), spec: thermal.spec),
-                shades: values.map(quantity.shade)))
-        print("Thermal radiation, the fireball as its \(thermal.spec.fireball.rawValue):")
-        for line in thermal.result.summary { print(line) }
-        // What it had radiated by each of a few moments.
-        let result = thermal.result
-        if result.isRadiationMeasured {
-            var line = "  radiated by"
-            for moment in [0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.17] where moment <= time + 1e-9 {
-                var sum = 0.0
-                for (a, b) in zip(result.fireball, result.fireball.dropFirst()) where b.time <= moment + 1e-9
-                {
-                    sum += 0.5 * ((a.radiatedPower ?? 0) + (b.radiatedPower ?? 0)) * (b.time - a.time)
-                }
-                line += String(
-                    format: " %.0f ms: %.1f%%;", moment * 1000, 100 * sum / max(result.chargeEnergy, 1))
-            }
-            print(line)
-        }
-        // How large and hot it was at each of a few moments.
-        var across = "  across, and its temperature, at"
-        for moment in [0.01, 0.02, 0.05, 0.1, 0.17, 0.3, 0.5] where moment <= time + 1e-9 {
-            guard let frame = result.fireball.last(where: { $0.time <= moment + 1e-9 }) else { continue }
-            across += String(
-                format: " %.0f ms: %.1f m, %.0f K;", moment * 1000, 2 * frame.radius, frame.temperature)
-        }
-        print(across)
-        if let other {
-            print("The same frames, the fireball as its \(other.spec.fireball.rawValue):")
-            for line in other.result.summary { print(line) }
-            print(
-                String(
-                    format:
-                        "Reckoned in %.2f s as its %@ and %.2f s as its %@, over %d frames; found in %.2f ms a frame",
-                    thermalSeconds.0, thermal.spec.fireball.rawValue, thermalSeconds.1,
-                    other.spec.fireball.rawValue,
-                    thermal.frames.count, 1000 * fireballSeconds / Double(max(thermal.frames.count, 1))))
-            for exposure in [thermal, other] {
-                if let gpu = exposure.marchGPUSeconds {
+    func writeSnapshot(to output: String) throws {
+        solver.refreshVisualization()
+        let renderer = try SceneRenderer(device: device)
+        renderer.setScene(scenario, solver: solver)
+        if judgesEnvelopes, let histories = solver.envelopeComponentHistories() {
+            let rooms = Dictionary(
+                uniqueKeysWithValues: scenario.envelopeObjects.map {
+                    ($0.id, EnvelopeDamageAssessment.roomVolume(of: $0.envelope!))
+                })
+            let damage = EnvelopeDamageAssessment.assess(
+                loads: histories.map(EnvelopeComponentLoad.init),
+                constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms)
+            renderer.setEnvelopeDamage(
+                Dictionary(uniqueKeysWithValues: damage.map { ($0.id, EnvelopeDamageColour.code($0)) }))
+            // `--envelope-loads`: each component's faces and peak loads, to check what the air reached.
+            if flag("envelope-loads") {
+                for history in histories {
                     print(
-                        String(
-                            format: "  The %@'s march: %.2f ms of GPU time a frame",
-                            exposure.spec.fireball.rawValue,
-                            1000 * gpu / Double(max(exposure.frames.count, 1))))
+                        "  \(history.component.kind) of \(history.component.owner.uuidString.prefix(8)): "
+                            + "faces \(history.faceCount), peak outer "
+                            + "\(format(Double(history.peakOuterPa) / 1000, 1)) kPa, "
+                            + "net \(format(Double(history.peakNetPa) / 1000, 1)) kPa")
                 }
             }
-            let measured = zip(otherRadiated, otherRadiated.dropFirst()).reduce(0.0) {
-                $0 + 0.5 * ($1.0.power + $1.1.power) * ($1.1.time - $1.0.time)
+            for building in damage {
+                let name = scenario.object(id: building.id)?.name ?? "Building"
+                print(
+                    "\(name): code \(EnvelopeDamageColour.code(building)), \(building.structuralLevels.lowerBound.label)"
+                        + "–\(building.structuralLevels.upperBound.label), panes \(building.panesBroken)/\(building.panes)"
+                )
             }
-            print(
-                String(
-                    format:
-                        "As its %@, measured round it as the volume is: radiated %.1f MJ, %.1f%% of the charge's energy",
-                    other.spec.fireball.rawValue, measured / 1e6,
-                    100 * measured / max(other.result.chargeEnergy, 1)))
-            // Each receiver's fluence by the first model against the second, by surface.
-            let (shape, sphere) = (thermal, other)
-            var surfaces: [String] = []
-            for receiver in shape.receivers where !surfaces.contains(receiver.surface) {
-                surfaces.append(receiver.surface)
+        }
+        // Vent panels that have released are not drawn.
+        let panels = (scenario.ventPanels ?? []).filter { $0.releasePressure > 0 }
+        renderer.setVentPanels(zip(panels, solver.ventPanelOpenTimes).compactMap { $1 == nil ? $0.box : nil })
+        switch option("mode") {
+        case "now": renderer.settings.mode = .overpressure
+        case "impulse": renderer.settings.mode = .impulse
+        case "fluence": renderer.settings.thermal = .fluence
+        case "irradiance": renderer.settings.thermal = .peakIrradiance
+        case "temperature": renderer.settings.thermal = .surfaceTemperature
+        case "ignition": renderer.settings.thermal = .ignition
+        default: renderer.settings.mode = .peakOverpressure
+        }
+        renderer.settings.showWave = !flag("no-wave")
+        if flag("highlight") {
+            renderer.settings.highlight = scenario.structure?.solids.first ?? scenario.boxes.first
+        }
+        if let opacity = option("opacity").flatMap({ Float($0) }) { renderer.settings.waveOpacity = opacity }
+        if let scale = option("scale").flatMap({ Float($0) }) { renderer.settings.pressureScale = scale }
+        renderer.settings.showCharge = time == 0
+        // `--ground alluvium [--explosive anfo]`: the craters the charges dig, shaded in as the app
+        // does once a run ends (the air here still sees rigid ground).
+        if let name = option("ground"), let ground = GroundType(rawValue: name) {
+            let craters = CraterEstimate.craters(
+                of: scenario, ground: ground,
+                explosive: option("explosive").flatMap(CraterExplosive.init) ?? .tnt)
+            renderer.settings.craters = craters.map(CraterMark.init)
+            for crater in craters { print("  " + crater.summary) }
+        }
+        var dots: [SIMD4<Float>] = []
+        if let ground {
+            var result = ground.result(frameInterval: 0)
+            result.place(on: scenario.terrain)
+            dots += result.dots
+            print("  " + result.summary)
+        }
+        if let thermal {
+            // Painted onto the surfaces with --mode fluence, irradiance, temperature or ignition, as
+            // the app paints them.
+            let quantity = renderer.settings.thermal ?? .fluence
+            let heating = thermal.result.heating
+            let values: [Float] =
+                switch quantity {
+                case .fluence: thermal.fluence.map { Float($0) }
+                case .peakIrradiance: thermal.peakIrradiance
+                case .surfaceTemperature: heating.map { h in h.peakTemperature.map { $0 - h.ambient } } ?? []
+                case .ignition: heating?.ignition.map(Float.init) ?? []
+                }
+            renderer.setSurfacePaint(
+                SurfacePaint(
+                    grids: ThermalExposure.surfaceGrids(scene: FragmentScene(scenario), spec: thermal.spec),
+                    shades: values.map(quantity.shade)))
+            print("Thermal radiation, the fireball as its \(thermal.spec.fireball.rawValue):")
+            for line in thermal.result.summary { print(line) }
+            // What it had radiated by each of a few moments.
+            let result = thermal.result
+            if result.isRadiationMeasured {
+                var line = "  radiated by"
+                for moment in [0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.17] where moment <= time + 1e-9 {
+                    var sum = 0.0
+                    for (a, b) in zip(result.fireball, result.fireball.dropFirst())
+                    where b.time <= moment + 1e-9 {
+                        sum += 0.5 * ((a.radiatedPower ?? 0) + (b.radiatedPower ?? 0)) * (b.time - a.time)
+                    }
+                    line += String(
+                        format: " %.0f ms: %.1f%%;", moment * 1000, 100 * sum / max(result.chargeEnergy, 1))
+                }
+                print(line)
             }
-            for surface in surfaces {
-                let indices = shape.receivers.indices.filter { shape.receivers[$0].surface == surface }
-                let a = indices.reduce(0.0) { $0 + shape.fluence[$1] }
-                let b = indices.reduce(0.0) { $0 + sphere.fluence[$1] }
-                let lit = indices.filter { shape.fluence[$0] > 0 || sphere.fluence[$0] > 0 }
-                let ratios = lit.map { (shape.fluence[$0] + 1) / (sphere.fluence[$0] + 1) }.sorted()
-                let median = ratios.isEmpty ? 0 : ratios[ratios.count / 2]
-                let shapeOnly = indices.filter { shape.fluence[$0] > 1000 && sphere.fluence[$0] < 1 }.count
-                let sphereOnly = indices.filter { sphere.fluence[$0] > 1000 && shape.fluence[$0] < 1 }.count
+            // How large and hot it was at each of a few moments.
+            var across = "  across, and its temperature, at"
+            for moment in [0.01, 0.02, 0.05, 0.1, 0.17, 0.3, 0.5] where moment <= time + 1e-9 {
+                guard let frame = result.fireball.last(where: { $0.time <= moment + 1e-9 }) else { continue }
+                across += String(
+                    format: " %.0f ms: %.1f m, %.0f K;", moment * 1000, 2 * frame.radius, frame.temperature)
+            }
+            print(across)
+            if let other {
+                print("The same frames, the fireball as its \(other.spec.fireball.rawValue):")
+                for line in other.result.summary { print(line) }
                 print(
                     String(
                         format:
-                            "  %@: mean fluence %.1f kJ/m² as the %@, %.1f as the %@ (%+.0f%%); median ratio %.2f; over 1 kJ/m² by one only: %d, %d",
-                        surface, a / Double(indices.count) / 1000, shape.spec.fireball.rawValue,
-                        b / Double(indices.count) / 1000, sphere.spec.fireball.rawValue,
-                        100 * (a / max(b, 1) - 1), median, shapeOnly, sphereOnly))
+                            "Reckoned in %.2f s as its %@ and %.2f s as its %@, over %d frames; found in %.2f ms a frame",
+                        thermalSeconds.0, thermal.spec.fireball.rawValue, thermalSeconds.1,
+                        other.spec.fireball.rawValue,
+                        thermal.frames.count, 1000 * fireballSeconds / Double(max(thermal.frames.count, 1))))
+                for exposure in [thermal, other] {
+                    if let gpu = exposure.marchGPUSeconds {
+                        print(
+                            String(
+                                format: "  The %@'s march: %.2f ms of GPU time a frame",
+                                exposure.spec.fireball.rawValue,
+                                1000 * gpu / Double(max(exposure.frames.count, 1))))
+                    }
+                }
+                let measured = zip(otherRadiated, otherRadiated.dropFirst()).reduce(0.0) {
+                    $0 + 0.5 * ($1.0.power + $1.1.power) * ($1.1.time - $1.0.time)
+                }
+                print(
+                    String(
+                        format:
+                            "As its %@, measured round it as the volume is: radiated %.1f MJ, %.1f%% of the charge's energy",
+                        other.spec.fireball.rawValue, measured / 1e6,
+                        100 * measured / max(other.result.chargeEnergy, 1)))
+                // Each receiver's fluence by the first model against the second, by surface.
+                let (shape, sphere) = (thermal, other)
+                var surfaces: [String] = []
+                for receiver in shape.receivers where !surfaces.contains(receiver.surface) {
+                    surfaces.append(receiver.surface)
+                }
+                for surface in surfaces {
+                    let indices = shape.receivers.indices.filter { shape.receivers[$0].surface == surface }
+                    let a = indices.reduce(0.0) { $0 + shape.fluence[$1] }
+                    let b = indices.reduce(0.0) { $0 + sphere.fluence[$1] }
+                    let lit = indices.filter { shape.fluence[$0] > 0 || sphere.fluence[$0] > 0 }
+                    let ratios = lit.map { (shape.fluence[$0] + 1) / (sphere.fluence[$0] + 1) }.sorted()
+                    let median = ratios.isEmpty ? 0 : ratios[ratios.count / 2]
+                    let shapeOnly = indices.filter { shape.fluence[$0] > 1000 && sphere.fluence[$0] < 1 }
+                        .count
+                    let sphereOnly = indices.filter { sphere.fluence[$0] > 1000 && shape.fluence[$0] < 1 }
+                        .count
+                    print(
+                        String(
+                            format:
+                                "  %@: mean fluence %.1f kJ/m² as the %@, %.1f as the %@ (%+.0f%%); median ratio %.2f; over 1 kJ/m² by one only: %d, %d",
+                            surface, a / Double(indices.count) / 1000, shape.spec.fireball.rawValue,
+                            b / Double(indices.count) / 1000, sphere.spec.fireball.rawValue,
+                            100 * (a / max(b, 1) - 1), median, shapeOnly, sphereOnly))
+                }
+            }
+            for variant in variants {
+                print("The same frames, as \(variant.name) describes them:")
+                for line in variant.exposure.result.summary { print(line) }
+            }
+            if let largestCells {
+                print(
+                    String(
+                        format: "Largest cells: %d by %d by %d voxels %.3f m a side, %.2f MB a frame",
+                        largestCells.counts.x,
+                        largestCells.counts.y, largestCells.counts.z, largestCells.voxelSize,
+                        Double(largestCells.binary.count) / 1e6))
+            }
+            if solver.configuration.radiativeCooling != nil {
+                // What the gas lost to its radiation by each of the same moments.
+                var line = String(
+                    format: "The gas lost %.1f MJ to its radiation, %.1f%% of the charge's energy; by",
+                    solver.radiatedEnergy / 1e6,
+                    100 * solver.radiatedEnergy / max(thermal.result.chargeEnergy, 1)
+                )
+                for moment in [0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.17] where moment <= time + 1e-9 {
+                    let lost = solver.radiationHistory.last { $0.time <= moment + 1e-9 }?.energy ?? 0
+                    line += String(
+                        format: " %.0f ms: %.1f%%;", moment * 1000,
+                        100 * lost / max(thermal.result.chargeEnergy, 1))
+                }
+                print(line)
+            }
+            let unburnt = solver.speciesTotals()
+            if unburnt.fuel > 0 {
+                print(
+                    String(
+                        format: "Unburnt products left: %.1f kg of %.1f kg", unburnt.fuel,
+                        scenario.charge.mass))
+            }
+            if let largestShape {
+                print(
+                    String(
+                        format: "Largest shape: %.1f m³ in blocks %.2f m a side, %d by %d by %d, %d tiles",
+                        largestShape.volume, largestShape.blockSize, largestShape.counts.x,
+                        largestShape.counts.y,
+                        largestShape.counts.z, largestShape.tileCount))
             }
         }
-        for variant in variants {
-            print("The same frames, as \(variant.name) describes them:")
-            for line in variant.exposure.result.summary { print(line) }
-        }
-        if let largestCells {
-            print(
-                String(
-                    format: "Largest cells: %d by %d by %d voxels %.3f m a side, %.2f MB a frame",
-                    largestCells.counts.x,
-                    largestCells.counts.y, largestCells.counts.z, largestCells.voxelSize,
-                    Double(largestCells.binary.count) / 1e6))
-        }
-        if solver.configuration.radiativeCooling != nil {
-            // What the gas lost to its radiation by each of the same moments.
-            var line = String(
-                format: "The gas lost %.1f MJ to its radiation, %.1f%% of the charge's energy; by",
-                solver.radiatedEnergy / 1e6, 100 * solver.radiatedEnergy / max(thermal.result.chargeEnergy, 1)
-            )
-            for moment in [0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.17] where moment <= time + 1e-9 {
-                let lost = solver.radiationHistory.last { $0.time <= moment + 1e-9 }?.energy ?? 0
-                line += String(
-                    format: " %.0f ms: %.1f%%;", moment * 1000,
-                    100 * lost / max(thermal.result.chargeEnergy, 1))
+        if let fragments {
+            let launch = max(fragments.cloud.launchSpeed, 1)
+            for (n, particle) in fragments.cloud.particles.enumerated() where !particle.landed {
+                let value =
+                    n < fragments.cloud.fragmentCount
+                    ? min(simd_length(particle.velocity) / launch, 0.999) : 1
+                dots.append(SIMD4(particle.position, value))
             }
-            print(line)
+            // `--hazard`: those in flight land, and the hazard distance is drawn as the app draws it.
+            let landed = flag("hazard") ? fragments.result(frameInterval: 0.001) : nil
+            for impact in landed?.impacts ?? fragments.cloud.impacts {
+                if let outcome = impact.penetration?.outcome {
+                    // A strike on a judged target, as the app draws it.
+                    dots.append(
+                        SIMD4(
+                            impact.position, 4 + (outcome == .stopped ? 0.1 : outcome == .spalled ? 0.5 : 0.9)
+                        ))
+                    continue
+                }
+                dots.append(SIMD4(impact.position, 2 + min(max(log10(max(impact.energy, 1)) / 7, 0), 0.999)))
+            }
+            if let landed, !landed.strikeSummary.isEmpty { print("Strikes" + landed.strikeSummary) }
+            print("Fragments: \(fragments.cloud.airborne) in flight, \(fragments.cloud.impacts.count) landed")
+            if let hazard = landed?.hazard {
+                print("Hazard: " + hazard.summary)
+                let terrain = scenario.terrain
+                renderer.setLines(HazardOverlay.lines(hazard) { terrain?.height(at: SIMD3($0, 0)) ?? 0 })
+            }
         }
-        let unburnt = solver.speciesTotals()
-        if unburnt.fuel > 0 {
-            print(
-                String(
-                    format: "Unburnt products left: %.1f kg of %.1f kg", unburnt.fuel, scenario.charge.mass))
+        renderer.setDots(dots)
+        if let size = option("dot").flatMap({ Float($0) }) { renderer.settings.dotSize = size }
+        var camera = OrbitCamera.framing(scenario)
+        // `--target 40,40,2`: the point the camera looks at, rather than the scene's framing.
+        if let values = option("target")?.split(separator: ",").compactMap({ Float($0) }), values.count == 3 {
+            camera.target = SIMD3(values[0], values[1], values[2])
         }
-        if let largestShape {
-            print(
-                String(
-                    format: "Largest shape: %.1f m³ in blocks %.2f m a side, %d by %d by %d, %d tiles",
-                    largestShape.volume, largestShape.blockSize, largestShape.counts.x, largestShape.counts.y,
-                    largestShape.counts.z, largestShape.tileCount))
-        }
-    }
-    if let fragments {
-        let launch = max(fragments.cloud.launchSpeed, 1)
-        for (n, particle) in fragments.cloud.particles.enumerated() where !particle.landed {
-            let value =
-                n < fragments.cloud.fragmentCount ? min(simd_length(particle.velocity) / launch, 0.999) : 1
-            dots.append(SIMD4(particle.position, value))
-        }
-        for impact in fragments.cloud.impacts {
-            dots.append(SIMD4(impact.position, 2 + min(max(log10(max(impact.energy, 1)) / 7, 0), 0.999)))
-        }
-        print("Fragments: \(fragments.cloud.airborne) in flight, \(fragments.cloud.impacts.count) landed")
-    }
-    renderer.setDots(dots)
-    if let size = option("dot").flatMap({ Float($0) }) { renderer.settings.dotSize = size }
-    var camera = OrbitCamera.framing(scenario)
-    if let distance = option("distance").flatMap({ Float($0) }) { camera.distance = distance }
-    if let azimuth = option("azimuth").flatMap({ Float($0) }) { camera.azimuth = azimuth }
-    if let elevation = option("elevation").flatMap({ Float($0) }) { camera.elevation = elevation }
-    // The fireball's cloud, handed over at the end and followed, drawn as the app draws it, and
-    // with --frame-cloud seen as its button frames it.
-    if let path = option("cloud") {
-        let spec = try JSONDecoder().decode(
-            CloudSpec.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
-        let cloud = CloudResult(
-            spec: spec, handOver: solver.cloudHandOver(hotterThan: spec.handOverTemperature))
-        for line in cloud.summary { print(line) }
-        if let results = option("cloud-results") {
-            try JSONEncoder().encode(cloud).write(to: URL(fileURLWithPath: results))
-        }
-        if flag("frame-cloud") { camera = CloudOverlay.framing(cloud) }
         if let distance = option("distance").flatMap({ Float($0) }) { camera.distance = distance }
         if let azimuth = option("azimuth").flatMap({ Float($0) }) { camera.azimuth = azimuth }
         if let elevation = option("elevation").flatMap({ Float($0) }) { camera.elevation = elevation }
-        renderer.setLines(CloudOverlay.lines(cloud, eye: camera.eye))
+        // The fireball's cloud, handed over at the end and followed, drawn as the app draws it, and
+        // with --frame-cloud seen as its button frames it.
+        if let path = option("cloud") {
+            let spec = try JSONDecoder().decode(
+                CloudSpec.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
+            let cloud = CloudResult(
+                spec: spec, handOver: solver.cloudHandOver(hotterThan: spec.handOverTemperature))
+            for line in cloud.summary { print(line) }
+            if let results = option("cloud-results") {
+                try JSONEncoder().encode(cloud).write(to: URL(fileURLWithPath: results))
+            }
+            if flag("frame-cloud") { camera = CloudOverlay.framing(cloud) }
+            if let distance = option("distance").flatMap({ Float($0) }) { camera.distance = distance }
+            if let azimuth = option("azimuth").flatMap({ Float($0) }) { camera.azimuth = azimuth }
+            if let elevation = option("elevation").flatMap({ Float($0) }) { camera.elevation = elevation }
+            renderer.setLines(CloudOverlay.lines(cloud, eye: camera.eye))
+        }
+
+        guard
+            let frame = renderer.snapshot(
+                commandQueue: solver.commandQueue, width: width, height: height, camera: camera),
+            let destination = CGImageDestinationCreateWithURL(
+                URL(fileURLWithPath: output) as CFURL, UTType.png.identifier as CFString, 1, nil)
+        else {
+            print("Could not render the snapshot")
+            exit(1)
+        }
+        CGImageDestinationAddImage(destination, frame.image, nil)
+        CGImageDestinationFinalize(destination)
+        print(
+            "Wrote \(output): t = \(format(solver.time * 1000)) ms after \(solver.stepCount) steps, "
+                + "frame rendered in \(format(frame.gpuSeconds * 1000, 2)) ms")
     }
 
-    guard
-        let frame = renderer.snapshot(
-            commandQueue: solver.commandQueue, width: width, height: height, camera: camera),
-        let destination = CGImageDestinationCreateWithURL(
-            URL(fileURLWithPath: output) as CFURL, UTType.png.identifier as CFString, 1, nil)
-    else {
-        print("Could not render the snapshot")
-        exit(1)
-    }
-    CGImageDestinationAddImage(destination, frame.image, nil)
-    CGImageDestinationFinalize(destination)
-    print(
-        "Wrote \(output): t = \(format(solver.time * 1000)) ms after \(solver.stepCount) steps, "
-            + "frame rendered in \(format(frame.gpuSeconds * 1000, 2)) ms")
     print(
         "Simulated in \(format(Double(wall.components.seconds) + Double(wall.components.attoseconds) * 1e-18, 1)) s"
             + (sleptAt.map { "; the air went quiet and was frozen at \(format($0 * 1000, 0)) ms" } ?? ""))
@@ -1675,6 +1780,27 @@ func runSnapshot() throws {
                 + "deflection \(format(Double(summary.maxDisplacement) * 1000, 0)) mm "
                 + "(largest \(format(Double(largest) * 1000, 0)) mm), "
                 + "worst damage \(format(Double(min(summary.maxDamage, 1)) * 100, 0))%")
+    }
+    if solver.bodies.count > 1 {
+        for body in solver.bodies {
+            guard let summary = body.summary() else { continue }
+            print(
+                "  \(body.name): \(summary.erodedElements) of \(summary.activeElements + summary.erodedElements) "
+                    + "elements failed, moved up to \(format(Double(summary.maxDisplacement) * 1000, 0)) mm")
+        }
+    }
+    // Each gauge's peak overpressure and positive impulse over the run.
+    let ambient = solver.configuration.ambientPressure
+    for (gauge, samples) in zip(scenario.gauges, solver.gaugeHistories) where !samples.isEmpty {
+        var peak: Float = 0
+        var impulse: Double = 0
+        for (a, b) in zip(samples, samples.dropFirst()) {
+            impulse += Double(max(b.pressure - ambient, 0)) * (b.time - a.time)
+            peak = max(peak, b.pressure - ambient)
+        }
+        print(
+            "  \(gauge.name): \(format(Double(peak) / 1000, 1)) kPa "
+                + "(\(format(Double(peak) / 6894.76, 2)) psi), \(format(impulse, 0)) Pa s")
     }
 }
 
@@ -2632,6 +2758,73 @@ func runTwoFace() throws {
             if let peak = result.workAtPeak { print("  " + workRow("peak", 8, peak)) }
             print("  " + workRow("end", 8, work))
         }
+    }
+    // `--yao T1,T2,T3,T4`: Yao et al.'s 4 x 5 x 0.15 m slabs (Applied Sciences, 2023).
+    if let names = option("yao").map({ $0.split(separator: ",").map(String.init) }) {
+        let yaoElement = option("h").flatMap { Float($0) } ?? 0.01875
+        print("Yao et al. (2023): 4 x 5 x 0.15 m slabs, two mats, simply supported on the long sides")
+        print(
+            "Air \(format(Double(cellSize), 3)) m refined by \(option("refine") ?? "2"), elements \(format(Double(yaoElement), 4)) m, \(format(duration * 1000, 0)) ms"
+        )
+        print(
+            "Underside displacement (mm, down positive), measured / model; top-face pressure peaks (MPa); areas cm2\n"
+        )
+        print(
+            pad("test", 5) + pad("charge", 14) + pad("centre", 13) + pad("to support", 13)
+                + pad("to free", 13)
+                + pad("diagonal", 13) + pad("p centre", 12) + pad("p 1 m", 18) + pad("top", 8)
+                + pad("bottom", 8)
+                + pad("failed", 8) + pad("s", 6))
+        func mm3(_ value: Float?) -> String { value.map { format(Double($0) * 1000, 2) } ?? "-" }
+        for test in TwoFaceSlabTests.yaoTests where names.contains(test.name) {
+            let result = try TwoFaceSlabTests.run(
+                device: device, test: test, cellSize: cellSize,
+                refinement: option("refine").flatMap { Int($0) } ?? 2, elementSize: yaoElement,
+                duration: duration,
+                afterburning: burning, airModel: chosenGas(), openFaces: chosenFaces(), adjust: adjust,
+                prepare: { solver in
+                    // `--weight`: the slab under its own weight, settled before the blast.
+                    if flag("weight") { solver.gravity = 9.81 }
+                    prepareTrace(solver)
+                    lastStructure = solver
+                },
+                progress: flag("progress")
+                    ? {
+                        print("  " + $0)
+                        fflush(stdout)
+                    } : nil,
+                configure: applyChosenMask)
+            let measured = test.displacements
+            let columns = (0..<4).map { "\(mm3(measured?[$0]))/\(mm3(result.peaks[$0]))" }
+            let charge = "\(format(Double(test.charge), 1)) kg @\(format(Double(test.standoff), 1))"
+            func mpa(_ value: Float?) -> String { value.map { format(Double($0) / 1e6, 2) } ?? "-" }
+            print(
+                pad(test.name, 5) + pad(charge, 14) + columns.map { pad($0, 13) }.joined()
+                    + pad("\(mpa(test.centrePressure))/\(mpa(result.gaugePeaks[0]))", 12)
+                    + pad(
+                        "\(mpa(test.sidePressure))/\(mpa(result.gaugePeaks[1])),\(mpa(result.gaugePeaks[2]))",
+                        18)
+                    + pad(format(Double(result.damagedFront) * 1e4, 0), 8)
+                    + pad(format(Double(result.damagedBack) * 1e4, 0), 8)
+                    + pad("\(result.summary.erodedElements)", 8) + pad(format(result.wallSeconds, 0), 6))
+            print(
+                "      residual (mm): "
+                    + result.residuals.map { format(Double($0) * 1000, 2) }.joined(separator: ", ")
+                    + "; impulses at the gauges (kPa ms): "
+                    + result.gaugeImpulses.map { format(Double($0), 0) }.joined(separator: ", ")
+                    + "; test: " + test.remark)
+            // The paper reports the largest displacement "at the time that the explosion wave reached
+            // the slab": the probes' largest within 2 ms of the shock's arrival at the centre.
+            let arrival = result.gaugeArrivals[0]
+            let early = result.histories.map { history in
+                history.filter { $0.x <= arrival + 0.002 }.map { abs($0.y) }.max() ?? 0
+            }
+            print(
+                "      within 2 ms of the shock's arrival (\(format(Double(arrival) * 1000, 2)) ms), largest (mm): "
+                    + early.map { format(Double($0) * 1000, 2) }.joined(separator: ", "))
+            try report(result, label: "yao-\(test.name)")
+        }
+        return
     }
     if let names = option("wu").map({ $0.split(separator: ",").map(String.init) }) {
         print(
@@ -5188,6 +5381,7 @@ do {
     case "tie": try runTie()
     case "prism": try runPrism()
     case "shearband": try runShearBand(device: device)
+    case "settle": try runSettle(device: device)
     case "beam": try runBeam()
     case "shear": try runShearBeam()
     case "pushoff": try runPushOff()
@@ -5203,6 +5397,8 @@ do {
     case "structure": try runStructure()
     case "validate": try runValidation()
     case "snapshot": try runSnapshot()
+    case "thin-blocks": try runThinBlocks()
+    case "gravity": try runGravity(device: device)
     case "anchorage": try runAnchorage()
     case "rocking": try runRocking()
     case "shaking": try runShaking()
@@ -5216,6 +5412,8 @@ do {
     case "heating": try runHeating()
     case "terrain": try runTerrain(device: device)
     case "landscape": try runLandscape(device: device)
+    case "groundmotion":
+        if flag("calibrate") { try runGroundMotionCalibration() } else { try runGroundMotion(device: device) }
     case "advise": try runAdvise(device: device)
     case "hrynyk": try runHrynyk(device: device)
     case "mendonca": try runMendonca(device: device)
@@ -5227,6 +5425,7 @@ do {
     case "keys": try runKeys(device: device)
     case "envelope-walls": try runEnvelopeWalls(device: device)
     case "nian": try runNian(device: device)
+    case "envelope-slabs": try runEnvelopeSlabs(device: device)
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
         exit(2)
@@ -5234,4 +5433,47 @@ do {
 } catch {
     print("Error: \(error)")
     exit(1)
+}
+
+/// `blastbench thin-blocks [scene.json ...] [--dx 0.5,0.25,0.125]`: the rigid blocks (scenery and
+/// envelope fragments) of every layout, or of the scenes given, too thin to hold a cell's centre
+/// along some axis on each grid, which the mask once left out and now widens to a layer of cells
+/// (`Box.holdingCells`).
+func runThinBlocks() throws {
+    let sizes = option("dx")?.split(separator: ",").compactMap { Float($0) } ?? [0.5, 0.25, 0.125]
+    let paths = CommandLine.arguments.dropFirst(2).filter {
+        !$0.hasPrefix("--") && !sizes.map { "\($0)" }.contains($0)
+    }
+    var scenes: [(String, Scenario)] = ScenarioPreset.allCases.map { ($0.title, $0.scenario) }
+    // The street study's layouts with their buildings as envelopes: the envelope damage references.
+    for layout in StreetInteractionStudy.Layout.allCases {
+        guard var scene = try? StreetInteractionStudy.make(layout, clamped: true) else { continue }
+        for object in scene.structuralObjects { try? scene.useEnvelope(id: object.id) }
+        scenes.append(("Street study, \(layout.rawValue), as envelopes", scene))
+    }
+    if !paths.isEmpty {
+        scenes = try paths.map { path in
+            (
+                path,
+                try JSONDecoder().decode(Scenario.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
+            )
+        }
+    }
+    print(
+        "Blocks too thin to hold a cell's centre, of all rigid blocks; on "
+            + sizes.map { "\($0) m" }.joined(separator: ", "))
+    for (name, scenario) in scenes {
+        let boxes = scenario.rigidBoxes
+        let counts = sizes.map { size in boxes.filter { $0.holdingCells(of: size) != $0 }.count }
+        guard counts.contains(where: { $0 > 0 }) else { continue }
+        let envelope = scenario.envelopeObjects.count
+        if flag("list") {
+            for box in boxes where box.holdingCells(of: sizes[0]) != box {
+                print("    \(box.min) – \(box.max), size \(box.size)")
+            }
+        }
+        print(
+            "  \(name): " + counts.map { "\($0)" }.joined(separator: " / ") + " of \(boxes.count)"
+                + (envelope > 0 ? " (\(envelope) envelope buildings)" : ""))
+    }
 }

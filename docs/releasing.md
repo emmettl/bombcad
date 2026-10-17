@@ -49,12 +49,13 @@ credentials are only tried on submission.
    rethrows, inlined into an initialiser that throws, handed back a corrupt error from a closure
    that cannot throw), so that every structure crashed in a release build only (see
    `BufferCopy.swift`); then `make app-smoke`, the app built and a small project run from inside
-   it;
+   it, and a new document's window and sidebar drawn offscreen while its source switches between a
+   charge and a gas cloud (`BombCAD interface-smoke`);
 3. builds `dist/BombCAD.app` in release, and checks that the checkout is still clean, that the
    app's version matches the source, that every resource bundle the binary links (read from the
    binary, as each accessor names its own) and the licence text are inside it, and that it is
    arm64; then runs a small project from inside it (`BombCAD run`), which builds the solver and
-   its shaders;
+   its shaders, and draws its views through a change of source (`BombCAD interface-smoke`);
 4. signs it with the hardened runtime and a secure timestamp, with no entitlement exceptions
    (the shaders are compiled at run time by Metal's own compiler service, which needs none);
 5. submits a ZIP to Apple and waits up to 30 minutes, writing Apple's reply to
@@ -103,6 +104,7 @@ The whole path has been run for real, with the `BombCAD-notary` profile, from 20
 | 0.2.0 (6)  | `5d930d7` | `7dcc4ec3-0956-4be4-9e4b-972c2e29abca` | Published as v0.2.0           |
 | 0.3.0 (7)  | `b524a9d` | `de90ca6f-1803-4cd9-998b-525980d409c6` | Published as v0.3.0; crashes  |
 | 0.3.1 (8)  | `c874a6a` | `21d1ff1a-9ebd-45cf-98d6-712264341f22` | Made with the fix, not published |
+| 0.4.0 (10) | `9482ba7` | `b548eb9b-5031-48cd-800e-124a207db04e` | Published as v0.4.0           |
 
 For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
 assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
@@ -162,6 +164,31 @@ Build 8 (0.3.1) was made on 2026-10-16 with the fix, from a commit not on main, 
 and from a fresh expansion of its ZIP, which Apple accepted and Gatekeeper assessed as
 `Notarized Developer ID`. It was not published: no one was using 0.3.0 yet, so 0.3.1 waits for
 the normal process, and takes build 9 or later.
+
+Build 9 (0.4.0) was begun on 2026-10-16 from `92ac96d7` and stopped during its tests, before signing
+or notarization: a crash on removing the gas cloud had just been found on main. It was never made or
+published; 0.4.0 takes build 10, which also draws a new document's views through a change of source
+before signing and again before archiving (`BombCAD interface-smoke`, part of `make app-smoke`).
+
+Build 10 (0.4.0) was prepared on 2026-10-17 from `9482ba7`, with `make release` run once inside
+`gpu-slot`. All 306 app and 979 core tests passed. The packaged app ran the small project and drew its
+views through a change of source before signing and again before archiving. Apple accepted it
+(submission `b548eb9b-5031-48cd-800e-124a207db04e`). A fresh expansion of its ZIP:
+
+- matched the checksum (`78e1fe35e64abc82305fb383aacf2cf3164e733f2f43d25d8b8914ee06e44826`);
+- validated its stapled ticket;
+- passed `codesign --verify --deep --strict`;
+- was accepted by `spctl` as `Notarized Developer ID`;
+- holds the licence text and the four resource bundles its binary links (BombCAD's two,
+  ContinuumKit's contact search and scene render);
+- is version 0.4.0, build 10, arm64;
+- ran the small project from inside its bundle and drew its views through a change of source
+  (`make app-smoke`'s two steps, on that copy).
+
+Its notes, reviewed independently, are in `docs/release-notes/0.4.0.md`. Its ZIP, checksum and
+manifest are attached to the GitHub release `v0.4.0`, published on 2026-10-17 with its tag on
+`9482ba7`; the copy downloaded back matched the checksum, validated its stapled ticket, passed
+`codesign --verify --deep --strict` and was accepted by `spctl`.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.

@@ -25,6 +25,51 @@ struct TerrainSection: View {
 
     private var scenario: Scenario { model.settings.scenario }
 
+    /// What the ground is made of, as the picker offers it.
+    private enum Material: Hashable {
+        case rigid
+        /// Soil under the debris and nothing else, as soft ground was before ground types.
+        case debrisOnly
+        case type(GroundType)
+    }
+
+    private var material: Binding<Material> {
+        Binding(
+            get: {
+                let settings = model.settings
+                if settings.ground != .rigid { return .type(settings.ground) }
+                return settings.softGround ? .debrisOnly : .rigid
+            },
+            set: { choice in
+                switch choice {
+                case .rigid:
+                    model.settings.ground = .rigid
+                    model.settings.softGround = false
+                case .debrisOnly:
+                    model.settings.ground = .rigid
+                    model.settings.softGround = true
+                case .type(let type):
+                    model.settings.ground = type
+                    model.settings.waterTable = type.typicalWaterTable
+                    model.settings.softGround = true
+                    model.settings.groundStiffness =
+                        type.debrisModulus ?? SolverConfiguration.soilSubgradeModulus
+                }
+            })
+    }
+
+    /// The crater the charge would dig, before or after a run: it depends only on the scene.
+    private var craterCaption: String {
+        let craters = CraterEstimate.craters(
+            of: scenario, ground: model.settings.ground, waterTable: model.settings.waterTable)
+        guard let crater = craters.first else {
+            return "The charge is too high above the ground to dig a crater: an air burst."
+        }
+        return crater.summary + (craters.count > 1 ? ", and \(craters.count - 1) more" : "")
+            + ". Approximation: Cooper's scaling, with a scatter of a third; the depth a rule of thumb. "
+            + "Drawn on the ground when the run ends."
+    }
+
     var body: some View {
         Section("Terrain") {
             Picker("Ground", selection: shape) {
@@ -57,15 +102,45 @@ struct TerrainSection: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Picker("Debris lands on", selection: $model.settings.softGround) {
-                Text("Rigid ground").tag(false)
-                Text("Soil").tag(true)
+            Picker("Made of", selection: material) {
+                Text("Rigid ground").tag(Material.rigid)
+                Text("Soil under debris only").tag(Material.debrisOnly)
+                Divider()
+                ForEach(GroundType.allCases.filter { $0 != .rigid }, id: \.self) {
+                    Text($0.title).tag(Material.type($0))
+                }
             }
             .help(
-                "Where a structure's debris falls. Rigid ground stops it dead, which shatters falling brickwork; "
-                    + "soil gives under it, a bed of the stiffness below. Compared once, on brick walls in the open "
-                    + "(Keys): their debris lay a third nearer on soil, still farther out than measured. Not for "
-                    + "paving or a slab. The air sees the ground as hard either way.")
+                "What the ground is. Rigid ground reflects the whole blast, digs no crater and stops debris dead, "
+                    + "which shatters falling brickwork. Soil under debris only gives under a structure's debris, a "
+                    + "bed of the stiffness below, and nothing else. Earth or rock also digs each charge a crater, "
+                    + "estimated by Cooper's scaling and drawn after the run, and leaves the air less of a charge "
+                    + "near it: 0.9 of one on the surface. The crater forms after the blast has gone, so the "
+                    + "air keeps the ground as it was.")
+            if model.settings.ground != .rigid {
+                Toggle(
+                    "Water table near the surface",
+                    isOn: Binding(
+                        get: { model.settings.waterTable != nil },
+                        set: { model.settings.waterTable = $0 ? (model.settings.waterTable ?? 1) : nil })
+                )
+                .help(
+                    "Below a water table a crater's walls slump to 10–15° and it comes out far shallower: the "
+                        + "500-ton craters at Suffield and Beirut's were a fifth to a third as deep as dry ground "
+                        + "gives. On by default for saturated soil, with the water at the surface.")
+                if let table = model.settings.waterTable {
+                    LabeledSlider(
+                        title: "Water table",
+                        value: Binding(
+                            get: { Double(table) },
+                            set: { model.settings.waterTable = Float(($0 * 2).rounded() / 2) }),
+                        range: 0...20, text: String(format: "%.1f m down", table))
+                }
+                Text(craterCaption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if model.settings.softGround {
                 LabeledSlider(
                     title: "Soil stiffness",

@@ -86,7 +86,7 @@ struct EnvelopeInspectionTests {
                 && model.envelopeExposure.allSatisfy { $0.elapsedS == 0 && $0.surfacePositiveImpulseNS == 0 })
     }
 
-    @Test("Mixed scenes keep running and explain why envelope surface inspection is unavailable")
+    @Test("Mixed scenes record their envelopes' surfaces beside the moving structures")
     func mixed() async throws {
         var scene = try StreetInteractionStudy.make(.pair)
         try scene.useEnvelope(id: scene.structuralObjects[0].id)
@@ -94,8 +94,8 @@ struct EnvelopeInspectionTests {
         document.runSettings?.resolution = "coarse"
         let model = SimulationModel(document: document)
         try await wait { model.experimentIsReady }
-        #expect(model.errorMessage == nil && model.envelopeExposure.isEmpty)
-        #expect(model.envelopeExposureStatus.contains("deformable"))
+        #expect(model.errorMessage == nil && model.envelopeExposureStatus.isEmpty)
+        #expect(model.envelopeExposure.map(\.id) == scene.envelopeObjects.map(\.id))
     }
 
     @Test("Headless export keeps summaries in a project and writes complete face records")
@@ -137,6 +137,22 @@ struct EnvelopeInspectionTests {
                 == result.run.envelopeExposure)
         #expect(throws: ProjectFileError.self) {
             try HeadlessRun.Options.parse([input.path, "--envelope-results", surfaces.path])
+        }
+        // A window from arrival: each history starts where its air first moved.
+        let later = folder.appending(path: "from-arrival.json")
+        let windowed = try HeadlessRun.Options.parse([
+            input.path, "--envelope-histories", later.path, "--envelope-window", "0.004",
+        ])
+        #expect(windowed.envelopeWindow == 0.004)
+        _ = try await HeadlessRun.execute(windowed)
+        let arrived = try JSONDecoder().decode(
+            [EnvelopeComponentHistory].self, from: Data(contentsOf: later))
+        #expect(arrived.count == 4 && arrived.allSatisfy { $0.windowStartS != nil })
+        #expect(arrived.allSatisfy { $0.outerImpulsePaS.count <= 41 })
+        #expect(throws: ProjectFileError.self) {
+            try HeadlessRun.Options.parse([
+                input.path, "--envelope-histories", histories.path, "--envelope-window", "0",
+            ])
         }
         var air = try document()
         air.scenario = ScenarioPreset.openGround.scenario

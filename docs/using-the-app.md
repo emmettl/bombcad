@@ -3,6 +3,8 @@
 How to build BombCAD, drive the app, and run it from the command line. The
 [README](../README.md) gives the overview; the model documents give the physics.
 
+## Building
+
 To build from source: macOS 15 or later, Swift 6.4 and a Metal GPU.
 
 ```bash
@@ -19,6 +21,8 @@ and bundles it with the app; later builds verify and reuse the cache. When using
 run `python3 Scripts/prepare-ifc-converter.py` first to enable IFC import.
 [Releasing](releasing.md) describes signed, notarized builds for other Macs.
 
+## The view and the sidebar
+
 In the view: drag or two-finger scroll to orbit, shift-drag or right-drag to pan, pinch or mouse
 wheel to zoom (out to three times the domain's longest side). Space runs and pauses, ⌘R resets.
 
@@ -27,12 +31,15 @@ The layouts are open ground, a single building, a street canyon and a courtyard 
 a cantilever wall, a single-storey building, the same building behind a blast wall, a two-storey
 frame (bare, infilled with masonry, or glazed with glass panes), a three-storey clad building,
 an eight-storey frame and a twelve-storey tower with a concrete core (both shells and beams,
-for collapse over several seconds), an
+for collapse over several seconds), a [twelve-storey office of steel and
+glass](office-tower.md) with a curtain wall and two neighbours across the street, an
 open-sided car park with a charge inside, three buildings across a street (each its own
 structure, one sheltered behind another), an underpass, a column close to a charge, a
 two-storey house of concrete blockwork meshed with shells, a blockwork boundary wall meshed
 block by block with its mortar joints, and the internal-explosion test
-(deformable). The close-in column wants the fine grid: on coarser air it
+(deformable); the car park with parked cars and a furnished room, whose objects slide and tip
+([freestanding objects](freestanding-objects.md)); and two gas explosions, a vented room and a
+[vapour cloud explosion at a process plant](process-plant-explosion.md) beside its buildings. The close-in column wants the fine grid: on coarser air it
 is less than a cell or two across. The sidebar shows a structure's deflection now and the
 largest it has reached.
 **Edit layout** adds, moves, resizes and removes rigid blocks, deformable walls, openings and
@@ -46,6 +53,57 @@ reopen without the original OBJ/STL files. Named projects autosave; each
 project has its own window, and closing an edited untitled project asks whether to save.
 BombCAD → Settings (⌘,) sets defaults for new projects and playback windows.
 
+## Settings in the Run tab
+
+The Run tab's sections, from the top: Scenario (the layout), Domain, Advisor, Imported geometry,
+Source, Charge (or Gas cloud), Vent panels, Terrain, Map buildings, Fragments, Thermal radiation,
+Rise and cloud, Ground shock, Building surface exposure, Envelope building damage, Structure,
+Standing of results, Playback, Display and Solver. The settings added or changed since 0.3.0:
+
+- **Charge ▸ Afterburning and hot air** is on by default since 15 October 2026: the recommended
+  air, 1.3 to 1.85 times the cost of the ideal gas. Off, the incident impulse reads 13–22% low.
+  Settings ▸ New project defaults sets it for new projects. The open faces are far-field either
+  way. See [the air-blast model](air-blast-model.md#afterburning).
+- **Charge ▸ Sharpen shocks ▸ Adaptive substeps** lets each refined level take only the substeps
+  its own fastest wave needs. It is off by default, and the Advisor turns it on where it pays.
+  Refined runs then go 1.19 to 1.33 times faster on open ground and 1.07 times in a street, and
+  peaks move 1–2.5% up, towards Kingery–Bulmash. See
+  [refining near the shock](air-blast-model.md#refining-near-the-shock).
+- **Charge ▸ Outline structures by overlap**, shown when there is a structure, counts each element
+  into the air's cells by its overlap, the default since 16 October 2026. Off counts each at its
+  centre, as before; saved runs record which. See
+  [coupling to the air](structural-model.md#coupling-to-the-air).
+- **Terrain ▸ Cut cells along its slopes**, shown over terrain, cuts the surface through the air's
+  cells so that a slope reflects as a slope. It is on by default, and under a gas deflagration too
+  since 17 October 2026. See [cut cells](terrain.md#cut-cells).
+- **Terrain ▸ Made of** is what the ground is:
+  - rigid ground, the default;
+  - **soil under debris only**, a bed of the **Soil stiffness** set below it (50 MN/m³ by
+    default) for a structure's debris falling on earth
+    ([on the ground](structural-model.md#on-the-ground));
+  - one of eight earth and rock types. These also dig each charge a crater, estimated and drawn
+    when the run ends, and leave the air 0.9 of a charge on the surface.
+
+  Under earth or rock, **Water table near the surface** and its depth keep a crater shallow; it
+  is on, at the surface, for saturated soil. See [choosing the ground](cratering.md#choosing-the-ground).
+- **Fragments ▸ Cased charge** flies a casing's fragments and tracers through the blast.
+  **Casing metal** (steel or cast iron) and **Casing dimensions** (wall thickness and inside
+  diameter) make the fragments' masses follow Mott's scaling, and their standing an approximation
+  rather than illustrative. See [fragments](fragments.md#in-the-app).
+- **Envelope building damage** judges each exposure-only building's walls, roofs and panes as the
+  run goes. Its list gives each building's level, panes broken, freestanding walls and the pressure
+  let inside; **Show damage in the view** colours the buildings by it, and **Export damage…** writes
+  it as JSON. See [one-way damage](building-envelopes.md#one-way-damage-single-degree-of-freedom).
+
+In **Edit layout**, the **Exposure-only buildings** section sets each envelope's **Walls**:
+reinforced concrete, unreinforced masonry or reinforced blockwork. Under **Construction** it sets
+the wall's thickness, its bars each way and whether in both faces, their cover and yield, the
+concrete's or masonry's strength, whether blockwork is fully grouted, and a freestanding wall's
+cap. These are read from IFC material layers or OpenStreetMap's `building:material` where those
+give them, and otherwise assumed.
+
+## Large scenes and the advisor
+
 **Large scenes.** The charge's slider runs from 1 kg to 10 kt. The **Grid** offers, beside the
 0.5, 0.25 and 0.125 m presets, cells scaled to a large charge (0.2, 0.1 and 0.05 m/kg^(1/3)), and
 **Cell size** takes any size from 0.01 to 200 m. **Domain** sets the air's extent from its origin,
@@ -57,10 +115,7 @@ Line** lays gauges outward from the charge at the Kingery–Bulmash scaled dista
 64 gauges are recorded. The Thermal section sets how far apart its ground receivers stand, at
 most 250,000 of them. See [Large scenes](large-scenes.md) for which grid to choose.
 Under Sharpen shocks, **Follow the shock** sets how weak a shock the refined air still follows
-(above 20, 5 or 1 kPa). Under Terrain, **Debris lands on** chooses the rigid ground (the default)
-or soil, a bed of the stiffness set below it (50 MN/m³, medium dense sand, by default), for a
-structure's debris falling on earth; `BombCAD run --ground soil` does the same for one run (see
-[On the ground](structural-model.md#on-the-ground)).
+(above 20, 5 or 1 kPa).
 
 **Advisor.** In the Run tab, choose a target (peaks, impulse or deflection within a percentage,
 or a run under so many minutes) and **Suggest**: the advisor weighs grids, refinement and
@@ -69,6 +124,8 @@ the measured throughput, and offers the cheapest settings that meet the target, 
 the time, with what it could not meet; **Apply** takes them. `BombCAD run --advise peak:20%` does
 the same from the command line. See [Performance](performance.md#choosing-settings).
 The More menu offers Save As and Import Layout JSON. Export Layout JSON saves just the scene. See [Save files](save-files.md).
+
+## Importing models
 
 **Import Model…** reads watertight OBJ/STL geometry and IFC buildings. Confirm source units, up axis and
 placement, then prepare a preview of the actual occupied simulation volumes. Imports can be
@@ -264,6 +321,8 @@ A spatial hierarchy limits intersection checking to overlapping triangle bounds,
 validation limits must be simplified; they are not imported with incomplete checks. A scanline-work budget also limits
 expensive previews.
 
+## Results, tests and the command line
+
 Gauge and deflection histories export
 as CSV from beside the chart.
 
@@ -295,6 +354,29 @@ in the app or with `BombCAD sweep`; see
 `~/.config/bombcad/remote.json`, `BombCAD sweep` and `BombCAD ensemble` take it whenever it is
 free, without `--worker`, and `make check-anywhere` runs the checks on whichever Mac is quieter;
 see [checks on the mini](continuous-integration.md#checks-on-the-mini-instead-of-this-mac).
+
+`BombCAD run`'s options, in brief ([headless runs](run-comparison.md#headless-runs) gives them in
+full):
+
+| Option | Does |
+|---|---|
+| `--name`, `--out <new.bombcad>`, `--csv <file>` | Names the kept run; writes a copy of the project with it, or its histories as CSV |
+| `--resolution`, `--mass`, `--duration` | Changes the grid, the charge or the simulated time, as a sweep case would |
+| `--ground rigid\|soil\|<MN/m³>\|<type>`, `--water-table <m>\|deep` | What the debris lands on; a ground type also digs the crater and takes energy from the air ([cratering](cratering.md)) |
+| `--advise peak:20%\|…` | Prints the cheapest settings that meet a target, and does not run |
+| `--usd`, `--vdb`, `--vdb-fields`, `--frame-interval` | The scene and the air over time for rendering ([USD export](usd-export.md)) |
+| `--fragments [--casing]`, `--thermal`, `--cloud [--sounding]`, `--ground-shock` | The effects beside the blast, each with its own `--…-results` file; `--casing` gives the casing's dimensions and metal |
+| `--envelope-results`, `--envelope-histories`, `--envelope-damage` | Envelope buildings' surface records, pressure histories and damage, as JSON |
+| `--consumer`, `--worker` | Where the effects beside the blast run: here, on another Mac, or by cost |
+| `--standing <file>` | Writes each result's standing as JSON |
+
+A headless run takes the air's settings from the project, so afterburning, adaptive substeps, the
+outline by overlap and cut cells have no options of their own: set them in the app and save.
+
+## Research drivers
+
+The rest of this page is for developers: the studies behind moving solids in the air, run from
+`rigidboxdemo`. Nothing here is needed to use the app.
 
 For the isolated rigid-object mechanics demo, run `swift run rigidboxdemo`, then open
 `.build/rigid-box-demo.html` in a browser. The self-contained replay shows resting, friction

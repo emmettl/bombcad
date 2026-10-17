@@ -129,6 +129,68 @@ Supports and loading:
   ground](#on-the-ground));
 - for running without the air, a pressure history can be applied to one outer face.
 
+### Settling under its own weight
+
+A structure is brought to rest under its own weight before the blast reaches it
+(`SolverConfiguration.settlesStructures`, on by default since 17 October 2026, and the app's
+"Settle under own weight"). Before then each run gave a structure its weight as it
+started. It sagged about twice its static deflection and was still swinging when the shock
+arrived, and that motion was added to whatever the blast did. The twelve-storey tower swung 9 mm
+off its rest shape within 200 ms. Yao's 4 × 5 m slab swung 1.1 mm within 20 ms of the shock, three
+times what its smallest test measured.
+
+How it works (`BlastSolver.settleStructures()`):
+- **When:** before the first step: the app before its first sample, the harnesses after their
+  supports are set, any other run in its first batch.
+- **How:** each body runs alone, without the air, damped in proportion to its mass at 50/s. It
+  runs at its own stable step, in 5 ms parts, until its mean (mass-weighted RMS) speed has fallen
+  to 1% of the largest on the way, after at least 20 ms.
+- **After:** every node is stopped where it is and the body's clock goes back to zero. Its
+  deformation, stresses and any cracking from its own weight stay.
+- **Falling bodies:** a body that is still moving after 1 s, such as one falling or not standing,
+  is put back undeformed. It then starts as it did before.
+
+It is left out, so that the run is as before, bit for bit:
+- with the option off;
+- for a body without gravity, as the harnesses that turn gravity off have;
+- for a body with a node whose motion the scene sets, such as a struck beam's;
+- for a body no longer as it was loaded: moved, set moving or broken before the first step, as
+  tests and harnesses that start from a state of their own do.
+
+A harness that measures displacements measures them from the settled shape, as a test's gauges
+were zeroed on the structure standing under its own weight. Mendonça's harness keeps its blind
+prediction's start unless `--settle` is given. `blastbench --no-settle` turns settling off in any
+bench (`BOMBCAD_SETTLE=off`).
+
+`blastbench settle --scene office|tower|slab` measures how still each structure is when the shock
+reaches its nearest point (Kingery–Bulmash), and over a window after it. It runs each body alone,
+since until then nothing but its weight loads it:
+
+| Structure | Static sag, largest | Settling: its time, here | Off rest over the window, from rest | Settled |
+|---|---|---|---|---|
+| Office tower (`--scene office`), 200 ms after the shock | 7.2 mm | 205 ms, 84 s | 3.1 mm RMS, 12.9 mm largest | 0.07 mm, 0.13 mm |
+| Twelve-storey tower (`tower`), 200 ms | 7.3 mm | 216 ms, 15 s | 4.2 mm, 9.4 mm | 0.32 mm, 0.59 mm |
+| Yao's 4 × 5 m slab, 37.5 mm elements (`slab`), 20 ms | 1.1 mm | 150 ms, 12 s | 0.71 mm, 1.1 mm | 0.03 mm, 0.05 mm |
+
+The times were taken with three other GPU jobs running. Settling costs about 2.5% of the office
+tower's 55 minutes for 3 s, and less in a run on a finer air grid. What is left after settling, 2–8% of the
+sag, is what stopping at 1% of the largest speed leaves.
+
+The comparisons that carry their weight hardly move with it, since their blast responses are
+many times their sag (`--no-settle` against the default, 17 October 2026):
+
+| Comparison | Settled | From rest, as before |
+|---|---|---|
+| Wu S5, D5: peak, residual (mm) | 2.3 / 0.2, 2.3 / −0.1 | 2.3 / 0.3, 2.4 / −0.4 |
+| Chiquito S1–S3, P1, P7: left (peak) (mm) | 4 (16), 3 (14), 112 (155) | 4 (17), 4 (15), 110 (156) |
+| The chamber's roof edge: peak / left (mm) | 50 / 28 | 49 / 27 |
+| Mendonça slab 2 (`--settle`, 60 ms): peak (mm) | 3.69 | 3.77 |
+| Yao T1 with its weight (`--weight`): centre's peak, within 2 ms (mm) | 3.34, 0.96 | weightless: 3.29, 0.96 |
+
+None moves by more than 2 mm or 4%, and none changes a verdict. Hupfauf's contact slabs, which
+run for 3 ms, sag 0.04 mm in that time. Alsubaei's and Keys's walls stand upright, so their
+weight acts along them. Neither was re-run.
+
 ## Base connections
 
 A clamped base is an assumption: the joint between a wall and its footing, and the footing in
@@ -982,6 +1044,19 @@ onto the ground (Keys's walls; see [Validation](validation.md#brick-walls-debris
 fiftieth of the friction it should have and crept on at 0.3 to 0.7 m/s for seconds, and a slab
 of the brickwork thrown along the ground at 1 m/s was still at 0.5 m/s after 0.65 s.
 
+Each node is put back exactly on the plane, so an element whose eight nodes all reach the ground
+is flat to the last bit: its volume is zero and its shape-function gradients are infinite. An
+intact element is removed long before, below a quarter of its volume, but a bare element of
+structural concrete (its bars alone) is not (see
+[crushed bare elements](concrete-model.md#crushed-bare-elements-two-options-neither-a-default)),
+and one flattened there gave its nodes NaN forces, which spread through contact and the joints to
+the whole body. That is what blew up the large-panel block under 1,000 kg at 8 m at about 0.18 s:
+the ground-floor flank wall, thrown 2 to 4 m, dragged its bottom row of elements, bare by then,
+along the ground at 20 m/s, and one of them was pressed flat on it. (It did not happen by 0.2 s
+with node contact off, nor with the ground off.) An element
+flattened to zero volume is now removed whatever would keep it, bars and all. No run that stayed
+finite is changed: such an element could only have given infinite forces.
+
 `StructureSolver.groundFrictionCoefficient` (an option, zero by default) replaces the decay by
 Coulomb friction: each step the sliding speed is cut by μ times the speed the ground took off
 the node's fall, down to nothing. Summed over the steps a node bears on the ground, the
@@ -1002,11 +1077,25 @@ removed in 0.1 s); on a 5×10⁷ Pa/m bed WR1A loses under half as many (799 aga
 lands in about 20 pieces over 1 kg rather than 37. The modulus is the soil's,
 not the brickwork's, so the option fits debris falling on earth, not on paving or a slab. The
 air sees the ground as hard either way. See [Validation](validation.md#brick-walls-debris). In
-the app it is Run ▸ Terrain ▸ Debris lands on ▸ Soil (`SolverConfiguration.groundStiffness`,
+the app it is Run ▸ Terrain ▸ Made of ▸ Soil under debris only, or any earth or rock type (`SolverConfiguration.groundStiffness`,
 saved with the project, `--ground` for a headless run), 10–150 MN/m³ from loose sand to dense
 sand (50 by default, as a footing's soil), on solid elements only; the rigid ground stays the
 default, the one comparison (Keys's walls in the open, one run each) narrowing the debris by a
 third but not to what was measured. The standing names it ("Soft ground under debris").
+
+### Debris as a hazard
+
+With rubble particles on, a headless run flies the rubble on from where
+it ends, in still air as the [fragments](fragments.md#hazard) are, each piece a tumbling cube of
+its own volume, until it lands, and judges the landings against the hazardous-fragment criteria
+(79 J; one per 55.7 m²): the summary gives the pieces, their mass, the hardest landing and the
+hazard distance, `--debris-results` writes them as JSON and the USD scene rings the distance
+(`/Scene/DebrisHazard`). Pieces slower than 1 m/s at the end lie where they are, with the energy
+they then had, so debris that landed during the run is counted but not how hard it landed: the
+hazard near the structure is undercounted. Debris from structures is thrown short of the tests
+([Hupfauf's slabs](validation.md#slabs-under-contact-charges),
+[Keys's walls](validation.md#brick-walls-debris)), so
+its hazard distance is on the unsafe side. The app does not yet make rubble.
 
 ## Verification
 

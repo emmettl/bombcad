@@ -143,18 +143,34 @@ Supports are under [structures and supports](#structures-and-supports) above.
 One way and separable ([distributed computing](distributed-computing.md#the-long-term-visions-effects)).
 
 - **Done, an approximation:** [fragments](fragments.md) from a casing's dimensions, Mott's
-  masses within 1.4 of Cooper's counted bomb, measured drag (17 October); hazard outputs next.
+  masses within 1.4 of Cooper's counted bomb, measured drag; their [hazard](fragments.md#hazard)
+  distance by DDESB's criterion, debris's alike, and glazing graded by GSA and ASTM F1642; what they
+  strike judged by UFC 3-340-02 and THOR, panes holed before the blast (17 October).
 - **Done, illustrative:** the fireball's
   [thermal radiation](thermal-radiation.md) and [surface heating](surface-heating.md); its
   [rise and cloud](fireball-rise.md); [ground shock](ground-shock.md), as the manuals'
-  estimate or a layered soil column; [gas deflagrations](deflagration.md), started: FM Global's
+  estimate or a layered soil column, or an elastic half-space
+  about the charge, against one measured 1 t burst 15 to 80 times too high in the vertical near
+  the outrunning limit, the half-space's horizontal within 1.5 times at 21 m; [gas deflagrations](deflagration.md), started: FM Global's
   vented tests within 0.4–1.6 of the measured peaks, with sub-grid turbulence and the measured
   cellular instability.
 - **Now:** why the deflagration's flame stalls when lit in the middle (0.4–0.6 there), a young
   flame's speed on coarse cells, and a thinner front, without which K_G cannot converge.
 - **Paused:** the fireball's radiation, about 21% radiated against Dial Pack's 5.1%; if it
   resumes, flame sheets round a fuel-rich core and the missing hot shock layer.
-- **Next:** the cloud's top after two minutes; a comparison with measured ground motion.
+- **Cratering, stage 1, done (approximation for the diameter):** [an empirical crater](cratering.md)
+  by Cooper's scaling for each soil and height of burst, with Kinney and Graham's scatter; it
+  forms after the blast, so it is reported, drawn and exported when the run ends and does not
+  act on the air; on earth or rock a charge keeps 0.9 of its mass for the air, the ground taking
+  the rest (a ground setting, tied to the debris's soft ground). Five of six measured craters
+  within a third, the 500-ton shots at Suffield among them; with a water-table setting (walls
+  slumped to 10–15°, Glasstone and Dolan), the wet sites' depths within 0.84–1.41.
+- **Cratering, stage 2, next:** a crater coupled to the blast near the charge, with soil that
+  flows, ejecta and the shock driven into the ground, for close-in work. It starts with a
+  ContinuumKit and Edgerton check under the sharing rule: neither had a cratering or soil-flow
+  model on 17 October 2026, but Edgerton's volume solver and cohesive cracks overlap.
+- **Next:** the cloud's top after two minutes; ground motion measured where the blast is
+  superseismic (Prairie Flat, Pre-Dice Throw II), and the motion ahead of an outrunning blast.
 - **Blocked:** measurements wanted in [data wanted](data-wanted.md) 3a (ground shock), 3d (a
   cloud's growth), 3e (fireball radiation) and 3f (a vented deflagration).
 

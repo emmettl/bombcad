@@ -12,14 +12,17 @@ enum HeadlessRun {
         Usage: BombCAD run <project.bombcad | layout.json> [--name <name>] [--out <new.bombcad>]
                            [--csv <file.csv>] [--resolution coarse|medium|fine|<metres>] [--mass <kg TNT>]
                            [--advise peak:20%|impulse:15%|deflection:30%|time:10m]
-                           [--duration <seconds>] [--ground rigid|soil|<MN/m³>] [--usd <scene.usda>] [--vdb <folder>
+                           [--duration <seconds>] [--ground rigid|soil|<MN/m³>|<ground type>] [--water-table <m>|deep]
+                           [--usd <scene.usda>] [--vdb <folder>
                            [--vdb-fields overpressure,shock,peak,impulse]] [--frame-interval <ms>]
-                           [--fragments <spec.json> [--fragment-results <file.json>]]
+                           [--fragments <spec.json> [--casing <wall m>,<inside diameter m>[,steel|castIron]]
+                            [--fragment-results <file.json>]]
                            [--thermal <spec.json> [--thermal-results <file.json>]]
                            [--cloud <spec.json> [--sounding <sounding.csv>] [--cloud-results <file.json>]]
                            [--ground-shock <spec.json> [--ground-results <file.json>]]
                            [--envelope-results <file.json>] [--envelope-histories <file.json>] [--envelope-damage <file.json>]
-                           [--standing <file.json>]
+                           [--envelope-window <seconds>]
+                           [--debris-results <file.json>] [--standing <file.json>]
                            [--consumer <ssh host> | auto | fragments=<where>,thermal=<where>,ground=<where>]
                            [--worker <ssh host>]…
 
@@ -30,13 +33,19 @@ enum HeadlessRun {
         milliseconds of simulated time (1 by default); --vdb-fields picks the volumes' grids,
         overpressure and shock unless it says otherwise. --fragments flies a cased charge's fragments
         and tracers through the blast, one way, frame by frame; they go into the USD scene and, with
-        --fragment-results, a JSON file. --envelope-results writes individual stationary-building
-        surface records as JSON; scenes with only envelopes collect compact surface summaries in kept
+        --fragment-results, a JSON file. --casing gives the casing's wall thickness and inside
+        diameter in metres, and its metal, so that the fragments follow Mott's scaling. --envelope-results writes individual stationary-building
+        surface records as JSON; scenes with envelopes collect compact surface summaries in kept
         runs and CSV too. --envelope-histories writes each building component's pressure history
         (wall, slab and roof panels, panes, façade strips; both sides, 0.1 ms bins) as JSON, for a
         damage model. --envelope-damage judges each envelope building one way from those histories
         (concrete panels' levels between fixed and simply supported edges, panes broken and when,
-        the inside through them) and writes it as JSON; each building's line is printed too.
+        the inside through them, the glass's hazard by GSA's conditions and ASTM F1642's ratings)
+        and writes it as JSON; each building's line is printed too. A structure making rubble
+        (rubbleParticles) has its debris flown on to where it lands and judged against the
+        hazardous-fragment criteria, as fragments are; --debris-results writes it as JSON.
+        --envelope-window starts each component's history when the air at it first moves and keeps
+        that many seconds of it, not the whole run: across a district, the bins stay fine.
         --thermal reckons the fireball's thermal radiation on the ground and the scene's faces,
         frame by frame; the receivers go into the USD scene and, with --thermal-results, a JSON
         file. --cloud hands the hot gas left at the end of the run over to a model of the
@@ -56,7 +65,11 @@ enum HeadlessRun {
         within a time, by the standing's error bands and the cost model, and does not run.
         --resolution and --mass change the inputs as a sweep case would, and --ground what the
         structures' debris lands on: the hard ground, or soil (50 MN/m³ unless a subgrade modulus is
-        given, 10 to 150); the project itself is never modified. The summary ends with the standing of each result (docs/standing.md), which
+        given, 10 to 150). A ground type (rock, soilOverSandstone, playa, alluvium, clay,
+        glacialSoil, clayShale, saturated) also digs each charge's crater, estimated and drawn after
+        the run, and leaves the air less of a charge near it; --water-table sets how far down the
+        water table is, which keeps a crater shallow (at the surface for saturated soil unless
+        given). The project itself is never modified. The summary ends with the standing of each result (docs/standing.md), which
         --standing writes as JSON and the USD scene, the volumes and the results files carry too.
         """
 
@@ -71,6 +84,10 @@ enum HeadlessRun {
         /// With `--ground`, what the structures' debris lands on: soil of this subgrade modulus
         /// (Pa/m), or, as `.some(nil)`, the hard ground.
         var ground: Float??
+        /// With `--ground` naming a type, what the ground is made of (with its debris modulus); with
+        /// `--water-table`, metres down to the water table, or, as `.some(nil)`, deep.
+        var groundType: GroundType?
+        var waterTable: Float??
         var usd: URL?
         /// A new folder for the air's volumes, one OpenVDB file a frame, and their grids.
         var vdb: URL?
@@ -96,6 +113,11 @@ enum HeadlessRun {
         /// Where each envelope component's pressure history goes, as JSON.
         var envelopeHistories: URL?
         var envelopeDamage: URL?
+        /// Seconds of each component's history kept from when its air first moves; nil for the
+        /// whole run from t = 0.
+        var envelopeWindow: Double?
+        /// Where the structures' debris landings and their hazard go, as JSON.
+        var debrisResults: URL?
         var groundResults: URL?
         /// Where the standing of the run's results goes, as JSON.
         var standing: URL?
@@ -123,10 +145,10 @@ enum HeadlessRun {
                         [
                             "name", "out", "csv", "resolution", "mass", "duration", "usd", "vdb",
                             "vdb-fields", "fragments",
-                            "consumer", "fragment-results", "thermal", "thermal-results", "cloud",
+                            "consumer", "fragment-results", "casing", "thermal", "thermal-results", "cloud",
                             "cloud-results", "sounding", "ground-shock", "ground-results", "envelope-results",
-                            "envelope-histories", "envelope-damage",
-                            "frame-interval", "worker", "standing", "advise", "ground",
+                            "envelope-histories", "envelope-damage", "envelope-window", "debris-results",
+                            "frame-interval", "worker", "standing", "advise", "ground", "water-table",
                         ]
                         .contains(key)
                     else {
@@ -151,6 +173,13 @@ enum HeadlessRun {
             options.envelopeResults = values["envelope-results"].map { URL(filePath: $0) }
             options.envelopeHistories = values["envelope-histories"].map { URL(filePath: $0) }
             options.envelopeDamage = values["envelope-damage"].map { URL(filePath: $0) }
+            if let text = values["envelope-window"] {
+                guard let seconds = Double(text), seconds > 0, seconds.isFinite else {
+                    throw ProjectFileError.invalid("--envelope-window takes a time in seconds above 0.")
+                }
+                options.envelopeWindow = seconds
+            }
+            options.debrisResults = values["debris-results"].map { URL(filePath: $0) }
             options.standing = values["standing"].map { URL(filePath: $0) }
             if let text = values["advise"] {
                 guard let target = AdvisorTarget(text: text) else {
@@ -172,16 +201,33 @@ enum HeadlessRun {
             }
             if let text = values["ground"] {
                 switch text {
-                case "rigid": options.ground = .some(nil)
+                case "rigid":
+                    options.ground = .some(nil)
+                    options.groundType = .rigid
                 case "soil": options.ground = .some(SolverConfiguration.soilSubgradeModulus)
+                case let name where GroundType(rawValue: name) != nil:
+                    let type = GroundType(rawValue: name)!
+                    options.groundType = type
+                    options.ground = .some(type.debrisModulus)
                 default:
                     guard let modulus = Float(text).map({ $0 * 1e6 }),
                         SolverConfiguration.soilSubgradeRange.contains(modulus)
                     else {
                         throw ProjectFileError.invalid(
-                            "--ground takes rigid, soil or a subgrade modulus from 10 to 150 MN/m³.")
+                            "--ground takes rigid, soil, a subgrade modulus from 10 to 150 MN/m³, or a ground type: "
+                                + GroundType.allCases.map(\.rawValue).joined(separator: ", ") + ".")
                     }
                     options.ground = .some(modulus)
+                }
+            }
+            if let text = values["water-table"] {
+                if text == "deep" {
+                    options.waterTable = .some(nil)
+                } else {
+                    guard let depth = Float(text), depth.isFinite, depth >= 0, depth <= 1000 else {
+                        throw ProjectFileError.invalid("--water-table takes deep or a depth in metres.")
+                    }
+                    options.waterTable = .some(depth)
                 }
             }
             if let text = values["duration"] {
@@ -207,6 +253,30 @@ enum HeadlessRun {
             if let path = values["fragments"] {
                 let spec = try JSONDecoder().decode(
                     FragmentSpec.self, from: Data(contentsOf: URL(filePath: path)))
+                try spec.validate()
+                options.fragments = spec
+            }
+            if let text = values["casing"] {
+                guard var spec = options.fragments else {
+                    throw ProjectFileError.invalid("--casing needs --fragments.")
+                }
+                let parts = text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+                guard (2...3).contains(parts.count), let thickness = Float(parts[0]),
+                    let diameter = Float(parts[1]),
+                    thickness.isFinite, diameter.isFinite, thickness > 0, diameter > 0
+                else {
+                    throw ProjectFileError.invalid(
+                        "--casing takes the wall thickness and inside diameter in metres, and optionally steel or castIron."
+                    )
+                }
+                spec.wallThickness = thickness
+                spec.innerDiameter = diameter
+                if parts.count == 3 {
+                    guard let metal = CasingMetal(rawValue: parts[2]) else {
+                        throw ProjectFileError.invalid("--casing's metal is steel or castIron.")
+                    }
+                    spec.metal = metal
+                }
                 try spec.validate()
                 options.fragments = spec
             }
@@ -317,7 +387,7 @@ enum HeadlessRun {
             for url in [
                 options.out, options.csv, options.usd, options.vdb, options.fragmentResults,
                 options.thermalResults, options.cloudResults, options.groundResults, options.envelopeResults,
-                options.envelopeHistories, options.envelopeDamage, options.standing,
+                options.envelopeHistories, options.envelopeDamage, options.debrisResults, options.standing,
             ]
             .compactMap({ $0 })
             where FileManager.default.fileExists(atPath: url.path) {
@@ -353,6 +423,14 @@ enum HeadlessRun {
         if let ground = options.ground {
             inputs.settings.groundStiffness = ground
         }
+        if let type = options.groundType {
+            inputs.settings.ground = type == .rigid ? nil : type
+            inputs.settings.waterTable = type.typicalWaterTable
+        }
+        if let table = options.waterTable {
+            inputs.settings.waterTable = inputs.settings.ground == nil ? nil : table
+        }
+
         try inputs.validate()
         return inputs
     }
@@ -446,14 +524,19 @@ enum HeadlessRun {
         let volumeMetadata = [
             ("bombcad_standing", standing.compact), ("bombcad_standing_table", standing.table),
         ]
+        if options.debrisResults != nil,
+            !inputs.scenario.structuralObjects.contains(where: { $0.structure?.rubbleParticles == true })
+        {
+            throw ProjectFileError.invalid(
+                "--debris-results needs a structure that makes rubble (rubbleParticles).")
+        }
         for (option, asked) in [
             ("--envelope-results", options.envelopeResults),
             ("--envelope-histories", options.envelopeHistories),
             ("--envelope-damage", options.envelopeDamage),
         ] where asked != nil {
-            guard !inputs.scenario.envelopeObjects.isEmpty, inputs.scenario.structuralObjects.isEmpty else {
-                throw ProjectFileError.invalid(
-                    "\(option) requires a scene containing only stationary envelopes.")
+            guard !inputs.scenario.envelopeObjects.isEmpty else {
+                throw ProjectFileError.invalid("\(option) requires a scene with envelope buildings.")
             }
         }
         try options.groundShock?.validate(domain: inputs.scenario.domainSize)
@@ -470,6 +553,8 @@ enum HeadlessRun {
         let model = SimulationModel(document: start, playbackSpeed: .unlimited)
         // A run here flies fragments as `options` says, not as the project's live view does.
         model.fragmentSpec = nil
+        // Its fragments still hole the panes they strike, with glazing vented.
+        model.paneHoleSpec = options.fragments
         model.groundShockSpec = nil
         let interval = Double(options.frameInterval) * SimulationModel.structureSampleInterval
         // Frames fall on the samples every millisecond, where a run with a structure stops anyway,
@@ -485,7 +570,9 @@ enum HeadlessRun {
         model.envelopeHistoriesByDefault = false
         model.envelopeHistoryOptions =
             options.envelopeHistories == nil && options.envelopeDamage == nil
-            ? nil : EnvelopeHistoryOptions(windowS: inputs.settings.duration)
+            ? nil
+            : options.envelopeWindow.map { EnvelopeHistoryOptions(windowS: $0, windowFromArrival: true) }
+                ?? EnvelopeHistoryOptions(windowS: inputs.settings.duration)
         model.applyExperimentInputs(inputs)
         try await waitUntil(model) { model.experimentIsReady }
         if options.envelopeResults != nil || options.envelopeHistories != nil
@@ -527,7 +614,9 @@ enum HeadlessRun {
         if let spec = options.thermal {
             kinds.append(("thermal", .thermal(spec, consumerScene, live: false)))
         }
-        if let spec = options.groundShock { kinds.append(("ground", .groundShock(spec, live: false))) }
+        if let spec = options.groundShock {
+            kinds.append(("ground", .groundShock(spec.settingHalfSpace(from: inputs.scenario), live: false)))
+        }
         if let injected {
             feeds.append(Feed(injected, place: injected is RemoteFrameConsumer ? "on a worker" : "here"))
         }
@@ -718,6 +807,7 @@ enum HeadlessRun {
                     "Tracers", frames: fragments.frames.map { Array($0.dropFirst(count)) },
                     widths: [Float](repeating: 0.1, count: tracers), colour: SIMD3(0.9, 0.9, 0.95))
             }
+            if let hazard = fragments.hazard { scene?.addHazard(hazard, name: "FragmentHazard") }
         }
         if let thermalResult {
             let spacing = min(
@@ -750,6 +840,10 @@ enum HeadlessRun {
             scene?.addCloud(result.frames(), secondsPerFrame: spec.frameInterval)
             cloud = result
         }
+        // The structures' rubble flown on to land, while the scene can still take its ring.
+        let debris = model.debrisResult()
+        if let debris { scene?.addHazard(debris.hazard, name: "DebrisHazard") }
+        scene?.addCraters(inputs.settings.craters(over: inputs.scenario))
         try scene?.finish()
         finished = true
         // The project's own inputs, with the new run among its saved ones.
@@ -757,11 +851,19 @@ enum HeadlessRun {
         let envelopeData = try options.envelopeResults.map { _ in try model.envelopeResultsData() }
         let historyData = try options.envelopeHistories.map { _ in try model.envelopeHistoriesData() }
         if let url = options.envelopeDamage {
+            model.fragmentStrikes = fragments?.impacts.filter { $0.penetration != nil }
             model.refreshEnvelopeDamage()
             try model.envelopeDamageData().write(to: url, options: .withoutOverwriting)
             streams += model.envelopeDamage.map { building in
                 let name = inputs.scenario.object(id: building.id)?.name ?? "Building"
                 return "\(name): " + EnvelopeDamageSection.summary(building)
+            }
+        }
+        if let debris {
+            streams.append(debris.summary)
+            if let url = options.debrisResults {
+                try JSONEncoder().encode(WithStanding(debris, standing[.structuralDamage])).write(
+                    to: url, options: .withoutOverwriting)
             }
         }
         return (
@@ -897,6 +999,9 @@ enum HeadlessRun {
             lines.append(
                 "  Structure: largest deflection \(format(structure.peak, 1)) mm, "
                     + "\(format(structure.failedFraction * 100, 1))% of elements failed")
+        }
+        for crater in run.settings.craters(over: run.scenario) {
+            lines.append("  " + crater.summary)
         }
         return lines.joined(separator: "\n")
     }

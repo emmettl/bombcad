@@ -12,6 +12,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     case threeStorey
     case tallFrame
     case coreTower
+    case officeTower
     case columnCloseIn
     case protectedBuilding
     case glassFacade
@@ -26,6 +27,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     case ventedGasRoom
     case largePanelGas
     case largePanelStreet
+    case processPlantExplosion
 
     public var id: String { rawValue }
 
@@ -42,6 +44,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .threeStorey: "Three-storey building"
         case .tallFrame: "Eight-storey frame"
         case .coreTower: "Twelve-storey tower"
+        case .officeTower: "Twelve-storey office, steel and glass"
         case .columnCloseIn: "Column, close-in"
         case .protectedBuilding: "Wall in front of a building"
         case .glassFacade: "Glass façade"
@@ -56,6 +59,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .ventedGasRoom: "Gas explosion, vented room"
         case .largePanelGas: "Large-panel flats: gas in a corner flat"
         case .largePanelStreet: "Large-panel flats: street charge"
+        case .processPlantExplosion: "Vapour cloud explosion at a process plant"
         }
     }
 
@@ -68,6 +72,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         var result = authoredScenario
         // Presets are reproducible inputs, including those assembled by editing other presets.
         let bodies = result.structuralObjects
+        let envelopes = result.envelopeObjects
         result.objects = result.boxes.enumerated().map {
             SceneObject.legacyBlock($0.element, index: $0.offset)
         }
@@ -77,6 +82,8 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
             if bodies.count > 1 { object.name = body.name }
             result.objects.append(object)
         }
+        // Envelope buildings keep their own identities, which their constructions name.
+        result.objects += envelopes
         return result
     }
 
@@ -490,6 +497,10 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
             // floors joined by breakable connections: see LargePanelBlock. Run for 4 s to see
             // whether the collapse spreads through the joints.
             return LargePanelBlock.scenario(self == .largePanelGas ? .gas : .street, name: title)
+        case .processPlantExplosion:
+            // A vapour cloud explosion beside portable buildings, after Texas City 2005: see
+            // ProcessPlantScene.
+            return ProcessPlantScene.scenario
         case .ventedGasRoom:
             // A room of about FM Global's chamber's size (Bauwens et al. 2008) full of
             // stoichiometric methane, lit in the middle, its 2 x 2 m vent closed by a panel that
@@ -608,6 +619,9 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
                     Gauge("Roof", at: SIMD3(28, 24, top + 0.5)),
                 ],
                 structure: structure)
+
+        case .officeTower:
+            return Self.officeTowerScenario(title: title)
 
         case .threeStorey:
             // A three-storey concrete frame, three bays by two of 6 m, with 250 mm flat slabs and

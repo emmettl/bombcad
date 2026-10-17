@@ -45,7 +45,10 @@ sidebar's **Source** picks a charge or a gas cloud; **Gas cloud** sets the gas, 
 (within its flammability limits), the filled region, the ignition point and the flame's
 acceleration; **Vent panels** adds panels and their release pressures. The built-in layout
 **Gas explosion, vented room** sets one up: a 4.5 × 4.5 × 3 m room of stoichiometric methane lit in
-the middle, its 2 × 2 m vent closed by a panel that releases at 2 kPa. Panels are drawn as blocks
+the middle, its 2 × 2 m vent closed by a panel that releases at 2 kPa. **Vapour cloud explosion at a
+process plant** lights a propane cloud in a congested process area beside a blast-resistant module,
+a cabin and two envelope buildings, its burning velocity raised by a factor fitted to Texas City
+([process plant explosion](process-plant-explosion.md)). Panels are drawn as blocks
 until they release. Gauges and deformable structures work as they do for a charge. Deflagrations
 last hundreds of milliseconds to seconds, so set **Stop after** accordingly, and the pressure scale
 to 3 or 10 kPa.
@@ -508,6 +511,8 @@ speeds are those of the far-field runs; the copying faces' were within 2% inside
 
 ## Future work
 
+- Congestion below the grid, so that an open vapour cloud explosion is predicted rather than fitted:
+  scoped in [a proposal](congestion-proposal.md), not built.
 - Find why a flame lit in the middle of a vented room stalls towards the back wall, where the tests
   and their LES ran at 3 m/s.
 - A young flame that burns at its speed from the start: a sub-grid ignition kernel, carried until

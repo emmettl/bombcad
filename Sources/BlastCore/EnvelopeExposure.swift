@@ -85,11 +85,13 @@ final class EnvelopeExposure {
         let resolved = try Self.resolvedFaces(grid: grid, mask: mask, objects: objects)
         let faces = resolved.faces.map(\.face)
         let owners = resolved.faces.map(\.owner)
-        guard !faces.isEmpty, Set(owners).count == objects.count,
+        // A building with no face on the air (buried in the terrain, or walled in by others) is
+        // kept, with nothing recorded; a district has some.
+        guard !faces.isEmpty,
             let faceBuffer = device.makeBuffer(bytes: faces, length: faces.count * MemoryLayout<Face>.stride),
             let values = device.makeBuffer(length: faces.count * 16, options: .storageModeShared),
             let signed = device.makeBuffer(length: faces.count * 4, options: .storageModeShared)
-        else { throw BlastError.allocationFailed("resolved envelope faces for every owner") }
+        else { throw BlastError.allocationFailed("resolved envelope faces") }
         self.objects = objects
         self.owners = owners
         self.faces = faces
@@ -112,38 +114,65 @@ final class EnvelopeExposure {
             guard let body = object.structure else { throw SceneObjectError.unsupportedRepresentation }
             return try BuildingEnvelope(structure: body)
         }
-        let blocks = geometry.map(\.blocks)
+        // Each block's cells (centre inside, half-open as `Box.contains`), over its own range of
+        // cells rather than every block for every solid cell: a district holds tens of thousands.
+        // Within an owner the first block holding a cell is its block; two owners holding one cell
+        // are in contact.
+        var owned: [Int: (owner: Int, block: Int)] = [:]
+        var shared = Set<Int>()
+        let dx = grid.cellSize
+        for (owner, envelope) in geometry.enumerated() {
+            for (index, block) in envelope.blocks.enumerated() {
+                let low = simd_max(SIMD3<Int>((block.min / dx - 0.5).rounded(.down)) &- 1, .zero)
+                let high = simd_min(
+                    SIMD3<Int>((block.max / dx - 0.5).rounded(.up)) &+ 1,
+                    SIMD3(grid.nx - 1, grid.ny - 1, grid.nz - 1))
+                guard all(low .<= high) else { continue }
+                for k in low.z...high.z {
+                    for j in low.y...high.y {
+                        for i in low.x...high.x {
+                            guard block.contains(grid.cellCentre(i, j, k)) else { continue }
+                            let cell = grid.index(i, j, k)
+                            if let held = owned[cell] {
+                                if held.owner != owner { shared.insert(cell) }
+                                continue
+                            }
+                            owned[cell] = (owner, index)
+                        }
+                    }
+                }
+            }
+        }
+        // The cells standing for each pane are its own, whichever block (if any) holds their centres
+        // (`BuildingEnvelope.paneCells`).
+        for (owner, envelope) in geometry.enumerated() {
+            for pane in envelope.panes.indices {
+                guard let block = envelope.blockSources.firstIndex(of: .pane(pane)) else { continue }
+                for cell in envelope.paneCells(pane, grid: grid) {
+                    owned[cell] = (owner, block)
+                    shared.remove(cell)
+                }
+            }
+        }
+        guard shared.allSatisfy({ mask[$0] == 0 }) else { throw SceneObjectError.interObjectContact }
         var faces: [(face: Face, owner: Int, block: Int)] = []
-        for k in 0..<grid.nz {
-            for j in 0..<grid.ny {
-                for i in 0..<grid.nx {
-                    let cell = grid.index(i, j, k)
-                    guard mask[cell] != 0 else { continue }
-                    let point = grid.cellCentre(i, j, k)
-                    var matches: [(owner: Int, block: Int)] = []
-                    for owner in blocks.indices {
-                        if let block = blocks[owner].firstIndex(where: { $0.contains(point) }) {
-                            matches.append((owner, block))
-                        }
-                    }
-                    guard matches.count <= 1 else { throw SceneObjectError.interObjectContact }
-                    guard let match = matches.first else { continue }
-                    for axis in 0..<3 {
-                        for side in [-1, 1] {
-                            var neighbour = SIMD3(i, j, k)
-                            neighbour[axis] += side
-                            guard grid.contains(neighbour.x, neighbour.y, neighbour.z) else { continue }
-                            let fluid = grid.index(neighbour.x, neighbour.y, neighbour.z)
-                            guard mask[fluid] == 0 else { continue }
-                            faces.append(
-                                (
-                                    Face(
-                                        solid: UInt32(cell), fluid: UInt32(fluid),
-                                        axis: UInt32(axis), positive: side > 0 ? 1 : 0),
-                                    match.owner, match.block
-                                ))
-                        }
-                    }
+        for cell in owned.keys.sorted() where mask[cell] != 0 {
+            let match = owned[cell]!
+            let (i, j, k) = (cell % grid.nx, (cell / grid.nx) % grid.ny, cell / (grid.nx * grid.ny))
+            for axis in 0..<3 {
+                for side in [-1, 1] {
+                    var neighbour = SIMD3(i, j, k)
+                    neighbour[axis] += side
+                    guard grid.contains(neighbour.x, neighbour.y, neighbour.z) else { continue }
+                    let fluid = grid.index(neighbour.x, neighbour.y, neighbour.z)
+                    guard mask[fluid] == 0 else { continue }
+                    faces.append(
+                        (
+                            Face(
+                                solid: UInt32(cell), fluid: UInt32(fluid),
+                                axis: UInt32(axis), positive: side > 0 ? 1 : 0),
+                            match.owner, match.block
+                        ))
                 }
             }
         }
