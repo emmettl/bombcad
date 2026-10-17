@@ -28,6 +28,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     case largePanelGas
     case largePanelStreet
     case processPlantExplosion
+    case portalWarehouse
 
     public var id: String { rawValue }
 
@@ -60,6 +61,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .largePanelGas: "Large-panel flats: gas in a corner flat"
         case .largePanelStreet: "Large-panel flats: street charge"
         case .processPlantExplosion: "Vapour cloud explosion at a process plant"
+        case .portalWarehouse: "Portal-frame warehouse, profiled steel cladding"
         }
     }
 
@@ -622,6 +624,8 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
 
         case .officeTower:
             return Self.officeTowerScenario(title: title)
+        case .portalWarehouse:
+            return Self.portalWarehouseScenario(title: title)
 
         case .threeStorey:
             // A three-storey concrete frame, three bays by two of 6 m, with 250 mm flat slabs and

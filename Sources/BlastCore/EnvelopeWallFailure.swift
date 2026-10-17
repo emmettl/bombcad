@@ -42,6 +42,22 @@ public struct EnvelopeWallFailure: Sendable {
                 sdof: sdof, yieldPast: sdof.equivalentElasticDeflection,
                 rotationPast: tan(failedRotation) * rotationSpan, lostPast: .infinity, sign: sign)
         }
+        // Profiled sheeting between its rails or purlins, whatever the component's size: failed past
+        // PDC-TR 06-08's hazardous limit, ductility 6 or 4° of support rotation, whichever comes
+        // first (`EnvelopeDamageLevel.profiledSheet`); its screws' pulling out is judged only after.
+        func sheeted(roof: Bool, sign: Double = 1) -> [System] {
+            let span = Double(construction.sheetSpanM ?? 1.8)
+            let profile = construction.sheet(roof: roof)
+            return [true, false].filter { $0 || construction.sheetContinuous ?? true }.map { single in
+                let sdof = EnvelopePanel.profiledSheetOneWay(
+                    profile: profile, span: span, continuous: !single)
+                let elastic = sdof.equivalentElasticDeflection
+                return System(
+                    sdof: sdof, yieldPast: elastic,
+                    rotationPast: min(6 * elastic, tan(4 * Double.pi / 180) * span / 2),
+                    lostPast: .infinity, sign: sign)
+            }
+        }
         func fallen(_ sdof: SDOFSystem, sign: Double = 1) -> System {
             let last = sdof.backbone.last!
             return System(
@@ -65,6 +81,8 @@ public struct EnvelopeWallFailure: Sendable {
                 let sdof = EnvelopePanel.unreinforcedMasonryCantilever(
                     thickness: thickness, material: masonry, height: height)
                 return EnvelopeWallFailure(systems: [1, -1].map { fallen(sdof, sign: $0) }, cantilever: true)
+            case .profiledSteelSheeting:
+                return EnvelopeWallFailure(systems: sheeted(roof: false), cantilever: false)
             }
         }
         let isRoof = load.kind == .roof || load.kind == .slab
@@ -90,6 +108,8 @@ public struct EnvelopeWallFailure: Sendable {
                             EnvelopePanel.unreinforcedMasonryOneWay(
                                 thickness: thickness, material: masonry, span: span, edges: .fixed))
                     ], cantilever: false)
+            case .profiledSteelSheeting:
+                return EnvelopeWallFailure(systems: sheeted(roof: isRoof), cantilever: false)
             }
         }
         switch kind {
@@ -110,6 +130,8 @@ public struct EnvelopeWallFailure: Sendable {
                     )
                 ],
                 cantilever: false)
+        case .profiledSteelSheeting:
+            return EnvelopeWallFailure(systems: sheeted(roof: isRoof), cantilever: false)
         }
     }
 }

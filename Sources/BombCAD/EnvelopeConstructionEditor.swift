@@ -2,18 +2,68 @@ import BlastCore
 import SwiftUI
 
 /// An envelope's construction beyond its walls' kind, for its one-way damage: the walls'
-/// thickness and bars, their strengths, reinforced blockwork's grout, and a cap carried on a
-/// freestanding wall's top. The air never sees any of it.
+/// thickness and bars, their strengths, reinforced blockwork's grout, a cap carried on a
+/// freestanding wall's top, and the roof, concrete or profiled steel sheeting, with the sheets'
+/// profiles, the spacing of the rails and purlins they span and their screws. The air never sees
+/// any of it.
 struct EnvelopeConstructionEditor: View {
     let model: SimulationModel
     let id: UUID
 
     var body: some View {
         let construction = model.settings.scenario.envelopeConstruction(for: id)
-        let reinforced = construction.walls != .unreinforcedMasonry
+        let reinforced =
+            construction.walls == .reinforcedConcrete || construction.walls == .reinforcedBlockwork
+        let sheeted =
+            construction.walls == .profiledSteelSheeting || construction.roof == .profiledSteelSheeting
         DisclosureGroup("Construction") {
-            number("Wall thickness", "m", Double(construction.wallThicknessM)) { value in
-                edit { $0.wallThicknessM = Float(max(value, 0.01)) }
+            Picker(
+                "Roof",
+                selection: Binding(get: { construction.roof }, set: { kind in edit { $0.roof = kind } })
+            ) {
+                ForEach([EnvelopeConstruction.Kind.reinforcedConcrete, .profiledSteelSheeting], id: \.self) {
+                    Text($0.label).tag($0)
+                }
+            }
+            .help("What the roof (and any floor slabs) are built of.")
+            if construction.walls != .profiledSteelSheeting {
+                number("Wall thickness", "m", Double(construction.wallThicknessM)) { value in
+                    edit { $0.wallThicknessM = Float(max(value, 0.01)) }
+                }
+            }
+            if sheeted {
+                if construction.walls == .profiledSteelSheeting {
+                    sheetPicker("Wall sheets", construction.sheet(roof: false)) { name in
+                        edit { $0.wallSheet = name }
+                    }
+                }
+                if construction.roof == .profiledSteelSheeting {
+                    sheetPicker("Roof sheets", construction.sheet(roof: true)) { name in
+                        edit { $0.roofSheet = name }
+                    }
+                }
+                number("Rails and purlins apart", "m", Double(construction.sheetSpanM ?? 1.8)) { value in
+                    edit { $0.sheetSpanM = Float(max(value, 0.3)) }
+                }
+                .help(
+                    "The span of the sheets between the rails (walls) or purlins (roof) they are screwed to.")
+                Toggle(
+                    "Continuous over them",
+                    isOn: Binding(
+                        get: { construction.sheetContinuous ?? true },
+                        set: { on in edit { $0.sheetContinuous = on ? nil : false } })
+                )
+                .help("Sheets over several rails or purlins; off, each sheet a single span.")
+                number("Screws at each rail", "per m", Double(construction.screwsPerM ?? 3)) { value in
+                    edit { $0.screwsPerM = Float(max(value, 0.5)) }
+                }
+                number(
+                    "Rails' and purlins' steel", "mm", Double((construction.railThicknessM ?? 0.002) * 1000)
+                ) {
+                    value in
+                    edit { $0.railThicknessM = Float(max(value, 0.5)) / 1000 }
+                }
+                .help("The thickness of the cold-formed rails and purlins the screws hold in.")
             }
             if reinforced {
                 number("Bars, each way", "%", Double(construction.reinforcementRatio) * 100) { value in
@@ -66,6 +116,19 @@ struct EnvelopeConstructionEditor: View {
             }
         }
         .font(.callout)
+    }
+
+    private func sheetPicker(
+        _ title: String, _ current: SheetProfile, set: @escaping @MainActor (String) -> Void
+    ) -> some View {
+        Picker(title, selection: Binding(get: { current.name }, set: set)) {
+            ForEach(
+                SheetProfile.library.filter { $0.yieldStress >= 250e6 && $0.thickness < 0.0015 }, id: \.name
+            ) {
+                Text($0.name).tag($0.name)
+            }
+        }
+        .help("The sheets' profile, from cited makers' tables (docs/profiled-sheeting.md).")
     }
 
     private func edit(_ change: (inout EnvelopeConstruction) -> Void) {

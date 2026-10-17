@@ -32,7 +32,9 @@ a cantilever wall, a single-storey building, the same building behind a blast wa
 frame (bare, infilled with masonry, or glazed with glass panes), a three-storey clad building,
 an eight-storey frame and a twelve-storey tower with a concrete core (both shells and beams,
 for collapse over several seconds), a [twelve-storey office of steel and
-glass](office-tower.md) with a curtain wall and two neighbours across the street, an
+glass](office-tower.md) with a curtain wall and two neighbours across the street, a
+[portal-frame warehouse clad in profiled steel](profiled-sheeting.md#the-portal-frame-warehouse-sample)
+with a sheeted neighbour, an
 open-sided car park with a charge inside, three buildings across a street (each its own
 structure, one sheltered behind another), an underpass, a column close to a charge, a
 two-storey house of concrete blockwork meshed with shells, a blockwork boundary wall meshed
