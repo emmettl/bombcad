@@ -10,7 +10,8 @@ import simd
 // against the Kinney-Graham curve and renders offscreen snapshots.
 //
 //   blastbench [throughput] [--preset open|single|street|courtyard|wall|box|frame|infill|storeys|tall|tower|column|
-//               protected|glass|carpark|underpass|house|blockwall|chamber|gasroom|panel-gas|panel-street]
+//               office|protected|glass|carpark|underpass|house|blockwall|chamber|gasroom|panel-gas|panel-street|
+//               plant|warehouse|terraced]
 //               [--full] [--dx 0.5,0.25]
 //   blastbench structure [--preset wall|box] [--contact] [--elastic]
 //   (any command) [--rounding default|unfused|relaxed]   (the kernels' rounding; see KernelRounding)
@@ -130,6 +131,8 @@ func preset(named name: String?) -> ScenarioPreset {
     case "panel-gas": .largePanelGas
     case "panel-street": .largePanelStreet
     case "plant": .processPlantExplosion
+    case "warehouse": .portalWarehouse
+    case "terraced": .terracedHouses
     case "hub": .transportHub
     default: .streetCanyon
     }
