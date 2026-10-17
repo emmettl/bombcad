@@ -258,6 +258,13 @@ public struct VentedRoomStudy: Sendable {
     public var ignitionHeight: Float?
     /// The floor-centre ignition point: the middle of the floor, this high (m), for roof venting.
     public var floorIgnition: Float?
+    /// Solid obstacles inside the room, in its own coordinates (m, from its back corner on the
+    /// floor: along the vent's axis, across it, up), such as a frame on its floor.
+    public var obstacles: [Box] = []
+    /// Air above the roof, m: room for a cloud vented through the roof to burn above it.
+    public var clearanceAbove: Float = 2
+    /// Gravity in the air (`SolverConfiguration.gravity`), for the burnt gas's buoyancy; nil for none.
+    public var gravity: AirGravity?
 
     public init() {}
 
@@ -327,7 +334,7 @@ public struct VentedRoomStudy: Sendable {
         let opening =
             ventOpening.map { simd_min($0, SIMD2(room.y, room.z)) } ?? SIMD2(repeating: ventArea.squareRoot())
         let size = SIMD3(
-            margin + t + room.x + t + outside, margin + t + room.y + t + margin, room.z + t + margin)
+            margin + t + room.x + t + outside, margin + t + room.y + t + margin, room.z + t + clearanceAbove)
         let x0 = margin + t
         let y0 = margin + t
         let x1 = x0 + room.x
@@ -372,6 +379,10 @@ public struct VentedRoomStudy: Sendable {
                 }
                 x = x2
             }
+        }
+        for obstacle in obstacles {
+            blocks.append(
+                Box(min: obstacle.min + SIMD3(x0, y0, 0), max: obstacle.max + SIMD3(x0, y0, 0)))
         }
         let middle = SIMD3(0.5 * (x0 + x1), 0.5 * (y0 + y1), 0.5 * z1)
         var lit =
@@ -434,6 +445,7 @@ public struct VentedRoomStudy: Sendable {
         var configuration = SolverConfiguration()
         configuration.airModel = airModel
         configuration.openFaces = openFaces
+        configuration.gravity = gravity
         let solver = try BlastSolver(
             device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
         // The flame's arrival at points along the vent's axis, from the unburnt share there every

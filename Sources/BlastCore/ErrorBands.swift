@@ -407,8 +407,8 @@ public enum ValidationTables {
             id: "ventedHydrogen", low: 1.24, high: 2.96, document: "deflagration.md#checks",
             quote: "the peaks are 1.24–2.96 of the measured"),
         Figure(
-            id: "ventedHydrogenRoof", low: 0.20, high: 0.53, document: "deflagration.md#checks",
-            quote: "still on the unsafe side, 0.20–0.53"),
+            id: "ventedHydrogenRoof", low: 0.19, high: 0.45, document: "deflagration.md#checks",
+            quote: "still on the unsafe side, 0.19–0.45"),
         Figure(
             id: "ventedHydrogenWithoutLewis", low: 0.19, high: 0.39, document: "deflagration.md#checks",
             quote: "lean hydrogen vented at 0.19–0.39 of the measured peaks"),
@@ -1103,7 +1103,7 @@ extension StandingScene {
             } else if has(.deflagration), inputs.scenario.deflagration?.gas == .hydrogen {
                 let lewis = inputs.scenario.deflagration?.acceleration.thermodiffusive != nil
                 // With the 1/Le response the model has been 1.24–2.96 in FM Global's chamber, the safe
-                // side, but 0.20–0.53 in HySEA's containers vented through their roofs, the unsafe
+                // side, but 0.19–0.45 in HySEA's containers vented through their roofs, the unsafe
                 // side; the standing cannot tell those vents apart, so the band spans both.
                 var band = figure(
                     lewis ? "ventedHydrogen" : "ventedHydrogenWithoutLewis", .ventedPressure,
@@ -1113,7 +1113,7 @@ extension StandingScene {
                         ? "FM Global's 63.7 m³ chamber, 12.1–19.7% hydrogen lit in the middle and at the back "
                             + "wall, 0.1 m cells, with the flame's 1/Le response, nothing fitted: 1.24–2.96, the "
                             + "safe side; HySEA's containers vented through their doors within their scatter, "
-                            + "through their roof 0.20–0.53, the unsafe side"
+                            + "through their roof 0.19–0.45, the unsafe side"
                         : "FM Global's 63.7 m³ chamber, 12.1–19.7% hydrogen lit in the middle and at the back "
                             + "wall, 0.1 m cells; lean hydrogen's measured growth law, without the flame's "
                             + "thermodiffusive response",

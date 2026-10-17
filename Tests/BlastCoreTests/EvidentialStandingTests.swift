@@ -112,7 +112,7 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
         #expect(methane.contains { $0.check.contains("Bauwens et al.'s vented") })
         let hydrogen = scene(.hydrogen)
         // Either way: FM Global's chamber on the safe side, HySEA's roof-vented containers on the unsafe.
-        #expect((hydrogen[.peakOverpressure]?.bands ?? []).map(\.ratio) == ["20–296%"])
+        #expect((hydrogen[.peakOverpressure]?.bands ?? []).map(\.ratio) == ["19–296%"])
         #expect(hydrogen[.peakOverpressure]?.summary.hasPrefix("Lean hydrogen") == true)
         let town = scene(.townGas)
         #expect((town[.peakOverpressure]?.bands ?? []).isEmpty)
