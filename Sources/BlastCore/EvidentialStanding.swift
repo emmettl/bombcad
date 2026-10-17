@@ -571,7 +571,7 @@ public enum StandingTable {
             return Entry(
                 title: "Terrain as a staircase", affects: air + [.envelopeExposure], limit: .approximation,
                 note:
-                    "The staircase chosen, or a deflagration's air, keeps the terrain as whole cells: it delays Mach "
+                    "The staircase, when chosen, keeps the terrain as whole cells: it delays Mach "
                     + "reflection off a slope by 3–11° and under-reads the triple point's angle by 20–75% on "
                     + "100–400 cells, and windward faces' peaks read 1.3–1.5 times the cut cells', growing "
                     + "with resolution.",
@@ -907,7 +907,7 @@ public enum StandingTable {
         "EnvelopeConstruction.blockworkGrouted": .input,
         "EnvelopeConstruction.masonryStrengthMPa": .input,
         "EnvelopeConstruction.capMassKgPerM": .input,
-        "Scenario.deflagration": .option([.deflagration, .terrainStaircase]),
+        "Scenario.deflagration": .option([.deflagration]),
         "Scenario.ventPanels": .option([.ventPanels]),
         "Deflagration.gas": .input,
         "Deflagration.concentration": .input,
