@@ -424,7 +424,7 @@ final class SimulationModel {
         var construction = old
         construction.walls = walls
         if walls != old.walls {
-            construction.wallThicknessM = walls == .unreinforcedMasonry ? 0.215 : 0.2
+            construction.wallThicknessM = EnvelopeConstruction.defaultThickness(walls)
         }
         construction.source = .user
         construction.detail = "chosen in the editor"
@@ -839,7 +839,7 @@ final class SimulationModel {
         }
     }
 
-    private static func defaultDuration(for scenario: Scenario) -> Double {
+    static func defaultDuration(for scenario: Scenario) -> Double {
         // A structure keeps moving long after the blast wave has left the domain.
         let crossing = (scenario.acousticCrossingTime * 100).rounded(.up) / 100
         return scenario.structure == nil ? crossing : max(crossing, 0.25)
@@ -1450,6 +1450,25 @@ final class SimulationModel {
     /// Sets the material of one piece of the structure; nil returns it to the structure's own.
     func setMaterial(_ material: StructureMaterial?, ofSolid index: Int, objectID: UUID? = nil) {
         editStructure(objectID: objectID) { $0.setMaterial(material, of: index) }
+    }
+
+    /// Makes one piece a profiled steel sheet of `profile` (nil: a plain piece again), its ribs
+    /// along `ribAxis` or, if nil, as cladding and roofs usually run. A sheet is meshed as shells,
+    /// of structural steel unless the piece is already of a steel.
+    func setSheet(_ profile: SheetProfile?, ribAxis: Int? = nil, ofSolid index: Int, objectID: UUID? = nil) {
+        if profile != nil { setElementKind(.shell, ofSolid: index, objectID: objectID) }
+        editStructure(objectID: objectID) { structure in
+            guard let profile, structure.solids.indices.contains(index) else {
+                structure.setSheet(nil, of: index)
+                return
+            }
+            var sheet = SheetAssignment(profile: profile, on: structure.solids[index])
+            if let ribAxis { sheet.ribAxis = ribAxis }
+            structure.setSheet(sheet, of: index)
+            if structure.material(of: index).model != .vonMises {
+                structure.setMaterial(.structuralSteel, of: index)
+            }
+        }
     }
 
     /// Meshes one piece of the structure with solid elements or shells. A structure of both

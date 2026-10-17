@@ -105,6 +105,10 @@ was judged on slabs and beams.
 
 ## Thin profiled metal sheeting
 
+Built since (17 October 2026) as a steel skin with its ribs as beams, as recommended below, and as
+an envelope construction: see [profiled steel sheeting](profiled-sheeting.md), with its comparison
+against Langdon's panels.
+
 ### What it needs
 
 - **Stiffness that depends on direction.** A trapezoidal or corrugated sheet is stiff in bending

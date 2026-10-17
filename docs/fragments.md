@@ -201,31 +201,34 @@ pre-formed fragments or improvised casings. `FragmentCloudTests` check the first
 
 ## Hazard
 
-Where the fragments land on open ground is judged as the US explosives safety standards judge an
-arena test (`GroundHazard`):
+Fragments are judged as the US explosives safety standards judge them (`GroundHazard`):
 
 - **Hazardous fragments** strike with 79 J (58 ft-lb) or more, and the **hazardous fragment
-  distance** is where they fall below one per 55.7 m² (600 ft²) of ground, a 1% chance of one
-  striking a person's 0.56 m² (6 ft²): DoD 6055.09-M, equation V3.E3.T2-1 (now DESR 6055.09),
-  as FAA Guide 437.53-1 (2011) restates it. Fragments of 14.9 J (11 ft-lb) or more, FAA's
-  threshold for serious injury, are counted too.
-- Landings are binned in rings round the charge (the first a metre across, each after a tenth
-  wider, so the distance is found to within 10% at any range) and eight directions, each landing counting for the real fragments it stands for. Each
-  direction's distance is the outer edge of its furthest cell at or over the criterion; the
-  hazard distance is the largest. Fragments stopped by a structure or block are counted apart:
-  they do not reach the open ground behind it.
-- **Sampling.** The density in a far cell rests on the few fragments flown that land there. When
-  fewer than ten set the distance, the summary says so: fly more fragments (`count`) and the
-  distance settles.
+  distance** is where they fall below one per 55.7 m² (600 ft²), a 1% chance of one striking a
+  person's 0.56 m² (6 ft²): DoD 6055.09-M (now DESR 6055.09) and DoD 4145.26-M §C5.8.1.3, as FAA
+  Guide 437.53-1 (2011) restates it. Fragments of 14.9 J (11 ft-lb) or more, FAA's threshold for
+  serious injury, are counted too.
+- **In flight.** The density is the one a person standing there meets: on a surface across the
+  fragments' paths (DDESB Technical Paper 12, Zaker 1975, as the explosives safety seminars quote
+  it), not where they land. As each fragment flies, the spheres it crosses round the charge (the
+  first a metre out, each after a tenth further) are counted if it is hazardous and within 10° of
+  the horizontal there (`FragmentCrossings`); a direction's distance is the furthest sphere it
+  crosses at one per 55.7 m² or more of that band.
+- **On the ground.** Landings are binned in rings (the same steps) and directions too, for where
+  fragments come down; fragments stopped by a structure or block are counted apart, as they do not
+  reach the open ground behind it.
+- The **hazard distance** is the larger of the two, in eight directions. Until 17 October it was the
+  ground's alone, which reads a sixth to a fifteenth of DoD's distances ([below](#against-dods-distances)).
+- **Sampling.** The density at a far sphere or ring rests on the few fragments flown that cross or
+  land there. When fewer than ten set the distance, the summary says so: fly more fragments
+  (`count`) and the distance settles.
 
 **An example**: 100 kg of TNT in a 150 kg steel cylinder (12 mm wall, 250 mm bore, its axis
 level along x), 1 m above open ground. Mott gives 18,400 fragments of a mean 8 g, launched at
-1,725 m/s. With 200,000 flown, every one landed, 42% of them hazardous and the furthest
-hazardous one 1,334 m out. The hazardous fragment distance is 49.8 m side-on to the casing,
-where its spray goes (set by 38 and 46 fragments flown), and within the first metre elsewhere,
-where only those thrown down land close. With 20,000 flown it was 50–55 m, set by 5–6 fragments
-and flagged to fly more. Most hazardous fragments go far, but thinly: past 50 m they are under
-one per 55.7 m². (`/Volumes/StudioData/bombcad/fragments/hazard/`.)
+1,725 m/s. With 200,000 flown, 44% of the landings are hazardous and the furthest hazardous one
+lands 1,341 m out. The hazardous fragment distance is 172 m side-on to the casing, where its
+spray goes, in flight; on the ground alone, 50 m. DoD's default for 100 kg in the open, a
+policy distance for items not tested, is 294 m (DoD 4145.26-M Table AP2.T2).
 
 Shown in the summary printed, in `--fragment-results` (`hazard`: the cells, the directions'
 distances, the shares hazardous and injurious, the furthest hazardous landing), in the USD scene
@@ -241,6 +244,34 @@ The same criteria judge [debris](structural-model.md#debris-as-a-hazard) where a
 `StructureModel.rubbleParticles`), flown on from where the run leaves it (`DebrisResult`,
 `BombCAD run --debris-results`), and the [glass of envelope buildings](building-envelopes.md#one-way-damage-single-degree-of-freedom)
 is graded by GSA's and ASTM's window hazard levels.
+
+## Against DoD's distances
+
+DoD 4145.26-M (2008) lists hazardous fragment distances for single items in the open, determined
+by DDESB's test protocol (Table AP2.T3): 126.5 m for a 155 mm projectile and 204.2 m for a 500 lb
+general-purpose bomb, among others. With the items described only by public overall figures (a
+155 mm projectile as 6.6 kg of TNT in some 36 kg of steel; a 500 lb bomb as 87 kg of filler in
+some 130 kg), lying level half their diameter off the ground, their fragments flown in still air
+(`blastbench fragment-throw`, 100,000 flown, 13 s):
+
+| Item | Wall, bore | In flight | On the ground | DoD | Ratio |
+|---|---|---|---|---|---|
+| 155 mm projectile | 38 mm, 138 mm (the casing helper's) | 54.8 m | 9.8 m | 126.5 m | 0.43 |
+| | 20 mm, 115 mm | 80.2 m | 13.1 m | | 0.63 |
+| | 12 mm, 131 mm | 97.0 m | 19.2 m | | 0.77 |
+| 500 lb bomb | 25 mm, 326 mm (the helper's) | 117.4 m | 19.2 m | 204.2 m | 0.57 |
+| | 15 mm, 243 mm | 156.2 m | 23.2 m | | 0.77 |
+| | 10 mm, 253 mm | 171.9 m | 30.9 m | | 0.84 |
+
+Each distance is set by 700 to 2,200 fragments flown. BombCAD falls short of DoD's by between a
+sixth and a half, closest with walls near the items' own; the wall, which sets Mott's mean mass
+and so how many fragments there are, decides it, and the items' real walls are not public. The
+ground's landings alone are a sixth to a fifteenth of DoD's. What may account for the rest: DDESB
+counts fragments from the whole item, nose and base too, where this casing is a plain cylinder
+spraying within 0.25 rad of square to its axis; it counts fragments bouncing on and skipping off
+the ground, which stop here where they land; and its distances carry its own margins. So the
+hazard distance is an approximation, on the unsafe side, by a factor of up to 2.3. No arena test's
+fragment-by-fragment data has been compared ([wanted](data-wanted.md#to-fetch)).
 
 ## What fragments do to what they strike
 
@@ -288,7 +319,11 @@ A cased kilogram 5 m in front of a glazed window (`FragmentVentingTests`, 0.25 m
 its pane at 3.15 ms, which opens on that step; the blast alone breaks the glass at 13.0 ms. By
 20 ms the room's mean has peaked at 1.47 kPa through the hole (past 1 kPa at 15.6 ms), against
 75 Pa with the glass left to the blast, and the run is the same to the bit however its steps
-are batched.
+are batched. `FragmentCloud.envelopeHoles` gives every hole the same flight makes through envelope
+walls, roofs and panes, with its time, place and area, for the air to open them: a hole is the
+fragment's mean presented area (times the real fragments it stands for), for want of a cited
+hole size (UFC 3-340-02 §4-60.1 describes craters wider than the fragment but gives no size), so
+the open area is a lower bound.
 
 **In the app** a strike on a judged target is drawn larger than a landing: grey where the
 fragment stopped, amber where it spalled the far face, crimson where it went through. The
@@ -323,10 +358,9 @@ summary printed counts them (`struck targets: … stopped, … spalled, … thro
 - In the app, frames fall at the ends of batches, just past each millisecond, so its fragments vary
   a little from run to run (above).
 - A kept run keeps the fragments' impacts, not their paths.
-- The hazard distance is as good as the ranges, which no arena test has checked, and counts only
-  landings on open ground: no ricochet, no fragments stopped by people or vegetation, and the
-  density of fragments passing through the air above a person is not counted, only where they
-  land.
+- The hazard distance falls short of DoD's test-derived distances for two items by a sixth to a
+  half ([above](#against-dods-distances)); no ricochet, no fragments stopped by people or
+  vegetation, and the spray of a plain cylinder, without nose or base.
 
 ## Sources
 
@@ -349,6 +383,11 @@ summary printed counts them (`struck targets: … stopped, … spalled, … thro
 - S. Kim, J.-H. Mun, S. Park, C. Choi and S. Hong, Damage limit velocity and fracture patterns in
   single glass plates impacted by steel balls of varying diameters, *Applied Sciences* 15 (2025)
   386, doi:10.3390/app15010386.
+- DoD 4145.26-M, *DoD Contractor's Safety Manual for Ammunition and Explosives*, 2008 (open on
+  epa.gov): §C5.8 and Tables AP2.T2 and AP2.T3, the hazardous fragment distances.
+- T. A. Zaker, *Fragment and Debris Hazards*, DDESB Technical Paper 12, 1975: the density on a
+  surface normal to the fragments' rays, and a person's 6 ft², as quoted in DDESB's seminar
+  minutes (the paper itself not read here).
 - FAA, *Calculation of Safety Clear Zones for Experimental Permits*, Guide 437.53-1 (2011): the
   hazardous fragment's 79 J and 600 ft² from DoD 6055.09-M, and its own 11 ft-lb.
 - D. E. Grady, *Fragmentation of Rings and Shells*, Springer, 2006: the exponential form.

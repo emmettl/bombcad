@@ -310,6 +310,8 @@ public final class ShellSolver {
         device: MTLDevice, commandQueue: MTLCommandQueue? = nil, library: MTLLibrary? = nil,
         model: StructureModel
     ) throws {
+        // Profiled sheets as their skins and ribs.
+        let model = model.expandingSheets()
         self.device = device
         self.model = model
         guard let queue = commandQueue ?? device.makeCommandQueue() else {
