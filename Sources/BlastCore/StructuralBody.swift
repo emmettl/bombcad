@@ -146,6 +146,10 @@ public final class StructuralBody: Identifiable {
         solids?.time = 0
         shells?.time = 0
         time = 0
+        // Deflections are measured from here on, as a test's gauges are zeroed on the structure
+        // standing under its own weight.
+        solids?.recordSettledShape()
+        shells?.recordSettledShape()
     }
 
     func checkpoint() {

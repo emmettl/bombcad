@@ -167,6 +167,9 @@ private struct StructureReadout: View {
         if let summary = model.structureSummary {
             row("Deflection now", String(format: "%.0f mm", summary.maxDisplacement * 1000))
             row("Largest so far", String(format: "%.0f mm", model.peakDeflection))
+            if summary.selfWeightSag > 0 {
+                row("Sag under own weight", String(format: "%.0f mm", summary.selfWeightSag * 1000))
+            }
             ExpectedRangeLine(
                 model: model,
                 value: ShownValue(measure: .peakDeflection, value: model.peakDeflection, unit: "mm"))

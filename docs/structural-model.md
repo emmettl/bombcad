@@ -160,7 +160,14 @@ It is left out, so that the run is as before, bit for bit:
   tests and harnesses that start from a state of their own do.
 
 A harness that measures displacements measures them from the settled shape, as a test's gauges
-were zeroed on the structure standing under its own weight. Mendonça's harness keeps its blind
+were zeroed on the structure standing under its own weight. So does everything else that reports
+a deflection: the app's "Deflection now" and "Largest so far", saved runs, the headless and
+`blastbench` summaries (`StructureSummary.maxDisplacement`). They read zero before the blast
+arrives. The sag itself is reported on its own, as "Sag under own weight"
+(`StructureSummary.selfWeightSag`). Until 17 October 2026 those readouts measured from the
+undeformed shape, so a settled warehouse showed 40 mm before the blast had reached it. The
+harnesses' figures, and the physics, are unchanged; `blastbench digest`'s wall cases hash the
+new measure. Mendonça's harness keeps its blind
 prediction's start unless `--settle` is given. `blastbench --no-settle` turns settling off in any
 bench (`BOMBCAD_SETTLE=off`).
 

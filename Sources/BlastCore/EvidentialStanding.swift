@@ -1984,7 +1984,16 @@ struct StandingScene {
                     "Elastic bars and cantilevers",
                     "Wave speed, tip deflection and first period within 5% of "
                         + "theory", "validation.md#verification-against-theory"))
-            parts.append("steel verified against beam and wave theory, no test")
+            evidence.append(
+                StandingEvidence(
+                    "Steel struts buckling (blastbench buckling)",
+                    "Elastic buckling within 2% of Euler; at a slenderness near 1 about 1.5 times Eurocode 3's "
+                        + "resistance, the members being perfect (the unsafe side); an impact's buckled wavelength "
+                        + "1.03–1.20 times Lindberg's",
+                    "shell-model.md#buckling"))
+            parts.append(
+                "steel verified against beam, wave and buckling theory, no test; perfect members buckle about "
+                    + "half again later than Eurocode 3's near a slenderness of 1")
         }
         if classes.contains(.masonry) {
             level = max(level, .verified)
@@ -2090,6 +2099,12 @@ struct StandingScene {
                 "Independent bodies meet through contact between their nodes, the spring and damper of contact "
                     + "within a body, checked for momentum and energy but never against a test; they must start "
                     + "apart and never bond.")
+        }
+        // Open faces too near: their reflections move the response after the positive phase.
+        if let note = inputs.scenario.tightFacesNote {
+            resolution.append(
+                note + " On Tyndall's CLT building a domain this tight gave 29 mm at the first storey where "
+                    + "18 mm is converged.")
         }
         let configuration = inputs.configuration
         if configuration.airSleepThreshold > 0 || configuration.airSleepCrossings > 0 {
