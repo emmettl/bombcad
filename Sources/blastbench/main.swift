@@ -91,6 +91,7 @@ import simd
 //   blastbench merge [--rigs A,C,E,C*] [--gas methane,propane] [--dx 0.25] [--factor 1] [--out f.json]
 //                    (MERGE's congested rigs through the congestion model; see MergeBench.swift)
 //   blastbench langdon [--tests c622] [--h 0.0572]   (corrugated panels under pulse pressure; see LangdonBench.swift)
+//   blastbench adblast [--tests 3,7] [--held]   (trapezoidal cladding on screws under C4; see AdblastBench.swift)
 //   blastbench buildings [--dx 0.5] [--duration 0.12] [--mass 50] [--out f.json]
 //                        (three buildings across a street, together and each alone; see BuildingsBench.swift)
 //   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80] [--terrain flat|hill|ridge|slope] [--recommended]
@@ -5533,6 +5534,7 @@ do {
     case "perimeter": try runPerimeter(device: device)
     case "keys": try runKeys(device: device)
     case "langdon": try runLangdon(device: device)
+    case "adblast": try runAdblast(device: device)
     case "envelope-walls": try runEnvelopeWalls(device: device)
     case "nian": try runNian(device: device)
     case "envelope-slabs": try runEnvelopeSlabs(device: device)

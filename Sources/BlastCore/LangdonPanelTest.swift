@@ -132,6 +132,7 @@ public enum LangdonPanelTest {
         public var connection: Connection = .springs
         /// Whether the ribs' wide flange softens once it buckles (`ProfiledSheet.localBuckling`).
         public var buckles = true
+        public var postBuckling = ProfiledSheet.PostBuckling.automatic
 
         public init() {}
     }
@@ -198,7 +199,8 @@ public enum LangdonPanelTest {
         // The wide flange in tension in the design direction: on the side "positive" pushes towards.
         let sheet = ProfiledSheet(
             profile: profile, region: Box(min: SIMD3(0, -0.01, 0), max: SIMD3(width, 0.01, span)), span: 2,
-            steel: steel316L, skinShare: settings.skinShare, crestSide: 1, buckles: settings.buckles)
+            steel: steel316L, skinShare: settings.skinShare, crestSide: 1, buckles: settings.buckles,
+            postBuckling: settings.postBuckling)
         sheet.add(to: &model)
         if settings.connection == .springs {
             // Her springs at the panel's ends. A positive pulse turns the bottom about +x and the

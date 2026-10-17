@@ -43,7 +43,10 @@ struct PortalWarehouseTests {
         solver.advance(until: 0.09)
         let front = shells.nearestNode(to: SIMD3(35, 40, 4))
         let push = shells.node(front).displacement.y
-        print("Front gable's middle moved \(push * 1000) mm")
+        print(
+            "Front gable's middle moved \(push * 1000) mm; \(shells.linksReleased) of \(shells.linkCount) screw links let go"
+        )
         #expect(push.isFinite && push > 0.001)
+        #expect(shells.linkCount > 1000)
     }
 }

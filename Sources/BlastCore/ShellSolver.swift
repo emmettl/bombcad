@@ -77,6 +77,12 @@ struct ShellUniforms {
     var loadShares: UInt32 = 0
     /// 1 when the applied load also acts on nodes by their shares, after the elements'.
     var loadNodeShares: UInt32 = 0
+    /// Fastened sheets' links (`ShellMesh.Link`): how many, and where in the load table's buffer
+    /// (bytes) their records, each node's first entry and the entries begin.
+    var linkCount: UInt32 = 0
+    var linkRecords: UInt32 = 0
+    var linkStarts: UInt32 = 0
+    var linkEntries: UInt32 = 0
 }
 
 /// Layout matches `BeamElement` in `Shell.metal`.
@@ -269,6 +275,9 @@ public final class ShellSolver {
     private let tiedBuffer: MTLBuffer
     private let tieBuffer: MTLBuffer
     private let tiePipeline: MTLComputePipelineState
+    /// Fastened sheets' links: their pass, and where their data begin in the load table's buffer.
+    private let linkPipeline: MTLComputePipelineState?
+    private let linkLayout: (records: Int, starts: Int, entries: Int)
     /// Nodes tied rigidly to a column's node at a slab.
     public var tieCount: Int { mesh.ties.count }
     private let incidenceStartBuffer: MTLBuffer
@@ -345,6 +354,8 @@ public final class ShellSolver {
         nodeConstants.setConstantValue(&connected, type: .bool, index: 1)
         var sprung = !model.springSupports.isEmpty
         nodeConstants.setConstantValue(&sprung, type: .bool, index: 22)
+        var linked = !mesh.links.isEmpty
+        nodeConstants.setConstantValue(&linked, type: .bool, index: 23)
         nodePipeline = try ShaderLibrary.pipeline("shellNodes", in: library, constants: nodeConstants)
         var turned = true
         nodeConstants.setConstantValue(&turned, type: .bool, index: 4)
@@ -352,6 +363,7 @@ public final class ShellSolver {
             try? ShaderLibrary.pipeline("shellNodes", in: library, constants: nodeConstants)
         }
         tiePipeline = try pipeline("shellTies")
+        linkPipeline = mesh.links.isEmpty ? nil : try pipeline("shellLinks")
         contactPipelines = try ["shellContactClear", "shellContactHash", "shellContactForces"].map(pipeline)
 
         func buffer(_ length: Int, _ label: String) throws -> MTLBuffer {
@@ -420,10 +432,15 @@ public final class ShellSolver {
         memset(contactMovedBuffer.contents(), 0xFF, contactMovedBuffer.length)
         // The table, then each element's share of it.
         // ...and then the spring supports' nodes and laws (below), from the next 16 bytes.
-        loadTableBuffer = try buffer(
+        // ...then the fastened sheets' links: six records a link, each node's first entry, and the
+        // entries, two a link.
+        let springEnd =
             ((Self.maxLoadPoints * 8 + (max(elements, 1) + max(mesh.positions.count, 1)) * 4 + 15) & ~15)
-                + (3 * mesh.positions.count + 5 * model.springSupports.count) * 16,
-            "applied load table")
+            + (3 * mesh.positions.count + 6 * model.springSupports.count) * 16
+        let linkStarts = springEnd + 6 * mesh.links.count * 16
+        let linkEntries = linkStarts + ((mesh.positions.count + 1) * 4 + 15) & ~15
+        linkLayout = (springEnd, linkStarts, linkEntries)
+        loadTableBuffer = try buffer(linkEntries + 2 * mesh.links.count * 4, "applied load table")
         failureGateBuffer = try buffer(16, "failure gate")
         placeholderBuffer = try buffer(64, "shell placeholder")
 
@@ -571,13 +588,16 @@ public final class ShellSolver {
         func packed(_ law: SpringLaw) -> SIMD4<Float> {
             let k = law.stiffness
             let h = law.hardening
-            return SIMD4(k, min(law.yield, 1e30), k * h / (k - h), 0)
+            return SIMD4(k, min(law.yield, 1e30), k == h ? 0 : k * h / (k - h), 0)
         }
         for support in model.springSupports {
             springs += [
                 packed(support.pull), packed(support.across), packed(support.turnPositive),
                 packed(support.turnNegative),
-                SIMD4(Float(support.edge), Float(support.along), Float(support.acrossAxis), 0),
+                SIMD4(
+                    Float(support.edge), Float(support.along), Float(support.acrossAxis),
+                    support.releases == true ? 1 : 0),
+                packed(support.acrossNegative ?? support.across),
             ]
         }
         // After the applied load's table and shares, from the next 16 bytes, where `shellNodes`
@@ -587,6 +607,38 @@ public final class ShellSolver {
         if !springs.isEmpty {
             (loadTableBuffer.contents() + springOffset).copyMemory(
                 from: springs, byteCount: springs.count * MemoryLayout<SIMD4<Float>>.stride)
+        }
+        // The links: their nodes, normal and way off (axis + 3 if +), and length; their tension per
+        // metre (stiffness, strength, and its softening to nothing over a tenth of its stretch at
+        // failure, as `SpringLaw` packs it) and shear (stiffness, strength); state, movement and
+        // force zero. Then each node's links, the sheet's end even, the beam's odd.
+        if !mesh.links.isEmpty {
+            var records: [SIMD4<Float>] = []
+            var lists = [[UInt32]](repeating: [], count: positions.count)
+            for (n, link) in mesh.links.enumerated() {
+                let fastening = model.sheetFastenings[link.fastening].fastening
+                let k = fastening.stiffness * fastening.perMetre
+                let h = -10 * k
+                records += [
+                    SIMD4(
+                        Float(link.sheet), Float(link.beam), Float(link.normal + (link.off > 0 ? 3 : 0)),
+                        link.length),
+                    SIMD4(k, fastening.tension * fastening.perMetre, k * h / (k - h), 0),
+                    SIMD4(k, fastening.shear * fastening.perMetre, 0, 0),
+                    .zero, .zero, .zero,
+                ]
+                lists[Int(link.sheet)].append(UInt32(2 * n))
+                lists[Int(link.beam)].append(UInt32(2 * n + 1))
+            }
+            (loadTableBuffer.contents() + linkLayout.records).copyMemory(
+                from: records, byteCount: records.count * MemoryLayout<SIMD4<Float>>.stride)
+            var starts: [UInt32] = [0]
+            for list in lists { starts.append(starts.last! + UInt32(list.count)) }
+            let entries = lists.flatMap { $0 }
+            (loadTableBuffer.contents() + linkLayout.starts).copyMemory(
+                from: starts, byteCount: starts.count * 4)
+            (loadTableBuffer.contents() + linkLayout.entries).copyMemory(
+                from: entries, byteCount: entries.count * 4)
         }
         tiedBuffer = tiedStorage
         tieBuffer = try buffer(mesh.ties.count * 8, "shell ties")
@@ -722,6 +774,15 @@ public final class ShellSolver {
                 nodes[slave].flags |= 128
             }
         }
+    }
+
+    /// Fastened sheets' links (`ShellMesh.links`): how many, and how many have let go, the sheet
+    /// pulled off its screws there.
+    public var linkCount: Int { mesh.links.count }
+    public var linksReleased: Int {
+        let records = (loadTableBuffer.contents() + linkLayout.records).bindMemory(
+            to: SIMD4<Float>.self, capacity: max(6 * mesh.links.count, 1))
+        return (0..<mesh.links.count).filter { records[6 * $0 + 3].w > 0.5 }.count
     }
 
     /// Direct access to the nodes, for setting supports and initial velocities.
@@ -1196,6 +1257,15 @@ public final class ShellSolver {
             }
             beforeNodes?(uniforms)
 
+            if let linkPipeline {
+                encoder.setComputePipelineState(linkPipeline)
+                encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
+                encoder.setBuffer(loadTableBuffer, offset: 0, index: 1)
+                encoder.setBytes(&uniforms, length: MemoryLayout<ShellUniforms>.stride, index: 2)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 3)
+                encoder.dispatchThreads(
+                    MTLSize(width: mesh.links.count, height: 1, depth: 1), threadsPerThreadgroup: group)
+            }
             let down = gravityDirection.x == 0 && gravityDirection.y == 0 && gravityDirection.z < 0
             encoder.setComputePipelineState(down ? nodePipeline : turnedNodes ?? nodePipeline)
             encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
@@ -1419,6 +1489,10 @@ public final class ShellSolver {
             uniforms.loadShares = appliedLoad.elementShares == nil && appliedLoad.nodeShares == nil ? 0 : 1
             uniforms.loadNodeShares = appliedLoad.nodeShares == nil ? 0 : 1
         }
+        uniforms.linkCount = UInt32(mesh.links.count)
+        uniforms.linkRecords = UInt32(linkLayout.records)
+        uniforms.linkStarts = UInt32(linkLayout.starts)
+        uniforms.linkEntries = UInt32(linkLayout.entries)
         if let fluid {
             uniforms.coupled = 1
             uniforms.ambientPressure = fluid.ambientPressure
