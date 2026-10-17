@@ -2779,8 +2779,8 @@ func runTwoFace() throws {
                 duration: duration,
                 afterburning: burning, airModel: chosenGas(), openFaces: chosenFaces(), adjust: adjust,
                 prepare: { solver in
-                    // `--weightless`: the slab without its own weight, as compared before 17 October 2026.
-                    if flag("weightless") { solver.gravity = 0 }
+                    // `--weight`: the slab under its own weight, settled before the blast.
+                    if flag("weight") { solver.gravity = 9.81 }
                     prepareTrace(solver)
                     lastStructure = solver
                 },

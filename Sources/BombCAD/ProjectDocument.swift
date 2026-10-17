@@ -43,8 +43,9 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// run did before 16 October 2026; true when by overlap; nil, and left out of the file and the
     /// fingerprint, where the scene has no structure, or for a run saved before then.
     var outlineByOverlap: Bool?
-    /// True when envelopes' glazing breaks in the air and the blast fills their rooms; nil, and
-    /// left out of the file and the fingerprint, for the one-way fill, or where no envelope is glazed.
+    /// True when envelopes' glazing breaks in the air and the blast fills their rooms, as new
+    /// projects do since 17 October 2026; nil, and left out of the file and the fingerprint, for the
+    /// one-way fill (so every run saved before then keeps its fill), or where no envelope is glazed.
     var ventsGlazing: Bool?
     /// True when the structures were brought to rest under their own weight before the blast
     /// (`SolverConfiguration.settlesStructures`), as since 17 October 2026; false when they took
@@ -68,7 +69,9 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         ground = settings.ground == .rigid ? nil : settings.ground
         waterTable = settings.ground == .rigid ? nil : settings.waterTable
         outlineByOverlap = settings.scenario.structuralObjects.isEmpty ? nil : settings.outlineByOverlap
-        ventsGlazing = settings.ventsGlazing && settings.scenario.hasEnvelopePanes ? true : nil
+        // With gravity the run takes the fill, and says so.
+        ventsGlazing =
+            settings.ventsGlazing && settings.scenario.hasEnvelopePanes && !settings.gravity ? true : nil
         settlesStructures = settings.scenario.structuralObjects.isEmpty ? nil : settings.settlesStructures
         solidElementSize = settings.solidElementSize
         self.duration = duration
@@ -78,6 +81,11 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     init(model: SimulationModel) {
         self.init(settings: model.settings, duration: model.duration)
     }
+
+    /// Whether runs of `scenario` under these settings vent its glazing: as recorded where it is
+    /// glazed, where no key is the fill of every run saved before venting was the default; by
+    /// default without glazing, so that glazing added later vents.
+    func ventsGlazing(over scenario: Scenario) -> Bool { ventsGlazing ?? !scenario.hasEnvelopePanes }
 
     /// Whether a run of `scenario` under these settings cuts its terrain through the cells (where
     /// the air is not refined): as recorded over terrain, where nil is the staircase; by default

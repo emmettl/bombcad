@@ -135,8 +135,13 @@ extension TwoFaceSlabTests {
             device: device, scenario: scenario, slab: yaoSlab, thicknessAxis: 2, probes: probes,
             cellSize: cellSize, refinement: refinement, duration: duration, chargeTowardsLow: false,
             afterburning: afterburning, airModel: airModel, openFaces: openFaces,
-            // Under its own weight, settled before the blast and read from there, as the tests'
-            // sensors read from the slab resting on its supports.
-            hold: yaoHold, prepare: prepare, progress: progress, inspect: inspect, configure: configure)
+            hold: yaoHold,
+            prepare: { structure in
+                // Without its own weight: the tests' sensors read from the slab resting under it,
+                // and a slab given its weight as the run starts sags 2-3 mm (twice its static
+                // 1.5 mm, uncracked) within the time the blast moves it a tenth of that.
+                structure.gravity = 0
+                prepare?(structure)
+            }, progress: progress, inspect: inspect, configure: configure)
     }
 }

@@ -139,6 +139,12 @@ final class AirRefinement {
     private let listPipeline: MTLComputePipelineState
     private let argumentsPipeline: MTLComputePipelineState
     private let fillPipeline: MTLComputePipelineState
+    private let openPanesPipeline: MTLComputePipelineState
+    /// Envelope venting's panes (`EnvelopeVenting.sortedPaneCells` and their status), so that the
+    /// fine cells under a broken pane are air; nil without venting.
+    private var panes: (cells: MTLBuffer, status: MTLBuffer, lookup: PaneLookup)?
+    /// A lookup of no panes, for fills without venting.
+    private let noPanes: MTLBuffer
 
     /// With the terrain's cut cells on the coarse grid (`coarseCut`): each fine cell's share of air
     /// and apertures (two float4 a cell), the differences its sweeps keep (two more), whether each
@@ -259,6 +265,9 @@ final class AirRefinement {
         listPipeline = try pipeline("refineList")
         argumentsPipeline = try pipeline("refineArguments")
         fillPipeline = try pipeline("refineFill")
+        openPanesPipeline = try pipeline("refineOpenPanes")
+        noPanes = try buffer(MemoryLayout<PaneLookup>.stride, "no panes")
+        memset(noPanes.contents(), 0, noPanes.length)
 
         func buffer(_ length: Int, _ label: String) throws -> MTLBuffer {
             guard let buffer = device.makeBuffer(length: max(length, 16), options: .storageModeShared) else {
@@ -1407,6 +1416,9 @@ final class AirRefinement {
         encoder.setBuffer(parentCutRecords ?? fineWall, offset: 0, index: 27)
         // Read only with the levels' own steps.
         encoder.setBuffer(maxSpeed ?? fine[1], offset: 0, index: 28)
+        // Without venting, a lookup of no panes (the placeholder is zeroed).
+        encoder.setBuffer(panes?.cells ?? noPanes, offset: 0, index: 29)
+        encoder.setBuffer(panes?.status ?? fineWall, offset: 0, index: 30)
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 48,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
@@ -1649,4 +1661,46 @@ struct TerrainUniforms {
     var enabled: UInt32 = 0
     /// With cut cells, the coarse grid's quadrature points to an edge (`TerrainCutGeometry.samples`).
     var cutSamples: UInt32 = 8
+}
+
+/// `PaneLookup` in Refine.metal.
+struct PaneLookup {
+    var count: UInt32 = 0
+    var nx: UInt32 = 0
+    var ny: UInt32 = 0
+    var nz: UInt32 = 0
+    var coarseDx: Float = 0
+    var pad = SIMD3<Float>.zero
+}
+
+extension AirRefinement {
+    /// Venting's panes, for the fine cells to open under them (`cells` led by `lookup`, the header
+    /// `PaneLookup` in Refine.metal); nil without venting.
+    func setPanes(_ panes: (cells: MTLBuffer, status: MTLBuffer, lookup: PaneLookup)?) {
+        self.panes = panes
+    }
+
+    /// After the step a pane broke in: this level's fine cells under it, in patches placed, opened
+    /// (`refineOpenPanes`). `uniforms` are this level's.
+    func encodeOpenPanes(_ encoder: MTLComputeCommandEncoder, uniforms: SolverUniforms, control: MTLBuffer) {
+        guard let panes, panes.lookup.count > 0 else { return }
+        var uniforms = uniforms
+        var scale = UInt32(parentScale * ratio)
+        encoder.setComputePipelineState(openPanesPipeline)
+        bind(encoder, fine[0], 0)
+        encoder.setBuffer(fine[1], offset: 0, index: 1)
+        encoder.setBuffer(fineSpecies[0], offset: 0, index: 2)
+        encoder.setBuffer(fineSpecies[1], offset: 0, index: 3)
+        bind(encoder, fineMask, 4)
+        encoder.setBuffer(fineWall, offset: 0, index: 5)
+        bind(encoder, patchOfTile, 6)
+        encoder.setBuffer(panes.cells, offset: 0, index: 7)
+        encoder.setBuffer(panes.status, offset: 0, index: 8)
+        encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 10)
+        encoder.setBuffer(control, offset: 0, index: 11)
+        encoder.setBytes(&scale, length: 4, index: 12)
+        encoder.dispatchThreads(
+            MTLSize(width: Int(panes.lookup.count) * Int(scale * scale * scale), height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))
+    }
 }
