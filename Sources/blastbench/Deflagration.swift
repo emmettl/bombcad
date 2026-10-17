@@ -277,6 +277,22 @@ private func runVented(device: MTLDevice, gas: FlammableGas, concentration: Floa
         let parts = room.split(separator: "x").compactMap { Float($0) }
         if parts.count == 3 { base.room = SIMD3(parts[0], parts[1], parts[2]) }
     }
+    // `--container doors` or `--container roof`: HySEA's 20 ft ISO container (5.87 × 2.35 × 2.40 m
+    // inside; Skjold et al., ICHS 2017, paper 223): its doors' whole end open, lit at the back
+    // wall's centre 1.2 m up; or `--vent 4,6,8` m² of its eight 1 m² roof openings open (two rows of
+    // four, assumed evenly spaced, the middle ones first), lit at the floor's centre.
+    if let container = option("container") {
+        base.room = SIMD3(5.87, 2.35, 2.40)
+        base.wallThickness = option("wall").flatMap { Float($0) } ?? 0.1
+        if container == "doors" {
+            base.ventOpening = SIMD2(2.35, 2.40)
+            base.ignition = .backWall
+            base.backWallOffset = 0.05
+            base.ignitionHeight = 1.2
+        } else {
+            base.floorIgnition = 0.05
+        }
+    }
     let a = base.acceleration
     print(
         "\(gas.displayName)–air filling a \(format(Double(base.room.x), 1)) × \(format(Double(base.room.y), 1))"
@@ -293,6 +309,14 @@ private func runVented(device: MTLDevice, gas: FlammableGas, concentration: Floa
             var study = base
             study.ventArea = area
             study.cellSize = dx
+            if option("container") == "roof" {
+                // Columns along the container, from its middle out; both rows of each.
+                let columns: [Float] = [1, 2, 0, 3]
+                let open = Int(area.rounded())
+                study.roofOpenings = (0..<open).map { n in
+                    SIMD2(5.87 * (columns[n / 2] + 0.5) / 4, 2.35 * (Float(n % 2) + 0.5) / 2)
+                }
+            }
             let clock = Date()
             let progress: ((Double, Double) -> Void)? =
                 flag("progress")
