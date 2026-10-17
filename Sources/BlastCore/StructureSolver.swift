@@ -410,6 +410,9 @@ public final class StructureSolver {
         guard materials.count <= StructureModel.maxMaterials else {
             throw BlastError.tooManyMaterials(materials.count)
         }
+        if let timber = materials.first(where: { $0.model == .timber }) {
+            throw BlastError.timberNeedsShells(timber.name)
+        }
         // Masonry fine enough to show its units: mark the elements its mortar joints pass through.
         jointed = materials.map(showsJoints)
         if jointed.contains(true) {
@@ -2093,6 +2096,39 @@ public final class StructureSolver {
             hourglassStiffness: hourglassCoefficient * material.youngsModulus * h / 48,
             soundSpeed: material.dilatationalWaveSpeed)
         parameters.youngsModulus = material.youngsModulus
+        if material.model == .timber, let timber = material.timber {
+            parameters.materialModel = MaterialModel.timber.rawValue
+            // A beam's shear across its grain, and the in-plane shear of a shell's layers.
+            parameters.mu = timber.shearModulus
+            parameters.acrossGrain = timber.acrossGrain
+            parameters.grainShear = timber.shearModulus
+            parameters.rollingShear = timber.rollingShearModulus
+            parameters.grainPoisson = timber.poissonRatio
+            parameters.grainAxis = UInt32(timber.grainAxis)
+            parameters.grainRotation = timber.grainRotation
+            let rate = timber.strengthFactor
+            parameters.tensionAlong = rate * timber.tensionAlong
+            parameters.compressionAlong = rate * timber.compressionAlong
+            parameters.tensionAcross = rate * timber.tensionAcross
+            parameters.compressionAcross = rate * timber.compressionAcross
+            parameters.grainShearStrength = rate * timber.shearStrength
+            parameters.rollingStrength = rate * timber.rollingStrength
+            parameters.fibreEnergy = timber.fibreEnergy
+            parameters.splittingEnergy = timber.splittingEnergy
+            parameters.shearEnergy = timber.shearEnergy
+            parameters.rollingEnergy = timber.rollingEnergy
+            let tops = timber.lamellaTops.prefix(8)
+            parameters.lamellaCount = UInt32(tops.count)
+            for (l, lamella) in timber.lamellae.prefix(8).enumerated() where lamella.crossed {
+                parameters.lamellaCrossed |= 1 << l
+            }
+            withUnsafeMutableBytes(of: &parameters.lamellaTop) { storage in
+                for (l, top) in tops.enumerated() {
+                    storage.storeBytes(of: top, toByteOffset: 4 * l, as: Float.self)
+                }
+            }
+            return parameters
+        }
         guard material.model == .concrete else { return parameters }
         // Strengths at blast strain rates; softening scaled to the element so that the energy
         // per unit area of crack or crush band is the material's, whatever the mesh.

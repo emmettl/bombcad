@@ -1124,6 +1124,8 @@ public enum StandingTable {
         "StructureMaterial.steelRateDependent": .option([.alternativeRateLaws]),
         "StructureMaterial.units": .option([.smearedMasonry]),
         "StructureMaterial.isTransparent": .input,
+        // Timber's properties; its standing follows from its material class.
+        "StructureMaterial.timber": .input,
         // Connections.
         "Anchorage.normalStiffness": .input,
         "Anchorage.shearStiffness": .input,
@@ -1765,12 +1767,13 @@ struct StandingScene {
 
     /// The kinds of material in the scene's structures, weakest standing last.
     enum MaterialClass: Int, Comparable {
-        case reinforcedConcrete, plainConcrete, steel, masonry, glass
+        case reinforcedConcrete, plainConcrete, steel, masonry, glass, timber
         static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
 
         init(_ material: StructureMaterial) {
             switch material.model {
             case .vonMises: self = .steel
+            case .timber: self = .timber
             case .concrete:
                 self =
                     material.isTransparent
@@ -1919,6 +1922,18 @@ struct StandingScene {
                     "A glass pane at 3 m", "Breaks under 1 kg and survives 0.5 g",
                     "validation.md#verification-against-theory"))
             parts.append("glass a brittle concrete, checked only to break and survive")
+        }
+        if classes.contains(.timber) {
+            evidence.append(
+                StandingEvidence(
+                    "Cross-laminated timber panels in the Ottawa shock tube (Poulin, 2019)",
+                    "Static stiffness within 4–13%, peak 12–25% high (flexure, as tested); shots that left the "
+                        + "panels elastic stay elastic (0.72–1.21 of the peak deflection), nine of twelve that broke "
+                        + "them break or split the model's and three near the threshold hold; the dynamic increase "
+                        + "of 1.28 comes from the same shots",
+                    "validation.md#cross-laminated-timber-panels-in-a-shock-tube"))
+            parts.append(
+                "timber compared on CLT panels in a shock tube: stiffness close, strength 12–25% high")
         }
         var resolution: [String] = []
         if let through = elementsThrough, through <= 6, through >= 4, classes.contains(.reinforcedConcrete) {

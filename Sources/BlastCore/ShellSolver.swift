@@ -73,6 +73,8 @@ struct ShellUniforms {
     var gravityY: Float = 0
     var gravityZ: Float = -1
     var removesFragments: UInt32 = 0
+    /// 1 when the applied pressure acts on each element by its share, stored after the table.
+    var loadShares: UInt32 = 0
 }
 
 /// Layout matches `BeamElement` in `Shell.metal`.
@@ -228,7 +230,7 @@ public final class ShellSolver {
     public let flagBuffer: MTLBuffer
     /// Damage of each element, 0 (sound) to 1 (failing), for display.
     public let displayBuffer: MTLBuffer
-    private let layerBuffer: MTLBuffer
+    let layerBuffer: MTLBuffer
     private let barLayoutBuffer: MTLBuffer
     private let barBuffer: MTLBuffer
     private let forceBuffer: MTLBuffer
@@ -322,9 +324,9 @@ public final class ShellSolver {
         elementCount = mesh.elements.count
         beamCount = mesh.beams.count
         nodeCount = mesh.positions.count
-        layers = max(1, model.shellLayers)
         barSlots = max(1, mesh.elements.map(\.bars.count).max() ?? 0)
-        thicknessRule = Self.gaussLegendre(layers)
+        thicknessRule = Self.thicknessRule(layers: max(1, model.shellLayers), materials: materials)
+        layers = thicknessRule.count
 
         let library = try library ?? ShaderLibrary.make(device: device)
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
@@ -410,7 +412,8 @@ public final class ShellSolver {
         contactForceBuffer = try buffer(nodes * 12, "shell contact forces")
         memset(contactHeadBuffer.contents(), 0xFF, contactHeadBuffer.length)
         memset(contactMovedBuffer.contents(), 0xFF, contactMovedBuffer.length)
-        loadTableBuffer = try buffer(Self.maxLoadPoints * 8, "applied load table")
+        // The table, then each element's share of it.
+        loadTableBuffer = try buffer(Self.maxLoadPoints * 8 + max(elements, 1) * 4, "applied load table")
         failureGateBuffer = try buffer(16, "failure gate")
         placeholderBuffer = try buffer(64, "shell placeholder")
 
@@ -923,6 +926,11 @@ public final class ShellSolver {
         for (n, point) in appliedLoad.history.prefix(Self.maxLoadPoints).enumerated() {
             table[n] = point
         }
+        if let shares = appliedLoad.elementShares {
+            let stored = (loadTableBuffer.contents() + Self.maxLoadPoints * 8).bindMemory(
+                to: Float.self, capacity: elementCount)
+            for e in 0..<elementCount { stored[e] = e < shares.count ? shares[e] : 0 }
+        }
     }
 
     // MARK: - Stepping
@@ -1203,6 +1211,26 @@ public final class ShellSolver {
         set { gpuSubsteps.target = newValue }
     }
 
+    /// Points and weights through the thickness: the `layers`-point Gauss-Legendre rule, or,
+    /// with layered timber, two points in each of its lamellae (in each piece between any
+    /// material's lamellae), which is exact for their elastic bending where one rule over the
+    /// whole thickness would not be, their stiffness jumping from one to the next.
+    static func thicknessRule(layers: Int, materials: [StructureMaterial]) -> [SIMD2<Float>] {
+        var tops: [Float] = []
+        for material in materials where material.model == .timber {
+            guard let timber = material.timber, timber.lamellae.count > 1 else { continue }
+            for top in timber.lamellaTops.dropLast() where !tops.contains(where: { abs($0 - top) < 1e-4 }) {
+                tops.append(top)
+            }
+        }
+        guard !tops.isEmpty else { return gaussLegendre(layers) }
+        let bounds = [-1] + tops.sorted() + [1]
+        let pair = gaussLegendre(2)
+        return zip(bounds, bounds.dropFirst()).flatMap { low, high in
+            pair.map { SIMD2(low + (high - low) * (1 + $0.x) / 2, $0.y * (high - low) / 2) }
+        }
+    }
+
     /// Points and weights of the n-point Gauss-Legendre rule on [-1, 1], by Newton's method on
     /// the Legendre polynomial.
     static func gaussLegendre(_ n: Int) -> [SIMD2<Float>] {
@@ -1276,6 +1304,7 @@ public final class ShellSolver {
         if let appliedLoad, fluid == nil {
             uniforms.loadCount = UInt32(min(appliedLoad.history.count, Self.maxLoadPoints))
             uniforms.loadFace = UInt32(2 * appliedLoad.axis + (appliedLoad.positiveSide ? 1 : 0))
+            uniforms.loadShares = appliedLoad.elementShares == nil ? 0 : 1
         }
         if let fluid {
             uniforms.coupled = 1
