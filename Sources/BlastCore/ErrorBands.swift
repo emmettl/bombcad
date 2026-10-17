@@ -1426,7 +1426,11 @@ extension StandingScene {
             } else {
                 unbanded.append("The comparison with Church's clouds was made with afterburning on.")
             }
-        case .freestandingMotion, .fragments, .groundShock, .surfaceHeating:
+        case .groundShock:
+            unbanded.append(
+                "One measured surface burst, too far off to band: the vertical velocity 20 to 80 times the "
+                    + "measured, near and past where the ground's wave outruns the air.")
+        case .freestandingMotion, .fragments, .surfaceHeating:
             unbanded.append("Nothing measured to band it.")
         }
         return (bands, unbanded)

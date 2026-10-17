@@ -600,10 +600,14 @@ public struct SoilColumn: Sendable {
 
     /// Advances to `time`, as far as whole steps go, pressed by `load`; the steps whose span
     /// reaches beyond what the load knows wait for the next frame.
-    public mutating func advance(to end: Double, load: GroundLoad) {
+    /// With a `window` wider than the step, each step takes the load's mean over that window,
+    /// centred on it: the shock then rises over the window, the impulse kept exactly, and no kink
+    /// in the load is sharper than the window.
+    public mutating func advance(to end: Double, load: GroundLoad, window: Double = 0) {
         let dt = timeStep
-        while time + dt / 2 <= min(end, load.end) + 1e-12 {
-            step(load: load.integral(from: time - dt / 2, to: time + dt / 2) / dt)
+        let width = max(dt, window)
+        while time + width / 2 <= min(end, load.end) + 1e-12 {
+            step(load: load.integral(from: time - width / 2, to: time + width / 2) / width)
         }
     }
 }

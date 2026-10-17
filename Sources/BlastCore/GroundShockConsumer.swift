@@ -230,7 +230,7 @@ public struct GroundShockConsumer: Sendable {
     private var columns: [SoilColumn] = []
     private var motions: [[[Float]]] = []
 
-    /// The fewest of the column's steps a shock rises over.
+    /// The fewest of the column's steps the load is averaged over, so the fastest a shock rises.
     public static let riseSteps = 12.0
 
     public init(spec: GroundShockSpec) {
@@ -273,18 +273,19 @@ public struct GroundShockConsumer: Sendable {
             // Nothing for a point never yet open; one under a block or the structure for a frame
             // carries nothing then.
             guard let sample = latest[n] else { continue }
-            // A shock rises over the time its front takes to cross a cell, and over no fewer than
-            // a dozen of the column's steps: faster, and the surface's node rings, up to two
-            // fifths too fast in soil that unloads stiffly.
+            // The column takes the load averaged over the time the shock's front takes to cross a
+            // cell, and over no fewer than a dozen of its steps: a shock or a kink sharper than
+            // that makes the surface's node ring, up to two fifths too fast in soil that unloads
+            // stiffly. The average keeps the impulse.
             let speed = AirInducedGroundShock.frontSpeed(
                 overpressure: peaks[n], ambientPressure: air.pressure, ambientDensity: air.density,
                 gamma: air.gamma)
-            let rise = max(Double(slice.cellSize / speed), Self.riseSteps * columns[n].timeStep)
+            let window = max(Double(slice.cellSize / speed), Self.riseSteps * columns[n].timeStep)
             loads[n].append(
                 time: slice.time, overpressure: histories[n].last ?? 0, peak: peaks[n],
-                impulse: max(sample.impulse, 0), rise: rise)
-            columns[n].advance(to: slice.time, load: loads[n])
-            loads[n].forget(before: columns[n].time - columns[n].timeStep)
+                impulse: max(sample.impulse, 0))
+            columns[n].advance(to: slice.time, load: loads[n], window: window)
+            loads[n].forget(before: columns[n].time - window)
             let velocity = columns[n].velocities
             if motions[n][0].count < histories[n].count - 1 {
                 // Still before it was first open.

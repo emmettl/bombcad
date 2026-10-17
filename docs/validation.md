@@ -79,6 +79,7 @@ swift run -c release blastbench perimeter --study wall
 | Held out (blind)     | Hrynyk's three plain slabs struck repeatedly by a falling weight, predicted on frozen defaults before the measurements were unsealed: first impacts 1.15–1.29 times the measured peak (too flexible, as the calibrated beams were); later impacts 0.56–0.83, residuals a seventh to a third, and none of the three slabs' punching failures predicted. Mendonça's seven slabs under an open-air charge: the two nearest the charge collapsed, the model leaving them standing; the declared peaks 0.31–1.23 of measured on the survivors, those near 1 made by an artefact of the sleeping air as the slabs landed after the blast threw them up; the blast's own peak a tenth to a quarter of the meters'. Reynolds's six high-strength slabs in the contest slab's rig (v0.3.0): peaks 0.77–1.06 of measured on the five that held in the model, 0.87 on average at 4 in; the sixth, the lightly reinforced slab under the larger load, broken through where the test held at 182 mm; the blast face never crushed where four of the standing slabs' tests were | Hrynyk: between, by the protocol's rule, the calibrated error on undamaged slabs, much worse and on the unsafe side once they are damaged. Mendonça: worse, by the rule, far too stiff and too strong, the unsafe side. Reynolds: worse, by the rule, on the one broken slab (the safe side); the others within the calibrated band, a little stiff |
 | Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.1–1.7 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own. [Brick walls](#brick-walls-debris) (Keys, 2016): loads within 15%, but the walls break into too few pieces, falling at full length in the open (means of −2 to +2 m against +0.2 to +0.6 m) and thrown half as far as measured in a shock tube. Collapse once, blind: [Mendonça's slabs](#blind-test-2-mendonças-slabs-under-an-open-air-charge), the two that collapsed left standing | Unsafe side for debris: held back rather than thrown, slabs never holed, brick walls thrown short (low); collapse missed in both slabs that collapsed (blind) |
 | Window glass         | Monk and Clubley's annealed windows in the Shoeburyness tunnel (4 mm, 0.89 m², four aspect ratios, about 33 kPa reflected for longer than they lasted): the one-way model breaks every pane, as every pane broke, at 0.40–0.46 of the twelve measured times with the app's fixed edges (0.71–0.84 simply supported), at a fifth of the measured deflection: small-deflection theory without membrane action | Safe side, early by half (moderate for timing under a strong load); the threshold of breaking untested |
+| Ground shock         | Xia et al. (2022), 1 t of TNT on the ground, accelerations 0.5 m deep at 21 and 42 m: the vertical velocity from the manuals' relation and the layered soil column 20 to 30 times the measured accelerations' integral at 21 m and 50 to 80 times at 42 m, within three times a velocity gauge that clipped; the measured motion mostly horizontal, at ranges near and past where the ground's wave outruns the air; the soil not measured | Far too high in the vertical, the safe side; the horizontal motion that dominated not modelled, the unsafe side; illustrative |
 | Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 1–2%, structural responses 4–20%, residual deflections and failure 17–28%; the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
 
 No structural result has yet been shown to converge on today's defaults: the meshes quoted as
@@ -3251,6 +3252,61 @@ Proposal: a large-deflection resistance for glass, from Moore's nonlinear plate 
 backbone, judged on these twelve panes and the detailed model's 52; and a threshold series
 (see [data survey](data-survey.md#3h-window-glass-breaking-under-a-blast)) before the glass is
 called more than an approximation.
+
+## Ground motion under a 1 t surface burst
+
+The [ground shock](ground-shock.md) models' first comparison with a measurement: the vertical
+velocity below the ground under an open surface burst.
+
+### The test
+
+C. Xia, L. Chen, R. Xu, M. Cao, D. Chen and Q. Fang, *Applied Sciences* 12 (2022) 7987, CC BY:
+1 t of TNT on the ground in the Gobi desert, on hard alluvial and pluvial sediments. Three-axis
+accelerometers in a box in a pit 0.5 m deep at 21 and 42 m, and a velocity sensor at 21 m.
+The paper prints each component's peak and plots the histories. Those were digitised from its
+vector figures into `Fixtures/XiaChen2022`, within 0.2 m/s² of the printed peaks, and
+integrated. The velocity sensor clipped at about 0.085 m/s. Its component is not stated, and it
+read more than any integrated component reaches. The soil was not measured: the seismic speed,
+457 m/s, is the authors' fit of UFC 3-340-01's direct-induced relation to the two peaks, and the
+density, 2,050 kg/m³, their numerical model's.
+
+### The model
+
+`blastbench groundmotion`: a quarter of the burst on the recommended air, on 0.5 and 0.25 m
+cells (the air's peaks 90% and 93% of Kingery–Bulmash's on 0.25 m cells, impulses within 6%),
+its ground streamed every 0.2 ms to the manuals' estimate and to soil columns of the
+fitted soil that unload at one, two and three times its loading speed. The same points are
+also fed Kingery–Bulmash's Friedlander pulse.
+
+### Results
+
+| Range | Measured vertical velocity, integrated (m/s) | Model, fed the air model (0.25 m) | Model, fed Kingery–Bulmash | Ratio |
+|---|---|---|---|---|
+| 21 m | 0.009–0.012 (a velocity gauge clipped at 0.085) | 0.221–0.239 | 0.241–0.258 | 18–29 (at most 3 against the clipped gauge) |
+| 42 m | 0.0008–0.0012 | 0.057–0.059 | 0.060–0.062 | 48–78 |
+
+- At both ranges every model gives about P/(ρc). The estimate and the columns agree within a few
+  per cent, as at 0.5 m the soil's unloading has hardly begun to wear the pulse down.
+- No plausible soil closes the gap. Loading at 1,800 m/s, the column still gives five to seven
+  times the integrated vertical at 21 m and thirteen to twenty times at 42 m.
+- The models' vertical accelerations, 19 to 310 m/s² fed the air model against a measured 3.6 and
+  0.36, are the shock's rise over the soil's impedance, the rise set by the cells and the
+  column's averaging window, and are not a prediction.
+- The measured horizontal accelerations were three to eight times the vertical. At 21 m the air's
+  front ran at 582 m/s, between the fitted soil speed and √2 times it, and at 42 m at 412 m/s,
+  outrun by the soil. Both models say they do not cover that motion.
+
+### What this does and does not show
+
+- It shows the vertical air-induced velocity, as the manuals relate it and the column carries it,
+  far above what was measured near and past the outrunning limit. A one-dimensional vertical
+  model is not a description of the ground's motion there.
+- It does not test either model where it claims to hold, closer in and superseismic: no gauge
+  stood there. One shot, two gauges at one depth, two records of the same motion that disagree,
+  and an unmeasured soil make it a weak test even at these ranges.
+- The ground shock's standing stays illustrative, unbanded. Prairie Flat or Pre-Dice Throw II,
+  with gauges at several depths on both sides of the superseismic limit and the soil measured,
+  would test it properly ([data wanted](data-wanted.md#to-fetch)).
 
 ## Blast loads against empirical references
 

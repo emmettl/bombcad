@@ -492,7 +492,9 @@ Ten values in the code were written from memory and should be checked against th
     metres away, on a site of measured wave speed. The linear, outrunning end only.
   - Two Chinese open papers: Xia et al., *Applied Sciences* 12(16), 7987 (2022),
     doi:10.3390/app12167987, CC BY, ground shock from 1 and 10 t surface shots against
-    UFC 3-340-01 (MDPI refused automated access; the soil and overpressure not seen); and Wang,
+    UFC 3-340-01 (supplied by hand on 17 October 2026 and used: only the 1 t shot recorded,
+    three-axis accelerations 0.5 m deep at 21 and 42 m and a clipped velocity, no overpressure
+    and no measured soil; see [Ground shock](ground-shock.md#against-measured-ground-motion)); and Wang,
     Kong and Shang, *Frontiers in Physics* (2023), doi:10.3389/fphy.2023.1114871, CC BY, 300 and
     500 kg 1.5 m above sandy soil, reflected pressure and ground velocity measured together at
     3.5 to 9 m with peaks tabulated, but no layers and a density that reads as the grains'.

@@ -2152,19 +2152,28 @@ struct StandingScene {
         return result(
             .groundShock, .illustrative,
             column
-                ? "A layered soil column under each point, checked against closed-form solutions; nothing "
-                    + "compared with a ground shock measurement."
-                : "The design manuals' one-dimensional air-induced ground shock; nothing compared with a "
-                    + "measurement.",
-            evidence: column
+                ? "A layered soil column under each point, checked against closed-form solutions; against "
+                    + "one measured surface burst, its vertical velocity 20 to 80 times too high."
+                : "The design manuals' one-dimensional air-induced ground shock; against one measured "
+                    + "surface burst, its vertical velocity 20 to 80 times too high.",
+            evidence: (column
                 ? [
                     StandingEvidence(
                         "Uniform, layered and bilinear soil columns against closed-form solutions",
                         "Within 1% for pulses, reflections and resonance; 3–8% for bilinear unloading",
                         "ground-shock.md#checks")
-                ] : [],
+                ] : [])
+                + [
+                    StandingEvidence(
+                        "Xia et al.'s 1 t surface burst, 0.5 m deep at 21 and 42 m",
+                        "Vertical velocity 20–30 and 50–80 times the measured accelerations' integral; "
+                            + "within three times a clipped velocity gauge; the measured motion mostly horizontal",
+                        "ground-shock.md#against-measured-ground-motion")
+                ],
             assumptions: [
                 "Away from the charge only; no direct-induced shock or crater.",
+                "No motion carried by the ground's own wave where it outruns the air, which dominated the one "
+                    + "measured test.",
                 "The ground stays rigid for the air.",
                 "Not for design, buried services or vibration limits.",
             ], documents: ["ground-shock.md#limitations"])
