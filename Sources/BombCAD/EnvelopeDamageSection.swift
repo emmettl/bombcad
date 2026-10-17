@@ -69,6 +69,10 @@ struct EnvelopeDamageSection: View {
                                 )
                                 .font(.caption).foregroundStyle(.secondary)
                             }
+                            if let glass = Self.glassLine(building) {
+                                Text(glass.prefix(1).uppercased() + glass.dropFirst())
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
                             if building.beyondOneWay {
                                 Text("Frame damage beyond the one-way model: a panel turned past 2°.")
                                     .font(.caption).foregroundStyle(.orange)
@@ -109,6 +113,19 @@ struct EnvelopeDamageSection: View {
         }
     }
 
+    /// Its façades' glass, by the construction's mix: the share of panes broken, and how many of
+    /// its sides likely have some broken (each counted by its chance). Nil without a mix.
+    static func glassLine(_ building: EnvelopeBuildingDamage) -> String? {
+        guard let glass = building.glass, glass.panes > 0, let sides = building.facadeGlass else {
+            return nil
+        }
+        let likely = sides.reduce(0.0) { $0 + $1.glass.anyBroken }
+        return String(
+            format: "glass %.0f%% of %.0f panes broken; %.1f of %d sides with some broken (%@)",
+            100 * glass.fraction, glass.panes, likely, sides.count,
+            building.construction.glazing?.name ?? "mix")
+    }
+
     /// One line for a building, as headless runs print it.
     static func summary(_ building: EnvelopeBuildingDamage) -> String {
         var line =
@@ -131,6 +148,7 @@ struct EnvelopeDamageSection: View {
                 line += String(format: " (glass at %.0f m/s)", glazing.speedMS)
             }
         }
+        if let glass = glassLine(building) { line += "; " + glass }
         if let broken = building.panesBrokenByFragments, broken > 0 {
             line +=
                 "; fragments broke \(broken) pane\(broken == 1 ? "" : "s")"

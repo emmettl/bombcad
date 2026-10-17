@@ -979,6 +979,7 @@ public enum StandingTable {
         "EnvelopeConstruction.reinforcementRatio": .input,
         "EnvelopeConstruction.glassThicknessM": .input,
         "EnvelopeConstruction.facadePaneM": .input,
+        "EnvelopeConstruction.glazing": .input,
         "EnvelopeConstruction.source": .input,
         "EnvelopeConstruction.detail": .input,
         "EnvelopeConstruction.barsInBothFaces": .input,

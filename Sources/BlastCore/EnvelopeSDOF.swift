@@ -232,6 +232,9 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
             }
         }
         response.residualDeflection = permanent
+        if let brittle, let n = brittle.fatigueExponent {
+            response.equivalentStress = brittle.strength * pow(fatigue / brittle.referenceDuration, 1 / n)
+        }
         return response
     }
 }
@@ -261,6 +264,11 @@ public struct SDOFResponse: Codable, Hashable, Sendable {
     public var peakStress: Double?
     public var stressAtBreak: Double?
     public var deflectionAtBreak: Double?
+    /// A brittle component with static fatigue: the stress that, held for its reference duration
+    /// (60 s for glass), does what its stress history did while it was whole, Pa
+    /// (S (∫ (σ/S)ⁿ dt / t_ref)^(1/n)). For a component that never breaks (its strength set out of
+    /// reach), the load's equivalent stress, from which a probability of breaking follows.
+    public var equivalentStress: Double?
 
     /// Peak deflection over X_E (UFC §3-14.2).
     public var ductility: Double { peakDeflection / equivalentElasticDeflection }

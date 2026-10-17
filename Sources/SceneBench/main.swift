@@ -62,6 +62,10 @@ enum SceneBench {
             try EnvelopeVentingBenchmark.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "district-glass" {
+            try DistrictGlass.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "district-compare" {
             try DistrictComparison.run(Array(args.dropFirst()))
             return

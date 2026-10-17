@@ -21,10 +21,12 @@ public struct EnvelopeComponentLoad: Sendable {
     /// When the first bin starts, s (`EnvelopeComponentHistory.windowStartS`); before it the air
     /// at the component was still.
     public var startS: Double
+    /// Which way along `axis` its outer side faces, +1 or −1.
+    public var outward: Int
 
     public init(
         id: String, owner: UUID, kind: Kind, region: Box, axis: Int, binS: Double, outerPa: [Double],
-        innerPa: [Double], supportEdges: [Bool]? = nil, startS: Double = 0
+        innerPa: [Double], supportEdges: [Bool]? = nil, startS: Double = 0, outward: Int = 1
     ) {
         self.id = id
         self.owner = owner
@@ -36,6 +38,7 @@ public struct EnvelopeComponentLoad: Sendable {
         self.innerPa = innerPa
         self.supportEdges = supportEdges
         self.startS = startS
+        self.outward = outward
     }
 
     /// A recorded history's load: its bins' impulses over the bin width.
@@ -47,7 +50,8 @@ public struct EnvelopeComponentLoad: Sendable {
             axis: history.component.axis, binS: history.binS,
             outerPa: history.outerImpulsePaS.map { Double($0) / history.binS },
             innerPa: history.innerImpulsePaS.map { Double($0) / history.binS },
-            supportEdges: history.component.supportEdges, startS: history.windowStartS ?? 0)
+            supportEdges: history.component.supportEdges, startS: history.windowStartS ?? 0,
+            outward: history.component.outward)
     }
 
     /// A wall standing free: its foot held (on the ground or a slab) and its top not, so a
@@ -283,6 +287,10 @@ public struct EnvelopeBuildingDamage: Codable, Sendable, Identifiable {
     public var wallStrikes: Float? = nil
     public var wallsSpalled: Float? = nil
     public var wallsPerforated: Float? = nil
+    /// Its façades' glass where a mix stands for their windows (`GlazingMix`, map buildings'
+    /// storeys): each side's, and all together. Nil without façade strips.
+    public var facadeGlass: [FacadeGlass]? = nil
+    public var glass: GlazingBreakage? = nil
     /// Inside, from a one-way fill through the broken panes (`EnvelopeDamageAssessment.fill`), or
     /// with venting the air's own, its worst room's mean: peak overpressure (Pa) and positive
     /// impulse (Pa s). Zero with no pane broken.
@@ -341,13 +349,30 @@ public enum EnvelopeDamageAssessment {
             let id = "\(owner.uuidString)/pane/\(pane).0"
             holed[id] = min(holed[id] ?? .infinity, strike.time)
         }
-        return owners.map { owner in
-            let construction = constructions(owner)
+        // Each building on its own core: a district's thousands take seconds rather than minutes.
+        // The constructions are looked up first, on this thread.
+        let built = owners.map(constructions)
+        var judged = [EnvelopeBuildingDamage?](repeating: nil, count: owners.count)
+        judged.withUnsafeMutableBufferPointer { out in
+            concurrently(iterations: owners.count) { n in out[n] = building(n) }
+        }
+        return judged.map { $0! }
+
+        func building(_ n: Int) -> EnvelopeBuildingDamage {
+            let owner = owners[n]
+            let construction = built[n]
             let mine = byOwner[owner] ?? []
             let top = mine.map { Double($0.region.max.z) }.max()
             var components: [EnvelopeComponentDamage] = []
             var broken: [(load: EnvelopeComponentLoad, at: Double)] = []
+            var sides: [Int: GlazingBreakage] = [:]
             for load in mine {
+                if load.kind == .facade, let mix = construction.glazing {
+                    let spans = load.spans
+                    sides[load.axis * 2 + (load.outward > 0 ? 1 : 0), default: GlazingBreakage()] =
+                        sides[load.axis * 2 + (load.outward > 0 ? 1 : 0), default: GlazingBreakage()]
+                        + mix.breakage(netPa: load.netPa, binS: load.binS, areaM2: spans.short * spans.long)
+                }
                 guard
                     var damage = assess(
                         load, construction: construction, buildingTop: top, holedAt: holed[load.id])
@@ -419,6 +444,12 @@ public enum EnvelopeDamageAssessment {
                 wallStrikes: strikes.map { tally($0, owner: owner, at: nil) },
                 wallsSpalled: strikes.map { tally($0, owner: owner, at: .spalled) },
                 wallsPerforated: strikes.map { tally($0, owner: owner, at: .perforated) },
+                facadeGlass: sides.isEmpty
+                    ? nil
+                    : sides.keys.sorted().map {
+                        FacadeGlass(axis: $0 / 2, outward: $0 % 2 == 1 ? 1 : -1, glass: sides[$0]!)
+                    },
+                glass: sides.isEmpty ? nil : sides.values.reduce(GlazingBreakage(), +),
                 insidePeakPa: inside.peak,
                 insideImpulsePaS: inside.impulse, vented: vented == nil ? nil : true)
         }
@@ -689,8 +720,17 @@ public enum EnvelopeDamageAssessment {
     /// built once for each thickness and size: building its backbone from Moore's curves costs more
     /// than its response, and a district's façades share a few sizes.
     static func annealedPane(thickness: Double, a: Double, b: Double) -> SDOFSystem {
-        paneSystems.system(SIMD3(thickness, a, b)) {
+        paneSystems.system(SIMD4(thickness, a, b, 0)) {
             EnvelopePanel.largeDeflectionGlass(thickness: thickness, material: .annealedGlass, a: a, b: b)
+        }
+    }
+
+    /// The same pane with its strength out of reach, so that its response gives the load's 60 s
+    /// equivalent stress (`SDOFResponse.equivalentStress`) whatever it is.
+    static func unbreakablePane(thickness: Double, a: Double, b: Double) -> SDOFSystem {
+        paneSystems.system(SIMD4(thickness, a, b, 1)) {
+            EnvelopePanel.largeDeflectionGlass(
+                thickness: thickness, material: .annealedGlass, a: a, b: b, sixtySecondStrength: 1e12)
         }
     }
 
@@ -699,9 +739,9 @@ public enum EnvelopeDamageAssessment {
     /// The pane systems built so far, by thickness and size; shared between threads behind a lock.
     final class SystemCache: @unchecked Sendable {
         private let lock = NSLock()
-        private var systems: [SIMD3<Double>: SDOFSystem] = [:]
+        private var systems: [SIMD4<Double>: SDOFSystem] = [:]
 
-        func system(_ key: SIMD3<Double>, _ make: () -> SDOFSystem) -> SDOFSystem {
+        func system(_ key: SIMD4<Double>, _ make: () -> SDOFSystem) -> SDOFSystem {
             lock.lock()
             defer { lock.unlock() }
             if let system = systems[key] { return system }

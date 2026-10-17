@@ -5,7 +5,8 @@ import simd
 
 /// `scenebench district-compare <district-scene's inputs> [--radius 1000] [--until 3]
 /// [--window 0.5] [--budget 2048] [--ground saturated] [--observers rigby.csv] [--pane 1.2,1.5]
-/// [--design-probability 0.008] [--glass 0.006,0.004] [--staircase] [--bare] [--trace] --out folder`: the district's event, and what an accident survey
+/// [--design-probability 0.008] [--glass 0.006,0.004] [--staircase] [--bare] [--trace]
+/// [--save-loads folder] --out folder`: the district's event, and what an accident survey
 /// can be set against: arrival times at observers' positions (Rigby et al.'s CSV: lat, lon, and
 /// the time seen), peak overpressures on a line of gauges over the open side, and each building's
 /// glass and structure from its components' histories, by distance from the charge.
@@ -239,10 +240,10 @@ enum DistrictComparison {
         let byOwner = Dictionary(grouping: loads.indices, by: { loads[$0].owner })
         let objects = scene.envelopeObjects
         var buildings: [Building] = []
+        let assessed = EnvelopeDamageAssessment.assess(
+            loads: loads, constructions: { scene.envelopeConstruction(for: $0) })
         let concrete = Dictionary(
-            uniqueKeysWithValues: EnvelopeDamageAssessment.assess(
-                loads: loads, constructions: { scene.envelopeConstruction(for: $0) }
-            ).map { ($0.id, $0.structuralLevels.upperBound) })
+            uniqueKeysWithValues: assessed.map { ($0.id, $0.structuralLevels.upperBound) })
         let stone = Dictionary(
             uniqueKeysWithValues: EnvelopeDamageAssessment.assess(
                 loads: loads,
@@ -300,6 +301,23 @@ enum DistrictComparison {
                     stone: stone[object.id] ?? .none))
         }
         let judged = buildings
+        // The façades' glass by each building's mix, as the app judges it.
+        let distances = Dictionary(uniqueKeysWithValues: judged.map { ($0.id, $0.distanceM) })
+        DistrictGlass.printBands(
+            "Glass by the map's mixes",
+            assessed.compactMap { building in
+                distances[building.id].map {
+                    ($0, (building.facadeGlass ?? []).filter { $0.axis < 2 }.map(\.glass))
+                }
+            })
+        if let folder = value("save-loads") {
+            let heights = Dictionary(uniqueKeysWithValues: judged.map { ($0.id, $0.heightM) })
+            try DistrictGlass.save(
+                to: URL(filePath: folder), loads: loads, objects: objects,
+                distance: { distances[$0] ?? .infinity },
+                height: { heights[$0] ?? 0 },
+                mix: { scene.envelopeConstruction(for: $0).glazing?.name ?? "" })
+        }
         let edges: [Double] = [0, 250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2500, 3000]
         var bands: [Band] = []
         for (from, to) in zip(edges, edges.dropFirst()) {
