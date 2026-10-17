@@ -139,7 +139,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-34"
+    public static let currentTable = "standing-table-35"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -794,7 +794,8 @@ public enum StandingTable {
                     + "by screws that pull through. Langdon's corrugated panels: 10 of 13 permanent sets within "
                     + "half to twice of measured. ADBLAST's screwed cladding in air: first deflection 0.90–1.35 "
                     + "of measured on all ten tests, but what is left after is not right, and cladding torn off "
-                    + "a deforming purlin is not compared.",
+                    + "a deforming purlin is not compared. Sheeted purlins and rails are held straight by the "
+                    + "screws, which under uplift, their free flange in compression, is the unsafe side.",
                 document: "profiled-sheeting.md#against-adblasts-cladding-tests")
         case .inclinedBars:
             return Entry(
@@ -2285,6 +2286,13 @@ struct StandingScene {
                         + "Mendonça's two collapses missed",
                     "building-envelopes.md#slabs-held-on-their-edges"),
                 StandingEvidence(
+                    "ADBLAST's screwed TR84 cladding shot in air (10 tests, 0.5–1.5 kg)",
+                    "Profiled sheeting: within 1.0–1.35 of the shell model's deflection under the same load; in "
+                        + "the air's load on the whole panel 0.50–1.37 of measured, low on nine (on the middle "
+                        + "ribs 0.62–1.07); graded heavy to failed where the sheets set but stayed on; the screws "
+                        + "held, as measured",
+                    "profiled-sheeting.md#against-adblasts-cladding-as-an-envelope"),
+                StandingEvidence(
                     "Monk and Clubley's annealed windows in the Shoeburyness tunnel (12 timed panes)",
                     "Every pane broken, as in the tests, at 0.82–1.07 of the measured time and 0.69–1.15 of the "
                         + "deflection", "validation.md#window-glass"),
@@ -2307,9 +2315,11 @@ struct StandingScene {
                 "Reinforced blockwork is judged as a concrete of the masonry's strength, graded by the "
                     + "concrete's limits; a freestanding wall's cap adds only the mass its construction gives.",
                 "Profiled steel sheeting spans one way between its rails or purlins by UFC 3-340-02's method for "
-                    + "cold-formed panels on the maker's effective section, graded by PDC-TR 06-08's limits for "
-                    + "deck whose membrane action its fixings limit, and blown off when its dynamic reaction passes "
-                    + "what its screws hold by EN 1993-1-3; no blast test of cladding or its fixings compared.",
+                    + "cold-formed panels on its effective section (the maker's, or by its compressed flat's "
+                    + "class, a slender one at Winter's width), graded by PDC-TR 06-08's limits for deck whose membrane action its "
+                    + "fixings limit, and blown off when the reaction pulling it off its screws, as it comes back "
+                    + "out or is sucked, passes what they hold by EN 1993-1-3; a component's mean load under-reads "
+                    + "its most loaded ribs.",
                 "Cross-laminated timber spans one way, elastic–perfectly plastic, its resistance from the mean "
                     + "bending strength with the Ottawa shock tube's dynamic increase, graded by WoodWorks' ductility "
                     + "limits from the Tyndall tests; no envelope-level test of its damage compared.",

@@ -387,4 +387,34 @@ struct ProfiledSheetTests {
         #expect(abs(result.structure.firstPeak / -0.110 - 1) < 0.25)
         #expect(abs(result.reflectedImpulse / 196 - 1) < 0.3)
     }
+
+    @Test(
+        "ADBLAST's sheets in the one-way model: a slender flange at Winter's effective width, and under each test's measured pulse the shell model's deflection to within a third"
+    )
+    func adblastOneWay() throws {
+        // TR84 at 0.75 mm: the 100 mm crest buckles at 4π²E/(12(1-ν²))(t/b)² = 43 MPa, so ρ = (λ -
+        // 0.22)/λ² = 0.34 at 320 MPa; the modulus falls from the gross 21,100 mm³/m to 16,300.
+        // Langdon's narrow 2 mm flange is compact (b/t 22 against 38ε = 34 at 296 MPa) and forms a
+        // hinge; her wide one (b/t 48, past 42ε = 37) is slender, at Winter's width.
+        let wall = SheetProfile.langdonBlastWall
+        let plastic = Double(wall.section.plasticModulus) / Double(wall.pitch)
+        #expect(abs(Double(wall.designModulus(crestCompressed: true)) / plastic - 1) < 1e-4)
+        #expect(Double(wall.designModulus(crestCompressed: false)) < plastic)
+        // The same load, the measured pulse over the whole panel: the shells' first deflections
+        // (docs/profiled-sheeting.md) against the one-way model's.
+        let url = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().appending(path: "Fixtures/ADBLAST2015/tests.json")
+        let shell: [Int: Double] = [
+            3: 29, 4: 60, 6: 77, 1: 86, 2: 88, 7: 72, 8: 401, 10: 245, 11: 365, 12: 272,
+        ]
+        for test in try AdblastCladdingTest.tests(from: url) {
+            let result = AdblastCladdingTest.envelopeOnMeasured(test)
+            let ratio = result.peak * 1000 / shell[test.test]!
+            print(
+                "ADBLAST test \(test.test) under its measured pulse: one-way \(result.peak * 1000) mm, \(ratio) of the shell"
+            )
+            #expect(ratio > 0.95 && ratio < 1.4, "test \(test.test): \(ratio)")
+            #expect(!result.screwsPulled)
+        }
+    }
 }
