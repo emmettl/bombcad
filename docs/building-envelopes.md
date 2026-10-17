@@ -18,7 +18,8 @@ package release. Openings are subtracted into bounded box fragments using the sa
 boundary convention as the air rasteriser. An opening cuts the solids it crosses but not one it
 holds whole, as a detailed structure's openings do: a door or a window's glass set in its opening
 stays solid in the air, and a detailed structure's annealed glass in an opening becomes a pane. Limits are 2,048 solids/fragments per building,
-256 openings per building and 2,048 rigid fragments across a scene containing envelopes.
+256 openings per building and 262,144 rigid blocks across a scene (blocks and imports keep
+their 2,048); the view draws them all, by a grid of columns once there are more than 256.
 Unlike deformable bodies, envelopes have no sixteen-building mechanics limit. Air memory and
 resolution still constrain useful scene size.
 

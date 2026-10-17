@@ -228,7 +228,9 @@ private struct TerrainMesh {
 /// A frame takes two passes: the scene and the structure's mesh go into an offscreen colour and
 /// depth target, then the blast wave is ray-marched over them into the destination.
 public final class SceneRenderer {
-    public static let maxBoxes = 2048
+    /// Blocks drawn: as many as a scene holds. Beyond `gridBoxes` the shader finds them through a
+    /// grid of columns over their footprints (`BoxGrid`) rather than testing every one.
+    public static let maxBoxes = Scenario.maximumRigidBoxes
     public static let pixelFormat = MTLPixelFormat.bgra8Unorm
     private static let depthFormat = MTLPixelFormat.depth32Float
     private static let nearPlane: Float = 0.5
@@ -269,6 +271,12 @@ public final class SceneRenderer {
     /// Tested against what is drawn but not written, for glass.
     private let glassDepthState: MTLDepthStencilState
     private let boxBuffer: MTLBuffer
+    /// The blocks in columns (Render.metal's `BoxGrid`): each column's first entry in `gridItems`.
+    private var grid = BoxGrid(frame: .zero, dims: .zero)
+    /// The most blocks tested one by one; read when a scene is set.
+    var gridBoxes = 256
+    private var gridStarts: MTLBuffer?
+    private var gridItems: MTLBuffer?
     private let gaugeBuffer: MTLBuffer
     private var boxCount = 0
     /// The scenario's blocks, at the start of the box buffer; closed vent panels follow them.
@@ -400,6 +408,63 @@ public final class SceneRenderer {
             boxes[2 * (rigidBoxCount + n) + 1] = SIMD4(box.max, 0)
         }
         boxCount = rigidBoxCount + count
+        buildGrid()
+    }
+
+    /// Lays the blocks into columns, about two a block along each side and at most 1,024: each
+    /// block listed in every column its footprint touches.
+    private func buildGrid() {
+        grid = BoxGrid(frame: .zero, dims: .zero)
+        guard boxCount > gridBoxes else { return }
+        let boxes = boxBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: Self.maxBoxes * 2)
+        var low = SIMD2<Float>(repeating: .greatestFiniteMagnitude)
+        var high = -low
+        var top = -Float.greatestFiniteMagnitude
+        for n in 0..<boxCount {
+            low = simd_min(low, SIMD2(boxes[2 * n].x, boxes[2 * n].y))
+            high = simd_max(high, SIMD2(boxes[2 * n + 1].x, boxes[2 * n + 1].y))
+            top = max(top, boxes[2 * n + 1].z)
+        }
+        let extent = simd_max(high - low, SIMD2(repeating: 1e-3))
+        let across = min(1024, max(16, Int((2 * Double(boxCount).squareRoot()).rounded(.up))))
+        let target = max(extent.x, extent.y) / Float(across)
+        let columns = simd_min(SIMD2(repeating: 1024), SIMD2<Int>((extent / target).rounded(.up)))
+        // As wide as covers the blocks in that many columns.
+        let width = max(extent.x / Float(columns.x), extent.y / Float(columns.y))
+        func span(_ n: Int) -> (SIMD2<Int>, SIMD2<Int>) {
+            let a = SIMD2<Int>(((SIMD2(boxes[2 * n].x, boxes[2 * n].y) - low) / width).rounded(.down))
+            let b = SIMD2<Int>(((SIMD2(boxes[2 * n + 1].x, boxes[2 * n + 1].y) - low) / width).rounded(.down))
+            return (simd_clamp(a, .zero, columns &- 1), simd_clamp(b, .zero, columns &- 1))
+        }
+        var counts = [UInt32](repeating: 0, count: columns.x * columns.y + 1)
+        for n in 0..<boxCount {
+            let (a, b) = span(n)
+            for j in a.y...b.y { for i in a.x...b.x { counts[i + columns.x * j + 1] += 1 } }
+        }
+        for c in 1..<counts.count { counts[c] += counts[c - 1] }
+        var items = [UInt32](repeating: 0, count: Int(counts.last!))
+        var fill = counts
+        for n in 0..<boxCount {
+            let (a, b) = span(n)
+            for j in a.y...b.y {
+                for i in a.x...b.x {
+                    items[Int(fill[i + columns.x * j])] = UInt32(n)
+                    fill[i + columns.x * j] += 1
+                }
+            }
+        }
+        guard
+            let starts = device.makeBuffer(
+                bytes: counts, length: counts.count * MemoryLayout<UInt32>.stride, options: .storageModeShared
+            ),
+            let list = device.makeBuffer(
+                bytes: items, length: max(items.count, 1) * MemoryLayout<UInt32>.stride,
+                options: .storageModeShared)
+        else { return }
+        gridStarts = starts
+        gridItems = list
+        grid = BoxGrid(
+            frame: SIMD4(low.x, low.y, width, top), dims: SIMD4(UInt32(columns.x), UInt32(columns.y), 1, 0))
     }
 
     /// The terrain's mesh, from its heights; none for flat ground, which the ground plane draws.
@@ -595,6 +660,15 @@ public final class SceneRenderer {
         sceneEncoder.setFragmentBytes(&uniforms, length: MemoryLayout<RenderUniforms>.stride, index: 0)
         sceneEncoder.setFragmentBuffer(boxBuffer, offset: 0, index: 1)
         sceneEncoder.setFragmentBuffer(gaugeBuffer, offset: 0, index: 2)
+        sceneEncoder.setFragmentBytes(&grid, length: MemoryLayout<BoxGrid>.stride, index: 3)
+        if grid.dims.z != 0, let gridStarts, let gridItems {
+            sceneEncoder.setFragmentBuffer(gridStarts, offset: 0, index: 4)
+            sceneEncoder.setFragmentBuffer(gridItems, offset: 0, index: 5)
+        } else {
+            // Unread, but bound.
+            sceneEncoder.setFragmentBytes([UInt32](repeating: 0, count: 4), length: 16, index: 4)
+            sceneEncoder.setFragmentBytes([UInt32](repeating: 0, count: 4), length: 16, index: 5)
+        }
         sceneEncoder.setFragmentTexture(field, index: 0)
         sceneEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
 
@@ -853,4 +927,10 @@ public final class SceneRenderer {
         else { return nil }
         return (image, commandBuffer.gpuEndTime - commandBuffer.gpuStartTime)
     }
+}
+
+/// Render.metal's `BoxGrid`.
+struct BoxGrid {
+    var frame: SIMD4<Float>
+    var dims: SIMD4<UInt32>
 }
