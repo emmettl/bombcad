@@ -237,6 +237,62 @@ struct TimberTests {
         #expect(unloaded < 0)
     }
 
+    @Test(
+        "A timber beam loaded at mid-span by a node load bends as beam theory says, and breaks at its face's strength"
+    )
+    func beamUnderNodeLoad() throws {
+        // 2 m simply supported, 120 x 200 mm (a beam: wider than half its depth), of C24 with its
+        // fibres breaking at 30 MPa.
+        var properties = TimberProperties(
+            alongGrain: 11e9, acrossGrain: 0.37e9, shearModulus: 0.69e9, rollingShearModulus: 0.069e9)
+        properties.tensionAlong = 30e6
+        properties.compressionAlong = 1e30
+        var model = StructureModel(
+            solids: [Box(min: SIMD3(0, 0, 0), max: SIMD3(2, 0.12, 0.2))],
+            material: .timber(name: "Beam", density: 420, properties: properties), elementSize: 0.1,
+            fixedBase: false)
+        model.elementKind = .shell
+        let solver = try ShellSolver(device: device, model: model)
+        #expect(solver.beamCount > 0 && solver.elementCount == 0)
+        solver.groundContact = false
+        solver.gravity = 0
+        let positions = solver.mesh.positions
+        let ends = positions.indices.filter { abs(positions[$0].x) < 1e-3 || abs(positions[$0].x - 2) < 1e-3 }
+        let middle = positions.indices.filter { abs(positions[$0].x - 1) < 1e-3 }
+        solver.mutateNodes { nodes in
+            for n in nodes.indices { nodes[n].restrain(y: true) }
+            for n in ends { nodes[n].restrain(z: true) }
+            for n in ends where positions[n].x < 1 { nodes[n].restrain(x: true) }
+            for n in middle { nodes[n].restrain(rotation: true) }
+        }
+        // A load rising over 2 s to 80 kN, as a node load on mid-span.
+        var load = PressureLoad(axis: 2, positiveSide: true, history: [SIMD2(0, 0), SIMD2(2, 80e3)])
+        var shares = [Float](repeating: 0, count: positions.count)
+        for n in middle { shares[n] = 1 / Float(middle.count) }
+        load.nodeShares = shares
+        solver.appliedLoad = load
+        solver.damping = 50
+        // At 20 kN: P L^3 / 48 E I + P L / 4 (5/6) G A.
+        let stiffness: Float =
+            1 / (8 / (48 * 11e9 * 0.12 * 0.008 / 12) + 2 / (4 * (5.0 / 6.0) * 0.69e9 * 0.024))
+        solver.advance(steps: Int(0.5 / Double(solver.criticalTimeStep)))
+        let sag = middle.map { -solver.node($0).displacement.z }.reduce(0, +) / Float(middle.count)
+        #expect(
+            abs(sag * stiffness - 20e3) < 0.03 * 20e3,
+            "at 20 kN: \(sag * 1000) mm, \(20e3 / stiffness * 1000) expected")
+        // The face reaches 30 MPa at P = 4 f W / L = 48 kN, at the elements' one point along them,
+        // half an element (5%) from mid-span, at 48 / 0.95; it breaks then, brittly.
+        var broke: Float?
+        while solver.time < 2, broke == nil {
+            solver.advance(steps: Int(0.01 / Double(solver.criticalTimeStep)))
+            if solver.summary().maxDamage >= 1 { broke = 80e3 * Float(solver.time / 2) }
+        }
+        let expected: Float = 4 * 30e6 * (0.12 * 0.04 / 6) / 2 / 0.95
+        let at = try #require(broke)
+        #expect(
+            abs(at - expected) < 0.03 * expected, "broke at \(at / 1e3) kN, expected \(expected / 1e3) kN")
+    }
+
     @Test("Timber in solid elements is refused; layered, it is integrated lamella by lamella")
     func solidsRefused() throws {
         let model = StructureModel(
@@ -246,7 +302,7 @@ struct TimberTests {
         #expect(throws: BlastError.self) { try StructureSolver(device: device, model: model) }
         let rule = ShellSolver.thicknessRule(
             layers: 4, materials: [Self.timber(lamellae: TimberProperties.crossLaminated(5))])
-        #expect(rule.count == 10)
+        #expect(rule.count == 15)
         #expect(abs(rule.reduce(0) { $0 + $1.y } - 2) < 1e-5)
     }
 }

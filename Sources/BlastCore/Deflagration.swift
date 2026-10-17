@@ -6,25 +6,40 @@ import simd
 /// The numbers are for the gas mixed with air at 1 atm and room temperature. Laminar burning
 /// velocities follow Gülder's correlation, S_L = W φ^η exp(−ξ (φ − 1.075)²) (Gülder 1984, SAE
 /// 841000), which gives 0.41 m/s for stoichiometric methane and 0.43 m/s for propane, against
-/// NFPA 68's fundamental burning velocities of 0.40 and 0.46 m/s.
+/// NFPA 68's fundamental burning velocities of 0.40 and 0.46 m/s. Hydrogen and town gas, whose
+/// curves that form cannot follow, take measured burning velocities (`burningVelocityTable`).
+///
+/// Town gas is the manufactured gas British homes had until the 1970s, as Cubbage and Marshall
+/// (1972) give a British town gas (corrected and tabulated by Lautkaski, *Duct venting of gas
+/// explosions*, VTT-R-02755-11, 2011, Table 25): H₂ 51.6%, CH₄ 31.6%, C₂H₆ 0.7%, CO 1.6%, CO₂ 1.5%,
+/// O₂ 0.3%, N₂ 12.7% by volume, 11.1 g/mol. Its properties here are per mole of that mixture, inert
+/// gases included; its lower heating value is the components' (H₂ 241.8, CH₄ 802.3, C₂H₆ 1428.6 and
+/// CO 283.0 kJ/mol). Town gases varied with their works and decade (hydrogen 40–55%).
 public enum FlammableGas: String, Sendable, Hashable, Codable, CaseIterable {
     case methane
     case propane
+    case hydrogen
+    case townGas
 
     /// Molar mass, kg/mol.
     public var molarMass: Double {
         switch self {
         case .methane: 16.043e-3
         case .propane: 44.097e-3
+        case .hydrogen: 2.016e-3
+        case .townGas: 11.082e-3
         }
     }
 
     /// Moles of oxygen one mole burns completely (CH4 + 2 O2 → CO2 + 2 H2O;
-    /// C3H8 + 5 O2 → 3 CO2 + 4 H2O).
+    /// C3H8 + 5 O2 → 3 CO2 + 4 H2O; H2 + ½ O2 → H2O; town gas's components in their shares, less the
+    /// oxygen it carries).
     public var oxygenPerMole: Double {
         switch self {
         case .methane: 2
         case .propane: 5
+        case .hydrogen: 0.5
+        case .townGas: 0.9195
         }
     }
 
@@ -33,14 +48,20 @@ public enum FlammableGas: String, Sendable, Hashable, Codable, CaseIterable {
         switch self {
         case .methane: 50.0e6
         case .propane: 46.35e6
+        case .hydrogen: 119.96e6
+        case .townGas: 35.45e6
         }
     }
 
-    /// Flammability limits in air, as volume fractions.
+    /// Flammability limits in air, as volume fractions: hydrogen's 4–75% (Zabetakis, USBM Bulletin
+    /// 627, 1965, Table 21), town gas's 5.0–31.5% (Lautkaski 2011, by Le Chatelier's rule; Coward and
+    /// Jones, USBM Bulletin 503, 1952, measured 5.35% and 30.9% for town and coal gases).
     public var flammableRange: ClosedRange<Float> {
         switch self {
         case .methane: 0.050...0.150
         case .propane: 0.021...0.095
+        case .hydrogen: 0.040...0.750
+        case .townGas: 0.050...0.315
         }
     }
 
@@ -49,7 +70,23 @@ public enum FlammableGas: String, Sendable, Hashable, Codable, CaseIterable {
     /// measurements on flames up to 2 m across in FM Global's 64 m³ chamber, interpolated in the
     /// equivalence ratio and held at the ends of their range (φ 0.81–1.22). None for propane, whose
     /// measurements (Bauwens et al. 2015, Proceedings of the Combustion Institute 35) were not found.
+    /// Lean hydrogen's, by its thermodiffusive instability, from Bauwens, Bergthorson and Dorofeev
+    /// (ICHS 2015, paper 202, Table 1) in the same chamber: 18–30 mm over φ 0.33–0.57, held below
+    /// it, none richer than φ 0.6 (not measured); none for town gas.
     public func criticalRadius(fraction: Float) -> Float? {
+        if self == .hydrogen {
+            let lean: [(phi: Float, radius: Float)] = [
+                (0.33, 0.018), (0.35, 0.018), (0.37, 0.019), (0.40, 0.019), (0.42, 0.022), (0.46, 0.023),
+                (0.49, 0.025), (0.51, 0.022), (0.52, 0.026), (0.54, 0.025), (0.55, 0.026), (0.57, 0.030),
+            ]
+            let phi = equivalenceRatio(fraction: fraction)
+            guard phi <= 0.6 else { return nil }
+            guard phi > lean[0].phi else { return lean[0].radius }
+            for (a, b) in zip(lean, lean.dropFirst()) where phi <= b.phi {
+                return a.radius + (b.radius - a.radius) * (phi - a.phi) / (b.phi - a.phi)
+            }
+            return lean[lean.count - 1].radius
+        }
         guard self == .methane else { return nil }
         let table: [(phi: Float, radius: Float)] = [
             (0.81, 0.204), (0.83, 0.209), (0.885, 0.2135), (0.89, 0.216), (0.925, 0.2175), (0.99, 0.220),
@@ -64,49 +101,129 @@ public enum FlammableGas: String, Sendable, Hashable, Codable, CaseIterable {
         return table[table.count - 1].radius
     }
 
+    /// The unburnt mixture's Markstein number at volume fraction `fraction`, Ma = L S_L / ν (L the
+    /// Markstein length relative to the unburnt gas, ν its kinematic viscosity, as Bradley uses it),
+    /// where measured; nil for a gas without one here. Hydrogen's from Taylor's Markstein lengths
+    /// (PhD thesis, Leeds, 1991, appendix), with his burning velocities and Cantera's viscosities at
+    /// 296 K: negative (thermodiffusively unstable) leaner than φ 0.85, −4.9 at φ 0.51, +2.7
+    /// stoichiometric; linear in φ between his mixtures and held at their ends.
+    public func marksteinNumber(fraction: Float) -> Float? {
+        guard self == .hydrogen else { return nil }
+        let table: [SIMD2<Float>] = [
+            SIMD2(0.23, -1.93), SIMD2(0.32, -3.22), SIMD2(0.41, -4.41), SIMD2(0.51, -4.85),
+            SIMD2(0.62, -4.68),
+            SIMD2(0.74, -3.09), SIMD2(0.86, 0.17), SIMD2(1.00, 2.73), SIMD2(1.15, 3.20), SIMD2(1.31, 4.74),
+            SIMD2(1.49, 6.64), SIMD2(1.68, 8.73), SIMD2(1.90, 8.42), SIMD2(2.41, 9.22), SIMD2(3.45, 10.07),
+            SIMD2(5.07, 15.08),
+        ]
+        let phi = equivalenceRatio(fraction: fraction)
+        guard phi > table[0].x else { return table[0].y }
+        for (a, b) in zip(table, table.dropFirst()) where phi <= b.x {
+            return a.y + (phi - a.x) / (b.x - a.x) * (b.y - a.y)
+        }
+        return table[table.count - 1].y
+    }
+
+    /// How a cellular flame of this gas accelerates beyond its onset radius `onset` (m), where it
+    /// was measured otherwise than methane's: the burning velocity growing as (r / onset)^power up
+    /// to `limit` onset radii. nil takes the methane form (`DeflagrationStage.wrinklingPower` and
+    /// `wrinklingLimit`). Lean hydrogen's grew as (R/R₀)^0.243 ± 0.005 over every mixture from φ
+    /// 0.33 to 0.57 (Bauwens, Bergthorson and Dorofeev, ICHS 2015, paper 202), measured out to
+    /// about a metre: held there.
+    public func instabilityGrowth(onset: Float) -> (power: Float, limit: Float)? {
+        guard self == .hydrogen, onset > 0 else { return nil }
+        return (0.243, max(4, 1 / onset))
+    }
+
+    /// Measured laminar burning velocities as (equivalence ratio, m/s) points, for a gas whose
+    /// curve Gülder's form cannot follow; nil for methane and propane, which take his fit.
+    ///
+    /// Hydrogen: S. C. Taylor's expanding spherical flames extrapolated to zero stretch (PhD
+    /// thesis, Leeds, 1991, appendix p. 307; Dowdy et al. 1990), 16 of his 21 mixtures, peaking at
+    /// 2.85 m/s at φ 1.68 (NACA RM E57D24 recommends 3.10 m/s at φ 1.8; the OECD/NEA's review of
+    /// 18 studies, CSNI/R(2000)7, ranges 2.67–3.56).
+    /// Town gas: Lautkaski's (2011, Table 38) burning velocities from Cubbage and Simmonds's vented
+    /// oven flame speeds, scaled to a peak of 1.0 m/s at 25% gas in air; British sources give 0.7–1.2
+    /// m/s at the peak (Rasbash, FRN 759, 1969: 1.2 m/s), and GRI-Mech 3.0 computes 0.66 m/s at
+    /// 20% (its hydrogen-rich chemistry untested).
+    public var burningVelocityTable: [SIMD2<Float>]? {
+        switch self {
+        case .methane, .propane: nil
+        case .hydrogen:
+            [
+                SIMD2(0.23, 0.084), SIMD2(0.32, 0.188), SIMD2(0.41, 0.340), SIMD2(0.51, 0.644),
+                SIMD2(0.62, 0.980), SIMD2(0.74, 1.387), SIMD2(0.86, 1.778), SIMD2(1.00, 2.130),
+                SIMD2(1.15, 2.416), SIMD2(1.31, 2.624), SIMD2(1.49, 2.793), SIMD2(1.68, 2.850),
+                SIMD2(1.90, 2.790), SIMD2(2.41, 2.535), SIMD2(3.45, 1.895), SIMD2(5.07, 1.098),
+            ]
+        case .townGas:
+            [
+                SIMD2(0.488, 0.09), SIMD2(0.599, 0.15), SIMD2(0.714, 0.24), SIMD2(0.836, 0.36),
+                SIMD2(0.963, 0.51), SIMD2(1.097, 0.64), SIMD2(1.238, 0.80), SIMD2(1.463, 1.00),
+                SIMD2(1.881, 0.70),
+            ]
+        }
+    }
+
     /// Gülder's W (m/s), η and ξ.
     var burningVelocityFit: (scale: Float, power: Float, width: Float) {
         switch self {
         case .methane: (0.422, 0.15, 5.18)
         case .propane: (0.446, 0.12, 4.95)
+        case .hydrogen, .townGas: (0, 0, 0)  // tabulated instead
         }
     }
 
     /// The adiabatic isochoric complete combustion (AICC) pressure of the stoichiometric mixture,
     /// as a multiple of its initial pressure (from equilibrium calculations; see
-    /// docs/deflagration.md). The model's heat release is set so that its gas reaches this
-    /// (see `Deflagration.heatPerKilogram`).
+    /// docs/deflagration.md; hydrogen's and town gas's from Cantera 3.1's equilibrium with GRI-Mech
+    /// 3.0's thermodynamics, which gives methane 8.81 and propane 9.34). The model's heat release
+    /// is set so that its gas reaches this (see `Deflagration.heatPerKilogram`).
     public var stoichiometricAICCRatio: Double {
         switch self {
         case .methane: 8.9
         case .propane: 9.4
+        case .hydrogen: 8.01
+        case .townGas: 8.44
         }
     }
 
     /// Measured maximum explosion pressure (bar gauge) and deflagration index K_G (bar m/s) in
-    /// standard closed vessels, as tabulated by NFPA 68 and EN 15967.
+    /// standard closed vessels, as tabulated by NFPA 68 and EN 15967. Hydrogen's K_G is the 550 of
+    /// Bartknecht's era (Blanchard and Schildberg, CET 31, 2013, for one), its P_max SAFEKINEX's
+    /// highest measured ratio, 7.91 (Deliverable 8, Table 16); EN 13673's K_G is about 850, and it
+    /// grows with the vessel (SAFEKINEX, 500–990 bar m/s from 2.8 to 1,250 dm³). Town gas's (7.1,
+    /// 140) are Bartknecht's for a 60% hydrogen, 40% methane stand-in (via Lautkaski 2011, Table 115).
     public var measuredClosedVessel: (maximumPressure: Double, deflagrationIndex: Double) {
         switch self {
         case .methane: (7.1, 55)
         case .propane: (7.9, 100)
+        case .hydrogen: (6.9, 550)
+        case .townGas: (7.1, 140)
         }
     }
 
     /// The numbers the venting correlations take for the stoichiometric mixture: NFPA 68's
     /// fundamental burning velocity (m/s, the editions before 2023), and Bradley and Mitcheson's
-    /// (1978) expansion ratio and unburnt ratio of specific heats.
+    /// (1978) expansion ratio and unburnt ratio of specific heats. Hydrogen's burning velocity is
+    /// NACA's recommended maximum (RM E57D24, 1957), town gas's Lautkaski's peak; their expansion
+    /// ratios and ratios of specific heats are Cantera's for the stoichiometric mixture.
     public var ventingProperties: (burningVelocity: Double, expansionRatio: Double, gamma: Double) {
         switch self {
         case .methane: (0.40, 7.52, 1.38)
         case .propane: (0.46, 7.98, 1.365)
+        case .hydrogen: (3.10, 6.88, 1.402)
+        case .townGas: (1.0, 7.21, 1.393)
         }
     }
 
-    /// NFPA 68's (2002) venting constant for low-strength enclosures, bar^(1/2).
-    public var nfpa68Constant: Double {
+    /// NFPA 68's (2002) venting constant for low-strength enclosures, bar^(1/2); none for a gas
+    /// that burns faster than 1.3 times propane, which that edition does not cover.
+    public var nfpa68Constant: Double? {
         switch self {
         case .methane: 0.037
         case .propane: 0.045
+        case .hydrogen, .townGas: nil
         }
     }
 
@@ -122,10 +239,18 @@ public enum FlammableGas: String, Sendable, Hashable, Codable, CaseIterable {
     }
 
     /// Laminar burning velocity of the mixture at volume fraction `fraction`, m/s; zero outside
-    /// the flammable range.
+    /// the flammable range. From `burningVelocityTable` where the gas has one (linear in the
+    /// equivalence ratio between its points, held at its ends), else Gülder's fit.
     public func laminarBurningVelocity(fraction: Float) -> Float {
         guard flammableRange.contains(fraction) else { return 0 }
         let phi = equivalenceRatio(fraction: fraction)
+        if let table = burningVelocityTable, let first = table.first, let last = table.last {
+            if phi <= first.x { return first.y }
+            for (a, b) in zip(table, table.dropFirst()) where phi <= b.x {
+                return a.y + (phi - a.x) / max(b.x - a.x, 1e-6) * (b.y - a.y)
+            }
+            return last.y
+        }
         let fit = burningVelocityFit
         return fit.scale * pow(phi, fit.power) * exp(-fit.width * (phi - 1.075) * (phi - 1.075))
     }
@@ -151,6 +276,8 @@ public enum FlammableGas: String, Sendable, Hashable, Codable, CaseIterable {
         switch self {
         case .methane: "Methane"
         case .propane: "Propane"
+        case .hydrogen: "Hydrogen"
+        case .townGas: "Town gas"
         }
     }
 }

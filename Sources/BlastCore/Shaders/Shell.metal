@@ -87,6 +87,7 @@ struct ShellUniforms {
     float gravityZ;
     uint removesFragments;  // as in `StructureUniforms`
     uint loadShares;        // 1: the applied pressure acts by each element's share, after the table
+    uint loadNodeShares;    // 1: and on the nodes by theirs, after the elements'
 };
 
 // Gravity's pull per unit mass, when it has been turned (`turnedGravity`).
@@ -1575,6 +1576,41 @@ static inline float beamVonMises(float axial, float2 shear, thread ShellLayer &s
     return stress;
 }
 
+// Timber along a beam, its grain along it (`TimberFailure`'s fibre and splitting modes on one
+// axis): crushing plastically at the compressive strength, breaking the fibres in tension with
+// their fracture energy smeared over the beam element's length `L`, and splitting by the shear
+// along the grain against the shear strength. The fibres break as the section's face would in
+// bending: the outermost sit at 0.86 of the half-depth, so a fibre breaks at 0.86 of the strength
+// (a glulam beam broke 13% late otherwise). State: the fibre and splitting indices in `crack`,
+// the crushing strain in `crush.x`.
+static inline float beamTimber(float axial, float2 shear, float L, thread ShellLayer &state,
+                               constant MaterialParameters &m, constant ShellUniforms &u, thread float2 &shearStress,
+                               thread LayerOutcome &outcome) {
+    float e = m.youngsModulus;
+    float effective = e * (axial - state.crush.x);
+    if (effective < -m.compressionAlong) {
+        state.crush.x = axial + m.compressionAlong / e;
+        effective = -m.compressionAlong;
+    }
+    float strength = beamFibrePoints[beamFibres - 1] * m.tensionAlong;
+    float fibreIndex = max(state.crack.x, max(effective, 0.0f) / strength);
+    float fibreRatio = (m.fibreEnergy / L) / (0.5f * strength * strength / e);
+    float fibre = timberDamage(fibreIndex, fibreRatio);
+    float2 tau = m.grainShear * shear;
+    float splitIndex = max(state.crack.y, length(tau) / m.grainShearStrength);
+    float splitRatio = (m.shearEnergy / L) / (0.5f * m.grainShearStrength * m.grainShearStrength / m.grainShear);
+    float split = timberDamage(splitIndex, splitRatio);
+    state.crack = float2(fibreIndex, splitIndex);
+    shearStress = u.shearFactor * (1.0f - split) * tau;
+    outcome.torn = float2(fibre >= 1.0f ? 1.0f : 0.0f, 0.0f);
+    outcome.slid = float2(0.0f);
+    outcome.destroyed = false;
+    outcome.open = false;
+    outcome.failed = false;
+    state.display = max(fibre, split);
+    return effective > 0.0f ? (1.0f - fibre) * effective : effective;
+}
+
 // Two-node beams on the centrelines of columns, the line counterpart of the shells: a
 // degenerated solid whose section is carried by two directors at each node (the rotated
 // reference axes of the section), with one point along the beam, which neither locks in shear
@@ -1710,8 +1746,9 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
             ShellLayer state = loadLayer(fibres[slot]);
             float2 shearStress;
             LayerOutcome outcome;
-            // Timber's grain runs along the beam: elastic along it, its shear modulus across.
-            float stress = m.materialModel != 1
+            float stress = m.materialModel == 2
+                ? beamTimber(axial, shear, L, state, m, u, shearStress, outcome)
+                : m.materialModel == 0
                 ? beamVonMises(axial, shear, state, m, u, shearStress, outcome)
                 : beamConcrete(axial, shear, instantaneous, dt, confinement, beam.barCount > 0 && m.steelPoints > 0,
                                state, m, u, crossing, slide, cap, shearStress, outcome);
@@ -1924,6 +1961,7 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
                        const device FootingConstants *footingConstants [[buffer(27)]],
                        const device FootingState *footingStates [[buffer(28)]],
                        device float4 *footingLinks [[buffer(29)]],
+                       const device float2 *loadTable [[buffer(30)]],
                        uint n [[thread_position_in_grid]]) {
     bool active;
     float dt = shellStep(u, control, active);
@@ -2001,6 +2039,15 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
         airForce = debrisAirForce(position, float3(node.velocity), reference[n].w, fluid, fluidMask, debrisArea,
                                   control.dt, u, couplingMap, exchangeCell);
         force += airForce;
+    }
+    // A load on the nodes, as the applied pressure's table times each node's share (N per Pa),
+    // after the elements' shares, against the loaded faces' outward normal.
+    if (u.loadCount != 0 && u.loadNodeShares != 0) {
+        float applied = tablePressure(loadTable, u.loadCount, u.loadTime);
+        float share = ((const device float *)(loadTable + 256))[u.elementCount + n];
+        float3 direction = float3(0.0f);
+        direction[u.loadFace >> 1] = (u.loadFace & 1u) != 0 ? -1.0f : 1.0f;
+        force += share * applied * direction;
     }
     float decay = max(0.0f, 1.0f - u.damping * dt);
     float3 velocity = float3(node.velocity)

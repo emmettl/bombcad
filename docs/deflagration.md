@@ -92,6 +92,57 @@ mixtures. A flame in the ideal gas therefore runs 12% slower, for its expansion,
 The cloud starts at the air's density and temperature: its own density, 5% lower for
 methane–air and 2% higher for propane–air, is not represented.
 
+### Hydrogen and town gas
+
+Added 17 October 2026, so that a domestic explosion of the 1960s, and hydrogen, can be run on their
+own gas (`gas: hydrogen` or `townGas`; `blastbench deflagration … --gas hydrogen`).
+
+| | Hydrogen | Town gas | Source |
+|---|---|---|---|
+| Composition | H₂ | H₂ 51.6, CH₄ 31.6, C₂H₆ 0.7, CO 1.6, CO₂ 1.5, O₂ 0.3, N₂ 12.7% | a British town gas (Cubbage and Marshall 1972, as corrected and tabulated by Lautkaski 2011, Table 25) |
+| Stoichiometric, by volume | 29.5% | 18.6% | H₂ + ½ O₂; the components' oxygen, less the gas's own |
+| Flammable range | 4–75% | 5.0–31.5% | Zabetakis 1965 (Table 21); Lautkaski (Le Chatelier's rule; Coward and Jones measured 5.35% and 30.9%) |
+| Heat of combustion (lower) | 119.96 MJ/kg | 35.45 MJ/kg | per kilogram of the gas, inert gases included |
+| Laminar burning velocity | 2.13 m/s stoichiometric, 2.85 m/s at φ 1.68 | 0.64 m/s at 20%, 1.0 m/s at 25% | tabulated, below |
+| AICC pressure, stoichiometric | 8.01 bar | 8.44 bar | Cantera 3.1, GRI-Mech 3.0's thermodynamics (methane 8.81, propane 9.34 there) |
+| Expansion ratio, stoichiometric | 6.88 | 7.21 | the same (methane 7.52, propane 7.98, as Bradley and Mitcheson's) |
+| Measured p_max, K_G | 6.9 bar g, 550 bar m/s | 7.1 bar g, 140 bar m/s | below |
+
+**Their burning velocities are tabulated**, in equivalence ratio, linear between points, since
+Gülder's form peaks at φ 1.075 and hydrogen's peaks near φ 1.7:
+- *Hydrogen:* S. C. Taylor's expanding spherical flames, extrapolated to zero stretch (PhD thesis,
+  Leeds, 1991, appendix; the data of Dowdy et al. 1990), 16 of his 21 mixtures from φ 0.23 to
+  5.07. His peak, 2.85 m/s, is at the low end of the OECD/NEA's review of eighteen studies,
+  2.67–3.56 m/s (CSNI/R(2000)7, Table A.1.1-2), the higher ones from stretched burner flames; NACA
+  recommended 3.10 m/s at φ 1.8 (RM E57D24, 1957), and Cantera with its H₂/O₂ mechanism gives
+  3.09. Bauwens et al.'s lean flames in FM Global's chamber read 0.22–0.29 m/s near φ 0.33, where
+  Taylor's read 0.19.
+- *Town gas:* Lautkaski's burning velocities (2011, Table 38), worked back from Cubbage and
+  Simmonds's flame speeds in vented ovens and scaled to a peak of 1.0 m/s at 25% gas. British
+  sources put the peak at 0.7–1.2 m/s (the Morton report 0.8, Cubbage and Simmonds 1.2, Rasbash's
+  FRN 759 1.2), depending on the gas; GRI-Mech 3.0, untested for gas this rich in hydrogen,
+  computes 0.66 m/s at 20%.
+
+**Lean hydrogen turns cellular within centimetres.** Its thermodiffusive instability (Lewis
+numbers 0.38–0.49 at 12–20%) sets in at radii of 18–30 mm over φ 0.33–0.57 (Bauwens, Bergthorson
+and Dorofeev, ICHS 2015, paper 202, Table 1, in FM Global's chamber), which `criticalRadius` takes,
+held below φ 0.33. Richer than φ 0.6 there is no measurement and no instability onset; for town gas
+none either. They measured the acceleration beyond onset as (R/R₀)^0.243; the model's wrinkling
+grows as (R/R₀)^(1/3) to four onset radii, a factor of 1.59, where theirs reaches 2.4–2.6 at a metre.
+
+**The closed-vessel figures** compared against: hydrogen's K_G is the 550 bar m/s of
+Bartknecht's time (Blanchard and Schildberg, CET 31, 2013, among others; NFPA 68 and EN 15967 were
+not seen), its p_max SAFEKINEX's highest measured ratio, 7.91 (Deliverable 8, 2006, Table 16).
+Hydrogen's K_G is not one number: EN 13673's method gives about 850, and SAFEKINEX measured
+500–990 bar m/s in vessels from 2.8 to 1,250 dm³, peaking at 35–40%. Town gas's 7.1 bar and
+140 bar m/s are Bartknecht's for a stand-in of 60% hydrogen and 40% methane (via Lautkaski,
+Table 115).
+
+**Not represented**, beyond what holds for every gas: a hydrogen–air cloud is light, 0.86 kg/m³
+stoichiometric against air's 1.20, and the cloud starts at the air's density, the heat fitted to
+the AICC pressure; and hydrogen's burning velocity rises steeply with the unburnt gas's
+temperature, which the model holds fixed.
+
 ## The flame
 
 The flame follows Weller's regress-variable form, the one OpenFOAM's XiFoam solves and the one
@@ -436,6 +487,57 @@ speeds are those of the far-field runs; the copying faces' were within 2% inside
   burning only as far as its grid and flame allow; the Taylor instability's wrinkling below the grid
   it does not have, as their LES did not.
 
+### Hydrogen and town gas
+
+**In a closed sphere** (as [above](#a-closed-sphere), 0.5 m, lit at the centre; `blastbench
+deflagration vessel --gas hydrogen --percent 29.5 --cells 12,24,48`, and `--accelerated` for the
+default flame). K_G in bar m/s, laminar / default flame:
+
+| Mixture | 12 cells | 24 | 48 | Thin-flame model | Measured |
+|---|---|---|---|---|---|
+| Hydrogen 29.5% (stoichiometric) | 155 / 177 | 189 / 204 | 233 / 240 | 322 | 550 (500–990 by vessel) |
+| Hydrogen 15% | | 11 / 18 | 13 / 22 | 19 | |
+| Town gas 25% | 69 / 81 | 86 / 97 | 101 / 108 | 146 | 140 |
+
+- The peaks are the AICC pressures, 8.11, 4.62 and 7.96 bar, by construction, the energy
+  conserved to 10⁻⁵, as for methane.
+- **Stoichiometric hydrogen reads 0.4 of the measured K_G.** The thin-flame model on Taylor's
+  burning velocity gives 322, 0.59 of the 550: measured hydrogen flames in vessels accelerate by
+  their own instability, which no measured onset represents here richer than φ 0.6. Town gas reads
+  0.77 of its (stand-in's) 140, as methane reads 0.64–1.35 of its 55.
+- **Lean hydrogen's onset takes the default flame 60–65% faster** (13 to 22 on 48 cells), at its
+  measured critical radius of 23 mm.
+
+**Vented, in FM Global's chamber.** Bauwens, Chao and Dorofeev measured lean hydrogen deflagrations
+in the same 63.7 m³ chamber as their methane (ICHS 2011, paper 237, Table 1; the journal version
+is IJHE 37, 2012): a square vent of 5.4 or 2.7 m² closed by a 0.02 mm sheet (taken here as open),
+quiescent mixtures, lit at the centre or 0.25 m from the back wall. `blastbench deflagration
+vented --gas hydrogen --percent 18 --vent 2.7 --ignition back`, 0.1 m cells. Peak overpressure,
+kPa, the measured being the larger of their external and internal (Helmholtz) peaks:
+
+| Ignition, vent, H₂ | Measured | Model | Ratio | Ratio, methane's growth law |
+|---|---|---|---|---|
+| Centre, 5.4 m², 12.1% | 0.9 | 0.22 | 0.24 | 0.13 |
+| Centre, 5.4 m², 14.9% | 2.0 | 0.66 | 0.33 | 0.15 |
+| Centre, 5.4 m², 18.0% | 7.1 | 2.63 | 0.37 | 0.15 |
+| Centre, 5.4 m², 19.7% | 11.1 | 4.32 | 0.39 | 0.17 |
+| Centre, 2.7 m², 18.0% | 23.4 | 5.19 | 0.22 | 0.10 |
+| Back wall, 2.7 m², 15.1% | 12.7 | 3.58 | 0.28 | 0.12 |
+| Back wall, 2.7 m², 17.8% | 31.4 | 10.96 | 0.35 | 0.16 |
+| Back wall, 5.4 m², 17.9% | 15.0 | 2.91 | 0.19 | 0.08 |
+
+**Lean hydrogen vents at 0.19–0.39 of the measured peaks: the unsafe side, below methane's 0.4–0.6
+lit in the middle of the same chamber.** With methane's growth law, capped at four onset radii (7–12
+cm for lean hydrogen), it read 0.08–0.17; the measured lean hydrogen law, (R/R₀)^0.243 to a metre
+(Bauwens et al. 2015, see [above](#hydrogen-and-town-gas)), doubles it. What is left out:
+- Bauwens et al. (2011) needed a further factor for the flame's thermodiffusive response,
+  Ξ_Le = 0.9/Le, about 2 at 18% (Le 0.46), fitted to these tests; it is not taken here.
+- The external explosion and the Helmholtz oscillations that set several of the measured peaks.
+- The lean flame's buoyancy: a 12% flame rises as it grows.
+
+Other open vented hydrogen tests, for later: INERIS's 1 and 10.5 m³ vessels (Daubech et al.,
+ICHS 2011) and HySEA's 20 ft containers (Skjold, ISHPMIE 2018, CC BY), both tabulated.
+
 ### Grid convergence
 
 - **A laminar flame converges only once it is many cells across.** A front four cells thick, in a
@@ -558,6 +660,30 @@ speeds are those of the far-field runs; the copying faces' were within 2% inside
 - Gülder, Ö. L. (1984). Correlations of laminar combustion data for alternative S.I. engine fuels.
   SAE 841000 (coefficients as OpenFOAM's Gulders.C has them).
 - Kasmani, R. M. (2008). *Vented gas explosions*. PhD thesis, University of Leeds.
+- Bauwens, C. R., Bergthorson, J. M. and Dorofeev, S. B. (2015). Experimental investigation of
+  spherical-flame acceleration in lean hydrogen–air mixtures. *ICHS 2015*, paper 202 (Table 1: the
+  critical radii and burning velocities; the growth exponent 0.243). Journal version: *IJHE* 42
+  (2017) 7691–7697.
+- Bauwens, C. R., Chao, J. and Dorofeev, S. B. (2011). Effect of hydrogen concentration on vented
+  explosion overpressures from lean hydrogen–air deflagrations. *ICHS 2011*, paper 237 (Table 1).
+- Blanchard, R. and Schildberg, H.-P. (2013). *Chemical Engineering Transactions* 31, 667–672
+  (K_G of hydrogen, methane and propane, by method).
+- Coward, H. F. and Jones, G. W. (1952). *Limits of flammability of gases and vapors*. US Bureau of
+  Mines Bulletin 503 (town and coal gases' compositions and limits, pp. 120–121).
+- Drell, I. L. and Belles, F. E. (1957). *Survey of hydrogen combustion properties*. NACA RM
+  E57D24 (the recommended burning velocities, adiabatic flame temperatures).
+- Lautkaski, R. (2011). *Duct venting of gas explosions*. VTT-R-02755-11 (Table 25: town gas
+  compositions; Table 38: its burning velocities from Cubbage and Simmonds; Table 115: K_G).
+- OECD/NEA (2000). *Flame acceleration and deflagration-to-detonation transition in nuclear
+  safety*. NEA/CSNI/R(2000)7 (Table A.1.1-2: hydrogen burning velocities from 18 studies).
+- Rasbash, D. J. (1969). *The relief of gas and vapour explosions in domestic structures*. Fire
+  Research Note 759 (Table 1: burning velocities, town gas 1.2 m/s).
+- SAFEKINEX (2006). Deliverable 8, BAM (Tables 2, 16, 17 and Fig. 27: hydrogen's limits, maximum
+  pressures and K_G by vessel).
+- Taylor, S. C. (1991). *Burning velocity and the influence of flame stretch*. PhD thesis,
+  University of Leeds (appendix: hydrogen–air expanding flames).
+- Zabetakis, M. G. (1965). *Flammability characteristics of combustible gases and vapors*. US
+  Bureau of Mines Bulletin 627 (Table 21).
 - Lautkaski, R. (2011). VTT research report VTT-R-02755-11, on vent sizing for gas explosions
   (Bartknecht's equation and Molkov's correlations as the standards use them).
 - Molkov, V. (2001). Unified correlations for vent sizing of enclosures at atmospheric and elevated

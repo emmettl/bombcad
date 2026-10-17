@@ -642,7 +642,14 @@ public enum StandingTable {
                     + "inside stays illustrative: the detailed "
                     + "references let broken glass go element by element and cannot judge it; against UFC "
                     + "3-340-02's loads through open windows the walls inside come at 0.31 to 1.22 of the UFC's "
-                    + "(the back walls within 25%), where the one-way fill gives 0.15 to 0.42.",
+                    + "(the back walls within 25%), where the one-way fill gives 0.15 to 0.42. Fragments' "
+                    + "perforations open holes through walls, each the fragment's presented area, for want of a "
+                    + "cited hole size (UFC 3-340-02 §4-60.1 describes craters wider than the fragment but gives "
+                    + "no size): the open area is a lower bound, a cell opening when its holes fill half its "
+                    + "face. Concrete past UFC 3-340-02's threshold breach curve (Figure 4-65a, equation 4-179) "
+                    + "opens where it is breached, at the blast's arrival there: illustrative; on Hupfauf's "
+                    + "contact slabs it breaches all four that did and two of four that held, as the upper "
+                    + "bound it is.",
                 document: "building-envelopes.md#venting-glazing-that-breaks-in-the-air")
         case .ventPanels:
             return Entry(
@@ -1945,13 +1952,20 @@ struct StandingScene {
             evidence.append(
                 StandingEvidence(
                     "Cross-laminated timber panels in the Ottawa shock tube (Poulin, 2019)",
-                    "Static stiffness within 4–13%, peak 12–25% high (flexure, as tested); shots that left the "
-                        + "panels elastic stay elastic (0.72–1.21 of the peak deflection), nine of twelve that broke "
-                        + "them break or split the model's and three near the threshold hold; the dynamic increase "
-                        + "of 1.28 comes from the same shots",
+                    "Strength along the grain calibrated on the static tests (stiffness within 4–13%); all twenty "
+                        + "shots classified as tested, the eight that left the panels elastic at 0.72–1.21 of the "
+                        + "peak deflection; flexure always breaks first, where five broke in rolling shear; the "
+                        + "dynamic increase of 1.28 comes from the same shots",
                     "validation.md#cross-laminated-timber-panels-in-a-shock-tube"))
+            evidence.append(
+                StandingEvidence(
+                    "Glulam beams in the Ottawa shock tube (Lacroix, 2017)",
+                    "Calibrated on the static tests; the 137 mm beams' elastic shots 1.06–1.30 of measured, all "
+                        + "five destructive shots broken at 28–29 mm against 21–31; deep narrow beams meshed as "
+                        + "walls 43% too stiff in their plane",
+                    "validation.md#glulam-beams-in-a-shock-tube"))
             parts.append(
-                "timber compared on CLT panels in a shock tube: stiffness close, strength 12–25% high")
+                "timber compared on CLT panels and glulam beams in a shock tube, its strength calibrated")
         }
         var resolution: [String] = []
         if let through = elementsThrough, through <= 6, through >= 4, classes.contains(.reinforcedConcrete) {

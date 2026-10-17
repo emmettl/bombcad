@@ -16,7 +16,7 @@ struct DeflagrationTests {
 
     @Test(
         "The heat released takes a closed volume of stoichiometric mixture to its AICC pressure",
-        arguments: [FlammableGas.methane, .propane], [AirModel.idealGas, .thermallyPerfect])
+        arguments: FlammableGas.allCases, [AirModel.idealGas, .thermallyPerfect])
     func heatReachesAICC(gas: FlammableGas, air: AirModel) {
         let atmosphere = Atmosphere()
         let cloud = Deflagration(gas: gas, region: Box(min: .zero, max: .one), ignition: .zero)
@@ -40,6 +40,31 @@ struct DeflagrationTests {
             .modelExpansionRatio(atmosphere: Atmosphere(), airModel: .idealGas, gamma: 1.4)
         // An ideal gas with gamma 1.4: 1 + (8.9 - 1) / 1.4.
         #expect(abs(ideal - 6.64) < 0.05, "\(ideal)")
+    }
+
+    @Test("Hydrogen and town gas take their measured burning velocities and stoichiometry")
+    func tabulatedBurningVelocities() {
+        let hydrogen = FlammableGas.hydrogen
+        #expect(abs(hydrogen.stoichiometricFraction - 0.2953) < 0.0005)
+        // Taylor's points: 2.13 m/s at stoichiometric, 2.85 m/s at its peak, φ 1.68 (41.4% H₂).
+        #expect(abs(hydrogen.laminarBurningVelocity(fraction: 0.2953) - 2.13) < 0.01)
+        #expect(abs(hydrogen.laminarBurningVelocity(fraction: 0.414) - 2.85) < 0.02)
+        #expect(hydrogen.laminarBurningVelocity(fraction: 0.035) == 0)
+        #expect(hydrogen.laminarBurningVelocity(fraction: 0.76) == 0)
+        let town = FlammableGas.townGas
+        // Lautkaski's stoichiometric 18.6% and peak 1.0 m/s at 25% gas.
+        #expect(abs(town.stoichiometricFraction - 0.1856) < 0.0005)
+        #expect(abs(town.laminarBurningVelocity(fraction: 0.25) - 1.0) < 0.01)
+        #expect(abs(town.laminarBurningVelocity(fraction: 0.20) - 0.64) < 0.01)
+        #expect(town.laminarBurningVelocity(fraction: 0.32) == 0)
+        // Lean hydrogen turns cellular within centimetres; a stoichiometric mixture has no measurement.
+        #expect(abs((hydrogen.criticalRadius(fraction: 0.15) ?? 0) - 0.023) < 0.003)
+        #expect(hydrogen.criticalRadius(fraction: 0.2953) == nil)
+        #expect(town.criticalRadius(fraction: 0.186) == nil)
+        // Lean hydrogen's Markstein number is negative, stoichiometric's positive; others have none.
+        #expect((hydrogen.marksteinNumber(fraction: 0.15) ?? 0) < -4)
+        #expect(abs((hydrogen.marksteinNumber(fraction: 0.2953) ?? 0) - 2.73) < 0.05)
+        #expect(town.marksteinNumber(fraction: 0.186) == nil)
     }
 
     @Test("Methane's critical radius follows Bauwens et al.'s measurements; propane has none")
@@ -96,7 +121,7 @@ struct DeflagrationTests {
             releasePressure: 0,
             gas: .methane)
         // NFPA 68 (2002): (0.037 x 97.52 / 5.4)^2 bar.
-        #expect(abs(c.nfpa68 / 1e5 - 0.4465) < 0.001)
+        #expect(abs((c.nfpa68 ?? 0) / 1e5 - 0.4465) < 0.001)
         // Bartknecht with K_G 55: 5.4 = (0.1265 log 55 - 0.0567) P^-0.5817 V^(2/3).
         #expect(abs((c.bartknecht ?? 0) / 1e5 - 0.285) < 0.002)
         // Molkov: Br 44.0, chi/mu 10.6, Br_t 2.0, so pi_red 0.18.
