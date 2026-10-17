@@ -223,7 +223,8 @@ private struct TerrainMesh {
     var dims: SIMD4<UInt32>
 }
 
-/// Draws a scenario, its deformable structure and the solver's visualisation volume.
+/// Draws a scenario, its deformable structure and the blast's field, from a `SceneViewState`:
+/// a solver's own on this Mac, or one kept up to date from a run elsewhere.
 ///
 /// A frame takes two passes: the scene and the structure's mesh go into an offscreen colour and
 /// depth target, then the blast wave is ray-marched over them into the destination.
@@ -275,9 +276,10 @@ public final class SceneRenderer {
     private var rigidBoxCount = 0
     private var gaugeCount = 0
     private var scenario: Scenario?
+    /// The field's cell edge, not necessarily the solver's.
     private var cellSize: Float = 1
     private var field: MTLTexture?
-    private var bodies: [StructuralBody] = []
+    private var bodies: [SceneViewState.Body] = []
     private var ambientPressure: Float = 101_325
     private var colourTarget: MTLTexture?
     private var depthTarget: MTLTexture?
@@ -352,12 +354,15 @@ public final class SceneRenderer {
         gaugeBuffer = gauges
     }
 
-    /// Points the renderer at a scenario and the solver simulating it.
+    /// Points the renderer at a scenario and the solver simulating it on this Mac.
     public func setScene(_ scenario: Scenario, solver: BlastSolver) {
+        setScene(scenario, view: SceneViewState(solver: solver))
+    }
+
+    /// Points the renderer at a scenario and the view of its run, here or elsewhere.
+    public func setScene(_ scenario: Scenario, view: SceneViewState) {
         self.scenario = scenario
-        cellSize = solver.grid.cellSize
-        field = solver.visualizationTexture
-        bodies = solver.bodies
+        setView(view)
         ambientPressure = scenario.atmosphere.pressure
 
         rigidBoxCount = min(scenario.rigidBoxes.count, Self.maxBoxes)
@@ -373,6 +378,13 @@ public final class SceneRenderer {
         for (n, gauge) in scenario.gauges.prefix(gaugeCount).enumerated() {
             gauges[n] = SIMD4(gauge.position, 0.35)
         }
+    }
+
+    /// Draws from `view` from the next frame on, for the same scenario.
+    public func setView(_ view: SceneViewState) {
+        cellSize = view.fieldCellSize
+        field = view.field
+        bodies = view.bodies
     }
 
     /// Colours each envelope's blocks by its damage: `codes[id]` 1 for none, 2 for glass broken
@@ -631,27 +643,27 @@ public final class SceneRenderer {
                 instanceCount: (Int(terrain.dims.x) - 1) * (Int(terrain.dims.y) - 1))
         }
 
-        var transparentBodies: [ShellSolver] = []
+        var transparentBodies: [SceneViewState.Shells] = []
         for body in bodies {
             if let structure = body.solids, structure.elementCount > 0 {
                 var mesh = MeshUniforms(
                     eye: SIMD4(eye, 1), right: SIMD4(right, 0), up: SIMD4(up, 0), forward: SIMD4(forward, 0),
                     projection: SIMD4(
                         1 / (halfHeight * aspectRatio), 1 / halfHeight, Self.nearPlane, Self.farPlane),
-                    lattice: SIMD4(structure.origin, structure.model.elementSize),
+                    lattice: SIMD4(structure.origin, structure.elementSize),
                     dims: SIMD4(
                         Float(structure.ex), Float(structure.ey), Float(structure.ez),
-                        Float(StructureSolver.stateStride / 4)),
+                        Float(structure.stateStride / 4)),
                     sun: sun)
                 sceneEncoder.setRenderPipelineState(meshPipeline)
                 sceneEncoder.setDepthStencilState(meshDepthState)
                 sceneEncoder.setCullMode(.none)
-                sceneEncoder.setVertexBuffer(structure.instanceBuffer, offset: 0, index: 0)
-                sceneEncoder.setVertexBuffer(structure.nodeBuffer, offset: 0, index: 1)
-                sceneEncoder.setVertexBuffer(structure.flagBuffer, offset: 0, index: 2)
-                sceneEncoder.setVertexBuffer(structure.stateBuffer, offset: 0, index: 3)
+                sceneEncoder.setVertexBuffer(structure.instances, offset: 0, index: 0)
+                sceneEncoder.setVertexBuffer(structure.nodes, offset: 0, index: 1)
+                sceneEncoder.setVertexBuffer(structure.flags, offset: 0, index: 2)
+                sceneEncoder.setVertexBuffer(structure.states, offset: 0, index: 3)
                 sceneEncoder.setVertexBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 4)
-                sceneEncoder.setVertexBuffer(structure.nodeMapBuffer, offset: 0, index: 5)
+                sceneEncoder.setVertexBuffer(structure.nodeMap, offset: 0, index: 5)
                 sceneEncoder.setFragmentBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 0)
                 sceneEncoder.drawPrimitives(
                     type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: structure.elementCount)
@@ -665,18 +677,15 @@ public final class SceneRenderer {
                 sceneEncoder.setRenderPipelineState(shellPipeline)
                 sceneEncoder.setDepthStencilState(meshDepthState)
                 sceneEncoder.setCullMode(.none)
-                sceneEncoder.setVertexBuffer(shells.elementBuffer, offset: 0, index: 0)
-                sceneEncoder.setVertexBuffer(shells.nodeBuffer, offset: 0, index: 1)
-                sceneEncoder.setVertexBuffer(shells.flagBuffer, offset: 0, index: 2)
-                sceneEncoder.setVertexBuffer(shells.displayBuffer, offset: 0, index: 3)
+                sceneEncoder.setVertexBuffer(shells.elements, offset: 0, index: 0)
+                sceneEncoder.setVertexBuffer(shells.nodes, offset: 0, index: 1)
+                sceneEncoder.setVertexBuffer(shells.flags, offset: 0, index: 2)
+                sceneEncoder.setVertexBuffer(shells.damage, offset: 0, index: 3)
                 sceneEncoder.setVertexBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 4)
-                sceneEncoder.setVertexBuffer(shells.referenceBuffer, offset: 0, index: 5)
+                sceneEncoder.setVertexBuffer(shells.reference, offset: 0, index: 5)
                 sceneEncoder.setFragmentBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 0)
                 // Glass is drawn last, over everything opaque (below).
-                var transparent: UInt32 = 0
-                for (n, material) in shells.materials.enumerated() where material.isTransparent && n < 32 {
-                    transparent |= 1 << UInt32(n)
-                }
+                var transparent = shells.transparentMaterials
                 var draw: UInt32 = transparent == 0 ? 0 : 1
                 sceneEncoder.setVertexBytes(&transparent, length: 4, index: 6)
                 sceneEncoder.setVertexBytes(&draw, length: 4, index: 7)
@@ -687,9 +696,9 @@ public final class SceneRenderer {
                 if transparent != 0 && shells.elementCount > 0 { transparentBodies.append(shells) }
                 if shells.beamCount > 0 {
                     sceneEncoder.setRenderPipelineState(beamPipeline)
-                    sceneEncoder.setVertexBuffer(shells.beamBuffer, offset: 0, index: 0)
-                    sceneEncoder.setVertexBuffer(shells.beamFlagBuffer, offset: 0, index: 2)
-                    sceneEncoder.setVertexBuffer(shells.beamDisplayBuffer, offset: 0, index: 3)
+                    sceneEncoder.setVertexBuffer(shells.beams, offset: 0, index: 0)
+                    sceneEncoder.setVertexBuffer(shells.beamFlags, offset: 0, index: 2)
+                    sceneEncoder.setVertexBuffer(shells.beamDamage, offset: 0, index: 3)
                     sceneEncoder.drawPrimitives(
                         type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: shells.beamCount)
                 }
@@ -770,18 +779,15 @@ public final class SceneRenderer {
                 projection: SIMD4(
                     1 / (halfHeight * aspectRatio), 1 / halfHeight, Self.nearPlane, Self.farPlane),
                 lattice: .zero, dims: .zero, sun: sun)
-            var transparent: UInt32 = 0
-            for (n, material) in glass.materials.enumerated() where material.isTransparent && n < 32 {
-                transparent |= 1 << UInt32(n)
-            }
-            sceneEncoder.setVertexBuffer(glass.nodeBuffer, offset: 0, index: 1)
-            sceneEncoder.setVertexBuffer(glass.referenceBuffer, offset: 0, index: 5)
+            var transparent = glass.transparentMaterials
+            sceneEncoder.setVertexBuffer(glass.nodes, offset: 0, index: 1)
+            sceneEncoder.setVertexBuffer(glass.reference, offset: 0, index: 5)
             sceneEncoder.setVertexBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 4)
             sceneEncoder.setFragmentBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 0)
             sceneEncoder.setVertexBytes(&transparent, length: 4, index: 6)
-            sceneEncoder.setVertexBuffer(glass.elementBuffer, offset: 0, index: 0)
-            sceneEncoder.setVertexBuffer(glass.flagBuffer, offset: 0, index: 2)
-            sceneEncoder.setVertexBuffer(glass.displayBuffer, offset: 0, index: 3)
+            sceneEncoder.setVertexBuffer(glass.elements, offset: 0, index: 0)
+            sceneEncoder.setVertexBuffer(glass.flags, offset: 0, index: 2)
+            sceneEncoder.setVertexBuffer(glass.damage, offset: 0, index: 3)
             var draw: UInt32 = 2
             sceneEncoder.setVertexBytes(&draw, length: 4, index: 7)
             sceneEncoder.drawPrimitives(
