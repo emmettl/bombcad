@@ -68,11 +68,15 @@ the last layer goes on for ever. `dampingFrequencies` are the two frequencies (H
 each layer's damping has its ratio, and `timeStep` the step the column aims for (s). Without a
 `profile`, the column is one elastic layer of `soil` going on for ever.
 
-`"model": "halfspace"` asks instead for a layered elastic half-space about the charge, in which
-waves travel sideways and outrun the blast, giving vertical and outward motion. It uses the same
+`"model": "halfspace"` asks instead for a layered half-space about the charge, in which waves
+travel sideways and outrun the blast, giving vertical and outward motion. It uses the same
 `profile`, each layer with an optional `shearWaveSpeed` (m/s; a Poisson's ratio of 0.3 if left
-out), and a `halfSpace` setup that `BombCAD run` fills in from the scene's charge. That is in
-[its own page](ground-shock-outrunning.md), with its checks and its comparison.
+out), and a `halfSpace` setup that `BombCAD run` fills in from the scene's charge. A layer with
+an unloading wave speed compacts by the column's bilinear law; one with a `frictionAngle`
+(degrees) and optional `cohesion` (Pa) also yields in shear, on a Mohr–Coulomb cone, resting
+under its own weight. The column ignores both. Where the top layer yields in shear, the
+charge's direct source puts the crater's share of its energy into the ground. All of that is
+in [its own page](ground-shock-outrunning.md), with its checks and its comparisons.
 
 ## The manuals' estimate
 
@@ -477,7 +481,11 @@ Kingery–Bulmash's Friedlander pulse, with the curves' peak, impulse, duration 
 the horizontal motion these models leave out: within 1.4 to 1.5 times the measured at 21 m, but
 18 to 19 times at 42 m. Its vertical is 15 to 63 times the measured, little better than the
 column, because an elastic ground carries the motion from near the charge outwards with little
-loss.
+loss. [Soil that yields](ground-shock-outrunning.md#stage-3-soil-that-yields) steepens the
+fall-off to about R^(−1.5) from R^(−0.5), against the measured R^(−3.3) to R^(−3.8). The
+horizontal is then 2.1 to 2.4 times the measured at 21 m and 10 to 11 times at 42 m; the
+vertical 16 to 23 times and 48 to 88 times. At 21 m that vertical is the airblast's own
+p/(ρc), which no soil of this kind brings down twentyfold.
 
 **How far it holds.** On this one test, the vertical air-induced velocity from the manuals'
 relation and from the column is 20 to 80 times what the accelerometers imply, at ranges near
