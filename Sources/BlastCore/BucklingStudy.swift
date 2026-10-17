@@ -17,8 +17,11 @@ public enum BucklingStudy {
         /// Largest axial force carried (N), and the shortening at it (m).
         public var peakForce: Float
         public var shorteningAtPeak: Float
-        /// The middle's largest lateral displacement (m).
+        /// The largest sideways displacement of any node (m).
         public var lateral: Float
+        /// The force carried over the last tenth of the shortening (N): an elastic strut's
+        /// buckled plateau, which stays near its critical load.
+        public var finalForce: Float = 0
         public var euler: Float
         public var squash: Float
         /// Force against shortening, sampled.
@@ -50,7 +53,6 @@ public enum BucklingStudy {
         solver.damping = damping
         let fixed = solver.nodes { $0.x < 1e-4 }
         let pushed = solver.nodes { $0.x > length - 1e-4 }
-        let middle = solver.nearestNode(to: SIMD3(length / 2, 0, 1))
         let positions = solver.referencePositions
         solver.mutateNodes { nodes in
             for n in fixed { nodes[n].restrain(x: true, y: true, z: true, rotation: clamped) }
@@ -79,13 +81,100 @@ public enum BucklingStudy {
                 peak = abs(force)
                 atPeak = short
             }
-            lateral = max(lateral, abs(solver.node(middle).displacement.z))
+            for n in 0..<solver.nodeCount {
+                let d = solver.node(n).displacement
+                lateral = max(lateral, (d.y * d.y + d.z * d.z).squareRoot())
+            }
         }
         let inertia = side * side * side * side / 12
-        return Result(
+        let tail = history.filter { $0.x > 0.9 * shortening }
+        var result = Result(
             length: length, side: side, elementSize: elementSize, beams: solver.beamCount, peakForce: peak,
             shorteningAtPeak: atPeak, lateral: lateral,
             euler: Float.pi * Float.pi * material.youngsModulus * inertia / (length * length),
             squash: (yieldStress ?? .infinity) * side * side, history: history, endNodes: fixed.count)
+        result.finalForce = tail.reduce(0) { $0 + $1.y } / Float(max(tail.count, 1))
+        return result
+    }
+
+    /// Dynamic buckling: the strut's end driven in at `speed` (m/s) from rest, its far end held,
+    /// the steel elastic, every node given a small random sideways speed (`noise`, m/s). Behind
+    /// the compression front, which runs at c = √(E/ρ), the force is F₀ = E A v / c, and the
+    /// sideways disturbance grows fastest at the wavelength λ = 2π √(2 E I / F₀) (Lindberg's
+    /// preferred mode; Gladden et al. measured λ ∝ v^(−1/2) in rods struck by projectiles, *PRL*
+    /// 94, 2005), at the rate F₀ / 2√(ρA EI). Returned: that λ and the wavelength the strut's
+    /// sideways speed shows most of, over the compressed length, once that rate has grown the
+    /// disturbance `growth` times e; the strut is made long enough that the front has not
+    /// reached its far end.
+    public static func impact(
+        device: MTLDevice, side: Float = 0.02, elementSize: Float = 0.02, speed: Float = 50,
+        growth: Float = 5,
+        noise: Float = 0.01
+    ) throws -> (predicted: Float, measured: Float, force: Float, length: Float) {
+        let c = (210e9 / Float(7850)).squareRoot()
+        let force = 210e9 * side * side * speed / c
+        let inertia = side * side * side * side / 12
+        let rate = force / (2 * (7850 * side * side * 210e9 * inertia).squareRoot())
+        let time = growth / rate
+        let length = (c * time + 0.5).rounded(.up)
+        let material = StructureMaterial(
+            name: "Strut steel", density: 7850, youngsModulus: 210e9, poissonRatio: 0.3, yieldStress: 1e30,
+            hardeningModulus: 0, failureStrain: 1e30)
+        let half = side / 2
+        var model = StructureModel(
+            solids: [Box(min: SIMD3(0, -half, 1 - half), max: SIMD3(length, half, 1 + half))],
+            material: material, elementSize: elementSize, fixedBase: false)
+        model.elementKind = .shell
+        let solver = try ShellSolver(device: device, model: model)
+        solver.gravity = 0
+        solver.groundContact = false
+        let fixed = solver.nodes { $0.x < 1e-4 }
+        let pushed = solver.nodes { $0.x > length - 1e-4 }
+        var seed: UInt64 = 0x9E37_79B9_7F4A_7C15
+        func random() -> Float {
+            seed = seed &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+            return Float(seed >> 40) / Float(1 << 24) * 2 - 1
+        }
+        solver.mutateNodes { nodes in
+            for n in fixed { nodes[n].restrain(x: true, y: true, z: true, rotation: true) }
+            for n in pushed {
+                nodes[n].restrain(y: true, z: true)
+                nodes[n].isPrescribed = true
+                nodes[n].velocity = SIMD3(-speed, 0, 0)
+            }
+            for n in nodes.indices where !fixed.contains(n) && !pushed.contains(n) {
+                nodes[n].velocity.z = noise * random()
+            }
+        }
+        while Float(solver.time) < time {
+            solver.advance(
+                steps: max(1, Int(((time - Float(solver.time)) / solver.criticalTimeStep).rounded(.up))))
+        }
+        let predicted = 2 * Float.pi * (2 * material.youngsModulus * inertia / force).squareRoot()
+        // The compressed length, short of the front and the driven end.
+        let positions = solver.referencePositions
+        let front = length - c * Float(solver.time)
+        let samples = positions.indices.filter {
+            positions[$0].x > front + 2 * elementSize && positions[$0].x < length - 2 * elementSize
+                && abs(positions[$0].y) < 1e-4
+        }
+        .sorted { positions[$0].x < positions[$1].x }
+        let xs = samples.map { positions[$0].x }
+        let vs = samples.map { solver.node($0).velocity.z }
+        // The wavelength with the most power, scanned from 4 elements to the compressed length.
+        var best: (power: Float, wavelength: Float) = (0, 0)
+        var wavelength = 4 * elementSize
+        while wavelength < (xs.last ?? 0) - (xs.first ?? 0) {
+            let k = 2 * Float.pi / wavelength
+            var re: Float = 0
+            var im: Float = 0
+            for (x, v) in zip(xs, vs) {
+                re += v * cos(k * x)
+                im += v * sin(k * x)
+            }
+            if re * re + im * im > best.power { best = (re * re + im * im, wavelength) }
+            wavelength *= 1.01
+        }
+        return (predicted, best.wavelength, force, length)
     }
 }

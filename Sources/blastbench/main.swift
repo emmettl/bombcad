@@ -125,6 +125,7 @@ func preset(named name: String?) -> ScenarioPreset {
     case "panel-gas": .largePanelGas
     case "panel-street": .largePanelStreet
     case "plant": .processPlantExplosion
+    case "hub": .transportHub
     default: .streetCanyon
     }
 }
@@ -1536,6 +1537,13 @@ func runSnapshot() throws {
                 print(
                     "\(name): code \(EnvelopeDamageColour.code(building)), \(building.structuralLevels.lowerBound.label)"
                         + "–\(building.structuralLevels.upperBound.label), panes \(building.panesBroken)/\(building.panes)"
+                        + (building.worstGlazing.map { ", glazing GSA \($0.condition.rawValue)" } ?? "")
+                        + (building.worstOverhead.map {
+                            ", roof glass \($0.fall.rawValue)"
+                                + ($0.fall == .whole || $0.fall == .shards
+                                    ? " from \(format($0.dropM, 1)) m at \(format($0.impactSpeedMS, 0)) m/s, "
+                                        + "\(format($0.energyPerAreaJM2, 0)) J/m²" : "")
+                        } ?? "")
                 )
             }
         }

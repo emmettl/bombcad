@@ -51,8 +51,11 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
     /// Reinforcement of each concrete member, a central mat, as a share of the gross section
     /// each way.
     public var reinforcementRatio: Float
-    /// Annealed glass in every pane, this thick.
+    /// Every pane's glass, this thick: annealed, or the laminate's whole thickness.
     public var glassThicknessM: Float
+    /// Laminated glass in every pane, which holds together once cracked (`LaminatedGlass`); nil for
+    /// monolithic annealed glass (left out of the JSON, which older records lack).
+    public var laminate: LaminatedGlass?
     /// The pane a façade strip is taken to hold (a block's storey strip, as map buildings have),
     /// width and height, m: nil for `assumedFacadePane`, zero for none.
     public var facadePaneM: SIMD2<Float>?
@@ -94,8 +97,10 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
         roof: Kind = .reinforcedConcrete, roofThicknessM: Float = 0.2, reinforcementRatio: Float = 0.003,
         glassThicknessM: Float = 0.006, source: Source, detail: String, barsInBothFaces: Bool? = nil,
         barCoverM: Float? = nil, concreteStrengthMPa: Float? = nil, barYieldMPa: Float? = nil,
-        blockworkGrouted: Bool? = nil, masonryStrengthMPa: Float? = nil, capMassKgPerM: Float? = nil
+        blockworkGrouted: Bool? = nil, masonryStrengthMPa: Float? = nil, capMassKgPerM: Float? = nil,
+        laminate: LaminatedGlass? = nil
     ) {
+        self.laminate = laminate
         self.barsInBothFaces = barsInBothFaces
         self.barCoverM = barCoverM
         self.concreteStrengthMPa = concreteStrengthMPa
@@ -109,9 +114,20 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
         self.roof = roof
         self.roofThicknessM = roofThicknessM
         self.reinforcementRatio = reinforcementRatio
-        self.glassThicknessM = glassThicknessM
+        self.glassThicknessM = laminate.map { Float($0.thickness) } ?? glassThicknessM
         self.source = source
         self.detail = detail
+    }
+
+    /// A pane a × b (m, either way round) of this construction's glass, as the one-way model
+    /// judges it: annealed on Moore's large-deflection plate, or laminated
+    /// (`EnvelopePanel.laminatedGlass`).
+    public func pane(a: Double, b: Double) -> SDOFSystem {
+        if let laminate {
+            return EnvelopePanel.laminatedGlass(laminate, a: a, b: b)
+        }
+        return EnvelopePanel.largeDeflectionGlass(
+            thickness: Double(glassThicknessM), material: .annealedGlass, a: a, b: b)
     }
 
     /// The thickness a wall of `kind` takes unless said: 215 mm of masonry, a sheet's profile
