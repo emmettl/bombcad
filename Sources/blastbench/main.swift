@@ -46,6 +46,8 @@ import simd
 //                      [--elastic | --elastic-share 0.12 --memory 0 --heave 0]   (the sand's settling; also for shaking)
 //   blastbench shaking [--tests ssg04-dsw,ssg04-shw,ssg03-dsw] [--shear 80] [--bearing 814] [--samples Samples/FoRDy]
 //                      [--history out-%.csv] [--massless] [--damping 0.2]   (a wall on a footing shaken at its base, against FoRDy's SSG03/SSG04)
+//   blastbench gravity [--preset office] [--time 0.3] [--damping 50]
+//                      (a layout's structure under gravity alone, damped: stands, deflects or falls)
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mass kg] [--fit-reach Z]
 //                       [--mode peak|now|impulse|fluence|irradiance]
 //                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
@@ -105,6 +107,7 @@ func preset(named name: String?) -> ScenarioPreset {
     case "storeys": .threeStorey
     case "tall": .tallFrame
     case "tower": .coreTower
+    case "office": .officeTower
     case "column": .columnCloseIn
     case "protected": .protectedBuilding
     case "glass": .glassFacade
@@ -1298,6 +1301,34 @@ func runValidation() throws {
                 "\(format(range, 0)) m", KinneyGraham.positiveImpulse(mass: equivalentMass, range: range),
                 impulses.map { $0[n] }, digits: 0))
     }
+}
+
+/// A layout's structure stood under gravity alone, damped, and judged as the IFC corpus judges
+/// imported buildings (`GravityCheck`).
+func runGravity(device: MTLDevice) throws {
+    let preset = preset(named: option("preset"))
+    guard let model = preset.scenario.structure else {
+        print("\(preset.title) has no structure.")
+        exit(2)
+    }
+    let duration = option("time").flatMap { Double($0) } ?? GravityCheck.duration
+    let damping = option("damping").flatMap { Float($0) } ?? GravityCheck.damping
+    let started = ContinuousClock.now
+    var counts = (shells: 0, beams: 0)
+    let check = try GravityCheck.run(model, device: device, duration: duration, damping: damping) {
+        counts = ($0.elementCount, $0.beamCount)
+    }
+    let seconds = (ContinuousClock.now - started) / .seconds(1)
+    print("\(preset.title): \(counts.shells) shells, \(counts.beams) beams, \(String(format: "%.0f", check.weight / 1000)) kN")
+    print(
+        String(
+            format: "%.2f s under gravity, damped at %.0f/s: %.1f%% of the weight carried, %.1f%% still, peak %.1f mm, %d eroded",
+            duration, damping, 100 * check.carried, 100 * check.still, 1000 * check.peak, check.eroded))
+    print(
+        String(
+            format: "moving weight at %.2f s %.3f m/s, at %.2f s %.3f m/s (falling: %.3f m/s): %@ (%.0f s)",
+            duration * 5 / 6, check.settling.early, duration, check.settling.late, 9.81 / damping,
+            check.verdict.rawValue, seconds))
 }
 
 func runSnapshot() throws {
@@ -5199,6 +5230,7 @@ do {
     case "structure": try runStructure()
     case "validate": try runValidation()
     case "snapshot": try runSnapshot()
+    case "gravity": try runGravity(device: device)
     case "anchorage": try runAnchorage()
     case "rocking": try runRocking()
     case "shaking": try runShaking()

@@ -12,6 +12,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     case threeStorey
     case tallFrame
     case coreTower
+    case officeTower
     case columnCloseIn
     case protectedBuilding
     case glassFacade
@@ -40,6 +41,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .threeStorey: "Three-storey building"
         case .tallFrame: "Eight-storey frame"
         case .coreTower: "Twelve-storey tower"
+        case .officeTower: "Twelve-storey office, steel and glass"
         case .columnCloseIn: "Column, close-in"
         case .protectedBuilding: "Wall in front of a building"
         case .glassFacade: "Glass façade"
@@ -64,6 +66,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         var result = authoredScenario
         // Presets are reproducible inputs, including those assembled by editing other presets.
         let bodies = result.structuralObjects
+        let envelopes = result.envelopeObjects
         result.objects = result.boxes.enumerated().map {
             SceneObject.legacyBlock($0.element, index: $0.offset)
         }
@@ -73,6 +76,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
             if bodies.count > 1 { object.name = body.name }
             result.objects.append(object)
         }
+        result.objects += envelopes
         return result
     }
 
@@ -599,6 +603,9 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
                     Gauge("Roof", at: SIMD3(28, 24, top + 0.5)),
                 ],
                 structure: structure)
+
+        case .officeTower:
+            return Self.officeTowerScenario(title: title)
 
         case .threeStorey:
             // A three-storey concrete frame, three bays by two of 6 m, with 250 mm flat slabs and
