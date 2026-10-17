@@ -403,7 +403,9 @@ Project tests cover mixed scenes, version rejection and Undo/Redo restoring the 
 structure. Existing ownership, project and multi-body checks cover compatibility.
 
 The envelopes inherit the existing idealised blast model and grid-dependent geometry.
-Unresolved openings and thin walls can disappear. Fixed geometry cannot represent broken
+Openings narrower than a cell can close. Walls and slabs thinner than a cell take the layer of
+cells their middle lies in (since 17 October 2026: before, a wall between two cell centres vanished, its faces
+recorded nothing and the blast passed through it), so they are a cell thick in the air. Fixed geometry cannot represent broken
 windows, collapse, debris or evolving shielding. This establishes stationary exposure
 behaviour and its computational cost; it does not validate invented buildings against
 measurements or establish kilogram-to-kiloton physical coverage.

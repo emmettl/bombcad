@@ -57,6 +57,8 @@ fails, search the number at [discover.dtic.mil](https://discover.dtic.mil/).
 | McCleskey, fragment drag and presented area, NSWC TR 87-89 (1988) | [discover.dtic.mil](https://discover.dtic.mil/) (search the number) | DTIC | `fragments/sources/` | The irregular fragments' measured drag at low Mach, below the tumbling cubes' 0.5 |
 | Natural fragmentation of steel cylinders, International Symposium on Ballistics proceedings (open; titles not confirmed here) | DPI [2182](https://dpi-proceedings.com/index.php/ballistics/article/view/2182), [16812](https://dpi-proceedings.com/index.php/ballistics30/article/view/16812), [33205](https://dpi-proceedings.com/index.php/ballistics31/article/view/33205) | Not tried | `fragments/sources/` | Arena tests of cylinders of stated wall and diameter: masses and speeds to set against Mott's B and Gurney's |
 | *Cyclic tests on real-scale squat RC shear walls* (Pizarro Pohl, Kovarbašić and Stojadinović) | ETH Research Collection (search the title) | The collection returned errors | `data/ETH-squat-walls/` | Walls sliding at the base, slowly |
+| EMERGE final report, Mercx (ed.), 1997 | [OSTI 378238](https://www.osti.gov/biblio/378238) | OSTI refused automated access | `data/EMERGE/` | Congested rigs of 2–8 m at two blockages, methane and propane: the [congestion model](congestion-proposal.md)'s scale trend |
+| Johnson, Allason and Cronin, Spadeadam's explosion programmes, *J. Loss Prev.* 89 (2024) 105287, open access | [doi:10.1016/j.jlp.2024.105287](https://doi.org/10.1016/j.jlp.2024.105287) | ScienceDirect refused | `data/Spadeadam-review/` | What the BG/Shell rigs and BFETS measured, for the congestion model |
 
 **Behind a paywall**, for library access:
 
@@ -71,6 +73,11 @@ fails, search the number at [discover.dtic.mil](https://discover.dtic.mil/).
 | van der Voort and Weerheijm, debris dispersion, *IJIE* 59 (2013) | Elsevier | Kasun's debris statistics |
 | Netherton and Stewart, blast load variability, *IJPS* 1(4) (2010) | SAGE | Model error of blast-load predictions |
 | Johns and Clubley, annealed glazing under long-duration blast, *J. Struct. Eng.* (2016) and *Int. J. Solids Struct.* 97–98 (2016) | ASCE; Elsevier | Glass near its threshold under long pulses ([3h](data-survey.md#3h-window-glass-breaking-under-a-blast)) |
+| Popat et al., the MERGE code comparison, *J. Hazard. Mater.* 45 (1996) 1–25 | Elsevier | How codes fared on MERGE: the [congestion model](congestion-proposal.md)'s bar |
+| Pierorazio et al., the BST tests, *Process Saf. Prog.* 24 (2005) 59 | Wiley | The congestion classes' measured flame speeds |
+| Puttock et al., PDR model against MERGE, ERGOS and Buxton, *J. Loss Prev.* (2021) 104659 | Elsevier | The reference implementation's errors |
+| BFETS Phase 2 report, BG R-1579 | FABIG (purchase) | Full-scale module explosions, 27 tests |
+| CCPS, *Guidelines for Vapor Cloud Explosion…*, 2nd ed. (2010) | Wiley/AIChE | Congestion and blast curves in industry practice |
 
 The survey names a few more, each under its item: Hao et al. (2017), Ross and Krawinkler (1985),
 Kiger and Slawson (1984), Bauwens et al.'s propane and hydrogen papers, Kingery and Bulmash

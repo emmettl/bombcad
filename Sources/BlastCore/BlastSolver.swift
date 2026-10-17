@@ -1722,7 +1722,8 @@ public final class BlastSolver {
         }
         for level in refinementLevels {
             level.reset()
-            level.setBoxes(rigidBoxes)
+            let fine = grid.cellSize / Float(level.parentScale * level.ratio)
+            level.setBoxes(rigidBoxes?.map { $0.holdingCells(of: fine) })
             level.setTerrain(rigidBoxes == nil ? nil : terrain)
         }
         for level in refinementLevels { level.coarseCut = cut ? terrainCut : nil }
