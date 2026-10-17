@@ -282,6 +282,11 @@ struct MaterialParameters {
     float splittingEnergy;
     float shearEnergy;
     float rollingEnergy;
+    uint bucklingAxis;
+    float bucklingSide;
+    float bucklingOnset;
+    float bucklingSoftening;
+    float bucklingResidual;
 };
 
 constant uint maxMaterials = 8;
