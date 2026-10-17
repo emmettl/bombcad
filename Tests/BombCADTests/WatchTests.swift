@@ -117,7 +117,11 @@ struct WatchTests {
             worker.writer.enqueue(.viewAck(job.id, header.frame))
         }
         let stats = try #require(result.stats)
-        #expect(stats.sent == headers.count && stats.lags.count == stats.sent && stats.frames >= stats.sent)
+        // Every frame sent arrives before the stats, on the one connection, and every one is
+        // acknowledged and waited for (ackWait), so these are counts, not timings.
+        #expect(stats.sent == headers.count)
+        #expect(stats.lags.count == stats.sent)
+        #expect(stats.frames >= stats.sent)
         #expect(headers.map(\.frame) == headers.map(\.frame).sorted())
         #expect(abs((headers.last?.time ?? 0) - 0.004) < 1e-9)
         #expect(headers.allSatisfy { $0.counts.x > 0 && $0.counts.y > 0 && $0.faces == 0 })
