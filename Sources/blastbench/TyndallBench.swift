@@ -38,6 +38,7 @@ func runTyndall(device: MTLDevice) throws {
                     c.airSleepCrossings = 0
                 }
                 if flag("copy-faces") { c.openFaces = .copy }
+                configureRefinement(&c)
             },
             progress: flag("progress") ? { print("  " + $0) } : nil)
         if let path = option("history") { try rows.write(toFile: path, atomically: true, encoding: .utf8) }

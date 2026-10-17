@@ -250,6 +250,7 @@ func chosenFaces() -> OpenFaces { flag("copy-faces") ? .copy : SolverConfigurati
 /// `--mask-fill 0.5`, `--no-mask-overlap` for the elements counted at their centres, as before
 /// 16 October 2026 (see `SolverConfiguration.structureMaskOverlap`).
 func applyChosenMask(_ configuration: inout SolverConfiguration) {
+    configureHold(&configuration)
     if let n = option("mask-sampling").flatMap({ Int($0) }) { configuration.structureMaskSampling = n }
     if let f = option("mask-fill").flatMap({ Float($0) }) { configuration.structureMaskFill = f }
     if flag("mask-overlap") { configuration.structureMaskOverlap = true }
@@ -1014,6 +1015,17 @@ func runChamber() throws {
 /// margin around the shock), `--refine-own-steps` (each level takes only the substeps its own waves
 /// need), `--refine-threshold`,
 /// `--refine-finer-threshold` (the second level's) and `--refine-memory` (MB).
+/// `--hold-structures <Pa>` and `--hold-envelopes <Pa>` hold refinement about structures and
+/// beside envelopes' recorded faces while their air is loaded past so many pascals; `0` for none.
+func configureHold(_ configuration: inout SolverConfiguration) {
+    if let hold = option("hold-structures").flatMap({ Float($0) }) {
+        configuration.refinementHoldsStructures = hold > 0 ? hold : nil
+    }
+    if let hold = option("hold-envelopes").flatMap({ Float($0) }) {
+        configuration.refinementHoldsEnvelopes = hold > 0 ? hold : nil
+    }
+}
+
 func configureRefinement(_ configuration: inout SolverConfiguration) {
     // The terrain's ground is cut through the cells by default (TerrainCutCells.swift); `--staircase`
     // lays it as whole cells. `--cut-cells` is the default, kept for old command lines.
@@ -1037,6 +1049,7 @@ func configureRefinement(_ configuration: inout SolverConfiguration) {
     if let start = option("refine-start") {
         configuration.refinementStartMemory = start == "full" ? nil : Int(start).map { $0 << 20 }
     }
+    configureHold(&configuration)
 }
 
 /// With `--radiate`, the luminous gas loses the heat it radiates: as `--thermal`'s description
