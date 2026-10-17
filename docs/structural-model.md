@@ -264,6 +264,9 @@ struck together they rebound with their momentum and never more kinetic energy t
 with; a block thrown along its seat with friction 0.5 slides v² / (2 μ g), 0.25 m, within 10%,
 its kinetic energy all spent on friction, the pairs within a quarter metre less half an element
 of the edge off their seat; thrown to slide 1.5 m it goes off the end and falls.
+A whole building of such parts, a twelve-storey [large-panel block of flats](large-panel-flats.md)
+of the Ronan Point type, is a preset. Its one-element gaps are also gaps in the air's solid mask
+on cells finer than two elements, which a gas explosion inside it has to be sealed against.
 
 `blastbench seat` (`DroppedSpanStudy`) seats a precast beam 0.5 m deep on corbels at the tops of
 two reinforced concrete columns 6 m apart, resting with friction 0.5 on a 100 mm pad, and gives
