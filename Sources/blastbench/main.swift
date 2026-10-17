@@ -2694,6 +2694,71 @@ func runTwoFace() throws {
             print("  " + workRow("end", 8, work))
         }
     }
+    // `--yao T1,T2,T3,T4`: Yao et al.'s 4 x 5 x 0.15 m slabs (Applied Sciences, 2023).
+    if let names = option("yao").map({ $0.split(separator: ",").map(String.init) }) {
+        let yaoElement = option("h").flatMap { Float($0) } ?? 0.01875
+        print("Yao et al. (2023): 4 x 5 x 0.15 m slabs, two mats, simply supported on the long sides")
+        print(
+            "Air \(format(Double(cellSize), 3)) m refined by \(option("refine") ?? "2"), elements \(format(Double(yaoElement), 4)) m, \(format(duration * 1000, 0)) ms"
+        )
+        print(
+            "Underside displacement (mm, down positive), measured / model; top-face pressure peaks (MPa); areas cm2\n"
+        )
+        print(
+            pad("test", 5) + pad("charge", 14) + pad("centre", 13) + pad("to support", 13)
+                + pad("to free", 13)
+                + pad("diagonal", 13) + pad("p centre", 12) + pad("p 1 m", 18) + pad("top", 8)
+                + pad("bottom", 8)
+                + pad("failed", 8) + pad("s", 6))
+        func mm3(_ value: Float?) -> String { value.map { format(Double($0) * 1000, 2) } ?? "-" }
+        for test in TwoFaceSlabTests.yaoTests where names.contains(test.name) {
+            let result = try TwoFaceSlabTests.run(
+                device: device, test: test, cellSize: cellSize,
+                refinement: option("refine").flatMap { Int($0) } ?? 2, elementSize: yaoElement,
+                duration: duration,
+                afterburning: burning, airModel: chosenGas(), openFaces: chosenFaces(), adjust: adjust,
+                prepare: { solver in
+                    prepareTrace(solver)
+                    lastStructure = solver
+                },
+                progress: flag("progress")
+                    ? {
+                        print("  " + $0)
+                        fflush(stdout)
+                    } : nil,
+                configure: applyChosenMask)
+            let measured = test.displacements
+            let columns = (0..<4).map { "\(mm3(measured?[$0]))/\(mm3(result.peaks[$0]))" }
+            let charge = "\(format(Double(test.charge), 1)) kg @\(format(Double(test.standoff), 1))"
+            func mpa(_ value: Float?) -> String { value.map { format(Double($0) / 1e6, 2) } ?? "-" }
+            print(
+                pad(test.name, 5) + pad(charge, 14) + columns.map { pad($0, 13) }.joined()
+                    + pad("\(mpa(test.centrePressure))/\(mpa(result.gaugePeaks[0]))", 12)
+                    + pad(
+                        "\(mpa(test.sidePressure))/\(mpa(result.gaugePeaks[1])),\(mpa(result.gaugePeaks[2]))",
+                        18)
+                    + pad(format(Double(result.damagedFront) * 1e4, 0), 8)
+                    + pad(format(Double(result.damagedBack) * 1e4, 0), 8)
+                    + pad("\(result.summary.erodedElements)", 8) + pad(format(result.wallSeconds, 0), 6))
+            print(
+                "      residual (mm): "
+                    + result.residuals.map { format(Double($0) * 1000, 2) }.joined(separator: ", ")
+                    + "; impulses at the gauges (kPa ms): "
+                    + result.gaugeImpulses.map { format(Double($0), 0) }.joined(separator: ", ")
+                    + "; test: " + test.remark)
+            // The paper reports the largest displacement "at the time that the explosion wave reached
+            // the slab": the probes' largest within 2 ms of the shock's arrival at the centre.
+            let arrival = result.gaugeArrivals[0]
+            let early = result.histories.map { history in
+                history.filter { $0.x <= arrival + 0.002 }.map { abs($0.y) }.max() ?? 0
+            }
+            print(
+                "      within 2 ms of the shock's arrival (\(format(Double(arrival) * 1000, 2)) ms), largest (mm): "
+                    + early.map { format(Double($0) * 1000, 2) }.joined(separator: ", "))
+            try report(result, label: "yao-\(test.name)")
+        }
+        return
+    }
     if let names = option("wu").map({ $0.split(separator: ",").map(String.init) }) {
         print(
             "Wu et al. (2023): 2 x 2 x 0.1 m slabs, one layer of steel (S) or two (D), TNT in contact or at 0.43 m/kg^1/3"

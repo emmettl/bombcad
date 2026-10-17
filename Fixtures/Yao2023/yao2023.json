@@ -1,0 +1,41 @@
+{
+  "source": "J. Yao, S. Li, P. Zhang, S. Deng, G. Zhou, 'Dynamic Response and Damage Characteristics of Large Reinforced Concrete Slabs under Explosion', Applied Sciences 13 (2023) 12552, doi:10.3390/app132312552",
+  "licence": "CC BY 4.0",
+  "slab": {
+    "plan_m": [4.0, 5.0],
+    "thickness_m": 0.15,
+    "concrete": "C35; 150 mm cubes 36.6, 37.2, 37.9 MPa (mean 37.2)",
+    "density_kg_m3": 2314,
+    "reinforcement": "two mats, 10 mm HRB400 bars at 85 mm both ways; section ratio 1.2%",
+    "cover_mm": "30 (Y) and 20 (X, Z), as the paper's simulation gives them",
+    "steel_MPa": {"yield": 405, "ultimate": 542},
+    "supports": "simply supported on the two long (5 m) sides on L-shaped RC supports, 150 mm bearing; the supports' height is not given"
+  },
+  "tests": [
+    {"name": "T1", "slab": "slab-1", "tnt_kg": 0.5, "height_m": 1.0, "scaled_m_kg13": 1.26},
+    {"name": "T2", "slab": "slab-1", "tnt_kg": 1.0, "height_m": 1.0, "scaled_m_kg13": 1.0},
+    {"name": "T3", "slab": "slab-1", "tnt_kg": 1.0, "height_m": 0.8, "scaled_m_kg13": 0.8},
+    {"name": "T4", "slab": "slab-2", "tnt_kg": 20.0, "height_m": 1.0, "scaled_m_kg13": 0.221}
+  ],
+  "measured": {
+    "note": "T1-T3 pressures and displacements read by eye off Figures 6b and 7b (about +/-0.03 mm and +/-0.1 MPa); accelerations from Table 4; T4 from Section 3.3 and Figure 11.",
+    "top_pressure_peak_MPa": {"centre": [1.7, 4.2, 8.6], "one_metre_out": [0.5, 1.25, 1.9]},
+    "underside_displacement_peak_mm": {
+      "centre": [0.35, 0.47, 0.86],
+      "long_side_1m": [0.33, 0.42, 0.78],
+      "short_side_1m": [0.20, 0.28, 0.53],
+      "diagonal_1m": [0.18, 0.24, 0.46]
+    },
+    "acceleration_peak_g": {
+      "centre": [[85.1, -94.6], [160.4, -166.7], [239.2, -177.0]],
+      "long_side_1m": [null, null, [96.3, -116.0]],
+      "short_side_1m": [[21.1, -18.4], [34.7, -33.2], [83.2, -99.6]],
+      "diagonal_1m": [[16.3, -15.3], [38.4, -48.9], null]
+    },
+    "T4": {
+      "top_crater_m": [1.02, 0.76],
+      "remarks": "elliptical crater (the charge was two 10 kg cylinders); top bars exposed, not obviously broken; underside spalled over a medium range, bars exposed, bent and unbroken; over 10 long cracks on the underside; bent along the centre line; moderate damage"
+    },
+    "T1_T3_damage": "no obvious cracks or deformation"
+  }
+}
