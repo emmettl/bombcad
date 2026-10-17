@@ -68,6 +68,12 @@ the last layer goes on for ever. `dampingFrequencies` are the two frequencies (H
 each layer's damping has its ratio, and `timeStep` the step the column aims for (s). Without a
 `profile`, the column is one elastic layer of `soil` going on for ever.
 
+`"model": "halfspace"` asks instead for a layered elastic half-space about the charge, in which
+waves travel sideways and outrun the blast, giving vertical and outward motion. It uses the same
+`profile`, each layer with an optional `shearWaveSpeed` (m/s; a Poisson's ratio of 0.3 if left
+out), and a `halfSpace` setup that `BombCAD run` fills in from the scene's charge. That is in
+[its own page](ground-shock-outrunning.md), with its checks and its comparison.
+
 ## The manuals' estimate
 
 Each point is treated as a vertical column of uniform soil, pressed at its top by the air.
@@ -467,6 +473,12 @@ Kingery–Bulmash's Friedlander pulse, with the curves' peak, impulse, duration 
   accelerations three to eight times the vertical and velocities three to four times, the motion that one-dimensional, vertical,
   air-induced models leave out.
 
+**The half-space** ([its comparison](ground-shock-outrunning.md#stage-2-against-xia-et-al)) gives
+the horizontal motion these models leave out: within 1.4 to 1.5 times the measured at 21 m, but
+18 to 19 times at 42 m. Its vertical is 15 to 63 times the measured, little better than the
+column, because an elastic ground carries the motion from near the charge outwards with little
+loss.
+
 **How far it holds.** On this one test, the vertical air-induced velocity from the manuals'
 relation and from the column is 20 to 80 times what the accelerometers imply, at ranges near
 and past the outrunning limit. Only the clipped velocity gauge, of unknown component, comes
@@ -529,8 +541,9 @@ illustrative.
   ([Data wanted](data-wanted.md#to-fetch)). The only one so far, Xia et al.'s, stood near and
   past the outrunning limit.
 - The motion the ground's own wave carries ahead of the blast where it outruns it, mostly
-  horizontal, which dominated Xia et al.'s records: proposed as an axisymmetric elastic
-  half-space driven by the air's ground pressures ([proposal](ground-shock-outrunning.md)).
+  horizontal, which dominated Xia et al.'s records: built as an elastic half-space
+  ([stages 1 and 2](ground-shock-outrunning.md)), which gives its shape but not its size; next,
+  soil that yields near the charge.
 
 ## Sources
 

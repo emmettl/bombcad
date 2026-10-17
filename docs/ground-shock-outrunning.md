@@ -1,6 +1,8 @@
 # Ground motion where the ground's wave outruns the blast: a proposal
 
-**Status: stage 1 built and checked (17 October 2026); stage 2 under way.** A plan for the motion that the one-dimensional
+**Status: stages 1 and 2 built (17 October 2026). The half-space does not close the gap with
+Xia et al.'s measurements: the vertical motion is still 15 to 60 times too high, the horizontal
+within 1.5 times at 21 m but 15 to 20 times too high at 42 m.** A plan for the motion that the one-dimensional
 models in [Ground shock](ground-shock.md) leave out. That is the regime of Xia et al.'s gauges,
 where both models put the vertical velocity 20 to 80 times too high and miss the horizontal
 motion that dominated ([the comparison](ground-shock.md#against-measured-ground-motion)), and of
@@ -141,12 +143,85 @@ the API follows ContinuumKit's prepared grid, forcing and observation. The check
 | The perfectly matched layer | Energy left inside | Under 2% after the waves leave; with rigid edges over 30% stays |
 | A front sweeping at 20 c_P | The elastic soil column, and p/(ρc_P) | The downward velocity a metre down within 3% of both; the outwards motion the plane solution's S-wave share, 2sη_S/(η_S² − s²), within 15% |
 
+## Stage 2: against Xia et al.
+
+`"model": "halfspace"` in the ground-shock description (`HalfSpaceGroundShock`, through
+`GroundShockConsumer`). Each frame, the air's ground slice is averaged round rings centred on the
+charge, about two samples a cell round each ring. The rings are rebuilt between frames by the
+column's rules (`GroundLoad`), and averaged over twelve of the solver's steps. Each layer takes a
+shear speed (`shearWaveSpeed`, or a Poisson's ratio of 0.3 if left out). `BombCAD run` puts the
+axis under the scene's charge. The run's ground slice then covers the whole disc, out past the
+farthest point by a seventh and 5 m. The results are the downward and outward peaks at each
+point's depths, its displacement, stress and history.
+
+### The direct source
+
+Inside the crater, the air model's pressure on its rigid ground would drive elastic soil far
+beyond anything it could carry. Without the source, fed the air model, the half-space puts the
+ground at 21 m moving at 2.5 m/s (on 0.5 m cells) to 7.8 m/s (on 0.25 m cells), forty times
+what it gives with it. Kingery–Bulmash's curves stop short of the charge and never showed this.
+Inside the apparent crater (Cooper's radius in alluvium, `CraterEstimate`), the load is replaced
+by a pressure A sin²(πt/τ). Here τ is twice the P wave's crossing of the disc, and A is set so
+that the work a wide disc does, πa²A²(3τ/8)/(ρc_P), is a share ε of the charge's energy.
+
+ε was **calibrated once against UFC 3-340-01's direct-induced relation**, v = 0.14 · 160 ·
+(R/W^(1/3))^(−n) ft/s, taking W as the TNT-equivalent mass in pounds. The calibration case is
+1 t on dense sand (n = 2.5, c_P 488 m/s, 1,900 kg/m³, Poisson's ratio 0.3), the source alone,
+0.5 m down. `blastbench groundmotion --calibrate` gives, at ε = 9.3 × 10⁻⁶:
+
+| R/W^(1/3), ft/lb^(1/3) | Range | Half-space, peak resultant | UFC | Ratio |
+|---|---|---|---|---|
+| 4 | 15.9 m | 0.053 m/s | 0.213 m/s | 0.25 |
+| 6 | 23.8 m | 0.043 m/s | 0.077 m/s | 0.56 |
+| 8 | 31.7 m | 0.038 m/s | 0.038 m/s | 1.00 (calibrated) |
+| 12 | 47.6 m | 0.031 m/s | 0.014 m/s | 2.26 |
+| 16 | 63.5 m | 0.027 m/s | 0.0067 m/s | 4.03 |
+
+The elastic half-space's direct waves fall away as about r^(−1/2), the spreading of Rayleigh
+waves at the surface; UFC's as r^(−2.5), as the soil yields and loses energy near the charge. So
+one share fits at one range only: four times too low at half of it, four times too high at
+twice it. Xia et al. quote 0.116 m/s at 21 m from the same relation with n = 2.55, with W as C-4.
+With W as TNT it gives 0.098 m/s.
+
+### The comparison
+
+`blastbench groundmotion` on today's recommended air, the soil as Xia et al. fitted it (457 m/s,
+2,050 kg/m³) with a Poisson's ratio of 0.3, 0.5 m down:
+
+| Range | Vertical: half-space (air model 0.25 m; 0.5 m; Kingery–Bulmash) | Measured, integrated | Horizontal: half-space (same) | Measured, integrated |
+|---|---|---|---|---|
+| 21 m | 0.185; 0.186; 0.186 m/s | 0.009–0.012 | 0.079; 0.072; 0.083 m/s | 0.054–0.058 |
+| 42 m | 0.050; 0.050; 0.027 m/s | 0.0008–0.0012 | 0.075; 0.062; 0.068 m/s | 0.0040–0.0042 |
+
+- **The vertical:** 15 to 21 times the measured at 21 m, against the column's 20 to 26. It is
+  42 to 63 times at 42 m on the air model (23 to 34 times on Kingery–Bulmash), against the
+  column's 50 to 70. The half-space halves the vertical at 42 m on Kingery–Bulmash's load, where
+  the air's front is outrun, but the air model's stronger load near the charge takes it back up.
+- **The horizontal,** which the column could not give: within 1.4 to 1.5 times at 21 m, but 18
+  to 19 times at 42 m. The half-space has the right shape where the blast is outrun: at 42 m the
+  horizontal exceeds the vertical, as measured (about four times there, one and a half in the
+  model).
+- **The soil:** a Poisson's ratio of 0.25 or 0.35 moves the horizontal at 21 m from 0.058 to
+  0.119 m/s and leaves the vertical within 10%. Stiffer soil makes 42 m worse, not better. At
+  1,000 and 1,800 m/s the vertical there is 0.16 and 0.14 m/s, as the ground's waves from nearer
+  the charge, where the air presses at megapascals, reach it with little loss.
+- **The cost:** about 6 ms a frame for 1 t to 53 m on 0.16 m cells (52,000 cells), against
+  35 to 300 ms of air a frame.
+
+**What it shows.** Waves travelling sideways in an elastic ground give the outrunning regime its
+horizontal motion and its shape, but not its size. The measured motion falls by a factor of 10
+to 14 from 21 to 42 m, as R^(−3.3) to R^(−3.8). The elastic half-space's falls by 1 to 4. Real ground loses
+energy near the charge, where it yields, crushes and cracks; none of that is here. The next
+step is stage 3's soil that yields: the column's bilinear volumetric unloading, and the region
+round the charge where it yields treated as the crater's own. Until then the half-space stands
+as illustrative, its horizontal the only part within reach of the measurement.
+
 ## Stages
 
-1. The elastic axisymmetric solver with its absorbing layer, checked against Lamb's problem
-   and Cole and Huth.
-2. Driven by the air's ring-averaged ground pressures through the consumer, with the near-charge
-   source from the crater's energy share; Xia again, now with the horizontal.
+1. Done: the elastic axisymmetric solver with its absorbing layer, checked against Lamb's
+   problem and Cole and Huth.
+2. Done: driven by the air's ring-averaged ground pressures through the consumer, with the
+   near-charge source calibrated against UFC; Xia again, now with the horizontal (above).
 3. Layers and damping, then the bilinear soil; Prairie Flat and Pre-Dice Throw II if obtained.
 4. If it holds: a three-dimensional version on the GPU for streets and buildings, and a
    ContinuumKit extraction proposal for the elastic wave solver.

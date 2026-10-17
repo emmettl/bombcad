@@ -2183,6 +2183,11 @@
      ]
     }
    },
+   "integratedHorizontalSpeed": 0.0542,
+   "integratedHorizontalSpeedBounds": [
+    0.0542,
+    0.0575
+   ],
    "verticalAccelerationDown": 3.57,
    "verticalAccelerationUp": 1.58,
    "integratedVerticalVelocity": 0.012,
@@ -4844,6 +4849,11 @@
      ]
     }
    },
+   "integratedHorizontalSpeed": 0.004,
+   "integratedHorizontalSpeedBounds": [
+    0.004,
+    0.0042
+   ],
    "verticalAccelerationDown": 0.36,
    "verticalAccelerationUp": 0.25,
    "integratedVerticalVelocity": 0.0012,
