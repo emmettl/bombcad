@@ -145,6 +145,48 @@ struct CraterTests {
         #expect(throws: Terrain.Failure.self) { try shallow.cratered([crater]) }
     }
 
+    @Test("The USD scene shows the crater from the last frame, the ground open under it")
+    func usd() throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: "crater-usd-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        var scenario = Scenario(
+            name: "Open", domainSize: SIMD3(40, 40, 10), boxes: [],
+            charge: Charge(mass: 100, position: SIMD3(20, 20, 0)))
+        let craters = CraterEstimate.craters(of: scenario, ground: .clay)
+        let crater = try #require(craters.first)
+        let flatURL = folder.appending(path: "flat.usda")
+        let flat = try USDSceneWriter(url: flatURL, scenario: scenario, frameInterval: 0.001)
+        for _ in 0..<3 { try flat.append(nil) }
+        flat.addCraters(craters)
+        try flat.finish()
+        let text = try String(contentsOf: flatURL, encoding: .utf8)
+        let mesh = try #require(text.components(separatedBy: "def Mesh \"Crater\"").last)
+        // Flat at frame 0, the crater at the last, 2.
+        #expect(mesh.contains("point3f[] points.timeSamples = {") && mesh.contains("            2: ["))
+        #expect(mesh.contains("bombcad:label = \"\(crater.summary)\""))
+        // The ground plane in eight rectangles round the crater's square.
+        let ground = try #require(text.components(separatedBy: "def Mesh \"Ground\"").last)
+        let counts = try #require(
+            ground.components(separatedBy: "faceVertexCounts = [").dropFirst().first?.prefix { $0 != "]" })
+        #expect(counts.split(separator: ",").count == 8)
+        // Over a terrain, its quads under the patch are left out.
+        scenario.terrain = Terrain(
+            spacing: 1, columns: 41, rows: 41, heights: [Float](repeating: 5, count: 41 * 41))
+        scenario.terrain!.heights[0] = 6
+        scenario.charge.position.z = 5
+        let hilly = folder.appending(path: "terrain.usda")
+        let writer = try USDSceneWriter(url: hilly, scenario: scenario, frameInterval: 0.001)
+        try writer.append(nil)
+        writer.addCraters(CraterEstimate.craters(of: scenario, ground: .clay))
+        try writer.finish()
+        let terrain = try #require(
+            String(contentsOf: hilly, encoding: .utf8).components(separatedBy: "def Mesh \"Terrain\"").last)
+        let quads = try #require(
+            terrain.components(separatedBy: "faceVertexCounts = [").dropFirst().first?.prefix { $0 != "]" })
+        #expect(quads.split(separator: ",").count < 40 * 40)
+    }
+
     @Test(
         "On soft ground the air's charge holds 0.9 of the energy; rigid ground, the same to the bit",
         .gpuThreads)

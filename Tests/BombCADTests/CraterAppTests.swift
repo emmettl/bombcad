@@ -82,7 +82,8 @@ struct CraterAppTests {
         let summary = HeadlessRun.summary(result.run, wallSeconds: 1)
         #expect(summary.contains("Crater in dry alluvium: "))
         let text = try String(contentsOf: usd, encoding: .utf8)
-        #expect(text.contains("def Mesh \"Crater\"") && text.contains("point3f[] points.timeSamples"))
+        // No structure or volumes, so the run takes no frames and the crater is there throughout.
+        #expect(text.contains("def Mesh \"Crater\""))
         #expect(text.contains("bombcad:label = \"Crater in dry alluvium"))
         // The flat ground is left open under the crater's patch.
         let ground = try #require(text.range(of: "def Mesh \"Ground\"")).upperBound
