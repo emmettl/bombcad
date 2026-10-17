@@ -318,7 +318,7 @@ private func runVented(device: MTLDevice, gas: FlammableGas, concentration: Floa
                     + pad(r.ventOpened.map { format($0 * 1000, 0) } ?? "-", 9)
                     + pad(format(r.burntFraction * 100, 1) + "%", 8) + pad(format(c.molkov / 1000, 1), 8)
                     + pad(c.bartknecht.map { format($0 / 1000, 1) } ?? "-", 8)
-                    + pad(format(c.nfpa68 / 1000, 1), 9)
+                    + pad(c.nfpa68.map { format($0 / 1000, 1) } ?? "-", 9)
                     + format(Date().timeIntervalSince(clock), 0))
             if let path = option("history") {
                 let file = path.replacingOccurrences(of: "%", with: "\(area)-\(dx)")

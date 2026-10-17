@@ -43,6 +43,32 @@ struct DeflagrationUniforms {
     var regionMaxY: Float = 0
     var regionMaxZ: Float = 0
     var obstacleTurbulenceScale: Float = 0
+    /// A tabulated laminar burning velocity (`FlammableGas.burningVelocityTable`): how many points,
+    /// their equivalence ratios and speeds (m/s); none uses Gülder's fit above.
+    var speedTableCount: UInt32 = 0
+    var speedPhi: SpeedTable = DeflagrationUniforms.emptyTable
+    var speedValue: SpeedTable = DeflagrationUniforms.emptyTable
+
+    typealias SpeedTable = (
+        Float, Float, Float, Float, Float, Float, Float, Float, Float, Float, Float, Float, Float, Float,
+        Float, Float
+    )
+    static let emptyTable: SpeedTable = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    static let speedTableCapacity = 16
+
+    /// Puts `points` (equivalence ratio, m/s) in the table.
+    mutating func setSpeedTable(_ points: [SIMD2<Float>]) {
+        precondition(points.count <= Self.speedTableCapacity, "at most 16 burning-velocity points")
+        speedTableCount = UInt32(points.count)
+        withUnsafeMutableBytes(of: &speedPhi) { raw in
+            let values = raw.bindMemory(to: Float.self)
+            for (n, point) in points.enumerated() { values[n] = point.x }
+        }
+        withUnsafeMutableBytes(of: &speedValue) { raw in
+            let values = raw.bindMemory(to: Float.self)
+            for (n, point) in points.enumerated() { values[n] = point.y }
+        }
+    }
 }
 
 /// The GPU side of a deflagration: the flame, if there is one, and the vent panels, which also
@@ -171,12 +197,14 @@ final class DeflagrationStage {
             u.speedScale = fit.scale
             u.speedPower = fit.power
             u.speedWidth = fit.width
+            if let table = gas.burningVelocityTable { u.setSpeedTable(table) }
             let acceleration = deflagration.acceleration
             u.speedFactor = max(acceleration.factor, 0)
             u.wrinklingRadius =
                 acceleration.instability?.radius(gas: gas, fraction: deflagration.concentration) ?? 0
-            u.wrinklingPower = Self.wrinklingPower
-            u.wrinklingLimit = Self.wrinklingLimit
+            let growth = gas.instabilityGrowth(onset: u.wrinklingRadius)
+            u.wrinklingPower = growth?.power ?? Self.wrinklingPower
+            u.wrinklingLimit = growth?.limit ?? Self.wrinklingLimit
             u.externalFactor = max(acceleration.externalFactor ?? 1, 0)
             u.regionMinX = deflagration.region.min.x
             u.regionMinY = deflagration.region.min.y
