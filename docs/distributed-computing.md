@@ -25,6 +25,9 @@ what has since been built, and measured, is said where it comes up.
   this Mac, not the network: cutting out each model's share of the air took the CPU about 5 ms
   a frame while the GPU waited. Cut out on the GPU, it now takes under a millisecond. See
   [Several consumers on several machines](#several-consumers-on-several-machines).
+- **Over Wi-Fi,** independent runs and work on saved runs still pay; anything that exchanges
+  every step does not. The most useful case is a thin client: the app on a laptop, the blast on
+  a large GPU elsewhere. See [Slower links](#slower-links-wi-fi-and-the-like).
 - **Before that, other routes win:** a bigger single GPU, faster single-GPU algorithms, and
   farming out independent runs (sweeps, grid studies, uncertainty), which scales perfectly at any
   size. [`BombCAD run`](run-comparison.md#headless-runs) is the building block for the last.
@@ -444,6 +447,80 @@ fragments, and the ground's shaking is lighter still. Moving them gains nothing 
 expensive. The thermal radiation's march over a city block of receivers is the first that is
 (above); fragments that collide, or many buildings' damage, would be others. What the plan buys is room for those without
 the run slowing, within the bound in [Adding machines](#the-long-term-visions-effects).
+
+## Slower links: Wi-Fi and the like
+
+Everything above assumes the Thunderbolt cable. Weighed in October 2026 for a Mac on Wi-Fi, such
+as a laptop on the same network; nothing here has been measured over Wi-Fi. Typical figures:
+
+| Link | Usable rate | Round trip |
+|---|---|---|
+| Thunderbolt Bridge, SSH (measured here) | about 0.9 GB/s | about 0.1 ms |
+| 10 Gb Ethernet (built into the Studio) | about 1 GB/s | about 0.05 ms |
+| Gigabit Ethernet | about 110 MB/s | about 0.2 ms |
+| Wi-Fi 6, 6E or 7, good conditions | 30 to 150 MB/s | 2 to 10 ms, with spikes past 50 ms |
+
+10 Gb Ethernet is nearly as good as the cable for all of this; Wi-Fi is not. A job crosses a slow
+link well when two things hold: what it sends a frame, at the link's rate, takes well under the
+frame's own computing, and nothing waits for a reply. Latency then does not matter, only
+bandwidth, and only on average.
+
+**What still works.**
+
+- **Independent runs.** Sweeps and ensembles cross any link. A case sends its project and gets
+  back its result, at most 256 MiB and usually far less, against tens of seconds or more of
+  running; the worker's executable and resource bundles, about 22 MB, go once a build. This
+  should scale over Wi-Fi as over the cable, though a Mac on Wi-Fi is likely to be a laptop,
+  slower than the Studio, which the scheduler handles by giving it the smaller cases.
+- **Models fed one way, if they can fall behind.** A consumer only reads the air, so frames
+  can stream ahead of it and nothing waits on the round trip. At about 39 ms a frame on the
+  street canyon, 50 MB/s carries about 2 MB a frame. The ground's 0.19 MB fits easily. The
+  fragments' 9.5 MB block of air does not: about 30 s to send against a run of about 5 s. The
+  run waits for a consumer more than four frames behind, so as built it would be held up.
+  Sending the air only where the fragments are, or in half precision, or letting a consumer
+  trail without holding the run (its frames are already kept in `ConsumerSpool`), would each
+  fix it, results unchanged. It would gain nothing yet: these models are cheap
+  ([Placement and failure](#several-consumers-on-several-machines)).
+- **Work on saved runs.** [USD export](usd-export.md), fragments flown afterwards from saved
+  frames, comparisons: files, so any link.
+
+**What does not.** A split grid swaps faces up to three times a step and agrees the time step
+every step; a Wi-Fi round trip is longer than a whole air step on the medium grid. The air and a
+structure exchange every air step, and so do any models fed both ways. All of these stall on
+Wi-Fi.
+
+### A thin client
+
+The other way round: the app on a laptop, on Wi-Fi, editing the scene and watching, while the
+blast runs on the Studio's GPU. Of everything on a slow link this is the most useful to someone
+using BombCAD: a large GPU in a room somewhere, worked from anywhere in the building.
+
+**What exists.** The models fed alongside a run can each run on another Mac (**Run on**), and
+sweeps can share their cases, but the blast itself always runs on the Mac showing it.
+
+**Why it fits a slow link.** Watching is lossy where a consumer is not. A consumer needs every
+frame; a viewer needs only the latest state, at whatever rate the link allows, and can drop the
+rest. Runs are slower than real time, so the screen updates at the run's pace: tens of
+milliseconds a frame on the street canyon, seconds on its fine grid.
+
+**What would cross.**
+
+- *Out:* the project once, then edits and playback commands: kilobytes.
+- *Back, live:* what the screen draws, not the solver's state. The medium grid's air is about
+  170 MB a frame, far too much; a slice or the paint on surfaces (peak pressure, impulse,
+  fluence) is well under a megabyte. The structure's node positions are a few megabytes for the
+  225,000-element building, too much every frame but fine sent as the latest, a few times a
+  second. If the air must be seen as a volume, rendering it on the Studio and sending video
+  (VideoToolbox, HEVC) is a few megabytes a second whatever the grid.
+- *Back, after:* the run's result, once, for playback and comparison on the laptop, as a sweep
+  case returns one now.
+
+**What it would take.** A worker job that runs one case live: the existing `run` job with live
+reports, as the consumers already send (`ConsumerLive`), sent as latest-wins rather than queued.
+The SSH connection, the copied worker and the fingerprint check already exist. The app would need
+a **Run on** for the blast itself, and its views would have to draw from a remote state rather
+than its own GPU's buffers, which is the larger part of the work. Not planned; recorded as an
+option.
 
 ## Better first
 
