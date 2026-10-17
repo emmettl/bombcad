@@ -514,7 +514,11 @@ and set against the same component of the detailed building free to respond (sum
   pressure, the room's air compressing adiabatically) gives 0.9, 4.1, 9.1 and 16.7 kPa against
   the detailed gauges' 1.0, 2.6, 11.0 and 22.4 at 10, 50, 200 and 500 kg (0.75–1.60 times the
   detailed peaks; 0.87–2.23 with the small-deflection panes, which broke sooner). It cannot see a
-  breached concrete wall (1.6 and 6.5 kPa at 200 and 500 kg).
+  breached concrete wall (1.6 and 6.5 kPa at 200 and 500 kg). On the same openings UFC 3-340-02's
+  leakage fill (§2-15.5) gives 0.92, 4.37, 8.45 and 13.15 kPa, so the orifice is 0.94–1.27 times
+  the UFC's own; but through windows this size both stay at 0.15–0.42 of the load the UFC puts on
+  the wall behind, where the air through an open window comes within 25% of it ([UFC
+  comparison](validation.md#inside-buildings-against-ufc-3-340-02s-loads-through-openings)).
 
 **In the app.** Runs of scenes with envelopes, structures beside them or not, record each component's load (the
 [recorder](#surface-exposure-and-loads) keeps both sides' histories at 0.1 ms) and judge every building

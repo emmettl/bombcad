@@ -561,7 +561,9 @@ public enum EnvelopeDamageAssessment {
     /// Mass flows as through a sharp-edged orifice (discharge 0.6) on the pressure difference, at
     /// the upstream side's isentropic density; the room's air compresses adiabatically. One way:
     /// the air outside never feels it. Within a factor of about 2.3 of the detailed buildings'
-    /// inside gauges, mostly above (building-envelopes.md).
+    /// inside gauges, mostly above, and 0.95–1.35 times UFC 3-340-02's leakage fill
+    /// (`leakageFill`); through windows, well under the UFC's loads on the walls inside
+    /// (validation.md).
     public static func fill(
         volume: Double, openings: [(area: Double, opens: Double, outer: [Double])], bin: Double
     )
