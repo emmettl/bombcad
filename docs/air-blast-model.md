@@ -419,9 +419,11 @@ shocks" switch (ratio 2) and, under it, "Twice over again" (two levels); `blastb
   until October 2026, which moved the validation's peaks by under 1.3% and cost a fifth more
   blocks): a shock moves under half a cell a step, and the blocks are placed afresh every step,
   so it cannot outrun them. Each
-  refined block is a patch of (4r)³ fine cells, taken from a pool of fixed size
-  (`refinementMemory`, 1 GB by default, about 63 kB a patch at ratio 2 and 364 kB at ratio 4).
-  Where the shock would need more, the rest of it stays coarse.
+  refined block is a patch of (4r)³ fine cells, taken from a pool that grows from 64 MB as the
+  patches in use need, up to `refinementMemory` (1 GB by default in code; in the app, what this Mac
+  leaves beside the coarse grid). A patch takes about 63 kB at ratio 2 and 364 kB at ratio 4.
+  Where the shock would need more, the rest of it stays coarse. A grown pool steps exactly as one
+  made whole (see [large scenes](large-scenes.md#the-refined-pools-memory)).
 - **Each coarse step:** the coarse cells around each patch are saved; the coarse grid is swept
   as usual, and every coarse cell beside a patch records the flux it used through their shared
   face; each patch takes r steps of its own of a coarse step / r, alternating the order of its

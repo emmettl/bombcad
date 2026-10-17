@@ -57,7 +57,7 @@ struct RunCostTests {
         let high = RunCost.estimate(open, cellSize: 0.5, configuration: low, duration: event)
         low.refinementThreshold = 0.02
         let lower = RunCost.estimate(open, cellSize: 0.5, configuration: low, duration: event)
-        #expect(lower.fineUpdates > high.fineUpdates && lower.memory == high.memory)
+        #expect(lower.fineUpdates > high.fineUpdates && lower.memory >= high.memory)
         #expect(
             RunCost.refinementReach(threshold: 0.1) > 19_000
                 && RunCost.refinementReach(threshold: 0.1) < 21_000)
@@ -165,6 +165,87 @@ struct RunCostTests {
         #expect(refinedTakeThem(open, open.acousticCrossingTime))
         let (near, nearDuration) = closeIn(width: 1.5)
         #expect(!refinedTakeThem(near, nearDuration))
+    }
+
+    /// 500 t on rigid ground, a quarter of it in the corner, as `blastbench landscape` runs it.
+    private var landscape: (scenario: Scenario, duration: Double) {
+        var scenario = Scenario(
+            name: "Landscape burst", domainSize: SIMD3(3334, 3334, 833), boxes: [],
+            charge: Charge(mass: 500_000, position: .zero))
+        scenario.reflectiveFaces = [.xMin, .yMin, .zMin]
+        return (scenario, 9.41)
+    }
+
+    @Test("The refined pools are priced as they grow: 500 t refined twice to 2 m, as measured")
+    func poolPrice() {
+        let (scenario, duration) = landscape
+        var configuration = configured(refine: 2, levels: 2)
+        configuration.afterburning = true
+        configuration.refinementThreshold = 0.005
+        configuration.refinementMemory = 12 << 30
+        let estimate = RunCost.estimate(
+            scenario, cellSize: 8, configuration: configuration, duration: duration)
+        // Measured (docs/large-scenes.md, "The refined pool's memory"): the pools held 20,022 and
+        // 62,852 patches of 77,000 bytes at the end; under a top at 320 m over 2.5 km (Beirut's
+        // district, a quarter of it), 10,252 and 25,745.
+        let measured = 6.38e9
+        #expect(
+            Double(estimate.refinementMemory) > measured
+                && Double(estimate.refinementMemory) < 1.6 * measured,
+            "\(estimate.refinementMemory) bytes against \(measured)")
+        var low = scenario
+        low.domainSize = SIMD3(2500, 2500, 320)
+        let lowEstimate = RunCost.estimate(low, cellSize: 8, configuration: configuration, duration: 8)
+        let lowMeasured = 2.77e9
+        #expect(
+            Double(lowEstimate.refinementMemory) > 0.95 * lowMeasured
+                && Double(lowEstimate.refinementMemory) < 1.3 * lowMeasured,
+            "\(lowEstimate.refinementMemory) bytes against \(lowMeasured)")
+        #expect(
+            estimate.memory == RunCost.coarseMemory(scenario.grid(cellSize: 8), configuration: configuration)
+                + estimate.refinementMemory)
+        // Without refinement, nothing for the pools; refined, never less than they start with.
+        let open = ScenarioPreset.openGround.scenario
+        #expect(
+            RunCost.estimate(open, cellSize: 0.5, configuration: configured(), duration: 0.01)
+                .refinementMemory == 0)
+        #expect(
+            RunCost.estimate(open, cellSize: 0.5, configuration: configured(refine: 2), duration: 0.01)
+                .refinementMemory >= 64 << 20)
+    }
+
+    @Test("The advisor finds the finest cells that fit, and says which Mac holds what this one cannot")
+    func memoryAware() {
+        let (scenario, duration) = landscape
+        var configuration = SolverConfiguration.recommended
+        configuration.refinementMemory = 64 << 30
+        // Within 10% at the shock only on 2 m cells, refined at 0.005.
+        func evaluate(_ setting: AdvisorSetting) -> ([AdvisorQuantity: Double], [AdvisorQuantity: String]) {
+            let levels = setting.refinement > 1 ? setting.levels : 0
+            let finest = setting.cellSize / pow(Float(setting.refinement), Float(levels))
+            let sharp = finest <= 2.01 && (setting.refinement == 1 || setting.threshold == 0.005)
+            return ([.peak: sharp ? 0.08 : 0.2], [:])
+        }
+        func advice(memory: Int, elsewhere: [AdvisorMachine] = []) -> Advice {
+            RunAdvisor.advise(
+                scenario, configuration: configuration, duration: duration,
+                target: .fidelity(.peak, within: 0.1),
+                current: AdvisorSetting(cellSize: 16), memory: memory, elsewhere: elsewhere,
+                maximumCells: 400_000_000, evaluate: evaluate)
+        }
+        // The Studio lets the air take 19.7 GB, the mini 12.4 GB.
+        let studio = advice(memory: 19_700_000_000)
+        let chosen = studio.chosen?.setting
+        #expect(studio.met && chosen?.refinement == 2 && chosen?.levels == 2 && chosen?.threshold == 0.005)
+        #expect(chosen?.cellSize ?? 0 > 7 && chosen?.cellSize ?? 0 < 9)
+        // A Mac with 4 GB cannot hold it, and is told which can.
+        let small = advice(
+            memory: 4 << 30, elsewhere: [AdvisorMachine(name: "the mini", memory: 12_400_000_000)])
+        #expect(!small.met)
+        #expect(
+            small.unmet.contains { $0.contains("more than this Mac's") && $0.contains("it fits the mini") })
+        let none = advice(memory: 4 << 30)
+        #expect(none.unmet.contains { $0.contains("more than this Mac's 4.3 GB.") })
     }
 
     @Test("Targets read from the command line")

@@ -224,6 +224,17 @@ private func runLandscapeBurst(device: MTLDevice, out: URL) throws {
                     impulse: positivePhaseImpulse(history, ambient: ambient),
                     arrival: arrivalTime(history, ambient: ambient)))
         }
+        let estimate = RunCost.estimate(
+            scenario, cellSize: dx, configuration: solver.configuration, duration: duration)
+        print(
+            "  pools: "
+                + solver.refinementPools.map {
+                    "\($0.most) of \($0.capacity), \($0.held) held\($0.ranOut ? " (ran out)" : "")"
+                }
+                .joined(separator: "; ") + (solver.refinementPoolGrewLate ? " (a pool grew too late)" : "")
+                + String(
+                    format: "; predicted peak coarse cells held %.0f, %.0f",
+                    estimate.peakRefinedCells.x, estimate.peakRefinedCells.y))
         print(
             String(
                 format: "  %d steps in %.0f s; refined patches at most %@ of %d, %d", solver.stepCount,
