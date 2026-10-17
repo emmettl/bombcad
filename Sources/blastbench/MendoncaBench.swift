@@ -161,6 +161,10 @@ func runMendonca(device: MTLDevice) throws {
                 // `--far-field`: open faces that stand ambient air beyond them, not copies of the cells
                 // inside; `--recommended`: the recommended air (hot air, afterburning, far-field faces).
                 if flag("far-field") { solver.configuration.openFaces = .farField }
+                // `--levels 2`: two levels of refinement near the shock (with `--refine 2`).
+                if let levels = option("levels").flatMap({ Int($0) }) {
+                    solver.configuration.refinementLevels = levels
+                }
                 applyChosenMask(&solver.configuration)
                 if flag("recommended") {
                     let recommended = SolverConfiguration.recommended
