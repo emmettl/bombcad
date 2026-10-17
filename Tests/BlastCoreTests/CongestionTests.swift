@@ -105,6 +105,17 @@ struct CongestionTests {
         }
     }
 
+    @Test("The standing advises cells no larger than the congestion's pitch")
+    func gridGuideline() throws {
+        let study = CongestedRigStudy(rig: .a, gas: .methane, cellSize: 0.25)
+        let coarse = SceneStanding(StandingInputs(scenario: study.scenario(), cellSize: 0.25))
+        let advice = try #require(
+            coarse[.peakOverpressure]?.regimes?.first { $0.option == "Congestion's cells" })
+        #expect(advice.suits == false && advice.suggestion?.contains("0.20 m") == true)
+        let fine = SceneStanding(StandingInputs(scenario: study.scenario(), cellSize: 0.2))
+        #expect(fine[.impulse]?.regimes?.first { $0.option == "Congestion's cells" }?.suits == true)
+    }
+
     @Test("Still air in and around porous cells stays still")
     func stillAirStaysStill() throws {
         let solver = try solver(closedBox([Self.lattice]), cellSize: 0.25)
