@@ -104,6 +104,7 @@ The whole path has been run for real, with the `BombCAD-notary` profile, from 20
 | 0.2.0 (6)  | `5d930d7` | `7dcc4ec3-0956-4be4-9e4b-972c2e29abca` | Published as v0.2.0           |
 | 0.3.0 (7)  | `b524a9d` | `de90ca6f-1803-4cd9-998b-525980d409c6` | Published as v0.3.0; crashes  |
 | 0.3.1 (8)  | `c874a6a` | `21d1ff1a-9ebd-45cf-98d6-712264341f22` | Made with the fix, not published |
+| 0.4.0 (10) | `9482ba7` | `b548eb9b-5031-48cd-800e-124a207db04e` | Published as v0.4.0           |
 
 For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
 assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
@@ -184,7 +185,10 @@ views through a change of source before signing and again before archiving. Appl
 - ran the small project from inside its bundle and drew its views through a change of source
   (`make app-smoke`'s two steps, on that copy).
 
-Its notes, reviewed independently, are in `docs/release-notes/0.4.0.md`. It is not yet published.
+Its notes, reviewed independently, are in `docs/release-notes/0.4.0.md`. Its ZIP, checksum and
+manifest are attached to the GitHub release `v0.4.0`, published on 2026-10-17 with its tag on
+`9482ba7`; the copy downloaded back matched the checksum, validated its stapled ticket, passed
+`codesign --verify --deep --strict` and was accepted by `spctl`.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
