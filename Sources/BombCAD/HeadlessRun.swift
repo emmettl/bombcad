@@ -1031,7 +1031,7 @@ enum HeadlessRun {
         let memory = Int(
             min(MTLCreateSystemDefaultDevice()?.recommendedMaxWorkingSetSize ?? 16 << 30, UInt64(Int.max))
                 / 10 * 7)
-        let advice = inputs.advice(for: target, memory: memory)
+        let advice = inputs.advice(for: target, memory: memory, elsewhere: AdvisorMachine.workers)
         var lines = [advice.summary]
         lines += advice.unmet.map { "  " + $0 }
         if let note = inputs.structuralMeshNote { lines.append("  " + note) }

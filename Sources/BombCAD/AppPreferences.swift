@@ -1,3 +1,4 @@
+import BlastCore
 import Foundation
 
 /// App-wide defaults. Saved projects retain their own numerical settings.
@@ -15,6 +16,24 @@ struct AppPreferences: Equatable, Sendable {
         static let sweepUsesRemote = "sweep.usesRemote"
         /// The one other Mac, before there could be several; read once, into `sweepHosts`.
         static let legacySweepHost = "sweep.remoteHost"
+        /// The GPU memory each sweep host lets the air take, in bytes, as it said when it last
+        /// connected: for the advisor (`AdvisorMachine.workers`).
+        static let workerMemory = "sweep.workerMemory"
+    }
+
+    /// Notes the GPU memory `host` lets the air take.
+    static func recordMemory(_ memory: Int, of host: String, in store: UserDefaults = .standard) {
+        var known = store.dictionary(forKey: Key.workerMemory) as? [String: Int] ?? [:]
+        known[host] = memory
+        store.set(known, forKey: Key.workerMemory)
+    }
+
+    /// The sweep hosts whose memory is known, as the advisor weighs them.
+    static func workerMachines(in store: UserDefaults = .standard) -> [AdvisorMachine] {
+        let known = store.dictionary(forKey: Key.workerMemory) as? [String: Int] ?? [:]
+        return hosts(store.string(forKey: Key.sweepHosts) ?? "").compactMap { host in
+            known[host].map { AdvisorMachine(name: host, memory: $0) }
+        }
     }
 
     var resolution: Resolution = .medium

@@ -162,6 +162,23 @@ public struct AdvisorCandidate: Sendable, Equatable {
     public var standsForShare = 0.0
 }
 
+/// A Mac a run may be sent to, and the GPU memory it lets the air take (seven tenths of its
+/// recommended working set, as the app allows).
+public struct AdvisorMachine: Sendable, Equatable, Codable {
+    public var name: String
+    public var memory: Int
+
+    public init(name: String, memory: Int) {
+        self.name = name
+        self.memory = memory
+    }
+
+    /// Bytes as people say them, to a tenth of a gigabyte.
+    public static func gigabytes(_ bytes: Int) -> String {
+        String(format: "%.1f GB", Double(bytes) / 1e9)
+    }
+}
+
 /// The advice for a scene and a target.
 public struct Advice: Sendable, Equatable {
     public enum Kind: String, Sendable { case cheapestMeeting, bestWithinBudget }
@@ -250,13 +267,16 @@ public enum RunAdvisor {
 
     /// The advice for `target` over `candidates`, each costed by `RunCost` and its errors from
     /// `evaluate` (the standing's error bands for that setting). Ties go to the setting nearest
-    /// `current`; a setting over `memory` bytes is never chosen.
+    /// `current`; a setting over `memory` bytes, this Mac's, is never chosen. Each is priced with
+    /// the coarse grid and the pools its refined levels are expected to grow to, so that the
+    /// finest that fits is found; where what is wanted needs more, the advice says so, and which
+    /// of the Macs `elsewhere` (the sweep workers) it would fit.
     public static func advise(
         _ scenario: Scenario, configuration: SolverConfiguration, duration: Double, target: AdvisorTarget,
-        current: AdvisorSetting, memory: Int, maximumCells: Int,
+        current: AdvisorSetting, memory: Int, elsewhere: [AdvisorMachine] = [], maximumCells: Int,
         evaluate: (AdvisorSetting) -> (error: [AdvisorQuantity: Double], unbanded: [AdvisorQuantity: String])
     ) -> Advice {
-        func weigh(_ setting: AdvisorSetting) -> AdvisorCandidate? {
+        func weigh(_ setting: AdvisorSetting, within memory: Int) -> AdvisorCandidate? {
             let stand = standIn(
                 for: setting, scenario, configuration: configuration, duration: duration, memory: memory,
                 maximumCells: maximumCells)
@@ -274,10 +294,28 @@ public enum RunAdvisor {
             setting.ownSteps = setting.refinement > 1 && ownSteps
             return setting
         }
-        let weighed = settings.compactMap(weigh).filter {
+        let weighed = settings.compactMap { weigh($0, within: memory) }.filter {
             seen.insert($0.setting).inserted
         }.sorted { $0.cost.seconds < $1.cost.seconds }
-        let stoodIn = weigh(current).flatMap { $0.standsFor == nil ? nil : $0 }
+        let stoodIn = weigh(current, within: memory).flatMap { $0.standsFor == nil ? nil : $0 }
+        // Open faces too near the structure (`Scenario.tightOpenFaces`); what this Mac cannot hold:
+        // the settings as they are, and the cheapest that meets a target nothing here meets, with
+        // the Mac it would fit.
+        var tooLarge: [String] = scenario.tightFacesNote.map { [$0] } ?? []
+        let here = AdvisorMachine.gigabytes(memory)
+        func fits(_ need: Int) -> String {
+            if let machine = elsewhere.filter({ $0.memory >= need }).min(by: { $0.memory < $1.memory }) {
+                return "; it fits \(machine.name) (\(AdvisorMachine.gigabytes(machine.memory)))."
+            }
+            guard let largest = elsewhere.max(by: { $0.memory < $1.memory }) else { return "." }
+            return
+                ", or any other Mac's (the largest, \(largest.name), \(AdvisorMachine.gigabytes(largest.memory)))."
+        }
+        if weigh(current, within: memory) == nil, let need = weigh(current, within: .max) {
+            tooLarge.append(
+                "As set, the run needs about \(AdvisorMachine.gigabytes(need.cost.memory)), more than this "
+                    + "Mac's \(here)" + fits(need.cost.memory))
+        }
         func closeness(_ a: AdvisorSetting) -> Int {
             (a.afterburning == current.afterburning ? 0 : 4) + (a.refinement == current.refinement ? 0 : 2)
                 + (a.levels == current.levels ? 0 : 1)
@@ -291,7 +329,7 @@ public enum RunAdvisor {
                         && closeness($0.setting) < closeness($1.setting))
             }) {
                 return Advice(
-                    target: target, kind: .cheapestMeeting, chosen: cheapest, met: true, unmet: [],
+                    target: target, kind: .cheapestMeeting, chosen: cheapest, met: true, unmet: tooLarge,
                     candidates: weighed, currentStandIn: stoodIn)
             }
             // Nothing meets it: the nearest, and why.
@@ -305,6 +343,14 @@ public enum RunAdvisor {
                     String(
                         format: "No setting this Mac holds brings %@ within %.0f%%; the nearest is %.0f%%.",
                         quantity.title, within * 100, error * 100))
+                let larger = settings.compactMap { weigh($0, within: .max) }.filter {
+                    ($0.error[quantity] ?? .infinity) <= within + 1e-9
+                }
+                if let need = larger.min(by: { $0.cost.memory < $1.cost.memory }) {
+                    unmet.append(
+                        "\(need.setting.summary) would, in about \(AdvisorMachine.gigabytes(need.cost.memory)): "
+                            + "more than this Mac's \(here)" + fits(need.cost.memory))
+                }
             } else {
                 let reason =
                     weighed.compactMap { $0.unbanded[quantity] }.first
@@ -314,7 +360,8 @@ public enum RunAdvisor {
             // With nothing to aim by, the settings as they are.
             let fallback = weighed.first { $0.setting == current } ?? weighed.first
             return Advice(
-                target: target, kind: .cheapestMeeting, chosen: nearest ?? fallback, met: false, unmet: unmet,
+                target: target, kind: .cheapestMeeting, chosen: nearest ?? fallback, met: false,
+                unmet: unmet + tooLarge,
                 candidates: weighed, currentStandIn: stoodIn)
         case .seconds(let budget):
             let affordable = weighed.filter { $0.cost.seconds <= budget }
@@ -323,7 +370,7 @@ public enum RunAdvisor {
                     target: target, kind: .bestWithinBudget, chosen: weighed.first, met: false,
                     unmet: [
                         "Even the cheapest setting is expected to take \(Self.duration(weighed.first?.cost.seconds ?? 0))."
-                    ],
+                    ] + tooLarge,
                     candidates: weighed, currentStandIn: stoodIn)
             }
             // The best of the peaks, impulse and deflection the scene has bands for, the worst of them
@@ -337,7 +384,7 @@ public enum RunAdvisor {
                 (score($0), finest($0), $0.cost.seconds) < (score($1), finest($1), $1.cost.seconds)
             }!
             return Advice(
-                target: target, kind: .bestWithinBudget, chosen: best, met: true, unmet: [],
+                target: target, kind: .bestWithinBudget, chosen: best, met: true, unmet: tooLarge,
                 candidates: weighed, currentStandIn: stoodIn)
         }
     }

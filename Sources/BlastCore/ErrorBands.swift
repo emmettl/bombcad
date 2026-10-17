@@ -1516,6 +1516,14 @@ extension StandingScene {
                         + "CLT envelope's damage level compared; Tyndall's buildings were compared with the "
                         + "detailed model.")
             }
+            if inputs.scenario.envelopeObjects.contains(where: {
+                inputs.scenario.envelopeConstruction(for: $0.id).laminate != nil
+            }) {
+                unbanded.append(
+                    "Laminated glass once cracked, held or gone: compared with Osnes's, Zhang's and Hooper's panes "
+                        + "(building-envelopes.md#laminated-glass), no band; its cracking is the annealed glass's."
+                )
+            }
             let freestanding = inputs.scenario.envelopeObjects.contains { object in
                 object.envelope?.components(owner: object.id).contains(where: \.isFreestanding) ?? false
             }

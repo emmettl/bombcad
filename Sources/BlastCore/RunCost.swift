@@ -16,13 +16,21 @@ public struct RunCostEstimate: Sendable, Equatable {
     public var fineUpdates: Double
     /// Structural element-updates, each an element's substep.
     public var elementUpdates: Double
-    /// GPU memory held, in bytes.
+    /// GPU memory held, in bytes: the coarse grid's and the pools the refined levels grow to
+    /// (`refinementMemory`), whole, as the run wants them for all the refinement it asks for.
     public var memory: Int
     /// Seconds on an unloaded M4 Max.
     public var seconds: Double
     /// The share of the domain each level of refinement's patches hold, first and second, on
     /// average over the run; zero unrefined.
     public var refinedShare: SIMD2<Double> = .zero
+    /// The most coarse cells each level is expected to hold at once (the busiest bin), from which
+    /// the pool it needs is reckoned.
+    public var peakRefinedCells: SIMD2<Double> = .zero
+    /// The memory the refined levels' pools are expected to grow to, in bytes, part of `memory`;
+    /// more than `SolverConfiguration.refinementMemory` allows means the shock is refined less
+    /// than asked where the pools run out.
+    public var refinementMemory = 0
 }
 
 public enum RunCost {
@@ -97,6 +105,19 @@ public enum RunCost {
 
     /// GPU memory a block of refined air takes, ratio 2 (`SolverConfiguration.refinementMemory`).
     public static let blockBytes = 63_000.0
+    /// The patches each level's pool grows to, first and second, for each block the busiest bin
+    /// is expected to hold (`peakRefinedCells`). On the 500 t burst over rigid ground refined
+    /// twice to 2 m at a threshold of 0.005 (docs/large-scenes.md, "The refined pool's memory"),
+    /// the pools, growing ahead, held 1.04 and 0.79 of the blocks estimated in a domain a quarter
+    /// as high as it is wide, and 1.81 and 1.03 under a top at 320 m (Beirut's), where the
+    /// estimate's coarse sampling of the height misses more of the shell: priced on the larger,
+    /// so that a setting said to fit does.
+    public static let poolShares = SIMD2(1.8, 1.05)
+
+    /// The coarse grid's memory, in bytes, without the refined levels'.
+    public static func coarseMemory(_ grid: Grid, configuration: SolverConfiguration) -> Int {
+        grid.cellCount * (configuration.afterburning ? burningBytesPerCell : bytesPerCell)
+    }
     /// Air bytes a cell: 57, with the fuel and oxygen 73 (docs/large-scenes.md).
     public static let bytesPerCell = 57
     public static let burningBytesPerCell = 73
@@ -209,6 +230,7 @@ public enum RunCost {
         let r = Double(configuration.refinement)
         var fineUpdates = 0.0
         var refinedShare = SIMD2<Double>.zero
+        var peakRefined = SIMD2<Double>.zero
         if configuration.refinement > 1 {
             let levels = configuration.refinementLevels > 1 ? 2 : 1
             let blocks = Double(configuration.refinementMemory) / blockBytes
@@ -220,6 +242,7 @@ public enum RunCost {
             let perCoarse = [r * r * r * r, r * r * r * r * r * r * r * r]
             for level in 0..<levels {
                 for bin in 0..<bins {
+                    peakRefined[level] = max(peakRefined[level], cells * held[level][bin] / Double(count))
                     let refined = min(cells * held[level][bin] / Double(count), capacity[level])
                     fineUpdates += refined * perCoarse[level] * binWidth / dt
                     refinedShare[level] += refined / cells / Double(bins)
@@ -248,9 +271,22 @@ public enum RunCost {
             : 0
         let elementUpdates = elements * substeps * Double(steps)
 
-        let perCell = burning ? burningBytesPerCell : bytesPerCell
-        let memory =
-            grid.cellCount * perCell + (configuration.refinement > 1 ? configuration.refinementMemory : 0)
+        // Each pool from the blocks of its busiest bin, a level's block of coarse cells holding
+        // r^3 of its own per level above it, and never less than it starts with.
+        var pools = 0
+        if configuration.refinement > 1 {
+            let block = Double(AirRefinement.patchSize * AirRefinement.patchSize * AirRefinement.patchSize)
+            let patch = Double(
+                AirRefinement.bytesPerPatch(
+                    ratio: configuration.refinement, species: burning,
+                    cut: configuration.cutsTerrain(of: scenario)))
+            let wanted =
+                (peakRefined.x / block * poolShares.x + peakRefined.y * r * r * r / block * poolShares.y)
+                * patch
+            let start = configuration.refinementStartMemory ?? configuration.refinementMemory
+            pools = Int(max(wanted, Double(min(start, configuration.refinementMemory))))
+        }
+        let memory = coarseMemory(grid, configuration: configuration) + pools
         let updateCost =
             (burning ? afterburningUpdateCost : 1)
             * (configuration.cutsTerrain(of: scenario) ? terrainCutUpdateCost : 1)
@@ -264,7 +300,8 @@ public enum RunCost {
             + elementUpdates / elementUpdatesPerSecond + overhead
         return RunCostEstimate(
             cells: grid.cellCount, steps: steps, coarseUpdates: coarseUpdates, fineUpdates: fineUpdates,
-            elementUpdates: elementUpdates, memory: memory, seconds: seconds, refinedShare: refinedShare)
+            elementUpdates: elementUpdates, memory: memory, seconds: seconds, refinedShare: refinedShare,
+            peakRefinedCells: peakRefined, refinementMemory: pools)
     }
 
     /// The blast's arrival time (s) and incident overpressure (Pa) at `range` from a surface burst

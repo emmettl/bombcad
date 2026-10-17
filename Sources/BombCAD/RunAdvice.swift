@@ -40,17 +40,44 @@ extension ProjectRunSettings {
             shockLevels: shockLevels ?? 1, gravity: gravity ?? false, shockThreshold: shockThreshold ?? 0.1,
             adaptiveSubsteps: adaptiveSubsteps ?? false, terrainCutCells: cutsTerrain(over: scenario),
             outlineByOverlap: countsByOverlap(over: scenario))
+        let cellSize = (Resolution(rawValue: resolution) ?? .medium).cellSize
+        configuration.fitRefinementMemory(
+            scenario.grid(cellSize: cellSize), memory: AdvisorMachine.thisMac.memory)
         return RunCost.estimate(
-            scenario, cellSize: (Resolution(rawValue: resolution) ?? .medium).cellSize,
-            configuration: configuration,
-            duration: duration)
+            scenario, cellSize: cellSize, configuration: configuration, duration: duration)
+    }
+}
+
+extension AdvisorMachine {
+    /// This Mac, with the GPU memory the app lets the air take: seven tenths of its recommended
+    /// working set (`SimulationModel.rebuild`).
+    static var thisMac: AdvisorMachine {
+        AdvisorMachine(
+            name: "this Mac",
+            memory: Int(
+                min(MTLCreateSystemDefaultDevice()?.recommendedMaxWorkingSetSize ?? 16 << 30, UInt64(Int.max))
+                    / 10 * 7))
+    }
+
+    /// The sweep workers whose memory is known, from when each last connected.
+    static var workers: [AdvisorMachine] { AppPreferences.workerMachines() }
+}
+
+extension SolverConfiguration {
+    /// The most the refined levels' pools may grow to on a Mac that lets the air take `memory`
+    /// bytes, with the coarse grid of `grid` in it: the rest, and never less than the 1 GB they
+    /// had before they grew. They take only what the shock needs, so that a run asking for more
+    /// refinement than 1 GB holds gets it where it fits, as the advisor prices it.
+    mutating func fitRefinementMemory(_ grid: BlastCore.Grid, memory: Int) {
+        refinementMemory = max(memory - RunCost.coarseMemory(grid, configuration: self), 1 << 30)
     }
 }
 
 extension SimulationInputs {
-    /// The advice for `target` on these inputs, within `memory` bytes of GPU memory. `factor`
-    /// scales the estimates to this Mac as its runs have gone (`RunCostStore`).
-    func advice(for target: AdvisorTarget, memory: Int) -> Advice {
+    /// The advice for `target` on these inputs, within `memory` bytes of GPU memory, saying which
+    /// of the Macs `elsewhere` would hold what this one cannot. `factor` scales the estimates to
+    /// this Mac as its runs have gone (`RunCostStore`).
+    func advice(for target: AdvisorTarget, memory: Int, elsewhere: [AdvisorMachine] = []) -> Advice {
         var configuration = SolverConfiguration()
         ProjectRunSettings.configureAir(
             &configuration, detailedCharge: settings.detailedCharge, sharpShocks: settings.sharpShocks,
@@ -59,9 +86,12 @@ extension SimulationInputs {
             adaptiveSubsteps: settings.adaptiveSubsteps ?? false,
             terrainCutCells: settings.cutsTerrain(over: scenario),
             outlineByOverlap: settings.countsByOverlap(over: scenario))
+        // Each setting's pools may grow to whatever the memory leaves them (`fitRefinementMemory`).
+        configuration.refinementMemory = memory
         return RunAdvisor.advise(
             scenario, configuration: configuration, duration: settings.duration, target: target,
-            current: settings.advisorSetting, memory: memory, maximumCells: ProjectDocument.maximumCells
+            current: settings.advisorSetting, memory: memory, elsewhere: elsewhere,
+            maximumCells: ProjectDocument.maximumCells
         ) { setting in
             Self.fidelity(scenario, settings.applying(setting), thermal: thermal)
         }
@@ -259,7 +289,10 @@ struct AdvisorSection: View {
         let memory = model.advisorMemory
         working = true
         Task {
-            let result = await Task.detached { inputs.advice(for: target, memory: memory) }.value
+            let elsewhere = AdvisorMachine.workers
+            let result = await Task.detached {
+                inputs.advice(for: target, memory: memory, elsewhere: elsewhere)
+            }.value
             advice = result
             working = false
         }

@@ -328,8 +328,10 @@ enum RemoteSweepWorker {
         try validate(host)
         let directory = try await Task.detached(priority: .userInitiated) { try install(on: host) }.value
         let arguments = gate.map { " --gate \($0.argument)" } ?? ""
-        return try await launch(
+        let client = try await launch(
             URL(filePath: ssh), options + [host, "exec \(directory)/BombCAD worker\(arguments)"], name: host)
+        if let memory = client.hello?.memory { AppPreferences.recordMemory(memory, of: host) }
+        return client
     }
 
     /// Starts `BombCAD worker` on this Mac, as a separate process sharing its GPU: a stand-in for
