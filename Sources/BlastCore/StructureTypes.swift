@@ -1341,17 +1341,6 @@ enum ShaderLibrary {
         return constants
     }
 
-    /// Index of the optional function constant that compiles congestion's porous cells into a
-    /// kernel (`porousAirConstant` in Solver.metal).
-    static let porousAirConstant = 14
-
-    /// `constants` with congestion's porous cells compiled in.
-    static func withPorousAir(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {
-        var on = true
-        constants.setConstantValue(&on, type: .bool, index: porousAirConstant)
-        return constants
-    }
-
     /// `constants` with afterburning's extinction limit compiled in.
     static func withBurnLimit(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {
         var on = true

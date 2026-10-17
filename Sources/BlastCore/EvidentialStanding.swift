@@ -281,7 +281,6 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case terrainStaircase
     case deflagration
     case ventPanels
-    case congestion
     case importedEnvelopes
     case mapBuildings
     case ventedGlazing
@@ -366,13 +365,12 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
                 && !config.cutsTerrain(of: inputs.scenario)
         case .deflagration: return inputs.scenario.deflagration != nil
         case .ventPanels: return !(inputs.scenario.ventPanels ?? []).isEmpty
-        case .congestion: return !(inputs.scenario.congestion ?? []).isEmpty
         case .importedEnvelopes:
             return !inputs.scenario.envelopeSources(.ifc).isEmpty
                 || !inputs.scenario.envelopeSources(.mesh).isEmpty
         case .mapBuildings: return !inputs.scenario.envelopeSources(.map).isEmpty
         case .ventedGlazing:
-            return inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes
+            return inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes && config.gravity == nil
         case .shellElements:
             return any { $0.elementKind == .shell || $0.solidElementKind.contains(.shell) }
         case .shellSectionShear: return any { $0.shellSectionShear }
@@ -619,15 +617,6 @@ public enum StandingTable {
                     + "assumed two levels: no openings, interiors or roof shapes, and positions and heights as "
                     + "accurate as the map.",
                 document: "building-envelopes.md#buildings-from-map-data")
-        case .congestion:
-            return Entry(
-                title: "Congestion below the grid", affects: air + structure + [.envelopeExposure],
-                limit: .illustrative,
-                note:
-                    "Pipes and bars too small for the cells take room and resist the air, as PDRFoam's porous "
-                    + "cells do; the turbulence they make and the flame's folding are not yet modelled, and it is "
-                    + "compared with no test.",
-                document: "congestion-model.md")
         case .ventedGlazing:
             return Entry(
                 title: "Glazing vented in the air", affects: [.envelopeExposure, .envelopeDamage],
@@ -635,9 +624,10 @@ public enum StandingTable {
                 note:
                     "Envelopes' panes break in the air when their one-way glass does (within 0.3 ms on its own "
                     + "loads) and open their windows whole, so the blast fills the rooms and loads the walls from "
-                    + "inside. The inside stays illustrative: the detailed references let broken glass go element "
-                    + "by element and cannot judge it; against UFC 3-340-02's loads through open windows the "
-                    + "back walls come within 25%, the side walls and the front's inside at 0.3 to 0.7 of the UFC's.",
+                    + "inside; the default where it can run. The inside stays illustrative: the detailed "
+                    + "references let broken glass go element by element and cannot judge it; against UFC "
+                    + "3-340-02's loads through open windows the walls inside come at 0.31 to 1.22 of the UFC's "
+                    + "(the back walls within 25%), where the one-way fill gives 0.15 to 0.42.",
                 document: "building-envelopes.md#venting-glazing-that-breaks-in-the-air")
         case .ventPanels:
             return Entry(
@@ -965,7 +955,6 @@ public enum StandingTable {
         "EnvelopeConstruction.capMassKgPerM": .input,
         "Scenario.deflagration": .option([.deflagration]),
         "Scenario.ventPanels": .option([.ventPanels]),
-        "Scenario.congestion": .option([.congestion]),
         // What the standing is derived from: the scene and the specs above, and one choice of its own.
         "StandingInputs.scenario": .input,
         "StandingInputs.cellSize": .input,
@@ -2092,13 +2081,26 @@ struct StandingScene {
         let envelopes = inputs.scenario.envelopeObjects.map(\.id)
         let assumed = envelopes.filter { inputs.scenario.envelopeConstruction(for: $0).source == .assumed }
             .count
+        let vented =
+            inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes && inputs.configuration.gravity == nil
         return result(
             .envelopeDamage, .approximation,
-            "One way, from each component's load, with the air seeing the building whole: glass breakage "
-                + "and its time, concrete panels' rotation between fixed and simply supported edges, and "
-                + "freestanding walls as cantilevers from their foot, as approximations; brick panels and the "
-                + "inside pressure through broken panes illustrative.",
+            "One way, from each component's load, "
+                + (vented
+                    ? "with the air seeing each building whole but for its glazing, which opens in the air as "
+                        + "it breaks: "
+                    : "with the air seeing the building whole and the inside a one-way fill: ")
+                + "glass breakage and its time, concrete panels' rotation between fixed and simply supported "
+                + "edges, and freestanding walls as cantilevers from their foot, as approximations; brick panels "
+                + "and the inside pressure through broken panes illustrative.",
             evidence: [
+                StandingEvidence(
+                    "UFC 3-340-02 §2-15.4's loads on the walls inside, through an open front window (16 cases, "
+                        + "2–16 psi)",
+                    vented
+                        ? "Glazing vented: 0.31–1.22 of the UFC's (the back walls 0.74–1.22)"
+                        : "The one-way fill, as venting cannot run here: 0.15–0.42 of the UFC's",
+                    "validation.md#inside-buildings-against-ufc-3-340-02s-loads-through-openings"),
                 StandingEvidence(
                     "UFC 3-340-02's worked examples 3A-5, 3A-6(a) and 4A-1", "Within 1%",
                     "building-envelopes.md#one-way-damage-single-degree-of-freedom"),

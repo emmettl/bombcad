@@ -61,6 +61,29 @@ struct EnvelopeVentingAppTests {
         #expect(!off.runSettings!.standingInputs(off.scenario).options.contains(.ventedGlazing))
     }
 
+    @Test("New projects vent by default; projects glazed before keep their fill; gravity takes the fill")
+    func defaults() throws {
+        #expect(SimulationSettings().ventsGlazing)
+        // A glazed project made now writes venting on.
+        var made = ProjectDocument(scenario: try document(vented: false).scenario)
+        #expect(made.runSettings?.ventsGlazing == true)
+        // One saved before (no key) opens with the fill, as its runs had.
+        made.runSettings?.ventsGlazing = nil
+        let model = SimulationModel(document: made)
+        #expect(!model.settings.ventsGlazing)
+        // A project without glazing opens venting, for glazing added later.
+        let bare = ProjectDocument(
+            scenario: Scenario(
+                name: "Bare", domainSize: SIMD3(16, 20, 6), boxes: [],
+                charge: Charge(mass: 5, position: SIMD3(7, 2, 1))))
+        #expect(bare.runSettings?.ventsGlazing == nil)
+        #expect(SimulationModel(document: bare).settings.ventsGlazing)
+        // With gravity the run takes the fill, and is saved as one.
+        model.settings.ventsGlazing = true
+        model.settings.gravity = true
+        #expect(ProjectDocument(model: model).runSettings?.ventsGlazing == nil)
+    }
+
     @Test("A headless run with venting breaks the pane in the air and reports the room's pressure")
     func headless() async throws {
         let folder = FileManager.default.temporaryDirectory.appending(path: "venting-\(UUID())")

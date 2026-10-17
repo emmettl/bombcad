@@ -185,7 +185,7 @@ many times their sag (`--no-settle` against the default, 17 October 2026):
 | Chiquito S1–S3, P1, P7: left (peak) (mm) | 4 (16), 3 (14), 112 (155) | 4 (17), 4 (15), 110 (156) |
 | The chamber's roof edge: peak / left (mm) | 50 / 28 | 49 / 27 |
 | Mendonça slab 2 (`--settle`, 60 ms): peak (mm) | 3.69 | 3.77 |
-| Yao T1 with its weight (the default since; `--weightless` before): centre's peak, within 2 ms (mm) | 3.34, 0.96 | weightless: 3.29, 0.96 |
+| Yao T1 with its weight (`--weight`): centre's peak, within 2 ms (mm) | 3.34, 0.96 | weightless: 3.29, 0.96 |
 
 None moves by more than 2 mm or 4%, and none changes a verdict. Hupfauf's contact slabs, which
 run for 3 ms, sag 0.04 mm in that time. Alsubaei's and Keys's walls stand upright, so their
