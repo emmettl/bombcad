@@ -79,6 +79,7 @@ swift run -c release blastbench perimeter --study wall
 | Held out (blind)     | Hrynyk's three plain slabs struck repeatedly by a falling weight, predicted on frozen defaults before the measurements were unsealed: first impacts 1.15–1.29 times the measured peak (too flexible, as the calibrated beams were); later impacts 0.56–0.83, residuals a seventh to a third, and none of the three slabs' punching failures predicted. Mendonça's seven slabs under an open-air charge: the two nearest the charge collapsed, the model leaving them standing; the declared peaks 0.31–1.23 of measured on the survivors, those near 1 made by an artefact of the sleeping air as the slabs landed after the blast threw them up; the blast's own peak a tenth to a quarter of the meters'. Reynolds's six high-strength slabs in the contest slab's rig (v0.3.0): peaks 0.77–1.06 of measured on the five that held in the model, 0.87 on average at 4 in; the sixth, the lightly reinforced slab under the larger load, broken through where the test held at 182 mm; the blast face never crushed where four of the standing slabs' tests were | Hrynyk: between, by the protocol's rule, the calibrated error on undamaged slabs, much worse and on the unsafe side once they are damaged. Mendonça: worse, by the rule, far too stiff and too strong, the unsafe side. Reynolds: worse, by the rule, on the one broken slab (the safe side); the others within the calibrated band, a little stiff |
 | Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.1–1.7 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own. [Brick walls](#brick-walls-debris) (Keys, 2016): loads within 15%, but the walls break into too few pieces, falling at full length in the open (means of −2 to +2 m against +0.2 to +0.6 m) and thrown half as far as measured in a shock tube. Collapse once, blind: [Mendonça's slabs](#blind-test-2-mendonças-slabs-under-an-open-air-charge), the two that collapsed left standing | Unsafe side for debris: held back rather than thrown, slabs never holed, brick walls thrown short (low); collapse missed in both slabs that collapsed (blind) |
 | Window glass         | Monk and Clubley's annealed windows in the Shoeburyness tunnel (4 mm, 0.89 m², four aspect ratios, about 33 kPa reflected for longer than they lasted): the app's large-deflection panes (Moore's plate, E1300's flaw model) break every pane, as every pane broke, at 0.82–1.07 of the twelve measured times and 0.69–1.15 of the deflection (the small-deflection panes before them at 0.40–0.46). Against ASTM E1300: its stresses within 8%, its load resistance 0.57–0.72 | Either way within about 20% for timing under a strong load (moderate); the threshold a third under E1300's design resistance, the safe side, not measured |
+| Inside buildings     | [UFC 3-340-02 §2-15](#inside-buildings-against-ufc-3-340-02s-loads-through-openings), its own charts' data: through an open window the air's back-wall load 0.74–1.22 of the UFC's, the side walls and the front's inside 0.31–0.67; the one-way fill 0.95–1.35 of the UFC's leakage fill and 0.15–0.42 of its back-wall load | A design method, not measurement; head-on, rigid, open windows |
 | Fragments            | [Cooper (1996)](#fragments-against-coopers-data): his worked Mott and Gurney examples to rounding; one counted cast-iron bomb within a factor of 1.36 (rms) by Mott's form, 1.12 by Grady's; drag now the measured curve for tumbling cubes, 5% from the previous law. No arena test of launch speeds or ranges | Masses either way within a factor of 1.4 (moderate, one test); speeds and ranges untested (low) |
 | Ground shock         | Xia et al. (2022), 1 t of TNT on the ground, accelerations 0.5 m deep at 21 and 42 m: the vertical velocity from the manuals' relation and the layered soil column 20 to 30 times the measured accelerations' integral at 21 m and 50 to 80 times at 42 m, within three times a velocity gauge that clipped; the measured motion mostly horizontal, at ranges near and past where the ground's wave outruns the air; the soil not measured | Far too high in the vertical, the safe side; the horizontal motion that dominated not modelled, the unsafe side; illustrative |
 | Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 1–2%, structural responses 4–20%, residual deflections and failure 17–28%; the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
@@ -3447,6 +3448,91 @@ survey](data-survey.md#3h-window-glass-breaking-under-a-blast)), and tempered or
 fixed or yielding frames and short-duration waves have no comparison. The load is read off a
 figure, 5–7% under the impulses table 2 gives at the break. One facility and one glass, with
 intrinsic strength scatter the paper puts above the aspect ratio's effect.
+
+## Inside buildings, against UFC 3-340-02's loads through openings
+
+The detailed damage references let broken glass go element by element, so they cannot say how much
+of the blast reaches an envelope building's inside (see [building
+envelopes](building-envelopes.md#one-way-damage-single-degree-of-freedom)). UFC 3-340-02 (2008)
+§2-15 can, for its own cases: §2-15.4 the peak average pressures that a shock entering through
+openings in the front wall puts on the inside of each wall, and §2-15.5 the mean pressure in a room
+filling through small openings. Its charts are taken from the UFC's own DPlot data (the WBDG zip
+`ufc_3_340_02_dplot_v2.zip`, Plots/02_203 to 02_235 and 02_015, in
+`/Volumes/StudioData/bombcad/envelope-damage/sources/`), not read off the figures: the back-wall
+curves (Figures 2-230 and 2-231), the inside of the front wall's (2-204, for W/H = 3/2), the side
+walls' equations 2-15 to 2-21, the wave length of Figure 2-15 and the leakage coefficient of
+Figure 2-235 (`UFCInteriorLoads`, `EnvelopeDamageAssessment.leakageFill`, 17 October 2026).
+
+**Read back on the UFC's worked examples** (`UFCInteriorLoadTests`, `EnvelopeDamageTests`):
+
+| | UFC | From the data |
+| --- | --- | --- |
+| Example 2A-11, wave length | 38.2 ft | within 3% |
+| Back wall, P_RIB / Pso (L/H 2, 1/8 open, 12.6 psi) | 0.575 | 0.568 |
+| Side wall, equation 2-15 (W/H 3/2) | 7.60 psi | 7.60 psi |
+| Inside of the front wall (W/H 3/2, Lw/H 2.54) | 16.6 psi, read by eye | 14.8 psi |
+| Example 2A-12, leakage into 1,000 ft³ through 9 ft² | 1.41 psi in 5.5 ms steps | 1.44 in those steps, 1.29 in fine ones |
+
+On Example 2A-12's room, the one-way fill (an orifice of discharge 0.6, `EnvelopeDamageAssessment.fill`)
+peaks at 1.52 psi, 1.18 times the leakage fill.
+
+**The one-way fill on the damage references' panes** (`scenebench envelope-sdof`, the same
+openings, opening times and outer pressures): the leakage fill gives 0.92, 4.37, 8.45 and 13.15 kPa
+inside the isolated glazed building at 10, 50, 200 and 500 kg, where the orifice gives 0.94, 4.12,
+9.06 and 16.72 (0.94 to 1.27 times) and the detailed buildings' gauges 0.99, 2.57, 10.99 and 22.42.
+At 2 kg, where the pane breaks under a small difference, the orifice's square root fills to 0.17
+kPa and the chart's straight start to nothing.
+
+**A shock through an open window** (`scenebench envelope-openings`): the UFC's own case, a rigid
+box 4.5 m wide and 3 m tall inside (W/H = 3/2), 3 or 6 m deep (L/H = 1 or 2), with one window
+1.25 m tall and 1.5 or 2.5 m wide in the middle of its front (Ao/Aw = 0.14 or 0.23), struck
+head-on by hemispherical TNT 28 m away: 19, 78, 264 and 760 kg, for 2 to 16 psi by
+Kingery–Bulmash. The window is open from the start, as the air is once vented glass has broken.
+Each charge is also run with no building for its incident pressure at the front wall's middle,
+with which the charts are entered (0.85 to 0.96 of Kingery–Bulmash at 0.125 m cells, rising with
+the charge). The air's peak area-mean pressure on the inside of each wall and the room's mean (18
+gauges), against the UFC's, at 0.125 m (psi):
+
+| L/H | Ao/Aw | Pso | Back wall, air / UFC | Side walls | Front, inside | Room mean | One-way fill | UFC leakage |
+| ---: | ---: | ---: | --- | --- | --- | ---: | ---: | ---: |
+| 1 | 0.14 | 1.7 | 1.00 / 1.34 | 0.73 / 1.46 | 0.91 / 1.48 | 0.62 | 0.50 | 0.37 |
+| 1 | 0.23 | 1.7 | 1.45 / 1.70 | 0.95 / 1.64 | 1.25 / 1.87 | 0.85 | 0.72 | 0.54 |
+| 2 | 0.14 | 1.7 | 1.00 / 0.96 | 0.38 / 0.81 | 0.83 / 1.48 | 0.33 | 0.27 | 0.20 |
+| 2 | 0.23 | 1.7 | 1.44 / 1.28 | 0.48 / 0.91 | 1.17 / 1.87 | 0.46 | 0.41 | 0.30 |
+| 1 | 0.14 | 3.7 | 2.21 / 2.95 | 1.57 / 3.52 | 1.92 / 4.01 | 1.36 | 0.82 | 0.77 |
+| 1 | 0.23 | 3.7 | 3.23 / 3.74 | 2.08 / 3.94 | 2.73 / 5.14 | 2.01 | 1.22 | 1.12 |
+| 2 | 0.14 | 3.7 | 2.20 / 2.10 | 0.79 / 1.99 | 1.92 / 4.01 | 0.71 | 0.44 | 0.41 |
+| 2 | 0.23 | 3.7 | 3.21 / 2.79 | 1.07 / 2.23 | 2.75 / 5.14 | 1.09 | 0.67 | 0.63 |
+| 1 | 0.14 | 7.7 | 4.73 / 6.39 | 3.12 / 7.83 | 4.29 / 9.59 | 2.47 | 1.38 | 1.44 |
+| 1 | 0.23 | 7.7 | 6.92 / 8.24 | 4.22 / 8.78 | 6.12 / 12.30 | 3.90 | 2.04 | 2.09 |
+| 2 | 0.14 | 7.7 | 4.68 / 4.47 | 1.51 / 4.46 | 4.16 / 9.59 | 1.23 | 0.73 | 0.77 |
+| 2 | 0.23 | 7.7 | 6.84 / 5.99 | 2.22 / 5.00 | 5.99 / 12.30 | 2.13 | 1.10 | 1.15 |
+| 1 | 0.14 | 14.9 | 10.57 / 13.67 | 6.01 / 15.86 | 9.48 / 20.84 | 4.33 | 2.55 | 2.60 |
+| 1 | 0.23 | 14.9 | 15.13 / 17.59 | 7.81 / 17.78 | 12.95 / 26.17 | 6.86 | 3.71 | 3.74 |
+| 2 | 0.14 | 14.9 | 10.32 / 9.00 | 2.80 / 9.07 | 8.13 / 20.84 | 2.75 | 1.34 | 1.39 |
+| 2 | 0.23 | 14.9 | 14.91 / 12.21 | 4.21 / 10.17 | 11.70 / 26.17 | 4.18 | 2.01 | 2.06 |
+
+- **On the back wall the air comes within 25% of the UFC**: 0.74 to 0.86 of it in the shallow box,
+  1.03 to 1.22 in the deep one, at every pressure and both windows. The back wall is the wall the
+  UFC calls uniformly loaded, and the one its Ao/Aw matters most for.
+- **On the side walls and the front's inside the air is lower**: 0.31 to 0.58 and 0.39 to 0.67 of
+  the UFC, less as the pressure rises. The UFC's loads there are idealised (a linear rise to the
+  peak, the opening put at the wall's middle), its side walls by an equation fitted to its charts,
+  and it gives no scatter for them. The ratios move by at most 0.09 from 0.25 m to 0.125 m cells,
+  so the gap is not resolution.
+- **The one-way fill is the UFC's leakage**: 0.95 to 1.35 times §2-15.5 on the same opening and
+  outer pressure, nearest at the higher pressures. Both are a room filling quasi-statically, and
+  through windows this size both stay below what the air puts on the walls: 0.48 to 0.90 of the
+  air's room mean, and 0.15 to 0.42 of the UFC's back-wall load. The UFC itself keeps §2-15.5 for
+  vents and ducts too small for a shock to form inside, and uses §2-15.4 for windows and doors.
+- **Cost**: 2 to 3 s a case at 0.25 m, 20 to 40 s at 0.125 m, on the M4 Max shared with other work.
+  Results in `/Volumes/StudioData/bombcad/envelope-damage/ufc-openings/`.
+
+So for a window that has gone, the air the vented envelope keeps gives the UFC's load on the wall
+behind it, and the one-way fill gives a third to a sixth of it. What this does not show: the UFC
+is a design method built on old tests, not a measurement; the box here is rigid, struck head-on,
+with openings in its front alone and clear of glass, where real glazing fails over a millisecond
+or more and its fragments fly in; and the room's mean has no UFC counterpart for windows.
 
 ## Fragments against Cooper's data
 
