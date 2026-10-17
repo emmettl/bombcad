@@ -139,7 +139,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-26"
+    public static let currentTable = "standing-table-28"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -377,7 +377,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .ventedGlazing:
             return inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes
         case .shellElements:
-            return any { $0.elementKind == .shell || $0.solidElementKind.contains(.shell) }
+            return any { model in model.solids.indices.contains { model.elementKind(of: $0) == .shell } }
         case .shellSectionShear: return any { $0.shellSectionShear }
         case .noSecondCracks: return !concrete.isEmpty && any { !$0.secondCracks }
         case .noBareBars: return any { !$0.bareBars }
@@ -780,10 +780,12 @@ public enum StandingTable {
         case .profiledSheets:
             return Entry(
                 title: "Profiled steel sheeting", affects: [.structuralDamage], limit: .illustrative,
-                note: "Sheets are a skin with their ribs as beams, fixed to their rails and purlins without "
-                    + "pull-out. Against Langdon's corrugated panels the elastic peaks are 0.5–1.3 of those "
-                    + "measured, but plastic ones scatter from a tenth to three times, the connections give "
-                    + "way above 2 bar where the panels held, and local buckling is not modelled.",
+                note:
+                    "Sheets are a skin with their ribs as beams, their thin flanges softening once they buckle, "
+                    + "fixed to their rails and purlins without pull-out. Against Langdon's corrugated panels, "
+                    + "held by her connections as springs, the permanent sets are 0.55–1.73 of those measured on "
+                    + "10 of 13 tests both ways and none runs away; where buckling comes on before plate theory "
+                    + "says (three tests) they read a fifth or less. No test of cladding on screws compared.",
                 document: "profiled-sheeting.md#against-langdons-corrugated-panels")
         case .inclinedBars:
             return Entry(
@@ -1095,6 +1097,7 @@ public enum StandingTable {
         "StructureModel.interfaceBond": .option([.interfaceBond]),
         "StructureModel.unitJoints": .option([.smearedMasonry]),
         "StructureModel.solidSheets": .option([.profiledSheets]),
+        "StructureModel.springSupports": .input,
         "StructureModel.shellSectionShear": .option([.shellSectionShear]),
         "StructureModel.secondCracks": .option([.noSecondCracks]),
         "StructureModel.bareBars": .option([.noBareBars]),
@@ -1153,6 +1156,7 @@ public enum StandingTable {
         "StructureMaterial.isTransparent": .input,
         // Timber's properties; its standing follows from its material class.
         "StructureMaterial.timber": .input,
+        "StructureMaterial.localBuckling": .input,
         // Connections.
         "Anchorage.normalStiffness": .input,
         "Anchorage.shearStiffness": .input,
@@ -2005,8 +2009,16 @@ struct StandingScene {
                         + "five destructive shots broken at 28–29 mm against 21–31; deep narrow beams meshed as "
                         + "walls 43% too stiff in their plane",
                     "validation.md#glulam-beams-in-a-shock-tube"))
+            evidence.append(
+                StandingEvidence(
+                    "Cross-laminated timber buildings at Tyndall, 22.9 m from 14.5–90 kg (Weaver et al., 2017)",
+                    "The front's first storey inbound within 6% on the two lighter charges and 21% high on the "
+                        + "heaviest, the second storey 19–76% high, rebound 66–88% of measured; the front's "
+                        + "impulse 54–76% above the report's",
+                    "validation.md#cross-laminated-timber-buildings-at-tyndall"))
             parts.append(
-                "timber compared on CLT panels and glulam beams in a shock tube, its strength calibrated")
+                "timber compared on CLT panels and glulam beams in a shock tube, its strength calibrated, and on "
+                    + "full-scale CLT buildings")
         }
         var resolution: [String] = []
         if let through = elementsThrough, through <= 6, through >= 4, classes.contains(.reinforcedConcrete) {
@@ -2199,7 +2211,8 @@ struct StandingScene {
                     : "with the air seeing the building whole and the inside a one-way fill: ")
                 + "glass breakage and its time, concrete panels' rotation between fixed and simply supported "
                 + "edges, and freestanding walls as cantilevers from their foot, as approximations; brick panels, "
-                + "profiled steel sheeting and the inside pressure through broken panes illustrative.",
+                + "profiled steel sheeting, cross-laminated timber and the inside pressure through broken panes "
+                + "illustrative.",
             evidence: [
                 StandingEvidence(
                     "UFC 3-340-02 §2-15.4's loads on the walls inside, through an open front window (16 cases, "
@@ -2254,6 +2267,9 @@ struct StandingScene {
                     + "cold-formed panels on the maker's effective section, graded by PDC-TR 06-08's limits for "
                     + "deck whose membrane action its fixings limit, and blown off when its dynamic reaction passes "
                     + "what its screws hold by EN 1993-1-3; no blast test of cladding or its fixings compared.",
+                "Cross-laminated timber spans one way, elastic–perfectly plastic, its resistance from the mean "
+                    + "bending strength with the Ottawa shock tube's dynamic increase, graded by WoodWorks' ductility "
+                    + "limits from the Tyndall tests; no envelope-level test of its damage compared.",
                 "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
                     + "2° is flagged as beyond the one-way model.",
                 "Glass is annealed, on Moore's large-deflection plate, simply supported, breaking at E1300's "

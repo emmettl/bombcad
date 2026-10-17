@@ -2096,6 +2096,13 @@ public final class StructureSolver {
             hourglassStiffness: hourglassCoefficient * material.youngsModulus * h / 48,
             soundSpeed: material.dilatationalWaveSpeed)
         parameters.youngsModulus = material.youngsModulus
+        if let buckling = material.localBuckling {
+            parameters.bucklingAxis = UInt32(buckling.axis + 1)
+            parameters.bucklingSide = Float(buckling.side)
+            parameters.bucklingOnset = buckling.onsetStrain
+            parameters.bucklingSoftening = max(buckling.softeningStrain, 1e-9)
+            parameters.bucklingResidual = buckling.residual
+        }
         if material.model == .timber, let timber = material.timber {
             parameters.materialModel = MaterialModel.timber.rawValue
             // A beam's shear across its grain, and the in-plane shear of a shell's layers.

@@ -343,6 +343,8 @@ public final class ShellSolver {
         let nodeConstants = MTLFunctionConstantValues()
         var connected = model.connectionStiffness != nil
         nodeConstants.setConstantValue(&connected, type: .bool, index: 1)
+        var sprung = !model.springSupports.isEmpty
+        nodeConstants.setConstantValue(&sprung, type: .bool, index: 22)
         nodePipeline = try ShaderLibrary.pipeline("shellNodes", in: library, constants: nodeConstants)
         var turned = true
         nodeConstants.setConstantValue(&turned, type: .bool, index: 4)
@@ -417,8 +419,10 @@ public final class ShellSolver {
         memset(contactHeadBuffer.contents(), 0xFF, contactHeadBuffer.length)
         memset(contactMovedBuffer.contents(), 0xFF, contactMovedBuffer.length)
         // The table, then each element's share of it.
+        // ...and then the spring supports' nodes and laws (below), from the next 16 bytes.
         loadTableBuffer = try buffer(
-            Self.maxLoadPoints * 8 + (max(elements, 1) + max(mesh.positions.count, 1)) * 4,
+            ((Self.maxLoadPoints * 8 + (max(elements, 1) + max(mesh.positions.count, 1)) * 4 + 15) & ~15)
+                + (3 * mesh.positions.count + 5 * model.springSupports.count) * 16,
             "applied load table")
         failureGateBuffer = try buffer(16, "failure gate")
         placeholderBuffer = try buffer(64, "shell placeholder")
@@ -535,6 +539,55 @@ public final class ShellSolver {
             max(fibreCount, 1) * MemoryLayout<AnchorageParameters>.stride, "shell connection laws")
         lawStorage.copy(fibreLaws)
         fibreLawBuffer = lawStorage
+        // Spring supports: the nodes in each region, each with its share of the edge's length.
+        // Spring supports: the nodes in each region, each with its share of the edge's length;
+        // then the supports' laws, each as (stiffness, yield, hardening of the yield per plastic
+        // movement) per metre, and the axes.
+        let positions = mesh.positions
+        var springs = [SIMD4<Float>](repeating: .zero, count: 3 * positions.count)
+        // The turning spring acts only where beams end (a profiled sheet's ribs, which carry its
+        // bending), shared among them; the others at every node.
+        let beamEnds = Set(mesh.beams.flatMap { [Int($0.nodes.x), Int($0.nodes.y)] })
+        for (s, support) in model.springSupports.enumerated() {
+            let held = positions.indices.filter { support.region.contains(positions[$0]) }
+            func shares(_ nodes: [Int]) -> [Int: Float] {
+                let stations = Array(Set(nodes.map { positions[$0][support.edge] })).sorted()
+                var result: [Int: Float] = [:]
+                for n in nodes {
+                    let value = positions[n][support.edge]
+                    guard let i = stations.firstIndex(of: value) else { continue }
+                    let low = i > 0 ? stations[i - 1] : value
+                    let high = i + 1 < stations.count ? stations[i + 1] : value
+                    result[n] = 0.5 * (high - low)
+                }
+                return result
+            }
+            let turning =
+                held.contains { beamEnds.contains($0) } ? held.filter { beamEnds.contains($0) } : held
+            let along = shares(held)
+            let about = shares(turning)
+            for n in held { springs[3 * n] = SIMD4(Float(s + 1), along[n] ?? 0, about[n] ?? 0, 0) }
+        }
+        func packed(_ law: SpringLaw) -> SIMD4<Float> {
+            let k = law.stiffness
+            let h = law.hardening
+            return SIMD4(k, min(law.yield, 1e30), k * h / (k - h), 0)
+        }
+        for support in model.springSupports {
+            springs += [
+                packed(support.pull), packed(support.across), packed(support.turnPositive),
+                packed(support.turnNegative),
+                SIMD4(Float(support.edge), Float(support.along), Float(support.acrossAxis), 0),
+            ]
+        }
+        // After the applied load's table and shares, from the next 16 bytes, where `shellNodes`
+        // finds them.
+        let springOffset =
+            (Self.maxLoadPoints * 8 + (max(elementCount, 1) + max(positions.count, 1)) * 4 + 15) & ~15
+        if !springs.isEmpty {
+            (loadTableBuffer.contents() + springOffset).copyMemory(
+                from: springs, byteCount: springs.count * MemoryLayout<SIMD4<Float>>.stride)
+        }
         tiedBuffer = tiedStorage
         tieBuffer = try buffer(mesh.ties.count * 8, "shell ties")
         let tiePairs = tieBuffer.contents().bindMemory(
@@ -651,6 +704,12 @@ public final class ShellSolver {
             for n in nodes.indices
             where model.isClampedBySupport(at: mesh.positions[n]) {
                 nodes[n].isClamped = true
+            }
+            // A spring support holds its nodes along its edge, as the weld along it does.
+            for support in model.springSupports {
+                for n in nodes.indices where support.region.contains(mesh.positions[n]) {
+                    nodes[n].restrain(x: support.edge == 0, y: support.edge == 1, z: support.edge == 2)
+                }
             }
             // A tied node's mass and inertia move with the node it is tied to.
             for tie in mesh.ties {

@@ -1497,9 +1497,15 @@ extension StandingScene {
             }
             if kinds.contains(.profiledSteelSheeting) {
                 unbanded.append(
-                    "Profiled steel sheeting, by UFC's cold-formed panel method: against Langdon's corrugated "
-                        + "panels the elastic peaks are 0.5–1.3 of the measured, the plastic ones scatter too "
-                        + "widely to band.")
+                    "Profiled steel sheeting, by UFC's cold-formed panel method: no test of cladding on its "
+                        + "fixings compared (the shells against Langdon's panels: permanent sets within half to "
+                        + "twice on 10 of 13).")
+            }
+            if kinds.contains(.crossLaminatedTimber) {
+                unbanded.append(
+                    "Cross-laminated timber, one way and graded by TR-18-06.2's ductility limits: no test of a "
+                        + "CLT envelope's damage level compared; Tyndall's buildings were compared with the "
+                        + "detailed model.")
             }
             let freestanding = inputs.scenario.envelopeObjects.contains { object in
                 object.envelope?.components(owner: object.id).contains(where: \.isFreestanding) ?? false

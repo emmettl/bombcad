@@ -11,7 +11,7 @@ import simd
 //
 //   blastbench [throughput] [--preset open|single|street|courtyard|wall|box|frame|infill|storeys|tall|tower|column|
 //               office|protected|glass|carpark|underpass|house|blockwall|chamber|gasroom|panel-gas|panel-street|
-//               plant|warehouse]
+//               plant|warehouse|terraced]
 //               [--full] [--dx 0.5,0.25]
 //   blastbench structure [--preset wall|box] [--contact] [--elastic]
 //   (any command) [--rounding default|unfused|relaxed]   (the kernels' rounding; see KernelRounding)
@@ -132,6 +132,7 @@ func preset(named name: String?) -> ScenarioPreset {
     case "panel-street": .largePanelStreet
     case "plant": .processPlantExplosion
     case "warehouse": .portalWarehouse
+    case "terraced": .terracedHouses
     default: .streetCanyon
     }
 }
@@ -5421,6 +5422,7 @@ do {
     case "shearband": try runShearBand(device: device)
     case "settle": try runSettle(device: device)
     case "poulin": try runPoulin(device: device)
+    case "tyndall": try runTyndall(device: device)
     case "lacroix": try runLacroix(device: device)
     case "beam": try runBeam()
     case "shear": try runShearBeam()
