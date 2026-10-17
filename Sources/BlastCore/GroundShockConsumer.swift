@@ -126,8 +126,14 @@ extension GroundShockSpec {
     /// The rectangle of ground to send, (x, y) in metres: the points' bounds and a cell round them.
     public func region(cellSize: Float) -> (low: SIMD2<Float>, high: SIMD2<Float>) {
         let points = allPoints
-        let low = points.dropFirst().reduce(points[0], simd_min)
-        let high = points.dropFirst().reduce(points[0], simd_max)
+        var low = points.dropFirst().reduce(points[0], simd_min)
+        var high = points.dropFirst().reduce(points[0], simd_max)
+        // The half-space takes the ground's air round the whole disc it spans.
+        if model == .halfspace, let setup = halfSpace {
+            let reach = Float(HalfSpaceGroundShock.reach(points: points, centre: setup.centre))
+            low = simd_min(low, setup.centre - reach)
+            high = simd_max(high, setup.centre + reach)
+        }
         return (low - cellSize, high + cellSize)
     }
 
@@ -180,11 +186,12 @@ public struct GroundShockResult: Codable, Sendable, Equatable {
         let transseismic = open.filter { $0.regime == .transseismic }.count
         let outrunning = open.filter { $0.regime == .outrunning }.count
         var text: String
-        if model == .column, let profile {
+        if model == .column || model == .halfspace, let profile {
             text = String(
-                format: "Ground shock at %d points, a column of %d layer%@ from %.0f kg/m³ at %.0f m/s",
-                points.count, profile.layers.count, profile.layers.count == 1 ? "" : "s",
-                profile.surface.density, profile.surface.waveSpeed)
+                format: "Ground shock at %d points, %@ of %d layer%@ from %.0f kg/m³ at %.0f m/s",
+                points.count, (model == .column ? "a column" : "a half-space") as NSString,
+                profile.layers.count,
+                profile.layers.count == 1 ? "" : "s", profile.surface.density, profile.surface.waveSpeed)
         } else {
             text = String(
                 format: "Ground shock at %d points, soil %.0f kg/m³ at %.0f m/s", points.count, soil.density,
@@ -228,6 +235,8 @@ public struct GroundShockConsumer: Sendable {
     /// downward velocity at each depth at each frame.
     private var loads: [GroundLoad] = []
     private var columns: [SoilColumn] = []
+    /// The half-space's, where it is the model and its charge is known.
+    private var halfSpace: HalfSpaceGroundShock?
     private var motions: [[[Float]]] = []
 
     /// The fewest of the column's steps the load is averaged over, so the fastest a shock rises.
@@ -248,6 +257,9 @@ public struct GroundShockConsumer: Sendable {
             columns = Array(repeating: column, count: points.count)
             motions = Array(repeating: Array(repeating: [], count: spec.depths.count), count: points.count)
         }
+        if spec.model == .halfspace, let setup = spec.halfSpace {
+            halfSpace = try? HalfSpaceGroundShock(spec: spec, setup: setup)
+        }
     }
 
     /// The rectangle of ground to send, (x, y) in metres: the points' bounds and a cell round them.
@@ -267,6 +279,10 @@ public struct GroundShockConsumer: Sendable {
             latest[n] = sample
             peaks[n] = max(peaks[n], sample.peak, sample.overpressure)
             if arrivals[n] == nil, peaks[n] >= spec.arrivalThreshold { arrivals[n] = slice.time }
+        }
+        if let halfSpace {
+            halfSpace.consume(slice)
+            return
         }
         guard !columns.isEmpty else { return }
         for n in points.indices {
@@ -318,12 +334,13 @@ public struct GroundShockConsumer: Sendable {
             if !columns.isEmpty, sample != nil {
                 columnResponse(n, frontSpeed: speed, into: &result)
             }
+            if let halfSpace, sample != nil { result.responses = halfSpace.responses(n) }
             return result
         }
         return GroundShockResult(
             soil: spec.soil, depths: spec.depths, frameInterval: frameInterval, frames: frame + 1,
             points: points, airBytes: bytes, model: spec.model,
-            profile: spec.model == .column ? spec.columnProfile : nil, frameTimes: times)
+            profile: spec.model == .estimate ? nil : spec.columnProfile, frameTimes: times)
     }
 
     /// The column's peaks at the depths asked for and down its profile.

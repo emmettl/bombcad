@@ -125,6 +125,11 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
 - **Next:** the rebound after a slab's peak; a shaken footing's lurch, and the rest of its
   energy (sand crushed across the whole contact, the shaken sand's own); pads' and dowels'
   laws; footings on a slope.
+- **Planned, new materials** ([new materials](new-materials.md)): timber, solid and engineered
+  (glulam, CLT, plywood), orthotropic with failure along and across the grain, rate effects and
+  connections, its elastic part adopted from ContinuumKit's `OrthotropicPlaneStress`; and thin
+  profiled metal sheeting for cladding and roofing, as a steel shell with rib beams, with fastener
+  pull-out and pull-over.
 - **Blocked:** a footing or connection under fast loading ([data survey 3b](data-survey.md#3b-a-footing-or-connection-under-fast-loading)).
 
 ### Freestanding objects and supports
@@ -144,12 +149,14 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
 
 - **Done, an approximation:** [fragments](fragments.md) from a casing's dimensions, Mott's
   masses within 1.4 of Cooper's counted bomb, measured drag; their [hazard](fragments.md#hazard)
-  distance by DDESB's criterion, debris's alike, and glazing graded by GSA and ASTM F1642 (17 October).
+  distance by DDESB's criterion, debris's alike, and glazing graded by GSA and ASTM F1642; what they
+  strike judged by UFC 3-340-02 and THOR, panes holed before the blast (17 October).
 - **Done, illustrative:** the fireball's
   [thermal radiation](thermal-radiation.md) and [surface heating](surface-heating.md); its
   [rise and cloud](fireball-rise.md); [ground shock](ground-shock.md), as the manuals'
-  estimate or a layered soil column, against one measured 1 t burst 20 to 80 times too high in
-  the vertical, near the outrunning limit; [gas deflagrations](deflagration.md), started: FM Global's
+  estimate or a layered soil column, or an elastic half-space
+  about the charge, against one measured 1 t burst 15 to 80 times too high in the vertical near
+  the outrunning limit, the half-space's horizontal within 1.5 times at 21 m; [gas deflagrations](deflagration.md), started: FM Global's
   vented tests within 0.4–1.6 of the measured peaks, with sub-grid turbulence and the measured
   cellular instability.
 - **Now:** why the deflagration's flame stalls when lit in the middle (0.4–0.6 there), a young
@@ -183,6 +190,15 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   built and judged against the detailed buildings, with the cost of not venting
   ([one-way damage](building-envelopes.md#one-way-damage-single-degree-of-freedom)), and since
   16 October in the app (glass and concrete as approximations, brick and the inside illustrative).
+- **Now:** two sample buildings being built, a precast large-panel block and a process-plant
+  control room.
+- **Planned, building types** (what each needs is in [new materials](new-materials.md#what-each-building-type-needs)):
+  - UK terraced brick houses: cavity walls of two brick leaves with ties, timber joist floors and a
+    timber roof. Needs timber, wall ties, joist bearings and roof coverings as debris.
+  - Steel portal-frame warehouses with profiled metal cladding. Needs profiled sheeting, a fastener
+    law for pull-out and pull-over, and local buckling of thin cold-formed members.
+  - Transport hubs with long-span steel and glass roofs. Needs laminated glass that holds together
+    when broken, glass falling from overhead, and a check of slender members buckling under blast.
 
 ### Distributed computing
 

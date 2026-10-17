@@ -33,6 +33,7 @@ public final class BlastSolver {
     private(set) var envelopeExposure: EnvelopeExposure?
     private var envelopeNeedsInitialSample = false
     private(set) var envelopeComponentRecorder: EnvelopeComponentRecorder?
+    private(set) var envelopeVenting: EnvelopeVenting?
     private var componentsNeedInitialSample = false
     private var gpuProfiler: BatchGPUProfiler?
     public private(set) var lastBatchGPUProfile: BatchGPUProfile?
@@ -60,6 +61,51 @@ public final class BlastSolver {
         envelopeComponentRecorder = recorder
         try keepAir(recorder.faces.map(\.fluid))
         componentsNeedInitialSample = true
+    }
+
+    /// Lets the envelopes' glazing break in the air (building-envelopes.md, "Venting"): each pane of
+    /// the components recorded (`configureEnvelopeComponents`, which must come first) takes the glass
+    /// of its building's construction, steps it with the air, and opens in the air when it breaks;
+    /// each building's rooms are followed. In refined air the finer cells under a broken pane open
+    /// too, in the patches placed and those placed later. Not with gravity, whose still air varies
+    /// with height.
+    public func configureEnvelopeVenting(
+        objects: [SceneObject], constructions: (UUID) -> EnvelopeConstruction
+    )
+        throws
+    {
+        guard let recorder = envelopeComponentRecorder else {
+            throw BlastError.allocationFailed("envelope venting without the component recorder")
+        }
+        guard configuration.gravity == nil else {
+            throw BlastError.allocationFailed("envelope venting with gravity in the air")
+        }
+        let mask = try stationaryMask(observing: objects)
+        envelopeVenting = try EnvelopeVenting(
+            device: device, library: library, grid: grid, mask: mask, objects: objects,
+            components: recorder.components, rigidBoxes: rigidBoxes ?? [], constructions: constructions)
+        for level in refinementLevels { level.setPanes(ventedPanes) }
+    }
+
+    /// Venting's panes as the refined levels take them.
+    private var ventedPanes: (cells: MTLBuffer, status: MTLBuffer, lookup: PaneLookup)? {
+        envelopeVenting.map { ($0.sortedPaneCellBuffer, $0.statusBuffer, $0.paneLookup) }
+    }
+
+    /// When fragments hole envelope panes, by component id, s from the start (`FragmentCloud.paneHoles`):
+    /// with venting on, each opens in the air on the step the run's clock reaches it, before its
+    /// glass would break. Kept across restarts.
+    public var ventsGlazing: Bool { envelopeVenting != nil }
+
+    public func setEnvelopePaneHoles(_ holes: [String: Double]) {
+        precondition(!batchInFlight, "Cannot set pane holes during a batch")
+        envelopeVenting?.setHoles(holes)
+    }
+
+    /// The panes broken so far and what each building's rooms have seen, with venting on.
+    public func envelopeVentingSnapshot() -> EnvelopeVentingSnapshot? {
+        precondition(!batchInFlight, "Cannot read observers during a batch")
+        return envelopeVenting?.snapshot()
     }
 
     /// Cells of air a moving body's outline may not take: beside the stationary envelopes' recorded
@@ -152,6 +198,8 @@ public final class BlastSolver {
         envelopeNeedsInitialSample = false
         envelopeComponentRecorder = nil
         componentsNeedInitialSample = false
+        envelopeVenting = nil
+        for level in refinementLevels { level.setPanes(nil) }
         keptAirBuffer = nil
     }
 
@@ -1592,6 +1640,7 @@ public final class BlastSolver {
         envelopeNeedsInitialSample = envelopeExposure != nil
         envelopeComponentRecorder?.reset()
         componentsNeedInitialSample = envelopeComponentRecorder != nil
+        envelopeVenting?.reset(mask: maskBuffer, rigidMask: rigidMaskBuffer)
         lastBatchGPUProfile = nil
         lastFluidStep = 0
         checkpointSubsteps = 0
@@ -1823,6 +1872,7 @@ public final class BlastSolver {
             let fine = grid.cellSize / Float(level.parentScale * level.ratio)
             level.setBoxes(rigidBoxes?.map { $0.holdingCells(of: fine) })
             level.setTerrain(rigidBoxes == nil ? nil : terrain)
+            level.setPanes(ventedPanes)
         }
         for level in refinementLevels { level.coarseCut = cut ? terrainCut : nil }
         updateGaugeChildren()
@@ -2271,6 +2321,7 @@ public final class BlastSolver {
             encodeExposure(encoder, initial: false)
             encodeEnvelopeExposure(encoder, initial: false)
             encodeEnvelopeComponents(encoder, initial: false)
+            encodeEnvelopeVenting(encoder)
         }
         guard last else {
             encoder.endEncoding()
@@ -2597,6 +2648,7 @@ public final class BlastSolver {
         encoder.setBuffer(recorder.flags, offset: 0, index: 19)
         encoder.setBuffer(recorder.clock, offset: 0, index: 20)
         encoder.setBuffer(recorder.starts, offset: 0, index: 21)
+        encoder.setBuffer(recorder.current, offset: 0, index: 22)
         encoder.dispatchThreadgroups(
             MTLSize(width: (recorder.components.count + perGroup - 1) / perGroup, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 32 * perGroup, height: 1, depth: 1))
@@ -2625,6 +2677,7 @@ public final class BlastSolver {
         encoder.setBuffer(recorder.bins, offset: 0, index: 6)
         encoder.setBuffer(recorder.maxima ?? recorder.bins, offset: 0, index: 7)
         encoder.setBuffer(recorder.flags, offset: 0, index: 8)
+        encoder.setBuffer(recorder.current, offset: 0, index: 9)
         encoder.setBytes(&parameters, length: length, index: 10)
         encoder.setBuffer(recorder.stillPressure, offset: 0, index: 11)
         encoder.setBuffer(recorder.faceDispatch, offset: 0, index: 12)
@@ -2639,6 +2692,76 @@ public final class BlastSolver {
         encoder.dispatchThreads(
             MTLSize(width: 1, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+    }
+
+    /// Steps the envelopes' panes on the step's loads, opens those that broke, and reads the rooms
+    /// of buildings opened (EnvelopeVenting.swift).
+    private func encodeEnvelopeVenting(_ encoder: MTLComputeCommandEncoder) {
+        guard let venting = envelopeVenting, let recorder = envelopeComponentRecorder else { return }
+        var uniforms = makeUniforms()
+        if venting.paneCount > 0 {
+            var count = UInt32(venting.paneCount)
+            encoder.setComputePipelineState(venting.stepPipeline)
+            encoder.setBuffer(recorder.current, offset: 0, index: 0)
+            encoder.setBuffer(venting.paneBuffer, offset: 0, index: 1)
+            encoder.setBuffer(venting.glassBuffer, offset: 0, index: 2)
+            encoder.setBuffer(venting.stateBuffer, offset: 0, index: 3)
+            encoder.setBuffer(venting.statusBuffer, offset: 0, index: 4)
+            encoder.setBuffer(venting.openedBuffer, offset: 0, index: 5)
+            encoder.setBuffer(controlBuffer, offset: 0, index: 6)
+            encoder.setBytes(&count, length: 4, index: 7)
+            encoder.setBuffer(venting.ownerRooms, offset: 0, index: 8)
+            encoder.setBuffer(venting.roomDispatch, offset: 0, index: 9)
+            encoder.setBuffer(venting.roomList, offset: 0, index: 10)
+            encoder.setBuffer(venting.tableBuffer, offset: 0, index: 11)
+            encoder.setBuffer(venting.holeBuffer, offset: 0, index: 12)
+            encoder.dispatchThreads(
+                MTLSize(width: venting.paneCount, height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))
+        }
+        if venting.paneCellCount > 0 {
+            var count = UInt32(venting.paneCellCount)
+            encoder.setComputePipelineState(venting.openPipeline)
+            encoder.setBuffer(venting.paneCellBuffer, offset: 0, index: 0)
+            encoder.setBuffer(venting.statusBuffer, offset: 0, index: 1)
+            encoder.setBuffer(maskBuffer, offset: 0, index: 2)
+            encoder.setBuffer(rigidMaskBuffer, offset: 0, index: 3)
+            encoder.setBuffer(stateBuffers[0], offset: 0, index: 4)
+            encoder.setBuffer(stateBuffers[1], offset: 0, index: 5)
+            encoder.setBuffer(hasSpecies ? speciesBuffers[0] : noSpecies, offset: 0, index: 6)
+            encoder.setBuffer(hasSpecies ? speciesBuffers[1] : noSpecies, offset: 0, index: 7)
+            encoder.setBuffer(tileFlagBuffer, offset: 0, index: 8)
+            encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 9)
+            encoder.setBuffer(controlBuffer, offset: 0, index: 10)
+            encoder.setBytes(&count, length: 4, index: 11)
+            encoder.dispatchThreads(
+                MTLSize(width: venting.paneCellCount, height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))
+            // And the refined levels' cells under them.
+            if let refinement {
+                refinement.encodeOpenPanes(
+                    encoder,
+                    uniforms: refinement.levelUniforms(
+                        from: uniforms, threshold: configuration.refinementThreshold, grid: grid),
+                    control: controlBuffer)
+            }
+            if let finerRefinement, let finer = finerUniforms(uniforms) {
+                finerRefinement.encodeOpenPanes(encoder, uniforms: finer, control: controlBuffer)
+            }
+        }
+        if !venting.rooms.isEmpty {
+            encoder.setComputePipelineState(venting.roomPipeline)
+            encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
+            encoder.setBuffer(venting.roomBuffer, offset: 0, index: 1)
+            encoder.setBuffer(venting.roomCellBuffer, offset: 0, index: 2)
+            encoder.setBuffer(venting.roomList, offset: 0, index: 3)
+            encoder.setBuffer(venting.roomResults, offset: 0, index: 4)
+            encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 5)
+            encoder.setBuffer(controlBuffer, offset: 0, index: 6)
+            encoder.dispatchThreadgroups(
+                indirectBuffer: venting.roomDispatch, indirectBufferOffset: 0,
+                threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
+        }
     }
 
     private func encodeExposure(_ encoder: MTLComputeCommandEncoder, initial: Bool) {
@@ -2767,7 +2890,7 @@ public final class BlastSolver {
         return buffers.reduce(0) { $0 + $1.length } + grid.cellCount * 8
             + (exposurePlane?.buffer.length ?? 0)
             + (envelopeExposure?.memoryFootprint ?? 0)
-            + (envelopeComponentRecorder?.memoryFootprint ?? 0)
+            + (envelopeComponentRecorder?.memoryFootprint ?? 0) + (envelopeVenting?.memoryFootprint ?? 0)
             + bodies.reduce(0) { $0 + $1.memoryFootprint }
             + refinementLevels.reduce(0) { $0 + $1.memoryFootprint }
             + (experimentalBoxDefinition?.length ?? 0) + (experimentalBoxMask?.length ?? 0)

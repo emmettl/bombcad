@@ -182,10 +182,15 @@ public struct FragmentImpact: Codable, Sendable, Equatable {
     public var energy: Float
     /// `ground`, `block <n>` or `structure`.
     public var surface: String
-    /// Owner of an impacted structure in a multiple-body scene; absent in legacy results.
+    /// Owner of an impacted structure in a multiple-body scene, or the envelope building struck;
+    /// absent in legacy results.
     public var objectID: UUID? = nil
     /// How many real fragments it stands for, when not one (see `FragmentSpec.wallThickness`).
     public var weight: Float? = nil
+    /// What it did to what it struck, where the scene says what that is (`FragmentTarget`).
+    public var penetration: PenetrationResult? = nil
+    /// The pane struck, by its index among its envelope's panes.
+    public var pane: Int? = nil
 
     /// One unless it stands for several.
     public var count: Float { weight ?? 1 }
@@ -204,6 +209,10 @@ public struct FragmentScene: Codable, Sendable, Equatable {
     public var structureMaterials: [String]?
     /// The ground's shape; nil for flat ground (and for scenes saved before terrain).
     public var terrain: Terrain?
+    /// What each block and structural region is, for fragments striking it; nil entries (and
+    /// scenes saved before) are rigid, unjudged.
+    public var blockTargets: [FragmentTarget?]?
+    public var structureTargets: [FragmentTarget?]?
 
     public init(_ scenario: Scenario) {
         charge = scenario.charge
@@ -218,6 +227,35 @@ public struct FragmentScene: Codable, Sendable, Equatable {
             bodies.count > 1
             ? bodies.flatMap { body in body.structure!.solids.map { _ in body.id } } : nil
         terrain = scenario.terrain
+        structureTargets = bodies.flatMap { body in
+            body.structure!.solids.indices.map { FragmentTarget(body.structure!.material(of: $0)) }
+        }
+        // The scenario's rigid boxes are its own, then each envelope's blocks, then imports'.
+        var targets: [FragmentTarget?] = Array(repeating: nil, count: scenario.boxes.count)
+        for object in scenario.envelopeObjects {
+            let envelope = object.envelope!
+            let construction = scenario.envelopeConstruction(for: object.id)
+            for (block, source) in zip(envelope.blocks, envelope.blockSources) {
+                switch source {
+                case .pane(let index):
+                    targets.append(
+                        FragmentTarget(
+                            material: .glass, thickness: construction.glassThicknessM, owner: object.id,
+                            pane: index))
+                case .solid:
+                    let roof = block.size.z < min(block.size.x, block.size.y)
+                    let kind = roof ? construction.roof : construction.walls
+                    targets.append(
+                        FragmentTarget(
+                            material: kind == .reinforcedConcrete ? .concrete : .masonry,
+                            thickness: roof ? construction.roofThicknessM : construction.wallThicknessM,
+                            strength: kind == .reinforcedConcrete
+                                ? StructureMaterial.reinforcedConcrete.compressiveStrength
+                                : StructureMaterial.masonry.compressiveStrength, owner: object.id))
+                }
+            }
+        }
+        blockTargets = targets.contains { $0 != nil } ? targets : nil
     }
 
     /// The ground's height under `point`: the terrain's, or the floor's.
@@ -249,6 +287,8 @@ public struct FragmentCloud: Sendable {
     let blocks: [Box]
     let structure: [Box]
     let structureOwners: [UUID]?
+    let blockTargets: [FragmentTarget?]
+    let structureTargets: [FragmentTarget?]
     let terrain: Terrain?
     let gravity = SIMD3<Float>(0, 0, -9.81)
 
@@ -267,6 +307,8 @@ public struct FragmentCloud: Sendable {
         blocks = scene.blocks
         structure = scene.structure
         structureOwners = scene.structureOwners?.count == scene.structure.count ? scene.structureOwners : nil
+        blockTargets = scene.blockTargets ?? []
+        structureTargets = scene.structureTargets ?? []
         terrain = scene.terrain
         var particles: [Particle] = []
         // P(mass > m) = exp(-(m/μ)^β), whose mean is μ Γ(1 + 1/β): 2μ for Mott's β = ½. The mean
@@ -325,13 +367,16 @@ public struct FragmentCloud: Sendable {
     /// Particles placed directly, for tests.
     init(
         particles: [Particle], blocks: [Box] = [], structure: [Box] = [], structureOwners: [UUID]? = nil,
-        terrain: Terrain? = nil
+        terrain: Terrain? = nil, blockTargets: [FragmentTarget?] = [],
+        structureTargets: [FragmentTarget?] = []
     ) {
         self.particles = particles
         launchSpeed = 0
         self.blocks = blocks
         self.structure = structure
         self.structureOwners = structureOwners?.count == structure.count ? structureOwners : nil
+        self.blockTargets = blockTargets
+        self.structureTargets = structureTargets
         self.terrain = terrain
     }
 
@@ -404,11 +449,15 @@ public struct FragmentCloud: Sendable {
                     particle.landed = true
                     if particle.mass > 0 {
                         let speed = simd_length(particle.velocity)
+                        let struck = penetration(particle, at: hit.point, struck: hit.struck)
                         impacts.append(
                             FragmentImpact(
                                 fragment: index, time: t, position: hit.point, speed: speed,
                                 energy: 0.5 * particle.mass * speed * speed, surface: hit.surface,
-                                objectID: hit.objectID, weight: particle.weight == 1 ? nil : particle.weight))
+                                objectID: hit.objectID ?? struck?.target.owner,
+                                weight: particle.weight == 1 ? nil : particle.weight,
+                                penetration: struck?.result,
+                                pane: struck?.target.pane))
                     }
                     particle.velocity = .zero
                     break
@@ -486,9 +535,9 @@ public struct FragmentCloud: Sendable {
     /// block or the structure. A step that crosses a ridge and comes down beyond it within one step
     /// passes through it: steps are short against any hill.
     private func hit(from start: SIMD3<Float>, to end: SIMD3<Float>) -> (
-        point: SIMD3<Float>, surface: String, objectID: UUID?
+        point: SIMD3<Float>, surface: String, objectID: UUID?, struck: Struck?
     )? {
-        var best: (fraction: Float, surface: String, objectID: UUID?)?
+        var best: (fraction: Float, surface: String, objectID: UUID?, struck: Struck?)?
         if let terrain {
             // Above the surface at the start and on or below it at the end: where between, by
             // bisection on the height above it, which the bilinear surface makes continuous.
@@ -503,28 +552,69 @@ public struct FragmentCloud: Sendable {
                         let middle = 0.5 * (low + high)
                         if clearance(middle) > 0 { low = middle } else { high = middle }
                     }
-                    best = (high, "ground", nil)
+                    best = (high, "ground", nil, nil)
                 } else {
-                    best = (0, "ground", nil)
+                    best = (0, "ground", nil, nil)
                 }
             }
         } else if end.z <= 0, start.z > 0 {
-            best = (start.z / (start.z - end.z), "ground", nil)
+            best = (start.z / (start.z - end.z), "ground", nil, nil)
         } else if end.z <= 0 {
-            best = (0, "ground", nil)
+            best = (0, "ground", nil, nil)
         }
         for (n, box) in blocks.enumerated() {
             if let f = Self.entry(start, end, box), f < (best?.fraction ?? .infinity) {
-                best = (f, "block \(n)", nil)
+                best = (f, "block \(n)", nil, .block(n))
             }
         }
         for (index, box) in structure.enumerated() {
             if let f = Self.entry(start, end, box), f < (best?.fraction ?? .infinity) {
-                best = (f, "structure", structureOwners?[index])
+                best = (f, "structure", structureOwners?[index], .structure(index))
             }
         }
         guard let best else { return nil }
-        return (start + (end - start) * best.fraction, best.surface, best.objectID)
+        return (start + (end - start) * best.fraction, best.surface, best.objectID, best.struck)
+    }
+
+    /// A block or structural region struck, by index.
+    enum Struck {
+        case block(Int)
+        case structure(Int)
+    }
+
+    /// What `particle` does to what it struck at `point`, if the scene says what that is: its
+    /// depth is the box's across the face struck (or the target's own thickness), the face the
+    /// one `point` lies on.
+    private func penetration(_ particle: Particle, at point: SIMD3<Float>, struck: Struck?) -> (
+        result: PenetrationResult, target: FragmentTarget
+    )? {
+        let found: (FragmentTarget?, Box)? =
+            switch struck {
+            case .block(let n):
+                n < blocks.count ? (n < blockTargets.count ? blockTargets[n] : nil, blocks[n]) : nil
+            case .structure(let n):
+                n < structure.count
+                    ? (n < structureTargets.count ? structureTargets[n] : nil, structure[n]) : nil
+            case nil: nil
+            }
+        guard let (target, box) = found, let target else { return nil }
+        // The face struck: the one `point` is nearest.
+        var axis = 0
+        var nearest = Float.infinity
+        for a in 0..<3 {
+            let distance = min(abs(point[a] - box.min[a]), abs(point[a] - box.max[a]))
+            if distance < nearest {
+                nearest = distance
+                axis = a
+            }
+        }
+        let speed = simd_length(particle.velocity)
+        let cosine = speed > 0 ? abs(particle.velocity[axis]) / speed : 1
+        let result = target.assess(
+            mass: particle.mass, area: particle.area, speed: speed,
+            thickness: target.thickness ?? box.size[axis],
+            obliquity: acos(min(cosine, 1)))
+        return (result, target)
     }
 
     /// The fraction of the way from `start` to `end` where the segment enters `box`, if it does.

@@ -495,9 +495,10 @@ public final class SceneRenderer {
     public var pixelsPerPoint: Float = 1
 
     /// Dots to draw over the scene: each a position and a code, its kind (0 a fragment in flight,
-    /// 1 a tracer, 2 a fragment's landing, 3 a ground point) plus a value from 0 to 1 that
-    /// colours it (a fragment's speed, a landing's energy, how fast the ground under a point has
-    /// moved).
+    /// 1 a tracer, 2 a fragment's landing, 3 a ground point, 4 a fragment's strike on a judged
+    /// target) plus a value from 0 to 1 that colours it (a fragment's speed, a landing's energy,
+    /// how fast the ground under a point has moved, a strike's outcome: under ⅓ stopped, under ⅔
+    /// spalled, above through).
     /// The first four craters packed for `RenderUniforms`, empty slots zero.
     private static func craterSlots(_ marks: [CraterMark]) -> (
         craters: (SIMD4<Float>, SIMD4<Float>, SIMD4<Float>, SIMD4<Float>),

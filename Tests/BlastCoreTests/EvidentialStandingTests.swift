@@ -27,6 +27,7 @@ private var inputSamples: [Any] {
         VentPanel(box: Box(min: .zero, max: .one), releasePressure: 1000),
         EnvelopeSource(objectID: UUID(), kind: .map, detail: ""),
         EnvelopeConstruction.assumed(objectID: UUID()),
+        StandingInputs(scenario: ScenarioPreset.streetCanyon.scenario, cellSize: 0.25),
     ]
 }
 

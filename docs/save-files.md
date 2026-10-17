@@ -144,7 +144,11 @@ when present, holds the Run tab's ground points and soil (see
 `solidElementSize` (the size restored when switching from shells to solids), and `duration`
 in seconds; `groundStiffness` for soil under debris, `ground`, a ground type for the crater and
 the air's share, and `waterTable`, metres down to a shallow water table
-([cratering](cratering.md#choosing-the-ground)), each left out for rigid ground. The scenario itself holds the charge, atmosphere and structural settings.
+([cratering](cratering.md#choosing-the-ground)), each left out for rigid ground; and `ventsGlazing`,
+true when envelopes' glazing breaks in the air ([building
+envelopes](building-envelopes.md#venting-glazing-that-breaks-in-the-air)), left out otherwise. New
+glazed projects vent by default since 17 October 2026; a file without the key, as every one saved
+before, keeps the one-way fill for its runs, and its glazed scene opens with venting off. The scenario itself holds the charge, atmosphere and structural settings.
 
 `view.json` stores camera target, distance, azimuth, elevation and field of view, plus display
 mode, scales, decades, wave visibility/opacity and charge visibility. It does not store the

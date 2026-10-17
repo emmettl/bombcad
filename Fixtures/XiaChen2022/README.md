@@ -29,7 +29,8 @@ printed peaks.
 - The integrated velocities remove each record's pre-event offset (0.14 to 0.18 m/s² at 21 m,
   under 0.01 at 42 m); the bounds take it removed and not. At 21 m the vertical peaks at
   0.009–0.012 m/s downward and the horizontal at 0.03 (X) and 0.045 m/s (Y); at 42 m, about
-  0.001 vertical and 0.003–0.004 horizontal.
+  0.001 vertical and 0.003–0.004 horizontal. The horizontal speed, √(v_x² + v_y²), peaks at
+  0.054–0.058 m/s at 21 m and 0.0040–0.0042 m/s at 42 m (`integratedHorizontalSpeed`).
 - The velocity sensor at 21 m (Figure 7) clipped at about 0.085 m/s for about 60 ms, more than
   the integrated accelerations reach in any component. Its component is not stated. The two
   records disagree, and which is right cannot be told from the paper.

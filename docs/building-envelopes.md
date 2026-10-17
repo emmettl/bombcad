@@ -533,6 +533,7 @@ and set against the same component of the detailed building free to respond (sum
   the UFC's own; but through windows this size both stay at 0.15–0.42 of the load the UFC puts on
   the wall behind, where the air through an open window comes within 25% of it ([UFC
   comparison](validation.md#inside-buildings-against-ufc-3-340-02s-loads-through-openings)).
+  The air itself can be let in through broken glazing instead: [venting](#venting-glazing-that-breaks-in-the-air).
 
 **In the app.** Runs of scenes with envelopes, structures beside them or not, record each component's load (the
 [recorder](#surface-exposure-and-loads) keeps both sides' histories at 0.1 ms) and judge every building
@@ -563,7 +564,10 @@ one way as the run goes, at most once a second and again when it stops:
     or higher (5, high). A cracked pane held in its frame (GSA 2) is not told apart, nor are the
     tests' counts of fragments and perforations; skylights are not graded. The building's line
     gives its worst pane. Criteria as Graham's summary of GSA-TS01 (2003) and ASTM F1642 gives
-    them; no test's fragments are compared.
+    them; no test's fragments are compared. A cased charge's fragments that hole a pane first break
+    it then, before the blast if they arrive first, and the building's line counts them and the
+    fragments striking its walls ([Fragments](fragments.md#what-fragments-do-to-what-they-strike)).
+    With glazing vented, the panes they hole open in the air when they do.
   - A building with a panel past 2° is flagged as beyond the one-way model.
 - **Shown.**
   - The sidebar's Envelope building damage section lists each building's levels, its panes broken
@@ -702,6 +706,118 @@ standing slabs about 4–5 mm where the meters, which the record finds carry the
 measured the panel brackets the test; where it comes from the air close in, SDOF and the detailed
 model err alike, which points at the load or the rig rather than at the panel.
 
+## Venting: glazing that breaks in the air
+
+`BlastSolver.configureEnvelopeVenting(objects:constructions:)`, after `configureEnvelopeComponents`, lets
+envelopes' glazing break in the air (stage 3c of envelope damage). In the app it is the default
+since 17 October 2026 ("Vent broken glazing", below), with the one-way fill where it cannot run.
+
+- **Breaking.** Each pane's glass is the one-way model's single degree of freedom
+  (`EnvelopePanel.largeDeflectionGlass`, from its building's construction), stepped on the GPU with
+  the air: every step, from the pane's own net pressure in the component recorder (outer less
+  inner), by velocity Verlet at a 200th of the shortest period its stiffening backbone reaches, as
+  `SDOFSystem.response` takes it, its backbone and stress read from a table of its points; it
+  breaks when Brown's integral of its stress reaches 60 s, or when it deflects ten thicknesses. On
+  the same load it breaks within 0.3 ms of the one-way model (`EnvelopeVentingTests`).
+- **Opening.** After the step it breaks in, its cells (`paneCells`) leave the mask and hold the still
+  air, as a cell under glass has from the start: the pane's volume of air at rest at ambient, the
+  flow's own mass, momentum and energy untouched. The tiles round them wake, and the blast flows in.
+  A restart closes the panes again.
+- **Inside.** Each building's interior is the air its walls, roof and closed openings enclose (the
+  cells not reached from outside its bounds, its openings and panes taken as closed), split into
+  rooms, its connected parts. Once a pane of the building has broken, each room's mean
+  overpressure is read every step, and its peak and positive impulse kept
+  (`envelopeVentingSnapshot()`).
+- **Refined air.** A refined level's patches take their outline from the blocks, so a broken pane's
+  finer cells open too: those under its coarse cells in the patches placed (`refineOpenPanes`), and
+  in patches placed later each fine cell whose coarse cell is a broken pane's is air whatever block
+  holds it (`refineFill`, looking the cell up in the panes' cells sorted by cell). Glass gone as
+  the shock arrives lets in what the same window open from the start does, within 10% at both
+  gauges inside, uniform and once and twice refined, cut in its opening or set in its wall
+  (`EnvelopeVentingTests`).
+- **Not** with gravity, whose still air varies with height: it refuses it. Map buildings are solid
+  blocks without glazing, so nothing in them vents.
+
+Against the [damage references](#damage-references) (`scenebench envelope-damage
+--representations=vented`, the same scenes as the envelope twins with venting on; 17 October 2026),
+the isolated glazed building's inside, peak overpressure and positive impulse:
+
+| Charge | Detailed, gauge | Vented, gauge | Vented, room mean | One-way fill |
+| ---: | --- | --- | --- | --- |
+| 10 kg | 1.0 kPa, 85 Pa s | 2.1 kPa, 66 Pa s | 1.7 kPa, 62 Pa s | 0.9 kPa |
+| 50 kg | 2.6 kPa, 51 Pa s | 9.2 kPa, 187 Pa s | 3.9 kPa, 166 Pa s | 4.1 kPa |
+| 200 kg | 11.0 kPa, 202 Pa s | 29.9 kPa, 449 Pa s | 10.4 kPa, 300 Pa s | 9.1 kPa |
+| 500 kg | 22.4 kPa, 476 Pa s | 70.1 kPa, 1107 Pa s | 27.5 kPa, 994 Pa s | 16.7 kPa |
+
+- **The panes break when the detailed ones do**, a little later: at 50 kg at 13.2, 15.4, 30.8 and
+  46.8 ms against 12.6, 14.7, 28.7 and 34.9 ms, and as near at 10 to 500 kg.
+- **The room's mean peak is 0.94 to 1.66 times the detailed gauge's**, as near as the one-way fill
+  (0.75 to 1.60), as both open the whole window when its glass breaks; its impulse 0.73 to 3.2 times.
+- **At the gauge it is 2.1 to 3.5 times the detailed building's** (2.4 to 3.6 times for the street's
+  front buildings at 10 and 50 kg, and 2 and 13 times for its back ones, whose detailed panes broke
+  late or not at all), as the shock that comes through the window crosses the room: at 200 kg the
+  vented inside's peak is near 30 kPa where the detailed one rises slowly to 5.6 kPa by 17 ms.
+- **The detailed buildings' glass does not clear its window**: a broken pane's shell elements fail
+  one by one, 11 to 73% of them at 10 to 50 kg, and what is left stands in the opening; even at 200
+  to 500 kg, where every element fails, the inside fills slowly. Annealed glass shatters and its
+  fragments fly in, so for the inside through broken glazing these references are a lower bound,
+  and they cannot tell venting from the one-way fill. UFC 3-340-02's loads through openings
+  (§2-15) can, for its own case (below).
+
+**Cost** (`scenebench envelope-venting --rounds 5 --charge 50`, against the component histories
+alone, the Mac shared with other work): the street's four glazed buildings (all 16 panes broken)
+1.03 times the wall time, 64 glazed buildings (18 of 256 broken) 1.07; most of it is the air the
+blast now reaches inside, which is swept and recorded. The panes cost a thread each a step, the
+rooms a threadgroup each once their building has opened, dispatched indirectly.
+
+**Against UFC 3-340-02** ([validation](validation.md#inside-buildings-against-ufc-3-340-02s-loads-through-openings)):
+in its own case, a rigid box struck head-on through an open front window (14 and 23% of the wall,
+2 to 16 psi), the air, as venting leaves it once the glass has gone, puts 0.74 to 1.22 of the UFC's
+load on the back wall and 0.31 to 0.67 of it on the side walls and the front's inside. The one-way
+fill is the UFC's own method for vents too small for a shock to form inside (0.95 to 1.35 times
+its leakage fill) and gives 0.15 to 0.42 of the UFC's back-wall load. So for the walls loaded
+from inside, venting is the nearer of the two by a factor of 3 to 6; for the room's mean pressure
+through a window the UFC has no number.
+
+**In the app.** "Vent broken glazing", in the Run tab under the charge, for scenes with glazed
+envelopes, structures beside them or not, refined or not; on by default since 17 October 2026.
+With gravity in the air it is disabled and the run takes the one-way fill, as does one that
+cannot vent for any other reason, and the damage section says why. It is saved in the project as
+`ventsGlazing` only when on and venting can run, so a run saved before then, whose file has no
+key, keeps its fill and its fingerprint, and a project glazed before opens with venting off until
+it is turned on; a project without glazing opens with it on, for glazing added later. With it on, each building's panes break when the air's did (their histories up to then
+are their loads; after, their faces are the open window's), the walls' inner sides carry what
+the air brings in, and the inside is the worst room's mean (`EnvelopeBuildingDamage.vented`,
+"the air's" in the sidebar, "(vented)" in headless summaries). The surface exposure leaves the
+panes' faces out once open. The standing adds "Glazing vented in the air", which keeps the inside
+illustrative.
+
+**Checks of the default** (`scenebench venting-checks`, 17 October 2026, 0.25 m air, the Mac shared):
+
+- **The damage references' glazed street, 50 kg**: every one of the 16 panes breaks at the same time
+  vented as with the fill (13.2 ms in front, 36.2–36.3 ms behind); the inside is 3.88 and 2.73 kPa
+  (101 and 65 Pa s) where the fill gives 4.12 and 2.93 kPa (54 and 60 Pa s); the walls' levels do
+  not move. With the shocks sharpened (refined once by 2), the panes break within 0.1 ms of the
+  uniform run's and the inside is 3.69 and 2.45 kPa, 0.90–0.95 of the uniform vented, for 1.08
+  times the refined fill's wall time.
+- **The damage references** (`scenebench envelope-damage --representations=vented`, isolated and
+  street, 10–500 kg; outputs in `/Volumes/StudioData/bombcad/envelope-damage/vented/`): the same
+  panes' times and inside gauges as the vented runs in the table above, to the printed digit, on
+  today's recorder; at 200 and 500 kg on the street the front buildings' gauges read 29.7–29.9 and
+  67.6–70.2 kPa and the back ones' 7.3–8.0 and 14.3–15.3.
+- **The office tower preset's two glazed neighbours**, beside the detailed tower, 1,000 kg at the
+  kerb, 0.12 s: all 80 panes break at the same times either way (from 9.2 and 9.7 ms); the inside
+  is 31.9 and 30.0 kPa vented against the fill's 28.2 and 27.2, and the worst wall is hazardous
+  rather than failed, as the air let in pushes back on the walls from inside, which the fill
+  never does. The run took 254 s against the fill's 273.
+
+It became the default on the user's choice (17 October 2026), on UFC 3-340-02's evidence: the
+walls inside 0.31–1.22 of the UFC's loads with venting, 0.15–0.42 with the fill. The standing's
+band for the inside follows whichever ran. Its one independent check is still a design method for a
+rigid box struck head-on, with windows clear of glass; real glazing fails over a millisecond or
+more and its fragments fly in, which neither model has. Measured rooms behind breaking windows
+would settle it.
+
 ## Damage for envelope buildings: built
 
 Envelopes make district-scale scenes possible: the air is cheap at that scale (a 3.3 km domain of
@@ -731,8 +847,11 @@ The four questions set before building it, and where each is answered:
    times the detailed buildings' peaks, and 0.94–1.27 times UFC 3-340-02's leakage fill on the same
    openings, but cannot see a breached concrete wall
    ([one-way damage](#one-way-damage-single-degree-of-freedom),
-   [UFC comparison](validation.md#inside-buildings-against-ufc-3-340-02s-loads-through-openings)). The air itself still sees every
-   envelope whole.
+   [UFC comparison](validation.md#inside-buildings-against-ufc-3-340-02s-loads-through-openings)). So
+   since 17 October 2026 the air itself comes in through broken glazing by default
+   ([venting](#venting-glazing-that-breaks-in-the-air)): through an open window it puts 0.31–1.22 of
+   the UFC's loads on the walls inside (0.74–1.22 on the wall behind), where the fill, which stands
+   in where venting cannot run, gives 0.15–0.42.
 4. **Its cost per building against the air's.** Under 1 ms a building, against 14–35 s for a
    detailed one beside 10–15 s of air
    ([one-way damage](#one-way-damage-single-degree-of-freedom)). The pressure histories it reads
@@ -744,8 +863,8 @@ the inside pressure (see [standing](standing.md)).
 
 ### Future work
 
-- **Venting in the air.** Opening the cells of panes and walls that fail, so that the inside fills
-  and the blast flows through a broken building as it would. It is not on the main line yet.
+- **Venting more.** [Venting](#venting-glazing-that-breaks-in-the-air) opens broken glazing in the
+  air, uniform or refined; walls that fail stay closed, and with gravity the one-way fill stands in.
 - **Pressure–impulse curves.** Each component's peak overpressure and impulse placed against
   curves of equal damage: cheaper still, needing no time history.
 - **Fragility curves.** A probability of each damage state from the same loads, where published.

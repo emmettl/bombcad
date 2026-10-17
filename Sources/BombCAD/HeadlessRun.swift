@@ -553,6 +553,8 @@ enum HeadlessRun {
         let model = SimulationModel(document: start, playbackSpeed: .unlimited)
         // A run here flies fragments as `options` says, not as the project's live view does.
         model.fragmentSpec = nil
+        // Its fragments still hole the panes they strike, with glazing vented.
+        model.paneHoleSpec = options.fragments
         model.groundShockSpec = nil
         let interval = Double(options.frameInterval) * SimulationModel.structureSampleInterval
         // Frames fall on the samples every millisecond, where a run with a structure stops anyway,
@@ -612,7 +614,9 @@ enum HeadlessRun {
         if let spec = options.thermal {
             kinds.append(("thermal", .thermal(spec, consumerScene, live: false)))
         }
-        if let spec = options.groundShock { kinds.append(("ground", .groundShock(spec, live: false))) }
+        if let spec = options.groundShock {
+            kinds.append(("ground", .groundShock(spec.settingHalfSpace(from: inputs.scenario), live: false)))
+        }
         if let injected {
             feeds.append(Feed(injected, place: injected is RemoteFrameConsumer ? "on a worker" : "here"))
         }
@@ -847,6 +851,7 @@ enum HeadlessRun {
         let envelopeData = try options.envelopeResults.map { _ in try model.envelopeResultsData() }
         let historyData = try options.envelopeHistories.map { _ in try model.envelopeHistoriesData() }
         if let url = options.envelopeDamage {
+            model.fragmentStrikes = fragments?.impacts.filter { $0.penetration != nil }
             model.refreshEnvelopeDamage()
             try model.envelopeDamageData().write(to: url, options: .withoutOverwriting)
             streams += model.envelopeDamage.map { building in
