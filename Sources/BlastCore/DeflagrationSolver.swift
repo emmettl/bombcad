@@ -197,8 +197,9 @@ final class DeflagrationStage {
             u.speedFactor = max(acceleration.factor, 0)
             u.wrinklingRadius =
                 acceleration.instability?.radius(gas: gas, fraction: deflagration.concentration) ?? 0
-            u.wrinklingPower = Self.wrinklingPower
-            u.wrinklingLimit = Self.wrinklingLimit
+            let growth = gas.instabilityGrowth(onset: u.wrinklingRadius)
+            u.wrinklingPower = growth?.power ?? Self.wrinklingPower
+            u.wrinklingLimit = growth?.limit ?? Self.wrinklingLimit
             u.externalFactor = max(acceleration.externalFactor ?? 1, 0)
             u.regionMinX = deflagration.region.min.x
             u.regionMinY = deflagration.region.min.y

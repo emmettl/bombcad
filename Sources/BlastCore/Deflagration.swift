@@ -101,6 +101,17 @@ public enum FlammableGas: String, Sendable, Hashable, Codable, CaseIterable {
         return table[table.count - 1].radius
     }
 
+    /// How a cellular flame of this gas accelerates beyond its onset radius `onset` (m), where it
+    /// was measured otherwise than methane's: the burning velocity growing as (r / onset)^power up
+    /// to `limit` onset radii. nil takes the methane form (`DeflagrationStage.wrinklingPower` and
+    /// `wrinklingLimit`). Lean hydrogen's grew as (R/R₀)^0.243 ± 0.005 over every mixture from φ
+    /// 0.33 to 0.57 (Bauwens, Bergthorson and Dorofeev, ICHS 2015, paper 202), measured out to
+    /// about a metre: held there.
+    public func instabilityGrowth(onset: Float) -> (power: Float, limit: Float)? {
+        guard self == .hydrogen, onset > 0 else { return nil }
+        return (0.243, max(4, 1 / onset))
+    }
+
     /// Measured laminar burning velocities as (equivalence ratio, m/s) points, for a gas whose
     /// curve Gülder's form cannot follow; nil for methane and propane, which take his fit.
     ///

@@ -75,6 +75,10 @@ public struct VentCorrelations: Sendable {
     public var releasePressure: Double
     public var initialPressure: Double = 101_325
     public var gas: FlammableGas
+    /// The mixture's fuel fraction, nil for stoichiometric: Molkov's correlation then takes the
+    /// gas's venting burning velocity scaled by the mixture's laminar burning velocity over the
+    /// stoichiometric mixture's (so a stoichiometric mixture keeps the tabulated value).
+    public var concentration: Float?
 
     public init(
         volume: Double, surfaceArea: Double, ventArea: Double, releasePressure: Double, gas: FlammableGas,
@@ -126,10 +130,15 @@ public struct VentCorrelations: Sendable {
     /// 7 − 6 Br_t^0.5. A best fit, not an envelope.
     public var molkov: Double {
         let properties = gas.ventingProperties
+        var burning = properties.burningVelocity
+        if let concentration {
+            let stoichiometric = gas.laminarBurningVelocity(fraction: gas.stoichiometricFraction)
+            burning *= Double(gas.laminarBurningVelocity(fraction: concentration) / max(stoichiometric, 1e-6))
+        }
         let e = properties.expansionRatio
         let soundSpeed = (properties.gamma * initialPressure / 1.2).squareRoot()
         let br =
-            ventArea / pow(volume, 2.0 / 3) * soundSpeed / (properties.burningVelocity * (e - 1))
+            ventArea / pow(volume, 2.0 / 3) * soundSpeed / (burning * (e - 1))
         let piV = (releasePressure + initialPressure) / initialPressure
         let piI = initialPressure / 1e5
         let interaction =

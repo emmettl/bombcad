@@ -375,10 +375,12 @@ public struct VentedRoomStudy: Sendable {
     public var correlations: VentCorrelations {
         let volume = Double(room.x * room.y * room.z)
         let surface = Double(2 * (room.x * room.y + room.x * room.z + room.y * room.z))
-        return VentCorrelations(
+        var correlations = VentCorrelations(
             volume: volume, surfaceArea: surface, ventArea: Double(ventArea),
             releasePressure: Double(releasePressure),
             gas: gas)
+        correlations.concentration = concentration
+        return correlations
     }
 
     public func run(
