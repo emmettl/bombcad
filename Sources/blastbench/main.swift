@@ -57,6 +57,8 @@ import simd
 //                       [--air thermal] [--afterburn] [--radiate [--absorption 0.1] [--soot-yield 0.185]]
 //                       [--stationary-walls] [--cloud spec.json [--frame-cloud] [--cloud-results out.json]]
 //   blastbench dialpack [--dx 4] [--time 1] [--tons 500] [--domain 480] [--radiate] [--refine 2]
+//   blastbench fragment-throw [--count 100000]
+//                      (hazardous fragment distance against DoD 4145.26-M's single items in the open)
 //                       [--csv out.csv]   (500 t of TNT's fireball radiation, against DREO 642)
 //   blastbench bubble [--dx 0.5] [--radius 4] [--hot 2] [--time 20] [--lapse 6.5] [--csv out.csv]
 //                     (a hot bubble rising under gravity, against the cloud's integral model)
@@ -5418,6 +5420,17 @@ do {
     case "precast": try runPrecast()
     case "thermal": try runThermal()
     case "dialpack": try runDialPack()
+    case "fragment-throw":
+        // BombCAD's hazardous fragment distance against DoD 4145.26-M's for single items in the open.
+        let count = option("count").flatMap { Int($0) } ?? 100_000
+        for item in FragmentThrowComparison.cases {
+            let hazard = FragmentThrowComparison.hazard(item, count: count)
+            print(
+                String(
+                    format: "%-34@ in flight %6.1f m, ground %5.1f m, DoD %6.1f m: %.2f (%d flown set it)",
+                    item.name as NSString, hazard.airDistance ?? 0, hazard.groundDistance ?? 0, item.measured,
+                    (hazard.hazardDistance ?? 0) / item.measured, hazard.samplesAtDistance))
+        }
     case "bubble": try runBubble()
     case "mixinglayer": try runMixingLayer()
     case "soilcolumn": try runSoilColumn()

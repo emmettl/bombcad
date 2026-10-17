@@ -137,7 +137,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-19"
+    public static let currentTable = "standing-table-20"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -2358,6 +2358,12 @@ struct StandingScene {
                     + "plate equation against THOR's mild steel",
                 "The examples within 1%; the two steel methods' speeds to perforate within 2%; no "
                     + "penetration test compared", "fragments.md#what-fragments-do-to-what-they-strike"),
+            StandingEvidence(
+                "DoD 4145.26-M's hazardous fragment distances for single items in the open, from DDESB's test "
+                    + "protocol (a 155 mm projectile 126.5 m, a 500 lb bomb 204.2 m), the items from public totals",
+                "0.43–0.77 and 0.57–0.84 in flight, short (the unsafe side), as the walls assumed go from thick "
+                    + "to thin; landings on the ground alone would be a sixth to a fifteenth",
+                "fragments.md#against-dods-distances"),
         ]
         let shared = [
             "One way: fragments do not push back on the air or the structure, and stop where they first hit.",
@@ -2365,8 +2371,10 @@ struct StandingScene {
                 + "way by UFC 3-340-02 (concrete; masonry as concrete of its strength, for want of its own "
                 + "method), THOR (metal plates) and a measured breaking momentum (glass); a fragment stops at "
                 + "the first surface, through or not, and does not load it.",
-            "Hazard distance: the DDESB's, where landings of 79 J or more on open ground fall below one per "
-                + "55.7 m², in 8 directions; as good as the ranges, which no arena test has checked.",
+            "Hazard distance: the DDESB's, where fragments of 79 J or more fall below one per 55.7 m² on a "
+                + "surface across their paths near the horizontal (or on open ground, if further), in 8 directions; "
+                + "0.43–0.84 of DoD's test-derived distances for two items, short (the unsafe side), the casing's "
+                + "wall deciding; no fragment-by-fragment arena data compared.",
         ]
         guard inputs.fragments?.mottFactor != nil else {
             return result(

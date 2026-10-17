@@ -57,6 +57,36 @@ struct HazardTests {
         #expect(near.hazardDistance! >= 110 && near.hazardDistance! < 121)
     }
 
+    @Test(
+        "In flight: hazardous fragments crossing spheres near the horizontal, per unit area across their paths"
+    )
+    func inFlight() throws {
+        // A hundred 100 g fragments flying level along +x from 10 m up at 300 m/s: 4.5 kJ each,
+        // all in the first direction, a sphere's cell there R² (π/4) 2 sin 10° m² across, so over
+        // one per 55.7 m² out to 143 m, where they still fly.
+        let particles = (0..<100).map { _ in
+            FragmentCloud.Particle(
+                position: SIMD3(0, 0, 10), velocity: SIMD3(300, 0, 0), mass: 0.1, area: 1.5 * 0.0234 * 0.0234)
+        }
+        var cloud = FragmentCloud(particles: particles, centre: SIMD3(0, 0, 10))
+        cloud.land(in: Primitive(density: 1.2, pressure: 101_325))
+        let crossings = cloud.crossings
+        let first = try #require(crossings.radii.firstIndex { $0 > 100 })
+        #expect(
+            crossings.counts[first * crossings.sectors] == 100
+                && crossings.samples[first * crossings.sectors] == 100)
+        #expect(
+            crossings.counts.enumerated().allSatisfy { $0.offset % crossings.sectors == 0 || $0.element == 0 }
+        )
+        let hazard = GroundHazard(impacts: cloud.impacts, centre: .zero, crossings: crossings)
+        let expected = try #require(
+            crossings.radii.last { $0 * $0 * (.pi / 4) * 2 * sin(10 * Float.pi / 180) <= 100 * 55.7 })
+        #expect(hazard.airDistances?[0] == expected && abs(expected - 142) < 1)
+        // All landing together, far out, they crowd one cell on the ground, which goes further.
+        #expect(hazard.airDistance == expected && hazard.groundDistance! > expected)
+        #expect(hazard.hazardDistance == hazard.groundDistance && hazard.summary.contains("in flight 142 m"))
+    }
+
     @Test("Glass is graded by where it lands: GSA's conditions and ASTM F1642's ratings")
     func glazing() {
         let still = GlazingHazard.thrown(speed: 0, height: 1.5)
