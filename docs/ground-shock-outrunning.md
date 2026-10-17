@@ -1,8 +1,10 @@
 # Ground motion where the ground's wave outruns the blast: a proposal
 
-**Status: stages 1 and 2 built (17 October 2026). The half-space does not close the gap with
-Xia et al.'s measurements: the vertical motion is still 15 to 60 times too high, the horizontal
-within 1.5 times at 21 m but 15 to 20 times too high at 42 m.** A plan for the motion that the one-dimensional
+**Status: stages 1 to 3 built (17 October 2026), and the line stopped there. The half-space
+does not close the gap with Xia et al.'s measurements, elastic or yielding: the vertical motion
+is still 15 to 90 times too high; the horizontal within 1.5 times (elastic) or 2.1 to 2.4 times
+(yielding) at 21 m, but 10 to 20 times too high at 42 m. Soil that yields does make the
+calibrated direct source unnecessary ([stage 3](#stage-3-soil-that-yields)).** A plan for the motion that the one-dimensional
 models in [Ground shock](ground-shock.md) leave out. That is the regime of Xia et al.'s gauges,
 where both models put the vertical velocity 20 to 80 times too high and miss the horizontal
 motion that dominated ([the comparison](ground-shock.md#against-measured-ground-motion)), and of
@@ -216,13 +218,136 @@ step is stage 3's soil that yields: the column's bilinear volumetric unloading, 
 round the charge where it yields treated as the crater's own. Until then the half-space stands
 as illustrative, its horizontal the only part within reach of the measurement.
 
+## Stage 3: soil that yields
+
+Each layer of the half-space may now yield (`frictionAngle`, `cohesion` and `unloadingWaveSpeed`
+on its `SoilLayer`), as the soil round a charge does: it compacts, and it fails in shear.
+
+### The law
+
+- **Compaction: the column's bilinear law.** The soil is elastic at its unloading stiffness, with
+  λ_u = λ + ρ(c_u² − c_P²) and the shear modulus as given. While it compacts beyond anything
+  before, with its volumetric strain at its most, a share 1 − c_P²/c_u² of each shortening along
+  r, θ and z stays as compaction. That applies only where the load compresses the soil that way.
+  In uniaxial strain this is the column exactly: it loads at ρc_P², unloads at ρc_u², and is
+  left with nothing sideways when unloaded vertically.
+- **Shear: a Drucker–Prager cone matched to Mohr–Coulomb in triaxial compression,**
+  √J₂ ≤ αI₁ + k, with α = 2 sin φ/(√3(3 − sin φ)) and k = 6c cos φ/(√3(3 − sin φ)). The soil rests
+  under its own weight, the vertical stress the weight above and the horizontal Jaky's
+  K₀ = 1 − sin φ times it, inside the cone. The cone caps the load's deviator at the margin the
+  resting deviator leaves, αI₁ + k − √J₂⁰. By the triangle inequality the total is then inside
+  the cone: exactly so where the load presses as gravity does, a little short otherwise. The
+  return follows Andrews (2005) for the staggered grid. Each normal-stress point scales its
+  deviator, counting the four shear stresses round it by their mean square. Each shear stress is
+  scaled by the least of its four neighbours' shares.
+- **The surface,** which carries no resting stress, holds its horizontal stresses between
+  Rankine's active and passive limits on the load's vertical stress.
+- **No tension:** the mean stress, with the resting stresses, is held at nothing or more.
+
+Three simpler forms each failed in a way worth recording:
+
+- **The bilinear law on the mean pressure alone** left compacted soil pulling sideways. Its
+  resting stress was cut, and the cone then let the ground fall under its own weight: the
+  yielding drew 50 times the source's energy.
+- **A return of the total deviator, resting part included,** released gravity's energy into the
+  waves wherever the load pulled the soil apart. That happened 18 m under the charge, where the
+  edge wave of a pressed disc focuses on the axis in tension.
+- **An elastic surface row over yielding sand** slid as a skin, at 9 m/s sideways.
+
+As built, every part of the yielding only takes energy from the waves. The absorbing layer
+compacts but does not take the cone.
+
+### Its checks
+
+`AxisymmetricElasticTests` and `HalfSpaceGroundShockTests`. All six stage-1 checks are unchanged
+in the elastic limit.
+
+| Check | Reference | Result |
+|---|---|---|
+| A front at 20 c_u over soil unloading at 2 c_P, under a 200 kPa surcharge so it never pulls | The bilinear soil column | Peak downward velocity within 4% at 1 m and 6% at 3 m on 0.05 m cells, 2% and 5% on 0.025 m |
+| Sand at 35° at rest under its own weight | Nothing should yield | Nothing yields or moves |
+| A 2 MPa disc on that sand | The cone; the energy | No point more than 1% of the cone's radius outside it; the yielding takes nine tenths of the disc's work, never more; the surface moves less than on elastic soil |
+| The direct source alone on yielding sand | The cone; the energy | The cone holds; the yielding takes between half and all of the source's work |
+
+### The direct source
+
+On yielding soil the share is no longer a fit. It is set so that the source puts the crater
+model's own share of the charge's energy into the ground: Cooper's 33% for a surface burst
+(`CraterEstimate.groundShare`). The share sets the disc's pressure by the work it would do on
+elastic soil. On yielding soil, being softer, the disc does about 2.2 times that (2.0 to 2.6
+here). So the default for yielding soil, `DirectInducedSource.defaultYieldingShare`, is 15%. That
+puts 31 to 35% into the ground for φ 30–40° and cohesion up to 10 kPa. The yielding takes 83 to
+84% of it. Against UFC's relation, as in stage 2 (1 t on dense sand, 0.5 m down, unloading at
+twice the loading speed), with no fitting:
+
+| R/W^(1/3), ft/lb^(1/3) | Range | UFC | Yielding, φ 30° | 35° | 40° | 35°, c = 10 kPa | Elastic, fitted at 8 |
+|---|---|---|---|---|---|---|---|
+| 4 | 15.9 m | 0.213 m/s | 0.77 | 1.06 | 1.27 | 0.79 | 0.25 |
+| 6 | 23.8 m | 0.077 m/s | 0.33 | 0.34 | 0.42 | 0.37 | 0.56 |
+| 8 | 31.7 m | 0.038 m/s | 0.55 | 0.48 | 0.51 | 0.62 | 1.00 |
+| 12 | 47.6 m | 0.014 m/s | 1.17 | 1.13 | 1.11 | 1.12 | 2.26 |
+| 16 | 63.5 m | 0.0067 m/s | 1.45 | 1.67 | 1.59 | 1.65 | 4.03 |
+
+(Ratios of model to UFC.) The yielding saturates the response. A thousand times the energy, a
+share of 10⁻⁴ against 10⁻¹, gives three to four times the velocity at 8 ft/lb^(1/3). Most of
+the energy stays near the charge, as the crater model says it does, so no share fits UFC at one
+range only as the elastic one did.
+
+**The yielding takes over the source's role.** Fed the air model without any direct source,
+the yielding half-space moves the ground at 21 m at 0.186 m/s, as it does with the source. On
+elastic soil it was 7.8 m/s (0.25 m cells). The air's own pressures inside the crater no longer
+drive the soil beyond anything it could carry. The source is kept so that soil fed
+Kingery–Bulmash, whose curves stop short of the charge, still gets its direct waves.
+
+### The comparison
+
+`blastbench groundmotion --friction 30,35,40` on Xia et al.'s fitted soil (457 m/s,
+2,050 kg/m³, a Poisson's ratio of 0.3), unloading at twice the loading speed, without cohesion,
+0.5 m down. The source was at a nominal share of 0.333 in this run; without it the air-fed
+results are the same at 21 m and within 20% at 42 m.
+
+| Range | Vertical, yielding (air model 0.25 m; Kingery–Bulmash) | Measured | Horizontal, yielding (same) | Measured |
+|---|---|---|---|---|
+| 21 m | 0.186–0.187; 0.206–0.208 m/s | 0.009–0.012 | 0.124; 0.130 m/s | 0.054–0.058 |
+| 42 m | 0.058–0.070; 0.014–0.018 m/s | 0.0008–0.0012 | 0.042–0.044; 0.030–0.032 m/s | 0.0040–0.0042 |
+
+- **The vertical** is 16 to 23 times the measured at 21 m, and 48 to 88 times at 42 m on the air
+  model (12 to 22 times on Kingery–Bulmash). At 21 m it is the airblast's own p/(ρc). No soil
+  law of this kind brings 228 kPa over 2,050 kg/m³ at 457 m/s down to 0.01 m/s: that would need
+  an impedance twenty times as high.
+- **The horizontal** is 2.1 to 2.4 times the measured at 21 m (1.4 to 1.5 elastic) and 10 to 11
+  times at 42 m (18 to 19 elastic).
+- **The fall-off** from 21 to 42 m is 2.7 to 3.2 times in each component on the air model, as
+  about R^(−1.5). The elastic half-space gave 1 to 4 times; the measurements fall 10 to 14
+  times, as R^(−3.3) to R^(−3.8).
+- **Kingery–Bulmash at 42 m,** without the air model's strong loads near the charge, gives the
+  lowest vertical, 0.007–0.008 m/s without the source. There the cohesionless top half-metre
+  yields under the load nearer in and is squeezed up ahead of it, rising for 40 ms after the
+  air arrives. That part may be the model's own: the cone is conservative off the vertical.
+- **The soil:** with 10 or 50 kPa of cohesion, the vertical at 42 m (Kingery–Bulmash) is 0.023
+  to 0.046 m/s and the horizontal 0.02 to 0.05. Without compaction (unloading at the loading
+  speed) they are 0.036 to 0.042 and 0.05 to 0.14. Friction angles from 30 to 40° change
+  little.
+- **The cost:** the unloading speed halves the step. In the 0.25 m run, the six yielding
+  half-spaces together added about 24 s to the ground models' time, against 531 s of air for
+  892 frames: about 4 ms a frame each, on 0.16 m cells to 53 m.
+
+**The verdict: record and stop.** Neither range comes within a factor of 2 to 3 in the
+vertical, nor 42 m in the horizontal, so the standing stays illustrative. What stage 3 does give
+the product is soil that yields under the half-space as an option, with the direct source tied
+to the crater's energy instead of a fit, and no longer needed where the air model feeds it.
+Further work on this line waits for a test that stood where the models claim to hold: Prairie
+Flat or Pre-Dice Throw II, with their soil ([data wanted](data-wanted.md#to-fetch)).
+
 ## Stages
 
 1. Done: the elastic axisymmetric solver with its absorbing layer, checked against Lamb's
    problem and Cole and Huth.
 2. Done: driven by the air's ring-averaged ground pressures through the consumer, with the
    near-charge source calibrated against UFC; Xia again, now with the horizontal (above).
-3. Layers and damping, then the bilinear soil; Prairie Flat and Pre-Dice Throw II if obtained.
+3. Done: soil that yields, compaction and a Mohr–Coulomb cone, with the direct source tied to
+   the crater's energy (above); recorded, and the line stopped, as it does not close the gap.
+   Next only with Prairie Flat or Pre-Dice Throw II.
 4. If it holds: a three-dimensional version on the GPU for streets and buildings, and a
    ContinuumKit extraction proposal for the elastic wave solver.
 

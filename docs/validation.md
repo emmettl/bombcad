@@ -81,7 +81,7 @@ swift run -c release blastbench perimeter --study wall
 | Window glass         | Monk and Clubley's annealed windows in the Shoeburyness tunnel (4 mm, 0.89 m², four aspect ratios, about 33 kPa reflected for longer than they lasted): the app's large-deflection panes (Moore's plate, E1300's flaw model) break every pane, as every pane broke, at 0.82–1.07 of the twelve measured times and 0.69–1.15 of the deflection (the small-deflection panes before them at 0.40–0.46). Against ASTM E1300: its stresses within 8%, its load resistance 0.57–0.72 | Either way within about 20% for timing under a strong load (moderate); the threshold a third under E1300's design resistance, the safe side, not measured |
 | Inside buildings     | [UFC 3-340-02 §2-15](#inside-buildings-against-ufc-3-340-02s-loads-through-openings), its own charts' data: through an open window the air's back-wall load 0.74–1.22 of the UFC's, the side walls and the front's inside 0.31–0.67; the one-way fill 0.95–1.35 of the UFC's leakage fill and 0.15–0.42 of its back-wall load | A design method, not measurement; head-on, rigid, open windows |
 | Fragments            | [Cooper (1996)](#fragments-against-coopers-data): his worked Mott and Gurney examples to rounding; one counted cast-iron bomb within a factor of 1.36 (rms) by Mott's form, 1.12 by Grady's; drag now the measured curve for tumbling cubes, 5% from the previous law. No arena test of launch speeds or ranges | Masses either way within a factor of 1.4 (moderate, one test); speeds and ranges untested (low) |
-| Ground shock         | Xia et al. (2022), 1 t of TNT on the ground, accelerations 0.5 m deep at 21 and 42 m: the vertical velocity from the manuals' relation and the layered soil column 20 to 30 times the measured accelerations' integral at 21 m and 50 to 80 times at 42 m, within three times a velocity gauge that clipped; the measured motion mostly horizontal, at ranges near and past where the ground's wave outruns the air; the soil not measured. An elastic half-space about the charge, with a direct source calibrated against UFC 3-340-01: the horizontal within 1.5 times at 21 m but 18 times at 42 m, the vertical still 15 to 60 times | Far too high in the vertical, the safe side; the horizontal motion that dominated not modelled, the unsafe side; illustrative |
+| Ground shock         | Xia et al. (2022), 1 t of TNT on the ground, accelerations 0.5 m deep at 21 and 42 m: the vertical velocity from the manuals' relation and the layered soil column 20 to 30 times the measured accelerations' integral at 21 m and 50 to 80 times at 42 m, within three times a velocity gauge that clipped; the measured motion mostly horizontal, at ranges near and past where the ground's wave outruns the air; the soil not measured. An elastic half-space about the charge, with a direct source calibrated against UFC 3-340-01: the horizontal within 1.5 times at 21 m but 18 times at 42 m, the vertical still 15 to 60 times. With soil that yields (compaction and a Mohr–Coulomb cone, the source the crater's energy): the horizontal 2.1 to 2.4 times at 21 m and 10 to 11 times at 42 m, the vertical 16 to 90 times, the fall-off R^(−1.5) against the measured R^(−3.3) to R^(−3.8) | Far too high in the vertical, the safe side; the horizontal motion that dominated not modelled, the unsafe side; illustrative |
 | Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 1–2%, structural responses 4–20%, residual deflections and failure 17–28%; the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
 
 No structural result has yet been shown to converge on today's defaults: the meshes quoted as
@@ -2628,31 +2628,32 @@ an aluminised charge, and say its TNT equivalence is low for impulse.
 - concrete at 0.8 of the cube strength, bars at their measured 405 / 542 MPa, rupturing at the
   grade's 16%;
 - the underside 1 m above the ground (not given);
-- the slab without its own weight, since the sensors read from the slab already resting under it,
-  and a slab given its weight as the run starts sags 2–3 mm. Since structures are [settled under
-  their own weight](structural-model.md#settling-under-its-own-weight) it can carry it
-  (`--weight`): T1's centre then peaks at 3.34 mm rather than 3.29, the same 0.96 mm within 2 ms
-  of the shock.
+- the slab under its own weight, [settled under it](structural-model.md#settling-under-its-own-weight)
+  before the blast and read from there, as the sensors read from the slab resting on its
+  supports. Until 17 October it was compared without it, since a slab given its weight as the run
+  started sagged 2–3 mm (`--weightless`); its peaks were then 2–6% lower, the same within 2 ms of
+  the shock to 0.05 mm, and the 20 kg slab bent to 147 mm keeping 72.
 
 | Test | Top-face pressure, centre (MPa) | 1 m out (MPa) | Underside centre, measured | Model, within 2 ms of the shock | Model, peak |
 |---|---|---|---|---|---|
-| T1, 0.5 kg at 1 m | 1.70 / 1.88 | 0.50 / 0.62 | 0.35 mm | 0.96 mm | 3.29 mm at 10.7 ms |
-| T2, 1 kg at 1 m | 4.20 / 3.94 | 1.25 / 1.22 | 0.47 mm | 1.64 mm | 5.83 mm |
-| T3, 1 kg at 0.8 m | 8.60 / 6.97 | 1.90 / 1.21 | 0.86 mm | 1.94 mm | 6.43 mm |
+| T1, 0.5 kg at 1 m | 1.70 / 1.88 | 0.50 / 0.62 | 0.35 mm | 0.96 mm | 3.34 mm |
+| T2, 1 kg at 1 m | 4.20 / 3.94 | 1.25 / 1.22 | 0.47 mm | 1.67 mm | 6.13 mm |
+| T3, 1 kg at 0.8 m | 8.60 / 6.97 | 1.90 / 1.20 | 0.86 mm | 1.99 mm | 6.82 mm |
 
 - **The load agrees.** The centre's pressure is within 11% at 1.26 and 1.0 m/kg^(1/3) and 19% low
-  at 0.8. The impulse there is 371, 596 and 792 kPa ms.
+  at 0.8. The impulse there is 377, 593 and 790 kPa ms.
 - **The displacements do not compare.**
-  - The model's slab swings as a whole, peaking at 10–11 ms a quarter of its period, by the few
-    millimetres a 6.9 t slab of this stiffness takes from this impulse.
+  - The model's slab swings as a whole, peaking a quarter of its period after the shock (10–11 ms
+    without its weight), by the few millimetres a 6.9 t slab of this stiffness takes from this
+    impulse.
   - The paper reports the largest displacement "at the time that the explosion wave reached the
     slab", and its 500 ms record for T1 never passes about 0.3 mm. Its sensors evidently did not
     see that swing.
-  - Read over the first 2 ms, the model gives 2–3 times the reported values. Taken as peaks, its
-    slab would be 8–12 times too flexible, against every other comparison here.
+  - Read over the first 2 ms, the model gives 2.3–3.6 times the reported values. Taken as peaks,
+    its slab would be 8–13 times too flexible, against every other comparison here.
   - Neither reading is scored. These three tests confirm the load only.
-- **The 20 kg test.** The model's slab bends to 147 mm and keeps 72 mm. Nothing on its top face is
-  crushed or removed, and 380 cm² of its underside is damaged. The test's slab, judged "moderate
+- **The 20 kg test.** The model's slab bends to 167 mm and keeps 96 mm. Nothing on its top face is
+  crushed or removed, and 612 cm² of its underside is damaged. The test's slab, judged "moderate
   damage", showed a top crater 1.02 × 0.76 m, its bars exposed, a wider spall beneath them, and over
   ten long cracks. So the model is far too resistant locally, at 0.22 m/kg^(1/3): the close-in
   direction the record already shows ([Chiquito](#slabs-under-close-in-charges), a third to a half
@@ -3602,6 +3603,14 @@ also fed Kingery–Bulmash's Friedlander pulse.
   is 15 to 63 times the measured. It falls by 1 to 4 times from 21 to 42 m, where the
   measurements fall by 10 to 14: an elastic ground carries the motion from near the charge
   outwards with little of the loss real soil has where it yields.
+- With [soil that yields](ground-shock-outrunning.md#stage-3-soil-that-yields) (compaction at
+  twice the loading speed on unloading, a Mohr–Coulomb cone at 30–40° without cohesion, and the
+  direct source the crater's own energy, no longer a fit), fed the air model on 0.25 m cells:
+  0.186–0.187 m/s vertical and 0.124 horizontal at 21 m (16–21 and 2.1–2.3 times the measured),
+  0.058–0.070 and 0.042–0.044 at 42 m (48–88 and 10–11 times). Each falls about 3 times from
+  21 to 42 m, as R^(−1.5); the measurements fall 10 to 14 times. Without the direct source the
+  yielding half-space gives the same at 21 m, where the elastic one gave 7.8 m/s: yielding takes
+  over the source's role, but does not close the gap.
 - The measured horizontal accelerations were three to eight times the vertical. At 21 m the air's
   front ran at 582 m/s, between the fitted soil speed and √2 times it, and at 42 m at 412 m/s,
   outrun by the soil. Both models say they do not cover that motion.

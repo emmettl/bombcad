@@ -322,6 +322,86 @@ struct AxisymmetricElasticTests {
         let outwards = result.readings.map { abs($0[0].radial) }.max()!
         #expect(abs(outwards / (share * peak) - 1) < 0.15, "\(outwards) against \(share * peak)")
     }
+
+    @Test("Soil that unloads stiffly, under a front far faster than any wave, is the bilinear column")
+    func bilinear() throws {
+        // The column's bilinear law as compaction along each shortening: in uniaxial strain,
+        // ρc² loading and ρc_u² unloading, the column's moduli exactly. The column carries
+        // tension, which soil does not; under a surcharge the soil never pulls. The absorbing
+        // layer stays elastic, so its edge sends waves in at c_u: it is kept 9 m away. Within 4%
+        // at 1 m and 6% at 3 m on these 0.05 m cells (the rise is seven of them), 2% and 5% on
+        // 0.025 m.
+        let p0 = 1e5
+        var soil = poisson
+        soil.unloadingPWaveSpeed = 2 * poisson.pWaveSpeed
+        let grid = try AxisymmetricElasticGrid(
+            radialCells: 240, depthCells: 100, spacing: 0.05, layers: [soil], pmlCells: 20,
+            dominantFrequency: 100, surcharge: 2e5)
+        let speed = 20 * soil.fastest
+        let pulse = { (t: Double) in p0 * (smoothStep(t, rise: 0.002) - smoothStep(t - 0.002, rise: 0.008)) }
+        let receivers = [1.0, 3.0].map { ElasticReceiver(radius: 2, depth: $0) }
+        let result = run(grid, until: 0.03, receivers: receivers) { r, t in pulse(t - r / speed) }
+        let profile = SoilProfile(
+            layers: [
+                SoilLayer(
+                    thickness: 10, density: Float(soil.density), waveSpeed: Float(soil.pWaveSpeed),
+                    unloadingWaveSpeed: Float(soil.fastest))
+            ], timeStep: 1e-5)
+        var column = SoilColumn(profile: profile, depth: 6)
+        let dt = column.timeStep
+        var peaks = [0.0, 0.0]
+        while column.time < 0.03 {
+            let t = column.time - 2 / speed
+            column.step(load: (pulse(t - dt / 2) + 4 * pulse(t) + pulse(t + dt / 2)) / 6)
+            for (n, depth) in [1.0, 3.0].enumerated() {
+                peaks[n] = max(peaks[n], column.atNodes(column.velocities, depth: depth))
+            }
+        }
+        for n in 0..<2 {
+            let peak = result.readings.map { $0[n].vertical }.max()!
+            #expect(
+                abs(peak / peaks[n] - 1) < 0.07, "at \(receivers[n].depth) m: \(peak) against \(peaks[n])")
+        }
+        // Worn down with depth, as the column is.
+        #expect(peaks[1] < 0.9 * peaks[0])
+    }
+
+    @Test("Sand that yields in shear stays within its Drucker–Prager cone, and the yielding takes energy")
+    func cone() throws {
+        // Sand at 35° and no cohesion, resting under its own weight with K₀ = 1 − sin φ, under a
+        // disc pressed with 2 MPa: every yielding point's √J₂ within a hundredth of the cone's radius.
+        var sand = poisson
+        sand.frictionAngle = 35
+        sand.restingRatio = 1 - sin(35 * Double.pi / 180)
+        let grid = try AxisymmetricElasticGrid(
+            radialCells: 80, depthCells: 60, spacing: 0.05, layers: [sand], pmlCells: 20,
+            dominantFrequency: 100)
+        // At rest, K₀ = 1 − sin φ is inside Mohr–Coulomb's limit, Rankine's active 0.27 here, and
+        // the cone matched to it in triaxial compression: nothing yields and nothing moves.
+        let rest = run(grid, until: 0.005, receivers: [ElasticReceiver(radius: 1, depth: 0.5)]) { _, _ in 0 }
+        #expect(rest.stepper.yieldingLoss == 0 && rest.stepper.coneExcess() < 0)
+        #expect(rest.readings.allSatisfy { $0[0].vertical == 0 && $0[0].radial == 0 })
+        var worst = -Double.infinity
+        var steps = 0
+        let result = run(grid, until: 0.03, receivers: [ElasticReceiver(radius: 1.5, depth: 0)]) { r, t in
+            r < 0.4 ? 2e6 * (smoothStep(t, rise: 0.002) - smoothStep(t - 0.004, rise: 0.004)) : 0
+        } each: { stepper in
+            steps += 1
+            if steps % 5 == 0 { worst = max(worst, stepper.coneExcess()) }
+        }
+        #expect(worst < 0.01, "a point stood \(worst) outside its cone")
+        // It takes energy, never more than the disc put in (here nine tenths of it).
+        #expect(result.stepper.yieldingLoss > 0 && result.stepper.yieldingLoss < result.stepper.work)
+        // The same disc on elastic soil moves the surface further out faster.
+        let elastic = run(
+            try grid.withLayers([poisson]), until: 0.03, receivers: [ElasticReceiver(radius: 1.5, depth: 0)]
+        ) {
+            r, t in r < 0.4 ? 2e6 * (smoothStep(t, rise: 0.002) - smoothStep(t - 0.004, rise: 0.004)) : 0
+        }
+        let yielding = result.readings.map { abs($0[0].vertical) }.max()!
+        let springy = elastic.readings.map { abs($0[0].vertical) }.max()!
+        #expect(yielding < springy, "\(yielding) against elastic \(springy)")
+    }
 }
 
 /// The fundamental Rayleigh mode's phase speed, m/s, at `frequency` over one layer on a
