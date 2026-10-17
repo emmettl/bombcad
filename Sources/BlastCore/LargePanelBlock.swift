@@ -150,9 +150,10 @@ public enum LargePanelBlock {
 
     /// The two events the presets show.
     public enum Event: String, Sendable, CaseIterable {
-        /// Methane in the back half of the corner flat on the tenth floor (Ronan Point's was
-        /// town gas, in the hall of a corner flat on the eighteenth of 22), lit at the cooker;
-        /// the flat's two windows hold to `windowRelease`.
+        /// Town gas, as at Ronan Point (`FlammableGas.townGas`), stoichiometric in the back half of
+        /// the corner flat on the tenth floor (Ronan Point's collected in the hall of a corner flat
+        /// on the eighteenth of 22), lit at the cooker; the flat's two windows hold to
+        /// `windowRelease`.
         case gas
         /// 500 kg in the street, 8 m from the far flank wall, a metre up. 250 kg slides the
         /// joints; 1,000 kg throws the ground floor's flank wall 4 m in 0.16 s.
@@ -170,7 +171,8 @@ public enum LargePanelBlock {
     public static let streetDistance: Float = 8
 
     public static func scenario(
-        _ event: Event, name: String, storeys: Int = storeys, windowRelease: Float = windowRelease
+        _ event: Event, name: String, storeys: Int = storeys, windowRelease: Float = windowRelease,
+        gas: FlammableGas = .townGas
     ) -> Scenario {
         let o = origin
         let model = model(storeys: storeys)
@@ -206,7 +208,7 @@ public enum LargePanelBlock {
                     Gauge("Outside the flank", at: o + SIMD3(-1, 0.5 * depth, z0 + 1.2)),
                 ],
                 structure: model)
-            scenario.deflagration = Deflagration(gas: .methane, region: region, ignition: cooker)
+            scenario.deflagration = Deflagration(gas: gas, region: region, ignition: cooker)
             scenario.ventPanels = [false, true].map {
                 VentPanel(box: window(storey: gasStorey, bay: 0, back: $0), releasePressure: windowRelease)
             }
