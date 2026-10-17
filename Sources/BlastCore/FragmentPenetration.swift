@@ -254,3 +254,24 @@ public struct FragmentTarget: Codable, Sendable, Equatable {
         }
     }
 }
+
+extension FragmentCloud {
+    /// When a cased charge's fragments hole each envelope pane, by component id ("<owner>/pane/<j>.0"),
+    /// s from the start, up to `until`: the same fragments (`spec`'s seed) flown before the run in
+    /// still air of `density` and `pressure`, so that the times are known before the blast reaches
+    /// any pane, whatever the fragments' consumer lags. Ahead of the blast the air is still; inside
+    /// it the wind would carry them a little faster (fragments.md).
+    public static func paneHoles(
+        spec: FragmentSpec, scene: FragmentScene, density: Float, pressure: Float, until: Double
+    ) -> [String: Double] {
+        var cloud = FragmentCloud(spec: spec, scene: scene)
+        cloud.land(in: Primitive(density: density, pressure: pressure), limit: until)
+        var holes: [String: Double] = [:]
+        for impact in cloud.impacts where impact.penetration?.outcome == .perforated && impact.time <= until {
+            guard let owner = impact.objectID, let pane = impact.pane else { continue }
+            let id = "\(owner.uuidString)/pane/\(pane).0"
+            holes[id] = min(holes[id] ?? .infinity, impact.time)
+        }
+        return holes
+    }
+}

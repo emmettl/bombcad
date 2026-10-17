@@ -276,6 +276,20 @@ fragments striking its walls and roofs, spalling them and going through, judged 
 construction's thickness, 30 MPa for concrete and 8 MPa for masonry. In the app's envelope
 damage line, `--envelope-damage` and its JSON.
 
+**Holed panes vent.** With **Vent broken glazing** (building-envelopes.md), a pane a fragment
+holes also opens in the air when it is holed, and the blast enters through it. When is known
+before the run: the same fragments (the description's seed) are flown first in still air
+(`FragmentCloud.paneHoles`), and each pane they hole opens on the step the run's clock reaches
+the time (`BlastSolver.setEnvelopePaneHoles`), through the same path as glass that breaks. So the
+air is the same however the run is batched and however the fragments' consumer keeps up with
+it. Ahead of the blast the air is still, and a fragment that holes a pane before the blast
+reaches it flies mostly ahead of it; behind the shock the wind would carry it a little faster.
+A cased kilogram 5 m in front of a glazed window (`FragmentVentingTests`, 0.25 m cells) holes
+its pane at 3.15 ms, which opens on that step; the blast alone breaks the glass at 13.0 ms. By
+20 ms the room's mean has peaked at 1.47 kPa through the hole (past 1 kPa at 15.6 ms), against
+75 Pa with the glass left to the blast, and the run is the same to the bit however its steps
+are batched.
+
 **In the app** a strike on a judged target is drawn larger than a landing: grey where the
 fragment stopped, amber where it spalled the far face, crimson where it went through. The
 summary printed counts them (`struck targets: … stopped, … spalled, … through`).
@@ -303,8 +317,8 @@ summary printed counts them (`struck targets: … stopped, … spalled, … thro
 - No break-up and no ricochet; a fragment stops where it first hits, through or not, and does
   not load or hole what it hits (the structure's outline and the air are unchanged). Its
   penetration is judged by design methods for nose-on impact; masonry borrows concrete's.
-- With **Vent broken glazing** the air breaks panes itself and does not see a fragment's hole;
-  the damage takes the earlier of the two times, but the air vents only when its own glass breaks.
+- With **Vent broken glazing** the holes come from the fragments flown before the run in still
+  air (below), not from the run's own fragments, which the blast's wind carries a little faster.
 - Only the coarse grid's air, also where refinement sharpens the shock.
 - In the app, frames fall at the ends of batches, just past each millisecond, so its fragments vary
   a little from run to run (above).

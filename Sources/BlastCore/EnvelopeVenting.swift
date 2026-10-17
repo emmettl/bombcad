@@ -55,6 +55,9 @@ final class EnvelopeVenting {
     let stateBuffer: MTLBuffer
     /// Each pane: 0 whole, 1 broken in the step just taken (its cells open), 2 open.
     let statusBuffer: MTLBuffer
+    /// Each pane: when a fragment holes it, in ticks of the run's clock (`StepControl.tick`), low
+    /// and high words; all ones for never (`setHoles`).
+    let holeBuffer: MTLBuffer
     /// (cell, pane) for each cell only a pane holds solid.
     let paneCellBuffer: MTLBuffer
     /// Each owner: 1 once a pane of it has broken, when its rooms start to be read.
@@ -276,6 +279,8 @@ final class EnvelopeVenting {
         stateBuffer = try make(
             (0..<panes.count).flatMap { _ in [SIMD4<Float>.zero, SIMD4<Float>(0, -1, 0, 0)] }, "pane states")
         statusBuffer = try make([UInt32](repeating: 0, count: panes.count), "pane status")
+        holeBuffer = try make(
+            [SIMD2<UInt32>](repeating: SIMD2(repeating: .max), count: panes.count), "pane holes")
         paneCellBuffer = try make(paneCells, "pane cells")
         openedBuffer = try make([UInt32](repeating: 0, count: ownerIDs.count), "opened envelopes")
         roomBuffer = try make(rooms, "envelope rooms")
@@ -294,11 +299,27 @@ final class EnvelopeVenting {
 
     var memoryFootprint: Int {
         [
-            glassBuffer, tableBuffer, paneBuffer, stateBuffer, statusBuffer, paneCellBuffer, openedBuffer,
+            glassBuffer, tableBuffer, paneBuffer, stateBuffer, statusBuffer, holeBuffer, paneCellBuffer,
+            openedBuffer,
             roomBuffer,
             roomCellBuffer,
             roomResults, ownerRooms, roomList, roomDispatch,
         ].reduce(0) { $0 + $1.length }
+    }
+
+    /// When fragments hole the panes, by component id, s from the start: each opens on the step the
+    /// run's clock reaches it (rounded down to a tick), whatever its glass. Kept across restarts;
+    /// panes not named are never holed.
+    func setHoles(_ holes: [String: Double]) {
+        let words = holeBuffer.contents().bindMemory(to: SIMD2<UInt32>.self, capacity: max(paneCount, 1))
+        for (p, n) in paneComponents.enumerated() {
+            guard let time = holes[components[n].id] else {
+                words[p] = SIMD2(repeating: .max)
+                continue
+            }
+            let ticks = UInt64(max(time, 0) / StepControl.tick)
+            words[p] = SIMD2(UInt32(truncatingIfNeeded: ticks), UInt32(truncatingIfNeeded: ticks >> 32))
+        }
     }
 
     /// What has broken and what each room has seen.

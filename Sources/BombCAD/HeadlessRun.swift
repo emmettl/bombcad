@@ -553,6 +553,8 @@ enum HeadlessRun {
         let model = SimulationModel(document: start, playbackSpeed: .unlimited)
         // A run here flies fragments as `options` says, not as the project's live view does.
         model.fragmentSpec = nil
+        // Its fragments still hole the panes they strike, with glazing vented.
+        model.paneHoleSpec = options.fragments
         model.groundShockSpec = nil
         let interval = Double(options.frameInterval) * SimulationModel.structureSampleInterval
         // Frames fall on the samples every millisecond, where a run with a structure stops anyway,
