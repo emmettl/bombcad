@@ -50,6 +50,7 @@ struct TerrainSection: View {
                     model.settings.softGround = true
                 case .type(let type):
                     model.settings.ground = type
+                    model.settings.waterTable = type.typicalWaterTable
                     model.settings.softGround = true
                     model.settings.groundStiffness =
                         type.debrisModulus ?? SolverConfiguration.soilSubgradeModulus
@@ -60,7 +61,7 @@ struct TerrainSection: View {
     /// The crater the charge would dig, before or after a run: it depends only on the scene.
     private var craterCaption: String {
         let craters = CraterEstimate.craters(
-            of: scenario, ground: model.settings.ground)
+            of: scenario, ground: model.settings.ground, waterTable: model.settings.waterTable)
         guard let crater = craters.first else {
             return "The charge is too high above the ground to dig a crater: an air burst."
         }
@@ -117,6 +118,24 @@ struct TerrainSection: View {
                     + "near it: 0.9 of one on the surface. The crater forms after the blast has gone, so the "
                     + "air keeps the ground as it was.")
             if model.settings.ground != .rigid {
+                Toggle(
+                    "Water table near the surface",
+                    isOn: Binding(
+                        get: { model.settings.waterTable != nil },
+                        set: { model.settings.waterTable = $0 ? (model.settings.waterTable ?? 1) : nil })
+                )
+                .help(
+                    "Below a water table a crater's walls slump to 10–15° and it comes out far shallower: the "
+                        + "500-ton craters at Suffield and Beirut's were a fifth to a third as deep as dry ground "
+                        + "gives. On by default for saturated soil, with the water at the surface.")
+                if let table = model.settings.waterTable {
+                    LabeledSlider(
+                        title: "Water table",
+                        value: Binding(
+                            get: { Double(table) },
+                            set: { model.settings.waterTable = Float(($0 * 2).rounded() / 2) }),
+                        range: 0...20, text: String(format: "%.1f m down", table))
+                }
                 Text(craterCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
