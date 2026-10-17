@@ -201,7 +201,9 @@ pre-formed fragments or improvised casings. `FragmentCloudTests` check the first
 
 ## Hazard
 
-Fragments are judged as the US explosives safety standards judge them (`GroundHazard`):
+Fragments are judged as the US explosives safety standards judge them (`GroundHazard`); the
+blast's own hazards, its safety distances and injury, and the minimum safe distance of the two
+are in [Blast hazards](hazards.md).
 
 - **Hazardous fragments** strike with 79 J (58 ft-lb) or more, and the **hazardous fragment
   distance** is where they fall below one per 55.7 m² (600 ft²), a 1% chance of one striking a

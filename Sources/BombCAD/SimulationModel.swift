@@ -559,6 +559,10 @@ final class SimulationModel {
     /// Where the run's fragments landed against the hazardous-fragment criteria, once the run has
     /// ended and those still in flight have been flown on to land.
     private(set) var fragmentHazard: GroundHazard?
+    /// The blast's injury at a standing person's height over the run, once it has ended.
+    private(set) var injuryField: InjuryField?
+    /// A standing person's chest and head, m: where the injury's probes are.
+    static let standingHeight: Float = 1.5
     /// The fragments whose holes open panes in the air, with venting on, when not the project's
     /// own (`fragmentSpec`): a headless run's `--fragments`.
     @ObservationIgnored var paneHoleSpec: FragmentSpec?
@@ -2424,6 +2428,12 @@ final class SimulationModel {
                 try created.load(scenario)
                 solver = created
             }
+            // The blast's injury at a standing person's height, from the run's own peaks (`InjuryField`):
+            // probes that leave the air as it is.
+            if let solver, solver.time == 0 {
+                injuryField = nil
+                try? solver.configureExposurePlane(heightM: Self.standingHeight, arrivalThresholdPa: 1_000)
+            }
             if let solver, !scenario.envelopeObjects.isEmpty {
                 // Envelopes are stationary whatever else moves: a structure beside them never takes
                 // the air at their faces, and its debris passes them by (one way).
@@ -2652,6 +2662,11 @@ final class SimulationModel {
 
     private func finish() {
         isRunning = false
+        if let solver, let snapshot = solver.exposureSnapshot() {
+            injuryField = InjuryField(
+                snapshot, centre: SIMD2(scenario.charge.position.x, scenario.charge.position.y),
+                ambient: Double(scenario.atmosphere.pressure))
+        }
         publishTraces()
         if fragments != nil || thermal != nil || groundShock != nil {
             let (gpu, elapsed) = (blastGPUSeconds, time)
@@ -2806,6 +2821,53 @@ final class SimulationModel {
 extension SimulationModel {
     /// The hazardous fragment distance on the ground (`HazardOverlay`), once the run's
     /// fragments have landed.
+    /// The safety standards' K-factor distances (K24, K40), the minimum safe distance, and the run's
+    /// injury contours at standing height: where eardrums begin to rupture and where half would die.
+    func blastHazardLines() -> [SIMD4<Float>] {
+        let terrain = scenario.terrain
+        let ground: (SIMD2<Float>) -> Float = { terrain?.height(at: SIMD3($0, 0)) ?? 0 }
+        let centre = SIMD2(scenario.charge.position.x, scenario.charge.position.y)
+        var lines: [SIMD4<Float>] = []
+        for k in [KFactorDistance.k24, .k40] {
+            lines += HazardOverlay.ring(
+                centre: centre, radius: k.distance(kilograms: scenario.charge.mass), kind: .kFactor,
+                ground: ground)
+        }
+        let safe = MinimumSafeDistance(
+            kilograms: scenario.charge.mass, fragments: fragmentHazard, cased: isCased)
+        if safe.distanceM > safe.overpressureM {
+            lines += HazardOverlay.ring(
+                centre: centre, radius: safe.distanceM, kind: .kFactor, ground: ground)
+        }
+        if let injuryField {
+            lines += HazardOverlay.contour(
+                injuryField, level: .eardrumThreshold, kind: .eardrum, ground: ground)
+            lines += HazardOverlay.contour(injuryField, level: .lethality50, kind: .lung, ground: ground)
+        }
+        return lines
+    }
+
+    /// Whether the charge is cased: its fragments flown, in the app or headless.
+    var isCased: Bool { (paneHoleSpec ?? fragmentSpec).map { $0.casingMass > 0 && $0.count > 0 } ?? false }
+
+    /// A headless run's fragments' hazard, which its own consumer finds, for the minimum safe distance.
+    func setFragmentHazard(_ hazard: GroundHazard?) { if let hazard { fragmentHazard = hazard } }
+
+    /// The run's blast hazards in words: the safety standards' distances, the minimum safe
+    /// distance and what governs it, and the injury's reach at standing height.
+    var blastHazardSummary: [String] {
+        let mass = scenario.charge.mass
+        var lines = KFactorDistance.all.map { k in
+            String(format: "%@: %.0f m", k.name, k.distance(kilograms: mass)) + " — " + k.use.lowercased()
+        }
+        lines.append(
+            "M"
+                + MinimumSafeDistance(kilograms: mass, fragments: fragmentHazard, cased: isCased).summary
+                .dropFirst())
+        if let injuryField { lines.append(injuryField.summary) }
+        return lines
+    }
+
     func hazardLines() -> [SIMD4<Float>] {
         guard let fragmentHazard else { return [] }
         let terrain = scenario.terrain

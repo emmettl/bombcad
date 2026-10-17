@@ -70,6 +70,7 @@ public enum ResultKind: String, Codable, CaseIterable, Sendable, Identifiable {
     case cloud
     case fragments
     case groundShock
+    case blastInjury
     case crater
 
     public var id: Self { self }
@@ -88,6 +89,7 @@ public enum ResultKind: String, Codable, CaseIterable, Sendable, Identifiable {
         case .cloud: "Rise and cloud"
         case .fragments: "Fragments"
         case .groundShock: "Ground shock"
+        case .blastInjury: "Blast injury and safety distances"
         case .crater: "Crater"
         }
     }
@@ -137,7 +139,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-23"
+    public static let currentTable = "standing-table-25"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -627,7 +629,9 @@ public enum StandingTable {
                 limit: .illustrative,
                 note:
                     "Pipes and bars too small for the cells take room, resist the air, make turbulence and fold "
-                    + "a flame, as PDRFoam's porous cells and sub-grid flame do; it is compared with no test yet.",
+                    + "a flame, as PDRFoam's porous cells and sub-grid flame do. Against MERGE's rigs the finer "
+                    + "pitches come within 0.4 to 1.2 of the measured peaks but the coarser three to five times "
+                    + "too high, half the pitch giving no more where MERGE's gave seven times.",
                 document: "congestion-model.md")
         case .ventedGlazing:
             return Entry(
@@ -1256,7 +1260,7 @@ extension SceneStanding {
     /// The standing of each result `inputs` produce, by the table above.
     public init(_ inputs: StandingInputs) {
         let scene = StandingScene(inputs)
-        var results = [scene.peakOverpressure(), scene.impulse()]
+        var results = [scene.peakOverpressure(), scene.impulse(), scene.blastInjury()]
         if !scene.structures.isEmpty { results += [scene.structuralResponse(), scene.structuralDamage()] }
         if !inputs.scenario.envelopeObjects.isEmpty {
             results += [scene.envelopeExposure(), scene.envelopeDamage()]
@@ -2499,6 +2503,36 @@ struct StandingScene {
                 "One way: the ground stays rigid for the air.",
                 "Not for design, buried services or vibration limits.",
             ], documents: ["ground-shock-outrunning.md"])
+    }
+
+    func blastInjury() -> ResultStanding {
+        result(
+            .blastInjury, .approximation,
+            "Published injury curves applied to the run's own peaks at standing height, and the safety "
+                + "standards' K-factor distances beside them: policy distances, not predictions.",
+            evidence: [
+                StandingEvidence(
+                    "Teland's 50% lethality distances by Bass's and Bowen's curves for 0.5–1,500 kg of TNT "
+                        + "(FFI-rapport 2012/00539, Table 12.1)",
+                    "Within 6% and 5% from the Kingery–Bulmash free field", "hazards.md#checks"),
+                StandingEvidence(
+                    "10 kg on open ground, the run's own peaks at 1.5 m on 0.25 m cells against the free field",
+                    "The eardrums' reach 0.87–0.88 of it; the lungs' 0.69 and, for 50% lethality, 0.48: close in "
+                        + "the cells' peaks read low (the unsafe side)", "hazards.md#checks"),
+            ],
+            assumptions: [
+                "The curves come from animal tests under ideal (Friedlander) pulses, scaled to a 70 kg adult; "
+                    + "the run's pulses, reflected and channelled, are taken as triangular, their duration twice "
+                    + "the impulse over the peak.",
+                "Eardrums by UFC 3-340-02 (5 and 15 psi); the lung's threshold by Bowen (a fifth of his 50% "
+                    + "lethality), 50% lethality by Bass (under 30 ms); no tertiary injury from being thrown.",
+                "A person standing in the open, or against a wall facing the charge, which sees the reflected "
+                    + "pressure; probes beside a solid are not read.",
+                "K-factor distances (DoD 4145.26-M) are for a bare charge in the open, whatever the scene; the "
+                    + "minimum safe distance is never shorter than K40 and, for a cased charge, DoD's default "
+                    + "fragment distance; BombCAD's fragment distance, which reads short, is an estimate beside them.",
+                "Not for medical triage or casualty estimates.",
+            ], documents: ["hazards.md#limitations"])
     }
 
     func groundShock() -> ResultStanding {

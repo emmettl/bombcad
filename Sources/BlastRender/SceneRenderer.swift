@@ -156,6 +156,9 @@ public struct RenderSettings: Sendable, Hashable {
     public var showCloud = true
     /// The hazardous fragment distance on the ground, when a run's fragments have landed.
     public var showHazard = true
+    /// The safety standards' K-factor distances, the minimum safe distance and the run's injury
+    /// contours at standing height.
+    public var showBlastHazards = true
     /// A box to outline in the view, such as the one being edited.
     public var highlight: Box?
     /// Craters to shade into the ground (see `CraterMark`), up to four, once a run has dug them.
@@ -576,7 +579,7 @@ public final class SceneRenderer {
     }
 
     /// Lines to draw over the scene, of a width on screen whatever their length: each two vectors,
-    /// one end and a kind (0 to 4, as `CloudOverlay.Kind`; 5 and 6, as `HazardOverlay.Kind`), and
+    /// one end and a kind (0 to 4, as `CloudOverlay.Kind`; 5 to 9, as `HazardOverlay.Kind`), and
     /// the other end and 0. The caller leaves out the kinds its settings hide.
     public func setLines(_ lines: [SIMD4<Float>]) {
         lineCount = lines.count / 2

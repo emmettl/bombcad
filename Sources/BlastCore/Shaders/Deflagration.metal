@@ -60,7 +60,7 @@ struct DeflagrationUniforms {
     float regionMaxX;
     float regionMaxY;
     float regionMaxZ;
-    float obstacleTurbulenceScale; // 1.48 a, for the congestion's obstacle turbulence
+    float marksteinNumber;         // the mixture's, for PDRFoam's wrinkling in congestion
     uint speedTableCount;          // a tabulated burning velocity: points (phi, m/s); 0 for Gulder's
     float speedPhi[16];
     float speedValue[16];
@@ -122,6 +122,8 @@ kernel void advanceFlame(const device Cell *state [[buffer(0)]],
                          const device float4 *blockage [[buffer(8)]],
                          const device float4 *parallel [[buffer(9)]],
                          const device float2 *obstacleTurbulence [[buffer(10)]],
+                         const device float4 *generation [[buffer(11)]],
+                         const device float *unitWidth [[buffer(12)]],
                          uint3 tid [[thread_position_in_grid]]) {
     if (tid.x >= d.nx || tid.y >= d.ny || tid.z >= d.nz) {
         return;
@@ -195,9 +197,14 @@ kernel void advanceFlame(const device Cell *state [[buffer(0)]],
     float pressure = gasPressure(rho, c.energy - kinetic, d.airModel, d.gamma);
     float compression = pow(max(pressure / d.ambientPressure, 1e-3f), 1.0f / d.unburntGamma);
     float speed = laminar * d.speedFactor;
+    float cellular = 1.0f;  // with congestion: the cellular instability's wrinkling, applied below
     if (d.wrinklingRadius > 0.0f) {
         float radius = length(centreOfCell - ignition);
-        speed *= pow(clamp(radius / d.wrinklingRadius, 1.0f, d.wrinklingLimit), d.wrinklingPower);
+        if (porousAir) {
+            cellular = pow(clamp(radius / d.wrinklingRadius, 1.0f, d.wrinklingLimit), d.wrinklingPower);
+        } else {
+            speed *= pow(clamp(radius / d.wrinklingRadius, 1.0f, d.wrinklingLimit), d.wrinklingPower);
+        }
     }
     float resolvedWrinkling = 0.0f;  // with congestion: the sub-grid turbulence's wrinkling and u'
     float subgridVelocity = 0.0f;
@@ -210,32 +217,54 @@ kernel void advanceFlame(const device Cell *state [[buffer(0)]],
         float thickness = d.kinematicViscosity / (compression * laminar);
         float wrinkling = d.turbulenceScale * sqrt(turbulent / laminar) * pow(dx / thickness, 1.0f / 6.0f);
         if (porousAir) {
-            resolvedWrinkling = wrinkling;
-            subgridVelocity = turbulent;
+            // The sigma-model's viscosity can round a hair below zero, whose square root would be
+            // NaN and, under fast math, could pass through the comparisons below to burn a cell whole.
+            subgridVelocity = max(turbulent, 0.0f);
+            resolvedWrinkling = d.turbulenceScale * sqrt(subgridVelocity / laminar) * pow(dx / thickness, 1.0f / 6.0f);
         } else {
             speed *= max(wrinkling, 1.0f);
         }
     }
     if (porousAir) {
-        // Congestion (docs/congestion-model.md). The obstacles' turbulence wrinkles the flame by
-        // Bradley's correlation too, at its own u' = sqrt(2k/3) and length scale C_mu^(3/4)
-        // k^(3/2) / epsilon (at most a cell); the two wrinklings add as their squares, which
-        // Bradley's form has growing as u' L^(1/3).
+        // Congestion (docs/congestion-model.md). The obstacles' turbulence wrinkles the flame as
+        // PDRFoam's turbulent wrinkling has it: u' = sqrt(2k/3) and the sub-grid Schelkin term,
+        // u'_C sqrt(U.CT.U w) (n^(1/4) - 1), the obstacles' wakes in the lattice's unit cell, w wide; Guelder's
+        // 1 + 0.62 sqrt(u'/S_L) u'/(nu epsilon)^(1/4) and SCOPE's 1.6 (K Ma)^(-1/3) u'/S_L, K =
+        // 0.157 (u'/S_L) / sqrt(u' l / nu), l = 0.336 sqrt(3/2) u' k / epsilon, blended as
+        // (Xi_G^-4 + Xi_S^-4)^(-1/4). The larger of it and the sub-grid turbulence's wrinkling holds;
+        // the Markstein number is the unburnt mixture's (PDRFoam's SCOPE fuel data).
         float2 obstacle = obstacleTurbulence[index];
-        float obstacleVelocity = sqrt(2.0f / 3.0f * obstacle.x);
-        float scale = min(0.1643f * obstacle.x * sqrt(obstacle.x) / max(obstacle.y, 1e-12f), dx);
-        float thickness = d.kinematicViscosity / (compression * laminar);
-        float obstacleWrinkling = d.obstacleTurbulenceScale * sqrt(obstacleVelocity / laminar)
-            * pow(scale / thickness, 1.0f / 6.0f);
-        speed *= max(sqrt(resolvedWrinkling * resolvedWrinkling + obstacleWrinkling * obstacleWrinkling), 1.0f);
-        // The flame's folding round the obstacles below the grid (PDRFoam's basicSubGrid XiEq):
-        // 1 + max(2.2 sqrt(b), min(0.34 |u| / u' sqrt(b), 1.6)) min(n, 1), n the count of obstacles
-        // across the flow and b their blockage across it per square root of that count.
+        float k = obstacle.x;
+        // Turbulence below the grid is no larger than a cell: epsilon at least C_mu^(3/4) k^(3/2) / dx,
+        // as when the obstacles start the flow moving and their turbulence grows ahead of its
+        // dissipation.
+        float epsilon = max(obstacle.y, 0.1643f * k * sqrt(k) / dx);
+        float obstacleVelocity = sqrt(2.0f / 3.0f * k);
         float4 blocked = blockage[index];
         float magnitude = length(velocity);
         float3 along = velocity / (magnitude + 1e-4f);
         along *= along;
         float count = max(blocked.w - dot(along, parallel[index].xyz), 1e-4f);
+        float schelkin = sqrt(dot(along * magnitude * magnitude, generation[index].xyz) * unitWidth[index])
+            * (max(1.0f, pow(count, 0.25f)) - 1.0f);
+        float up = obstacleVelocity + schelkin;
+        float viscosity = d.kinematicViscosity / compression;
+        float ratio = up / laminar;
+        float guelder = 1.0f + 0.62f * sqrt(ratio) * up / pow(viscosity * epsilon, 0.25f);
+        float integral = 0.336f * sqrt(1.5f) * up * k / epsilon;
+        float karlovitz = 0.157f * ratio / sqrt(max(up * integral / viscosity, 1e-12f));
+        // SCOPE holds only for a positive Markstein number; without it, Guelder's alone.
+        float blend = guelder;
+        if (d.marksteinNumber > 0.01f) {
+            float scope = 1.6f * pow(max(karlovitz * d.marksteinNumber, 1e-12f), -1.0f / 3.0f) * ratio;
+            blend = pow(pow(guelder, -4.0f) + pow(max(scope, 1e-6f), -4.0f), -0.25f);
+        }
+        // The cellular instability's wrinkling fades once turbulence wrinkles the flame more (as
+        // PDRFoam's instability model, XiEqIn / Xi + Xi, tends to Xi): the larger of the two holds.
+        speed *= max(max(resolvedWrinkling, blend), cellular);
+        // The flame's folding round the obstacles below the grid (PDRFoam's basicSubGrid XiEq):
+        // 1 + max(2.2 sqrt(b), min(0.34 |u| / u' sqrt(b), 1.6)) min(n, 1), n the count of obstacles
+        // across the flow and b their blockage across it per square root of that count.
         float folding = sqrt(dot(along, blocked.xyz) / sqrt(count));
         float velocityScale = sqrt(subgridVelocity * subgridVelocity + obstacleVelocity * obstacleVelocity);
         speed *= 1.0f

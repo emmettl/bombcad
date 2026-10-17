@@ -446,7 +446,7 @@ enum HeadlessRun {
     static func execute(_ options: Options, costs: ConsumerCostStore? = nil) async throws -> (
         run: SavedSimulationRun, fragments: FragmentResult?, streams: [String], thermal: ThermalResult?,
         cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?, blastGPUSeconds: Double,
-        standing: SceneStanding
+        standing: SceneStanding, hazards: [String]
     ) {
         var document = try ProjectDocument.read(from: options.project)
         // Without --out the earlier runs are not needed, and must not use up the run limit.
@@ -492,7 +492,7 @@ enum HeadlessRun {
         }
         return (
             result.run, result.fragments, result.streams, result.thermal, result.cloud, result.ground,
-            result.envelopes, result.blastGPUSeconds, result.standing
+            result.envelopes, result.blastGPUSeconds, result.standing, result.hazards
         )
     }
 
@@ -516,7 +516,7 @@ enum HeadlessRun {
     ) async throws -> (
         run: SavedSimulationRun, document: ProjectDocument, fragments: FragmentResult?, streams: [String],
         thermal: ThermalResult?, cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?,
-        blastGPUSeconds: Double, standing: SceneStanding, envelopeHistories: Data?
+        blastGPUSeconds: Double, standing: SceneStanding, envelopeHistories: Data?, hazards: [String]
     ) {
         var document = document
         let inputs = try inputs(for: document, options: options)
@@ -851,6 +851,9 @@ enum HeadlessRun {
             scene?.addCloud(result.frames(), secondsPerFrame: spec.frameInterval)
             cloud = result
         }
+        // The blast's hazards: the safety standards' distances, the minimum safe distance (with the
+        // fragments' hazard, when flown) and the injury at standing height over the run.
+        model.setFragmentHazard(fragments?.hazard)
         // The structures' rubble flown on to land, while the scene can still take its ring.
         let debris = model.debrisResult()
         if let debris { scene?.addHazard(debris.hazard, name: "DebrisHazard") }
@@ -879,7 +882,7 @@ enum HeadlessRun {
         }
         return (
             run, document, fragments, streams, thermalResult, cloud, groundResult, envelopeData,
-            model.blastGPUSeconds, standing, historyData
+            model.blastGPUSeconds, standing, historyData, model.blastHazardSummary
         )
     }
 
@@ -1105,6 +1108,7 @@ enum HeadlessRun {
             print(summary(result.run, wallSeconds: wallSeconds, blastGPUSeconds: result.blastGPUSeconds))
             if let fragments = result.fragments { print("  " + fragments.summary) }
             for stream in result.streams { print("  " + stream) }
+            for line in result.hazards { print("  Hazards: " + line) }
             for line in result.thermal?.summary ?? [] { print("  " + line) }
             for line in result.cloud?.summary ?? [] { print("  " + line) }
             if let ground = result.ground { print("  " + ground.summary) }

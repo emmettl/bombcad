@@ -155,6 +155,9 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   masses within 1.4 of Cooper's counted bomb, measured drag; their [hazard](fragments.md#hazard)
   distance by DDESB's criterion, debris's alike, and glazing graded by GSA and ASTM F1642; what they
   strike judged by UFC 3-340-02 and THOR, panes holed before the blast (17 October).
+- **Done, an approximation:** [blast hazards](hazards.md): DoD's K-factor distances, the minimum
+  safe distance and what governs it, and injury at standing height from the run's own peaks
+  (Bowen, Bass, UFC's eardrums), checked against Teland's distances within 6% (17 October).
 - **Done, illustrative:** the fireball's
   [thermal radiation](thermal-radiation.md) and [surface heating](surface-heating.md); its
   [rise and cloud](fireball-rise.md); [ground shock](ground-shock.md), as the manuals'
