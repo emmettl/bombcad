@@ -358,6 +358,13 @@ struct StepControl {
     var levelStep1: Float = 0
     var levelSubstepSum0: UInt32 = 0
     var levelSubstepSum1: UInt32 = 0
+    /// The run's clock in ticks of 2^-40 s (`runClock` in Solver.metal), low and high words.
+    var clockLow: UInt32 = 0
+    var clockHigh: UInt32 = 0
+
+    /// A tick of the run's clock, s.
+    static let tick = 1.0 / 1_099_511_627_776.0
+    var clock: UInt64 { UInt64(clockLow) | UInt64(clockHigh) << 32 }
 }
 
 /// Pressure history recorded at a gauge cell, one sample per solver step.

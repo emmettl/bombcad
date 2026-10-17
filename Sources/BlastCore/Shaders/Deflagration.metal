@@ -261,14 +261,14 @@ kernel void ventPressure(const device Cell *state [[buffer(0)]],
 
 // Clears the cells of every panel whose overpressure has reached its release pressure, from both
 // the mask and the rigid mask the structure's remasking starts from. The first cell to clear a
-// panel records when, as the batch's time so far.
+// panel records when, on the run's clock (`runClock`).
 kernel void ventRelease(device uchar *mask [[buffer(0)]],
                         device uchar *rigidMask [[buffer(1)]],
                         const device uint2 *panelCells [[buffer(2)]],
                         device atomic_uint *panelPeak [[buffer(3)]],
                         const device float *releasePressure [[buffer(4)]],
                         device atomic_uint *panelOpened [[buffer(5)]],
-                        device float *openedAt [[buffer(6)]],
+                        device uint *openedAt [[buffer(6)]],
                         const device StepControl &control [[buffer(7)]],
                         constant DeflagrationUniforms &d [[buffer(8)]],
                         uint tid [[thread_position_in_grid]]) {
@@ -285,6 +285,8 @@ kernel void ventRelease(device uchar *mask [[buffer(0)]],
     uint expected = 0u;
     if (atomic_compare_exchange_weak_explicit(panelOpened + entry.y, &expected, 1u, memory_order_relaxed,
                                               memory_order_relaxed)) {
-        openedAt[entry.y] = control.batchTime;
+        // When, on the run's clock (its ticks), the same however the run is batched.
+        openedAt[2 * entry.y] = control.clockLow;
+        openedAt[2 * entry.y + 1] = control.clockHigh;
     }
 }

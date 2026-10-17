@@ -25,6 +25,9 @@ public final class BlastSolver {
     /// Simulated time in seconds since the last `restart()`.
     public private(set) var time: Double = 0
     public private(set) var stepCount = 0
+    /// The run's clock on the GPU, in ticks of 2^-40 s (`StepControl.clock`), carried from batch to
+    /// batch: the steps' times it gives are the same however the run is batched.
+    private var clockTicks: UInt64 = 0
     private var exposurePlane: ExposurePlane?
     private var exposureNeedsInitialSample = false
     private(set) var envelopeExposure: EnvelopeExposure?
@@ -1490,6 +1493,7 @@ public final class BlastSolver {
         frameExtractor?.invalidate()
         time = 0
         stepCount = 0
+        clockTicks = 0
         exposurePlane?.reset()
         exposureNeedsInitialSample = exposurePlane != nil
         envelopeExposure?.reset()
@@ -1860,6 +1864,8 @@ public final class BlastSolver {
             if let timeLimit {
                 control.timeLimit = Float(max(timeLimit - time, 0))
             }
+            control.clockLow = UInt32(truncatingIfNeeded: clockTicks)
+            control.clockHigh = UInt32(truncatingIfNeeded: clockTicks >> 32)
             controlBuffer.contents().storeBytes(of: control, as: StepControl.self)
             if exposureNeedsInitialSample {
                 encodeExposure(encoder, initial: true)
@@ -2216,6 +2222,7 @@ public final class BlastSolver {
         batchInFlight = false
         lastBatchGPUProfile = gpuProfiler?.resolve()
         let control = controlBuffer.contents().load(as: StepControl.self)
+        clockTicks = control.clock
         // A row per step, and one for the state the batch ended in.
         let rows = Int(control.stepIndex) + (gaugeCount > 0 ? 1 : 0)
         let rowStride = gaugeCount + 1
@@ -2237,7 +2244,7 @@ public final class BlastSolver {
             if step > 0 { lastStep = step }
         }
         let elapsed = time - start
-        deflagrationStage?.complete(batchStart: start)
+        deflagrationStage?.complete()
         for body in bodies {
             body.time = time
             if bodies.count > 1 {
