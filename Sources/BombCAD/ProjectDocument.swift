@@ -224,7 +224,7 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
         self.scenario = scenario
         var settings = SimulationSettings()
         settings.scenario = scenario
-        settings.resolution = preferences.resolution
+        settings.resolution = Self.openingResolution(scenario, preferred: preferences.resolution)
         settings.detailedCharge = preferences.detailedCharge
         settings.sharpShocks = preferences.sharpShocks
         let crossing = (scenario.acousticCrossingTime * 100).rounded(.up) / 100
@@ -478,7 +478,24 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             else { throw ProjectFileError.invalid("A structural region references a missing source part.") }
         }
         try scenario.validateStructuralSeparation()
-        try validateGrid(scenario, resolution: .coarse)
+        // The domain's sanity at the coarsest cells a run may take: a run's own resolution is
+        // checked where its settings are (a district kilometres across is refused at 0.5 m).
+        try validateGrid(scenario, resolution: Resolution(cellSize: Resolution.sizes.upperBound)!)
+    }
+
+    /// The cells a new project's runs start on: the preferred size, or, for a scene too large for
+    /// it (more than `openingCells` cells or 2,048 along a side), the finest whole quarter metre
+    /// that keeps within both, as fitting an open scene does.
+    static let openingCells = 20_000_000
+
+    static func openingResolution(_ scenario: Scenario, preferred: Resolution) -> Resolution {
+        let size = scenario.domainSize
+        let needed = max(
+            max(size.x, size.y, size.z) / 2048,
+            cbrt(size.x * size.y * size.z / Float(openingCells)))
+        guard needed > preferred.cellSize else { return preferred }
+        return Resolution(cellSize: min((needed * 4).rounded(.up) / 4, Resolution.sizes.upperBound))
+            ?? preferred
     }
 
     /// Check before Grid performs Float-to-Int conversion and allocation-size arithmetic.
