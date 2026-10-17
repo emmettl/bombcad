@@ -94,6 +94,7 @@ struct MetalView: NSViewRepresentable {
             _ = model.fragmentLive
             _ = model.thermalReckoned
             _ = model.fragmentHazard
+            _ = model.injuryField
             var settings = model.renderSettings
             settings.showCharge = model.time == 0
             settings.highlight = model.highlightedBox
@@ -108,6 +109,7 @@ struct MetalView: NSViewRepresentable {
                 (settings.showCloud
                     ? model.cloud.map { CloudOverlay.lines($0, eye: model.camera.eye) } ?? [] : [])
                 + (settings.showHazard ? model.hazardLines() : [])
+                + (settings.showBlastHazards ? model.blastHazardLines() : [])
             return Frame(
                 settings: settings, dots: dots, paint: paint, lines: lines, camera: model.camera,
                 freestanding: model.freestandingBoxes())

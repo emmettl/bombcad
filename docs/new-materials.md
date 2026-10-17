@@ -105,6 +105,10 @@ was judged on slabs and beams.
 
 ## Thin profiled metal sheeting
 
+Built since (17 October 2026) as a steel skin with its ribs as beams, as recommended below, and as
+an envelope construction: see [profiled steel sheeting](profiled-sheeting.md), with its comparison
+against Langdon's panels.
+
 ### What it needs
 
 - **Stiffness that depends on direction.** A trapezoidal or corrugated sheet is stiff in bending
@@ -156,10 +160,20 @@ not a detailed model.
 ## Order of work
 
 1. **Timber beams**: a one-axis law along the grain in beam fibres, with brittle tension, plastic
-   compression and a rate factor, judged against the Ottawa glulam beams.
+   compression and a rate factor, judged against the Ottawa glulam beams. *Done 17 October 2026*
+   ([shell model](shell-model.md#timber),
+   [validation](validation.md#glulam-beams-in-a-shock-tube)).
 2. **Timber shells**: ContinuumKit's orthotropic law ported to the shell layers and tested
    against the released Swift law, then the combined failure criterion, judged against the
    Ottawa CLT panels. Coordinate with Codex first, in case Edgerton's plywood resumes.
+   *Done 17 October 2026:*
+   - Edgerton is parked, so the criterion was proposed to ContinuumKit as `TimberFailure` (its
+     PR 93, merged, not yet released).
+   - It is in the shells with CLT layers and equilibrium shear
+     ([shell model](shell-model.md#timber)).
+   - It is compared with Poulin's panels
+     ([validation](validation.md#cross-laminated-timber-panels-in-a-shock-tube)).
+   - The fibres break at once, as the Ottawa members did.
 3. **Profiled sheeting** as a steel shell with rib beams, and a fastener law, judged against
    Langdon's panels and the cladding–girt tests.
 4. **Wall ties and joist bearings** for the terraced house, then the three building types as

@@ -45,7 +45,10 @@ let package = Package(
         .executableTarget(name: "SceneBench", dependencies: ["BlastCore", "BlastRender"]),
         .executableTarget(
             name: "RigidBoxDemo", dependencies: ["BlastCore"], resources: [.copy("viewer.html")]),
-        .testTarget(name: "BlastCoreTests", dependencies: ["BlastCore"]),
+        // ContinuumKit's SolidMechanics is the reference the shells' timber law is checked against.
+        .testTarget(
+            name: "BlastCoreTests",
+            dependencies: ["BlastCore", .product(name: "SolidMechanics", package: "continuumkit")]),
         .testTarget(
             name: "BombCADTests",
             dependencies: [

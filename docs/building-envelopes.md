@@ -539,9 +539,10 @@ and set against the same component of the detailed building free to respond (sum
 [recorder](#surface-exposure-and-loads) keeps both sides' histories at 0.1 ms) and judge every building
 one way as the run goes, at most once a second and again when it stops:
 
-- **Construction.** Each envelope's walls are reinforced concrete, unreinforced masonry or
-  reinforced blockwork (grouted or hollow, as a concrete of the masonry's strength), with a
-  thickness, a concrete roof, a reinforcement ratio and annealed glass; and, for concrete and
+- **Construction.** Each envelope's walls are reinforced concrete, unreinforced masonry,
+  reinforced blockwork (grouted or hollow, as a concrete of the masonry's strength) or profiled
+  steel sheeting on rails ([profiled sheeting](profiled-sheeting.md#in-the-one-way-damage-of-envelopes)),
+  with a thickness, a concrete or sheeted roof, a reinforcement ratio and annealed glass; and, for concrete and
   blockwork walls, their bars in one central mat or in both faces (with the cover), the concrete's
   or the masonry's strength, the bars' yield, and the mass of a cap or canopy carried on a
   freestanding wall's top. These are read from an IFC import's material layers or a map building's
@@ -735,8 +736,49 @@ since 17 October 2026 ("Vent broken glazing", below), with the one-way fill wher
   the shock arrives lets in what the same window open from the start does, within 10% at both
   gauges inside, uniform and once and twice refined, cut in its opening or set in its wall
   (`EnvelopeVentingTests`).
-- **Not** with gravity, whose still air varies with height: it refuses it. Map buildings are solid
-  blocks without glazing, so nothing in them vents.
+- **Walls, roofs and slabs that fail** (since 17 October 2026). Each takes the single degrees of
+  freedom the one-way damage judges it by (`EnvelopeWallFailure`: a panel's or one-way strip's
+  fixed and simply supported bounds, a freestanding wall's cantilever both ways), stepped on the GPU
+  with the air from its own net pressure as `SDOFSystem.response` steps them, permanent set and
+  rebound included. When its damage is failed (concrete past 10° once yielded, masonry with no
+  resistance left; a panel's either bound, a cantilever's the way its load has pushed harder so
+  far, as `cantileverLoad` turns it) its cells open as a pane's do, its panes with it, and the
+  damage takes it as failed then. A brick wall falls in the air within 0.5 ms of its one-way model on
+  its own load (`EnvelopeVentingTests`). Façade strips, a solid block's faces with nothing behind,
+  do not open.
+- **Holes through walls** (since 17 October 2026). A cased charge's fragments, flown before the
+  run in still air as for the panes they hole (`FragmentCloud.envelopeHoles`), perforate walls,
+  roofs and slabs by the penetration methods (fragments.md); each perforation is a hole of the
+  fragment's presented area, times the real fragments it stands for, for want of a cited hole size
+  (UFC 3-340-02 §4-60.1 describes craters wider than the fragment but gives no size), so the open
+  area is a lower bound. A hole goes through the component it strikes as the column of its cells
+  there (`BlastSolver.setEnvelopeWallHoles`); a column opens on the run's clock when its holes fill
+  half its face, and a hole larger than that opens every column whose centre lies within its
+  radius. A finer model would pass the flow through a cell's holed share as an aperture, as cut
+  cells and the congestion model's open faces do; the cells are solid in the mask, so it is not yet
+  done.
+- **Breaches** (`BlastSolver.setEnvelopeCloseIn`, `UFCSpallBreach`). Each concrete wall, roof and
+  slab is judged column by column across its face by UFC 3-340-02 §4-55's threshold spall and
+  breach curves (equations 4-178 and 4-179, the spall parameter of 4-180a or, touching the charge,
+  4-180b, with the casing's weight), at the range from the charge's centre to the column's middle;
+  the columns past the breach threshold open when the blast reaches them (Kingery–Bulmash's
+  arrival there). Spalling, which does not go through, opens nothing; the damage shows each
+  component spalled or breached. The breach curve is Figure 4-65a's within 4% for Ψ of 1.8 to 14
+  (`UFCSpallBreachTests`); on Hupfauf's eight contact slabs it breaches all four that breached and
+  two of the four that held, as the upper bound to the tests' breaches it is.
+  Checked (`scenebench venting-checks --case cased`, `--case references-fragments`, 0.25 m, 17
+  October 2026): 20 kg in a 20 kg steel case 4 m off a 0.2 m concrete box perforates its wall 4
+  times, 16 cm² in all, a fortieth of a cell's face, and opens nothing (UFC 3-340-02's leakage
+  through 16 cm² into its 121 m³ would be about 10 Pa); 1 m off, bare, the wall spalls, and cased
+  it is breached (the casing lowers the spall parameter): 166 columns open from 0.2 ms and the
+  inside reaches 89 kPa. The breach patch is wherever the curve says breach, so it bounds the
+  hole's extent from above. On the damage references' isolated buildings cased one to one,
+  fragments perforate the concrete 11 times at 50 kg and 101 at 200 kg, open nothing, and the
+  inside is as without them.
+- **Gravity.** An opened cell holds the background at rest at its height, and a room's mean is of
+  its cells' overpressure against the ambient pressure at theirs; the pane breaks and the room
+  fills as without gravity, within 0.3 ms and 10%. Map buildings are solid blocks without glazing,
+  so nothing in them vents.
 
 Against the [damage references](#damage-references) (`scenebench envelope-damage
 --representations=vented`, the same scenes as the envelope twins with venting on; 17 October 2026),
@@ -781,8 +823,7 @@ through a window the UFC has no number.
 
 **In the app.** "Vent broken glazing", in the Run tab under the charge, for scenes with glazed
 envelopes, structures beside them or not, refined or not; on by default since 17 October 2026.
-With gravity in the air it is disabled and the run takes the one-way fill, as does one that
-cannot vent for any other reason, and the damage section says why. It is saved in the project as
+A run that cannot vent takes the one-way fill, and the damage section says why. It is saved in the project as
 `ventsGlazing` only when on and venting can run, so a run saved before then, whose file has no
 key, keeps its fill and its fingerprint, and a project glazed before opens with venting off until
 it is turned on; a project without glazing opens with it on, for glazing added later. With it on, each building's panes break when the air's did (their histories up to then
@@ -810,6 +851,17 @@ illustrative.
   is 31.9 and 30.0 kPa vented against the fill's 28.2 and 27.2, and the worst wall is hazardous
   rather than failed, as the air let in pushes back on the walls from inside, which the fill
   never does. The run took 254 s against the fill's 273.
+
+**Walls that fail, on the damage references** (`scenebench envelope-damage --walls=rc,glass
+--charges=200,500 --representations=vented`, 17 October 2026; outputs in
+`/Volumes/StudioData/bombcad/envelope-damage/vented-walls/`): with concrete walls, at 200 kg no
+wall fails one way and the inside stays at ambient, where the detailed building's rises to 1.6 kPa
+as its walls crack; at 500 kg the wall facing the charge fails in the air at 54.3 ms and the
+inside reads 3.2 kPa at the gauge, 2.8 kPa as the room's mean, against the detailed building's 6.5
+kPa, and the street's two front buildings' facing walls at 53.8 ms (gauges 6.7 and 6.8 kPa). The
+one-way fill sees none of it: no pane, no inside. The glazed buildings change only at 500 kg,
+where the isolated one's facing wall also falls, at 99.2 ms, after its panes. The office preset's
+neighbours, whose worst wall is hazardous with venting, are as before.
 
 It became the default on the user's choice (17 October 2026), on UFC 3-340-02's evidence: the
 walls inside 0.31–1.22 of the UFC's loads with venting, 0.15–0.42 with the fill. The standing's
@@ -863,8 +915,9 @@ the inside pressure (see [standing](standing.md)).
 
 ### Future work
 
-- **Venting more.** [Venting](#venting-glazing-that-breaks-in-the-air) opens broken glazing in the
-  air, uniform or refined; walls that fail stay closed, and with gravity the one-way fill stands in.
+- **Venting more.** [Venting](#venting-glazing-that-breaks-in-the-air) opens broken glazing and
+  failed walls, roofs and slabs whole, uniform or refined, with gravity or not; a wall breached in
+  part (a hole, a spalled patch) stays closed.
 - **Pressure–impulse curves.** Each component's peak overpressure and impulse placed against
   curves of equal damage: cheaper still, needing no time history.
 - **Fragility curves.** A probability of each damage state from the same loads, where published.

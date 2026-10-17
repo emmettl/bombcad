@@ -237,6 +237,15 @@ constant bool burnLimit = is_function_constant_defined(burnLimitConstant) && bur
 constant bool cutCellsConstant [[function_constant(13)]];
 constant bool cutCells = is_function_constant_defined(cutCellsConstant) && cutCellsConstant;
 
+// Congestion below the grid (`CongestionArray`, docs/congestion-model.md): cells holding obstacles
+// too small to resolve are porous. Each keeps the share β_v of its volume open to the air, and a
+// face the smaller of its two cells' shares (so that the update never outruns the step's Courant
+// number); the update is each face's flux times its open share over the open volume, with the
+// pressure on the obstacles' faces, p (β_high - β_low), so that still air stays still. Their drag
+// is applied after the step (`congestionDrag`). Without congestion its code is left out.
+constant bool porousAirConstant [[function_constant(14)]];
+constant bool porousAir = is_function_constant_defined(porousAirConstant) && porousAirConstant;
+
 // A column's cut cells: where its records start, its first cell of air (cells below are solid),
 // its first whole cell (cells from it up are whole), and its first cell at least half full (the
 // one its smaller cells give the rest of their difference to). Columns run to nx and ny
@@ -1133,7 +1142,8 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
                              device float *coarseSpeciesFlux, const device uchar *boxMask, device float *boxImpulse,
                              const device float4 *gravityTable, const device float *viscosity,
                              const device uint4 *cutColumns, const device float4 *cutRecords,
-                             const device float4 *cutWalls, device float4 *cutDefects, const device uint *cutCeilings) {
+                             const device float4 *cutWalls, device float4 *cutDefects, const device uint *cutCeilings,
+                             const device float4 *congestion) {
     int index = cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z);
     // With cut cells, whether this cell lies below the highest the cut cells' work reaches over its
     // tile's columns (`TerrainCutGeometry.tileCeilings`): above it there is none to do.
@@ -1395,6 +1405,24 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
 
     Cell c = src[index];
     float3 momentum = toSweep(float3(c.mx, c.my, c.mz), axis);
+    // Porous cells: each face's flux through its open share, over the cell's open volume.
+    float porosity = 1.0f;
+    float porosityLow = 1.0f;
+    float porosityHigh = 1.0f;
+    if (porousAir) {
+        porosity = congestion[index].x;
+        porosityLow = kindM1 == kindFluid ? min(porosity, congestion[index - stride].x) : porosity;
+        porosityHigh = kindP1 == kindFluid ? min(porosity, congestion[index + stride].x) : porosity;
+        float open = 1.0f / porosity;
+        fluxLow.mass *= porosityLow * open;
+        fluxLow.momentum *= porosityLow * open;
+        fluxLow.energy *= porosityLow * open;
+        fluxHigh.mass *= porosityHigh * open;
+        fluxHigh.momentum *= porosityHigh * open;
+        fluxHigh.energy *= porosityHigh * open;
+        // The obstacles' push back: what the pressure on the open faces leaves unbalanced.
+        momentum.x += lambda * w0.p * (porosityHigh - porosityLow) * open;
+    }
     float rho = c.rho - lambda * (fluxHigh.mass - fluxLow.mass);
     momentum -= lambda * (fluxHigh.momentum - fluxLow.momentum);
     float energy = c.energy - lambda * (fluxHigh.energy - fluxLow.energy);
@@ -1557,13 +1585,14 @@ kernel void sweep(device Cell *src [[buffer(0)]],
                   const device float4 *cutWalls [[buffer(22)]],
                   device float4 *cutDefects [[buffer(23)]],
                   const device uint *cutCeilings [[buffer(24)]],
+                  const device float4 *congestion [[buffer(25)]],
                   uint3 tid [[thread_position_in_grid]]) {
     if (tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz) {
         return;
     }
     sweepCell(int3(tid), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags,
               speciesSrc, speciesDst, patchOfTile, coarseFlux, coarseSpeciesFlux, boxMask, boxImpulse,
-              gravityTable, viscosity, cutColumns, cutRecords, cutWalls, cutDefects, cutCeilings);
+              gravityTable, viscosity, cutColumns, cutRecords, cutWalls, cutDefects, cutCeilings, congestion);
 }
 
 // Sweeps the cells of the tiles listed in `tiles`, one threadgroup per tile; each thread takes
@@ -1593,6 +1622,7 @@ kernel void sweepTiles(device Cell *src [[buffer(0)]],
                        const device float4 *cutWalls [[buffer(22)]],
                        device float4 *cutDefects [[buffer(23)]],
                        const device uint *cutCeilings [[buffer(24)]],
+                       const device float4 *congestion [[buffer(25)]],
                        uint3 group [[threadgroup_position_in_grid]],
                        uint3 local [[thread_position_in_threadgroup]],
                        uint3 groupSize [[threads_per_threadgroup]]) {
@@ -1604,7 +1634,7 @@ kernel void sweepTiles(device Cell *src [[buffer(0)]],
         if (cell.x < u.nx && cell.y < u.ny && cell.z < u.nz) {
             sweepCell(int3(cell), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags,
                       speciesSrc, speciesDst, patchOfTile, coarseFlux, coarseSpeciesFlux, boxMask, boxImpulse,
-                      gravityTable, viscosity, cutColumns, cutRecords, cutWalls, cutDefects, cutCeilings);
+                      gravityTable, viscosity, cutColumns, cutRecords, cutWalls, cutDefects, cutCeilings, congestion);
         }
     }
 }
@@ -1772,6 +1802,125 @@ kernel void redistributeCutDefects(device Cell *state [[buffer(0)]],
         }
         apply(k, change, changeEnergy, alpha);
     }
+}
+
+// The obstacle turbulence's constants (PDRFoam's PDRkEpsilon and PDRDragModel): k-epsilon's C_mu
+// and C_2, the length scale's C_4 and the wall shear's drag and turbulence C_su and C_sk.
+constant float obstacleCmu = 0.09f;
+constant float obstacleC2 = 1.92f;
+constant float obstacleC4 = 0.1f;
+constant float obstacleCsu = 0.5f;
+constant float obstacleCsk = 0.05f;
+// The air's own kinematic viscosity, m^2/s, for the wall shear.
+constant float obstacleLaminarViscosity = 1.5e-5f;
+
+// The obstacle turbulence's eddy viscosity, C_mu k^2 / epsilon, m^2/s.
+static inline float obstacleEddyViscosity(float2 turbulence) {
+    return obstacleCmu * turbulence.x * turbulence.x / max(turbulence.y, 1e-12f);
+}
+
+// Congestion's drag (`CongestionField`), as PDRFoam's: the obstacles in a porous cell take
+// momentum at (1/2 CR_i |u| + C_su beta_v nu_eff A_w^2) rho u_i per unit of the cell's volume along
+// each axis, so (over its open volume, beta_v) at that over beta_v; implicitly over the step, so
+// that it never reverses the flow. The kinetic energy it takes stays in the gas as heat.
+kernel void congestionDrag(device Cell *state [[buffer(0)]],
+                           const device float4 *congestion [[buffer(1)]],
+                           const device uchar *mask [[buffer(2)]],
+                           const device StepControl &control [[buffer(3)]],
+                           constant SolverUniforms &u [[buffer(4)]],
+                           const device float4 *parallel [[buffer(5)]],
+                           const device float2 *turbulence [[buffer(6)]],
+                           uint3 tid [[thread_position_in_grid]]) {
+    if (tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz || control.dt <= 0.0f) {
+        return;
+    }
+    uint index = tid.x + u.nx * (tid.y + u.ny * tid.z);
+    float4 field = congestion[index];
+    if (mask[index] != 0 || all(field.yzw == 0.0f)) {
+        return;
+    }
+    Cell c = state[index];
+    float rho = max(c.rho, u.densityFloor);
+    float3 momentum = float3(c.mx, c.my, c.mz);
+    float speed = length(momentum) / rho;
+    float wall = parallel[index].w;
+    float shear = obstacleCsu * (obstacleLaminarViscosity + obstacleEddyViscosity(turbulence[index])) * wall * wall;
+    momentum /= 1.0f + control.dt * (speed * field.yzw / field.x + shear);
+    c.mx = momentum.x;
+    c.my = momentum.y;
+    c.mz = momentum.z;
+    state[index] = c;
+}
+
+// The turbulence congestion's obstacles make (PDRFoam's PDRkEpsilon, with its obstacle terms and
+// without the resolved shear's, which the air resolves or its sub-grid mixing models): k and epsilon
+// per mass, carried by the air semi-Lagrangian (from where the cell's gas was a step ago, trilinear,
+// a solid neighbour taking the cell's own value), then made and dissipated over the step,
+//
+//   dk/dt = G_R / beta_v - epsilon,
+//   d epsilon/dt = 1.5 C_mu^(3/4) (G_R / beta_v) sqrt(k) / (C_4 L_obs) - C_2 epsilon^2 / k,
+//
+// G_R = 1/2 |u| u.CT.u + C_sk beta_v nu_eff A_w^2 |u|^2 the obstacles' generation per mass, each
+// sink implicitly. Where the generation holds, epsilon = 1.5 C_mu^(3/4) k^(3/2) / (C_2 C_4 L_obs):
+// the turbulence's length scale is a tenth of the obstacles'.
+kernel void obstacleTurbulence(const device Cell *state [[buffer(0)]],
+                               const device float4 *congestion [[buffer(1)]],
+                               const device float4 *generation [[buffer(2)]],
+                               const device float4 *parallel [[buffer(3)]],
+                               const device uchar *mask [[buffer(4)]],
+                               const device StepControl &control [[buffer(5)]],
+                               constant SolverUniforms &u [[buffer(6)]],
+                               const device float2 *turbulenceSrc [[buffer(7)]],
+                               device float2 *turbulenceDst [[buffer(8)]],
+                               uint3 tid [[thread_position_in_grid]]) {
+    if (tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz) {
+        return;
+    }
+    uint index = tid.x + u.nx * (tid.y + u.ny * tid.z);
+    float2 own = turbulenceSrc[index];
+    float dt = control.dt;
+    if (mask[index] != 0 || dt <= 0.0f) {
+        turbulenceDst[index] = own;
+        return;
+    }
+    Cell c = state[index];
+    float rho = max(c.rho, u.densityFloor);
+    float3 velocity = float3(c.mx, c.my, c.mz) / rho;
+
+    // Where the gas was a step ago, in cell units from the first cell's centre.
+    int3 size = int3(int(u.nx), int(u.ny), int(u.nz));
+    float3 from = clamp(float3(tid) - velocity * dt / u.dx, float3(0.0f), float3(size - 1));
+    int3 low = min(int3(floor(from)), size - 1);
+    int3 high = min(low + 1, size - 1);
+    float3 w = from - float3(low);
+    float2 carried = float2(0.0f);
+    for (int corner = 0; corner < 8; ++corner) {
+        int3 pick = int3(corner & 1, (corner >> 1) & 1, (corner >> 2) & 1);
+        int3 cell = select(low, high, bool3(pick));
+        uint at = uint(cell.x) + u.nx * (uint(cell.y) + u.ny * uint(cell.z));
+        float3 share = select(1.0f - w, w, bool3(pick));
+        carried += share.x * share.y * share.z * (mask[at] == 0 ? turbulenceSrc[at] : own);
+    }
+    float k = max(carried.x, 1e-6f);
+    float epsilon = max(carried.y, 1e-9f);
+
+    float porosity = congestion[index].x;
+    float4 made = generation[index];
+    float wall = parallel[index].w;
+    float generated = 0.0f;
+    if (any(made.xyz != 0.0f) || wall != 0.0f) {
+        float speed = length(velocity);
+        float nuEffective = obstacleLaminarViscosity + obstacleCmu * k * k / epsilon;
+        generated = (0.5f * speed * dot(velocity * velocity, made.xyz)
+                     + obstacleCsk * porosity * nuEffective * wall * wall * speed * speed) / porosity;
+    }
+    float epsilonMade = generated > 0.0f
+        ? 1.5f * pow(obstacleCmu, 0.75f) * generated * sqrt(k) / (obstacleC4 * made.w)
+        : 0.0f;
+    float rate = epsilon / k;
+    float kNew = (k + dt * generated) / (1.0f + dt * rate);
+    float epsilonNew = (epsilon + dt * epsilonMade) / (1.0f + dt * obstacleC2 * rate);
+    turbulenceDst[index] = float2(max(kNew, 1e-6f), max(epsilonNew, 1e-9f));
 }
 
 // After a restart: wakes the tiles within reach of every fluid cell that is not still.
@@ -2573,11 +2722,14 @@ kernel void openEnvelopePanes(const device uint2 *cells [[buffer(0)]],
                               constant SolverUniforms &u [[buffer(9)]],
                               const device StepControl &control [[buffer(10)]],
                               constant uint &count [[buffer(11)]],
+                              const device float4 *gravityTable [[buffer(12)]],
                               uint tid [[thread_position_in_grid]]) {
     if (tid >= count || control.dt <= 0.0f) return;
     uint2 entry = cells[tid];
     if (status[entry.y] != 1u) return;
     uint index = entry.x;
+    // Already opened (a pane in a wall that went first): its air is the flow's now.
+    if (mask[index] == 0) return;
     mask[index] = 0;
     rigidMask[index] = 0;
     Cell still;
@@ -2586,16 +2738,199 @@ kernel void openEnvelopePanes(const device uint2 *cells [[buffer(0)]],
     still.my = u.stillMy;
     still.mz = u.stillMz;
     still.energy = u.stillEnergy;
+    // Under gravity, the background at rest at the cell's height.
+    if (u.gravity != 0.0f) {
+        still = gravityRestOf(gravityTable, int(index / (u.nx * u.ny)));
+    }
     stateA[index] = still;
     stateB[index] = still;
     if (carriesSpecies(u)) {
-        float2 air = float2(0.0f, u.stillOxygen);
+        float2 air = float2(0.0f, u.stillOxygen / u.stillRho * still.rho);
         speciesA[index] = air;
         speciesB[index] = air;
     }
     if (u.tileNx != 0) {
         int3 cell = int3(index % u.nx, (index / u.nx) % u.ny, index / (u.nx * u.ny));
         wakeTilesAround(cell, tileFlags, tileWoken, u);
+    }
+}
+
+
+// Envelope venting's walls, roofs and slabs (`EnvelopeWallFailure`): each of a component's single
+// degrees of freedom as `SDOFSystem.response` steps it, K_LM m x'' + c x' + R(x) = p, R its backbone
+// with permanent set (inward the backbone at the furthest inward deflection yet, outward the
+// rebound resistance), K_LM elastic until it yields, then the mean of elastic and plastic up to 2°
+// of support rotation, then plastic; by velocity Verlet at a 200th of its elastic period. The
+// component fails when a system's level does (concrete past 10° once yielded, masonry with no
+// resistance left): a panel's either bound, a cantilever's the way its load has pushed harder so
+// far. Its cells open after the step, as a pane's. A thread a component.
+struct EnvelopeWallSystem {
+    float mass;
+    float loadMassElastic;
+    float loadMassPlastic;
+    float span;
+    float reboundFactor;
+    float damping;
+    float substep;
+    float stiffness;
+    float yieldPast;
+    float rotationPast;
+    float lostPast;
+    float sign;
+    uint first;
+    uint count;
+    uint pad0;
+    uint pad1;
+};
+
+// The backbone's resistance at deflection `x` >= 0, as `SDOFSystem.envelope`.
+static inline float wallEnvelope(float x, const device float4 *table, EnvelopeWallSystem s) {
+    float4 lead = table[s.first];
+    if (x <= lead.x) return s.stiffness * x;
+    for (uint k = 1; k < s.count; ++k) {
+        float4 b = table[s.first + k];
+        if (x <= b.x) {
+            float4 a = table[s.first + k - 1];
+            return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
+        }
+    }
+    return table[s.first + s.count - 1].y;
+}
+
+kernel void stepEnvelopeWalls(const device float2 *current [[buffer(0)]],
+                              const device uint4 *walls [[buffer(1)]],
+                              const device EnvelopeWallSystem *systems [[buffer(2)]],
+                              const device float4 *table [[buffer(3)]],
+                              device float4 *state [[buffer(4)]],
+                              device float4 *clocks [[buffer(5)]],
+                              device uint *status [[buffer(6)]],
+                              device atomic_uint *opened [[buffer(7)]],
+                              const device StepControl &control [[buffer(8)]],
+                              constant uint2 &counts [[buffer(9)]],
+                              const device uint2 *ownerRooms [[buffer(10)]],
+                              device atomic_uint *roomDispatch [[buffer(11)]],
+                              device uint *roomList [[buffer(12)]],
+                              uint wall [[thread_position_in_grid]]) {
+    // counts: the walls, and the panes before them in `status`.
+    if (wall >= counts.x || control.dt <= 0.0f) return;
+    uint opener = counts.y + wall;
+    uint was = status[opener];
+    if (was == 1u) status[opener] = 2u;
+    float4 clock = clocks[wall];  // (time, broken at, largest net pressure, smallest)
+    clock.x += control.dt;
+    if (was != 0u) {
+        clocks[wall] = clock;
+        return;
+    }
+    uint4 w = walls[wall];  // (component, owner, first system, systems | cantilever << 16)
+    float2 sides = current[w.x];
+    float p = sides.x - sides.y;
+    clock.z = max(clock.z, p);
+    clock.w = min(clock.w, p);
+    uint count = w.w & 0xffffu;
+    bool cantilever = (w.w >> 16) != 0u;
+    // A cantilever is judged the way its load has pushed it harder so far (`cantileverLoad`).
+    uint judged = cantilever && -clock.w > clock.z ? 1u : 0u;
+    bool broken = false;
+    float brokeAt = 0.0f;
+    for (uint k = 0; k < count; ++k) {
+        EnvelopeWallSystem s = systems[w.z + k];
+        float4 a = state[2 * (w.z + k)];      // x, v, permanent set, peak inward
+        float4 b = state[2 * (w.z + k) + 1];  // rebound (<= 0), yielded, resistance, failed
+        float x = a.x, v = a.y, permanent = a.z, peak = a.w;
+        float rebound = b.x, r = b.z;
+        bool yielded = b.y != 0.0f;
+        bool failed = b.w != 0.0f;
+        float load = s.sign * p;
+        uint n = max(1u, uint(ceil(control.dt / s.substep)));
+        float h = control.dt / float(n);
+        float yieldX = table[s.first].x;
+        for (uint i = 0; i < n; ++i) {
+            float kick = s.loadMassElastic;
+            if (yielded) {
+                bool small = s.span > 0.0f && atan(max(fabs(x), peak) / (s.span / 2.0f)) <= 2.0f * M_PI_F / 180.0f;
+                kick = small ? 0.5f * (s.loadMassElastic + s.loadMassPlastic) : s.loadMassPlastic;
+            }
+            v += 0.5f * h * (load - r - s.damping * v) / (kick * s.mass);
+            x += h * v;
+            // The resistance at x (yielding moves the permanent set).
+            r = s.stiffness * (x - permanent);
+            float reached = max(max(x, peak), yieldX);
+            float upper = wallEnvelope(reached, table, s);
+            float outward = max(max(-x, -rebound), yieldX);
+            float lower = -s.reboundFactor * min(wallEnvelope(outward, table, s), upper);
+            if (r > upper) {
+                r = upper;
+                permanent = x - r / s.stiffness;
+                yielded = yielded || x > yieldX;
+            } else if (r < lower) {
+                r = lower;
+                permanent = x - r / s.stiffness;
+                yielded = yielded || -x > yieldX;
+            }
+            kick = s.loadMassElastic;
+            if (yielded) {
+                bool small = s.span > 0.0f && atan(max(fabs(x), peak) / (s.span / 2.0f)) <= 2.0f * M_PI_F / 180.0f;
+                kick = small ? 0.5f * (s.loadMassElastic + s.loadMassPlastic) : s.loadMassPlastic;
+            }
+            v += 0.5f * h * (load - r - s.damping * v) / (kick * s.mass);
+            peak = max(peak, x);
+            rebound = min(rebound, x);
+            if (!failed && ((peak > s.yieldPast && max(peak, -rebound) > s.rotationPast) || fabs(x) >= s.lostPast)) {
+                failed = true;
+                if (!cantilever || k == judged) {
+                    float t = clock.x - control.dt + float(i + 1) * h;
+                    brokeAt = broken ? min(brokeAt, t) : t;
+                    broken = true;
+                }
+            }
+        }
+        // A cantilever judged now by a system that failed earlier has failed too.
+        if (cantilever && k == judged && failed && !broken) {
+            broken = true;
+            brokeAt = clock.x;
+        }
+        state[2 * (w.z + k)] = float4(x, v, permanent, peak);
+        state[2 * (w.z + k) + 1] = float4(rebound, yielded ? 1.0f : 0.0f, r, failed ? 1.0f : 0.0f);
+    }
+    if (broken) {
+        clock.y = brokeAt;
+        status[opener] = 1u;
+        uint owner = w.y;
+        if (atomic_exchange_explicit(opened + owner, 1u, memory_order_relaxed) == 0u) {
+            uint2 range = ownerRooms[owner];
+            uint at = atomic_fetch_add_explicit(roomDispatch, range.y, memory_order_relaxed);
+            for (uint k = 0; k < range.y; ++k) roomList[at + k] = range.x + k;
+        }
+    }
+    clocks[wall] = clock;
+}
+
+
+// Holes through envelope walls, roofs and slabs (`EnvelopeVenting.setBreaches`): each a column of
+// a component's cells that opens, as a pane's cells do, on the step the run's clock reaches it,
+// however the run is batched. A thread a hole.
+kernel void openEnvelopeBreaches(const device uint4 *breaches [[buffer(0)]],
+                                 device uint *status [[buffer(1)]],
+                                 device atomic_uint *opened [[buffer(2)]],
+                                 const device StepControl &control [[buffer(3)]],
+                                 constant uint &count [[buffer(4)]],
+                                 const device uint2 *ownerRooms [[buffer(5)]],
+                                 device atomic_uint *roomDispatch [[buffer(6)]],
+                                 device uint *roomList [[buffer(7)]],
+                                 uint hole [[thread_position_in_grid]]) {
+    if (hole >= count || control.dt <= 0.0f) return;
+    uint4 b = breaches[hole];  // (opener, owner, ticks low, ticks high)
+    uint was = status[b.x];
+    if (was == 1u) status[b.x] = 2u;
+    if (was != 0u) return;
+    ulong ticks = ulong(b.z) | (ulong(b.w) << 32);
+    if (ticks > runClock(control)) return;
+    status[b.x] = 1u;
+    if (atomic_exchange_explicit(opened + b.y, 1u, memory_order_relaxed) == 0u) {
+        uint2 range = ownerRooms[b.y];
+        uint at = atomic_fetch_add_explicit(roomDispatch, range.y, memory_order_relaxed);
+        for (uint k = 0; k < range.y; ++k) roomList[at + k] = range.x + k;
     }
 }
 
@@ -2615,6 +2950,7 @@ kernel void sampleEnvelopeRooms(const device Cell *state [[buffer(0)]],
                                 device float4 *results [[buffer(4)]],
                                 constant SolverUniforms &u [[buffer(5)]],
                                 const device StepControl &control [[buffer(6)]],
+                                const device float4 *gravityTable [[buffer(7)]],
                                 uint group [[threadgroup_position_in_grid]],
                                 uint local [[thread_index_in_threadgroup]]) {
     threadgroup float partial[256];
@@ -2624,10 +2960,14 @@ kernel void sampleEnvelopeRooms(const device Cell *state [[buffer(0)]],
     if (control.dt <= 0.0f) return;
     float sum = 0.0f;
     for (uint n = local; n < room.count; n += 256u) {
-        Cell c = state[cells[room.first + n]];
+        uint index = cells[room.first + n];
+        Cell c = state[index];
         float rho = max(c.rho, u.densityFloor);
         float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / rho;
-        sum += gasPressure(rho, c.energy - kinetic, u.airModel, u.gamma) - u.ambientPressure;
+        // Under gravity, against the ambient pressure at the cell's height.
+        float ambient = u.gravity != 0.0f ? gravityAmbientOf(gravityTable, int(index / (u.nx * u.ny)), u)
+                                          : u.ambientPressure;
+        sum += gasPressure(rho, c.energy - kinetic, u.airModel, u.gamma) - ambient;
     }
     partial[local] = sum;
     threadgroup_barrier(mem_flags::mem_threadgroup);

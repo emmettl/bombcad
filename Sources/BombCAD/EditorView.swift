@@ -214,6 +214,30 @@ struct EditorView: View {
                         .help(
                             "Mesh this piece with solid elements (where stress through the thickness matters, "
                                 + "near a charge) or shells; the two kinds are tied where they meet.")
+                        Picker("Profiled sheet", selection: sheetBinding(index)) {
+                            Text("None").tag(String?.none)
+                            ForEach(SheetProfile.library, id: \.name) { Text($0.name).tag(Optional($0.name)) }
+                        }
+                        .font(.callout)
+                        .padding(.leading, 18)
+                        .help(
+                            "Make this piece profiled steel sheeting: a skin as thick as the profile is deep, "
+                                + "its ribs as beams, meshed as shells (docs/profiled-sheeting.md).")
+                        if let sheet = model.editedStructure?.sheet(of: index) {
+                            Picker("Ribs along", selection: ribAxisBinding(index)) {
+                                ForEach(
+                                    (0..<3).filter {
+                                        $0 != (0..<3).min { solids[index].size[$0] < solids[index].size[$1] }
+                                    },
+                                    id: \.self
+                                ) { Text(["x", "y", "z"][$0]).tag($0) }
+                            }
+                            .pickerStyle(.segmented)
+                            .font(.callout)
+                            .padding(.leading, 18)
+                            .help(
+                                "The direction the ribs run, which the sheet spans: \(sheet.profile.source).")
+                        }
                         DisclosureGroup("Material properties") {
                             MaterialEditor(material: materialBinding(index))
                         }
@@ -531,6 +555,25 @@ struct EditorView: View {
         solidPropertyBinding(
             index, fallback: .solid,
             get: { $0.elementKind(of: $1) }, set: { model.setElementKind($0, ofSolid: $1, objectID: $2) })
+    }
+
+    private func sheetBinding(_ index: Int) -> Binding<String?> {
+        solidPropertyBinding(
+            index, fallback: nil,
+            get: { $0.sheet(of: $1)?.profile.name },
+            set: { name, index, id in
+                model.setSheet(SheetProfile.library.first { $0.name == name }, ofSolid: index, objectID: id)
+            })
+    }
+
+    private func ribAxisBinding(_ index: Int) -> Binding<Int> {
+        solidPropertyBinding(
+            index, fallback: 2,
+            get: { $0.sheet(of: $1)?.ribAxis ?? 2 },
+            set: { axis, index, id in
+                guard let profile = model.editedStructure?.sheet(of: index)?.profile else { return }
+                model.setSheet(profile, ribAxis: axis, ofSolid: index, objectID: id)
+            })
     }
 
     private func materialBinding(_ index: Int) -> Binding<StructureMaterial> {

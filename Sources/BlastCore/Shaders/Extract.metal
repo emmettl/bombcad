@@ -139,3 +139,46 @@ kernel void extractLuminousCells(
     float products = kelvin != 0u && hasSpecies != 0u ? max(species[index].x, 0.0f) : 0.0f;
     cells[index] = kelvin | (uint(as_type<ushort>(half(min(products, 65504.0f)))) << 16);
 }
+
+// The visualisation field (updateVisualization in Solver.metal: r overpressure, g peak and a
+// shock indicator, all over ambient, b impulse) every `layout.x`-th cell along each axis, as half4
+// texels, x fastest, for a view of the run drawn elsewhere. Each texel keeps its block's extremes
+// rather than their mean, so a front one cell thick still shows: the largest peak, impulse and
+// shock indicator, and the overpressure of the largest magnitude, its sign kept. With `layout.y`
+// set it writes whatever the batch reached, for a field read between batches.
+kernel void extractViewField(
+    device const StepControl &control [[buffer(0)]],
+    device half4 *values [[buffer(1)]],
+    constant uint4 &layout [[buffer(2)]],
+    texture3d<float, access::read> field [[texture(0)]],
+    uint3 id [[thread_position_in_grid]])
+{
+    if (layout.y == 0 && control.stopped != 2) {
+        return;
+    }
+    uint stride = layout.x;
+    uint3 fineSize = uint3(field.get_width(), field.get_height(), field.get_depth());
+    uint3 size = (fineSize + stride - 1) / stride;
+    if (any(id >= size)) {
+        return;
+    }
+    float4 best = float4(0.0f);
+    float strongest = -1.0f;
+    for (uint z = 0; z < stride; ++z) {
+        for (uint y = 0; y < stride; ++y) {
+            for (uint x = 0; x < stride; ++x) {
+                uint3 p = id * stride + uint3(x, y, z);
+                if (any(p >= fineSize)) {
+                    continue;
+                }
+                float4 value = field.read(p);
+                if (abs(value.r) > strongest) {
+                    strongest = abs(value.r);
+                    best.r = value.r;
+                }
+                best.gba = max(best.gba, value.gba);
+            }
+        }
+    }
+    values[id.x + size.x * (id.y + size.y * id.z)] = half4(best);
+}

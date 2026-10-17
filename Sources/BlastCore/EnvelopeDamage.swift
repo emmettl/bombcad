@@ -127,7 +127,7 @@ public enum EnvelopeDamageLevel: Int, Codable, Sendable, Comparable, CaseIterabl
 /// One component's one-way damage.
 public struct EnvelopeComponentDamage: Codable, Sendable, Identifiable {
     public enum Material: String, Codable, Sendable {
-        case reinforcedConcrete, unreinforcedMasonry, annealedGlass, reinforcedBlockwork
+        case reinforcedConcrete, unreinforcedMasonry, annealedGlass, reinforcedBlockwork, profiledSteel
     }
     public var id: String
     public var owner: UUID
@@ -151,6 +151,12 @@ public struct EnvelopeComponentDamage: Codable, Sendable, Identifiable {
     /// first past a hundredth of its peak); nil where neither applies.
     public var fragmentBrokeAtS: Double? = nil
     public var blastArrivalS: Double? = nil
+    /// Concrete under a close-in charge, by UFC 3-340-02's threshold curves (with venting):
+    /// "spalled" or "breached"; nil where neither, or not judged (left out of the JSON).
+    public var closeIn: String? = nil
+    /// Columns of its cells holed through and opened in the air (fragments' and breaches'), with
+    /// venting; nil where none.
+    public var holesOpened: Int? = nil
 }
 
 /// How hazardous a window's glass is to the room behind it, by where it lands: GSA-TS01's
@@ -357,6 +363,18 @@ public enum EnvelopeDamageAssessment {
                     let level: EnvelopeDamageLevel = first == nil ? .none : .failed
                     damage.levels = level...level
                 }
+                if damage.material != .annealedGlass, let vented {
+                    damage.closeIn = vented.closeIn[load.id]
+                    let holes = vented.holes.filter { $0.component == load.id && $0.openedAtS != nil }.count
+                    damage.holesOpened = holes > 0 ? holes : nil
+                }
+                if damage.material != .annealedGlass,
+                    let failed = vented?.walls.first(where: { $0.component == load.id })?.failedAtS
+                {
+                    // Failed in the air, and opened: the GPU's model is this one's, on the step's load.
+                    damage.failedAtS = failed
+                    damage.levels = damage.levels.lowerBound ... .failed
+                }
                 components.append(damage)
                 if damage.material == .annealedGlass, let at = damage.failedAtS { broken.append((load, at)) }
                 if let pane = facadePane(load, construction: construction) { components.append(pane) }
@@ -493,6 +511,10 @@ public enum EnvelopeDamageAssessment {
         let isRoof = load.kind == .roof || load.kind == .slab
         let kind = isRoof ? construction.roof : construction.walls
         let thickness = Double(isRoof ? construction.roofThicknessM : construction.wallThicknessM)
+        if kind == .profiledSteelSheeting {
+            return profiledSheet(
+                load, construction: construction, roof: isRoof, pressures: pressures, peak: peak)
+        }
         if let span = load.oneWaySpan.map({ min($0, largestSpan) }) {
             return oneWay(
                 load, kind: kind, thickness: thickness, span: span, construction: construction,
@@ -518,6 +540,9 @@ public enum EnvelopeDamageAssessment {
             return damage(
                 kind == .reinforcedBlockwork && !isRoof ? .reinforcedBlockwork : .reinforcedConcrete,
                 rotations.min()!...rotations.max()!, levels.min()!...levels.max()!, nil)
+        case .profiledSteelSheeting:
+            return profiledSheet(
+                load, construction: construction, roof: isRoof, pressures: pressures, peak: peak)
         case .unreinforcedMasonry:
             var masonry = StructureMaterial.masonry
             masonry.steel = nil
@@ -559,6 +584,9 @@ public enum EnvelopeDamageAssessment {
                 failedAtS: response.lostResistanceAt, cantilever: true)
         }
         switch construction.walls {
+        case .profiledSteelSheeting:
+            // Sheeting spans between its rails whether or not the wall stands alone.
+            return profiledSheet(load, construction: construction, roof: false, pressures: net, peak: peak)
         case .reinforcedConcrete, .reinforcedBlockwork:
             let section = construction.wallBars(thickness: thickness)
             let response = EnvelopePanel.reinforcedConcreteCantilever(
@@ -621,6 +649,9 @@ public enum EnvelopeDamageAssessment {
             return damage(
                 kind == .reinforcedBlockwork && !isRoof ? .reinforcedBlockwork : .reinforcedConcrete,
                 rotations.min()!...rotations.max()!, levels.min()!...levels.max()!, nil)
+        case .profiledSteelSheeting:
+            return profiledSheet(
+                load, construction: construction, roof: isRoof, pressures: pressures, peak: peak)
         case .unreinforcedMasonry:
             var masonry = StructureMaterial.masonry
             masonry.steel = nil

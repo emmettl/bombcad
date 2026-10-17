@@ -175,4 +175,37 @@ struct FragmentPenetrationTests {
         let glazing = try #require(damage.glazing)
         #expect(abs(glazing.speedMS - 1_000 * 0.005 / 15) < 0.01 && glazing.condition == .threeA)
     }
+
+    @Test("Every hole through an envelope before the run, in time order, each the fragments' area")
+    func envelopeHoles() throws {
+        var scene = Scenario(
+            name: "Glazed", domainSize: SIMD3(16, 20, 6), boxes: [],
+            charge: Charge(mass: 1, position: SIMD3(7, 2, 1.6)))
+        try scene.addEnvelopeObject(
+            EnvelopeVentingTests().building(origin: SIMD3(4, 7, 0), cutOpening: true), name: "Building")
+        let owner = scene.envelopeObjects[0].id
+        // Walls a centimetre thick, which the fragments go through.
+        var construction = EnvelopeConstruction.assumed(objectID: owner)
+        construction.wallThicknessM = 0.01
+        scene.setEnvelopeConstruction(construction)
+        var spec = FragmentSpec()
+        spec.casingMass = 1
+        spec.count = 4_000
+        spec.tracers = 0
+        spec.axis = SIMD3(0, 0, 1)
+        let holes = FragmentCloud.envelopeHoles(
+            spec: spec, scene: FragmentScene(scene), density: 1.225, pressure: 101_325, until: 0.03)
+        let walls = holes.filter { $0.pane == nil }
+        let panes = holes.filter { $0.pane == 0 }
+        #expect(!walls.isEmpty && !panes.isEmpty && holes.allSatisfy { $0.owner == owner && $0.areaM2 > 0 })
+        #expect(zip(holes, holes.dropFirst()).allSatisfy { $0.time <= $1.time })
+        // The panes' first holes are `paneHoles`' times.
+        let first = try #require(
+            FragmentCloud.paneHoles(
+                spec: spec, scene: FragmentScene(scene), density: 1.225, pressure: 101_325, until: 0.03
+            ).values.first)
+        #expect(first == panes.map(\.time).min())
+        // A hole is a fragment's presented area: a 0.25 g steel cube's is under a square centimetre.
+        #expect(holes.allSatisfy { $0.areaM2 < 1e-3 })
+    }
 }

@@ -70,8 +70,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         waterTable = settings.ground == .rigid ? nil : settings.waterTable
         outlineByOverlap = settings.scenario.structuralObjects.isEmpty ? nil : settings.outlineByOverlap
         // With gravity the run takes the fill, and says so.
-        ventsGlazing =
-            settings.ventsGlazing && settings.scenario.hasEnvelopePanes && !settings.gravity ? true : nil
+        ventsGlazing = settings.ventsGlazing && settings.scenario.hasEnvelopePanes ? true : nil
         settlesStructures = settings.scenario.structuralObjects.isEmpty ? nil : settings.settlesStructures
         solidElementSize = settings.solidElementSize
         self.duration = duration

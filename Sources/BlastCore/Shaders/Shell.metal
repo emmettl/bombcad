@@ -86,6 +86,8 @@ struct ShellUniforms {
     float gravityY;
     float gravityZ;
     uint removesFragments;  // as in `StructureUniforms`
+    uint loadShares;        // 1: the applied pressure acts by each element's share, after the table
+    uint loadNodeShares;    // 1: and on the nodes by theirs, after the elements'
 };
 
 // Gravity's pull per unit mass, when it has been turned (`turnedGravity`).
@@ -572,6 +574,227 @@ static inline float3 shellVonMises(float3 strain, float2 transverse, thread Shel
     return stress;
 }
 
+// Timber's damage for a largest index r and softening that ends at `ratio` times initiation:
+// linear softening of the effective stress's index, sudden where `ratio` <= 1 (TimberFailure).
+static inline float timberDamage(float r, float ratio) {
+    if (r <= 1.0f) {
+        return 0.0f;
+    }
+    if (ratio <= 1.0f) {
+        return 1.0f;
+    }
+    return min(1.0f, ratio / (ratio - 1.0f) * (1.0f - 1.0f / r));
+}
+
+// The timber lamella holding `zeta`: whether it crosses the grain, its thickness (m) in a shell
+// `t` thick, and whether it is an outer one.
+struct TimberLamella {
+    bool crossed;
+    float thickness;
+    bool outer;
+};
+
+static inline TimberLamella timberLamella(constant MaterialParameters &m, float zeta, float t) {
+    uint count = min(m.lamellaCount, 8u);
+    TimberLamella lamella = {false, t, true};
+    for (uint l = 0; l < count; ++l) {
+        if (zeta <= m.lamellaTop[l] || l + 1 == count) {
+            lamella.crossed = ((m.lamellaCrossed >> l) & 1u) != 0u;
+            lamella.thickness = 0.5f * t * (m.lamellaTop[l] - (l == 0 ? -1.0f : m.lamellaTop[l - 1]));
+            lamella.outer = l == 0 || l + 1 == count;
+            break;
+        }
+    }
+    return lamella;
+}
+
+// Rolling shear's damage from its largest index, its softening smeared over the lamella.
+static inline float timberRollingDamage(constant MaterialParameters &m, float index, float through) {
+    float ratio = (m.rollingEnergy / through) / (0.5f * m.rollingStrength * m.rollingStrength / m.rollingShear);
+    return timberDamage(index, ratio);
+}
+
+// The section's shear stiffness per unit thickness (GA/t), along and across the outer lamellae's
+// grain, at one in-plane point of a timber shell whose `n` layers are stored from `slot`: the
+// shear analogy with each layer at its damaged modulus, so that a lamella broken in rolling shear
+// takes the section's shear stiffness with it (the shear passes through every lamella in turn).
+// One lamella takes 5/6 of its layers' mean.
+static inline float2 timberSectionShear(constant MaterialParameters &m, const device ShellLayerStore *layers,
+                                        uint slot, uint n, constant float2 *rule, float t) {
+    float2 compliance = float2(0.0f);
+    float2 mean = float2(0.0f);
+    for (uint l = 0; l < n; ++l) {
+        float zeta = rule[l].x;
+        float share = 0.5f * rule[l].y;
+        ShellLayer state = loadLayer(layers[slot + l]);
+        TimberLamella lamella = timberLamella(m, zeta, t);
+        float split = 1.0f - min(state.residual.y, 0.999f);
+        float roll = 1.0f - min(timberRollingDamage(m, state.residual.x, lamella.thickness), 0.999f);
+        float2 g = lamella.crossed ? float2(m.rollingShear * roll, m.grainShear * split)
+                                   : float2(m.grainShear * split, m.rollingShear * roll);
+        compliance += (lamella.outer ? 0.5f : 1.0f) * share / g;
+        mean += share * g;
+    }
+    uint count = min(m.lamellaCount, 8u);
+    if (count < 2u) {
+        return (5.0f / 6.0f) * mean;
+    }
+    float lever = 1.0f - 0.25f * (m.lamellaTop[0] + 1.0f) - 0.25f * (1.0f - m.lamellaTop[count - 2]);
+    return lever * lever / compliance;
+}
+
+// Timber's shear stress through the thickness at `zeta` per unit of its mean, along (across = 0)
+// or across the outer lamellae's grain: as equilibrium spreads it in bending (Jourawski), the
+// first moment S(z) of the stiffness above z over the section's EI, with each lamella's modulus
+// that way. It integrates to one over [-1, 1].
+static inline float timberShearShape(constant MaterialParameters &m, float zeta, uint across) {
+    uint count = max(min(m.lamellaCount, 8u), 1u);
+    float area = 0.0f;
+    float first = 0.0f;
+    for (uint l = 0; l < count; ++l) {
+        float b0 = l == 0 ? -1.0f : m.lamellaTop[l - 1];
+        float b1 = m.lamellaCount == 0 ? 1.0f : m.lamellaTop[l];
+        bool crossed = m.lamellaCount != 0 && ((m.lamellaCrossed >> l) & 1u) != 0u;
+        float e = crossed != (across != 0u) ? m.acrossGrain : m.youngsModulus;
+        area += e * (b1 - b0);
+        first += 0.5f * e * (b1 * b1 - b0 * b0);
+    }
+    float neutral = first / area;
+    float stiffness = 0.0f;
+    float moment = 0.0f;
+    for (uint l = 0; l < count; ++l) {
+        float b0 = (l == 0 ? -1.0f : m.lamellaTop[l - 1]) - neutral;
+        float b1 = (m.lamellaCount == 0 ? 1.0f : m.lamellaTop[l]) - neutral;
+        bool crossed = m.lamellaCount != 0 && ((m.lamellaCrossed >> l) & 1u) != 0u;
+        float e = crossed != (across != 0u) ? m.acrossGrain : m.youngsModulus;
+        stiffness += e * (b1 * b1 * b1 - b0 * b0 * b0) / 3.0f;
+        float low = max(b0, zeta - neutral);
+        if (b1 > low) {
+            moment += 0.5f * e * (b1 * b1 - low * low);
+        }
+    }
+    return moment / stiffness;
+}
+
+// Timber: ContinuumKit's `OrthotropicPlaneStress` and `TimberFailure`, in single precision, in
+// each layer's grain frame. The grain runs along the global axis `grainAxis` where that is the
+// element's second in-plane axis (along its first otherwise), turned by `grainRotation` about the
+// normal and across in a crossed lamella. The strain's third component is the tensor shear, as
+// the other laws take it; ContinuumKit's is the engineering shear.
+// - Through the thickness, the section's shear force along and across the outer lamellae's grain
+//   is its shear stiffness (the shear analogy) times the shear strain, spread through the
+//   thickness as equilibrium spreads it (`timberShearShape`). Each layer takes its share as the
+//   strain that gives it under its own moduli: along its grain G, across it rolling shear.
+// - Three brittle modes soften over their fracture energies: fibre tension, splitting (opening
+//   across the grain with sliding along it, in the plane and through it) and rolling shear. The
+//   in-plane modes are smeared over the element, rolling shear over its lamella.
+// - Compression along and across the grain crushes plastically; damage never softens it.
+// - State: the fibre and splitting indices in `crack`, the rolling index and the splitting
+//   damage in `residual`, the crushing strains along and across in `crush`.
+static inline float3 shellTimber(float3 strain, float2 transverse, float zeta, uint i2, float band, float t,
+                                 float2 sectionShear, thread ShellLayer &state, constant MaterialParameters &m,
+                                 constant ShellUniforms &u, thread float2 &shear, thread LayerOutcome &outcome) {
+    float base = (m.grainAxis == i2 ? 0.5f * M_PI_F : 0.0f) + m.grainRotation;
+    float angle = base;
+    float through = t;
+    uint count = min(m.lamellaCount, 8u);
+    for (uint l = 0; l < count; ++l) {
+        if (zeta <= m.lamellaTop[l] || l + 1 == count) {
+            angle += ((m.lamellaCrossed >> l) & 1u) != 0u ? 0.5f * M_PI_F : 0.0f;
+            through = 0.5f * t * (m.lamellaTop[l] - (l == 0 ? -1.0f : m.lamellaTop[l - 1]));
+            break;
+        }
+    }
+    float nu21 = m.grainPoisson * (m.acrossGrain / m.youngsModulus);
+    float denominator = 1.0f - m.grainPoisson * nu21;
+    float q11 = m.youngsModulus / denominator;
+    float q22 = m.acrossGrain / denominator;
+    float q12 = m.grainPoisson * q22;
+    float c = cos(angle);
+    float s = sin(angle);
+    float gamma = 2.0f * strain.z;
+    float e1 = c * c * strain.x + s * s * strain.y + c * s * gamma;
+    float e2 = s * s * strain.x + c * c * strain.y - c * s * gamma;
+    float g12 = 2.0f * c * s * (strain.y - strain.x) + (c * c - s * s) * gamma;
+    float cb = cos(base);
+    float sb = sin(base);
+    float2 outerStrain = float2(cb * transverse.x + sb * transverse.y, cb * transverse.y - sb * transverse.x);
+    float2 outerStress = 2.0f * sectionShear * float2(timberShearShape(m, zeta, 0u), timberShearShape(m, zeta, 1u)) *
+                         outerStrain;
+    float co = cos(angle - base);
+    float so = sin(angle - base);
+    // The layer's share as the strain that carries it at its damage so far.
+    float splitBefore = max(1.0f - state.residual.y, 1e-3f);
+    float rollBefore = max(1.0f - timberRollingDamage(m, state.residual.x, through), 1e-3f);
+    float gAlong = (co * outerStress.x + so * outerStress.y) / (m.grainShear * splitBefore);
+    float gRolling = (co * outerStress.y - so * outerStress.x) / (m.rollingShear * rollBefore);
+
+    // Crushing, along and across together.
+    float2 plastic = state.crush;
+    float sL = q11 * (e1 - plastic.x) + q12 * (e2 - plastic.y);
+    float sT = q12 * (e1 - plastic.x) + q22 * (e2 - plastic.y);
+    for (int sweep = 0; sweep < 20 && (sL < -m.compressionAlong || sT < -m.compressionAcross); ++sweep) {
+        if (sL < -m.compressionAlong) {
+            plastic.x += (sL + m.compressionAlong) / q11;
+            sL = q11 * (e1 - plastic.x) + q12 * (e2 - plastic.y);
+            sT = q12 * (e1 - plastic.x) + q22 * (e2 - plastic.y);
+        }
+        if (sT < -m.compressionAcross) {
+            plastic.y += (sT + m.compressionAcross) / q22;
+            sL = q11 * (e1 - plastic.x) + q12 * (e2 - plastic.y);
+            sT = q12 * (e1 - plastic.x) + q22 * (e2 - plastic.y);
+        }
+    }
+    state.crush = plastic;
+    float tLT = m.grainShear * g12;
+    float tLZ = m.grainShear * gAlong;
+    float tTZ = m.rollingShear * gRolling;
+
+    // The modes' indices of the effective stress, and where each one's softening ends.
+    float fibreIndex = max(state.crack.x, max(sL, 0.0f) / m.tensionAlong);
+    float fibreRatio = (m.fibreEnergy / band) / (0.5f * m.tensionAlong * m.tensionAlong / m.youngsModulus);
+    float opening = max(sT, 0.0f) / m.tensionAcross;
+    float sliding = sqrt(tLT * tLT + tLZ * tLZ) / m.grainShearStrength;
+    float split = sqrt(opening * opening + sliding * sliding);
+    float splittingIndex = max(state.crack.y, split);
+    float share = split > 0.0f ? opening * opening / (split * split) : 1.0f;
+    float mixed = share * m.splittingEnergy + (1.0f - share) * m.shearEnergy;
+    // Each part only where it counts: a strength left at 1e30 overflows its square in floats.
+    float initiation = 0.5f * ((share > 0.0f ? share * m.tensionAcross * m.tensionAcross / m.acrossGrain : 0.0f) +
+                               (share < 1.0f ? (1.0f - share) * m.grainShearStrength * m.grainShearStrength /
+                                                   m.grainShear
+                                             : 0.0f));
+    float splittingRatio = (mixed / band) / initiation;
+    float rollingIndex = max(state.residual.x, fabs(tTZ) / m.rollingStrength);
+
+    float fibre = timberDamage(fibreIndex, fibreRatio);
+    float splitting = max(state.residual.y, timberDamage(splittingIndex, splittingRatio));
+    float rolling = timberRollingDamage(m, rollingIndex, through);
+    state.crack = float2(fibreIndex, splittingIndex);
+    state.residual = float2(rollingIndex, splitting);
+
+    float s1 = sL > 0.0f ? (1.0f - fibre) * sL : sL;
+    float s2 = sT > 0.0f ? (1.0f - splitting) * sT : sT;
+    float tau = (1.0f - splitting) * tLT;
+    float3 stress = float3(c * c * s1 + s * s * s2 - 2.0f * c * s * tau, s * s * s1 + c * c * s2 + 2.0f * c * s * tau,
+                           c * s * (s1 - s2) + (c * c - s * s) * tau);
+    float along = (1.0f - splitting) * tLZ;
+    float across = (1.0f - rolling) * tTZ;
+    float2 outer = float2(co * along - so * across, so * along + co * across);
+    shear = float2(cb * outer.x - sb * outer.y, sb * outer.x + cb * outer.y);
+    // Torn across an element axis where the layer can no longer carry tension along it: its
+    // fibres broken where its grain runs that way, split where it runs across.
+    bool alongFirst = c * c >= 0.5f;
+    outcome.torn = float2(alongFirst ? fibre : splitting, alongFirst ? splitting : fibre);
+    outcome.torn = float2(outcome.torn.x >= 1.0f ? 1.0f : 0.0f, outcome.torn.y >= 1.0f ? 1.0f : 0.0f);
+    outcome.slid = float2(0.0f);
+    outcome.destroyed = false;
+    outcome.open = false;
+    outcome.failed = false;
+    state.display = max(fibre, max(splitting, rolling));
+    return stress;
+}
+
 // Stress in one direction of a bar layer, as the solid elements' bars: the measured curve while
 // loaded one way, the cyclic law once reversed. A bar slips in its concrete either side of a
 // crack, so it ruptures when its plastic strain averaged over the debonded length passes the
@@ -795,6 +1018,9 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
         bool destroyedEverywhere = true;
         bool openEverywhere = true;
         float rateSum = 0.0f;
+        float2 timberShear = m.materialModel == 2
+            ? timberSectionShear(m, layers, (e * 4 + g) * n, n, thickness, t)
+            : float2(0.0f);
         for (uint l = 0; l < n; ++l) {
             // Gauss-Legendre points through the thickness, exact for elastic bending.
             float zeta = thickness[l].x;
@@ -813,7 +1039,9 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
             ShellLayer state = loadLayer(layers[slot]);
             float2 shear;
             LayerOutcome outcome;
-            float3 stress = m.materialModel == 0
+            float3 stress = m.materialModel == 2
+                ? shellTimber(strain, transverse, zeta, i2, sqrt(a * b), t, timberShear, state, m, u, shear, outcome)
+                : m.materialModel == 0
                 ? shellVonMises(strain, transverse, state, m, u, shear, outcome)
                 : shellConcrete(strain, transverse, instantaneous, dt, state, m, u, el.barCount > 0, crossing,
                                 float2(a, b), punchedThrough, sheared, shear, outcome);
@@ -912,7 +1140,7 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
         // tension is. From then on they are held only by their bars (above).
         meanShear = length(shearSum) / (areaWeight * t);
         int ring = ringOfElement[e];
-        if (ring >= 0 && !punchedThrough && m.materialModel != 0) {
+        if (ring >= 0 && !punchedThrough && m.materialModel == 1) {
             float sum = 0.0f;
             uint first = ringStart[ring];
             uint last = ringStart[ring + 1];
@@ -925,7 +1153,7 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
         // One-way shear: the mean shear through the thickness across each axis against the
         // section's strength there, with the strain at mid-depth along that axis.
         float4 member = section[2 * e];
-        if (member.x > 0.0f && m.materialModel != 0) {
+        if (member.x > 0.0f && m.materialModel == 1) {
             float rate = tensionIncrease(rateSum / float(n), m);
             for (uint j = 0; j < 2; ++j) {
                 // Per unit width: the moment, shear and normal force, and the bars on the side the
@@ -991,7 +1219,8 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
         }
         if (u.loadCount != 0 && (u.loadFace >> 1) == k) {
             float side = (u.loadFace & 1u) != 0 ? 1.0f : -1.0f;
-            load -= applied * side * areaVector;
+            float share = u.loadShares != 0 ? ((const device float *)(loadTable + 256))[e] : 1.0f;
+            load -= share * applied * side * areaVector;
         }
 
         for (uint c = 0; c < 4; ++c) {
@@ -1325,9 +1554,13 @@ static inline float beamConcrete(float axial, float2 shear, float instantaneous,
     return stress;
 }
 
-// One steel fibre of a beam: uniaxial von Mises with linear hardening; shear stays elastic.
-static inline float beamVonMises(float axial, float2 shear, thread ShellLayer &state, constant MaterialParameters &m,
-                                 constant ShellUniforms &u, thread float2 &shearStress, thread LayerOutcome &outcome) {
+// One steel fibre of a beam: uniaxial von Mises with linear hardening; shear stays elastic. A
+// fibre on a flange that buckles locally (`buckles`), past its onset in compression, carries no
+// more than a stress falling from the yield to the residual share of it (`LocalBuckling`), its
+// largest compression kept in `crack.y`.
+static inline float beamVonMises(float axial, float2 shear, bool buckles, thread ShellLayer &state,
+                                 constant MaterialParameters &m, constant ShellUniforms &u,
+                                 thread float2 &shearStress, thread LayerOutcome &outcome) {
     float young = m.youngsModulus;
     float stress = young * (axial - state.crack.x);
     float yield = m.yieldStress + m.hardening * state.crush.y;
@@ -1337,6 +1570,17 @@ static inline float beamVonMises(float axial, float2 shear, thread ShellLayer &s
         state.crush.y += increment;
         stress = young * (axial - state.crack.x);
     }
+    if (buckles) {
+        state.crack.y = max(state.crack.y, -axial);
+        float past = (state.crack.y - m.bucklingOnset) / m.bucklingSoftening;
+        if (past > 0.0f) {
+            float cap = m.yieldStress * max(m.bucklingResidual, 1.0f - (1.0f - m.bucklingResidual) * past);
+            if (stress < -cap) {
+                state.crack.x = axial + cap / young;
+                stress = -cap;
+            }
+        }
+    }
     shearStress = u.shearFactor * m.mu * shear;
     outcome.torn = float2(0.0f);
     outcome.slid = float2(0.0f);
@@ -1345,6 +1589,41 @@ static inline float beamVonMises(float axial, float2 shear, thread ShellLayer &s
     outcome.failed = state.crush.y >= m.failureStrain;
     state.display = state.crush.y / m.failureStrain;
     return stress;
+}
+
+// Timber along a beam, its grain along it (`TimberFailure`'s fibre and splitting modes on one
+// axis): crushing plastically at the compressive strength, breaking the fibres in tension with
+// their fracture energy smeared over the beam element's length `L`, and splitting by the shear
+// along the grain against the shear strength. The fibres break as the section's face would in
+// bending: the outermost sit at 0.86 of the half-depth, so a fibre breaks at 0.86 of the strength
+// (a glulam beam broke 13% late otherwise). State: the fibre and splitting indices in `crack`,
+// the crushing strain in `crush.x`.
+static inline float beamTimber(float axial, float2 shear, float L, thread ShellLayer &state,
+                               constant MaterialParameters &m, constant ShellUniforms &u, thread float2 &shearStress,
+                               thread LayerOutcome &outcome) {
+    float e = m.youngsModulus;
+    float effective = e * (axial - state.crush.x);
+    if (effective < -m.compressionAlong) {
+        state.crush.x = axial + m.compressionAlong / e;
+        effective = -m.compressionAlong;
+    }
+    float strength = beamFibrePoints[beamFibres - 1] * m.tensionAlong;
+    float fibreIndex = max(state.crack.x, max(effective, 0.0f) / strength);
+    float fibreRatio = (m.fibreEnergy / L) / (0.5f * strength * strength / e);
+    float fibre = timberDamage(fibreIndex, fibreRatio);
+    float2 tau = m.grainShear * shear;
+    float splitIndex = max(state.crack.y, length(tau) / m.grainShearStrength);
+    float splitRatio = (m.shearEnergy / L) / (0.5f * m.grainShearStrength * m.grainShearStrength / m.grainShear);
+    float split = timberDamage(splitIndex, splitRatio);
+    state.crack = float2(fibreIndex, splitIndex);
+    shearStress = u.shearFactor * (1.0f - split) * tau;
+    outcome.torn = float2(fibre >= 1.0f ? 1.0f : 0.0f, 0.0f);
+    outcome.slid = float2(0.0f);
+    outcome.destroyed = false;
+    outcome.open = false;
+    outcome.failed = false;
+    state.display = max(fibre, split);
+    return effective > 0.0f ? (1.0f - fibre) * effective : effective;
 }
 
 // Two-node beams on the centrelines of columns, the line counterpart of the shells: a
@@ -1425,7 +1704,7 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
 
     // Ties confine the concrete: lateral pressure half the tie ratio times the bars' yield stress.
     float confinement = 1.0f;
-    if (m.materialModel != 0 && beam.tieRatio > 0.0f && m.steelPoints > 0) {
+    if (m.materialModel == 1 && beam.tieRatio > 0.0f && m.steelPoints > 0) {
         confinement = 1.0f + m.confinement * 0.5f * beam.tieRatio * m.steelStress[0] / m.compressiveStrength;
     }
 
@@ -1455,7 +1734,7 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
     // The section's shear strength across each side, with its ties as stirrups and the strain
     // along the beam's axis as the strain at mid-depth; and, once it has failed, what is left.
     float4 member = section[2 * e];
-    bool concrete = m.materialModel != 0 && member.x > 0.0f;
+    bool concrete = m.materialModel == 1 && member.x > 0.0f;
     uint failedShear = concrete ? uint(sheared[e]) : 0u;
     float2 cap = float2(1e30f);
     for (uint j = 0; j < 2; ++j) {
@@ -1482,8 +1761,17 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
             ShellLayer state = loadLayer(fibres[slot]);
             float2 shearStress;
             LayerOutcome outcome;
-            float stress = m.materialModel == 0
-                ? beamVonMises(axial, shear, state, m, u, shearStress, outcome)
+            // A fibre on a flange that buckles locally: on its side of the section, along its axis.
+            bool buckles = false;
+            if (m.bucklingAxis != 0) {
+                uint across = m.bucklingAxis - 1;
+                float place = across == i2 ? eta : (across == i3 ? zeta : 0.0f);
+                buckles = place != 0.0f && (m.bucklingSide == 0.0f || place * m.bucklingSide > 0.0f);
+            }
+            float stress = m.materialModel == 2
+                ? beamTimber(axial, shear, L, state, m, u, shearStress, outcome)
+                : m.materialModel == 0
+                ? beamVonMises(axial, shear, buckles, state, m, u, shearStress, outcome)
                 : beamConcrete(axial, shear, instantaneous, dt, confinement, beam.barCount > 0 && m.steelPoints > 0,
                                state, m, u, crossing, slide, cap, shearStress, outcome);
             storeLayer(fibres[slot], state);
@@ -1665,6 +1953,31 @@ static inline float4 quaternionProduct(float4 p, float4 q) {
 }
 
 // Gathers the forces and moments of the elements around every node and advances its motion.
+// Spring supports (`SpringSupport`), compiled in only for bodies with them.
+constant bool springSupportsConstant [[function_constant(22)]];
+constant bool springSupported = is_function_constant_defined(springSupportsConstant) && springSupportsConstant;
+
+// One spring of a spring support at a node standing for `length` of its edge: its force (or
+// moment) at movement `x`, elastic from its plastic offset, the yield hardening (or softening, to
+// nothing) with the plastic movement accumulated; `law` per metre: stiffness, yield, hardening.
+static inline float springForce(float x, thread float &offset, thread float &moved, float4 law, float length) {
+    float k = law.x * length;
+    float h = law.z * length;
+    float f = k * (x - offset);
+    float r = max(0.0f, (law.y + law.z * moved) * length);
+    if (fabs(f) > r) {
+        float step = (fabs(f) - r) / max(k + h, 1e-6f * k);
+        moved += step;
+        if (law.y + law.z * moved <= 0.0f) {
+            offset = x;  // softened to nothing: no more resistance
+            return 0.0f;
+        }
+        offset += f > 0.0f ? step : -step;
+        f = k * (x - offset);
+    }
+    return f;
+}
+
 kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
                        const device ShellForces *forces [[buffer(1)]],
                        device uchar *flags [[buffer(2)]],
@@ -1695,6 +2008,7 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
                        const device FootingConstants *footingConstants [[buffer(27)]],
                        const device FootingState *footingStates [[buffer(28)]],
                        device float4 *footingLinks [[buffer(29)]],
+                       device float2 *loadTable [[buffer(30)]],
                        uint n [[thread_position_in_grid]]) {
     bool active;
     float dt = shellStep(u, control, active);
@@ -1764,6 +2078,38 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
             moment += cross(arm + turn, pointForce);
         }
     }
+    // A node on a spring support (`SpringSupport`): springs to fixed ground pulling along the edge's
+    // span, across it, and turning about the edge, each elastic then hardening or softening.
+    // The springs follow the applied load's table and shares, from the next 16 bytes: each node's
+    // support (+ 1), its length for pulling and for turning, its springs' plastic offsets and
+    // plastic movements, three to a node; then each support's laws, five to a support.
+    device float4 *springs = (device float4 *)((device uchar *)loadTable
+        + ((256u * 8u + (max(u.elementCount, 1u) + max(u.nodeCount, 1u)) * 4u + 15u) & ~15u));
+    if (springSupported && springs[3 * n].x > 0.0f) {
+        uint s = uint(springs[3 * n].x) - 1u;
+        float length = springs[3 * n].y;
+        const device float4 *springLaw = springs + 3 * u.nodeCount;
+        uint3 axes = uint3(springLaw[5 * s + 4].xyz);
+        float4 offsets = springs[3 * n + 1];
+        float4 moved = springs[3 * n + 2];
+        float3 displacement = float3(node.displacement);
+        float4 q = node.rotation;
+        float turn = 2.0f * atan2(q[axes.x], q.w);
+        float pullOffset = offsets.x, acrossOffset = offsets.y, turnOffset = offsets.z;
+        float pullMoved = moved.x, acrossMoved = moved.y, openMoved = moved.z, closeMoved = moved.w;
+        float pull = springForce(displacement[axes.y], pullOffset, pullMoved, springLaw[5 * s], length);
+        float across = springForce(displacement[axes.z], acrossOffset, acrossMoved, springLaw[5 * s + 1], length);
+        float turnLength = springs[3 * n].z;
+        bool opening = turn - turnOffset >= 0.0f;
+        float turning = turnLength <= 0.0f ? 0.0f
+            : opening ? springForce(turn, turnOffset, openMoved, springLaw[5 * s + 2], turnLength)
+                      : springForce(turn, turnOffset, closeMoved, springLaw[5 * s + 3], turnLength);
+        springs[3 * n + 1] = float4(pullOffset, acrossOffset, turnOffset, 0.0f);
+        springs[3 * n + 2] = float4(pullMoved, acrossMoved, openMoved, closeMoved);
+        force[axes.y] -= pull;
+        force[axes.z] -= across;
+        moment[axes.x] -= turning;
+    }
     // Loose debris is part of no element the air loads, so the air pushes it directly, as solid
     // debris is; its volume is its share of the elements it belonged to.
     float3 airForce = float3(0.0f);
@@ -1772,6 +2118,15 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
         airForce = debrisAirForce(position, float3(node.velocity), reference[n].w, fluid, fluidMask, debrisArea,
                                   control.dt, u, couplingMap, exchangeCell);
         force += airForce;
+    }
+    // A load on the nodes, as the applied pressure's table times each node's share (N per Pa),
+    // after the elements' shares, against the loaded faces' outward normal.
+    if (u.loadCount != 0 && u.loadNodeShares != 0) {
+        float applied = tablePressure(loadTable, u.loadCount, u.loadTime);
+        float share = ((const device float *)(loadTable + 256))[u.elementCount + n];
+        float3 direction = float3(0.0f);
+        direction[u.loadFace >> 1] = (u.loadFace & 1u) != 0 ? -1.0f : 1.0f;
+        force += share * applied * direction;
     }
     float decay = max(0.0f, 1.0f - u.damping * dt);
     float3 velocity = float3(node.velocity)

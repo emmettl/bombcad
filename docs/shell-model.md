@@ -240,6 +240,103 @@ in shells and uniaxial plasticity in beams, on the Green-Lagrange strain, with e
 
 A beam is removed by the same rules over all its fibres, or when shortened to half its length.
 
+## Timber
+
+Timber is a material for shells and beams only (`MaterialModel.timber`, `TimberProperties`);
+solid elements refuse it. Each shell layer is ContinuumKit's timber, copied into the kernel in
+single precision:
+- **Elastic part:** `OrthotropicPlaneStress`, stiff along the grain and soft across it.
+- **Failure:** `TimberFailure`, proposed to ContinuumKit for this (see
+  docs/extraction/TIMBER_FAILURE.md there).
+
+**Grain.** It runs along a global axis (`grainAxis`), turned by `grainRotation` about each
+shell's normal. In a shell normal to that axis, it runs along the shell's first axis.
+
+**Beams.** A beam's grain runs along the beam, and each of its 4 × 4 fibres follows `TimberFailure`
+on that one axis:
+- **Along the grain:** elastic at E₀, crushing plastically at f_c,0, and breaking in tension.
+- **Across:** shear at G, splitting by f_v.
+- **The faces:** the outermost fibres sit at 0.86 of the half-depth, so a fibre breaks at 0.86 of
+  the strength, when the section's face would reach it in bending.
+
+**Layers (cross-laminated timber).**
+- **Lamellae:** up to eight, each a share of the thickness, each along the grain or across it
+  (crossed).
+- **Integration through the thickness:** three Gauss–Lobatto points in each lamella (three to
+  five through one), which is exact for their elastic bending. One rule over the whole thickness
+  would not be, since the stiffness jumps from lamella to lamella. Lobatto's points include the
+  faces, where timber breaks in bending; with Gauss–Legendre's, a panel broke 12% late.
+- **Shear through the thickness:** the section's shear force is its shear stiffness times the
+  shells' transverse shear strain. In each direction that stiffness is the shear analogy's, as EN
+  1995-1-1:2025 takes for CLT: a² / (t₁/2G₁ + Σ tᵢ/Gᵢ + tₙ/2Gₙ). Here a is the distance between
+  the outer lamellae's centres, G is along the grain, and G_R (rolling shear) is across it. One
+  lamella takes 5/6 of G.
+- **Spreading the shear:** it is spread through the thickness as equilibrium spreads it in
+  bending (Jourawski, S(z)/EI with each lamella's modulus that way). Each layer takes its share as
+  the strain that carries it at its own damage.
+- **Damage:** the analogy takes each lamella at its damaged modulus, so a lamella broken in
+  rolling shear takes the section's shear stiffness with it, as the shear must pass through it.
+- **Why not each layer's own strain:** with every layer at the shells' one shear strain, a 3-ply
+  panel's crossed lamella carried a tenth of its rolling shear, and its stiffness was five times
+  the analogy's.
+
+**Breaking.** Three brittle modes are judged on the undamaged stress, after Sandhaas and van de
+Kuilen's Hashin-type criteria (HERON 58, 2013):
+
+| Mode | When | Softens |
+|---|---|---|
+| Fibre | σ_L reaches its strength in tension | σ_L in tension |
+| Splitting | (σ_T/f_t,90)² + (τ_LT² + τ_LZ²)/f_v² reaches 1, σ_T counted in tension only | σ_T in tension, and the in-plane and through-thickness shears along the grain |
+| Rolling shear | τ_TZ reaches f_r | τ_TZ |
+
+- **Softening:** each mode softens linearly over its fracture energy, except the fibres, which
+  break at once by default (`fibreEnergy` 0). The University of Ottawa's glulam beams and CLT
+  panels did so, at finger joints and defects, and Lacroix recommends a brittle resistance curve
+  for glulam. With clear wood's 60 kJ/m² the panels carried 12–25% more than measured.
+- **Bands:** the in-plane modes are smeared over the element (√(ab)), rolling shear over its
+  lamella. A band too long for its energy breaks at once.
+- **Compression:** crushing is perfectly plastic at f_c,0 and f_c,90. Damage never softens
+  compression, since a crack closes.
+- **Removal:** an element is removed when every layer is torn across one of its axes. That means
+  fibres broken where the grain runs that way and split where it runs across, so a CLT panel
+  goes when its lamellae have broken both ways through.
+
+**Grades** (`TimberProperties.strengthClass`, `crossLaminatedPanel`, `StructureMaterial.timber(_:)`):
+
+| Grade | E₀ / E₉₀ / G (GPa) | f_m / f_c,0 / f_t,90 / f_c,90 / f_v / f_r (MPa, mean, before the factor) | Density (kg/m³) | Dynamic increase factor |
+|---|---|---|---|---|
+| C16 | 8.0 / 0.27 / 0.50 | 24.7 / 24.0 / 0.70 / 2.6 / 4.9 / 1.5 | 370 | 1.4 |
+| C24 | 11.0 / 0.37 / 0.69 | 37.1 / 29.7 / 0.70 / 3.0 / 6.2 / 1.5 | 420 | 1.4 |
+| C30 | 12.0 / 0.40 / 0.75 | 46.4 / 33.9 / 0.70 / 3.2 / 6.2 / 1.5 | 460 | 1.4 |
+| GL24h | 11.5 / 0.30 / 0.65 | 31.0 / 29.4 / 0.88 / 3.0 / 4.5 / 1.3 | 420 | 1.14 |
+| GL28h | 12.6 / 0.30 / 0.65 | 36.2 / 34.3 / 0.88 / 3.0 / 4.5 / 1.3 | 460 | 1.14 |
+| CLT of C24 lamellae | as C24 | as C24 | 420 | 1.28 |
+
+The fibres break at the mean bending strength f_m, because members under a blast bend, and in
+bending timber breaks at its rupture modulus. That is about 1.6 times its strength in pure
+tension (JCSS: E[R_t,0] = 0.6 E[R_m]), so a member in pure tension, such as a tie, is that
+much too strong.
+
+Where the numbers come from:
+- **Moduli:** the classes' means (EN 338:2016, EN 14080:2013). Rolling shear is a tenth of
+  shear (PRG 320-2019 Annex X3; the Glulam-Bulletin).
+- **Strengths:** the classes' characteristic values, raised to their means with the JCSS
+  Probabilistic Model Code's distributions and coefficients of variation (Part 3.5, 2006):
+  - bending 0.25, or 0.15 for glulam;
+  - compression along 0.8 times that, shear and rolling shear the same;
+  - tension across, Weibull at 0.25;
+  - compression across, normal at 0.1.
+  - Rolling shear's characteristic value is 1.0 MPa.
+- **Fracture energies:** spruce's (Sandhaas and van de Kuilen): 0.5 kJ/m² splitting, 1.2 sliding
+  along the grain, 0.6 rolling. Along the grain the fibres break at once (above).
+- **Dynamic increase factors:** on the strengths only, none on stiffness, as the University of
+  Ottawa's shock-tube tests found:
+  - 1.28 on CLT panels' resistance (Poulin et al., J. Struct. Eng. 144(2), 2018);
+  - 1.14 on glulam beams' bending strength without finger joints in their outer laminations
+    (Lacroix's thesis, 2017);
+  - 1.4 on solid timber (CSA S850-12, provisional; Jacques et al. 2014 found 1.41 on studs'
+    rupture modulus).
+
 ## Coupling to the air
 
 **Loads.** At each of its four points, a shell is loaded by the difference between the air's
@@ -457,6 +554,12 @@ the bars' dowel action and slab–column joints a punching check, the shell fram
    through the whole building and two near ones leave slivers that shorten the time step; the
    mesh itself puts parallel plates within a fifth of an element of each other on the first's
    midsurface.
+
+10. **Timber walls bending in their plane are too stiff.** Bilinear membranes lock in in-plane
+    bending, and timber's E/G of 16 makes it worse. A deep glulam beam meshed as a wall, six
+    elements deep, was 43% too stiff ([validation](validation.md#glulam-beams-in-a-shock-tube)).
+    Members wider than half their depth mesh as beams and are not affected, nor is bending out of
+    the plane (floors, roofs, CLT panels).
 
 ## Future work
 

@@ -404,6 +404,9 @@ public enum ValidationTables {
             id: "cloudTop", low: 0.79, high: 1.21, document: "fireball-rise.md",
             quote: "to 4% on average and 21% shot by shot"),
         Figure(
+            id: "ventedHydrogen", low: 0.19, high: 0.39, document: "deflagration.md#checks",
+            quote: "Lean hydrogen vents at 0.19–0.39 of the measured peaks"),
+        Figure(
             id: "ventedBackWall", low: 0.9, high: 1.8, document: "validation.md#summary",
             quote: "lit at the back wall, 0.9–1.8 times the measured peaks"),
         Figure(
@@ -1080,7 +1083,21 @@ extension StandingScene {
                         high: "over-read", validity: "0.25 to 4 kg/m³ in a closed 6 m cube, read at 80 ms",
                         check: "UFC 3-340-02's gas pressure (blastbench gas)"))
             }
-            if has(.deflagration) {
+            if has(.deflagration), inputs.scenario.deflagration?.gas == .hydrogen {
+                bands.append(
+                    figure(
+                        "ventedHydrogen", .ventedPressure, "Peak pressure in a vented room, lean hydrogen",
+                        low: "flame too slow", high: "over-read",
+                        validity:
+                            "FM Global's 63.7 m³ chamber, 12.1–19.7% hydrogen lit in the middle and at the back "
+                            + "wall, 0.1 m cells; lean hydrogen's measured growth law, without Bauwens's fitted "
+                            + "Lewis-number factor",
+                        check: "Bauwens, Chao and Dorofeev's vented lean hydrogen"))
+            } else if has(.deflagration), inputs.scenario.deflagration?.gas == .townGas {
+                unbanded.append(
+                    "Peak pressure in a vented room: town gas was compared only in a closed sphere and against "
+                        + "Ronan Point's estimate, not vented.")
+            } else if has(.deflagration) {
                 bands += [
                     figure(
                         "ventedBackWall", .ventedPressure,
@@ -1429,8 +1446,7 @@ extension StandingScene {
             // vented, or the one-way fill's, which stands in where venting cannot run.
             let ufc = "UFC 3-340-02 §2-15.4's loads on the walls inside"
             let box = "a rigid box struck head-on through an open front window, 14–23% of the wall, 2–16 psi"
-            if inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes && inputs.configuration.gravity == nil
-            {
+            if inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes {
                 bands.removeAll { $0.quantity == "Inside peak through broken panes" }
                 bands.append(
                     figure(
@@ -1490,6 +1506,10 @@ extension StandingScene {
             unbanded.append(
                 "One measured surface burst, too far off to band: the vertical velocity 20 to 80 times the "
                     + "measured, the horizontal not modelled, near and past where the ground's wave outruns the air."
+            )
+        case .blastInjury:
+            unbanded.append(
+                "Checked against the curves' own published distances and the free field, not against injury data."
             )
         case .freestandingMotion, .fragments, .surfaceHeating:
             unbanded.append("Nothing measured to band it.")
@@ -1636,7 +1656,7 @@ extension StandingScene {
                     has(.afterburning) ? ValidationTables.burningDocument : "validation.md#afterburning")
             }
         case .envelopeExposure, .envelopeDamage, .freestandingMotion, .thermal, .surfaceHeating, .cloud,
-            .fragments, .groundShock, .crater:
+            .fragments, .groundShock, .crater, .blastInjury:
             break
         }
         return advice

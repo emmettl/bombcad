@@ -73,6 +73,10 @@ struct ShellUniforms {
     var gravityY: Float = 0
     var gravityZ: Float = -1
     var removesFragments: UInt32 = 0
+    /// 1 when the applied pressure acts on each element by its share, stored after the table.
+    var loadShares: UInt32 = 0
+    /// 1 when the applied load also acts on nodes by their shares, after the elements'.
+    var loadNodeShares: UInt32 = 0
 }
 
 /// Layout matches `BeamElement` in `Shell.metal`.
@@ -228,7 +232,7 @@ public final class ShellSolver {
     public let flagBuffer: MTLBuffer
     /// Damage of each element, 0 (sound) to 1 (failing), for display.
     public let displayBuffer: MTLBuffer
-    private let layerBuffer: MTLBuffer
+    let layerBuffer: MTLBuffer
     private let barLayoutBuffer: MTLBuffer
     private let barBuffer: MTLBuffer
     private let forceBuffer: MTLBuffer
@@ -269,7 +273,7 @@ public final class ShellSolver {
     public var tieCount: Int { mesh.ties.count }
     private let incidenceStartBuffer: MTLBuffer
     private let incidenceBuffer: MTLBuffer
-    private let loadTableBuffer: MTLBuffer
+    let loadTableBuffer: MTLBuffer
     private let failureGateBuffer: MTLBuffer
     private let placeholderBuffer: MTLBuffer
     private let elementPipeline: MTLComputePipelineState
@@ -283,7 +287,7 @@ public final class ShellSolver {
     public let beamFlagBuffer: MTLBuffer
     /// Damage of each beam, 0 (sound) to 1 (failing), for display.
     public let beamDisplayBuffer: MTLBuffer
-    private let beamFibreBuffer: MTLBuffer
+    let beamFibreBuffer: MTLBuffer
     private let beamBarBuffer: MTLBuffer
     private let beamForceBuffer: MTLBuffer
     /// Bar groups of each beam: position across the section and area, eight per beam.
@@ -308,6 +312,8 @@ public final class ShellSolver {
         device: MTLDevice, commandQueue: MTLCommandQueue? = nil, library: MTLLibrary? = nil,
         model: StructureModel
     ) throws {
+        // Profiled sheets as their skins and ribs.
+        let model = model.expandingSheets()
         self.device = device
         self.model = model
         guard let queue = commandQueue ?? device.makeCommandQueue() else {
@@ -322,9 +328,9 @@ public final class ShellSolver {
         elementCount = mesh.elements.count
         beamCount = mesh.beams.count
         nodeCount = mesh.positions.count
-        layers = max(1, model.shellLayers)
         barSlots = max(1, mesh.elements.map(\.bars.count).max() ?? 0)
-        thicknessRule = Self.gaussLegendre(layers)
+        thicknessRule = Self.thicknessRule(layers: max(1, model.shellLayers), materials: materials)
+        layers = thicknessRule.count
 
         let library = try library ?? ShaderLibrary.make(device: device)
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
@@ -337,6 +343,8 @@ public final class ShellSolver {
         let nodeConstants = MTLFunctionConstantValues()
         var connected = model.connectionStiffness != nil
         nodeConstants.setConstantValue(&connected, type: .bool, index: 1)
+        var sprung = !model.springSupports.isEmpty
+        nodeConstants.setConstantValue(&sprung, type: .bool, index: 22)
         nodePipeline = try ShaderLibrary.pipeline("shellNodes", in: library, constants: nodeConstants)
         var turned = true
         nodeConstants.setConstantValue(&turned, type: .bool, index: 4)
@@ -410,7 +418,12 @@ public final class ShellSolver {
         contactForceBuffer = try buffer(nodes * 12, "shell contact forces")
         memset(contactHeadBuffer.contents(), 0xFF, contactHeadBuffer.length)
         memset(contactMovedBuffer.contents(), 0xFF, contactMovedBuffer.length)
-        loadTableBuffer = try buffer(Self.maxLoadPoints * 8, "applied load table")
+        // The table, then each element's share of it.
+        // ...and then the spring supports' nodes and laws (below), from the next 16 bytes.
+        loadTableBuffer = try buffer(
+            ((Self.maxLoadPoints * 8 + (max(elements, 1) + max(mesh.positions.count, 1)) * 4 + 15) & ~15)
+                + (3 * mesh.positions.count + 5 * model.springSupports.count) * 16,
+            "applied load table")
         failureGateBuffer = try buffer(16, "failure gate")
         placeholderBuffer = try buffer(64, "shell placeholder")
 
@@ -526,6 +539,55 @@ public final class ShellSolver {
             max(fibreCount, 1) * MemoryLayout<AnchorageParameters>.stride, "shell connection laws")
         lawStorage.copy(fibreLaws)
         fibreLawBuffer = lawStorage
+        // Spring supports: the nodes in each region, each with its share of the edge's length.
+        // Spring supports: the nodes in each region, each with its share of the edge's length;
+        // then the supports' laws, each as (stiffness, yield, hardening of the yield per plastic
+        // movement) per metre, and the axes.
+        let positions = mesh.positions
+        var springs = [SIMD4<Float>](repeating: .zero, count: 3 * positions.count)
+        // The turning spring acts only where beams end (a profiled sheet's ribs, which carry its
+        // bending), shared among them; the others at every node.
+        let beamEnds = Set(mesh.beams.flatMap { [Int($0.nodes.x), Int($0.nodes.y)] })
+        for (s, support) in model.springSupports.enumerated() {
+            let held = positions.indices.filter { support.region.contains(positions[$0]) }
+            func shares(_ nodes: [Int]) -> [Int: Float] {
+                let stations = Array(Set(nodes.map { positions[$0][support.edge] })).sorted()
+                var result: [Int: Float] = [:]
+                for n in nodes {
+                    let value = positions[n][support.edge]
+                    guard let i = stations.firstIndex(of: value) else { continue }
+                    let low = i > 0 ? stations[i - 1] : value
+                    let high = i + 1 < stations.count ? stations[i + 1] : value
+                    result[n] = 0.5 * (high - low)
+                }
+                return result
+            }
+            let turning =
+                held.contains { beamEnds.contains($0) } ? held.filter { beamEnds.contains($0) } : held
+            let along = shares(held)
+            let about = shares(turning)
+            for n in held { springs[3 * n] = SIMD4(Float(s + 1), along[n] ?? 0, about[n] ?? 0, 0) }
+        }
+        func packed(_ law: SpringLaw) -> SIMD4<Float> {
+            let k = law.stiffness
+            let h = law.hardening
+            return SIMD4(k, min(law.yield, 1e30), k * h / (k - h), 0)
+        }
+        for support in model.springSupports {
+            springs += [
+                packed(support.pull), packed(support.across), packed(support.turnPositive),
+                packed(support.turnNegative),
+                SIMD4(Float(support.edge), Float(support.along), Float(support.acrossAxis), 0),
+            ]
+        }
+        // After the applied load's table and shares, from the next 16 bytes, where `shellNodes`
+        // finds them.
+        let springOffset =
+            (Self.maxLoadPoints * 8 + (max(elementCount, 1) + max(positions.count, 1)) * 4 + 15) & ~15
+        if !springs.isEmpty {
+            (loadTableBuffer.contents() + springOffset).copyMemory(
+                from: springs, byteCount: springs.count * MemoryLayout<SIMD4<Float>>.stride)
+        }
         tiedBuffer = tiedStorage
         tieBuffer = try buffer(mesh.ties.count * 8, "shell ties")
         let tiePairs = tieBuffer.contents().bindMemory(
@@ -642,6 +704,12 @@ public final class ShellSolver {
             for n in nodes.indices
             where model.isClampedBySupport(at: mesh.positions[n]) {
                 nodes[n].isClamped = true
+            }
+            // A spring support holds its nodes along its edge, as the weld along it does.
+            for support in model.springSupports {
+                for n in nodes.indices where support.region.contains(mesh.positions[n]) {
+                    nodes[n].restrain(x: support.edge == 0, y: support.edge == 1, z: support.edge == 2)
+                }
             }
             // A tied node's mass and inertia move with the node it is tied to.
             for tie in mesh.ties {
@@ -923,6 +991,17 @@ public final class ShellSolver {
         for (n, point) in appliedLoad.history.prefix(Self.maxLoadPoints).enumerated() {
             table[n] = point
         }
+        let stored = (loadTableBuffer.contents() + Self.maxLoadPoints * 8).bindMemory(
+            to: Float.self, capacity: elementCount + nodeCount)
+        if let shares = appliedLoad.elementShares {
+            for e in 0..<elementCount { stored[e] = e < shares.count ? shares[e] : 0 }
+        } else if appliedLoad.nodeShares != nil {
+            // On the nodes alone.
+            for e in 0..<elementCount { stored[e] = 0 }
+        }
+        if let shares = appliedLoad.nodeShares {
+            for n in 0..<nodeCount { stored[elementCount + n] = n < shares.count ? shares[n] : 0 }
+        }
     }
 
     // MARK: - Stepping
@@ -1133,6 +1212,7 @@ public final class ShellSolver {
             encoder.setBuffer(footings?.constantBuffer ?? placeholderBuffer, offset: 0, index: 27)
             encoder.setBuffer(footings?.stateBuffer ?? placeholderBuffer, offset: 0, index: 28)
             encoder.setBuffer(footings?.linkBuffer ?? placeholderBuffer, offset: 0, index: 29)
+            encoder.setBuffer(loadTableBuffer, offset: 0, index: 30)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
             if !mesh.ties.isEmpty {
@@ -1201,6 +1281,50 @@ public final class ShellSolver {
     public var commandBufferSeconds: Double {
         get { gpuSubsteps.target }
         set { gpuSubsteps.target = newValue }
+    }
+
+    /// Points and weights through the thickness: the `layers`-point Gauss-Legendre rule, or, with
+    /// timber, Gauss-Lobatto points in each of its lamellae (in each piece between any material's
+    /// lamellae): three in each of several, which is exact for their elastic bending where one rule
+    /// over the whole thickness would not be, their stiffness jumping from one to the next, and
+    /// `layers` (three to five) in one. Lobatto's points include the faces, where timber breaks
+    /// in bending; Legendre's innermost-to-the-face point sits 14% in from it in a 3-ply panel's
+    /// outer lamella, which broke 12% late.
+    static func thicknessRule(layers: Int, materials: [StructureMaterial]) -> [SIMD2<Float>] {
+        guard materials.contains(where: { $0.model == .timber }) else { return gaussLegendre(layers) }
+        var tops: [Float] = []
+        for material in materials where material.model == .timber {
+            guard let timber = material.timber, timber.lamellae.count > 1 else { continue }
+            for top in timber.lamellaTops.dropLast() where !tops.contains(where: { abs($0 - top) < 1e-4 }) {
+                tops.append(top)
+            }
+        }
+        let bounds = [-1] + tops.sorted() + [1]
+        let rule = gaussLobatto(tops.isEmpty ? min(max(layers, 3), 5) : 3)
+        // A point on a lamella's face is nudged just inside it, so that the kernel finds which
+        // lamella it belongs to.
+        return zip(bounds, bounds.dropFirst()).flatMap { low, high in
+            rule.map {
+                let inset = 1e-5 * (high - low)
+                let zeta = min(max(low + (high - low) * (1 + $0.x) / 2, low + inset), high - inset)
+                return SIMD2(zeta, $0.y * (high - low) / 2)
+            }
+        }
+    }
+
+    /// Points and weights of the n-point Gauss-Lobatto rule on [-1, 1], for 3 to 5 points.
+    static func gaussLobatto(_ n: Int) -> [SIMD2<Float>] {
+        switch n {
+        case 3: return [SIMD2(-1, 1.0 / 3), SIMD2(0, 4.0 / 3), SIMD2(1, 1.0 / 3)]
+        case 4:
+            let x = Float(1 / 5.0.squareRoot())
+            return [SIMD2(-1, 1.0 / 6), SIMD2(-x, 5.0 / 6), SIMD2(x, 5.0 / 6), SIMD2(1, 1.0 / 6)]
+        default:
+            let x = Float((3 / 7.0).squareRoot())
+            return [
+                SIMD2(-1, 0.1), SIMD2(-x, 49.0 / 90), SIMD2(0, 32.0 / 45), SIMD2(x, 49.0 / 90), SIMD2(1, 0.1),
+            ]
+        }
     }
 
     /// Points and weights of the n-point Gauss-Legendre rule on [-1, 1], by Newton's method on
@@ -1276,6 +1400,8 @@ public final class ShellSolver {
         if let appliedLoad, fluid == nil {
             uniforms.loadCount = UInt32(min(appliedLoad.history.count, Self.maxLoadPoints))
             uniforms.loadFace = UInt32(2 * appliedLoad.axis + (appliedLoad.positiveSide ? 1 : 0))
+            uniforms.loadShares = appliedLoad.elementShares == nil && appliedLoad.nodeShares == nil ? 0 : 1
+            uniforms.loadNodeShares = appliedLoad.nodeShares == nil ? 0 : 1
         }
         if let fluid {
             uniforms.coupled = 1

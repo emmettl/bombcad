@@ -229,6 +229,11 @@ struct SidebarView: View {
                         text: String(format: "%.2f", model.renderSettings.waveOpacity))
                 }
                 FragmentDisplaySettings(model: model)
+                Toggle("Safety distances and injury", isOn: $model.renderSettings.showBlastHazards)
+                    .help(
+                        "The safety standards' K24 and K40 distances and the minimum safe distance as blue rings, "
+                            + "and after a run where eardrums begin to rupture (amber) and where half would die "
+                            + "(dark red), at standing height.")
                 if model.groundShockSpec != nil {
                     Toggle("Ground points", isOn: $model.renderSettings.showGroundPoints)
                 }
@@ -239,6 +244,17 @@ struct SidebarView: View {
                                 + "stopped rising, where it stopped in orange, and its track across the ground."
                         )
                 }
+            }
+
+            Section("Hazards") {
+                ForEach(model.blastHazardSummary, id: \.self) { line in
+                    Text(line).font(.caption).fixedSize(horizontal: false, vertical: true)
+                }
+                Text(
+                    "K-factor distances are the safety standards' policy distances (DoD 4145.26-M), not "
+                        + "predictions; the injury curves come from animal tests under ideal pulses."
+                )
+                .font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
 
             Section("Solver") { SolverStats(model: model) }
@@ -342,13 +358,12 @@ struct SidebarView: View {
                         + "they are; runs that long need a tall domain.")
             if model.settings.scenario.hasEnvelopePanes {
                 Toggle("Vent broken glazing", isOn: $model.settings.ventsGlazing)
-                    .disabled(model.settings.gravity)
                     .help(
                         "Opens envelope buildings' windows in the air when their glass breaks, so that the blast "
                             + "fills the rooms and loads the walls from inside, as UFC 3-340-02 has it within 0.3 to "
                             + "1.2 times; off, a one-way fill the air never sees, which gives the walls inside a "
-                            + "sixth to under half of that. The inside stays illustrative. Not with gravity, which "
-                            + "takes the fill; about 1.03 to 1.07 times the run's time.")
+                            + "sixth to under half of that. Walls, roofs and slabs judged failed open too. The inside "
+                            + "stays illustrative; about 1.03 to 1.07 times the run's time.")
             }
             Toggle("Sharpen shocks", isOn: $model.settings.sharpShocks)
                 .help(

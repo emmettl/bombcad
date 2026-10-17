@@ -158,4 +158,175 @@ struct EnvelopeVentingTests {
             }
         }
     }
+
+    @Test("A brick wall that falls fails in the air when its one-way model does, opens, and the room fills")
+    func wallFails() throws {
+        let scene = try glazedScene(charge: 50)
+        let owner = scene.envelopeObjects[0].id
+        let brick = EnvelopeConstruction(
+            objectID: owner, walls: .unreinforcedMasonry, wallThicknessM: 0.1, source: .user, detail: "")
+        func vented() throws -> BlastSolver {
+            var config = SolverConfiguration.recommended
+            config.airSleepThreshold = 0
+            let solver = try BlastSolver(
+                device: #require(MTLCreateSystemDefaultDevice()), scenario: scene, cellSize: 0.25,
+                configuration: config)
+            try solver.configureEnvelopeComponents(
+                objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: 0.06))
+            try solver.configureEnvelopeVenting(objects: scene.envelopeObjects) { _ in brick }
+            return solver
+        }
+        let solver = try vented()
+        _ = solver.advance(until: 0.05)
+        let snapshot = try #require(solver.envelopeVentingSnapshot())
+        // The south wall, facing the charge.
+        let south = try #require(snapshot.walls.first { $0.component.hasSuffix("/wall/0.0") })
+        let failed = try #require(south.failedAtS)
+        let history = try #require(
+            solver.envelopeComponentHistories()?.first { $0.component.id == south.component })
+        let load = EnvelopeComponentLoad(history)
+        let model = try #require(EnvelopeWallFailure.make(load, construction: brick))
+        let net = load.netPa
+        let fallen = try #require(
+            model.systems[0].sdof.response(pressures: net, step: load.binS).lostResistanceAt)
+        #expect(
+            abs(fallen + load.startS - failed) < 5e-4, "GPU \(failed) s, one-way \(fallen + load.startS) s")
+        // Its cells are air, the room has filled, and the damage says so.
+        let grid = solver.grid
+        let region = history.component.region
+        let centre = (region.min + region.max) / 2
+        #expect(
+            !solver.isSolid(
+                Int(centre.x / grid.cellSize), Int(centre.y / grid.cellSize), Int(centre.z / grid.cellSize)))
+        #expect((snapshot.inside(of: owner)?.peakPa ?? 0) > 1000)
+        let loads = (solver.envelopeComponentHistories() ?? []).filter { !$0.invalid || snapshot.keeps($0) }
+            .map(EnvelopeComponentLoad.init)
+        let damage = try #require(
+            EnvelopeDamageAssessment.assess(loads: loads, constructions: { _ in brick }, vented: snapshot)
+                .first)
+        let wall = try #require(damage.components.first { $0.id == south.component })
+        #expect(wall.levels.upperBound == .failed && wall.failedAtS == failed)
+        // A restart stands it again; a run again repeats to the bit.
+        solver.restart()
+        #expect(
+            solver.isSolid(
+                Int(centre.x / grid.cellSize), Int(centre.y / grid.cellSize), Int(centre.z / grid.cellSize)))
+        let again = try vented()
+        _ = again.advance(until: 0.05)
+        #expect(
+            again.envelopeVentingSnapshot()?.walls.first { $0.component == south.component }?.failedAtS
+                == failed)
+    }
+
+    @Test("Under gravity a pane opens on the background at its height, and the room fills as without")
+    func gravity() throws {
+        let scene = try glazedScene(charge: 5)
+        var results: [(broke: Double, peak: Double)] = []
+        for gravity in [false, true] {
+            var config = SolverConfiguration.recommended
+            config.airSleepThreshold = 0
+            config.gravity = gravity ? AirGravity() : nil
+            let solver = try BlastSolver(
+                device: #require(MTLCreateSystemDefaultDevice()), scenario: scene, cellSize: 0.25,
+                configuration: config)
+            try solver.configureEnvelopeComponents(
+                objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: 0.04))
+            try solver.configureEnvelopeVenting(objects: scene.envelopeObjects) {
+                EnvelopeConstruction.assumed(objectID: $0)
+            }
+            _ = solver.advance(until: 0.03)
+            let snapshot = try #require(solver.envelopeVentingSnapshot())
+            results.append(
+                (
+                    try #require(snapshot.panes.first?.brokenAtS),
+                    snapshot.inside(of: scene.envelopeObjects[0].id)?.peakPa ?? 0
+                ))
+        }
+        #expect(abs(results[1].broke - results[0].broke) < 3e-4, "\(results)")
+        #expect(results[0].peak > 100 && abs(results[1].peak / results[0].peak - 1) < 0.1, "\(results)")
+    }
+
+    @Test("Holes through a wall open their columns on the run's clock, small ones once they fill half a face")
+    func wallHoles() throws {
+        // The walled square without its window: only the holes let the blast in.
+        var scene = Scenario(
+            name: "Walled", domainSize: SIMD3(16, 20, 6), boxes: [],
+            charge: Charge(mass: 5, position: SIMD3(7, 2, 1)))
+        try scene.addEnvelopeObject(
+            BuildingEnvelope(solids: building(origin: SIMD3(4, 7, 0), cutOpening: false).solids),
+            name: "Building")
+        let owner = scene.envelopeObjects[0].id
+        let thick = EnvelopeConstruction.assumed(objectID: owner)
+        func run(_ holes: [(owner: UUID, time: Double, position: SIMD3<Float>, areaM2: Float)]) throws
+            -> (BlastSolver, EnvelopeVentingSnapshot)
+        {
+            var config = SolverConfiguration.recommended
+            config.airSleepThreshold = 0
+            let solver = try BlastSolver(
+                device: #require(MTLCreateSystemDefaultDevice()), scenario: scene, cellSize: 0.25,
+                configuration: config)
+            try solver.configureEnvelopeComponents(
+                objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: 0.04))
+            try solver.configureEnvelopeVenting(objects: scene.envelopeObjects) { _ in thick }
+            try solver.setEnvelopeWallHoles(holes)
+            _ = solver.advance(until: 0.03)
+            return (solver, try #require(solver.envelopeVentingSnapshot()))
+        }
+        // On the south wall's face (y = 7): four small holes in one column, 0.01 m² each (a face
+        // is 0.0625 m², so the column opens with the fourth), and one of 0.2 m² further along.
+        let small = SIMD3<Float>(5.1, 7.0, 0.6)
+        let large = SIMD3<Float>(8.4, 7.0, 0.6)
+        let holes: [(owner: UUID, time: Double, position: SIMD3<Float>, areaM2: Float)] =
+            (0..<4).map { (owner, 0.002 + 0.001 * Double($0), small, 0.01) } + [(owner, 0.004, large, 0.2)]
+        let (solver, vented) = try run(holes)
+        let opened = vented.holes.filter { $0.openedAtS != nil }
+        // The small column at the fourth hole (5 ms); the large hole's radius (0.25 m) takes its
+        // own column and those whose centres lie within it.
+        #expect(vented.holes.contains { abs(($0.openedAtS ?? -1) - 0.005) < 1e-6 })
+        #expect(opened.filter { abs(($0.openedAtS ?? -1) - 0.004) < 1e-6 }.count >= 2)
+        let grid = solver.grid
+        func solid(_ p: SIMD3<Float>) -> Bool {
+            solver.isSolid(
+                Int(p.x / grid.cellSize), Int((p.y + 0.1) / grid.cellSize), Int(p.z / grid.cellSize))
+        }
+        #expect(!solid(small) && !solid(large))
+        let filled = vented.inside(of: owner)?.peakPa ?? 0
+        let (_, sealed) = try run([])
+        #expect(filled > 100 && (sealed.inside(of: owner)?.peakPa ?? 0) == 0, "\(filled) Pa")
+        // A restart closes them; a run again repeats to the bit.
+        solver.restart()
+        #expect(solid(small) && solid(large))
+        let (_, again) = try run(holes)
+        #expect(again.inside(of: owner)?.peakPa == vented.inside(of: owner)?.peakPa)
+    }
+
+    @Test("A charge close to a concrete wall breaches it by UFC 3-340-02's curve, opening the patch")
+    func breach() throws {
+        // 20 kg 0.6 m off the south wall (0.2 m of concrete) of the walled square.
+        var scene = try glazedScene(charge: 20)
+        scene.charge.position = SIMD3(5, 6.4, 1)
+        let owner = scene.envelopeObjects[0].id
+        var thick = EnvelopeConstruction.assumed(objectID: owner)
+        thick.glassThicknessM = 0.05
+        var config = SolverConfiguration.recommended
+        config.airSleepThreshold = 0
+        let solver = try BlastSolver(
+            device: #require(MTLCreateSystemDefaultDevice()), scenario: scene, cellSize: 0.25,
+            configuration: config)
+        try solver.configureEnvelopeComponents(
+            objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: 0.03))
+        try solver.configureEnvelopeVenting(objects: scene.envelopeObjects) { _ in thick }
+        let outcomes = try solver.setEnvelopeCloseIn(charges: [(scene.charge, 0)]) { _ in thick }
+        let south = try #require(outcomes.first { $0.key.hasSuffix("/wall/0.0") })
+        #expect(south.value == .breached)
+        _ = solver.advance(until: 0.02)
+        let vented = try #require(solver.envelopeVentingSnapshot())
+        let holes = vented.holes.filter { $0.cause == "breach" && $0.openedAtS != nil }
+        #expect(!holes.isEmpty && holes.allSatisfy { $0.component == south.key })
+        // The patch nearest the charge is air; the room has filled.
+        let grid = solver.grid
+        #expect(!solver.isSolid(Int(5 / grid.cellSize), Int(7.1 / grid.cellSize), Int(1 / grid.cellSize)))
+        #expect((vented.inside(of: owner)?.peakPa ?? 0) > 1000)
+        #expect(vented.closeIn[south.key] == "breached")
+    }
 }

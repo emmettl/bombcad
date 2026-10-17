@@ -78,10 +78,10 @@ struct EnvelopeVentingAppTests {
                 charge: Charge(mass: 5, position: SIMD3(7, 2, 1))))
         #expect(bare.runSettings?.ventsGlazing == nil)
         #expect(SimulationModel(document: bare).settings.ventsGlazing)
-        // With gravity the run takes the fill, and is saved as one.
+        // Gravity in the air vents too.
         model.settings.ventsGlazing = true
         model.settings.gravity = true
-        #expect(ProjectDocument(model: model).runSettings?.ventsGlazing == nil)
+        #expect(ProjectDocument(model: model).runSettings?.ventsGlazing == true)
     }
 
     @Test("A headless run with venting breaks the pane in the air and reports the room's pressure")

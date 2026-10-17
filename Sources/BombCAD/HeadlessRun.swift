@@ -446,7 +446,7 @@ enum HeadlessRun {
     static func execute(_ options: Options, costs: ConsumerCostStore? = nil) async throws -> (
         run: SavedSimulationRun, fragments: FragmentResult?, streams: [String], thermal: ThermalResult?,
         cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?, blastGPUSeconds: Double,
-        standing: SceneStanding
+        standing: SceneStanding, hazards: [String]
     ) {
         var document = try ProjectDocument.read(from: options.project)
         // Without --out the earlier runs are not needed, and must not use up the run limit.
@@ -492,7 +492,7 @@ enum HeadlessRun {
         }
         return (
             result.run, result.fragments, result.streams, result.thermal, result.cloud, result.ground,
-            result.envelopes, result.blastGPUSeconds, result.standing
+            result.envelopes, result.blastGPUSeconds, result.standing, result.hazards
         )
     }
 
@@ -501,17 +501,22 @@ enum HeadlessRun {
     /// runs. `progress` is told the fraction of the simulated time reached, now and then.
     /// `connect` starts a worker on a host named in `options.consumers`; tests stand in-process
     /// workers in for them. `costs` keeps what the consumers cost, for `auto` to place them by
-    /// in this run and later ones. Cancelling the task stops the run.
+    /// in this run and later ones. `view` is handed the solver at each frame, the frame's number,
+    /// and whether it is the run's last sample, which may fall between frames, for a viewer
+    /// elsewhere (see `WatchJob`), and `viewRequest` asked, before each frame's batch, for what it
+    /// will read of the air (a block, the view field) for the GPU to cut out. Cancelling the task stops the run.
     static func perform(
         _ document: ProjectDocument, options: Options, progress: ((Double) -> Void)? = nil,
         consumer injected: (any FrameConsumer)? = nil, costs store: ConsumerCostStore? = nil,
+        view: ((BlastSolver, Int, Bool) -> Void)? = nil,
+        viewRequest: ((BlastSolver) -> FrameRequest)? = nil,
         connect: (String) async throws -> SweepWorkerClient = {
             try await RemoteSweepWorker.connect(host: $0)
         }
     ) async throws -> (
         run: SavedSimulationRun, document: ProjectDocument, fragments: FragmentResult?, streams: [String],
         thermal: ThermalResult?, cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?,
-        blastGPUSeconds: Double, standing: SceneStanding, envelopeHistories: Data?
+        blastGPUSeconds: Double, standing: SceneStanding, envelopeHistories: Data?, hazards: [String]
     ) {
         var document = document
         let inputs = try inputs(for: document, options: options)
@@ -564,6 +569,7 @@ enum HeadlessRun {
         let framed =
             options.vdb != nil || options.fragments != nil || injected != nil || options.thermal != nil
             || options.groundShock != nil || (options.usd != nil && inputs.scenario.structure != nil)
+            || view != nil
         // Before the inputs load, which sets the first sample time. The cloud needs only the
         // last sample, at the end of the run, which then stops nowhere else.
         model.airSampleInterval = framed || options.cloud == nil ? interval : inputs.settings.duration
@@ -666,7 +672,7 @@ enum HeadlessRun {
                 return hold
             }
         }
-        if framed, fragmentFeed != nil || options.thermal != nil {
+        if framed, fragmentFeed != nil || options.thermal != nil || viewRequest != nil {
             // The GPU cuts out what a frame's consumers need at the end of the batch that lands on
             // it, as `onSample` will ask for it, rather than the CPU while the GPU waits.
             model.prepareBatch = { solver, limit in
@@ -683,6 +689,10 @@ enum HeadlessRun {
                         for: frame, interval: interval, domain: inputs.scenario.domainSize,
                         cellSize: solver.grid.cellSize)
                     request.airSlice = AirSliceRequest(region: region.box, stride: region.stride)
+                }
+                if let wanted = viewRequest?(solver) {
+                    request.airSlice = request.airSlice ?? wanted.airSlice
+                    request.viewField = wanted.viewField
                 }
                 solver.frameRequest = request
             }
@@ -702,6 +712,10 @@ enum HeadlessRun {
                 guard framed else { return }
                 // The last sample, at the end of the run, can fall between frames.
                 let index = (solver.time / interval).rounded()
+                if let view {
+                    let last = solver.time >= end - 1e-9
+                    if last || abs(solver.time - index * interval) < 1e-6 { view(solver, Int(index), last) }
+                }
                 guard exportError == nil, abs(solver.time - index * interval) < 1e-6, Int(index) == frame
                 else {
                     return
@@ -840,6 +854,9 @@ enum HeadlessRun {
             scene?.addCloud(result.frames(), secondsPerFrame: spec.frameInterval)
             cloud = result
         }
+        // The blast's hazards: the safety standards' distances, the minimum safe distance (with the
+        // fragments' hazard, when flown) and the injury at standing height over the run.
+        model.setFragmentHazard(fragments?.hazard)
         // The structures' rubble flown on to land, while the scene can still take its ring.
         let debris = model.debrisResult()
         if let debris { scene?.addHazard(debris.hazard, name: "DebrisHazard") }
@@ -868,7 +885,7 @@ enum HeadlessRun {
         }
         return (
             run, document, fragments, streams, thermalResult, cloud, groundResult, envelopeData,
-            model.blastGPUSeconds, standing, historyData
+            model.blastGPUSeconds, standing, historyData, model.blastHazardSummary
         )
     }
 
@@ -1094,6 +1111,7 @@ enum HeadlessRun {
             print(summary(result.run, wallSeconds: wallSeconds, blastGPUSeconds: result.blastGPUSeconds))
             if let fragments = result.fragments { print("  " + fragments.summary) }
             for stream in result.streams { print("  " + stream) }
+            for line in result.hazards { print("  Hazards: " + line) }
             for line in result.thermal?.summary ?? [] { print("  " + line) }
             for line in result.cloud?.summary ?? [] { print("  " + line) }
             if let ground = result.ground { print("  " + ground.summary) }

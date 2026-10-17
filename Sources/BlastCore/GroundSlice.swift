@@ -105,20 +105,27 @@ extension BlastSolver {
         let airModel = configuration.airModel
         let ambient = configuration.ambientPressure
         let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let terrain = terrainSurface
+        let grid = grid
         withState { cells in
             setFields { peak, impulse in
-                for j in 0..<ny {
-                    for i in 0..<nx {
-                        let column = Int(first.x) + i + grid.nx * (Int(first.y) + j)
-                        let surface = min(Int(terrainSurface?[column] ?? 0), grid.nz - 1)
-                        let cell = grid.index(Int(first.x) + i, Int(first.y) + j, surface)
-                        guard mask[cell] == 0 else { continue }
-                        let n = 3 * (i + nx * j)
-                        values[n] =
-                            Self.primitive(of: cells[cell], gamma: gamma, airModel: airModel).pressure
-                            - ambient
-                        values[n + 1] = peak[cell]
-                        values[n + 2] = impulse[cell]
+                values.withUnsafeMutableBufferPointer { values in
+                    // A row at a time across the CPU's cores, a whole grid's ground being read for a
+                    // viewer each frame; each value lands in its own place, so the slice is the same
+                    // however the rows are shared out.
+                    concurrently(iterations: ny) { j in
+                        for i in 0..<nx {
+                            let column = Int(first.x) + i + grid.nx * (Int(first.y) + j)
+                            let surface = min(Int(terrain?[column] ?? 0), grid.nz - 1)
+                            let cell = grid.index(Int(first.x) + i, Int(first.y) + j, surface)
+                            guard mask[cell] == 0 else { continue }
+                            let n = 3 * (i + nx * j)
+                            values[n] =
+                                Self.primitive(of: cells[cell], gamma: gamma, airModel: airModel).pressure
+                                - ambient
+                            values[n + 1] = peak[cell]
+                            values[n + 2] = impulse[cell]
+                        }
                     }
                 }
             }

@@ -25,6 +25,11 @@ what has since been built, and measured, is said where it comes up.
   this Mac, not the network: cutting out each model's share of the air took the CPU about 5 ms
   a frame while the GPU waited. Cut out on the GPU, it now takes under a millisecond. See
   [Several consumers on several machines](#several-consumers-on-several-machines).
+- **Over Wi-Fi,** independent runs and work on saved runs still pay; anything that exchanges
+  every step does not. The most useful case is a thin client: the app on a laptop, the blast on
+  a large GPU elsewhere. A headless prototype, `BombCAD watch`, showed every frame of the ground's
+  paint over the house Wi-Fi with 20 to 30 ms of lag, at about 1% of the run's time. See
+  [Slower links](#slower-links-wi-fi-and-the-like).
 - **Before that, other routes win:** a bigger single GPU, faster single-GPU algorithms, and
   farming out independent runs (sweeps, grid studies, uncertainty), which scales perfectly at any
   size. [`BombCAD run`](run-comparison.md#headless-runs) is the building block for the last.
@@ -444,6 +449,195 @@ fragments, and the ground's shaking is lighter still. Moving them gains nothing 
 expensive. The thermal radiation's march over a city block of receivers is the first that is
 (above); fragments that collide, or many buildings' damage, would be others. What the plan buys is room for those without
 the run slowing, within the bound in [Adding machines](#the-long-term-visions-effects).
+
+## Slower links: Wi-Fi and the like
+
+Everything above assumes the Thunderbolt cable. Weighed in October 2026 for a Mac on Wi-Fi, such
+as a laptop on the same network; only the thin client ([below](#a-thin-client)) has been measured
+over Wi-Fi. Typical figures, and this desk's:
+
+| Link | Usable rate | Round trip |
+|---|---|---|
+| Thunderbolt Bridge, SSH (measured here) | about 0.9 GB/s | about 0.1 ms |
+| 10 Gb Ethernet (built into the Studio) | about 1 GB/s | about 0.05 ms |
+| Gigabit Ethernet | about 110 MB/s | about 0.2 ms |
+| Wi-Fi 6, 6E or 7, good conditions | 30 to 150 MB/s | 2 to 10 ms, with spikes past 50 ms |
+| The Studio to the mini, both on Wi-Fi 6E (measured, SSH) | 35 to 41 MB/s | 6 to 81 ms, 21 ms on average |
+
+10 Gb Ethernet is nearly as good as the cable for all of this; Wi-Fi is not. A job crosses a slow
+link well when two things hold: what it sends a frame, at the link's rate, takes well under the
+frame's own computing, and nothing waits for a reply. Latency then does not matter, only
+bandwidth, and only on average.
+
+**What still works.**
+
+- **Independent runs.** Sweeps and ensembles cross any link. A case sends its project and gets
+  back its result, at most 256 MiB and usually far less, against tens of seconds or more of
+  running; the worker's executable and resource bundles, about 22 MB, go once a build. This
+  should scale over Wi-Fi as over the cable, though a Mac on Wi-Fi is likely to be a laptop,
+  slower than the Studio, which the scheduler handles by giving it the smaller cases.
+- **Models fed one way, if they can fall behind.** A consumer only reads the air, so frames
+  can stream ahead of it and nothing waits on the round trip. At about 39 ms a frame on the
+  street canyon, 50 MB/s carries about 2 MB a frame. The ground's 0.19 MB fits easily. The
+  fragments' 9.5 MB block of air does not: about 30 s to send against a run of about 5 s. The
+  run waits for a consumer more than four frames behind, so as built it would be held up.
+  Sending the air only where the fragments are, or in half precision, or letting a consumer
+  trail without holding the run (its frames are already kept in `ConsumerSpool`), would each
+  fix it, results unchanged. It would gain nothing yet: these models are cheap
+  ([Placement and failure](#several-consumers-on-several-machines)).
+- **Work on saved runs.** [USD export](usd-export.md), fragments flown afterwards from saved
+  frames, comparisons: files, so any link.
+
+**What does not.** A split grid swaps faces up to three times a step and agrees the time step
+every step; a Wi-Fi round trip is longer than a whole air step on the medium grid. The air and a
+structure exchange every air step, and so do any models fed both ways. All of these stall on
+Wi-Fi.
+
+### A thin client
+
+The other way round: the app on a laptop, on Wi-Fi, editing the scene and watching, while the
+blast runs on the Studio's GPU. Of everything on a slow link this is the most useful to someone
+using BombCAD: a large GPU in a room somewhere, worked from anywhere in the building.
+
+**What existed.** The models fed alongside a run can each run on another Mac (**Run on**), and
+sweeps can share their cases, but the blast itself always ran on the Mac showing it.
+
+**Why it fits a slow link.** Watching is lossy where a consumer is not. A consumer needs every
+frame; a viewer needs only the latest state, at whatever rate the link allows, and can drop the
+rest. Runs are slower than real time, so the screen updates at the run's pace: tens of
+milliseconds a frame on the street canyon, seconds on its fine grid.
+
+**What would cross.**
+
+- *Out:* the project once, then edits and playback commands: kilobytes.
+- *Back, live:* what the screen draws, not the solver's state. The medium grid's air is about
+  170 MB a frame, far too much; a slice or the paint on surfaces (peak pressure, impulse,
+  fluence) is well under a megabyte. The structure's node positions are a few megabytes for the
+  225,000-element building, too much every frame but fine sent as the latest, a few times a
+  second. If the air must be seen as a volume, rendering it on the Studio and sending video
+  (VideoToolbox, HEVC) is a few megabytes a second whatever the grid.
+- *Back, after:* the run's result, once, for playback and comparison on the laptop, as a sweep
+  case returns one now.
+
+**Built, headless, as a prototype.** `BombCAD watch <project> --on <ssh host>` runs a project on
+another Mac and watches it from this one (`HeadlessWatch.swift`; worker protocol 11 adds `watch`,
+`view`, `viewAck` and `viewStats`). The worker is the sweeps' own, copied over SSH. At each
+millisecond's frame it sends what a viewer draws:
+
+- the ground's paint over the whole grid: overpressure now, the peak and the impulse so far, three
+  half-precision values a column (pressures in kPa, held to half precision's ±65,504; a test
+  caught peaks in pascals overflowing it);
+- the structure's surface, the points and each face's damage every frame, the faces only when
+  their number changes;
+- with `--volume <stride>`, the overpressure in every stride-th cell of the air, cut out on the
+  GPU at the end of the frame's batch, as the fragments' air is.
+
+Frames are compressed (lz4 by default) on the writer's queue, off the thread driving the GPU. Flow
+control is a window of acknowledgements: the worker builds a frame only while fewer than two
+are unacknowledged, and always builds the last, so a slow link or a slow viewer skips frames and
+the run never waits for it. The run comes back at the end and is checked against its inputs'
+fingerprint, as a sweep case is. `--stdio` lets the watcher read a worker through its own
+standard input and output: the Studio takes no SSH logins, so for the realistic direction the
+Studio piped a worker on its own GPU into `BombCAD watch --stdio` on the mini, over SSH on Wi-Fi.
+
+**Measured, 17 October 2026.** The street canyon (65,000 ground columns) and the city
+block (34 million cells, 262,000 columns), 100 kg, 171 frames; Wi-Fi is the measured link above,
+both Macs on it. The mini was shared with other sessions' checks (load averages up to 95), so its
+whole-run times swung five-fold between identical runs and say nothing; the costs below are each
+run's own, timed where they happen.
+
+| Blast on | Watched over | Scene, frame | A frame sent | Shown | Update, median | Lag, median (95%) |
+|---|---|---|---|---|---|---|
+| Studio | Wi-Fi | street, ground | 169 kB | 170 of 171 | 114 ms | 18 ms (78 ms) |
+| Studio | Wi-Fi | city, ground | 281 kB | all | 203 ms | 31 ms (112 ms) |
+| Studio | Wi-Fi | city, ground + volume every 2nd cell | 1.7 MB | all | 200 ms | 113 ms (239 ms) |
+| Studio | Thunderbolt | the same | 1.7 MB | all | 240 ms | 65 ms (91 ms) |
+| mini | Wi-Fi | street, ground | 161 kB | all | 330 to 830 ms | 22 to 24 ms (101 to 106 ms) |
+| mini | Thunderbolt | street, ground | 161 kB | all | 540 to 990 ms | 7.4 to 7.5 ms (9 ms) |
+| mini | Wi-Fi | city, ground | 277 kB | all | 385 to 1,420 ms | 41 to 44 ms (109 to 123 ms) |
+| mini | Thunderbolt | city, ground | 277 kB | all | 400 to 560 ms | 24 ms (26 to 30 ms) |
+| mini | Wi-Fi | city, ground + the whole volume | 9.5 MB | 163 of 171 | 600 ms | 760 ms (1.3 s) |
+| mini | Wi-Fi | three-storey building, surface | 2.9 MB | all | 1.9 s | 161 ms (254 ms) |
+| mini | Thunderbolt | three-storey building, surface | 2.9 MB | all | 1.6 s | 75 ms (88 ms) |
+
+Lag is from the frame's values being read on the worker to its acknowledgement arriving back,
+the decoding on the watcher included. What it found:
+
+- **The ground's paint is small for any link.** 160 to 280 kB a frame with lz4 (2.4 to 5.7
+  times smaller than raw), 1.5 MB/s at the Studio's pace, a twentieth of what this Wi-Fi carries.
+  Every frame crossed; the lag was about Wi-Fi's own round trip.
+- **The run barely notices.** Reading a frame held the thread driving the GPU 0.8 ms (street) and
+  2.5 ms (city) on the Studio, 1% of the run, once the ground's rows were read across the cores
+  (16.6 ms a frame for the city block on the mini, on one core, before). Packing and compressing ran off that
+  thread. The larger cost is stopping at exact frames, which a watched run does and an unwatched
+  one does not: 4 to 5% more steps (1,856 against 1,781 on the street, 1,943 against 1,848 on the
+  city). A viewer does not need exact frames; taking the state wherever a batch ends would remove
+  this.
+- **A structure's surface is the next weight.** 2.9 MB a frame for the three-storey building,
+  compressing only 1.4 times (positions in full precision), 22 ms a frame to read. Fine at its
+  pace over Wi-Fi; sending displacements from a reference sent once, in half precision, would cut
+  it to under a third.
+- **A whole volume is where Wi-Fi ends.** The city's overpressure in every cell is 68 MB a frame,
+  9.5 MB with lz4: Wi-Fi carried 12.6 MB/s, eight frames were skipped, and the lag reached a
+  second. The watcher was half the limit: decoding a frame took 230 to 290 ms on the mini.
+  Reading it held the run 54 to 400 ms a frame, as the cut-out copies all five quantities of
+  every cell to the CPU to keep one. Every second cell in each direction (8 times fewer) crossed
+  at 7.4 MB/s, every frame, with 0.1 s of lag. For a volume, the GPU should cut out only the
+  overpressure, in half precision, and the viewer should draw the field coarser than the solver
+  holds it.
+
+**Drawn here by the app's renderer.** The renderer draws from a `SceneViewState`, which a run
+elsewhere can fill (`ViewSetup` once, a `ViewFrame` each frame, uploaded by `ViewUpload`, all in
+BlastRender). `watch --scene <stride>` has the worker send those too (`SceneViewCodec`, binary,
+compressed as the rest; protocol 12 adds `viewSetup`), and `--render <folder>` draws each frame
+with `SceneRenderer` on this Mac and writes PNG images. The field goes at every stride-th cell
+along each axis, cut down on the GPU (`coarsenField` in ViewField.metal): each coarse texel keeps
+its block's largest peak, impulse and shock indicator and its overpressure of largest magnitude,
+so a front one cell thick still shows. Measured the same day, the blast on the Studio, the mini
+drawing it over Wi-Fi:
+
+| Scene, field | A frame sent | Shown | Update, median | Lag, median | Held the run, a frame (first build) |
+|---|---|---|---|---|---|
+| city, every 4th cell | 1.2 MB | all | 216 ms | 102 ms | 22 ms |
+| city, every 2nd cell | 7.2 MB | 169 of 171 | 213 ms | 245 ms | 29 ms |
+| three-storey building, every 2nd cell | 7.6 MB | all | 459 ms | 323 ms | 33 ms |
+| city, every cell | 34 MB | 55 of 171 | 489 ms | 778 ms | 117 ms |
+
+- **Every 4th cell looks like the whole.** On the city block it is 64 times less field, and the
+  picture drawn here keeps the same fronts in the same streets, slightly softer and wider; every
+  2nd cell is hard to tell from the whole. The whole field saturates Wi-Fi (35 MB/s carried),
+  and two frames in three are skipped.
+- **Drawing here is cheap.** Uploading a frame into the view's buffers took 1 to 5 ms on the
+  mini at every 2nd or 4th cell, and decoding it 1 to 7 ms; drawing a 1280 × 720 image and writing
+  it as a PNG 50 to 70 ms.
+- **The run paid for the field, at first.** 22 to 33 ms a frame held on the thread driving the
+  GPU, 8 to 11% of the city run, against 2.5 ms for the ground's paint alone: the field was
+  rebuilt and cut down in command buffers of their own, each waited for, and the structure's
+  surface was read for the paint as well as its meshes for the view. Now the view field is a
+  `FrameRequest` like the fragments' air: the visualisation and `extractViewField`
+  (Extract.metal) run at the end of the batch that lands on the frame, and
+  `BlastSolver.viewField(stride:)` takes what they wrote; the frame is encoded on the writer's
+  queue; and with a scene view the paint leaves out the surface. Timed again, old and new
+  builds alternating, the Studio loaded (load averages 13 to 113):
+
+  | Held the run, a frame | Before | After |
+  |---|---|---|
+  | city, every 4th cell | 9.2 to 16.7 ms | 4.0 to 4.7 ms |
+  | city, every 2nd cell | 16.1 to 38.6 ms | 9.6 to 10.8 ms |
+  | three-storey building, every 2nd cell | 22.5 to 39.1 ms | 5.4 to 8.9 ms |
+
+  What is left is mostly copying the field out of the GPU's buffer (34 MB a frame at every 2nd
+  cell of the city block) and the ground's paint. The field cut out in the batch is the one
+  worked out after it, bit for bit, and asking for it leaves the run the same.
+- **The structure's mesh is the rest.** The three-storey building's frames compress only 1.6
+  times, being displacements and rotations in full precision.
+
+**What it means for the app.** A thin client is practical over ordinary Wi-Fi for everything
+drawn on surfaces, live, at the run's own pace, for about 1% of the run, and for the air as a
+volume at about every second cell, and for the scene as the app draws it at every 2nd to 4th
+cell of the field. What is left is the app's side: a **Run on** for the blast, the viewport fed
+from the frames that arrive rather than from a solver here, and edits and playback going the
+other way.
 
 ## Better first
 

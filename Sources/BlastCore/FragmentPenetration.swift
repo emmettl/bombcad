@@ -26,6 +26,10 @@ public struct PenetrationResult: Codable, Sendable, Equatable {
     public var residualSpeed: Float
     /// Which method: "UFC 3-340-02 4-60", "UFC 3-340-02 5-49", "THOR <target>", "glass".
     public var method: String
+    /// Through, the hole it leaves, m²: the fragment's mean presented area, for want of a cited hole
+    /// size (UFC 3-340-02 §4-60.1 describes craters wider than the fragment but gives no size), so
+    /// a lower bound. Set where the fragment's area is known (`FragmentCloud`).
+    public var holeAreaM2: Float? = nil
 }
 
 public enum FragmentPenetration {
@@ -255,7 +259,40 @@ public struct FragmentTarget: Codable, Sendable, Equatable {
     }
 }
 
+/// Where and when a fragment goes through an envelope's wall, roof or pane, and the hole it leaves.
+public struct EnvelopeHole: Codable, Sendable, Equatable {
+    public var owner: UUID
+    /// The pane, by its index among its envelope's panes; nil for a wall or roof.
+    public var pane: Int?
+    /// s from the start.
+    public var time: Double
+    public var position: SIMD3<Float>
+    /// The hole's area, m², the real fragments the flown one stands for together.
+    public var areaM2: Float
+}
+
 extension FragmentCloud {
+    /// Every hole a cased charge's fragments make through envelopes up to `until`, in time order:
+    /// the same fragments (`spec`'s seed) flown before the run in still air of `density` and
+    /// `pressure`, so that the holes are known before the blast reaches any, whatever the
+    /// fragments' consumer lags. Ahead of the blast the air is still; inside it the wind would
+    /// carry them a little faster (fragments.md).
+    public static func envelopeHoles(
+        spec: FragmentSpec, scene: FragmentScene, density: Float, pressure: Float, until: Double
+    ) -> [EnvelopeHole] {
+        var cloud = FragmentCloud(spec: spec, scene: scene)
+        cloud.land(in: Primitive(density: density, pressure: pressure), limit: until)
+        return cloud.impacts.compactMap { impact -> EnvelopeHole? in
+            guard impact.time <= until, let owner = impact.objectID, impact.surface.hasPrefix("block"),
+                let penetration = impact.penetration, penetration.outcome == .perforated
+            else { return nil }
+            return EnvelopeHole(
+                owner: owner, pane: impact.pane, time: impact.time, position: impact.position,
+                areaM2: (penetration.holeAreaM2 ?? 0) * impact.count)
+        }
+        .sorted { ($0.time, $0.owner.uuidString) < ($1.time, $1.owner.uuidString) }
+    }
+
     /// When a cased charge's fragments hole each envelope pane, by component id ("<owner>/pane/<j>.0"),
     /// s from the start, up to `until`: the same fragments (`spec`'s seed) flown before the run in
     /// still air of `density` and `pressure`, so that the times are known before the blast reaches
@@ -264,13 +301,13 @@ extension FragmentCloud {
     public static func paneHoles(
         spec: FragmentSpec, scene: FragmentScene, density: Float, pressure: Float, until: Double
     ) -> [String: Double] {
-        var cloud = FragmentCloud(spec: spec, scene: scene)
-        cloud.land(in: Primitive(density: density, pressure: pressure), limit: until)
         var holes: [String: Double] = [:]
-        for impact in cloud.impacts where impact.penetration?.outcome == .perforated && impact.time <= until {
-            guard let owner = impact.objectID, let pane = impact.pane else { continue }
-            let id = "\(owner.uuidString)/pane/\(pane).0"
-            holes[id] = min(holes[id] ?? .infinity, impact.time)
+        for hole in envelopeHoles(
+            spec: spec, scene: scene, density: density, pressure: pressure, until: until)
+        {
+            guard let pane = hole.pane else { continue }
+            let id = "\(hole.owner.uuidString)/pane/\(pane).0"
+            holes[id] = min(holes[id] ?? .infinity, hole.time)
         }
         return holes
     }

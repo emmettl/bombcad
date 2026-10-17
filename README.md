@@ -154,6 +154,7 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [Ground shock](docs/ground-shock.md) | An illustrative estimate of the ground's shaking away from the charge, or a layered soil column, fed the overpressure on the ground |
 | [Cratering](docs/cratering.md) | The crater each charge digs in earth or rock, by empirical scaling, kept shallow below a water table, and the share of its energy the air keeps |
 | [The steel and glass office](docs/office-tower.md) | A sample layout of modern construction: how it is meshed, stands under gravity and takes a tonne at the kerb |
+| [Profiled steel sheeting](docs/profiled-sheeting.md) | Trapezoidal and sinusoidal steel cladding and roofs, as shells and as an envelope construction; compared with Langdon's corrugated panels; the portal-frame warehouse sample |
 | [Distributed computing](docs/distributed-computing.md) | Sweeps on several Macs, and the effects beside the blast placed on other Macs by cost |
 | [Run comparison](docs/run-comparison.md)    | Saved runs, comparing them, and headless runs                   |
 | [USD export](docs/usd-export.md) | Writing a run over time as USD and OpenVDB volumes, for rendering in Blender and elsewhere |

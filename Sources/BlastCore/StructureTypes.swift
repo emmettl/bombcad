@@ -8,6 +8,191 @@ public enum MaterialModel: UInt32, Sendable, Codable {
     case vonMises = 0
     /// Concrete that cracks in tension and crushes in compression, with optional reinforcement.
     case concrete = 1
+    /// Timber: orthotropic, stiff along its grain and soft across it, in layers that may cross
+    /// (cross-laminated timber). Shells and beams only (see `TimberProperties`).
+    case timber = 2
+}
+
+/// Strength classes of timber: solid softwood (EN 338:2016) and homogeneous glulam
+/// (EN 14080:2013).
+public enum TimberGrade: String, Sendable, Hashable, Codable, CaseIterable {
+    case c16 = "C16"
+    case c24 = "C24"
+    case c30 = "C30"
+    case gl24h = "GL24h"
+    case gl28h = "GL28h"
+
+    /// Mean density (kg/m^3).
+    public var density: Float {
+        switch self {
+        case .c16: 370
+        case .c24: 420
+        case .c30: 460
+        case .gl24h: 420
+        case .gl28h: 460
+        }
+    }
+}
+
+/// Timber's elastic properties along and across its grain, and how its layers are laid.
+///
+/// In a shell, each layer is orthotropic plane stress, as ContinuumKit's `OrthotropicPlaneStress`
+/// (copied into the shell kernel in single precision), with its grain along `grainAxis` turned by
+/// `grainRotation` about the shell's normal, or across it where its lamella is crossed. Through
+/// the thickness, shear along the grain takes `shearModulus` and shear across it, rolling the
+/// fibres, takes `rollingShearModulus`. A beam's grain runs along it.
+public struct TimberProperties: Sendable, Hashable, Codable {
+    /// Moduli along and across the grain, and in-plane shear (Pa).
+    public var alongGrain: Float
+    public var acrossGrain: Float
+    public var shearModulus: Float
+    /// Shear across the grain through the thickness: rolling shear (Pa).
+    public var rollingShearModulus: Float
+    /// Poisson's ratio, strain across the grain over strain along it under stress along it.
+    public var poissonRatio: Float = 0.35
+    /// The global axis (0 x, 1 y, 2 z) the grain of uncrossed lamellae runs along, as far as it
+    /// lies in a shell's plane; where it does not (a shell normal to it), along the shell's first
+    /// axis.
+    public var grainAxis: Int = 0
+    /// A further turn of the grain about each shell's normal, in radians.
+    public var grainRotation: Float = 0
+    /// Strengths (Pa): tension and compression along and across the grain, shear along it and
+    /// rolling shear. Left at 1e30, timber never breaks.
+    public var tensionAlong: Float = 1e30
+    public var compressionAlong: Float = 1e30
+    public var tensionAcross: Float = 1e30
+    public var compressionAcross: Float = 1e30
+    public var shearStrength: Float = 1e30
+    public var rollingStrength: Float = 1e30
+    /// Fracture energies (J/m^2): breaking the fibres in tension, splitting (opening across the
+    /// grain), sliding along it and rolling shear. The fibres' is 0 by default: they break at
+    /// once, as the University of Ottawa's glulam beams and CLT panels did, at finger joints and
+    /// defects, and as Lacroix recommends for glulam (a brittle resistance curve). Clear wood's
+    /// 60 kJ/m^2 (Sandhaas and van de Kuilen) softened members over several times their breaking
+    /// strain, and they carried 12-25% more than measured. (ContinuumKit's `TimberFailure`
+    /// rejects a zero energy; a band too long for its energy breaks at once there too.)
+    public var fibreEnergy: Float = 0
+    public var splittingEnergy: Float = 500
+    public var shearEnergy: Float = 1200
+    public var rollingEnergy: Float = 600
+    /// The strengths' dynamic increase factor at blast rates (stiffness takes none).
+    public var strengthFactor: Float = 1
+    /// The lamellae from the bottom face up (the shell's negative normal side): their shares of
+    /// the thickness and whether each crosses the grain. Empty for one layer along the grain
+    /// (solid timber and glulam).
+    public var lamellae: [Lamella] = []
+
+    public struct Lamella: Sendable, Hashable, Codable {
+        public var share: Float
+        public var crossed: Bool
+        public init(share: Float, crossed: Bool) {
+            self.share = share
+            self.crossed = crossed
+        }
+    }
+
+    public init(
+        alongGrain: Float, acrossGrain: Float, shearModulus: Float, rollingShearModulus: Float,
+        poissonRatio: Float = 0.35, grainAxis: Int = 0, grainRotation: Float = 0, lamellae: [Lamella] = []
+    ) {
+        self.alongGrain = alongGrain
+        self.acrossGrain = acrossGrain
+        self.shearModulus = shearModulus
+        self.rollingShearModulus = rollingShearModulus
+        self.poissonRatio = poissonRatio
+        self.grainAxis = grainAxis
+        self.grainRotation = grainRotation
+        self.lamellae = lamellae
+    }
+
+    /// `count` lamellae of equal thickness, crossing in turn, the outer ones along the grain.
+    public static func crossLaminated(_ count: Int) -> [Lamella] {
+        (0..<count).map { Lamella(share: 1 / Float(count), crossed: $0 % 2 == 1) }
+    }
+
+    /// A strength class at its mean values: EN 338:2016 for solid softwood (C16, C24, C30) and
+    /// EN 14080:2013 for homogeneous glulam (GL24h, GL28h).
+    /// - **Moduli:** the classes' means, rolling shear a tenth of shear (ANSI/APA PRG 320-2019
+    ///   Annex X3; the Studiengemeinschaft Holzleimbau's Glulam-Bulletin, 2019).
+    /// - **Strengths:** the classes' characteristic values, raised to their means with the JCSS
+    ///   Probabilistic Model Code's distributions (Part 3.5, 2006): bending lognormal with a CoV of
+    ///   0.25 (0.15 for glulam), which the fibres break at, compression along 0.8 times it, shear
+    ///   and rolling shear the same, tension across Weibull at 2.5 times density's 0.1, and
+    ///   compression across normal at 0.1. Rolling shear's characteristic value is 1.0 MPa (the
+    ///   Glulam-Bulletin, under the German national annex).
+    /// - **Fracture energies:** spruce's (Sandhaas and van de Kuilen, HERON 58, 2013) across the
+    ///   grain and in shear; along it the fibres break at once (`fibreEnergy`).
+    /// - **Dynamic increase factor:** 1.4 on solid timber's strengths (CSA S850-12, as Poulin's
+    ///   thesis quotes it; Jacques et al. 2014 found 1.41 on studs' rupture modulus) and 1.14 on
+    ///   glulam's (Lacroix's thesis, 2017, for beams without finger joints in their outer
+    ///   laminations). Cross-laminated timber takes 1.28 (`crossLaminatedPanel(_:of:)`).
+    public static func strengthClass(_ grade: TimberGrade) -> TimberProperties {
+        let glulam = grade == .gl24h || grade == .gl28h
+        // Characteristic strengths (MPa): bending, compression along, tension and compression
+        // across, shear; and mean moduli (MPa): E0, E90, G.
+        let (fm, fc0, ft90, fc90, fv, e0, e90, g): (Float, Float, Float, Float, Float, Float, Float, Float) =
+            switch grade {
+            case .c16: (16, 17, 0.4, 2.2, 3.2, 8000, 270, 500)
+            case .c24: (24, 21, 0.4, 2.5, 4.0, 11000, 370, 690)
+            case .c30: (30, 24, 0.4, 2.7, 4.0, 12000, 400, 750)
+            case .gl24h: (24, 24, 0.5, 2.5, 3.5, 11500, 300, 650)
+            case .gl28h: (28, 28, 0.5, 2.5, 3.5, 12600, 300, 650)
+            }
+        let bending: Float = glulam ? 0.15 : 0.25
+        var properties = TimberProperties(
+            alongGrain: e0 * 1e6, acrossGrain: e90 * 1e6, shearModulus: g * 1e6, rollingShearModulus: g * 1e5)
+        // The fibres break at the bending strength: members under a blast bend, and in bending
+        // timber breaks at its rupture modulus, about 1.6 times its strength in pure tension
+        // (JCSS: E[R_t,0] = 0.6 E[R_m]), so a member in pure tension is that much too strong.
+        properties.tensionAlong = fm * 1e6 * Self.lognormalMean(cov: bending)
+        properties.compressionAlong = fc0 * 1e6 * Self.lognormalMean(cov: 0.8 * bending)
+        properties.tensionAcross = ft90 * 1e6 * Self.weibullMean(cov: 0.25)
+        properties.compressionAcross = fc90 * 1e6 / (1 - 1.645 * 0.1)
+        properties.shearStrength = fv * 1e6 * Self.lognormalMean(cov: bending)
+        properties.rollingStrength = 1.0e6 * Self.lognormalMean(cov: bending)
+        properties.strengthFactor = glulam ? 1.14 : 1.4
+        return properties
+    }
+
+    /// Cross-laminated timber of `count` lamellae of `grade`, crossing in turn: the strength
+    /// class's properties, with the dynamic increase factor Poulin et al. found on CLT panels'
+    /// resistance in the University of Ottawa's shock tube, 1.28 (J. Struct. Eng. 144(2), 2018).
+    public static func crossLaminatedPanel(_ count: Int, of grade: TimberGrade = .c24) -> TimberProperties {
+        var properties = strengthClass(grade)
+        properties.lamellae = crossLaminated(count)
+        properties.strengthFactor = 1.28
+        return properties
+    }
+
+    /// A lognormal property's mean over its 5% fractile.
+    static func lognormalMean(cov: Float) -> Float {
+        let sigma = (log(1 + cov * cov)).squareRoot()
+        return exp(1.645 * sigma + 0.5 * sigma * sigma)
+    }
+
+    /// A two-parameter Weibull property's mean over its 5% fractile.
+    static func weibullMean(cov: Float) -> Float {
+        // The shape whose CoV is `cov`, by bisection on Gamma(1 + 2/k) / Gamma(1 + 1/k)^2 - 1.
+        var low: Float = 0.5
+        var high: Float = 50
+        for _ in 0..<60 {
+            let k = (low + high) / 2
+            let ratio = tgammaf(1 + 2 / k) / pow(tgammaf(1 + 1 / k), 2) - 1
+            if ratio.squareRoot() > cov { low = k } else { high = k }
+        }
+        let k = (low + high) / 2
+        return tgammaf(1 + 1 / k) / pow(-log(Float(0.95)), 1 / k)
+    }
+
+    /// The lamellae's tops through the thickness, from -1 (bottom face) to 1 (top face).
+    var lamellaTops: [Float] {
+        let total = lamellae.reduce(0) { $0 + $1.share }
+        var top: Float = -1
+        return lamellae.map { lamella in
+            top += 2 * lamella.share / total
+            return top
+        }
+    }
 }
 
 /// Reinforcing steel: elastic, then hardening linearly from yield to ultimate, then a plateau
@@ -198,6 +383,11 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     public var units: MasonryUnits?
     /// Drawn as see-through glass rather than an opaque solid.
     public var isTransparent = false
+    /// Timber's orthotropy and layers, for `MaterialModel.timber`.
+    public var timber: TimberProperties?
+    /// A beam's flange that buckles locally (a thin-walled section's, as a profiled sheet's rib):
+    /// its fibres on that side lose their compressive stress past an onset strain. Nil for none.
+    public var localBuckling: LocalBuckling?
 
     /// A von Mises material.
     public init(
@@ -219,6 +409,29 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
         Self(
             name: "Elastic", density: density, youngsModulus: youngsModulus, poissonRatio: poissonRatio,
             yieldStress: 1e30, failureStrain: 1e30)
+    }
+
+    /// Timber of a strength class at its mean density, its grain along `grainAxis`; with
+    /// `lamellae` above one, cross-laminated.
+    public static func timber(_ grade: TimberGrade, grainAxis: Int = 0, lamellae: Int = 1) -> Self {
+        var properties =
+            lamellae > 1
+            ? TimberProperties.crossLaminatedPanel(lamellae, of: grade)
+            : TimberProperties.strengthClass(grade)
+        properties.grainAxis = grainAxis
+        let name = lamellae > 1 ? "CLT \(lamellae)s (\(grade.rawValue))" : grade.rawValue
+        return .timber(name: name, density: grade.density, properties: properties)
+    }
+
+    /// Timber with the given properties: breaking as its strengths say, never if they are left
+    /// at 1e30.
+    public static func timber(name: String, density: Float, properties: TimberProperties) -> Self {
+        var material = Self(
+            name: name, density: density, youngsModulus: properties.alongGrain,
+            poissonRatio: properties.poissonRatio, yieldStress: 1e30, failureStrain: 1e30)
+        material.model = .timber
+        material.timber = properties
+        return material
     }
 
     /// Concrete of the given compressive strength (Pa), with its other properties taken from
@@ -421,6 +634,13 @@ public struct PressureLoad: Sendable, Hashable {
     public var positiveSide: Bool
     /// Time (s) and pressure (Pa) pairs, interpolated linearly; pressure pushes into the face.
     public var history: [SIMD2<Float>]
+    /// For shells, each element's share of the pressure, in the mesh's order (a line load
+    /// spread over the elements under it); nil for all of it everywhere.
+    public var elementShares: [Float]?
+    /// For shells and beams, each node's share of the table as a force (N per Pa of the table),
+    /// pushing against the loaded faces' outward normal, in the mesh's node order: a load the
+    /// beams take; nil for none.
+    public var nodeShares: [Float]?
 
     public init(axis: Int, positiveSide: Bool, history: [SIMD2<Float>]) {
         self.axis = axis
@@ -474,6 +694,12 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// A body with both kinds is meshed as two, tied together where shells meet solid elements;
     /// `elementSize` is then the solid elements' size and `shellElementSize` the shells'.
     public var solidElementKind: [ElementKind?] = []
+    /// Profiled metal sheets, by index into `solids`: a solid with one is a sheet of that profile,
+    /// its ribs along the axis given, meshed as shells (`ProfiledSheet`) of its own material's
+    /// steel at the profile's yield. Encoded only when some solid has one.
+    public var solidSheets: [SheetAssignment?] = []
+    /// Connections along shell edges as springs to fixed ground (shells only).
+    public var springSupports: [SpringSupport] = []
     /// In a body of both kinds, the shells' size; `elementSize` if nil.
     public var shellElementSize: Float?
     /// Layers of concrete (or other material) through the thickness of each shell.
@@ -683,11 +909,45 @@ public struct StructureModel: Sendable, Hashable, Codable {
         if solidMaterial.indices.contains(index) { solidMaterial.remove(at: index) }
         if solidElementKind.indices.contains(index) { solidElementKind.remove(at: index) }
         if solidSourceParts.indices.contains(index) { solidSourceParts.remove(at: index) }
+        if solidSheets.indices.contains(index) { solidSheets.remove(at: index) }
     }
 
-    /// How solid `index` is meshed.
+    /// How solid `index` is meshed: a profiled sheet always as shells.
     public func elementKind(of index: Int) -> ElementKind {
-        (solidElementKind.indices.contains(index) ? solidElementKind[index] : nil) ?? elementKind
+        if sheet(of: index) != nil { return .shell }
+        return (solidElementKind.indices.contains(index) ? solidElementKind[index] : nil) ?? elementKind
+    }
+
+    /// The profiled sheet solid `index` is, if it is one.
+    public func sheet(of index: Int) -> SheetAssignment? {
+        solidSheets.indices.contains(index) ? solidSheets[index] : nil
+    }
+
+    /// Makes solid `index` a profiled sheet, or (nil) a plain solid again.
+    public mutating func setSheet(_ sheet: SheetAssignment?, of index: Int) {
+        guard solids.indices.contains(index) else { return }
+        while solidSheets.count <= index { solidSheets.append(nil) }
+        solidSheets[index] = sheet
+        while solidSheets.last.map({ $0 == nil }) == true { solidSheets.removeLast() }
+    }
+
+    /// The same body with each profiled sheet built as `ProfiledSheet` builds it: its solid the
+    /// skin, as thick as the profile is deep, the ribs appended after the other solids. The
+    /// body as the shell solver meshes it.
+    public func expandingSheets() -> StructureModel {
+        guard solidSheets.contains(where: { $0 != nil }) else { return self }
+        var model = self
+        model.solidSheets = []
+        for index in solids.indices {
+            guard let sheet = sheet(of: index) else { continue }
+            ProfiledSheet(
+                profile: sheet.profile, region: solids[index], span: sheet.ribAxis,
+                steel: material(of: index),
+                crestSide: sheet.crestSide ?? 1
+            )
+            .build(in: &model, at: index)
+        }
+        return model
     }
 
     /// Meshes solid `index` with `kind`.
@@ -734,6 +994,7 @@ public struct StructureModel: Sendable, Hashable, Codable {
         part.solids = chosen.map { solids[$0] }
         part.solidMaterial = chosen.map { solidMaterial.indices.contains($0) ? solidMaterial[$0] : nil }
         part.solidReinforcement = chosen.map { reinforcement(of: $0) }
+        part.solidSheets = chosen.map { sheet(of: $0) }
         part.solidElementKind = []
         if kind == .shell, let shellElementSize { part.elementSize = shellElementSize }
         return part
@@ -1093,6 +1354,38 @@ struct MaterialParameters {
     var dowelFactor: Float = 1
     var fractureRateExponent: Float = 1
     var crackDilatancy: Float = 0
+    /// Timber (`TimberProperties`): the modulus across the grain, the shear moduli in the plane
+    /// and rolling, the Poisson's ratio along to across, the grain's global axis and its turn
+    /// about the normal, and up to eight lamellae, their tops through the thickness and a bit
+    /// each for those crossed.
+    var acrossGrain: Float = 0
+    var grainShear: Float = 0
+    var rollingShear: Float = 0
+    var grainPoisson: Float = 0
+    var grainAxis: UInt32 = 0
+    var grainRotation: Float = 0
+    var lamellaCount: UInt32 = 0
+    var lamellaCrossed: UInt32 = 0
+    var lamellaTop: (Float, Float, Float, Float, Float, Float, Float, Float) = (0, 0, 0, 0, 0, 0, 0, 0)
+    /// Timber's strengths at blast rates (Pa) and fracture energies (J/m^2), as
+    /// `TimberProperties` has them.
+    var tensionAlong: Float = 1e30
+    var compressionAlong: Float = 1e30
+    var tensionAcross: Float = 1e30
+    var compressionAcross: Float = 1e30
+    var grainShearStrength: Float = 1e30
+    var rollingStrength: Float = 1e30
+    var fibreEnergy: Float = 0
+    var splittingEnergy: Float = 0
+    var shearEnergy: Float = 0
+    var rollingEnergy: Float = 0
+    // Local buckling (`LocalBuckling`): the axis + 1 (0 for none), the side, the onset, the
+    // softening strain and the residual share.
+    var bucklingAxis: UInt32 = 0
+    var bucklingSide: Float = 0
+    var bucklingOnset: Float = 1e30
+    var bucklingSoftening: Float = 1
+    var bucklingResidual: Float = 1
 }
 
 /// Layout matches `CouplingUniforms` in `Structure.metal`.
@@ -1341,6 +1634,17 @@ enum ShaderLibrary {
         return constants
     }
 
+    /// Index of the optional function constant that compiles congestion's porous cells into a
+    /// kernel (`porousAirConstant` in Solver.metal).
+    static let porousAirConstant = 14
+
+    /// `constants` with congestion's porous cells compiled in.
+    static func withPorousAir(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {
+        var on = true
+        constants.setConstantValue(&on, type: .bool, index: porousAirConstant)
+        return constants
+    }
+
     /// `constants` with afterburning's extinction limit compiled in.
     static func withBurnLimit(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {
         var on = true
@@ -1416,6 +1720,7 @@ extension StructureMaterial {
         units = try container.decodeIfPresent(MasonryUnits.self, forKey: .units)
         // Glass saved before this property existed is still drawn as glass.
         isTransparent = try value(.isTransparent, name.localizedCaseInsensitiveContains("glass"))
+        timber = try container.decodeIfPresent(TimberProperties.self, forKey: .timber)
     }
 }
 
@@ -1425,7 +1730,7 @@ extension StructureModel {
         case reinforcement, inclinedBars, solidReinforcement, solidMaterial, solidSourceParts
         case elementKind, shellLayers, supports, supportAnchorages, secondCracks
         case bareBars, removesFragments, crackSlip, bondSlip,
-            solidElementKind
+            solidElementKind, solidSheets, springSupports
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
         case pressedInterlock, regimeOverride, loadingOverride, regimeDefaults
         case hourglassFollowsCracking, hourglassCapsSteel, discreteBars, barsAsTrusses, trussDiameter
@@ -1478,6 +1783,10 @@ extension StructureModel {
         }
         try container.encodeIfPresent(bondSlip, forKey: .bondSlip)
         try container.encode(solidElementKind, forKey: .solidElementKind)
+        if solidSheets.contains(where: { $0 != nil }) {
+            try container.encode(solidSheets, forKey: .solidSheets)
+        }
+        if !springSupports.isEmpty { try container.encode(springSupports, forKey: .springSupports) }
         try container.encodeIfPresent(shellElementSize, forKey: .shellElementSize)
         try container.encodeIfPresent(interfaceBond, forKey: .interfaceBond)
         try container.encode(unitJoints, forKey: .unitJoints)
@@ -1534,6 +1843,8 @@ extension StructureModel {
             try container.decodeIfPresent(Bool.self, forKey: .releasesCrushedBareHourglass) ?? false
         bondSlip = try container.decodeIfPresent(BondSlip.self, forKey: .bondSlip)
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
+        solidSheets = try container.decodeIfPresent([SheetAssignment?].self, forKey: .solidSheets) ?? []
+        springSupports = try container.decodeIfPresent([SpringSupport].self, forKey: .springSupports) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)
         interfaceBond = try container.decodeIfPresent(SIMD2<Float>.self, forKey: .interfaceBond)
         unitJoints = try container.decodeIfPresent(Bool.self, forKey: .unitJoints) ?? true
@@ -1625,5 +1936,77 @@ extension Box {
     /// Whether `inner` lies within this box, to a millimetre: a pane set in an opening.
     func holds(_ inner: Box) -> Bool {
         (0..<3).allSatisfy { inner.min[$0] >= min[$0] - 1e-3 && inner.max[$0] <= max[$0] + 1e-3 }
+    }
+}
+
+/// Local buckling of a thin-walled beam's compression flange, in a beam of von Mises steel that
+/// stands for it (`ProfiledSheet`'s ribs): fibres on the flange's side of the section, past
+/// `onsetStrain` in compression, carry a stress falling linearly from the yield to `residual` of
+/// it over a further `softeningStrain`, the largest compression they have reached setting it.
+/// The softening hinge of a class 4 section, on the fibres' strains.
+public struct LocalBuckling: Codable, Hashable, Sendable {
+    /// The global axis across the section along which the flange lies, and its side of the
+    /// section's middle (+1, -1, or 0 for both sides).
+    public var axis: Int
+    public var side: Int
+    public var onsetStrain: Float
+    public var softeningStrain: Float
+    public var residual: Float
+
+    public init(axis: Int, side: Int, onsetStrain: Float, softeningStrain: Float, residual: Float) {
+        self.axis = axis
+        self.side = side
+        self.onsetStrain = onsetStrain
+        self.softeningStrain = softeningStrain
+        self.residual = residual
+    }
+}
+
+/// A connection along a shell's edge as springs to fixed ground at its nodes, each spring per
+/// metre of edge shared among the nodes by their lengths along it: pulling along `along`, across
+/// along `across`, and turning about the edge, which runs along `edge`, along which the nodes are
+/// held still. Each is elastic, then
+/// yields and hardens (or softens) linearly, unloading elastically (`SpringLaw`); the turning
+/// one differs either way. Langdon's connections of her corrugated panels are such springs.
+public struct SpringSupport: Codable, Hashable, Sendable {
+    /// The nodes it holds: those of the shells inside.
+    public var region: Box
+    public var edge: Int
+    public var along: Int
+    public var pull: SpringLaw
+    public var across: SpringLaw
+    /// Turning about +edge, and about -edge.
+    public var turnPositive: SpringLaw
+    public var turnNegative: SpringLaw
+
+    public init(
+        region: Box, edge: Int, along: Int, pull: SpringLaw, across: SpringLaw, turnPositive: SpringLaw,
+        turnNegative: SpringLaw
+    ) {
+        self.region = region
+        self.edge = edge
+        self.along = along
+        self.pull = pull
+        self.across = across
+        self.turnPositive = turnPositive
+        self.turnNegative = turnNegative
+    }
+
+    /// The axis across the edge, normal to `edge` and `along`.
+    public var acrossAxis: Int { 3 - edge - along }
+}
+
+/// A spring's law per metre: elastic at `stiffness` (N/m per m, or N m/rad per m) to `yield` (N
+/// per m, or N m per m), then at `hardening`, which is negative for one that softens, its
+/// resistance never below zero; unloading elastically.
+public struct SpringLaw: Codable, Hashable, Sendable {
+    public var stiffness: Float
+    public var yield: Float
+    public var hardening: Float
+
+    public init(stiffness: Float, yield: Float = .infinity, hardening: Float = 0) {
+        self.stiffness = stiffness
+        self.yield = yield
+        self.hardening = hardening
     }
 }

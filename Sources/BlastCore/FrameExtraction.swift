@@ -10,6 +10,9 @@ public struct FrameRequest: Sendable, Equatable {
     public var fireball: Float?
     /// Whether the fireball is wanted cell by cell too, as the volume model takes it.
     public var fireballCells: Bool
+    /// The visualisation field every this-many cells along each axis, as `viewField(stride:)`
+    /// takes it, for a view of the run drawn elsewhere.
+    public var viewField: Int?
 
     public init(airSlice: AirSliceRequest? = nil, fireball: Float? = nil, fireballCells: Bool = false) {
         self.airSlice = airSlice
@@ -22,7 +25,7 @@ public struct FrameRequest: Sendable, Equatable {
         self.init(fireball: spec?.luminousTemperature, fireballCells: spec?.fireball == .volume)
     }
 
-    public var isEmpty: Bool { airSlice == nil && fireball == nil }
+    public var isEmpty: Bool { airSlice == nil && fireball == nil && viewField == nil }
 }
 
 public struct AirSliceRequest: Sendable, Equatable {
@@ -45,6 +48,12 @@ final class FrameExtractor {
     private let airPipeline: MTLComputePipelineState
     private let fireballPipeline: MTLComputePipelineState
     private let cellsPipeline: MTLComputePipelineState
+    private let viewPipeline: MTLComputePipelineState
+    private var viewBuffer: MTLBuffer?
+    /// The view field's stride the batch in flight was asked for, and what the last completed
+    /// batch cut out, as `encoded` and `ready` are for the rest.
+    private var encodedView: Int?
+    private var readyView: (time: Double, steps: Int, stride: Int)?
     private var airBuffer: MTLBuffer?
     private var cellsBuffer: MTLBuffer?
     private var blocksBuffer: MTLBuffer?
@@ -60,6 +69,49 @@ final class FrameExtractor {
         airPipeline = try ShaderLibrary.pipeline("extractAirSlice", in: library)
         fireballPipeline = try ShaderLibrary.pipeline("extractFireballBlocks", in: library)
         cellsPipeline = try ShaderLibrary.pipeline("extractLuminousCells", in: library)
+        viewPipeline = try ShaderLibrary.pipeline("extractViewField", in: library)
+    }
+
+    /// The view field's texels along each axis, `stride` times coarser than `grid`, rounded up.
+    static func viewFieldSize(_ grid: Grid, stride: Int) -> SIMD3<Int> {
+        (SIMD3(grid.nx, grid.ny, grid.nz) &+ (stride - 1)) / stride
+    }
+
+    /// Encodes the view field's kernel after the visualisation has been brought up to date in the
+    /// same encoder; with `always`, it writes whether or not the batch reached its time limit.
+    func encodeViewField(
+        _ encoder: MTLComputeCommandEncoder, stride: Int, grid: Grid, field: MTLTexture, control: MTLBuffer,
+        always: Bool
+    ) {
+        let size = Self.viewFieldSize(grid, stride: stride)
+        let bytes = 8 * size.x * size.y * size.z
+        if (viewBuffer?.length ?? 0) < bytes {
+            viewBuffer = device.makeBuffer(length: bytes, options: .storageModeShared)
+        }
+        guard let viewBuffer else { return }
+        var layout = SIMD4<UInt32>(UInt32(stride), always ? 1 : 0, 0, 0)
+        encoder.setComputePipelineState(viewPipeline)
+        encoder.setBuffer(control, offset: 0, index: 0)
+        encoder.setBuffer(viewBuffer, offset: 0, index: 1)
+        encoder.setBytes(&layout, length: MemoryLayout<SIMD4<UInt32>>.stride, index: 2)
+        encoder.setTexture(field, index: 0)
+        encoder.dispatchThreads(
+            MTLSize(width: size.x, height: size.y, depth: size.z),
+            threadsPerThreadgroup: Self.threadgroup(viewPipeline, depth: true))
+        if !always { encodedView = stride }
+    }
+
+    /// The view field as written last, `size` texels, eight bytes each.
+    func viewFieldData(_ size: SIMD3<Int>) -> Data? {
+        guard let viewBuffer else { return nil }
+        return Data(bytes: viewBuffer.contents(), count: 8 * size.x * size.y * size.z)
+    }
+
+    /// The view field cut out at `stride` at `time` and `steps`, if it is ready.
+    func viewField(stride: Int, grid: Grid, time: Double, steps: Int) -> Data? {
+        guard let readyView, readyView.time == time, readyView.steps == steps, readyView.stride == stride
+        else { return nil }
+        return viewFieldData(Self.viewFieldSize(grid, stride: stride))
     }
 
     /// Encodes the request's kernels at the end of a batch, after its last step.
@@ -68,6 +120,8 @@ final class FrameExtractor {
         mask: MTLBuffer, species: MTLBuffer, hasSpecies: Bool, control: MTLBuffer, uniforms: SolverUniforms
     ) {
         ready = nil
+        readyView = nil
+        encodedView = nil
         var uniforms = uniforms
         var air: AirSlice.Layout?
         if let slice = request.airSlice {
@@ -157,11 +211,16 @@ final class FrameExtractor {
         } else {
             ready = nil
         }
+        readyView = reachedLimit ? encodedView.map { (time, steps, $0) } : nil
         encoded = nil
+        encodedView = nil
     }
 
     /// The state has been changed by other means: nothing cut out is current.
-    func invalidate() { ready = nil }
+    func invalidate() {
+        ready = nil
+        readyView = nil
+    }
 
     /// The samples cut out for `layout` at `time` and `steps`, if they are ready.
     func airValues(_ layout: AirSlice.Layout, time: Double, steps: Int) -> [Float16]? {

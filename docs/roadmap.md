@@ -111,8 +111,10 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
 - **Done:** afterburning, hot air and dissociation; refinement in one or two levels; gravity,
   sub-grid mixing and radiative cooling as options ([air-blast model](air-blast-model.md));
   terrain on cut cells ([terrain](terrain.md#cut-cells)); bursts checked to 40 m/kg^(1/3) ([large scenes](large-scenes.md)).
-- **Next:** a refinement criterion that follows weak shocks over kilometres; close in, a mapped
-  one-dimensional start or the products' own composition for the hottest gas.
+- **Next:** close in, a mapped one-dimensional start or the products' own composition for the
+  hottest gas. Weak shocks to 40 m/kg^(1/3) need no new criterion: threshold 0.005 follows them
+  at about the least it can cost, and 8 m cells refined twice give 84–94% of Kingery–Bulmash's
+  peaks out to there ([large scenes](large-scenes.md#following-weak-shocks-further-tried-and-not-needed-to-40-mkg13)).
 - **Deferred:** cut cells for moving solids.
 
 ### Structures and supports
@@ -125,11 +127,17 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
 - **Next:** the rebound after a slab's peak; a shaken footing's lurch, and the rest of its
   energy (sand crushed across the whole contact, the shaken sand's own); pads' and dowels'
   laws; footings on a slope.
+- **Done, illustrative:** [profiled steel sheeting](profiled-sheeting.md), as a skin with its ribs
+  as beams in the structure editor, and as an envelope construction by UFC's method for cold-formed
+  panels with its screws' pull-out. Against Langdon's corrugated panels, held by her connections as
+  springs and with the ribs' thin flanges softening once they buckle, 10 of 13 permanent sets are
+  within half to twice of those measured, both ways, and none runs away.
+- **Next, for sheeting:** buckling that comes on before plate theory says (a real plate's
+  imperfections), which three of Langdon's tests show; screws that pull out in the shells, needed
+  before building cladding's own fixings can be judged; a blast test of cladding on its rails.
 - **Planned, new materials** ([new materials](new-materials.md)): timber, solid and engineered
   (glulam, CLT, plywood), orthotropic with failure along and across the grain, rate effects and
-  connections, its elastic part adopted from ContinuumKit's `OrthotropicPlaneStress`; and thin
-  profiled metal sheeting for cladding and roofing, as a steel shell with rib beams, with fastener
-  pull-out and pull-over.
+  connections, its elastic part adopted from ContinuumKit's `OrthotropicPlaneStress`.
 - **Blocked:** a footing or connection under fast loading ([data survey 3b](data-survey.md#3b-a-footing-or-connection-under-fast-loading)).
 
 ### Freestanding objects and supports
@@ -151,6 +159,9 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   masses within 1.4 of Cooper's counted bomb, measured drag; their [hazard](fragments.md#hazard)
   distance by DDESB's criterion, debris's alike, and glazing graded by GSA and ASTM F1642; what they
   strike judged by UFC 3-340-02 and THOR, panes holed before the blast (17 October).
+- **Done, an approximation:** [blast hazards](hazards.md): DoD's K-factor distances, the minimum
+  safe distance and what governs it, and injury at standing height from the run's own peaks
+  (Bowen, Bass, UFC's eardrums), checked against Teland's distances within 6% (17 October).
 - **Done, illustrative:** the fireball's
   [thermal radiation](thermal-radiation.md) and [surface heating](surface-heating.md); its
   [rise and cloud](fireball-rise.md); [ground shock](ground-shock.md), as the manuals'
@@ -197,8 +208,10 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
 - **Planned, building types** (what each needs is in [new materials](new-materials.md#what-each-building-type-needs)):
   - UK terraced brick houses: cavity walls of two brick leaves with ties, timber joist floors and a
     timber roof. Needs timber, wall ties, joist bearings and roof coverings as debris.
-  - Steel portal-frame warehouses with profiled metal cladding. Needs profiled sheeting, a fastener
-    law for pull-out and pull-over, and local buckling of thin cold-formed members.
+  - Steel portal-frame warehouses with profiled metal cladding: a sample is built
+    ([warehouse](profiled-sheeting.md#the-portal-frame-warehouse-sample)), its sheeting
+    illustrative; still needs fasteners that pull out in the shells and local buckling of thin
+    cold-formed members.
   - Transport hubs with long-span steel and glass roofs. Needs laminated glass that holds together
     when broken, glass falling from overhead, and a check of slender members buckling under blast.
 
