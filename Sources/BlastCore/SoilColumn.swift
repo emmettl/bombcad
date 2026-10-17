@@ -19,10 +19,15 @@ public struct SoilLayer: Codable, Sendable, Equatable {
     /// a Poisson's ratio of 0.3, `defaultShearRatio` times the loading wave speed. The column,
     /// one-dimensional, does not use it.
     public var shearWaveSpeed: Float?
+    /// For the half-space only: the soil's Mohr–Coulomb friction angle, degrees, and cohesion,
+    /// Pa, which cap its shear stress (a Drucker–Prager cone, the resting horizontal stress
+    /// Jaky's K₀ = 1 − sin φ times the weight above). Nil angle: no cap.
+    public var frictionAngle: Float?
+    public var cohesion: Float?
 
     public init(
         thickness: Float, density: Float, waveSpeed: Float, unloadingWaveSpeed: Float? = nil,
-        damping: Float = 0, shearWaveSpeed: Float? = nil
+        damping: Float = 0, shearWaveSpeed: Float? = nil, frictionAngle: Float? = nil, cohesion: Float? = nil
     ) {
         self.thickness = thickness
         self.density = density
@@ -30,6 +35,8 @@ public struct SoilLayer: Codable, Sendable, Equatable {
         self.unloadingWaveSpeed = unloadingWaveSpeed
         self.damping = damping
         self.shearWaveSpeed = shearWaveSpeed
+        self.frictionAngle = frictionAngle
+        self.cohesion = cohesion
     }
 
     /// c_S/c_P for a Poisson's ratio of 0.3: √((1 − 2ν)/(2(1 − ν))).
@@ -39,7 +46,8 @@ public struct SoilLayer: Codable, Sendable, Equatable {
     public var shearSpeed: Float { shearWaveSpeed ?? waveSpeed * Self.defaultShearRatio }
 
     private enum CodingKeys: String, CodingKey {
-        case thickness, density, waveSpeed, unloadingWaveSpeed, damping, shearWaveSpeed
+        case thickness, density, waveSpeed, unloadingWaveSpeed, damping, shearWaveSpeed, frictionAngle,
+            cohesion
     }
 
     public init(from decoder: Decoder) throws {
@@ -51,6 +59,8 @@ public struct SoilLayer: Codable, Sendable, Equatable {
         unloadingWaveSpeed = try c.decodeIfPresent(Float.self, forKey: .unloadingWaveSpeed)
         damping = try c.decodeIfPresent(Float.self, forKey: .damping) ?? 0
         shearWaveSpeed = try c.decodeIfPresent(Float.self, forKey: .shearWaveSpeed)
+        frictionAngle = try c.decodeIfPresent(Float.self, forKey: .frictionAngle)
+        cohesion = try c.decodeIfPresent(Float.self, forKey: .cohesion)
     }
 
     /// The unloading wave speed, the loading one if none is given.
@@ -181,6 +191,8 @@ public struct SoilProfile: Codable, Sendable, Equatable {
                     && (layer.shearWaveSpeed.map {
                         positive($0) && $0 * Float(2).squareRoot() < layer.waveSpeed
                     } ?? true)
+                    && (layer.frictionAngle.map { $0.isFinite && $0 >= 0 && $0 < 60 } ?? true)
+                    && (layer.cohesion.map { $0.isFinite && $0 >= 0 } ?? true)
                     && layer.damping.isFinite && (0...0.5).contains(layer.damping)
             }
             && positive(dampingFrequencies.x) && dampingFrequencies.y.isFinite

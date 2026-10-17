@@ -137,7 +137,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-15"
+    public static let currentTable = "standing-table-16"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -893,11 +893,12 @@ public enum StandingTable {
                 document: "ground-shock.md#the-soil-column")
         case .halfSpace:
             return Entry(
-                title: "Elastic half-space", affects: [.groundShock], limit: .illustrative,
+                title: "Half-space", affects: [.groundShock], limit: .illustrative,
                 note:
-                    "An axisymmetric elastic half-space under the charge, driven by the air's ground pressures "
-                    + "and a calibrated direct source; checked against Lamb's problem, Cole and Huth's moving load "
-                    + "and Haskell's dispersion; against Xia's 1 t burst still far too high in the vertical.",
+                    "An axisymmetric half-space under the charge, elastic or with soil that yields, driven by "
+                    + "the air's ground pressures and a direct source; checked against Lamb's problem, Cole and "
+                    + "Huth's moving load, Haskell's dispersion and the bilinear column; against Xia's 1 t burst "
+                    + "still far too high in the vertical.",
                 document: "ground-shock-outrunning.md")
         case .freestandingBoxes:
             return Entry(
@@ -2371,9 +2372,10 @@ struct StandingScene {
     func halfSpaceGroundShock() -> ResultStanding {
         result(
             .groundShock, .illustrative,
-            "An elastic half-space about the charge, checked against Lamb's problem, Cole and Huth and Haskell; "
-                + "against one measured surface burst, its vertical velocity 15 to 60 times too high (the safe "
-                + "side), its horizontal within one and a half times at 21 m but 15 to 20 times too high at 42 m.",
+            "A half-space about the charge, checked against Lamb's problem, Cole and Huth and Haskell; "
+                + "against one measured surface burst, its vertical velocity 15 to 90 times too high (the safe "
+                + "side), its horizontal within one and a half (elastic) to two and a half (yielding) times "
+                + "at 21 m but 10 to 20 times too high at 42 m.",
             evidence: [
                 StandingEvidence(
                     "The axisymmetric solver against Lamb's problem, Cole and Huth's moving load and Haskell's "
@@ -2385,11 +2387,20 @@ struct StandingScene {
                     "Vertical 15–60 times the measured accelerations' integral; horizontal 1.5 times at 21 m, "
                         + "15–20 times at 42 m",
                     "ground-shock-outrunning.md#stage-2-against-xia-et-al"),
+                StandingEvidence(
+                    "Soil that yields, against the bilinear column and the same burst",
+                    "The column within 4–6%; at Xia's gauges vertical 16–90 times, horizontal 2.1–2.4 times at "
+                        + "21 m and 10–11 times at 42 m; falling as R^(-1.5) against the measured R^(-3.3) to "
+                        + "R^(-3.8)",
+                    "ground-shock-outrunning.md#stage-3-soil-that-yields"),
             ],
             assumptions: [
-                "Elastic and axisymmetric about the charge: no yielding near it, no buildings or terrain.",
-                "The charge's direct source calibrated once against UFC 3-340-01 at 8 ft/lb^(1/3); its waves fall "
-                    + "away as r^(-1/2) against UFC's r^(-2.5).",
+                "Axisymmetric about the charge: no buildings or terrain. Elastic unless its layers are given "
+                    + "a friction angle or unloading speed; then compaction and a Mohr–Coulomb cone, untested "
+                    + "against measured soil.",
+                "The charge's direct source: on elastic soil calibrated once against UFC 3-340-01 at "
+                    + "8 ft/lb^(1/3), its waves falling away as r^(-1/2) against UFC's r^(-2.5); on yielding soil "
+                    + "the crater's share of the energy, within 0.3–1.7 times UFC from 4 to 16 ft/lb^(1/3).",
                 "One way: the ground stays rigid for the air.",
                 "Not for design, buried services or vibration limits.",
             ], documents: ["ground-shock-outrunning.md"])
