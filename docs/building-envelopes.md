@@ -711,8 +711,10 @@ The four questions set before building it, and where each is answered:
    outcomes are as measured, after Alsubaei and Keys ([freestanding walls](#freestanding-walls)).
    Hayman's one-way walls come out 1.16 to 1.91 times as far ([one-way walls](#one-way-walls)).
 3. **The error from not venting.** A one-way fill through the broken panes gives the inside 0.75–1.60
-   times the detailed buildings' peaks, but cannot see a breached concrete wall
-   ([one-way damage](#one-way-damage-single-degree-of-freedom)). The air itself still sees every
+   times the detailed buildings' peaks, and 0.94–1.27 times UFC 3-340-02's leakage fill on the same
+   openings, but cannot see a breached concrete wall
+   ([one-way damage](#one-way-damage-single-degree-of-freedom),
+   [UFC comparison](validation.md#inside-buildings-against-ufc-3-340-02s-loads-through-openings)). The air itself still sees every
    envelope whole.
 4. **Its cost per building against the air's.** Under 1 ms a building, against 14–35 s for a
    detailed one beside 10–15 s of air
