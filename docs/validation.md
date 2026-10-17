@@ -3606,6 +3606,20 @@ of cells its middle lies in on each level (`Box.holdingCells`), panes among them
 stays sealed once or twice refined (`EnvelopePaneCellTests`). Refined envelope runs with glazing
 in cut openings change as the coarse ones did.
 
+### Thick glass
+
+ASTM E1300's charts end at 19 mm of annealed glass, but the large-deflection model does not: Moore's
+curves are nondimensional (load q b⁴ / (E′ t⁴), stress σ b² / (E′ t²)), proportional below their
+first load as small-deflection plate theory is, and E1300's flaw constants for annealed glass do not
+depend on its thickness. So thicker glass is plate theory with the same flaws, not an
+extrapolation of a fit. A hand check (`ThickGlassTests`): 50 mm annealed glass 1.25 by 1.5 m, 5 kg
+at 5 m, Kingery–Bulmash's reflected 354 kPa and 395 Pa s over 2.2 ms. Its period, about 7.7 ms,
+makes the load an impulse; the small-deflection plate swings to i / (mω), 5.8 mm, where its stress
+is about 76 MPa against a strength of about 51 MPa held for half a period (the 60 s strength for
+its area raised by (60 s / t)^(1/16)), so it breaks, and the model breaks it in its first swing, at
+2.2 ms. Glass that thick breaks there because the load is large: 5 kg at 5 m reflects at three
+and a half atmospheres.
+
 ### What this does and does not show
 
 It shows that the app's glass breaks when it should under a strong long-duration wave, within
