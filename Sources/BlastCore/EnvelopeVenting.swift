@@ -66,7 +66,7 @@ final class EnvelopeVenting {
     let rooms: [Room]
     let roomVolumes: [Double]
     /// The cells that open, the panes' then the walls' (`paneCellBuffer`).
-    let paneCellCount: Int
+    private(set) var paneCellCount: Int
     /// The walls, roofs and slabs that can fail, as indices into `components`: in `statusBuffer`
     /// after the panes.
     let wallComponents: [Int]
@@ -91,17 +91,28 @@ final class EnvelopeVenting {
     /// start, when it broke, s or -1, 0, 0).
     let stateBuffer: MTLBuffer
     /// Each pane, then each wall: 0 whole, 1 broken in the step just taken (its cells open), 2 open.
-    let statusBuffer: MTLBuffer
+    private(set) var statusBuffer: MTLBuffer
     /// Each pane: when a fragment holes it, in ticks of the run's clock (`StepControl.tick`), low
     /// and high words; all ones for never (`setHoles`).
     let holeBuffer: MTLBuffer
     /// (cell, opener) for each cell a pane holds solid, then each a failing wall, roof or slab does,
     /// its opener its index in `statusBuffer` (a cell may be both a pane's and its wall's).
-    let paneCellBuffer: MTLBuffer
+    private(set) var paneCellBuffer: MTLBuffer
     /// The same sorted by cell, for refined air to look a fine cell's coarse cell up in, with the
     /// grid it lies on (`PaneLookup`).
-    let sortedPaneCellBuffer: MTLBuffer
-    let paneLookup: PaneLookup
+    private(set) var sortedPaneCellBuffer: MTLBuffer
+    private(set) var paneLookup: PaneLookup
+    /// The panes' and walls' cells, before any holes (`setBreaches`).
+    private let standingCells: [SIMD2<UInt32>]
+    /// Holes through walls, roofs and slabs (`setBreaches`), each an opener after the walls in
+    /// `statusBuffer`: (opener, owner, when it opens in the run's ticks, low and high words).
+    private(set) var breachBuffer: MTLBuffer
+    private(set) var breaches: [(component: Int, owner: Int, cells: Int, ticks: UInt64, cause: String)] = []
+    /// Each concrete component's close-in outcome by UFC 3-340-02's threshold curves, by id
+    /// (`BlastSolver.setEnvelopeCloseIn`).
+    var closeIn: [String: UFCSpallBreach.Outcome] = [:]
+    let breachPipeline: MTLComputePipelineState
+    private let device: MTLDevice
     /// Each owner: 1 once a pane of it has broken, when its rooms start to be read.
     let openedBuffer: MTLBuffer
     let roomBuffer: MTLBuffer
@@ -394,6 +405,10 @@ final class EnvelopeVenting {
         holeBuffer = try make(
             [SIMD2<UInt32>](repeating: SIMD2(repeating: .max), count: panes.count), "pane holes")
         paneCellBuffer = try make(paneCells, "pane cells")
+        standingCells = paneCells
+        breachBuffer = try make([SIMD4<UInt32>](), "envelope holes")
+        breachPipeline = try ShaderLibrary.pipeline("openEnvelopeBreaches", in: library)
+        self.device = device
         paneLookup = PaneLookup(
             count: UInt32(paneCells.count), nx: UInt32(grid.nx), ny: UInt32(grid.ny), nz: UInt32(grid.nz),
             coarseDx: grid.cellSize)
@@ -421,7 +436,7 @@ final class EnvelopeVenting {
     var memoryFootprint: Int {
         [
             glassBuffer, tableBuffer, paneBuffer, stateBuffer, statusBuffer, holeBuffer, paneCellBuffer,
-            sortedPaneCellBuffer, openedBuffer, wallBuffer, wallSystemBuffer, wallTableBuffer,
+            sortedPaneCellBuffer, breachBuffer, openedBuffer, wallBuffer, wallSystemBuffer, wallTableBuffer,
             wallStateBuffer,
             wallClockBuffer,
             roomBuffer,
@@ -445,6 +460,47 @@ final class EnvelopeVenting {
         }
     }
 
+    /// Holes through walls, roofs and slabs: each `cells` of a component of `owner` (index), opening
+    /// at `time` s on the run's clock (rounded down to a tick). Replaces any set before; the
+    /// cells' lists and the panes' status are rebuilt, so call it before the run, and give the
+    /// refined levels the new lookup (`BlastSolver.setEnvelopeWallHoles`).
+    func setBreaches(_ list: [(component: Int, owner: Int, cells: [Int], time: Double, cause: String)]) throws
+    {
+        let first = UInt32(paneCount + wallCount)
+        var cells = standingCells
+        var entries: [SIMD4<UInt32>] = []
+        breaches = []
+        for (b, breach) in list.enumerated() {
+            let opener = first + UInt32(b)
+            let ticks = UInt64(max(breach.time, 0) / StepControl.tick)
+            cells += breach.cells.map { SIMD2(UInt32($0), opener) }
+            entries.append(
+                SIMD4(
+                    opener, UInt32(breach.owner), UInt32(truncatingIfNeeded: ticks),
+                    UInt32(truncatingIfNeeded: ticks >> 32)))
+            breaches.append((breach.component, breach.owner, breach.cells.count, ticks, breach.cause))
+        }
+        func make<T>(_ values: [T], _ label: String) throws -> MTLBuffer {
+            guard
+                let buffer = device.makeBuffer(
+                    length: max(values.count * MemoryLayout<T>.stride, 16), options: .storageModeShared)
+            else { throw BlastError.allocationFailed(label) }
+            values.withUnsafeBytes { bytes in
+                if let base = bytes.baseAddress {
+                    buffer.contents().copyMemory(from: base, byteCount: bytes.count)
+                }
+            }
+            return buffer
+        }
+        paneCellCount = cells.count
+        paneCellBuffer = try make(cells, "pane cells")
+        statusBuffer = try make([UInt32](repeating: 0, count: Int(first) + list.count), "pane status")
+        paneLookup.count = UInt32(cells.count)
+        let header = withUnsafeBytes(of: paneLookup) { Array($0.bindMemory(to: SIMD2<UInt32>.self)) }
+        sortedPaneCellBuffer = try make(header + cells.sorted { $0.x < $1.x }, "pane cells by cell")
+        breachBuffer = try make(entries, "envelope holes")
+    }
+
     /// What has broken and what each room has seen.
     func snapshot() -> EnvelopeVentingSnapshot {
         let state = stateBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: max(2 * paneCount, 1))
@@ -466,7 +522,17 @@ final class EnvelopeVenting {
                 owner: owners[Int(room.owner)], volumeM3: roomVolumes[r], peakPa: Double(results[r].x),
                 impulsePaS: Double(results[r].y))
         }
-        return EnvelopeVentingSnapshot(panes: panes, rooms: roomList, walls: walls)
+        let status = statusBuffer.contents().bindMemory(
+            to: UInt32.self, capacity: max(paneCount + wallCount + breaches.count, 1))
+        let holes = breaches.enumerated().map { b, breach in
+            EnvelopeVentingSnapshot.Hole(
+                component: components[breach.component].id, owner: owners[breach.owner], cells: breach.cells,
+                openedAtS: status[paneCount + wallCount + b] != 0
+                    ? Double(breach.ticks) * StepControl.tick : nil,
+                cause: breach.cause)
+        }
+        return EnvelopeVentingSnapshot(
+            panes: panes, rooms: roomList, walls: walls, holes: holes, closeIn: closeIn.mapValues(\.rawValue))
     }
 }
 
@@ -499,12 +565,28 @@ public struct EnvelopeVentingSnapshot: Codable, Sendable {
     public var panes: [Pane]
     public var rooms: [Room]
     public var walls: [Wall] = []
+    /// A hole through a wall, roof or slab (a column of its cells), and when it opened; `cause`
+    /// "fragments" (perforated) or "breach" (UFC 3-340-02's breach threshold).
+    public struct Hole: Codable, Sendable {
+        public var component: String
+        public var owner: UUID
+        public var cells: Int
+        public var openedAtS: Double?
+        public var cause: String
+    }
+
+    public var holes: [Hole] = []
+    /// Each concrete component's worst close-in outcome by UFC 3-340-02's threshold curves
+    /// ("spalled", "breached"), by id; none listed where neither.
+    public var closeIn: [String: String] = [:]
 
     /// Whether `history` is still the component's load though its faces changed: a pane's, or a
-    /// failed wall's, whose faces open with it (its history up to then is its load).
+    /// failed wall's, whose faces open with it (its history up to then is its load); or a holed
+    /// one's, whose faces round the hole read the air going through.
     public func keeps(_ history: EnvelopeComponentHistory) -> Bool {
         history.component.kind == .pane
             || walls.contains { $0.component == history.component.id && $0.failedAtS != nil }
+            || holes.contains { $0.component == history.component.id && $0.openedAtS != nil }
     }
 
     /// Each building's inside: the worst of its rooms by peak, or nil without rooms.

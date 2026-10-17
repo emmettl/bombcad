@@ -2815,6 +2815,34 @@ kernel void stepEnvelopeWalls(const device float2 *current [[buffer(0)]],
     clocks[wall] = clock;
 }
 
+
+// Holes through envelope walls, roofs and slabs (`EnvelopeVenting.setBreaches`): each a column of
+// a component's cells that opens, as a pane's cells do, on the step the run's clock reaches it,
+// however the run is batched. A thread a hole.
+kernel void openEnvelopeBreaches(const device uint4 *breaches [[buffer(0)]],
+                                 device uint *status [[buffer(1)]],
+                                 device atomic_uint *opened [[buffer(2)]],
+                                 const device StepControl &control [[buffer(3)]],
+                                 constant uint &count [[buffer(4)]],
+                                 const device uint2 *ownerRooms [[buffer(5)]],
+                                 device atomic_uint *roomDispatch [[buffer(6)]],
+                                 device uint *roomList [[buffer(7)]],
+                                 uint hole [[thread_position_in_grid]]) {
+    if (hole >= count || control.dt <= 0.0f) return;
+    uint4 b = breaches[hole];  // (opener, owner, ticks low, ticks high)
+    uint was = status[b.x];
+    if (was == 1u) status[b.x] = 2u;
+    if (was != 0u) return;
+    ulong ticks = ulong(b.z) | (ulong(b.w) << 32);
+    if (ticks > runClock(control)) return;
+    status[b.x] = 1u;
+    if (atomic_exchange_explicit(opened + b.y, 1u, memory_order_relaxed) == 0u) {
+        uint2 range = ownerRooms[b.y];
+        uint at = atomic_fetch_add_explicit(roomDispatch, range.y, memory_order_relaxed);
+        for (uint k = 0; k < range.y; ++k) roomList[at + k] = range.x + k;
+    }
+}
+
 // Each room of an opened building: its cells' mean overpressure this step, its peak and positive
 // impulse. A threadgroup of 256 a room, its sum in a fixed order.
 struct EnvelopeRoom {

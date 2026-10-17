@@ -151,6 +151,12 @@ public struct EnvelopeComponentDamage: Codable, Sendable, Identifiable {
     /// first past a hundredth of its peak); nil where neither applies.
     public var fragmentBrokeAtS: Double? = nil
     public var blastArrivalS: Double? = nil
+    /// Concrete under a close-in charge, by UFC 3-340-02's threshold curves (with venting):
+    /// "spalled" or "breached"; nil where neither, or not judged (left out of the JSON).
+    public var closeIn: String? = nil
+    /// Columns of its cells holed through and opened in the air (fragments' and breaches'), with
+    /// venting; nil where none.
+    public var holesOpened: Int? = nil
 }
 
 /// How hazardous a window's glass is to the room behind it, by where it lands: GSA-TS01's
@@ -356,6 +362,11 @@ public enum EnvelopeDamageAssessment {
                     damage.failedAtS = first
                     let level: EnvelopeDamageLevel = first == nil ? .none : .failed
                     damage.levels = level...level
+                }
+                if damage.material != .annealedGlass, let vented {
+                    damage.closeIn = vented.closeIn[load.id]
+                    let holes = vented.holes.filter { $0.component == load.id && $0.openedAtS != nil }.count
+                    damage.holesOpened = holes > 0 ? holes : nil
                 }
                 if damage.material != .annealedGlass,
                     let failed = vented?.walls.first(where: { $0.component == load.id })?.failedAtS

@@ -2405,6 +2405,12 @@ final class SimulationModel {
                                 try solver.configureEnvelopeVenting(objects: scenario.envelopeObjects) {
                                     scenario.envelopeConstruction(for: $0)
                                 }
+                                // Close-in charges breach concrete by UFC 3-340-02's curves; the
+                                // main charge's casing, if it is cased, from its fragments.
+                                try solver.setEnvelopeCloseIn(
+                                    charges: [(scenario.charge, fragmentSpec?.casingMass ?? 0)]
+                                        + (scenario.additionalCharges ?? []).map { ($0, 0) },
+                                    constructions: { scenario.envelopeConstruction(for: $0) })
                             } catch {
                                 envelopeVentingStatus =
                                     "Glazing not vented (\(error.localizedDescription)): the inside is the one-way fill's."

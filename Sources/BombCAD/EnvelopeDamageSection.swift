@@ -202,6 +202,8 @@ struct EnvelopeDamageSection: View {
                     format: "%.2f–%.2f°", component.rotationDeg.lowerBound, component.rotationDeg.upperBound)
             return rotation + ", " + levels(component.levels).lowercased()
                 + (component.cantilever == true ? " (standing free)" : "")
+                + (component.closeIn.map { ", \($0) (UFC 3-340-02)" } ?? "")
+                + (component.holesOpened.map { ", \($0) hole\($0 == 1 ? "" : "s") open" } ?? "")
         case .unreinforcedMasonry:
             return component.failedAtS.map { String(format: "fallen at %.1f ms", $0 * 1000) }
                 ?? (component.levels.upperBound == .none ? "uncracked" : "cracked")
