@@ -165,11 +165,15 @@ enum DistrictComparison {
         var steps = 0
         var lastReport = 0.0
         while solver.time < until {
+            // `--trace [steps]`: batches of that many steps (16), each printed.
             let batch =
                 args.contains("--trace")
-                ? solver.advance(steps: 16, timeLimit: until) : solver.advance(until: until)
+                ? solver.advance(steps: value("trace").flatMap(Int.init) ?? 16, timeLimit: until)
+                : solver.advance(until: until)
             steps += batch.steps
-            guard batch.steps > 0, batch.isStable else {
+            // No steps: within the solver's tolerance of the end.
+            guard batch.steps > 0 else { break }
+            guard batch.isStable else {
                 print("Unstable at t \(solver.time) s")
                 break
             }
