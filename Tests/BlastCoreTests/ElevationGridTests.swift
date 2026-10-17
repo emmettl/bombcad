@@ -59,6 +59,63 @@ struct ElevationGridTests {
         #expect(try raster("synthetic-hill-int16-zip-tiled.tif") == raster("synthetic-hill-int16.tif"))
     }
 
+    @Test("A BigTIFF reads as the classic TIFF it was made from")
+    func bigTIFF() throws {
+        for name in ["synthetic-hill-lzw-fp.tif", "synthetic-hill-int16-zip-tiled.tif", "synthetic-hill.tif"]
+        {
+            let classic = try Data(contentsOf: Self.samples.appending(path: name))
+            let big = try Self.bigTIFF(from: classic)
+            #expect(try TIFFReader(big).raster().values == TIFFReader(classic).raster().values, "\(name)")
+        }
+        // The fixture with georeferencing.
+        let classic = try Data(contentsOf: Self.samples.appending(path: "synthetic-hill.tif"))
+        let grid = try ElevationGrid(geoTIFF: Self.bigTIFF(from: classic))
+        let original = try ElevationGrid(geoTIFF: classic)
+        #expect(grid.southWest == original.southWest && grid.step == original.step)
+        #expect(grid.elevations.map(\.bitPattern) == original.elevations.map(\.bitPattern))
+    }
+
+    /// The same file as a BigTIFF: the classic file's bytes moved 16 on, behind a BigTIFF header,
+    /// and its directory written again at the end with 8-byte counts and offsets (the strips' and
+    /// tiles' offsets as LONG8).
+    static func bigTIFF(from classic: Data) throws -> Data {
+        let reader = try TIFFReader(classic)
+        let shift = 16
+        func bytes<T: FixedWidthInteger>(_ value: T) -> [UInt8] {
+            withUnsafeBytes(of: value.littleEndian) { Array($0) }
+        }
+        guard reader.littleEndian else { throw ElevationGrid.Failure.malformed("the fixture is big-endian") }
+        var out = [UInt8]([0x49, 0x49]) + bytes(UInt16(43)) + bytes(UInt16(8)) + bytes(UInt16(0))
+        let directory = shift + classic.count
+        out += bytes(UInt64(directory))
+        out += [UInt8](classic)
+        let tags = reader.entries.keys.sorted()
+        // Where the directory's out-of-line values go: after it.
+        var extra = [UInt8]()
+        let extraStart = directory + 8 + 20 * tags.count + 8
+        var entries = [UInt8]()
+        for tag in tags {
+            let entry = reader.entries[tag]!
+            var type = entry.type
+            var payload = [UInt8](
+                classic[entry.offset..<(entry.offset + entry.count * TIFFReader.typeSize(entry.type))])
+            if tag == 273 || tag == 324 {
+                // Strip or tile offsets: moved by the shift, and as LONG8.
+                type = 16
+                payload = reader.integers(tag)!.flatMap { bytes(UInt64($0 + shift)) }
+            }
+            entries += bytes(tag) + bytes(type) + bytes(UInt64(entry.count))
+            if payload.count <= 8 {
+                entries += payload + [UInt8](repeating: 0, count: 8 - payload.count)
+            } else {
+                entries += bytes(UInt64(extraStart + extra.count))
+                extra += payload
+            }
+        }
+        out += bytes(UInt64(tags.count)) + entries + bytes(UInt64(0)) + extra
+        return Data(out)
+    }
+
     @Test("A crop becomes terrain above its lowest point, with missing nodes filled")
     func crop() throws {
         let grid = try read("synthetic-hill.asc")

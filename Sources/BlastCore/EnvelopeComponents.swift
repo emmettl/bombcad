@@ -322,16 +322,21 @@ public struct EnvelopeHistoryOptions: Codable, Hashable, Sendable {
     /// outside it in the open opening (ids "<owner>/opening/<i>"): what the inside sees once glass
     /// has gone.
     public var openingsAsPanes: Bool
+    /// Start each component's window when the air at its faces first moves, rather than at t = 0,
+    /// so that `windowS` need only cover the load on one component, not the blast's crossing of a
+    /// district: a building 2 km out keeps the few hundred milliseconds that load it.
+    public var windowFromArrival: Bool
 
     public init(
         windowS: Double, binS: Double = 1e-4, memoryBudget: Int = 256 << 20, binMaxima: Bool = false,
-        openingsAsPanes: Bool = false
+        openingsAsPanes: Bool = false, windowFromArrival: Bool = false
     ) {
         self.binS = binS
         self.windowS = windowS
         self.memoryBudget = memoryBudget
         self.binMaxima = binMaxima
         self.openingsAsPanes = openingsAsPanes
+        self.windowFromArrival = windowFromArrival
     }
 }
 
@@ -345,8 +350,11 @@ public struct EnvelopeComponentHistory: Codable, Sendable {
     public var innerAreaM2: Double
     public var faceCount: Int
     public var binS: Double
-    /// ∫ pOuter dt and ∫ pInner dt over each bin [i binS, (i + 1) binS), in Pa s, up to the time
-    /// recorded (the last bin may be partial). A step of width dt holding pressure p (its right
+    /// Where the bins start, with `windowFromArrival`: the start of the bin in which the air at the
+    /// component first moved; nil when they start at t = 0, or when it never did.
+    public var windowStartS: Double?
+    /// ∫ pOuter dt and ∫ pInner dt over each bin [i binS, (i + 1) binS) from the window's start, in
+    /// Pa s, up to the time recorded (the last bin may be partial). A step of width dt holding pressure p (its right
     /// endpoint) adds p times its overlap with each bin it crosses, so the impulse is exact
     /// whatever the step and bin widths. A side with no faces reads 0.
     public var outerImpulsePaS: [Float]
@@ -416,6 +424,10 @@ final class EnvelopeComponentRecorder {
     let stillPressure: MTLBuffer
     /// The bin the coming step starts in and how far into it (`ComponentClock`), kept on the GPU.
     let clock: MTLBuffer
+    /// Each component's first bin: 0, or with `windowFromArrival` the clock's bin when its air
+    /// first moved (`UInt32.max` until then).
+    let starts: MTLBuffer
+    let fromArrival: Bool
     let clockPipeline: MTLComputePipelineState
     let peaks: MTLBuffer
     let bins: MTLBuffer
@@ -557,6 +569,12 @@ final class EnvelopeComponentRecorder {
                 }
             }
         }
+        // Components with no face on the air (a block's sides against its neighbours, a wall buried
+        // in the terrain) are left out: a district's map buildings have many.
+        let kept = components.indices.filter { !outer[$0].isEmpty || !inner[$0].isEmpty }
+        components = kept.map { components[$0] }
+        outer = kept.map { outer[$0] }
+        inner = kept.map { inner[$0] }
         var faces: [Face] = []
         var sides: [Sides] = []
         for n in components.indices {
@@ -633,7 +651,8 @@ final class EnvelopeComponentRecorder {
             let sumList = device.makeBuffer(length: components.count * 4, options: .storageModePrivate),
             let sumDispatch = device.makeBuffer(length: 12),
             let stillPressure = device.makeBuffer(length: 32 * 4, options: .storageModePrivate),
-            let clock = device.makeBuffer(length: 8, options: .storageModeShared)
+            let clock = device.makeBuffer(length: 8, options: .storageModeShared),
+            let starts = device.makeBuffer(length: max(1, components.count) * 4, options: .storageModeShared)
         else { throw BlastError.allocationFailed("envelope component face pressures") }
         self.pressures = pressures
         self.tileRanges = tileRanges
@@ -645,6 +664,8 @@ final class EnvelopeComponentRecorder {
         self.sumDispatch = sumDispatch
         self.stillPressure = stillPressure
         self.clock = clock
+        self.starts = starts
+        fromArrival = options.windowFromArrival
         clockPipeline = try ShaderLibrary.pipeline("advanceEnvelopeClock", in: library)
         markPipeline = try ShaderLibrary.pipeline("markEnvelopeComponents", in: library)
         facePipeline = try ShaderLibrary.pipeline("sampleEnvelopeComponentFaces", in: library)
@@ -655,7 +676,7 @@ final class EnvelopeComponentRecorder {
     var memoryFootprint: Int {
         [
             sideBuffer, faceBuffer, pressures, tileRanges, tiles, awake, faceList, faceDispatch, sumList,
-            sumDispatch, stillPressure, clock,
+            sumDispatch, stillPressure, clock, starts,
             peaks,
             bins, flags,
         ]
@@ -673,6 +694,7 @@ final class EnvelopeComponentRecorder {
         }
         memset(flags.contents(), 0, flags.length)
         memset(clock.contents(), 0, clock.length)
+        memset(starts.contents(), fromArrival ? 0xFF : 0, starts.length)
         // The first sample's faces' pass has one threadgroup to make the still air's row; the sums
         // none until components are listed.
         for (buffer, count) in [(faceDispatch, UInt32(1)), (sumDispatch, 0)] {
@@ -686,7 +708,8 @@ final class EnvelopeComponentRecorder {
     func parameters(initial: Bool) -> Parameters {
         Parameters(
             components: UInt32(components.count), capacity: UInt32(capacity), initial: initial ? 1 : 0,
-            maxima: binMaxima ? 1 : 0, binWidth: Float(binS), faces: UInt32(faces.count))
+            maxima: binMaxima ? 1 : 0, binWidth: Float(binS), faces: UInt32(faces.count),
+            fromArrival: fromArrival ? 1 : 0)
     }
 
     struct Parameters {
@@ -696,6 +719,7 @@ final class EnvelopeComponentRecorder {
         var maxima: UInt32
         var binWidth: Float
         var faces: UInt32
+        var fromArrival: UInt32
         var skipStill: UInt32 = 0
     }
 
@@ -708,14 +732,19 @@ final class EnvelopeComponentRecorder {
         let truncated = flags.contents().load(as: UInt32.self) != 0
         let area = Double(cellSize * cellSize)
         func finite(_ value: Float) -> Float { value == -.greatestFiniteMagnitude ? 0 : value }
+        let elapsedBins = Int((elapsed / binS - 1e-9).rounded(.up))
+        let first = starts.contents().bindMemory(to: UInt32.self, capacity: components.count)
         return components.indices.map { n in
             let base = n * capacity
-            let values = (0..<max(recorded, 0)).map { binned[base + $0] }
-            let largest = maximum.map { m in (0..<max(recorded, 0)).map { m[base + $0] } }
+            let start = first[n] == .max ? nil : Int(first[n])
+            let count = fromArrival ? start.map { min(capacity, max(elapsedBins - $0, 0)) } ?? 0 : recorded
+            let values = (0..<max(count, 0)).map { binned[base + $0] }
+            let largest = maximum.map { m in (0..<max(count, 0)).map { m[base + $0] } }
             return EnvelopeComponentHistory(
                 component: components[n], outerAreaM2: Double(sides[n].outerCount) * area,
                 innerAreaM2: Double(sides[n].innerCount) * area,
                 faceCount: Int(sides[n].outerCount + sides[n].innerCount), binS: binS,
+                windowStartS: fromArrival ? start.map { Double($0) * binS } : nil,
                 outerImpulsePaS: values.map(\.x), innerImpulsePaS: values.map(\.y),
                 peakOuterPa: finite(peak[n].x), peakInnerPa: finite(peak[n].y), peakNetPa: finite(peak[n].z),
                 outerMaxPa: largest?.map { finite($0.x) }, innerMaxPa: largest?.map { finite($0.y) },

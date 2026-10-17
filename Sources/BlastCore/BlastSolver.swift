@@ -2491,6 +2491,7 @@ public final class BlastSolver {
         encoder.setBuffer(recorder.maxima ?? recorder.bins, offset: 0, index: 18)
         encoder.setBuffer(recorder.flags, offset: 0, index: 19)
         encoder.setBuffer(recorder.clock, offset: 0, index: 20)
+        encoder.setBuffer(recorder.starts, offset: 0, index: 21)
         encoder.dispatchThreadgroups(
             MTLSize(width: (recorder.components.count + perGroup - 1) / perGroup, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 32 * perGroup, height: 1, depth: 1))
@@ -2524,6 +2525,7 @@ public final class BlastSolver {
         encoder.setBuffer(recorder.faceDispatch, offset: 0, index: 12)
         encoder.setBuffer(recorder.sumDispatch, offset: 0, index: 13)
         encoder.setBuffer(recorder.clock, offset: 0, index: 14)
+        encoder.setBuffer(recorder.starts, offset: 0, index: 15)
         encoder.dispatchThreadgroups(
             indirectBuffer: recorder.sumDispatch, indirectBufferOffset: 0,
             threadsPerThreadgroup: MTLSize(width: 32, height: 1, depth: 1))

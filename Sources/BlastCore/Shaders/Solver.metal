@@ -2146,8 +2146,12 @@ struct ComponentRecording {
     uint maxima;
     float binWidth;
     uint faces;
+    uint fromArrival;      // 1: a component's bins start when its air first moves
     uint skipStill;        // 1: read a face in a still tile as the still air (no gravity)
 };
+
+// A component's first bin before its air has moved, with `fromArrival`: nothing is binned.
+constant uint notStarted = 0xFFFFFFFFu;
 
 constant uint componentLanes = 32;
 // A face whose solid/fluid pair has changed, compared by its bits (fast math may drop a NaN test).
@@ -2191,7 +2195,7 @@ struct ComponentClock {
 
 static inline void finishComponent(uint index, float2 sum, uint broken, uint4 side, uint lane,
                                    const device StepControl &control, constant ComponentRecording &r,
-                                   const device ComponentClock &clock, device float4 *peaks,
+                                   const device ComponentClock &clock, uint start, device float4 *peaks,
                                    device float2 *bins, device float2 *maxima, device atomic_uint *truncated) {
     for (ushort offset = componentLanes / 2; offset > 0; offset /= 2) {
         sum += simd_shuffle_down(sum, offset);
@@ -2206,6 +2210,7 @@ static inline void finishComponent(uint index, float2 sum, uint broken, uint4 si
     peak.z = max(peak.z, outer - inner);
     peak.w = broken != 0 ? 1.0f : peak.w;
     peaks[index] = peak;
+    if (start == notStarted) return;
     float dt = r.initial != 0 ? 0.0f : control.dt;
     // The step, in seconds from the start of the bin it begins in.
     float begin = clock.fraction;
@@ -2214,7 +2219,7 @@ static inline void finishComponent(uint index, float2 sum, uint broken, uint4 si
     for (int k = 0; k <= last; ++k) {
         float overlap = min(end, float(k + 1) * r.binWidth) - max(begin, float(k) * r.binWidth);
         if (overlap <= 0.0f && r.initial == 0) continue;
-        uint slot = clock.bin + uint(k);
+        uint slot = clock.bin + uint(k) - start;
         if (slot >= r.capacity) {
             atomic_store_explicit(truncated, 1u, memory_order_relaxed);
             break;
@@ -2253,19 +2258,28 @@ kernel void markEnvelopeComponents(const device StepControl &control [[buffer(2)
                                    device float2 *maxima [[buffer(18)]],
                                    device atomic_uint *truncated [[buffer(19)]],
                                    const device ComponentClock &clock [[buffer(20)]],
+                                   device uint *starts [[buffer(21)]],
                                    uint group [[threadgroup_position_in_grid]],
                                    uint simd [[simdgroup_index_in_threadgroup]],
                                    uint groups [[simdgroups_per_threadgroup]],
                                    uint lane [[thread_index_in_simdgroup]]) {
     uint index = group * groups + simd;
     if (index >= r.components || (control.dt <= 0 && r.initial == 0)) return;
-    bool woken = r.skipStill == 0 || u.tileNx == 0;
+    // Whether any of its tiles is awake; without tiles, all air counts as moving.
+    bool moved = u.tileNx == 0;
     uint2 range = tileRanges[index];
-    for (uint n = lane; !woken && n < range.y; n += componentLanes) {
-        woken = tileFlags[tiles[range.x + n]] != tileStill;
+    bool look = r.skipStill != 0 || (r.fromArrival != 0 && starts[index] == notStarted);
+    for (uint n = lane; look && !moved && n < range.y; n += componentLanes) {
+        moved = tileFlags[tiles[range.x + n]] != tileStill;
     }
-    woken = simd_any(woken);
+    moved = simd_any(moved);
+    bool woken = r.skipStill == 0 || moved;
+    uint start = starts[index];
+    if (r.fromArrival != 0 && start == notStarted && moved) {
+        start = clock.bin;
+    }
     if (lane == 0) {
+        starts[index] = start;
         awake[index] = woken ? 1u : 0u;
         // At the first sample the faces' pass's first threadgroup makes the still air's row.
         if (woken) {
@@ -2278,7 +2292,7 @@ kernel void markEnvelopeComponents(const device StepControl &control [[buffer(2)
     if (woken || r.initial != 0) return;
     uint4 side = sides[index];
     float2 sum = float2(stillSum(stillPressure, side.y, lane), stillSum(stillPressure, side.w, lane));
-    finishComponent(index, sum, 0u, side, lane, control, r, clock, peaks, bins, maxima, truncated);
+    finishComponent(index, sum, 0u, side, lane, control, r, clock, start, peaks, bins, maxima, truncated);
 }
 
 // Every face's pressure: a threadgroup an awake component, its threads taking every
@@ -2364,6 +2378,7 @@ kernel void sampleEnvelopeComponents(const device float *pressures [[buffer(0)]]
                                      device uint *faceDispatch [[buffer(12)]],
                                      device uint *sumDispatch [[buffer(13)]],
                                      const device ComponentClock &clock [[buffer(14)]],
+                                     const device uint *starts [[buffer(15)]],
                                      uint group [[threadgroup_position_in_grid]],
                                      uint lane [[thread_index_in_simdgroup]]) {
     if (group == 0 && lane == 0) {
@@ -2381,7 +2396,8 @@ kernel void sampleEnvelopeComponents(const device float *pressures [[buffer(0)]]
     } else {
         sum = float2(stillSum(stillPressure, side.y, lane), stillSum(stillPressure, side.w, lane));
     }
-    finishComponent(index, sum, broken, side, lane, control, r, clock, peaks, bins, maxima, truncated);
+    finishComponent(index, sum, broken, side, lane, control, r, clock, starts[index], peaks, bins, maxima,
+                    truncated);
 }
 
 // After a step's components: the clock moves on by the step.

@@ -4,12 +4,14 @@ import Metal
 import simd
 
 /// `scenebench district --osm map.osm [--dem dem.tif] --centre lon,lat [--radii 250,500,1000]
-/// [--dx 4] [--height 120] [--mass 500000] [--steps 40] [--out file.json]`: what a district of map
+/// [--dx 4] [--height 120] [--mass 500000] [--steps 40] [--window 5] [--from-arrival]
+/// [--until seconds] [--out file.json]`: what a district of map
 /// buildings costs as it grows. For each radius, a square scene of twice it about the centre,
 /// the map's buildings in it as envelopes on the DEM's terrain (sea level as the datum), a
 /// hemispherical charge on the ground at the centre; the time to place the buildings, build the
 /// solver, configure the surface recorder and the components' histories, the memory each takes,
-/// and the time a step takes with the surface recorder alone and with the histories too.
+/// and the time a step takes with the surface recorder alone and with the histories too. With
+/// `--until`, the whole event to that time is run once more with both recorders, and timed.
 enum DistrictBenchmark {
     struct Row: Codable {
         var radiusM: Float
@@ -28,6 +30,9 @@ enum DistrictBenchmark {
         var historyBytes: Int
         var stepS: Double
         var stepWithHistoriesS: Double
+        var eventS: Double?
+        var eventSteps: Int?
+        var eventTimeS: Double?
     }
 
     static func seconds(_ start: ContinuousClock.Instant) -> Double {
@@ -50,6 +55,10 @@ enum DistrictBenchmark {
         let height = Float(value("height").flatMap(Double.init) ?? 120)
         let mass = Float(value("mass").flatMap(Double.init) ?? 500_000)
         let steps = value("steps").flatMap(Int.init) ?? 40
+        let options = EnvelopeHistoryOptions(
+            windowS: value("window").flatMap(Double.init) ?? 5,
+            windowFromArrival: args.contains("--from-arrival"))
+        let until = value("until").flatMap(Double.init)
         let start = ContinuousClock.now
         let buildings = try MapBuilding.read(contentsOf: URL(filePath: osm))
         print("Read \(buildings.count) buildings in \(String(format: "%.2f", seconds(start))) s")
@@ -104,7 +113,7 @@ enum DistrictBenchmark {
                     let before = solver.memoryFootprint
                     clock = .now
                     try solver.configureEnvelopeComponents(
-                        objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: 5))
+                        objects: scene.envelopeObjects, options: options)
                     row.componentsS = seconds(clock)
                     row.components = solver.envelopeComponents()?.count ?? 0
                     row.historyBytes = solver.memoryFootprint - before
@@ -115,6 +124,26 @@ enum DistrictBenchmark {
                 _ = solver.advance(steps: steps)
                 let perStep = seconds(clock) / Double(steps)
                 if histories { row.stepWithHistoriesS = perStep } else { row.stepS = perStep }
+                if histories, let until {
+                    clock = .now
+                    var taken = 0
+                    while solver.time < until {
+                        let batch = solver.advance(until: until)
+                        taken += batch.steps
+                        guard batch.steps > 0, batch.isStable else { break }
+                    }
+                    row.eventS = seconds(clock)
+                    row.eventSteps = taken
+                    row.eventTimeS = solver.time
+                    let recorded = solver.envelopeComponentHistories() ?? []
+                    print(
+                        String(
+                            format:
+                                "  event to %.3f s: %d steps in %.1f s; %d of %d components loaded, %d truncated",
+                            solver.time, taken, row.eventS!,
+                            recorded.filter { $0.peakOuterPa > 1000 || $0.peakInnerPa > 1000 }.count,
+                            recorded.count, recorded.filter(\.truncated).count))
+                }
             }
             print(
                 String(
