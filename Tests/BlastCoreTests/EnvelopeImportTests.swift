@@ -142,6 +142,18 @@ struct EnvelopeImportTests {
         #expect(abs(placement.heights(byID["relation/200"]!).top - 12.192) < 1e-4)
         #expect(placement.heights(byID["way/108"]!) == (0, 6, .assumed))
         #expect(byID["relation/200"]!.rings.count == 2)
+        // A height grid fills in where the tags say nothing, from the cell under the footprint's
+        // centre; tags still win, and a cell without buildings (0) leaves the assumption.
+        let centre =
+            byID["way/108"]!.rings[0].reduce(SIMD2<Double>.zero, +) / Double(byID["way/108"]!.rings[0].count)
+        var gridded = placement
+        gridded.heightGrid = ElevationGrid(
+            columns: 3, rows: 3, southWest: centre - 0.001, step: SIMD2(0.001, 0.001), units: .degrees,
+            elevations: [0, 0, 0, 0, 17.5, 0, 0, 0, 0])
+        #expect(gridded.heights(byID["way/108"]!) == (0, 17.5, .grid))
+        #expect(gridded.heights(byID["way/101"]!) == (0, 15, .levels))
+        gridded.heightGrid?.elevations[4] = 0
+        #expect(gridded.heights(byID["way/108"]!) == (0, 6, .assumed))
         for (text, metres) in [
             ("12", 12), ("12.5 m", 12.5), ("12m", 12), ("40 ft", 12.192), ("40'6\"", 12.344), ("9;12", 9),
         ]

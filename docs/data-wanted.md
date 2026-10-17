@@ -23,6 +23,8 @@ fails, search the number at [discover.dtic.mil](https://discover.dtic.mil/).
 | Kasun-III: Forsén et al., DDESB 2010 | [DTIC ADA532249](https://apps.dtic.mil/sti/pdfs/ADA532249.pdf) | DTIC, HTTP 403 | `data/Kasun2010/` | The cubes, charges and debris of the best debris benchmark known ([3c](data-survey.md#3c-collapse-and-debris)); the database itself is by request, below |
 | Its companion: concrete breaking up under internal blast, DDESB 2010 | [DTIC ADA532261](https://apps.dtic.mil/sti/pdfs/ADA532261.pdf) | DTIC, HTTP 403 | `data/Kasun2010/` | How concrete walls break up and are thrown under an internal charge |
 | Annealed and tempered glass under blast waves, EMRTC, Socorro | [OSTI 658184](https://www.osti.gov/biblio/658184) | osti.gov refuses the connection | `envelope-damage/sources/` | Panes that held beside panes that broke, over a range of overpressure and impulse: the breaking threshold, which Monk and Clubley's tests, all broken, cannot give ([3h](data-survey.md#3h-window-glass-breaking-under-a-blast)) |
+| Valsamos, Larcher and Casadei, Beirut as a city-scale blast simulation, *Safety Science* 137 (2021), CC BY | [doi:10.1016/j.ssci.2021.105190](https://doi.org/10.1016/j.ssci.2021.105190); [JRC122537](https://publications.jrc.ec.europa.eu/repository/handle/JRC122537) | ScienceDirect, HTTP 403; JRC's firewall | `data/Beirut2020/Valsamos2021/` | The other city-scale model of Beirut: its mesh, charge, buildings, pressure and impulse maps, and run times, to set the Beirut sample beside |
+| Denny et al., the grain silos' shielding at 1:250, *Shock Waves* (2025), CC BY | [doi:10.1007/s00193-025-01241-5](https://doi.org/10.1007/s00193-025-01241-5) | Springer's JavaScript challenge | `data/Beirut2020/Denny2025/` | Gauges behind the silos at reduced scale: a direct check of the shielding the Beirut sample shows |
 
 **Then**, when convenient:
 
@@ -59,6 +61,8 @@ fails, search the number at [discover.dtic.mil](https://discover.dtic.mil/).
 | *Cyclic tests on real-scale squat RC shear walls* (Pizarro Pohl, Kovarbašić and Stojadinović) | ETH Research Collection (search the title) | The collection returned errors | `data/ETH-squat-walls/` | Walls sliding at the base, slowly |
 | EMERGE final report, Mercx (ed.), 1997 | [OSTI 378238](https://www.osti.gov/biblio/378238) | OSTI refused automated access | `data/EMERGE/` | Congested rigs of 2–8 m at two blockages, methane and propane: the [congestion model](congestion-proposal.md)'s scale trend |
 | Johnson, Allason and Cronin, Spadeadam's explosion programmes, *J. Loss Prev.* 89 (2024) 105287, open access | [doi:10.1016/j.jlp.2024.105287](https://doi.org/10.1016/j.jlp.2024.105287) | ScienceDirect refused | `data/Spadeadam-review/` | What the BG/Shell rigs and BFETS measured, for the congestion model |
+| Stennett, Gaulter and Akhavan, the Beirut NEQ from public video, *PEP* 45 (2020), CC BY-NC-ND | [Wiley PDF](https://onlinelibrary.wiley.com/doi/pdfdirect/10.1002/prep.202000227); [Cranfield 1826/16030](https://dspace.lib.cranfield.ac.uk/handle/1826/16030) | Wiley and Cranfield, HTTP 403 | `data/Beirut2020/Stennett2020/` | A second set of arrival times and camera positions, beside Rigby's |
+| Sadek et al., the port and nearby buildings, *Natural Hazards Review* 23(2) (2022), green open copies | [eScholarship 0jk5d8nh](https://escholarship.org/uc/item/0jk5d8nh); [NSF PAR 10338344](https://par.nsf.gov/servlets/purl/10338344) | HTTP 403 | `data/Beirut2020/Sadek2022/` | The reviewed version of GEER-070 (in hand): revised crater, quay and building damage |
 
 **Behind a paywall**, for library access:
 
@@ -78,6 +82,7 @@ fails, search the number at [discover.dtic.mil](https://discover.dtic.mil/).
 | Puttock et al., PDR model against MERGE, ERGOS and Buxton, *J. Loss Prev.* (2021) 104659 | Elsevier | The reference implementation's errors |
 | BFETS Phase 2 report, BG R-1579 | FABIG (purchase) | Full-scale module explosions, 27 tests |
 | CCPS, *Guidelines for Vapor Cloud Explosion…*, 2nd ed. (2010) | Wiley/AIChE | Congestion and blast curves in industry practice |
+| Dewey, the TNT and ANFO equivalences of the Beirut explosion, *Shock Waves* 31 (2021) | [doi:10.1007/s00193-021-00992-1](https://doi.org/10.1007/s00193-021-00992-1) | Peak overpressure against distance from Rigby's arrival times: the nearest to a measured pressure curve for Beirut (more in `data/Beirut2020/TO-FETCH.md`) |
 
 The survey names a few more, each under its item: Hao et al. (2017), Ross and Krawinkler (1985),
 Kiger and Slawson (1984), Bauwens et al.'s propane and hydrogen papers, Kingery and Bulmash
