@@ -21,5 +21,9 @@ measurements and are not used.
 towards the supported long side and towards the free short side. That is our reading of its
 Figure 3.
 
+**The model's slab carries its weight.** It is settled under it before the blast, and its
+displacements are read from there, as the sensors read from the slab resting on its supports.
+Before 17 October 2026 it was compared without its weight (`--weightless`).
+
 `TwoFaceSlabTests.yaoTests` (Sources/BlastCore/YaoSlabTests.swift) holds the same values for
 `blastbench twoface --yao`. See docs/validation.md, "Yao's large slabs".
