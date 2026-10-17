@@ -1395,6 +1395,15 @@ extension StandingScene {
                 return band
             }
             unbanded.append("Roofs, and walls beside a failing one, go beyond both concrete bounds: no band.")
+            let freestanding = inputs.scenario.envelopeObjects.contains { object in
+                object.envelope?.components(owner: object.id).contains(where: \.isFreestanding) ?? false
+            }
+            if freestanding {
+                unbanded.append(
+                    "Freestanding walls are judged as cantilevers from their foot, outside these bands (derived "
+                        + "on panels held on their edges); compared with Alsubaei's and Keys's measured walls "
+                        + "instead (building-envelopes.md#freestanding-walls).")
+            }
         case .thermal:
             if !burning {
                 unbanded.append(
