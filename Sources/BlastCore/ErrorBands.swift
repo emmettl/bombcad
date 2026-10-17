@@ -1516,10 +1516,9 @@ extension StandingScene {
             }
             if kinds.contains(.profiledSteelSheeting) {
                 unbanded.append(
-                    "Profiled steel sheeting, by UFC's cold-formed panel method: illustrative, no band. The "
-                        + "sheeting shells, not this method, were compared: ADBLAST's screwed cladding's first "
-                        + "deflection 0.90–1.35 of measured, Langdon's permanent sets within half to twice on 10 "
-                        + "of 13.")
+                    "Profiled steel sheeting, by UFC's cold-formed panel method: illustrative, no band. Against "
+                        + "ADBLAST's ten screwed cladding shots it reads 0.50–1.37 of the measured deflection under "
+                        + "the air's load on the whole panel, low on nine, and its screws held as measured.")
             }
             if kinds.contains(.crossLaminatedTimber) {
                 unbanded.append(
