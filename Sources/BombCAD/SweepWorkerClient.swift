@@ -325,6 +325,8 @@ enum RemoteSweepWorker {
     /// With `gate`, the worker first decides there whether its Mac should take work now (see
     /// `RemoteGate`), and the connection fails, saying why, if not.
     static func connect(host: String, gate: RemoteGate? = nil) async throws -> SweepWorkerClient {
+        // A paired Mac nearby, reached directly rather than over SSH.
+        if NearbyWorkers.isNearby(host) { return try await NearbyWorkers.connect(host: host, gate: gate) }
         try validate(host)
         let directory = try await Task.detached(priority: .userInitiated) { try install(on: host) }.value
         let arguments = gate.map { " --gate \($0.argument)" } ?? ""
@@ -379,8 +381,15 @@ enum RemoteSweepWorker {
         return client
     }
 
-    /// A host name or alias that SSH cannot take for an option or a list.
+    /// A host name or alias that SSH cannot take for an option or a list; a paired Mac nearby
+    /// (`nearby:<name>`) is named as it names itself.
     nonisolated static func validate(_ host: String) throws {
+        if NearbyWorkers.isNearby(host) {
+            guard !NearbyWorkers.name(of: host).isEmpty, !host.contains(where: \.isNewline) else {
+                throw ProjectFileError.invalid("Name a nearby Mac as nearby:<its name>.")
+            }
+            return
+        }
         guard !host.isEmpty, !host.hasPrefix("-"),
             host.unicodeScalars.allSatisfy({
                 CharacterSet.alphanumerics.contains($0) || "._-@:[]".unicodeScalars.contains($0)
