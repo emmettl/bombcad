@@ -1944,12 +1944,25 @@ final class SimulationModel {
         guard solver.ventsGlazing else { return }
         guard let spec = paneHoleSpec ?? fragmentSpec, spec.count > 0, (try? spec.validate()) != nil else {
             solver.setEnvelopePaneHoles([:])
+            try? solver.setEnvelopeWallHoles([EnvelopeHole]())
             return
         }
-        solver.setEnvelopePaneHoles(
-            FragmentCloud.paneHoles(
-                spec: spec, scene: FragmentScene(scenario), density: scenario.atmosphere.density,
-                pressure: scenario.atmosphere.pressure, until: duration))
+        // One flight for both: the panes holed, and the walls, roofs and slabs perforated.
+        let holes = FragmentCloud.envelopeHoles(
+            spec: spec, scene: FragmentScene(scenario), density: scenario.atmosphere.density,
+            pressure: scenario.atmosphere.pressure, until: duration)
+        var panes: [String: Double] = [:]
+        for hole in holes {
+            guard let pane = hole.pane else { continue }
+            let id = "\(hole.owner.uuidString)/pane/\(pane).0"
+            panes[id] = min(panes[id] ?? .infinity, hole.time)
+        }
+        solver.setEnvelopePaneHoles(panes)
+        do {
+            try solver.setEnvelopeWallHoles(holes.filter { $0.pane == nil })
+        } catch {
+            envelopeVentingStatus = "Holes through walls not opened: \(error.localizedDescription)"
+        }
     }
 
     private func startFragments(_ solver: BlastSolver) {

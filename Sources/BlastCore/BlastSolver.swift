@@ -295,6 +295,12 @@ public final class BlastSolver {
         return outcomes
     }
 
+    /// The same from the fragments' perforations of walls, roofs and slabs (those without a pane).
+    public func setEnvelopeWallHoles(_ holes: [EnvelopeHole]) throws {
+        try setEnvelopeWallHoles(
+            holes.filter { $0.pane == nil }.map { ($0.owner, $0.time, $0.position, $0.areaM2) })
+    }
+
     /// The panes broken so far and what each building's rooms have seen, with venting on.
     public func envelopeVentingSnapshot() -> EnvelopeVentingSnapshot? {
         precondition(!batchInFlight, "Cannot read observers during a batch")
