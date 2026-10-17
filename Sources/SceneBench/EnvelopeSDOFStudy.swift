@@ -57,6 +57,9 @@ enum EnvelopeSDOFStudy {
         /// building's room, driven by the pane's own outer pressure on the envelope run.
         var fillPeakKPa: [Double]
         var fillImpulsePaS: [Double]
+        /// The same openings filling the room by UFC 3-340-02's equation 2-31 (§2-15.5).
+        var leakagePeakKPa: [Double] = []
+        var leakageImpulsePaS: [Double] = []
     }
 
     struct Summary: Codable {
@@ -185,6 +188,7 @@ enum EnvelopeSDOFStudy {
             let inside = detailed.gauges.filter { $0.name.hasSuffix("inside") }
             // Each building's room: its walls' plan inside their thickness, up to the roof.
             var fills: [(peak: Double, impulse: Double)] = []
+            var leakages: [(peak: Double, impulse: Double)] = []
             for owner in Set(detailed.components.map(\.owner)).sorted(by: { $0.uuidString < $1.uuidString }) {
                 let walls = detailed.components.filter { $0.owner == owner && $0.kind != "pane" }
                 let low = walls.flatMap(\.region).reduce(SIMD3<Float>(repeating: .infinity)) {
@@ -198,6 +202,10 @@ enum EnvelopeSDOFStudy {
                     EnvelopeDamageAssessment.fill(
                         volume: size.x * size.y * size.z, openings: openings[owner] ?? [], bin: envelope.binS)
                 )
+                leakages.append(
+                    EnvelopeDamageAssessment.leakageFill(
+                        volume: size.x * size.y * size.z, openings: openings[owner] ?? [], bin: envelope.binS)
+                )
             }
             runs.append(
                 Run(
@@ -206,7 +214,9 @@ enum EnvelopeSDOFStudy {
                     sdofS: sdofTime,
                     insidePeakKPa: inside.map { Double($0.peakOverpressurePa) / 1000 },
                     insideImpulsePaS: inside.map { Double($0.positiveImpulsePaS) },
-                    fillPeakKPa: fills.map { $0.peak / 1000 }, fillImpulsePaS: fills.map(\.impulse)))
+                    fillPeakKPa: fills.map { $0.peak / 1000 }, fillImpulsePaS: fills.map(\.impulse),
+                    leakagePeakKPa: leakages.map { $0.peak / 1000 },
+                    leakageImpulsePaS: leakages.map(\.impulse)))
         }
         report(rows: rows, runs: runs)
         if let out = option("out") {
@@ -242,11 +252,11 @@ enum EnvelopeSDOFStudy {
             )
         }
         print(
-            "\nrun | buildings | detailed s | envelope s | SDOF ms | inside peak kPa (fill) | inside impulse Pa s (fill)"
+            "\nrun | buildings | detailed s | envelope s | SDOF ms | inside peak kPa (fill, UFC leakage) | inside impulse Pa s (fill, UFC leakage)"
         )
         for run in runs {
             print(
-                "\(run.run) | \(run.buildings) | \(f(run.detailedWallClockS, 1)) | \(f(run.envelopeWallClockS, 1)) | \(f(run.sdofS * 1000, 2)) | \(zip(run.insidePeakKPa, run.fillPeakKPa).map { f($0, 2) + " (" + f($1, 2) + ")" }.joined(separator: ", ")) | \(zip(run.insideImpulsePaS, run.fillImpulsePaS).map { f($0, 1) + " (" + f($1, 1) + ")" }.joined(separator: ", "))"
+                "\(run.run) | \(run.buildings) | \(f(run.detailedWallClockS, 1)) | \(f(run.envelopeWallClockS, 1)) | \(f(run.sdofS * 1000, 2)) | \(run.insidePeakKPa.indices.map { f(run.insidePeakKPa[$0], 2) + " (" + f(run.fillPeakKPa[$0], 2) + ", " + f(run.leakagePeakKPa[$0], 2) + ")" }.joined(separator: ", ")) | \(run.insideImpulsePaS.indices.map { f(run.insideImpulsePaS[$0], 1) + " (" + f(run.fillImpulsePaS[$0], 1) + ", " + f(run.leakageImpulsePaS[$0], 1) + ")" }.joined(separator: ", "))"
             )
         }
     }
