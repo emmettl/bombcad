@@ -5446,6 +5446,7 @@ do {
     case "mendonca-static": try runMendoncaStatic(device: device)
     case "reynolds": try runReynolds(device: device)
     case "panelblock": try runPanelBlock(device: device)
+    case "buckling": try runBuckling(device: device)
     case "deflagration": try runDeflagration()
     case "perimeter": try runPerimeter(device: device)
     case "keys": try runKeys(device: device)
