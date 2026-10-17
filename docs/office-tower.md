@@ -43,8 +43,10 @@ simplification is listed here.
   spandrels are the frame plate itself.
 - **The glass** is one pane of 10 mm toughened glass, standing for an insulating unit. It fails
   as annealed glass does, at its own strength.
-- **The neighbours across the street** are envelopes: rigid and exposure-only. Their 6 mm
-  annealed panes are judged by [envelope damage](building-envelopes.md).
+- **The neighbours across the street** are envelopes: rigid and exposure-only, each with forty
+  windows of 6 mm annealed glass. [Envelope damage](building-envelopes.md) does not judge them
+  yet. Its recorders need every body in the scene to be stationary at the start, and the tower
+  is not; until that is relaxed, the neighbours shape the blast but are not judged.
 
 ## Under gravity
 
