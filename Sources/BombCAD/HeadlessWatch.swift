@@ -32,6 +32,9 @@ struct ViewSpec: Codable, Equatable, Sendable {
     /// `ViewFrame` in each frame, the field `stride` times coarser than the solver's grid (see
     /// `SceneViewCodec`).
     var sceneStride: Int?
+    /// Seconds the worker waits at the end for the frames still unacknowledged, for their lag;
+    /// those not in by then go uncounted.
+    var ackWait = 2.0
 }
 
 enum ViewCompression: String, Codable, Equatable, Sendable, CaseIterable {
@@ -306,9 +309,9 @@ final class ViewSender: @unchecked Sendable {
         }
     }
 
-    /// The costs, once every frame sent is acknowledged or `timeout` has passed.
-    func finish(runSeconds: Double, timeout: Duration = .seconds(2)) async -> ViewStats {
-        let deadline = ContinuousClock.now + timeout
+    /// The costs, once every frame sent is acknowledged or `spec.ackWait` has passed.
+    func finish(runSeconds: Double) async -> ViewStats {
+        let deadline = ContinuousClock.now + .seconds(spec.ackWait)
         while lock.withLock({ !inFlight.isEmpty }), ContinuousClock.now < deadline {
             try? await Task.sleep(for: .milliseconds(10))
         }
