@@ -74,6 +74,22 @@ public final class StructuralBody: Identifiable {
         return set
     }
 
+    /// Whether the body is as it was loaded: whole, undeformed and still. One that a scene or a
+    /// harness has since moved or broken is not settled.
+    var isAsLoaded: Bool {
+        if solids?.hasFailed == true || shells?.hasFailed == true { return false }
+        var still = true
+        solids?.mutateNodes { nodes in
+            still = still && nodes.allSatisfy { $0.displacement == .zero && $0.velocity == .zero }
+        }
+        shells?.mutateNodes { nodes in
+            still =
+                still
+                && nodes.allSatisfy { $0.displacement == .zero && $0.velocity == .zero && $0.spin == .zero }
+        }
+        return still
+    }
+
     /// Mass-proportional damping of every part, 1/s.
     var damping: Float {
         get { solids?.damping ?? shells!.damping }

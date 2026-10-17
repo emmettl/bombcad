@@ -153,7 +153,9 @@ How it works (`BlastSolver.settleStructures()`):
 It is left out, so that the run is as before, bit for bit:
 - with the option off;
 - for a body without gravity, as the harnesses that turn gravity off have;
-- for a body with a node whose motion the scene sets, such as a struck beam's.
+- for a body with a node whose motion the scene sets, such as a struck beam's;
+- for a body no longer as it was loaded: moved, set moving or broken before the first step, as
+  tests and harnesses that start from a state of their own do.
 
 A harness that measures displacements measures them from the settled shape, as a test's gauges
 were zeroed on the structure standing under its own weight. Mendonça's harness keeps its blind

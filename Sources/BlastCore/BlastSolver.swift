@@ -1519,7 +1519,8 @@ public final class BlastSolver {
     /// `settleLimit` (one falling, or not standing) is put back undeformed and starts as it
     /// would without settling. Nothing is done with `configuration.settlesStructures` off (or
     /// `BOMBCAD_SETTLE=off` in the environment, for benches), once the run has started, or for a
-    /// body without gravity or with motion set by the scene.
+    /// body without gravity, with motion set by the scene, or no longer as loaded (moved, set
+    /// moving or broken since).
     public func settleStructures() {
         guard configuration.settlesStructures, !structuresSettled, time == 0, stepCount == 0,
             ProcessInfo.processInfo.environment["BOMBCAD_SETTLE"] != "off"
@@ -1527,7 +1528,7 @@ public final class BlastSolver {
         precondition(!batchInFlight, "Cannot settle while a batch is in flight")
         structuresSettled = true
         var moved = false
-        for body in bodies where body.gravity > 0 && !body.hasSetMotion {
+        for body in bodies where body.gravity > 0 && !body.hasSetMotion && body.isAsLoaded {
             let start = Date()
             let step = Double(body.criticalTimeStep)
             let chunk = max(1, Int((0.005 / step).rounded(.up)))
