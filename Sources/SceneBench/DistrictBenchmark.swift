@@ -4,7 +4,7 @@ import Metal
 import simd
 
 /// `scenebench district <district-scene's inputs> [--radii 250,500,1000] [--steps 40] [--window 5]
-/// [--from-arrival] [--budget MB] [--until seconds] [--out file.json]`: what a district of map buildings costs
+/// [--from-arrival] [--budget MB] [--until seconds] [--staircase] [--bare] [--out file.json]`: what a district of map buildings costs
 /// as it grows. For each radius, `district-scene`'s square scene of twice it about the centre; the time to place the buildings, build the
 /// solver, configure the surface recorder and the components' histories, the memory each takes,
 /// and the time a step takes with the surface recorder alone and with the histories too. With
@@ -74,7 +74,10 @@ enum DistrictBenchmark {
                 historyBytes: 0, stepS: 0, stepWithHistoriesS: 0)
             for histories in [false, true] {
                 clock = .now
-                let solver = try BlastSolver(device: device, scenario: scene, cellSize: dx)
+                var configuration = args.contains("--bare") ? SolverConfiguration() : .recommended
+                configuration.terrainCutCells = !args.contains("--staircase")
+                let solver = try BlastSolver(
+                    device: device, scenario: scene, cellSize: dx, configuration: configuration)
                 if !histories {
                     row.solverS = seconds(clock)
                     row.cells = solver.grid.cellCount

@@ -634,6 +634,13 @@ enum EnvelopeDamageBenchmark {
                     c.broken = pane.brokenAtS != nil
                     c.brokenAtS = pane.brokenAtS
                 }
+                if c.kind != "pane", let venting = solver.envelopeVentingSnapshot(),
+                    let wall = venting.walls.first(where: { $0.component == c.id })
+                {
+                    // Failed and opened in the air (the envelope's one-way model, stepped with it).
+                    c.broken = wall.failedAtS != nil
+                    c.brokenAtS = wall.failedAtS
+                }
                 components.append(c)
             }
             _ = b
@@ -699,6 +706,11 @@ enum EnvelopeDamageBenchmark {
                     "  vented pane \(pane.component.split(separator: "/").last ?? ""): "
                         + (pane.brokenAtS.map { String(format: "broken at %.1f ms", $0 * 1000) } ?? "whole")
                         + String(format: ", deflection %.2f mm", pane.deflectionM * 1000))
+            }
+            for wall in venting.walls where wall.failedAtS != nil {
+                print(
+                    "  vented \(wall.component.split(separator: "/").suffix(2).joined(separator: "/")): "
+                        + String(format: "failed at %.1f ms", (wall.failedAtS ?? 0) * 1000))
             }
             for room in venting.rooms {
                 print(

@@ -119,14 +119,22 @@ public enum EnvelopePanel {
     /// tensile strength cracks it (the pressure at which the largest moment reaches the cracking
     /// moment f_t t² / 6), then a rocking mechanism whose resistance falls to nothing when the
     /// deflection reaches the thickness.
+    ///
+    /// `axialLoad` (N per metre, the masonry above) holds a wall `height` tall: cracked across
+    /// its height it rocks as two halves against it, which resist 8 P (t − x) / h² at a deflection
+    /// x (the thrust's lever arm from face to face shrinking to nothing at the thickness, as SBEDS
+    /// treats an unreinforced wall held by its axial load; PDC-TR 06-01, 2008). The panel takes
+    /// the larger of the two resistances.
     public static func unreinforcedMasonry(
-        thickness: Double, material: StructureMaterial, a: Double, b: Double, edges: Edges = .fixed
+        thickness: Double, material: StructureMaterial, a: Double, b: Double, edges: Edges = .fixed,
+        axialLoad: Double = 0, height: Double = 0
     ) -> SDOFSystem {
         let poisson = Double(material.poissonRatio)
         let rigidity = Double(material.youngsModulus) * pow(thickness, 3) / 12 / (1 - poisson * poisson)
         let k = stiffness(rigidity: rigidity, a: a, b: b, edges: edges)
         let cracking = Double(material.tensileStrength) * thickness * thickness / 6
-        let resistance = pressureAtMoment(cracking, a: a, b: b, edges: edges)
+        let rocking = height > 0 ? 8 * axialLoad * thickness / (height * height) : 0
+        let resistance = max(pressureAtMoment(cracking, a: a, b: b, edges: edges), rocking)
         let factors = loadMassFactors(edges)
         return SDOFSystem(
             massPerArea: Double(material.density) * thickness, loadMassElastic: factors.elastic,
@@ -271,14 +279,17 @@ public enum EnvelopePanel {
     /// An unreinforced masonry strip spanning `span` between two opposite supports, without
     /// arching: elastic on its gross section until the largest moment reaches f_t t² / 6 (at the
     /// middle simply supported, w L² / 8; at the supports fixed, w L² / 12), then a mechanism whose
-    /// resistance falls to nothing when the middle deflects by the thickness.
+    /// resistance falls to nothing when the middle deflects by the thickness. Spanning up between
+    /// its foot and top under `axialLoad` (N/m), the larger of that and the rocking resistance
+    /// 8 P t / L² (as `unreinforcedMasonry`).
     public static func unreinforcedMasonryOneWay(
-        thickness: Double, material: StructureMaterial, span: Double, edges: Edges = .simplySupported
+        thickness: Double, material: StructureMaterial, span: Double, edges: Edges = .simplySupported,
+        axialLoad: Double = 0
     ) -> SDOFSystem {
         let modulus = Double(material.youngsModulus)
         let stiffness = 384 * modulus * pow(thickness, 3) / 12 / ((edges == .fixed ? 1 : 5) * pow(span, 4))
         let cracking = Double(material.tensileStrength) * thickness * thickness / 6
-        let resistance = cracking * (edges == .fixed ? 12 : 8) / (span * span)
+        let resistance = max(cracking * (edges == .fixed ? 12 : 8), 8 * axialLoad * thickness) / (span * span)
         let factors = oneWayLoadMass(edges)
         return SDOFSystem(
             massPerArea: Double(material.density) * thickness, loadMassElastic: factors.elastic,

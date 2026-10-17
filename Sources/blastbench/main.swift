@@ -130,6 +130,17 @@ func preset(named name: String?) -> ScenarioPreset {
 /// (0.25 when given without a size) if asked.
 func chosenScenario() -> Scenario {
     var scenario = preset(named: option("preset")).scenario
+    // `--layout scene.json`: a scene saved as a layout (Scenario JSON), such as
+    // `scenebench district-scene` writes, in place of a preset.
+    if let path = option("layout") {
+        do {
+            scenario = try JSONDecoder().decode(
+                Scenario.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
+        } catch {
+            print("Could not read \(path): \(error)")
+            exit(1)
+        }
+    }
     // `--flame-factor 12`: a gas cloud's burning velocity times this (`FlameAcceleration.factor`).
     if let factor = option("flame-factor").flatMap({ Float($0) }) {
         scenario.deflagration?.acceleration.factor = factor
@@ -5382,6 +5393,7 @@ do {
     case "prism": try runPrism()
     case "shearband": try runShearBand(device: device)
     case "settle": try runSettle(device: device)
+    case "poulin": try runPoulin(device: device)
     case "beam": try runBeam()
     case "shear": try runShearBeam()
     case "pushoff": try runPushOff()

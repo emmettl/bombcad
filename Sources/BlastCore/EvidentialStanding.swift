@@ -137,7 +137,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-16"
+    public static let currentTable = "standing-table-19"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -281,6 +281,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case terrainStaircase
     case deflagration
     case ventPanels
+    case congestion
     case importedEnvelopes
     case mapBuildings
     case ventedGlazing
@@ -365,12 +366,13 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
                 && !config.cutsTerrain(of: inputs.scenario)
         case .deflagration: return inputs.scenario.deflagration != nil
         case .ventPanels: return !(inputs.scenario.ventPanels ?? []).isEmpty
+        case .congestion: return !(inputs.scenario.congestion ?? []).isEmpty
         case .importedEnvelopes:
             return !inputs.scenario.envelopeSources(.ifc).isEmpty
                 || !inputs.scenario.envelopeSources(.mesh).isEmpty
         case .mapBuildings: return !inputs.scenario.envelopeSources(.map).isEmpty
         case .ventedGlazing:
-            return inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes && config.gravity == nil
+            return inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes
         case .shellElements:
             return any { $0.elementKind == .shell || $0.solidElementKind.contains(.shell) }
         case .shellSectionShear: return any { $0.shellSectionShear }
@@ -617,6 +619,14 @@ public enum StandingTable {
                     + "assumed two levels: no openings, interiors or roof shapes, and positions and heights as "
                     + "accurate as the map.",
                 document: "building-envelopes.md#buildings-from-map-data")
+        case .congestion:
+            return Entry(
+                title: "Congestion below the grid", affects: air + structure + [.envelopeExposure],
+                limit: .illustrative,
+                note:
+                    "Pipes and bars too small for the cells take room, resist the air, make turbulence and fold "
+                    + "a flame, as PDRFoam's porous cells and sub-grid flame do; it is compared with no test yet.",
+                document: "congestion-model.md")
         case .ventedGlazing:
             return Entry(
                 title: "Glazing vented in the air", affects: [.envelopeExposure, .envelopeDamage],
@@ -624,7 +634,8 @@ public enum StandingTable {
                 note:
                     "Envelopes' panes break in the air when their one-way glass does (within 0.3 ms on its own "
                     + "loads) and open their windows whole, so the blast fills the rooms and loads the walls from "
-                    + "inside; the default where it can run. The inside stays illustrative: the detailed "
+                    + "inside; walls, roofs and slabs judged failed open too; the default where it can run. The "
+                    + "inside stays illustrative: the detailed "
                     + "references let broken glass go element by element and cannot judge it; against UFC "
                     + "3-340-02's loads through open windows the walls inside come at 0.31 to 1.22 of the UFC's "
                     + "(the back walls within 25%), where the one-way fill gives 0.15 to 0.42.",
@@ -944,6 +955,7 @@ public enum StandingTable {
         "EnvelopeConstruction.roofThicknessM": .input,
         "EnvelopeConstruction.reinforcementRatio": .input,
         "EnvelopeConstruction.glassThicknessM": .input,
+        "EnvelopeConstruction.facadePaneM": .input,
         "EnvelopeConstruction.source": .input,
         "EnvelopeConstruction.detail": .input,
         "EnvelopeConstruction.barsInBothFaces": .input,
@@ -955,6 +967,7 @@ public enum StandingTable {
         "EnvelopeConstruction.capMassKgPerM": .input,
         "Scenario.deflagration": .option([.deflagration]),
         "Scenario.ventPanels": .option([.ventPanels]),
+        "Scenario.congestion": .option([.congestion]),
         // What the standing is derived from: the scene and the specs above, and one choice of its own.
         "StandingInputs.scenario": .input,
         "StandingInputs.cellSize": .input,
@@ -1110,6 +1123,8 @@ public enum StandingTable {
         "StructureMaterial.steelRateDependent": .option([.alternativeRateLaws]),
         "StructureMaterial.units": .option([.smearedMasonry]),
         "StructureMaterial.isTransparent": .input,
+        // Timber's properties; its standing follows from its material class.
+        "StructureMaterial.timber": .input,
         // Connections.
         "Anchorage.normalStiffness": .input,
         "Anchorage.shearStiffness": .input,
@@ -1751,12 +1766,13 @@ struct StandingScene {
 
     /// The kinds of material in the scene's structures, weakest standing last.
     enum MaterialClass: Int, Comparable {
-        case reinforcedConcrete, plainConcrete, steel, masonry, glass
+        case reinforcedConcrete, plainConcrete, steel, masonry, glass, timber
         static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
 
         init(_ material: StructureMaterial) {
             switch material.model {
             case .vonMises: self = .steel
+            case .timber: self = .timber
             case .concrete:
                 self =
                     material.isTransparent
@@ -1905,6 +1921,18 @@ struct StandingScene {
                     "A glass pane at 3 m", "Breaks under 1 kg and survives 0.5 g",
                     "validation.md#verification-against-theory"))
             parts.append("glass a brittle concrete, checked only to break and survive")
+        }
+        if classes.contains(.timber) {
+            evidence.append(
+                StandingEvidence(
+                    "Cross-laminated timber panels in the Ottawa shock tube (Poulin, 2019)",
+                    "Static stiffness within 4–13%, peak 12–25% high (flexure, as tested); shots that left the "
+                        + "panels elastic stay elastic (0.72–1.21 of the peak deflection), nine of twelve that broke "
+                        + "them break or split the model's and three near the threshold hold; the dynamic increase "
+                        + "of 1.28 comes from the same shots",
+                    "validation.md#cross-laminated-timber-panels-in-a-shock-tube"))
+            parts.append(
+                "timber compared on CLT panels in a shock tube: stiffness close, strength 12–25% high")
         }
         var resolution: [String] = []
         if let through = elementsThrough, through <= 6, through >= 4, classes.contains(.reinforcedConcrete) {
@@ -2081,8 +2109,13 @@ struct StandingScene {
         let envelopes = inputs.scenario.envelopeObjects.map(\.id)
         let assumed = envelopes.filter { inputs.scenario.envelopeConstruction(for: $0).source == .assumed }
             .count
-        let vented =
-            inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes && inputs.configuration.gravity == nil
+        let blocks = inputs.scenario.envelopeObjects.filter { object in
+            (object.envelope?.solids ?? []).contains { BuildingEnvelope.role($0) == .block }
+                && inputs.scenario.envelopeConstruction(for: object.id).facadePaneM.map {
+                    $0.x > 0 && $0.y > 0
+                } != false
+        }.count
+        let vented = inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes
         return result(
             .envelopeDamage, .approximation,
             "One way, from each component's load, "
@@ -2155,11 +2188,18 @@ struct StandingScene {
                     + "independent of the blast's effect on their flight: fine near the charge, where fragments "
                     + "lead the shock.",
                 "Concrete by ASCE/SEI 59-11's limits for single-reinforced slabs; brick cracked or fallen, with "
-                    + "no arching.",
+                    + "no arching, a wall rocking against the weight of its own masonry above it.",
             ]
                 + (assumed > 0
                     ? [
                         "\(assumed) of \(envelopes.count) envelopes' construction assumed (0.2 m concrete, 0.3%)."
+                    ]
+                    : [])
+                + (blocks > 0
+                    ? [
+                        "\(blocks) buildings of solid blocks (as map buildings are) taken to hold a window "
+                            + "in each storey of each façade, 1.2 × 1.5 m unless set, judged on the storey's "
+                            + "mean load."
                     ]
                     : [])
                 + (inputs.scenario.structuralObjects.isEmpty ? [] : [Self.envelopesBesideStructures]),

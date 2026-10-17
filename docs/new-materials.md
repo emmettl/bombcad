@@ -160,6 +160,14 @@ not a detailed model.
 2. **Timber shells**: ContinuumKit's orthotropic law ported to the shell layers and tested
    against the released Swift law, then the combined failure criterion, judged against the
    Ottawa CLT panels. Coordinate with Codex first, in case Edgerton's plywood resumes.
+   *Done 17 October 2026:*
+   - Edgerton is parked, so the criterion was proposed to ContinuumKit as `TimberFailure` (its
+     PR 93, merged, not yet released).
+   - It is in the shells with CLT layers and equilibrium shear
+     ([shell model](shell-model.md#timber)).
+   - It is compared with Poulin's panels
+     ([validation](validation.md#cross-laminated-timber-panels-in-a-shock-tube)).
+   - Timber beams are still elastic along the grain (step 1).
 3. **Profiled sheeting** as a steel shell with rib beams, and a fastener law, judged against
    Langdon's panels and the cladding–girt tests.
 4. **Wall ties and joist bearings** for the terraced house, then the three building types as

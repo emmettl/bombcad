@@ -777,7 +777,8 @@ final class EnvelopeComponentRecorder {
                 outerImpulsePaS: values.map(\.x), innerImpulsePaS: values.map(\.y),
                 peakOuterPa: finite(peak[n].x), peakInnerPa: finite(peak[n].y), peakNetPa: finite(peak[n].z),
                 outerMaxPa: largest?.map { finite($0.x) }, innerMaxPa: largest?.map { finite($0.y) },
-                truncated: truncated, invalid: peak[n].w != 0)
+                truncated: fromArrival ? start.map { elapsedBins - $0 > capacity } ?? false : truncated,
+                invalid: peak[n].w != 0)
         }
     }
 }

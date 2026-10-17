@@ -66,9 +66,10 @@ public final class BlastSolver {
     /// Lets the envelopes' glazing break in the air (building-envelopes.md, "Venting"): each pane of
     /// the components recorded (`configureEnvelopeComponents`, which must come first) takes the glass
     /// of its building's construction, steps it with the air, and opens in the air when it breaks;
-    /// each building's rooms are followed. In refined air the finer cells under a broken pane open
-    /// too, in the patches placed and those placed later. Not with gravity, whose still air varies
-    /// with height.
+    /// each wall, roof and slab likewise takes its one-way systems (`EnvelopeWallFailure`) and
+    /// opens when its damage is failed; each building's rooms are followed. In refined air the
+    /// finer cells under an opened component open too, in the patches placed and those placed
+    /// later; under gravity an opened cell holds the background at rest at its height.
     public func configureEnvelopeVenting(
         objects: [SceneObject], constructions: (UUID) -> EnvelopeConstruction
     )
@@ -76,9 +77,6 @@ public final class BlastSolver {
     {
         guard let recorder = envelopeComponentRecorder else {
             throw BlastError.allocationFailed("envelope venting without the component recorder")
-        }
-        guard configuration.gravity == nil else {
-            throw BlastError.allocationFailed("envelope venting with gravity in the air")
         }
         let mask = try stationaryMask(observing: objects)
         envelopeVenting = try EnvelopeVenting(
@@ -454,6 +452,11 @@ public final class BlastSolver {
     /// beside it nearest the point.
     private let gaugePointBuffer: MTLBuffer
     private var gaugePoints: [SIMD3<Float>?] = []
+    /// The congestion's per-cell fields and the turbulence its obstacles make; nil without
+    /// congestion, whose code is then left out of the kernels.
+    var congestion: CongestionBuffers?
+    /// Its per-cell porosity and drag (`CongestionField.porosityDrag`).
+    var congestionBuffer: MTLBuffer? { congestion?.porosityDrag }
     /// The scenario's rigid blocks, whose outline the refined air follows at its own resolution;
     /// What to cut out of the air on the GPU at the end of each batch that reaches its time limit,
     /// as one landing on a frame does, for `airSlice(region:stride:)` and
@@ -765,7 +768,7 @@ public final class BlastSolver {
         let fine = refinedGas()
         var total = SIMD2<Double>.zero
         for index in 0..<grid.cellCount where mask[index] == 0 && fine?.covered.contains(index) != true {
-            total += SIMD2(Double(species[index].x), Double(species[index].y)) * fluidShare(index)
+            total += SIMD2(Double(species[index].x), Double(species[index].y)) * openShare(index)
         }
         total = total * volume + (fine?.species ?? .zero)
         return (total.x, total.y)
@@ -1654,6 +1657,7 @@ public final class BlastSolver {
         lastBatchGPUProfile = nil
         lastFluidStep = 0
         checkpointSubsteps = 0
+        congestion?.reset()
         setUpRadiativeCooling()
         for body in bodies { body.reset() }
         settlements = []
@@ -2156,6 +2160,8 @@ public final class BlastSolver {
             encoder.setBuffer(terrainCut?.walls ?? noSpecies, offset: 0, index: 22)
             encoder.setBuffer(terrainCut?.defects ?? noSpecies, offset: 0, index: 23)
             encoder.setBuffer(terrainCut?.ceilings ?? noSpecies, offset: 0, index: 24)
+            // Not read without congestion.
+            encoder.setBuffer(congestionBuffer ?? noSpecies, offset: 0, index: 25)
             for (n, axis) in axes.enumerated() where !asleep {
                 if configuration.periodicSides { encodePeriodicHalo(encoder, uniforms: uniforms) }
                 uniforms.axis = UInt32(axis)
@@ -2193,6 +2199,30 @@ public final class BlastSolver {
                     encoder.setBuffer(tileFlagBuffer, offset: 0, index: 10)
                 }
                 current = 1 - current
+            }
+            if let congestion, !asleep {
+                // The congestion's drag after the step's sweeps, then the turbulence its obstacles
+                // make (see `congestionDrag` and `obstacleTurbulence`).
+                var fields = uniforms
+                encoder.setComputePipelineState(congestion.drag)
+                encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
+                encoder.setBuffer(congestion.porosityDrag, offset: 0, index: 1)
+                encoder.setBuffer(maskBuffer, offset: 0, index: 2)
+                encoder.setBuffer(controlBuffer, offset: 0, index: 3)
+                encoder.setBytes(&fields, length: MemoryLayout<SolverUniforms>.stride, index: 4)
+                encoder.setBuffer(congestion.parallel, offset: 0, index: 5)
+                encoder.setBuffer(congestion.turbulence[congestion.current], offset: 0, index: 6)
+                dispatchGrid(encoder, pipeline: congestion.drag)
+                encoder.setComputePipelineState(congestion.turbulenceUpdate)
+                encoder.setBuffer(congestion.generation, offset: 0, index: 2)
+                encoder.setBuffer(congestion.parallel, offset: 0, index: 3)
+                encoder.setBuffer(maskBuffer, offset: 0, index: 4)
+                encoder.setBuffer(controlBuffer, offset: 0, index: 5)
+                encoder.setBytes(&fields, length: MemoryLayout<SolverUniforms>.stride, index: 6)
+                encoder.setBuffer(congestion.turbulence[congestion.current], offset: 0, index: 7)
+                encoder.setBuffer(congestion.turbulence[1 - congestion.current], offset: 0, index: 8)
+                dispatchGrid(encoder, pipeline: congestion.turbulenceUpdate)
+                congestion.current = 1 - congestion.current
             }
             if let refinement, refining {
                 let coarse = coarseView(species: currentSpecies)
@@ -2247,7 +2277,8 @@ public final class BlastSolver {
                     encoder, state: stateBuffers[current],
                     species: hasSpecies ? speciesBuffers[current] : nil,
                     mask: maskBuffer,
-                    rigidMask: rigidMaskBuffer, viscosity: mixingViscosity(), control: controlBuffer)
+                    rigidMask: rigidMaskBuffer, viscosity: mixingViscosity(), control: controlBuffer,
+                    congestion: congestion)
             }
 
             phase("mechanics")
@@ -2452,7 +2483,9 @@ public final class BlastSolver {
         }
         return BatchResult(
             steps: Int(control.activeSteps), elapsed: elapsed, lastTimeStep: Double(lastStep),
-            isStable: control.batchTime.isFinite && control.dt.isFinite,
+            // A NaN anywhere in the air makes the wave speed NaN, which the step's maximum
+            // passes over, so the step itself stays finite: the overpressure says it.
+            isStable: control.batchTime.isFinite && control.dt.isFinite && !control.maxOverpressure.isNaN,
             maxOverpressure: control.maxOverpressure, sweptFraction: swept,
             refinedTiles: refinement?.patchCount ?? 0, finerRefinedTiles: finerRefinement?.patchCount ?? 0,
             firstLevelSubsteps: levelSubsteps(control, level: 0),
@@ -2727,6 +2760,26 @@ public final class BlastSolver {
                 MTLSize(width: venting.paneCount, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))
         }
+        if venting.wallCount > 0 {
+            var counts = SIMD2<UInt32>(UInt32(venting.wallCount), UInt32(venting.paneCount))
+            encoder.setComputePipelineState(venting.wallPipeline)
+            encoder.setBuffer(recorder.current, offset: 0, index: 0)
+            encoder.setBuffer(venting.wallBuffer, offset: 0, index: 1)
+            encoder.setBuffer(venting.wallSystemBuffer, offset: 0, index: 2)
+            encoder.setBuffer(venting.wallTableBuffer, offset: 0, index: 3)
+            encoder.setBuffer(venting.wallStateBuffer, offset: 0, index: 4)
+            encoder.setBuffer(venting.wallClockBuffer, offset: 0, index: 5)
+            encoder.setBuffer(venting.statusBuffer, offset: 0, index: 6)
+            encoder.setBuffer(venting.openedBuffer, offset: 0, index: 7)
+            encoder.setBuffer(controlBuffer, offset: 0, index: 8)
+            encoder.setBytes(&counts, length: 8, index: 9)
+            encoder.setBuffer(venting.ownerRooms, offset: 0, index: 10)
+            encoder.setBuffer(venting.roomDispatch, offset: 0, index: 11)
+            encoder.setBuffer(venting.roomList, offset: 0, index: 12)
+            encoder.dispatchThreads(
+                MTLSize(width: venting.wallCount, height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))
+        }
         if venting.paneCellCount > 0 {
             var count = UInt32(venting.paneCellCount)
             encoder.setComputePipelineState(venting.openPipeline)
@@ -2742,6 +2795,8 @@ public final class BlastSolver {
             encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 9)
             encoder.setBuffer(controlBuffer, offset: 0, index: 10)
             encoder.setBytes(&count, length: 4, index: 11)
+            // Read only under gravity.
+            encoder.setBuffer(gravityTable(scale: 1) ?? venting.statusBuffer, offset: 0, index: 12)
             encoder.dispatchThreads(
                 MTLSize(width: venting.paneCellCount, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))
@@ -2766,6 +2821,7 @@ public final class BlastSolver {
             encoder.setBuffer(venting.roomResults, offset: 0, index: 4)
             encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 5)
             encoder.setBuffer(controlBuffer, offset: 0, index: 6)
+            encoder.setBuffer(gravityTable(scale: 1) ?? venting.roomResults, offset: 0, index: 7)
             encoder.dispatchThreadgroups(
                 indirectBuffer: venting.roomDispatch, indirectBufferOffset: 0,
                 threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
@@ -2845,7 +2901,7 @@ public final class BlastSolver {
             var mass = 0.0
             var energy = 0.0
             for index in 0..<grid.cellCount where mask[index] == 0 && fine?.covered.contains(index) != true {
-                let share = fluidShare(index)
+                let share = openShare(index)
                 mass += Double(cells[index].density) * share
                 energy += Double(cells[index].energy) * share
             }
@@ -2872,7 +2928,7 @@ public final class BlastSolver {
                 total +=
                     SIMD3(
                         Double(cells[index].momentumX), Double(cells[index].momentumY),
-                        Double(cells[index].momentumZ)) * fluidShare(index)
+                        Double(cells[index].momentumZ)) * openShare(index)
             }
             return total * volume + (fine?.momentum ?? .zero)
         }
@@ -2902,7 +2958,7 @@ public final class BlastSolver {
             + bodies.reduce(0) { $0 + $1.memoryFootprint }
             + refinementLevels.reduce(0) { $0 + $1.memoryFootprint }
             + (experimentalBoxDefinition?.length ?? 0) + (experimentalBoxMask?.length ?? 0)
-            + (experimentalBoxImpulse?.length ?? 0)
+            + (experimentalBoxImpulse?.length ?? 0) + (congestion?.memoryFootprint ?? 0)
             + (hasBody
                 ? wallVelocityBuffer.length + (occupancyBuffer?.length ?? 0)
                     + (debrisExchangeBuffer?.length ?? 0) + (debrisAreaBuffer?.length ?? 0) : 0)
@@ -3012,8 +3068,10 @@ public final class BlastSolver {
         let mixing = configuration.mixing != nil
         let limit = configuration.afterburnLimit != nil
         let cut = terrainCut != nil
+        let porous = congestionBuffer != nil
         let key =
             16 * Int(model.rawValue) + (gravity ? 1 : 0) + (mixing ? 2 : 0) + (limit ? 4 : 0) + (cut ? 8 : 0)
+            + (porous ? 1024 : 0)
         if let kernels = cellKernelsByModel[key] { return kernels }
         var constants = MTLFunctionConstantValues()
         var value = model.rawValue
@@ -3022,6 +3080,7 @@ public final class BlastSolver {
         if mixing { constants = ShaderLibrary.withMixing(constants) }
         if limit { constants = ShaderLibrary.withBurnLimit(constants) }
         if cut { constants = ShaderLibrary.withCutCells(constants) }
+        if porous { constants = ShaderLibrary.withPorousAir(constants) }
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
             try ShaderLibrary.pipeline(name, in: library, constants: constants)
         }

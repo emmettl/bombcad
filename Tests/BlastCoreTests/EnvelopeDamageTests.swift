@@ -106,6 +106,65 @@ struct EnvelopeDamageTests {
         #expect(heavy?.levels == .failed ... .failed && heavy?.failedAtS != nil)
     }
 
+    @Test("Stone carrying the storeys above rocks against their weight and holds where a top storey falls")
+    func overburden() {
+        let owner = UUID()
+        let stone = EnvelopeConstruction(
+            objectID: owner, walls: .unreinforcedMasonry, wallThicknessM: 0.5, source: .user, detail: "")
+        // A façade strip a storey tall at the foot, in the middle and at the top of a building 9 m
+        // tall, under the same 40 kPa, 0.2 s pulse.
+        func strip(_ z: Float) -> EnvelopeComponentLoad {
+            load(
+                "s\(z)", .facade, owner: owner, region: Box(min: SIMD3(0, 0, z), max: SIMD3(6, 0.5, z + 3)),
+                axis: 1, outer: pulse(40e3, over: 0.2, total: 0.5))
+        }
+        let foot = EnvelopeDamageAssessment.assess(strip(0), construction: stone, buildingTop: 9)
+        let top = EnvelopeDamageAssessment.assess(strip(6), construction: stone, buildingTop: 9)
+        let unloaded = EnvelopeDamageAssessment.assess(strip(0), construction: stone)
+        #expect(top?.levels == .failed ... .failed && unloaded?.levels == .failed ... .failed)
+        #expect(foot.map { $0.levels.upperBound < .failed } == true, "\(String(describing: foot?.levels))")
+        // Its rocking resistance, 8 P t / h² with P the 6 m of stone above.
+        var masonry = StructureMaterial.masonry
+        masonry.steel = nil
+        let p = Double(masonry.density) * 9.81 * 0.5 * 6
+        let system = EnvelopePanel.unreinforcedMasonry(
+            thickness: 0.5, material: masonry, a: 3, b: 6, axialLoad: p, height: 3)
+        #expect(abs(system.backbone[0].y - 8 * p * 0.5 / 9) < 1e-6 * system.backbone[0].y)
+        // The whole building, assessed together, gives its foot the stone above.
+        let building = EnvelopeDamageAssessment.assess(
+            loads: [strip(0), strip(3), strip(6)], constructions: { _ in stone })
+        #expect(
+            building.first?.components.filter { $0.kind != .pane }.map(\.levels.upperBound)
+                == [.heavy, .failed, .failed])
+    }
+
+    @Test("A façade strip holds a window where nothing says otherwise, which breaks under a strong load")
+    func facadeGlazing() {
+        let owner = UUID()
+        let strip = Box(min: SIMD3(0, 0, 0), max: SIMD3(6, 0.5, 3))
+        func building(_ peak: Double, pane: SIMD2<Float>? = nil) -> EnvelopeBuildingDamage? {
+            var construction = EnvelopeConstruction.assumed(objectID: owner)
+            construction.facadePaneM = pane
+            return EnvelopeDamageAssessment.assess(
+                loads: [
+                    load("f", .facade, owner: owner, region: strip, axis: 1, outer: pulse(peak, over: 0.1))
+                ],
+                constructions: { _ in construction }
+            ).first
+        }
+        let strong = building(8e3)
+        let weak = building(500)
+        #expect(strong?.panes == 1 && strong?.panesBroken == 1 && strong?.firstPaneBrokenAtS != nil)
+        #expect(weak?.panes == 1 && weak?.panesBroken == 0)
+        // Glass broken alone colours the building so.
+        #expect(strong.map { EnvelopeDamageColour.code($0) } == 2)
+        #expect(building(8e3, pane: .zero)?.panes == 0)
+        // A larger pane breaks under less.
+        let medium = building(3e3)
+        let large = building(3e3, pane: SIMD2(2, 2.5))
+        #expect((medium?.panesBroken ?? 1) <= (large?.panesBroken ?? 0))
+    }
+
     @Test("The view's shader draws the same six colours as the palette")
     func shaderPalette() throws {
         let shader = try String(

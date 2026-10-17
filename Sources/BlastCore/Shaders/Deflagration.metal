@@ -60,6 +60,7 @@ struct DeflagrationUniforms {
     float regionMaxX;
     float regionMaxY;
     float regionMaxZ;
+    float obstacleTurbulenceScale; // 1.48 a, for the congestion's obstacle turbulence
     uint speedTableCount;          // a tabulated burning velocity: points (phi, m/s); 0 for Gulder's
     float speedPhi[16];
     float speedValue[16];
@@ -117,6 +118,10 @@ kernel void advanceFlame(const device Cell *state [[buffer(0)]],
                          const device float *eddyViscosity [[buffer(4)]],
                          const device StepControl &control [[buffer(5)]],
                          constant DeflagrationUniforms &d [[buffer(6)]],
+                         const device float4 *congestion [[buffer(7)]],
+                         const device float4 *blockage [[buffer(8)]],
+                         const device float4 *parallel [[buffer(9)]],
+                         const device float2 *obstacleTurbulence [[buffer(10)]],
                          uint3 tid [[thread_position_in_grid]]) {
     if (tid.x >= d.nx || tid.y >= d.ny || tid.z >= d.nz) {
         return;
@@ -194,6 +199,8 @@ kernel void advanceFlame(const device Cell *state [[buffer(0)]],
         float radius = length(centreOfCell - ignition);
         speed *= pow(clamp(radius / d.wrinklingRadius, 1.0f, d.wrinklingLimit), d.wrinklingPower);
     }
+    float resolvedWrinkling = 0.0f;  // with congestion: the sub-grid turbulence's wrinkling and u'
+    float subgridVelocity = 0.0f;
     if (d.turbulenceScale > 0.0f) {
         // Wrinkling by sub-grid turbulence (Bauwens et al. 2008, eq. 5, after Bradley, Lau and
         // Lawes 1992): max(1, 1.48 a (u'/S_L)^(1/2) (dx/delta)^(1/6)), u' the sub-grid velocity the
@@ -202,7 +209,41 @@ kernel void advanceFlame(const device Cell *state [[buffer(0)]],
         float turbulent = eddyViscosity[index] * d.velocityPerViscosity;
         float thickness = d.kinematicViscosity / (compression * laminar);
         float wrinkling = d.turbulenceScale * sqrt(turbulent / laminar) * pow(dx / thickness, 1.0f / 6.0f);
-        speed *= max(wrinkling, 1.0f);
+        if (porousAir) {
+            resolvedWrinkling = wrinkling;
+            subgridVelocity = turbulent;
+        } else {
+            speed *= max(wrinkling, 1.0f);
+        }
+    }
+    if (porousAir) {
+        // Congestion (docs/congestion-model.md). The obstacles' turbulence wrinkles the flame by
+        // Bradley's correlation too, at its own u' = sqrt(2k/3) and length scale C_mu^(3/4)
+        // k^(3/2) / epsilon (at most a cell); the two wrinklings add as their squares, which
+        // Bradley's form has growing as u' L^(1/3).
+        float2 obstacle = obstacleTurbulence[index];
+        float obstacleVelocity = sqrt(2.0f / 3.0f * obstacle.x);
+        float scale = min(0.1643f * obstacle.x * sqrt(obstacle.x) / max(obstacle.y, 1e-12f), dx);
+        float thickness = d.kinematicViscosity / (compression * laminar);
+        float obstacleWrinkling = d.obstacleTurbulenceScale * sqrt(obstacleVelocity / laminar)
+            * pow(scale / thickness, 1.0f / 6.0f);
+        speed *= max(sqrt(resolvedWrinkling * resolvedWrinkling + obstacleWrinkling * obstacleWrinkling), 1.0f);
+        // The flame's folding round the obstacles below the grid (PDRFoam's basicSubGrid XiEq):
+        // 1 + max(2.2 sqrt(b), min(0.34 |u| / u' sqrt(b), 1.6)) min(n, 1), n the count of obstacles
+        // across the flow and b their blockage across it per square root of that count.
+        float4 blocked = blockage[index];
+        float magnitude = length(velocity);
+        float3 along = velocity / (magnitude + 1e-4f);
+        along *= along;
+        float count = max(blocked.w - dot(along, parallel[index].xyz), 1e-4f);
+        float folding = sqrt(dot(along, blocked.xyz) / sqrt(count));
+        float velocityScale = sqrt(subgridVelocity * subgridVelocity + obstacleVelocity * obstacleVelocity);
+        speed *= 1.0f
+            + max(2.2f * folding, min(0.34f * magnitude / max(velocityScale, 1e-4f) * folding, 1.6f))
+                * min(count, 1.0f);
+        // The front's area is the whole cell's, its mixture only the open share's (PDRFoam's b
+        // equation): it burns the open volume's faster by 1/beta_v.
+        speed /= congestion[index].x;
     }
 
     if (d.externalFactor != 1.0f) {
