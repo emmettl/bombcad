@@ -271,6 +271,12 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell
   to 2–4e-8 over 120 steps, refined once (650 patches along the slope) or twice (4,200 at the
   second level), also with afterburning and gravity (`TerrainCutCellTests`). Without terrain, or
   with cut cells off, the refined runs' digests are unchanged to the bit, once or twice.
+- **A block on a sliver.** A cell less than half air with a block standing on the cell above it
+  is solid (since 17 October 2026): its air would be shut in between the ground and the block,
+  and the difference its column passes up would come back to it, magnified (1 − α)/α times, every
+  step. A building whose base lay below the ground made such cells in Beirut's district stage
+  (a twelfth air under the silo, 500 t 70 m off), and the run went to NaN. A structure that comes
+  to rest on a sliver during a run is not caught by this rule.
 - **A deflagration's air** is cut too, since 17 October 2026 (it kept the staircase before). Its
   mixture is carried across cut cells at the same limited linear mass fractions on both sides of
   each face, with the sub-grid mixing's carrying through each face's open part, and near the cut
