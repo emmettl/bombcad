@@ -2067,6 +2067,12 @@ struct StandingScene {
                     + "within a body, checked for momentum and energy but never against a test; they must start "
                     + "apart and never bond.")
         }
+        // Open faces too near: their reflections move the response after the positive phase.
+        if let note = inputs.scenario.tightFacesNote {
+            resolution.append(
+                note + " On Tyndall's CLT building a domain this tight gave 29 mm at the first storey where "
+                    + "18 mm is converged.")
+        }
         let configuration = inputs.configuration
         if configuration.airSleepThreshold > 0 || configuration.airSleepCrossings > 0 {
             resolution.append(

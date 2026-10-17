@@ -143,6 +143,24 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
         #expect(office[.envelopeDamage]?.bands?.contains { $0.quantity == "When a pane breaks" } == true)
     }
 
+    /// A structure whose open faces are too near carries the scene's own warning in its standing.
+    @Test func tightOpenFacesAreSaidBesideTheStructure() throws {
+        var scenario = ScenarioPreset.blastWall.scenario
+        let wall = try #require(scenario.structure?.solids.first)
+        // Bring the top down to just over the wall: a face far nearer than 4 m/kg^(1/3).
+        scenario.domainSize.z = wall.max.z + 0.5
+        let note = try #require(scenario.tightFacesNote)
+        let tight = standing(scenario)
+        #expect(tight[.structuralResponse]?.resolution.contains { $0.hasPrefix(note) } == true)
+        var open = ScenarioPreset.blastWall.scenario
+        open.domainSize *= 4
+        if open.tightFacesNote == nil {
+            #expect(
+                standing(open)[.structuralResponse]?.resolution.contains { $0.contains("Open faces near") }
+                    == false)
+        }
+    }
+
     @Test func everyOptionIsSetBySomeInput() {
         let reached = Set(
             StandingTable.fields.values.flatMap { field -> [ModelOption] in
