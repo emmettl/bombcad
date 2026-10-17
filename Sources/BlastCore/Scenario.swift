@@ -381,7 +381,8 @@ extension BlastSolver {
             cut = TerrainCutGeometry(
                 terrain: terrain, grid: grid,
                 samples: TerrainCutGeometry.samples(
-                    ratio: configuration.refinement, levels: configuration.refinementLevels))
+                    ratio: Self.keepsAirUnrefined(scenario) ? 1 : configuration.refinement,
+                    levels: configuration.refinementLevels))
             if cut?.cutColumns.isEmpty == true { cut = nil }
         }
         if let cut {
