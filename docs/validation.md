@@ -2627,7 +2627,10 @@ an aluminised charge, and say its TNT equivalence is low for impulse.
   grade's 16%;
 - the underside 1 m above the ground (not given);
 - the slab without its own weight, since the sensors read from the slab already resting under it,
-  and a slab given its weight as the run starts sags 2–3 mm.
+  and a slab given its weight as the run starts sags 2–3 mm. Since structures are [settled under
+  their own weight](structural-model.md#settling-under-its-own-weight) it can carry it
+  (`--weight`): T1's centre then peaks at 3.34 mm rather than 3.29, the same 0.96 mm within 2 ms
+  of the shock.
 
 | Test | Top-face pressure, centre (MPa) | 1 m out (MPa) | Underside centre, measured | Model, within 2 ms of the shock | Model, peak |
 |---|---|---|---|---|---|
