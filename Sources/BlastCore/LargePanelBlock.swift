@@ -168,14 +168,25 @@ public enum LargePanelBlock {
         switch event {
         case .gas:
             let z0 = base(ofStorey: gasStorey)
-            let floor = z0 - h  // the top of the floor below
-            let ceiling = z0 + 27 * h
+            // The joints' gaps are a mesh's device (each wall and floor a part, a gap of one
+            // element apart); in the building they are mortar. The air sees a cell as solid when
+            // a third of it is full of elements, and on cells finer than two of them (0.175 m)
+            // a row of cells along each gap is left open: the flat vented through slots round
+            // every wall, 4.5 m² of them, and its gas burnt at under 0.3 kPa. So the gaps above
+            // and below the corner flat, out to the far side of its cross wall, are filled with
+            // rigid scenery for the air, as the mortar bed and screed: they do not touch the
+            // panels, and stay where they are when the panels move.
+            let floor = z0  // the top of the bed on the floor below
+            let ceiling = z0 + 26 * h
+            let beds = [z0 - h, z0 + 26 * h].map {
+                Box(min: o + SIMD3(0, 0, $0), max: o + SIMD3(wallLines[1].high, depth, $0 + h))
+            }
             let bay = bays[0]
             let region = Box(
                 min: o + SIMD3(bay.low, 0.5 * depth, floor), max: o + SIMD3(bay.high, depth - h, ceiling))
             let cooker = o + SIMD3(bay.high - 0.5, depth - h - 0.4, z0 + 0.9)
             var scenario = Scenario(
-                name: name, domainSize: SIMD3(o.x + length + 4, o.y + depth + 4, height + 4), boxes: [],
+                name: name, domainSize: SIMD3(o.x + length + 4, o.y + depth + 4, height + 4), boxes: beds,
                 charge: Charge(mass: 0, position: cooker),
                 gauges: [
                     Gauge(
