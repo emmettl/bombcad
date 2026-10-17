@@ -6,7 +6,8 @@ import simd
 /// `scenebench district-compare <district-scene's inputs> [--radius 1000] [--until 3]
 /// [--window 0.5] [--budget 2048] [--ground saturated] [--observers rigby.csv] [--pane 1.2,1.5]
 /// [--design-probability 0.008] [--glass 0.006,0.004] [--staircase] [--bare] [--trace]
-/// [--save-loads folder] --out folder`: the district's event, and what an accident survey
+/// [--save-loads folder] [--refine 2 --levels 2 --threshold 0.005 --refine-memory GB --hold Pa]
+/// --out folder`: the district's event, and what an accident survey
 /// can be set against: arrival times at observers' positions (Rigby et al.'s CSV: lat, lon, and
 /// the time seen), peak overpressures on a line of gauges over the open side, and each building's
 /// glass and structure from its components' histories, by distance from the charge.
@@ -140,6 +141,17 @@ enum DistrictComparison {
         // wave), or the bare core with `--bare`; whole cells for the terrain with `--staircase`.
         var configuration = args.contains("--bare") ? SolverConfiguration() : .recommended
         configuration.terrainCutCells = !args.contains("--staircase")
+        // Refined air: `--refine 2 --levels 2 --threshold 0.005 --refine-memory 18` (GB), and
+        // `--hold 500` (Pa) holding it beside the façades while they are loaded.
+        if let ratio = value("refine").flatMap(Int.init) { configuration.refinement = ratio }
+        if let levels = value("levels").flatMap(Int.init) { configuration.refinementLevels = levels }
+        if let threshold = value("threshold").flatMap(Float.init) {
+            configuration.refinementThreshold = threshold
+        }
+        if let memory = value("refine-memory").flatMap(Double.init) {
+            configuration.refinementMemory = Int(memory * Double(1 << 30))
+        }
+        configuration.refinementHoldsEnvelopes = value("hold").flatMap(Float.init)
         if let name = value("ground") {
             guard let type = GroundType(rawValue: name) else {
                 throw BlastError.allocationFailed("--ground \(name)")
@@ -197,6 +209,9 @@ enum DistrictComparison {
         }
         let wall = DistrictBenchmark.seconds(start)
         print(String(format: "Ran to %.3f s in %d steps, %.0f s", solver.time, steps, wall))
+        for (level, pool) in solver.refinementPools.enumerated() {
+            print("Refined level \(level + 1): \(pool)")
+        }
 
         // Arrival: the first sample 500 Pa above the gauge's first.
         let mass = Double(scene.charge.mass)
