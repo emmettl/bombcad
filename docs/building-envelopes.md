@@ -455,14 +455,20 @@ load–mass factors through yield. `EnvelopePanel` builds the systems:
   plate (Timoshenko) on the mean of the gross and cracked sections, elastic–perfectly plastic.
 - **Unreinforced masonry**: elastic until the largest moment reaches f_t t²/6, then rocking with
   the resistance falling to nothing at a deflection of its thickness; no arching.
-- **Annealed glass**: elastic until the largest bending stress reaches its strength (the same 45 MPa
-  as the detailed model's), then nothing; membrane stiffening is left out, so it breaks early.
+- **Annealed glass** (since 17 October): D. M. Moore's large-deflection plate (JPL 80-34) as UFC
+  3-340-02's figures 6-52 and 6-53 give it, simply supported, membrane action stiffening it; it
+  breaks when its largest principal stress, weighed over time by glass's static fatigue (Brown's
+  integral, exponent 16), reaches the median 60 s strength of ASTM E1300's flaw model with the
+  whole pane at that stress, or at ten thicknesses' deflection. Before, it was elastic on
+  small-deflection theory until its bending stress reached 45 MPa, which broke Monk and Clubley's
+  panes at 0.40–0.46 of the measured time ([validation](validation.md#window-glass)).
 
 It matches UFC's worked examples 3A-5, 3A-6(a) and 4A-1 within 1% (`EnvelopeSDOFTests`).
 
 ```sh
 swift build -c release --product scenebench
-.build/release/scenebench envelope-sdof <damage references> [--edges=fixed|simple] [--out=<file.json>]
+.build/release/scenebench envelope-sdof <damage references> [--edges=fixed|simple] \
+    [--glass=large|small|large-at-45] [--out=<file.json>]
 ```
 
 Driven by each component's load on the envelope twins of the [damage references](#damage-references)
@@ -473,9 +479,10 @@ and set against the same component of the detailed building free to respond (sum
 - **The loads are not the error.** SDOF on the envelope's loads and on the detailed run's own give
   the same rotation (median ratio 1.02 over 87 components past 0.05°); they part only on the side
   and back walls of buildings already breached.
-- **Glass**: of 52 panes, SDOF breaks the 45 the detailed buildings break, a median 1.7 ms early
-  (0.59–1.20 of the detailed time), and 7 more that the detailed buildings keep, all under the
-  lightest loads (a peak net pressure of 7.3 kPa at most): wrong on the safe side.
+- **Glass**: of 52 panes, SDOF breaks the 45 the detailed buildings break, a median 0.3 ms
+  later (0.67–1.31 of the detailed time), and 6 more that the detailed buildings keep, all under
+  light loads (a peak net pressure of 3.7–7.3 kPa). The small-deflection panes before it (with
+  fixed edges) broke the same 45 a median 1.7 ms early (0.59–1.20) and 7 more.
 - **Concrete walls** (34 past 0.1°): with fixed edges SDOF gives a median 0.59 of the detailed
   rotation, unsafe; with simply supported edges 1.19. The facing wall lies between the two
   (at 50, 200 and 500 kg: 0.61/1.19, 0.70/1.24 and 1.03/1.87 of the detailed); side walls of a
@@ -491,9 +498,10 @@ and set against the same component of the detailed building free to respond (sum
 - **Not venting**: the envelope's inside stays at ambient, where the detailed buildings' rise to
   0.1–0.4 kPa with concrete walls whole (1.0 kPa behind cracked brick at 50 kg), 1–2.6 kPa once panes break at 10–50 kg and 11–22 kPa at 200–500 kg.
   A one-way fill (each pane an orifice into the room once SDOF breaks it, driven by its outer
-  pressure, the room's air compressing adiabatically) gives 2.1, 5.7, 11.3 and 19.5 kPa against
-  the detailed gauges' 1.0, 2.6, 11.0 and 22.4 at 10, 50, 200 and 500 kg (0.87–2.23 times the
-  detailed peaks), mostly above. It cannot see a breached concrete wall (1.6 and 6.5 kPa at 200 and 500 kg).
+  pressure, the room's air compressing adiabatically) gives 0.9, 4.1, 9.1 and 16.7 kPa against
+  the detailed gauges' 1.0, 2.6, 11.0 and 22.4 at 10, 50, 200 and 500 kg (0.75–1.60 times the
+  detailed peaks; 0.87–2.23 with the small-deflection panes, which broke sooner). It cannot see a
+  breached concrete wall (1.6 and 6.5 kPa at 200 and 500 kg).
 
 **In the app.** Runs of envelope-only scenes record each component's load (the
 [recorder](#surface-exposure-and-loads) keeps both sides' histories at 0.1 ms) and judge every building
@@ -521,12 +529,93 @@ one way as the run goes, at most once a second and again when it stops:
   - Headless, `BombCAD run … --envelope-damage <file.json>` writes the same JSON and prints a line
     for each building.
 
-These are comparisons with the detailed model on one mesh, but for glass, which has one with
-measurement: Monk and Clubley's twelve timed annealed panes in the Shoeburyness tunnel, all
-broken, which the app's glass breaks at 0.40–0.46 of the measured time, at a fifth of the
-measured deflection, as membrane action is left out ([validation](validation.md#window-glass)).
-Freestanding walls (Alsubaei's, Keys's) would need cantilever systems, and remain
-to be compared.
+These are comparisons with the detailed model on one mesh, but for glass, which has two with
+measurement and a design standard: Monk and Clubley's twelve timed annealed panes in the
+Shoeburyness tunnel, all broken, which the app's glass breaks at 0.82–1.07 of the measured time,
+and ASTM E1300's load resistance, whose stresses it gives within 8% and which it breaks at
+0.57–0.72 of ([validation](validation.md#window-glass)).
+Freestanding walls and walls spanning one way are compared with measured walls (below).
+
+## Freestanding walls
+
+A wall whose foot is held (on the ground or a slab) and whose top is not is judged as a cantilever
+rather than a panel on its edges; a slab or canopy on its top holds it only if it also rests on another
+wall. The load is the recorder's, turned to push from the face the blast strikes (a wall standing
+alone has no inside to tell which face is its outer one). `EnvelopePanel`'s cantilever systems:
+
+- **Reinforced concrete**: the base's moment capacity on dynamic strengths, the ultimate unit
+  resistance of a cantilever under a uniform load r_u = 2 M_N / L² (UFC 3-340-02 Table 3-1), the
+  stiffness 8 E I / L⁴ (Table 3-8) on the mean of the gross and cracked sections, Biggs's load–mass
+  factors for a cantilever, 0.65 elastic and 0.66 plastic (UFC Table 3-12), and the support rotation
+  atan(top / L) (UFC Table 3-5), graded by ASCE/SEI 59-11's limits as panels are. A mass carried on
+  its top (a canopy) adds M / (K_M L) to its mass per area, but only as built: the app does not count it.
+- **Unreinforced masonry**: elastic on its gross section until its base cracks, at the moment
+  (f_t + σ) t² / 6 with σ its weight's stress there (f_t nothing for a wall stood on the ground), then
+  rocking about its base's leeward edge as a rigid block, its weight resisting by ρ g t (t − x) / L at
+  a top deflection x, nothing once the top is a thickness out and its weight passes over the edge;
+  followed for 3 s after the load, so that a slow topple is seen. Graded uncracked, cracked or fallen.
+
+```sh
+swift build -c release --product blastbench
+.build/release/blastbench envelope-walls [--cases alsubaei-half,keys-WR1A,…] [--out <dir>] [--from <dir>]
+```
+
+Each wall is put in its test's scene as an envelope (`PerimeterWallTests`' and `MasonryDebrisTests`'
+geometry and charge, the wing walls rigid, the recommended air on 50 and 100 mm cells), its loads
+recorded, and judged as built (its bars, depths and strengths) and by the app's own assessment of the
+construction one would give it (17 October 2026):
+
+| Wall | Charge | Cantilever, as built | The app's assessment | Measured | The detailed model |
+|---|---|---|---|---|---|
+| Alsubaei, half-scale concrete, 1 m high, 0.2 m | 14 kg ANFO at 2 m | top 94 mm, 5.4°, hazardous | 4.2°, heavy | light cracking at the foot, no significant deformation (after 12 shots) | clamped: top 37 mm (2.1°); on its footing in sand it rocks, 196 mm |
+| Alsubaei, canopied concrete, 2 m stem, 0.4 m | 125 kg at 4 m | top 61 mm, 1.7°, moderate | 7.2°, hazardous (no canopy mass) | unfaced: cracks at the foot and across the back, no significant deformation; foam-faced: 7–35 mm at mid-height | clamped: top 54 mm, mid-height 25 mm |
+| Alsubaei, reinforced blockwork, 2 m, 0.4 m | 25 kg at 4 m | top 32 mm, 0.9°, moderate | 0.4°, moderate (as concrete) | top 28 mm; bed joints cracked | top 37 mm |
+| The same | 125 kg at 4 m | 11.8°, failed | 5.4°, hazardous (as concrete) | collapsed | comes apart |
+| Keys, single-leaf brick, 2 m, 102.5 mm, WR1A / WR1B / WR2C | 41 kg TNT at 10.6 / 13 / 15 m | falls at 0.07 / 0.11 / 0.17 s | the same | all broke and fell | falls as one column |
+
+Six of the seven outcomes are as measured. The miss is the half-scale wall, which both the
+cantilever and the detailed model bend far past the light cracking seen: the safe side, and the
+validation record's air gives that close-in ANFO wall a load a tenth above the design curves', which
+may be more than it took. The blockwork's top is within 16% of its double-integrated 28 mm. The
+concrete cantilever goes further than the detailed wall clamped (94 against 37 mm, 61 against 54),
+as SDOF's elastic–perfectly plastic far-range strengths would: the detailed bars harden and strengthen
+with their rate. The app's own assessment errs where the construction it knows falls short: the
+canopy's mass, and reinforced blockwork, which it takes as concrete. Keys's walls fall within 0.2 s of
+the shock where the detailed walls take about a second to topple: once a 102.5 mm wall's top is a
+thickness out, nothing holds it.
+
+## One-way walls
+
+A component held on exactly two opposite edges (a wall between a floor and a slab with its sides
+free) spans one way between them: `EnvelopePanel`'s one-way strip, with r_u = 8 M_N / L² simply
+supported or 8 (M_N + M_P) / L² fixed (UFC 3-340-02 Table 3-1), the stiffness 384 E I / (5 L⁴) or
+384 E I / L⁴ (Table 3-8) on the mean of the gross and cracked sections, and Biggs's load–mass factors,
+0.78 or 0.77 elastic and 0.66 plastic (Table 3-12); concrete as a range between the two ends, by
+ASCE/SEI 59-11, and masonry with fixed ends as panels are.
+
+M. Hayman's six third-scale reinforced masonry walls (MASc, McMaster, 2014; `Fixtures/Hayman2014`)
+are one-way, 1 m between rods top and bottom, 63.3 mm thick and fully grouted, with a layer of D4 or
+D7 bars in every cell at mid-thickness, each shot once by 6, 12 or 30 kg of TNT-equivalent at 5 m,
+the reflected load on each measured. Each wall's strip, simply supported and built as tested
+(f′m 20.8 MPa, E_m 11.8 GPa, bars yielding at 478 or 484 MPa, the density taken as 2,100 kg/m³, not
+given), driven by its measured load as a triangle of its peak and impulse
+(`blastbench envelope-walls --hayman`, 17 October 2026):
+
+| Wall | Charge | One-way SDOF | Measured | SDOF / measured |
+|---|---|---|---|---|
+| WML6 (D4) | 6 kg | 22.4 mm, 2.6°, heavy | 15.6 mm, 1.8°, moderate | 1.44 |
+| WML12 | 12 kg | 70.8 mm, 8.1°, hazardous | 37.0 mm, 4.2°, heavy | 1.91 |
+| WML30 | 30 kg | 16.6°, failed | blew out, the bars ruptured | |
+| WMH6 (D7) | 6 kg | 16.9 mm, 1.9°, moderate | 14.6 mm, 1.7°, superficial | 1.16 |
+| WMH12 | 12 kg | 23.9 mm, 2.7°, heavy | 18.1 mm, 2.1°, moderate | 1.32 |
+| WMH30 | 30 kg | 73.4 mm, 8.4°, hazardous | 50.8 mm, 5.8°, heavy | 1.44 |
+
+The strip bends 1.16 to 1.91 times as far as the walls did, a level worse on four of the five that
+stood and failed where WML30 blew out: the safe side throughout, as UFC's far-range strengths with
+no hardening and no strain rate in the bars would give against bars that harden and strengthen at
+these rates (Hayman's own nonlinear SDOF, with strain rate, came within 4–6% at 6 kg, 11% and 79%
+high at 12 kg, and about twice the measured at 30 kg). The loads are the gauges' Friedlander fits, which the thesis's two tables give
+differently in places, and the walls' density is assumed.
 
 ## Future work: damage for envelope buildings
 

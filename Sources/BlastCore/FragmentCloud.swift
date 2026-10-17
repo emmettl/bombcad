@@ -2,10 +2,11 @@ import Foundation
 import simd
 
 /// A cased charge's fragments and a puff of passive tracers, flown through the blast one way: the
-/// air pushes them, they do not push back. An illustrative model, not a validated one: masses
-/// from Mott's distribution, launch speeds from the Gurney equation, drag on a tumbling chunk,
-/// and the impacts it records are where they hit the ground, a rigid block or the structure's
-/// starting outline, which they do not load.
+/// air pushes them, they do not push back. Masses from Mott's distribution (with a casing's
+/// thickness and diameter, Mott's own scaling for their size and number), launch speeds from the
+/// Gurney equation, drag on a tumbling chunk from measured drag curves; the impacts it records are
+/// where they hit the ground, a rigid block or the structure's starting outline, which they do
+/// not load. See docs/fragments.md.
 public struct FragmentSpec: Codable, Sendable, Equatable {
     public enum Casing: String, Codable, Sendable {
         /// Fragments sprayed out round the axis, within `spread` of square to it.
@@ -21,9 +22,25 @@ public struct FragmentSpec: Codable, Sendable, Equatable {
     public var axis = SIMD3<Float>(0, 0, 1)
     /// Half the angle of the cylinder's spray, in radians.
     public var spread: Float = 0.25
-    /// √(2E), the Gurney velocity of the explosive: 2,440 m/s for TNT.
+    /// √(2E), the Gurney velocity of the explosive: 2,440 m/s for TNT. Taken from `explosive`'s
+    /// entry in Cooper's Table 27.1 when a description names one and leaves this out.
     public var gurneyVelocity: Float = 2440
     public var fragmentDensity: Float = 7850
+    /// The casing's wall thickness and inside diameter, in metres. With both, the fragments' sizes
+    /// and number follow Mott's scaling, Cooper's Eq. 27.13, and `count` is how many are flown,
+    /// each standing for as many real fragments as that takes; without, `count` is the number of
+    /// fragments and they share the casing's mass.
+    public var wallThickness: Float?
+    public var innerDiameter: Float?
+    /// The explosive by name, for Mott's coefficient B (Cooper's Table 27.2, mild steel cylinders)
+    /// and √(2E) (his Table 27.1): one of `FragmentExplosive.names`. TNT's when not given.
+    public var explosive: String?
+    /// Mott's coefficient B, in lb^½ in^(−7/6), instead of the explosive's.
+    public var mottCoefficient: Float?
+    /// The exponent β of the masses' distribution, P(mass > m) = exp(−(m/μ)^β): ½ is Mott's
+    /// (two-dimensional break-up), 1 Grady's exponential (one-dimensional), which fits Cooper's
+    /// cast-iron bomb better (docs/fragments.md).
+    public var massExponent: Float = 0.5
     /// Massless tracers released evenly through a box, following the air.
     public var tracers = 0
     public var tracerRegion: Box?
@@ -33,7 +50,7 @@ public struct FragmentSpec: Codable, Sendable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case casingMass, count, casing, axis, spread, gurneyVelocity, fragmentDensity, tracers, tracerRegion,
-            seed
+            seed, wallThickness, innerDiameter, explosive, mottCoefficient, massExponent
     }
 
     /// Any field left out takes its default.
@@ -45,18 +62,72 @@ public struct FragmentSpec: Codable, Sendable, Equatable {
         casing = try c.decodeIfPresent(Casing.self, forKey: .casing) ?? d.casing
         axis = try c.decodeIfPresent(SIMD3<Float>.self, forKey: .axis) ?? d.axis
         spread = try c.decodeIfPresent(Float.self, forKey: .spread) ?? d.spread
-        gurneyVelocity = try c.decodeIfPresent(Float.self, forKey: .gurneyVelocity) ?? d.gurneyVelocity
+        explosive = try c.decodeIfPresent(String.self, forKey: .explosive)
+        gurneyVelocity =
+            try c.decodeIfPresent(Float.self, forKey: .gurneyVelocity)
+            ?? explosive.flatMap { FragmentExplosive.named($0)?.gurneyVelocity } ?? d.gurneyVelocity
         fragmentDensity = try c.decodeIfPresent(Float.self, forKey: .fragmentDensity) ?? d.fragmentDensity
         tracers = try c.decodeIfPresent(Int.self, forKey: .tracers) ?? d.tracers
         tracerRegion = try c.decodeIfPresent(Box.self, forKey: .tracerRegion)
         seed = try c.decodeIfPresent(UInt64.self, forKey: .seed) ?? d.seed
+        wallThickness = try c.decodeIfPresent(Float.self, forKey: .wallThickness)
+        innerDiameter = try c.decodeIfPresent(Float.self, forKey: .innerDiameter)
+        mottCoefficient = try c.decodeIfPresent(Float.self, forKey: .mottCoefficient)
+        massExponent = try c.decodeIfPresent(Float.self, forKey: .massExponent) ?? d.massExponent
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(casingMass, forKey: .casingMass)
+        try c.encode(count, forKey: .count)
+        try c.encode(casing, forKey: .casing)
+        try c.encode(axis, forKey: .axis)
+        try c.encode(spread, forKey: .spread)
+        try c.encode(gurneyVelocity, forKey: .gurneyVelocity)
+        try c.encode(fragmentDensity, forKey: .fragmentDensity)
+        try c.encode(tracers, forKey: .tracers)
+        try c.encodeIfPresent(tracerRegion, forKey: .tracerRegion)
+        try c.encode(seed, forKey: .seed)
+        try c.encodeIfPresent(wallThickness, forKey: .wallThickness)
+        try c.encodeIfPresent(innerDiameter, forKey: .innerDiameter)
+        try c.encodeIfPresent(explosive, forKey: .explosive)
+        try c.encodeIfPresent(mottCoefficient, forKey: .mottCoefficient)
+        // Left out at Mott's, so that descriptions saved before it read and compare the same.
+        if massExponent != 0.5 { try c.encode(massExponent, forKey: .massExponent) }
+    }
+
+    /// Mott's distribution factor M_K, in lb^½, from the casing's thickness and inside diameter
+    /// (Cooper's Eq. 27.13 with t^(5/6), as his Example 27.7 and B's units have it; the equation
+    /// prints 5/16); nil without both.
+    public var mottFactor: Double? {
+        guard let t = wallThickness, let d = innerDiameter, t > 0, d > 0 else { return nil }
+        let b = Double(
+            mottCoefficient ?? FragmentExplosive.named(explosive ?? "TNT")?.mottCoefficient ?? 0.0779)
+        let inches = (t: Double(t) / 0.0254, d: Double(d) / 0.0254)
+        return b * pow(inches.t, 5.0 / 6) * cbrt(inches.d) * (1 + inches.t / inches.d)
+    }
+
+    /// The fragments' mean mass by Mott's scaling, 2 M_K², in kilograms; nil without a casing's
+    /// dimensions.
+    public var mottMeanMass: Float? {
+        mottFactor.map { Float(2 * $0 * $0 * 0.453_592_37) }
+    }
+
+    /// How many fragments the casing breaks into: by Mott's scaling with a casing's dimensions,
+    /// else `count`.
+    public var realFragmentCount: Double {
+        mottMeanMass.map { Double(casingMass / $0) } ?? Double(count)
     }
 
     /// Fragment counts and masses a run can handle.
     public func validate() throws {
         guard (0...200_000).contains(count), (0...200_000).contains(tracers), casingMass >= 0,
             casingMass.isFinite, count == 0 || casingMass > 0, gurneyVelocity > 0, fragmentDensity > 0,
-            spread >= 0, spread <= .pi / 2, simd_length(axis) > 0, tracers == 0 || tracerRegion != nil
+            spread >= 0, spread <= .pi / 2, simd_length(axis) > 0, tracers == 0 || tracerRegion != nil,
+            (wallThickness == nil) == (innerDiameter == nil), (wallThickness ?? 1) > 0,
+            (innerDiameter ?? 1) > 0,
+            (0.2...2).contains(massExponent), (mottCoefficient ?? 1) > 0,
+            explosive.map({ FragmentExplosive.named($0) != nil }) ?? true
         else {
             throw CocoaError(
                 .coderInvalidValue,
@@ -75,6 +146,34 @@ public struct FragmentSpec: Codable, Sendable, Equatable {
     }
 }
 
+/// Explosives whose casing fragments Cooper tabulates both ways: √(2E), the Gurney velocity (his
+/// Table 27.1, measured: Composition B's seven the mean, TNT's three the middle one, which
+/// BombCAD has always used), and Mott's B for mild steel cylinders
+/// (Table 27.2). P. W. Cooper, *Explosives Engineering*, Wiley-VCH, 1996, pp. 388 and 397.
+public struct FragmentExplosive: Sendable, Equatable {
+    public var name: String
+    /// m/s.
+    public var gurneyVelocity: Float
+    /// lb^½ in^(−7/6).
+    public var mottCoefficient: Float
+
+    public static let all: [FragmentExplosive] = [
+        FragmentExplosive(name: "TNT", gurneyVelocity: 2440, mottCoefficient: 0.0779),
+        FragmentExplosive(name: "Composition B", gurneyVelocity: 2720, mottCoefficient: 0.0554),
+        FragmentExplosive(name: "Composition A-3", gurneyVelocity: 2630, mottCoefficient: 0.0549),
+        FragmentExplosive(name: "Cyclotol (75/25)", gurneyVelocity: 2790, mottCoefficient: 0.0493),
+        FragmentExplosive(name: "H-6", gurneyVelocity: 2580, mottCoefficient: 0.0690),
+        FragmentExplosive(name: "Tetryl", gurneyVelocity: 2500, mottCoefficient: 0.0681),
+    ]
+
+    public static var names: [String] { all.map(\.name) }
+
+    /// The explosive of that name, ignoring case.
+    public static func named(_ name: String) -> FragmentExplosive? {
+        all.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
+    }
+}
+
 public struct FragmentImpact: Codable, Sendable, Equatable {
     public var fragment: Int
     public var time: Double
@@ -85,6 +184,11 @@ public struct FragmentImpact: Codable, Sendable, Equatable {
     public var surface: String
     /// Owner of an impacted structure in a multiple-body scene; absent in legacy results.
     public var objectID: UUID? = nil
+    /// How many real fragments it stands for, when not one (see `FragmentSpec.wallThickness`).
+    public var weight: Float? = nil
+
+    /// One unless it stands for several.
+    public var count: Float { weight ?? 1 }
 }
 
 /// What fragments need of a scene: the charge, the domain, and what they can hit.
@@ -129,6 +233,9 @@ public struct FragmentCloud: Sendable {
         /// Mean presented area, m².
         public var area: Float
         public var landed = false
+        /// How many real fragments it stands for: one, unless a casing's dimensions set their
+        /// number (`FragmentSpec.wallThickness`).
+        public var weight: Float = 1
     }
 
     public private(set) var particles: [Particle]
@@ -162,10 +269,24 @@ public struct FragmentCloud: Sendable {
         structureOwners = scene.structureOwners?.count == scene.structure.count ? scene.structureOwners : nil
         terrain = scene.terrain
         var particles: [Particle] = []
-        // Mott: P(mass > m) = exp(-√(m/μ)), whose mean is 2μ; scaled after to the casing's mass.
-        let mu = spec.count > 0 ? spec.casingMass / Float(2 * spec.count) : 0
-        let masses = (0..<spec.count).map { _ in mu * pow(log(max(random.unit(), 1e-12)), 2) }
-        let scale = spec.casingMass / max(masses.reduce(0, +), .leastNormalMagnitude)
+        // P(mass > m) = exp(-(m/μ)^β), whose mean is μ Γ(1 + 1/β): 2μ for Mott's β = ½. The mean
+        // is Mott's scaling's with a casing's dimensions, and each fragment flown then stands for
+        // as many as share the casing's mass; without, the fragments are `count` and share it.
+        let beta = spec.massExponent
+        let mean = spec.mottMeanMass ?? (spec.count > 0 ? spec.casingMass / Float(spec.count) : 0)
+        // Mott's without a casing's dimensions as it always was, to the last bit.
+        let mu =
+            spec.mottMeanMass == nil && beta == 0.5
+            ? (spec.count > 0 ? spec.casingMass / Float(2 * spec.count) : 0)
+            : mean / Float(tgamma(1 + 1 / Double(beta)))
+        let masses = (0..<spec.count).map { _ in
+            beta == 0.5
+                ? mu * pow(log(max(random.unit(), 1e-12)), 2)
+                : mu * pow(-log(max(random.unit(), 1e-12)), 1 / beta)
+        }
+        let total = max(masses.reduce(0, +), .leastNormalMagnitude)
+        let scale = spec.mottMeanMass == nil ? spec.casingMass / total : 1
+        let weight = spec.mottMeanMass == nil ? 1 : spec.casingMass / total
         let radius = cbrt(3 * charge.mass / (4 * .pi * 1630))
         let axis = simd_normalize(spec.axis)
         let side = simd_normalize(
@@ -190,7 +311,7 @@ public struct FragmentCloud: Sendable {
             particles.append(
                 Particle(
                     position: charge.position + radius * direction, velocity: speed * direction, mass: mass,
-                    area: 1.5 * edge * edge))
+                    area: 1.5 * edge * edge, weight: weight))
         }
         if let region = spec.tracerRegion, spec.tracers > 0 {
             for _ in 0..<spec.tracers {
@@ -287,7 +408,7 @@ public struct FragmentCloud: Sendable {
                             FragmentImpact(
                                 fragment: index, time: t, position: hit.point, speed: speed,
                                 energy: 0.5 * particle.mass * speed * speed, surface: hit.surface,
-                                objectID: hit.objectID))
+                                objectID: hit.objectID, weight: particle.weight == 1 ? nil : particle.weight))
                     }
                     particle.velocity = .zero
                     break
@@ -326,10 +447,33 @@ public struct FragmentCloud: Sendable {
     /// A chunk's drag coefficient by its Mach number in the air around it.
     private func dragCoefficient(_ particle: Particle, _ air: Primitive) -> Float {
         let sound = sqrt(max(1.4 * air.pressure / max(air.density, 1e-3), 1))
-        let mach = simd_length(air.velocity - particle.velocity) / sound
-        if mach < 0.8 { return 0.9 }
-        if mach < 1.2 { return 0.9 + (mach - 0.8) * 1.0 }
-        return max(1.1, 1.3 - 0.1 * (mach - 1.2))
+        return Self.dragCoefficient(mach: simd_length(air.velocity - particle.velocity) / sound)
+    }
+
+    /// The drag coefficient of a tumbling fragment, on its mean presented area, by Mach number, as
+    /// Hansche and Rinehart measured tumbling cubes from Mach 0.5 to 3.5 (as Moxnes et al., Defence
+    /// Technology 13, 2017, restate them): 0.82 at Mach 0.5, held below; rising to 1.25 at Mach 1.25;
+    /// falling to 1.1 at Mach 3, and 1.1 beyond.
+    public static func dragCoefficient(mach: Float) -> Float {
+        if mach <= 0.5 { return 0.82 }
+        if mach <= 1.25 { return 0.82 + (1.25 - 0.82) * (mach - 0.5) / 0.75 }
+        if mach <= 3 { return 1.25 - 0.15 * (mach - 1.25) / 1.75 }
+        return 1.1
+    }
+
+    /// Flies every fragment still airborne on through the still `air` until it lands or `limit`
+    /// seconds have passed: after the blast's last frame, so that each fragment's range, and its
+    /// energy where it lands, are its whole flight's. Tracers stay where they are.
+    public mutating func land(in air: Primitive, limit: Double = 300) {
+        let still = AirSlice.still(air, time: time)
+        var later = still
+        later.time = time + limit
+        // Tracers are held where they are, then given back their own state.
+        let tracers = particles.indices.filter { particles[$0].mass <= 0 }
+        let held = tracers.map { particles[$0].landed }
+        for index in tracers { particles[index].landed = true }
+        advance(from: still, to: later)
+        for (index, landed) in zip(tracers, held) { particles[index].landed = landed }
     }
 
     private func acceleration(_ particle: Particle, _ air: Primitive) -> SIMD3<Float> {

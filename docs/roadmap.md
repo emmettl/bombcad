@@ -142,7 +142,9 @@ Supports are under [structures and supports](#structures-and-supports) above.
 
 One way and separable ([distributed computing](distributed-computing.md#the-long-term-visions-effects)).
 
-- **Done, illustrative:** [fragments](fragments.md); the fireball's
+- **Done, an approximation:** [fragments](fragments.md) from a casing's dimensions, Mott's
+  masses within 1.4 of Cooper's counted bomb, measured drag (17 October); hazard outputs next.
+- **Done, illustrative:** the fireball's
   [thermal radiation](thermal-radiation.md) and [surface heating](surface-heating.md); its
   [rise and cloud](fireball-rise.md); [ground shock](ground-shock.md), as the manuals'
   estimate or a layered soil column, against one measured 1 t burst 20 to 80 times too high in

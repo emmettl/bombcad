@@ -352,8 +352,9 @@ Ten values in the code were written from memory and should be checked against th
 
 - **The bond of masonry to concrete** (0.2 MPa in tension, 10 J/m² of fracture energy; any
   study of masonry–frame interfaces, for example P. B. Lourenço's thesis, Delft, 1996) and
-  **annealed glass** (45 MPa breaking stress, toughness 0.75 MPa m^(1/2); ASTM E1300 or a
-  glass handbook).
+  **annealed glass** (45 MPa breaking stress, toughness 0.75 MPa m^(1/2), for the detailed model's
+  panes; ASTM E1300 or a glass handbook; the envelope panes take E1300's flaw model instead, see
+  [validation](validation.md#window-glass)).
 - **Mortar joints.** P. B. Lourenço and J. G. Rots, "Multisurface interface model for analysis
   of masonry structures", *Journal of Engineering Mechanics* 123(7) (1997) 660–668, and R. van
   der Pluijm's tests behind it. Needed: the joints' tensile strength and mode I energy (taken
