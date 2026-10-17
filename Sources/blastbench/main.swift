@@ -50,7 +50,7 @@ import simd
 //                      (a layout's structure under gravity alone, damped: stands, deflects or falls)
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mass kg] [--fit-reach Z]
 //                       [--mode peak|now|impulse|fluence|irradiance]
-//                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json] [--ground <type> [--explosive anfo]]
+//                       [--fragments spec.json [--dot 5] [--hazard]] [--ground-shock spec.json] [--ground <type> [--explosive anfo]]
 //                       [--thermal spec.json [--thermal-compare [--thermal-compare-with shape]]
 //                        [--thermal-variants a.json,b.json]]
 //                       [--air thermal] [--afterburn] [--radiate [--absorption 0.1] [--soot-yield 0.185]]
@@ -1347,6 +1347,8 @@ func runSnapshot() throws {
         for object in scenario.structuralObjects { try scenario.useEnvelope(id: object.id) }
     }
     if let mass = option("mass").flatMap({ Float($0) }) { scenario.charge.mass = mass }
+    // `--charge-z`: the charge's height above the ground, m.
+    if let z = option("charge-z").flatMap({ Float($0) }) { scenario.charge.position.z = z }
     // `--fit-reach 10` fits an open scene to its charge as the app's Domain section does; a
     // `--terrain` is laid again over the domain it fits.
     if let reach = option("fit-reach").flatMap({ Float($0) }) {
@@ -1697,10 +1699,17 @@ func runSnapshot() throws {
                     ? min(simd_length(particle.velocity) / launch, 0.999) : 1
                 dots.append(SIMD4(particle.position, value))
             }
-            for impact in fragments.cloud.impacts {
+            // `--hazard`: those in flight land, and the hazard distance is drawn as the app draws it.
+            let landed = flag("hazard") ? fragments.result(frameInterval: 0.001) : nil
+            for impact in landed?.impacts ?? fragments.cloud.impacts {
                 dots.append(SIMD4(impact.position, 2 + min(max(log10(max(impact.energy, 1)) / 7, 0), 0.999)))
             }
             print("Fragments: \(fragments.cloud.airborne) in flight, \(fragments.cloud.impacts.count) landed")
+            if let hazard = landed?.hazard {
+                print("Hazard: " + hazard.summary)
+                let terrain = scenario.terrain
+                renderer.setLines(HazardOverlay.lines(hazard) { terrain?.height(at: SIMD3($0, 0)) ?? 0 })
+            }
         }
         renderer.setDots(dots)
         if let size = option("dot").flatMap({ Float($0) }) { renderer.settings.dotSize = size }
