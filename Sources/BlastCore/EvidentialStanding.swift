@@ -1025,6 +1025,7 @@ public enum StandingTable {
         "FlameAcceleration.instability": .option([.deflagration]),
         "FlameAcceleration.externalFactor": .option([.deflagration]),
         "FlameAcceleration.turbulence": .option([.deflagration]),
+        "FlameAcceleration.thermodiffusive": .option([.deflagration]),
         "FlameTurbulence.scale": .option([.deflagration]),
         "VentPanel.box": .input,
         "VentPanel.releasePressure": .input,
@@ -1559,9 +1560,14 @@ struct StandingScene {
             return [
                 StandingEvidence(
                     "FM Global's 63.7 m³ chamber, lean hydrogen of 12.1–19.7% (Bauwens, Chao and Dorofeev, 2011)",
-                    "0.19–0.39 of the measured peaks, the unsafe side, on lean hydrogen's measured growth law; in "
-                        + "a closed sphere K_G about 0.4 of the measured",
-                    "deflagration.md#checks")
+                    "1.24–2.96 of the measured peaks with the flame's 1/Le response, nothing fitted (0.19–0.39 "
+                        + "without it); in a closed sphere K_G 0.89–0.99 of the measured",
+                    "deflagration.md#checks"),
+                StandingEvidence(
+                    "HySEA's 20 ft containers, lean hydrogen of 15% and 21% (Skjold et al., 2017)",
+                    "Vented through the doors within the repeats' scatter (0.72–1.42); through the roof 0.20–0.53, "
+                        + "the unsafe side",
+                    "deflagration.md#checks"),
             ]
         case .townGas?:
             return [
@@ -1626,8 +1632,9 @@ struct StandingScene {
         let gas = inputs.scenario.deflagration?.gas
         let fuel =
             gas == .hydrogen
-            ? "Lean hydrogen reads lower still, the unsafe side: 0.19–0.39 of FM Global's vented tests, and K_G "
-                + "in a closed sphere about 0.4 of the measured. For methane, "
+            ? "Lean hydrogen, with its flame's 1/Le response, reads 1.24–2.96 of FM Global's vented tests and "
+                + "within the scatter of HySEA's containers vented through their doors, but 0.20–0.53 of those vented "
+                + "through their roof, the unsafe side; K_G in a closed sphere 0.89–0.99 of the measured. For methane, "
             : gas == .townGas
                 ? "Town gas, half hydrogen, was compared only in a closed sphere (K_G about 0.77 of the measured) "
                     + "and at Ronan Point, where the flat's 12 kPa is below the inquiry's 21 on the flank, the "

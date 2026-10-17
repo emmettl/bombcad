@@ -101,6 +101,28 @@ public enum FlammableGas: String, Sendable, Hashable, Codable, CaseIterable {
         return table[table.count - 1].radius
     }
 
+    /// The unburnt mixture's Lewis number at volume fraction `fraction`, that of its deficient
+    /// reactant, Le = α / D (α the mixture's thermal diffusivity, D the reactant's mixture-averaged
+    /// diffusivity), where it is below one; nil otherwise and for a gas without one here. Hydrogen's,
+    /// lean (φ ≤ 1, hydrogen deficient), from Cantera 3.1's mixture-averaged transport (its H₂/O₂
+    /// mechanism, 296 K, 1 atm): 0.34 at 8%, 0.36 at 12%, 0.39 at 18%, 0.41 at 24%, 0.43
+    /// stoichiometric; richer, oxygen is deficient and its Lewis number above one (1.86 at 32%).
+    public func lewisNumber(fraction: Float) -> Float? {
+        guard self == .hydrogen, fraction <= stoichiometricFraction + 1e-4 else { return nil }
+        let table: [SIMD2<Float>] = [
+            SIMD2(0.08, 0.338), SIMD2(0.10, 0.349), SIMD2(0.12, 0.360), SIMD2(0.14, 0.371),
+            SIMD2(0.16, 0.380),
+            SIMD2(0.18, 0.389), SIMD2(0.20, 0.397), SIMD2(0.22, 0.405), SIMD2(0.24, 0.412),
+            SIMD2(0.26, 0.419),
+            SIMD2(0.28, 0.424), SIMD2(0.296, 0.428),
+        ]
+        guard fraction > table[0].x else { return table[0].y }
+        for (a, b) in zip(table, table.dropFirst()) where fraction <= b.x {
+            return a.y + (b.y - a.y) * (fraction - a.x) / (b.x - a.x)
+        }
+        return table[table.count - 1].y
+    }
+
     /// The unburnt mixture's Markstein number at volume fraction `fraction`, Ma = L S_L / ν (L the
     /// Markstein length relative to the unburnt gas, ν its kinematic viscosity, as Bradley uses it),
     /// where measured; nil for a gas without one here. Hydrogen's from Taylor's Markstein lengths
@@ -301,18 +323,43 @@ public struct FlameAcceleration: Sendable, Hashable, Codable {
     /// Molkov and Makarov (2004) found isotropic sub-grid models miss, and took as a factor of 2 on
     /// the flame's wrinkling outside the enclosure. nil for none.
     public var externalFactor: Float?
+    /// The flame's thermodiffusive response, for a mixture whose deficient reactant diffuses faster
+    /// than heat (Lewis number below one, as lean hydrogen's): its burning velocity times 1/Le
+    /// (`FlammableGas.lewisNumber`), as Bauwens, Chao and Dorofeev (ICHS 2011) took 0.9/Le for lean
+    /// hydrogen's vented flames. nil for none, as in files saved before 17 October 2026.
+    public var thermodiffusive: ThermodiffusiveResponse? = .inverseLewis
 
     public init(
         factor: Float = 1, instability: FlameInstability? = .measured,
-        turbulence: FlameTurbulence? = FlameTurbulence()
+        turbulence: FlameTurbulence? = FlameTurbulence(),
+        thermodiffusive: ThermodiffusiveResponse? = .inverseLewis
     ) {
         self.factor = factor
         self.instability = instability
         self.turbulence = turbulence
+        self.thermodiffusive = thermodiffusive
     }
 
-    /// A laminar flame: no factor, wrinkling or sub-grid turbulence.
-    public static let laminar = FlameAcceleration(factor: 1, instability: nil, turbulence: nil)
+    /// A laminar flame: no factor, wrinkling, sub-grid turbulence or thermodiffusive response.
+    public static let laminar = FlameAcceleration(
+        factor: 1, instability: nil, turbulence: nil, thermodiffusive: nil)
+
+    /// The burning velocity's multiple for the thermodiffusive response of a cloud of `gas` at
+    /// fuel fraction `fraction`: 1/Le where the gas's Lewis number is below one, else one.
+    public func thermodiffusiveFactor(gas: FlammableGas, fraction: Float) -> Float {
+        guard thermodiffusive != nil, let lewis = gas.lewisNumber(fraction: fraction), lewis > 0, lewis < 1
+        else {
+            return 1
+        }
+        return 1 / lewis
+    }
+}
+
+/// How a flame's burning velocity responds to its Lewis number (`FlameAcceleration.thermodiffusive`).
+public enum ThermodiffusiveResponse: String, Sendable, Hashable, Codable {
+    /// Times 1/Le: the leading edges of a thermodiffusively unstable flame burn faster as the
+    /// deficient reactant diffuses into them ahead of the heat they lose.
+    case inverseLewis
 }
 
 /// Where a flame's cellular instability sets in (see `FlameAcceleration.instability`).

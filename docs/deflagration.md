@@ -496,7 +496,9 @@ default flame). K_G in bar m/s, laminar / default flame:
 | Mixture | 12 cells | 24 | 48 | Thin-flame model | Measured |
 |---|---|---|---|---|---|
 | Hydrogen 29.5% (stoichiometric) | 155 / 177 | 189 / 204 | 233 / 240 | 322 | 550 (500–990 by vessel) |
+| the same, default flame with 1/Le (below) | | 491 | 545 | | |
 | Hydrogen 15% | | 11 / 18 | 13 / 22 | 19 | |
+| the same, default flame with 1/Le | | 68 | 77 | | |
 | Town gas 25% | 69 / 81 | 86 / 97 | 101 / 108 | 146 | 140 |
 
 - The peaks are the AICC pressures, 8.11, 4.62 and 7.96 bar, by construction, the energy
@@ -515,28 +517,83 @@ quiescent mixtures, lit at the centre or 0.25 m from the back wall. `blastbench 
 vented --gas hydrogen --percent 18 --vent 2.7 --ignition back`, 0.1 m cells. Peak overpressure,
 kPa, the measured being the larger of their external and internal (Helmholtz) peaks:
 
-| Ignition, vent, H₂ | Measured | Model | Ratio | Ratio, methane's growth law |
-|---|---|---|---|---|
-| Centre, 5.4 m², 12.1% | 0.9 | 0.22 | 0.24 | 0.13 |
-| Centre, 5.4 m², 14.9% | 2.0 | 0.66 | 0.33 | 0.15 |
-| Centre, 5.4 m², 18.0% | 7.1 | 2.63 | 0.37 | 0.15 |
-| Centre, 5.4 m², 19.7% | 11.1 | 4.32 | 0.39 | 0.17 |
-| Centre, 2.7 m², 18.0% | 23.4 | 5.19 | 0.22 | 0.10 |
-| Back wall, 2.7 m², 15.1% | 12.7 | 3.58 | 0.28 | 0.12 |
-| Back wall, 2.7 m², 17.8% | 31.4 | 10.96 | 0.35 | 0.16 |
-| Back wall, 5.4 m², 17.9% | 15.0 | 2.91 | 0.19 | 0.08 |
+| Ignition, vent, H₂ | Measured | Model, with 1/Le | Ratio | Without 1/Le | Ratio | Methane's growth law, ratio |
+|---|---|---|---|---|---|---|
+| Centre, 5.4 m², 12.1% | 0.9 | 1.94 | 2.16 | 0.22 | 0.24 | 0.13 |
+| Centre, 5.4 m², 14.9% | 2.0 | 5.91 | 2.96 | 0.66 | 0.33 | 0.15 |
+| Centre, 5.4 m², 18.0% | 7.1 | 17.9 | 2.52 | 2.63 | 0.37 | 0.15 |
+| Centre, 5.4 m², 19.7% | 11.1 | 27.4 | 2.47 | 4.32 | 0.39 | 0.17 |
+| Centre, 2.7 m², 18.0% | 23.4 | 35.0 | 1.49 | 5.19 | 0.22 | 0.10 |
+| Back wall, 2.7 m², 15.1% | 12.7 | 17.9 | 1.41 | 3.58 | 0.28 | 0.12 |
+| Back wall, 2.7 m², 17.8% | 31.4 | 44.3 | 1.41 | 10.96 | 0.35 | 0.16 |
+| Back wall, 5.4 m², 17.9% | 15.0 | 18.6 | 1.24 | 2.91 | 0.19 | 0.08 |
 
-**Lean hydrogen vents at 0.19–0.39 of the measured peaks: the unsafe side, below methane's 0.4–0.6
-lit in the middle of the same chamber.** With methane's growth law, capped at four onset radii (7–12
-cm for lean hydrogen), it read 0.08–0.17; the measured lean hydrogen law, (R/R₀)^0.243 to a metre
-(Bauwens et al. 2015, see [above](#hydrogen-and-town-gas)), doubles it. What is left out:
-- Bauwens et al. (2011) needed a further factor for the flame's thermodiffusive response,
-  Ξ_Le = 0.9/Le, about 2 at 18% (Le 0.46), fitted to these tests; it is not taken here.
+**Without its thermodiffusive response, lean hydrogen vented at 0.19–0.39 of the measured peaks:
+the unsafe side, below methane's 0.4–0.6 lit in the middle of the same chamber.** With methane's
+growth law, capped at four onset radii (7–12 cm for lean hydrogen), it read 0.08–0.17; the measured
+lean hydrogen law, (R/R₀)^0.243 to a metre (Bauwens et al. 2015, see
+[above](#hydrogen-and-town-gas)), doubled it.
+
+**With 1/Le** (17 October 2026; `FlameAcceleration.thermodiffusive`, on by default):
+- **The factor:** the burning velocity times 1/Le, Le the deficient reactant's Lewis number
+  (`FlammableGas.lewisNumber`, from Cantera's mixture-averaged transport: 0.36 at 12%, 0.39 at
+  18%), 2.6–2.8 here.
+- **The source:** Bauwens et al. (2011) took 0.9/Le, about 2 at 18% with their Le of 0.46, fitted
+  to these tests. Here nothing is fitted: the coefficient is one. Fitted to these tests it would be
+  0.75 (0.70–1.62 of the peaks), but that was not kept: it read the containers below lower still.
+- **The result:** the peaks are 1.24–2.96 of the measured, on the safe side. Those lit at the back
+  or behind the smaller vent come within 1.2–1.5; those lit in the middle with the larger vent are
+  2.2–3.0.
+- **The closed sphere, unfitted:** stoichiometric hydrogen's K_G comes to 491–545 bar m/s, against
+  the measured 550 (500–990 by vessel). Its thermodiffusive acceleration is what the thin-flame
+  model's 322 had lacked.
+
+What is still left out:
 - The external explosion and the Helmholtz oscillations that set several of the measured peaks.
 - The lean flame's buoyancy: a 12% flame rises as it grows.
+- Richer than stoichiometric the deficient reactant is oxygen, whose Lewis number is above one, so
+  the factor falls from 2.3 to one across φ 1. Rich hydrogen's own instability is not represented.
+
+**Vented, in HySEA's containers** (unfitted). Skjold et al. vented homogeneous, quiescent hydrogen
+in 20 ft ISO containers, 5.87 × 2.35 × 2.40 m inside (ICHS 2017, paper 223, Tables 1–2; the
+HySEA project, open on Zenodo). The empty containers ("frame only") are compared, in two
+configurations:
+- **Doors:** the whole end open, lit at the back wall's centre 1.2 m up (`blastbench deflagration
+  vented --gas hydrogen --percent 15 --container doors --vent 5.64`).
+- **Roof:** 4, 6 or 8 m² of eight 1 m² roof openings sealed with perforated film, lit at the floor's
+  centre (`--container roof --vent 4,6,8`). The openings' layout is not given: two rows of four,
+  evenly spaced, the middle ones open first, are assumed.
+
+Peak overpressure inside, kPa, 0.1 m cells:
+
+| Test | Measured | Model, with 1/Le | Ratio | Without | Ratio |
+|---|---|---|---|---|---|
+| Doors, 15% (tests 1–6) | 3.9–7.7 (mean 5.2) | 5.54 | 0.72–1.42 (1.07 of the mean) | 0.70 | 0.13 |
+| Roof, 4 m², 21% (test 25) | 14.6 | 7.72 | 0.53 | 1.54 | 0.11 |
+| Roof, 6 m², 21% (test 21) | 12.0 | 4.80 | 0.40 | 0.88 | 0.07 |
+| Roof, 8 m², 21% (test 16) | 19.0 | 3.74 | 0.20 | 0.58 | 0.03 |
+
+- **The doors:** within the six repeats' own scatter.
+- **The roof:** still on the unsafe side, 0.20–0.53. The measured peaks do not fall as the vent
+  grows (8 m² gave the highest), which no venting correlation has.
+- **What the roof tests have that the model does not:**
+  - the steel frame of 200 mm channels on the floor round the ignition point;
+  - the vents' layout;
+  - the flame's buoyancy, rising from the floor towards the openings;
+  - the external explosion above the roof.
+
+**Where lean hydrogen stands.** The fitted coefficient was set aside, so nothing is fitted:
+- FM's chamber reads 1.2–3.0 of the measured peaks.
+- The containers' doors read within their scatter.
+- The closed sphere's K_G reads 0.89–0.99.
+- The containers' roof vents read 0.2–0.5.
+
+So the containers' roof and FM's centre-lit tests fall outside 0.5–2, and the comparison stops
+here.
 
 Other open vented hydrogen tests, for later: INERIS's 1 and 10.5 m³ vessels (Daubech et al.,
-ICHS 2011) and HySEA's 20 ft containers (Skjold, ISHPMIE 2018, CC BY), both tabulated.
+ICHS 2011), tabulated; HySEA's containers with obstacles, vent panels and stratified mixtures
+(the same papers, and Skjold et al., CET 77, 2019).
 
 ### Grid convergence
 
