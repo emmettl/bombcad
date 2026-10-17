@@ -277,7 +277,9 @@ struct ShellMesh {
             // The openings that cut this plate: those crossing it that do not hold it whole.
             let cutting = model.openings.filter { opening in
                 !opening.holds(plate.box)
-                    && (0..<3).allSatisfy { opening.max[$0] >= plate.box.min[$0] && opening.min[$0] <= plate.box.max[$0] }
+                    && (0..<3).allSatisfy {
+                        opening.max[$0] >= plate.box.min[$0] && opening.min[$0] <= plate.box.max[$0]
+                    }
             }
             let range1 = nearest(plate.low[first], first)..<nearest(plate.high[first], first)
             let range2 = nearest(plate.low[second], second)..<nearest(plate.high[second], second)
@@ -425,7 +427,8 @@ struct ShellMesh {
                         let plate = plates[n]
                         return plate.axis == k && abs(grid[k][plateLevels[n]] - level) < tolerance
                             && [first, second].allSatisfy {
-                                position[$0] >= plate.low[$0] - tolerance && position[$0] <= plate.high[$0] + tolerance
+                                position[$0] >= plate.low[$0] - tolerance
+                                    && position[$0] <= plate.high[$0] + tolerance
                             }
                     })
                 else { continue }
@@ -606,7 +609,8 @@ struct ShellMesh {
     /// below the mean of tests.
     static func punchingStrengths(
         elements: [Element], heads: [(master: UInt32, axis: Int, box: Box)],
-        ties: [(slave: UInt32, master: UInt32)], materials: [StructureMaterial], elementsOfNode: [[Int]]? = nil
+        ties: [(slave: UInt32, master: UInt32)], materials: [StructureMaterial],
+        elementsOfNode: [[Int]]? = nil
     ) -> (strengths: [Float], rings: [[Int]]) {
         var strengths = [Float](repeating: 0, count: elements.count)
         var rings: [[Int]] = []

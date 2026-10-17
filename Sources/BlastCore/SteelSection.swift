@@ -16,7 +16,9 @@ public struct SteelSection: Sendable, Hashable {
     public var secondMoment: Float
     public var plasticModulus: Float
 
-    public init(name: String, depth: Float, width: Float, area: Float, secondMoment: Float, plasticModulus: Float) {
+    public init(
+        name: String, depth: Float, width: Float, area: Float, secondMoment: Float, plasticModulus: Float
+    ) {
         self.name = name
         self.depth = depth
         self.width = width
@@ -47,7 +49,9 @@ public struct SteelSection: Sendable, Hashable {
     /// bends as stiffly and as strongly about its major axis as the section, and weighs as much.
     /// Its wave speed, which sets the time step, is the same whatever the width; a narrower one
     /// keeps its faces off the mesh's lines.
-    public func equivalent(of steel: StructureMaterial = .structuralSteel, width: Float? = nil) -> StructureMaterial {
+    public func equivalent(of steel: StructureMaterial = .structuralSteel, width: Float? = nil)
+        -> StructureMaterial
+    {
         let width = width ?? rectangleWidth
         var material = steel
         material.name = "\(steel.name), \(name)"

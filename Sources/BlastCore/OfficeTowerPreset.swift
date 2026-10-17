@@ -92,7 +92,10 @@ extension ScenarioPreset {
         let beamWidth = { (section: SteelSection) in min(section.rectangleWidth, 0.24) }
         let primarySteel = primary.equivalent(width: beamWidth(primary))
         let secondarySteel = secondary.equivalent(width: beamWidth(secondary))
-        func beam(_ section: SteelSection, _ steel: StructureMaterial, along k: Int, at line: Float, from a: Float, to b: Float, z: Float) {
+        func beam(
+            _ section: SteelSection, _ steel: StructureMaterial, along k: Int, at line: Float, from a: Float,
+            to b: Float, z: Float
+        ) {
             let w = beamWidth(section) / 2
             var low = SIMD3<Float>(0, 0, z - section.depth / 2)
             var high = SIMD3<Float>(0, 0, z + section.depth / 2)
@@ -106,7 +109,8 @@ extension ScenarioPreset {
             for j in 0...3 {
                 let line = Float(j) * bay
                 // Along x on y = y0 + line, and along y on x = x0 + line.
-                let spans: [(Float, Float)] = j == 1 || j == 2 ? [(Float(0), bay), (2 * bay, 3 * bay)] : [(Float(0), 3 * bay)]
+                let spans: [(Float, Float)] =
+                    j == 1 || j == 2 ? [(Float(0), bay), (2 * bay, 3 * bay)] : [(Float(0), 3 * bay)]
                 for (a, b) in spans {
                     beam(primary, primarySteel, along: 0, at: y0 + line, from: x0 + a, to: x0 + b, z: z)
                     beam(primary, primarySteel, along: 1, at: x0 + line, from: y0 + a, to: y0 + b, z: z)
@@ -115,7 +119,8 @@ extension ScenarioPreset {
             for k in [1, 2, 4, 5, 7, 8] {
                 let line = x0 + Float(k) * bay / 3
                 let middle = k == 4 || k == 5
-                let spans: [(Float, Float)] = middle ? [(Float(0), bay), (2 * bay, 3 * bay)] : [(Float(0), 3 * bay)]
+                let spans: [(Float, Float)] =
+                    middle ? [(Float(0), bay), (2 * bay, 3 * bay)] : [(Float(0), 3 * bay)]
                 for (a, b) in spans {
                     beam(secondary, secondarySteel, along: 1, at: line, from: y0 + a, to: y0 + b, z: z)
                 }
@@ -138,7 +143,9 @@ extension ScenarioPreset {
                 let along = 1 - k
                 // Each runs past the corner to the other faces' planes, so that they meet there.
                 let (start, end) =
-                    along == 0 ? (x0 - out - depth / 2, x1 + out + depth / 2) : (y0 - out - depth / 2, y1 + out + depth / 2)
+                    along == 0
+                    ? (x0 - out - depth / 2, x1 + out + depth / 2)
+                    : (y0 - out - depth / 2, y1 + out + depth / 2)
                 var low = SIMD3<Float>(0, 0, base)
                 var high = SIMD3<Float>(0, 0, head)
                 low[k] = plane - depth / 2
@@ -174,7 +181,8 @@ extension ScenarioPreset {
         // across the secondary beams, and an A193 mesh 30 mm below its top.
         for index in slabIndices {
             structure.addMat(
-                to: structure.solids[index], thicknessAxis: 2, areaPerMetre: 1200e-6, transverseAreaPerMetre: 0,
+                to: structure.solids[index], thicknessAxis: 2, areaPerMetre: 1200e-6,
+                transverseAreaPerMetre: 0,
                 longitudinalAxis: 0, depth: 0.03, faces: (true, false))
             structure.addMat(
                 to: structure.solids[index], thicknessAxis: 2, areaPerMetre: 193e-6, depth: 0.03,
@@ -183,7 +191,8 @@ extension ScenarioPreset {
         // A doorway into the core on every floor, through its front wall; and the lites.
         let doors = ([Float(0)] + floors.dropLast()).map { floor in
             Box(
-                min: SIMD3(x0 + 1.5 * bay - 0.5, d0 - t, floor), max: SIMD3(x0 + 1.5 * bay + 0.5, d0 + t, floor + 2.1))
+                min: SIMD3(x0 + 1.5 * bay - 0.5, d0 - t, floor),
+                max: SIMD3(x0 + 1.5 * bay + 0.5, d0 + t, floor + 2.1))
         }
         structure.openings = doors + openings
 
@@ -192,7 +201,9 @@ extension ScenarioPreset {
             charge: Charge(mass: 1000, position: SIMD3(x0 + 1.5 * bay, y0 - 5, 1)),
             gauges: [
                 Gauge("Front glass, ground floor", at: SIMD3(x0 + 1.5 * bay - 0.75, y0 - out - 0.2, 1.5)),
-                Gauge("Front glass, sixth floor", at: SIMD3(x0 + 1.5 * bay - 0.75, y0 - out - 0.2, floors[4] + 1.5)),
+                Gauge(
+                    "Front glass, sixth floor",
+                    at: SIMD3(x0 + 1.5 * bay - 0.75, y0 - out - 0.2, floors[4] + 1.5)),
                 Gauge("Across the street", at: SIMD3(x0 + 1.5 * bay, 10.2, 1.5)),
                 Gauge("Roof", at: SIMD3(x0 + 1.5 * bay, y0 + 1.5 * bay, top + 0.5)),
             ],
@@ -215,13 +226,17 @@ extension ScenarioPreset {
                 for slot in 0..<8 {
                     let x = a + 1.5 + Float(slot) * 3
                     let z = Float(level) * 3.5 + 0.9
-                    windows.append(Box(min: SIMD3(x, front - wall - 0.01, z), max: SIMD3(x + 1.5, front + 0.01, z + 1.8)))
-                    glass.append(Box(min: SIMD3(x, front - 0.103, z), max: SIMD3(x + 1.5, front - 0.097, z + 1.8)))
+                    windows.append(
+                        Box(min: SIMD3(x, front - wall - 0.01, z), max: SIMD3(x + 1.5, front + 0.01, z + 1.8))
+                    )
+                    glass.append(
+                        Box(min: SIMD3(x, front - 0.103, z), max: SIMD3(x + 1.5, front - 0.097, z + 1.8)))
                 }
             }
             let id = UUID(uuidString: String(format: "0FF1CE00-0000-4000-8000-%012d", n + 1))!
             if let envelope = try? BuildingEnvelope(solids: walls, openings: windows, panes: glass) {
-                _ = try? scenario.addEnvelopeObject(envelope, name: n == 0 ? "Across the street, left" : "Across the street, right", id: id)
+                _ = try? scenario.addEnvelopeObject(
+                    envelope, name: n == 0 ? "Across the street, left" : "Across the street, right", id: id)
             }
         }
         return scenario

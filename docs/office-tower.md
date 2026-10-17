@@ -5,7 +5,7 @@ tower](shell-model.md) of flat slabs on concrete columns. It is a speculative of
 concrete core, a steel frame with composite floors, and a glazed curtain wall. Across the street
 stand two smaller buildings as envelopes, and a van's worth of explosive is parked at the kerb.
 
-@@IMAGE@@
+![The office 250 ms after 1,000 kg at the kerb: its front glazing gone on the lower floors, glass and frame thrown into the street and out of its sides](office-tower.png)
 
 ## The building
 
@@ -48,11 +48,50 @@ simplification is listed here.
 
 ## Under gravity
 
-@@GRAVITY@@
+Stood under gravity alone for 0.3 s, damped at 50/s, and judged as the [IFC
+corpus](ifc-import-corpus.md#under-gravity) judges imported buildings (`GravityCheck`,
+`blastbench gravity --preset office`), it **stands**:
+- **Weight:** 32,200 kN (3,280 t, 5.3 kN/m² of floor), and 99.9% of it is carried.
+- **Movement:** the peak displacement is 7 mm, no element fails, and nothing is still moving at
+  the end.
+
+The older twelve-storey tower stands the same way (99.9%, 7 mm).
+
+Gravity comes on at once when a run starts; there is no settling first. The frame then sags
+its 7 mm while the blast is on its way.
 
 ## The blast
 
-@@BLAST@@
+Run with `blastbench snapshot --preset office --dx 0.5 --time 3 --frames 0.05,0.25,1,2`: 1,000 kg
+at the kerb, 5 m from the front façade, on 0.5 m air.
+
+| Time | What happens |
+|---|---|
+| 50 ms | The front's glazing on the lowest floors breaks up as the wave crosses it; the wave runs along the façades and across the street to the neighbours |
+| 250 ms | The front has lost its glass over the lower half, leaving the mullions and transoms. Blast entering through it pressurises the floors and blows out side glazing near the front. Glass and frame are thrown into the street and out of the sides |
+| 1 s | Fragments are still in flight, tens of metres out to the sides and into the street, some whole strips of frame with their glass; the frame and the core stand |
+| 3 s | Still standing: the steel frame and core carry it, with 32,249 of 236,868 elements failed, nearly all of them glass and curtain-wall frame |
+
+![The office 3 s after the blast: standing, its lower front open, fragments round it](office-tower-3s.png)
+
+The largest displacement the run reports, hundreds of metres, is a glass fragment's flight. The
+structure's own movement is far smaller.
+
+The frame is probably too strong against the blast near the charge. Each column is a rectangle
+0.19 m wide where the real section's flanges are 0.31 m, so it catches less of the blast. Its
+joints are rigid where a real frame's are pinned, so it is stiffer. And the equivalent
+rectangle's axial stiffness is about twice the section's.
+
+### Cost
+
+220,788 shells and 16,080 beams on 1.5 million cells of 0.5 m air: **3 s simulated in 3,296 s**
+(55 minutes, 1,100 times slower than real time) on the Studio. The air was frozen after 1.2 s,
+and from then on the structure alone runs. That is about 14 times the older tower's cost per
+second simulated. Two causes:
+- **Elements:** there are 2.4 times as many, the glass and curtain wall among them.
+- **Time step:** it is 2.1e-5 s against the older tower's 5–6e-5 s. Steel's wave speed is high
+  (7,300 m/s in the scaled sections), and the mesh keeps lines 0.157 m apart round each column
+  for its head.
 
 ## Sources
 
