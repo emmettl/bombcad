@@ -85,6 +85,8 @@ def smoke(app):
     with tempfile.TemporaryDirectory(prefix="bombcad-smoke-") as temporary:
         run(str(app / "Contents/MacOS" / EXECUTABLE), "run", str(ROOT / SMOKE_PROJECT),
             "--resolution", "coarse", "--duration", "0.002", "--out", str(Path(temporary) / "smoke.bombcad"))
+    # Its window and sidebar drawn offscreen through a change of source, as the Source menu makes it.
+    run(str(app / "Contents/MacOS" / EXECUTABLE), "interface-smoke")
 
 
 def preflight(args):
