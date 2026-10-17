@@ -33,6 +33,7 @@ struct SceneViewCodecTests {
         #expect(try SceneViewCodec.decodeSetup(SceneViewCodec.encode(setup)) == setup)
         let frame = try ViewFrame(solver: solver)
         let bytes = SceneViewCodec.encode(frame)
+        #expect(SceneViewCodec.size(frame) == bytes.count)
         #expect(try SceneViewCodec.decodeFrame(bytes) == frame)
         #expect(throws: ProjectFileError.self) { try SceneViewCodec.decodeFrame(bytes.dropLast(3)) }
         #expect(throws: ProjectFileError.self) { try SceneViewCodec.decodeFrame(bytes + Data([0])) }

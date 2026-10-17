@@ -221,7 +221,8 @@ final class ViewSender: @unchecked Sendable {
         let start = ContinuousClock.now
         let extent = SIMD2(Float(solver.grid.nx), Float(solver.grid.ny)) * solver.grid.cellSize
         let ground = solver.groundSlice(low: .zero, high: extent)
-        let surface = spec.structure ? solver.structureSurface() : nil
+        // A scene view carries the structure's meshes already.
+        let surface = spec.structure && spec.sceneStride == nil ? solver.structureSurface() : nil
         let volume = spec.volumeStride.map { solver.airSlice(region: Self.domain(solver), stride: $0) }
         let scene = spec.sceneStride.flatMap { sceneFrame(solver, stride: $0) }
         let read = start.duration(to: .now)
@@ -232,9 +233,10 @@ final class ViewSender: @unchecked Sendable {
         let header = WatchFrame.Header(
             frame: number, time: solver.time, cellSize: ground.cellSize, counts: ground.counts,
             points: surface?.points.count ?? 0, faces: faces, quadsIncluded: includeQuads,
-            volume: volume?.counts ?? .zero, scene: scene?.count ?? 0,
+            volume: volume?.counts ?? .zero, scene: scene.map(SceneViewCodec.size) ?? 0,
             rawBytes: 2 * columns + 12 * (surface?.points.count ?? 0) + 2 * faces
-                + (includeQuads ? 16 * faces : 0) + 2 * (volume?.values.count ?? 0) / 5 + (scene?.count ?? 0),
+                + (includeQuads ? 16 * faces : 0) + 2 * (volume?.values.count ?? 0) / 5
+                + (scene.map(SceneViewCodec.size) ?? 0),
             compression: spec.compression)
         lock.withLock {
             inFlight[number] = start
@@ -244,7 +246,8 @@ final class ViewSender: @unchecked Sendable {
         writer.enqueue(.view(id, header)) { [self] in
             let packing = ContinuousClock.now
             var payload = WatchFrame.pack(
-                ground: ground, surface: surface, includeQuads: includeQuads, volume: volume, scene: scene)
+                ground: ground, surface: surface, includeQuads: includeQuads, volume: volume,
+                scene: scene.map(SceneViewCodec.encode))
             let raw = payload.count
             payload = Self.compress(payload, spec.compression)
             let took = packing.duration(to: .now)
@@ -257,8 +260,9 @@ final class ViewSender: @unchecked Sendable {
         }
     }
 
-    /// The scene view's frame now, encoded, its setup sent first the first time.
-    private func sceneFrame(_ solver: BlastSolver, stride: Int) -> Data? {
+    /// The scene view's frame now, its setup sent first the first time; encoded later, on the
+    /// writer's queue.
+    private func sceneFrame(_ solver: BlastSolver, stride: Int) -> ViewFrame? {
         if !setupSent {
             setupSent = true
             let setup = SceneViewCodec.encode(ViewSetup(solver: solver, fieldStride: stride))
@@ -266,7 +270,7 @@ final class ViewSender: @unchecked Sendable {
             writer.enqueue(.viewSetup(id)) { Self.compress(setup, compression) }
         }
         guard let field = try? solver.viewField(stride: stride) else { return nil }
-        return SceneViewCodec.encode(ViewFrame(solver: solver, field: field))
+        return ViewFrame(solver: solver, field: field)
     }
 
     static func compress(_ data: Data, _ compression: ViewCompression) -> Data {
@@ -329,7 +333,7 @@ enum HeadlessWatch {
         Runs the project on another Mac, as a thin client would: that Mac's GPU runs the blast and
         sends back, every --frame-interval milliseconds of simulated time (1 by default), what a
         viewer draws: the ground's paint over the whole grid (overpressure, peak, impulse, in half
-        precision) and, unless --no-structure, the structure's surface; --volume adds the
+        precision) and, unless --no-structure or --scene, the structure's surface; --volume adds the
         overpressure in every stride-th cell of the air, a volume to draw. --scene adds the scene as
         the app's renderer draws it (the blast's field, stride times coarser than the solver's grid,
         and every structure's mesh), and --render draws it here with that renderer, writing a PNG
