@@ -46,7 +46,7 @@ and hall: Ronan Point's gas collected in the hall of a corner flat on the eighte
 the cooker. The flat's two windows are vent panels. Air on 0.125 m cells (`blastbench panelblock
 --case gas`; `--gas methane` for the methane the preset had before town gas was in the model).
 
-![Gas in the corner flat, 0.7 s: the face wall under its front window burst outwards, the load-bearing flank wall (left) standing](large-panel-gas-700ms.png)
+![Town gas in the corner flat, 0.7 s: the face wall under its front window burst outwards, the load-bearing flank wall (left) standing](large-panel-gas-700ms.png)
 
 **With the windows holding to 25 kPa (the preset)**, so that the pressure can find the walls:
 - the flat reaches **12 kPa on the flank wall by 0.5 s** (3.9 kPa at 0.3 s, 9.6 at 0.4);
