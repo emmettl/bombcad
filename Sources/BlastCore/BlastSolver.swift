@@ -452,6 +452,12 @@ public final class BlastSolver {
     /// beside it nearest the point.
     private let gaugePointBuffer: MTLBuffer
     private var gaugePoints: [SIMD3<Float>?] = []
+    /// The congestion's per-cell porosity and drag (`CongestionField.porosityDrag`), and its wall
+    /// area and turbulence fields; nil without congestion, whose code is then left out of the
+    /// kernels.
+    var congestionBuffer: MTLBuffer?
+    var congestionWallBuffer: MTLBuffer?
+    private var congestionDragState: MTLComputePipelineState?
     /// The scenario's rigid blocks, whose outline the refined air follows at its own resolution;
     /// What to cut out of the air on the GPU at the end of each batch that reaches its time limit,
     /// as one landing on a frame does, for `airSlice(region:stride:)` and
@@ -2154,6 +2160,8 @@ public final class BlastSolver {
             encoder.setBuffer(terrainCut?.walls ?? noSpecies, offset: 0, index: 22)
             encoder.setBuffer(terrainCut?.defects ?? noSpecies, offset: 0, index: 23)
             encoder.setBuffer(terrainCut?.ceilings ?? noSpecies, offset: 0, index: 24)
+            // Not read without congestion.
+            encoder.setBuffer(congestionBuffer ?? noSpecies, offset: 0, index: 25)
             for (n, axis) in axes.enumerated() where !asleep {
                 if configuration.periodicSides { encodePeriodicHalo(encoder, uniforms: uniforms) }
                 uniforms.axis = UInt32(axis)
@@ -2191,6 +2199,17 @@ public final class BlastSolver {
                     encoder.setBuffer(tileFlagBuffer, offset: 0, index: 10)
                 }
                 current = 1 - current
+            }
+            if let congestionBuffer, !asleep {
+                // The congestion's drag, after the step's sweeps (see `congestionDrag`).
+                var drag = uniforms
+                encoder.setComputePipelineState(congestionDragState!)
+                encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
+                encoder.setBuffer(congestionBuffer, offset: 0, index: 1)
+                encoder.setBuffer(maskBuffer, offset: 0, index: 2)
+                encoder.setBuffer(controlBuffer, offset: 0, index: 3)
+                encoder.setBytes(&drag, length: MemoryLayout<SolverUniforms>.stride, index: 4)
+                dispatchGrid(encoder, pipeline: congestionDragState!)
             }
             if let refinement, refining {
                 let coarse = coarseView(species: currentSpecies)
@@ -3035,8 +3054,10 @@ public final class BlastSolver {
         let mixing = configuration.mixing != nil
         let limit = configuration.afterburnLimit != nil
         let cut = terrainCut != nil
+        let porous = congestionBuffer != nil
         let key =
             16 * Int(model.rawValue) + (gravity ? 1 : 0) + (mixing ? 2 : 0) + (limit ? 4 : 0) + (cut ? 8 : 0)
+            + (porous ? 1024 : 0)
         if let kernels = cellKernelsByModel[key] { return kernels }
         var constants = MTLFunctionConstantValues()
         var value = model.rawValue
@@ -3045,6 +3066,7 @@ public final class BlastSolver {
         if mixing { constants = ShaderLibrary.withMixing(constants) }
         if limit { constants = ShaderLibrary.withBurnLimit(constants) }
         if cut { constants = ShaderLibrary.withCutCells(constants) }
+        if porous { constants = ShaderLibrary.withPorousAir(constants) }
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
             try ShaderLibrary.pipeline(name, in: library, constants: constants)
         }
@@ -3054,6 +3076,16 @@ public final class BlastSolver {
             redistributeCutDefects: try pipeline("redistributeCutDefects"))
         cellKernelsByModel[key] = kernels
         return kernels
+    }
+
+    /// Compiles the congestion's drag kernel, the first time a scene with congestion needs it.
+    func prepareCongestionDrag() throws {
+        guard congestionDragState == nil else { return }
+        var constants = MTLFunctionConstantValues()
+        var value = configuration.airModel.rawValue
+        constants.setConstantValue(&value, type: .uint, index: ShaderLibrary.airModelConstant)
+        constants = ShaderLibrary.withPorousAir(constants)
+        congestionDragState = try ShaderLibrary.pipeline("congestionDrag", in: library, constants: constants)
     }
 
     /// Shares each cut cell's difference over the step out up its column, in `state` just swept (see
