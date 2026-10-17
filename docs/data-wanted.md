@@ -90,6 +90,8 @@ fails, search the number at [discover.dtic.mil](https://discover.dtic.mil/).
 | Puttock et al., PDR model against MERGE, ERGOS and Buxton, *J. Loss Prev.* (2021) 104659 | Elsevier | The reference implementation's errors |
 | BFETS Phase 2 report, BG R-1579 | FABIG (purchase) | Full-scale module explosions, 27 tests |
 | CCPS, *Guidelines for Vapor Cloud Explosion…*, 2nd ed. (2010) | Wiley/AIChE | Congestion and blast curves in industry practice |
+| Kenny, *Dynamic pulse buckling of slender beams with geometric imperfections subjected to an axial impact*, PhD thesis, Dalhousie (2001), 10 MB, open | [hdl:10222/55746](http://hdl.handle.net/10222/55746), too large for this machine's fetcher; save to `data/Kenny2001/` | Impact tests of imperfect slender beams, elastic and plastic, beside his models: the steel beams' [dynamic buckling](shell-model.md#buckling) under a measured pulse, now checked only against Lindberg's closed form |
+| Ari-Gur, Weller and Singer, columns under axial impact, *IJSS* 18(7) (1982) 619–641 | Elsevier | The classic tests of columns struck at an end, imperfections measured |
 | Dewey, the TNT and ANFO equivalences of the Beirut explosion, *Shock Waves* 31 (2021) | [doi:10.1007/s00193-021-00992-1](https://doi.org/10.1007/s00193-021-00992-1) | Peak overpressure against distance from Rigby's arrival times: the nearest to a measured pressure curve for Beirut (more in `data/Beirut2020/TO-FETCH.md`) |
 
 The survey names a few more, each under its item: Hao et al. (2017), Ross and Krawinkler (1985),
@@ -108,6 +110,7 @@ been sent.
 | Prairie Flat's and Pre-Dice Throw II's digital gauge records; the Watching Hill soil data | ERDC's Geotechnical and Structures Laboratory; DRDC Suffield | [2](data-requests.md#2-prairie-flat-the-watching-hill-soil-data-and-pre-dice-throw-ii) | Ground shock as histories, with the site's soil |
 | The slab contest's records (pressure and displacement), and the high-strength slab's details | UMKC and ACI Committee 447 | [3](data-requests.md#3-the-contests-high-strength-slab-thiagarajan-et-al-2015-reynolds-2015) | The contest's records in place of curves digitised from slides |
 | Keys's logged masonry debris data, UK MoD property | University of Southampton and the MoD | [4](data-requests.md#4-masonry-debris-under-long-duration-blast-keys-and-clubley-2017-keys-2016) | Debris on the ground as data, not read off figures |
+| ADBLAST's deliverables D4, D5 and D6: each cladding shot's charge and records, and the sub-structure rig's drawings (no draft yet) | RWTH Aachen's Institute for Steel Structures (B. Hoffmeister) or the Royal Military Academy, Brussels | | Cladding pulled off a purlin that deforms, compared ([3i](data-survey.md#3i-profiled-cladding-on-its-fixings)) |
 | Saatci's digital drop-weight records (no draft yet) | The VecTor Analysis Group, or Saatci | | Impact force against time, to say what the contact should be ([2c](data-survey.md#2c-saatcis-records)) |
 
 ## Fetched and used
@@ -120,6 +123,8 @@ means an open paper whose numbers were transcribed into the code. The survey's
 
 | Source | Folder | Compared in |
 |---|---|---|
+| Langdon 2003: corrugated blast wall panels under pulse pressure | `../profiled-sheeting/langdon-2003` | [Profiled sheeting](profiled-sheeting.md#against-langdons-corrugated-panels) |
+| ADBLAST 2015: trapezoidal cladding on screws under C4 | `../profiled-sheeting/adblast` | [Profiled sheeting](profiled-sheeting.md#against-adblasts-cladding-tests) |
 | Wu et al. 2023; Wang et al. 2022: slabs with steel in both faces | `Wu2023`, `Wang2022` | [Validation](validation.md#slabs-with-steel-in-both-faces) |
 | Peterson 2026: short beams struck to shear failure, with images | `Peterson2026` | [Validation](validation.md#short-beams-struck-to-a-shear-failure) |
 | Hupfauf and Gebbeken 2022, Hupfauf 2024: slabs under contact charges | `Hupfauf` | [Validation](validation.md#slabs-under-contact-charges) |

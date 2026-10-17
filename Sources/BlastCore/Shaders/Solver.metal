@@ -1068,6 +1068,127 @@ static inline int patchAt(int3 cell, const device int *patchOfTile, constant Sol
     return patchOfTile[tile.x + int(u.refineTileNx) * (tile.y + int(u.refineTileNy) * tile.z)];
 }
 
+// The refined levels as the exposure plane sees them (`finestPointPressure`): the
+// first level's patch of each block, fine state and outline, and the second level's, each a
+// placeholder without; `u.refineRatio` is 0 unrefined and `u.childTileNx` 0 with one level.
+struct RefinedAir {
+    const device int *patches;
+    const device Cell *fine;
+    const device uchar *mask;
+    const device int *childPatches;
+    const device Cell *childFine;
+    const device uchar *childMask;
+};
+
+// A cell's overpressure, Pa.
+static inline float cellOverpressure(Cell c, constant SolverUniforms &u) {
+    float rho = max(c.rho, u.densityFloor);
+    float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / rho;
+    return gasPressure(rho, c.energy - kinetic, u.airModel, u.gamma) - u.ambientPressure;
+}
+
+// The overpressure on a face from the finest air touching it, where its fluid cell is refined: the
+// mean of the fine cells (of the second level where that is refined) in the layer against the
+// face, solid ones left out. False where the cell is not refined or the face has no solid side
+// (an opening), when the coarse cell is read.
+static inline bool refinedFaceOverpressure(uint fluid, uint solid, constant SolverUniforms &u,
+                                           const device int *patchOfTile, const device Cell *fine,
+                                           const device uchar *fineMask, const device int *childPatches,
+                                           const device Cell *childFine, const device uchar *childMask,
+                                           thread float &pressure) {
+    if (u.refineRatio == 0 || solid == 0xFFFFFFFFu) return false;
+    int3 cell = int3(fluid % u.nx, (fluid / u.nx) % u.ny, fluid / (u.nx * u.ny));
+    int3 wall = int3(solid % u.nx, (solid / u.nx) % u.ny, solid / (u.nx * u.ny));
+    int3 step = wall - cell;
+    int axis = step.x != 0 ? 0 : (step.y != 0 ? 1 : 2);
+    int patch = patchAt(cell, patchOfTile, u);
+    if (patch < 0) return false;
+    int r = int(u.refineRatio);
+    int side = patchSize * r;
+    int3 base = (cell % patchSize) * r;
+    int a1 = (axis + 1) % 3;
+    int a2 = (axis + 2) % 3;
+    float sum = 0.0f;
+    float count = 0.0f;
+    for (int b = 0; b < r; ++b) {
+        for (int a = 0; a < r; ++a) {
+            int3 q = int3(0);
+            q[axis] = step[axis] > 0 ? r - 1 : 0;
+            q[a1] = a;
+            q[a2] = b;
+            // The second level's cells against the face, where this cell of the first is refined.
+            bool deeper = false;
+            if (u.childTileNx != 0) {
+                int3 global = (cell * r + q) * r;
+                int3 block = global / side;
+                int child = childPatches[block.x + int(u.childTileNx) * (block.y + int(u.childTileNy) * block.z)];
+                if (child >= 0) {
+                    deeper = true;
+                    int3 low = global - block * side;
+                    for (int d = 0; d < r; ++d) {
+                        for (int c = 0; c < r; ++c) {
+                            int3 s = low;
+                            s[axis] += step[axis] > 0 ? r - 1 : 0;
+                            s[a1] += c;
+                            s[a2] += d;
+                            uint at = uint(child) * uint(side * side * side) + uint(s.x + side * (s.y + side * s.z));
+                            if ((childMask[at] & 1) != 0) continue;
+                            sum += cellOverpressure(childFine[at], u);
+                            count += 1.0f;
+                        }
+                    }
+                }
+            }
+            if (deeper) continue;
+            int3 l = base + q;
+            uint at = uint(patch) * uint(side * side * side) + uint(l.x + side * (l.y + side * l.z));
+            if ((fineMask[at] & 1) != 0) continue;
+            sum += cellOverpressure(fine[at], u);
+            count += 1.0f;
+        }
+    }
+    if (count == 0.0f) return false;
+    pressure = sum / count;
+    return true;
+}
+
+// The pressure of the finest fluid cell holding `point` (metres) in coarse cell `cell`, at the
+// finest level refined there; false where neither covers it, or that cell is solid.
+static inline bool finestPointPressure(int3 cell, float3 point, constant SolverUniforms &u, RefinedAir air,
+                                       thread float &pressure) {
+    if (u.refineRatio == 0) {
+        return false;
+    }
+    int r = int(u.refineRatio);
+    int side = patchSize * r;
+    if (u.childTileNx != 0) {
+        int deep = r * r;
+        int3 global = clamp(int3(floor(point / (u.dx / float(deep)))), cell * deep, cell * deep + deep - 1);
+        int3 block = global / side;
+        int patch = air.childPatches[block.x + int(u.childTileNx) * (block.y + int(u.childTileNy) * block.z)];
+        if (patch >= 0) {
+            int3 local = global - block * side;
+            uint at = uint(patch) * uint(side * side * side) + uint(local.x + side * (local.y + side * local.z));
+            if ((air.childMask[at] & 1) == 0) {
+                pressure = cellOverpressure(air.childFine[at], u) + u.ambientPressure;
+                return true;
+            }
+        }
+    }
+    int patch = patchAt(cell, air.patches, u);
+    if (patch < 0) {
+        return false;
+    }
+    int3 global = clamp(int3(floor(point / (u.dx / float(r)))), cell * r, cell * r + r - 1);
+    int3 local = global - cell / patchSize * patchSize * r;
+    uint at = uint(patch) * uint(side * side * side) + uint(local.x + side * (local.y + side * local.z));
+    if ((air.mask[at] & 1) != 0) {
+        return false;
+    }
+    pressure = cellOverpressure(air.fine[at], u) + u.ambientPressure;
+    return true;
+}
+
 // Where in the flux registers of `patch` its face `face` (2 axis + side) records the flux
 // through the face at transverse position (a, b), cells along the next two axes in order, of
 // `side` cells to an edge.
@@ -2197,6 +2318,12 @@ kernel void sampleExposurePlane(const device Cell *state [[buffer(0)]],
                                constant float4 &probe [[buffer(5)]],
                                constant float &weight [[buffer(6)]],
                                constant float4 &sampling [[buffer(7)]],
+                               const device int *patchOfTile [[buffer(8)]],
+                               const device Cell *fine [[buffer(9)]],
+                               const device uchar *fineMask [[buffer(10)]],
+                               const device int *childPatches [[buffer(11)]],
+                               const device Cell *childFine [[buffer(12)]],
+                               const device uchar *childMask [[buffer(13)]],
                                uint2 tid [[thread_position_in_grid]]) {
     if (tid.x >= uint(sampling.x) || tid.y >= uint(sampling.y) || (control.dt <= 0 && probe.w == 0)) {
         return;
@@ -2231,6 +2358,17 @@ kernel void sampleExposurePlane(const device Cell *state [[buffer(0)]],
             }
         }
     }
+    // Where the air is refined, the finest cell holding the point, in place of the coarse cells'
+    // blend.
+    if (!solid && u.refineRatio != 0) {
+        float3 at = float3((coordinate + 0.5f) * u.dx, (probe.x + 0.5f + weight) * u.dx);
+        int3 cell = clamp(int3(floor(at / u.dx)), int3(0), int3(u.nx, u.ny, u.nz) - 1);
+        RefinedAir air = {patchOfTile, fine, fineMask, childPatches, childFine, childMask};
+        float finest;
+        if (mask[cell.x + u.nx * (cell.y + u.ny * cell.z)] == 0 && finestPointPressure(cell, at, u, air, finest)) {
+            pressure = finest;
+        }
+    }
     if (solid) {
         record.w = 1;
     } else {
@@ -2255,6 +2393,12 @@ kernel void sampleEnvelopeExposure(const device Cell *state [[buffer(0)]],
                                   constant SolverUniforms &u [[buffer(6)]],
                                   constant uint4 &parameters [[buffer(7)]],
                                   const device uchar *tileFlags [[buffer(8)]],
+                                  const device int *patchOfTile [[buffer(9)]],
+                                  const device Cell *fine [[buffer(10)]],
+                                  const device uchar *fineMask [[buffer(11)]],
+                                  const device int *childPatches [[buffer(12)]],
+                                  const device Cell *childFine [[buffer(13)]],
+                                  const device uchar *childMask [[buffer(14)]],
                                   uint index [[thread_position_in_grid]]) {
     if (index >= parameters.x || (control.dt <= 0 && parameters.y == 0)) return;
     uint4 face = faces[index];
@@ -2289,6 +2433,13 @@ kernel void sampleEnvelopeExposure(const device Cell *state [[buffer(0)]],
     rho = max(rho, u.densityFloor);
     float kinetic = 0.5f * (momentum.x * momentum.x + momentum.y * momentum.y + momentum.z * momentum.z) / rho;
     float p = gasPressure(rho, energy - kinetic, u.airModel, u.gamma) - u.ambientPressure;
+    // Where the air is refined, its finest cells against the face.
+    float refined;
+    if (!still
+        && refinedFaceOverpressure(face.y, face.x, u, patchOfTile, fine, fineMask, childPatches, childFine,
+                                   childMask, refined)) {
+        p = refined;
+    }
     // Zero, its record stays as it is, as it would adding nothing.
     if (still && as_type<uint>(p) == 0u) return;
     float4 record = records[index];
@@ -2314,6 +2465,7 @@ struct ComponentRecording {
     float binWidth;
     uint faces;
     uint fromArrival;      // 1: a component's bins start when its air first moves
+    uint readsRefined;     // 1: faces in refined air read its finest cells against them
     uint skipStill;        // 1: read a face in a still tile as the still air (no gravity)
 };
 
@@ -2472,6 +2624,7 @@ kernel void markEnvelopeComponents(const device StepControl &control [[buffer(2)
 // through the same instructions, as a row of 32 copies for components asleep.
 constant uint componentFaceThreads = 256;
 
+
 kernel void sampleEnvelopeComponentFaces(const device Cell *state [[buffer(0)]],
                                          const device uchar *mask [[buffer(1)]],
                                          const device StepControl &control [[buffer(2)]],
@@ -2483,6 +2636,12 @@ kernel void sampleEnvelopeComponentFaces(const device Cell *state [[buffer(0)]],
                                          const device uint4 *sides [[buffer(8)]],
                                          const device uint *faceList [[buffer(9)]],
                                          device float *stillPressure [[buffer(10)]],
+                                         const device int *patchOfTile [[buffer(11)]],
+                                         const device Cell *fine [[buffer(12)]],
+                                         const device uchar *fineMask [[buffer(13)]],
+                                         const device int *childPatches [[buffer(14)]],
+                                         const device Cell *childFine [[buffer(15)]],
+                                         const device uchar *childMask [[buffer(16)]],
                                          uint group [[threadgroup_position_in_grid]],
                                          uint local [[thread_index_in_threadgroup]]) {
     if (control.dt <= 0 && r.initial == 0) return;
@@ -2508,6 +2667,14 @@ kernel void sampleEnvelopeComponentFaces(const device Cell *state [[buffer(0)]],
             uint k = face.x / (u.nx * u.ny);
             still = r.skipStill != 0 && u.tileNx > 0
                     && tileFlags[i / 8 + u.tileNx * (j / 8 + u.tileNy * (k / 8))] == tileStill;
+            // Refined air: the finest cells against the face.
+            float refined;
+            if (!still && r.readsRefined != 0
+                && refinedFaceOverpressure(face.x, face.y, u, patchOfTile, fine, fineMask, childPatches,
+                                           childFine, childMask, refined)) {
+                pressures[first + n] = refined;
+                continue;
+            }
         }
         float rho;
         float3 momentum;

@@ -139,7 +139,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-27"
+    public static let currentTable = "standing-table-35"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -305,6 +305,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case pressedInterlock
     case hourglassSecant
     case hourglassWithoutSteel
+    case perfectMembers
     case interfaceBond
     case smearedMasonry
     case profiledSheets
@@ -396,6 +397,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .pressedInterlock: return any { $0.pressedInterlock }
         case .hourglassSecant: return !concrete.isEmpty && any { $0.hourglassFollowsCracking }
         case .hourglassWithoutSteel: return !concrete.isEmpty && any { !$0.hourglassCapsSteel }
+        case .perfectMembers: return any { !$0.memberImperfections && $0.elementKind == .shell }
         case .interfaceBond: return any { $0.interfaceBond != nil }
         case .smearedMasonry: return materials.contains { $0.units != nil } && any { !$0.unitJoints }
         case .profiledSheets: return any { $0.solidSheets.contains { $0 != nil } }
@@ -766,6 +768,12 @@ public enum StandingTable {
                 note: "Halves the hourglass work in the contest slab and leaves the shear beam as it was; "
                     + "not run against the impact tests.",
                 document: "validation.md#hourglass-control")
+        case .perfectMembers:
+            return Entry(
+                title: "Steel members perfectly straight", affects: structure, limit: .approximation,
+                note: "Without Eurocode 3's equivalent bow a strut of middling slenderness carries its "
+                    + "perfect load, up to 1.5 times the design curves' resistance near λ̄ = 1: the unsafe side.",
+                document: "shell-model.md#buckling")
         case .interfaceBond:
             return Entry(
                 title: "Bonded material joints", affects: structure, limit: nil,
@@ -779,14 +787,16 @@ public enum StandingTable {
                 document: "concrete-model.md#masonry-as-units-and-mortar-joints")
         case .profiledSheets:
             return Entry(
-                title: "Profiled steel sheeting", affects: [.structuralDamage], limit: .illustrative,
+                title: "Profiled steel sheeting", affects: [.structuralDamage], limit: .approximation,
                 note:
-                    "Sheets are a skin with their ribs as beams, their thin flanges softening once they buckle, "
-                    + "fixed to their rails and purlins without pull-out. Against Langdon's corrugated panels, "
-                    + "held by her connections as springs, the permanent sets are 0.55–1.73 of those measured on "
-                    + "10 of 13 tests both ways and none runs away; where buckling comes on before plate theory "
-                    + "says (three tests) they read a fifth or less. No test of cladding on screws compared.",
-                document: "profiled-sheeting.md#against-langdons-corrugated-panels")
+                    "Sheets are a skin with their ribs as beams, their thin flanges buckling (collapsing or "
+                    + "keeping their effective width by how they buckle), screwed to their rails and purlins "
+                    + "by screws that pull through. Langdon's corrugated panels: 10 of 13 permanent sets within "
+                    + "half to twice of measured. ADBLAST's screwed cladding in air: first deflection 0.90–1.35 "
+                    + "of measured on all ten tests, but what is left after is not right, and cladding torn off "
+                    + "a deforming purlin is not compared. Sheeted purlins and rails are held straight by the "
+                    + "screws, which under uplift, their free flange in compression, is the unsafe side.",
+                document: "profiled-sheeting.md#against-adblasts-cladding-tests")
         case .inclinedBars:
             return Entry(
                 title: "Inclined bars", affects: structure, limit: nil,
@@ -978,7 +988,9 @@ public enum StandingTable {
         "EnvelopeConstruction.roofThicknessM": .input,
         "EnvelopeConstruction.reinforcementRatio": .input,
         "EnvelopeConstruction.glassThicknessM": .input,
+        "EnvelopeConstruction.laminate": .input,
         "EnvelopeConstruction.facadePaneM": .input,
+        "EnvelopeConstruction.glazing": .input,
         "EnvelopeConstruction.source": .input,
         "EnvelopeConstruction.detail": .input,
         "EnvelopeConstruction.barsInBothFaces": .input,
@@ -1015,6 +1027,7 @@ public enum StandingTable {
         "FlameAcceleration.instability": .option([.deflagration]),
         "FlameAcceleration.externalFactor": .option([.deflagration]),
         "FlameAcceleration.turbulence": .option([.deflagration]),
+        "FlameAcceleration.thermodiffusive": .option([.deflagration]),
         "FlameTurbulence.scale": .option([.deflagration]),
         "VentPanel.box": .input,
         "VentPanel.releasePressure": .input,
@@ -1059,11 +1072,13 @@ public enum StandingTable {
         "SolverConfiguration.minimumBalloonCells": .numerical,
         "SolverConfiguration.refinement": .option([.shockRefinement, .twoLevelRefinement]),
         "SolverConfiguration.refinementThreshold": .numerical,
+        "SolverConfiguration.refinementHoldsEnvelopes": .numerical,
         "SolverConfiguration.refinementMargin": .numerical,
         "SolverConfiguration.refinementLevels": .option([.twoLevelRefinement]),
         "SolverConfiguration.refinementOwnSteps": .option([.adaptiveSubsteps]),
         "SolverConfiguration.refinementFinerThreshold": .numerical,
         "SolverConfiguration.refinementMemory": .numerical,
+        "SolverConfiguration.refinementStartMemory": .numerical,
         "SolverConfiguration.structureMaskSampling": .numerical,
         "SolverConfiguration.structureMaskFill": .numerical,
         "SolverConfiguration.structureMaskOverlap": .numerical,
@@ -1098,6 +1113,10 @@ public enum StandingTable {
         "StructureModel.unitJoints": .option([.smearedMasonry]),
         "StructureModel.solidSheets": .option([.profiledSheets]),
         "StructureModel.springSupports": .input,
+        "StructureModel.sheetFastenings": .input,
+        "StructureModel.memberImperfections": .option([.perfectMembers]),
+        "StructureModel.bucklingCurve": .input,
+        "StructureModel.solidBucklingCurves": .input,
         "StructureModel.shellSectionShear": .option([.shellSectionShear]),
         "StructureModel.secondCracks": .option([.noSecondCracks]),
         "StructureModel.bareBars": .option([.noBareBars]),
@@ -1545,9 +1564,14 @@ struct StandingScene {
             return [
                 StandingEvidence(
                     "FM Global's 63.7 m³ chamber, lean hydrogen of 12.1–19.7% (Bauwens, Chao and Dorofeev, 2011)",
-                    "0.19–0.39 of the measured peaks, the unsafe side, on lean hydrogen's measured growth law; in "
-                        + "a closed sphere K_G about 0.4 of the measured",
-                    "deflagration.md#checks")
+                    "1.24–2.96 of the measured peaks with the flame's 1/Le response, nothing fitted (0.19–0.39 "
+                        + "without it); in a closed sphere K_G 0.89–0.99 of the measured",
+                    "deflagration.md#checks"),
+                StandingEvidence(
+                    "HySEA's 20 ft containers, lean hydrogen of 15% and 21% (Skjold et al., 2017)",
+                    "Vented through the doors within the repeats' scatter (0.72–1.42); through the roof 0.19–0.45, "
+                        + "the unsafe side",
+                    "deflagration.md#checks"),
             ]
         case .townGas?:
             return [
@@ -1612,8 +1636,9 @@ struct StandingScene {
         let gas = inputs.scenario.deflagration?.gas
         let fuel =
             gas == .hydrogen
-            ? "Lean hydrogen reads lower still, the unsafe side: 0.19–0.39 of FM Global's vented tests, and K_G "
-                + "in a closed sphere about 0.4 of the measured. For methane, "
+            ? "Lean hydrogen, with its flame's 1/Le response, reads 1.24–2.96 of FM Global's vented tests and "
+                + "within the scatter of HySEA's containers vented through their doors, but 0.19–0.45 of those vented "
+                + "through their roof, the unsafe side; K_G in a closed sphere 0.89–0.99 of the measured. For methane, "
             : gas == .townGas
                 ? "Town gas, half hydrogen, was compared only in a closed sphere (K_G about 0.77 of the measured) "
                     + "and at Ronan Point, where the flat's 12 kPa is below the inquiry's 21 on the flank, the "
@@ -2203,6 +2228,19 @@ struct StandingScene {
                 } != false
         }.count
         let vented = inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes
+        let laminated = envelopes.contains { inputs.scenario.envelopeConstruction(for: $0).laminate != nil }
+        let laminatedEvidence =
+            laminated
+            ? [
+                StandingEvidence(
+                    "Laminated panes: Osnes et al.'s 15 shock-tube panes, Zhang et al.'s 5 and Hooper's 8 "
+                        + "framed windows in the open",
+                    "Cracking: every Osnes pane at E1300's median strength, 8 of which held (their new glass "
+                        + "1.6 times as strong); cracked panes held, 0.67–0.89 of Osnes's deflection, 1.2–1.7 "
+                        + "of Zhang's; all of Hooper's silicone-bonded panes pulled out, as measured, at 0.9–1.5 "
+                        + "of his speeds but at 73 mm where his held to 140–209 mm",
+                    "building-envelopes.md#laminated-glass")
+            ] : []
         return result(
             .envelopeDamage, .approximation,
             "One way, from each component's load, "
@@ -2249,6 +2287,13 @@ struct StandingScene {
                         + "Mendonça's two collapses missed",
                     "building-envelopes.md#slabs-held-on-their-edges"),
                 StandingEvidence(
+                    "ADBLAST's screwed TR84 cladding shot in air (10 tests, 0.5–1.5 kg)",
+                    "Profiled sheeting: within 1.0–1.35 of the shell model's deflection under the same load; in "
+                        + "the air's load on the whole panel 0.50–1.37 of measured, low on nine (on the middle "
+                        + "ribs 0.62–1.07); graded heavy to failed where the sheets set but stayed on; the screws "
+                        + "held, as measured",
+                    "profiled-sheeting.md#against-adblasts-cladding-as-an-envelope"),
+                StandingEvidence(
                     "Monk and Clubley's annealed windows in the Shoeburyness tunnel (12 timed panes)",
                     "Every pane broken, as in the tests, at 0.82–1.07 of the measured time and 0.69–1.15 of the "
                         + "deflection", "validation.md#window-glass"),
@@ -2256,7 +2301,13 @@ struct StandingScene {
                     "ASTM E1300's load resistance of eight annealed panes",
                     "Its stresses within 8%; panes break at 0.57–0.72 of its load resistance (the safe side)",
                     "validation.md#the-threshold-against-astm-e1300"),
-            ],
+                StandingEvidence(
+                    "A district against its surveys: Beirut, 2020, 14,169 map buildings at 0.2–1.1 kt",
+                    "One typical pane a storey breaks inside 1.25 km where GEER found 0.39–0.84 of street "
+                        + "façades damaged, half at 1.1–2.1 km by the glass assumed; 0.5 m stone falls where "
+                        + "partial collapses were found and cracks to about 1.2 km",
+                    "validation.md#a-district-beirut-2020"),
+            ] + laminatedEvidence,
             assumptions: [
                 "Compared with measurement as freestanding and one-way walls, as slabs held on their edges "
                     + "(mostly on two; one panel clamped all round), and glass only under a load far past what "
@@ -2265,23 +2316,33 @@ struct StandingScene {
                 "Reinforced blockwork is judged as a concrete of the masonry's strength, graded by the "
                     + "concrete's limits; a freestanding wall's cap adds only the mass its construction gives.",
                 "Profiled steel sheeting spans one way between its rails or purlins by UFC 3-340-02's method for "
-                    + "cold-formed panels on the maker's effective section, graded by PDC-TR 06-08's limits for "
-                    + "deck whose membrane action its fixings limit, and blown off when its dynamic reaction passes "
-                    + "what its screws hold by EN 1993-1-3; no blast test of cladding or its fixings compared.",
+                    + "cold-formed panels on its effective section (the maker's, or by its compressed flat's "
+                    + "class, a slender one at Winter's width), graded by PDC-TR 06-08's limits for deck whose membrane action its "
+                    + "fixings limit, and blown off when the reaction pulling it off its screws, as it comes back "
+                    + "out or is sucked, passes what they hold by EN 1993-1-3; a component's mean load under-reads "
+                    + "its most loaded ribs.",
                 "Cross-laminated timber spans one way, elastic–perfectly plastic, its resistance from the mean "
                     + "bending strength with the Ottawa shock tube's dynamic increase, graded by WoodWorks' ductility "
                     + "limits from the Tyndall tests; no envelope-level test of its damage compared.",
                 "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
                     + "2° is flagged as beyond the one-way model.",
                 "Glass is annealed, on Moore's large-deflection plate, simply supported, breaking at E1300's "
-                    + "median strength with the whole pane at its largest stress.",
+                    + "median strength with the whole pane at its largest stress"
+                    + (laminated
+                        ? "; laminated glass as one pane of its effective thicknesses (E1300's), which cracks "
+                            + "so and is then a membrane at the cracked laminate's plateau tension (Hooper's) "
+                            + "until its interlayer's failure strain or its frame's hold is passed: GSA 2 while "
+                            + "held, thrown whole when not, never vented in the air."
+                        : "."),
                 "The glass's hazard is graded by GSA's conditions and ASTM F1642's ratings from where it "
                     + "would land, thrown whole from the pane's middle at its speed on breaking, the load pushing "
                     + "it on, over a 0.9 m sill; no test's fragments compared. A cased charge's fragments hole a "
                     + "pane past Kim et al.'s breaking momentum, breaking it then if first. With glazing vented "
                     + "it opens in the air then, at a time from the fragments flown in still air before the run, "
                     + "independent of the blast's effect on their flight: fine near the charge, where fragments "
-                    + "lead the shock.",
+                    + "lead the shock. Roof glazing that goes falls to the building's foot without drag, "
+                    + "graded at 79 J and 14.9 J, whole if laminated, else by the shard that would reach them; no "
+                    + "falling test compared.",
                 "Concrete by ASCE/SEI 59-11's limits for single-reinforced slabs; brick cracked or fallen, with "
                     + "no arching, a wall rocking against the weight of its own masonry above it.",
             ]
@@ -2294,7 +2355,9 @@ struct StandingScene {
                     ? [
                         "\(blocks) buildings of solid blocks (as map buildings are) taken to hold a window "
                             + "in each storey of each façade, 1.2 × 1.5 m unless set, judged on the storey's "
-                            + "mean load."
+                            + "mean load; map buildings' façades also as a mix of panes by their kind and "
+                            + "height, assumed (no survey of glazing found), each breaking with E1300's "
+                            + "probability, the whole pane at its largest stress."
                     ]
                     : [])
                 + (inputs.scenario.structuralObjects.isEmpty ? [] : [Self.envelopesBesideStructures]),
@@ -2305,7 +2368,8 @@ struct StandingScene {
         result(
             .envelopeExposure, .approximation,
             "Stationary surfaces whose loads come from the air beside them; a wall facing a charge has Kingery–"
-                + "Bulmash's reflected impulse, but no street of buildings has been compared.",
+                + "Bulmash's reflected impulse; across a district the shock arrives when it was seen, its peak "
+                + "on 4 m cells about three quarters of Kingery–Bulmash's.",
             evidence: [
                 StandingEvidence(
                     "Surface integration against per-step pressure on the CPU",
@@ -2315,6 +2379,11 @@ struct StandingScene {
                     "Kingery–Bulmash, a rigid wall facing the charge, on the shipped air",
                     "Reflected impulse 93–113% from 1 m/kg^(1/3) on 0.25 m cells",
                     ValidationTables.burningDocument),
+                StandingEvidence(
+                    "Beirut, 2020: the shock's arrival at 30 observers 250 m to 2.35 km (Rigby et al.)",
+                    "At 0.5 kt a median 0.98 of the times seen, 25 of 27 from 400 m out within 10%; peaks "
+                        + "0.68–0.78 of Kingery–Bulmash on 4 m cells",
+                    "validation.md#a-district-beirut-2020"),
             ],
             assumptions: [
                 "Fixed geometry: no broken windows, deformation, collapse or changing shielding.",

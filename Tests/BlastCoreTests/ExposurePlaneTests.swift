@@ -15,6 +15,34 @@ struct ExposurePlaneTests {
             device: device, grid: Grid(nx: 12, ny: 4, nz: 4, cellSize: 0.5), configuration: config)
     }
 
+    @Test("Where the air is refined the plane reads the finest cell holding each point")
+    func refined() throws {
+        // 1 kg on the ground; the plane 1 m up on 0.25 m points, the peaks 2.5–3.5 m out.
+        func peaks(cellSize: Float, refinement: Int) throws -> [Float] {
+            let scenario = Scenario(
+                name: "Burst", domainSize: SIMD3(8, 8, 4), boxes: [],
+                charge: Charge(mass: 1, position: SIMD3(2, 4, 0)))
+            var configuration = SolverConfiguration.recommended
+            configuration.refinement = refinement
+            configuration.refinementMemory = 64 << 20
+            let solver = try BlastSolver(
+                device: #require(MTLCreateSystemDefaultDevice()), scenario: scenario, cellSize: cellSize,
+                configuration: configuration)
+            try solver.configureExposurePlane(heightM: 1, arrivalThresholdPa: 1000, spacingM: 0.25)
+            _ = solver.advance(until: 0.008)
+            let snapshot = try #require(solver.exposureSnapshot())
+            // Along the line through the charge, from 2.5 to 3.5 m out.
+            return (18...22).map { i in snapshot.peakPa[i + snapshot.nx * 16] ?? 0 }
+        }
+        let refined = try peaks(cellSize: 0.5, refinement: 2)
+        let uniform = try peaks(cellSize: 0.25, refinement: 1)
+        let coarse = try peaks(cellSize: 0.5, refinement: 1)
+        for (r, u) in zip(refined, uniform) {
+            #expect(abs(r / u - 1) < 0.05, "\(refined) against \(uniform)")
+        }
+        #expect(zip(coarse, uniform).allSatisfy { $0 < 0.95 * $1 }, "\(coarse) against \(uniform)")
+    }
+
     @Test("Endpoint maps match an independent CPU accumulation and retain null semantics")
     func accumulation() throws {
         let solver = try solver()

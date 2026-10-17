@@ -1850,8 +1850,31 @@ static inline void flagAround(int3 cell, device uchar *wanted, constant SolverUn
 
 // Step 7a: a tile is wanted where the pressure of a cell in it and of a neighbour differ by more
 // than `refineThreshold` of the lower, or where such a pair lies within `refineMargin` cells.
+// A band of air beside envelope buildings' faces in which refinement is held while the air is
+// loaded (|p − ambient| over `threshold`), so that their façades' reflected loads are resolved
+// through their positive phase and not only as the shock passes. `band` is a byte a coarse cell;
+// a level's cells map to coarse ones by `ratio`.
+struct FacadeBand {
+    uint nx;
+    uint ny;
+    uint nz;
+    uint ratio;
+    float threshold;
+    float ambient;
+    uint on;
+    uint pad;
+};
+
+static inline bool heldByBand(int3 cell, float p, const device uchar *band, constant FacadeBand &b) {
+    if (b.on == 0) return false;
+    int3 c = cell / int(b.ratio);
+    if (any(c < 0) || c.x >= int(b.nx) || c.y >= int(b.ny) || c.z >= int(b.nz)) return false;
+    return band[uint(c.x) + b.nx * (uint(c.y) + b.ny * uint(c.z))] != 0 && fabs(p - b.ambient) > b.threshold;
+}
+
 static inline void flagCell(int3 cell, const device Cell *coarse, const device uchar *mask, device uchar *wanted,
-                            constant SolverUniforms &u, const device float4 *boxDefinition) {
+                            constant SolverUniforms &u, const device float4 *boxDefinition,
+                            const device uchar *band, constant FacadeBand &held) {
     int3 dims = int3(u.nx, u.ny, u.nz);
     int index = cell.x + dims.x * (cell.y + dims.y * cell.z);
     // Around each experimental box, whatever the air does there.
@@ -1865,6 +1888,9 @@ static inline void flagCell(int3 cell, const device Cell *coarse, const device u
         return;
     }
     float p = cellPressureOf(coarse[index], u);
+    if (heldByBand(cell, p, band, held)) {
+        flagAround(cell, wanted, u);
+    }
     // Each pair of neighbours is looked at once, from its lower cell, and marks around both cells,
     // so that a jump refines the same on either side of it.
     bool sharp = false;
@@ -1895,11 +1921,13 @@ kernel void refineFlag(const device Cell *coarse [[buffer(0)]],
                        constant SolverUniforms &u [[buffer(3)]],
                        const device StepControl &control [[buffer(4)]],
                        const device float4 *boxDefinition [[buffer(6)]],
+                       const device uchar *band [[buffer(7)]],
+                       constant FacadeBand &held [[buffer(8)]],
                        uint3 tid [[thread_position_in_grid]]) {
     if (control.dt <= 0.0f || tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz) {
         return;
     }
-    flagCell(int3(tid), coarse, mask, wanted, u, boxDefinition);
+    flagCell(int3(tid), coarse, mask, wanted, u, boxDefinition, band, held);
 }
 
 // The same over the awake tiles alone, as `sweepTiles` (still air has nothing to flag).
@@ -1910,6 +1938,8 @@ kernel void refineFlagTiles(const device Cell *coarse [[buffer(0)]],
                             const device StepControl &control [[buffer(4)]],
                             const device uint *tiles [[buffer(5)]],
                             const device float4 *boxDefinition [[buffer(6)]],
+                            const device uchar *band [[buffer(7)]],
+                            constant FacadeBand &held [[buffer(8)]],
                             uint3 group [[threadgroup_position_in_grid]],
                             uint3 local [[thread_position_in_threadgroup]],
                             uint3 groupSize [[threads_per_threadgroup]]) {
@@ -1922,7 +1952,7 @@ kernel void refineFlagTiles(const device Cell *coarse [[buffer(0)]],
     for (uint z = local.z; z < uint(tileSize); z += groupSize.z) {
         uint3 cell = origin + uint3(local.x, local.y, z);
         if (cell.x < u.nx && cell.y < u.ny && cell.z < u.nz) {
-            flagCell(int3(cell), coarse, mask, wanted, u, boxDefinition);
+            flagCell(int3(cell), coarse, mask, wanted, u, boxDefinition, band, held);
         }
     }
 }
@@ -1938,6 +1968,8 @@ kernel void refineFlagFine(const device Cell *parent [[buffer(0)]],
                            const device int *parentPatches [[buffer(5)]],
                            const device uint *parentTileOfPatch [[buffer(6)]],
                            const device uint *parentList [[buffer(7)]],
+                           const device uchar *band [[buffer(8)]],
+                           constant FacadeBand &held [[buffer(9)]],
                            uint gid [[thread_position_in_grid]]) {
     if (control.dt <= 0.0f) {
         return;
@@ -1956,6 +1988,9 @@ kernel void refineFlagFine(const device Cell *parent [[buffer(0)]],
         return;
     }
     float p = cellPressureOf(parent[index], u);
+    if (heldByBand(cell, p, band, held)) {
+        flagAround(cell, wanted, u);
+    }
     bool sharp = false;
     for (int axis = 0; axis < 3; ++axis) {
         int3 next = cell;
@@ -2113,7 +2148,8 @@ kernel void refineRequest(const device int *patchOfTile [[buffer(0)]],
 // how many the pool can grant: the first that many requests, in block order, are granted, so that
 // which blocks are refined when the pool is used up does not depend on the order threads run in.
 // Counters: 0 the free stack's height, which falls by the patches granted; 1 the patches granted;
-// 3 the height before.
+// 3 the height before; 4 the most patches in use yet; 5 set once more were wanted than were free
+// (the pool ran out, and some blocks the shock wanted refined were not).
 kernel void refineGrant(device uint *groupCounts [[buffer(0)]],
                         device int *counters [[buffer(1)]],
                         constant SolverUniforms &u [[buffer(2)]],
@@ -2135,6 +2171,10 @@ kernel void refineGrant(device uint *groupCounts [[buffer(0)]],
     counters[3] = free;
     counters[0] = free - granted;
     counters[1] = granted;
+    counters[4] = max(counters[4], int(u.refineMaxPatches) - (free - granted));
+    if (int(running) > max(free, 0)) {
+        counters[5] = 1;
+    }
 }
 
 // Step 7e, per block: gives each block granted a new patch one from the pool, and wakes the tiles

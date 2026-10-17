@@ -425,6 +425,8 @@ extension Scenario {
         }
         var copy = self
         var report = MapBuildingReport()
+        // The new buildings' constructions, set together: they are new objects, so none replaces another.
+        var constructions: [EnvelopeConstruction] = []
         let columns = Int((domainSize.x / r).rounded(.up))
         let rows = Int((domainSize.y / r).rounded(.up))
         var taken = Set<Int>()
@@ -510,9 +512,12 @@ extension Scenario {
             let id = try copy.addEnvelopeObject(
                 try BuildingEnvelope(solids: boxes), name: building.name ?? "\(building.kind) \(building.id)")
             taken.formUnion(cells)
-            if let construction = EnvelopeConstruction.fromMap(objectID: id, material: building.material) {
-                copy.setEnvelopeConstruction(construction)
-            }
+            // Its construction from its material tag, if any, and its windows from its kind and height.
+            var construction =
+                EnvelopeConstruction.fromMap(objectID: id, material: building.material)
+                ?? .assumed(objectID: id)
+            construction.glazing = GlazingMix.forMapBuilding(kind: building.kind, height: top - bottom)
+            constructions.append(construction)
             copy.envelopeSources =
                 (copy.envelopeSources ?? []) + [
                     EnvelopeSource(
@@ -525,6 +530,9 @@ extension Scenario {
                 .init(
                     id: building.id, objectID: id, heightSource: heights.source, base: ground, top: top,
                     boxes: boxes.count, cells: cells.count))
+        }
+        if !constructions.isEmpty {
+            copy.envelopeConstructions = (copy.envelopeConstructions ?? []) + constructions
         }
         guard copy.rigidBoxes.count <= Scenario.maximumRigidBoxes else {
             throw MapBuilding.Failure.malformed(

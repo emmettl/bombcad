@@ -127,14 +127,19 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
 - **Next:** the rebound after a slab's peak; a shaken footing's lurch, and the rest of its
   energy (sand crushed across the whole contact, the shaken sand's own); pads' and dowels'
   laws; footings on a slope.
-- **Done, illustrative:** [profiled steel sheeting](profiled-sheeting.md), as a skin with its ribs
-  as beams in the structure editor, and as an envelope construction by UFC's method for cold-formed
-  panels with its screws' pull-out. Against Langdon's corrugated panels, held by her connections as
-  springs and with the ribs' thin flanges softening once they buckle, 10 of 13 permanent sets are
-  within half to twice of those measured, both ways, and none runs away.
-- **Next, for sheeting:** buckling that comes on before plate theory says (a real plate's
-  imperfections), which three of Langdon's tests show; screws that pull out in the shells, needed
-  before building cladding's own fixings can be judged; a blast test of cladding on its rails.
+- **Done, approximation:** [profiled steel sheeting](profiled-sheeting.md) as a skin with its ribs
+  as beams, its thin flanges buckling, screwed to its purlins by screws that pull through; Langdon's
+  connections as spring supports. Against Langdon's corrugated panels 10 of 13 permanent sets are
+  within half to twice of measured; against ADBLAST's screwed cladding in air the first deflection
+  is 0.90–1.35 of measured. As an envelope construction, by UFC's method for cold-formed panels on
+  its effective section, illustrative: the same ADBLAST tests 0.50–1.37 of measured on whole
+  components, low on nine of ten, as a component's mean load under-reads its middle ribs.
+- **Next, for sheeting:**
+  - a sheeted component's load by band across its ribs, judged on the worst band;
+  - what is left after the blast (buckled shapes snapping through);
+  - buckling earlier than plate theory says;
+  - cladding torn off a purlin that deforms, which ADBLAST's deliverables would judge
+    ([data survey 3i](data-survey.md#3i-profiled-cladding-on-its-fixings)).
 - **Planned, new materials** ([new materials](new-materials.md)): timber, solid and engineered
   (glulam, CLT, plywood), orthotropic with failure along and across the grain, rate effects and
   connections, its elastic part adopted from ContinuumKit's `OrthotropicPlaneStress`.
@@ -209,11 +214,18 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   - UK terraced brick houses: cavity walls of two brick leaves with ties, timber joist floors and a
     timber roof. Needs timber, wall ties, joist bearings and roof coverings as debris.
   - Steel portal-frame warehouses with profiled metal cladding: a sample is built
-    ([warehouse](profiled-sheeting.md#the-portal-frame-warehouse-sample)), its sheeting
-    illustrative; still needs fasteners that pull out in the shells and local buckling of thin
-    cold-formed members.
-  - Transport hubs with long-span steel and glass roofs. Needs laminated glass that holds together
-    when broken, glass falling from overhead, and a check of slender members buckling under blast.
+    ([warehouse](profiled-sheeting.md#the-portal-frame-warehouse-sample)), its sheets screwed to
+    its Zed purlins and rails and torn off as their screws pull through; the purlins at their
+    maker's capacity, what follows its peak not modelled.
+  - Transport hubs with long-span steel and glass roofs: a sample is built
+    ([transport hub](transport-hub.md)). Its parts:
+    - [laminated glass](building-envelopes.md#laminated-glass) on envelopes, compared with three
+      open sets of tests;
+    - [glass falling from overhead](building-envelopes.md#glass-falling-from-overhead);
+    - [buckling](shell-model.md#buckling) checked against Euler and Lindberg, and steel members
+      bowed by default to Eurocode 3's curves (within 3%).
+    It still needs laminated glass in the structure model, edge tearing, and a dynamic
+    buckling test (Kenny's thesis, in [data wanted](data-wanted.md)).
 
 ### Distributed computing
 

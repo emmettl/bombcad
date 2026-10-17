@@ -147,6 +147,11 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// A tile is refined where the pressures of two neighbouring cells in it differ by more than
     /// this fraction of the lower, and so are the tiles around it.
     public var refinementThreshold: Float = 0.1
+    /// Holds refinement in the air beside envelope buildings' recorded faces (a cell either side)
+    /// while it is loaded, its overpressure past this many pascals either way, so that their
+    /// façades' reflected loads stay on the finest cells through their positive phase rather
+    /// than only as the shock passes. Nil, the default, holds nothing.
+    public var refinementHoldsEnvelopes: Float?
     /// How close, in cells of the grid a level refines, such a pair must come to a block for the
     /// block to be refined too: the margin kept around the shock. A shock moves under half a cell
     /// a step and the blocks are placed afresh every step, so 1 still holds it. Until 15 October
@@ -166,10 +171,15 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// patches follow the slower shock. The coarse step is unchanged; mass, momentum and energy
     /// stay conserved across every level's edge. Off by default.
     public var refinementOwnSteps = false
-    /// GPU memory for the refined blocks, in bytes; where the shock would need more, the rest of
-    /// it stays coarse. About 63 kB a block at ratio 2, 364 kB at ratio 4. With two levels, a third
-    /// of it goes to the first and two thirds to the second.
+    /// The most GPU memory the refined blocks may take, in bytes; where the shock would need more,
+    /// the rest of it stays coarse. About 63 kB a block at ratio 2, 364 kB at ratio 4. With two
+    /// levels, a third of it goes to the first and two thirds to the second. The pools start
+    /// smaller (`refinementStartMemory`) and grow ahead of the blocks in use, so that a run takes
+    /// only the memory its shock needs, and steps as one given all of this from the start would.
     public var refinementMemory = 1 << 30
+    /// The memory the refined blocks' pools start with, shared as `refinementMemory` is, before
+    /// they grow; nil to start with all of `refinementMemory`. The run is the same either way.
+    public var refinementStartMemory: Int? = 64 << 20
     /// How finely solid elements are sampled for the air's outline: points per air cell along each
     /// axis, of each level's cells. nil, the default, samples each element once, at its centre, or
     /// at points a cell apart where it is larger: a layer of elements then fills whichever cell

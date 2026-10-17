@@ -203,7 +203,9 @@ struct ProfiledSheetTests {
         #expect(abs(foot.displacement.y) < 1e-5 && abs(foot.displacement.z) < 1e-5)
     }
 
-    @Test("Ribs buckle locally where a flange's plate buckling stress is below the yield")
+    @Test(
+        "Ribs buckle where a flange's plate buckling stress is below the yield: collapsing if it buckles as it yields, keeping its effective width if elastically"
+    )
     func localBuckling() throws {
         // Langdon's: the 95 mm flat buckles at 320 MPa, below 356; the 45 mm one at 1.4 GPa does not.
         var profile = SheetProfile.langdonBlastWall
@@ -220,16 +222,21 @@ struct ProfiledSheetTests {
         // Its strain carried to the rib's extreme fibre: 320 MPa / E × 21.25 mm / 16.3 mm.
         #expect(
             abs(buckling.onsetStrain / (320e6 / 200e9 * 21.25 / 16.26) - 1) < 0.03, "\(buckling.onsetStrain)")
-        // Thin cladding, its maker's modulus given, buckles both ways once the rib yields.
+        // Thin cladding with its maker's effective modulus: buckling is in that already.
         let cladding = ProfiledSheet(
             profile: .swedsteelSTR45, region: Box(min: SIMD3(0, 0, 0), max: SIMD3(6, 1.8, 0.04)), span: 1)
-        let claddingRib = cladding.ribMaterial(elementSize: 0.5)
-        #expect(claddingRib.localBuckling?.side == 0)
+        #expect(cladding.ribMaterial(elementSize: 0.5).localBuckling == nil)
+        // TR84 at 1.5 mm: its 100 mm crest buckles elastically at 163 MPa, under half its 420, and
+        // keeps Winter's effective width, ρ = (λ − 0.22) / λ² at λ = 1.6: 0.54.
+        let tr84 = ProfiledSheet(
+            profile: .tr84(thickness: 0.0015, yield: 420e6),
+            region: Box(min: SIMD3(0, 0, 0.99), max: SIMD3(2.46, 3.26, 1.01)), span: 0)
+        let effective = try #require(tr84.ribMaterial(elementSize: 0.123).localBuckling)
+        let slenderness = (420e6 / (4 * Float.pi * Float.pi * 210e9 / (12 * 0.91) * pow(0.0015 / 0.1, 2)))
+            .squareRoot()
         #expect(
-            abs(
-                (claddingRib.localBuckling?.onsetStrain ?? 0)
-                    / (claddingRib.yieldStress / claddingRib.youngsModulus) - 1)
-                < 1e-5)
+            effective.side == 1
+                && abs(effective.residual - (slenderness - 0.22) / (slenderness * slenderness)) < 0.01)
         // Without buckling asked for, none.
         var plain = sheet
         plain.buckles = false
@@ -255,5 +262,159 @@ struct ProfiledSheetTests {
         #expect(buckled.permanent > 0.14 && buckled.permanent < 0.57)
         #expect(stiff.permanent < 0.03)
         #expect(buckled.failedShells == 0)
+    }
+
+    /// An STW35 sheet over two purlins 1.8 m apart, screwed to them, sucked off by `pressure`
+    /// loaded slowly: how far its middle rose off the purlins (m).
+    static func suction(_ pressure: Float, device: MTLDevice) throws -> (rise: Float, links: Int) {
+        let elastic = StructureMaterial.elastic(density: 7850, youngsModulus: 210e9, poissonRatio: 0.3)
+        var model = StructureModel(
+            solids: [], material: .structuralSteel, elementSize: 0.15, fixedBase: false)
+        model.elementKind = .shell
+        model.shellLayers = 4
+        let sheet = Box(min: SIMD3(0, 0, 0.99), max: SIMD3(1.8, 1.2, 1.01))
+        for x in [Float(0), 1.8] {
+            // Stiff purlins past the sheet's sides, held at their ends.
+            model.solids.append(Box(min: SIMD3(x - 0.06, -0.3, 0.92), max: SIMD3(x + 0.06, 1.5, 1.08)))
+            model.setMaterial(elastic, of: model.solids.count - 1)
+            for y in [Float(-0.3), 1.5] {
+                model.supports.append(
+                    Box(min: SIMD3(x - 0.05, y - 0.01, 0.95), max: SIMD3(x + 0.05, y + 0.01, 1.05)))
+            }
+        }
+        model.solids.append(sheet)
+        let profile = SheetProfile.swedsteelSTW35
+        model.setSheet(
+            SheetAssignment(
+                profile: profile, ribAxis: 0,
+                fastening: .screws(profile: profile, supportThickness: 0.002, perMetre: 1)),
+            of: model.solids.count - 1)
+        let solver = try ShellSolver(device: device, model: model)
+        solver.groundContact = false
+        solver.gravity = 0
+        solver.damping = 60
+        // Up, on the underside, over 0.2 s.
+        solver.appliedLoad = PressureLoad(
+            axis: 2, positiveSide: false, history: [SIMD2(0, 0), SIMD2(0.2, pressure), SIMD2(100, pressure)])
+        solver.advance(steps: Int(0.4 / solver.criticalTimeStep))
+        return (
+            solver.node(solver.nearestNode(to: SIMD3(0.9, 0.6, 1))).displacement.z, solver.mesh.links.count
+        )
+    }
+
+    @Test(
+        "A screwed sheet stays on its purlins below its screws' pull-through by EN 1993-1-3, and comes off above"
+    )
+    func screws() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        // 2.1 kN a screw (pulling out of 2 mm); one a metre, so that the screws give way before the
+        // sheet's bending (about 6 kPa): q L / 2 = 2.1 kN/m at 2.3 kPa.
+        let screw = Fastening.screws(profile: .swedsteelSTW35, supportThickness: 0.002)
+        #expect(abs(screw.tension - 0.45 * 0.0055 * 0.002 * 420e6) < 1)
+        let held = try Self.suction(1500, device: device)
+        let torn = try Self.suction(4000, device: device)
+        print(
+            "Sheet on screws: \(held.links) links; middle rose \(held.rise * 1000) mm at 1.5 kPa, \(torn.rise * 1000) mm at 4 kPa"
+        )
+        #expect(held.links > 0)
+        #expect(held.rise < 0.05)
+        #expect(torn.rise > 0.3)
+    }
+
+    @Test(
+        "A cold-formed Zed purlin, simply supported over 6 m, collapses at 8 M_c / L² of its maker's capacity"
+    )
+    func zedPurlin() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        var steel = StructureMaterial.structuralSteel
+        steel.yieldStress = 450e6
+        steel.hardeningModulus = 0
+        let zed = ScenarioPreset.zedPurlin
+        let width: Float = 0.12
+        var model = StructureModel(
+            solids: [Box(min: SIMD3(0, -width / 2, 0.9), max: SIMD3(6, width / 2, 1.1))],
+            material: zed.equivalent(of: steel, width: width), elementSize: 0.25, fixedBase: false)
+        model.elementKind = .shell
+        // Straight: its capacity in bending is the check, as the sheeting it carries holds it
+        // sideways; bowed and free, the rectangle standing for it buckles sideways first.
+        model.memberImperfections = false
+        // Collapse at w = 8 M_c / L² per metre: 3.33 kN/m from M_c = 14.98 kN m.
+        let collapse: Float = 8 * 14.98e3 / 36
+        func deflection(at fraction: Float) throws -> Float {
+            let solver = try ShellSolver(device: device, model: model)
+            solver.groundContact = false
+            solver.gravity = 0
+            solver.damping = 80
+            let ends = solver.nodes { $0.x < 1e-4 || $0.x > 6 - 1e-4 }
+            solver.mutateNodes { nodes in
+                for n in ends { nodes[n].restrain(y: true, z: true) }
+                nodes[ends[0]].restrain(x: true)
+            }
+            // The load as the beam's own weight, 4.49 kg/m, under gravity raised over half a
+            // second to give it, then held.
+            let target = fraction * collapse / 4.49
+            let steps = Int(0.01 / solver.criticalTimeStep)
+            for n in 1...100 {
+                solver.gravity = target * min(1, Float(n) / 50)
+                solver.advance(steps: steps)
+            }
+            return -solver.node(solver.nearestNode(to: SIMD3(3, 0, 1))).displacement.z
+        }
+        let below = try deflection(at: 0.9)
+        let above = try deflection(at: 1.1)
+        print("Zed purlin: \(below * 1000) mm at 0.9 of collapse, \(above * 1000) mm at 1.1")
+        // Holding at 0.9, running away at 1.1. At 0.9 it bends twice as far as the elastic 44 mm
+        // (5 w L⁴ / 384 E I): the rectangle that stands for it yields from two-thirds of its
+        // capacity, where a cold-formed section stays elastic nearly to it.
+        #expect(below < 0.15)
+        #expect(above > 0.3)
+    }
+
+    @Test(
+        "ADBLAST's 0.75 mm cladding under 1.5 kg of C4 in the air: its first deflection within a quarter of the measured"
+    )
+    func adblastInAir() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let url = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().appending(path: "Fixtures/ADBLAST2015/tests.json")
+        let test = try #require(try AdblastCladdingTest.tests(from: url).first { $0.test == 11 })
+        var settings = AdblastCladdingTest.Settings()
+        settings.duration = 0.08
+        let result = try AdblastCladdingTest.runInAir(test, settings: settings, device: device)
+        print(
+            "ADBLAST test 11: first \(result.structure.firstPeak * 1000) mm (measured -110); air at the middle "
+                + "\(result.reflectedPeak / 1000) kPa, \(result.reflectedImpulse) kPa ms (measured 315, 196)")
+        #expect(abs(result.structure.firstPeak / -0.110 - 1) < 0.25)
+        #expect(abs(result.reflectedImpulse / 196 - 1) < 0.3)
+    }
+
+    @Test(
+        "ADBLAST's sheets in the one-way model: a slender flange at Winter's effective width, and under each test's measured pulse the shell model's deflection to within a third"
+    )
+    func adblastOneWay() throws {
+        // TR84 at 0.75 mm: the 100 mm crest buckles at 4π²E/(12(1-ν²))(t/b)² = 43 MPa, so ρ = (λ -
+        // 0.22)/λ² = 0.34 at 320 MPa; the modulus falls from the gross 21,100 mm³/m to 16,300.
+        // Langdon's narrow 2 mm flange is compact (b/t 22 against 38ε = 34 at 296 MPa) and forms a
+        // hinge; her wide one (b/t 48, past 42ε = 37) is slender, at Winter's width.
+        let wall = SheetProfile.langdonBlastWall
+        let plastic = Double(wall.section.plasticModulus) / Double(wall.pitch)
+        #expect(abs(Double(wall.designModulus(crestCompressed: true)) / plastic - 1) < 1e-4)
+        #expect(Double(wall.designModulus(crestCompressed: false)) < plastic)
+        // The same load, the measured pulse over the whole panel: the shells' first deflections
+        // (docs/profiled-sheeting.md) against the one-way model's.
+        let url = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().appending(path: "Fixtures/ADBLAST2015/tests.json")
+        let shell: [Int: Double] = [
+            3: 29, 4: 60, 6: 77, 1: 86, 2: 88, 7: 72, 8: 401, 10: 245, 11: 365, 12: 272,
+        ]
+        for test in try AdblastCladdingTest.tests(from: url) {
+            let result = AdblastCladdingTest.envelopeOnMeasured(test)
+            let ratio = result.peak * 1000 / shell[test.test]!
+            print(
+                "ADBLAST test \(test.test) under its measured pulse: one-way \(result.peak * 1000) mm, \(ratio) of the shell"
+            )
+            #expect(ratio > 0.95 && ratio < 1.4, "test \(test.test): \(ratio)")
+            #expect(!result.screwsPulled)
+        }
     }
 }

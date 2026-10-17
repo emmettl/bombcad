@@ -515,8 +515,8 @@ surface cross a cell a metre. The GPU and the CPU agree on every receiver.
    on refined terrain near the windward face read up to 50% above the gauge's own (1382 against
    915 Pa·s); gauges are right.
 4. **DEM import is basic.** No reprojection (a projected grid's coordinates are taken as metres;
-   degrees by a local equirectangular mapping), no vertical datum, no BigTIFF, JPEG, PackBits or
-   multi-band files, no rotated rasters. Resampling is bilinear without averaging, so a DEM much
+   degrees by a local equirectangular mapping), no vertical datum, no JPEG, PackBits or
+   multi-band files, no rotated rasters (BigTIFF is read). Resampling is bilinear without averaging, so a DEM much
    finer than the nodes is aliased rather than smoothed. Missing data takes the crop's lowest
    elevation.
 5. **Downstream, in part**:

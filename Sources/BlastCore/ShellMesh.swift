@@ -53,6 +53,18 @@ struct ShellMesh {
     /// Where `StructureModel.tiesTouching` tied members that touch but shared no node: the two
     /// solids and the nodes tied.
     var contactTies: [(first: Int, second: Int, nodes: Int)] = []
+    /// A fastened sheet's node and the beam's node it lies on (`StructureModel.sheetFastenings`):
+    /// the sheet's normal axis and the way along it that pulls the sheet off the beam (+1 or -1),
+    /// the beam's length the link stands for (m), and the fastening's index.
+    struct Link {
+        var sheet: UInt32
+        var beam: UInt32
+        var normal: Int
+        var off: Float
+        var length: Float
+        var fastening: Int
+    }
+    var links: [Link] = []
     /// For each element beside a column head, the mean shear stress through its thickness at
     /// which the connection punches (see `punchingStrength`); zero for the rest.
     var punching: [Float] = []
@@ -260,7 +272,21 @@ struct ShellMesh {
 
         let materials = model.materials
         var nodeIndex: [SIMD3<Int32>: UInt32] = [:]
-        func node(_ key: SIMD3<Int32>) -> UInt32 {
+        // A fastened sheet's solids have nodes of their own, a layer for each sheet.
+        var layerOf: [Int: Int32] = [:]
+        for (n, fastened) in model.sheetFastenings.enumerated() {
+            for solid in fastened.solids { layerOf[solid] = Int32(n + 1) }
+        }
+        var layeredIndex: [SIMD4<Int32>: UInt32] = [:]
+        func node(_ key: SIMD3<Int32>, solid: Int = -1) -> UInt32 {
+            if let layer = layerOf[solid] {
+                let layered = SIMD4(key, layer)
+                if let index = layeredIndex[layered] { return index }
+                let index = UInt32(positions.count)
+                layeredIndex[layered] = index
+                positions.append(SIMD3(grid[0][Int(key.x)], grid[1][Int(key.y)], grid[2][Int(key.z)]))
+                return index
+            }
             if let index = nodeIndex[key] { return index }
             let index = UInt32(positions.count)
             nodeIndex[key] = index
@@ -300,7 +326,9 @@ struct ShellMesh {
                         key[second] = Int32(v + dv)
                         keys.append(key)
                     }
-                    let corners = SIMD4(node(keys[0]), node(keys[1]), node(keys[2]), node(keys[3]))
+                    let corners = SIMD4(
+                        node(keys[0], solid: plate.solid), node(keys[1], solid: plate.solid),
+                        node(keys[2], solid: plate.solid), node(keys[3], solid: plate.solid))
                     let material = materials.firstIndex(of: model.material(of: plate.solid)) ?? 0
                     var bars: [SIMD3<Float>] = []
                     if materials[material].steel != nil {
@@ -372,7 +400,9 @@ struct ShellMesh {
                 upper[k] = Int32(w + 1)
                 beams.append(
                     Beam(
-                        nodes: SIMD2(node(lower), node(upper)), axis: k, material: material, section: section,
+                        nodes: SIMD2(node(lower, solid: column.solid), node(upper, solid: column.solid)),
+                        axis: k,
+                        material: material, section: section,
                         length: grid[k][w + 1] - grid[k][w], bars: bars, tieRatio: ties, solid: column.solid))
             }
         }
@@ -489,6 +519,54 @@ struct ShellMesh {
             }
         }
         if model.tiesTouching == true { tieTouching(model: model, tolerance: tolerance) }
+        // Fastened sheets: a link wherever a sheet's node lies on a beam's running across its ribs
+        // (a purlin's or rail's, not a rafter's or column's along them), pulling off away from the
+        // beam's side of the sheet; each standing for the beam's length halfway to its neighbours
+        // along it.
+        var ribAxis: [Int32: Int] = [:]
+        for beam in beams { if let layer = layerOf[beam.solid] { ribAxis[layer] = beam.axis } }
+        var beamOfNode: [UInt32: Int] = [:]
+        for beam in beams where layerOf[beam.solid] == nil {
+            beamOfNode[beam.nodes.x] = beam.solid
+            beamOfNode[beam.nodes.y] = beam.solid
+        }
+        var found: [Link] = []
+        for (layered, sheetNode) in layeredIndex {
+            let key = SIMD3(layered.x, layered.y, layered.z)
+            guard let beamNode = nodeIndex[key], let solid = beamOfNode[beamNode],
+                let column = columns.first(where: { $0.solid == solid }),
+                let skin = plates.first(where: { layerOf[$0.solid] == layered.w }),
+                column.axis != ribAxis[layered.w]
+            else { continue }
+            let normal = skin.axis
+            // Off the beam: away from its side of the sheet, or, where it lies in the sheet's plane,
+            // towards the sheet's crests.
+            let side = column.centre[normal] - skin.mid
+            let off: Float =
+                abs(side) > tolerance
+                ? (side < 0 ? 1 : -1) : Float(model.sheetFastenings[Int(layered.w) - 1].crestSide)
+            found.append(
+                Link(
+                    sheet: sheetNode, beam: beamNode, normal: normal, off: off, length: 0,
+                    fastening: Int(layered.w) - 1))
+        }
+        found.sort { ($0.beam, $0.sheet) < ($1.beam, $1.sheet) }
+        var byBeam: [Int: [Int]] = [:]
+        for (n, link) in found.enumerated() { byBeam[beamOfNode[link.beam]!, default: []].append(n) }
+        for (solid, members) in byBeam {
+            guard let column = columns.first(where: { $0.solid == solid }) else { continue }
+            let along = column.axis
+            let stations = members.map { positions[Int(found[$0].beam)][along] }
+            let sorted = Array(Set(stations)).sorted()
+            for (n, member) in members.enumerated() {
+                let value = stations[n]
+                guard let i = sorted.firstIndex(of: value) else { continue }
+                let low = i > 0 ? sorted[i - 1] : value
+                let high = i + 1 < sorted.count ? sorted[i + 1] : value
+                found[member].length = 0.5 * (high - low)
+            }
+        }
+        links = found
     }
 
     /// Members that touch but share no node (layers stacked face to face, a beam meeting a column

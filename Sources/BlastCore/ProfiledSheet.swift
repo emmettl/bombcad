@@ -170,6 +170,62 @@ public struct SheetProfile: Sendable, Hashable, Codable {
         return (area, centroid, secondMoment, plasticModulus)
     }
 
+    /// The modulus the one-way model takes for its strength bent with its crests (or its troughs)
+    /// in compression (m³ per metre width), UFC 3-340-02 §5-34.2's effective section modulus at
+    /// the ultimate: the maker's where given, the same both ways. Otherwise, by the compressed flat:
+    /// - of class 1 or 2 (b/t up to 38ε, EN 1993-1-1 Table 5.2), the plastic modulus, as it forms
+    ///   a hinge;
+    /// - else the elastic modulus of the section with that flat at Winter's effective width (ρ =
+    ///   (λ − 0.22) / λ², λ = √(f_y / σ_cr), σ_cr its buckling stress as a plate held along both
+    ///   edges; EN 1993-1-5 §4.4), which leaves a class 3 flat whole.
+    ///
+    /// A sinusoid, with no flat, takes its elastic modulus.
+    public func designModulus(
+        crestCompressed: Bool, youngsModulus e: Double = 210e9, poisson nu: Double = 0.3
+    )
+        -> Float
+    {
+        if let effectiveModulus { return effectiveModulus }
+        let t = Double(thickness)
+        let fy = Double(yieldStress)
+        func reduction(_ width: Float) -> Double {
+            let stress = 4 * Double.pi * Double.pi * e / (12 * (1 - nu * nu)) * pow(t / Double(width), 2)
+            let slenderness = (fy / stress).squareRoot()
+            return slenderness <= 0.673 ? 1 : min(1, (slenderness - 0.22) / (slenderness * slenderness))
+        }
+        let points = centreline
+        let top = Double(depth - thickness)
+        let compact = 38 * (235e6 / fy).squareRoot()
+        func modulus() -> Double {
+            let flat = Double(crestCompressed ? crestWidth : troughWidth)
+            if shape == .trapezoidal && flat / t <= compact {
+                return Double(section.plasticModulus) / Double(pitch)
+            }
+            // Each wall's ends' heights and area, the compressed flange's at its effective width.
+            var walls: [(low: Double, high: Double, area: Double)] = []
+            for n in 1..<points.count {
+                let (a, b) = (points[n - 1], points[n])
+                var area = t * simd_length(b - a)
+                let flat = a.y == b.y
+                if shape == .trapezoidal && flat {
+                    let crest = a.y > 0.5 * top
+                    if crest == crestCompressed { area *= reduction(crest ? crestWidth : troughWidth) }
+                }
+                walls.append((a.y, b.y, area))
+            }
+            let total = walls.reduce(0) { $0 + $1.area }
+            let centroid = walls.reduce(0) { $0 + $1.area * 0.5 * ($1.low + $1.high) } / total
+            var second = 0.0
+            for wall in walls {
+                let (ya, yb) = (wall.low - centroid, wall.high - centroid)
+                second += wall.area * (ya * ya + ya * yb + yb * yb) / 3
+            }
+            let extreme = max(top - centroid, centroid) + t / 2
+            return second / extreme / Double(pitch)
+        }
+        return Float(modulus())
+    }
+
     /// Per metre width: area (m²/m), second moment (m⁴/m) and the modulus that bending strength
     /// takes, the maker's effective one where given, else the plastic one (m³/m).
     public var perWidth: (area: Float, secondMoment: Float, strengthModulus: Float) {
@@ -205,12 +261,14 @@ public struct ProfiledSheet: Sendable, Hashable {
     /// Which side of its midsurface the profile's crests are, along the normal: +1 or -1. The
     /// troughs are on the other.
     public var crestSide: Int
-    /// Whether the ribs' flanges that buckle locally soften (`localBuckling`).
+    /// Whether the ribs' flanges that buckle locally lose strength (`localBuckling`), and how.
     public var buckles: Bool
+    public var postBuckling: PostBuckling
 
     public init(
         profile: SheetProfile, region: Box, span: Int, steel: StructureMaterial = .structuralSteel,
-        skinShare: Float = 0.05, crestSide: Int = 1, buckles: Bool = true
+        skinShare: Float = 0.05, crestSide: Int = 1, buckles: Bool = true,
+        postBuckling: PostBuckling = .automatic
     ) {
         self.profile = profile
         self.region = region
@@ -219,16 +277,28 @@ public struct ProfiledSheet: Sendable, Hashable {
         self.skinShare = skinShare
         self.crestSide = crestSide
         self.buckles = buckles
+        self.postBuckling = postBuckling
     }
 
-    /// Local buckling of the ribs' flanges, as their fibres' softening (`LocalBuckling`), or nil if
-    /// neither buckles. A flange buckles if its elastic buckling stress as a plate held along both
-    /// edges, 4 π² E / (12 (1 - ν²)) (t / b)², is below the yield, or wherever its maker's
-    /// effective modulus allows for buckling. Its fibres soften from the strain at which the
-    /// flange buckles (or, with the maker's modulus, at which the rib first yields), the
-    /// flange's strain carried to the rib's extreme fibre by the curvature, to nothing over as
-    /// much again: what the section keeps is its webs' and its other flange's.
+    /// What a flange that has buckled keeps. `effectiveWidth`: its effective width's strength,
+    /// Winter's ρ f_y with ρ = (λ − 0.22) / λ² and λ = √(f_y / σ_cr) (EN 1993-1-5 §4.4, as EN
+    /// 1993-1-3 uses it), held as it shortens further. `collapse`: nothing, falling to it over as
+    /// much strain again as it took to buckle. `automatic`: by how it buckles, a flange whose elastic
+    /// buckling stress is under half its yield (λ > √2) buckling elastically and keeping its
+    /// effective width, one above it buckling as it yields and collapsing (the bound of Johnson's
+    /// parabola between elastic and inelastic buckling).
+    public enum PostBuckling: String, Sendable, Hashable {
+        case automatic, effectiveWidth, collapse
+    }
+
+    /// Local buckling of the ribs' flanges (`LocalBuckling`), or nil if neither buckles. A flange
+    /// buckles if its elastic buckling stress as a plate held along both edges,
+    /// 4 π² E / (12 (1 − ν²)) (t / b)², is below the yield; where the maker's effective modulus is
+    /// given it already allows for buckling, and none is added. The flange's strain is carried to
+    /// the rib's extreme fibre by the curvature (its distance from the centroid against half the
+    /// profile's depth). Where both flanges buckle, the weaker sets it for both.
     public func localBuckling(rib: StructureMaterial) -> LocalBuckling? {
+        guard buckles, profile.effectiveModulus == nil, profile.shape == .trapezoidal else { return nil }
         let e = Double(steel.youngsModulus)
         let nu = Double(steel.poissonRatio)
         let t = Double(profile.thickness)
@@ -239,24 +309,32 @@ public struct ProfiledSheet: Sendable, Hashable {
             4 * Double.pi * Double.pi * e / (12 * (1 - nu * nu)) * pow(t / Double(width), 2)
         }
         // Each flange: its side of the midsurface, its distance from the centroid, its stress.
-        let flanges: [(side: Int, distance: Double, stress: Double)] =
-            profile.shape == .trapezoidal
-            ? [
-                (crestSide, centreline - section.centroid, critical(profile.crestWidth)),
-                (-crestSide, section.centroid, critical(profile.troughWidth)),
-            ] : []
-        let buckling = flanges.filter { $0.stress < fy || profile.effectiveModulus != nil }
-        guard buckles, !buckling.isEmpty else { return nil }
+        let flanges: [(side: Int, distance: Double, stress: Double)] = [
+            (crestSide, centreline - section.centroid, critical(profile.crestWidth)),
+            (-crestSide, section.centroid, critical(profile.troughWidth)),
+        ]
+        let buckling = flanges.filter { $0.stress < fy }
+        guard !buckling.isEmpty else { return nil }
         let half = Double(profile.depth) / 2
-        let onsets = buckling.map { flange in
-            profile.effectiveModulus != nil
-                ? Double(rib.yieldStress / rib.youngsModulus)
-                : min(flange.stress, fy) / e * half / flange.distance
+        func reduction(_ stress: Double) -> Double {
+            let slenderness = (fy / stress).squareRoot()
+            return slenderness <= 0.673 ? 1 : min(1, (slenderness - 0.22) / (slenderness * slenderness))
         }
-        let onset = Float(onsets.min()!)
-        return LocalBuckling(
-            axis: normal, side: buckling.count == 2 ? 0 : buckling[0].side, onsetStrain: onset,
-            softeningStrain: onset, residual: 0)
+        let weakest = buckling.min { reduction($0.stress) < reduction($1.stress) }!
+        let side = buckling.count == 2 ? 0 : weakest.side
+        let elastic = weakest.stress < 0.5 * fy
+        switch postBuckling == .automatic ? (elastic ? .effectiveWidth : .collapse) : postBuckling {
+        case .effectiveWidth:
+            let rho = reduction(weakest.stress)
+            let onset = Float(rho * fy / e * half / weakest.distance)
+            return LocalBuckling(
+                axis: normal, side: side, onsetStrain: onset, softeningStrain: onset * 1e-3,
+                residual: Float(rho))
+        case .collapse, .automatic:
+            let onset = Float(min(weakest.stress, fy) / e * half / weakest.distance)
+            return LocalBuckling(
+                axis: normal, side: side, onsetStrain: onset, softeningStrain: onset, residual: 0)
+        }
     }
 
     /// The axis normal to the sheet.
@@ -360,11 +438,15 @@ public struct SheetAssignment: Codable, Hashable, Sendable {
     public var ribAxis: Int
     /// Which side of its midsurface its crests are, along its normal (nil for +1).
     public var crestSide: Int?
+    /// Screwed to the beams it lies on (purlins, rails) by these, which can let go; nil for the
+    /// sheet sharing their nodes, held for good.
+    public var fastening: Fastening?
 
-    public init(profile: SheetProfile, ribAxis: Int, crestSide: Int? = nil) {
+    public init(profile: SheetProfile, ribAxis: Int, crestSide: Int? = nil, fastening: Fastening? = nil) {
         self.profile = profile
         self.ribAxis = ribAxis
         self.crestSide = crestSide
+        self.fastening = fastening
     }
 
     /// `profile` on `box` with its ribs as cladding and roofs usually run: up a wall (spanning
@@ -376,5 +458,57 @@ public struct SheetAssignment: Codable, Hashable, Sendable {
         self.init(
             profile: profile,
             ribAxis: normal == 2 ? (size[inPlane[0]] >= size[inPlane[1]] ? inPlane[0] : inPlane[1]) : 2)
+    }
+}
+
+/// How a profiled sheet is screwed to the beams it lies on: its screws per metre along each, and
+/// each screw's tension before the sheet pulls off it, its shear before the sheet bears out round
+/// it, and its stiffness. A fastened sheet has nodes of its own; where they meet a beam's, a link
+/// holds them together until its tension passes what the screws hold, and then lets go.
+public struct Fastening: Codable, Hashable, Sendable {
+    public var perMetre: Float
+    public var tension: Float
+    public var shear: Float
+    public var stiffness: Float
+
+    public init(perMetre: Float, tension: Float, shear: Float, stiffness: Float = 6.6e5) {
+        self.perMetre = perMetre
+        self.tension = tension
+        self.shear = shear
+        self.stiffness = stiffness
+    }
+
+    /// Self-drilling screws of `diameter` with a `washer` through `profile`'s sheet into steel
+    /// `supportThickness` thick, by EN 1993-1-3 Table 8.2 without partial factors: tension the
+    /// lesser of pulling out of the support, 0.45 d t_sup f_u,sup, and the sheet pulling over the
+    /// washer, d_w t f_u; shear the sheet's bearing, 3.2 √(t/d) f_u d t, at most 2.1 f_u d t. One in
+    /// every trough unless `perMetre` says; ADBLAST's stiffness, 0.66 MN/m a screw.
+    public static func screws(
+        profile: SheetProfile, supportThickness: Float, perMetre: Float? = nil, sheetStrength: Float? = nil,
+        supportStrength: Float = 420e6, diameter: Float = 0.0055, washer: Float = 0.016
+    ) -> Self {
+        let t = profile.thickness
+        let fu = sheetStrength ?? max(1.2 * profile.yieldStress, 420e6)
+        let pullOut = 0.45 * diameter * supportThickness * supportStrength
+        let pullThrough = washer * t * fu
+        let bearing = min(3.2 * (t / diameter).squareRoot(), 2.1) * fu * diameter * t
+        return Self(
+            perMetre: perMetre ?? 1 / profile.pitch, tension: min(pullOut, pullThrough), shear: bearing)
+    }
+}
+
+/// A fastened sheet's solids after `expandingSheets` (its skin and ribs), which the shell mesh
+/// gives nodes of their own, and their fastening; and the way along its normal its crests face,
+/// away from the beams its troughs bear on, which pulls it off them where the beams lie in its
+/// plane.
+public struct SheetFastening: Codable, Hashable, Sendable {
+    public var solids: [Int]
+    public var fastening: Fastening
+    public var crestSide: Int
+
+    public init(solids: [Int], fastening: Fastening, crestSide: Int = 1) {
+        self.solids = solids
+        self.fastening = fastening
+        self.crestSide = crestSide
     }
 }

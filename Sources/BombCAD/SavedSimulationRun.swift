@@ -181,9 +181,11 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                 results.allSatisfy({ r in
                     r.name == scenario.object(id: r.id)?.name && r.elapsedS.isFinite
                         && abs(r.elapsedS - elapsedTime) < 1e-6 && r.airCellSizeM == dx
-                        && r.faceCount > 0 && r.faceCount <= 6 * cells
+                        // A building with no face on the air (buried, or against its neighbours on
+                        // every side) has none.
+                        && r.faceCount >= 0 && r.faceCount <= 6 * cells
                         && (vented ? r.invalidFaceCount <= r.faceCount : r.invalidFaceCount == 0)
-                        && r.areaM2.isFinite && r.areaM2 > 0
+                        && r.areaM2.isFinite && (r.areaM2 > 0) == (r.faceCount > 0)
                         && (vented
                             ? r.validAreaM2 >= 0 && r.validAreaM2 <= r.areaM2 : r.validAreaM2 == r.areaM2)
                         && abs(r.areaM2 - Double(r.faceCount) * Double(dx * dx)) < max(1e-6, r.areaM2 * 1e-6)
