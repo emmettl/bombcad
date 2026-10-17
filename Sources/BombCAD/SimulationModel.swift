@@ -165,6 +165,10 @@ struct SimulationSettings: Equatable {
     /// since 16 October 2026 (`SolverConfiguration.structureMaskOverlap`); false for each element
     /// counted at its centre, as before.
     var outlineByOverlap = true
+    /// The structures brought to rest under their own weight before the blast
+    /// (`SolverConfiguration.settlesStructures`), as since 17 October 2026; false for their weight
+    /// taken as the run starts, as before.
+    var settlesStructures = true
     /// Debris lands on soil, a Winkler bed of `groundStiffness` (Pa/m), instead of the hard ground.
     var softGround = false
     var groundStiffness = SolverConfiguration.soilSubgradeModulus
@@ -774,6 +778,7 @@ final class SimulationModel {
                 settings.gravity = run.gravity ?? false
                 settings.terrainCutCells = run.cutsTerrain(over: scenario)
                 settings.outlineByOverlap = run.countsByOverlap(over: scenario)
+                settings.settlesStructures = run.settlesStructures(over: scenario)
                 settings.softGround = run.groundStiffness != nil
                 settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
                 settings.ground = run.ground ?? .rigid
@@ -825,6 +830,9 @@ final class SimulationModel {
         }
         completedRunSettings = nil
         if solver?.time == 0, lastSampleTime == nil {
+            // The structures at rest under their own weight first, so that the first sample, and
+            // every deflection after it, starts from them as they stood.
+            solver?.settleStructures()
             if structureRecord.isEmpty, let summary = structureSummary {
                 structureRecord = [
                     StructureSample(id: 0, time: 0, deflection: Double(summary.maxDisplacement) * 1000)
@@ -918,6 +926,7 @@ final class SimulationModel {
             settings.gravity = run.gravity ?? false
             settings.terrainCutCells = run.cutsTerrain(over: document.scenario)
             settings.outlineByOverlap = run.countsByOverlap(over: document.scenario)
+            settings.settlesStructures = run.settlesStructures(over: document.scenario)
             settings.softGround = run.groundStiffness != nil
             settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
             settings.ground = run.ground ?? .rigid
@@ -1125,6 +1134,7 @@ final class SimulationModel {
         settings.gravity = inputs.settings.gravity ?? false
         settings.terrainCutCells = inputs.settings.cutsTerrain(over: inputs.scenario)
         settings.outlineByOverlap = inputs.settings.countsByOverlap(over: inputs.scenario)
+        settings.settlesStructures = inputs.settings.settlesStructures(over: inputs.scenario)
         settings.softGround = inputs.settings.groundStiffness != nil
         settings.groundStiffness = inputs.settings.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
         settings.ground = inputs.settings.ground ?? .rigid
@@ -2254,7 +2264,7 @@ final class SimulationModel {
             terrainCutCells: settings.terrainCutCells,
             groundStiffness: settings.softGround ? settings.groundStiffness : nil,
             ground: settings.ground == .rigid ? nil : settings.ground,
-            outlineByOverlap: settings.outlineByOverlap)
+            outlineByOverlap: settings.outlineByOverlap, settlesStructures: settings.settlesStructures)
     }
 
     private func rebuild() {

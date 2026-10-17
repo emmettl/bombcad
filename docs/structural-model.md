@@ -129,6 +129,51 @@ Supports and loading:
   ground](#on-the-ground));
 - for running without the air, a pressure history can be applied to one outer face.
 
+### Settling under its own weight
+
+A structure is brought to rest under its own weight before the blast reaches it
+(`SolverConfiguration.settlesStructures`, on by default since 17 October 2026, and the app's
+"Settle under own weight"). Before then each run gave a structure its weight as it
+started. It sagged about twice its static deflection and was still swinging when the shock
+arrived, and that motion was added to whatever the blast did. The twelve-storey tower swung 9 mm
+off its rest shape within 200 ms. Yao's 4 × 5 m slab swung 1.1 mm within 20 ms of the shock, three
+times what its smallest test measured.
+
+How it works (`BlastSolver.settleStructures()`):
+- **When:** before the first step: the app before its first sample, the harnesses after their
+  supports are set, any other run in its first batch.
+- **How:** each body runs alone, without the air, damped in proportion to its mass at 50/s. It
+  runs at its own stable step, in 5 ms parts, until its mean (mass-weighted RMS) speed has fallen
+  to 1% of the largest on the way, after at least 20 ms.
+- **After:** every node is stopped where it is and the body's clock goes back to zero. Its
+  deformation, stresses and any cracking from its own weight stay.
+- **Falling bodies:** a body that is still moving after 1 s, such as one falling or not standing,
+  is put back undeformed. It then starts as it did before.
+
+It is left out, so that the run is as before, bit for bit:
+- with the option off;
+- for a body without gravity, as the harnesses that turn gravity off have;
+- for a body with a node whose motion the scene sets, such as a struck beam's.
+
+A harness that measures displacements measures them from the settled shape, as a test's gauges
+were zeroed on the structure standing under its own weight. Mendonça's harness keeps its blind
+prediction's start unless `--settle` is given. `blastbench --no-settle` turns settling off in any
+bench (`BOMBCAD_SETTLE=off`).
+
+`blastbench settle --scene office|tower|slab` measures how still each structure is when the shock
+reaches its nearest point (Kingery–Bulmash), and over a window after it. It runs each body alone,
+since until then nothing but its weight loads it:
+
+| Structure | Static sag, largest | Settling: its time, here | Off rest over the window, from rest | Settled |
+|---|---|---|---|---|
+| Office tower (`--scene office`), 200 ms after the shock | 7.2 mm | 205 ms, 84 s | 3.1 mm RMS, 12.9 mm largest | 0.07 mm, 0.13 mm |
+| Twelve-storey tower (`tower`), 200 ms | 7.3 mm | 216 ms, 15 s | 4.2 mm, 9.4 mm | 0.32 mm, 0.59 mm |
+| Yao's 4 × 5 m slab, 37.5 mm elements (`slab`), 20 ms | 1.1 mm | 150 ms, 12 s | 0.71 mm, 1.1 mm | 0.03 mm, 0.05 mm |
+
+The times were taken with three other GPU jobs running. Settling costs about 2.5% of the office
+tower's 55 minutes for 3 s, and less in a run on a finer air grid. What is left after settling, 2–8% of the
+sag, is what stopping at 1% of the largest speed leaves.
+
 ## Base connections
 
 A clamped base is an assumption: the joint between a wall and its footing, and the footing in

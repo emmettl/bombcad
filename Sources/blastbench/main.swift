@@ -760,6 +760,9 @@ if let name = option("rounding") {
     unsetenv("BOMBCAD_KERNEL_CONTRACT")
     for (key, value) in rounding.environment { setenv(key, value, 1) }
 }
+// `--no-settle`: structures take their weight as the run starts, as before 17 October 2026, in
+// any bench (`BOMBCAD_SETTLE=off`, read by `BlastSolver.settleStructures()`).
+if flag("no-settle") { setenv("BOMBCAD_SETTLE", "off", 1) }
 
 func runThroughput() throws {
     let scenario = chosenScenario()
@@ -5314,6 +5317,7 @@ do {
     case "tie": try runTie()
     case "prism": try runPrism()
     case "shearband": try runShearBand(device: device)
+    case "settle": try runSettle(device: device)
     case "beam": try runBeam()
     case "shear": try runShearBeam()
     case "pushoff": try runPushOff()

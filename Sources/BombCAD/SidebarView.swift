@@ -328,6 +328,12 @@ struct SidebarView: View {
                         "Counts each element of a structure into the air's cells by how much of it lies in "
                             + "each, so that its outline in the air does not flicker as it moves. Off, as before "
                             + "16 October 2026, each element counts where its centre is.")
+                Toggle("Settle under own weight", isOn: $model.settings.settlesStructures)
+                    .help(
+                        "Brings each structure to rest under its own weight before the blast, as it stood "
+                            + "before the charge went off. Off, as before 17 October 2026, a structure takes its "
+                            + "weight as the run starts, sags about twice as far as it would at rest and is "
+                            + "still swinging when the blast arrives.")
             }
             Toggle("Gravity in the air", isOn: $model.settings.gravity)
                 .help(
