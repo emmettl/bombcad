@@ -155,6 +155,8 @@ Graham's range: a mass between 0.75 and 1 of the charge's.
   so raise its datum by more than the crater's depth first. Over a flat floor, use a terrain
   lifted above it.
 
+![A crater in saturated soil shaded into the open ground after 100 kg of TNT, over the blast's peak overpressure: the bowl, the lip's crest and the ejecta thinning outwards](crater-open.png)
+
 ## Against measured craters
 
 Predicted diameters are TNT's K on the TNT-equivalent mass, with each burst on the surface. The
