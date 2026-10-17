@@ -8,8 +8,9 @@ public struct HalfSpaceSetup: Codable, Sendable, Equatable {
     public var centre: SIMD2<Float>
     /// The charge's TNT-equivalent mass, kg, for the source it drives straight into the ground.
     public var chargeMass: Float
-    /// The share of the charge's energy carried off as elastic waves by that source; nil for the
-    /// calibrated default (`DirectInducedSource.defaultElasticShare`), 0 for none.
+    /// The share of the charge's energy that source puts into the ground, as its disc's work on
+    /// elastic soil; nil for the default (`DirectInducedSource.defaultElasticShare`, or
+    /// `defaultYieldingShare` where the top layer yields in shear), 0 for none.
     public var elasticShare: Float?
     /// The grid's spacing, m; nil to suit the slowest shear wave at `DirectInducedSource`'s
     /// highest frequency.
@@ -47,6 +48,15 @@ public enum DirectInducedSource {
     /// r^(−1/2), UFC's as r^(−2.5), so it is four times too low at half that range and four times
     /// too high at twice it (docs/ground-shock-outrunning.md#the-direct-source).
     public static let defaultElasticShare: Float = 9.3e-6
+    /// For soil that yields (a top layer with a friction angle): the crater's own share of the
+    /// charge's energy, not a fit. The share sets the disc's pressure by the work it would do on
+    /// elastic soil; on soil that yields, softer, it does about 2.2 times that (2.0 to 2.6 for
+    /// φ 30–40°, cohesion up to 10 kPa, unloading at twice the loading speed), so 15% here puts
+    /// 31–35% of the charge's energy into the ground: Cooper's 33% for a surface burst
+    /// (`CraterEstimate.groundShare`). Yielding takes 80–85% of it near the charge. Against
+    /// UFC's direct-induced relation it gives 0.3 to 1.7 times UFC's velocity from 4 to
+    /// 16 ft/lb^(1/3) (docs/ground-shock-outrunning.md#stage-3-soil-that-yields).
+    public static let defaultYieldingShare: Float = 0.15
     /// The highest frequency the grid is sized for by default, Hz.
     public static let gridFrequency: Double = 150
 
@@ -94,7 +104,7 @@ public final class HalfSpaceGroundShock: @unchecked Sendable {
     private var loads: [GroundLoad]
     /// The load's averaging window, s.
     let window: Double
-    private let crater: (radius: Double, energy: Double, impedance: Double, speed: Double)?
+    let crater: (radius: Double, energy: Double, impedance: Double, speed: Double)?
 
     // Per receiver: peaks, displacements and the history at each frame.
     public private(set) var peakDown: [Double]
@@ -127,7 +137,11 @@ public final class HalfSpaceGroundShock: @unchecked Sendable {
         var layers = profile.layers.map { layer in
             AxisymmetricElasticGrid.Layer(
                 thickness: Double(layer.thickness), density: Double(layer.density),
-                pWaveSpeed: Double(layer.waveSpeed), sWaveSpeed: Double(layer.shearSpeed))
+                pWaveSpeed: Double(layer.waveSpeed), sWaveSpeed: Double(layer.shearSpeed),
+                unloadingPWaveSpeed: layer.unloadingSpeed > layer.waveSpeed
+                    ? Double(layer.unloadingSpeed) : nil,
+                frictionAngle: layer.frictionAngle.map(Double.init), cohesion: Double(layer.cohesion ?? 0),
+                restingRatio: layer.frictionAngle.map { 1 - sin(Double($0) * .pi / 180) } ?? 0.5)
         }
         switch profile.base {
         case .halfSpace(let density, let waveSpeed):
@@ -166,7 +180,11 @@ public final class HalfSpaceGroundShock: @unchecked Sendable {
         radialHistory = verticalHistory
         previous = Array(repeating: ElasticReading(radial: 0, vertical: 0, verticalStress: 0), count: n)
         // The direct source on the crater's disc.
-        let share = Double(setup.elasticShare ?? DirectInducedSource.defaultElasticShare)
+        let yields = layers.first?.frictionAngle != nil
+        let share = Double(
+            setup.elasticShare
+                ?? (yields
+                    ? DirectInducedSource.defaultYieldingShare : DirectInducedSource.defaultElasticShare))
         let charge = Charge(mass: setup.chargeMass, position: SIMD3(setup.centre.x, setup.centre.y, 0))
         if share > 0, let estimate = CraterEstimate(charge: charge, groundHeight: 0, ground: .alluvium) {
             let top = layers[0]

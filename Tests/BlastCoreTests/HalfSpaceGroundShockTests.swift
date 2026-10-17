@@ -90,6 +90,48 @@ struct HalfSpaceGroundShockTests {
         #expect(engine.peakResultant[0] > 0 && engine.peakOutwards[0] > 0)
     }
 
+    @Test("Soil that yields takes the crater's share by default, and keeps every wave within its cone")
+    func yielding() throws {
+        var spec = GroundShockSpec()
+        spec.model = .halfspace
+        spec.profile = SoilProfile(
+            layers: [
+                SoilLayer(
+                    thickness: 1, density: 1900, waveSpeed: 488, unloadingWaveSpeed: 976, frictionAngle: 35)
+            ])
+        spec.points = [SIMD2(10, 0)]
+        spec.depths = [0.5]
+        let setup = HalfSpaceSetup(centre: .zero, chargeMass: 10, cellSize: 0.2)
+        let engine = try HalfSpaceGroundShock(spec: spec, setup: setup)
+        // The default share is the yielding one, and the layer reaches the grid as it should: K₀
+        // from Jaky, unloading at twice the loading speed.
+        let energy = try #require(engine.crater?.energy)
+        #expect(abs(energy / (Double(DirectInducedSource.defaultYieldingShare) * 10 * 4.184e6) - 1) < 1e-6)
+        let layer = engine.grid.layers[0]
+        #expect(layer.frictionAngle == 35 && layer.unloadingPWaveSpeed == 976)
+        #expect(abs(layer.restingRatio - (1 - sin(35 * Double.pi / 180))) < 1e-6)
+        // The source alone: the yielding takes most of its work, never more, and the cone holds.
+        let empty = [(overpressure: Float, peak: Float, impulse: Float)?](
+            repeating: nil, count: engine.grid.radialCells)
+        var t = 0.0
+        var worst = -Double.infinity
+        while t < 0.05 {
+            t += 1e-3
+            engine.consume(rings: empty, time: t)
+            worst = max(worst, engine.stepper.coneExcess())
+        }
+        let (loss, work) = (engine.stepper.yieldingLoss, engine.stepper.work)
+        #expect(loss > 0.5 * work && loss < work, "yielding took \(loss) J of \(work) J")
+        #expect(worst < 0.01)
+        #expect(engine.peakResultant[0] > 0)
+        // Elastic soil keeps the elastic default.
+        spec.profile = sand
+        let elastic = try HalfSpaceGroundShock(spec: spec, setup: setup)
+        #expect(
+            abs(elastic.crater!.energy / (Double(DirectInducedSource.defaultElasticShare) * 10 * 4.184e6) - 1)
+                < 1e-6)
+    }
+
     @Test("The consumer drives the half-space, which under a load everywhere at once is the plane wave")
     func consumer() throws {
         var spec = GroundShockSpec()
