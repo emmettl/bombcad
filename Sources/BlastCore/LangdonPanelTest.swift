@@ -127,8 +127,39 @@ public enum LangdonPanelTest {
         /// taken as the mean (s).
         public var after: Float = 0.08
         public var skinShare: Float = 0.05
+        /// How the panel is held at its ends: by Langdon's connections as springs (her Table 7-3,
+        /// fitted to her connection tests), or by the flexible angles as plates.
+        public var connection: Connection = .springs
+        /// Whether the ribs' wide flange softens once it buckles (`ProfiledSheet.localBuckling`).
+        public var buckles = true
 
         public init() {}
+    }
+
+    public enum Connection: String, Sendable {
+        case springs, plates
+    }
+
+    /// Langdon's Table 7-3: her connections' springs for each flexible length, fitted to her tests
+    /// on 150 mm wide pieces of them (Chapter 4): pulling in along the span (K_xe, R_mx, K_xp),
+    /// across it (K_y), and turning as the flexible angle opens (her "+") and closes ("−"):
+    /// K_φe, M_φp, K_φp. Per metre of edge here, 1 / 0.15 of hers.
+    public static func connectionSprings(flexibleLength: Float) -> (
+        pull: SpringLaw, across: SpringLaw, opening: SpringLaw, closing: SpringLaw
+    ) {
+        let table: [Float: (Float, Float, Float, Float, Float, Float, Float, Float, Float, Float)] = [
+            60: (984.375e3, 750, 125e3, 3000, 315, 300, 4500, 260, -150, 1166.25e6),
+            120: (87.891e3, 500, 27e3, 2500, 250, 300, 1685, 135, -150, 583.125e6),
+            180: (40.0e3, 250, 7.5e3, 1800, 285, 550, 4500, 120, -60, 388.75e6),
+        ]
+        let row = table[flexibleLength] ?? table[120]!
+        let width: Float = 0.15
+        return (
+            SpringLaw(stiffness: row.0 / width, yield: row.1 / width, hardening: row.2 / width),
+            SpringLaw(stiffness: row.9 / width),
+            SpringLaw(stiffness: row.3 / width, yield: row.4 / width, hardening: row.5 / width),
+            SpringLaw(stiffness: row.6 / width, yield: row.7 / width, hardening: row.8 / width)
+        )
     }
 
     public struct Result: Sendable {
@@ -136,7 +167,8 @@ public enum LangdonPanelTest {
         /// Peak and permanent deflection at mid-span of the middle of the panel, along the load (m).
         public var peak: Float
         public var permanent: Float
-        /// Mid-span deflection along the load against time (s, m).
+        /// Mid-span deflection along the load against time (s, m), with, for springs, Langdon's
+        /// correction for the connection's lever: 45 mm × sin of its rotation (her eq. 7-2).
         public var history: [SIMD2<Float>]
         /// How far the panel's bottom end moved in along its span at mid-width at the end (m), as the
         /// connection gave; and the shells and beams removed by failure.
@@ -146,7 +178,8 @@ public enum LangdonPanelTest {
     }
 
     /// The panel and its connections as a shell model.
-    public static func model(flexibleLength: Float, settings: Settings) -> StructureModel {
+    public static func model(flexibleLength flexibleMM: Float, settings: Settings) -> StructureModel {
+        let flexibleLength = flexibleMM / 1000
         let steel316L = StructureMaterial(
             name: "316L stainless, 2 mm", density: 7900, youngsModulus: 200e9, poissonRatio: 0.3,
             yieldStress: settings.sheetYield, hardeningModulus: 1.25e9, failureStrain: settings.sheetRupture)
@@ -162,10 +195,26 @@ public enum LangdonPanelTest {
         let (width, span): (Float, Float) = (0.88, 0.915)
         var profile = SheetProfile.langdonBlastWall
         profile.yieldStress = settings.sheetYield
+        // The wide flange in tension in the design direction: on the side "positive" pushes towards.
         let sheet = ProfiledSheet(
             profile: profile, region: Box(min: SIMD3(0, -0.01, 0), max: SIMD3(width, 0.01, span)), span: 2,
-            steel: steel316L, skinShare: settings.skinShare)
+            steel: steel316L, skinShare: settings.skinShare, crestSide: 1, buckles: settings.buckles)
         sheet.add(to: &model)
+        if settings.connection == .springs {
+            // Her springs at the panel's ends. A positive pulse turns the bottom about +x and the
+            // top about −x, opening both angles.
+            let springs = connectionSprings(flexibleLength: flexibleMM)
+            for (z, opensPositive) in [(Float(0), true), (span, false)] {
+                model.springSupports.append(
+                    SpringSupport(
+                        region: Box(
+                            min: SIMD3(-0.01, -0.03, z - 0.005), max: SIMD3(width + 0.01, 0.03, z + 0.005)),
+                        edge: 0, along: 2, pull: springs.pull, across: springs.across,
+                        turnPositive: opensPositive ? springs.opening : springs.closing,
+                        turnNegative: opensPositive ? springs.closing : springs.opening))
+            }
+            return model
+        }
         // The flexible angles, top and bottom, out to −y; their far edges held where the rigid
         // angles are.
         let t: Float = 0.003
@@ -184,7 +233,7 @@ public enum LangdonPanelTest {
     public static func run(_ panel: Panel, settings: Settings = Settings(), device: MTLDevice) throws
         -> Result
     {
-        let model = model(flexibleLength: panel.flexibleLengthMM / 1000, settings: settings)
+        let model = model(flexibleLength: panel.flexibleLengthMM, settings: settings)
         let solver = try ShellSolver(device: device, model: model)
         solver.groundContact = false
         solver.gravity = 0
@@ -192,6 +241,8 @@ public enum LangdonPanelTest {
         // "Positive" pushes the panel towards its connections' side, −y.
         solver.appliedLoad = PressureLoad(axis: 1, positiveSide: panel.isPositive, history: panel.pulse)
         let gauge = solver.nearestNode(to: SIMD3(0.44, 0, 0.4575))
+        let foot = solver.nearestNode(to: SIMD3(0.44, 0, 0))
+        let lever: Float = settings.connection == .springs ? 0.045 : 0
         let sign: Float = panel.isPositive ? -1 : 1
         let end = panel.durationMS.milliseconds / 1000 + settings.after
         let step = solver.criticalTimeStep
@@ -201,13 +252,23 @@ public enum LangdonPanelTest {
         while time < end {
             solver.advance(steps: stepsPerSample)
             time += Float(stepsPerSample) * step
-            history.append(SIMD2(time, sign * solver.node(gauge).displacement.y))
+            let q = solver.node(foot).rotation
+            let turn = 2 * atan2(q.imag.x, q.real)
+            history.append(SIMD2(time, sign * solver.node(gauge).displacement.y + lever * sin(abs(turn))))
         }
         let peak = history.map(\.y).max() ?? 0
         let tail = history.filter { $0.x > end - settings.after / 2 }.map(\.y)
         let permanent = tail.reduce(0, +) / Float(max(tail.count, 1))
-        let foot = solver.nearestNode(to: SIMD3(0.44, 0, 0))
-        let failedShells = (0..<solver.elementCount).filter { solver.flag($0) != .active }.count
+        let failed = (0..<solver.elementCount).filter { solver.flag($0) != .active }
+        if ProcessInfo.processInfo.environment["LANGDON_DEBUG"] != nil {
+            for e in failed.prefix(6) {
+                let element = solver.mesh.elements[e]
+                print(
+                    "  failed \(e): solid \(element.solid), axis \(element.axis), centre \(solver.elementCentre(e)), flag \(solver.flag(e))"
+                )
+            }
+        }
+        let failedShells = failed.count
         let failedBeams = (0..<solver.beamCount).filter { solver.beamFlag($0) != .active }.count
         return Result(
             panel: panel, peak: peak, permanent: permanent, history: history,

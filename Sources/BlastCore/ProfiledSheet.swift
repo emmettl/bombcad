@@ -202,16 +202,61 @@ public struct ProfiledSheet: Sendable, Hashable {
     public var steel: StructureMaterial
     /// The skin's share of the sheet's stiffness, strength and mass.
     public var skinShare: Float
+    /// Which side of its midsurface the profile's crests are, along the normal: +1 or -1. The
+    /// troughs are on the other.
+    public var crestSide: Int
+    /// Whether the ribs' flanges that buckle locally soften (`localBuckling`).
+    public var buckles: Bool
 
     public init(
         profile: SheetProfile, region: Box, span: Int, steel: StructureMaterial = .structuralSteel,
-        skinShare: Float = 0.05
+        skinShare: Float = 0.05, crestSide: Int = 1, buckles: Bool = true
     ) {
         self.profile = profile
         self.region = region
         self.span = span
         self.steel = steel
         self.skinShare = skinShare
+        self.crestSide = crestSide
+        self.buckles = buckles
+    }
+
+    /// Local buckling of the ribs' flanges, as their fibres' softening (`LocalBuckling`), or nil if
+    /// neither buckles. A flange buckles if its elastic buckling stress as a plate held along both
+    /// edges, 4 π² E / (12 (1 - ν²)) (t / b)², is below the yield, or wherever its maker's
+    /// effective modulus allows for buckling. Its fibres soften from the strain at which the
+    /// flange buckles (or, with the maker's modulus, at which the rib first yields), the
+    /// flange's strain carried to the rib's extreme fibre by the curvature, to nothing over as
+    /// much again: what the section keeps is its webs' and its other flange's.
+    public func localBuckling(rib: StructureMaterial) -> LocalBuckling? {
+        let e = Double(steel.youngsModulus)
+        let nu = Double(steel.poissonRatio)
+        let t = Double(profile.thickness)
+        let fy = Double(profile.yieldStress)
+        let section = profile.section
+        let centreline = Double(profile.depth - profile.thickness)
+        func critical(_ width: Float) -> Double {
+            4 * Double.pi * Double.pi * e / (12 * (1 - nu * nu)) * pow(t / Double(width), 2)
+        }
+        // Each flange: its side of the midsurface, its distance from the centroid, its stress.
+        let flanges: [(side: Int, distance: Double, stress: Double)] =
+            profile.shape == .trapezoidal
+            ? [
+                (crestSide, centreline - section.centroid, critical(profile.crestWidth)),
+                (-crestSide, section.centroid, critical(profile.troughWidth)),
+            ] : []
+        let buckling = flanges.filter { $0.stress < fy || profile.effectiveModulus != nil }
+        guard buckles, !buckling.isEmpty else { return nil }
+        let half = Double(profile.depth) / 2
+        let onsets = buckling.map { flange in
+            profile.effectiveModulus != nil
+                ? Double(rib.yieldStress / rib.youngsModulus)
+                : min(flange.stress, fy) / e * half / flange.distance
+        }
+        let onset = Float(onsets.min()!)
+        return LocalBuckling(
+            axis: normal, side: buckling.count == 2 ? 0 : buckling[0].side, onsetStrain: onset,
+            softeningStrain: onset, residual: 0)
     }
 
     /// The axis normal to the sheet.
@@ -257,7 +302,9 @@ public struct ProfiledSheet: Sendable, Hashable {
     /// profile is deep (so that the mesher takes them for beams, not plates).
     public func ribMaterial(elementSize: Float) -> StructureMaterial {
         let strip = ribLines(elementSize: elementSize).first?.width ?? 1
-        return scaled("\(profile.name), ribs", share: 1 - skinShare, strip: strip, width: profile.depth)
+        var rib = scaled("\(profile.name), ribs", share: 1 - skinShare, strip: strip, width: profile.depth)
+        rib.localBuckling = localBuckling(rib: rib)
+        return rib
     }
 
     /// Adds the skin and the rib beams to `model`, meshed as shells, and returns their indices
@@ -311,10 +358,13 @@ public struct ProfiledSheet: Sendable, Hashable {
 public struct SheetAssignment: Codable, Hashable, Sendable {
     public var profile: SheetProfile
     public var ribAxis: Int
+    /// Which side of its midsurface its crests are, along its normal (nil for +1).
+    public var crestSide: Int?
 
-    public init(profile: SheetProfile, ribAxis: Int) {
+    public init(profile: SheetProfile, ribAxis: Int, crestSide: Int? = nil) {
         self.profile = profile
         self.ribAxis = ribAxis
+        self.crestSide = crestSide
     }
 
     /// `profile` on `box` with its ribs as cladding and roofs usually run: up a wall (spanning

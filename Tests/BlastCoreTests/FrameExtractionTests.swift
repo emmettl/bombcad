@@ -161,4 +161,40 @@ struct FrameExtractionTests {
         solver.mutateState { _ in }
         #expect(solver.frameExtractor?.ready == nil)
     }
+
+    @Test("The view field cut out at a frame is the one worked out after it, and asking changes nothing")
+    func viewField() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
+        func run(asking: Bool) throws -> BlastSolver {
+            let scenario = Scenario(
+                name: "Frame", domainSize: SIMD3(8, 8, 8),
+                boxes: [Box(min: SIMD3(5, 2, 0), max: SIMD3(6, 6, 3))],
+                charge: Charge(mass: 1, position: SIMD3(3, 4, 1)))
+            let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.125)
+            if asking { solver.frameRequest.viewField = 3 }
+            solver.advance(until: 0.002)
+            return solver
+        }
+        let asked = try run(asking: true)
+        let unasked = try run(asking: false)
+        let cut = try #require(
+            asked.frameExtractor?.viewField(
+                stride: 3, grid: asked.grid, time: asked.time, steps: asked.stepCount))
+        let size = asked.viewFieldSize(stride: 3)
+        #expect(size == SIMD3(22, 22, 22) && cut.count == 8 * 22 * 22 * 22)
+        #expect(try unasked.viewField(stride: 3) == cut)
+        #expect(try asked.viewField(stride: 3) == cut)
+        #expect(asked.stepCount == unasked.stepCount && asked.time == unasked.time)
+        #expect(asked.withState { Array($0) } == unasked.withState { Array($0) })
+        // A batch short of its limit keeps nothing; one at a frame the field of that moment.
+        asked.advance(steps: 3)
+        #expect(
+            asked.frameExtractor?.viewField(
+                stride: 3, grid: asked.grid, time: asked.time, steps: asked.stepCount) == nil)
+        asked.advance(until: 0.003)
+        #expect(
+            asked.frameExtractor?.viewField(
+                stride: 3, grid: asked.grid, time: asked.time, steps: asked.stepCount)
+                != nil)
+    }
 }

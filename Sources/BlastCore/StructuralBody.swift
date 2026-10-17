@@ -24,8 +24,10 @@ public final class StructuralBody: Identifiable {
             self.mixed = mixed
             solids = mixed.solids
             shells = mixed.shells
-        } else if model.elementKind == .shell {
-            shells = try ShellSolver(device: device, commandQueue: queue, library: library, model: model)
+        } else if model.elementKind == .shell || model.isAllShells {
+            var shellModel = model
+            shellModel.elementKind = .shell
+            shells = try ShellSolver(device: device, commandQueue: queue, library: library, model: shellModel)
             solids = nil
             mixed = nil
         } else {

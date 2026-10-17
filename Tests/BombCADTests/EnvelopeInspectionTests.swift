@@ -98,6 +98,33 @@ struct EnvelopeInspectionTests {
         #expect(model.envelopeExposure.map(\.id) == scene.envelopeObjects.map(\.id))
     }
 
+    @Test("A building with no face on the air (buried in a hill) is kept with none and the run saves")
+    func buried() async throws {
+        var scene = Scenario(
+            name: "Buried", domainSize: SIMD3(20, 10, 16), boxes: [],
+            charge: Charge(mass: 0.02, position: SIMD3(2, 5, 1)))
+        scene.terrain = .hill(
+            domain: scene.domainSize, spacing: 0.5, centre: SIMD2(16, 5), height: 12, radius: 4)
+        for (x, name) in [(Float(5), "Open"), (15.5, "Buried")] {
+            try scene.addEnvelopeObject(
+                BuildingEnvelope(solids: [Box(min: SIMD3(x, 4, 0), max: SIMD3(x + 1, 6, 4))]), name: name)
+        }
+        var document = ProjectDocument(scenario: scene)
+        document.runSettings?.resolution = "coarse"
+        document.runSettings?.duration = 0.004
+        let folder = FileManager.default.temporaryDirectory.appending(path: "envelope-buried-\(UUID())")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let input = folder.appending(path: "input.bombcad")
+        try document.makeArchive().fileWrapper().write(to: input, originalContentsURL: nil)
+        let output = folder.appending(path: "output.bombcad")
+        let result = try await HeadlessRun.execute(
+            HeadlessRun.Options.parse([input.path, "--out", output.path]))
+        let exposure = try #require(result.run.envelopeExposure)
+        #expect(exposure.map(\.faceCount).sorted().first == 0 && exposure.contains { $0.faceCount > 0 })
+        #expect(try ProjectDocument.read(from: output).savedRuns.last?.envelopeExposure == exposure)
+    }
+
     @Test("Headless export keeps summaries in a project and writes complete face records")
     func headless() async throws {
         let folder = FileManager.default.temporaryDirectory.appending(path: "envelope-inspection-\(UUID())")

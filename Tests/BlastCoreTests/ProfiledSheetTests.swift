@@ -163,4 +163,97 @@ struct ProfiledSheetTests {
         #expect(ratios.count == 11 && elastic.count == 9 && elastic.allSatisfy { $0 > 0.6 && $0 < 1.2 })
         #expect(ratios.filter { $0.peak >= 1 }.allSatisfy { $0.ratio > 1.5 })
     }
+
+    @Test(
+        "A plate on a turning spring bends as a cantilever whose foot turns by its moment over the spring's stiffness"
+    )
+    func springSupport() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let elastic = StructureMaterial.elastic(density: 7850, youngsModulus: 210e9, poissonRatio: 0.3)
+        var model = StructureModel(
+            solids: [Box(min: SIMD3(0, -0.01, 0), max: SIMD3(1, 0.01, 1))], material: elastic,
+            elementSize: 0.1,
+            fixedBase: false)
+        model.elementKind = .shell
+        model.shellLayers = 4
+        // Stiff along and across, 20 kN m/rad per metre turning.
+        let stiff = SpringLaw(stiffness: 1e10)
+        let turning = SpringLaw(stiffness: 2e4)
+        model.springSupports = [
+            SpringSupport(
+                region: Box(min: SIMD3(-0.01, -0.02, -0.005), max: SIMD3(1.01, 0.02, 0.005)), edge: 0,
+                along: 2,
+                pull: stiff, across: stiff, turnPositive: turning, turnNegative: turning)
+        ]
+        let solver = try ShellSolver(device: device, model: model)
+        solver.groundContact = false
+        solver.gravity = 0
+        // Near critical for its first mode on the spring (about 20 rad/s), to settle in a second.
+        solver.damping = 40
+        let pressure: Float = 1000
+        solver.appliedLoad = PressureLoad(
+            axis: 1, positiveSide: true, history: [SIMD2(0, pressure), SIMD2(100, pressure)])
+        solver.advance(steps: Int(1.5 / solver.criticalTimeStep))
+        // M = q L² / 2 = 500 N m per metre at the foot: 0.025 rad.
+        let foot = solver.node(solver.nearestNode(to: SIMD3(0.5, 0, 0)))
+        let turn = 2 * atan2(foot.rotation.imag.x, foot.rotation.real)
+        let tip = solver.node(solver.nearestNode(to: SIMD3(0.5, 0, 1))).displacement.y
+        print("Foot turned \(turn) rad, expected 0.025; tip \(tip) m, foot y \(foot.displacement.y)")
+        #expect(abs(abs(turn) / 0.025 - 1) < 0.05, "turned \(turn) rad")
+        #expect(abs(foot.displacement.y) < 1e-5 && abs(foot.displacement.z) < 1e-5)
+    }
+
+    @Test("Ribs buckle locally where a flange's plate buckling stress is below the yield")
+    func localBuckling() throws {
+        // Langdon's: the 95 mm flat buckles at 320 MPa, below 356; the 45 mm one at 1.4 GPa does not.
+        var profile = SheetProfile.langdonBlastWall
+        profile.yieldStress = 356e6
+        let steel = StructureMaterial(
+            name: "316L", density: 7900, youngsModulus: 200e9, poissonRatio: 0.3, yieldStress: 356e6,
+            hardeningModulus: 1.25e9, failureStrain: 0.97)
+        let sheet = ProfiledSheet(
+            profile: profile, region: Box(min: SIMD3(0, -0.01, 0), max: SIMD3(0.88, 0.01, 0.915)), span: 2,
+            steel: steel, crestSide: 1)
+        let rib = sheet.ribMaterial(elementSize: 0.0572)
+        let buckling = try #require(rib.localBuckling)
+        #expect(buckling.axis == 1 && buckling.side == -1)
+        // Its strain carried to the rib's extreme fibre: 320 MPa / E × 21.25 mm / 16.3 mm.
+        #expect(
+            abs(buckling.onsetStrain / (320e6 / 200e9 * 21.25 / 16.26) - 1) < 0.03, "\(buckling.onsetStrain)")
+        // Thin cladding, its maker's modulus given, buckles both ways once the rib yields.
+        let cladding = ProfiledSheet(
+            profile: .swedsteelSTR45, region: Box(min: SIMD3(0, 0, 0), max: SIMD3(6, 1.8, 0.04)), span: 1)
+        let claddingRib = cladding.ribMaterial(elementSize: 0.5)
+        #expect(claddingRib.localBuckling?.side == 0)
+        #expect(
+            abs(
+                (claddingRib.localBuckling?.onsetStrain ?? 0)
+                    / (claddingRib.yieldStress / claddingRib.youngsModulus) - 1)
+                < 1e-5)
+        // Without buckling asked for, none.
+        var plain = sheet
+        plain.buckles = false
+        #expect(plain.ribMaterial(elementSize: 0.0572).localBuckling == nil)
+    }
+
+    @Test(
+        "Langdon's panel against its design direction collapses as its wide flange buckles, held by her springs"
+    )
+    func langdonNegative() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let url = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().appending(path: "Fixtures/Langdon2003/panels.json")
+        let panel = try #require(try LangdonPanelTest.panels(from: url).first { $0.name == "60CORR1" })
+        var settings = LangdonPanelTest.Settings()
+        let buckled = try LangdonPanelTest.run(panel, settings: settings, device: device)
+        settings.buckles = false
+        let stiff = try LangdonPanelTest.run(panel, settings: settings, device: device)
+        print(
+            "60CORR1 (283 mm measured): \(buckled.permanent * 1000) mm buckling, \(stiff.permanent * 1000) mm not"
+        )
+        // Measured 283 mm: within half to twice with buckling; a hundredth of it without.
+        #expect(buckled.permanent > 0.14 && buckled.permanent < 0.57)
+        #expect(stiff.permanent < 0.03)
+        #expect(buckled.failedShells == 0)
+    }
 }

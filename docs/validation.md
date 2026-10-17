@@ -82,6 +82,7 @@ swift run -c release blastbench perimeter --study wall
 | Inside buildings     | [UFC 3-340-02 §2-15](#inside-buildings-against-ufc-3-340-02s-loads-through-openings), its own charts' data: through an open window the air's back-wall load 0.74–1.22 of the UFC's, the side walls and the front's inside 0.31–0.67; the one-way fill 0.95–1.35 of the UFC's leakage fill and 0.15–0.42 of its back-wall load | A design method, not measurement; head-on, rigid, open windows |
 | Fragments            | [Cooper (1996)](#fragments-against-coopers-data): his worked Mott and Gurney examples to rounding; one counted cast-iron bomb within a factor of 1.36 (rms) by Mott's form, 1.12 by Grady's; drag now the measured curve for tumbling cubes, 5% from the previous law. Hazard distance 0.43–0.84 of DoD 4145.26-M's test-derived distances for two items, in flight |  Masses either way within a factor of 1.4 (moderate, one test); hazard distance short by a sixth to a half (the unsafe side; moderate); launch speeds untested (low) |
 | Ground shock         | Xia et al. (2022), 1 t of TNT on the ground, accelerations 0.5 m deep at 21 and 42 m: the vertical velocity from the manuals' relation and the layered soil column 20 to 30 times the measured accelerations' integral at 21 m and 50 to 80 times at 42 m, within three times a velocity gauge that clipped; the measured motion mostly horizontal, at ranges near and past where the ground's wave outruns the air; the soil not measured. An elastic half-space about the charge, with a direct source calibrated against UFC 3-340-01: the horizontal within 1.5 times at 21 m but 18 times at 42 m, the vertical still 15 to 60 times. With soil that yields (compaction and a Mohr–Coulomb cone, the source the crater's energy): the horizontal 2.1 to 2.4 times at 21 m and 10 to 11 times at 42 m, the vertical 16 to 90 times, the fall-off R^(−1.5) against the measured R^(−3.3) to R^(−3.8) | Far too high in the vertical, the safe side; the horizontal motion that dominated not modelled, the unsafe side; illustrative |
+| A district           | [Beirut, 2020](#a-district-beirut-2020): 14,169 map buildings over 5 km at 4 m; the shock's arrival at Rigby's 30 observers best at 0.5 kt (median 0.98 of observed; 25 of 27 from 400 m out within 10%); peaks 0.68–0.78 of Kingery–Bulmash at 4 m; one typical pane a storey breaks inside 1.25 km where GEER's street survey found 0.39–0.84 of façades damaged, its edge (1.1–2.2 km by the glass assumed) about Rigby 2024's 1.86 km; stone (0.5 m, carrying the storeys above) failing where GEER found partial collapse and cracked to about 1.2 km | Arrival times good; peaks low (the cells); glass moderate, set by the glass assumed more than the yield; structure illustrative (one construction for all) |
 | Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 1–2%, structural responses 4–20%, residual deflections and failure 17–28%; the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
 
 No structural result has yet been shown to converge on today's defaults: the meshes quoted as
@@ -2772,6 +2773,54 @@ Doudak, J. Struct. Eng. 144(9), 2018.
 - **Mid-span:** without its rotations held there (which symmetry holds anyway), a beam on two
   pins turns freely about its axis. It broke 16% early.
 
+## Cross-laminated timber buildings at Tyndall
+
+**The test.** Weaver, Newberry, O'Laughlin and Podesto, *Results from Blast Tests of Full-Scale
+Cross-Laminated Timber Structures* (Karagozian & Case TR-17-17.1, for WoodWorks, 2017; open).
+- **The buildings:** three single-bay, two-storey buildings, 4.57 m square on a concrete slab.
+  - Walls and roof are 3-ply (105 mm), the walls' outer lamellae vertical; the second floor is
+    5-ply (175 mm).
+  - The walls bear on steel angles screwed and anchored to the slab, and meet the floors on clip
+    angles.
+  - The front, facing the charge, has no openings.
+- **The charges:** flake TNT, 22.86 m from the front: 14.5, 30.4 and 90.3 kg in tests 1 to 3.
+- **Measured:** the mean reflected pressure and impulse on the fronts, and the front wall's centre
+  at the first and second storeys, inbound and rebound (its Table 4-2).
+- **The harness:** `TyndallCLTTest`, `blastbench tyndall`.
+
+**The model:**
+- **The building:** the Nordic E1 one alone. Its neighbours, 3.4 m away on the same arc and
+  turned towards the charge, are left out.
+- **The material:** CLT shells of E1, as for Poulin's panels, with their strength along the grain
+  calibrated on Poulin's static tests and the dynamic increase of 1.28.
+- **The joints:** the walls' bases are held at the slab, and the panels are joined rigidly where
+  they meet (the tests' screwed angles are not rigid).
+- **The rest:** the door and the boarded window are closed. The building settles under its
+  weight. Air of 0.25 m refined by 2, recommended air.
+
+| Test | Reflected peak (kPa), measured / model | Impulse (kPa ms) | First storey, in / rebound (mm), measured | Model | Second storey, measured | Model | Damage, test / model |
+|---|---|---|---|---|---|---|---|
+| 1, 14.5 kg | 34.8 / 25.1 | 137 / 212 | 28 / −45 | 29 / −30 | 21 / −35 | 25 / −28 | superficial / some layer at full damage, nothing removed |
+| 2, 30.4 kg | 54.7 / 39.6 | 227 / 400 | 50 / −70 | 53 / −44 | 37 / −55 | 44 / −47 | superficial / some layer at full damage, nothing removed |
+| 3, 90.3 kg | 91.0 / 87.5 | 450 / 694 | 99 / −155 | 120 / −136 | 78 / −98 | 137 / −141 | moderate, first-storey front cracked / 78 elements removed |
+
+**What it shows:**
+- **First storey inbound:** within 6% on tests 1 and 2, and 21% high on test 3, where the front
+  broke more than it did in the test.
+- **Second storey:** 19–76% high.
+- **Rebound:** 66–88% of measured. The real walls swung back further: the screwed angles at their
+  bases and the floors give, where the model's joints are rigid.
+- **The load:**
+  - The reflected peak is 4–28% low on 0.25 m air, as peaks are on coarse air
+    ([blast loads](#blast-loads-against-empirical-references)).
+  - The impulse is 54–76% high. The report's measured impulses are below Kingery–Bulmash's,
+    which its authors put down to clearing round the small fronts. The model's front clears too,
+    so the gap is open: it may lie in the one gauge against the report's mean of several, or in
+    the neighbours left out.
+- **A first full-scale check of timber with the air:** with the inbound deflections close and
+  the load's impulse high, the walls are likely somewhat stiffer or stronger than the real ones.
+  The connections, modelled rigid, are the first suspect.
+
 ## Slabs under contact charges
 
 The first comparison of debris: the speed of the concrete thrown off the far face of slabs
@@ -5153,6 +5202,31 @@ agreements stand as comparisons at a stated mesh, not as converged answers. Fail
 P7, the slab on 32, the chamber) depends on the mesh and, on fine meshes, on the step: the
 crack and removal laws regularise energy over one element, and nothing yet holds a failure
 mode fixed under refinement.
+
+## A district: Beirut, 2020
+
+The port explosion of 4 August 2020 over the 14,169 buildings OpenStreetMap shows within 2.5 km,
+on a ground opened from a surface model and GHSL's heights: the whole box, 125 million cells, in
+about 25 minutes on a base M4 (see [Beirut, 2020](beirut-2020.md) for the scene, its sources and
+its limits). At 0.2, 0.5 and 1.1 kt of TNT on saturated ground:
+
+- **Arrival times** at Rigby et al.'s 30 observers 250 m to 2.35 km: median 1.06, 0.98 and 0.90 of
+  those seen, so the model over the city finds 0.5 kt again; from 400 m out 25 of 27 within 10%.
+  The nearest three saw the shock late against the model and Kingery–Bulmash both.
+- **Peaks** 0.68–0.78 of Kingery–Bulmash from 100 m to 2.4 km at every yield, on 4 m cells
+  (8 m refined twice to 2 m gives 84–94% on the landscape benchmark). With a 160 m domain top,
+  copying faces channel the wave and far-field faces drain it beyond 700 m; 320 m gives a 640 m
+  top's peaks to 2.4 km.
+- **Glass** (one 1.2 × 1.5 m annealed pane a storey of each façade, as map buildings carry
+  none): every side breaks inside 1.25 km at 0.5 kt, where GEER's photographs of 9,183 street
+  façades two months on found 0.39–0.84 damaged; half break at about 1.6 km with 6 mm panes,
+  1.1 km with 8 mm and 2.1 km with 4 mm, about Rigby et al.'s 1.86 km for old annealed façades.
+  Beyond 2 km GEER's quarter of façades damaged is matched only at the design strength or with
+  thin panes.
+- **Structure**: 0.5 m stone carrying the masonry above it falls at 0.5–0.75 km (a third) and
+  cracks to about 1.2 km, where GEER's sandstone houses partly collapsed at 686–840 m and were
+  heavily damaged to about 1 km; 0.2 m concrete is moderately damaged within 750 m and hardly
+  beyond, where GEER's RC buildings were D1–D3 out to 2 km.
 
 ## What is missing
 

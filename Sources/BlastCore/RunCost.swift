@@ -232,10 +232,10 @@ public enum RunCost {
         var elementStep = Double.infinity
         for structure in scenario.structuralObjects.compactMap(\.structure) {
             let h = Double(structure.elementSize)
-            for solid in structure.solids {
+            for (index, solid) in structure.solids.enumerated() {
                 let size = SIMD3<Double>(solid.max - solid.min)
                 elements +=
-                    structure.elementKind == .shell
+                    structure.elementKind(of: index) == .shell
                     ? size.x * size.y * size.z / max(size.min(), h) / (h * h)
                     : size.x * size.y * size.z / (h * h * h)
             }

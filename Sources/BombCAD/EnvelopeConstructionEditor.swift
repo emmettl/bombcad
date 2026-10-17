@@ -21,7 +21,13 @@ struct EnvelopeConstructionEditor: View {
                 "Roof",
                 selection: Binding(get: { construction.roof }, set: { kind in edit { $0.roof = kind } })
             ) {
-                ForEach([EnvelopeConstruction.Kind.reinforcedConcrete, .profiledSteelSheeting], id: \.self) {
+                ForEach(
+                    [
+                        EnvelopeConstruction.Kind.reinforcedConcrete, .profiledSteelSheeting,
+                        .crossLaminatedTimber,
+                    ],
+                    id: \.self
+                ) {
                     Text($0.label).tag($0)
                 }
             }
@@ -30,6 +36,12 @@ struct EnvelopeConstructionEditor: View {
                 number("Wall thickness", "m", Double(construction.wallThicknessM)) { value in
                     edit { $0.wallThicknessM = Float(max(value, 0.01)) }
                 }
+            }
+            if construction.roof == .crossLaminatedTimber {
+                number("Roof thickness", "m", Double(construction.roofThicknessM)) { value in
+                    edit { $0.roofThicknessM = Float(max(value, 0.05)) }
+                }
+                .help("Cross-laminated timber, its lamellae about 35 mm each.")
             }
             if sheeted {
                 if construction.walls == .profiledSteelSheeting {
