@@ -170,6 +170,62 @@ public struct SheetProfile: Sendable, Hashable, Codable {
         return (area, centroid, secondMoment, plasticModulus)
     }
 
+    /// The modulus the one-way model takes for its strength bent with its crests (or its troughs)
+    /// in compression (m³ per metre width), UFC 3-340-02 §5-34.2's effective section modulus at
+    /// the ultimate: the maker's where given, the same both ways. Otherwise, by the compressed flat:
+    /// - of class 1 or 2 (b/t up to 38ε, EN 1993-1-1 Table 5.2), the plastic modulus, as it forms
+    ///   a hinge;
+    /// - else the elastic modulus of the section with that flat at Winter's effective width (ρ =
+    ///   (λ − 0.22) / λ², λ = √(f_y / σ_cr), σ_cr its buckling stress as a plate held along both
+    ///   edges; EN 1993-1-5 §4.4), which leaves a class 3 flat whole.
+    ///
+    /// A sinusoid, with no flat, takes its elastic modulus.
+    public func designModulus(
+        crestCompressed: Bool, youngsModulus e: Double = 210e9, poisson nu: Double = 0.3
+    )
+        -> Float
+    {
+        if let effectiveModulus { return effectiveModulus }
+        let t = Double(thickness)
+        let fy = Double(yieldStress)
+        func reduction(_ width: Float) -> Double {
+            let stress = 4 * Double.pi * Double.pi * e / (12 * (1 - nu * nu)) * pow(t / Double(width), 2)
+            let slenderness = (fy / stress).squareRoot()
+            return slenderness <= 0.673 ? 1 : min(1, (slenderness - 0.22) / (slenderness * slenderness))
+        }
+        let points = centreline
+        let top = Double(depth - thickness)
+        let compact = 38 * (235e6 / fy).squareRoot()
+        func modulus() -> Double {
+            let flat = Double(crestCompressed ? crestWidth : troughWidth)
+            if shape == .trapezoidal && flat / t <= compact {
+                return Double(section.plasticModulus) / Double(pitch)
+            }
+            // Each wall's ends' heights and area, the compressed flange's at its effective width.
+            var walls: [(low: Double, high: Double, area: Double)] = []
+            for n in 1..<points.count {
+                let (a, b) = (points[n - 1], points[n])
+                var area = t * simd_length(b - a)
+                let flat = a.y == b.y
+                if shape == .trapezoidal && flat {
+                    let crest = a.y > 0.5 * top
+                    if crest == crestCompressed { area *= reduction(crest ? crestWidth : troughWidth) }
+                }
+                walls.append((a.y, b.y, area))
+            }
+            let total = walls.reduce(0) { $0 + $1.area }
+            let centroid = walls.reduce(0) { $0 + $1.area * 0.5 * ($1.low + $1.high) } / total
+            var second = 0.0
+            for wall in walls {
+                let (ya, yb) = (wall.low - centroid, wall.high - centroid)
+                second += wall.area * (ya * ya + ya * yb + yb * yb) / 3
+            }
+            let extreme = max(top - centroid, centroid) + t / 2
+            return second / extreme / Double(pitch)
+        }
+        return Float(modulus())
+    }
+
     /// Per metre width: area (m²/m), second moment (m⁴/m) and the modulus that bending strength
     /// takes, the maker's effective one where given, else the plastic one (m³/m).
     public var perWidth: (area: Float, secondMoment: Float, strengthModulus: Float) {

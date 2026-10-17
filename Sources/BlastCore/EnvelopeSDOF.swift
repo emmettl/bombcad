@@ -248,7 +248,10 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
                 response.peakDeflection = x
                 response.peakTime = time
             }
-            response.reboundDeflection = min(response.reboundDeflection, x)
+            if x < response.reboundDeflection {
+                response.reboundDeflection = x
+                response.reboundTime = time
+            }
             if cracked, !broken, let membrane, membrane.isLost(at: x) {
                 broken = true
                 response.lostResistanceAt = time
@@ -306,8 +309,9 @@ public struct SDOFResponse: Codable, Hashable, Sendable {
     /// Largest inward deflection, m, and when, s.
     public var peakDeflection = 0.0
     public var peakTime = 0.0
-    /// Largest outward deflection, as a negative number, m.
+    /// Largest outward deflection, as a negative number, m, and when, s (nil if it never went out).
     public var reboundDeflection = 0.0
+    public var reboundTime: Double?
     /// Permanent set at the end, m.
     public var residualDeflection = 0.0
     /// When the deflection, either way, passed the backbone's last point with no resistance left,

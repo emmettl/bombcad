@@ -18,6 +18,11 @@ The [portal-frame warehouse sample](#the-portal-frame-warehouse-sample) uses bot
   says, are not.
 - **ADBLAST's building cladding**, screwed to its supports and shot in air: the first deflection
   is 0.90–1.35 of that measured on all ten tests. What is left after is not right.
+- **The envelope construction on the same ten tests**: under the same load it gives within 1.0–1.35
+  of the shells' deflection. Under the air's load on a whole component it gives 0.50–1.37 of the
+  measured, low on nine of the ten, so it stays illustrative. The load's spread across the panel,
+  which a component's mean pressure loses, accounts for most of this; the
+  [comparison](#against-adblasts-cladding-as-an-envelope) gives the detail.
 - Cladding torn off deforming purlins is not compared.
 
 The code is in `Sources/BlastCore/ProfiledSheet.swift` (profiles, section properties, the shell
@@ -316,9 +321,20 @@ is UFC 3-340-02 §5-34, cold-formed steel panels (`EnvelopePanel.profiledSheetOn
 
 - the dynamic design stress is the nominal yield × 1.21 (average strength) × 1.1 (dynamic increase,
   whatever the rate), eq. 5-26;
-- the ultimate resistance is r_u = 7.2 M/L² for a single span, or 3.6 (M⁻ + 2M⁺)/L² for the first
-  span of a continuous sheet (eqs. 5-29, 5-30). M is the effective modulus times the design stress,
-  the same both ways;
+- the ultimate resistance is r_u = 7.2 M⁺/L² for a single span, or 3.6 (M⁻ + 2M⁺)/L² for the first
+  span of a continuous sheet (eqs. 5-29, 5-30). M⁺ and M⁻ are the effective section moduli at the
+  ultimate times the design stress (§5-34.2; `SheetProfile.designModulus`). The sheet hangs crests
+  out, so pushed in, the span's middle compresses its crests and a continuous sheet's supports its
+  troughs. Each modulus is:
+  - the maker's, where given, the same both ways;
+  - otherwise, by the compressed flat's class (EN 1993-1-1 Table 5.2):
+    - class 1 or 2 (b/t up to 38ε): the plastic modulus;
+    - otherwise: the elastic modulus with that flat at Winter's effective width, ρ = (λ − 0.22)/λ²
+      for λ = √(f_y/σ_cr) past 0.673, σ_cr the flat's buckling stress as a plate held on both edges
+      (EN 1993-1-5 §4.4). A class 3 flat stays whole.
+
+  Langdon's narrow flange is class 1. ADBLAST's TR84 crests, at b/t 67 and 133, are class 4, held at
+  61% and 34% of their width;
 - the equivalent elastic deflection is X_E = β r_u L⁴ / (E I), with β 0.0130 or 0.0062 (eq. 5-31),
   on the gross I;
 - the load–mass factor is 0.74 (§5-34.4). The response is elastic–perfectly plastic, and its range
@@ -341,13 +357,72 @@ Its fixings are checked against EN 1993-1-3 Table 8.2's resistances of a self-dr
 - 5.5 mm screws, pulling out of the rail at 0.45 d t_sup f_u,sup;
 - or the sheet pulling over a 16 mm washer at d_w t f_u, whichever is less.
 
-With 3 screws a metre into 2 mm rails, that is 2.1 kN a screw, 6.2 kN/m. When UFC Table 3-9's
-dynamic reaction, 0.39 R + 0.11 F at its largest, passes what the screws hold, the sheet is blown
-off its fixings: failed, at the time of its peak deflection.
+With 3 screws a metre into 2 mm rails, that is 2.1 kN a screw, 6.2 kN/m. Pushed in, the sheet bears
+on its rails; only coming back out, or sucked, does it pull on its screws. The reaction pulling it
+off is UFC Table 3-9's dynamic reaction of a uniformly loaded span, 0.39 R + 0.11 F:
+- R is the resistance at the sheet's furthest outward deflection;
+- F is the largest suction, per metre width.
+
+When that passes what the screws hold, the sheet is blown off its fixings (`EnvelopePanel
+.sheetPullOff`): failed, at the time of its rebound.
 
 Verified against the formulas by hand (`ProfiledSheetTests`, "Sheeting in the one-way model").
-Not compared with any blast test of building cladding: none of its fixings has been found
-([data survey](data-survey.md#3b-a-footing-or-connection-under-fast-loading)).
+
+### Against ADBLAST's cladding as an envelope
+
+The same ten ADBLAST tests ([above](#against-adblasts-cladding-tests)), with the sheets as an
+envelope's construction (`AdblastCladdingTest.envelope`, `blastbench adblast --envelope`):
+- **The construction:** TR84 on a single span of 2.46 m, at S320's nominal yield. Its design
+  stress, 426 MPa, lies within the coupons' 420–439 MPa at 2.3 /s.
+- **The screws:** one per trough, holding until the sheet pulls over its washer, as the shells'.
+- **The panel in air:** the same panel, as a rigid envelope in the same place, with the same
+  charge and air as the shells' run.
+- **The load:** the panel was cut into 5 × 3 strips, each recorded as a component. *Whole* is the
+  mean of all fifteen, the whole panel taken as one component, as an envelope's damage takes it.
+  *Middle band* is the middle third across, the ribs where the deflection was measured. Its strips
+  are weighted along the span by the deflected shape sin(πx/L), Biggs's equivalent uniform load.
+- **Measured pulse:** the measured centre pulse over the whole span, as for the shells.
+
+The air's load depends only on the charge, so one run serves every test of it.
+
+| Test | Charge, sheet | Measured first (mm) | Shells in air | One-way, middle band | One-way, whole | Shells, measured pulse | One-way, measured pulse |
+|---|---|---|---|---|---|---|---|
+| 3 | 0.5 kg, 1.5 mm | 22 | 1.07 | 1.05 | 1.37 | 29 | 29 |
+| 4, 6 | 1.0 kg, 1.5 mm | 34, 41 | 1.35, 1.12 | 0.88, 0.73 | 0.73, 0.60 | 60, 77 | 63, 83 |
+| 1, 2 | 1.5 kg, 1.5 mm | 52, 71 | 1.31, 0.96 | 0.85, 0.62 | 0.68, 0.50 | 86, 88 | 97, 100 |
+| 7 | 0.5 kg, 0.75 mm | 50 | 0.90 | 0.72 | 0.58 | 72 | 76 |
+| 8, 10 | 1.0 kg, 0.75 mm | 76, 71 | 1.09, 1.17 | 0.95, 1.01 | 0.72, 0.77 | 401, 245 | 529, 284 |
+| 11, 12 | 1.5 kg, 0.75 mm | 110, 101 | 1.05, 1.14 | 0.98, 1.07 | 0.75, 0.82 | 365, 272 | 484, 314 |
+
+The in-air columns are ratios to the measured deflection; the measured-pulse columns are in mm.
+
+What this shows:
+- **Given the same load, the one-way model is the shells' to within 1.0–1.35**, on the safe side.
+  Its stiffness is the beam's. Its strength is a little below the shells', which have membrane
+  action from the screws in bearing along the span.
+- **In the air, on a whole component, it reads 0.50–1.37 of measured, low on nine of ten.** The
+  side ribs carry a quarter less positive impulse than the middle ones, because the blast clears
+  round the panel's long edges. A component's mean pressure averages them together; on the middle
+  band it reads 0.62–1.07. Weighting along the span changes little (3–6%).
+- **The clearing's suction is as strong as the sheet.** The air's load has −20 to −40 kPa of
+  suction after the positive phase, about the sheets' resistance (19.6 kPa at 1.5 mm, 8.2 kPa at
+  0.75 mm). The suction swings the sheet back up by 22–56 mm. The 1.5 mm sheets did lift: they
+  were left 19–30 mm up at 1.5 kg. This is also why the 0.5 kg shot on 1.5 mm reads higher on
+  the whole panel than the 1.0 kg one: the sheet swings back down after the suction.
+- **The resistance was set by UFC's method, not fitted:** the effective section at the ultimate
+  for a slender flat, not the plastic modulus as before. That lowers r_u to 0.69 of the plastic modulus's at 1.5 mm and to 0.57 at
+  0.75 mm. It brought the 0.5 kg shot on 1.5 mm from 2.07 of measured to 1.05 on the middle band,
+  and moved the others by up to 14%. A stronger backbone from the shells, with their membrane
+  action, would read lower still in the air, so no resistance or stiffness taken from the shells
+  closes the gap. The gap is in how a component's load is summed.
+- **The grading is the safe side.** All ten are heavy, hazardous or (11, 12 on the middle band)
+  failed, mostly by their rebound's support rotation. ADBLAST found the sheets buckled and set, but
+  none came off: the 1.5 mm sheets lifted, and the 0.75 mm ones were left within 23 mm of level.
+- **The screws hold on all ten,** as in the tests. The shells pull them through at one tube on two (8, 10).
+
+The standing stays **illustrative**: whole-component loads under-read the middle of the panel,
+and that is how an envelope's damage takes them. To be an approximation, a sheeted component
+would need its load by band across its ribs, judged on the worst band.
 
 ## The portal-frame warehouse sample
 
