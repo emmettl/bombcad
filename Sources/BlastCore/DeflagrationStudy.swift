@@ -245,6 +245,19 @@ public struct VentedRoomStudy: Sendable {
     /// Obstacles: square posts this wide (m) from floor to ceiling, on a 1 m grid centred on the
     /// room, leaving out any within 0.5 m of the ignition point. nil for an empty room.
     public var postWidth: Float?
+    /// The vent's opening in the far wall, across and up (m), centred; nil for a square of
+    /// `ventArea`. The room's own cross-section opens the whole wall, as a container's doors do.
+    public var ventOpening: SIMD2<Float>?
+    /// Openings in the roof instead of the far wall: their centres along and across the room (m,
+    /// from its back corner), each `roofOpeningSize` square. The far wall is then closed.
+    public var roofOpenings: [SIMD2<Float>] = []
+    public var roofOpeningSize: Float = 1
+    /// How far the back-wall ignition point stands from the wall, m, and its height (nil: the
+    /// room's mid-height).
+    public var backWallOffset: Float = 0.25
+    public var ignitionHeight: Float?
+    /// The floor-centre ignition point: the middle of the floor, this high (m), for roof venting.
+    public var floorIgnition: Float?
 
     public init() {}
 
@@ -311,7 +324,8 @@ public struct VentedRoomStudy: Sendable {
         let t = wallThickness
         let margin: Float = 2
         let outside: Float = 5
-        let side = ventArea.squareRoot()
+        let opening =
+            ventOpening.map { simd_min($0, SIMD2(room.y, room.z)) } ?? SIMD2(repeating: ventArea.squareRoot())
         let size = SIMD3(
             margin + t + room.x + t + outside, margin + t + room.y + t + margin, room.z + t + margin)
         let x0 = margin + t
@@ -325,19 +339,44 @@ public struct VentedRoomStudy: Sendable {
             Box(min: SIMD3(x0, y1, 0), max: SIMD3(x1, y1 + t, z1 + t)),
             Box(min: SIMD3(x0, y0, z1), max: SIMD3(x1, y1, z1 + t)),  // roof
         ]
-        // The vent wall, around a square opening in its middle.
-        let vy0 = 0.5 * (y0 + y1) - 0.5 * side
-        let vy1 = vy0 + side
-        let vz0 = 0.5 * z1 - 0.5 * side
-        let vz1 = vz0 + side
-        blocks += [
-            Box(min: SIMD3(x1, y0 - t, 0), max: SIMD3(x1 + t, vy0, z1 + t)),
-            Box(min: SIMD3(x1, vy1, 0), max: SIMD3(x1 + t, y1 + t, z1 + t)),
-            Box(min: SIMD3(x1, vy0, 0), max: SIMD3(x1 + t, vy1, vz0)),
-            Box(min: SIMD3(x1, vy0, vz1), max: SIMD3(x1 + t, vy1, z1 + t)),
-        ]
+        // The vent wall, around its opening in the middle; closed when the roof vents instead.
+        let vy0 = 0.5 * (y0 + y1) - 0.5 * opening.x
+        let vy1 = vy0 + opening.x
+        let vz0 = 0.5 * z1 - 0.5 * opening.y
+        let vz1 = vz0 + opening.y
+        if roofOpenings.isEmpty {
+            blocks += [
+                Box(min: SIMD3(x1, y0 - t, 0), max: SIMD3(x1 + t, vy0, z1 + t)),
+                Box(min: SIMD3(x1, vy1, 0), max: SIMD3(x1 + t, y1 + t, z1 + t)),
+                Box(min: SIMD3(x1, vy0, 0), max: SIMD3(x1 + t, vy1, vz0)),
+                Box(min: SIMD3(x1, vy0, vz1), max: SIMD3(x1 + t, vy1, z1 + t)),
+            ]
+        } else {
+            blocks.append(Box(min: SIMD3(x1, y0 - t, 0), max: SIMD3(x1 + t, y1 + t, z1 + t)))
+            // The roof, cut round each opening: a box over every column of the roof the openings leave.
+            blocks.removeAll { $0.min.z == z1 && $0.max.z == z1 + t && $0.min.x == x0 }
+            let half = 0.5 * roofOpeningSize
+            let step = cellSize
+            var x = x0
+            while x < x1 - 1e-4 {
+                let x2 = min(x + step, x1)
+                var y = y0
+                while y < y1 - 1e-4 {
+                    let y2 = min(y + step, y1)
+                    let centre = SIMD2(0.5 * (x + x2) - x0, 0.5 * (y + y2) - y0)
+                    let open = roofOpenings.contains {
+                        abs(centre.x - $0.x) < half && abs(centre.y - $0.y) < half
+                    }
+                    if !open { blocks.append(Box(min: SIMD3(x, y, z1), max: SIMD3(x2, y2, z1 + t))) }
+                    y = y2
+                }
+                x = x2
+            }
+        }
         let middle = SIMD3(0.5 * (x0 + x1), 0.5 * (y0 + y1), 0.5 * z1)
-        let lit = ignition == .centre ? middle : SIMD3(x0 + 0.25, middle.y, middle.z)
+        var lit =
+            ignition == .centre ? middle : SIMD3(x0 + backWallOffset, middle.y, ignitionHeight ?? middle.z)
+        if let height = floorIgnition { lit = SIMD3(middle.x, middle.y, height) }
         if let width = postWidth {
             let across = Int((room.x - 0.5) / 1)
             let along = Int((room.y - 0.5) / 1)
@@ -375,8 +414,12 @@ public struct VentedRoomStudy: Sendable {
     public var correlations: VentCorrelations {
         let volume = Double(room.x * room.y * room.z)
         let surface = Double(2 * (room.x * room.y + room.x * room.z + room.y * room.z))
+        let area =
+            !roofOpenings.isEmpty
+            ? Double(Float(roofOpenings.count) * roofOpeningSize * roofOpeningSize)
+            : Double(ventOpening.map { min($0.x, room.y) * min($0.y, room.z) } ?? ventArea)
         var correlations = VentCorrelations(
-            volume: volume, surfaceArea: surface, ventArea: Double(ventArea),
+            volume: volume, surfaceArea: surface, ventArea: area,
             releasePressure: Double(releasePressure),
             gas: gas)
         correlations.concentration = concentration

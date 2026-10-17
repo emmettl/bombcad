@@ -404,8 +404,11 @@ public enum ValidationTables {
             id: "cloudTop", low: 0.79, high: 1.21, document: "fireball-rise.md",
             quote: "to 4% on average and 21% shot by shot"),
         Figure(
-            id: "ventedHydrogen", low: 0.19, high: 0.39, document: "deflagration.md#checks",
-            quote: "Lean hydrogen vents at 0.19–0.39 of the measured peaks"),
+            id: "ventedHydrogen", low: 1.24, high: 2.96, document: "deflagration.md#checks",
+            quote: "the peaks are 1.24–2.96 of the measured"),
+        Figure(
+            id: "ventedHydrogenWithoutLewis", low: 0.19, high: 0.39, document: "deflagration.md#checks",
+            quote: "lean hydrogen vented at 0.19–0.39 of the measured peaks"),
         Figure(
             id: "ventedBackWall", low: 0.9, high: 1.8, document: "validation.md#summary",
             quote: "lit at the back wall, 0.9–1.8 times the measured peaks"),
@@ -1095,14 +1098,20 @@ extension StandingScene {
                     "Peak pressure: compared only in a vented room on the unscaled flame; this cloud is open, "
                         + "congested or its flame sped up by a fitted factor.")
             } else if has(.deflagration), inputs.scenario.deflagration?.gas == .hydrogen {
+                let lewis = inputs.scenario.deflagration?.acceleration.thermodiffusive != nil
                 bands.append(
                     figure(
-                        "ventedHydrogen", .ventedPressure, "Peak pressure in a vented room, lean hydrogen",
+                        lewis ? "ventedHydrogen" : "ventedHydrogenWithoutLewis", .ventedPressure,
+                        "Peak pressure in a vented room, lean hydrogen",
                         low: "flame too slow", high: "over-read",
-                        validity:
-                            "FM Global's 63.7 m³ chamber, 12.1–19.7% hydrogen lit in the middle and at the back "
-                            + "wall, 0.1 m cells; lean hydrogen's measured growth law, without Bauwens's fitted "
-                            + "Lewis-number factor",
+                        validity: lewis
+                            ? "FM Global's 63.7 m³ chamber, 12.1–19.7% hydrogen lit in the middle and at the back "
+                                + "wall, 0.1 m cells, with the flame's 1/Le response, nothing fitted; HySEA's "
+                                + "containers vented through their doors within their scatter, through their roof "
+                                + "0.20–0.53 of the measured"
+                            : "FM Global's 63.7 m³ chamber, 12.1–19.7% hydrogen lit in the middle and at the back "
+                                + "wall, 0.1 m cells; lean hydrogen's measured growth law, without the flame's "
+                                + "thermodiffusive response",
                         check: "Bauwens, Chao and Dorofeev's vented lean hydrogen"))
             } else if has(.deflagration), inputs.scenario.deflagration?.gas == .townGas {
                 unbanded.append(
