@@ -153,6 +153,25 @@ struct ProjectDocumentTests {
         #expect(legacy.runSettings != nil && legacy.archive == nil)
     }
 
+    @Test("A district kilometres across opens, its runs on cells that fit, and saves and reopens")
+    func district() throws {
+        var scene = ScenarioPreset.openGround.scenario
+        scene.domainSize = SIMD3(5000, 5000, 320)
+        scene.charge.position = SIMD3(2500, 2500, 0)
+        scene.gauges = []
+        let opened = try ProjectDocument(legacyJSON: ScenarioDocument.encode(scene))
+        let resolution = try #require(opened.runSettings.flatMap { Resolution(rawValue: $0.resolution) })
+        let grid = scene.grid(cellSize: resolution.cellSize)
+        #expect(grid.cellCount <= ProjectDocument.openingCells && max(grid.nx, grid.ny, grid.nz) <= 2048)
+        #expect(resolution.cellSize < 10, "\(resolution.cellSize)")
+        let reopened = try ProjectDocument(archive: opened.makeArchive())
+        #expect(reopened.scenario == scene && reopened.runSettings?.resolution == resolution.rawValue)
+        // A small scene keeps the preferred cells.
+        #expect(
+            ProjectDocument.openingResolution(ScenarioPreset.openGround.scenario, preferred: .medium)
+                == .medium)
+    }
+
     @Test("Invalid settings and other application projects fail before changing the model")
     func invalidProjects() throws {
         let model = SimulationModel()

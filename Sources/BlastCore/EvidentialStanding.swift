@@ -139,7 +139,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-26"
+    public static let currentTable = "standing-table-28"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -377,7 +377,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .ventedGlazing:
             return inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes
         case .shellElements:
-            return any { $0.elementKind == .shell || $0.solidElementKind.contains(.shell) }
+            return any { model in model.solids.indices.contains { model.elementKind(of: $0) == .shell } }
         case .shellSectionShear: return any { $0.shellSectionShear }
         case .noSecondCracks: return !concrete.isEmpty && any { !$0.secondCracks }
         case .noBareBars: return any { !$0.bareBars }
@@ -2010,8 +2010,16 @@ struct StandingScene {
                         + "five destructive shots broken at 28–29 mm against 21–31; deep narrow beams meshed as "
                         + "walls 43% too stiff in their plane",
                     "validation.md#glulam-beams-in-a-shock-tube"))
+            evidence.append(
+                StandingEvidence(
+                    "Cross-laminated timber buildings at Tyndall, 22.9 m from 14.5–90 kg (Weaver et al., 2017)",
+                    "The front's first storey inbound within 6% on the two lighter charges and 21% high on the "
+                        + "heaviest, the second storey 19–76% high, rebound 66–88% of measured; the front's "
+                        + "impulse 54–76% above the report's",
+                    "validation.md#cross-laminated-timber-buildings-at-tyndall"))
             parts.append(
-                "timber compared on CLT panels and glulam beams in a shock tube, its strength calibrated")
+                "timber compared on CLT panels and glulam beams in a shock tube, its strength calibrated, and on "
+                    + "full-scale CLT buildings")
         }
         var resolution: [String] = []
         if let through = elementsThrough, through <= 6, through >= 4, classes.contains(.reinforcedConcrete) {
@@ -2217,7 +2225,8 @@ struct StandingScene {
                     : "with the air seeing the building whole and the inside a one-way fill: ")
                 + "glass breakage and its time, concrete panels' rotation between fixed and simply supported "
                 + "edges, and freestanding walls as cantilevers from their foot, as approximations; brick panels, "
-                + "profiled steel sheeting and the inside pressure through broken panes illustrative.",
+                + "profiled steel sheeting, cross-laminated timber and the inside pressure through broken panes "
+                + "illustrative.",
             evidence: [
                 StandingEvidence(
                     "UFC 3-340-02 §2-15.4's loads on the walls inside, through an open front window (16 cases, "
@@ -2260,6 +2269,12 @@ struct StandingScene {
                     "ASTM E1300's load resistance of eight annealed panes",
                     "Its stresses within 8%; panes break at 0.57–0.72 of its load resistance (the safe side)",
                     "validation.md#the-threshold-against-astm-e1300"),
+                StandingEvidence(
+                    "A district against its surveys: Beirut, 2020, 14,169 map buildings at 0.2–1.1 kt",
+                    "One typical pane a storey breaks inside 1.25 km where GEER found 0.39–0.84 of street "
+                        + "façades damaged, half at 1.1–2.1 km by the glass assumed; 0.5 m stone falls where "
+                        + "partial collapses were found and cracks to about 1.2 km",
+                    "validation.md#a-district-beirut-2020"),
             ] + laminatedEvidence,
             assumptions: [
                 "Compared with measurement as freestanding and one-way walls, as slabs held on their edges "
@@ -2272,6 +2287,9 @@ struct StandingScene {
                     + "cold-formed panels on the maker's effective section, graded by PDC-TR 06-08's limits for "
                     + "deck whose membrane action its fixings limit, and blown off when its dynamic reaction passes "
                     + "what its screws hold by EN 1993-1-3; no blast test of cladding or its fixings compared.",
+                "Cross-laminated timber spans one way, elastic–perfectly plastic, its resistance from the mean "
+                    + "bending strength with the Ottawa shock tube's dynamic increase, graded by WoodWorks' ductility "
+                    + "limits from the Tyndall tests; no envelope-level test of its damage compared.",
                 "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
                     + "2° is flagged as beyond the one-way model.",
                 "Glass is annealed, on Moore's large-deflection plate, simply supported, breaking at E1300's "
@@ -2314,7 +2332,8 @@ struct StandingScene {
         result(
             .envelopeExposure, .approximation,
             "Stationary surfaces whose loads come from the air beside them; a wall facing a charge has Kingery–"
-                + "Bulmash's reflected impulse, but no street of buildings has been compared.",
+                + "Bulmash's reflected impulse; across a district the shock arrives when it was seen, its peak "
+                + "on 4 m cells about three quarters of Kingery–Bulmash's.",
             evidence: [
                 StandingEvidence(
                     "Surface integration against per-step pressure on the CPU",
@@ -2324,6 +2343,11 @@ struct StandingScene {
                     "Kingery–Bulmash, a rigid wall facing the charge, on the shipped air",
                     "Reflected impulse 93–113% from 1 m/kg^(1/3) on 0.25 m cells",
                     ValidationTables.burningDocument),
+                StandingEvidence(
+                    "Beirut, 2020: the shock's arrival at 30 observers 250 m to 2.35 km (Rigby et al.)",
+                    "At 0.5 kt a median 0.98 of the times seen, 25 of 27 from 400 m out within 10%; peaks "
+                        + "0.68–0.78 of Kingery–Bulmash on 4 m cells",
+                    "validation.md#a-district-beirut-2020"),
             ],
             assumptions: [
                 "Fixed geometry: no broken windows, deformation, collapse or changing shielding.",

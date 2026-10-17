@@ -128,6 +128,7 @@ public enum EnvelopeDamageLevel: Int, Codable, Sendable, Comparable, CaseIterabl
 public struct EnvelopeComponentDamage: Codable, Sendable, Identifiable {
     public enum Material: String, Codable, Sendable {
         case reinforcedConcrete, unreinforcedMasonry, annealedGlass, reinforcedBlockwork, profiledSteel
+        case crossLaminatedTimber
         case laminatedGlass
 
         /// A pane's glass, annealed or laminated.
@@ -621,7 +622,10 @@ public enum EnvelopeDamageAssessment {
                 peakNetPa: peak, rotationDeg: rotation, levels: levels, failedAtS: failed)
         }
         if load.kind == .pane {
-            let pane = construction.pane(a: a, b: b)
+            let pane =
+                construction.laminate == nil
+                ? annealedPane(thickness: Double(construction.glassThicknessM), a: a, b: b)
+                : construction.pane(a: a, b: b)
             var response = pane.response(pressures: pressures, step: load.binS)
             let arrival = pressures.firstIndex { abs($0) > 0.01 * peak && peak > 0 }.map {
                 Double($0) * load.binS
@@ -665,6 +669,11 @@ public enum EnvelopeDamageAssessment {
             return profiledSheet(
                 load, construction: construction, roof: isRoof, pressures: pressures, peak: peak)
         }
+        if kind == .crossLaminatedTimber {
+            return crossLaminated(
+                load, construction: construction, roof: isRoof,
+                span: load.oneWaySpan.map { min($0, largestSpan) } ?? a, pressures: pressures, peak: peak)
+        }
         if let span = load.oneWaySpan.map({ min($0, largestSpan) }) {
             return oneWay(
                 load, kind: kind, thickness: thickness, span: span, construction: construction,
@@ -693,6 +702,9 @@ public enum EnvelopeDamageAssessment {
         case .profiledSteelSheeting:
             return profiledSheet(
                 load, construction: construction, roof: isRoof, pressures: pressures, peak: peak)
+        case .crossLaminatedTimber:
+            return crossLaminated(
+                load, construction: construction, roof: isRoof, span: a, pressures: pressures, peak: peak)
         case .unreinforcedMasonry:
             var masonry = StructureMaterial.masonry
             masonry.steel = nil
@@ -737,6 +749,11 @@ public enum EnvelopeDamageAssessment {
         case .profiledSteelSheeting:
             // Sheeting spans between its rails whether or not the wall stands alone.
             return profiledSheet(load, construction: construction, roof: false, pressures: net, peak: peak)
+        case .crossLaminatedTimber:
+            return crossLaminated(
+                load, construction: construction, roof: false, span: height, cantilever: true,
+                pressures: pressures,
+                peak: peak)
         case .reinforcedConcrete, .reinforcedBlockwork:
             let section = construction.wallBars(thickness: thickness)
             let response = EnvelopePanel.reinforcedConcreteCantilever(
@@ -802,6 +819,9 @@ public enum EnvelopeDamageAssessment {
         case .profiledSteelSheeting:
             return profiledSheet(
                 load, construction: construction, roof: isRoof, pressures: pressures, peak: peak)
+        case .crossLaminatedTimber:
+            return crossLaminated(
+                load, construction: construction, roof: isRoof, span: span, pressures: pressures, peak: peak)
         case .unreinforcedMasonry:
             var masonry = StructureMaterial.masonry
             masonry.steel = nil
@@ -825,6 +845,32 @@ public enum EnvelopeDamageAssessment {
         return response.crackedAt == nil ? .none : .heavy
     }
 
+    /// An annealed pane on the large-deflection plate (`EnvelopePanel.largeDeflectionGlass`),
+    /// built once for each thickness and size: building its backbone from Moore's curves costs more
+    /// than its response, and a district's façades share a few sizes.
+    static func annealedPane(thickness: Double, a: Double, b: Double) -> SDOFSystem {
+        paneSystems.system(SIMD3(thickness, a, b)) {
+            EnvelopePanel.largeDeflectionGlass(thickness: thickness, material: .annealedGlass, a: a, b: b)
+        }
+    }
+
+    private static let paneSystems = SystemCache()
+
+    /// The pane systems built so far, by thickness and size; shared between threads behind a lock.
+    final class SystemCache: @unchecked Sendable {
+        private let lock = NSLock()
+        private var systems: [SIMD3<Double>: SDOFSystem] = [:]
+
+        func system(_ key: SIMD3<Double>, _ make: () -> SDOFSystem) -> SDOFSystem {
+            lock.lock()
+            defer { lock.unlock() }
+            if let system = systems[key] { return system }
+            let system = make()
+            if systems.count < 4096 { systems[key] = system }
+            return system
+        }
+    }
+
     /// The pane a façade strip is taken to hold (`EnvelopeConstruction.facadePaneM`), judged on the
     /// strip's net load as a pane is: annealed glass of the construction's thickness on Moore's
     /// large-deflection plate, at its median strength. Nil for anything but a façade strip, or
@@ -837,7 +883,10 @@ public enum EnvelopeDamageAssessment {
         let size = construction.facadePaneM ?? EnvelopeConstruction.assumedFacadePane
         guard size.x > 0, size.y > 0 else { return nil }
         let (a, b) = (Double(min(size.x, size.y)), Double(max(size.x, size.y)))
-        let pane = construction.pane(a: a, b: b)
+        let pane =
+            construction.laminate == nil
+            ? annealedPane(thickness: Double(construction.glassThicknessM), a: a, b: b)
+            : construction.pane(a: a, b: b)
         let pressures = load.netPa
         let response = pane.response(pressures: pressures, step: load.binS)
         let level = paneLevel(response)

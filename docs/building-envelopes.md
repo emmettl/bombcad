@@ -541,8 +541,9 @@ one way as the run goes, at most once a second and again when it stops:
 
 - **Construction.** Each envelope's walls are reinforced concrete, unreinforced masonry,
   reinforced blockwork (grouted or hollow, as a concrete of the masonry's strength) or profiled
-  steel sheeting on rails ([profiled sheeting](profiled-sheeting.md#in-the-one-way-damage-of-envelopes)),
-  with a thickness, a concrete or sheeted roof, a reinforcement ratio and annealed glass; and, for concrete and
+  steel sheeting on rails ([profiled sheeting](profiled-sheeting.md#in-the-one-way-damage-of-envelopes))
+  or cross-laminated timber ([below](#cross-laminated-timber)),
+  with a thickness, a concrete, sheeted or CLT roof, a reinforcement ratio and annealed glass; and, for concrete and
   blockwork walls, their bars in one central mat or in both faces (with the cover), the concrete's
   or the masonry's strength, the bars' yield, and the mass of a cap or canopy carried on a
   freestanding wall's top. These are read from an IFC import's material layers or a map building's
@@ -556,6 +557,8 @@ one way as the run goes, at most once a second and again when it stops:
     10°, failed beyond.
   - Brick is cracked or fallen (deflected past its thickness). No citable limits for unreinforced
     masonry without arching were found.
+  - Cross-laminated timber by its displacement ductility, WoodWorks TR-18-06.2's limits for CLT in
+    bending without axial load: moderate to 1.5, heavy to 1.75, hazardous to 2, blown out beyond.
   - Glass is broken or whole, with the time it broke, and its **hazard** graded (`GlazingHazard`)
     by GSA-TS01's performance conditions and ASTM F1642's hazard ratings: where the glass would
     land, thrown from the middle of the pane at the speed it broke with plus what the load gave
@@ -586,6 +589,29 @@ Shoeburyness tunnel, all broken, which the app's glass breaks at 0.82–1.07 of 
 and ASTM E1300's load resistance, whose stresses it gives within 8% and which it breaks at
 0.57–0.72 of ([validation](validation.md#window-glass)).
 Freestanding walls, walls spanning one way and slabs held on their edges are compared with measured walls and slabs (below).
+
+### Cross-laminated timber
+
+A CLT wall or roof (`EnvelopeConstruction.Kind.crossLaminatedTimber`, `EnvelopePanel.crossLaminatedOneWay`)
+spans one way on its outer lamellae's grain over its short span, or stands free as a cantilever
+from its foot. It is elastic–perfectly plastic, as the Tyndall tests' single-degree-of-freedom
+analyses take it (Karagozian & Case TR-18-06.2, for WoodWorks).
+- **Section:** odd lamellae of about 35 mm, of C24 (`TimberProperties.crossLaminatedPanel`).
+- **Stiffness:** from the layered section's EI and the shear analogy's GA, as the
+  [timber shells](shell-model.md#timber) take them.
+- **Resistance:** 8 M / L² (2 M / L² standing free), M the mean bending strength times the
+  dynamic increase of 1.28 that Poulin et al. found on CLT panels in the Ottawa shock tube.
+- **Load–mass factors:** Biggs's, for a uniform load.
+- **Damage:** graded by the displacement ductility limits that TR-18-06.2 (§6.3) draws from
+  the same tests (above), blown out past 2. With glazing vented, a blown-out wall opens in the
+  air at that ductility.
+
+For the Tyndall buildings' 3-ply walls over their 3.66 m storey:
+- **Stiffness:** 1.49 psi/in, against the report's 1.50 for E1.
+- **Resistance:** 7.3 psi, against the report's 5.2. The report took the code's allowable stresses
+  times its static and dynamic increase factors; here it is the mean bending strength.
+- No test of a CLT envelope's damage level is compared; the full-scale buildings are compared with
+  the detailed model ([validation](validation.md#cross-laminated-timber-buildings-at-tyndall)).
 
 ## Freestanding walls
 

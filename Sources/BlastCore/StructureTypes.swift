@@ -419,7 +419,11 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
             ? TimberProperties.crossLaminatedPanel(lamellae, of: grade)
             : TimberProperties.strengthClass(grade)
         properties.grainAxis = grainAxis
-        let name = lamellae > 1 ? "CLT \(lamellae)s (\(grade.rawValue))" : grade.rawValue
+        let glulam = grade == .gl24h || grade == .gl28h
+        let name =
+            lamellae > 1
+            ? "CLT, \(lamellae) lamellae of \(grade.rawValue)"
+            : glulam ? "Glulam \(grade.rawValue)" : "Softwood \(grade.rawValue)"
         return .timber(name: name, density: grade.density, properties: properties)
     }
 
@@ -527,9 +531,16 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
         return material
     }()
 
+    /// Softwood of strength class C24 (EN 338), its grain along x: joists, rafters and studs.
+    public static let softwood: Self = .timber(.c24)
+    /// Homogeneous glulam GL24h (EN 14080), its grain along x: beams and columns.
+    public static let glulam: Self = .timber(.gl24h)
+    /// Cross-laminated timber of five C24 lamellae, the outer ones along x: walls and floors.
+    public static let crossLaminatedTimber: Self = .timber(.c24, lamellae: 5)
+
     public static let presets: [Self] = [
         .reinforcedConcrete, .plainConcrete, .masonry, .concreteBlock, .structuralSteel, .annealedGlass,
-        .toughenedGlass,
+        .toughenedGlass, .softwood, .glulam, .crossLaminatedTimber,
     ]
 
     public var shearModulus: Float { youngsModulus / (2 * (1 + poissonRatio)) }
@@ -914,7 +925,8 @@ public struct StructureModel: Sendable, Hashable, Codable {
 
     /// How solid `index` is meshed: a profiled sheet always as shells.
     public func elementKind(of index: Int) -> ElementKind {
-        if sheet(of: index) != nil { return .shell }
+        // Profiled sheets and timber are meshed as shells and beams whatever the rest is.
+        if sheet(of: index) != nil || material(of: index).model == .timber { return .shell }
         return (solidElementKind.indices.contains(index) ? solidElementKind[index] : nil) ?? elementKind
     }
 
@@ -982,6 +994,11 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// Whether some solids are meshed with solid elements and others with shells.
     public var isMixed: Bool {
         Set(solids.indices.map { elementKind(of: $0) }).count > 1
+    }
+
+    /// Whether every solid is meshed as shells and beams, as chosen or as its material needs.
+    public var isAllShells: Bool {
+        !solids.isEmpty && solids.indices.allSatisfy { elementKind(of: $0) == .shell }
     }
 
     /// The part of the body meshed with `kind`: its solids, with their materials and

@@ -244,6 +244,13 @@ struct EnvelopeDamageSection: View {
                 : String(
                     format: "%.2f–%.2f°", component.rotationDeg.lowerBound, component.rotationDeg.upperBound)
             return rotation + ", " + levels(component.levels).lowercased()
+        case .crossLaminatedTimber:
+            if let failed = component.failedAtS {
+                return String(format: "blown out at %.1f ms", failed * 1000)
+            }
+            return String(format: "%.2f°", component.rotationDeg.upperBound) + ", "
+                + levels(component.levels).lowercased()
+                + (component.cantilever == true ? " (standing free)" : "")
         case .unreinforcedMasonry:
             return component.failedAtS.map { String(format: "fallen at %.1f ms", $0 * 1000) }
                 ?? (component.levels.upperBound == .none ? "uncracked" : "cracked")

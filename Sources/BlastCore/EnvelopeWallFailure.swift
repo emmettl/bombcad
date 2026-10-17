@@ -58,6 +58,18 @@ public struct EnvelopeWallFailure: Sendable {
                     lostPast: .infinity, sign: sign)
             }
         }
+        // CLT, one way or as a cantilever: blown out past ductility 2 (`EnvelopeDamageLevel
+        // .crossLaminated`), inward or, standing free, either way.
+        func crossLaminated(span: Double, roof: Bool, cantilever: Bool = false) -> [System] {
+            let thickness = Double(roof ? construction.roofThicknessM : construction.wallThicknessM)
+            let sdof = EnvelopePanel.crossLaminatedOneWay(
+                thickness: thickness, span: span, cantilever: cantilever)
+            let elastic = sdof.equivalentElasticDeflection
+            return (cantilever ? [1, -1] : [1]).map {
+                System(
+                    sdof: sdof, yieldPast: elastic, rotationPast: 2 * elastic, lostPast: .infinity, sign: $0)
+            }
+        }
         func fallen(_ sdof: SDOFSystem, sign: Double = 1) -> System {
             let last = sdof.backbone.last!
             return System(
@@ -83,6 +95,9 @@ public struct EnvelopeWallFailure: Sendable {
                 return EnvelopeWallFailure(systems: [1, -1].map { fallen(sdof, sign: $0) }, cantilever: true)
             case .profiledSteelSheeting:
                 return EnvelopeWallFailure(systems: sheeted(roof: false), cantilever: false)
+            case .crossLaminatedTimber:
+                return EnvelopeWallFailure(
+                    systems: crossLaminated(span: height, roof: false, cantilever: true), cantilever: true)
             }
         }
         let isRoof = load.kind == .roof || load.kind == .slab
@@ -110,6 +125,9 @@ public struct EnvelopeWallFailure: Sendable {
                     ], cantilever: false)
             case .profiledSteelSheeting:
                 return EnvelopeWallFailure(systems: sheeted(roof: isRoof), cantilever: false)
+            case .crossLaminatedTimber:
+                return EnvelopeWallFailure(
+                    systems: crossLaminated(span: span, roof: isRoof), cantilever: false)
             }
         }
         switch kind {
@@ -132,6 +150,8 @@ public struct EnvelopeWallFailure: Sendable {
                 cantilever: false)
         case .profiledSteelSheeting:
             return EnvelopeWallFailure(systems: sheeted(roof: isRoof), cantilever: false)
+        case .crossLaminatedTimber:
+            return EnvelopeWallFailure(systems: crossLaminated(span: a, roof: isRoof), cantilever: false)
         }
     }
 }

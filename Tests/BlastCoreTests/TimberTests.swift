@@ -293,6 +293,89 @@ struct TimberTests {
             abs(at - expected) < 0.03 * expected, "broke at \(at / 1e3) kN, expected \(expected / 1e3) kN")
     }
 
+    @Test(
+        "A piece of timber is meshed as shells whatever its elements were chosen as; mixed with concrete, so is it"
+    )
+    func timberMeshesAsShells() throws {
+        var model = StructureModel(
+            solids: [Box(min: SIMD3(1, 1, 0), max: SIMD3(4, 1.1, 2.5))], material: .crossLaminatedTimber,
+            elementSize: 0.125, fixedBase: true)
+        #expect(model.elementKind == .solid && model.isAllShells)
+        let scenario = Scenario(
+            name: "CLT wall", domainSize: SIMD3(6, 3, 4), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(0.5, 1.5, 0.5)), structure: model)
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.25)
+        #expect(solver.shells != nil && solver.structure == nil)
+        // With a concrete footing beside it, the body is mixed: solids and shells.
+        model.solids.append(Box(min: SIMD3(1, 1.1, 0), max: SIMD3(4, 1.6, 0.5)))
+        model.setMaterial(.reinforcedConcrete, of: 1)
+        #expect(model.isMixed && model.elementKind(of: 0) == .shell && model.elementKind(of: 1) == .solid)
+    }
+
+    @Test(
+        "A timber layer breaking follows ContinuumKit's released TimberFailure, along the grain, across it and in shear",
+        arguments: [0, 1, 2])
+    func failureMatchesContinuumKit(path: Int) throws {
+        // Spruce as Sandhaas and van de Kuilen give it, with every fracture energy positive (as
+        // ContinuumKit requires); the element's band is its side, 0.25 m. Driven past breaking.
+        var properties = TimberProperties(
+            alongGrain: 11e9, acrossGrain: 0.37e9, shearModulus: 0.69e9, rollingShearModulus: 0.05e9,
+            poissonRatio: 0.35)
+        properties.tensionAlong = 24e6
+        properties.compressionAlong = 36e6
+        properties.tensionAcross = 0.7e6
+        properties.compressionAcross = 4.3e6
+        properties.shearStrength = 6.9e6
+        properties.rollingStrength = 0.5e6
+        properties.fibreEnergy = 60e3
+        // In shear, ten times spruce's, so that it softens on this band rather than breaking at once
+        // (where the two would differ by the whole strength at the one step between them).
+        properties.shearEnergy = 12e3
+        let membrane = try Membrane(
+            .timber(name: "Spruce", density: 420, properties: properties), device: device)
+        let law = try TimberFailure(
+            alongModulus: 11e9, acrossModulus: 0.37e9, shearModulus: 0.69e9, rollingModulus: 0.05e9,
+            poisson: 0.35,
+            tensionAlong: 24e6, compressionAlong: 36e6, tensionAcross: 0.7e6, compressionAcross: 4.3e6,
+            shearStrength: 6.9e6, rollingStrength: 0.5e6, fibreEnergy: 60e3, splittingEnergy: 500,
+            shearEnergy: 12e3,
+            rollingEnergy: 600, bandLength: Double(Membrane.side), throughBandLength: 0.1)
+        // Along the grain (x), across it (y) and in shear, to several times the breaking strain.
+        let (end, strength): (Float, Float) = [(0.012, 24e6), (0.006, 0.7e6), (0.02, 6.9e6)][path]
+        var reference = law.zeroState
+        var worst: Float = 0
+        for i in 1...40 {
+            let amount = end * Float(i) / 40
+            let target: SIMD3<Float> =
+                path == 0 ? SIMD3(amount, 0, 0) : path == 1 ? SIMD3(0, amount, 0) : SIMD3(0, 0, amount / 2)
+            let nominal = membrane.drive(to: target, steps: 600)
+            // The layer's Green strain and second Piola-Kirchhoff stress, from the corners.
+            let far = membrane.corners.filter {
+                path == 1
+                    ? membrane.solver.position($0).y > Membrane.side / 2
+                    : membrane.solver.position($0).x > Membrane.side / 2
+            }
+            let positions = far.map { membrane.solver.position($0) }
+            let stretch =
+                (path == 1 ? positions.map(\.y) : positions.map(\.x)).reduce(0, +) / Float(positions.count)
+                / Membrane.side
+            let green = path == 2 ? Double(amount) : Double(stretch * stretch - 1) / 2
+            let strain =
+                path == 0
+                ? TimberFailure.Components(along: green)
+                : path == 1 ? TimberFailure.Components(across: green) : TimberFailure.Components(shear: green)
+            reference = try law.evaluate(strain: strain, from: reference)
+            let model = path == 0 ? nominal.x / stretch : path == 1 ? nominal.y / stretch : nominal.z
+            let expected = Float(
+                path == 0
+                    ? reference.stress.along : path == 1 ? reference.stress.across : reference.stress.shear)
+            worst = max(worst, abs(model - expected))
+        }
+        #expect(
+            worst < 0.03 * strength,
+            "worst \(worst / 1e6) MPa off ContinuumKit, strength \(strength / 1e6) MPa")
+    }
+
     @Test("Timber in solid elements is refused; layered, it is integrated lamella by lamella")
     func solidsRefused() throws {
         let model = StructureModel(

@@ -77,9 +77,8 @@ including `BombCAD run` and the `blastbench` command-line tool.
 | Ground shock | The design manuals' estimate, or a layered soil column under each point | [Ground shock](docs/ground-shock.md) |
 | Craters | An empirical crater for each charge on earth or rock, kept shallow below a water table, after the blast; and the energy soft ground takes from the air | [Cratering](docs/cratering.md) |
 | Gas deflagrations | A methane or propane cloud lit in a room, with vent panels; a vapour cloud explosion at a process plant beside its buildings, after Texas City 2005 | [Gas deflagrations](docs/deflagration.md), [process plant](docs/process-plant-explosion.md) |
-| Building envelopes | Exposure-only buildings, up to neighbourhoods of them, each wall, roof and pane judged for damage as it goes: glass, concrete and brick panels, freestanding and one-way walls, slabs, and the pressure let inside | [Building envelopes](docs/building-envelopes.md#one-way-damage-single-degree-of-freedom), [street interactions](docs/street-interaction.md) |
-| Other Macs | Sweeps and the effects beside the blast placed on other Macs by cost | [The transport hub](docs/transport-hub.md) | A station's train shed under a long-span steel and glass roof, beside a concourse glazed with laminated glass; glass falling from overhead, and struts buckling |
-| [Distributed computing](docs/distributed-computing.md) |
+| Building envelopes | Exposure-only buildings, up to districts of them from map data, each wall, roof and pane judged for damage as it goes: glass, concrete and brick panels, freestanding and one-way walls, slabs, and the pressure let inside | [Building envelopes](docs/building-envelopes.md#one-way-damage-single-degree-of-freedom), [street interactions](docs/street-interaction.md) |
+| Other Macs | Sweeps and the effects beside the blast placed on other Macs by cost | [Distributed computing](docs/distributed-computing.md) |
 
 ## Headline results
 
@@ -137,6 +136,7 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [Freestanding objects](docs/freestanding-objects.md) | Rigid boxes and cars coupled to the air, contact and populated scenes |
 | [Terrain](docs/terrain.md)                  | A heightfield ground the blast sees, DEM import, and slopes checked against shock reflection theory |
 | [Large scenes](docs/large-scenes.md) | Bursts of hundreds of tonnes to kilotonnes over kilometres: accuracy, cost and grids against Kingery–Bulmash, terrain at scale |
+| [Beirut, 2020](docs/beirut-2020.md) | The port explosion over 14,169 map buildings, set against the arrival times and the surveys of glass and structural damage |
 | [Validation](docs/validation.md)            | Every comparison with measurements and theory, with a summary   |
 | [Validation review](docs/validation-review.md) | An independent review of the record's claims, ranked by severity |
 | [Blind tests](docs/blind-tests.md) | The protocol and register of tests predicted on frozen defaults before their measurements are unsealed |
@@ -155,6 +155,7 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [Cratering](docs/cratering.md) | The crater each charge digs in earth or rock, by empirical scaling, kept shallow below a water table, and the share of its energy the air keeps |
 | [The steel and glass office](docs/office-tower.md) | A sample layout of modern construction: how it is meshed, stands under gravity and takes a tonne at the kerb |
 | [Profiled steel sheeting](docs/profiled-sheeting.md) | Trapezoidal and sinusoidal steel cladding and roofs, as shells and as an envelope construction; compared with Langdon's corrugated panels; the portal-frame warehouse sample |
+| [The transport hub](docs/transport-hub.md) | A station's train shed under a long-span steel and glass roof, beside a concourse glazed with laminated glass; glass falling from overhead, and struts buckling |
 | [Distributed computing](docs/distributed-computing.md) | Sweeps on several Macs, and the effects beside the blast placed on other Macs by cost |
 | [Run comparison](docs/run-comparison.md)    | Saved runs, comparing them, and headless runs                   |
 | [USD export](docs/usd-export.md) | Writing a run over time as USD and OpenVDB volumes, for rendering in Blender and elsewhere |
