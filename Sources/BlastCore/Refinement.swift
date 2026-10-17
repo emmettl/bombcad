@@ -113,6 +113,10 @@ final class AirRefinement {
     private let haloPipeline: MTLComputePipelineState
     private let refluxPipeline: MTLComputePipelineState
     private let restrictPipeline: MTLComputePipelineState
+    /// The band beside envelope faces in which refinement is held while the air is loaded
+    /// (Refine.metal's `FacadeBand`); off without one.
+    var facadeBand: MTLBuffer?
+    var facadeBandParameters = FacadeBandParameters()
     private let flagPipeline: MTLComputePipelineState
     private let flagTilesPipeline: MTLComputePipelineState
     private let flagFinePipeline: MTLComputePipelineState
@@ -1352,6 +1356,9 @@ final class AirRefinement {
         stage("flag", &encoder)
         var uniforms = uniforms
         encoder.setBuffer(boxDefinition ?? wanted, offset: 0, index: 6)
+        var band = facadeBandParameters
+        encoder.setBuffer(facadeBand ?? wanted, offset: 0, index: 7)
+        encoder.setBytes(&band, length: MemoryLayout<FacadeBandParameters>.stride, index: 8)
         if let tiles {
             stage("flag", &encoder)
             encoder.setComputePipelineState(flagTilesPipeline)
@@ -1400,6 +1407,9 @@ final class AirRefinement {
         set(encoder, view.patches, 5)
         encoder.setBuffer(parent.tileOfPatch, offset: 0, index: 6)
         encoder.setBuffer(parent.patchList, offset: 0, index: 7)
+        var band = facadeBandParameters
+        encoder.setBuffer(facadeBand ?? wanted, offset: 0, index: 8)
+        encoder.setBytes(&band, length: MemoryLayout<FacadeBandParameters>.stride, index: 9)
         encoder.dispatchThreadgroups(
             indirectBuffer: parent.arguments, indirectBufferOffset: 72,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
@@ -1831,4 +1841,17 @@ extension AirRefinement {
             MTLSize(width: Int(panes.lookup.count) * Int(scale * scale * scale), height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))
     }
+}
+
+/// Refine.metal's `FacadeBand`: the coarse grid's size, the ratio from a level's cells to coarse
+/// ones, the overpressure (Pa) above which the band holds refinement, the ambient pressure, on.
+struct FacadeBandParameters {
+    var nx: UInt32 = 0
+    var ny: UInt32 = 0
+    var nz: UInt32 = 0
+    var ratio: UInt32 = 1
+    var threshold: Float = 0
+    var ambient: Float = 0
+    var on: UInt32 = 0
+    var pad: UInt32 = 0
 }

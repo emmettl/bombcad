@@ -53,7 +53,8 @@ Run on 0.5 m air for 300 ms (1,417 steps, 30 s on the Studio), the run above:
   Through the gone panes, the one-way fill puts 0.9 kPa inside, the air having moved by then.
 - **The shed** is open, so the blast reaches under its roof (15.7 kPa at the platforms) as well
   as over it (13.0 kPa). The roof glass is loaded on both faces and cracks in patches. The frames
-  stand: 13 of 9,510 elements fail, and the largest deflection is 334 mm.
+  stand: 13 of 9,510 elements fail, and the largest deflection is 334 mm. With the members bowed, as
+  they are by default since (below), the same 13 fail and the deflection is 325 mm.
 - **The concourse walls** are moderately damaged.
 
 The roof glass is toughened, not laminated, so how it falls is not graded: the structure
@@ -66,8 +67,9 @@ model's glass is shells, whose broken pieces become debris.
 - **The trusses are Vierendeel frames.** A real long-span roof is more often a triangulated
   truss or arch, whose members carry axial force rather than bending. Members along the axes
   cannot be diagonal.
-- **Perfect members.** The beams buckle at their Euler load or squash at their yield. With no
-  imperfection or residual stress, a member of middling slenderness carries up to 1.5 times
-  Eurocode 3's design buckling resistance ([buckling](shell-model.md#buckling)).
+- **Members bowed by Eurocode 3's rule.** Since 17 October 2026 the steel is bowed so that it
+  buckles at its design curve's resistance ([buckling](shell-model.md#buckling)): the hollow
+  sections on curve a, the UC columns on c, the purlins on b. The image is of the run on straight
+  members.
 - **No falling test.** The concourse's falling glass is graded on the fragment criteria, with
   no falling test compared.

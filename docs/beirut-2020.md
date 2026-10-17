@@ -154,7 +154,14 @@ and partitions the envelope does not have.
   either 0.2 m concrete or 0.5 m masonry for every building. GEER's survey shows the mix.
 - **The ground.** A bare-earth estimate from a surface model; the charge on saturated ground
   gives the air 0.9 of it; the crater is not in the air.
-- **Peaks at 4 m.** About three quarters of Kingery–Bulmash's; finer cells near the shock would
-  raise them.
+- **Peaks at 4 m, and the glass with them.** The peaks are about three quarters of
+  Kingery–Bulmash's; finer cells near the shock would raise them. The façades' loads depend on
+  the grid more than the peaks do: on 8 m cells (peaks 0.55–0.67 of Kingery–Bulmash) a quarter
+  of sides break at 0.5–0.75 km and a fourteenth at 0.75–1 km, where 4 m breaks them all. The
+  glass has not converged with the cells, and 4 m may still under-read it.
+- **Open faces.** The 320 m top is 4 m/kg^(1/3) at 0.5 kt (3.1 at 1.1 kt). On 8 m cells a 640 m
+  top gives the same glass and structure to within a building or two in every band. The side
+  faces are not that far from the outer buildings: those beyond about 2.2 km lie within
+  4 m/kg^(1/3) of one, so the outer bands are less sure.
 - **One TNT mass.** Dewey's analysis suggests the TNT equivalence of this ammonium nitrate rose
   with distance (0.15 kt close in, 0.7 kt at 1 km); a single mass cannot follow that.

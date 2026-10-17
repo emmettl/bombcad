@@ -96,7 +96,7 @@ struct BeamElementData {
     var length: Float
     var barCount: UInt32
     var tieRatio: Float
-    var padding0: Float = 0
+    var bowed: Float = 0
     var padding1: Float = 0
 }
 
@@ -293,6 +293,8 @@ public final class ShellSolver {
     private let turnedNodePipeline: () -> MTLComputePipelineState?
     private lazy var turnedNodes: MTLComputePipelineState? = turnedNodePipeline()
     public let beamBuffer: MTLBuffer
+    /// The bowed beams' offsets (`MemberImperfection`), nil with none bowed.
+    let beamBowBuffer: MTLBuffer?
     public let beamFlagBuffer: MTLBuffer
     /// Damage of each beam, 0 (sound) to 1 (failing), for display.
     public let beamDisplayBuffer: MTLBuffer
@@ -470,11 +472,20 @@ public final class ShellSolver {
             }
         }
         let beamData = beamBuffer.contents().bindMemory(to: BeamElementData.self, capacity: beams)
+        let bows = MemberImperfection.bows(mesh: mesh, model: model, materials: materials)
+        if let bows {
+            let bytes = bows.count * MemoryLayout<SIMD4<Float>>.stride
+            beamBowBuffer = try buffer(bytes, "beam bows")
+            beamBowBuffer!.contents().copyMemory(from: bows, byteCount: bytes)
+        } else {
+            beamBowBuffer = nil
+        }
         for (b, beam) in mesh.beams.enumerated() {
             beamData[b] = BeamElementData(
                 n0: beam.nodes.x, n1: beam.nodes.y, axis: UInt32(beam.axis), material: UInt32(beam.material),
                 width: beam.section.x, depth: beam.section.y, length: beam.length,
-                barCount: UInt32(beam.bars.count), tieRatio: beam.tieRatio)
+                barCount: UInt32(beam.bars.count), tieRatio: beam.tieRatio,
+                bowed: bows?[MemberImperfection.perBeam * b].w ?? 0)
             let layout = beamBarLayoutBuffer.contents().bindMemory(
                 to: SIMD4<Float>.self, capacity: beams * ShellMesh.maxBeamBars)
             for slot in 0..<ShellMesh.maxBeamBars {
@@ -1232,6 +1243,7 @@ public final class ShellSolver {
                 encoder.setBuffer(fluid?.refinement?.mask ?? placeholderBuffer, offset: 0, index: 17)
                 encoder.setBuffer(punching.beamSection, offset: 0, index: 18)
                 encoder.setBuffer(punching.beamSheared, offset: 0, index: 19)
+                encoder.setBuffer(beamBowBuffer ?? placeholderBuffer, offset: 0, index: 20)
                 encoder.dispatchThreads(
                     MTLSize(width: beamCount, height: 1, depth: 1), threadsPerThreadgroup: group)
             }

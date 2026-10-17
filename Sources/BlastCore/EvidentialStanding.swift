@@ -305,6 +305,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case pressedInterlock
     case hourglassSecant
     case hourglassWithoutSteel
+    case perfectMembers
     case interfaceBond
     case smearedMasonry
     case profiledSheets
@@ -396,6 +397,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .pressedInterlock: return any { $0.pressedInterlock }
         case .hourglassSecant: return !concrete.isEmpty && any { $0.hourglassFollowsCracking }
         case .hourglassWithoutSteel: return !concrete.isEmpty && any { !$0.hourglassCapsSteel }
+        case .perfectMembers: return any { !$0.memberImperfections && $0.elementKind == .shell }
         case .interfaceBond: return any { $0.interfaceBond != nil }
         case .smearedMasonry: return materials.contains { $0.units != nil } && any { !$0.unitJoints }
         case .profiledSheets: return any { $0.solidSheets.contains { $0 != nil } }
@@ -766,6 +768,12 @@ public enum StandingTable {
                 note: "Halves the hourglass work in the contest slab and leaves the shear beam as it was; "
                     + "not run against the impact tests.",
                 document: "validation.md#hourglass-control")
+        case .perfectMembers:
+            return Entry(
+                title: "Steel members perfectly straight", affects: structure, limit: .approximation,
+                note: "Without Eurocode 3's equivalent bow a strut of middling slenderness carries its "
+                    + "perfect load, up to 1.5 times the design curves' resistance near λ̄ = 1: the unsafe side.",
+                document: "shell-model.md#buckling")
         case .interfaceBond:
             return Entry(
                 title: "Bonded material joints", affects: structure, limit: nil,
@@ -981,6 +989,7 @@ public enum StandingTable {
         "EnvelopeConstruction.glassThicknessM": .input,
         "EnvelopeConstruction.laminate": .input,
         "EnvelopeConstruction.facadePaneM": .input,
+        "EnvelopeConstruction.glazing": .input,
         "EnvelopeConstruction.source": .input,
         "EnvelopeConstruction.detail": .input,
         "EnvelopeConstruction.barsInBothFaces": .input,
@@ -1062,6 +1071,7 @@ public enum StandingTable {
         "SolverConfiguration.minimumBalloonCells": .numerical,
         "SolverConfiguration.refinement": .option([.shockRefinement, .twoLevelRefinement]),
         "SolverConfiguration.refinementThreshold": .numerical,
+        "SolverConfiguration.refinementHoldsEnvelopes": .numerical,
         "SolverConfiguration.refinementMargin": .numerical,
         "SolverConfiguration.refinementLevels": .option([.twoLevelRefinement]),
         "SolverConfiguration.refinementOwnSteps": .option([.adaptiveSubsteps]),
@@ -1103,6 +1113,9 @@ public enum StandingTable {
         "StructureModel.solidSheets": .option([.profiledSheets]),
         "StructureModel.springSupports": .input,
         "StructureModel.sheetFastenings": .input,
+        "StructureModel.memberImperfections": .option([.perfectMembers]),
+        "StructureModel.bucklingCurve": .input,
+        "StructureModel.solidBucklingCurves": .input,
         "StructureModel.shellSectionShear": .option([.shellSectionShear]),
         "StructureModel.secondCracks": .option([.noSecondCracks]),
         "StructureModel.bareBars": .option([.noBareBars]),
@@ -2346,7 +2359,9 @@ struct StandingScene {
                     ? [
                         "\(blocks) buildings of solid blocks (as map buildings are) taken to hold a window "
                             + "in each storey of each façade, 1.2 × 1.5 m unless set, judged on the storey's "
-                            + "mean load."
+                            + "mean load; map buildings' façades also as a mix of panes by their kind and "
+                            + "height, assumed (no survey of glazing found), each breaking with E1300's "
+                            + "probability, the whole pane at its largest stress."
                     ]
                     : [])
                 + (inputs.scenario.structuralObjects.isEmpty ? [] : [Self.envelopesBesideStructures]),
