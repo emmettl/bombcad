@@ -124,19 +124,23 @@ extension ScenarioPreset {
     }
 
     /// The row of terraced houses (`terracedHousesScenario`) with a charge of `charge` kg of TNT
-    /// `standoff` m in front of the middle house's front wall, `height` m above the ground; the
-    /// domain grows to hold it 6 m in from its edge.
+    /// `standoff` m in front of the middle house's front wall, `height` m above the ground. The
+    /// domain's open faces are `faceClearance` m from the charge and the row, 4 m/kg^(1/3) unless
+    /// given (`Scenario.structureFaceClearance`), and never nearer than 6 m in front, 8 m to
+    /// the sides and 7.5 m behind.
     public static func terracedRow(
         title: String, charge: Float = 25, standoff: Float = 10, height: Float = 0.8,
-        covering: RoofCovering? = .plainClayTiles
+        covering: RoofCovering? = .plainClayTiles, faceClearance: Float? = nil
     ) -> Scenario {
+        let clearance = faceClearance ?? Scenario.structureFaceClearance * cbrt(charge)
         let leaf: Float = 0.1025
         let cavity: Float = 0.05
         let wall = 2 * leaf + cavity
         let party: Float = 0.215
-        let x0 = max(16, (standoff + 6).rounded(.up))
+        let x0 = (standoff + max(clearance, 6)).rounded(.up)
         let x1 = x0 + 8.5
-        let ys: [Float] = [8, 13, 18, 23]
+        let y0 = max(clearance, 8).rounded(.up)
+        let ys: [Float] = [y0, y0 + 5, y0 + 10, y0 + 15]
         let floors: [Float] = [2.6, 5.2]
         let joists: Float = 0.098
         let top = floors.last! + joists
@@ -246,7 +250,11 @@ extension ScenarioPreset {
         structure.openings = openings
         let middle = (ys[1] + ys[2]) / 2
         return Scenario(
-            name: title, domainSize: SIMD3(x1 + 7.5, 31, 12), boxes: [],
+            name: title,
+            domainSize: SIMD3(
+                max(x1 + 7.5, x0 - standoff + clearance).rounded(.up), ys[3] + y0,
+                max(12, top + 0.5 + clearance).rounded(.up)),
+            boxes: [],
             charge: Charge(mass: charge, position: SIMD3(x0 - standoff, middle, height)),
             gauges: [
                 Gauge("Front wall", at: SIMD3(x0 - 0.1, middle - 1, 1.5)),

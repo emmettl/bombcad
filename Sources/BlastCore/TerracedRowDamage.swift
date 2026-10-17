@@ -44,6 +44,8 @@ public struct TerracedRowDamage: Sendable {
         /// Shares of the external walls' elements destroyed and cracked through (damage 1).
         public var destroyed = 0.0
         public var cracked = 0.0
+        /// Share of the front wall's elements destroyed (both leaves; those facing the charge).
+        public var frontDestroyed = 0.0
         /// Per floor and the roof, ground up: the share of its joists off their seats, and how
         /// far its plate has fallen on average, m.
         public var seatsLost: [Double] = []
@@ -67,6 +69,7 @@ public struct TerracedRowDamage: Sendable {
     /// Solids, in the order `terracedRow` builds them: the eight leaves of the external walls,
     /// the two party walls, two plates (floor and roof) per house, then the covering.
     static let externalLeaves = 0..<8
+    static let frontLeaves = 0..<2
     static let partyWalls = 8..<10
     static let platesPerHouse = 2
 
@@ -88,6 +91,7 @@ public struct TerracedRowDamage: Sendable {
             model.solids.count > Self.partyWalls.upperBound + 3 * Self.platesPerHouse
             ? Self.partyWalls.upperBound + 3 * Self.platesPerHouse : nil
         var walls = [(total: Int, destroyed: Int, cracked: Int)](repeating: (0, 0, 0), count: 3)
+        var fronts = [(total: Int, destroyed: Int)](repeating: (0, 0), count: 3)
         var covering = [(total: Int, moved: Int)](repeating: (0, 0), count: 3)
         var plateDrop = [[(sum: Float, count: Int)]](
             repeating: [(0, 0), (0, 0)], count: 3)
@@ -99,8 +103,11 @@ public struct TerracedRowDamage: Sendable {
             let removed = shells.flag(e) != .active
             if Self.externalLeaves.contains(element.solid) {
                 walls[h].total += 1
+                let front = Self.frontLeaves.contains(element.solid)
+                if front { fronts[h].total += 1 }
                 if removed || simd_length(shift) > element.thickness {
                     walls[h].destroyed += 1
+                    if front { fronts[h].destroyed += 1 }
                 } else if damage[e] >= 1 {
                     walls[h].cracked += 1
                 }
@@ -121,6 +128,8 @@ public struct TerracedRowDamage: Sendable {
             let wall = walls[h]
             result.destroyed = wall.total > 0 ? Double(wall.destroyed) / Double(wall.total) : 0
             result.cracked = wall.total > 0 ? Double(wall.cracked) / Double(wall.total) : 0
+            let front = fronts[h]
+            result.frontDestroyed = front.total > 0 ? Double(front.destroyed) / Double(front.total) : 0
             for level in 0..<Self.platesPerHouse {
                 let plate = h * Self.platesPerHouse + level
                 var pairs = 0

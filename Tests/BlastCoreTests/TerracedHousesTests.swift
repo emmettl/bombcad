@@ -9,9 +9,11 @@ import simd
 struct TerracedHousesTests {
     @Test("The row meshes with both leaves of its cavity walls apart and its floors as timber shells")
     func meshes() throws {
-        let scenario = ScenarioPreset.terracedHouses.scenario
+        let scenario = ScenarioPreset.terracedRow(title: "Terraced row", faceClearance: 0)
         let model = try #require(scenario.structure)
         #expect(model.isAllShells)
+        // The preset's domain keeps its open faces clear of the charge and the row.
+        #expect(ScenarioPreset.terracedHouses.scenario.tightOpenFaces.isEmpty)
         let mesh = try ShellMesh(model: model)
         // The front wall's two leaves stay two planes, 152.5 mm apart.
         let fronts = Set(mesh.elements.filter { $0.axis == 0 }.map { mesh.positions[Int($0.nodes[0])].x })
@@ -44,7 +46,8 @@ struct TerracedHousesTests {
     func settlesAndRuns() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let solver = try BlastSolver(
-            device: device, scenario: ScenarioPreset.terracedHouses.scenario, cellSize: 0.5,
+            device: device, scenario: ScenarioPreset.terracedRow(title: "Terraced row", faceClearance: 0),
+            cellSize: 0.5,
             configuration: .recommended)
         solver.settleStructures()
         #expect(solver.settlements.allSatisfy { $0.settled })
