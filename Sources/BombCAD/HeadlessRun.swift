@@ -12,7 +12,7 @@ enum HeadlessRun {
         Usage: BombCAD run <project.bombcad | layout.json> [--name <name>] [--out <new.bombcad>]
                            [--csv <file.csv>] [--resolution coarse|medium|fine|<metres>] [--mass <kg TNT>]
                            [--advise peak:20%|impulse:15%|deflection:30%|time:10m]
-                           [--duration <seconds>] [--ground rigid|soil|<MN/m³>|<ground type>]
+                           [--duration <seconds>] [--ground rigid|soil|<MN/m³>|<ground type>] [--water-table <m>|deep]
                            [--usd <scene.usda>] [--vdb <folder>
                            [--vdb-fields overpressure,shock,peak,impulse]] [--frame-interval <ms>]
                            [--fragments <spec.json> [--fragment-results <file.json>]]
@@ -62,7 +62,9 @@ enum HeadlessRun {
         structures' debris lands on: the hard ground, or soil (50 MN/m³ unless a subgrade modulus is
         given, 10 to 150). A ground type (rock, soilOverSandstone, playa, alluvium, clay,
         glacialSoil, clayShale, saturated) also digs each charge's crater, estimated and drawn after
-        the run, and leaves the air less of a charge near it. The project itself is never modified. The summary ends with the standing of each result (docs/standing.md), which
+        the run, and leaves the air less of a charge near it; --water-table sets how far down the
+        water table is, which keeps a crater shallow (at the surface for saturated soil unless
+        given). The project itself is never modified. The summary ends with the standing of each result (docs/standing.md), which
         --standing writes as JSON and the USD scene, the volumes and the results files carry too.
         """
 
@@ -77,8 +79,10 @@ enum HeadlessRun {
         /// With `--ground`, what the structures' debris lands on: soil of this subgrade modulus
         /// (Pa/m), or, as `.some(nil)`, the hard ground.
         var ground: Float??
-        /// With `--ground` naming a type, what the ground is made of (with its debris modulus).
+        /// With `--ground` naming a type, what the ground is made of (with its debris modulus); with
+        /// `--water-table`, metres down to the water table, or, as `.some(nil)`, deep.
         var groundType: GroundType?
+        var waterTable: Float??
         var usd: URL?
         /// A new folder for the air's volumes, one OpenVDB file a frame, and their grids.
         var vdb: URL?
@@ -136,7 +140,7 @@ enum HeadlessRun {
                             "consumer", "fragment-results", "thermal", "thermal-results", "cloud",
                             "cloud-results", "sounding", "ground-shock", "ground-results", "envelope-results",
                             "envelope-histories", "envelope-damage", "debris-results",
-                            "frame-interval", "worker", "standing", "advise", "ground",
+                            "frame-interval", "worker", "standing", "advise", "ground", "water-table",
                         ]
                         .contains(key)
                     else {
@@ -200,6 +204,16 @@ enum HeadlessRun {
                                 + GroundType.allCases.map(\.rawValue).joined(separator: ", ") + ".")
                     }
                     options.ground = .some(modulus)
+                }
+            }
+            if let text = values["water-table"] {
+                if text == "deep" {
+                    options.waterTable = .some(nil)
+                } else {
+                    guard let depth = Float(text), depth.isFinite, depth >= 0, depth <= 1000 else {
+                        throw ProjectFileError.invalid("--water-table takes deep or a depth in metres.")
+                    }
+                    options.waterTable = .some(depth)
                 }
             }
             if let text = values["duration"] {
@@ -373,6 +387,10 @@ enum HeadlessRun {
         }
         if let type = options.groundType {
             inputs.settings.ground = type == .rigid ? nil : type
+            inputs.settings.waterTable = type.typicalWaterTable
+        }
+        if let table = options.waterTable {
+            inputs.settings.waterTable = inputs.settings.ground == nil ? nil : table
         }
 
         try inputs.validate()

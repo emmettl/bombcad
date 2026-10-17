@@ -451,9 +451,30 @@ final class EnvelopeComponentRecorder {
         func contains(_ region: Box, _ point: SIMD3<Float>) -> Bool {
             (0..<3).allSatisfy { point[$0] >= region.min[$0] && point[$0] <= region.max[$0] }
         }
+        // The cells standing for each pane (`BuildingEnvelope.paneCells`) carry its load, whichever
+        // block holds them.
+        var paneOfCell: [Int: Int] = [:]
+        for (owner, _) in objects.enumerated() {
+            let envelope = resolved.geometry[owner]
+            for pane in envelope.panes.indices {
+                guard let component = bySource["\(owner)/pane/\(pane)"]?.first else { continue }
+                for cell in envelope.paneCells(pane, grid: grid) { paneOfCell[cell] = component }
+            }
+        }
         for face in resolved.faces {
             let envelope = resolved.geometry[face.owner]
             let cell = Int(face.face.solid)
+            if let pane = paneOfCell[cell] {
+                guard components[pane].axis == Int(face.face.axis) else { continue }
+                let entry = Face(fluid: face.face.fluid, solid: face.face.solid)
+                let sign = face.face.positive != 0 ? 1 : -1
+                if sign == components[pane].outward {
+                    outer[pane].append(entry)
+                } else {
+                    inner[pane].append(entry)
+                }
+                continue
+            }
             let point = grid.cellCentre(
                 cell % grid.nx, (cell / grid.nx) % grid.ny, cell / (grid.nx * grid.ny))
             let axis = Int(face.face.axis)
