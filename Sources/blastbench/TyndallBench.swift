@@ -16,9 +16,31 @@ func runTyndall(device: MTLDevice) throws {
         "Tyndall's E1 CLT building, 75 ft from the charge; air \(cellSize) m refined by \(refinement), shells \(elementSize) m"
     )
     for test in TyndallCLTTest.tests where numbers?.contains(test.number) ?? true {
+        // `--pad back,side,top` moves the domain's faces out by so many metres; `--history <csv>`
+        // writes the front's displacements and the gauges every batch; `--no-sleep` keeps the air
+        // awake; `--copy-faces` copies the open faces instead of the far field.
+        let pad =
+            option("pad").map { text -> SIMD3<Float> in
+                let v = text.split(separator: ",").compactMap { Float($0) }
+                return SIMD3(v[0], v[1], v[2])
+            } ?? .zero
+        var rows = "time_s,first_mm,second_mm,front_kPa,front2_kPa,edge_kPa,roof_kPa,back_kPa,side_kPa\n"
         let result = try TyndallCLTTest.run(
             device: device, test: test, cellSize: cellSize, refinement: refinement, elementSize: elementSize,
-            duration: duration, progress: flag("progress") ? { print("  " + $0) } : nil)
+            duration: duration, pad: pad,
+            history: { t, a, b, p in
+                rows +=
+                    "\(t),\(a * 1000),\(b * 1000)," + p.map { "\($0 / 1000)" }.joined(separator: ",") + "\n"
+            },
+            configure: { c in
+                if flag("no-sleep") {
+                    c.airSleepThreshold = 0
+                    c.airSleepCrossings = 0
+                }
+                if flag("copy-faces") { c.openFaces = .copy }
+            },
+            progress: flag("progress") ? { print("  " + $0) } : nil)
+        if let path = option("history") { try rows.write(toFile: path, atomically: true, encoding: .utf8) }
         func mm(_ v: SIMD2<Float>) -> String {
             "\(format(Double(v.x) * 1000, 0)) / \(format(Double(v.y) * 1000, 0))"
         }
