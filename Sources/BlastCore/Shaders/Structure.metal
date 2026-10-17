@@ -259,6 +259,31 @@ struct MaterialParameters {
     float dowelFactor;          // multiplier on the bars' dowel action
     float fractureRateExponent; // fracture energy grows as the tensile rate factor to this power
     float crackDilatancy;       // a crack slid by s cannot close below this times s
+    // Timber: across the grain, in-plane and rolling shear, Poisson's ratio along to across, the
+    // grain's global axis and turn about the normal, and the lamellae (tops from -1 to 1, a bit
+    // each for those crossed).
+    float acrossGrain;
+    float grainShear;
+    float rollingShear;
+    float grainPoisson;
+    uint grainAxis;
+    float grainRotation;
+    uint lamellaCount;
+    uint lamellaCrossed;
+    float lamellaTop[8];
+    float shearCorrectionAlong;   // through-thickness shear's correction along and across the
+    float shearCorrectionAcross;  // outer lamellae's grain (the shear analogy)
+    // Timber's strengths at blast rates and fracture energies (TimberFailure).
+    float tensionAlong;
+    float compressionAlong;
+    float tensionAcross;
+    float compressionAcross;
+    float grainShearStrength;
+    float rollingStrength;
+    float fibreEnergy;
+    float splittingEnergy;
+    float shearEnergy;
+    float rollingEnergy;
 };
 
 constant uint maxMaterials = 8;

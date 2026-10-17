@@ -551,6 +551,8 @@ public enum BlastError: Error, CustomStringConvertible {
     case outsideBlastCurves(Double)
     /// A discrete bar that does not lie wholly within the body's concrete.
     case barOutsideConcrete(Int, SIMD3<Float>)
+    /// Timber in solid elements, which have no law for it: it is meshed as shells and beams.
+    case timberNeedsShells(String)
 
     public var description: String {
         switch self {
@@ -565,6 +567,8 @@ public enum BlastError: Error, CustomStringConvertible {
             "A scaled distance of \(String(format: "%.2f", z)) m/kg^(1/3) is outside the Kingery–Bulmash curves (0.2 to 40)"
         case .barOutsideConcrete(let index, let point):
             "Discrete bar \(index + 1) does not lie wholly within the structure's elements: at \(point)"
+        case .timberNeedsShells(let name):
+            "\(name) is timber, which is meshed with shells and beams; choose shells for the structure"
         case .notPlateLike(let index):
             "Solid \(index + 1) is neither a wall or slab nor a column, so it cannot be meshed with shells and beams"
         }

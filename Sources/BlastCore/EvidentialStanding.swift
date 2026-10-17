@@ -1749,12 +1749,13 @@ struct StandingScene {
 
     /// The kinds of material in the scene's structures, weakest standing last.
     enum MaterialClass: Int, Comparable {
-        case reinforcedConcrete, plainConcrete, steel, masonry, glass
+        case reinforcedConcrete, plainConcrete, steel, masonry, glass, timber
         static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
 
         init(_ material: StructureMaterial) {
             switch material.model {
             case .vonMises: self = .steel
+            case .timber: self = .timber
             case .concrete:
                 self =
                     material.isTransparent
@@ -1903,6 +1904,16 @@ struct StandingScene {
                     "A glass pane at 3 m", "Breaks under 1 kg and survives 0.5 g",
                     "validation.md#verification-against-theory"))
             parts.append("glass a brittle concrete, checked only to break and survive")
+        }
+        if classes.contains(.timber) {
+            level = max(level, .illustrative)
+            evidence.append(
+                StandingEvidence(
+                    "Timber's elastic law and layers",
+                    "Its stress is ContinuumKit's orthotropic plane stress to 1%, and timber and cross-laminated "
+                        + "cantilevers sag within 2% of layered beam theory; it never cracks, splits or crushes",
+                    "shell-model.md#timber"))
+            parts.append("timber elastic only: it never breaks, so its damage means nothing")
         }
         var resolution: [String] = []
         if let through = elementsThrough, through <= 6, through >= 4, classes.contains(.reinforcedConcrete) {
