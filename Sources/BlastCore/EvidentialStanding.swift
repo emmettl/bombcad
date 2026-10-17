@@ -1167,6 +1167,7 @@ public enum StandingTable {
         "Anchorage.cohesionSlip": .input,
         "Anchorage.friction": .input,
         "Anchorage.bearingCapacity": .input,
+        "Anchorage.closingGap": .input,
         "Anchorage.footing": .option([.footings, .cyclicSand]),
         "Anchorage.side": .input,
         "Anchorage.jointNormal": .input,

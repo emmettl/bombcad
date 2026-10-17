@@ -248,7 +248,7 @@ joint and gravity (`StructureSolver.gravityDirection`). Turned 45° it sways wit
 upright wall; turned 30° on 125 mm elements the staircase's corners stand out at its toe and it
 takes 30% more push to tip than b / H.
 
-**Joints between parts** (`Anchorage.betweenParts`, `PartPairs`; solid elements only). A
+**Joints between parts** (`Anchorage.betweenParts`, `PartPairs`). A
 support region's joint can tie the body to another of its own parts across a gap, both moving,
 instead of to fixed ground: a precast beam seated on a corbel through a bearing pad, a panel
 against its frame. The parts are meshed apart, a gap of at least one element between them (the
@@ -266,6 +266,25 @@ struck together they rebound with their momentum and never more kinetic energy t
 with; a block thrown along its seat with friction 0.5 slides v² / (2 μ g), 0.25 m, within 10%,
 its kinetic energy all spent on friction, the pairs within a quarter metre less half an element
 of the edge off their seat; thrown to slide 1.5 m it goes off the end and falls.
+**In shells** (`ShellSolver.setUpPairs`, `shellPairs` in Shell.metal). The parts are plates
+meshed apart, their nodes at least half an element apart so that the mesh does not join them.
+Each node with a face in the region that faces the joint (as a connection to the ground finds
+them, a plate's face or its free edge) is paired with the nearest node in the region of a member
+it does not share, on the joint's side of it or level with it: a joist's plate ending short of a
+wall pairs its edge with the wall's node beside it, a joint under it that it rests on. The seat is
+the region and half an element past it. The forces act at the nodes, without moments, and reach
+the node pass through contact's force buffer. Checks (`ShellPairsTests`): ties between walls
+pulled apart hold their strength over the plateau and half of it at 30 mm of a 10–50 mm fall;
+pushed together they buckle at their strength until a closing gap has closed, then bear; nodes
+slid past the region and half an element are off their seat. The [terraced
+houses](shell-model.md#the-terraced-houses) use them for wall ties, joists' seats and their roof
+covering.
+
+**A closing gap** (`Anchorage.closingGap`, joints between parts only). A joint whose bearing
+capacity yields (`bearingCapacity`) settles through at most this gap and then bears without
+limit, as stiffly as the body's material over an element (E / h) or the joint's own stiffness if
+stiffer: ties across a cavity buckle and the leaves close the cavity until they meet.
+
 A whole building of such parts, a twelve-storey [large-panel block of flats](large-panel-flats.md)
 of the Ronan Point type, is a preset. Its one-element gaps are also gaps in the air's solid mask
 on cells finer than two elements, which a gas explosion inside it has to be sealed against.

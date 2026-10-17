@@ -88,6 +88,8 @@ struct ShellUniforms {
     uint removesFragments;  // as in `StructureUniforms`
     uint loadShares;        // 1: the applied pressure acts by each element's share, after the table
     uint loadNodeShares;    // 1: and on the nodes by theirs, after the elements'
+    uint pairs;             // connections between two parts (`Anchorage.betweenParts`)
+    uint contactEncoded;    // 1: contact's forces were found this substep, when it is on
 };
 
 // Gravity's pull per unit mass, when it has been turned (`turnedGravity`).
@@ -98,7 +100,7 @@ float3 gravityPull(constant ShellUniforms &u) {
 AnchorLaw anchorLaw(constant ShellUniforms &u) {
     return AnchorLaw{u.anchorNormalStiffness, u.anchorShearStiffness, u.anchorTension, u.anchorPlateau,
                      u.anchorOpening, u.anchorCohesion, u.anchorCohesionSlip, u.anchorFriction, 0.0f,
-                     {0.0f, 0.0f, 0.0f}};
+                     {0.0f, 0.0f, 0.0f}, 0.0f, 0.0f, {0.0f, 0.0f}};
 }
 
 // Slip through the thickness at which concrete cracked across a plane fails in direct shear:
@@ -213,6 +215,7 @@ struct ShellElement {
     float thickness;
     float a;  // side along the first axis
     float b;  // side along the second
+    int shield[2];  // another member's element facing this one, below and above (-1: none)
 };
 
 struct ShellNode {
@@ -317,6 +320,41 @@ static inline float2 shapeSlope(float2 corner, float2 p) {
 }
 
 constant float2 shellCorners[4] = {float2(-1.0f, -1.0f), float2(1.0f, -1.0f), float2(1.0f, 1.0f), float2(-1.0f, 1.0f)};
+
+// Whether the face of element `el` at `centre`, facing `outward`, is shielded by the element `s`
+// of another member: intact, facing it, and nearer than an air cell, so that the air between them
+// is not resolved and the first fluid cell beyond the face lies beyond the other element too (the
+// cavity between the leaves of a wall). Such a face sees the air shut between them instead, in
+// `pressure`: closed, it is compressed or expanded adiabatically as the gap between the faces
+// narrows or widens from its gap at rest; with no gap at rest, it is ambient.
+static inline bool shellShielded(int s, ShellElement el, float3 centre, float3 outward,
+                                 const device ShellElement *elements, const device ShellNode *nodes,
+                                 const device float4 *reference, const device uchar *flags,
+                                 constant ShellUniforms &u, thread float &pressure) {
+    if (s < 0 || (flags[s] != elementActive && flags[s] != elementFailing)) {
+        return false;
+    }
+    ShellElement other = elements[s];
+    float3 middle = float3(0.0f);
+    float3 restOther = float3(0.0f);
+    float3 restOwn = float3(0.0f);
+    for (uint i = 0; i < 4; ++i) {
+        restOther += reference[other.node[i]].xyz;
+        middle += reference[other.node[i]].xyz + float3(nodes[other.node[i]].displacement);
+        restOwn += reference[el.node[i]].xyz;
+    }
+    float faces = 0.5f * (el.thickness + other.thickness);
+    float gap = dot(0.25f * middle - centre, outward) - faces;
+    if (gap <= -faces || gap >= u.fluidCell) {
+        return false;
+    }
+    float3 axis = float3(0.0f);
+    axis[el.axis] = 1.0f;
+    float rest = abs(dot(0.25f * (restOther - restOwn), axis)) - faces;
+    pressure = rest > 1e-3f
+        ? u.ambientPressure * (pow(rest / max(gap, 0.1f * rest), u.fluidGamma) - 1.0f) : 0.0f;
+    return true;
+}
 
 // Overpressure of the air on one side of a shell: the first fluid cell beyond the shell's face,
 // within three cells.
@@ -1211,10 +1249,14 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
         float3 load = float3(0.0f);
         if (u.coupled != 0) {
             float3 unit = normalize(areaVector);
-            float front = shellOverpressure(centre, unit, 0.5f * t, fluid, fluidMask, patchOfTile, fineAir,
-                                            fineAirMask, u);
-            float back = shellOverpressure(centre, -unit, 0.5f * t, fluid, fluidMask, patchOfTile, fineAir,
-                                            fineAirMask, u);
+            float front = 0.0f;
+            float back = 0.0f;
+            if (!shellShielded(el.shield[1], el, centre, unit, elements, nodes, reference, flags, u, front)) {
+                front = shellOverpressure(centre, unit, 0.5f * t, fluid, fluidMask, patchOfTile, fineAir, fineAirMask, u);
+            }
+            if (!shellShielded(el.shield[0], el, centre, -unit, elements, nodes, reference, flags, u, back)) {
+                back = shellOverpressure(centre, -unit, 0.5f * t, fluid, fluidMask, patchOfTile, fineAir, fineAirMask, u);
+            }
             load += (back - front) * areaVector;
         }
         if (u.loadCount != 0 && (u.loadFace >> 1) == k) {
@@ -1943,7 +1985,8 @@ static inline void gatherNode(uint n, const device ShellForces *forces, device u
             attached = true;
         }
     }
-    if (shellContactEnabled(u, failureGate)) {
+    // Contact's forces, and those of the connections between parts (`shellPairGather`).
+    if (shellContactEnabled(u, failureGate) || u.pairs != 0) {
         force += float3(contact[n]);
     }
 }
@@ -2603,4 +2646,82 @@ kernel void shellBodyEnvelope(const device ShellNode *nodes [[buffer(0)]],
     if (tid >= layout.w) { return; }
     if (timing.x > 0.0f && (control.dt <= 0.0f || timing.y >= ceil(control.dt / timing.x))) { return; }
     bodyEnvelopePoint(reference[tid].xyz + float3(nodes[tid].displacement), parameters.w, layout.x, bounds);
+}
+
+// Connections between two parts of a shell body (`Anchorage.betweenParts`), as `structurePairs`
+// for solid elements: each pair ties a node of one part to the nearest of the other across the
+// gap between them, by the law on their relative motion, and carries nothing once the first has
+// slid off its seat. The forces act at the nodes, without moments.
+kernel void shellPairs(const device ShellNode *nodes [[buffer(0)]],
+                       const device uint2 *pairNodes [[buffer(1)]],
+                       device float4 *pairState [[buffer(2)]],
+                       const device float4 *pairSeat [[buffer(3)]],
+                       const device AnchorLaw *pairLaws [[buffer(4)]],
+                       constant ShellUniforms &u [[buffer(5)]],
+                       const device StepControl &control [[buffer(6)]],
+                       uint p [[thread_position_in_grid]]) {
+    bool active;
+    shellStep(u, control, active);
+    if (!active || p >= u.pairs) {
+        return;
+    }
+    uint2 ends = pairNodes[p];
+    ShellNode a = nodes[ends.x];
+    ShellNode b = nodes[ends.y];
+    AnchorLaw law = pairLaws[p];
+    float4 stored = pairState[3 * p];
+    float area = stored.x;
+    float4 state = float4(stored.yzw, pairState[3 * p + 1].w);
+    float4 extra = pairState[3 * p + 2];
+    float settlement = extra.x;
+    float3 displacement = float3(a.displacement) - float3(b.displacement);
+    float3 velocity = float3(a.velocity) - float3(b.velocity);
+    float3 along;
+    float3 other;
+    jointAxes(float3(law.normal[0], law.normal[1], law.normal[2]), along, other);
+    float2 slide = float2(dot(displacement, along), dot(displacement, other));
+    float4 seat = pairSeat[p];
+    if (slide.x > seat.x || -slide.x > seat.y || slide.y > seat.z || -slide.y > seat.w) {
+        extra.y = 1.0f;
+    }
+    float3 force = float3(0.0f);
+    if (extra.y == 0.0f) {
+        float damper = 2.0f * u.contactDamping * sqrt(law.kn * extra.z / area);
+        float2 slipBefore = state.xy;
+        float3 traction = jointTraction(state, settlement, displacement, velocity, damper, law);
+        force = -area * traction;
+        float3 normal = all(float3(law.normal[0], law.normal[1], law.normal[2]) == 0.0f)
+            ? float3(0.0f, 0.0f, 1.0f) : float3(law.normal[0], law.normal[1], law.normal[2]);
+        extra.w += area * length(state.xy - slipBefore) * length(traction - dot(traction, normal) * normal);
+    }
+    pairState[3 * p] = float4(area, state.xyz);
+    pairState[3 * p + 1] = float4(force, state.w);
+    pairState[3 * p + 2] = float4(settlement, extra.yzw);
+}
+
+// Each node's share of the pairs' forces, the first node of a pair taking the force and the
+// second its opposite, added to contact's (which the node pass reads with them) when contact
+// found them this substep, or in their place. Contact can turn on within a batch whose substeps
+// were encoded without it, and its buffer then holds the last substep's sum.
+kernel void shellPairGather(const device float4 *pairState [[buffer(0)]],
+                            const device uint *nodeStart [[buffer(1)]],
+                            const device int *nodeEntries [[buffer(2)]],
+                            constant ShellUniforms &u [[buffer(3)]],
+                            const device StepControl &control [[buffer(4)]],
+                            const device uint *failureGate [[buffer(5)]],
+                            device packed_float3 *contact [[buffer(6)]],
+                            uint n [[thread_position_in_grid]]) {
+    bool active;
+    shellStep(u, control, active);
+    if (!active || n >= u.nodeCount) {
+        return;
+    }
+    float3 force = u.contactEncoded != 0 && shellContactEnabled(u, failureGate) ? float3(contact[n]) : float3(0.0f);
+    for (uint i = nodeStart[n]; i < nodeStart[n + 1]; ++i) {
+        int entry = nodeEntries[i];
+        uint p = uint(abs(entry)) - 1u;
+        float3 pairForce = pairState[3 * p + 1].xyz;
+        force += entry > 0 ? pairForce : -pairForce;
+    }
+    contact[n] = force;
 }
