@@ -24,7 +24,7 @@ final class SweepWorkerClient {
     private var ensembleWaiters: [UUID: CheckedContinuation<EnsembleOutcome, Error>] = [:]
     private var progress: [UUID: (Double) -> Void] = [:]
     /// Watched runs' frames, and what sending them cost, kept until the result arrives.
-    private var viewers: [UUID: (ViewFrame.Header, Data) -> Void] = [:]
+    private var viewers: [UUID: (WatchFrame.Header, Data) -> Void] = [:]
     private var viewStats: [UUID: (ViewStats, ContinuousClock.Instant)] = [:]
     private var closedError: Error?
     /// Why the worker stopped, for messages: what it last wrote to standard error, if anything.
@@ -157,7 +157,8 @@ final class SweepWorkerClient {
 
     /// Runs a project on the worker, handing each frame sent to `frame`, which must acknowledge
     /// it (`viewAck`) for more to come.
-    func watch(_ job: WatchJob, frame: @escaping (ViewFrame.Header, Data) -> Void) async throws -> WatchResult
+    func watch(_ job: WatchJob, frame: @escaping (WatchFrame.Header, Data) -> Void) async throws
+        -> WatchResult
     {
         let writer = self.writer
         viewers[job.id] = frame

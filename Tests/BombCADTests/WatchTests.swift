@@ -6,7 +6,7 @@ import Testing
 @testable import BombCAD
 
 @Suite("A watched run's frames")
-struct ViewFrameTests {
+struct WatchFrameTests {
     @Test("A frame packs and unpacks the ground's paint in half precision and the surface exactly")
     func roundTrip() throws {
         // Peaks to half precision's limit in kilopascals and past it, as close in.
@@ -21,13 +21,13 @@ struct ViewFrameTests {
         surface.damage = [0.5]
         for compression in ViewCompression.allCases {
             for quads in [true, false] {
-                let raw = ViewFrame.pack(ground: ground, surface: surface, includeQuads: quads)
+                let raw = WatchFrame.pack(ground: ground, surface: surface, includeQuads: quads)
                 let payload =
                     try compression.algorithm.map { try (raw as NSData).compressed(using: $0) as Data } ?? raw
-                let header = ViewFrame.Header(
+                let header = WatchFrame.Header(
                     frame: 2, time: 0.002, cellSize: 0.5, counts: SIMD2(2, 2), points: 4, faces: 1,
                     quadsIncluded: quads, rawBytes: raw.count, compression: compression)
-                let decoded = try ViewFrame.decode(header, payload: payload)
+                let decoded = try WatchFrame.decode(header, payload: payload)
                 for (sent, back) in zip(values, decoded.ground) {
                     let held = min(sent, 65_504_000)
                     #expect(sent.isNaN ? back.isNaN : abs(back - held) <= abs(held) / 1000)
@@ -49,21 +49,21 @@ struct ViewFrameTests {
             time: 0, cellSize: 1, grid: SIMD3(1, 1, 2), first: .zero, counts: SIMD3(1, 1, 2), stride: 1,
             values: [1.2, 0, 0, 0, 0.101325, 2, 100, 0, 0, 0.301325].map { Float16($0) },
             ambient: Primitive(density: 1.2, pressure: 101_325))
-        let raw = ViewFrame.pack(ground: ground, surface: nil, includeQuads: false, volume: air)
-        let header = ViewFrame.Header(
+        let raw = WatchFrame.pack(ground: ground, surface: nil, includeQuads: false, volume: air)
+        let header = WatchFrame.Header(
             frame: 0, time: 0, cellSize: 1, counts: SIMD2(1, 1), points: 0, faces: 0, quadsIncluded: false,
             volume: SIMD3(1, 1, 2), rawBytes: raw.count, compression: .none)
-        let decoded = try ViewFrame.decode(header, payload: raw)
+        let decoded = try WatchFrame.decode(header, payload: raw)
         #expect(
             decoded.volume.count == 2 && abs(decoded.volume[0]) < 0.1 && abs(decoded.volume[1] - 200) < 0.5)
     }
 
     @Test("A frame of the wrong size is refused")
     func wrongSize() {
-        let header = ViewFrame.Header(
+        let header = WatchFrame.Header(
             frame: 0, time: 0, cellSize: 1, counts: SIMD2(2, 2), points: 0, faces: 0, quadsIncluded: false,
             rawBytes: 24, compression: .none)
-        #expect(throws: ProjectFileError.self) { try ViewFrame.decode(header, payload: Data(count: 20)) }
+        #expect(throws: ProjectFileError.self) { try WatchFrame.decode(header, payload: Data(count: 20)) }
     }
 
     @Test("The command takes a host or standard input, and none of the outputs a run here writes")
@@ -108,11 +108,11 @@ struct WatchTests {
         let job = WatchJob(
             id: UUID(), name: "Watched", project: SweepWorkerArchive(try document().makeArchive()),
             view: ViewSpec(window: 1, compression: .lz4))
-        var headers: [ViewFrame.Header] = []
+        var headers: [WatchFrame.Header] = []
         var peaks: [Float] = []
         let result = try await worker.watch(job) { header, payload in
             headers.append(header)
-            peaks.append((try? ViewFrame.decode(header, payload: payload))?.peak ?? -1)
+            peaks.append((try? WatchFrame.decode(header, payload: payload))?.peak ?? -1)
             worker.writer.enqueue(.viewAck(job.id, header.frame))
         }
         let stats = try #require(result.stats)

@@ -46,7 +46,7 @@ enum ViewCompression: String, Codable, Equatable, Sendable, CaseIterable {
 /// each face's damage (half precision), and its faces (four 32-bit indices each) whenever their
 /// number changed since the last frame sent; then, if asked for, the overpressure in every
 /// `stride`-th cell of the air, kPa in half precision (held the same way), x fastest.
-enum ViewFrame {
+enum WatchFrame {
     /// Pascals, as kilopascals, and impulse as it is.
     static let groundScales: [Float] = [1e-3, 1e-3, 1]
 
@@ -207,7 +207,7 @@ final class ViewSender: @unchecked Sendable {
         let includeQuads = surface != nil && faces != lastFaces
         lastFaces = faces
         let columns = 3 * Int(ground.counts.x) * Int(ground.counts.y)
-        let header = ViewFrame.Header(
+        let header = WatchFrame.Header(
             frame: number, time: solver.time, cellSize: ground.cellSize, counts: ground.counts,
             points: surface?.points.count ?? 0, faces: faces, quadsIncluded: includeQuads,
             volume: volume?.counts ?? .zero,
@@ -221,7 +221,7 @@ final class ViewSender: @unchecked Sendable {
         }
         writer.enqueue(.view(id, header)) { [self] in
             let packing = ContinuousClock.now
-            var payload = ViewFrame.pack(
+            var payload = WatchFrame.pack(
                 ground: ground, surface: surface, includeQuads: includeQuads, volume: volume)
             let raw = payload.count
             if let algorithm = spec.compression.algorithm,
@@ -527,12 +527,12 @@ enum HeadlessWatch {
         var printed = ContinuousClock.now
 
         func take(
-            _ header: ViewFrame.Header, payload: Data, client: SweepWorkerClient, id: UUID,
+            _ header: WatchFrame.Header, payload: Data, client: SweepWorkerClient, id: UUID,
             start: ContinuousClock.Instant
         ) {
             let arrived = ContinuousClock.now
             arrivals.append(start.duration(to: arrived).seconds)
-            if let decoded = try? ViewFrame.decode(header, payload: payload) { lastPeak = decoded.peak }
+            if let decoded = try? WatchFrame.decode(header, payload: payload) { lastPeak = decoded.peak }
             decodeSeconds += arrived.duration(to: .now).seconds
             client.writer.enqueue(.viewAck(id, header.frame))
         }

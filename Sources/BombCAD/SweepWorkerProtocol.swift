@@ -48,8 +48,8 @@ enum SweepWorkerMessage: Codable, Equatable, Sendable {
     /// it ends, as `run` does, with `finished`.
     case watch(WatchJob)
     /// Worker to app: the latest frame of a watched run, its values in the payload (see
-    /// `ViewFrame`).
-    case view(UUID, ViewFrame.Header)
+    /// `WatchFrame`).
+    case view(UUID, WatchFrame.Header)
     /// App to worker: this frame of a watched run has been taken; another may be sent.
     case viewAck(UUID, Int)
     /// Worker to app, just before `finished`: what sending the watched run's frames cost.
