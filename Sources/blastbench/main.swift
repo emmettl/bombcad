@@ -133,6 +133,7 @@ func preset(named name: String?) -> ScenarioPreset {
     case "plant": .processPlantExplosion
     case "warehouse": .portalWarehouse
     case "terraced": .terracedHouses
+    case "hub": .transportHub
     default: .streetCanyon
     }
 }
@@ -1030,6 +1031,11 @@ func configureRefinement(_ configuration: inout SolverConfiguration) {
     if let memory = option("refine-memory").flatMap({ Int($0) }) {
         configuration.refinementMemory = memory << 20
     }
+    // `--refine-start full` makes the pools whole from the start, as before they grew; a number,
+    // in MB, starts them there instead of `refinementStartMemory`. The run is the same either way.
+    if let start = option("refine-start") {
+        configuration.refinementStartMemory = start == "full" ? nil : Int(start).map { $0 << 20 }
+    }
 }
 
 /// With `--radiate`, the luminous gas loses the heat it radiates: as `--thermal`'s description
@@ -1548,6 +1554,15 @@ func runSnapshot() throws {
                 print(
                     "\(name): code \(EnvelopeDamageColour.code(building)), \(building.structuralLevels.lowerBound.label)"
                         + "–\(building.structuralLevels.upperBound.label), panes \(building.panesBroken)/\(building.panes)"
+                        + ", \(building.components.filter { $0.material.isGlass && $0.failedAtS != nil }.count) gone"
+                        + ", inside \(format(building.insidePeakPa / 1000, 1)) kPa"
+                        + (building.worstGlazing.map { ", glazing GSA \($0.condition.rawValue)" } ?? "")
+                        + (building.worstOverhead.map {
+                            ", roof glass \($0.fall.rawValue)"
+                                + ($0.fall == .whole || $0.fall == .shards
+                                    ? " from \(format($0.dropM, 1)) m at \(format($0.impactSpeedMS, 0)) m/s, "
+                                        + "\(format($0.energyPerAreaJM2, 0)) J/m²" : "")
+                        } ?? "")
                 )
             }
         }
@@ -5512,6 +5527,7 @@ do {
     case "mendonca-static": try runMendoncaStatic(device: device)
     case "reynolds": try runReynolds(device: device)
     case "panelblock": try runPanelBlock(device: device)
+    case "buckling": try runBuckling(device: device)
     case "deflagration": try runDeflagration()
     case "merge": try runMerge(device: device)
     case "perimeter": try runPerimeter(device: device)

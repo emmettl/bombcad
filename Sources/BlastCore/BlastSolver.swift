@@ -441,9 +441,21 @@ public final class BlastSolver {
     public var shells: ShellSolver? { bodies.first?.shells }
     public var mixed: MixedStructure? { bodies.first?.mixed }
     public var hasBody: Bool { !bodies.isEmpty }
-    public var refinementPatchCapacity: Int { refinement?.maxPatches ?? 0 }
-    /// The patches the second level's pool holds (0 without one).
-    public var finerRefinementPatchCapacity: Int { finerRefinement?.maxPatches ?? 0 }
+    /// The most patches the first level's pool may grow to.
+    public var refinementPatchCapacity: Int { refinement?.capacity ?? 0 }
+    /// Each refined level's pool since the run's start: the most patches it may hold, those it
+    /// holds now, the most in use at once, and whether it ran out, so that some blocks the shock
+    /// wanted refined were not (a larger `refinementMemory` gives the run its full refinement).
+    public var refinementPools: [(capacity: Int, held: Int, most: Int, ranOut: Bool)] {
+        precondition(!batchInFlight, "Cannot read the refinement's pool during a batch")
+        return refinementLevels.map { ($0.capacity, $0.maxPatches, $0.poolUse.most, $0.poolUse.ranOut) }
+    }
+    /// Whether a pool ran out while it could still have grown, so that the run refined less than
+    /// one whose pools were made at full size would have: it grew too late, which its room ahead
+    /// (`makeRefinementRoom`) is meant never to allow.
+    public private(set) var refinementPoolGrewLate = false
+    /// The patches the second level's pool may grow to (0 without one).
+    public var finerRefinementPatchCapacity: Int { finerRefinement?.capacity ?? 0 }
     /// The patches each refined level holds after the last regrid, the first level first.
     public var refinementPatchesInUse: [Int] { refinementLevels.map(\.patchCount) }
     private var bodyStep: Float? { bodies.map(\.criticalTimeStep).min() }
@@ -628,6 +640,13 @@ public final class BlastSolver {
     private var liveEncoder: (() -> MTLComputeCommandEncoder)?
     /// The refined levels, finest last.
     var refinementLevels: [AirRefinement] { [refinement, finerRefinement].compactMap { $0 } }
+    /// Per refined level, for the room its pool keeps ahead (`makeRefinementRoom`): the most
+    /// patches a step has added, the patches in use at the last look, and whether the pool could
+    /// still grow then; and the steps encoded since.
+    private var poolGrowth: [Double] = []
+    private var poolLive: [Int] = []
+    private var poolCouldGrow: [Bool] = []
+    private var stepsSincePoolLook = 0
     /// Bound in place of the refinement's buffers while the air is not refined.
     private let refinementPlaceholder: MTLBuffer
     /// The radiative cooling's kernels and buffers while it is on, what the gas has radiated since
@@ -1984,6 +2003,16 @@ public final class BlastSolver {
             depositFine(level: placed)
             placed += 1
         }
+        // A pool too small for the patches around the charge at the start grows fourfold, and
+        // the run starts again, from the start, so that it is placed whole.
+        let short = refinementLevels.map { $0.poolUse.ranOut && $0.maxPatches < $0.capacity }
+        if short.contains(true) {
+            growPools(to: zip(refinementLevels, short).map { $1 ? $0.maxPatches * 4 : $0.maxPatches })
+            restart()
+            return
+        }
+        poolLive = []
+        refinementPoolGrewLate = false
     }
 
     /// Gives the cells of refinement level `level` (0 the first) their share of the charges laid
@@ -2049,6 +2078,9 @@ public final class BlastSolver {
         let total = configuration.refinementMemory
         let memory =
             levels == 1 ? [total] : Self.levelMemoryShares.map { Int(Double(total) * $0) }
+        let startTotal = min(configuration.refinementStartMemory ?? total, total)
+        let startMemory =
+            levels == 1 ? [startTotal] : Self.levelMemoryShares.map { Int(Double(startTotal) * $0) }
         let composition = bodies.count > 1
         let cut = terrainCut != nil
         let first = AirRefinement.layout(
@@ -2059,15 +2091,23 @@ public final class BlastSolver {
             ? AirRefinement.layout(
                 grid: grid, ratio: ratio, parentScale: ratio, memory: memory[1], species: hasSpecies,
                 bodyComposition: composition, cut: cut) : nil
+        // Each pool starts small and grows ahead of the patches in use (`makeRefinementRoom`);
+        // one that has grown keeps its size.
+        let start = (0..<levels).map { level in
+            AirRefinement.layout(
+                grid: grid, ratio: ratio, parentScale: level == 0 ? 1 : ratio, memory: startMemory[level],
+                species: hasSpecies, bodyComposition: composition, cut: cut
+            ).maxPatches
+        }
         let side = AirRefinement.patchSize * ratio
         let reserve =
-            second.map { ($0.tileDims.x * $0.tileDims.y * $0.tileDims.z, $0.maxPatches * side * side * side) }
+            second.map { ($0.tileDims.x * $0.tileDims.y * $0.tileDims.z, start[1] * side * side * side) }
             ?? (0, 0)
         let layoutChanged =
             refinement?.ratio != ratio || refinement?.species != hasSpecies
-            || refinement?.bodyComposition != composition || refinement?.maxPatches != first.maxPatches
+            || refinement?.bodyComposition != composition || refinement?.capacity != first.maxPatches
             || refinement?.cutTerrain != cut
-            || finerRefinement?.maxPatches != second?.maxPatches
+            || finerRefinement?.capacity != second?.maxPatches
             || (refinement?.patchOfTile.length ?? 0)
                 != max(16, (first.tileDims.x * first.tileDims.y * first.tileDims.z + reserve.0) * 4)
         if layoutChanged {
@@ -2075,11 +2115,13 @@ public final class BlastSolver {
             finerRefinement = nil
             refinement = try? AirRefinement(
                 device: device, library: library, grid: grid, ratio: ratio, memory: memory[0],
-                species: hasSpecies, bodyComposition: composition, reserve: (reserve.0, reserve.1), cut: cut)
+                species: hasSpecies, bodyComposition: composition, reserve: (reserve.0, reserve.1), cut: cut,
+                start: start[0])
             if levels > 1, let refinement {
                 finerRefinement = try? AirRefinement(
                     device: device, library: library, grid: grid, ratio: ratio, memory: memory[1],
-                    species: hasSpecies, bodyComposition: composition, parent: refinement, cut: cut)
+                    species: hasSpecies, bodyComposition: composition, parent: refinement, cut: cut,
+                    start: start[1])
             }
         }
         for level in refinementLevels {
@@ -2091,6 +2133,74 @@ public final class BlastSolver {
         }
         for level in refinementLevels { level.coarseCut = cut ? terrainCut : nil }
         updateGaugeChildren()
+    }
+
+    /// Grows each refined level's pool, while the GPU is idle, to keep room ahead of the patches
+    /// in use: eight steps of the most a step has added, a quarter of those in use, and 64 at
+    /// least, growing by a quarter at a time or more. As a patch keeps its slot and the pool
+    /// hands out slots in the same order at any size (`AirRefinement.grow`), a pool that never
+    /// fills steps exactly as one made at its full size, in a fraction of the memory: the 500 t
+    /// burst refined twice to 2 m used 28% and 39% of the pools it would have held. Notes, too,
+    /// whether a pool ran out since the last look while it could still have grown
+    /// (`refinementPoolGrewLate`).
+    private func makeRefinementRoom() {
+        let levels = refinementLevels
+        guard !levels.isEmpty else { return }
+        if poolLive.count != levels.count {
+            poolLive = levels.map(\.livePatches)
+            poolGrowth = poolLive.map { max(Double($0) / 2, 16) }
+            poolCouldGrow = levels.map { $0.maxPatches < $0.capacity }
+            stepsSincePoolLook = 0
+        }
+        var targets: [Int] = []
+        for (n, level) in levels.enumerated() {
+            let live = level.livePatches
+            if stepsSincePoolLook > 0 {
+                poolGrowth[n] = max(poolGrowth[n], Double(live - poolLive[n]) / Double(stepsSincePoolLook))
+            }
+            if poolCouldGrow[n] && level.poolUse.ranOut { refinementPoolGrewLate = true }
+            poolLive[n] = live
+            let room = max(Int((8 * poolGrowth[n]).rounded(.up)), live / 4, 64)
+            targets.append(
+                live + room > level.maxPatches
+                    ? min(max(live + room, level.maxPatches + level.maxPatches / 4), level.capacity)
+                    : level.maxPatches)
+        }
+        stepsSincePoolLook = 0
+        growPools(to: targets)
+        poolCouldGrow = levels.map { $0.maxPatches < $0.capacity }
+    }
+
+    /// Grows the refined levels' pools to `targets` patches, the first level first.
+    private func growPools(to targets: [Int]) {
+        guard let refinement, zip(refinementLevels, targets).contains(where: { $1 > $0.maxPatches }) else {
+            return
+        }
+        do {
+            if let finer = finerRefinement, targets.count > 1 {
+                let cells = finer.side * finer.side * finer.side
+                let child = (finer.maxPatches * cells, min(targets[1], finer.capacity) * cells)
+                try refinement.grow(to: targets[0], child: child)
+                finer.adopt()
+                try finer.grow(to: targets[1])
+            } else {
+                try refinement.grow(to: targets[0])
+            }
+        } catch {
+            // Out of memory: the pools stay as they are, and refine no more than they hold.
+        }
+    }
+
+    /// The most steps the next command buffer may take, so that no pool that could still grow
+    /// fills before the next look: half its free slots at the most a step has added.
+    private var poolStepLimit: Int {
+        var limit = Int.max
+        for (n, level) in refinementLevels.enumerated()
+        where n < poolLive.count && level.maxPatches < level.capacity {
+            let free = Double(level.maxPatches - poolLive[n])
+            limit = min(limit, max(1, Int(free / (2 * max(poolGrowth[n], 1)))))
+        }
+        return limit
     }
 
     /// The uniforms of the second level, from the coarse grid's.
@@ -2165,7 +2275,8 @@ public final class BlastSolver {
     public func encodeBatch(
         steps: Int, timeLimit: Double? = nil, updateVisualization: Bool = false
     ) -> MTLCommandBuffer? {
-        let steps = batchSteps(steps)
+        makeRefinementRoom()
+        let steps = min(batchSteps(steps), poolStepLimit)
         return encodeBatchPart(
             steps: steps, range: 0..<steps, timeLimit: timeLimit, updateVisualization: updateVisualization)
     }
@@ -2219,6 +2330,7 @@ public final class BlastSolver {
         }
         // In flight from the first part's encoding until `completeBatch()`.
         defer { if first { batchInFlight = true } }
+        stepsSincePoolLook += range.count
 
         if first {
             var control = StepControl()
@@ -2717,7 +2829,9 @@ public final class BlastSolver {
             var encoded = 0
             var failed = false
             while encoded < count {
-                let part = gpuProfiler == nil ? gpuSteps.part(count - encoded) : count - encoded
+                makeRefinementRoom()
+                let part = min(
+                    gpuProfiler == nil ? gpuSteps.part(count - encoded) : count - encoded, poolStepLimit)
                 guard
                     let commandBuffer = encodeBatchPart(
                         steps: count, range: encoded..<(encoded + part), timeLimit: timeLimit,

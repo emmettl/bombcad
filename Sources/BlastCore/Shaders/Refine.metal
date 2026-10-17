@@ -2113,7 +2113,8 @@ kernel void refineRequest(const device int *patchOfTile [[buffer(0)]],
 // how many the pool can grant: the first that many requests, in block order, are granted, so that
 // which blocks are refined when the pool is used up does not depend on the order threads run in.
 // Counters: 0 the free stack's height, which falls by the patches granted; 1 the patches granted;
-// 3 the height before.
+// 3 the height before; 4 the most patches in use yet; 5 set once more were wanted than were free
+// (the pool ran out, and some blocks the shock wanted refined were not).
 kernel void refineGrant(device uint *groupCounts [[buffer(0)]],
                         device int *counters [[buffer(1)]],
                         constant SolverUniforms &u [[buffer(2)]],
@@ -2135,6 +2136,10 @@ kernel void refineGrant(device uint *groupCounts [[buffer(0)]],
     counters[3] = free;
     counters[0] = free - granted;
     counters[1] = granted;
+    counters[4] = max(counters[4], int(u.refineMaxPatches) - (free - granted));
+    if (int(running) > max(free, 0)) {
+        counters[5] = 1;
+    }
 }
 
 // Step 7e, per block: gives each block granted a new patch one from the pool, and wakes the tiles
