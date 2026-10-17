@@ -11,7 +11,8 @@ extension ProjectRunSettings {
         _ configuration: inout SolverConfiguration, detailedCharge: Bool, sharpShocks: Bool, shockLevels: Int,
         gravity: Bool = false, shockThreshold: Float = 0.1, adaptiveSubsteps: Bool = false,
         terrainCutCells: Bool = true,
-        groundStiffness: Float? = nil, ground: GroundType? = nil, outlineByOverlap: Bool = true
+        groundStiffness: Float? = nil, ground: GroundType? = nil, outlineByOverlap: Bool = true,
+        settlesStructures: Bool = true
     ) {
         configuration.afterburning = detailedCharge
         configuration.airModel = detailedCharge ? .thermallyPerfect : .idealGas
@@ -26,6 +27,7 @@ extension ProjectRunSettings {
         configuration.groundStiffness = groundStiffness
         configuration.ground = ground
         configuration.structureMaskOverlap = outlineByOverlap
+        configuration.settlesStructures = settlesStructures
     }
 
     /// What the standing of a run of `scenario` under these settings is derived from.
@@ -43,7 +45,7 @@ extension ProjectRunSettings {
         return StandingInputs(
             scenario: scenario, cellSize: (Resolution(rawValue: resolution) ?? .medium).cellSize,
             configuration: configuration, thermal: thermal, cloud: cloud, fragments: fragments,
-            groundShock: groundShock)
+            groundShock: groundShock, ventsGlazing: ventsGlazing ?? false)
     }
 }
 

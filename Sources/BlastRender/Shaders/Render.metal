@@ -576,13 +576,18 @@ vertex DotOut dotVertex(uint vertexID [[vertex_id]],
     const float2 corners[6] = {float2(-1, -1), float2(1, -1), float2(1, 1),
                                float2(-1, -1), float2(1, 1), float2(-1, 1)};
     float2 corner = corners[vertexID];
-    float size = viewport.z * (kind > 2.5f ? 1.15f : (kind > 1.5f ? 1.3f : (kind > 0.5f ? 0.7f : 1.0f)));
+    float size = viewport.z * (kind > 3.5f ? 1.6f : (kind > 2.5f ? 1.15f : (kind > 1.5f ? 1.3f : (kind > 0.5f ? 0.7f : 1.0f))));
     clip.xy += corner * size / viewport.xy * clip.w;
 
     DotOut out;
     out.position = clip;
     out.corner = corner;
-    if (kind > 2.5f) {
+    if (kind > 3.5f) {
+        // A fragment's strike on a judged target: grey where it stopped, amber where it spalled
+        // the far face, crimson where it went through.
+        out.colour = value < 0.33f ? float3(0.62f, 0.64f, 0.68f)
+            : value < 0.67f ? float3(0.98f, 0.66f, 0.12f) : float3(0.86f, 0.08f, 0.32f);
+    } else if (kind > 2.5f) {
         // A ground point: grey until the blast arrives, then from blue at a millimetre a second,
         // through violet, to near white at ten metres a second.
         out.colour = value < 0.0005f ? float3(0.55f, 0.55f, 0.58f)

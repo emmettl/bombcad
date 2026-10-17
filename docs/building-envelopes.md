@@ -52,7 +52,7 @@ Every owned solid cell face next to a fluid cell becomes a receiver with area `d
 position at the voxel face and a normal pointing into air. Interior and exterior surfaces
 both contribute. Shared solid faces and domain boundaries contribute nothing, including the
 ground attachment. Buildings with overlapping owned solid cells are rejected by the recorder;
-every requested building must have at least one resolved face.
+a building with no resolved face (buried, or wholly against its neighbours) is kept with none.
 
 After each complete fluid step, a receiver reads the pressure at its adjacent coarse fluid
 cell centre, including restricted fine state. This is a cell-pressure approximation to
@@ -94,13 +94,13 @@ Headless runs collect the same summaries. To write full surface records alongsid
 ```
 
 `--envelope-results` requires a scene with envelopes (other bodies may move beside them) and at least one
-resolved exposed face per owner. It refuses a pre-existing destination. Unavailable surface
+resolved exposed face. It refuses a pre-existing destination. Unavailable surface
 recording does not prevent ordinary blast runs, but an explicitly requested surface export
 fails with its reason instead of writing absent results as zeros.
 
 ## Envelope components and their pressure histories
 
-For damage estimates on envelope buildings ([future work](#future-work-damage-for-envelope-buildings)),
+For damage estimates on envelope buildings ([built](#damage-for-envelope-buildings-built)),
 `BlastSolver.configureEnvelopeComponents(objects:options:)` records the load on each part of a
 building that responds on its own: stage 1 of that work. The definitions are agreed with the
 damage model that reads them (`/Volumes/StudioData/bombcad/envelope-damage/component-spec.md`, v1.2).
@@ -126,7 +126,9 @@ damage model that reads them (`/Volumes/StudioData/bombcad/envelope-damage/compo
   else the one its middle plane crosses. They are solid from the start and carry the pane's load.
   Before, a pane in a cut opening crossed no cell's centre, so its window was open in the air and
   the pane recorded nothing, and glass set in a wall had its load counted as the wall's (see
-  [validation](validation.md#glazing-in-the-air) for what that changes).
+  [validation](validation.md#glazing-in-the-air) for what that changes). In refined air's patches
+  the pane takes the layer of finer cells its middle lies in (`Box.holdingCells`), so its window is
+  closed there too.
 
 Ids are `<owner>/<kind>/<source>.<panel>`. The street study's buildings come out as one panel a
 wall and one roof panel.
@@ -138,8 +140,11 @@ order). Each step's value is integrated into 0.1 ms bins by its overlap with the
 exact whatever the step; the peak of each side, and of the net (outer less inner, pushing inward),
 is kept from every step. Options: the bin width; the window; a memory budget (256 MB by default)
 that widens the bins to a whole multiple when needed and says so; per-bin maxima (twice the
-memory); and openings recorded as panes in the open opening, for what the inside sees once glass
-has gone. Steps past the window are not binned and the history says `truncated`.
+memory); openings recorded as panes in the open opening, for what the inside sees once glass
+has gone; and windows that start when a component's air first wakes (`windowFromArrival`, the
+start in `windowStartS`), so that across a district the window need cover only one building's
+load. Steps past the window are not binned and the history says `truncated`. Components with no
+face on the air are left out.
 
 Headless runs write them with `--envelope-histories <file.json>`; kept runs do not store them yet.
 Recording leaves the air bit-identical, and each side's binned impulse equals the mean of its faces'
@@ -403,7 +408,9 @@ Project tests cover mixed scenes, version rejection and Undo/Redo restoring the 
 structure. Existing ownership, project and multi-body checks cover compatibility.
 
 The envelopes inherit the existing idealised blast model and grid-dependent geometry.
-Unresolved openings and thin walls can disappear. Fixed geometry cannot represent broken
+Openings narrower than a cell can close. Walls and slabs thinner than a cell take the layer of
+cells their middle lies in (since 17 October 2026: before, a wall between two cell centres vanished, its faces
+recorded nothing and the blast passed through it), so they are a cell thick in the air. Fixed geometry cannot represent broken
 windows, collapse, debris or evolving shielding. This establishes stationary exposure
 behaviour and its computational cost; it does not validate invented buildings against
 measurements or establish kilogram-to-kiloton physical coverage.
@@ -511,7 +518,12 @@ and set against the same component of the detailed building free to respond (sum
   pressure, the room's air compressing adiabatically) gives 0.9, 4.1, 9.1 and 16.7 kPa against
   the detailed gauges' 1.0, 2.6, 11.0 and 22.4 at 10, 50, 200 and 500 kg (0.75–1.60 times the
   detailed peaks; 0.87–2.23 with the small-deflection panes, which broke sooner). It cannot see a
-  breached concrete wall (1.6 and 6.5 kPa at 200 and 500 kg).
+  breached concrete wall (1.6 and 6.5 kPa at 200 and 500 kg). On the same openings UFC 3-340-02's
+  leakage fill (§2-15.5) gives 0.92, 4.37, 8.45 and 13.15 kPa, so the orifice is 0.94–1.27 times
+  the UFC's own; but through windows this size both stay at 0.15–0.42 of the load the UFC puts on
+  the wall behind, where the air through an open window comes within 25% of it ([UFC
+  comparison](validation.md#inside-buildings-against-ufc-3-340-02s-loads-through-openings)).
+  The air itself can be let in through broken glazing instead: [venting](#venting-glazing-that-breaks-in-the-air).
 
 **In the app.** Runs of scenes with envelopes, structures beside them or not, record each component's load (the
 [recorder](#surface-exposure-and-loads) keeps both sides' histories at 0.1 ms) and judge every building
@@ -542,7 +554,9 @@ one way as the run goes, at most once a second and again when it stops:
     or higher (5, high). A cracked pane held in its frame (GSA 2) is not told apart, nor are the
     tests' counts of fragments and perforations; skylights are not graded. The building's line
     gives its worst pane. Criteria as Graham's summary of GSA-TS01 (2003) and ASTM F1642 gives
-    them; no test's fragments are compared.
+    them; no test's fragments are compared. A cased charge's fragments that hole a pane first break
+    it then, before the blast if they arrive first, and the building's line counts them and the
+    fragments striking its walls ([Fragments](fragments.md#what-fragments-do-to-what-they-strike)).
   - A building with a panel past 2° is flagged as beyond the one-way model.
 - **Shown.**
   - The sidebar's Envelope building damage section lists each building's levels, its panes broken
@@ -681,39 +695,137 @@ standing slabs about 4–5 mm where the meters, which the record finds carry the
 measured the panel brackets the test; where it comes from the air close in, SDOF and the detailed
 model err alike, which points at the load or the rig rather than at the panel.
 
-## Future work: damage for envelope buildings
+## Venting: glazing that breaks in the air
+
+`BlastSolver.configureEnvelopeVenting(objects:constructions:)`, after `configureEnvelopeComponents`, lets
+envelopes' glazing break in the air (stage 3c of envelope damage). It is an option, not the default
+(below); in the app, "Vent broken glazing" (below).
+
+- **Breaking.** Each pane's glass is the one-way model's single degree of freedom
+  (`EnvelopePanel.largeDeflectionGlass`, from its building's construction), stepped on the GPU with
+  the air: every step, from the pane's own net pressure in the component recorder (outer less
+  inner), by velocity Verlet at a 200th of the shortest period its stiffening backbone reaches, as
+  `SDOFSystem.response` takes it, its backbone and stress read from a table of its points; it
+  breaks when Brown's integral of its stress reaches 60 s, or when it deflects ten thicknesses. On
+  the same load it breaks within 0.3 ms of the one-way model (`EnvelopeVentingTests`).
+- **Opening.** After the step it breaks in, its cells (`paneCells`) leave the mask and hold the still
+  air, as a cell under glass has from the start: the pane's volume of air at rest at ambient, the
+  flow's own mass, momentum and energy untouched. The tiles round them wake, and the blast flows in.
+  A restart closes the panes again.
+- **Inside.** Each building's interior is the air its walls, roof and closed openings enclose (the
+  cells not reached from outside its bounds, its openings and panes taken as closed), split into
+  rooms, its connected parts. Once a pane of the building has broken, each room's mean
+  overpressure is read every step, and its peak and positive impulse kept
+  (`envelopeVentingSnapshot()`).
+- **Not yet** with refined air, whose patches take their outline from the blocks, nor with gravity,
+  whose still air varies with height: it refuses both. Map buildings are solid blocks without
+  glazing, so nothing in them vents.
+
+Against the [damage references](#damage-references) (`scenebench envelope-damage
+--representations=vented`, the same scenes as the envelope twins with venting on; 17 October 2026),
+the isolated glazed building's inside, peak overpressure and positive impulse:
+
+| Charge | Detailed, gauge | Vented, gauge | Vented, room mean | One-way fill |
+| ---: | --- | --- | --- | --- |
+| 10 kg | 1.0 kPa, 85 Pa s | 2.1 kPa, 66 Pa s | 1.7 kPa, 62 Pa s | 0.9 kPa |
+| 50 kg | 2.6 kPa, 51 Pa s | 9.2 kPa, 187 Pa s | 3.9 kPa, 166 Pa s | 4.1 kPa |
+| 200 kg | 11.0 kPa, 202 Pa s | 29.9 kPa, 449 Pa s | 10.4 kPa, 300 Pa s | 9.1 kPa |
+| 500 kg | 22.4 kPa, 476 Pa s | 70.1 kPa, 1107 Pa s | 27.5 kPa, 994 Pa s | 16.7 kPa |
+
+- **The panes break when the detailed ones do**, a little later: at 50 kg at 13.2, 15.4, 30.8 and
+  46.8 ms against 12.6, 14.7, 28.7 and 34.9 ms, and as near at 10 to 500 kg.
+- **The room's mean peak is 0.94 to 1.66 times the detailed gauge's**, as near as the one-way fill
+  (0.75 to 1.60), as both open the whole window when its glass breaks; its impulse 0.73 to 3.2 times.
+- **At the gauge it is 2.1 to 3.5 times the detailed building's** (2.4 to 3.6 times for the street's
+  front buildings at 10 and 50 kg, and 2 and 13 times for its back ones, whose detailed panes broke
+  late or not at all), as the shock that comes through the window crosses the room: at 200 kg the
+  vented inside's peak is near 30 kPa where the detailed one rises slowly to 5.6 kPa by 17 ms.
+- **The detailed buildings' glass does not clear its window**: a broken pane's shell elements fail
+  one by one, 11 to 73% of them at 10 to 50 kg, and what is left stands in the opening; even at 200
+  to 500 kg, where every element fails, the inside fills slowly. Annealed glass shatters and its
+  fragments fly in, so for the inside through broken glazing these references are a lower bound,
+  and they cannot tell venting from the one-way fill. UFC 3-340-02's loads through openings
+  (§2-15) can, for its own case (below).
+
+**Cost** (`scenebench envelope-venting --rounds 5 --charge 50`, against the component histories
+alone, the Mac shared with other work): the street's four glazed buildings (all 16 panes broken)
+1.03 times the wall time, 64 glazed buildings (18 of 256 broken) 1.07; most of it is the air the
+blast now reaches inside, which is swept and recorded. The panes cost a thread each a step, the
+rooms a threadgroup each once their building has opened, dispatched indirectly.
+
+**Against UFC 3-340-02** ([validation](validation.md#inside-buildings-against-ufc-3-340-02s-loads-through-openings)):
+in its own case, a rigid box struck head-on through an open front window (14 and 23% of the wall,
+2 to 16 psi), the air, as venting leaves it once the glass has gone, puts 0.74 to 1.22 of the UFC's
+load on the back wall and 0.31 to 0.67 of it on the side walls and the front's inside. The one-way
+fill is the UFC's own method for vents too small for a shock to form inside (0.95 to 1.35 times
+its leakage fill) and gives 0.15 to 0.42 of the UFC's back-wall load. So for the walls loaded
+from inside, venting is the nearer of the two by a factor of 3 to 6; for the room's mean pressure
+through a window the UFC has no number.
+
+**In the app.** "Vent broken glazing", in the Run tab under the charge, for scenes with glazed
+envelopes, structures beside them or not (it is disabled with gravity or sharpened shocks, which it
+refuses; a run asked to vent that cannot says why in the damage section). It is saved in the
+project as `ventsGlazing` only when on, so earlier files and their runs' fingerprints are
+unchanged. With it on, each building's panes break when the air's did (their histories up to then
+are their loads; after, their faces are the open window's), the walls' inner sides carry what
+the air brings in, and the inside is the worst room's mean (`EnvelopeBuildingDamage.vented`,
+"the air's" in the sidebar, "(vented)" in headless summaries). The surface exposure leaves the
+panes' faces out once open. The standing adds "Glazing vented in the air", which keeps the inside
+illustrative.
+
+It stays an option, by the user's choice (17 October 2026): it changes every glazed building's
+walls and inside, and its one independent check is a design method for a rigid box struck head-on,
+with windows clear of glass. Real glazing fails over a millisecond or more and its fragments fly
+in, which neither model has. Measured rooms behind breaking windows would settle it.
+
+## Damage for envelope buildings: built
 
 Envelopes make district-scale scenes possible: the air is cheap at that scale (a 3.3 km domain of
 145 million cells ran a 500 t burst in 137 s on an unloaded M4 Max; see
 [large scenes](large-scenes.md)), but a scene holds at most 16 deformable bodies. Every other
-building is a rigid, exposure-only envelope that never breaks, so a district run says what each
-building is loaded with and nothing about what happens to it.
+building is a rigid, exposure-only envelope. The plan was a cheaper damage model for those, from
+the loads already recorded on their faces, one way, with the air still seeing a rigid building.
+That model is now built: each wall panel, roof and pane is a single degree of freedom after UFC
+3-340-02 and the PDC's SBEDS, driven by its own pressure history
+([one-way damage](#one-way-damage-single-degree-of-freedom), with
+[freestanding walls](#freestanding-walls), [one-way walls](#one-way-walls) and
+[slabs held on their edges](#slabs-held-on-their-edges)). It is judged as the run goes, in the app
+and headless.
 
-A cheaper damage model would give envelope buildings a damage estimate from the loads already
-recorded on their faces, one way at first, with the air still seeing a rigid building:
+The four questions set before building it, and where each is answered:
 
-- **Per component, single degree of freedom** (in the manner of UFC 3-340-02 and the PDC's SBEDS):
-  each wall panel, storey or glazing pane an equivalent spring-mass driven by the pressure history
-  on its faces, giving its peak deflection or support rotation and so a damage level.
-- **Pressure–impulse curves**: each component's peak overpressure and impulse placed against
-  curves of equal damage, cheaper still and needing no time history.
-- **Fragility curves**: a probability of each damage state from the same loads, where published.
+1. **Its error against the detailed model.** The [damage references](#damage-references) run the
+   same layouts with the detailed buildings free, and
+   [one-way damage](#one-way-damage-single-degree-of-freedom) sets each component against them:
+   the same 45 panes break, concrete walls' rotation lies between the fixed and simply supported
+   bounds, and brick walls come in at a median 1.10.
+2. **Its error against measurement.** Window glass breaks at 0.82–1.07 of Monk and Clubley's
+   measured times ([window glass](validation.md#window-glass)). Six of seven freestanding walls'
+   outcomes are as measured, after Alsubaei and Keys ([freestanding walls](#freestanding-walls)).
+   Hayman's one-way walls come out 1.16 to 1.91 times as far ([one-way walls](#one-way-walls)).
+3. **The error from not venting.** A one-way fill through the broken panes gives the inside 0.75–1.60
+   times the detailed buildings' peaks, and 0.94–1.27 times UFC 3-340-02's leakage fill on the same
+   openings, but cannot see a breached concrete wall
+   ([one-way damage](#one-way-damage-single-degree-of-freedom),
+   [UFC comparison](validation.md#inside-buildings-against-ufc-3-340-02s-loads-through-openings)). By
+   default the air sees every envelope whole; with its glazing vented
+   ([venting](#venting-glazing-that-breaks-in-the-air), an option) the blast comes in through broken
+   panes, and through an open window puts 0.74–1.22 of the UFC's load on the wall behind, where the
+   fill gives 0.15–0.42 of it.
+4. **Its cost per building against the air's.** Under 1 ms a building, against 14–35 s for a
+   detailed one beside 10–15 s of air
+   ([one-way damage](#one-way-damage-single-degree-of-freedom)). The pressure histories it reads
+   cost 0.37 MB for a street's four buildings and 4.4 MB for 64
+   ([envelope components](#envelope-components-and-their-pressure-histories)).
 
-What decides whether it is worth building, to answer before any of it is:
+Its standing is an approximation for glass and concrete panels, and illustrative for brick and
+the inside pressure (see [standing](standing.md)).
 
-1. **Its error against the detailed model.** The matched pairs above use pinned detailed
-   references, so they compare loads, not damage; the [damage references](#damage-references) run
-   the same layouts with the detailed buildings free to respond, for the reduced model's damage per
-   component to be set against theirs.
-2. **Its error against measurement**, where data exist: the [perimeter walls](validation.md#perimeter-walls-under-field-blasts)
-   (Alsubaei), the [brick walls](validation.md#brick-walls-debris) (Keys), and UFC 3-340-02's
-   charts as they are digitised in `UFC340.swift`.
-3. **The error from not venting.** Glazing or walls that fail while the air still sees them whole
-   leave the inside loads wrong; set against the detailed run's internal loads, this says how far
-   a one-way model can be trusted, and whether failed openings must be opened in the air.
-4. **Its cost per building against the air's**, which should be small: the recorder's faces
-   already hold peak and impulse, and a single-degree-of-freedom model's pressure histories are
-   now kept per component ([above](#envelope-components-and-their-pressure-histories)).
+### Future work
 
-Until those comparisons are made, its results would stand as an approximation where a chart or
-curve applies and as illustrative otherwise (see [standing](standing.md)).
+- **Venting more.** [Venting](#venting-glazing-that-breaks-in-the-air) opens broken glazing in the
+  air, in uniform air without gravity; walls that fail stay closed, and refined air and gravity are
+  refused.
+- **Pressure–impulse curves.** Each component's peak overpressure and impulse placed against
+  curves of equal damage: cheaper still, needing no time history.
+- **Fragility curves.** A probability of each damage state from the same loads, where published.

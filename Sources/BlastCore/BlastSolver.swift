@@ -25,11 +25,15 @@ public final class BlastSolver {
     /// Simulated time in seconds since the last `restart()`.
     public private(set) var time: Double = 0
     public private(set) var stepCount = 0
+    /// The run's clock on the GPU, in ticks of 2^-40 s (`StepControl.clock`), carried from batch to
+    /// batch: the steps' times it gives are the same however the run is batched.
+    private var clockTicks: UInt64 = 0
     private var exposurePlane: ExposurePlane?
     private var exposureNeedsInitialSample = false
     private(set) var envelopeExposure: EnvelopeExposure?
     private var envelopeNeedsInitialSample = false
     private(set) var envelopeComponentRecorder: EnvelopeComponentRecorder?
+    private(set) var envelopeVenting: EnvelopeVenting?
     private var componentsNeedInitialSample = false
     private var gpuProfiler: BatchGPUProfiler?
     public private(set) var lastBatchGPUProfile: BatchGPUProfile?
@@ -57,6 +61,34 @@ public final class BlastSolver {
         envelopeComponentRecorder = recorder
         try keepAir(recorder.faces.map(\.fluid))
         componentsNeedInitialSample = true
+    }
+
+    /// Lets the envelopes' glazing break in the air (building-envelopes.md, "Venting"): each pane of
+    /// the components recorded (`configureEnvelopeComponents`, which must come first) takes the glass
+    /// of its building's construction, steps it with the air, and opens in the air when it breaks;
+    /// each building's rooms are followed. Not with gravity, whose still air varies with height,
+    /// nor with refined air yet.
+    public func configureEnvelopeVenting(
+        objects: [SceneObject], constructions: (UUID) -> EnvelopeConstruction
+    )
+        throws
+    {
+        guard let recorder = envelopeComponentRecorder else {
+            throw BlastError.allocationFailed("envelope venting without the component recorder")
+        }
+        guard configuration.gravity == nil, refinement == nil else {
+            throw BlastError.allocationFailed("envelope venting with gravity or refinement")
+        }
+        let mask = try stationaryMask(observing: objects)
+        envelopeVenting = try EnvelopeVenting(
+            device: device, library: library, grid: grid, mask: mask, objects: objects,
+            components: recorder.components, rigidBoxes: rigidBoxes ?? [], constructions: constructions)
+    }
+
+    /// The panes broken so far and what each building's rooms have seen, with venting on.
+    public func envelopeVentingSnapshot() -> EnvelopeVentingSnapshot? {
+        precondition(!batchInFlight, "Cannot read observers during a batch")
+        return envelopeVenting?.snapshot()
     }
 
     /// Cells of air a moving body's outline may not take: beside the stationary envelopes' recorded
@@ -149,6 +181,7 @@ public final class BlastSolver {
         envelopeNeedsInitialSample = false
         envelopeComponentRecorder = nil
         componentsNeedInitialSample = false
+        envelopeVenting = nil
         keptAirBuffer = nil
     }
 
@@ -1483,6 +1516,98 @@ public final class BlastSolver {
         gaugeHistories[index] = samples + gaugeHistories[index]
     }
 
+    /// How one body was brought to rest under its own weight before the blast.
+    public struct Settlement: Sendable {
+        public var name: String
+        /// Whether its motion died away; if not, it starts undeformed, as without settling.
+        public var settled: Bool
+        /// Time it was given, s, and the steps that took.
+        public var time: Double
+        public var steps: Int
+        /// The wall-clock time it took, s.
+        public var seconds: Double
+        /// Its mean (mass-weighted root-mean-square) speed at the end, as a share of the largest
+        /// on the way, and its largest displacement then, m.
+        public var residualSpeed: Double
+        public var displacement: Float
+    }
+
+    /// The bodies' settlements since the last `restart()`, once `settleStructures()` has run.
+    public private(set) var settlements: [Settlement] = []
+    /// Whether `settleStructures()` has run since the last `restart()`.
+    public private(set) var structuresSettled = false
+
+    /// Settling's mass-proportional damping (1/s), the least time it gives a body, the time it
+    /// gives a body at most, and how still a body must be, as its mean speed's share of the
+    /// largest on the way.
+    public static let settleDamping: Float = 50
+    public static let settleMinimum = 0.02
+    public static let settleLimit = 1.0
+    public static let settleTolerance = 0.01
+
+    /// Brings each body to rest under its own weight, alone and without the air, before the
+    /// first step (the first batch does it if no one has): heavily damped until its motion has
+    /// died away, then stopped where it is, its clock back at zero. Its deformation, stresses and
+    /// any cracking from its own weight stay. A body that does not come to rest within
+    /// `settleLimit` (one falling, or not standing) is put back undeformed and starts as it
+    /// would without settling. Nothing is done with `configuration.settlesStructures` off (or
+    /// `BOMBCAD_SETTLE=off` in the environment, for benches), once the run has started, or for a
+    /// body without gravity, with motion set by the scene, or no longer as loaded (moved, set
+    /// moving or broken since).
+    public func settleStructures() {
+        guard configuration.settlesStructures, !structuresSettled, time == 0, stepCount == 0,
+            ProcessInfo.processInfo.environment["BOMBCAD_SETTLE"] != "off"
+        else { return }
+        precondition(!batchInFlight, "Cannot settle while a batch is in flight")
+        structuresSettled = true
+        var moved = false
+        for body in bodies where body.gravity > 0 && !body.hasSetMotion && body.isAsLoaded {
+            let start = Date()
+            let step = Double(body.criticalTimeStep)
+            let chunk = max(1, Int((0.005 / step).rounded(.up)))
+            let damping = body.damping
+            body.damping = Self.settleDamping
+            var elapsed = 0.0
+            var steps = 0
+            var peak = 0.0
+            var speed = 0.0
+            var settled = false
+            while elapsed < Self.settleLimit {
+                body.advanceAlone(steps: chunk)
+                steps += chunk
+                elapsed += Double(chunk) * step
+                let (energy, mass) = body.motion()
+                speed = mass > 0 ? (2 * energy / mass).squareRoot() : 0
+                peak = max(peak, speed)
+                if elapsed >= Self.settleMinimum && speed <= Self.settleTolerance * peak {
+                    settled = true
+                    break
+                }
+            }
+            body.damping = damping
+            if settled {
+                body.holdStill()
+            } else {
+                body.reset()
+            }
+            moved = true
+            settlements.append(
+                Settlement(
+                    name: body.name, settled: settled, time: elapsed, steps: steps,
+                    seconds: Date().timeIntervalSince(start), residualSpeed: peak > 0 ? speed / peak : 0,
+                    displacement: body.summary()?.maxDisplacement ?? 0))
+        }
+        guard moved, let commandBuffer = commandQueue.makeCommandBuffer(),
+            let encoder = commandBuffer.makeComputeCommandEncoder()
+        else { return }
+        // Mark the settled structure in the solid mask.
+        encodeBodyEnvelopes(encoder, clear: true)
+        encodeRemask(encoder, fine: false)
+        encoder.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+    }
+
     /// Resets time, histories and the peak/impulse fields, treating the current state as initial.
     /// The structure, if any, returns to its undeformed state.
     public func restart() {
@@ -1490,17 +1615,21 @@ public final class BlastSolver {
         frameExtractor?.invalidate()
         time = 0
         stepCount = 0
+        clockTicks = 0
         exposurePlane?.reset()
         exposureNeedsInitialSample = exposurePlane != nil
         envelopeExposure?.reset()
         envelopeNeedsInitialSample = envelopeExposure != nil
         envelopeComponentRecorder?.reset()
         componentsNeedInitialSample = envelopeComponentRecorder != nil
+        envelopeVenting?.reset(mask: maskBuffer, rigidMask: rigidMaskBuffer)
         lastBatchGPUProfile = nil
         lastFluidStep = 0
         checkpointSubsteps = 0
         setUpRadiativeCooling()
         for body in bodies { body.reset() }
+        settlements = []
+        structuresSettled = false
         if let plan = tiledCoupling {
             let header = wallVelocityBuffer.contents().bindMemory(to: UInt32.self, capacity: 2)
             header[0] = min(header[0], UInt32(plan.capacity))
@@ -1722,7 +1851,8 @@ public final class BlastSolver {
         }
         for level in refinementLevels {
             level.reset()
-            level.setBoxes(rigidBoxes)
+            let fine = grid.cellSize / Float(level.parentScale * level.ratio)
+            level.setBoxes(rigidBoxes?.map { $0.holdingCells(of: fine) })
             level.setTerrain(rigidBoxes == nil ? nil : terrain)
         }
         for level in refinementLevels { level.coarseCut = cut ? terrainCut : nil }
@@ -1819,6 +1949,7 @@ public final class BlastSolver {
         if first {
             precondition(!batchInFlight, "completeBatch() must be called before encoding another batch")
             guard !interObjectContactDetected && !couplingCapacityExceeded else { return nil }
+            settleStructures()
             assignGravityTables()
             gpuProfiler?.beginBatch()
         }
@@ -1860,6 +1991,8 @@ public final class BlastSolver {
             if let timeLimit {
                 control.timeLimit = Float(max(timeLimit - time, 0))
             }
+            control.clockLow = UInt32(truncatingIfNeeded: clockTicks)
+            control.clockHigh = UInt32(truncatingIfNeeded: clockTicks >> 32)
             controlBuffer.contents().storeBytes(of: control, as: StepControl.self)
             if exposureNeedsInitialSample {
                 encodeExposure(encoder, initial: true)
@@ -2169,6 +2302,7 @@ public final class BlastSolver {
             encodeExposure(encoder, initial: false)
             encodeEnvelopeExposure(encoder, initial: false)
             encodeEnvelopeComponents(encoder, initial: false)
+            encodeEnvelopeVenting(encoder)
         }
         guard last else {
             encoder.endEncoding()
@@ -2216,6 +2350,7 @@ public final class BlastSolver {
         batchInFlight = false
         lastBatchGPUProfile = gpuProfiler?.resolve()
         let control = controlBuffer.contents().load(as: StepControl.self)
+        clockTicks = control.clock
         // A row per step, and one for the state the batch ended in.
         let rows = Int(control.stepIndex) + (gaugeCount > 0 ? 1 : 0)
         let rowStride = gaugeCount + 1
@@ -2237,7 +2372,7 @@ public final class BlastSolver {
             if step > 0 { lastStep = step }
         }
         let elapsed = time - start
-        deflagrationStage?.complete(batchStart: start)
+        deflagrationStage?.complete()
         for body in bodies {
             body.time = time
             if bodies.count > 1 {
@@ -2464,7 +2599,7 @@ public final class BlastSolver {
     private func encodeEnvelopeComponents(_ encoder: MTLComputeCommandEncoder, initial: Bool) {
         guard let recorder = envelopeComponentRecorder, !recorder.faces.isEmpty else { return }
         var uniforms = makeUniforms()
-        var parameters = recorder.parameters(time: time, initial: initial)
+        var parameters = recorder.parameters(initial: initial)
         // Faces in still tiles read the still air; under gravity it is not uniform.
         parameters.skipStill = recorder.skipStillTiles && configuration.gravity == nil ? 1 : 0
         let perGroup = EnvelopeComponentRecorder.componentsPerGroup
@@ -2490,6 +2625,9 @@ public final class BlastSolver {
         // Not written without maxima.
         encoder.setBuffer(recorder.maxima ?? recorder.bins, offset: 0, index: 18)
         encoder.setBuffer(recorder.flags, offset: 0, index: 19)
+        encoder.setBuffer(recorder.clock, offset: 0, index: 20)
+        encoder.setBuffer(recorder.starts, offset: 0, index: 21)
+        encoder.setBuffer(recorder.current, offset: 0, index: 22)
         encoder.dispatchThreadgroups(
             MTLSize(width: (recorder.components.count + perGroup - 1) / perGroup, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 32 * perGroup, height: 1, depth: 1))
@@ -2518,13 +2656,79 @@ public final class BlastSolver {
         encoder.setBuffer(recorder.bins, offset: 0, index: 6)
         encoder.setBuffer(recorder.maxima ?? recorder.bins, offset: 0, index: 7)
         encoder.setBuffer(recorder.flags, offset: 0, index: 8)
+        encoder.setBuffer(recorder.current, offset: 0, index: 9)
         encoder.setBytes(&parameters, length: length, index: 10)
         encoder.setBuffer(recorder.stillPressure, offset: 0, index: 11)
         encoder.setBuffer(recorder.faceDispatch, offset: 0, index: 12)
         encoder.setBuffer(recorder.sumDispatch, offset: 0, index: 13)
+        encoder.setBuffer(recorder.clock, offset: 0, index: 14)
+        encoder.setBuffer(recorder.starts, offset: 0, index: 15)
         encoder.dispatchThreadgroups(
             indirectBuffer: recorder.sumDispatch, indirectBufferOffset: 0,
             threadsPerThreadgroup: MTLSize(width: 32, height: 1, depth: 1))
+        // The clock moves on by the step, once every component has it.
+        encoder.setComputePipelineState(recorder.clockPipeline)
+        encoder.dispatchThreads(
+            MTLSize(width: 1, height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+    }
+
+    /// Steps the envelopes' panes on the step's loads, opens those that broke, and reads the rooms
+    /// of buildings opened (EnvelopeVenting.swift).
+    private func encodeEnvelopeVenting(_ encoder: MTLComputeCommandEncoder) {
+        guard let venting = envelopeVenting, let recorder = envelopeComponentRecorder else { return }
+        var uniforms = makeUniforms()
+        if venting.paneCount > 0 {
+            var count = UInt32(venting.paneCount)
+            encoder.setComputePipelineState(venting.stepPipeline)
+            encoder.setBuffer(recorder.current, offset: 0, index: 0)
+            encoder.setBuffer(venting.paneBuffer, offset: 0, index: 1)
+            encoder.setBuffer(venting.glassBuffer, offset: 0, index: 2)
+            encoder.setBuffer(venting.stateBuffer, offset: 0, index: 3)
+            encoder.setBuffer(venting.statusBuffer, offset: 0, index: 4)
+            encoder.setBuffer(venting.openedBuffer, offset: 0, index: 5)
+            encoder.setBuffer(controlBuffer, offset: 0, index: 6)
+            encoder.setBytes(&count, length: 4, index: 7)
+            encoder.setBuffer(venting.ownerRooms, offset: 0, index: 8)
+            encoder.setBuffer(venting.roomDispatch, offset: 0, index: 9)
+            encoder.setBuffer(venting.roomList, offset: 0, index: 10)
+            encoder.setBuffer(venting.tableBuffer, offset: 0, index: 11)
+            encoder.dispatchThreads(
+                MTLSize(width: venting.paneCount, height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))
+        }
+        if venting.paneCellCount > 0 {
+            var count = UInt32(venting.paneCellCount)
+            encoder.setComputePipelineState(venting.openPipeline)
+            encoder.setBuffer(venting.paneCellBuffer, offset: 0, index: 0)
+            encoder.setBuffer(venting.statusBuffer, offset: 0, index: 1)
+            encoder.setBuffer(maskBuffer, offset: 0, index: 2)
+            encoder.setBuffer(rigidMaskBuffer, offset: 0, index: 3)
+            encoder.setBuffer(stateBuffers[0], offset: 0, index: 4)
+            encoder.setBuffer(stateBuffers[1], offset: 0, index: 5)
+            encoder.setBuffer(hasSpecies ? speciesBuffers[0] : noSpecies, offset: 0, index: 6)
+            encoder.setBuffer(hasSpecies ? speciesBuffers[1] : noSpecies, offset: 0, index: 7)
+            encoder.setBuffer(tileFlagBuffer, offset: 0, index: 8)
+            encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 9)
+            encoder.setBuffer(controlBuffer, offset: 0, index: 10)
+            encoder.setBytes(&count, length: 4, index: 11)
+            encoder.dispatchThreads(
+                MTLSize(width: venting.paneCellCount, height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))
+        }
+        if !venting.rooms.isEmpty {
+            encoder.setComputePipelineState(venting.roomPipeline)
+            encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
+            encoder.setBuffer(venting.roomBuffer, offset: 0, index: 1)
+            encoder.setBuffer(venting.roomCellBuffer, offset: 0, index: 2)
+            encoder.setBuffer(venting.roomList, offset: 0, index: 3)
+            encoder.setBuffer(venting.roomResults, offset: 0, index: 4)
+            encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 5)
+            encoder.setBuffer(controlBuffer, offset: 0, index: 6)
+            encoder.dispatchThreadgroups(
+                indirectBuffer: venting.roomDispatch, indirectBufferOffset: 0,
+                threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
+        }
     }
 
     private func encodeExposure(_ encoder: MTLComputeCommandEncoder, initial: Bool) {
@@ -2653,7 +2857,7 @@ public final class BlastSolver {
         return buffers.reduce(0) { $0 + $1.length } + grid.cellCount * 8
             + (exposurePlane?.buffer.length ?? 0)
             + (envelopeExposure?.memoryFootprint ?? 0)
-            + (envelopeComponentRecorder?.memoryFootprint ?? 0)
+            + (envelopeComponentRecorder?.memoryFootprint ?? 0) + (envelopeVenting?.memoryFootprint ?? 0)
             + bodies.reduce(0) { $0 + $1.memoryFootprint }
             + refinementLevels.reduce(0) { $0 + $1.memoryFootprint }
             + (experimentalBoxDefinition?.length ?? 0) + (experimentalBoxMask?.length ?? 0)

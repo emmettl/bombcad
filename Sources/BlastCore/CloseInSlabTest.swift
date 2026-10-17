@@ -207,6 +207,11 @@ public enum CloseInSlabTest {
             }
         }
         let ci = index(centre.x, 0)
+        // From the slab at rest under its own weight, as the tests' deflections were measured.
+        solver.settleStructures()
+        let rest = (0...structure.ey).map { j in
+            structure.storedNode(ci, j, mid) != nil ? -structure.displacement(ci, j, mid).z : 0
+        }
         let start = ContinuousClock.now
         var history: [SIMD2<Float>] = []
         var nextReport = 0.01
@@ -215,7 +220,8 @@ public enum CloseInSlabTest {
             let result = solver.advance(steps: stepsPerSample, timeLimit: duration)
             if result.steps == 0 && !solver.airIsAsleep { break }
             var across = (0...structure.ey).compactMap { j in
-                structure.storedNode(ci, j, mid) != nil ? -structure.displacement(ci, j, mid).z : nil
+                structure.storedNode(ci, j, mid) != nil
+                    ? -structure.displacement(ci, j, mid).z - rest[j] : nil
             }
             across.sort()
             history.append(SIMD2(Float(solver.time), across.isEmpty ? 0 : across[across.count / 2]))

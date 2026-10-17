@@ -370,11 +370,17 @@ public enum ChamberTest {
             ),
         ]
         var probes = probePoints.map { ($0.0, [SIMD2<Float>]()) }
+        // From the chamber at rest under its own weight, as the test's deflections were measured.
+        solver.settleStructures()
+        let rest = structure.displacement(i, j, k).z
+        let restProbes = probePoints.map { probe in
+            dot(structure.displacement(probe.1.0, probe.1.1, probe.1.2), probe.2)
+        }
         var nextReport = 0.01
         while solver.time < duration {
             let result = solver.advance(steps: 16, timeLimit: duration)
             if result.steps == 0 && !solver.airIsAsleep { break }
-            history.append(SIMD2(Float(solver.time), structure.displacement(i, j, k).z))
+            history.append(SIMD2(Float(solver.time), structure.displacement(i, j, k).z - rest))
             if let progress, solver.time >= nextReport {
                 nextReport += 0.01
                 let summary = structure.summary()
@@ -382,11 +388,12 @@ public enum ChamberTest {
                 progress(
                     String(
                         format: "%3.0f ms: roof edge %4.0f mm, %d elements failed, %d s", solver.time * 1000,
-                        structure.displacement(i, j, k).z * 1000, summary.erodedElements, seconds))
+                        (structure.displacement(i, j, k).z - rest) * 1000, summary.erodedElements, seconds))
             }
             for (n, probe) in probePoints.enumerated() {
                 let (a, b, c) = probe.1
-                probes[n].1.append(SIMD2(Float(solver.time), dot(structure.displacement(a, b, c), probe.2)))
+                probes[n].1.append(
+                    SIMD2(Float(solver.time), dot(structure.displacement(a, b, c), probe.2) - restProbes[n]))
             }
         }
         let elapsed = ContinuousClock.now - start

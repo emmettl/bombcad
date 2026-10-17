@@ -84,6 +84,12 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// Let a moving part of the structure push and pull the air like a piston. When false the
     /// air treats the structure's surface as stationary wherever it currently is.
     public var movingWalls = true
+    /// Bring each structure to rest under its own weight before the blast reaches it
+    /// (`BlastSolver.settleStructures()`), as it stood before the charge went off. Off, a structure
+    /// takes its weight as the run starts, sags about twice its static deflection and is still
+    /// swinging when the blast arrives. A body whose gravity is zero, or whose motion the scene
+    /// sets, is never settled; with this off nothing is done, so runs are as before.
+    public var settlesStructures = true
     /// Sweep only the tiles of 8 x 8 x 8 cells that the blast has reached (or is about to),
     /// leaving air that is still in its initial uniform state untouched. The answer is the same
     /// either way. Read at `restart()`.
@@ -358,6 +364,13 @@ struct StepControl {
     var levelStep1: Float = 0
     var levelSubstepSum0: UInt32 = 0
     var levelSubstepSum1: UInt32 = 0
+    /// The run's clock in ticks of 2^-40 s (`runClock` in Solver.metal), low and high words.
+    var clockLow: UInt32 = 0
+    var clockHigh: UInt32 = 0
+
+    /// A tick of the run's clock, s.
+    static let tick = 1.0 / 1_099_511_627_776.0
+    var clock: UInt64 { UInt64(clockLow) | UInt64(clockHigh) << 32 }
 }
 
 /// Pressure history recorded at a gauge cell, one sample per solver step.

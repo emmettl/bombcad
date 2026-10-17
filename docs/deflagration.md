@@ -509,6 +509,8 @@ speeds are those of the far-field runs; the copying faces' were within 2% inside
 
 ## Future work
 
+- Congestion below the grid, so that an open vapour cloud explosion is predicted rather than fitted:
+  scoped in [a proposal](congestion-proposal.md), not built.
 - Find why a flame lit in the middle of a vented room stalls towards the back wall, where the tests
   and their LES ran at 3 m/s.
 - A young flame that burns at its speed from the start: a sub-grid ignition kernel, carried until

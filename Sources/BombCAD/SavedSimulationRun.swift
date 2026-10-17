@@ -172,15 +172,20 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
             let owners = scenario.envelopeObjects
             let dx = Resolution(rawValue: settings.resolution)!.cellSize
             let cells = scenario.grid(cellSize: dx).cellCount
-            // Structures may stand beside the envelopes (since 17 October 2026).
+            // Structures may stand beside the envelopes (since 17 October 2026). Vented glazing opens
+            // its faces when it breaks, and they leave the results.
+            let vented = settings.ventsGlazing == true
             guard !results.isEmpty, results.count == owners.count,
                 Set(results.map(\.id)).count == results.count,
                 Set(results.map(\.id)) == Set(owners.map(\.id)),
                 results.allSatisfy({ r in
                     r.name == scenario.object(id: r.id)?.name && r.elapsedS.isFinite
                         && abs(r.elapsedS - elapsedTime) < 1e-6 && r.airCellSizeM == dx
-                        && r.faceCount > 0 && r.faceCount <= 6 * cells && r.invalidFaceCount == 0
-                        && r.areaM2.isFinite && r.areaM2 > 0 && r.validAreaM2 == r.areaM2
+                        && r.faceCount > 0 && r.faceCount <= 6 * cells
+                        && (vented ? r.invalidFaceCount <= r.faceCount : r.invalidFaceCount == 0)
+                        && r.areaM2.isFinite && r.areaM2 > 0
+                        && (vented
+                            ? r.validAreaM2 >= 0 && r.validAreaM2 <= r.areaM2 : r.validAreaM2 == r.areaM2)
                         && abs(r.areaM2 - Double(r.faceCount) * Double(dx * dx)) < max(1e-6, r.areaM2 * 1e-6)
                         && r.peakPositivePa.isFinite && r.peakPositivePa >= 0
                         && r.surfacePositiveImpulseNS.isFinite && r.surfacePositiveImpulseNS >= 0
@@ -230,7 +235,8 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                 result.depths == groundShock.spec.depths,
                 result.soil == groundShock.spec.soil,
                 (result.model ?? .estimate) == groundShock.spec.model, result.frameTimes == nil,
-                result.profile == (groundShock.spec.model == .column ? groundShock.spec.columnProfile : nil),
+                result.profile
+                    == (groundShock.spec.model == .estimate ? nil : groundShock.spec.columnProfile),
                 result.points.allSatisfy({ point in
                     finite(point.peakOverpressure) && finite(point.impulse) && finite(point.duration)
                         && finite(point.frontSpeed) && point.history.isEmpty

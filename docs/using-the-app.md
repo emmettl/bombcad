@@ -86,10 +86,10 @@ Standing of results, Playback, Display and Solver. The settings added or changed
 
   Under earth or rock, **Water table near the surface** and its depth keep a crater shallow; it
   is on, at the surface, for saturated soil. See [choosing the ground](cratering.md#choosing-the-ground).
-- **Fragments ▸ Cased charge** flies a casing's fragments and tracers through the blast. The
-  casing's thickness and inner diameter, which make the masses an approximation rather than
-  illustrative, are set in a fragment description (JSON) for `BombCAD run --fragments`. See
-  [fragments](fragments.md#in-the-app).
+- **Fragments ▸ Cased charge** flies a casing's fragments and tracers through the blast.
+  **Casing metal** (steel or cast iron) and **Casing dimensions** (wall thickness and inside
+  diameter) make the fragments' masses follow Mott's scaling, and their standing an approximation
+  rather than illustrative. See [fragments](fragments.md#in-the-app).
 - **Envelope building damage** judges each exposure-only building's walls, roofs and panes as the
   run goes. Its list gives each building's level, panes broken, freestanding walls and the pressure
   let inside; **Show damage in the view** colours the buildings by it, and **Export damage…** writes
@@ -365,7 +365,7 @@ full):
 | `--ground rigid\|soil\|<MN/m³>\|<type>`, `--water-table <m>\|deep` | What the debris lands on; a ground type also digs the crater and takes energy from the air ([cratering](cratering.md)) |
 | `--advise peak:20%\|…` | Prints the cheapest settings that meet a target, and does not run |
 | `--usd`, `--vdb`, `--vdb-fields`, `--frame-interval` | The scene and the air over time for rendering ([USD export](usd-export.md)) |
-| `--fragments`, `--thermal`, `--cloud [--sounding]`, `--ground-shock` | The effects beside the blast, each with its own `--…-results` file |
+| `--fragments [--casing]`, `--thermal`, `--cloud [--sounding]`, `--ground-shock` | The effects beside the blast, each with its own `--…-results` file; `--casing` gives the casing's dimensions and metal |
 | `--envelope-results`, `--envelope-histories`, `--envelope-damage` | Envelope buildings' surface records, pressure histories and damage, as JSON |
 | `--consumer`, `--worker` | Where the effects beside the blast run: here, on another Mac, or by cost |
 | `--standing <file>` | Writes each result's standing as JSON |

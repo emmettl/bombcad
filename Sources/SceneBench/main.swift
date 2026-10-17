@@ -54,8 +54,28 @@ enum SceneBench {
             try EnvelopeBenchmark.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "envelope-venting" {
+            try EnvelopeVentingBenchmark.run(Array(args.dropFirst()))
+            return
+        }
+        if args.first == "district-compare" {
+            try DistrictComparison.run(Array(args.dropFirst()))
+            return
+        }
+        if args.first == "district-scene" {
+            try DistrictScene.run(Array(args.dropFirst()))
+            return
+        }
+        if args.first == "district" {
+            try DistrictBenchmark.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "envelope-histories" {
             try EnvelopeHistoryBenchmark.run(Array(args.dropFirst()))
+            return
+        }
+        if args.first == "envelope-openings" {
+            try EnvelopeOpeningsBenchmark.run(Array(args.dropFirst()))
             return
         }
         if args.first == "envelope-sdof" {
