@@ -63,6 +63,14 @@ only structures made since: a project saved before then keeps its 12% and runs a
 an older structure the new default, set its steel's rupture strain to 0.15. The encoding version
 is unchanged.
 
+Each envelope's construction (`scenario.envelopeConstructions`) gained, on 17 October 2026, the
+walls' bars in both faces and their cover, the concrete's and masonry's strength, the bars' yield,
+blockwork's grout and a cap's mass, each left out of the file when unset; constructions saved before
+carry none of them and open with the defaults (a central mat, 30 MPa, 500 MPa bars, no cap), as they
+ran. A construction whose walls are the new reinforced blockwork cannot be read by an older build,
+which refuses the project rather than taking the walls as something else. The encoding version is
+unchanged.
+
 The versioned `scenario.objectOwnership` record stores fixed-block and structural-object IDs
 and names, structural component IDs, an optional retained source reference and object order.
 It accompanies the existing geometry without duplicating numerical inputs. Legacy inputs
@@ -134,7 +142,9 @@ when present, holds the Run tab's ground points and soil (see
 
 `settings.json` stores resolution (`coarse`, `medium`, `fine`), `detailedCharge`, `sharpShocks`,
 `solidElementSize` (the size restored when switching from shells to solids), and `duration`
-in seconds. The scenario itself holds the charge, atmosphere and structural settings.
+in seconds; `groundStiffness` for soil under debris and `ground`, a ground type for the crater
+and the air's share ([cratering](cratering.md#choosing-the-ground)), each left out for rigid
+ground. The scenario itself holds the charge, atmosphere and structural settings.
 
 `view.json` stores camera target, distance, azimuth, elevation and field of view, plus display
 mode, scales, decades, wave visibility/opacity and charge visibility. It does not store the

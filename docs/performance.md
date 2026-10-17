@@ -488,8 +488,11 @@ Taller buildings, meshed as shells and beams of 0.25 m on 0.5 m air
 |---|---|---|---|
 | Eight-storey frame, 28 m, 4,000 kg | 31,344 | 0.7 million cells | 84 s (21× slower than real time) |
 | Twelve-storey tower with a core, 42 m, 4,000 kg | 94,532 | 1.0 million cells | 226 s (56×) |
+| [Twelve-storey office](office-tower.md), steel and glass, 45.6 m, 1,000 kg (`--preset office --time 3`) | 236,868 | 1.5 million cells | 3 s in 3,296 s (1,100×) |
 
-The air is frozen after 1.2 to 1.3 s; the rest is the structure alone, falling.
+The air is frozen after 1.2 to 1.3 s; the rest is the structure alone, falling. The office costs
+about 14 times the tower per second simulated: it has 2.4 times the elements, and a time step a
+third as long, since its steel and curtain-wall frame carry waves faster.
 
 ## The slab benchmark
 

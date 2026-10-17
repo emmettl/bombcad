@@ -108,4 +108,45 @@ struct EnvelopeCantileverTests {
             innerPa: [], supportEdges: [true, true, true, true])
         #expect(panel.oneWaySpan == nil)
     }
+
+    @Test(
+        "A construction saved before bars, blockwork and caps opens with their defaults, and they reach the systems"
+    )
+    func construction() throws {
+        let owner = UUID()
+        // A construction as projects saved it before 17 October 2026.
+        let old = """
+            {"objectID":"\(owner.uuidString)","walls":"reinforcedConcrete","wallThicknessM":0.2,
+             "roof":"reinforcedConcrete","roofThicknessM":0.2,"reinforcementRatio":0.003,
+             "glassThicknessM":0.006,"source":"assumed","detail":"assumed"}
+            """
+        let decoded = try JSONDecoder().decode(EnvelopeConstruction.self, from: Data(old.utf8))
+        #expect(decoded.barsInBothFaces == nil && decoded.capMassKgPerM == nil)
+        let central = decoded.wallBars(thickness: 0.2)
+        #expect(abs(central.depth - 0.1) < 1e-9 && abs(central.steelArea - 0.0006) < 1e-9)
+        // Bars in both faces: one face's share at the cover's depth.
+        var built = decoded
+        built.barsInBothFaces = true
+        built.barCoverM = 0.03
+        let section = built.wallBars(thickness: 0.2)
+        #expect(abs(section.depth - 0.17) < 1e-9 && abs(section.steelArea - 0.0003) < 1e-9)
+        // Hollow blockwork: the concrete block's strength and density.
+        built.walls = .reinforcedBlockwork
+        built.blockworkGrouted = false
+        #expect(built.wallMaterial.compressiveStrength == 3e6 && built.wallMaterial.density == 1400)
+        // A freestanding wall under a cap: the cap's mass slows it.
+        let load = EnvelopeComponentLoad(
+            id: "\(owner.uuidString)/wall/0.0", owner: owner, kind: .wall,
+            region: Box(min: SIMD3(0, 0, 0), max: SIMD3(0.4, 4, 2)), axis: 0, binS: 1e-4,
+            outerPa: Array(repeating: 2e6, count: 5), innerPa: Array(repeating: 0, count: 5),
+            supportEdges: [false, false, true, false])
+        var bare = decoded
+        bare.wallThicknessM = 0.4
+        var capped = bare
+        capped.capMassKgPerM = 1000
+        let free = try #require(EnvelopeDamageAssessment.assess(load, construction: bare))
+        let held = try #require(EnvelopeDamageAssessment.assess(load, construction: capped))
+        #expect(free.cantilever == true)
+        #expect(held.rotationDeg.upperBound < free.rotationDeg.upperBound)
+    }
 }

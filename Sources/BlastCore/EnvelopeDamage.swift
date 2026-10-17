@@ -117,7 +117,7 @@ public enum EnvelopeDamageLevel: Int, Codable, Sendable, Comparable, CaseIterabl
 /// One component's one-way damage.
 public struct EnvelopeComponentDamage: Codable, Sendable, Identifiable {
     public enum Material: String, Codable, Sendable {
-        case reinforcedConcrete, unreinforcedMasonry, annealedGlass
+        case reinforcedConcrete, unreinforcedMasonry, annealedGlass, reinforcedBlockwork
     }
     public var id: String
     public var owner: UUID
@@ -264,13 +264,15 @@ public enum EnvelopeDamageAssessment {
                 pressures: pressures, peak: peak)
         }
         switch kind {
-        case .reinforcedConcrete:
-            // A central mat: depth half the thickness, steel the ratio of the gross section.
-            let steel = Double(construction.reinforcementRatio) * thickness
+        case .reinforcedConcrete, .reinforcedBlockwork:
+            // Walls as their construction says (a central mat by default: depth half the thickness,
+            // steel the ratio of the gross section); roofs the default concrete with a central mat.
+            let section = section(construction, thickness: thickness, roof: isRoof)
+            let material = isRoof ? StructureMaterial.reinforcedConcrete : construction.wallMaterial
             let responses = [EnvelopePanel.Edges.fixed, .simplySupported].map { edges in
                 EnvelopePanel.reinforcedConcrete(
-                    thickness: thickness, depth: thickness / 2, steelArea: steel,
-                    material: .reinforcedConcrete,
+                    thickness: thickness, depth: section.depth, steelArea: section.steelArea,
+                    material: material,
                     a: a, b: b, edges: edges
                 ).response(pressures: pressures, step: load.binS)
             }
@@ -279,7 +281,8 @@ public enum EnvelopeDamageAssessment {
                 EnvelopeDamageLevel.concrete(ductility: $0.ductility, rotationDeg: $1)
             }
             return damage(
-                .reinforcedConcrete, rotations.min()!...rotations.max()!, levels.min()!...levels.max()!, nil)
+                kind == .reinforcedBlockwork && !isRoof ? .reinforcedBlockwork : .reinforcedConcrete,
+                rotations.min()!...rotations.max()!, levels.min()!...levels.max()!, nil)
         case .unreinforcedMasonry:
             var masonry = StructureMaterial.masonry
             masonry.steel = nil
@@ -318,17 +321,19 @@ public enum EnvelopeDamageAssessment {
                 failedAtS: response.lostResistanceAt, cantilever: true)
         }
         switch construction.walls {
-        case .reinforcedConcrete:
+        case .reinforcedConcrete, .reinforcedBlockwork:
+            let section = construction.wallBars(thickness: thickness)
             let response = EnvelopePanel.reinforcedConcreteCantilever(
-                thickness: thickness, depth: thickness / 2,
-                steelArea: Double(construction.reinforcementRatio) * thickness, material: .reinforcedConcrete,
-                height: height
+                thickness: thickness, depth: section.depth, steelArea: section.steelArea,
+                material: construction.wallMaterial, height: height,
+                topMass: Double(construction.capMassKgPerM ?? 0)
             )
             .response(pressures: pressures, step: load.binS)
             let rotation =
                 atan(max(response.peakDeflection, -response.reboundDeflection) / height) * 180 / .pi
             return damage(
-                .reinforcedConcrete, response,
+                construction.walls == .reinforcedBlockwork ? .reinforcedBlockwork : .reinforcedConcrete,
+                response,
                 EnvelopeDamageLevel.concrete(ductility: response.ductility, rotationDeg: rotation))
         case .unreinforcedMasonry:
             var masonry = StructureMaterial.masonry
@@ -359,13 +364,15 @@ public enum EnvelopeDamageAssessment {
                 id: load.id, owner: load.owner, kind: load.kind, material: material, shortSpanM: span,
                 peakNetPa: peak, rotationDeg: rotation, levels: levels, failedAtS: failed)
         }
+        let isRoof = load.kind == .roof || load.kind == .slab
         switch kind {
-        case .reinforcedConcrete:
+        case .reinforcedConcrete, .reinforcedBlockwork:
+            let section = section(construction, thickness: thickness, roof: isRoof)
+            let material = isRoof ? StructureMaterial.reinforcedConcrete : construction.wallMaterial
             let responses = [EnvelopePanel.Edges.fixed, .simplySupported].map { edges in
                 EnvelopePanel.reinforcedOneWay(
-                    thickness: thickness, depth: thickness / 2,
-                    steelArea: Double(construction.reinforcementRatio) * thickness,
-                    material: .reinforcedConcrete,
+                    thickness: thickness, depth: section.depth, steelArea: section.steelArea,
+                    material: material,
                     span: span, edges: edges
                 ).response(pressures: pressures, step: load.binS)
             }
@@ -374,7 +381,8 @@ public enum EnvelopeDamageAssessment {
                 EnvelopeDamageLevel.concrete(ductility: $0.ductility, rotationDeg: $1)
             }
             return damage(
-                .reinforcedConcrete, rotations.min()!...rotations.max()!, levels.min()!...levels.max()!, nil)
+                kind == .reinforcedBlockwork && !isRoof ? .reinforcedBlockwork : .reinforcedConcrete,
+                rotations.min()!...rotations.max()!, levels.min()!...levels.max()!, nil)
         case .unreinforcedMasonry:
             var masonry = StructureMaterial.masonry
             masonry.steel = nil
@@ -387,6 +395,15 @@ public enum EnvelopeDamageAssessment {
             let rotation = Self.rotation(response, span: span)
             return damage(.unreinforcedMasonry, rotation...rotation, level...level, response.lostResistanceAt)
         }
+    }
+
+    /// A member's tension bars: a wall's as its construction says, a roof's a central mat.
+    static func section(_ construction: EnvelopeConstruction, thickness: Double, roof: Bool)
+        -> (depth: Double, steelArea: Double)
+    {
+        roof
+            ? (thickness / 2, Double(construction.reinforcementRatio) * thickness)
+            : construction.wallBars(thickness: thickness)
     }
 
     /// A freestanding wall's net load, turned so that it pushes from the face the blast strikes:

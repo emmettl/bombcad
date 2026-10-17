@@ -156,10 +156,32 @@ public struct RenderSettings: Sendable, Hashable {
     public var showCloud = true
     /// A box to outline in the view, such as the one being edited.
     public var highlight: Box?
+    /// Craters to shade into the ground (see `CraterMark`), up to four, once a run has dug them.
+    public var craters: [CraterMark] = []
 
     public init() {}
 
     public var surfaceScale: Float { mode == .impulse ? impulseScale : pressureScale }
+}
+
+/// A crater as the view shades it into the ground: its centre in the plane, the apparent crater's
+/// radius and depth, and its lip's height and reach (see `CraterEstimate`).
+public struct CraterMark: Sendable, Hashable {
+    public var centre: SIMD2<Float>
+    public var radius: Float
+    public var depth: Float
+    public var lipHeight: Float
+    public var lipCrestRadius: Float
+    public var lipRadius: Float
+
+    public init(_ crater: CraterEstimate) {
+        centre = SIMD2(crater.centre.x, crater.centre.y)
+        radius = crater.apparentRadius
+        depth = crater.apparentDepth
+        lipHeight = crater.lipHeight
+        lipCrestRadius = crater.lipCrestRadius
+        lipRadius = crater.lipRadius
+    }
 }
 
 /// Layout matches `RenderUniforms` in `Render.metal`.
@@ -176,6 +198,9 @@ private struct RenderUniforms {
     var clip: SIMD4<Float>
     var highlightLow: SIMD4<Float>
     var highlightHigh: SIMD4<Float>
+    /// Up to four craters: centre, radius and depth, then lip height, reach and 1 where one is.
+    var craters: (SIMD4<Float>, SIMD4<Float>, SIMD4<Float>, SIMD4<Float>)
+    var lips: (SIMD4<Float>, SIMD4<Float>, SIMD4<Float>, SIMD4<Float>)
 }
 
 /// Layout matches `MeshUniforms` in `Render.metal`.
@@ -406,6 +431,20 @@ public final class SceneRenderer {
     /// 1 a tracer, 2 a fragment's landing, 3 a ground point) plus a value from 0 to 1 that
     /// colours it (a fragment's speed, a landing's energy, how fast the ground under a point has
     /// moved).
+    /// The first four craters packed for `RenderUniforms`, empty slots zero.
+    private static func craterSlots(_ marks: [CraterMark]) -> (
+        craters: (SIMD4<Float>, SIMD4<Float>, SIMD4<Float>, SIMD4<Float>),
+        lips: (SIMD4<Float>, SIMD4<Float>, SIMD4<Float>, SIMD4<Float>)
+    ) {
+        var craters = [SIMD4<Float>](repeating: .zero, count: 4)
+        var lips = [SIMD4<Float>](repeating: .zero, count: 4)
+        for (n, mark) in marks.prefix(4).enumerated() {
+            craters[n] = SIMD4(mark.centre.x, mark.centre.y, mark.radius, mark.depth)
+            lips[n] = SIMD4(mark.lipHeight, max(mark.lipRadius, mark.radius), 1, mark.lipCrestRadius)
+        }
+        return ((craters[0], craters[1], craters[2], craters[3]), (lips[0], lips[1], lips[2], lips[3]))
+    }
+
     public func setDots(_ dots: [SIMD4<Float>]) {
         dotCount = dots.count
         guard !dots.isEmpty else { return }
@@ -535,7 +574,9 @@ public final class SceneRenderer {
             sun: sun,
             clip: SIMD4(Self.nearPlane, Self.farPlane, 0, 0),
             highlightLow: SIMD4(settings.highlight?.min ?? .zero, settings.highlight == nil ? 0 : 1),
-            highlightHigh: SIMD4(settings.highlight?.max ?? .zero, 0))
+            highlightHigh: SIMD4(settings.highlight?.max ?? .zero, 0),
+            craters: Self.craterSlots(settings.craters).craters, lips: Self.craterSlots(settings.craters).lips
+        )
 
         // Pass 1: ground, blocks and markers, then the structure's mesh, sharing a depth buffer.
         let scenePass = MTLRenderPassDescriptor()
