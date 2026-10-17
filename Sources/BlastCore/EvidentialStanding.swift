@@ -234,11 +234,13 @@ public struct StandingInputs: Sendable, Equatable {
     public var cloud: CloudSpec?
     public var fragments: FragmentSpec?
     public var groundShock: GroundShockSpec?
+    /// Envelopes' glazing breaks in the air (`BlastSolver.configureEnvelopeVenting`).
+    public var ventsGlazing: Bool
 
     public init(
         scenario: Scenario, cellSize: Float, configuration: SolverConfiguration = SolverConfiguration(),
         thermal: ThermalSpec? = nil, cloud: CloudSpec? = nil, fragments: FragmentSpec? = nil,
-        groundShock: GroundShockSpec? = nil
+        groundShock: GroundShockSpec? = nil, ventsGlazing: Bool = false
     ) {
         self.scenario = scenario
         self.cellSize = cellSize
@@ -247,6 +249,7 @@ public struct StandingInputs: Sendable, Equatable {
         self.cloud = cloud
         self.fragments = fragments
         self.groundShock = groundShock
+        self.ventsGlazing = ventsGlazing
     }
 
     /// The model options these inputs set.
@@ -280,6 +283,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case ventPanels
     case importedEnvelopes
     case mapBuildings
+    case ventedGlazing
     // The structure.
     case shellElements
     case shellSectionShear
@@ -365,6 +369,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
             return !inputs.scenario.envelopeSources(.ifc).isEmpty
                 || !inputs.scenario.envelopeSources(.mesh).isEmpty
         case .mapBuildings: return !inputs.scenario.envelopeSources(.map).isEmpty
+        case .ventedGlazing:
+            return inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes
         case .shellElements:
             return any { $0.elementKind == .shell || $0.solidElementKind.contains(.shell) }
         case .shellSectionShear: return any { $0.shellSectionShear }
@@ -611,6 +617,17 @@ public enum StandingTable {
                     + "assumed two levels: no openings, interiors or roof shapes, and positions and heights as "
                     + "accurate as the map.",
                 document: "building-envelopes.md#buildings-from-map-data")
+        case .ventedGlazing:
+            return Entry(
+                title: "Glazing vented in the air", affects: [.envelopeExposure, .envelopeDamage],
+                limit: nil,
+                note:
+                    "Envelopes' panes break in the air when their one-way glass does (within 0.3 ms on its own "
+                    + "loads) and open their windows whole, so the blast fills the rooms and loads the walls from "
+                    + "inside. The inside stays illustrative: the detailed references let broken glass go element "
+                    + "by element and cannot judge it; against UFC 3-340-02's loads through open windows the "
+                    + "back walls come within 25%, the side walls and the front's inside at 0.3 to 0.7 of the UFC's.",
+                document: "building-envelopes.md#venting-glazing-that-breaks-in-the-air")
         case .ventPanels:
             return Entry(
                 title: "Vent panels", affects: air + structure + [.envelopeExposure], limit: .approximation,
@@ -936,6 +953,15 @@ public enum StandingTable {
         "EnvelopeConstruction.capMassKgPerM": .input,
         "Scenario.deflagration": .option([.deflagration]),
         "Scenario.ventPanels": .option([.ventPanels]),
+        // What the standing is derived from: the scene and the specs above, and one choice of its own.
+        "StandingInputs.scenario": .input,
+        "StandingInputs.cellSize": .input,
+        "StandingInputs.configuration": .input,
+        "StandingInputs.thermal": .input,
+        "StandingInputs.cloud": .input,
+        "StandingInputs.fragments": .input,
+        "StandingInputs.groundShock": .input,
+        "StandingInputs.ventsGlazing": .option([.ventedGlazing]),
         "Deflagration.gas": .input,
         "Deflagration.concentration": .input,
         "Deflagration.region": .input,

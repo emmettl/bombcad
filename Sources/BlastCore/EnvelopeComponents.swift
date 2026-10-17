@@ -433,6 +433,8 @@ final class EnvelopeComponentRecorder {
     let bins: MTLBuffer
     let maxima: MTLBuffer?
     let flags: MTLBuffer
+    /// Each component's two sides' mean overpressures in the step just taken, for venting.
+    let current: MTLBuffer
     let markPipeline: MTLComputePipelineState
     let facePipeline: MTLComputePipelineState
     let pipeline: MTLComputePipelineState
@@ -626,7 +628,9 @@ final class EnvelopeComponentRecorder {
                 length: max(1, faces.count) * MemoryLayout<Face>.stride),
             let peaks = device.makeBuffer(length: components.count * 16, options: .storageModeShared),
             let bins = device.makeBuffer(length: components.count * count * 8, options: .storageModeShared),
-            let flags = device.makeBuffer(length: 4, options: .storageModeShared)
+            let flags = device.makeBuffer(length: 4, options: .storageModeShared),
+            let current = device.makeBuffer(
+                length: max(components.count * 8, 16), options: .storageModeShared)
         else { throw BlastError.allocationFailed("envelope component histories") }
         self.components = components
         self.sides = sides
@@ -640,6 +644,7 @@ final class EnvelopeComponentRecorder {
         self.peaks = peaks
         self.bins = bins
         self.flags = flags
+        self.current = current
         maxima =
             options.binMaxima
             ? device.makeBuffer(length: components.count * count * 8, options: .storageModeShared) : nil
@@ -701,7 +706,7 @@ final class EnvelopeComponentRecorder {
             sideBuffer, faceBuffer, pressures, tileRanges, tiles, awake, faceList, faceDispatch, sumList,
             sumDispatch, stillPressure, clock, starts,
             peaks,
-            bins, flags,
+            bins, flags, current,
         ]
         .reduce(0) { $0 + $1.length } + (maxima?.length ?? 0)
     }
@@ -711,6 +716,7 @@ final class EnvelopeComponentRecorder {
         let peak = peaks.contents().bindMemory(to: SIMD4<Float>.self, capacity: components.count)
         for n in components.indices { peak[n] = SIMD4(lowest, lowest, lowest, 0) }
         memset(bins.contents(), 0, bins.length)
+        memset(current.contents(), 0, current.length)
         if let maxima {
             let values = maxima.contents().bindMemory(to: Float.self, capacity: maxima.length / 4)
             for n in 0..<(maxima.length / 4) { values[n] = lowest }

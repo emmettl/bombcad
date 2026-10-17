@@ -270,10 +270,14 @@ public struct EnvelopeBuildingDamage: Codable, Sendable, Identifiable {
     public var wallStrikes: Float? = nil
     public var wallsSpalled: Float? = nil
     public var wallsPerforated: Float? = nil
-    /// Inside, from a one-way fill through the broken panes (`EnvelopeDamageAssessment.fill`):
-    /// peak overpressure (Pa) and positive impulse (Pa s). Zero with no pane broken.
+    /// Inside, from a one-way fill through the broken panes (`EnvelopeDamageAssessment.fill`), or
+    /// with venting the air's own, its worst room's mean: peak overpressure (Pa) and positive
+    /// impulse (Pa s). Zero with no pane broken.
     public var insidePeakPa: Double
     public var insideImpulsePaS: Double
+    /// True when the inside and the panes' breaking are the air's, its glazing vented
+    /// (`BlastSolver.configureEnvelopeVenting`); nil for the one-way fill (left out of the JSON).
+    public var vented: Bool?
 }
 
 /// How an envelope building's damage is shown: one colour for each of six codes, the view's
@@ -308,9 +312,12 @@ public enum EnvelopeDamageAssessment {
     /// Rotation past which a panel's frame is flagged as beyond the one-way model, degrees.
     public static let frameFlagDeg = 2.0
 
+    /// With `vented`, the run's glazing broke in the air: each pane breaks when the GPU's glass did
+    /// (its history after that is the open window's), and the inside is the air's worst room.
     public static func assess(
         loads: [EnvelopeComponentLoad], constructions: (UUID) -> EnvelopeConstruction,
-        rooms: [UUID: Double] = [:], strikes: [FragmentImpact]? = nil
+        rooms: [UUID: Double] = [:], strikes: [FragmentImpact]? = nil,
+        vented: EnvelopeVentingSnapshot? = nil
     ) -> [EnvelopeBuildingDamage] {
         let byOwner = Dictionary(grouping: loads, by: \.owner)
         let owners = byOwner.keys.sorted { $0.uuidString < $1.uuidString }
@@ -327,8 +334,18 @@ public enum EnvelopeDamageAssessment {
             var components: [EnvelopeComponentDamage] = []
             var broken: [(load: EnvelopeComponentLoad, at: Double)] = []
             for load in mine {
-                guard let damage = assess(load, construction: construction, holedAt: holed[load.id]) else {
+                guard var damage = assess(load, construction: construction, holedAt: holed[load.id]) else {
                     continue
+                }
+                if damage.material == .annealedGlass,
+                    let pane = vented?.panes.first(where: { $0.component == load.id })
+                {
+                    // Broken in the air, or by a fragment first (which the air does not see).
+                    let first = [pane.brokenAtS, damage.fragmentBrokeAtS].compactMap { $0 }.min()
+                    if first != damage.fragmentBrokeAtS { damage.fragmentBrokeAtS = nil }
+                    damage.failedAtS = first
+                    let level: EnvelopeDamageLevel = first == nil ? .none : .failed
+                    damage.levels = level...level
                 }
                 components.append(damage)
                 if damage.material == .annealedGlass, let at = damage.failedAtS { broken.append((load, at)) }
@@ -347,10 +364,12 @@ public enum EnvelopeDamageAssessment {
             let low = structural.map(\.levels.lowerBound).max() ?? .none
             let high = structural.map(\.levels.upperBound).max() ?? .none
             let panes = components.filter { $0.material == .annealedGlass }
+            let air = vented?.inside(of: owner)
             let inside =
                 openings.isEmpty
                 ? (peak: 0.0, impulse: 0.0)
-                : fill(volume: rooms[owner] ?? 0, openings: openings, bin: mine.first?.binS ?? 1e-4)
+                : air.map { (peak: $0.peakPa, impulse: $0.impulsePaS) }
+                    ?? fill(volume: rooms[owner] ?? 0, openings: openings, bin: mine.first?.binS ?? 1e-4)
             return EnvelopeBuildingDamage(
                 id: owner, construction: construction, components: components,
                 structuralLevels: low...max(low, high),
@@ -371,7 +390,7 @@ public enum EnvelopeDamageAssessment {
                 wallsSpalled: strikes.map { tally($0, owner: owner, at: .spalled) },
                 wallsPerforated: strikes.map { tally($0, owner: owner, at: .perforated) },
                 insidePeakPa: inside.peak,
-                insideImpulsePaS: inside.impulse)
+                insideImpulsePaS: inside.impulse, vented: vented == nil ? nil : true)
         }
     }
 

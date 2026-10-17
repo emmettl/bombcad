@@ -45,7 +45,7 @@ extension ProjectRunSettings {
         return StandingInputs(
             scenario: scenario, cellSize: (Resolution(rawValue: resolution) ?? .medium).cellSize,
             configuration: configuration, thermal: thermal, cloud: cloud, fragments: fragments,
-            groundShock: groundShock)
+            groundShock: groundShock, ventsGlazing: ventsGlazing ?? false)
     }
 }
 

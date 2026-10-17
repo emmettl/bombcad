@@ -303,6 +303,8 @@ summary printed counts them (`struck targets: … stopped, … spalled, … thro
 - No break-up and no ricochet; a fragment stops where it first hits, through or not, and does
   not load or hole what it hits (the structure's outline and the air are unchanged). Its
   penetration is judged by design methods for nose-on impact; masonry borrows concrete's.
+- With **Vent broken glazing** the air breaks panes itself and does not see a fragment's hole;
+  the damage takes the earlier of the two times, but the air vents only when its own glass breaks.
 - Only the coarse grid's air, also where refinement sharpens the shock.
 - In the app, frames fall at the ends of batches, just past each millisecond, so its fragments vary
   a little from run to run (above).
