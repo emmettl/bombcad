@@ -979,6 +979,19 @@ onto the ground (Keys's walls; see [Validation](validation.md#brick-walls-debris
 fiftieth of the friction it should have and crept on at 0.3 to 0.7 m/s for seconds, and a slab
 of the brickwork thrown along the ground at 1 m/s was still at 0.5 m/s after 0.65 s.
 
+Each node is put back exactly on the plane, so an element whose eight nodes all reach the ground
+is flat to the last bit: its volume is zero and its shape-function gradients are infinite. An
+intact element is removed long before, below a quarter of its volume, but a bare element of
+structural concrete (its bars alone) is not (see
+[crushed bare elements](concrete-model.md#crushed-bare-elements-two-options-neither-a-default)),
+and one flattened there gave its nodes NaN forces, which spread through contact and the joints to
+the whole body. That is what blew up the large-panel block under 1,000 kg at 8 m at about 0.18 s:
+the ground-floor flank wall, thrown 2 to 4 m, dragged its bottom row of elements, bare by then,
+along the ground at 20 m/s, and one of them was pressed flat on it. (It did not happen by 0.2 s
+with node contact off, nor with the ground off.) An element
+flattened to zero volume is now removed whatever would keep it, bars and all. No run that stayed
+finite is changed: such an element could only have given infinite forces.
+
 `StructureSolver.groundFrictionCoefficient` (an option, zero by default) replaces the decay by
 Coulomb friction: each step the sliding speed is cut by μ times the speed the ground took off
 the node's fall, down to nothing. Summed over the steps a node bears on the ground, the
