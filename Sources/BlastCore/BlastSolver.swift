@@ -2471,7 +2471,7 @@ public final class BlastSolver {
     private func encodeEnvelopeComponents(_ encoder: MTLComputeCommandEncoder, initial: Bool) {
         guard let recorder = envelopeComponentRecorder, !recorder.faces.isEmpty else { return }
         var uniforms = makeUniforms()
-        var parameters = recorder.parameters(time: time, initial: initial)
+        var parameters = recorder.parameters(initial: initial)
         // Faces in still tiles read the still air; under gravity it is not uniform.
         parameters.skipStill = recorder.skipStillTiles && configuration.gravity == nil ? 1 : 0
         let perGroup = EnvelopeComponentRecorder.componentsPerGroup
@@ -2497,6 +2497,8 @@ public final class BlastSolver {
         // Not written without maxima.
         encoder.setBuffer(recorder.maxima ?? recorder.bins, offset: 0, index: 18)
         encoder.setBuffer(recorder.flags, offset: 0, index: 19)
+        encoder.setBuffer(recorder.clock, offset: 0, index: 20)
+        encoder.setBuffer(recorder.starts, offset: 0, index: 21)
         encoder.dispatchThreadgroups(
             MTLSize(width: (recorder.components.count + perGroup - 1) / perGroup, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 32 * perGroup, height: 1, depth: 1))
@@ -2529,9 +2531,16 @@ public final class BlastSolver {
         encoder.setBuffer(recorder.stillPressure, offset: 0, index: 11)
         encoder.setBuffer(recorder.faceDispatch, offset: 0, index: 12)
         encoder.setBuffer(recorder.sumDispatch, offset: 0, index: 13)
+        encoder.setBuffer(recorder.clock, offset: 0, index: 14)
+        encoder.setBuffer(recorder.starts, offset: 0, index: 15)
         encoder.dispatchThreadgroups(
             indirectBuffer: recorder.sumDispatch, indirectBufferOffset: 0,
             threadsPerThreadgroup: MTLSize(width: 32, height: 1, depth: 1))
+        // The clock moves on by the step, once every component has it.
+        encoder.setComputePipelineState(recorder.clockPipeline)
+        encoder.dispatchThreads(
+            MTLSize(width: 1, height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
     }
 
     private func encodeExposure(_ encoder: MTLComputeCommandEncoder, initial: Bool) {
