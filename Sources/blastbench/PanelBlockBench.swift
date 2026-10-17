@@ -153,6 +153,8 @@ func runPanelBlock(device: MTLDevice) throws {
         var camera = OrbitCamera(
             target: SIMD3(centre.x, centre.y, 0.45 * bounds.max.z), distance: 2.1 * bounds.max.z,
             azimuth: which == .gas ? -2.35 : -0.75, elevation: 0.22)
+        // `--target-z 25 --distance 25`: closer in, on the gas flat's floor.
+        if let z = option("target-z").flatMap({ Float($0) }) { camera.target.z = z }
         if let distance = option("distance").flatMap({ Float($0) }) { camera.distance = distance }
         if let azimuth = option("azimuth").flatMap({ Float($0) }) { camera.azimuth = azimuth }
         if let elevation = option("elevation").flatMap({ Float($0) }) { camera.elevation = elevation }

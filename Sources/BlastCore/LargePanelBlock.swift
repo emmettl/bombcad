@@ -154,7 +154,8 @@ public enum LargePanelBlock {
         /// town gas, in the hall of a corner flat on the eighteenth of 22), lit at the cooker;
         /// the flat's two windows hold to `windowRelease`.
         case gas
-        /// A charge in the street, 8 m from the far flank wall at the ground.
+        /// 500 kg in the street, 8 m from the far flank wall, a metre up. 250 kg slides the
+        /// joints; at 1,000 kg the debris thrown on the ground blows the run up within 0.2 s.
         case street
     }
 
@@ -165,7 +166,7 @@ public enum LargePanelBlock {
     /// tests 2.8 psi). Ordinary single glazing goes at a few kPa; at 3 kPa the flat vents at
     /// 3.3 kPa and nothing moves.
     public static let windowRelease: Float = 25_000
-    public static let streetCharge: Float = 250
+    public static let streetCharge: Float = 500
     public static let streetDistance: Float = 8
 
     public static func scenario(

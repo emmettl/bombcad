@@ -30,6 +30,8 @@ it should be used to judge the safety of a real structure.
 
 ![A twelve-storey tower 2 s after 4 tonnes beside it: its floors punching off their columns](docs/twelve-storey.png)
 
+![A large-panel block of flats 2 s after 500 kg in the street: one bay's floors falling as their flank walls go](docs/large-panel-street-2000ms.png)
+
 ## Download
 
 A signed, notarized build for Apple silicon Macs running macOS 15 or later is on the
