@@ -112,8 +112,9 @@ public struct VentCorrelations: Sendable {
     }
 
     /// NFPA 68 (2002) for low-strength enclosures: A_v = C A_s / sqrt(P_red), C for the gas.
-    public var nfpa68: Double {
-        let ratio = gas.nfpa68Constant * surfaceArea / ventArea
+    public var nfpa68: Double? {
+        guard let constant = gas.nfpa68Constant else { return nil }
+        let ratio = constant * surfaceArea / ventArea
         return ratio * ratio * 1e5
     }
 

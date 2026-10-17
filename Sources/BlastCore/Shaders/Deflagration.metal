@@ -60,6 +60,9 @@ struct DeflagrationUniforms {
     float regionMaxX;
     float regionMaxY;
     float regionMaxZ;
+    uint speedTableCount;          // a tabulated burning velocity: points (phi, m/s); 0 for Gulder's
+    float speedPhi[16];
+    float speedValue[16];
 };
 
 static inline float laminarBurningSpeed(float fraction, constant DeflagrationUniforms &d) {
@@ -68,6 +71,20 @@ static inline float laminarBurningSpeed(float fraction, constant DeflagrationUni
     }
     float stoichiometric = d.stoichiometricFraction;
     float phi = (fraction / (1.0f - fraction)) / (stoichiometric / (1.0f - stoichiometric));
+    if (d.speedTableCount > 0) {
+        // Linear in the equivalence ratio between the table's points, held at its ends.
+        uint last = d.speedTableCount - 1;
+        if (phi <= d.speedPhi[0]) {
+            return d.speedValue[0];
+        }
+        for (uint n = 0; n < last; ++n) {
+            if (phi <= d.speedPhi[n + 1]) {
+                float t = (phi - d.speedPhi[n]) / max(d.speedPhi[n + 1] - d.speedPhi[n], 1e-6f);
+                return d.speedValue[n] + t * (d.speedValue[n + 1] - d.speedValue[n]);
+            }
+        }
+        return d.speedValue[last];
+    }
     float offset = phi - 1.075f;
     return d.speedScale * pow(phi, d.speedPower) * exp(-d.speedWidth * offset * offset);
 }
