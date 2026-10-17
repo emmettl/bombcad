@@ -557,6 +557,7 @@ one way as the run goes, at most once a second and again when it stops:
     them; no test's fragments are compared. A cased charge's fragments that hole a pane first break
     it then, before the blast if they arrive first, and the building's line counts them and the
     fragments striking its walls ([Fragments](fragments.md#what-fragments-do-to-what-they-strike)).
+    With glazing vented, the panes they hole open in the air when they do.
   - A building with a panel past 2° is flagged as beyond the one-way model.
 - **Shown.**
   - The sidebar's Envelope building damage section lists each building's levels, its panes broken

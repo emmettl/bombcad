@@ -2548,6 +2548,7 @@ kernel void stepEnvelopePanes(const device float2 *current [[buffer(0)]],
                               device atomic_uint *roomDispatch [[buffer(9)]],
                               device uint *roomList [[buffer(10)]],
                               const device float4 *table [[buffer(11)]],
+                              const device uint2 *holes [[buffer(12)]],
                               uint pane [[thread_position_in_grid]]) {
     if (pane >= count || control.dt <= 0.0f) return;
     uint was = status[pane];
@@ -2559,6 +2560,10 @@ kernel void stepEnvelopePanes(const device float2 *current [[buffer(0)]],
         state[2 * pane + 1] = clock;
         return;
     }
+    // Holed by a fragment (its time in the run's ticks, all ones for none): broken on the step
+    // the run's clock reaches it, however the run is batched, through the same path as the glass.
+    ulong hole = ulong(holes[pane].x) | (ulong(holes[pane].y) << 32);
+    bool holed = hole <= runClock(control);
     EnvelopeGlass g = glass[pane];
     float2 sides = current[panes[pane].x];
     float p = sides.x - sides.y;
@@ -2569,6 +2574,17 @@ kernel void stepEnvelopePanes(const device float2 *current [[buffer(0)]],
     float fatigue = motion.z;
     float r = sign(x) * glassAt(fabs(x), table, g.first, g.count).x;
     bool broken = false;
+    if (holed) {
+        broken = true;
+        clock.y = float(hole) * 9.094947017729282e-13f;  // 2^-40
+        status[pane] = 1u;
+        uint owner = panes[pane].y;
+        if (atomic_exchange_explicit(opened + owner, 1u, memory_order_relaxed) == 0u) {
+            uint2 range = ownerRooms[owner];
+            uint at = atomic_fetch_add_explicit(roomDispatch, range.y, memory_order_relaxed);
+            for (uint k = 0; k < range.y; ++k) roomList[at + k] = range.x + k;
+        }
+    }
     for (uint i = 0; i < n && !broken; ++i) {
         v += 0.5f * h * (p - r) / g.mass;
         x += h * v;

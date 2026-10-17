@@ -137,7 +137,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-13"
+    public static let currentTable = "standing-table-14"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -2147,7 +2147,10 @@ struct StandingScene {
                 "The glass's hazard is graded by GSA's conditions and ASTM F1642's ratings from where it "
                     + "would land, thrown whole from the pane's middle at its speed on breaking, the load pushing "
                     + "it on, over a 0.9 m sill; no test's fragments compared. A cased charge's fragments hole a "
-                    + "pane past Kim et al.'s breaking momentum, breaking it then if first.",
+                    + "pane past Kim et al.'s breaking momentum, breaking it then if first. With glazing vented "
+                    + "it opens in the air then, at a time from the fragments flown in still air before the run, "
+                    + "independent of the blast's effect on their flight: fine near the charge, where fragments "
+                    + "lead the shock.",
                 "Concrete by ASCE/SEI 59-11's limits for single-reinforced slabs; brick cracked or fallen, with "
                     + "no arching.",
             ]
