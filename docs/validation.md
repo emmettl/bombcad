@@ -2670,67 +2670,107 @@ Lacroix and Doudak, J. Struct. Eng. 144(2), 2018.
 - **The loading:** a hinged steel device collected the shock tube's pressure over an equivalent
   3.55 m² and pressed it onto the panel as two line loads at the third points, as in the static
   four-point bending tests. The panel and the device moved 342 kg (3-ply) or 385 kg (5-ply).
-- **Measured:** the reflected pressure and impulse of every shot, the peak mid-span deflection
-  and the failure mode (its Table 4.3); and the static tests' stiffness and peak (its Table 4.1).
+- **Measured:** every shot's reflected pressure and impulse, the peak mid-span deflection and the
+  failure mode (its Table 4.3); and the static tests' stiffness and peak (its Table 4.1).
 - **The harness:** `PoulinCLTTest`, `blastbench poulin`.
 
-**The model:**
-- [timber shells](shell-model.md#timber), 74.5 mm, with three or five lamellae;
-- E1's modulus along the panel (11.7 GPa) and its other moduli by PRG 320's Annex X3;
-- strengths along the grain from E1's specified values, raised to their means as the strength
-  classes' are; across the grain, in shear and in rolling shear, C24's;
-- the strengths raised by 1.28, the dynamic increase Poulin found on these panels' resistance;
-- the device's mass on the load lines;
-- each shot's pressure as a triangle of its peak and impulse, since the thesis plots the
-  histories but does not tabulate them.
+**The model:** [timber shells](shell-model.md#timber), 74.5 mm, with three or five lamellae.
+- **Moduli:** E1's modulus along the panel (11.7 GPa), and its other moduli by PRG 320's Annex
+  X3.
+- **Strength along the grain:** calibrated on the static tests. It is the outer lamella's
+  stress at their peak by layered beam theory: 32.2 MPa (3-ply), 26.4 (5-ply).
+- **Other strengths:** C24's means across the grain, in shear and in rolling shear.
+- **Fibres:** they break at once.
+- **Shots:** each shot's strengths are raised by 1.28, the dynamic increase Poulin found on these
+  panels' resistance. The device's mass sits on the load lines. Each shot's pressure is a
+  triangle of its peak and impulse, since the thesis plots the histories but does not tabulate
+  them.
 
 **Static four-point bending** (no dynamic increase):
 
 | Panels | Stiffness (kN/mm), measured / model | Peak load (kN), measured / model | Fails first, test / model |
 |---|---|---|---|
-| 3-ply | 2.10 / 2.02 | 68.4 / 76.8 | flexure (at finger joints), rolling shear near the peak / flexure |
-| 5-ply | 5.90 / 6.66 | 128.6 / 160.2 | the same / flexure |
+| 3-ply | 2.10 / 2.02 | 68.4 / 67.4 (calibrated) | flexure (at finger joints), rolling shear near the peak / rolling shear, with flexure |
+| 5-ply | 5.90 / 6.66 | 128.6 / 128.9 (calibrated) | the same / flexure |
 
-**The shots:**
+**The shots** (the deflection once a panel broke is not comparable: the tests' gauges stopped
+with the panels, and the model's broken panels run on):
 
-| Shot | kPa | kPa ms | Peak deflection, measured / model (mm) | Failure, test / model |
+| Shots | kPa | kPa ms | Peak deflection, measured / model (mm) | Failure, test / model |
 |---|---|---|---|---|
 | CLT3-4.1, 7.1, 8.1, 9.1, 10.1, 11.1 | 5.8–12.2 | 59–131 | 10.1–18.7 / 8.0–17.6 (0.78–1.21) | elastic / elastic |
 | CLT5-6.1, 7.1 | 7.2–7.3 | 82 | 6.4–6.5 / 4.7 (0.72–0.73) | elastic / elastic |
-| CLT3-4.2 | 38.7 | 379 | 105 / 107, broke | rolling shear / rolling shear |
-| CLT3-7.2 | 52.8 | 440 | 119 / 93, broke | rolling shear / rolling shear |
-| CLT3-8.2 | 49.0 | 468 | 90 / 122, broke | rolling shear, then flexure / rolling shear |
-| CLT3-5.1 | 48.2 | 442 | 89 / 115, broke | flexure / rolling shear |
-| CLT3-6.1 | 52.6 | 614 | 144 / 390, broke | flexure / splitting |
-| CLT3-10.2 | 34.0 | 374 | 99 / 51, broke at 31 ms | flexure / rolling shear |
-| CLT5-5.1 | 58.6 | 691 | 58 / 126, broke | rolling shear / splitting |
-| CLT5-4.1, 6.2 | 53.7–55.8 | 602–610 | 78–81 / 37–38, split after the peak | flexure / splitting |
-| CLT3-9.2, 11.2 | 30.9–32.9 | 322–345 | 58–73 / 44–47, held | rolling shear, flexure / none |
-| CLT5-7.2 | 51.2 | 481 | 37 / 30, held | flexure / none |
+| CLT3-5.1, 6.1, 10.2, 11.2; CLT5-4.1, 6.2, 7.2 | 32.9–55.8 | 345–614 | 37–144 / broke at 11–21 ms | flexure / flexure |
+| CLT3-4.2, 7.2, 8.2, 9.2; CLT5-5.1 | 30.9–58.6 | 322–691 | 58–119 / broke at 11–24 ms | rolling shear (8.2 then flexure) / flexure |
 
 **What it shows:**
 - **Stiffness:** within 4% (3-ply) and 13% (5-ply) statically. The elastic shots' peaks are
   0.72–1.21 of measured, mostly low (stiff), as the 5-ply panels' static stiffness is.
-- **Strength:** flexure breaks first statically, as in the tests, but 12% (3-ply) and 25% (5-ply)
-  above the measured peaks. The tests broke at finger joints, which the model's clear-wood fracture
-  energy (60 kJ/m² along the grain) does not know of, so it softens too slowly.
-- **The shots:** every elastic shot stays elastic. Nine of the twelve that broke the panels
-  break or split the model's. Three near the threshold (31–51 kPa) hold.
-  - Rolling shear breaks first where the tests saw it in three of five.
-  - The 5-ply panels split rather than fail in flexure.
-  - Once broken, the model's panels run on further than the tests' (whose deflection stopped
-    when they broke).
-- **Caveat:** the dynamic increase of 1.28 comes from these same shots, so the shots' split into
-  broken and held is not independent of them. The static tests, without it, are.
+- **The shots:** all twenty are classified as the tests were. The eight that left the panels
+  elastic leave the model's elastic, and the twelve that broke them break the model's.
+- **Failure mode:** the model breaks in flexure first every time, where five tests broke first
+  in rolling shear. Its rolling shear strength, C24's mean of 1.55 MPa, is likely high for E1's
+  No. 3 cross lamellae.
+- **Not independent:** the strength along the grain is calibrated on the static tests, and the
+  dynamic increase of 1.28 comes from these same shots. So the split into broken and held tests
+  the model's dynamics, not its strengths.
 
-**Why the shear needed the section.** With every layer at the shells' one transverse shear
-strain, the crossed lamella carried a tenth of its rolling shear and the outer ones too much. A
-panel then broke statically in rolling shear at 76% of the measured peak, and its stiffness came
-out 20% high.
-- **Shear stress:** the shells now spread the section's shear through the thickness as
-  equilibrium does, S(z)/EI.
-- **Shear stiffness:** that of the shear analogy, with each lamella at its damaged modulus, so a
-  lamella broken in rolling shear takes the section's shear stiffness with it.
+**What the comparison changed in the model:**
+- **The shear needed the section.** With every layer at the shells' one transverse shear
+  strain, the crossed lamella carried a tenth of its rolling shear and the outer ones too much.
+  A panel then broke statically in rolling shear at 76% of the measured peak, and its stiffness
+  came out 20% high. The shells now spread the section's shear through the thickness as
+  equilibrium does, S(z)/EI. Its stiffness is the shear analogy's, with each lamella at its
+  damaged modulus.
+- **The fibres break at once.** With clear wood's fracture energy (60 kJ/m²) they softened over
+  several times their breaking strain, and the panels carried 12–25% more than measured.
+- **The faces are judged.** With two Gauss points per lamella, the outermost sat 14% in from
+  the face, and the panels broke 12% late. Timber shells now use Gauss–Lobatto points, which
+  include the faces.
+
+## Glulam beams in a shock tube
+
+**The test.** D. N. Lacroix's PhD thesis (University of Ottawa, 2017, open), with Lacroix and
+Doudak, J. Struct. Eng. 144(9), 2018.
+- **The beams:** spruce-pine glulam, 80 × 228 mm (20f-E), 86 × 318 mm and 137 × 222 mm
+  (24f-ES), simply supported over 2,235 mm.
+- **The loading:** the same shock tube and device as Poulin's panels. 317 and 321 kg moved with
+  the 86 and 137 mm beams.
+- **Measured:**
+  - the static tests (Table 4.3: rupture modulus and stiffness);
+  - fifteen elastic shots (Table 4.4);
+  - nineteen destructive ones (Table 4.5: the largest dynamic resistance, and the deflection
+    there, where these brittle beams broke).
+- **The harness:** `LacroixGlulamTest`, `blastbench lacroix`.
+
+**The model:**
+- **Calibrated on the static tests:** each series' measured stiffness and density, its coupons'
+  compressive strength, and a strength along the grain equal to its static rupture modulus,
+  breaking at once.
+- **Other properties:** GL24h's across the grain and in shear.
+- **Dynamic increase:** 1.14, Lacroix's for beams without finger joints in their outer
+  laminations.
+- **Loads and mass:** the device's force and mass are shared between the nodes of the load lines,
+  through the section, as its bearing plates spread them.
+- **Beam elements:** the 137 mm beams are beam elements of 4 × 4 fibres, which break as the
+  section's face would.
+
+| 137 mm beams | Measured | Model |
+|---|---|---|
+| Static stiffness | 5.97 kN/mm | 5.54 kN/mm |
+| Static break | 141.6 kN | 138.1 kN (calibrated) |
+| Elastic shots, B5.1, 6.1, 7.1 (11.0–13.1 kPa) | 7.0–8.4 mm | 8.5–9.1 mm (1.06–1.30) |
+| B9.1 (10.9 kPa) | 4.2 mm | 7.8 mm |
+| Destructive shots, B5.2–9.2 (50.0–54.4 kPa, 492–670 kPa ms) | broke at 20.6–30.9 mm (mean 26.8) | broke at 28.4–29.0 mm |
+
+- **The beams:** all four elastic shots hold, a little softer than measured. All five
+  destructive ones break, at 28–29 mm against 21–31 mm.
+- **The 80 and 86 mm beams** are narrower than half their depth, so they mesh as walls bending
+  in their plane. There the shells are 43% too stiff: bilinear membranes lock in in-plane
+  bending, and timber's ratio of E to G (16) makes it worse. They are left out of the comparison
+  ([limitations](shell-model.md#limitations)).
+- **Mid-span:** without its rotations held there (which symmetry holds anyway), a beam on two
+  pins turns freely about its axis. It broke 16% early.
 
 ## Slabs under contact charges
 
@@ -3517,6 +3557,20 @@ and nothing on the coarse cells. Since the same day every plate thinner than a c
 of cells its middle lies in on each level (`Box.holdingCells`), panes among them, and the room
 stays sealed once or twice refined (`EnvelopePaneCellTests`). Refined envelope runs with glazing
 in cut openings change as the coarse ones did.
+
+### Thick glass
+
+ASTM E1300's charts end at 19 mm of annealed glass, but the large-deflection model does not: Moore's
+curves are nondimensional (load q b⁴ / (E′ t⁴), stress σ b² / (E′ t²)), proportional below their
+first load as small-deflection plate theory is, and E1300's flaw constants for annealed glass do not
+depend on its thickness. So thicker glass is plate theory with the same flaws, not an
+extrapolation of a fit. A hand check (`ThickGlassTests`): 50 mm annealed glass 1.25 by 1.5 m, 5 kg
+at 5 m, Kingery–Bulmash's reflected 354 kPa and 395 Pa s over 2.2 ms. Its period, about 7.7 ms,
+makes the load an impulse; the small-deflection plate swings to i / (mω), 5.8 mm, where its stress
+is about 76 MPa against a strength of about 51 MPa held for half a period (the 60 s strength for
+its area raised by (60 s / t)^(1/16)), so it breaks, and the model breaks it in its first swing, at
+2.2 ms. Glass that thick breaks there because the load is large: 5 kg at 5 m reflects at three
+and a half atmospheres.
 
 ### What this does and does not show
 

@@ -5397,6 +5397,7 @@ do {
     case "shearband": try runShearBand(device: device)
     case "settle": try runSettle(device: device)
     case "poulin": try runPoulin(device: device)
+    case "lacroix": try runLacroix(device: device)
     case "beam": try runBeam()
     case "shear": try runShearBeam()
     case "pushoff": try runPushOff()
