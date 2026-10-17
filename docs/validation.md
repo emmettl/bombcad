@@ -2628,31 +2628,32 @@ an aluminised charge, and say its TNT equivalence is low for impulse.
 - concrete at 0.8 of the cube strength, bars at their measured 405 / 542 MPa, rupturing at the
   grade's 16%;
 - the underside 1 m above the ground (not given);
-- the slab without its own weight, since the sensors read from the slab already resting under it,
-  and a slab given its weight as the run starts sags 2–3 mm. Since structures are [settled under
-  their own weight](structural-model.md#settling-under-its-own-weight) it can carry it
-  (`--weight`): T1's centre then peaks at 3.34 mm rather than 3.29, the same 0.96 mm within 2 ms
-  of the shock.
+- the slab under its own weight, [settled under it](structural-model.md#settling-under-its-own-weight)
+  before the blast and read from there, as the sensors read from the slab resting on its
+  supports. Until 17 October it was compared without it, since a slab given its weight as the run
+  started sagged 2–3 mm (`--weightless`); its peaks were then 2–6% lower, the same within 2 ms of
+  the shock to 0.05 mm, and the 20 kg slab bent to 147 mm keeping 72.
 
 | Test | Top-face pressure, centre (MPa) | 1 m out (MPa) | Underside centre, measured | Model, within 2 ms of the shock | Model, peak |
 |---|---|---|---|---|---|
-| T1, 0.5 kg at 1 m | 1.70 / 1.88 | 0.50 / 0.62 | 0.35 mm | 0.96 mm | 3.29 mm at 10.7 ms |
-| T2, 1 kg at 1 m | 4.20 / 3.94 | 1.25 / 1.22 | 0.47 mm | 1.64 mm | 5.83 mm |
-| T3, 1 kg at 0.8 m | 8.60 / 6.97 | 1.90 / 1.21 | 0.86 mm | 1.94 mm | 6.43 mm |
+| T1, 0.5 kg at 1 m | 1.70 / 1.88 | 0.50 / 0.62 | 0.35 mm | 0.96 mm | 3.34 mm |
+| T2, 1 kg at 1 m | 4.20 / 3.94 | 1.25 / 1.22 | 0.47 mm | 1.67 mm | 6.13 mm |
+| T3, 1 kg at 0.8 m | 8.60 / 6.97 | 1.90 / 1.20 | 0.86 mm | 1.99 mm | 6.82 mm |
 
 - **The load agrees.** The centre's pressure is within 11% at 1.26 and 1.0 m/kg^(1/3) and 19% low
-  at 0.8. The impulse there is 371, 596 and 792 kPa ms.
+  at 0.8. The impulse there is 377, 593 and 790 kPa ms.
 - **The displacements do not compare.**
-  - The model's slab swings as a whole, peaking at 10–11 ms a quarter of its period, by the few
-    millimetres a 6.9 t slab of this stiffness takes from this impulse.
+  - The model's slab swings as a whole, peaking a quarter of its period after the shock (10–11 ms
+    without its weight), by the few millimetres a 6.9 t slab of this stiffness takes from this
+    impulse.
   - The paper reports the largest displacement "at the time that the explosion wave reached the
     slab", and its 500 ms record for T1 never passes about 0.3 mm. Its sensors evidently did not
     see that swing.
-  - Read over the first 2 ms, the model gives 2–3 times the reported values. Taken as peaks, its
-    slab would be 8–12 times too flexible, against every other comparison here.
+  - Read over the first 2 ms, the model gives 2.3–3.6 times the reported values. Taken as peaks,
+    its slab would be 8–13 times too flexible, against every other comparison here.
   - Neither reading is scored. These three tests confirm the load only.
-- **The 20 kg test.** The model's slab bends to 147 mm and keeps 72 mm. Nothing on its top face is
-  crushed or removed, and 380 cm² of its underside is damaged. The test's slab, judged "moderate
+- **The 20 kg test.** The model's slab bends to 167 mm and keeps 96 mm. Nothing on its top face is
+  crushed or removed, and 612 cm² of its underside is damaged. The test's slab, judged "moderate
   damage", showed a top crater 1.02 × 0.76 m, its bars exposed, a wider spall beneath them, and over
   ten long cracks. So the model is far too resistant locally, at 0.22 m/kg^(1/3): the close-in
   direction the record already shows ([Chiquito](#slabs-under-close-in-charges), a third to a half
