@@ -1196,4 +1196,76 @@ struct BareBarTests {
         // Without them the column parts: what is left is the lower half ringing.
         #expect(lost.force < 0.15 * kept.force, "\(lost.force) N against \(kept.force) N kept")
     }
+
+    /// A reinforced block on the hard ground, its top pressed down onto it: crushed, it is left as
+    /// bare bars, and then lies flat with all eight nodes on the ground, which sets each one exactly
+    /// on it. Kept, its shape-function gradients were infinite and its nodes went NaN (debris landing
+    /// in the large-panel block, docs/structural-model.md#on-the-ground); it is removed instead.
+    @Test("A bare element pressed flat on the ground is removed, not left infinite")
+    func flattenedOnGround() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
+        let h: Float = 0.05
+        var steel = SteelProperties(
+            yieldStress: 500e6, ultimateStress: 600e6, ultimateStrain: 0.2, ruptureStrain: 3)
+        steel.youngsModulus = 200e9
+        var model = StructureModel(
+            solids: [Box(min: .zero, max: SIMD3(h, h, h))],
+            material: .concrete(name: "C30", compressiveStrength: 30e6, steel: steel),
+            elementSize: h, fixedBase: false)
+        model.reinforcement = [
+            ReinforcementLayer(region: Box(min: .zero, max: SIMD3(h, h, h)), ratio: SIMD3(0.02, 0.02, 0))
+        ]
+        model.bareBars = true
+        let solver = try StructureSolver(device: device, model: model)
+        solver.gravity = 0
+        solver.mutateNodes { nodes in
+            for j in 0...1 {
+                for i in 0...1 {
+                    nodes[solver.nodeIndex(i, j, 0)].isFixed = true
+                    let top = solver.nodeIndex(i, j, 1)
+                    nodes[top].isPrescribed = true
+                    nodes[top].velocity = SIMD3(0, 0, -10)
+                }
+            }
+        }
+        // Pressed until its top is on the ground (5 ms at 10 m/s) and a little longer; the ground
+        // stops each top node there.
+        var bare = false
+        var highest: Float = .infinity
+        while solver.time < 0.006 {
+            solver.advance(steps: 100)
+            bare = bare || solver.flag(0, 0, 0) == .bare
+            solver.mutateNodes { nodes in
+                highest =
+                    (0..<4).map {
+                        solver.referencePosition($0 & 1, $0 >> 1, 1).z
+                            + nodes[solver.nodeIndex($0 & 1, $0 >> 1, 1)].displacement.z
+                    }.max() ?? 0
+            }
+        }
+        // Then left free on the ground, under its weight: the element's forces now reach its nodes.
+        let flatAtRelease = solver.flag(0, 0, 0)
+        solver.gravity = 9.81
+        solver.mutateNodes { nodes in
+            for n in nodes.indices {
+                nodes[n].isFixed = false
+                nodes[n].isPrescribed = false
+                nodes[n].velocity = .zero
+            }
+        }
+        solver.advance(steps: 200)
+        var finite = true
+        solver.mutateNodes { nodes in
+            for node in nodes {
+                finite =
+                    finite && node.displacement.x.isFinite && node.displacement.y.isFinite
+                    && node.displacement.z.isFinite && node.velocity.x.isFinite && node.velocity.z.isFinite
+            }
+        }
+        #expect(bare, "crushed, the block should first be left as its bars")
+        #expect(highest == 0, "its top should lie on the ground: \(highest) m")
+        #expect(
+            flatAtRelease != .bare && flatAtRelease != .active, "flat, it should be gone: \(flatAtRelease)")
+        #expect(finite, "its nodes should stay finite")
+    }
 }

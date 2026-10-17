@@ -1101,6 +1101,12 @@ close agreement today rests in part on the crushed bare elements' hourglass forc
 that throw SN144's nodes. A fix that holds both would have to give the crushed element's tie to the
 debris a physical basis, such as the bars' buckled strength, rather than the hourglass control's.
 
+**Flattened to nothing, always removed.** Either way, a bare element whose volume is exactly zero
+(all eight nodes in one plane) is removed, bars and all: its forces would be infinite. In practice
+the hard ground is what puts eight nodes in one plane to the last bit, setting each node that
+reaches it exactly on it; that is how the large-panel block's flank wall blew up as it landed (see
+[On the ground](structural-model.md#on-the-ground)). No run that stayed finite is changed.
+
 ## Defaults by regime
 
 The validation cases fall into regimes that the options split along (see the

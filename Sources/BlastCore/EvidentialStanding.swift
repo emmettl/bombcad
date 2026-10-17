@@ -137,7 +137,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-9"
+    public static let currentTable = "standing-table-11"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -2013,6 +2013,9 @@ struct StandingScene {
             assumptions: [
                 "Concrete broken under a close-in charge is never removed, so no hole opens.",
                 "Debris is pushed crudely by the air, as cubes with a fixed drag.",
+                "Debris hazard (with rubble particles): pieces still moving at the end fly on in still air to "
+                    + "where they land; those that had already landed are taken as they lie, with the energy "
+                    + "they then had, which undercounts hazardous debris near the structure.",
                 "Collapse is chaotic: a slightly different input gives a different pattern of debris.",
                 "Bars rupture at a typical bar's elongation at fracture over a 100 mm window (15% for the "
                     + "default steel): checked only on the side of holding, where the record's bars held, since "
@@ -2090,7 +2093,10 @@ struct StandingScene {
                 "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
                     + "2° is flagged as beyond the one-way model.",
                 "Glass is annealed, on Moore's large-deflection plate, simply supported, breaking at E1300's "
-                    + "median strength with the whole pane at its largest stress; fragments' hazard is not graded.",
+                    + "median strength with the whole pane at its largest stress.",
+                "The glass's hazard is graded by GSA's conditions and ASTM F1642's ratings from where it "
+                    + "would land, thrown whole from the pane's middle at its speed on breaking, the load pushing "
+                    + "it on, over a 0.9 m sill; no test's fragments compared.",
                 "Concrete by ASCE/SEI 59-11's limits for single-reinforced slabs; brick cracked or fallen, with "
                     + "no arching.",
             ]
@@ -2254,6 +2260,8 @@ struct StandingScene {
         let shared = [
             "One way: fragments do not push back on the air or the structure, and stop where they first hit.",
             "Tumbling cubes of the casing's steel; no break-up, ricochet or penetration.",
+            "Hazard distance: the DDESB's, where landings of 79 J or more on open ground fall below one per "
+                + "55.7 m², in 8 directions; as good as the ranges, which no arena test has checked.",
         ]
         guard inputs.fragments?.mottFactor != nil else {
             return result(
@@ -2301,19 +2309,30 @@ struct StandingScene {
         return result(
             .groundShock, .illustrative,
             column
-                ? "A layered soil column under each point, checked against closed-form solutions; nothing "
-                    + "compared with a ground shock measurement."
-                : "The design manuals' one-dimensional air-induced ground shock; nothing compared with a "
-                    + "measurement.",
-            evidence: column
+                ? "A layered soil column under each point, checked against closed-form solutions; against "
+                    + "one measured surface burst, its vertical velocity 20 to 80 times too high (the safe side), "
+                    + "while the horizontal motion that dominated it is not modelled (the unsafe side)."
+                : "The design manuals' one-dimensional air-induced ground shock; against one measured surface "
+                    + "burst, its vertical velocity 20 to 80 times too high (the safe side), while the horizontal "
+                    + "motion that dominated it is not modelled (the unsafe side).",
+            evidence: (column
                 ? [
                     StandingEvidence(
                         "Uniform, layered and bilinear soil columns against closed-form solutions",
                         "Within 1% for pulses, reflections and resonance; 3–8% for bilinear unloading",
                         "ground-shock.md#checks")
-                ] : [],
+                ] : [])
+                + [
+                    StandingEvidence(
+                        "Xia et al.'s 1 t surface burst, 0.5 m deep at 21 and 42 m",
+                        "Vertical velocity 20–30 and 50–80 times the measured accelerations' integral; "
+                            + "within three times a clipped velocity gauge; the measured motion mostly horizontal",
+                        "ground-shock.md#against-measured-ground-motion")
+                ],
             assumptions: [
                 "Away from the charge only; no direct-induced shock or crater.",
+                "No motion carried by the ground's own wave where it outruns the air, which dominated the one "
+                    + "measured test.",
                 "The ground stays rigid for the air.",
                 "Not for design, buried services or vibration limits.",
             ], documents: ["ground-shock.md#limitations"])

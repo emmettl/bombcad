@@ -116,6 +116,11 @@ struct EnvelopeDamageSection: View {
             if building.insidePeakPa > 0 {
                 line += String(format: ", inside %.1f kPa", building.insidePeakPa / 1000)
             }
+            if let glazing = building.worstGlazing, glazing.condition > .two {
+                line +=
+                    "; glazing hazard: GSA \(glazing.condition.rawValue), ASTM \(glazing.rating.rawValue.lowercased())"
+                line += String(format: " (glass at %.0f m/s)", glazing.speedMS)
+            }
         }
         if building.beyondOneWay { line += "; beyond the one-way model (a panel past 2°)" }
         return line

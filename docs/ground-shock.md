@@ -10,8 +10,9 @@ the bottom layer of cells to the estimate a frame at a time, a one-way consumer 
 **Standing: illustrative.** There are two models: the textbook one-dimensional estimate of
 air-induced ground shock from the protective design manuals, and a layered soil column under
 each point, solved step by step through the overpressure's history on the ground. The column is
-checked against closed-form solutions, but neither model has been compared with a ground
-shock measurement. Use them to see roughly how hard and how far the ground shakes under a
+checked against closed-form solutions. Compared with one measurement, a 1 t surface burst at 21
+and 42 m, both put the vertical velocity 20 to 80 times what was measured, at ranges near and
+past where the ground's wave outruns the air ([below](#against-measured-ground-motion)). Use them to see roughly how hard and how far the ground shakes under a
 blast, and how layers and the soil's unloading change that, and where the simple estimate stops
 applying. Do not use them for design, for damage to buried services or for vibration limits.
 
@@ -149,14 +150,18 @@ the compaction the blast leaves behind.
 - **The load between frames.** A frame comes every millisecond, too coarse for a shock's
   rise, but each carries the solver's peak and positive impulse so far, kept every time step.
   The load is rebuilt between frames as straight lines that keep both. Where the peak rose above
-  the two frames' values, the shock arrives and rises to that peak, then falls in a line to the
-  next frame's value. Its arrival is placed so that the interval's positive impulse is the
+  the earlier frame's value, the shock arrives with a jump to that peak, then falls in a line to
+  the next frame's value, its arrival placed so that the interval's positive impulse is the
   solver's. Elsewhere a line runs through a midpoint chosen to keep the impulse, held between
-  zero and the peak. The shock rises over the time its front takes to cross one of the solver's
-  cells, the width of the solver's own shock, and over no fewer than twelve of the column's
-  steps (0.6 ms at the default). A faster rise makes the surface's node ring: up to two fifths
-  too fast in soil that unloads at twice its loading speed. The rise is centred on the arrival,
-  so the column's arrivals can be up to half of it early.
+  zero and the peak. Each of the column's steps then takes the load's mean over a window of
+  twelve of its steps centred on it (0.6 ms at the default). That keeps the impulse exactly and
+  gives the jump its rise: a sharper rise makes the surface's node ring, up to two fifths too
+  fast in soil that unloads at twice its loading speed. The window is not widened to the time
+  the front takes to cross a cell, as the solver's own shock is already that wide in the peak
+  and impulse it keeps. It is centred, so the column's arrivals can be up to half of it early,
+  and it shaves a peak falling after the shock by w/(2t_d) for a triangle of length t_d and
+  window w: 7% for a 4 ms pulse, a fifth for the 1.4 ms pulse 4 m from 100 kg, 5% for 1 t at
+  21 m.
 - **Sideways.** The column is vertical, and the air presses only straight down on the ground,
   so nothing in it drives horizontal shear. A horizontal shear column is natural for an
   earthquake coming up from below, not for a load pressing from above. The horizontal velocity
@@ -229,8 +234,10 @@ The convergence is ragged, as a front smeared over a few elements is, and first 
   displacement and the stress wave's arrival;
 - the overpressure on the ground at every frame, for anyone wanting the shape of the load;
 - whether the point was covered;
-- with the column, at each depth the displacement left at the last frame and the downward
-  velocity at every frame, and the point's profile of peaks from the surface down.
+- with the column, at each depth the displacement left at the last frame, the downward
+  velocity at every frame and the peak downward and upward accelerations (only as fine as the
+  load's averaging window, so no prediction), and the point's profile of peaks from the
+  surface down.
 
 The file also gives the model, the column's profile, each frame's time, the frames, the bytes of
 air streamed and the time the run spent on them.
@@ -346,15 +353,19 @@ column left at the surface by 0.17 s:
 
 | Range | Estimate | Elastic | r = 2 | r = 3 | Layered | Left, r = 2 |
 |---|---|---|---|---|---|---|
-| 4 m  | 2,894, 858, 357, 117 | 2,875 at every depth | 2,892, 755, 207, 41 | 2,913, 605, 163, 29 | 2,926, 699, 120, 48 | 7.8 mm |
-| 7 m  | 902, 424, 206, 74 | 910 | 943, 434, 144, 21 | 948, 388, 122, 6 | 926, 419, 103, 40 | 4.0 mm |
-| 10 m | 391, 237, 132, 52 | 389 | 400, 281, 120, 15 | 412, 252, 101, 12 | 401, 271, 76, 31 | 2.5 mm |
-| 14 m | 189, 134, 85, 37 | 190 | 193, 161, 93, 12 | 192, 149, 81, 11 | 191, 158, 52, 21 | 1.8 mm |
-| 20 m | 94, 74, 52, 25 | 94 | 95, 87, 61, 13 | 95, 84, 56, 8 | 94, 86, 32, 13 | 1.2 mm |
-| 28 m | 53, 44, 32, 17 | 53 | 53, 51, 40, 12 | 53, 50, 37, 8 | 53, 50, 20, 8 | 0.8 mm |
+| 4 m  | 2,894, 878, 367, 121 | 2,327 at every depth | 2,307, 710, 197, 38 | 2,381, 590, 165, 28 | 2,365, 679, 128, 50 | 7.5 mm |
+| 7 m  | 902, 435, 213, 77 | 821 | 831, 427, 141, 22 | 853, 388, 121, 7 | 841, 413, 102, 40 | 3.9 mm |
+| 10 m | 391, 243, 139, 55 | 384 | 394, 277, 119, 15 | 411, 251, 101, 11 | 398, 270, 76, 31 | 2.5 mm |
+| 14 m | 189, 137, 89, 40 | 187 | 189, 161, 94, 12 | 190, 154, 81, 11 | 190, 158, 53, 21 | 1.8 mm |
+| 20 m | 94, 74, 53, 26 | 93 | 94, 88, 61, 13 | 94, 87, 56, 8 | 93, 87, 32, 13 | 1.3 mm |
+| 28 m | 53, 43, 32, 17 | 52 | 53, 51, 40, 12 | 53, 50, 37, 9 | 53, 50, 20, 8 | 0.9 mm |
 
-- At the surface every column gives the plane-wave relation P/(ρc), as the estimate does, to
-  within 1 to 5%. The rest is the load rebuilt between frames and the shock's twelve-step rise.
+Taken on 17 October, on that day's air and with the load averaged over the column's window
+(the table of 10 October shaped the rise into the load instead).
+
+- At the surface every column gives the plane-wave relation P/(ρc), as the estimate does,
+  within 1 to 5% from 10 m out. Nearer, the window shaves the short pulses: by a fifth at 4 m,
+  where the pulse lasts 1.4 ms, and by 5 to 9% at 7 m.
 - The elastic column carries the peak down whole, as it should. The loss with depth is all the
   soil's hysteresis.
 - With stiffer unloading the peak wears down faster, as the closed form says. At 3 m the
@@ -371,7 +382,7 @@ column left at the surface by 0.17 s:
   the same or lower.
 - The elastic column's surface ends a fraction of a millimetre up, not down: the blast's suction
   phase gives back almost all its positive impulse, and the elastic soil follows. The bilinear
-  soil is left compacted: 8 mm at 4 m, under a millimetre beyond 25 m.
+  soil is left compacted: 7.5 mm at 4 m, under a millimetre beyond 25 m.
 
 **The column's cost.** Over those runs, 31 points to 10 m took 4.0 ms a frame in the elastic
 soil (1,130 elements a column, the finest, at 300 m/s), 2.4 ms with r = 2 (570 elements), 1.5 ms
@@ -379,7 +390,9 @@ with r = 3 (380) and 0.7 ms layered (230). The air took 260 to 470 ms a frame, a
 waited for the column. Its cost grows with the points, the elements and the steps: halving the
 step quadruples it. `blastbench soilcolumn`, 31 points to 3 m, gave 0.15, 1.0 and 4.1 ms a frame
 at steps of 100, 50 and 25 µs, about 6 to 8 ns an element-step. All of these were taken on a Mac
-Studio loaded by other work, and they vary by a factor of two from run to run.
+Studio loaded by other work, and they vary by a factor of two from run to run. On 17 October,
+with the load averaged, the same four took 1.3, 6.4, 1.8 and 2.1 ms a frame against about 190
+ms of air: the window costs nothing, and the spread is the Mac's load.
 
 **Cost.** In the street canyon on the medium grid, 21 points spread over 49 m × 25 m took a
 slice of 199 × 101 cells a frame: 41 MB over 171 frames. Cutting the slices out and consuming
@@ -388,9 +401,85 @@ them took 0.02 s of a run of 8 to 9 s. On open ground, 31 points along a line to
 runs of the same case varied by several seconds. The estimate's own cost is lost in that noise:
 the run's cost is the frames' extra steps, not the estimate.
 
+## Against measured ground motion
+
+One test so far: Xia et al.'s 1 t of TNT on the ground in the Gobi desert, measured 0.5 m deep
+at 21 and 42 m (*Applied Sciences* 12, 7987, 2022). The comparison is `blastbench groundmotion`
+against `Fixtures/XiaChen2022`. **It does not hold.** Fed the air model's ground pressures or
+Kingery–Bulmash's, both models put the vertical velocity at 0.5 m at 0.22 to 0.26 m/s at 21 m and
+0.057 to 0.062 m/s at 42 m. That is 20 to 30 times the measured accelerations' integral at 21 m, and 50 to
+80 times at 42 m, though within a factor of three of a velocity gauge that clipped. The
+measured motion is mostly horizontal, at ranges where the air's front runs at or below the
+soil's wave speed, where the models say they do not apply.
+
+**The test.** One charge, 50 kg of cast TNT setting off 950 kg in bags, on sand and gravel laid
+on hard alluvial ground. In a box in a pit 0.5 m deep at each range: three-axis
+accelerometers, and at 21 m a velocity sensor. The paper prints each component's peak
+acceleration and plots the histories. The 42 m velocity sensor's cable was cut, and the 10 t
+shot gave nothing.
+
+| Range | Peak acceleration, X, Y, Z (m/s²) | Integrated velocity: X, Y, vertical down (m/s) | Velocity gauge |
+|---|---|---|---|
+| 21 m | +10.5/−5.4, +12.9/−9.5, +1.6/−3.6 | 0.031, 0.045, 0.009–0.012 | clipped at 0.085 for ~60 ms, component not stated |
+| 42 m | +1.3/−0.4, +0.8/−0.3, +0.25/−0.36 | 0.004, 0.003, 0.0008–0.0012 | cable cut |
+
+The velocities are the digitised accelerations integrated, each record's pre-event offset
+removed or not (the range). They are the comparison's main uncertainty: the clipped velocity
+gauge read more than any integrated component reaches, and the paper does not say why.
+The records' time zero is not stated, so arrival times are not compared.
+
+**The soil** was not measured. The authors fitted a seismic speed of 457 m/s, with UFC
+3-340-01's relation for shock driven directly into the ground, to the two peak accelerations.
+They took 2,050 kg/m³ for their numerical model from tests on another sand. Both are used
+here: as the column's loading speed and density, with unloading at one, two and three times
+the loading speed.
+
+**The model.** A quarter of the burst in the corner of a domain 48 m square and 31 m high,
+on the recommended air (afterburning, hot air and far-field faces), on 0.5 and 0.25 m cells.
+The ground is streamed to the points every 0.2 ms. The same points are also fed
+Kingery–Bulmash's Friedlander pulse, with the curves' peak, impulse, duration and arrival.
+
+| Range | Load (air model, 0.25 m; Kingery–Bulmash) | Front speed, regime at 457 m/s | Vertical velocity at 0.5 m: estimate; columns (r = 1, 2, 3) | Measured (integrated) |
+|---|---|---|---|---|
+| 21 m | 228 kPa, 1,243 Pa·s, at 16.6 ms; 254 kPa, 1,285 Pa·s, at 18.6 ms | 582 m/s, transseismic | 0.221; 0.239, 0.232, 0.231 (Kingery–Bulmash: 0.244; 0.258, 0.241, 0.241) | 0.009–0.012 |
+| 42 m | 55 kPa, 735 Pa·s, at 59.4 ms; 59 kPa, 694 Pa·s, at 62.8 ms | 412 m/s, outrunning | 0.057; 0.059, 0.058, 0.058 (Kingery–Bulmash: 0.060; 0.062, 0.061, 0.061) | 0.0008–0.0012 |
+
+- **Velocity.** Every model gives about P/(ρc), the column within a few per cent of the
+  estimate: at 0.5 m the soil's unloading has worn little off a pulse 7–14 m long in it. The
+  air model's peaks are 90% and 93% of Kingery–Bulmash's on 0.25 m cells (83% and 86% on 0.5 m,
+  the velocities likewise), its impulses within 6%, which changes nothing in the conclusion.
+- **Against the soil's unknown stiffness.** Fed Kingery–Bulmash, the column unloading at twice
+  its loading speed gives 0.35 m/s at 21 m if the soil loads at 300 m/s, 0.12 at 1,000 m/s
+  and 0.066 at 1,800 m/s. At 42 m it gives 0.090, 0.029 and 0.016. Even the stiffest is five to
+  seven times the integrated vertical at 21 m and thirteen to twenty times at 42 m. No plausible
+  soil closes the gap.
+- **Acceleration.** Fed the air model, the columns' peak vertical accelerations are 130 to
+  310 m/s² at 21 m and 20 to 61 at 42 m, 35 to 170 times the measured 3.6 and 0.36 m/s². Fed
+  Kingery–Bulmash's sharper shock, they reach 1,200. They are the load's rise over the soil's
+  impedance, and the rise is the solver's smeared shock or the column's averaging window, so
+  the model gives no acceleration to compare: on 0.25 m cells they are up to twice those on
+  0.5 m. The measured accelerations do say that the vertical motion at 0.5 m rose over many
+  milliseconds, not the fraction of a millisecond the air's shock takes.
+- **Regime.** At 21 m the air's front runs at 582 m/s (604 by Kingery–Bulmash), between the
+  soil's 457 m/s and √2 times it: transseismic, with no horizontal estimate. At 42 m it runs at
+  412 m/s, outrun by the soil's wave, where the vertical estimate is only the air's share. If
+  the hard ground is stiffer than about 600 m/s, both ranges are outrun. The measurements fit that: horizontal
+  accelerations three to eight times the vertical and velocities three to four times, the motion that one-dimensional, vertical,
+  air-induced models leave out.
+
+**How far it holds.** On this one test, the vertical air-induced velocity from the manuals'
+relation and from the column is 20 to 80 times what the accelerometers imply, at ranges near
+and past the outrunning limit. Only the clipped velocity gauge, of unknown component, comes
+within a factor of three. Neither model is shown to hold for the motion of the ground at these
+ranges, and the horizontal motion that dominated is not modelled. The test cannot show whether
+they hold where they claim to, closer in and superseismic: no gauge stood there. Standing stays
+illustrative.
+
 ## Limitations
 
-- Illustrative, as above: no comparison with measured ground shock.
+- Illustrative, as above. Compared with one measurement, Xia et al.'s 1 t surface burst
+  ([above](#against-measured-ground-motion)), where the vertical velocity is 20 to 80 times what
+  the accelerometers imply, at ranges near and past the outrunning limit.
 - One-dimensional. The column has layers and rock beneath, but no water table of its own (a
   saturated layer can be given only as a stiffer layer), no surface waves, and nothing from the
   shape of the ground. The estimate is uniform soil.
@@ -402,9 +491,10 @@ the run's cost is the frames' extra steps, not the estimate.
   soil. The estimate has one wave speed, and its loss with depth is the manuals' empirical
   factor; its displacement is an upper value, with no permanent set.
 - In soil that unloads stiffly, the column's peak is first order in the step: within 8% of the
-  closed form at the default 50 µs, 3% at 25 µs (four times the cost). The shock is given a rise
-  of at least twelve of the column's steps, so very short pulses, close to the charge, are
-  smoothed, and arrivals can be up to 0.3 ms early.
+  closed form at the default 50 µs, 3% at 25 µs (four times the cost). The load is averaged over
+  at least twelve of the column's steps, so very short pulses, close to the charge, are
+  smoothed, and arrivals can be up to 0.3 ms early. The column's accelerations are the load's
+  rise over the soil's impedance, so they are only as fine as that window: no prediction.
 - Horizontal motion only where the front is clearly superseismic, by a crude geometric argument,
   layer by layer for the column. Where the ground's wave outruns the blast, the motion that
   arrives first is not modelled at all.
@@ -434,8 +524,13 @@ the run's cost is the frames' extra steps, not the estimate.
   differently, and a check of the bilinear moduli against uniaxial-strain tests on a real soil.
 - The ground points in the app as a grid over an area as well as a line, and the column's depth
   drawn in the view beside them rather than only in a chart.
-- A comparison with measured air-induced ground motion
-  ([Data survey](data-survey.md#3a-air-induced-ground-shock)).
+- A comparison with air-induced ground motion measured where the air's front is superseismic,
+  with gauges at several depths and the site's soil measured: Prairie Flat or Pre-Dice Throw II
+  ([Data wanted](data-wanted.md#to-fetch)). The only one so far, Xia et al.'s, stood near and
+  past the outrunning limit.
+- The motion the ground's own wave carries ahead of the blast where it outruns it, mostly
+  horizontal, which dominated Xia et al.'s records: proposed as an axisymmetric elastic
+  half-space driven by the air's ground pressures ([proposal](ground-shock-outrunning.md)).
 
 ## Sources
 

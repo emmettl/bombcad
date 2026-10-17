@@ -193,11 +193,16 @@ public struct GroundResponse: Codable, Sendable, Equatable {
     /// compaction leaves once the wave has passed; and the downward velocity at each frame, m/s.
     public var residualDisplacement: Float?
     public var history: [Float]?
+    /// The column's only: the peak downward and upward vertical acceleration, m/s², both positive.
+    /// At the front it is the rebuilt load's rise over the soil's impedance, so it is only as
+    /// fine as that rise: the solver's own shock, or twelve of the column's steps.
+    public var verticalAcceleration: Float?
+    public var upwardAcceleration: Float?
 
     public init(
         depth: Float, stress: Float, verticalVelocity: Float, verticalDisplacement: Float,
         horizontalVelocity: Float?, arrival: Double?, residualDisplacement: Float? = nil,
-        history: [Float]? = nil
+        history: [Float]? = nil, verticalAcceleration: Float? = nil, upwardAcceleration: Float? = nil
     ) {
         self.depth = depth
         self.stress = stress
@@ -207,6 +212,8 @@ public struct GroundResponse: Codable, Sendable, Equatable {
         self.arrival = arrival
         self.residualDisplacement = residualDisplacement
         self.history = history
+        self.verticalAcceleration = verticalAcceleration
+        self.upwardAcceleration = upwardAcceleration
     }
 }
 

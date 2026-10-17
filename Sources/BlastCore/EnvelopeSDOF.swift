@@ -217,12 +217,14 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
                 }
                 if broken {
                     response.lostResistanceAt = time
+                    response.velocityAtLoss = v
                     response.stressAtBreak = sigma
                     response.deflectionAtBreak = abs(x)
                 }
             }
             if response.lostResistanceAt == nil, backbone.last!.y == 0, abs(x) >= backbone.last!.x {
                 response.lostResistanceAt = time
+                response.velocityAtLoss = v
                 if brittle != nil {
                     broken = true
                     response.deflectionAtBreak = abs(x)
@@ -252,6 +254,8 @@ public struct SDOFResponse: Codable, Hashable, Sendable {
     /// When the deflection, either way, passed the backbone's last point with no resistance left,
     /// if it did.
     public var lostResistanceAt: Double?
+    /// Its velocity then, m/s, inward positive.
+    public var velocityAtLoss: Double?
     /// A brittle component's largest principal stress reached while whole, Pa, and the stress and
     /// the deflection (m, either way) at which it broke.
     public var peakStress: Double?

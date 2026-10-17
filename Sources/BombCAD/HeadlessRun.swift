@@ -20,7 +20,7 @@ enum HeadlessRun {
                            [--cloud <spec.json> [--sounding <sounding.csv>] [--cloud-results <file.json>]]
                            [--ground-shock <spec.json> [--ground-results <file.json>]]
                            [--envelope-results <file.json>] [--envelope-histories <file.json>] [--envelope-damage <file.json>]
-                           [--standing <file.json>]
+                           [--debris-results <file.json>] [--standing <file.json>]
                            [--consumer <ssh host> | auto | fragments=<where>,thermal=<where>,ground=<where>]
                            [--worker <ssh host>]…
 
@@ -37,7 +37,10 @@ enum HeadlessRun {
         (wall, slab and roof panels, panes, façade strips; both sides, 0.1 ms bins) as JSON, for a
         damage model. --envelope-damage judges each envelope building one way from those histories
         (concrete panels' levels between fixed and simply supported edges, panes broken and when,
-        the inside through them) and writes it as JSON; each building's line is printed too.
+        the inside through them, the glass's hazard by GSA's conditions and ASTM F1642's ratings)
+        and writes it as JSON; each building's line is printed too. A structure making rubble
+        (rubbleParticles) has its debris flown on to where it lands and judged against the
+        hazardous-fragment criteria, as fragments are; --debris-results writes it as JSON.
         --thermal reckons the fireball's thermal radiation on the ground and the scene's faces,
         frame by frame; the receivers go into the USD scene and, with --thermal-results, a JSON
         file. --cloud hands the hot gas left at the end of the run over to a model of the
@@ -105,6 +108,8 @@ enum HeadlessRun {
         /// Where each envelope component's pressure history goes, as JSON.
         var envelopeHistories: URL?
         var envelopeDamage: URL?
+        /// Where the structures' debris landings and their hazard go, as JSON.
+        var debrisResults: URL?
         var groundResults: URL?
         /// Where the standing of the run's results goes, as JSON.
         var standing: URL?
@@ -134,7 +139,7 @@ enum HeadlessRun {
                             "vdb-fields", "fragments",
                             "consumer", "fragment-results", "thermal", "thermal-results", "cloud",
                             "cloud-results", "sounding", "ground-shock", "ground-results", "envelope-results",
-                            "envelope-histories", "envelope-damage",
+                            "envelope-histories", "envelope-damage", "debris-results",
                             "frame-interval", "worker", "standing", "advise", "ground", "water-table",
                         ]
                         .contains(key)
@@ -160,6 +165,7 @@ enum HeadlessRun {
             options.envelopeResults = values["envelope-results"].map { URL(filePath: $0) }
             options.envelopeHistories = values["envelope-histories"].map { URL(filePath: $0) }
             options.envelopeDamage = values["envelope-damage"].map { URL(filePath: $0) }
+            options.debrisResults = values["debris-results"].map { URL(filePath: $0) }
             options.standing = values["standing"].map { URL(filePath: $0) }
             if let text = values["advise"] {
                 guard let target = AdvisorTarget(text: text) else {
@@ -343,7 +349,7 @@ enum HeadlessRun {
             for url in [
                 options.out, options.csv, options.usd, options.vdb, options.fragmentResults,
                 options.thermalResults, options.cloudResults, options.groundResults, options.envelopeResults,
-                options.envelopeHistories, options.envelopeDamage, options.standing,
+                options.envelopeHistories, options.envelopeDamage, options.debrisResults, options.standing,
             ]
             .compactMap({ $0 })
             where FileManager.default.fileExists(atPath: url.path) {
@@ -480,6 +486,12 @@ enum HeadlessRun {
         let volumeMetadata = [
             ("bombcad_standing", standing.compact), ("bombcad_standing_table", standing.table),
         ]
+        if options.debrisResults != nil,
+            !inputs.scenario.structuralObjects.contains(where: { $0.structure?.rubbleParticles == true })
+        {
+            throw ProjectFileError.invalid(
+                "--debris-results needs a structure that makes rubble (rubbleParticles).")
+        }
         for (option, asked) in [
             ("--envelope-results", options.envelopeResults),
             ("--envelope-histories", options.envelopeHistories),
@@ -751,6 +763,7 @@ enum HeadlessRun {
                     "Tracers", frames: fragments.frames.map { Array($0.dropFirst(count)) },
                     widths: [Float](repeating: 0.1, count: tracers), colour: SIMD3(0.9, 0.9, 0.95))
             }
+            if let hazard = fragments.hazard { scene?.addHazard(hazard, name: "FragmentHazard") }
         }
         if let thermalResult {
             let spacing = min(
@@ -783,6 +796,9 @@ enum HeadlessRun {
             scene?.addCloud(result.frames(), secondsPerFrame: spec.frameInterval)
             cloud = result
         }
+        // The structures' rubble flown on to land, while the scene can still take its ring.
+        let debris = model.debrisResult()
+        if let debris { scene?.addHazard(debris.hazard, name: "DebrisHazard") }
         scene?.addCraters(inputs.settings.craters(over: inputs.scenario))
         try scene?.finish()
         finished = true
@@ -796,6 +812,13 @@ enum HeadlessRun {
             streams += model.envelopeDamage.map { building in
                 let name = inputs.scenario.object(id: building.id)?.name ?? "Building"
                 return "\(name): " + EnvelopeDamageSection.summary(building)
+            }
+        }
+        if let debris {
+            streams.append(debris.summary)
+            if let url = options.debrisResults {
+                try JSONEncoder().encode(WithStanding(debris, standing[.structuralDamage])).write(
+                    to: url, options: .withoutOverwriting)
             }
         }
         return (

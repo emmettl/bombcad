@@ -143,11 +143,13 @@ Supports are under [structures and supports](#structures-and-supports) above.
 One way and separable ([distributed computing](distributed-computing.md#the-long-term-visions-effects)).
 
 - **Done, an approximation:** [fragments](fragments.md) from a casing's dimensions, Mott's
-  masses within 1.4 of Cooper's counted bomb, measured drag (17 October); hazard outputs next.
+  masses within 1.4 of Cooper's counted bomb, measured drag; their [hazard](fragments.md#hazard)
+  distance by DDESB's criterion, debris's alike, and glazing graded by GSA and ASTM F1642 (17 October).
 - **Done, illustrative:** the fireball's
   [thermal radiation](thermal-radiation.md) and [surface heating](surface-heating.md); its
   [rise and cloud](fireball-rise.md); [ground shock](ground-shock.md), as the manuals'
-  estimate or a layered soil column; [gas deflagrations](deflagration.md), started: FM Global's
+  estimate or a layered soil column, against one measured 1 t burst 20 to 80 times too high in
+  the vertical, near the outrunning limit; [gas deflagrations](deflagration.md), started: FM Global's
   vented tests within 0.4–1.6 of the measured peaks, with sub-grid turbulence and the measured
   cellular instability.
 - **Now:** why the deflagration's flame stalls when lit in the middle (0.4–0.6 there), a young
@@ -165,7 +167,8 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   flows, ejecta and the shock driven into the ground, for close-in work. It starts with a
   ContinuumKit and Edgerton check under the sharing rule: neither had a cratering or soil-flow
   model on 17 October 2026, but Edgerton's volume solver and cohesive cracks overlap.
-- **Next:** the cloud's top after two minutes; a comparison with measured ground motion.
+- **Next:** the cloud's top after two minutes; ground motion measured where the blast is
+  superseismic (Prairie Flat, Pre-Dice Throw II), and the motion ahead of an outrunning blast.
 - **Blocked:** measurements wanted in [data wanted](data-wanted.md) 3a (ground shock), 3d (a
   cloud's growth), 3e (fireball radiation) and 3f (a vented deflagration).
 
