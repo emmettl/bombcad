@@ -2006,6 +2006,12 @@ struct StandingScene {
                         + "one that blew out failed: the safe side",
                     "building-envelopes.md#one-way-walls"),
                 StandingEvidence(
+                    "Slabs held on their edges against measurement (the contest slab, Reynolds, Wu, Wang, Mendonça)",
+                    "Under measured loads the measured peak between the fixed and simply supported bounds on all "
+                        + "eight; under the model's own close-in loads under-read, as the detailed model is, and "
+                        + "Mendonça's two collapses missed",
+                    "building-envelopes.md#slabs-held-on-their-edges"),
+                StandingEvidence(
                     "Monk and Clubley's annealed windows in the Shoeburyness tunnel (12 timed panes)",
                     "Every pane broken, as in the tests, at 0.82–1.07 of the measured time and 0.69–1.15 of the "
                         + "deflection", "validation.md#window-glass"),
@@ -2015,9 +2021,10 @@ struct StandingScene {
                     "validation.md#the-threshold-against-astm-e1300"),
             ],
             assumptions: [
-                "Compared with measurement as freestanding and one-way walls, and glass only under a load far "
-                    + "past what breaks it (its threshold against E1300's design resistance): panels held on all "
-                    + "their edges have none; references on one mesh and one air grid.",
+                "Compared with measurement as freestanding and one-way walls, as slabs held on their edges "
+                    + "(mostly on two; one panel clamped all round), and glass only under a load far past what "
+                    + "breaks it (its threshold against E1300's design resistance); references on one mesh and "
+                    + "one air grid.",
                 "Reinforced blockwork is judged as a concrete of the masonry's strength, graded by the "
                     + "concrete's limits; a freestanding wall's cap adds only the mass its construction gives.",
                 "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "

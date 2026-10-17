@@ -290,6 +290,14 @@ public enum ValidationTables {
             document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
             quote: "0.61/1.19", "1.03/1.87"),
         Figure(
+            id: "envelopeSlabMeasured", low: 0.97, high: 2.59,
+            document: "building-envelopes.md#slabs-held-on-their-edges",
+            quote: "reads 0.97–2.59 of the"),
+        Figure(
+            id: "envelopeSlabCloseIn", low: 0.45, high: 1.42,
+            document: "building-envelopes.md#slabs-held-on-their-edges",
+            quote: "Wu's slabs at 0.45–1.42 simply supported"),
+        Figure(
             id: "envelopeBrick", low: 0.82, high: 2.54,
             document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
             quote: "(0.82–2.54)"),
@@ -1379,6 +1387,21 @@ extension StandingScene {
                     low: "too stiff", high: "too soft",
                     validity: "the wall facing the charge, 0.2 m, 50–500 kg",
                     check: check),
+                figure(
+                    "envelopeSlabMeasured", .peakDeflection,
+                    "Concrete panel deflection against measurement, simply supported, measured load",
+                    low: "too stiff", high: "too soft",
+                    validity:
+                        "one-way 102 mm slabs under the blast load simulator's measured loads, 37–109 MPa; "
+                        + "the fixed bound reads a tenth or less, so the measured lies between",
+                    check: "The contest slab and Reynolds's six"),
+                figure(
+                    "envelopeSlabCloseIn", .peakDeflection,
+                    "Concrete panel deflection against measurement, simply supported, the model's close-in load",
+                    low: "too stiff", high: "too soft",
+                    validity:
+                        "100 mm slabs on two edges, 0.2–1.6 kg at 0.43 m/kg^(1/3), the load the model's air",
+                    check: "Wu et al.'s slabs"),
                 figure(
                     "envelopeBrick", .peakDeflection, "Brick wall rotation", low: "too stiff",
                     high: "too soft",
