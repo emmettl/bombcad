@@ -1111,6 +1111,8 @@ public enum StandingTable {
         "StructureMaterial.steelRateDependent": .option([.alternativeRateLaws]),
         "StructureMaterial.units": .option([.smearedMasonry]),
         "StructureMaterial.isTransparent": .input,
+        // Timber's properties; its standing follows from its material class.
+        "StructureMaterial.timber": .input,
         // Connections.
         "Anchorage.normalStiffness": .input,
         "Anchorage.shearStiffness": .input,
