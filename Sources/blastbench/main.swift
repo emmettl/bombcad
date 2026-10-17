@@ -5221,6 +5221,7 @@ do {
     case "perimeter": try runPerimeter(device: device)
     case "keys": try runKeys(device: device)
     case "envelope-walls": try runEnvelopeWalls(device: device)
+    case "nian": try runNian(device: device)
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
         exit(2)

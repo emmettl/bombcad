@@ -3048,6 +3048,47 @@ joints running away within 30 ms (`blastbench perimeter --study wall --wall maso
 nodes of broken blockwork leaving at 10³ m/s; cracks smeared over a whole face where the tests
 showed a few; and a footing that cannot be held by a slab cast against it.
 
+## A blast wall with its length known
+
+The shielding Alsubaei's walls could not test, for want of their wing walls' length: X. Nian et al.,
+*Defence Technology* 31 (2024) 567–579 (open access, CC BY-NC-ND; derived numbers in
+`Fixtures/Nian2024`), a reinforced concrete wall 6 m long, 2.5 m high and 0.4 m thick standing alone,
+5 and 20 kg of TNT on the ground on its axis 3 m in front, with side-on gauges in the ground on a line
+through the charge parallel to the wall (3, 5, 7 and 9 m from it), one reflected gauge in the face
+0.22 m up, and side-on gauges in the ground 2, 4 and 6 m behind it. Two shots, both with the wall; a
+few gauges behind it failed, and those that read were, the authors say, abnormal and low-pass filtered
+at 2 kHz. `blastbench nian` runs it: the wall rigid, the recommended air, each charge with the wall and
+without it, on 100 and 50 mm cells (17 October 2026).
+
+Peaks, kPa, measured / model on 50 mm cells (100 mm), and the wall's factor (with it over without):
+
+| Gauge | 5 kg: measured | model | 20 kg: measured | model | The wall's factor, 5 / 20 kg |
+|---|---|---|---|---|---|
+| In front, 3 m along | 310 | 335 (285) | 1,620 | 1,077 (896) | 1.00 |
+| 5 m along | 122 | 106 (97) | 220 | 311 (285) | 1.00 |
+| 7 m along | 63 | 55 (50) | 170 | 145 (134) | 1.00 |
+| 9 m along | 49 | 36 (32) | 120 | 86 (80) | 1.00 |
+| Face, 0.22 m up (reflected) | 3,240 | 1,238 (924) | 7,720 | 5,137 (3,389) | |
+| 2 m behind | 14.3 | 27.1 (24.6) | – | 56.8 (50.9) | 0.29 / 0.21 |
+| 4 m behind | – | 27.9 (25.2) | 52.1 | 65.3 (59.8) | 0.55 / 0.50 |
+| 6 m behind | 12.2 | 26.0 (23.9) | – | 63.2 (60.5) | 0.78 / 0.80 |
+
+**In front,** where the gauges see the open wave beside the wall, the model is 1–11% below the
+paper's own ConWep values (5 kg: 370, 118, 61, 40 kPa; 20 kg: 1,090, 340, 160, 90) and the measured
+scatter about them is larger: at 20 kg the first two gauges read 1.5 and 0.65 of ConWep. The
+reflected peak at the wall's foot is 0.79 and 0.83 of ConWep's on 50 mm cells and still rising with
+the mesh; the measured 3.24 MPa at 5 kg, twice ConWep's, is a narrow spike.
+
+**Behind the wall the model shields less than the test**: 1.9 and 2.1 times the measured peaks at 5 kg
+and 1.25 times at 20 kg, rising a little as the cells are halved. With a whole, known length, the wave
+over the top and round the ends (6 m of wall, 3 m from the charge) leaves 0.3 of the open peak 2 m
+behind, rising to 0.8 by 6 m; the paper's factors against its empirical free field are 0.12–0.33.
+The measured peaks behind are the filtered records of gauges the authors call abnormal, and a 2 kHz
+filter takes a sharp front's peak down; how far, without the raw records, cannot be said. Behind
+Alsubaei's walls the model shielded more than measured; behind this one, less. Both lie on the side
+of the measurement's own doubts, so neither settles how well the model diffracts over a wall:
+this one errs on the safe side for what stands behind.
+
 ## Brick walls' debris
 
 Where a brick wall's debris lands: single-leaf brick walls broken by a blast, every brick
