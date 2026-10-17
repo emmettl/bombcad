@@ -24,6 +24,8 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     case internalExplosion
     case furnishedRoom
     case ventedGasRoom
+    case largePanelGas
+    case largePanelStreet
 
     public var id: String { rawValue }
 
@@ -52,6 +54,8 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .internalExplosion: "Internal explosion (test)"
         case .furnishedRoom: "Furnished room (freestanding)"
         case .ventedGasRoom: "Gas explosion, vented room"
+        case .largePanelGas: "Large-panel flats: gas in a corner flat"
+        case .largePanelStreet: "Large-panel flats: street charge"
         }
     }
 
@@ -481,6 +485,11 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .furnishedRoom:
             // Freestanding furniture in a rigid room under an internal explosion: see PopulatedScene.
             return PopulatedScene.furnishedRoom.scenario
+        case .largePanelGas, .largePanelStreet:
+            // A twelve-storey block of precast panels of the Ronan Point type, its walls and
+            // floors joined by breakable connections: see LargePanelBlock. Run for 4 s to see
+            // whether the collapse spreads through the joints.
+            return LargePanelBlock.scenario(self == .largePanelGas ? .gas : .street, name: title)
         case .ventedGasRoom:
             // A room of about FM Global's chamber's size (Bauwens et al. 2008) full of
             // stoichiometric methane, lit in the middle, its 2 x 2 m vent closed by a panel that
