@@ -281,6 +281,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case terrainStaircase
     case deflagration
     case ventPanels
+    case congestion
     case importedEnvelopes
     case mapBuildings
     case ventedGlazing
@@ -365,6 +366,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
                 && !config.cutsTerrain(of: inputs.scenario)
         case .deflagration: return inputs.scenario.deflagration != nil
         case .ventPanels: return !(inputs.scenario.ventPanels ?? []).isEmpty
+        case .congestion: return !(inputs.scenario.congestion ?? []).isEmpty
         case .importedEnvelopes:
             return !inputs.scenario.envelopeSources(.ifc).isEmpty
                 || !inputs.scenario.envelopeSources(.mesh).isEmpty
@@ -617,6 +619,15 @@ public enum StandingTable {
                     + "assumed two levels: no openings, interiors or roof shapes, and positions and heights as "
                     + "accurate as the map.",
                 document: "building-envelopes.md#buildings-from-map-data")
+        case .congestion:
+            return Entry(
+                title: "Congestion below the grid", affects: air + structure + [.envelopeExposure],
+                limit: .illustrative,
+                note:
+                    "Pipes and bars too small for the cells take room and resist the air, as PDRFoam's porous "
+                    + "cells do; the turbulence they make and the flame's folding are not yet modelled, and it is "
+                    + "compared with no test.",
+                document: "congestion-model.md")
         case .ventedGlazing:
             return Entry(
                 title: "Glazing vented in the air", affects: [.envelopeExposure, .envelopeDamage],
@@ -953,6 +964,7 @@ public enum StandingTable {
         "EnvelopeConstruction.capMassKgPerM": .input,
         "Scenario.deflagration": .option([.deflagration]),
         "Scenario.ventPanels": .option([.ventPanels]),
+        "Scenario.congestion": .option([.congestion]),
         // What the standing is derived from: the scene and the specs above, and one choice of its own.
         "StandingInputs.scenario": .input,
         "StandingInputs.cellSize": .input,
