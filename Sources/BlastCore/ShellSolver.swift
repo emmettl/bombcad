@@ -648,6 +648,7 @@ public final class ShellSolver {
     /// Restores the undeformed, stress-free, stationary structure.
     public func reset() {
         time = 0
+        settledDisplacements = nil
         footings?.reset()
         failureGateBuffer.contents().storeBytes(of: 0, as: UInt32.self)
         failedAtCheckpoint = nil
@@ -939,6 +940,16 @@ public final class ShellSolver {
         return total
     }
 
+    /// Each node's displacement in the shape it settled to under its own weight
+    /// (`BlastSolver.settleStructures()`), from which `summary()` measures; nil when not settled.
+    public private(set) var settledDisplacements: [SIMD3<Float>]?
+
+    /// Records the present shape as the one the structure settled to, so that deflections are
+    /// measured from it.
+    public func recordSettledShape() {
+        mutateNodes { nodes in settledDisplacements = nodes.map(\.displacement) }
+    }
+
     public func summary() -> StructureSummary {
         var summary = StructureSummary()
         let damage = displayBuffer.contents().bindMemory(to: Float.self, capacity: max(elementCount, 1))
@@ -963,14 +974,19 @@ public final class ShellSolver {
             }
         }
         var largest: Float = 0
+        var sag: Float = 0
+        let settled = settledDisplacements
         mutateNodes { nodes in
             for (n, node) in nodes.enumerated() where attached[n] {
-                let squared = simd_length_squared(node.displacement)
+                let rest = settled?[n] ?? .zero
+                let squared = simd_length_squared(node.displacement - rest)
                 if !squared.isFinite { summary.hasBlownUp = true }
                 largest = max(largest, squared)
+                sag = max(sag, simd_length_squared(rest))
             }
         }
         summary.maxDisplacement = largest.squareRoot()
+        summary.selfWeightSag = sag.squareRoot()
         return summary
     }
 

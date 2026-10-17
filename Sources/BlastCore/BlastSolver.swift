@@ -1827,7 +1827,7 @@ public final class BlastSolver {
                 Settlement(
                     name: body.name, settled: settled, time: elapsed, steps: steps,
                     seconds: Date().timeIntervalSince(start), residualSpeed: peak > 0 ? speed / peak : 0,
-                    displacement: body.summary()?.maxDisplacement ?? 0))
+                    displacement: body.summary()?.selfWeightSag ?? 0))
         }
         guard moved, let commandBuffer = commandQueue.makeCommandBuffer(),
             let encoder = commandBuffer.makeComputeCommandEncoder()

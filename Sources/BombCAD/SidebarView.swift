@@ -171,6 +171,11 @@ struct SidebarView: View {
                     LabeledContent(
                         "Deflection now", value: String(format: "%.0f mm", summary.maxDisplacement * 1000))
                     LabeledContent("Largest so far", value: String(format: "%.0f mm", model.peakDeflection))
+                    if summary.selfWeightSag > 0 {
+                        LabeledContent(
+                            "Sag under own weight",
+                            value: String(format: "%.0f mm", summary.selfWeightSag * 1000))
+                    }
                     ExpectedRangeLine(
                         model: model,
                         value: ShownValue(measure: .peakDeflection, value: model.peakDeflection, unit: "mm"))
