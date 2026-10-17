@@ -3377,7 +3377,7 @@ also fed Kingery–Bulmash's Friedlander pulse.
   per cent, as at 0.5 m the soil's unloading has hardly begun to wear the pulse down.
 - No plausible soil closes the gap. Loading at 1,800 m/s, the column still gives five to seven
   times the integrated vertical at 21 m and thirteen to twenty times at 42 m.
-- The models' vertical accelerations, 19 to 310 m/s² fed the air model against a measured 3.6 and
+- The models' vertical accelerations, 20 to 310 m/s² fed the air model against a measured 3.6 and
   0.36, are the shock's rise over the soil's impedance, the rise set by the cells and the
   column's averaging window, and are not a prediction.
 - The measured horizontal accelerations were three to eight times the vertical. At 21 m the air's

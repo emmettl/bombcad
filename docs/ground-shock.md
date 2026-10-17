@@ -353,12 +353,12 @@ column left at the surface by 0.17 s:
 
 | Range | Estimate | Elastic | r = 2 | r = 3 | Layered | Left, r = 2 |
 |---|---|---|---|---|---|---|
-| 4 m  | 2,894, 878, 367, 121 | 2,327 at every depth | 2,307, 710, 197, 38 | 2,381, 590, 165, 27 | 2,365, 679, 128, 50 | 7.5 mm |
-| 7 m  | 902, 435, 213, 77 | 821 | 830, 420, 138, 21 | 862, 383, 122, 7 | 841, 405, 102, 40 | 3.9 mm |
-| 10 m | 391, 243, 139, 55 | 385 | 394, 277, 120, 15 | 411, 251, 101, 12 | 398, 270, 76, 31 | 2.5 mm |
-| 14 m | 189, 137, 89, 40 | 187 | 188, 160, 94, 12 | 190, 150, 80, 11 | 189, 157, 52, 21 | 1.8 mm |
-| 20 m | 94, 74, 53, 26 | 94 | 93, 87, 61, 13 | 94, 84, 56, 8 | 93, 86, 32, 13 | 1.3 mm |
-| 28 m | 53, 43, 32, 17 | 53 | 53, 51, 40, 12 | 53, 50, 37, 9 | 52, 50, 20, 8 | 0.9 mm |
+| 4 m  | 2,894, 878, 367, 121 | 2,327 at every depth | 2,307, 710, 197, 38 | 2,381, 590, 165, 28 | 2,365, 679, 128, 50 | 7.5 mm |
+| 7 m  | 902, 435, 213, 77 | 821 | 831, 427, 141, 22 | 853, 388, 121, 7 | 841, 413, 102, 40 | 3.9 mm |
+| 10 m | 391, 243, 139, 55 | 384 | 394, 277, 119, 15 | 411, 251, 101, 11 | 398, 270, 76, 31 | 2.5 mm |
+| 14 m | 189, 137, 89, 40 | 187 | 189, 161, 94, 12 | 190, 154, 81, 11 | 190, 158, 53, 21 | 1.8 mm |
+| 20 m | 94, 74, 53, 26 | 93 | 94, 88, 61, 13 | 94, 87, 56, 8 | 93, 87, 32, 13 | 1.3 mm |
+| 28 m | 53, 43, 32, 17 | 52 | 53, 51, 40, 12 | 53, 50, 37, 9 | 53, 50, 20, 8 | 0.9 mm |
 
 Taken on 17 October, on that day's air and with the load averaged over the column's window
 (the table of 10 October shaped the rise into the load instead).
@@ -391,8 +391,8 @@ waited for the column. Its cost grows with the points, the elements and the step
 step quadruples it. `blastbench soilcolumn`, 31 points to 3 m, gave 0.15, 1.0 and 4.1 ms a frame
 at steps of 100, 50 and 25 µs, about 6 to 8 ns an element-step. All of these were taken on a Mac
 Studio loaded by other work, and they vary by a factor of two from run to run. On 17 October,
-with the load averaged, the same four took 3.8, 1.5, 1.8 and 6.3 ms a frame against about 65 ms
-of air: the window costs nothing, and the spread is the Mac's load.
+with the load averaged, the same four took 1.3, 6.4, 1.8 and 2.1 ms a frame against about 190
+ms of air: the window costs nothing, and the spread is the Mac's load.
 
 **Cost.** In the street canyon on the medium grid, 21 points spread over 49 m × 25 m took a
 slice of 199 × 101 cells a frame: 41 MB over 171 frames. Cutting the slices out and consuming
@@ -454,7 +454,7 @@ Kingery–Bulmash's Friedlander pulse, with the curves' peak, impulse, duration 
   seven times the integrated vertical at 21 m and thirteen to twenty times at 42 m. No plausible
   soil closes the gap.
 - **Acceleration.** Fed the air model, the columns' peak vertical accelerations are 130 to
-  310 m/s² at 21 m and 19 to 49 at 42 m, 35 to 135 times the measured 3.6 and 0.36 m/s². Fed
+  310 m/s² at 21 m and 20 to 61 at 42 m, 35 to 170 times the measured 3.6 and 0.36 m/s². Fed
   Kingery–Bulmash's sharper shock, they reach 1,200. They are the load's rise over the soil's
   impedance, and the rise is the solver's smeared shock or the column's averaging window, so
   the model gives no acceleration to compare: on 0.25 m cells they are up to twice those on
