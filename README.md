@@ -30,6 +30,8 @@ it should be used to judge the safety of a real structure.
 
 ![A twelve-storey tower 2 s after 4 tonnes beside it: its floors punching off their columns](docs/twelve-storey.png)
 
+![A twelve-storey steel and glass office 250 ms after a tonne at the kerb: its curtain wall blown in, glass and frame thrown into the street](docs/office-tower.png)
+
 ## Download
 
 A signed, notarized build for Apple silicon Macs running macOS 15 or later is on the
