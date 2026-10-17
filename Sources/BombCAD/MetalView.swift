@@ -97,6 +97,7 @@ struct MetalView: NSViewRepresentable {
             var settings = model.renderSettings
             settings.showCharge = model.time == 0
             settings.highlight = model.highlightedBox
+            settings.craters = model.craters.map(CraterMark.init)
             // The ground points read the project's points and the run's estimate, both observed.
             let dots =
                 model.fragmentDots(showFragments: settings.showFragments, showTracers: settings.showTracers)

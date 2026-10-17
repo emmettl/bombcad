@@ -168,6 +168,9 @@ struct SimulationSettings: Equatable {
     /// Debris lands on soil, a Winkler bed of `groundStiffness` (Pa/m), instead of the hard ground.
     var softGround = false
     var groundStiffness = SolverConfiguration.soilSubgradeModulus
+    /// What the ground is made of: rigid, or earth or rock that a charge near it digs a crater in
+    /// and gives part of its energy to.
+    var ground = GroundType.rigid
 
     var chargeMass: Float {
         get { scenario.charge.mass }
@@ -293,6 +296,10 @@ final class SimulationModel {
     /// Observed: `canKeepRun` reads nothing else until a run completes, so a view showing it
     /// must learn of the completion through this.
     private var completedRunSettings: ProjectRunSettings?
+
+    /// The craters the finished run's charges dug, to shade into the ground; none before a run ends,
+    /// for a crater forms after the blast, or on rigid ground.
+    var craters: [CraterEstimate] { completedRunSettings?.craters(over: scenario) ?? [] }
     static let structureSampleInterval = 0.001
     /// Called with the solver every `structureSampleInterval` of simulated time from time zero,
     /// while no batch is in flight. A run with a structure stops there anyway to sample it; one
@@ -403,12 +410,27 @@ final class SimulationModel {
         guard settings.scenario.object(id: id)?.envelope != nil else { return }
         let old = settings.scenario.envelopeConstruction(for: id)
         guard old.walls != walls || old.source != .user else { return }
-        settings.scenario.setEnvelopeConstruction(
-            EnvelopeConstruction(
-                objectID: id, walls: walls,
-                wallThicknessM: walls == old.walls ? old.wallThicknessM : nil, roof: old.roof,
-                roofThicknessM: old.roofThicknessM, reinforcementRatio: old.reinforcementRatio,
-                glassThicknessM: old.glassThicknessM, source: .user, detail: "chosen in the editor"))
+        var construction = old
+        construction.walls = walls
+        if walls != old.walls {
+            construction.wallThicknessM = walls == .unreinforcedMasonry ? 0.215 : 0.2
+        }
+        construction.source = .user
+        construction.detail = "chosen in the editor"
+        settings.scenario.setEnvelopeConstruction(construction)
+    }
+
+    /// Changes an envelope's construction as the user's choice: `edit` applied to the one
+    /// recorded for it (or the default).
+    func editEnvelopeConstruction(id: UUID, _ edit: (inout EnvelopeConstruction) -> Void) {
+        guard settings.scenario.object(id: id)?.envelope != nil else { return }
+        let old = settings.scenario.envelopeConstruction(for: id)
+        var construction = old
+        edit(&construction)
+        construction.source = .user
+        construction.detail = "set in the editor"
+        guard construction != old else { return }
+        settings.scenario.setEnvelopeConstruction(construction)
     }
 
     var inspectedImportID: UUID?
@@ -761,6 +783,7 @@ final class SimulationModel {
                 settings.outlineByOverlap = run.countsByOverlap(over: scenario)
                 settings.softGround = run.groundStiffness != nil
                 settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
+                settings.ground = run.ground ?? .rigid
                 settings.solidElementSize = run.solidElementSize
                 duration = run.duration
             }
@@ -904,6 +927,7 @@ final class SimulationModel {
             settings.outlineByOverlap = run.countsByOverlap(over: document.scenario)
             settings.softGround = run.groundStiffness != nil
             settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
+            settings.ground = run.ground ?? .rigid
             settings.solidElementSize = run.solidElementSize
             duration = run.duration
         }
@@ -1110,6 +1134,7 @@ final class SimulationModel {
         settings.outlineByOverlap = inputs.settings.countsByOverlap(over: inputs.scenario)
         settings.softGround = inputs.settings.groundStiffness != nil
         settings.groundStiffness = inputs.settings.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
+        settings.ground = inputs.settings.ground ?? .rigid
         settings.solidElementSize = inputs.settings.solidElementSize
         duration = inputs.settings.duration
         handledSettings = settings
@@ -2244,6 +2269,7 @@ final class SimulationModel {
             shockThreshold: settings.shockThreshold, adaptiveSubsteps: settings.adaptiveSubsteps,
             terrainCutCells: settings.terrainCutCells,
             groundStiffness: settings.softGround ? settings.groundStiffness : nil,
+            ground: settings.ground == .rigid ? nil : settings.ground,
             outlineByOverlap: settings.outlineByOverlap)
     }
 
@@ -2300,24 +2326,21 @@ final class SimulationModel {
                 solver = created
             }
             if let solver, !scenario.envelopeObjects.isEmpty {
-                if scenario.structuralObjects.isEmpty {
-                    do {
-                        try solver.configureEnvelopeExposure(objects: scenario.envelopeObjects)
-                        // The components' histories feed their one-way damage, so the app keeps them for
-                        // every run of envelopes; headless runs only when asked.
-                        if let options = envelopeHistoryOptions
-                            ?? (envelopeHistoriesByDefault ? EnvelopeHistoryOptions(windowS: duration) : nil)
-                        {
-                            try solver.configureEnvelopeComponents(
-                                objects: scenario.envelopeObjects, options: options)
-                        }
-                        envelopeExposure = solver.envelopeExposureSummaries() ?? []
-                    } catch {
-                        envelopeExposureStatus = "Surface results unavailable: \(error.localizedDescription)"
+                // Envelopes are stationary whatever else moves: a structure beside them never takes
+                // the air at their faces, and its debris passes them by (one way).
+                do {
+                    try solver.configureEnvelopeExposure(objects: scenario.envelopeObjects)
+                    // The components' histories feed their one-way damage, so the app keeps them for
+                    // every run of envelopes; headless runs only when asked.
+                    if let options = envelopeHistoryOptions
+                        ?? (envelopeHistoriesByDefault ? EnvelopeHistoryOptions(windowS: duration) : nil)
+                    {
+                        try solver.configureEnvelopeComponents(
+                            objects: scenario.envelopeObjects, options: options)
                     }
-                } else {
-                    envelopeExposureStatus =
-                        "Surface results require a scene containing only stationary envelopes. This scene also has deformable structures."
+                    envelopeExposure = solver.envelopeExposureSummaries() ?? []
+                } catch {
+                    envelopeExposureStatus = "Surface results unavailable: \(error.localizedDescription)"
                 }
             }
             errorMessage = nil

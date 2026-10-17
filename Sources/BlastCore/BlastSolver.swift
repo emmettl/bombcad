@@ -34,13 +34,16 @@ public final class BlastSolver {
     private var gpuProfiler: BatchGPUProfiler?
     public private(set) var lastBatchGPUProfile: BatchGPUProfile?
 
-    /// Records stationary voxel-face exposure. Deformable reference bodies must be fully pinned.
-    /// Must be configured at time zero after loading. Ordinary runs allocate no recorder.
+    /// Records stationary voxel-face exposure. Deformable reference bodies observed must be fully
+    /// pinned; other bodies may move, and never take the air beside the faces recorded (see
+    /// `keepAir`). Must be configured at time zero after loading. Ordinary runs allocate no recorder.
     public func configureEnvelopeExposure(objects: [SceneObject]) throws {
-        let mask = try stationaryMask()
-        envelopeExposure = try EnvelopeExposure(
+        let mask = try stationaryMask(observing: objects)
+        let exposure = try EnvelopeExposure(
             device: device, library: library, grid: grid,
             mask: mask, objects: objects)
+        envelopeExposure = exposure
+        try keepAir(exposure.faces.map(\.fluid))
         envelopeNeedsInitialSample = true
     }
 
@@ -48,10 +51,38 @@ public final class BlastSolver {
     /// `EnvelopeComponentHistory`), on the same terms as `configureEnvelopeExposure`; it can run
     /// beside it or alone. Ordinary runs allocate no recorder.
     public func configureEnvelopeComponents(objects: [SceneObject], options: EnvelopeHistoryOptions) throws {
-        let mask = try stationaryMask()
-        envelopeComponentRecorder = try EnvelopeComponentRecorder(
+        let mask = try stationaryMask(observing: objects)
+        let recorder = try EnvelopeComponentRecorder(
             device: device, library: library, grid: grid, mask: mask, objects: objects, options: options)
+        envelopeComponentRecorder = recorder
+        try keepAir(recorder.faces.map(\.fluid))
         componentsNeedInitialSample = true
+    }
+
+    /// Cells of air a moving body's outline may not take: beside the stationary envelopes' recorded
+    /// faces, which the recorders read; nil when no body moves beside them.
+    private var keptAirBuffer: MTLBuffer?
+
+    /// Marks `cells` as kept air (see `remaskPrepare`), where a body can move.
+    private func keepAir(_ cells: [UInt32]) throws {
+        guard hasBody, !cells.isEmpty else { return }
+        if keptAirBuffer == nil {
+            guard let buffer = device.makeBuffer(length: grid.cellCount, options: .storageModeShared) else {
+                throw BlastError.allocationFailed("kept air beside envelopes")
+            }
+            memset(buffer.contents(), 0, grid.cellCount)
+            buffer.label = "kept air"
+            keptAirBuffer = buffer
+        }
+        let kept = keptAirBuffer!.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        for cell in cells where Int(cell) < grid.cellCount { kept[Int(cell)] = 1 }
+    }
+
+    /// The cells kept air beside the envelopes' recorded faces, or nil.
+    var keptAirCells: [Int]? {
+        guard let keptAirBuffer else { return nil }
+        let kept = keptAirBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        return (0..<grid.cellCount).filter { kept[$0] != 0 }
     }
 
     /// The components recorded, in the order of their histories.
@@ -63,26 +94,30 @@ public final class BlastSolver {
         return envelopeComponentRecorder?.histories(elapsed: time)
     }
 
-    /// The air's mask, at time zero with every body stationary, for the envelope recorders.
-    private func stationaryMask() throws -> UnsafeBufferPointer<UInt8> {
+    /// The air's mask at time zero, for the envelope recorders observing `objects`. Envelopes are
+    /// stationary; a detailed structure observed as one (a damage reference's) must be pinned, with
+    /// every other body, while beside envelopes alone other bodies may move.
+    private func stationaryMask(observing objects: [SceneObject]) throws -> UnsafeBufferPointer<UInt8> {
         precondition(!batchInFlight, "Cannot configure observers during a batch")
+        let observesStructures = objects.contains { $0.structure != nil }
         guard time == 0, experimentalBoxes.isEmpty,
-            bodies.allSatisfy({ body in
-                var fixed = true
-                if let solid = body.solids {
-                    let nodes = UnsafeBufferPointer(
-                        start: solid.nodeBuffer.contents().bindMemory(
-                            to: StructureNode.self, capacity: solid.nodeCount), count: solid.nodeCount)
-                    fixed = fixed && nodes.allSatisfy { $0.mass == 0 || $0.isFixed }
-                }
-                if let shell = body.shells {
-                    let nodes = UnsafeBufferPointer(
-                        start: shell.nodeBuffer.contents().bindMemory(
-                            to: ShellNode.self, capacity: shell.nodeCount), count: shell.nodeCount)
-                    fixed = fixed && nodes.allSatisfy { $0.mass == 0 || $0.isClamped }
-                }
-                return fixed
-            })
+            !observesStructures
+                || bodies.allSatisfy({ body in
+                    var fixed = true
+                    if let solid = body.solids {
+                        let nodes = UnsafeBufferPointer(
+                            start: solid.nodeBuffer.contents().bindMemory(
+                                to: StructureNode.self, capacity: solid.nodeCount), count: solid.nodeCount)
+                        fixed = fixed && nodes.allSatisfy { $0.mass == 0 || $0.isFixed }
+                    }
+                    if let shell = body.shells {
+                        let nodes = UnsafeBufferPointer(
+                            start: shell.nodeBuffer.contents().bindMemory(
+                                to: ShellNode.self, capacity: shell.nodeCount), count: shell.nodeCount)
+                        fixed = fixed && nodes.allSatisfy { $0.mass == 0 || $0.isClamped }
+                    }
+                    return fixed
+                })
         else { throw BlastError.allocationFailed("stationary envelope observation at time zero") }
         return UnsafeBufferPointer(
             start: maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount),
@@ -114,6 +149,7 @@ public final class BlastSolver {
         envelopeNeedsInitialSample = false
         envelopeComponentRecorder = nil
         componentsNeedInitialSample = false
+        keptAirBuffer = nil
     }
 
     /// Enables fixed spatial probes before stepping. Does not change the air solution.
@@ -750,6 +786,17 @@ public final class BlastSolver {
         try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
     }
 
+    /// The same, keeping the terrain's state (its cut cells, surface and heights): for cells that do
+    /// not change the ground, such as a vent panel's.
+    func editMaskKeepingTerrain(_ body: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
+        precondition(!batchInFlight, "Cannot edit the mask while a batch is in flight")
+        frameExtractor?.invalidate()
+        rigidBoxes = nil
+        needsRigidMaskCapture = true
+        let pointer = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
+    }
+
     /// Chooses the cells whose pressure is recorded every step. Clears existing histories. With
     /// `points`, one per cell, a gauge whose cell is refined reads the fine cell holding its point.
     public func setGauges(cells: [(i: Int, j: Int, k: Int)], points: [SIMD3<Float>]? = nil) {
@@ -974,6 +1021,7 @@ public final class BlastSolver {
             let units: UInt32 = configuration.structureMaskOverlap ? 16 : 0
             uniforms.overlapUnits = units
             uniforms.maskHysteresis = configuration.structureMaskOverlap ? 1 : 0
+            uniforms.keepsAir = keptAirBuffer == nil ? 0 : 1
             let scale = Float(max(units, 1))
             uniforms.threshold = UInt32(
                 max(1, (fill.map { perCell * scale * $0 } ?? perCell * scale / 3).rounded(.up)))
@@ -1390,6 +1438,7 @@ public final class BlastSolver {
         encoder.setBytes(&uniforms, length: length, index: 4)
         encoder.setBuffer(wallVelocityBuffer, offset: 0, index: 5)
         encoder.setBuffer(couplingTiles ?? refinementPlaceholder, offset: 0, index: 6)
+        encoder.setBuffer(keptAirBuffer ?? refinementPlaceholder, offset: 0, index: 7)
         encoder.dispatchThreads(size, threadsPerThreadgroup: group)
 
         encoder.setComputePipelineState(remaskApplyPipeline)

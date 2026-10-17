@@ -451,6 +451,63 @@ a scene on today's defaults is not affected. The
 blind result stands as scored. **The gap that stands is the two collapses**, at 0.93 and 1.16
 m/kg^(1/3), on the unsafe side.
 
+**Why slabs 1 and 10 stand** (17 October 2026; calibration).
+- **The runs:** today's main (outline by overlap; gauges in the first air cell off each face), the
+  recommended air with far-field faces (`--recommended`), the air kept awake, 100 ms.
+- **Meshes:** on 8 elements with 2.5 m of air beyond the slab; then, on 1 m (which gives slab 1 within
+  10%: 12.9 against 11.8 mm), with the air refined twice (`--refine 2 --levels 2`) and on 16
+  elements through.
+
+| Run | Slab 1 (1.3 m) | Slab 10 (1.6 m) |
+|---|---|---|
+| 8 elements, 2.5 m of air | 11.8 mm at 8.6 ms, stands | 5.9 mm at 3.5 ms, stands |
+| Air refined twice | 13.1 mm, stands | 5.9 mm, stands |
+| 16 elements through | 12.4 mm, stands | 6.2 mm, stands |
+| Measured | collapsed (top face: concentric circles) | collapsed (radial cracks); the meters ran out to 145 and 499 mm |
+
+None of these ruptures a bar or removes an element. Nothing in the mesh or the air's resolution
+decides it.
+
+**The load is not short.**
+- **Slab 1:** the model's top-face corners read 3.7 MPa and 475–506 kPa ms, two to three times
+  the gauges (0.8–1.6 MPa, 158–252 kPa ms).
+- **Slab 10:** about 2.1 MPa and 363–389 kPa ms, within the gauges' scatter (1.1–3.1 MPa,
+  142–885 kPa ms).
+- **The push from beneath:** the model's ground 0.4 m below pushes back on the underside, 727 Pa s
+  under slab 1's centre against 1,251 on its top.
+
+**What holds them,** knob by knob on slab 1 (1 m of air, 8 elements):
+
+| Knob | First peak | Outcome |
+|---|---|---|
+| None | 12.9 mm | stands |
+| f_t × 0.25 | 16.6 mm | stands |
+| Bars' yield × 0.5 | 17.2 mm | stands |
+| A rigid block under the slab, cutting the push from beneath (`--under-block 0.06`) | 23.1 mm | stands |
+| f_t × 0.25 and the block | 30.6 mm | stands |
+
+- **The push from beneath** halves the motion.
+- **The slab's strength** is its cracking load (statically 68 kPa, 59 without the rate laws, against
+  a yield line of about 33 kPa: 5 mm bars at 150 mm), and weakening it adds about a third.
+- **Even together they leave a slab of 31 mm** whose bars have not ruptured.
+- **The collapse needs bars to break and the slab to come through,** and two things in the model
+  stand in the way:
+  - Its bars rupture by their plastic strain averaged over half a crack spacing, so a light mesh's
+    single wide crack must open several millimetres before anything breaks.
+  - Slab 1's concentric circles on the top face read as punching or direct shear near the charge,
+    which the model's cracks across the lattice cannot slide into
+    ([what holds the cone](#what-holds-the-cone-traced); the embedded crack that would let them was
+    [tried and not adopted](concrete-model.md#embedded-cracks-tried-and-not-adopted)).
+
+**A plain stop.** No affordable change found here makes these slabs collapse.
+- **The load:** the top load errs high, and the push from beneath depends on what lay under the
+  slabs (a steel box of unstated size on clay), which the sources do not settle.
+- **The slab:** its strength and stiffness are the record's known error, already traced to its own
+  mechanics on these meshes.
+- **The failure mode:** it needs the sliding cracks that were not adopted.
+
+The collapses stay missed, on the unsafe side, as the standing says.
+
 **Read against the calibrated record.** The calibrated open-air slabs were 40–70% too stiff under
 Wu's small charges and a third to a half as far down close in (Chiquito). Here the blast peak is
 a tenth to a quarter of the meters' at 1.44 m/kg^(1/3). The two slabs at 0.93 and 1.16 m/kg^(1/3)
@@ -2551,6 +2608,52 @@ spalled and the model's do not; and Wang's slabs, as supported in the model, are
 too stiff, a matter of supports the paper leaves unclear. Wang's pressures check the load from
 an aluminised charge, and say its TNT equivalence is low for impulse.
 
+## Yao's large slabs
+
+**The test.** Yao, Li, Zhang, Deng and Zhou (Applied Sciences 13, 12552, 2023; CC BY 4.0):
+- **The slab:** 4 × 5 m and 150 mm thick, C35 concrete (cubes 37.2 MPa), two mats of 10 mm HRB400
+  bars at 85 mm (1.2%), simply supported on its long sides on 150 mm of L-shaped concrete supports.
+- **The charges:** TNT hung over the centre, 0.5 and 1 kg at 1 m and 1 kg at 0.8 m (1.26–0.8
+  m/kg^(1/3)) on one slab, and 20 kg at 1 m (0.22) on a second.
+- **Measured:** top-face pressures and underside displacements, read off the paper's plots (±0.1
+  MPa, ±0.03 mm), accelerations from its table, and the 20 kg test's damage.
+- **The data and harness:** [Fixtures/Yao2023](../Fixtures/Yao2023/README.md); `blastbench twoface
+  --yao T1,T2,T3,T4`.
+
+**The model:**
+- today's defaults: the recommended air, 25 mm cells refined by 2, and the contest slab's 8
+  elements through (18.75 mm);
+- concrete at 0.8 of the cube strength, bars at their measured 405 / 542 MPa, rupturing at the
+  grade's 16%;
+- the underside 1 m above the ground (not given);
+- the slab without its own weight, since the sensors read from the slab already resting under it,
+  and a slab given its weight as the run starts sags 2–3 mm.
+
+| Test | Top-face pressure, centre (MPa) | 1 m out (MPa) | Underside centre, measured | Model, within 2 ms of the shock | Model, peak |
+|---|---|---|---|---|---|
+| T1, 0.5 kg at 1 m | 1.70 / 1.88 | 0.50 / 0.62 | 0.35 mm | 0.96 mm | 3.29 mm at 10.7 ms |
+| T2, 1 kg at 1 m | 4.20 / 3.94 | 1.25 / 1.22 | 0.47 mm | 1.64 mm | 5.83 mm |
+| T3, 1 kg at 0.8 m | 8.60 / 6.97 | 1.90 / 1.21 | 0.86 mm | 1.94 mm | 6.43 mm |
+
+- **The load agrees.** The centre's pressure is within 11% at 1.26 and 1.0 m/kg^(1/3) and 19% low
+  at 0.8. The impulse there is 371, 596 and 792 kPa ms.
+- **The displacements do not compare.**
+  - The model's slab swings as a whole, peaking at 10–11 ms a quarter of its period, by the few
+    millimetres a 6.9 t slab of this stiffness takes from this impulse.
+  - The paper reports the largest displacement "at the time that the explosion wave reached the
+    slab", and its 500 ms record for T1 never passes about 0.3 mm. Its sensors evidently did not
+    see that swing.
+  - Read over the first 2 ms, the model gives 2–3 times the reported values. Taken as peaks, its
+    slab would be 8–12 times too flexible, against every other comparison here.
+  - Neither reading is scored. These three tests confirm the load only.
+- **The 20 kg test.** The model's slab bends to 147 mm and keeps 72 mm. Nothing on its top face is
+  crushed or removed, and 380 cm² of its underside is damaged. The test's slab, judged "moderate
+  damage", showed a top crater 1.02 × 0.76 m, its bars exposed, a wider spall beneath them, and over
+  ten long cracks. So the model is far too resistant locally, at 0.22 m/kg^(1/3): the close-in
+  direction the record already shows ([Chiquito](#slabs-under-close-in-charges), a third to a half
+  as far down). It is one test without a measured deflection, so it adds to that evidence but sets
+  no new band.
+
 ## Slabs under contact charges
 
 The first comparison of debris: the speed of the concrete thrown off the far face of slabs
@@ -3048,6 +3151,47 @@ joints running away within 30 ms (`blastbench perimeter --study wall --wall maso
 25`), bars smeared through elements that hold a joint being the difference from the stable runs;
 nodes of broken blockwork leaving at 10³ m/s; cracks smeared over a whole face where the tests
 showed a few; and a footing that cannot be held by a slab cast against it.
+
+## A blast wall with its length known
+
+The shielding Alsubaei's walls could not test, for want of their wing walls' length: X. Nian et al.,
+*Defence Technology* 31 (2024) 567–579 (open access, CC BY-NC-ND; derived numbers in
+`Fixtures/Nian2024`), a reinforced concrete wall 6 m long, 2.5 m high and 0.4 m thick standing alone,
+5 and 20 kg of TNT on the ground on its axis 3 m in front, with side-on gauges in the ground on a line
+through the charge parallel to the wall (3, 5, 7 and 9 m from it), one reflected gauge in the face
+0.22 m up, and side-on gauges in the ground 2, 4 and 6 m behind it. Two shots, both with the wall; a
+few gauges behind it failed, and those that read were, the authors say, abnormal and low-pass filtered
+at 2 kHz. `blastbench nian` runs it: the wall rigid, the recommended air, each charge with the wall and
+without it, on 100 and 50 mm cells (17 October 2026).
+
+Peaks, kPa, measured / model on 50 mm cells (100 mm), and the wall's factor (with it over without):
+
+| Gauge | 5 kg: measured | model | 20 kg: measured | model | The wall's factor, 5 / 20 kg |
+|---|---|---|---|---|---|
+| In front, 3 m along | 310 | 335 (285) | 1,620 | 1,077 (896) | 1.00 |
+| 5 m along | 122 | 106 (97) | 220 | 311 (285) | 1.00 |
+| 7 m along | 63 | 55 (50) | 170 | 145 (134) | 1.00 |
+| 9 m along | 49 | 36 (32) | 120 | 86 (80) | 1.00 |
+| Face, 0.22 m up (reflected) | 3,240 | 1,238 (924) | 7,720 | 5,137 (3,389) | |
+| 2 m behind | 14.3 | 27.1 (24.6) | – | 56.8 (50.9) | 0.29 / 0.21 |
+| 4 m behind | – | 27.9 (25.2) | 52.1 | 65.3 (59.8) | 0.55 / 0.50 |
+| 6 m behind | 12.2 | 26.0 (23.9) | – | 63.2 (60.5) | 0.78 / 0.80 |
+
+**In front,** where the gauges see the open wave beside the wall, the model is 1–11% below the
+paper's own ConWep values (5 kg: 370, 118, 61, 40 kPa; 20 kg: 1,090, 340, 160, 90) and the measured
+scatter about them is larger: at 20 kg the first two gauges read 1.5 and 0.65 of ConWep. The
+reflected peak at the wall's foot is 0.79 and 0.83 of ConWep's on 50 mm cells and still rising with
+the mesh; the measured 3.24 MPa at 5 kg, twice ConWep's, is a narrow spike.
+
+**Behind the wall the model shields less than the test**: 1.9 and 2.1 times the measured peaks at 5 kg
+and 1.25 times at 20 kg, rising a little as the cells are halved. With a whole, known length, the wave
+over the top and round the ends (6 m of wall, 3 m from the charge) leaves 0.3 of the open peak 2 m
+behind, rising to 0.8 by 6 m; the paper's factors against its empirical free field are 0.12–0.33.
+The measured peaks behind are the filtered records of gauges the authors call abnormal, and a 2 kHz
+filter takes a sharp front's peak down; how far, without the raw records, cannot be said. Behind
+Alsubaei's walls the model shielded more than measured; behind this one, less. Both lie on the side
+of the measurement's own doubts, so neither settles how well the model diffracts over a wall:
+this one errs on the safe side for what stands behind.
 
 ## Brick walls' debris
 

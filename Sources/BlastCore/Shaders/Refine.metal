@@ -1036,9 +1036,14 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
             speciesFluxSums[slot + 1] += apertureHigh * outflow.y * dt;
         }
         if (cutCells && cut) {
-            // The species' difference too, at the conservative mass fluxes.
+            // The species' difference too, at the conservative mass fluxes, with the mixing's carrying
+            // through each face's open part, as the cell beyond it takes them.
             float2 cutIn = speciesFlux(cutLow.mass, speciesAt(-1, kindM1, wM1), fraction);
             float2 cutOut = speciesFlux(cutHigh.mass, fraction, speciesAt(1, kindP1, wP1));
+            if (airMixing) {
+                cutIn -= apertureLow * carrierLow * (fraction - speciesAt(-1, kindM1, wM1));
+                cutOut -= apertureHigh * carrierHigh * (speciesAt(1, kindP1, wP1) - fraction);
+            }
             float2 kept = -lambda * ((cutOut - cutIn) - here.low.x * (outflow - inflow));
             float4 held = fineDefects[2 * index + 1];
             fineDefects[2 * index + 1] = float4(held.xy + kept, held.zw);

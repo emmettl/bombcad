@@ -34,6 +34,7 @@ public final class USDSceneWriter {
             values: [(name: String, values: [Float])]
         )] = []
     private var cloud: (samples: [CloudSample], secondsPerFrame: Double)?
+    private var craters: [CraterEstimate] = []
     public let frameInterval: Double
     /// The standing of the run's results (see `SceneStanding`), written into the layer's
     /// `customLayerData` when the scene is finished.
@@ -258,6 +259,14 @@ public final class USDSceneWriter {
         cloud = (samples, secondsPerFrame)
     }
 
+    /// Adds the charges' craters, as `/Scene/Crater`, `Crater_1`, …: patches of ground over each,
+    /// flat until the run's last frame and the crater with its lip at it, for the crater forms
+    /// after the blast. The ground plane, or the terrain, is left open under each patch, so the
+    /// bowl shows.
+    public func addCraters(_ craters: [CraterEstimate]) {
+        self.craters = craters
+    }
+
     /// Joins the parts into `url`, which must not exist yet.
     public func finish() throws {
         guard !finished else { return }
@@ -323,13 +332,24 @@ public final class USDSceneWriter {
 
             """)
         let domain = scenario.domainSize
-        appendMesh(
-            "Ground", boxes: [],
-            quad: [
-                SIMD3(0, 0, 0), SIMD3(domain.x, 0, 0), SIMD3(domain.x, domain.y, 0), SIMD3(0, domain.y, 0),
-            ],
-            colour: SIMD3(0.46, 0.47, 0.49), to: &text)
-        if let terrain = scenario.terrain, !terrain.isFlat { appendTerrain(terrain, to: &text) }
+        let terrain = scenario.terrain.flatMap { $0.isFlat ? nil : $0 }
+        let patches = craters.map { craterPatch($0, terrain: terrain) }
+        if patches.isEmpty || terrain != nil {
+            appendMesh(
+                "Ground", boxes: [],
+                quad: [
+                    SIMD3(0, 0, 0), SIMD3(domain.x, 0, 0), SIMD3(domain.x, domain.y, 0),
+                    SIMD3(0, domain.y, 0),
+                ],
+                colour: SIMD3(0.46, 0.47, 0.49), to: &text)
+        } else {
+            appendGround(around: patches, domain: domain, to: &text)
+        }
+        if let terrain { appendTerrain(terrain, holes: patches, to: &text) }
+        for (n, crater) in craters.enumerated() {
+            appendCrater(
+                n == 0 ? "Crater" : "Crater_\(n)", crater, patch: patches[n], terrain: terrain, to: &text)
+        }
         let fixed =
             scenario.boxes
             + (scenario.importedModels ?? []).flatMap(\.rigidBoxes)
@@ -450,8 +470,141 @@ public final class USDSceneWriter {
 
     /// The terrain as `/Scene/Terrain`: a mesh of its nodes, one quad a cell of them, with the
     /// heights it was given and where they came from.
-    private func appendTerrain(_ terrain: Terrain, to text: inout Text) {
+    /// The square of ground a crater's patch replaces, low and high corners in the plane: its lip
+    /// and a tenth more, out to the terrain's nodes where there is terrain, so the patch's edges
+    /// meet the terrain's.
+    private func craterPatch(_ crater: CraterEstimate, terrain: Terrain?) -> (
+        low: SIMD2<Float>, high: SIMD2<Float>
+    ) {
+        let half = 1.1 * max(crater.lipRadius, crater.apparentRadius)
+        let centre = SIMD2(crater.centre.x, crater.centre.y)
+        var low = centre - half
+        var high = centre + half
+        if let terrain {
+            low = terrain.origin + ((low - terrain.origin) / terrain.spacing).rounded(.down) * terrain.spacing
+            high = terrain.origin + ((high - terrain.origin) / terrain.spacing).rounded(.up) * terrain.spacing
+        }
+        return (low, high)
+    }
+
+    /// The flat ground as rectangles round the craters' patches.
+    private func appendGround(
+        around patches: [(low: SIMD2<Float>, high: SIMD2<Float>)], domain: SIMD3<Float>, to text: inout Text
+    ) {
+        func breaks(_ axis: Int, _ size: Float) -> [Float] {
+            Array(
+                Set(
+                    [0, size]
+                        + patches.flatMap { [$0.low[axis], $0.high[axis]] }.map { min(max($0, 0), size) })
+            )
+            .sorted()
+        }
+        let xs = breaks(0, domain.x)
+        let ys = breaks(1, domain.y)
+        var quads: [[SIMD3<Float>]] = []
+        for j in 0..<(ys.count - 1) {
+            for i in 0..<(xs.count - 1) {
+                let middle = SIMD2((xs[i] + xs[i + 1]) / 2, (ys[j] + ys[j + 1]) / 2)
+                guard
+                    !patches.contains(where: { all(middle .> $0.low) && all(middle .< $0.high) }),
+                    xs[i + 1] > xs[i], ys[j + 1] > ys[j]
+                else { continue }
+                quads.append([
+                    SIMD3(xs[i], ys[j], 0), SIMD3(xs[i + 1], ys[j], 0), SIMD3(xs[i + 1], ys[j + 1], 0),
+                    SIMD3(xs[i], ys[j + 1], 0),
+                ])
+            }
+        }
+        text.append("    def Mesh \"Ground\"\n    {\n        uniform token subdivisionScheme = \"none\"\n")
+        text.append("        float3[] extent = [")
+        text.append(SIMD3<Float>(0, 0, 0))
+        text.append(", ")
+        text.append(SIMD3(domain.x, domain.y, 0))
+        text.append("]\n        int[] faceVertexCounts = [")
+        text.appendList([Int32](repeating: 4, count: quads.count))
+        text.append("]\n        int[] faceVertexIndices = [")
+        text.appendList((0..<Int32(4 * quads.count)).map { $0 })
+        text.append("]\n        point3f[] points = [")
+        for (n, point) in quads.joined().enumerated() {
+            if n > 0 { text.append(", ") }
+            text.append(point)
+        }
+        text.append("]\n        color3f[] primvars:displayColor = [")
+        text.append(SIMD3<Float>(0.46, 0.47, 0.49))
+        text.append("]\n    }\n\n")
+    }
+
+    /// A crater's patch: a grid of the ground over its square, flat (or the terrain) until the
+    /// run's last frame, cratered at it.
+    private func appendCrater(
+        _ name: String, _ crater: CraterEstimate, patch: (low: SIMD2<Float>, high: SIMD2<Float>),
+        terrain: Terrain?, to text: inout Text
+    ) {
+        let n = 48
+        let size = patch.high - patch.low
+        var before: [SIMD3<Float>] = []
+        var after: [SIMD3<Float>] = []
+        for j in 0...n {
+            for i in 0...n {
+                let point = patch.low + size * SIMD2(Float(i), Float(j)) / Float(n)
+                let base = terrain?.height(at: SIMD3(point.x, point.y, 0)) ?? 0
+                before.append(SIMD3(point.x, point.y, base))
+                after.append(SIMD3(point.x, point.y, base + crater.change(at: point)))
+            }
+        }
+        let lowest = (before + after).map(\.z).min() ?? 0
+        let highest = (before + after).map(\.z).max() ?? 0
+        text.append("    def Mesh \"\(name)\"\n    {\n        uniform token subdivisionScheme = \"none\"\n")
+        text.append("        custom uniform string bombcad:label = \(quoted(crater.summary))\n")
+        text.append("        float3[] extent = [")
+        text.append(SIMD3(patch.low.x, patch.low.y, lowest))
+        text.append(", ")
+        text.append(SIMD3(patch.high.x, patch.high.y, highest))
+        text.append("]\n        int[] faceVertexCounts = [")
+        text.appendList([Int32](repeating: 4, count: n * n))
+        text.append("]\n        int[] faceVertexIndices = [")
+        var indices: [Int32] = []
+        for j in 0..<n {
+            for i in 0..<n {
+                let k = Int32(i + (n + 1) * j)
+                indices += [k, k + 1, k + 2 + Int32(n), k + 1 + Int32(n)]
+            }
+        }
+        text.appendList(indices)
+        func list(_ points: [SIMD3<Float>]) {
+            text.append("[")
+            for (k, point) in points.enumerated() {
+                if k > 0 { text.append(", ") }
+                text.append(point)
+            }
+            text.append("]")
+        }
+        let last = max(frames - 1, 0)
+        if last > 0 {
+            text.append("]\n        point3f[] points.timeSamples = {\n            0: ")
+            list(before)
+            text.append(",\n            \(last): ")
+            list(after)
+            text.append(",\n        }\n")
+        } else {
+            text.append("]\n        point3f[] points = ")
+            list(after)
+            text.append("\n")
+        }
+        text.append("        color3f[] primvars:displayColor = [")
+        text.append(SIMD3<Float>(0.42, 0.36, 0.30))
+        text.append("]\n    }\n\n")
+    }
+
+    private func appendTerrain(
+        _ terrain: Terrain, holes: [(low: SIMD2<Float>, high: SIMD2<Float>)] = [], to text: inout Text
+    ) {
         let (columns, rows) = (terrain.columns, terrain.rows)
+        // The quads under a crater's patch are left out.
+        func open(_ i: Int, _ j: Int) -> Bool {
+            let middle = terrain.origin + (SIMD2(Float(i), Float(j)) + 0.5) * terrain.spacing
+            return !holes.contains { all(middle .> $0.low) && all(middle .< $0.high) }
+        }
         text.append("    def Mesh \"Terrain\"\n    {\n        uniform token subdivisionScheme = \"none\"\n")
         if let source = terrain.source {
             text.append("        custom uniform string bombcad:terrainSource = \(quoted(source))\n")
@@ -460,18 +613,18 @@ public final class USDSceneWriter {
         text.append(SIMD3(terrain.origin.x, terrain.origin.y, terrain.heights.min() ?? 0))
         text.append(", ")
         text.append(SIMD3(terrain.extent.x, terrain.extent.y, terrain.highest))
-        text.append("]\n        int[] faceVertexCounts = [")
-        text.appendList([Int32](repeating: 4, count: (columns - 1) * (rows - 1)))
-        text.append("]\n        int[] faceVertexIndices = [")
         var indices: [Int32] = []
         indices.reserveCapacity(4 * (columns - 1) * (rows - 1))
         for j in 0..<(rows - 1) {
-            for i in 0..<(columns - 1) {
+            for i in 0..<(columns - 1) where open(i, j) {
                 let n = Int32(i + columns * j)
                 // Counter-clockwise seen from above, so that the normals face up.
                 indices += [n, n + 1, n + 1 + Int32(columns), n + Int32(columns)]
             }
         }
+        text.append("]\n        int[] faceVertexCounts = [")
+        text.appendList([Int32](repeating: 4, count: indices.count / 4))
+        text.append("]\n        int[] faceVertexIndices = [")
         text.appendList(indices)
         text.append("]\n        point3f[] points = [")
         for j in 0..<rows {

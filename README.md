@@ -30,6 +30,8 @@ it should be used to judge the safety of a real structure.
 
 ![A twelve-storey tower 2 s after 4 tonnes beside it: its floors punching off their columns](docs/twelve-storey.png)
 
+![A twelve-storey steel and glass office 250 ms after a tonne at the kerb: its curtain wall blown in, glass and frame thrown into the street](docs/office-tower.png)
+
 ## Download
 
 A signed, notarized build for Apple silicon Macs running macOS 15 or later is on the
@@ -68,6 +70,7 @@ including `BombCAD run` and the `blastbench` command-line tool.
 | Thermal | The fireball's radiation on surfaces, ray-marched on the GPU, and the surfaces' heating; paused as illustrative | [Thermal radiation](docs/thermal-radiation.md), [surface heating](docs/surface-heating.md) |
 | Cloud | The fireball's rise, condensation, rain and spread in a measured or standard atmosphere | [Fireball rise](docs/fireball-rise.md) |
 | Ground shock | The design manuals' estimate, or a layered soil column under each point | [Ground shock](docs/ground-shock.md) |
+| Craters | An empirical crater for each charge on earth or rock, after the blast, and the energy soft ground takes from the air | [Cratering](docs/cratering.md) |
 | Gas deflagrations | A methane or propane cloud lit in a room, with vent panels | [Gas deflagrations](docs/deflagration.md) |
 | Scale | Exposure-only building envelopes and neighbourhoods of them | [Building envelopes](docs/building-envelopes.md), [street interactions](docs/street-interaction.md) |
 | Other Macs | Sweeps and the effects beside the blast placed on other Macs by cost | [Distributed computing](docs/distributed-computing.md) |
@@ -140,6 +143,7 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [The fireball's rise and cloud](docs/fireball-rise.md) | The hot gas left after the blast, followed as a rising, entraining cloud that spreads once it stops, carried by the wind |
 | [Gas deflagrations](docs/deflagration.md) | An illustrative second source: a methane or propane cloud lit in a room, and vent panels that release at a pressure |
 | [Ground shock](docs/ground-shock.md) | An illustrative estimate of the ground's shaking away from the charge, or a layered soil column, fed the overpressure on the ground |
+| [Cratering](docs/cratering.md) | The crater each charge digs in earth or rock, by empirical scaling, and the share of its energy the air keeps |
 | [Distributed computing](docs/distributed-computing.md) | Sweeps on several Macs, and the effects beside the blast placed on other Macs by cost |
 | [Run comparison](docs/run-comparison.md)    | Saved runs, comparing them, and headless runs                   |
 | [USD export](docs/usd-export.md) | Writing a run over time as USD and OpenVDB volumes, for rendering in Blender and elsewhere |

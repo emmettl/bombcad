@@ -1,0 +1,62 @@
+{
+  "paper": {"authors": "Nian X-z, Xie Q-m, Kong X-l, Yao Y-k, Huang K", "title": "Experimental and numerical study on protective effect of RC blast wall against air shock wave", "journal": "Defence Technology 31 (2024) 567-579", "doi": "10.1016/j.dt.2022.11.005", "source": "p.567 header/footer"},
+  "licence": {"value": "CC BY-NC-ND 4.0", "text": "open access article under the CC BY-NC-ND license", "copyright": "2022 China Ordnance Society; publishing services Elsevier B.V. on behalf of KeAi", "source": "p.567 abstract footer and page footer"},
+  "wall": {
+    "type": "reinforced concrete cantilever wall", "length_m": 6.0, "thickness_m": 0.4, "height_m": 2.5, "source": "p.568 Sec.2; Fig.4 (400 mm thickness); Fig.6 (6000 x 2500)",
+    "reinforcement": {"value": "two faces of vertical bars with horizontal ties/links, continuing into a reinforced strip footing; no bar sizes, spacing, cover or steel grade given", "source": "p.568 Figs.2-3 (no dimensions on drawing)"},
+    "concrete_strength": {"value": "not stated for the test wall; numerical model uses AUTODYN library material labelled CONC-35MPa (RHT)", "source": "p.571 Fig.11 legend; Sec.3.2.4"},
+    "footing": {"value": "inverted-T: wall stem continues below grade into a wider reinforced strip footing on a lean base layer; no dimensions given; i.e. cantilever from a buried footing", "source": "p.568 Fig.3"},
+    "flanking": {"value": "no wing walls; sandbag piles are stacked against both wall ends in the photos", "source": "p.568 Fig.1; p.572 Fig.14"}
+  },
+  "ground": {"value": "natural soil/earth at the site (photos); flush-mounted ground gauges; model uses sand (compaction EOS, MO granular)", "source": "p.568 Figs.1-2; p.569 Fig.5; p.570 Sec.3.2.3"},
+  "tests": [
+    {"id": 1, "charge_kg": 5, "explosive": "TNT (no equivalence factor needed)", "shape": "not stated", "height_of_burst": "on the ground surface", "standoff_to_front_face_m": 3.0, "lateral_position": "on the wall's central axis", "wall_present": true, "source": "p.568 Sec.2; p.569 Fig.7 caption; Fig.4"},
+    {"id": 2, "charge_kg": 20, "explosive": "TNT", "shape": "not stated", "height_of_burst": "on the ground surface", "standoff_to_front_face_m": 3.0, "lateral_position": "on the wall's central axis", "wall_present": true, "source": "p.569 Fig.7 caption; p.572 Sec.4.1-4.2"}
+  ],
+  "free_field_reference_note": {"value": "No test without the wall. The 'free field' p-gauges were in the same two shots, on the blast side. The with/without-wall ratios divide behind-wall measurements by an empirical ground-burst formula (Eq.7, GB 6722-2014), not by a measured free-field value.", "source": "p.569 Fig.7 caption; p.574 Sec.4.3.2 Eq.7"},
+  "gauges": [
+    {"id": "p-1", "kind": "incident (side-on), flush with ground", "position": "on a line through the charge parallel to the wall (3 m in front of the front face), 3 m lateral from charge (level with wall end)", "range_from_charge_m": 3, "source": "p.568 Fig.4; p.569 Fig.5"},
+    {"id": "p-2", "kind": "incident, flush with ground", "position": "same line, 5 m from charge (2 m beyond wall end)", "range_from_charge_m": 5, "source": "Fig.4"},
+    {"id": "p-3", "kind": "incident, flush with ground", "position": "same line, 7 m from charge", "range_from_charge_m": 7, "source": "Fig.4"},
+    {"id": "p-4", "kind": "incident, flush with ground", "position": "same line, 9 m from charge", "range_from_charge_m": 9, "source": "Fig.4"},
+    {"id": "pg-1", "kind": "reflected, flush in wall front face", "position": "wall centre (3 m from end), 0.22 m above ground, normal to charge at 3 m", "source": "p.569 Figs.6-7"},
+    {"id": "pg-2", "kind": "reflected, wall front face", "position": "wall centre, 1.31 m high; no result reported", "source": "Fig.6"},
+    {"id": "pg-3", "kind": "reflected, wall front face", "position": "wall centre, 2.40 m high; no result reported", "source": "Fig.6"},
+    {"id": "ph-1", "kind": "behind wall, side-on, flush with ground", "position": "on centre axis, 2 m behind back face (r = 2.4 m from front face; 5.4 m from charge)", "source": "p.568 Fig.4; p.573 Sec.4.3.1; Table 4"},
+    {"id": "ph-2", "kind": "behind wall, side-on, flush with ground", "position": "on centre axis, 4 m behind back face (r = 4.4 m; 7.4 m from charge)", "source": "Fig.4; Table 4"},
+    {"id": "ph-3", "kind": "behind wall, side-on, flush with ground", "position": "on centre axis, 6 m behind back face (r = 6.4 m; 9.4 m from charge)", "source": "Fig.4; Table 4"}
+  ],
+  "gauge_validity": {"5kg": "ph-2 invalid; ph-1, ph-3 had abnormal signals, cut and low-pass filtered at 2000 Hz", "20kg": "ph-1, ph-3 invalid; ph-2 had abnormal signals (filtered)", "source": "p.573 Sec.4.3.1"},
+  "results_incident": [
+    {"test": "5kg", "gauge": "p-1", "R_m": 3, "test_MPa": 0.31, "conwep_MPa": 0.37, "sim_MPa": 0.39, "arrival_ms_as_plotted": 2.25, "source": "p.571 text; Fig.12a; Fig.15a"},
+    {"test": "5kg", "gauge": "p-2", "R_m": 5, "test_MPa": 0.122, "conwep_MPa": 0.118, "sim_MPa": 0.123, "uncertainty_MPa": 0.005, "source": "Fig.15a reading"},
+    {"test": "5kg", "gauge": "p-3", "R_m": 7, "test_MPa": 0.063, "conwep_MPa": 0.061, "sim_MPa": 0.066, "uncertainty_MPa": 0.005, "source": "Fig.15a reading"},
+    {"test": "5kg", "gauge": "p-4", "R_m": 9, "test_MPa": 0.049, "conwep_MPa": 0.040, "sim_MPa": 0.038, "uncertainty_MPa": 0.005, "source": "Fig.15a reading"},
+    {"test": "20kg", "gauge": "p-1", "R_m": 3, "test_MPa": 1.62, "conwep_MPa": 1.09, "sim_MPa": 1.40, "source": "p.572 text; Fig.15b; Table 1 gives CONWEP 1.10"},
+    {"test": "20kg", "gauge": "p-2", "R_m": 5, "test_MPa": 0.22, "conwep_MPa": 0.34, "sim_MPa": 0.345, "uncertainty_MPa": 0.02, "source": "Fig.15b reading"},
+    {"test": "20kg", "gauge": "p-3", "R_m": 7, "test_MPa": 0.17, "conwep_MPa": 0.16, "sim_MPa": 0.16, "arrival_ms_as_plotted": 7.35, "positive_duration_ms_approx": 2.5, "note": "test waveform still positive at 10 ms window end (~0.0)", "source": "p.572 text; Fig.12b; Fig.15b"},
+    {"test": "20kg", "gauge": "p-4", "R_m": 9, "test_MPa": 0.12, "conwep_MPa": 0.09, "sim_MPa": 0.10, "uncertainty_MPa": 0.02, "source": "Fig.15b reading"}
+  ],
+  "results_reflected": [
+    {"test": "5kg", "gauge": "pg-1", "test_MPa": 3.24, "conwep_MPa": 1.57, "sim_MPa": 1.66, "arrival_ms_as_plotted": 2.27, "note": "test trace is a narrow oscillating spike, second peak ~2.8 MPa; quasi-decay ~1 MPa at 2.5 ms", "source": "p.572 text; Fig.16a; Table 1"},
+    {"test": "20kg", "gauge": "pg-1", "test_MPa": 7.72, "conwep_MPa": 6.19, "sim_MPa": 8.69, "sim_MPa_table1": 8.65, "arrival_ms_as_plotted": 1.52, "source": "p.572 text; Fig.16b; Table 1"}
+  ],
+  "reflection_coefficients": [
+    {"test": "5kg", "conwep": {"Pi_MPa": 0.38, "Pr_MPa": 1.57, "lambda": 4.0}, "sim": {"Pi_MPa": 0.39, "Pr_MPa": 1.66, "lambda": 4.3}, "test_derived_by_reader": 10.5, "source": "p.573 Table 1; derived 3.24/0.31 (not in paper)"},
+    {"test": "20kg", "conwep": {"Pi_MPa": 1.10, "Pr_MPa": 6.19, "lambda": 5.7}, "sim": {"Pi_MPa": 1.40, "Pr_MPa": 8.65, "lambda": 6.2}, "test_derived_by_reader": 4.8, "source": "p.573 Table 1; derived 7.72/1.62 (not in paper)"}
+  ],
+  "results_behind_wall": [
+    {"test": "5kg", "gauge": "ph-1", "r_from_front_face_m": 2.4, "R_from_charge_m": 5.4, "test_kPa": 14.3, "test_kPa_fig17": 14, "sim_kPa_fig17": 17, "arrival_ms_as_plotted": 13.5, "rise_ms": 0.4, "eq7_free_field_kPa": 122.4, "eta": 0.12, "eq13_prediction_kPa": 23.9, "note": "filtered 2000 Hz; positive phase continues past 16 ms window", "source": "p.574 text; Fig.17; Fig.20; Table 4"},
+    {"test": "5kg", "gauge": "ph-3", "r_from_front_face_m": 6.4, "R_from_charge_m": 9.4, "test_kPa": 11.3, "test_kPa_table4": 12.2, "sim_kPa_fig18": 15, "arrival_ms_as_plotted": 16.9, "positive_duration_ms_approx": 5, "eq7_free_field_kPa": 42.7, "eta": 0.26, "eq13_prediction_kPa": 15.5, "note": "text and Table 4 disagree (11.3 vs 12.2)", "source": "p.574 text; Fig.18; Table 4"},
+    {"test": "20kg", "gauge": "ph-2", "r_from_front_face_m": 4.4, "R_from_charge_m": 7.4, "test_kPa": 54.5, "test_kPa_table4": 52.1, "first_jump_kPa_fig19": 45, "sim_kPa_fig19": 38, "arrival_ms_as_plotted": 15.2, "time_of_max_ms": 16.6, "positive_duration_ms_approx": 6, "eq7_free_field_kPa_printed": 122.4, "eq7_free_field_kPa_recomputed": 167, "eta": 0.33, "eq13_prediction_kPa": 57.0, "note": "printed free-field 122.4 kPa is a typo: Eq.7 at 7.4 m for 20 kg gives ~167 kPa, which matches Fig.20 curve and eta 0.33; text 54.5 vs Table 4 52.1", "source": "p.574 text; Fig.19; Fig.20; Table 4"}
+  ],
+  "arrival_time_caveat": {"value": "time origin of plotted traces is not stated; CONWEP curves appear aligned to test arrival in Figs.12, 16", "source": "Figs.12, 16-19"},
+  "wall_response": {"value": "after the 20 kg shot the front face is intact with no obvious concrete damage; no deflection, strain or acceleration measured", "source": "p.572 Sec.4.1, Fig.14"},
+  "numerical_model": {
+    "code": "ANSYS AUTODYN (not LS-DYNA), 2D axisymmetric, multi-material Euler with fluid-structure interaction; wall becomes an annular ring (side diffraction lost)", "mesh_mm": 10, "domain": "about 23 m by 10 m, soil layer about 2 m deep, outflow boundaries except axis",
+    "materials": "air ideal gas (1.225 kg/m3, gamma 1.4, e0 2.068e5 kJ/kg as printed); TNT JWL (A 3.7377e5 MPa, B 3.7471e3 MPa, R1 4.15, R2 0.9, omega 0.35, E 6.0e3 MJ/m3); sand compaction EOS + MO granular (2641 kg/m3); concrete P-alpha EOS + RHT, CONC-35MPa; rebar smeared by raising tensile strength to 6.0 MPa",
+    "comparison": "incident peaks close to CONWEP beyond 5 m; reflected peak 5 kg underpredicted (1.66 vs 3.24 MPa), 20 kg over (8.69 vs 7.72); behind-wall peaks 17/15 vs 14/11-12 kPa (5 kg) and 38 vs 52-55 kPa (20 kg). 2D vs 3D eta differ: 3D 0.12-0.37 vs 2D 0.10-0.40 for 5 kg (Fig.8)",
+    "parametric_fit": "Eq.13: eta = 0.24 (d/W^1/3)^-1.01 (h/d)^-0.81 (r/W^1/3)^0.63, R2 0.87, r <= 20 m, h <= 4.5 m; inputs per Table 2 (d 2-6 m, W 10-200 kg, h 2.5-4.5 m); Eqs.10-12 per standoff band; Eq.13 vs Xu gabion tests errors 10-52% (Table 3)",
+    "source": "p.569-571 Sec.3, Figs.8-11; p.575-576 Eqs.10-13, Table 2; p.578 Tables 3-4"
+  }
+}

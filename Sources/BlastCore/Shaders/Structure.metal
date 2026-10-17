@@ -3306,6 +3306,7 @@ struct CouplingUniforms {
     uint quietCoverage;
     uint overlapUnits;  // 0: elements counted as points; else each sample box by its overlap, in these units
     uint maskHysteresis;  // 1: a cell turns solid an eighth above `threshold` and opens an eighth below
+    uint keepsAir;  // 1: cells marked in `keptAir` (beside stationary envelopes' recorded faces) stay air
 };
 
 // Decode a compact slot for remasking/exchange, or the historical dense-region coordinate.
@@ -3508,6 +3509,7 @@ kernel void remaskPrepare(device uchar *mask [[buffer(0)]],
                           constant CouplingUniforms &u [[buffer(4)]],
                           device float *wallVelocity [[buffer(5)]],
                           const device uint *couplingTiles [[buffer(6)]],
+                          const device uchar *keptAir [[buffer(7)]],
                           uint3 tid [[thread_position_in_grid]]) {
     int3 cell = couplingWorldCell(tid, u, couplingTiles);
     if (any(cell < 0)) { return; }
@@ -3517,6 +3519,11 @@ kernel void remaskPrepare(device uchar *mask [[buffer(0)]],
     uint count = occupancy[4 * local];
     bool wasSolid = (mask[index] & 1) != 0;
     uint need = maskThreshold(u.threshold, u.maskHysteresis != 0u, wasSolid);
+    // The air beside a stationary envelope's recorded faces is never taken by a moving body: the
+    // recorders read it, and the envelope is one way, its debris passing it by.
+    if (u.keepsAir != 0u && keptAir[index] != 0) {
+        count = 0u;
+    }
     bool solid = rigid[index] != 0 || count >= need;
 
     // The air sees a solid cell moving at the mean velocity of the elements in it.

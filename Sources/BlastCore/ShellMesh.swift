@@ -245,9 +245,17 @@ struct ShellMesh {
             if let last = kept.last { points.append(last) }
             grid[k] = points
         }
-        // Plate edges that were dropped move to the nearest breakpoint kept.
+        // Plate edges that were dropped move to the nearest breakpoint kept (the breakpoints are
+        // in order).
         func nearest(_ value: Float, _ k: Int) -> Int {
-            grid[k].indices.min { abs(grid[k][$0] - value) < abs(grid[k][$1] - value) } ?? 0
+            let line = grid[k]
+            guard !line.isEmpty else { return 0 }
+            var (low, high) = (0, line.count - 1)
+            while high - low > 1 {
+                let middle = (low + high) / 2
+                if line[middle] <= value { low = middle } else { high = middle }
+            }
+            return abs(line[high] - value) < abs(line[low] - value) ? high : low
         }
 
         let materials = model.materials
@@ -266,6 +274,13 @@ struct ShellMesh {
             let first = (k + 1) % 3
             let second = (k + 2) % 3
             let level = Int32(nearest(plate.mid, k))
+            // The openings that cut this plate: those crossing it that do not hold it whole.
+            let cutting = model.openings.filter { opening in
+                !opening.holds(plate.box)
+                    && (0..<3).allSatisfy {
+                        opening.max[$0] >= plate.box.min[$0] && opening.min[$0] <= plate.box.max[$0]
+                    }
+            }
             let range1 = nearest(plate.low[first], first)..<nearest(plate.high[first], first)
             let range2 = nearest(plate.low[second], second)..<nearest(plate.high[second], second)
             for u in range1 {
@@ -276,9 +291,7 @@ struct ShellMesh {
                     centre[k] = plate.mid
                     centre[first] = 0.5 * (grid[first][u] + grid[first][u + 1])
                     centre[second] = 0.5 * (grid[second][v] + grid[second][v + 1])
-                    if model.openings.contains(where: { $0.contains(centre) && !$0.holds(plate.box) }) {
-                        continue
-                    }
+                    if cutting.contains(where: { $0.contains(centre) }) { continue }
                     var keys: [SIMD3<Int32>] = []
                     for (du, dv) in [(0, 0), (1, 0), (1, 1), (0, 1)] {
                         var key = SIMD3<Int32>(repeating: 0)
@@ -367,6 +380,36 @@ struct ShellMesh {
         // are tied to the column's node there.
         var tied = Set<UInt32>()
         var heads: [(master: UInt32, column: Column)] = []
+        let plateLevels = plates.map { nearest($0.mid, $0.axis) }
+        // The grid lines within `reach` of `centre` along `k`.
+        func lines(_ k: Int, within reach: Float, of centre: Float) -> ClosedRange<Int>? {
+            let line = grid[k]
+            guard let low = line.firstIndex(where: { $0 >= centre - reach }),
+                let high = line.lastIndex(where: { $0 <= centre + reach }), low <= high
+            else { return nil }
+            return low...high
+        }
+        // The nodes on the plane through `centre` square to `k`, within `half` of it in that
+        // plane, in the order they were made.
+        func nodes(around centre: SIMD3<Float>, axis k: Int, half: SIMD2<Float>) -> [UInt32] {
+            let first = (k + 1) % 3
+            let second = (k + 2) % 3
+            guard let us = lines(first, within: half.x, of: centre[first]),
+                let vs = lines(second, within: half.y, of: centre[second])
+            else { return [] }
+            let level = Int32(nearest(centre[k], k))
+            var found: [UInt32] = []
+            for u in us {
+                for v in vs {
+                    var key = SIMD3<Int32>(repeating: 0)
+                    key[k] = level
+                    key[first] = Int32(u)
+                    key[second] = Int32(v)
+                    if let node = nodeIndex[key] { found.append(node) }
+                }
+            }
+            return found.sorted()
+        }
         let masters = Set(beams.flatMap { [$0.nodes.x, $0.nodes.y] })
         for column in columns {
             let k = column.axis
@@ -376,16 +419,23 @@ struct ShellMesh {
             let ends = Set(
                 beams.filter { $0.solid == column.solid }.flatMap { [$0.nodes.x, $0.nodes.y] })
             for master in ends {
-                let level = positions[Int(master)][k]
+                let position = positions[Int(master)]
+                let level = position[k]
+                // A head where the column meets a plate square to it, within the plate.
                 guard
-                    plates.contains(where: {
-                        $0.axis == k && abs(grid[k][nearest($0.mid, k)] - level) < tolerance
+                    plates.indices.contains(where: { n in
+                        let plate = plates[n]
+                        return plate.axis == k && abs(grid[k][plateLevels[n]] - level) < tolerance
+                            && [first, second].allSatisfy {
+                                position[$0] >= plate.low[$0] - tolerance
+                                    && position[$0] <= plate.high[$0] + tolerance
+                            }
                     })
                 else { continue }
                 heads.append((master, column))
                 let centre = positions[Int(master)]
-                for (n, position) in positions.enumerated() {
-                    let node = UInt32(n)
+                for node in nodes(around: centre, axis: k, half: half) {
+                    let position = positions[Int(node)]
                     guard node != master, !masters.contains(node), !tied.contains(node),
                         abs(position[k] - level) < tolerance,
                         abs(position[first] - centre[first]) <= half.x,
@@ -397,16 +447,32 @@ struct ShellMesh {
             }
         }
         let punchingHeads = heads.map { (master: $0.master, axis: $0.column.axis, box: $0.column.box) }
+        var elementsOfNode = [[Int]](repeating: [], count: positions.count)
+        for (index, element) in elements.enumerated() {
+            for corner in 0..<4 { elementsOfNode[Int(element.nodes[corner])].append(index) }
+        }
         let strengths = Self.punchingStrengths(
-            elements: elements, heads: punchingHeads, ties: ties, materials: materials)
+            elements: elements, heads: punchingHeads, ties: ties, materials: materials,
+            elementsOfNode: elementsOfNode)
         punching = strengths.strengths
         punchingRings = strengths.rings
         punchingZone = [Bool](repeating: false, count: elements.count)
+        let thickest = elements.map(\.thickness).max() ?? 0
         for head in punchingHeads {
             let k = head.axis
             let level = positions[Int(head.master)][k]
             let centre = positions[Int(head.master)]
-            for (index, element) in elements.enumerated() where element.axis == k {
+            // The elements round it: those with a corner within the widest reach and an element.
+            let first = (k + 1) % 3
+            let second = (k + 2) % 3
+            let margin = 2 * 0.8 * thickest + 2 * size + tolerance
+            let around = Set(
+                nodes(
+                    around: centre, axis: k,
+                    half: SIMD2(0.5 * head.box.size[first] + margin, 0.5 * head.box.size[second] + margin)
+                ).flatMap { elementsOfNode[Int($0)] })
+            for index in around.sorted() where elements[index].axis == k {
+                let element = elements[index]
                 let middle = (0..<4).reduce(SIMD3<Float>.zero) { $0 + positions[Int(element.nodes[$1])] } / 4
                 guard abs(middle[k] - level) < tolerance else { continue }
                 let reach = 0.5 * head.box.size + SIMD3(repeating: 2 * 0.8 * element.thickness)
@@ -543,7 +609,8 @@ struct ShellMesh {
     /// below the mean of tests.
     static func punchingStrengths(
         elements: [Element], heads: [(master: UInt32, axis: Int, box: Box)],
-        ties: [(slave: UInt32, master: UInt32)], materials: [StructureMaterial]
+        ties: [(slave: UInt32, master: UInt32)], materials: [StructureMaterial],
+        elementsOfNode: [[Int]]? = nil
     ) -> (strengths: [Float], rings: [[Int]]) {
         var strengths = [Float](repeating: 0, count: elements.count)
         var rings: [[Int]] = []
@@ -556,7 +623,12 @@ struct ShellMesh {
             let second = (head.axis + 2) % 3
             let c1 = head.box.size[first]
             let c2 = head.box.size[second]
-            for (index, element) in elements.enumerated() where element.axis == head.axis {
+            // Only elements with a corner in the footprint count; with the map, only they are seen.
+            let candidates =
+                elementsOfNode.map { map in Set(footprint.flatMap { map[Int($0)] }).sorted() }
+                ?? Array(elements.indices)
+            for index in candidates where elements[index].axis == head.axis {
+                let element = elements[index]
                 let inside = (0..<4).filter { footprint.contains(element.nodes[$0]) }.count
                 let material = materials[element.material]
                 guard inside > 0, inside < 4, material.model == .concrete else { continue }
