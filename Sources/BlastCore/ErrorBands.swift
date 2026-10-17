@@ -1083,7 +1083,18 @@ extension StandingScene {
                         high: "over-read", validity: "0.25 to 4 kg/m³ in a closed 6 m cube, read at 80 ms",
                         check: "UFC 3-340-02's gas pressure (blastbench gas)"))
             }
-            if has(.deflagration), inputs.scenario.deflagration?.gas == .hydrogen {
+            // The vented bands are FM Global's chamber's: a room with a vent panel, the flame not sped up
+            // by a fitted factor or congestion, and peak pressures only.
+            let ventedRoom =
+                !(inputs.scenario.ventPanels ?? []).isEmpty && !has(.congestion)
+                && (inputs.scenario.deflagration?.acceleration.factor ?? 1) == 1
+            if has(.deflagration), kind == .impulse {
+                unbanded.append("A deflagration's impulse was not compared; its vented peaks were.")
+            } else if has(.deflagration), !ventedRoom {
+                unbanded.append(
+                    "Peak pressure: compared only in a vented room on the unscaled flame; this cloud is open, "
+                        + "congested or its flame sped up by a fitted factor.")
+            } else if has(.deflagration), inputs.scenario.deflagration?.gas == .hydrogen {
                 bands.append(
                     figure(
                         "ventedHydrogen", .ventedPressure, "Peak pressure in a vented room, lean hydrogen",
@@ -1462,6 +1473,40 @@ extension StandingScene {
                         validity: box, check: ufc))
             }
             unbanded.append("Roofs, and walls beside a failing one, go beyond both concrete bounds: no band.")
+            // Each band only where the scene has its construction (walls or roof), panes for glass.
+            let kinds = Set(
+                inputs.scenario.envelopeObjects.flatMap { object -> [EnvelopeConstruction.Kind] in
+                    let construction = inputs.scenario.envelopeConstruction(for: object.id)
+                    return [construction.walls, construction.roof]
+                })
+            let concrete = kinds.contains(.reinforcedConcrete) || kinds.contains(.reinforcedBlockwork)
+            let concreteBands: Set<String> = [
+                "Concrete wall rotation, fixed edges", "Concrete wall rotation, simply supported edges",
+                "Concrete panel deflection against measurement, simply supported, measured load",
+                "Concrete panel deflection against measurement, simply supported, the model's close-in load",
+            ]
+            if !concrete {
+                bands.removeAll { concreteBands.contains($0.quantity) }
+                unbanded.removeAll { $0.hasPrefix("Roofs, and walls beside a failing one") }
+            }
+            if !kinds.contains(.unreinforcedMasonry) {
+                bands.removeAll { $0.quantity == "Brick wall rotation" }
+            }
+            if !inputs.scenario.hasEnvelopePanes {
+                bands.removeAll { $0.quantity == "When a pane breaks" || $0.quantity.contains("panes") }
+            }
+            if kinds.contains(.profiledSteelSheeting) {
+                unbanded.append(
+                    "Profiled steel sheeting, by UFC's cold-formed panel method: no test of cladding on its "
+                        + "fixings compared (the shells against Langdon's panels: permanent sets within half to "
+                        + "twice on 10 of 13).")
+            }
+            if kinds.contains(.crossLaminatedTimber) {
+                unbanded.append(
+                    "Cross-laminated timber, one way and graded by TR-18-06.2's ductility limits: no test of a "
+                        + "CLT envelope's damage level compared; Tyndall's buildings were compared with the "
+                        + "detailed model.")
+            }
             let freestanding = inputs.scenario.envelopeObjects.contains { object in
                 object.envelope?.components(owner: object.id).contains(where: \.isFreestanding) ?? false
             }
@@ -1472,7 +1517,9 @@ extension StandingScene {
                         + "instead (building-envelopes.md#freestanding-walls).")
             }
         case .thermal:
-            if !burning {
+            if has(.deflagration) {
+                unbanded.append("Energy radiated: compared with TNT fireballs, not a gas deflagration.")
+            } else if !burning {
                 unbanded.append(
                     "Energy radiated: compared with afterburning and hot air, today's defaults; without both the "
                         + "fireball is gone within 50 ms, or with afterburning alone radiates 29% against 21%."
@@ -1487,7 +1534,9 @@ extension StandingScene {
                 unbanded.append("Only the volume's radiation was compared with a measurement.")
             }
         case .cloud:
-            if has(.afterburning) && !has(.hotAir) {
+            if has(.deflagration) {
+                unbanded.append("Cloud's top: compared with TNT clouds, not a gas deflagration.")
+            } else if has(.afterburning) && !has(.hotAir) {
                 unbanded.append(
                     "Cloud's top: Church's clouds were compared with afterburning and hot air together, today's "
                         + "defaults; afterburning alone was not run against them.")
