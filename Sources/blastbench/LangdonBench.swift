@@ -24,6 +24,8 @@ func runLangdon(device: MTLDevice) throws {
         settings.connection = connection
     }
     if flag("no-buckling") { settings.buckles = false }
+    if flag("collapse") { settings.postBuckling = .collapse }
+    if flag("effective-width") { settings.postBuckling = .effectiveWidth }
     let out = URL(filePath: option("out") ?? "/Volumes/StudioData/bombcad/profiled-sheeting/langdon-runs")
     try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
     var summary =

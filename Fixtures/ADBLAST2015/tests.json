@@ -1,0 +1,375 @@
+{
+ "source": "B. Hoffmeister et al., Advanced design methods for blast loaded steel structures (ADBLAST), RFCS final report EUR 27487 EN, 2015: Tables 8, 13-17, Figures 18-21, Annex A 7.2.3",
+ "singleSpanRig": {
+  "sheets": "3 x TR84/273 (0.75 or 1.50 mm), 2570 mm long, over a 2460 mm span between two square tubes 110 x 110 x 8 on HEB 200 beams; 3263 mm wide; fixed to the tubes with HILTI S-MP 52Z 6.3x25 self-tapping screws",
+  "charge": "C4, 3.5 m above the middle of the three sheets",
+  "measured": "reflected pressure and impulse, and deflection (laser, LVDT in tests 5 and 6 of the first campaign) at the middle",
+  "source": "Table 14, Figure 18, section 3.3.4.6"
+ },
+ "singleSpanTests": [
+  {
+   "test": 1,
+   "chargeKgC4": 1.5,
+   "thicknessMM": 1.5,
+   "reflectedPeakKPa": 319,
+   "reflectedImpulseKPaMS": 180,
+   "firstDynamicDeflectionMM": -52,
+   "plasticDeformationMM": 30,
+   "note": "first deflection by 15 Hz low-pass filtering; test 5 of the first campaign"
+  },
+  {
+   "test": 2,
+   "chargeKgC4": 1.5,
+   "thicknessMM": 1.5,
+   "reflectedPeakKPa": 341,
+   "reflectedImpulseKPaMS": 182,
+   "firstDynamicDeflectionMM": -71,
+   "plasticDeformationMM": 19,
+   "note": "first deflection by 15 Hz low-pass filtering; test 6 of the first campaign"
+  },
+  {
+   "test": 3,
+   "chargeKgC4": 0.5,
+   "thicknessMM": 1.5,
+   "reflectedPeakKPa": 112,
+   "reflectedImpulseKPaMS": 84,
+   "firstDynamicDeflectionMM": -22,
+   "plasticDeformationMM": 0,
+   "note": ""
+  },
+  {
+   "test": 4,
+   "chargeKgC4": 1.0,
+   "thicknessMM": 1.5,
+   "reflectedPeakKPa": 205,
+   "reflectedImpulseKPaMS": 142,
+   "firstDynamicDeflectionMM": -34,
+   "plasticDeformationMM": 0,
+   "note": "on the plates of test 3"
+  },
+  {
+   "test": 5,
+   "chargeKgC4": 0.5,
+   "thicknessMM": 1.5,
+   "reflectedPeakKPa": null,
+   "reflectedImpulseKPaMS": null,
+   "firstDynamicDeflectionMM": null,
+   "plasticDeformationMM": null,
+   "note": "no signal"
+  },
+  {
+   "test": 6,
+   "chargeKgC4": 1.0,
+   "thicknessMM": 1.5,
+   "reflectedPeakKPa": 194,
+   "reflectedImpulseKPaMS": 170,
+   "firstDynamicDeflectionMM": -41,
+   "plasticDeformationMM": null,
+   "note": "on the plates of test 5; plastic deformation given as (?)"
+  },
+  {
+   "test": 7,
+   "chargeKgC4": 0.5,
+   "thicknessMM": 0.75,
+   "reflectedPeakKPa": 124,
+   "reflectedImpulseKPaMS": 73,
+   "firstDynamicDeflectionMM": -50,
+   "plasticDeformationMM": 4,
+   "note": ""
+  },
+  {
+   "test": 8,
+   "chargeKgC4": 1.0,
+   "thicknessMM": 0.75,
+   "reflectedPeakKPa": 214,
+   "reflectedImpulseKPaMS": 212,
+   "firstDynamicDeflectionMM": -76,
+   "plasticDeformationMM": 14,
+   "note": ""
+  },
+  {
+   "test": 9,
+   "chargeKgC4": 0.5,
+   "thicknessMM": 0.75,
+   "reflectedPeakKPa": 135,
+   "reflectedImpulseKPaMS": null,
+   "firstDynamicDeflectionMM": -40,
+   "plasticDeformationMM": 7,
+   "note": "impulse given as (?)"
+  },
+  {
+   "test": 10,
+   "chargeKgC4": 1.0,
+   "thicknessMM": 0.75,
+   "reflectedPeakKPa": 205,
+   "reflectedImpulseKPaMS": 151,
+   "firstDynamicDeflectionMM": -71,
+   "plasticDeformationMM": 23,
+   "note": ""
+  },
+  {
+   "test": 11,
+   "chargeKgC4": 1.5,
+   "thicknessMM": 0.75,
+   "reflectedPeakKPa": 315,
+   "reflectedImpulseKPaMS": 196,
+   "firstDynamicDeflectionMM": -110,
+   "plasticDeformationMM": -13,
+   "note": ""
+  },
+  {
+   "test": 12,
+   "chargeKgC4": 1.5,
+   "thicknessMM": 0.75,
+   "reflectedPeakKPa": 168,
+   "reflectedImpulseKPaMS": 162,
+   "firstDynamicDeflectionMM": -101,
+   "plasticDeformationMM": 6,
+   "note": ""
+  }
+ ],
+ "singleSpanNotes": "Table 15. Deflection negative is downward (with the load), the plastic deformation positive upward: the report notes the 1.5 mm sheets lifted up in every test, as local buckles formed in the first loading changed their shape.",
+ "substructureTests": [
+  {
+   "test": 1,
+   "cladding": "4 x TR35 - 1.00 mm",
+   "thicknessMM": 1.0,
+   "profile": "TR35",
+   "midPurlinSupport": "free",
+   "reflectedPeakKPa": 164,
+   "reflectedImpulseKPaMS": 169,
+   "firstDynamicDeflectionMM": -94,
+   "plasticDeformationMM": -35,
+   "transferLoadF1kN": 9.3,
+   "transferLoadF2kN": null,
+   "purlinPlasticVerticalMM": -25,
+   "purlinPlasticLateralMM": 0
+  },
+  {
+   "test": 2,
+   "cladding": "4 x TR35 - 1.00 mm",
+   "thicknessMM": 1.0,
+   "profile": "TR35",
+   "midPurlinSupport": "free",
+   "reflectedPeakKPa": 257,
+   "reflectedImpulseKPaMS": 164,
+   "firstDynamicDeflectionMM": -97,
+   "plasticDeformationMM": -30,
+   "transferLoadF1kN": 5.6,
+   "transferLoadF2kN": null,
+   "purlinPlasticVerticalMM": -26,
+   "purlinPlasticLateralMM": 0
+  },
+  {
+   "test": 3,
+   "cladding": "4 x TR35 - 1.00 mm",
+   "thicknessMM": 1.0,
+   "profile": "TR35",
+   "midPurlinSupport": "fixed",
+   "reflectedPeakKPa": 209,
+   "reflectedImpulseKPaMS": 212,
+   "firstDynamicDeflectionMM": -84,
+   "plasticDeformationMM": -24,
+   "transferLoadF1kN": 10.9,
+   "transferLoadF2kN": 13,
+   "purlinPlasticVerticalMM": -10,
+   "purlinPlasticLateralMM": 0
+  },
+  {
+   "test": 4,
+   "cladding": "4 x TR35 - 1.00 mm",
+   "thicknessMM": 1.0,
+   "profile": "TR35",
+   "midPurlinSupport": "fixed",
+   "reflectedPeakKPa": 266,
+   "reflectedImpulseKPaMS": 161,
+   "firstDynamicDeflectionMM": -94,
+   "plasticDeformationMM": -36,
+   "transferLoadF1kN": 11.3,
+   "transferLoadF2kN": 10.8,
+   "purlinPlasticVerticalMM": -16,
+   "purlinPlasticLateralMM": 0
+  },
+  {
+   "test": 5,
+   "cladding": "4 x TR84 - 0.75 mm",
+   "thicknessMM": 0.75,
+   "profile": "TR84",
+   "midPurlinSupport": "fixed",
+   "reflectedPeakKPa": 231,
+   "reflectedImpulseKPaMS": 330,
+   "firstDynamicDeflectionMM": -71,
+   "plasticDeformationMM": 11,
+   "transferLoadF1kN": 16.3,
+   "transferLoadF2kN": 17.7,
+   "purlinPlasticVerticalMM": -143,
+   "purlinPlasticLateralMM": 87
+  },
+  {
+   "test": 6,
+   "cladding": "4 x TR84 - 0.75 mm",
+   "thicknessMM": 0.75,
+   "profile": "TR84",
+   "midPurlinSupport": "fixed",
+   "reflectedPeakKPa": 289,
+   "reflectedImpulseKPaMS": 163,
+   "firstDynamicDeflectionMM": -82,
+   "plasticDeformationMM": 5,
+   "transferLoadF1kN": 17.4,
+   "transferLoadF2kN": 19.2,
+   "purlinPlasticVerticalMM": -150,
+   "purlinPlasticLateralMM": 87
+  },
+  {
+   "test": 7,
+   "cladding": "4 x TR84 - 0.75 mm",
+   "thicknessMM": 0.75,
+   "profile": "TR84",
+   "midPurlinSupport": "free",
+   "reflectedPeakKPa": 267,
+   "reflectedImpulseKPaMS": 165,
+   "firstDynamicDeflectionMM": -75,
+   "plasticDeformationMM": 22,
+   "transferLoadF1kN": 11.5,
+   "transferLoadF2kN": 14.2,
+   "purlinPlasticVerticalMM": -120,
+   "purlinPlasticLateralMM": 43
+  },
+  {
+   "test": 8,
+   "cladding": "4 x TR84 - 0.75 mm",
+   "thicknessMM": 0.75,
+   "profile": "TR84",
+   "midPurlinSupport": "free",
+   "reflectedPeakKPa": 236,
+   "reflectedImpulseKPaMS": 309,
+   "firstDynamicDeflectionMM": null,
+   "plasticDeformationMM": 12,
+   "transferLoadF1kN": 11.6,
+   "transferLoadF2kN": 12.9,
+   "purlinPlasticVerticalMM": -143,
+   "purlinPlasticLateralMM": 120
+  },
+  {
+   "test": 9,
+   "cladding": "4 x TR84 - 1.50 mm",
+   "thicknessMM": 1.5,
+   "profile": "TR84",
+   "midPurlinSupport": "free",
+   "reflectedPeakKPa": 182,
+   "reflectedImpulseKPaMS": 334,
+   "firstDynamicDeflectionMM": -45,
+   "plasticDeformationMM": 5,
+   "transferLoadF1kN": 11,
+   "transferLoadF2kN": 10,
+   "purlinPlasticVerticalMM": 0,
+   "purlinPlasticLateralMM": 0
+  },
+  {
+   "test": 10,
+   "cladding": "4 x TR84 - 1.50 mm",
+   "thicknessMM": 1.5,
+   "profile": "TR84",
+   "midPurlinSupport": "free",
+   "reflectedPeakKPa": 289,
+   "reflectedImpulseKPaMS": 361,
+   "firstDynamicDeflectionMM": -49,
+   "plasticDeformationMM": 6,
+   "transferLoadF1kN": 8.8,
+   "transferLoadF2kN": 8.1,
+   "purlinPlasticVerticalMM": 0,
+   "purlinPlasticLateralMM": 0
+  },
+  {
+   "test": 11,
+   "cladding": "4 x TR84 - 1.50 mm",
+   "thicknessMM": 1.5,
+   "profile": "TR84",
+   "midPurlinSupport": "fixed",
+   "reflectedPeakKPa": 307,
+   "reflectedImpulseKPaMS": 116,
+   "firstDynamicDeflectionMM": -45,
+   "plasticDeformationMM": 6,
+   "transferLoadF1kN": 8.3,
+   "transferLoadF2kN": 9.2,
+   "purlinPlasticVerticalMM": 0,
+   "purlinPlasticLateralMM": 0
+  },
+  {
+   "test": 12,
+   "cladding": "4 x TR84 - 1.50 mm",
+   "thicknessMM": 1.5,
+   "profile": "TR84",
+   "midPurlinSupport": "fixed",
+   "reflectedPeakKPa": 167,
+   "reflectedImpulseKPaMS": 164,
+   "firstDynamicDeflectionMM": -40,
+   "plasticDeformationMM": 8,
+   "transferLoadF1kN": 11,
+   "transferLoadF2kN": 11,
+   "purlinPlasticVerticalMM": 0,
+   "purlinPlasticLateralMM": 0
+  }
+ ],
+ "substructureNotes": "Table 17: claddings over a U 60 x 30 x 6 mid-purlin, its ends bolted (fixed) or in slotted holes (free); charges 0.25-1.5 kg C4 at 3.5 m. Where screws pulled through, the purlin took the impulse and deformed plastically (the TR84 0.75 mm tests); the report estimates the screws' pull-through resistance at 24.4 kN/m at 4 screws a metre.",
+ "coupons": {
+  "TR84_0.75": {
+   "yieldMPa": {
+    "0.005/s": 351.37,
+    "0.23/s": 398.11,
+    "2.3/s": 439.15
+   },
+   "ultimateMPa": {
+    "0.005/s": 396.08,
+    "0.23/s": 422.73,
+    "2.3/s": 437.83
+   },
+   "fracturePct": {
+    "0.005/s": 31.48,
+    "0.23/s": 27.51,
+    "2.3/s": 26.3
+   }
+  },
+  "TR84_1.0": {
+   "yieldMPa": {
+    "0.005/s": 353.04,
+    "0.23/s": 399.95,
+    "2.3/s": 438.22
+   }
+  },
+  "TR84_1.5": {
+   "yieldMPa": {
+    "0.005/s": 365.31,
+    "0.23/s": 409.82,
+    "2.3/s": 420.36
+   },
+   "ultimateMPa": {
+    "0.005/s": 418.216,
+    "0.23/s": 448.85,
+    "2.3/s": 464.61
+   },
+   "fracturePct": {
+    "0.005/s": 28.15,
+    "0.23/s": 27.04,
+    "2.3/s": 29.26
+   }
+  },
+  "TR35_1.0": {
+   "yieldMPa": {
+    "0.005/s": 323.62,
+    "0.23/s": 348.24,
+    "2.3/s": 376.23
+   }
+  },
+  "source": "Table 8"
+ },
+ "screws": {
+  "type": "HILTI S-MP 52Z 6.3x25 self-tapping",
+  "axialStiffnessPerScrewNPerM": 660000.0,
+  "fourScrewsLongitudinalCapacityN": 7700,
+  "pullThroughPerMetreKN": 24.4,
+  "atScrewsPerMetre": 4,
+  "source": "Annex A 7.2.3.1 (4 x S-MP 52 Z: k = 2.64e6 N/m, Npl = 7700 N); section 3.3.4.7"
+ },
+ "staticSingleSpan": "Table 9: in static four-point bending the self-tapping screws failed by bearing of the sheet at the supports, after local buckling at mid-span; a support rotation of at least 5.79 degrees was reached."
+}

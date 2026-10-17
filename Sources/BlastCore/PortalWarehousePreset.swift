@@ -12,7 +12,8 @@ import simd
 /// - Zed purlins and side rails, 200 mm deep and 1.6 mm thick, about 1.8 m apart, continuous;
 ///   gable posts at 6 m;
 /// - trapezoidal steel sheets, 32 mm deep on the walls and 45 mm on the roof, 0.7 mm, as
-///   `ProfiledSheet`, sharing the purlins' and rails' nodes (screwed, without pull-out here).
+///   `ProfiledSheet`, crests out, screwed to the purlins and rails, one self-drilling screw in every
+///   trough, that pull out of the Zeds' 1.6 mm by EN 1993-1-3 and let the sheet go.
 /// A neighbouring unit of the same construction stands behind it as an envelope, its sheeting
 /// judged by the one-way model. 100 kg of TNT, a car's worth, stands 30 m from the front gable.
 extension ScenarioPreset {
@@ -20,7 +21,7 @@ extension ScenarioPreset {
     /// (its effective modulus at 450 MPa).
     static let zedPurlin = SteelSection(
         name: "Zed purlin 200 × 1.6", depth: 0.2, width: 0.075, area: 4.49 / 7850, secondMoment: 341.85e-8,
-        plasticModulus: 14.98e3 / 450e6)
+        plasticModulus: 14.98e3 / 450e6, thickness: 0.0016)
 
     static func portalWarehouseScenario(title: String) -> Scenario {
         let (span, bay, bays, eaves): (Float, Float, Int, Float) = (30, 6, 4, 8)
@@ -28,7 +29,7 @@ extension ScenarioPreset {
         let (x1, y1) = (x0 + span, y0 + Float(bays) * bay)
         var solids: [Box] = []
         var materials: [StructureMaterial?] = []
-        var sheets: [(index: Int, profile: SheetProfile)] = []
+        var sheets: [(index: Int, profile: SheetProfile, crests: Int)] = []
         func add(_ box: Box, _ material: StructureMaterial?) {
             solids.append(box)
             materials.append(material)
@@ -95,18 +96,19 @@ extension ScenarioPreset {
                     purlin.equivalent(of: purlinSteel, width: 0.12))
             }
         }
-        // The sheeting: the walls' up the walls, the roof's across the purlins.
+        // The sheeting: the walls' up the walls, the roof's across the purlins, crests out and
+        // troughs on the rails and purlins, screwed to them.
         let wallSheet = SheetProfile.swedsteelSTW35
         let roofSheet = SheetProfile.swedsteelSTR45
-        for (box, profile) in [
-            (Box(min: SIMD3(x0, y0 - 0.02, 0), max: SIMD3(x1, y0 + 0.02, eaves)), wallSheet),
-            (Box(min: SIMD3(x0, y1 - 0.02, 0), max: SIMD3(x1, y1 + 0.02, eaves)), wallSheet),
-            (Box(min: SIMD3(x0 - 0.02, y0, 0), max: SIMD3(x0 + 0.02, y1, eaves)), wallSheet),
-            (Box(min: SIMD3(x1 - 0.02, y0, 0), max: SIMD3(x1 + 0.02, y1, eaves)), wallSheet),
-            (Box(min: SIMD3(x0, y0, eaves - 0.02), max: SIMD3(x1, y1, eaves + 0.02)), roofSheet),
+        for (box, profile, crests) in [
+            (Box(min: SIMD3(x0, y0 - 0.02, 0), max: SIMD3(x1, y0 + 0.02, eaves)), wallSheet, -1),
+            (Box(min: SIMD3(x0, y1 - 0.02, 0), max: SIMD3(x1, y1 + 0.02, eaves)), wallSheet, 1),
+            (Box(min: SIMD3(x0 - 0.02, y0, 0), max: SIMD3(x0 + 0.02, y1, eaves)), wallSheet, -1),
+            (Box(min: SIMD3(x1 - 0.02, y0, 0), max: SIMD3(x1 + 0.02, y1, eaves)), wallSheet, 1),
+            (Box(min: SIMD3(x0, y0, eaves - 0.02), max: SIMD3(x1, y1, eaves + 0.02)), roofSheet, 1),
         ] {
             add(box, .structuralSteel)
-            sheets.append((solids.count - 1, profile))
+            sheets.append((solids.count - 1, profile, crests))
         }
         var structure = StructureModel(
             solids: solids, material: column.equivalent(width: 0.24), elementSize: 0.5, fixedBase: true)
@@ -115,9 +117,14 @@ extension ScenarioPreset {
         for (index, material) in materials.enumerated() where material != structure.material {
             structure.setMaterial(material, of: index)
         }
+        // One self-drilling screw in every trough into the 1.6 mm Zeds (EN 1993-1-3: about 1.7 kN
+        // each before it pulls out).
         for sheet in sheets {
-            structure.setSheet(
-                SheetAssignment(profile: sheet.profile, on: solids[sheet.index]), of: sheet.index)
+            var assignment = SheetAssignment(profile: sheet.profile, on: solids[sheet.index])
+            assignment.crestSide = sheet.crests
+            assignment.fastening = .screws(
+                profile: sheet.profile, supportThickness: purlin.thickness ?? 0.0016)
+            structure.setSheet(assignment, of: sheet.index)
         }
         var scenario = Scenario(
             name: title, domainSize: SIMD3(70, 104, 20), boxes: [],
