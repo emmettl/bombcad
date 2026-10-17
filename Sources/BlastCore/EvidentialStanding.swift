@@ -1974,13 +1974,25 @@ struct StandingScene {
             parts.append("plain concrete verified against its own curves, no member compared")
         }
         if classes.contains(.steel) {
-            level = max(level, .verified)
-            evidence.append(
+            level = max(level, .compared)
+            evidence += [
                 StandingEvidence(
                     "Elastic bars and cantilevers",
                     "Wave speed, tip deflection and first period within 5% of "
-                        + "theory", "validation.md#verification-against-theory"))
-            parts.append("steel verified against beam and wave theory, no test")
+                        + "theory", "validation.md#verification-against-theory"),
+                StandingEvidence(
+                    "Steel struts against Eurocode 3's buckling curves a, b and c, bowed by default",
+                    "0.97–1.02 of the design resistance over slenderness 0.2–2", "shell-model.md#buckling"),
+                StandingEvidence(
+                    "Nassr's steel beams and columns in the open (W150 and W200, 50–250 kg of ANFO)",
+                    "Beams 0.59–1.23 of the measured deflection, columns 0.35–1.68: within a quarter on the "
+                        + "shots near elastic and the curtain shot; high about the weak axis (no strain-rate law: "
+                        + "Nassr measured yield raised 1.3–1.5), low where the readings likely include the frame's "
+                        + "movement", "validation.md#steel-beams-and-columns-in-the-open"),
+            ]
+            parts.append(
+                "steel members compared with one series of blasted beams and columns, within half to twice "
+                    + "either way, without a strain-rate law; their connections not compared")
         }
         if classes.contains(.masonry) {
             level = max(level, .verified)
