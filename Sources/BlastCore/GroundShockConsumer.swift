@@ -230,7 +230,7 @@ public struct GroundShockConsumer: Sendable {
     private var columns: [SoilColumn] = []
     private var motions: [[[Float]]] = []
 
-    /// The fewest of the column's steps a shock rises over.
+    /// The fewest of the column's steps the load is averaged over, so the fastest a shock rises.
     public static let riseSteps = 12.0
 
     public init(spec: GroundShockSpec) {
@@ -273,18 +273,17 @@ public struct GroundShockConsumer: Sendable {
             // Nothing for a point never yet open; one under a block or the structure for a frame
             // carries nothing then.
             guard let sample = latest[n] else { continue }
-            // A shock rises over the time its front takes to cross a cell, and over no fewer than
-            // a dozen of the column's steps: faster, and the surface's node rings, up to two
-            // fifths too fast in soil that unloads stiffly.
-            let speed = AirInducedGroundShock.frontSpeed(
-                overpressure: peaks[n], ambientPressure: air.pressure, ambientDensity: air.density,
-                gamma: air.gamma)
-            let rise = max(Double(slice.cellSize / speed), Self.riseSteps * columns[n].timeStep)
+            // The column takes the load averaged over a dozen of its steps: a shock or a kink
+            // sharper than that makes the surface's node ring, up to two fifths too fast in soil
+            // that unloads stiffly. The average keeps the impulse. (The solver's own shock is
+            // already a cell wide in the peak and impulse it keeps, so the window is not widened
+            // to a cell's crossing: that would smear it twice.)
+            let window = Self.riseSteps * columns[n].timeStep
             loads[n].append(
                 time: slice.time, overpressure: histories[n].last ?? 0, peak: peaks[n],
-                impulse: max(sample.impulse, 0), rise: rise)
-            columns[n].advance(to: slice.time, load: loads[n])
-            loads[n].forget(before: columns[n].time - columns[n].timeStep)
+                impulse: max(sample.impulse, 0))
+            columns[n].advance(to: slice.time, load: loads[n], window: window)
+            loads[n].forget(before: columns[n].time - window)
             let velocity = columns[n].velocities
             if motions[n][0].count < histories[n].count - 1 {
                 // Still before it was first open.
@@ -334,6 +333,7 @@ public struct GroundShockConsumer: Sendable {
             column.peakStress, column.peakVelocity, column.peakDisplacement, column.displacements
         )
         let arrivals = column.arrivals
+        let (downward, upward) = (column.peakAcceleration, column.peakUpwardAcceleration)
         let surface = max(column.peakLoad, 0)
         func at(_ depth: Float) -> (stress: Float, velocity: Float, displacement: Float, residual: Float) {
             let z = Double(depth)
@@ -361,7 +361,9 @@ public struct GroundShockConsumer: Sendable {
             return GroundResponse(
                 depth: depth, stress: peak.stress, verticalVelocity: peak.velocity,
                 verticalDisplacement: peak.displacement, horizontalVelocity: horizontal, arrival: arrival,
-                residualDisplacement: peak.residual, history: motions[n][d])
+                residualDisplacement: peak.residual, history: motions[n][d],
+                verticalAcceleration: Float(column.atNodes(downward, depth: Double(depth))),
+                upwardAcceleration: Float(column.atNodes(upward, depth: Double(depth))))
         }
         let deepest = spec.depths.max() ?? 0
         let levels = (0..<GroundDepthProfile.levels).map {

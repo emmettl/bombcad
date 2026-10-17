@@ -127,9 +127,12 @@ struct TerrainGroundTests {
         var sloped = level
         sloped.place(on: .slope(domain: SIMD3(4, 4, 4), spacing: 0.5, foot: 0, angle: 30))
         #expect(sloped.points[0].normal != nil && sloped.points[0].responses == level.points[0].responses)
-        // Elastic soil: the plane wave's velocity along the column, p / ρc.
+        // Elastic soil: the plane wave's velocity along the column, p / ρc, of the load averaged
+        // over the column's window, which shaves the falling triangle's peak by w/(2t_d).
         let velocity = level.points[0].responses[0].verticalVelocity
-        #expect(abs(velocity / (80e3 / spec.soil.impedance) - 1) < 0.03)
+        let window = GroundShockConsumer.riseSteps * Double(SoilProfile.defaultTimeStep)
+        let shaved = Float(1 - window / (2 * 0.004))
+        #expect(abs(velocity / (shaved * 80e3 / spec.soil.impedance) - 1) < 0.03)
     }
 
     @Test("A body on a step stands on a footing at each level, through a support region for each")

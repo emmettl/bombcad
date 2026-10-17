@@ -176,14 +176,13 @@ public struct SoilProfile: Codable, Sendable, Equatable {
 /// The overpressure on the ground between frames, rebuilt from what each frame gives: the
 /// overpressure then, and the solver's peak and positive impulse so far, kept every time step.
 /// Frames a millisecond apart are coarser than a shock's rise, so the load is drawn as straight
-/// lines between frames that keep both. Where the peak rose above the frame values, the shock
-/// arrives and rises to that peak, then falls in a line to the next frame's value, its arrival
-/// placed so the interval's impulse is the solver's. It rises over the time its front takes to
-/// cross one of the solver's cells, as wide as the solver's own shock is, rather than at once,
-/// which the soil's grid could not carry without ringing. Elsewhere the load runs in a line
-/// through a midpoint chosen to keep the impulse, within zero and the peak.
+/// lines between frames that keep both. Where the peak rose above the earlier frame's value, the
+/// shock arrives with a jump to that peak and falls in a line to the next frame's value, its
+/// arrival placed so the interval's impulse is the solver's. Elsewhere the load runs in a line
+/// through a midpoint chosen to keep the interval's impulse, within zero and the peak. (The
+/// column takes it averaged over a window, which gives the jump its rise.)
 public struct GroundLoad: Sendable, Equatable {
-    /// (time s, overpressure Pa).
+    /// (time s, overpressure Pa); two knots at one time make a jump.
     public private(set) var knots: [(time: Double, pressure: Double)] = []
     private var last: (time: Double, pressure: Double, peak: Double, impulse: Double)?
 
@@ -196,56 +195,34 @@ public struct GroundLoad: Sendable, Equatable {
     /// The time the load is known to.
     public var end: Double { knots.last?.time ?? 0 }
 
-    /// Adds a frame: the overpressure at `time`, the peak and positive impulse so far, and how
-    /// long a shock takes to rise, s.
-    public mutating func append(
-        time: Double, overpressure: Float, peak: Float, impulse: Float, rise: Double = 0
-    ) {
+    /// Adds a frame: the overpressure at `time`, and the peak and positive impulse so far.
+    public mutating func append(time: Double, overpressure: Float, peak: Float, impulse: Float) {
         let now = (time: time, pressure: Double(overpressure), peak: Double(peak), impulse: Double(impulse))
         defer { last = now }
         guard let a = last else {
-            // A blast already over the ground at the first frame, laid down then: it rises from
-            // nothing as a shock would.
-            knots =
-                now.pressure > 0 && rise > 0
-                ? [(time, 0), (time + rise, now.pressure)] : [(time, now.pressure)]
+            knots = [(time, now.pressure)]
             return
         }
         let span = now.time - a.time
-        guard span > 0, now.time > end else { return }
-        let rose = now.peak > a.peak * (1 + 1e-6) && now.peak > max(a.pressure, now.pressure)
+        guard span > 0 else { return }
+        // The peak rising past the earlier frame's value means a shock arrived in between, even
+        // where this frame catches it at its peak.
+        let rose = now.peak > a.peak * (1 + 1e-6) && now.peak > a.pressure
         let gained = max(now.impulse - a.impulse, 0)
-        let start = max(end, a.time)
         if rose {
-            // A rise to the peak over τ ± h, then a line to the frame's value, carries the
-            // positive impulse a⁺τ + hK + (span − τ − h)(K + b⁺)/2: τ so that it is the solver's.
+            // A jump to the peak at a.time + τ, then a line to the frame's value, carries the
+            // positive impulse a⁺τ + (span − τ)(peak + b⁺)/2: τ so that it is the solver's.
             let before = max(a.pressure, 0)
             let after = (now.peak + max(now.pressure, 0)) / 2
-            func arrival(_ h: Double) -> Double {
-                guard after > before else { return 0 }
-                return min(max(((span - h) * after + h * now.peak - gained) / (after - before), 0), span)
-            }
-            var half = rise / 2
-            var jump = a.time + arrival(half)
-            let room = min(half, jump - start, now.time - jump)
-            if room < half {
-                half = max(room, 0)
-                jump = a.time + arrival(half)
-                half = max(min(half, jump - start, now.time - jump), 0)
-            }
-            if half > 0 {
-                knots.append((jump - half, a.pressure))
-                knots.append((jump + half, now.peak))
-            } else {
-                knots.append((jump, a.pressure))
-                knots.append((jump, now.peak))
-            }
-        } else if a.pressure >= 0, now.pressure >= 0, start == a.time {
+            let tau = after > before ? min(max((span * after - gained) / (after - before), 0), span) : 0
+            knots.append((a.time + tau, a.pressure))
+            knots.append((a.time + tau, now.peak))
+        } else if a.pressure >= 0, now.pressure >= 0 {
             // Through a midpoint whose line keeps the impulse: (a + 2m + b)/4 = impulse / span.
             let middle = 2 * gained / span - (a.pressure + now.pressure) / 2
             knots.append((a.time + span / 2, min(max(middle, 0), max(now.peak, a.pressure, now.pressure))))
         }
-        if now.time > end { knots.append((now.time, now.pressure)) }
+        knots.append((now.time, now.pressure))
     }
 
     /// The load's integral over [from, to], Pa·s, zero before its first knot and held at its
@@ -325,6 +302,7 @@ public struct SoilColumn: Sendable {
         case stress, viscous, envelopeStrain, envelopeStress, peakStress, arrival
         // Per node.
         case mass, massDamping, displacement, velocity, previous, peakVelocity, peakDisplacement
+        case peakAcceleration, peakUpwardAcceleration
 
         var perNode: Bool { rawValue >= Field.mass.rawValue }
     }
@@ -408,7 +386,10 @@ public struct SoilColumn: Sendable {
         }
         let count = elementData.count
         elements = count
-        var storage = [Double](repeating: 0, count: Field.mass.rawValue * count + 7 * (count + 1))
+        var storage = [Double](
+            repeating: 0,
+            count: Field.mass.rawValue * count
+                + (Field.allCases.count - Field.mass.rawValue) * (count + 1))
         var depths = [0.0]
         for (e, element) in elementData.enumerated() {
             let (h, layer) = (element.h, element.layer)
@@ -441,6 +422,11 @@ public struct SoilColumn: Sendable {
     /// displacement now.
     public var peakVelocity: [Double] { Array(values(.peakVelocity)) }
     public var peakDisplacement: [Double] { Array(values(.peakDisplacement)) }
+    /// Each node's peak downward and upward acceleration, m/s², both positive: the change in its
+    /// velocity over a step. Near a shock's front this is the rebuilt load's rise over the soil's
+    /// impedance, so it is as fine as the rise (see `GroundShockConsumer.riseSteps`).
+    public var peakAcceleration: [Double] { Array(values(.peakAcceleration)) }
+    public var peakUpwardAcceleration: [Double] { Array(values(.peakUpwardAcceleration)) }
     public var velocities: [Double] { Array(values(.velocity)) }
     public var displacements: [Double] { Array(values(.displacement)) }
     /// Each element's stress now, Pa.
@@ -503,6 +489,7 @@ public struct SoilColumn: Sendable {
             let (u, v, old, vMax, uMax) = (
                 f(.displacement), f(.velocity), f(.previous), f(.peakVelocity), f(.peakDisplacement)
             )
+            let (aDown, aUp) = (f(.peakAcceleration), f(.peakUpwardAcceleration))
             // Stresses at t.
             for e in 0..<n {
                 let strain = (u[e] - u[e + 1]) / h[e]
@@ -545,6 +532,9 @@ public struct SoilColumn: Sendable {
                 u[j] += dt * v[j]
                 vMax[j] = max(vMax[j], v[j])
                 uMax[j] = max(uMax[j], u[j])
+                let rate = (v[j] - old[j]) / dt
+                aDown[j] = max(aDown[j], rate)
+                aUp[j] = max(aUp[j], -rate)
             }
         }
         self.work += work
@@ -557,10 +547,14 @@ public struct SoilColumn: Sendable {
 
     /// Advances to `time`, as far as whole steps go, pressed by `load`; the steps whose span
     /// reaches beyond what the load knows wait for the next frame.
-    public mutating func advance(to end: Double, load: GroundLoad) {
+    /// With a `window` wider than the step, each step takes the load's mean over that window,
+    /// centred on it: the shock then rises over the window, the impulse kept exactly, and no kink
+    /// in the load is sharper than the window.
+    public mutating func advance(to end: Double, load: GroundLoad, window: Double = 0) {
         let dt = timeStep
-        while time + dt / 2 <= min(end, load.end) + 1e-12 {
-            step(load: load.integral(from: time - dt / 2, to: time + dt / 2) / dt)
+        let width = max(dt, window)
+        while time + width / 2 <= min(end, load.end) + 1e-12 {
+            step(load: load.integral(from: time - width / 2, to: time + width / 2) / width)
         }
     }
 }

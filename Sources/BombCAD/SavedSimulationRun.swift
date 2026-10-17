@@ -242,6 +242,8 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                                 && (response.horizontalVelocity.map { finite($0) } ?? true)
                                 && (response.arrival.map(\.isFinite) ?? true)
                                 && (response.residualDisplacement?.isFinite ?? true)
+                                && (response.verticalAcceleration.map { finite($0) } ?? true)
+                                && (response.upwardAcceleration.map { finite($0) } ?? true)
                                 && response.history == nil
                         }
                         && (point.profile.map { profile in
