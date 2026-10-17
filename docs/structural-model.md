@@ -185,7 +185,7 @@ many times their sag (`--no-settle` against the default, 17 October 2026):
 | Chiquito S1–S3, P1, P7: left (peak) (mm) | 4 (16), 3 (14), 112 (155) | 4 (17), 4 (15), 110 (156) |
 | The chamber's roof edge: peak / left (mm) | 50 / 28 | 49 / 27 |
 | Mendonça slab 2 (`--settle`, 60 ms): peak (mm) | 3.69 | 3.77 |
-| Yao T1 with its weight (`--weight`): centre's peak, within 2 ms (mm) | 3.34, 0.96 | weightless: 3.29, 0.96 |
+| Yao T1 with its weight (the default since; `--weightless` before): centre's peak, within 2 ms (mm) | 3.34, 0.96 | weightless: 3.29, 0.96 |
 
 None moves by more than 2 mm or 4%, and none changes a verdict. Hupfauf's contact slabs, which
 run for 3 ms, sag 0.04 mm in that time. Alsubaei's and Keys's walls stand upright, so their
@@ -264,6 +264,9 @@ struck together they rebound with their momentum and never more kinetic energy t
 with; a block thrown along its seat with friction 0.5 slides v² / (2 μ g), 0.25 m, within 10%,
 its kinetic energy all spent on friction, the pairs within a quarter metre less half an element
 of the edge off their seat; thrown to slide 1.5 m it goes off the end and falls.
+A whole building of such parts, a twelve-storey [large-panel block of flats](large-panel-flats.md)
+of the Ronan Point type, is a preset. Its one-element gaps are also gaps in the air's solid mask
+on cells finer than two elements, which a gas explosion inside it has to be sealed against.
 
 `blastbench seat` (`DroppedSpanStudy`) seats a precast beam 0.5 m deep on corbels at the tops of
 two reinforced concrete columns 6 m apart, resting with friction 0.5 on a 100 mm pad, and gives

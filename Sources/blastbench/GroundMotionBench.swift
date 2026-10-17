@@ -57,13 +57,23 @@ func runGroundMotion(device: MTLDevice) throws {
     let poisson = option("poisson").flatMap(Float.init) ?? 0.3
     let shearRatio = ((1 - 2 * poisson) / (2 * (1 - poisson))).squareRoot()
     let halfCell = option("half-cell").flatMap(Float.init)
-    func halfSpec(share: Float?, dx: Float) -> GroundShockSpec {
+    // Soil that yields (stage 3): at each `--friction` angle, with `--cohesion` (Pa, 0) and
+    // unloading at `--hs-unloading` (2) times the loading speed, the direct source at
+    // `--plastic-share` (the default share if left out).
+    let frictions = (option("friction") ?? "").split(separator: ",").compactMap { Float($0) }
+    let cohesion = option("cohesion").flatMap(Float.init) ?? 0
+    let unloading = option("hs-unloading").flatMap(Float.init) ?? 2
+    let plasticShare = option("plastic-share").flatMap(Float.init)
+    func halfSpec(share: Float?, dx: Float, friction: Float? = nil) -> GroundShockSpec {
         var spec = spec(nil, dx: dx)
         spec.model = .halfspace
         spec.profile = SoilProfile(
             layers: [
                 SoilLayer(
-                    thickness: 1, density: density, waveSpeed: speed, shearWaveSpeed: speed * shearRatio)
+                    thickness: 1, density: density, waveSpeed: speed,
+                    unloadingWaveSpeed: friction != nil && unloading > 1 ? speed * unloading : nil,
+                    shearWaveSpeed: speed * shearRatio, frictionAngle: friction,
+                    cohesion: friction != nil ? cohesion : nil)
             ], timeStep: step)
         spec.halfSpace = HalfSpaceSetup(
             centre: .zero, chargeMass: Float(mass), elasticShare: share, cellSize: halfCell)
@@ -78,6 +88,13 @@ func runGroundMotion(device: MTLDevice) throws {
                 ("halfspace", { halfSpec(share: nil, dx: $0) }),
                 ("halfspace, air only", { halfSpec(share: 0, dx: $0) }),
             ])
+        + frictions.flatMap { phi -> [(String, (Float) -> GroundShockSpec)] in
+            let name = "yielding \(format(Double(phi), 0))°"
+            return [
+                (name, { halfSpec(share: plasticShare, dx: $0, friction: phi) }),
+                (name + ", air only", { halfSpec(share: 0, dx: $0, friction: phi) }),
+            ]
+        }
     print(
         String(
             format:
@@ -234,6 +251,7 @@ func runGroundMotion(device: MTLDevice) throws {
                     v["horizontal"] = r.horizontalVelocity.map { Double($0) }
                     v["residual"] = r.residualDisplacement.map { Double($0) }
                     v["arrival_s"] = r.arrival
+                    if flag("histories") { v["history"] = r.history.map { $0.map(Double.init) } }
                     return v
                 }
                 return entry
@@ -314,6 +332,9 @@ func runGroundMotionCalibration() throws {
     let scaled = [4.0, 6.0, 8.0, 12.0, 16.0]
     let pounds = cbrt(mass * 2.204_62)
     let ranges = scaled.map { Float($0 * pounds * 0.3048) }
+    // Soil that yields, with `--friction` (degrees), `--cohesion` (Pa) and `--hs-unloading`.
+    let friction = option("friction").flatMap(Float.init)
+    let unloading = option("hs-unloading").flatMap(Float.init) ?? 2
     var spec = GroundShockSpec()
     spec.model = .halfspace
     spec.points = ranges.map { SIMD2($0, 0) }
@@ -322,7 +343,9 @@ func runGroundMotionCalibration() throws {
         layers: [
             SoilLayer(
                 thickness: 1, density: density, waveSpeed: speed,
-                shearWaveSpeed: speed * SoilLayer.defaultShearRatio)
+                unloadingWaveSpeed: friction != nil && unloading > 1 ? speed * unloading : nil,
+                shearWaveSpeed: speed * SoilLayer.defaultShearRatio, frictionAngle: friction,
+                cohesion: friction != nil ? option("cohesion").flatMap(Float.init) ?? 0 : nil)
         ])
     let setup = HalfSpaceSetup(
         centre: .zero, chargeMass: Float(mass), elasticShare: probe,
@@ -339,8 +362,9 @@ func runGroundMotionCalibration() throws {
     print(
         String(
             format:
-                "Direct source alone, %.0f kg, share %.3g: dense sand %.0f kg/m³ at %.0f m/s, n = %.1f, %.2f m deep; grid %.3f m",
-            mass, probe, density, speed, n, spec.depths[0], engine.grid.spacing))
+                "Direct source alone, %.0f kg, share %.3g: dense sand %.0f kg/m³ at %.0f m/s, n = %.1f, %.2f m deep; grid %.3f m%@",
+            mass, probe, density, speed, n, spec.depths[0], engine.grid.spacing,
+            friction.map { String(format: "; yielding at %.0f°, unloading ×%.1f", $0, unloading) } ?? ""))
     var calibrated = Double.nan
     for (k, range) in ranges.enumerated() {
         let model = engine.peakResultant[k]
@@ -354,4 +378,8 @@ func runGroundMotionCalibration() throws {
                 scaled[k], range, model, ufc, model / ufc, share))
     }
     print(String(format: "Calibrated share at 8 ft/lb^(1/3): %.3g", calibrated))
+    print(
+        String(
+            format: "Yielding took %.3g J of the source's %.3g J", engine.stepper.yieldingLoss,
+            engine.stepper.work))
 }

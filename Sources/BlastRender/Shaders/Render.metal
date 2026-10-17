@@ -172,8 +172,86 @@ static inline bool hitSphere(float3 origin, float3 direction, float3 centre, flo
     return true;
 }
 
-static inline bool occluded(float3 origin, float3 direction, const device BoxData *boxes, int boxCount) {
+// The blocks in columns, for scenes of many (a district's map buildings): a grid over their
+// footprints, each column listing the blocks over it (`starts` a column's first entry in `items`,
+// one more than the columns). A ray walks the columns it crosses, nearest first.
+struct BoxGrid {
+    float4 frame;   // the grid's south-west corner (x, y), its column width, the blocks' top
+    uint4 dims;     // columns along x and y; 1 to walk the grid, 0 to test every block
+};
+
+// The nearest block the ray meets (with `first`, the first it meets, for a shadow), testing only the blocks
+// over the columns it crosses: a block it meets is over the column where it meets it, so once the
+// nearest so far lies before the ray leaves a column, none further can be nearer.
+static inline int gridHit(float3 origin, float3 direction, const device BoxData *boxes,
+                          constant BoxGrid &g, const device uint *starts, const device uint *items, bool first,
+                          thread float &nearest, thread float3 &nearestNormal) {
     float3 inverseDirection = 1.0f / direction;
+    float width = g.frame.z;
+    int2 columns = int2(g.dims.xy);
+    float3 low = float3(g.frame.xy, -1.0e9f);
+    float3 high = float3(g.frame.xy + float2(columns) * width, g.frame.w);
+    float3 t0 = (low - origin) * inverseDirection;
+    float3 t1 = (high - origin) * inverseDirection;
+    float3 nearT = min(t0, t1);
+    float3 farT = max(t0, t1);
+    float enter = max(max(nearT.x, nearT.y), max(nearT.z, 0.0f));
+    float leave = min(farT.x, min(farT.y, farT.z));
+    if (enter > leave) {
+        return -1;
+    }
+    float2 start = (origin.xy + enter * direction.xy - g.frame.xy) / width;
+    int2 cell = clamp(int2(floor(start)), int2(0), columns - 1);
+    int2 step = int2(direction.x >= 0.0f ? 1 : -1, direction.y >= 0.0f ? 1 : -1);
+    float2 next = (g.frame.xy + float2(cell + max(step, int2(0))) * width - origin.xy) * inverseDirection.xy;
+    float2 delta = abs(width * inverseDirection.xy);
+    int found = -1;
+    for (int walked = 0; walked < 4096; ++walked) {
+        uint begin = starts[cell.x + columns.x * cell.y];
+        uint end = starts[cell.x + columns.x * cell.y + 1];
+        for (uint e = begin; e < end; ++e) {
+            uint n = items[e];
+            float distance;
+            float3 normal;
+            if (hitBox(origin, inverseDirection, boxes[n].low.xyz, boxes[n].high.xyz, distance, normal)
+                && (distance < nearest || (distance == nearest && int(n) < found))) {
+                if (first) {
+                    return int(n);
+                }
+                nearest = distance;
+                nearestNormal = normal;
+                found = int(n);
+            }
+        }
+        float exit = min(next.x, next.y);
+        if (found >= 0 && nearest <= exit) {
+            break;
+        }
+        if (exit > leave) {
+            break;
+        }
+        if (next.x < next.y) {
+            cell.x += step.x;
+            next.x += delta.x;
+        } else {
+            cell.y += step.y;
+            next.y += delta.y;
+        }
+        if (any(cell < int2(0)) || any(cell >= columns)) {
+            break;
+        }
+    }
+    return found;
+}
+
+static inline bool occluded(float3 origin, float3 direction, const device BoxData *boxes, int boxCount,
+                            constant BoxGrid &g, const device uint *starts, const device uint *items) {
+    float3 inverseDirection = 1.0f / direction;
+    if (g.dims.z != 0) {
+        float nearest = 1.0e9f;
+        float3 normal;
+        return gridHit(origin, direction, boxes, g, starts, items, true, nearest, normal) >= 0;
+    }
     for (int n = 0; n < boxCount; ++n) {
         float distance;
         float3 normal;
@@ -218,6 +296,9 @@ fragment SceneOut sceneFragment(VertexOut in [[stage_in]],
                                 constant RenderUniforms &u [[buffer(0)]],
                                 const device BoxData *boxes [[buffer(1)]],
                                 const device float4 *gauges [[buffer(2)]],
+                                constant BoxGrid &boxGrid [[buffer(3)]],
+                                const device uint *gridStarts [[buffer(4)]],
+                                const device uint *gridItems [[buffer(5)]],
                                 texture3d<float> field [[texture(0)]]) {
     constexpr sampler linearSampler(filter::linear, address::clamp_to_edge);
 
@@ -250,7 +331,7 @@ fragment SceneOut sceneFragment(VertexOut in [[stage_in]],
             base = mix(base, base * 1.3f, grid * (inside ? 0.6f : 0.3f));
             float light = 0.45f + 0.55f * max(sun.z, 0.0f);
             float crater = inside ? shadeCrater(p.xy, u, base, light) : 0.0f;
-            if (occluded(p + float3(0.0f, 0.0f, 0.01f), sun, boxes, boxCount)) {
+            if (occluded(p + float3(0.0f, 0.0f, 0.01f), sun, boxes, boxCount, boxGrid, gridStarts, gridItems)) {
                 light *= 0.62f;
             }
             colour = base * light;
@@ -263,34 +344,46 @@ fragment SceneOut sceneFragment(VertexOut in [[stage_in]],
         }
     }
 
-    // Blocks.
-    for (int n = 0; n < boxCount; ++n) {
-        float t;
-        float3 normal;
-        if (hitBox(origin, inverseDirection, boxes[n].low.xyz, boxes[n].high.xyz, t, normal) && t < nearest) {
-            nearest = t;
-            float3 p = origin + t * direction;
-            // Sample half a cell inside the wall, where solid cells hold the adjacent air values.
-            float3 uvw = (p - normal * 0.5f * cellSize) / domain;
-            float diffuse = max(dot(normal, sun), 0.0f);
-            if (diffuse > 0.0f && occluded(p + normal * 0.01f, sun, boxes, boxCount)) {
-                diffuse = 0.0f;
+    // Blocks: the nearest, by the grid's columns or among them all.
+    int hit = -1;
+    float3 normal = float3(0.0f);
+    if (boxGrid.dims.z != 0) {
+        hit = gridHit(origin, direction, boxes, boxGrid, gridStarts, gridItems, false, nearest, normal);
+    } else {
+        for (int n = 0; n < boxCount; ++n) {
+            float t;
+            float3 faceNormal;
+            if (hitBox(origin, inverseDirection, boxes[n].low.xyz, boxes[n].high.xyz, t, faceNormal) && t < nearest) {
+                nearest = t;
+                normal = faceNormal;
+                hit = n;
             }
-            // Faint storey lines give the blocks a sense of scale.
-            float storey = normal.z == 0.0f ? smoothstep(0.42f, 0.5f, abs(fract(p.z / 3.0f) - 0.5f)) : 0.0f;
-            float light = (0.50f + 0.50f * diffuse) * (1.0f - 0.10f * storey);
-            // An envelope's one-way damage, when judged: none, glass broken alone, then moderate,
-            // heavy, hazardous and failed.
-            // EnvelopeDamageColour.palette; a test keeps the two the same.
-            const float3 damage[6] = {
-                float3(0.851f, 0.910f, 0.824f), float3(0.310f, 0.659f, 0.878f), float3(0.949f, 0.871f, 0.227f),
-                float3(0.878f, 0.541f, 0.000f), float3(0.702f, 0.227f, 0.039f), float3(0.420f, 0.118f, 0.333f)};
-            // Drawn in its own colour, lit but without the air's paint, which would hide it.
-            int code = int(boxes[n].low.w + 0.5f);
-            colour = code >= 1 && code <= 6
-                ? damage[code - 1] * light
-                : fieldTint(float3(0.80f, 0.79f, 0.76f), light, field.sample(linearSampler, uvw), u);
         }
+    }
+    if (hit >= 0) {
+        int n = hit;
+        float t = nearest;
+        float3 p = origin + t * direction;
+        // Sample half a cell inside the wall, where solid cells hold the adjacent air values.
+        float3 uvw = (p - normal * 0.5f * cellSize) / domain;
+        float diffuse = max(dot(normal, sun), 0.0f);
+        if (diffuse > 0.0f && occluded(p + normal * 0.01f, sun, boxes, boxCount, boxGrid, gridStarts, gridItems)) {
+            diffuse = 0.0f;
+        }
+        // Faint storey lines give the blocks a sense of scale.
+        float storey = normal.z == 0.0f ? smoothstep(0.42f, 0.5f, abs(fract(p.z / 3.0f) - 0.5f)) : 0.0f;
+        float light = (0.50f + 0.50f * diffuse) * (1.0f - 0.10f * storey);
+        // An envelope's one-way damage, when judged: none, glass broken alone, then moderate,
+        // heavy, hazardous and failed.
+        // EnvelopeDamageColour.palette; a test keeps the two the same.
+        const float3 damage[6] = {
+            float3(0.851f, 0.910f, 0.824f), float3(0.310f, 0.659f, 0.878f), float3(0.949f, 0.871f, 0.227f),
+            float3(0.878f, 0.541f, 0.000f), float3(0.702f, 0.227f, 0.039f), float3(0.420f, 0.118f, 0.333f)};
+        // Drawn in its own colour, lit but without the air's paint, which would hide it.
+        int code = int(boxes[n].low.w + 0.5f);
+        colour = code >= 1 && code <= 6
+            ? damage[code - 1] * light
+            : fieldTint(float3(0.80f, 0.79f, 0.76f), light, field.sample(linearSampler, uvw), u);
     }
 
     // Gauge markers and the charge marker.

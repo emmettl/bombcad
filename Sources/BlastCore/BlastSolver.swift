@@ -822,6 +822,16 @@ public final class BlastSolver {
         try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
     }
 
+    /// Keeps `cells`, just made solid in the mask with structures already in place (the vent
+    /// panels, placed after them), in the rigid mask their remasking starts from too, rather than
+    /// leaving them to be lost at the first remask or recapturing a mask that holds their outlines.
+    func keepInRigidMask(_ cells: [Int]) {
+        guard !bodies.isEmpty else { return }
+        let rigid = rigidMaskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        for index in cells { rigid[index] = 1 }
+        needsRigidMaskCapture = false
+    }
+
     /// Direct access to the solid mask (non-zero marks a rigid cell). Call `restart()` after editing.
     public func mutateMask(_ body: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
         precondition(!batchInFlight, "Cannot edit the mask while a batch is in flight")
@@ -2440,7 +2450,9 @@ public final class BlastSolver {
         }
         return BatchResult(
             steps: Int(control.activeSteps), elapsed: elapsed, lastTimeStep: Double(lastStep),
-            isStable: control.batchTime.isFinite && control.dt.isFinite,
+            // A NaN anywhere in the air makes the wave speed NaN, which the step's maximum
+            // passes over, so the step itself stays finite: the overpressure says it.
+            isStable: control.batchTime.isFinite && control.dt.isFinite && !control.maxOverpressure.isNaN,
             maxOverpressure: control.maxOverpressure, sweptFraction: swept,
             refinedTiles: refinement?.patchCount ?? 0, finerRefinedTiles: finerRefinement?.patchCount ?? 0,
             firstLevelSubsteps: levelSubsteps(control, level: 0),

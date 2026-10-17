@@ -1346,7 +1346,8 @@ final class SimulationModel {
     /// Adds a rigid block in the middle of the domain.
     func addBlock() {
         guard settings.scenario.rigidBoxes.count < SceneRenderer.maxBoxes else {
-            errorMessage = "The layout has reached the 2,048 rigid region limit."
+            errorMessage =
+                "The layout has reached the \(SceneRenderer.maxBoxes.formatted()) rigid region limit."
             return
         }
         let centre = settings.scenario.domainSize / 2
@@ -1378,7 +1379,8 @@ final class SimulationModel {
 
     func duplicateBlock(id: UUID) {
         guard settings.scenario.rigidBoxes.count < SceneRenderer.maxBoxes else {
-            errorMessage = "The layout has reached the 2,048 rigid region limit."
+            errorMessage =
+                "The layout has reached the \(SceneRenderer.maxBoxes.formatted()) rigid region limit."
             return
         }
         do { selection = .block(try settings.scenario.duplicateFixedObject(id: id)) } catch {
