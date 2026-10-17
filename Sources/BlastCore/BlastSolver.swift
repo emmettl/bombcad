@@ -61,6 +61,51 @@ public final class BlastSolver {
         envelopeComponentRecorder = recorder
         try keepAir(recorder.faces.map(\.fluid))
         componentsNeedInitialSample = true
+        facadeBand = nil
+        applyFacadeBand()
+    }
+
+    /// The air beside the component recorder's faces (their fluid cells and a cell round them), in
+    /// which refinement is held while loaded (`SolverConfiguration.refinementHoldsEnvelopes`).
+    private var facadeBand: MTLBuffer?
+
+    /// Sets the band on each refined level, or takes it off.
+    private func applyFacadeBand() {
+        guard let threshold = configuration.refinementHoldsEnvelopes,
+            let recorder = envelopeComponentRecorder,
+            !refinementLevels.isEmpty
+        else {
+            for level in refinementLevels {
+                level.facadeBand = nil
+                level.facadeBandParameters.on = 0
+            }
+            return
+        }
+        if facadeBand == nil,
+            let buffer = device.makeBuffer(length: max(1, grid.cellCount), options: .storageModeShared)
+        {
+            let band = buffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+            memset(band, 0, grid.cellCount)
+            for face in recorder.faces {
+                let index = Int(face.fluid)
+                let cell = SIMD3(index % grid.nx, (index / grid.nx) % grid.ny, index / (grid.nx * grid.ny))
+                for dz in -1...1 {
+                    for dy in -1...1 {
+                        for dx in -1...1 where grid.contains(cell.x + dx, cell.y + dy, cell.z + dz) {
+                            band[grid.index(cell.x + dx, cell.y + dy, cell.z + dz)] = 1
+                        }
+                    }
+                }
+            }
+            facadeBand = buffer
+        }
+        for level in refinementLevels {
+            level.facadeBand = facadeBand
+            level.facadeBandParameters = FacadeBandParameters(
+                nx: UInt32(grid.nx), ny: UInt32(grid.ny), nz: UInt32(grid.nz),
+                ratio: UInt32(level.parentScale),
+                threshold: threshold, ambient: configuration.ambientPressure, on: facadeBand == nil ? 0 : 1)
+        }
     }
 
     /// Lets the envelopes' glazing break in the air (building-envelopes.md, "Venting"): each pane of
@@ -2132,6 +2177,7 @@ public final class BlastSolver {
             level.setPanes(ventedPanes)
         }
         for level in refinementLevels { level.coarseCut = cut ? terrainCut : nil }
+        applyFacadeBand()
         updateGaugeChildren()
     }
 

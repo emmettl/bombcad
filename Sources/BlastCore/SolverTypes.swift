@@ -147,6 +147,11 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// A tile is refined where the pressures of two neighbouring cells in it differ by more than
     /// this fraction of the lower, and so are the tiles around it.
     public var refinementThreshold: Float = 0.1
+    /// Holds refinement in the air beside envelope buildings' recorded faces (a cell either side)
+    /// while it is loaded, its overpressure past this many pascals either way, so that their
+    /// façades' reflected loads stay on the finest cells through their positive phase rather
+    /// than only as the shock passes. Nil, the default, holds nothing.
+    public var refinementHoldsEnvelopes: Float?
     /// How close, in cells of the grid a level refines, such a pair must come to a block for the
     /// block to be refined too: the margin kept around the shock. A shock moves under half a cell
     /// a step and the blocks are placed afresh every step, so 1 still holds it. Until 15 October

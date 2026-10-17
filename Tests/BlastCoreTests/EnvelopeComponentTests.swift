@@ -370,6 +370,50 @@ struct EnvelopeComponentHistoryTests {
             "\(refinedFine) \(refinedCoarse) \(uniform)")
     }
 
+    @Test("Refinement held beside a wall while its air is loaded keeps it fine after the shock has gone")
+    func heldBand() throws {
+        var scene = Scenario(
+            name: "Wall", domainSize: SIMD3(10, 10, 4), boxes: [],
+            charge: Charge(mass: 0.5, position: SIMD3(3, 5, 0.5)))
+        try scene.addEnvelopeObject(
+            BuildingEnvelope(solids: [Box(min: SIMD3(6, 2, 0), max: SIMD3(6.5, 8, 3))]), name: "Wall")
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        func run(cell: Float, refinement: Int, hold: Float?) throws -> (impulse: Double, patches: Int) {
+            var config = SolverConfiguration()
+            config.refinement = refinement
+            config.refinementMemory = 64 << 20
+            config.refinementHoldsEnvelopes = hold
+            let solver = try BlastSolver(
+                device: device, scenario: scene, cellSize: cell, configuration: config)
+            try solver.configureEnvelopeComponents(
+                objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: 0.02))
+            var patches = 0
+            while solver.time < 0.02 {
+                let batch = solver.advance(steps: 8, timeLimit: 0.02)
+                patches = batch.refinedTiles
+                if batch.steps == 0 { break }
+            }
+            // The side facing the charge: the larger impulse.
+            let histories = try #require(solver.envelopeComponentHistories())
+            let impulse =
+                histories.map { h in
+                    max(
+                        h.outerImpulsePaS.reduce(0) { $0 + Double($1) },
+                        h.innerImpulsePaS.reduce(0) { $0 + Double($1) })
+                }.max() ?? 0
+            return (impulse, patches)
+        }
+        let uniform = try run(cell: 0.25, refinement: 1, hold: nil)
+        let free = try run(cell: 0.5, refinement: 2, hold: nil)
+        let held = try run(cell: 0.5, refinement: 2, hold: 100)
+        // At 20 ms the shock has left: no patch is left without the band, 20 with it; the wall's
+        // net impulse 11.35 Pa s without, 10.43 with, against 10.47 on uniform 0.25 m cells.
+        #expect(held.patches > free.patches, "\(held.patches) \(free.patches)")
+        #expect(
+            abs(held.impulse - uniform.impulse) <= abs(free.impulse - uniform.impulse) * 1.001,
+            "\(held.impulse) \(free.impulse) \(uniform.impulse)")
+    }
+
     @Test("Past the window steps are not binned and say so; a budget too small widens the bins")
     func windowAndBudget() throws {
         let scene = try scene()

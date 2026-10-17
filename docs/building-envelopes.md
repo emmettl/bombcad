@@ -145,7 +145,13 @@ memory); openings recorded as panes in the open opening, for what the inside see
 has gone; and windows that start when a component's air first wakes (`windowFromArrival`, the
 start in `windowStartS`), so that across a district the window need cover only one building's
 load. Steps past the window are not binned and the history says `truncated`. Components with no
-face on the air are left out.
+face on the air are left out. In refined air a face reads the finest cells against it (their mean), not its coarse
+cell, which averages them over the whole cell: on a wall facing 0.5 kg at 3 m, 0.5 m cells refined
+to 0.25 m read 24.3 kPa fine and 21.9 kPa coarse, against 24.4 kPa on uniform 0.25 m cells.
+Refinement follows the shock and leaves a wall once it has passed; `refinementHoldsEnvelopes`
+(Pa) holds it in the air beside the recorded faces while that air is loaded past it, so that a
+façade's positive phase stays fine too (at 20 ms, when the shock has gone, the wall's impulse
+within 0.4% of uniform 0.25 m cells with it, 8% high without).
 
 Headless runs write them with `--envelope-histories <file.json>`; kept runs do not store them yet.
 Recording leaves the air bit-identical, and each side's binned impulse equals the mean of its faces'
