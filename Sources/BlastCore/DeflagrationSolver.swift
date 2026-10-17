@@ -203,7 +203,9 @@ final class DeflagrationStage {
             u.speedWidth = fit.width
             if let table = gas.burningVelocityTable { u.setSpeedTable(table) }
             let acceleration = deflagration.acceleration
-            u.speedFactor = max(acceleration.factor, 0)
+            u.speedFactor =
+                max(acceleration.factor, 0)
+                * acceleration.thermodiffusiveFactor(gas: gas, fraction: deflagration.concentration)
             u.wrinklingRadius =
                 acceleration.instability?.radius(gas: gas, fraction: deflagration.concentration) ?? 0
             let growth = gas.instabilityGrowth(onset: u.wrinklingRadius)

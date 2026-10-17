@@ -139,7 +139,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-31"
+    public static let currentTable = "standing-table-33"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -305,6 +305,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case pressedInterlock
     case hourglassSecant
     case hourglassWithoutSteel
+    case perfectMembers
     case interfaceBond
     case smearedMasonry
     case profiledSheets
@@ -396,6 +397,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .pressedInterlock: return any { $0.pressedInterlock }
         case .hourglassSecant: return !concrete.isEmpty && any { $0.hourglassFollowsCracking }
         case .hourglassWithoutSteel: return !concrete.isEmpty && any { !$0.hourglassCapsSteel }
+        case .perfectMembers: return any { !$0.memberImperfections && $0.elementKind == .shell }
         case .interfaceBond: return any { $0.interfaceBond != nil }
         case .smearedMasonry: return materials.contains { $0.units != nil } && any { !$0.unitJoints }
         case .profiledSheets: return any { $0.solidSheets.contains { $0 != nil } }
@@ -766,6 +768,12 @@ public enum StandingTable {
                 note: "Halves the hourglass work in the contest slab and leaves the shear beam as it was; "
                     + "not run against the impact tests.",
                 document: "validation.md#hourglass-control")
+        case .perfectMembers:
+            return Entry(
+                title: "Steel members perfectly straight", affects: structure, limit: .approximation,
+                note: "Without Eurocode 3's equivalent bow a strut of middling slenderness carries its "
+                    + "perfect load, up to 1.5 times the design curves' resistance near λ̄ = 1: the unsafe side.",
+                document: "shell-model.md#buckling")
         case .interfaceBond:
             return Entry(
                 title: "Bonded material joints", affects: structure, limit: nil,
@@ -981,6 +989,7 @@ public enum StandingTable {
         "EnvelopeConstruction.glassThicknessM": .input,
         "EnvelopeConstruction.laminate": .input,
         "EnvelopeConstruction.facadePaneM": .input,
+        "EnvelopeConstruction.glazing": .input,
         "EnvelopeConstruction.source": .input,
         "EnvelopeConstruction.detail": .input,
         "EnvelopeConstruction.barsInBothFaces": .input,
@@ -1017,6 +1026,7 @@ public enum StandingTable {
         "FlameAcceleration.instability": .option([.deflagration]),
         "FlameAcceleration.externalFactor": .option([.deflagration]),
         "FlameAcceleration.turbulence": .option([.deflagration]),
+        "FlameAcceleration.thermodiffusive": .option([.deflagration]),
         "FlameTurbulence.scale": .option([.deflagration]),
         "VentPanel.box": .input,
         "VentPanel.releasePressure": .input,
@@ -1061,6 +1071,7 @@ public enum StandingTable {
         "SolverConfiguration.minimumBalloonCells": .numerical,
         "SolverConfiguration.refinement": .option([.shockRefinement, .twoLevelRefinement]),
         "SolverConfiguration.refinementThreshold": .numerical,
+        "SolverConfiguration.refinementHoldsEnvelopes": .numerical,
         "SolverConfiguration.refinementMargin": .numerical,
         "SolverConfiguration.refinementLevels": .option([.twoLevelRefinement]),
         "SolverConfiguration.refinementOwnSteps": .option([.adaptiveSubsteps]),
@@ -1102,6 +1113,9 @@ public enum StandingTable {
         "StructureModel.solidSheets": .option([.profiledSheets]),
         "StructureModel.springSupports": .input,
         "StructureModel.sheetFastenings": .input,
+        "StructureModel.memberImperfections": .option([.perfectMembers]),
+        "StructureModel.bucklingCurve": .input,
+        "StructureModel.solidBucklingCurves": .input,
         "StructureModel.shellSectionShear": .option([.shellSectionShear]),
         "StructureModel.secondCracks": .option([.noSecondCracks]),
         "StructureModel.bareBars": .option([.noBareBars]),
@@ -1548,9 +1562,14 @@ struct StandingScene {
             return [
                 StandingEvidence(
                     "FM Global's 63.7 m³ chamber, lean hydrogen of 12.1–19.7% (Bauwens, Chao and Dorofeev, 2011)",
-                    "0.19–0.39 of the measured peaks, the unsafe side, on lean hydrogen's measured growth law; in "
-                        + "a closed sphere K_G about 0.4 of the measured",
-                    "deflagration.md#checks")
+                    "1.24–2.96 of the measured peaks with the flame's 1/Le response, nothing fitted (0.19–0.39 "
+                        + "without it); in a closed sphere K_G 0.89–0.99 of the measured",
+                    "deflagration.md#checks"),
+                StandingEvidence(
+                    "HySEA's 20 ft containers, lean hydrogen of 15% and 21% (Skjold et al., 2017)",
+                    "Vented through the doors within the repeats' scatter (0.72–1.42); through the roof 0.20–0.53, "
+                        + "the unsafe side",
+                    "deflagration.md#checks"),
             ]
         case .townGas?:
             return [
@@ -1615,8 +1634,9 @@ struct StandingScene {
         let gas = inputs.scenario.deflagration?.gas
         let fuel =
             gas == .hydrogen
-            ? "Lean hydrogen reads lower still, the unsafe side: 0.19–0.39 of FM Global's vented tests, and K_G "
-                + "in a closed sphere about 0.4 of the measured. For methane, "
+            ? "Lean hydrogen, with its flame's 1/Le response, reads 1.24–2.96 of FM Global's vented tests and "
+                + "within the scatter of HySEA's containers vented through their doors, but 0.20–0.53 of those vented "
+                + "through their roof, the unsafe side; K_G in a closed sphere 0.89–0.99 of the measured. For methane, "
             : gas == .townGas
                 ? "Town gas, half hydrogen, was compared only in a closed sphere (K_G about 0.77 of the measured) "
                     + "and at Ronan Point, where the flat's 12 kPa is below the inquiry's 21 on the flank, the "
@@ -2324,7 +2344,9 @@ struct StandingScene {
                     ? [
                         "\(blocks) buildings of solid blocks (as map buildings are) taken to hold a window "
                             + "in each storey of each façade, 1.2 × 1.5 m unless set, judged on the storey's "
-                            + "mean load."
+                            + "mean load; map buildings' façades also as a mix of panes by their kind and "
+                            + "height, assumed (no survey of glazing found), each breaking with E1300's "
+                            + "probability, the whole pane at its largest stress."
                     ]
                     : [])
                 + (inputs.scenario.structuralObjects.isEmpty ? [] : [Self.envelopesBesideStructures]),

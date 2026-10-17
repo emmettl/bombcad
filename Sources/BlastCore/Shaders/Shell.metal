@@ -190,7 +190,7 @@ struct BeamElement {
     float length;
     uint barCount;  // bar groups, in `beamBarLayout`
     float tieRatio;
-    float padding0;
+    float bowed;  // 1 for a beam that starts bowed (`MemberImperfection`): its offsets in `bows`
     float padding1;
 };
 
@@ -1634,6 +1634,8 @@ static inline float beamTimber(float axial, float2 shear, float L, thread ShellL
 // degenerated solid whose section is carried by two directors at each node (the rotated
 // reference axes of the section), with one point along the beam, which neither locks in shear
 // nor has spurious modes, and 4 x 4 fibres across the section.
+static inline float4 quaternionProduct(float4 p, float4 q);
+
 kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
                          device BeamForces *forces [[buffer(1)]],
                          device uchar *flags [[buffer(2)]],
@@ -1654,6 +1656,7 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
                          const device uchar *fineAirMask [[buffer(17)]],
                          device float4 *section [[buffer(18)]],
                          device uchar *sheared [[buffer(19)]],
+                         const device float4 *bows [[buffer(20)]],
                          uint e [[thread_position_in_grid]]) {
     bool active;
     float dt = shellStep(u, control, active);
@@ -1672,6 +1675,9 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
     e2[i2] = 1.0f;
     e3[i3] = 1.0f;
     float L = beam.length;
+    // A bowed beam (`MemberImperfection`): its ends' offsets from the straight line and their
+    // turns, which its kinematics, from the straight line, add to the nodes' own.
+    bool bowed = beam.bowed != 0.0f;
 
     float3 x[2];
     float3 disp[2];
@@ -1687,8 +1693,13 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
         disp[c] = float3(node.displacement);
         vel[c] = float3(node.velocity);
         x[c] = reference[beam.node[c]].xyz + disp[c];
-        offset2[c] = rotationOffset(node.rotation, e2);
-        offset3[c] = rotationOffset(node.rotation, e3);
+        float4 turn = node.rotation;
+        if (bowed) {
+            disp[c] += bows[9 * e + c].xyz;
+            turn = quaternionProduct(node.rotation, bows[9 * e + 2 + c]);
+        }
+        offset2[c] = rotationOffset(turn, e2);
+        offset3[c] = rotationOffset(turn, e3);
         director2[c] = e2 + offset2[c];
         director3[c] = e3 + offset3[c];
         turn2[c] = cross(float3(node.spin), director2[c]);
@@ -1703,6 +1714,19 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
     float3 r3 = 0.5f * beam.depth * (turn3[1] - turn3[0]) / L;
     float3 delta2 = 0.5f * (offset2[0] + offset2[1]);
     float3 delta3 = 0.5f * (offset3[0] + offset3[1]);
+    // The bow's own stretch, bending and middle directors, whose strain each fibre's is taken from.
+    float3 hm0 = float3(0.0f);
+    float3 h20 = float3(0.0f);
+    float3 h30 = float3(0.0f);
+    float3 delta20 = float3(0.0f);
+    float3 delta30 = float3(0.0f);
+    if (bowed) {
+        hm0 = bows[9 * e + 4].xyz;
+        h20 = bows[9 * e + 5].xyz;
+        h30 = bows[9 * e + 6].xyz;
+        delta20 = bows[9 * e + 7].xyz;
+        delta30 = bows[9 * e + 8].xyz;
+    }
     float3 d2 = e2 + delta2;
     float3 d3 = e3 + delta3;
 
@@ -1759,6 +1783,11 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
             float3 f1 = e1 + h;
             float axial = h[k] + 0.5f * dot(h, h);
             float2 shear = float2(h[i2] + delta2[k] + dot(h, delta2), h[i3] + delta3[k] + dot(h, delta3));
+            if (bowed) {
+                float3 b = hm0 + eta * h20 + zeta * h30;
+                axial -= b[k] + 0.5f * dot(b, b);
+                shear -= float2(b[i2] + delta20[k] + dot(b, delta20), b[i3] + delta30[k] + dot(b, delta30));
+            }
             float3 rate = rm + eta * r2 + zeta * r3;
             float instantaneous = fabs(dot(f1, rate));
             uint slot = e * beamFibres * beamFibres + a * beamFibres + b;

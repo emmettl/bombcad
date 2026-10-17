@@ -713,6 +713,14 @@ public struct StructureModel: Sendable, Hashable, Codable {
     public var springSupports: [SpringSupport] = []
     /// Profiled sheets screwed to the beams they lie on, as `expandingSheets` leaves them.
     public var sheetFastenings: [SheetFastening] = []
+    /// Steel beams start bowed, as Eurocode 3 takes members to be crooked (`MemberImperfection`):
+    /// true by default; false for members perfectly straight, as closed forms are.
+    public var memberImperfections = true
+    /// The buckling curve the bows are sized by (EN 1993-1-1 Tables 5.1 and 6.2), for every steel
+    /// member unless `solidBucklingCurves` gives its own: b, a rolled I-section's minor axis.
+    public var bucklingCurve: BucklingCurve = .b
+    /// Members' own buckling curves, by index into `solids`; encoded only when some has one.
+    public var solidBucklingCurves: [BucklingCurve?] = []
     /// In a body of both kinds, the shells' size; `elementSize` if nil.
     public var shellElementSize: Float?
     /// Layers of concrete (or other material) through the thickness of each shell.
@@ -923,6 +931,7 @@ public struct StructureModel: Sendable, Hashable, Codable {
         if solidElementKind.indices.contains(index) { solidElementKind.remove(at: index) }
         if solidSourceParts.indices.contains(index) { solidSourceParts.remove(at: index) }
         if solidSheets.indices.contains(index) { solidSheets.remove(at: index) }
+        if solidBucklingCurves.indices.contains(index) { solidBucklingCurves.remove(at: index) }
     }
 
     /// How solid `index` is meshed: a profiled sheet always as shells.
@@ -935,6 +944,19 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// The profiled sheet solid `index` is, if it is one.
     public func sheet(of index: Int) -> SheetAssignment? {
         solidSheets.indices.contains(index) ? solidSheets[index] : nil
+    }
+
+    /// The buckling curve member `index` is bowed by.
+    public func bucklingCurve(of index: Int) -> BucklingCurve {
+        (solidBucklingCurves.indices.contains(index) ? solidBucklingCurves[index] : nil) ?? bucklingCurve
+    }
+
+    /// Gives member `index` its own buckling curve, or (nil) the model's.
+    public mutating func setBucklingCurve(_ curve: BucklingCurve?, of index: Int) {
+        guard solids.indices.contains(index) else { return }
+        while solidBucklingCurves.count <= index { solidBucklingCurves.append(nil) }
+        solidBucklingCurves[index] = curve
+        while solidBucklingCurves.last.map({ $0 == nil }) == true { solidBucklingCurves.removeLast() }
     }
 
     /// Makes solid `index` a profiled sheet, or (nil) a plain solid again.
@@ -1018,6 +1040,9 @@ public struct StructureModel: Sendable, Hashable, Codable {
         part.solidMaterial = chosen.map { solidMaterial.indices.contains($0) ? solidMaterial[$0] : nil }
         part.solidReinforcement = chosen.map { reinforcement(of: $0) }
         part.solidSheets = chosen.map { sheet(of: $0) }
+        part.solidBucklingCurves = chosen.map {
+            solidBucklingCurves.indices.contains($0) ? solidBucklingCurves[$0] : nil
+        }
         part.solidElementKind = []
         if kind == .shell, let shellElementSize { part.elementSize = shellElementSize }
         return part
@@ -1753,7 +1778,9 @@ extension StructureModel {
         case reinforcement, inclinedBars, solidReinforcement, solidMaterial, solidSourceParts
         case elementKind, shellLayers, supports, supportAnchorages, secondCracks
         case bareBars, removesFragments, crackSlip, bondSlip,
-            solidElementKind, solidSheets, springSupports, sheetFastenings
+            solidElementKind, solidSheets, springSupports, sheetFastenings, memberImperfections,
+            bucklingCurve,
+            solidBucklingCurves
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
         case pressedInterlock, regimeOverride, loadingOverride, regimeDefaults
         case hourglassFollowsCracking, hourglassCapsSteel, discreteBars, barsAsTrusses, trussDiameter
@@ -1811,6 +1838,11 @@ extension StructureModel {
         }
         if !springSupports.isEmpty { try container.encode(springSupports, forKey: .springSupports) }
         if !sheetFastenings.isEmpty { try container.encode(sheetFastenings, forKey: .sheetFastenings) }
+        if !memberImperfections { try container.encode(false, forKey: .memberImperfections) }
+        if bucklingCurve != .b { try container.encode(bucklingCurve, forKey: .bucklingCurve) }
+        if !solidBucklingCurves.isEmpty {
+            try container.encode(solidBucklingCurves, forKey: .solidBucklingCurves)
+        }
         try container.encodeIfPresent(shellElementSize, forKey: .shellElementSize)
         try container.encodeIfPresent(interfaceBond, forKey: .interfaceBond)
         try container.encode(unitJoints, forKey: .unitJoints)
@@ -1870,6 +1902,10 @@ extension StructureModel {
         solidSheets = try container.decodeIfPresent([SheetAssignment?].self, forKey: .solidSheets) ?? []
         springSupports = try container.decodeIfPresent([SpringSupport].self, forKey: .springSupports) ?? []
         sheetFastenings = try container.decodeIfPresent([SheetFastening].self, forKey: .sheetFastenings) ?? []
+        memberImperfections = try container.decodeIfPresent(Bool.self, forKey: .memberImperfections) ?? true
+        bucklingCurve = try container.decodeIfPresent(BucklingCurve.self, forKey: .bucklingCurve) ?? .b
+        solidBucklingCurves =
+            try container.decodeIfPresent([BucklingCurve?].self, forKey: .solidBucklingCurves) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)
         interfaceBond = try container.decodeIfPresent(SIMD2<Float>.self, forKey: .interfaceBond)
         unitJoints = try container.decodeIfPresent(Bool.self, forKey: .unitJoints) ?? true

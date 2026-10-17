@@ -63,6 +63,10 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
     /// The pane a façade strip is taken to hold (a block's storey strip, as map buildings have),
     /// width and height, m: nil for `assumedFacadePane`, zero for none.
     public var facadePaneM: SIMD2<Float>?
+    /// The windows of its façade strips as a mix of panes, each breaking with E1300's
+    /// probability (`GlazingMix`): what the building's glass fractions come from. Nil for none
+    /// (map buildings are given one by their tag and height).
+    public var glazing: GlazingMix?
     /// A window in each storey of a façade, where nothing says otherwise.
     public static let assumedFacadePane = SIMD2<Float>(1.2, 1.5)
     public var source: Source

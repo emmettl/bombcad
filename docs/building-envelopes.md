@@ -58,7 +58,8 @@ a building with no resolved face (buried, or wholly against its neighbours) is k
 After each complete fluid step, a receiver reads the pressure of the air against it. Unrefined,
 that is its adjacent coarse fluid cell. Where the air is refined, it is the mean of the finest
 cells of that cell touching the face (r² of them refined once, r⁴ twice), their solid ones left
-out (`finestFacePressure` in Solver.metal, since 17 October 2026). This is a cell-pressure
+out (`refinedFaceOverpressure` in Solver.metal, since 17 October 2026, as the component histories
+below read their faces). This is a cell-pressure
 approximation to surface loading, not the solver's wall Riemann flux or a calculated structural
 reaction.
 
@@ -73,9 +74,9 @@ front wall (`blastbench facade --fine`, 0.5 m cells):
 | Refined once / twice, read from the finest cells | 51.7 / 55.2 kPa; 191 / 172 Pa s | 62.3 kPa, 196 Pa s |
 
 The refined runs now match the uniform ones within 0.6%. The reading costs nothing measurable,
-and runs without refinement read as before, to the bit. The recorder's components, and through
-them the panes, walls and breaches that vent the air, the envelope exposure observers, and the
-exposure plane (the finest cell holding each point) all read this way. The gauges, the structure's
+and runs without refinement read as before, to the bit. The component histories, and through
+them the panes, walls and breaches that vent the air, read the same way. So does the exposure
+plane, which takes the finest cell holding each point (`finestPointPressure`). The gauges, the structure's
 coupling, and the peak and impulse fields already took the finest cells.
 The initial pressure participates in the peak; temporal integrals use right endpoints for
 every accepted fluid interval, including a clipped final interval. Time-limit no-op steps add
@@ -164,7 +165,13 @@ memory); openings recorded as panes in the open opening, for what the inside see
 has gone; and windows that start when a component's air first wakes (`windowFromArrival`, the
 start in `windowStartS`), so that across a district the window need cover only one building's
 load. Steps past the window are not binned and the history says `truncated`. Components with no
-face on the air are left out.
+face on the air are left out. In refined air a face reads the finest cells against it (their mean), not its coarse
+cell, which averages them over the whole cell: on a wall facing 0.5 kg at 3 m, 0.5 m cells refined
+to 0.25 m read 24.3 kPa fine and 21.9 kPa coarse, against 24.4 kPa on uniform 0.25 m cells.
+Refinement follows the shock and leaves a wall once it has passed; `refinementHoldsEnvelopes`
+(Pa) holds it in the air beside the recorded faces while that air is loaded past it, so that a
+façade's positive phase stays fine too (at 20 ms, when the shock has gone, the wall's impulse
+within 0.4% of uniform 0.25 m cells with it, 8% high without).
 
 Headless runs write them with `--envelope-histories <file.json>`; kept runs do not store them yet.
 Recording leaves the air bit-identical, and each side's binned impulse equals the mean of its faces'
@@ -501,6 +508,16 @@ load–mass factors through yield. `EnvelopePanel` builds the systems:
   construction sets another (`facadePaneM`, zero for none), judged on the strip's mean net load
   as a pane is. It counts with the building's panes; it lets nothing into the block, which has no
   room. The standing says so.
+- **A mix of panes in each façade**: a construction's `glazing` (`GlazingMix`: pane types with
+  their size, thickness and share of the glass, and the glazed share of the façade) gives each
+  façade strip a number of panes of each type; each breaks with ASTM E1300's probability,
+  1 − exp(−k A σ⁷), for the 60 s stress its load gives it on the large-deflection plate (the
+  whole pane at its largest stress), and one deflected past ten thicknesses lets go. A building
+  reports, for each side and all together, the panes expected and expected to break and the
+  chance that any does (`facadeGlass`, `glass`), which the envelope list and headless lines
+  show. Map buildings take a mix by their tag and height: older low-rise (to 10 m; small panes,
+  4 mm), apartments (to 30 m; 4 and 6 mm), tall or commercial (6–10 mm, larger), industrial.
+  These are assumptions: no survey of glazing by building was found.
 - **Annealed glass** (since 17 October): D. M. Moore's large-deflection plate (JPL 80-34) as UFC
   3-340-02's figures 6-52 and 6-53 give it, simply supported, membrane action stiffening it; it
   breaks when its largest principal stress, weighed over time by glass's static fatigue (Brown's

@@ -7,8 +7,34 @@ import Metal
 //   blastbench buckling [--length 3] [--side 0.05] [--dx 0.05,0.025] [--yield 355] [--rate 0.02]
 //                       [--shortening 0.006] [--nudge 0.002] [--damping 20] [--clamped]
 //   blastbench buckling --impact 25,50,100 [--side 0.02] [--dx 0.02] [--growth 5] [--seeds 8]
+//   blastbench buckling --curve-slenderness 0.2,0.5,1,2 [--curves a,b,c,none] [--elements 24] [--cycles 40]
+//                       [--elastic-bow | --plastic-bow | --bow 300]
 
 func runBuckling(device: MTLDevice) throws {
+    if let slenderness = option("curve-slenderness") {
+        // Against Eurocode 3's buckling curves: pinned struts under a slowly rising load.
+        let curves = (option("curves") ?? "a,b,c").split(separator: ",").map { name in
+            name == "none" ? nil : BucklingCurve(rawValue: String(name))
+        }
+        for curve in curves {
+            for value in slenderness.split(separator: ",").compactMap({ Float($0) }) {
+                let r = try BucklingStudy.curve(
+                    device: device, slenderness: value, curve: curve,
+                    elements: option("elements").flatMap { Int($0) } ?? 24,
+                    cycles: option("cycles").flatMap { Float($0) } ?? 40,
+                    bowDivisor: flag("elastic-bow")
+                        ? curve?.bowDivisor(plastic: false)
+                        : flag("plastic-bow") ? curve?.bowDivisor() : option("bow").flatMap { Float($0) })
+                print(
+                    String(
+                        format: "curve %@ λ̄ %.2f (%.2f m): χ %.3f, Eurocode %@", curve?.rawValue ?? "none",
+                        value,
+                        r.length, r.model,
+                        r.eurocode.map { String(format: "%.3f (%.2f)", $0, r.model / $0) } ?? "-"))
+            }
+        }
+        return
+    }
     if let speeds = option("impact") {
         // Dynamic buckling: the preferred wavelength behind the compression front.
         for speed in speeds.split(separator: ",").compactMap({ Float($0) }) {
