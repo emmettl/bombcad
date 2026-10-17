@@ -109,18 +109,25 @@ private struct CloudReadout: View {
     let cloud: CloudResult
 
     var body: some View {
-        let sample = cloud.stabilised ?? cloud.samples.last!
+        if let last = cloud.samples.last {
+            readout(last)
+        }
+    }
+
+    @ViewBuilder
+    private func readout(_ last: CloudSample) -> some View {
+        let sample = cloud.stabilised ?? last
         LabeledContent(
             cloud.stabilised == nil ? "Still rising at" : "Stopped rising",
             value: String(format: "%.0f s", sample.time))
         LabeledContent("Centre then", value: String(format: "%.0f m up", sample.height))
         LabeledContent("Top", value: String(format: "%.0f m, %.0f m across", sample.top, 2 * sample.radius))
-        if cloud.drift(cloud.samples.last!) > 1 {
+        if cloud.drift(last) > 1 {
             LabeledContent(
                 "Downwind",
                 value: String(
                     format: "%.1f km then, %.1f km at %.0f min", cloud.drift(sample) / 1000,
-                    cloud.drift(cloud.samples.last!) / 1000, cloud.samples.last!.time / 60))
+                    cloud.drift(last) / 1000, last.time / 60))
         }
         if let stopped = cloud.stabilised, let last = cloud.samples.last, let depth = last.thickness {
             LabeledContent(
@@ -167,7 +174,7 @@ struct CloudChart: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if cloud.drift(cloud.samples.last!) > 10 {
+            if let last = cloud.samples.last, cloud.drift(last) > 10 {
                 Picker("Height against", selection: $downwind) {
                     Text("Time").tag(false)
                     Text("Downwind").tag(true)

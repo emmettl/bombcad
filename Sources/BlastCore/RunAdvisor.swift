@@ -74,16 +74,37 @@ public struct AdvisorSetting: Sendable, Hashable, Codable {
     public var levels: Int
     public var threshold: Float
     public var afterburning: Bool
+    /// Refined, each level takes only the substeps its own waves need
+    /// (`SolverConfiguration.refinementOwnSteps`); the advisor turns it on where it pays
+    /// (`RunAdvisor.ownStepsShare`).
+    public var ownSteps: Bool
 
     public init(
         cellSize: Float, refinement: Int = 1, levels: Int = 1, threshold: Float = 0.1,
-        afterburning: Bool = SolverConfiguration.recommended.afterburning
+        afterburning: Bool = SolverConfiguration.recommended.afterburning, ownSteps: Bool = false
     ) {
         self.cellSize = cellSize
         self.refinement = refinement
         self.levels = levels
         self.threshold = threshold
         self.afterburning = afterburning
+        self.ownSteps = refinement > 1 && ownSteps
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case cellSize, refinement, levels, threshold, afterburning, ownSteps
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            cellSize: try values.decode(Float.self, forKey: .cellSize),
+            refinement: try values.decode(Int.self, forKey: .refinement),
+            levels: try values.decode(Int.self, forKey: .levels),
+            threshold: try values.decode(Float.self, forKey: .threshold),
+            afterburning: try values.decode(Bool.self, forKey: .afterburning),
+            // Settings saved before adaptive substeps take every substep.
+            ownSteps: try values.decodeIfPresent(Bool.self, forKey: .ownSteps) ?? false)
     }
 
     /// `configuration` with these settings of the air.
@@ -92,6 +113,7 @@ public struct AdvisorSetting: Sendable, Hashable, Codable {
         configuration.refinement = refinement
         configuration.refinementLevels = refinement > 1 ? levels : 1
         configuration.refinementThreshold = threshold
+        configuration.refinementOwnSteps = refinement > 1 && ownSteps
         configuration.afterburning = afterburning
         configuration.airModel = afterburning ? .thermallyPerfect : .idealGas
         configuration.openFaces = SolverConfiguration.recommended.openFaces
@@ -117,6 +139,7 @@ public struct AdvisorSetting: Sendable, Hashable, Codable {
         if refinement > 1 {
             text += levels > 1 ? ", refined twice" : ", refined once"
             if threshold != 0.1 { text += String(format: " to %g", Double(threshold)) }
+            if ownSteps { text += ", adaptive substeps" }
         }
         if afterburning { text += ", afterburning" }
         return text
@@ -180,6 +203,11 @@ public enum RunAdvisor {
     public static let scaledCells: [Float] = [0.4, 0.2, 0.1, 0.05, 0.025]
     public static let presetCells: [Float] = [0.5, 0.25, 0.125]
     public static let thresholds: [Float] = [0.1, 0.02, 0.005]
+    /// The share of its substeps a refined level is expected to take (`RunCost.ownStepsShare`)
+    /// under which the advisor turns adaptive substeps on: 1.6 of 2. Measured on the recommended
+    /// air, they make refined runs 1.19 times faster on open ground (0.63 taken) and 1.07 times on
+    /// the street (0.70); close in, where every substep is taken, their bookkeeping costs a little.
+    public static let ownStepsShare = 0.8
     /// The share of the domain a level of refinement's patches may hold, on average over the run
     /// (`RunCostEstimate.refinedShare`), beyond which the coarse grid on that level's cells costs
     /// less than the level: close in, where the shock, the fireball and the reflections behind it
@@ -239,7 +267,14 @@ public enum RunAdvisor {
                 standsFor: stand.setting == setting ? nil : setting, standsForShare: stand.share)
         }
         var seen = Set<AdvisorSetting>()
-        let weighed = candidates(scenario, maximumCells: maximumCells).compactMap(weigh).filter {
+        // Refined settings take adaptive substeps where they are expected to pay.
+        let ownSteps = RunCost.ownStepsShare(scenario, duration: duration) < ownStepsShare
+        let settings = candidates(scenario, maximumCells: maximumCells).map { setting in
+            var setting = setting
+            setting.ownSteps = setting.refinement > 1 && ownSteps
+            return setting
+        }
+        let weighed = settings.compactMap(weigh).filter {
             seen.insert($0.setting).inserted
         }.sorted { $0.cost.seconds < $1.cost.seconds }
         let stoodIn = weigh(current).flatMap { $0.standsFor == nil ? nil : $0 }

@@ -20,6 +20,9 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// The jump that refines the air, as a share of the pressure, when it is not the usual 0.1;
     /// nil, and left out of the file and the fingerprint, when it is.
     var shockThreshold: Float?
+    /// True when each refined level takes only the substeps its own waves need; nil, and left out
+    /// of the file and the fingerprint, when every level takes all of them.
+    var adaptiveSubsteps: Bool?
     /// Gravity in the air when on; nil, and left out of the file and the fingerprint, when off.
     var gravity: Bool?
     /// True when the scene's terrain is cut through the cells (where the air is not refined); nil,
@@ -29,6 +32,10 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// Soft ground under the structures' debris, the soil's subgrade modulus in Pa/m; nil, and left
     /// out of the file and the fingerprint, for the hard ground.
     var groundStiffness: Float?
+    /// False when the structures' outline in the air counted each element at its centre, as every
+    /// run did before 16 October 2026; true when by overlap; nil, and left out of the file and the
+    /// fingerprint, where the scene has no structure, or for a run saved before then.
+    var outlineByOverlap: Bool?
     var solidElementSize: Float
     var duration: Double
 
@@ -38,10 +45,12 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         sharpShocks = settings.sharpShocks
         shockLevels = settings.shockLevels > 1 ? settings.shockLevels : nil
         shockThreshold = settings.shockThreshold != 0.1 ? settings.shockThreshold : nil
+        adaptiveSubsteps = settings.sharpShocks && settings.adaptiveSubsteps ? true : nil
         gravity = settings.gravity ? true : nil
         terrainCutCells =
             settings.terrainCutCells && settings.scenario.terrain.map { !$0.isFlat } == true ? true : nil
         groundStiffness = settings.softGround ? settings.groundStiffness : nil
+        outlineByOverlap = settings.scenario.structuralObjects.isEmpty ? nil : settings.outlineByOverlap
         solidElementSize = settings.solidElementSize
         self.duration = duration
     }
@@ -56,6 +65,13 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// without, so that terrain added later is cut.
     func cutsTerrain(over scenario: Scenario) -> Bool {
         terrainCutCells ?? !(scenario.terrain.map { !$0.isFlat } ?? false)
+    }
+
+    /// Whether a run of `scenario` under these settings counts the structures' outline by overlap:
+    /// as recorded over structures, where nil (a run saved before 16 October 2026) is each element
+    /// at its centre; by default without, so that structures added later are counted by overlap.
+    func countsByOverlap(over scenario: Scenario) -> Bool {
+        outlineByOverlap ?? scenario.structuralObjects.isEmpty
     }
 
     /// The grid as people say it: a preset's name ("medium") or its cells ("4 m").

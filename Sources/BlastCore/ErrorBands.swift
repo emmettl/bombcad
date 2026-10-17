@@ -279,9 +279,8 @@ public enum ValidationTables {
     /// heading and holds the figure's numbers.
     public static let figures: [Figure] = [
         Figure(
-            id: "envelopeGlassBreak", low: 0.59, high: 1.20,
-            document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
-            quote: "(0.59–1.20 of the detailed time)"),
+            id: "envelopeGlassBreak", low: 0.82, high: 1.07, document: "validation.md#window-glass",
+            quote: "0.82–1.07 of the measured time"),
         Figure(
             id: "envelopeConcreteFixed", low: 0.61, high: 1.03,
             document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
@@ -295,9 +294,9 @@ public enum ValidationTables {
             document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
             quote: "(0.82–2.54)"),
         Figure(
-            id: "envelopeInsideFill", low: 0.87, high: 2.23,
+            id: "envelopeInsideFill", low: 0.75, high: 1.60,
             document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
-            quote: "(0.87–2.23 times the detailed peaks)"),
+            quote: "(0.75–1.60 times the"),
         Figure(
             id: "slabSolid", low: 1.04, high: 1.15, document: "validation.md#summary",
             quote: "solid elements 113–125 mm (104–115%) on 4 to 32 elements through"),
@@ -309,6 +308,10 @@ public enum ValidationTables {
             id: "slabLowerShot", low: 0.79, high: 0.88,
             document: "validation.md#the-contests-repeat-its-lower-shot-and-its-other-entries",
             quote: "the model reaches 79–88% of the measured peak on 4 to 16 elements"),
+        Figure(
+            id: "slabReynoldsOpen", low: 0.91, high: 1.06,
+            document: "validation.md#structural-response-against-a-real-test",
+            quote: "within 0.91–1.06, peaking at 27–30 ms"),
         Figure(
             id: "slabBlindHighStrength", low: 0.77, high: 1.06,
             document: "validation.md#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator",
@@ -330,6 +333,10 @@ public enum ValidationTables {
             id: "wuLargeToday", low: 0.91, high: 1.19,
             document: "validation.md#slabs-with-steel-in-both-faces",
             quote: "0.91 and 1.18–1.19 times the measured peak"),
+        Figure(
+            id: "debrisSpeedOverlap", low: 0.9, high: 2.3,
+            document: "validation.md#slabs-under-contact-charges",
+            quote: "the 20 cm slabs' far faces move 0.9–1.3 times the fit and the thicker 1.0–2.3"),
         Figure(
             id: "debrisSpeedBurning", low: 0.88, high: 1.82,
             document: "validation.md#slabs-under-contact-charges",
@@ -1201,7 +1208,15 @@ extension StandingScene {
                             ValidationTables.figure("slabBlindHighStrength").high * 100)
                         + " where they held, a little stiff, and one lightly reinforced slab broke through where "
                         + "the test held (the safe side). Against the lower shot's tabulated 80.5 mm, the upper "
-                        + "reading the record does not keep, the model reads 71–78%",
+                        + "reading the record does not keep, the model reads 71–78%. Open in the same rig, the "
+                        + "contest's 8 in slabs (RSCR4–6) read "
+                        + String(
+                            format: "%.0f–%.0f%%",
+                            ValidationTables.figure("slabReynoldsOpen").low * 100,
+                            ValidationTables.figure("slabReynoldsOpen").high * 100)
+                        + " on another shot's shape; on such a shape the lower shot reads 97% of its plateau, so "
+                        + "the band's low edge may be the scaled record's shape more than the slab, which rests "
+                        + "on that borrowed shape and is left as recorded",
                     check: "A reinforced slab under a blast, and its lower shot")
                 band.low = ValidationTables.figure("slabLowerShot").low
                 band.high = ValidationTables.figure("slabExtrapolated").high
@@ -1263,7 +1278,11 @@ extension StandingScene {
                 unbanded.append(
                     "Shear strength was compared only for reinforced concrete solid elements on defaults.")
             }
-            if regime == "in contact" {
+            if regime == "in contact", !unmeasuredStructuralOptions.isEmpty {
+                unbanded.append(
+                    "Far face's speed against the debris's: compared on the defaults; set here: "
+                        + unmeasuredStructuralOptions.joined(separator: ", ") + ".")
+            } else if regime == "in contact" {
                 var debris = figure(
                     "debrisSpeed", .debrisSpeed, "Far face's speed against the debris's",
                     low: "debris too slow",
@@ -1274,15 +1293,25 @@ extension StandingScene {
                     check: "Hupfauf's slabs under contact charges")
                 debris.roundingSpread = ValidationTables.rounding("hupfaufSN142", "hupfaufSN131")
                 if burning {
-                    // Derived again on today's air: the far face on the axis at 0.5 ms against the fit.
+                    // Derived again on today's air: the far face on the axis at 0.5 ms against the fit,
+                    // with the outline counted by overlap (the default since 16 October) or at centres.
+                    let overlap = inputs.configuration.structureMaskOverlap
                     debris = figure(
-                        "debrisSpeedBurning", .debrisSpeed, "Far face's speed against the debris's",
+                        overlap ? "debrisSpeedOverlap" : "debrisSpeedBurning", .debrisSpeed,
+                        "Far face's speed against the debris's",
                         low: "debris too slow",
                         high: "debris too fast",
                         validity:
-                            "slabs 20–30 cm under contact charges, 12 elements through, on today's air (the 20 cm "
-                            + "slabs near the fit, 0.9–1.2, where on the ideal gas 1.2–1.9); after failure, so one "
-                            + "draw among roundings (the far face 61.5–106.3 m/s on SN142, 22.4–27.7 on SN131)",
+                            "slabs 20–30 cm under contact charges, 12 elements through, on today's air "
+                            + (overlap
+                                ? "with the outline counted by overlap (the 20 cm slabs 0.9–1.3 of the fit, the thicker "
+                                    + "1.0–2.3, moving as much between builds as between outlines)"
+                                : "with the outline at the elements' centres (the 20 cm slabs near the fit, 0.9–1.2, "
+                                    + "where on the ideal gas 1.2–1.9)") + "; after failure, so one "
+                            + "draw among roundings (the far face 61.5–106.3 m/s on SN142, 22.4–27.7 on SN131); "
+                            + "SN131's close agreement rests partly on crushed bare elements' hourglass forces, not a "
+                            + "physical tie, and those forces run SN144 away in two of six roundings and outlines "
+                            + "(two options stop it, neither a default)",
                         check: "Hupfauf's slabs under contact charges")
                     debris.roundingSpread = ValidationTables.rounding(
                         "hupfaufSN142Burning", "hupfaufSN131Burning")
@@ -1332,11 +1361,14 @@ extension StandingScene {
         case .envelopeDamage:
             let page = "building-envelopes.md#one-way-damage-single-degree-of-freedom"
             let check = "The same buildings free to respond, 0.125 m shells"
-            bands += [
+            bands.append(
                 figure(
                     "envelopeGlassBreak", .breakageTime, "When a pane breaks", lowIsUnsafe: false,
-                    low: "too early",
-                    high: "too late", validity: "6 mm annealed panes 1.5 × 1.25 m, 2–500 kg", check: check),
+                    low: "too early", high: "too late",
+                    validity: "4 mm annealed panes of 0.89 m² in a rigid frame, every one broken by a long "
+                        + "wave reflected at about 33 kPa",
+                    check: "Monk and Clubley's twelve timed panes, Shoeburyness"))
+            bands += [
                 figure(
                     "envelopeConcreteFixed", .peakDeflection, "Concrete wall rotation, fixed edges",
                     low: "too stiff",
@@ -1363,6 +1395,15 @@ extension StandingScene {
                 return band
             }
             unbanded.append("Roofs, and walls beside a failing one, go beyond both concrete bounds: no band.")
+            let freestanding = inputs.scenario.envelopeObjects.contains { object in
+                object.envelope?.components(owner: object.id).contains(where: \.isFreestanding) ?? false
+            }
+            if freestanding {
+                unbanded.append(
+                    "Freestanding walls are judged as cantilevers from their foot, outside these bands (derived "
+                        + "on panels held on their edges); compared with Alsubaei's and Keys's measured walls "
+                        + "instead (building-envelopes.md#freestanding-walls).")
+            }
         case .thermal:
             if !burning {
                 unbanded.append(

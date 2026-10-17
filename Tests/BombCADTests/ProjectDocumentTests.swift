@@ -88,6 +88,35 @@ struct ProjectDocumentTests {
         #expect(decoded.gravity == nil && decoded == off)
     }
 
+    @Test("Adaptive substeps are saved when on with refinement, and off is saved as before they existed")
+    func adaptiveSubsteps() throws {
+        let model = SimulationModel()
+        model.settings.resolution = .coarse
+        model.settings.sharpShocks = true
+        model.settings.adaptiveSubsteps = true
+        let snapshot = ProjectDocument(model: model)
+        #expect(snapshot.runSettings?.adaptiveSubsteps == true)
+        let restored = try ProjectDocument(fileWrapper: snapshot.makeArchive().fileWrapper())
+        model.settings.adaptiveSubsteps = false
+        model.open(restored)
+        #expect(model.settings.adaptiveSubsteps)
+        var configuration = SolverConfiguration()
+        ProjectRunSettings.configureAir(
+            &configuration, detailedCharge: true, sharpShocks: true, shockLevels: 1, adaptiveSubsteps: true)
+        #expect(configuration.refinementOwnSteps)
+        // Without refinement they mean nothing, and nothing is written.
+        model.settings.sharpShocks = false
+        let unrefined = try #require(ProjectDocument(model: model).runSettings)
+        #expect(unrefined.adaptiveSubsteps == nil)
+        model.settings.sharpShocks = true
+        model.settings.adaptiveSubsteps = false
+        let off = try #require(ProjectDocument(model: model).runSettings)
+        let encoded = try JSONEncoder().encode(off)
+        #expect(!String(decoding: encoded, as: UTF8.self).contains("adaptiveSubsteps"))
+        let decoded = try JSONDecoder().decode(ProjectRunSettings.self, from: encoded)
+        #expect(decoded.adaptiveSubsteps == nil && decoded == off)
+    }
+
     @Test("Re-saving and replacing the scene preserve embedded assets and document identity")
     func assetPreservation() throws {
         let model = SimulationModel()

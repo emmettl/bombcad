@@ -14,7 +14,8 @@ extension ProjectRunSettings {
         AdvisorSetting(
             cellSize: (Resolution(rawValue: resolution) ?? .medium).cellSize,
             refinement: sharpShocks ? 2 : 1, levels: sharpShocks ? (shockLevels ?? 1) : 1,
-            threshold: shockThreshold ?? 0.1, afterburning: detailedCharge)
+            threshold: shockThreshold ?? 0.1, afterburning: detailedCharge,
+            ownSteps: sharpShocks && adaptiveSubsteps == true)
     }
 
     /// These settings with the advisor's `setting` of the air.
@@ -24,6 +25,7 @@ extension ProjectRunSettings {
         settings.sharpShocks = setting.refinement > 1
         settings.shockLevels = setting.refinement > 1 && setting.levels > 1 ? 2 : nil
         settings.shockThreshold = setting.refinement > 1 && setting.threshold != 0.1 ? setting.threshold : nil
+        settings.adaptiveSubsteps = setting.refinement > 1 && setting.ownSteps ? true : nil
         settings.detailedCharge = setting.afterburning
         return settings
     }
@@ -36,7 +38,8 @@ extension ProjectRunSettings {
         Self.configureAir(
             &configuration, detailedCharge: detailedCharge, sharpShocks: sharpShocks,
             shockLevels: shockLevels ?? 1, gravity: gravity ?? false, shockThreshold: shockThreshold ?? 0.1,
-            terrainCutCells: cutsTerrain(over: scenario))
+            adaptiveSubsteps: adaptiveSubsteps ?? false, terrainCutCells: cutsTerrain(over: scenario),
+            outlineByOverlap: countsByOverlap(over: scenario))
         return RunCost.estimate(
             scenario, cellSize: (Resolution(rawValue: resolution) ?? .medium).cellSize,
             configuration: configuration,
@@ -53,7 +56,9 @@ extension SimulationInputs {
             &configuration, detailedCharge: settings.detailedCharge, sharpShocks: settings.sharpShocks,
             shockLevels: settings.shockLevels ?? 1, gravity: settings.gravity ?? false,
             shockThreshold: settings.shockThreshold ?? 0.1,
-            terrainCutCells: settings.cutsTerrain(over: scenario))
+            adaptiveSubsteps: settings.adaptiveSubsteps ?? false,
+            terrainCutCells: settings.cutsTerrain(over: scenario),
+            outlineByOverlap: settings.countsByOverlap(over: scenario))
         return RunAdvisor.advise(
             scenario, configuration: configuration, duration: settings.duration, target: target,
             current: settings.advisorSetting, memory: memory, maximumCells: ProjectDocument.maximumCells
@@ -127,6 +132,7 @@ extension SimulationModel {
         settings.sharpShocks = setting.refinement > 1
         settings.shockLevels = setting.refinement > 1 ? setting.levels : 1
         settings.shockThreshold = setting.refinement > 1 ? setting.threshold : 0.1
+        settings.adaptiveSubsteps = setting.refinement > 1 && setting.ownSteps
         settings.detailedCharge = setting.afterburning
     }
 }

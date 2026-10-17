@@ -41,7 +41,8 @@ struct EnvelopeDamageTests {
         let loads = [
             // The facing wall of the isolated building at 200 kg: about 350 kPa over 2 ms.
             load("w", .wall, owner: owner, region: wall, axis: 1, outer: pulse(350e3, over: 0.002)),
-            load("p", .pane, owner: owner, region: pane, axis: 1, outer: pulse(70e3, over: 0.004)),
+            // A pane under a longer pulse, which it outlasts a while (the large-deflection pane breaks at about 3 ms).
+            load("p", .pane, owner: owner, region: pane, axis: 1, outer: pulse(70e3, over: 0.01)),
             load("q", .pane, owner: owner, region: pane, axis: 1, outer: pulse(500, over: 0.004)),
         ]
         let damage = EnvelopeDamageAssessment.assess(
@@ -81,5 +82,18 @@ struct EnvelopeDamageTests {
             construction: brick)
         #expect(light?.levels == .heavy ... .heavy)
         #expect(heavy?.levels == .failed ... .failed && heavy?.failedAtS != nil)
+    }
+
+    @Test("The view's shader draws the same six colours as the palette")
+    func shaderPalette() throws {
+        let shader = try String(
+            contentsOf: URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+                .deletingLastPathComponent().appending(path: "Sources/BlastRender/Shaders/Render.metal"),
+            encoding: .utf8)
+        for colour in EnvelopeDamageColour.palette {
+            let text = String(format: "float3(%.3ff, %.3ff, %.3ff)", colour.x, colour.y, colour.z)
+            #expect(shader.contains(text), "\(text) not in Render.metal")
+        }
+        #expect(EnvelopeDamageColour.labels.count == EnvelopeDamageColour.palette.count)
     }
 }

@@ -89,9 +89,9 @@ report stays under **Edit layout → Structure from IFC**.
   depth and width; a flanged section (under half its bounds filled) is a rectangle 0.6 of its
   depth wide whose material is scaled to the bending stiffness, strength and mass of a
   wide-flange shape of its area and depth. Footings become footings under the members on
-  them, set into the soil by their depth. Holes through a shell, openings, doors and unglazed
-  windows become openings; a window whose materials or name say glass becomes a 6 mm pane of
-  annealed glass on its wall's midsurface. An element built of parts (blocks, planks) is one
+  them, set into the soil by their depth. Holes through a shell, openings and doors become
+  openings. A window becomes a 6 mm pane of annealed glass in its wall's opening, joined to the
+  reveal. The glass is assumed, and flagged, where the IFC names none, as most files do. An element built of parts (blocks, planks) is one
   member, square where the parts holding nine tenths of its volume are. Inclined, curved and irregular elements, finishes
   (stud partitions, flooring, tiles) and slabs on grade that walls pass through stay rigid
   obstacles, each with its reason.

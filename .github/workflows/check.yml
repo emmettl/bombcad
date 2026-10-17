@@ -3,7 +3,7 @@
 # self-hosted runner must never run code from other people's pull requests.
 #
 # A push to main runs the light check (`make check-light`: lint, script tests, build, the core
-# tests and the release-build smoke runs, about ten minutes), a backstop to the full check every
+# tests and the release-build smoke runs, 15 to 20 minutes), a backstop to the full check every
 # session runs before pushing. The full check runs by hand (suite `all`) and every night (see
 # nightly.yml). See docs/continuous-integration.md.
 name: Check

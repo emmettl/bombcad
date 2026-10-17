@@ -34,6 +34,12 @@ public struct EnvelopeComponent: Codable, Hashable, Sendable, Identifiable {
         return (axes[0], axes[1])
     }
 
+    /// A wall standing free: its foot held and its top not, so a cantilever (`EnvelopeDamageAssessment`).
+    /// A wall's in-plane axes are horizontal then z, so its foot and top are the third and fourth edges.
+    public var isFreestanding: Bool {
+        kind == .wall && axis != 2 && supportEdges.count == 4 && supportEdges[2] && !supportEdges[3]
+    }
+
     /// The region's sizes along u and v, in metres.
     public var spans: SIMD2<Float> {
         let (u, v) = inPlaneAxes
@@ -144,6 +150,7 @@ extension BuildingEnvelope {
             var uSupports: [Float] = []
             var vSupports: [Float] = []
             var span: (u: Float?, v: Float?)
+            var caps: [Box] = []
             if axis == 2 {
                 // Roof if nothing of the building stands above it, else a slab; cut where walls
                 // meet it from below.
@@ -165,13 +172,26 @@ extension BuildingEnvelope {
                 span = (Self.slabSpan.x, Self.slabSpan.y)
             } else {
                 kind = .wall
+                // A slab or roof on the wall's top that rests on no other wall (a cap or canopy
+                // carried by this wall alone) does not hold it: the wall stands free under it.
+                caps = solids.enumerated().filter { n, other in
+                    guard n != index, case .plate(2) = roles[n], abs(other.min.z - solid.max.z) <= eps,
+                        touches(other, solid)
+                    else { return false }
+                    return !solids.enumerated().contains { m, wall in
+                        guard m != index, m != n, case .plate(let wallAxis) = roles[m], wallAxis != 2 else {
+                            return false
+                        }
+                        return abs(wall.max.z - other.min.z) <= eps && touches(wall, other)
+                    }
+                }.map(\.element)
                 var held = false
                 for (n, other) in solids.enumerated() where n != index && touches(other, solid) {
                     guard case .plate(let otherAxis) = roles[n] else { continue }
                     if otherAxis == 2 {
                         // A slab or roof meets the wall: where it crosses the wall's height, a
-                        // support; touching its top or foot, it holds the wall.
-                        held = true
+                        // support; touching its top or foot, it holds the wall (but for a cap).
+                        if !caps.contains(other) { held = true }
                         if other.min.z > solid.min.z + eps && other.max.z < solid.max.z - eps {
                             vSupports.append((other.min.z + other.max.z) / 2)
                         }
@@ -209,7 +229,9 @@ extension BuildingEnvelope {
                             ? supported(region, thin: axis, along: v, high: false, others: others)
                             : isSupportCut(vs[j], vSupports),
                         j == vs.count - 2
-                            ? supported(region, thin: axis, along: v, high: true, others: others)
+                            ? supported(
+                                region, thin: axis, along: v, high: true,
+                                others: others.filter { !caps.contains($0) })
                             : isSupportCut(vs[j + 1], vSupports),
                     ]
                     let panel = i + (us.count - 1) * j
@@ -381,10 +403,22 @@ final class EnvelopeComponentRecorder {
     let faceBuffer: MTLBuffer
     /// Each face's pressure, as the last step left it.
     let pressures: MTLBuffer
+    /// Each component's tiles of the air (ranges into `tiles`), whether any has woken this step,
+    /// the components listed for the faces' pass and for the sums with their threadgroups (two
+    /// indirect dispatches), and the still air's pressure, in 32 copies.
+    let tileRanges: MTLBuffer
+    let tiles: MTLBuffer
+    let awake: MTLBuffer
+    let faceList: MTLBuffer
+    let faceDispatch: MTLBuffer
+    let sumList: MTLBuffer
+    let sumDispatch: MTLBuffer
+    let stillPressure: MTLBuffer
     let peaks: MTLBuffer
     let bins: MTLBuffer
     let maxima: MTLBuffer?
     let flags: MTLBuffer
+    let markPipeline: MTLComputePipelineState
     let facePipeline: MTLComputePipelineState
     let pipeline: MTLComputePipelineState
 
@@ -563,18 +597,58 @@ final class EnvelopeComponentRecorder {
         guard !options.binMaxima || maxima != nil else {
             throw BlastError.allocationFailed("envelope component bin maxima")
         }
-        guard let pressures = device.makeBuffer(length: max(1, faces.count) * 4, options: .storageModePrivate)
+        // The tiles of the air each component's faces lie in (as the solver's, 8 cells).
+        var ranges: [SIMD2<UInt32>] = []
+        var tileList: [UInt32] = []
+        let tileNx = (grid.nx + 7) / 8
+        let tileNy = (grid.ny + 7) / 8
+        for side in sides {
+            let own = faces[Int(side.outerFirst)..<Int(side.innerFirst + side.innerCount)]
+            let tiles = Set(
+                own.map { face -> UInt32 in
+                    let cell = Int(face.fluid)
+                    let (i, j, k) = (cell % grid.nx, (cell / grid.nx) % grid.ny, cell / (grid.nx * grid.ny))
+                    return UInt32(i / 8 + tileNx * (j / 8 + tileNy * (k / 8)))
+                }
+            ).sorted()
+            ranges.append(SIMD2(UInt32(tileList.count), UInt32(tiles.count)))
+            tileList += tiles
+        }
+        guard
+            let pressures = device.makeBuffer(length: max(1, faces.count) * 4, options: .storageModePrivate),
+            let tileRanges = device.makeBuffer(bytes: ranges, length: max(1, ranges.count) * 8),
+            let tiles = device.makeBuffer(
+                bytes: tileList.isEmpty ? [0] : tileList, length: max(1, tileList.count) * 4),
+            let awake = device.makeBuffer(length: components.count * 4, options: .storageModePrivate),
+            let faceList = device.makeBuffer(length: components.count * 4, options: .storageModePrivate),
+            let faceDispatch = device.makeBuffer(length: 12),
+            let sumList = device.makeBuffer(length: components.count * 4, options: .storageModePrivate),
+            let sumDispatch = device.makeBuffer(length: 12),
+            let stillPressure = device.makeBuffer(length: 32 * 4, options: .storageModePrivate)
         else { throw BlastError.allocationFailed("envelope component face pressures") }
         self.pressures = pressures
+        self.tileRanges = tileRanges
+        self.tiles = tiles
+        self.awake = awake
+        self.faceList = faceList
+        self.faceDispatch = faceDispatch
+        self.sumList = sumList
+        self.sumDispatch = sumDispatch
+        self.stillPressure = stillPressure
+        markPipeline = try ShaderLibrary.pipeline("markEnvelopeComponents", in: library)
         facePipeline = try ShaderLibrary.pipeline("sampleEnvelopeComponentFaces", in: library)
         pipeline = try ShaderLibrary.pipeline("sampleEnvelopeComponents", in: library)
         reset()
     }
 
     var memoryFootprint: Int {
-        sideBuffer.length + faceBuffer.length + pressures.length + peaks.length + bins.length
-            + (maxima?.length ?? 0)
-            + flags.length
+        [
+            sideBuffer, faceBuffer, pressures, tileRanges, tiles, awake, faceList, faceDispatch, sumList,
+            sumDispatch, stillPressure,
+            peaks,
+            bins, flags,
+        ]
+        .reduce(0) { $0 + $1.length } + (maxima?.length ?? 0)
     }
 
     func reset() {
@@ -587,6 +661,13 @@ final class EnvelopeComponentRecorder {
             for n in 0..<(maxima.length / 4) { values[n] = lowest }
         }
         memset(flags.contents(), 0, flags.length)
+        // The first sample's faces' pass has one threadgroup to make the still air's row; the sums
+        // none until components are listed.
+        for (buffer, count) in [(faceDispatch, UInt32(1)), (sumDispatch, 0)] {
+            for (n, value) in [count, 1, 1].enumerated() {
+                buffer.contents().storeBytes(of: value, toByteOffset: 4 * n, as: UInt32.self)
+            }
+        }
     }
 
     /// The recording parameters for a batch starting at `time`.

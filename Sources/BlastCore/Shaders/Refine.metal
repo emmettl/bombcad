@@ -331,7 +331,16 @@ static inline float3 parentWallVelocity(const device float *wallVelocity, int3 c
 
 // The time step of a level: the coarse step over its ratio and its parent's.
 static inline float levelStep(const device StepControl &control, constant SolverUniforms &u) {
+    if (u.ownSteps != 0u) {
+        return u.refineLevel == 2u ? control.levelStep1 : control.levelStep0;
+    }
     return control.dt / float(int(u.refineRatio) * int(max(u.parentScale, 1u)));
+}
+
+// The fastest wave in a cell along any axis, as `recordCell` reckons it.
+static inline float levelWaveSpeed(float3 momentum, float rho, float pressure, constant SolverUniforms &u) {
+    float3 speed = fabs(momentum) / rho;
+    return max(speed.x, max(speed.y, speed.z)) + sqrt(gasGamma(rho, pressure, u.airModel, u.gamma) * pressure / rho);
 }
 
 static inline uint tileIndex(int3 tile, constant SolverUniforms &u) {
@@ -529,6 +538,11 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
                          const device float *terrainHeights [[buffer(21)]],
                          constant TerrainUniforms &terrain [[buffer(22)]],
                          uint gid [[thread_position_in_grid]]) {
+    // A step of zero length reads no ghosts (see `fineSweepCell`), and adds nothing to the
+    // registers.
+    if (control.dt <= 0.0f) {
+        return;
+    }
     uint side = uint(patchSize) * u.refineRatio;
     uint perPatch = 4u * side * side;
     uint patch = patchList[gid / perPatch];
@@ -591,7 +605,12 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
         }
         return;
     }
-    Cell outside = prolong(fine, tile, patch, coarse, halo, mask, u.refineAlpha, u, parentPatches, parentTable,
+    // How far through the step of the grid above this substep starts: s / r, or with the levels'
+    // own steps s over the substeps this level takes in it.
+    float alpha = u.ownSteps != 0u
+        ? float(u.refineSubstep) / float(u.refineLevel == 2u ? control.levelSubsteps1 : control.levelSubsteps0)
+        : u.refineAlpha;
+    Cell outside = prolong(fine, tile, patch, coarse, halo, mask, alpha, u, parentPatches, parentTable,
                            levelTable);
     ghosts[index] = outside;
     ghostKinds[index] = ghostCoarse;
@@ -655,6 +674,17 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
     uint base = patch * uint(side * side * side);
     uint index = base + uint(local.x + side * (local.y + side * local.z));
     if ((fineMask[index] & 1) != 0) {
+        return;
+    }
+    // A step of zero length (a batch stopped short) leaves the cell as it was, as on the coarse
+    // grid: its fluxes are not worked out at all, since a ghost may then read a halo saved before
+    // the structure's outline last moved (only a real step saves it), and zero times a flux that
+    // is not finite would not be zero.
+    if (control.dt <= 0.0f) {
+        fineDst[index] = fineSrc[index];
+        if (u.afterburnEnergy > 0.0f) {
+            speciesDst[index] = speciesSrc[index];
+        }
         return;
     }
 
@@ -1006,9 +1036,14 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
             speciesFluxSums[slot + 1] += apertureHigh * outflow.y * dt;
         }
         if (cutCells && cut) {
-            // The species' difference too, at the conservative mass fluxes.
+            // The species' difference too, at the conservative mass fluxes, with the mixing's carrying
+            // through each face's open part, as the cell beyond it takes them.
             float2 cutIn = speciesFlux(cutLow.mass, speciesAt(-1, kindM1, wM1), fraction);
             float2 cutOut = speciesFlux(cutHigh.mass, fraction, speciesAt(1, kindP1, wP1));
+            if (airMixing) {
+                cutIn -= apertureLow * carrierLow * (fraction - speciesAt(-1, kindM1, wM1));
+                cutOut -= apertureHigh * carrierHigh * (speciesAt(1, kindP1, wP1) - fraction);
+            }
             float2 kept = -lambda * ((cutOut - cutIn) - here.low.x * (outflow - inflow));
             float4 held = fineDefects[2 * index + 1];
             fineDefects[2 * index + 1] = float4(held.xy + kept, held.zw);
@@ -1054,6 +1089,10 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
         // Under gravity, against the ambient pressure at the fine cell's height.
         float ambient = airGravity ? gravityAmbientOf(gravityTable, fine.z, u) : u.ambientPressure;
         recordCell(maxSpeed, momentum, rho, pressure, u, ambient);
+        if (u.ownSteps != 0u) {
+            // This level's own fastest wave, which sets its substeps in the next step.
+            recordWaveSpeed(maxSpeed + 1u + u.refineLevel, levelWaveSpeed(momentum, rho, pressure, u));
+        }
         float overpressure = pressure - ambient;
         // On cut cells, only a cell at least half air counts for the peaks and the impulse, as on
         // the coarse grid where they are read at the first such cell: a sliver's state is its share
@@ -2232,6 +2271,7 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
                        const device uint4 *cutColumns [[buffer(25)]],
                        device uint *patchCut [[buffer(26)]],
                        const device float4 *cutRecords [[buffer(27)]],
+                       device atomic_uint *maxSpeed [[buffer(28)]],
                        uint gid [[thread_position_in_grid]]) {
     uint r = u.refineRatio;
     uint side = uint(patchSize) * r;
@@ -2330,6 +2370,15 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
             : float2(0.0f, airGravity ? u.stillOxygen / u.stillRho * fine[at].rho : u.stillOxygen);
     }
     fineImpulse[at] = 0.0f;
+    if (u.ownSteps != 0u && (fineMask[at] & 1) == 0) {
+        // A new patch's waves count towards its level's substeps from its first step, which no
+        // sweep of this level has seen yet.
+        Cell c = fine[at];
+        float rho = max(c.rho, u.densityFloor);
+        float3 momentum = float3(c.mx, c.my, c.mz);
+        float pressure = max(cellPressureOf(c, u), u.pressureFloor);
+        recordWaveSpeed(maxSpeed + 1u + u.refineLevel, levelWaveSpeed(momentum, rho, pressure, u));
+    }
     // The first fine cell of each coarse cell keeps the impulse the coarse cell had so far.
     if (all(fineCoordinates == cell * int(r))) {
         int3 inPatch = cell - tile * patchSize;
@@ -2523,3 +2572,100 @@ static inline float overpressureAlong(float3 point, float3 normal, float offset,
     }
     return 0.0f;
 }
+
+// With refined levels' own steps, once per step after `prepareStep`, one thread: how many substeps
+// each level takes in a step of the grid above, as few of the r there are as its own fastest wave
+// allows (the speeds its sweeps and new patches recorded in the last step, slots 2 and 3 of
+// `maxSpeed`; the first level counting the second's, as the second takes at most r in each of
+// its). A level's step is then the step above over its substeps. The substeps not taken get
+// dispatches of no threadgroups (`steps`, one copy of the level's dispatches per substep, the
+// second level's per substep of the first), and where a level takes an odd number of sweeps its
+// current state is copied back into its first buffer (`keep`), as between steps the encoder
+// expects it there. With the step at zero (a batch stopped short) every substep runs, doing
+// nothing, as without.
+kernel void refineLevelSteps(device StepControl &control [[buffer(0)]],
+                             device atomic_uint *maxSpeed [[buffer(1)]],
+                             constant SolverUniforms &u [[buffer(2)]],
+                             const device uint *arguments1 [[buffer(3)]],
+                             device uint *steps1 [[buffer(4)]],
+                             device uint *keep1 [[buffer(5)]],
+                             const device uint *arguments2 [[buffer(6)]],
+                             device uint *steps2 [[buffer(7)]],
+                             device uint *keep2 [[buffer(8)]],
+                             constant uint &levels [[buffer(9)]],
+                             uint tid [[thread_position_in_grid]]) {
+    if (tid != 0) {
+        return;
+    }
+    uint r = u.refineRatio;
+    float dt = control.dt;
+    uint n1 = r;
+    uint n2 = r;
+    if (dt > 0.0f) {
+        float v1 = as_type<float>(atomic_load_explicit(maxSpeed + 2, memory_order_relaxed));
+        float v2 = levels > 1u ? as_type<float>(atomic_load_explicit(maxSpeed + 3, memory_order_relaxed)) : 0.0f;
+        // Substeps of length dt / n at a level of cells h / r^l keep its Courant number within the
+        // limit when n >= r^l dt v / (cfl h).
+        float limit = u.cfl * u.dx;
+        n1 = uint(clamp(ceil(float(r) * dt * max(v1, v2) / limit), 1.0f, float(r)));
+        n2 = uint(clamp(ceil(float(r * r) * dt * v2 / (float(n1) * limit)), 1.0f, float(r)));
+        atomic_store_explicit(maxSpeed + 2, 0u, memory_order_relaxed);
+        atomic_store_explicit(maxSpeed + 3, 0u, memory_order_relaxed);
+        control.levelSubstepSum0 += n1;
+        control.levelSubstepSum1 += n1 * n2;
+    }
+    control.levelSubsteps0 = n1;
+    control.levelSubsteps1 = n2;
+    control.levelStep0 = dt / float(n1);
+    control.levelStep1 = dt / float(n1 * n2);
+    for (uint s = 0; s < r; ++s) {
+        for (uint k = 0; k < 32u; ++k) {
+            steps1[32u * s + k] = s < n1 ? arguments1[k] : (k % 3u == 0u ? 0u : 1u);
+        }
+    }
+    // Every fine cell's dispatch (offset 72, the seventh) copies the state back.
+    bool odd1 = (n1 * u.sweepAxes) % 2u == 1u;
+    keep1[0] = odd1 ? arguments1[18] : 0u;
+    keep1[1] = 1u;
+    keep1[2] = 1u;
+    if (levels < 2u) {
+        return;
+    }
+    bool odd2 = (n2 * u.sweepAxes) % 2u == 1u;
+    for (uint s1 = 0; s1 < r; ++s1) {
+        for (uint s2 = 0; s2 < r; ++s2) {
+            uint slot = s1 * r + s2;
+            bool on = s1 < n1 && s2 < n2;
+            for (uint k = 0; k < 32u; ++k) {
+                steps2[32u * slot + k] = on ? arguments2[k] : (k % 3u == 0u ? 0u : 1u);
+            }
+        }
+        keep2[3u * s1] = s1 < n1 && odd2 ? arguments2[18] : 0u;
+        keep2[3u * s1 + 1u] = 1u;
+        keep2[3u * s1 + 2u] = 1u;
+    }
+}
+
+// With refined levels' own steps, after a level's substeps when it took an odd number of sweeps
+// (see `refineLevelSteps`): its fluid cells' state, and their fuel and oxygen, back into the first
+// of its two buffers.
+kernel void refineKeepCurrent(device Cell *first [[buffer(0)]],
+                              const device Cell *second [[buffer(1)]],
+                              device float2 *firstSpecies [[buffer(2)]],
+                              const device float2 *secondSpecies [[buffer(3)]],
+                              const device uchar *fineMask [[buffer(4)]],
+                              const device uint *patchList [[buffer(5)]],
+                              constant SolverUniforms &u [[buffer(6)]],
+                              uint gid [[thread_position_in_grid]]) {
+    uint side = uint(patchSize) * u.refineRatio;
+    uint cells = side * side * side;
+    uint at = patchList[gid / cells] * cells + gid % cells;
+    if ((fineMask[at] & 1) != 0) {
+        return;
+    }
+    first[at] = second[at];
+    if (carriesSpecies(u)) {
+        firstSpecies[at] = secondSpecies[at];
+    }
+}
+

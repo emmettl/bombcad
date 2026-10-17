@@ -51,6 +51,12 @@ SUITE = [
     Entry("closein", ["closein"], "result"),
     Entry("closeair", ["closeair", "--dx", "0.01"], "result"),
     Entry("chamber", ["chamber"], "result"),
+    # A run whose last batch has steps of zero length as the outline moves (ZeroLengthStepTests).
+    Entry(
+        "contact-sn144",
+        ["contact", "--tests", "SN144", "--time", "0.0005", "--rounding", "unfused", "--crushed-bare"],
+        "result",
+    ),
     Entry("snapshot", ["snapshot", "--out", "{out}/snapshot.png", "--preset", "street"], "image"),
 ]
 

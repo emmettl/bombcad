@@ -289,6 +289,15 @@ constant bool hourglassWithoutSteel [[function_constant(9)]];
 // in only when chosen.
 constant bool extremeFibreConstant [[function_constant(19)]];
 constant bool extremeFibreCracking = is_function_constant_defined(extremeFibreConstant) && extremeFibreConstant;
+// Bare elements of structural concrete removed once squeezed below `minVolumeRatio`, as softer
+// materials' are (`StructureModel.erodesCrushedBare`), compiled in only when chosen.
+constant bool crushedBareConstant [[function_constant(20)]];
+constant bool erodesCrushedBare = is_function_constant_defined(crushedBareConstant) && crushedBareConstant;
+// Bare elements of structural concrete crushed below `minVolumeRatio` keep their bars but lose their
+// hourglass control (`StructureModel.releasesCrushedBareHourglass`), compiled in only when chosen.
+constant bool crushedBareHourglassConstant [[function_constant(21)]];
+constant bool releasesCrushedBareHourglass =
+    is_function_constant_defined(crushedBareHourglassConstant) && crushedBareHourglassConstant;
 // Gravity turned from straight down (`gravityDirection`); otherwise the node kernels pull down
 // exactly as they always have, since the fast-math compiler can round another expression differently.
 constant bool turnedGravityConstant [[function_constant(4)]];
@@ -1986,7 +1995,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         bool collapsed = compactionScale(m.lambda + 2.0f * m.mu / 3.0f) < 1.0f
             && volume < u.minVolumeRatio * referenceVolume;
         if (bare) {
-            eroded = !anySteel || collapsed;
+            eroded = !anySteel || collapsed || (erodesCrushedBare && volume < u.minVolumeRatio * referenceVolume);
         } else if (eroded && anySteel && u.bareBars != 0 && !collapsed) {
             flags[element] = elementBaring;
             failureGate[0] = 1;
@@ -2113,11 +2122,27 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         }
         state.hourglass[mode] = q;
     }
+    // With `releasesCrushedBareHourglass`, a bare element (its bars alone) crushed below
+    // `minVolumeRatio` of its volume keeps its bars but loses its hourglass control. The modes'
+    // shapes are projected with the element's current shape-function gradients, which grow as one
+    // over its volume: squeezed to an eighth of its height, Hupfauf's SN144 threw its nodes at
+    // 2,000 m/s through capped hourglass forces on those shapes. Its bars, which tie what is left
+    // around a crater, stay.
+    bool hourglassReleased = releasesCrushedBareHourglass && bare && volume < u.minVolumeRatio * referenceVolume;
+    if (releasesCrushedBareHourglass && hourglassReleased) {
+        for (uint mode = 0; mode < 4; ++mode) {
+            state.hourglass[mode] = float3(0.0f);
+            rate[mode] = float3(0.0f);
+            atCap[mode] = false;
+        }
+    }
 
     for (uint a = 0; a < 8; ++a) {
         float3 f = -volume * (forceStress * b[a]);
-        for (uint mode = 0; mode < 4; ++mode) {
-            f -= float3(state.hourglass[mode]) * gamma[mode][a];
+        if (!(releasesCrushedBareHourglass && hourglassReleased)) {
+            for (uint mode = 0; mode < 4; ++mode) {
+                f -= float3(state.hourglass[mode]) * gamma[mode][a];
+            }
         }
         out.force[a] = f;
     }
@@ -3279,6 +3304,8 @@ struct CouplingUniforms {
     // 1 while the air sleeps: a point in a coupling page not allocated is left out quietly, as the
     // frozen air takes no new pages, rather than flagging the pool as exhausted.
     uint quietCoverage;
+    uint overlapUnits;  // 0: elements counted as points; else each sample box by its overlap, in these units
+    uint maskHysteresis;  // 1: a cell turns solid an eighth above `threshold` and opens an eighth below
 };
 
 // Decode a compact slot for remasking/exchange, or the historical dense-region coordinate.
@@ -3329,6 +3356,30 @@ static inline void splatLevel(float3 sample, int3 fixed, uint weight, const devi
     atomic_fetch_add_explicit(&fineOccupancy[slot + 1], uint(fixed.x) * weight, memory_order_relaxed);
     atomic_fetch_add_explicit(&fineOccupancy[slot + 2], uint(fixed.y) * weight, memory_order_relaxed);
     atomic_fetch_add_explicit(&fineOccupancy[slot + 3], uint(fixed.z) * weight, memory_order_relaxed);
+}
+
+// Adds a box of the structure, centred at `centre` with half-width `half`, to every cell of the
+// level it overlaps, each with `u.overlapUnits` times the share of the box inside it.
+static inline void splatBoxLevel(float3 centre, float extent, int3 fixed, const device int *patchOfTile,
+                                 device atomic_uint *fineOccupancy, uint ratio, int side, uint blocksX,
+                                 uint blocksY, constant CouplingUniforms &u) {
+    float fineCell = u.fluidCell / float(ratio);
+    float3 lo = centre - extent;
+    float3 hi = centre + extent;
+    int3 first = int3(floor(lo / fineCell));
+    int3 last = min(int3(floor(hi / fineCell)), first + 1);
+    for (int z = first.z; z <= last.z; ++z) {
+        for (int y = first.y; y <= last.y; ++y) {
+            for (int x = first.x; x <= last.x; ++x) {
+                float3 low = float3(x, y, z) * fineCell;
+                float3 share = clamp(min(hi, low + fineCell) - max(lo, low), 0.0f, 2.0f * extent) / (2.0f * extent);
+                uint weight = uint(rint(float(u.overlapUnits) * share.x * share.y * share.z));
+                if (weight == 0u) { continue; }
+                splatLevel(low + 0.5f * fineCell, fixed, weight, patchOfTile, fineOccupancy, ratio, side, blocksX,
+                           blocksY, u);
+            }
+        }
+    }
 }
 
 // Where the air is refined, adds a point of the structure to the occupancy of the fine cell
@@ -3382,27 +3433,70 @@ kernel void splatStructure(const device uint *elementList [[buffer(0)]],
     for (uint n = 0; u.refineRatio != 0 && n < samples * samples * samples; ++n) {
         float3 offset = (float3(n % samples, (n / samples) % samples, n / (samples * samples)) + 0.5f) / float(samples)
             - 0.5f;
-        splatFine(centre + offset * u.h, fixed, 1u, 1u, patchOfTile, fineOccupancy, u);
+        if (u.overlapUnits == 0u) {
+            splatFine(centre + offset * u.h, fixed, 1u, 1u, patchOfTile, fineOccupancy, u);
+            continue;
+        }
+        float extent = 0.5f * u.h / float(samples);
+        splatBoxLevel(centre + offset * u.h, extent, fixed, patchOfTile, fineOccupancy, u.refineRatio,
+                      patchSize * int(u.refineRatio), u.blocksX, u.blocksY, u);
+        if (u.deepRatio != 0) {
+            splatBoxLevel(centre + offset * u.h, extent, fixed, patchOfTile + u.deepPatchOffset,
+                          fineOccupancy + 4 * u.deepCellOffset, u.deepRatio,
+                          patchSize * int(u.deepRatio / u.refineRatio), u.deepBlocksX, u.deepBlocksY, u);
+        }
     }
     int3 dims = int3(u.regionNx, u.regionNy, u.regionNz);
     uint coarse = u.coarseSamples;
     for (uint n = 0; n < coarse * coarse * coarse; ++n) {
         float3 offset = coarse == 1 ? float3(0.0f)
             : (float3(n % coarse, (n / coarse) % coarse, n / (coarse * coarse)) + 0.5f) / float(coarse) - 0.5f;
-        int3 target = int3(floor((centre + offset * u.h) / u.fluidCell)) - int3(u.regionX, u.regionY, u.regionZ);
-        if (any(target < 0) || any(target >= dims)) {
-            continue;
+        float3 sample = centre + offset * u.h;
+        // As points, each sample counts whole towards the cell holding it; as boxes, towards each
+        // cell it overlaps by the share inside.
+        float extent = u.overlapUnits == 0u ? 0.0f : 0.5f * u.h / float(coarse);
+        int3 first = int3(floor((sample - extent) / u.fluidCell));
+        int3 last = u.overlapUnits == 0u ? first : min(int3(floor((sample + extent) / u.fluidCell)), first + 1);
+        for (int z = first.z; z <= last.z; ++z) {
+            for (int y = first.y; y <= last.y; ++y) {
+                for (int x = first.x; x <= last.x; ++x) {
+                    uint weight = u.splatWeight;
+                    if (u.overlapUnits != 0u) {
+                        float3 low = float3(x, y, z) * u.fluidCell;
+                        float3 share = clamp(min(sample + extent, low + u.fluidCell) - max(sample - extent, low), 0.0f,
+                                             2.0f * extent) / (2.0f * extent);
+                        weight = uint(rint(float(u.overlapUnits) * share.x * share.y * share.z));
+                        if (weight == 0u) { continue; }
+                    }
+                    int3 target = int3(x, y, z) - int3(u.regionX, u.regionY, u.regionZ);
+                    if (any(target < 0) || any(target >= dims)) {
+                        continue;
+                    }
+                    // Each cell has four counters: the number of elements, then the sum of their
+                    // velocities in fixed point (two's-complement addition makes the unsigned
+                    // counters signed sums).
+                    int at = coarseCouplingSlot(target, u, couplingMap);
+                    if (at < 0) { continue; }
+                    uint slot = 4u * uint(at);
+                    atomic_fetch_add_explicit(&occupancy[slot], weight, memory_order_relaxed);
+                    atomic_fetch_add_explicit(&occupancy[slot + 1], uint(fixed.x) * weight, memory_order_relaxed);
+                    atomic_fetch_add_explicit(&occupancy[slot + 2], uint(fixed.y) * weight, memory_order_relaxed);
+                    atomic_fetch_add_explicit(&occupancy[slot + 3], uint(fixed.z) * weight, memory_order_relaxed);
+                }
+            }
         }
-        // Each cell has four counters: the number of elements, then the sum of their velocities
-        // in fixed point (two's-complement addition makes the unsigned counters signed sums).
-        int at = coarseCouplingSlot(target, u, couplingMap);
-        if (at < 0) { continue; }
-        uint slot = 4u * uint(at);
-        atomic_fetch_add_explicit(&occupancy[slot], u.splatWeight, memory_order_relaxed);
-        atomic_fetch_add_explicit(&occupancy[slot + 1], uint(fixed.x) * u.splatWeight, memory_order_relaxed);
-        atomic_fetch_add_explicit(&occupancy[slot + 2], uint(fixed.y) * u.splatWeight, memory_order_relaxed);
-        atomic_fetch_add_explicit(&occupancy[slot + 3], uint(fixed.z) * u.splatWeight, memory_order_relaxed);
     }
+}
+
+// The count that makes a cell solid: `threshold`, or with hysteresis an eighth more to turn solid
+// and an eighth less to stay so, so that a fill lying on the threshold does not flip the cell with
+// microns of movement.
+static inline uint maskThreshold(uint threshold, bool hysteresis, bool wasSolid) {
+    if (!hysteresis) {
+        return threshold;
+    }
+    uint band = max(1u, threshold / 8u);
+    return wasSolid ? threshold - min(band, threshold - 1u) : threshold + band;
 }
 
 // Writes the new solid flag into bit 1 of the mask, leaving the old flag in bit 0 so that
@@ -3422,11 +3516,12 @@ kernel void remaskPrepare(device uchar *mask [[buffer(0)]],
     uint local = u.couplingMapCount != 0u ? tid.x : tid.x + u.regionNx * (tid.y + u.regionNy * tid.z);
     uint count = occupancy[4 * local];
     bool wasSolid = (mask[index] & 1) != 0;
-    bool solid = rigid[index] != 0 || count >= u.threshold;
+    uint need = maskThreshold(u.threshold, u.maskHysteresis != 0u, wasSolid);
+    bool solid = rigid[index] != 0 || count >= need;
 
     // The air sees a solid cell moving at the mean velocity of the elements in it.
     float3 velocity = float3(0.0f);
-    if (rigid[index] == 0 && count >= u.threshold) {
+    if (rigid[index] == 0 && count >= need) {
         int3 sum = int3(int(occupancy[4 * local + 1]), int(occupancy[4 * local + 2]),
                         int(occupancy[4 * local + 3]));
         velocity = float3(sum) / (wallSpeedScale * float(count));
@@ -3579,9 +3674,11 @@ kernel void refineRemaskPrepare(device uchar *fineMask [[buffer(0)]],
     uchar m = fineMask[at];
     bool rigid = (m & 2) != 0;
     uint count = fineOccupancy[4 * at];
-    bool solid = rigid || count >= threshold;
+    // Bit 31 of `threshold` asks for hysteresis (see `maskThreshold`).
+    uint need = maskThreshold(threshold & 0x7FFFFFFFu, (threshold >> 31) != 0u, (m & 1) != 0);
+    bool solid = rigid || count >= need;
     float3 velocity = float3(0.0f);
-    if (!rigid && count >= threshold) {
+    if (!rigid && count >= need) {
         int3 sum = int3(int(fineOccupancy[4 * at + 1]), int(fineOccupancy[4 * at + 2]), int(fineOccupancy[4 * at + 3]));
         velocity = float3(sum) / (wallSpeedScale * float(count));
     }

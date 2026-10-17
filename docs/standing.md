@@ -14,8 +14,8 @@ which remain the authority.
 |---|---|---|
 | Compared with measurement | Compared with measurements, and how close it came, which way and how far it errs; not that it agrees | Reflected impulse on a wall within 6% either way of Kingery–Bulmash on fine enough air; a close-in slab left a third to a half as far down as measured |
 | Verified against theory | The equations are solved correctly against exact or textbook solutions; no measurement | A steel structure: wave speed, deflection and period within 5% of theory |
-| Approximation | A recognised approximation with stated assumptions; nothing says how close it comes here | Structural damage and failure; building surface exposure |
-| Illustrative | Plausible-looking, or compared too loosely to rely on | Thermal radiation, the cloud, fragments, ground shock, simplified cars |
+| Approximation | A recognised approximation with stated assumptions; nothing says how close it comes here | Structural damage and failure; building surface exposure; fragments from a casing of given dimensions |
+| Illustrative | Plausible-looking, or compared too loosely to rely on | Thermal radiation, the cloud, fragments of a chosen number, ground shock, simplified cars |
 
 Until 11 October 2026 the top level's name spoke of agreement; it names a kind of evidence, not
 agreement, and a result compared with measurement can be far off it. Standings saved with the old
@@ -125,7 +125,9 @@ standing says why.
   include the supports' movement; the model's slab responds as its own load would have it, and
   that load's large suction was the harness's copying faces, not today's far-field ones, so what
   remains lies outside the slab's bending. Blind in the contest's own rig (test 3), high-strength slabs
-  read 0.77–1.06 where they held. No structural result converges on today's defaults
+  read 0.77–1.06 where they held; open in it, the 8 in normal-strength slabs (RSCR4–6) 0.91–1.06.
+  The low edge, the lower shot's 79%, may be its scaled record's shape: on another shot's shape it
+  reads 97%. It is left as recorded, since that rests on a borrowed shape. No structural result converges on today's defaults
   ([convergence](validation.md#convergence-on-todays-defaults)): the meshes that agree are the
   coarse end, and the bands say so; close in, Wu's slabs (40–70% under charges to 0.8 kg, −20% to +7% to
   2 kg) and, from 2 kg, Chiquito's deflection left (a third to a half); confined, the chamber's

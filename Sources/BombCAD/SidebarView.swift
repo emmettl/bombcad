@@ -127,6 +127,7 @@ struct SidebarView: View {
 
             GroundShockSection(model: model)
             EnvelopeExposureSection(model: model)
+            EnvelopeDamageSection(model: model)
 
             if let summary = model.structureSummary {
                 Section(model.settings.scenario.structuralObjects.count > 1 ? "All structures" : "Structure")
@@ -321,6 +322,13 @@ struct SidebarView: View {
                     "Burns the charge's products in the air they mix with, and lets hot air store energy "
                         + "in molecular vibration. Closer to tests of charges in rooms and in the open; "
                         + "about twice as slow.")
+            if !model.settings.scenario.structuralObjects.isEmpty {
+                Toggle("Outline structures by overlap", isOn: $model.settings.outlineByOverlap)
+                    .help(
+                        "Counts each element of a structure into the air's cells by how much of it lies in "
+                            + "each, so that its outline in the air does not flicker as it moves. Off, as before "
+                            + "16 October 2026, each element counts where its centre is.")
+            }
             Toggle("Gravity in the air", isOn: $model.settings.gravity)
                 .help(
                     "Lets hot gas rise: the air starts at rest in a standard atmosphere and the fireball "
@@ -352,6 +360,13 @@ struct SidebarView: View {
                     "How weak a shock the refined air still follows: a jump of 10%, 2% or 0.5% of the pressure "
                         + "across a cell. Beyond it the peaks fall to the coarse cells' share; following further "
                         + "costs more (see Large scenes).")
+                Toggle("Adaptive substeps", isOn: $model.settings.adaptiveSubsteps)
+                    .padding(.leading, 20)
+                    .help(
+                        "Lets the refined air take fewer, longer substeps where its own waves are slower than the "
+                            + "fastest in the coarse air, as in the open after the fireball has spread: 1.1 to 1.3 "
+                            + "times faster there, peaks 1 to 2.5% higher (towards the references). The advisor "
+                            + "turns it on where it pays.")
             }
             LabeledSlider(
                 title: "X", value: axisBinding(\.x), range: 1...Double(model.domainSize.x - 1),

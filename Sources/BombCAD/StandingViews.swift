@@ -9,8 +9,9 @@ extension ProjectRunSettings {
     /// the standing both take them from here.
     static func configureAir(
         _ configuration: inout SolverConfiguration, detailedCharge: Bool, sharpShocks: Bool, shockLevels: Int,
-        gravity: Bool = false, shockThreshold: Float = 0.1, terrainCutCells: Bool = true,
-        groundStiffness: Float? = nil
+        gravity: Bool = false, shockThreshold: Float = 0.1, adaptiveSubsteps: Bool = false,
+        terrainCutCells: Bool = true,
+        groundStiffness: Float? = nil, outlineByOverlap: Bool = true
     ) {
         configuration.afterburning = detailedCharge
         configuration.airModel = detailedCharge ? .thermallyPerfect : .idealGas
@@ -19,9 +20,11 @@ extension ProjectRunSettings {
         configuration.refinement = sharpShocks ? 2 : 1
         configuration.refinementLevels = sharpShocks ? shockLevels : 1
         configuration.refinementThreshold = shockThreshold
+        configuration.refinementOwnSteps = sharpShocks && adaptiveSubsteps
         configuration.gravity = gravity ? AirGravity() : nil
         configuration.terrainCutCells = terrainCutCells
         configuration.groundStiffness = groundStiffness
+        configuration.structureMaskOverlap = outlineByOverlap
     }
 
     /// What the standing of a run of `scenario` under these settings is derived from.
@@ -33,7 +36,8 @@ extension ProjectRunSettings {
         Self.configureAir(
             &configuration, detailedCharge: detailedCharge, sharpShocks: sharpShocks,
             shockLevels: shockLevels ?? 1, gravity: gravity ?? false, shockThreshold: shockThreshold ?? 0.1,
-            terrainCutCells: cutsTerrain(over: scenario), groundStiffness: groundStiffness)
+            adaptiveSubsteps: adaptiveSubsteps ?? false, terrainCutCells: cutsTerrain(over: scenario),
+            groundStiffness: groundStiffness, outlineByOverlap: countsByOverlap(over: scenario))
         return StandingInputs(
             scenario: scenario, cellSize: (Resolution(rawValue: resolution) ?? .medium).cellSize,
             configuration: configuration, thermal: thermal, cloud: cloud, fragments: fragments,

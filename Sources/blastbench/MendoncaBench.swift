@@ -161,6 +161,7 @@ func runMendonca(device: MTLDevice) throws {
                 // `--far-field`: open faces that stand ambient air beyond them, not copies of the cells
                 // inside; `--recommended`: the recommended air (hot air, afterburning, far-field faces).
                 if flag("far-field") { solver.configuration.openFaces = .farField }
+                applyChosenMask(&solver.configuration)
                 if flag("recommended") {
                     let recommended = SolverConfiguration.recommended
                     solver.configuration.airModel = recommended.airModel

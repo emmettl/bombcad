@@ -135,7 +135,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-7"
+    public static let currentTable = "standing-table-8"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -266,6 +266,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case afterburnLimit
     case shockRefinement
     case twoLevelRefinement
+    case adaptiveSubsteps
     case mappedCharge
     case structureFixedInAir
     case stationaryWalls
@@ -290,6 +291,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case nonDefaultRateWindow
     case rubbleParticles
     case extremeFibreCracking
+    case erodesCrushedBare
+    case releasesCrushedBareHourglass
     case pressedInterlock
     case hourglassSecant
     case hourglassWithoutSteel
@@ -341,6 +344,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .afterburnLimit: return config.afterburning && config.afterburnLimit != nil
         case .shockRefinement: return config.refinement > 1 && config.refinementLevels == 1
         case .twoLevelRefinement: return config.refinement > 1 && config.refinementLevels > 1
+        case .adaptiveSubsteps: return config.refinement > 1 && config.refinementOwnSteps
         case .mappedCharge: return config.mappedCharge
         case .structureFixedInAir: return !structures.isEmpty && !config.twoWayCoupling
         case .stationaryWalls: return !structures.isEmpty && !config.movingWalls
@@ -370,6 +374,9 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
             return any { $0.strainRateWindow != StructureModel.defaultStrainRateWindow }
         case .rubbleParticles: return !concrete.isEmpty && any { $0.rubbleParticles }
         case .extremeFibreCracking: return !concrete.isEmpty && any { $0.extremeFibreCracking }
+        case .erodesCrushedBare: return !concrete.isEmpty && any { $0.erodesCrushedBare }
+        case .releasesCrushedBareHourglass:
+            return !concrete.isEmpty && any { $0.releasesCrushedBareHourglass }
         case .pressedInterlock: return any { $0.pressedInterlock }
         case .hourglassSecant: return !concrete.isEmpty && any { $0.hourglassFollowsCracking }
         case .hourglassWithoutSteel: return !concrete.isEmpty && any { !$0.hourglassCapsSteel }
@@ -508,6 +515,14 @@ public enum StandingTable {
                 limit: nil,
                 note: "Two levels by 2 give the peaks and impulses of a grid four times as fine, within 3%.",
                 document: "validation.md#with-refinement")
+        case .adaptiveSubsteps:
+            return Entry(
+                title: "Adaptive substeps", affects: air + structure + [.envelopeExposure], limit: nil,
+                note: "Each refined level takes only the substeps its own waves need: the open blast's peaks "
+                    + "move 1 to 2.5% (up, towards Kingery-Bulmash), impulses and arrivals under 1%, inside the "
+                    + "6 to 8% scatter of the references; close in, where the patches hold the fastest wave, "
+                    + "nothing changes.",
+                document: "air-blast-model.md#refining-near-the-shock")
         case .mappedCharge:
             return Entry(
                 title: "Finely resolved start", affects: air, limit: nil,
@@ -556,7 +571,7 @@ public enum StandingTable {
             return Entry(
                 title: "Terrain as a staircase", affects: air + [.envelopeExposure], limit: .approximation,
                 note:
-                    "The staircase chosen, or a deflagration's air, keeps the terrain as whole cells: it delays Mach "
+                    "The staircase, when chosen, keeps the terrain as whole cells: it delays Mach "
                     + "reflection off a slope by 3–11° and under-reads the triple point's angle by 20–75% on "
                     + "100–400 cells, and windward faces' peaks read 1.3–1.5 times the cut cells', growing "
                     + "with resolution.",
@@ -666,6 +681,22 @@ public enum StandingTable {
                 note: "Elements with a free face crack when that face reaches the tensile strength; "
                     + "being judged on the case matrix.",
                 document: "concrete-model.md#cracking-at-the-extreme-fibre")
+        case .erodesCrushedBare:
+            return Entry(
+                title: "Crushed bare elements removed", affects: structure, limit: .approximation,
+                note: "Bare concrete elements squeezed below a quarter of their volume are removed, as "
+                    + "softer materials' are. It stops a runaway under contact charges, but sends Hupfauf's SN131 "
+                    + "far face to 53 m/s against 21.5 by default and 14.6 measured, so it is not a default.",
+                document: "concrete-model.md#crushed-bare-elements-two-options-neither-a-default")
+        case .releasesCrushedBareHourglass:
+            return Entry(
+                title: "Crushed bare elements without hourglass control", affects: structure,
+                limit: .approximation,
+                note: "Bare concrete elements squeezed below a quarter of their volume keep their bars but "
+                    + "lose their hourglass control. It stops a runaway under contact charges, but sends "
+                    + "Hupfauf's SN131 far face to 46 m/s against 21.5 by default and 14.6 measured, so it is not "
+                    + "a default.",
+                document: "concrete-model.md#crushed-bare-elements-two-options-neither-a-default")
         case .pressedInterlock:
             return Entry(
                 title: "Pressed interlock", affects: structure, limit: .approximation,
@@ -869,7 +900,7 @@ public enum StandingTable {
         "EnvelopeConstruction.glassThicknessM": .input,
         "EnvelopeConstruction.source": .input,
         "EnvelopeConstruction.detail": .input,
-        "Scenario.deflagration": .option([.deflagration, .terrainStaircase]),
+        "Scenario.deflagration": .option([.deflagration]),
         "Scenario.ventPanels": .option([.ventPanels]),
         "Deflagration.gas": .input,
         "Deflagration.concentration": .input,
@@ -922,8 +953,12 @@ public enum StandingTable {
         "SolverConfiguration.refinementThreshold": .numerical,
         "SolverConfiguration.refinementMargin": .numerical,
         "SolverConfiguration.refinementLevels": .option([.twoLevelRefinement]),
+        "SolverConfiguration.refinementOwnSteps": .option([.adaptiveSubsteps]),
         "SolverConfiguration.refinementFinerThreshold": .numerical,
         "SolverConfiguration.refinementMemory": .numerical,
+        "SolverConfiguration.structureMaskSampling": .numerical,
+        "SolverConfiguration.structureMaskFill": .numerical,
+        "SolverConfiguration.structureMaskOverlap": .numerical,
         "SolverConfiguration.radiativeCooling": .option([.radiativeCooling]),
         "SolverConfiguration.gravity": .option([.gravity]),
         "SolverConfiguration.mixing": .option([.subgridMixing]),
@@ -965,6 +1000,8 @@ public enum StandingTable {
         "StructureModel.strainRateWindow": .option([.nonDefaultRateWindow]),
         "StructureModel.rubbleParticles": .option([.rubbleParticles]),
         "StructureModel.extremeFibreCracking": .option([.extremeFibreCracking]),
+        "StructureModel.erodesCrushedBare": .option([.erodesCrushedBare]),
+        "StructureModel.releasesCrushedBareHourglass": .option([.releasesCrushedBareHourglass]),
         "StructureModel.pressedInterlock": .option([.pressedInterlock]),
         "StructureModel.hourglassFollowsCracking": .option([.hourglassSecant]),
         "StructureModel.hourglassCapsSteel": .option([.hourglassWithoutSteel]),
@@ -1081,6 +1118,11 @@ public enum StandingTable {
         "FragmentSpec.tracers": .input,
         "FragmentSpec.tracerRegion": .input,
         "FragmentSpec.seed": .numerical,
+        "FragmentSpec.wallThickness": .input,
+        "FragmentSpec.innerDiameter": .input,
+        "FragmentSpec.explosive": .input,
+        "FragmentSpec.mottCoefficient": .input,
+        "FragmentSpec.massExponent": .input,
         "GroundShockSpec.soil": .input,
         "GroundShockSpec.points": .input,
         "GroundShockSpec.line": .input,
@@ -1647,7 +1689,9 @@ struct StandingScene {
                         + "in its repeat (104–115% of the first), on 4 to 32 solid elements through, rising with the "
                         + "mesh towards about 119% and not converged (32 holding on half the step); shells 135 mm (124%); a 5% "
                         + "change in its hand-read load moves it 13–14%, a source's 68 ksi bar yield 9%. Under the "
-                        + "contest's lower shot (a scaled record) 79–88% of the peak: too stiff, the unsafe side",
+                        + "contest's lower shot (a scaled record) 79–88% of the peak: too stiff, the unsafe side, "
+                        + "though on another shot's shape it reads 97%, so the shortfall may be the scaled record's. "
+                        + "Open, the same rig's 8 in slabs (RSCR4–6) 91–106%",
                     "validation.md#structural-response-against-a-real-test"),
                 StandingEvidence(
                     "Blind: Mendonça's slabs under an open-air charge (defaults frozen at 047cee3, before the "
@@ -1666,7 +1710,8 @@ struct StandingScene {
                         + "before the measurements were unsealed)",
                     "Either way, a little stiff: five slabs 0.77–1.06 of the measured peak (0.87 on average with "
                         + "the closer bars); the sixth, lightly reinforced under the larger load, broken through "
-                        + "where the test held at 182 mm (the safe side, its bars' rupture strain assumed)",
+                        + "where the test held at 182 mm (the safe side, its bars' rupture strain assumed); with a "
+                        + "typical bar's, calibrated after the reveal, it holds at 161 mm (0.89)",
                     "validation.md#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator"),
                 StandingEvidence(
                     "A reinforced beam bent to failure",
@@ -1879,13 +1924,21 @@ struct StandingScene {
             evidence.append(
                 StandingEvidence(
                     "Slabs under contact charges (Hupfauf, 2024)",
-                    "The far face on the axis 0.88–1.82 times the fit on today's air, the 20 cm slabs near it "
-                        + "(1.1–1.7 times on the ideal gas); the loose layer held back rather than thrown, and no "
-                        + "slab holed where four were",
+                    "The far face on the axis 0.9–2.3 times the fit on today's air, with the outline counted by "
+                        + "overlap (0.9–1.3 on the 20 cm slabs; 0.88–1.82 at the elements' centres, 1.1–1.7 on the "
+                        + "ideal gas), moving as much between builds as between outlines; the loose layer held back rather than thrown, and no "
+                        + "slab holed where four were. SN131's close agreement rests partly on crushed bare "
+                        + "elements' hourglass forces, not a physical tie",
                     "validation.md#slabs-under-contact-charges"))
             summary +=
                 " Close in, unsafe again: slabs spall too little, hold their debris back and are holed only by "
                 + "an option, at a stable step to a half and a third of the measured size."
+            if distance < 0.15 {
+                summary +=
+                    " In contact a crushed bare element can run away in some roundings and outlines (two of six "
+                    + "of SN144's runs threw nodes at about 2 km/s); two options stop it but move the debris "
+                    + "away from the tests."
+            }
         }
         if materialClasses.contains(.glass) || materialClasses.contains(.masonry) {
             level = .illustrative
@@ -1899,10 +1952,14 @@ struct StandingScene {
                 "Concrete broken under a close-in charge is never removed, so no hole opens.",
                 "Debris is pushed crudely by the air, as cubes with a fixed drag.",
                 "Collapse is chaotic: a slightly different input gives a different pattern of debris.",
+                "Bars rupture at a typical bar's elongation at fracture over a 100 mm window (15% for the "
+                    + "default steel): checked only on the side of holding, where the record's bars held, since "
+                    + "no test in the record ruptured its bars. Weaker or characteristic bars break sooner.",
                 "Results after failure are one draw among roundings of the same arithmetic: another model, "
                     + "compiler or GPU draws again, a harmless rebuild does not. Failed elements, debris speeds "
-                    + "and residuals move by about Hupfauf's SN131 758–815 elements failed, SN142's far face "
-                    + "116–121 m/s and Janney's moment at 60 mm 29–38 kN m; before failure they agree to about 1%.",
+                    + "and residuals move by about Hupfauf's SN142 far face 61.5–106.3 m/s and SN131's 22.4–27.7 "
+                    + "on today's air, and Janney's moment at 60 mm 29–38 kN m; before failure they agree to "
+                    + "about 1%.",
             ],
             documents: [
                 "concrete-model.md#limitations", "structural-model.md#limitations",
@@ -1917,25 +1974,48 @@ struct StandingScene {
         return result(
             .envelopeDamage, .approximation,
             "One way, from each component's load, with the air seeing the building whole: glass breakage "
-                + "and its time, and concrete panels' rotation between fixed and simply supported edges, as "
-                + "approximations; brick and the inside pressure through broken panes illustrative.",
+                + "and its time, concrete panels' rotation between fixed and simply supported edges, and "
+                + "freestanding walls as cantilevers from their foot, as approximations; brick panels and the "
+                + "inside pressure through broken panes illustrative.",
             evidence: [
                 StandingEvidence(
                     "UFC 3-340-02's worked examples 3A-5, 3A-6(a) and 4A-1", "Within 1%",
                     "building-envelopes.md#one-way-damage-single-degree-of-freedom"),
                 StandingEvidence(
                     "The same buildings free to respond (19 runs, 2–500 kg)",
-                    "Glass: all 45 panes the detailed buildings break, a median 1.7 ms early, and 7 more; "
+                    "Glass: all 45 panes the detailed buildings break, a median 0.3 ms later, and 6 more; "
                         + "concrete walls between the fixed and simply supported bounds",
                     "building-envelopes.md#one-way-damage-single-degree-of-freedom"),
+                StandingEvidence(
+                    "Freestanding walls against measurement: Alsubaei's perimeter walls and Keys's brick walls",
+                    "6 of 7 outcomes as measured, built as tested; the blockwork's top within 16% (32 mm "
+                        + "against 28); the half-scale concrete wall 5.4° where light cracking was seen, the safe "
+                        + "side (the detailed model 2.1°)",
+                    "building-envelopes.md#freestanding-walls"),
+                StandingEvidence(
+                    "One-way reinforced masonry walls under measured loads (Hayman, 2014)",
+                    "1.16–1.91 times the measured mid-height displacement, a level worse on four of five, the "
+                        + "one that blew out failed: the safe side",
+                    "building-envelopes.md#one-way-walls"),
+                StandingEvidence(
+                    "Monk and Clubley's annealed windows in the Shoeburyness tunnel (12 timed panes)",
+                    "Every pane broken, as in the tests, at 0.82–1.07 of the measured time and 0.69–1.15 of the "
+                        + "deflection", "validation.md#window-glass"),
+                StandingEvidence(
+                    "ASTM E1300's load resistance of eight annealed panes",
+                    "Its stresses within 8%; panes break at 0.57–0.72 of its load resistance (the safe side)",
+                    "validation.md#the-threshold-against-astm-e1300"),
             ],
             assumptions: [
-                "Not covered: freestanding (cantilever) walls; no comparison with measurement for concrete, "
-                    + "brick or glass; references on one mesh and one air grid.",
+                "Compared with measurement as freestanding and one-way walls, and glass only under a load far "
+                    + "past what breaks it (its threshold against E1300's design resistance): panels held on all "
+                    + "their edges have none; references on one mesh and one air grid.",
+                "A freestanding wall's cap or canopy adds no mass, and reinforced blockwork is taken as "
+                    + "concrete: the measured walls were judged as built.",
                 "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
                     + "2° is flagged as beyond the one-way model.",
-                "Glass is annealed, elastic until it breaks, without membrane stiffening; fragments' hazard "
-                    + "is not graded.",
+                "Glass is annealed, on Moore's large-deflection plate, simply supported, breaking at E1300's "
+                    + "median strength with the whole pane at its largest stress; fragments' hazard is not graded.",
                 "Concrete by ASCE/SEI 59-11's limits for single-reinforced slabs; brick cracked or fallen, with "
                     + "no arching.",
             ]
@@ -2081,13 +2161,41 @@ struct StandingScene {
     }
 
     func fragments() -> ResultStanding {
-        result(
-            .fragments, .illustrative, "Textbook ingredients; nothing compared with a fragmentation test.",
+        let evidence = [
+            StandingEvidence(
+                "Cooper's worked examples 27.7 and 27.8 (Mott's counts, Gurney's speed)",
+                "The same, to rounding",
+                "fragments.md#against-coopers-data"),
+            StandingEvidence(
+                "Cooper's Fig. 27.13: a cast-iron aerial bomb's counted fragments, 0.13 to 8.8 g",
+                "Mott's form within a factor of 1.36 (rms), too many small and too many of the largest; "
+                    + "Grady's exponential (massExponent 1) within 1.12", "fragments.md#against-coopers-data"),
+            StandingEvidence(
+                "Hansche and Rinehart's measured drag of tumbling cubes, Mach 0.5 to 3.5 (as Moxnes et al. 2017 restate it)",
+                "The drag curve itself; Hoerner's fixed orientations (Cooper's Figs. 27.15–27.18) put the "
+                    + "distance to 79 J 30% shorter to 50% longer", "fragments.md#against-coopers-data"),
+        ]
+        let shared = [
+            "One way: fragments do not push back on the air or the structure, and stop where they first hit.",
+            "Tumbling cubes of the casing's steel; no break-up, ricochet or penetration.",
+        ]
+        guard inputs.fragments?.mottFactor != nil else {
+            return result(
+                .fragments, .illustrative,
+                "Their number is chosen, not derived: give the casing's thickness and diameter for Mott's.",
+                evidence: evidence,
+                assumptions: ["The number of fragments is the description's, sharing the casing's mass."]
+                    + shared,
+                documents: ["fragments.md#limitations"])
+        }
+        return result(
+            .fragments, .approximation,
+            "Mott's masses and number, Gurney's speed and measured drag: the recognised method, checked against "
+                + "Cooper's data; no arena test of speeds or ranges.",
+            evidence: evidence,
             assumptions: [
-                "Gurney launch speeds and Mott masses; drag from the blast.",
-                "One way: fragments do not push back on the air or the structure.",
-                "Not for ranges or hazards.",
-            ], documents: ["fragments.md#limitations"])
+                "Mott's B for mild steel cylinders, Cooper's Table 27.2; other metals and shapes are not covered."
+            ] + shared, documents: ["fragments.md#limitations"])
     }
 
     func groundShock() -> ResultStanding {

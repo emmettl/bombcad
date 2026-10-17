@@ -10,7 +10,7 @@ reached as `scrimply-ci-tb`. The runner is `mac-mini-bombcad`, installed in
 
 | Workflow | When | What |
 |---|---|---|
-| [Check](../.github/workflows/check.yml), light | Every push to `main` | `make check-light`: lint, script tests and the documents' links, a build without warnings, the core tests and the release-build smoke runs, about ten minutes |
+| [Check](../.github/workflows/check.yml), light | Every push to `main` | `make check-light`: lint, script tests and the documents' links, a build without warnings, the core tests and the release-build smoke runs, 15 to 20 minutes on the mini, most of it building the tests |
 | [Check](../.github/workflows/check.yml), full | By hand (suite `all`) | Lint, script tests, build, application and core tests, the packaged app's signature |
 | [Nightly](../.github/workflows/nightly.yml) | 19:00 UTC by GitHub's schedule and 19:20 UTC from the mini, whichever comes first; or by hand | The full check on `main`'s head, with what failed and the suspect commits; then `Scripts/nightly.py`: the benchmarks and the validation suite, compared with earlier nights |
 
@@ -144,12 +144,14 @@ test passing (278 core and 868 application tests), after waiting its turn behind
 the Studio it took about 30 minutes at load averages near 20. Until then BombCAD's own Check kept
 the mini's runner busy much of the day, 45 to 70 minutes for each push to `main`, with pushes about
 hourly, so a check sent there mostly waited; that is why a push now runs only the light check,
-LIGHT on the mini. `check-anywhere` never waits: when the mini is taken it runs here.
+15 to 20 minutes on the mini (its first run, on 11 October, took 15.5: 13 of them building and
+running the core tests). `check-anywhere` never waits: when the mini is taken it runs here.
 
 ### The nightly comparison
 
 `Scripts/nightly.py` runs `blastbench throughput` and `structure`, the reproduction commands
-listed in [Validation](validation.md), and a street snapshot. Each night's output goes into
+listed in [Validation](validation.md), a Hupfauf slab ending on steps of zero length (`contact-sn144`,
+which once went NaN there), and a street snapshot. Each night's output goes into
 `~/bombcad-nightly/<time>-<commit>/` on the runner, and is uploaded with the run.
 
 - **Results.** Each validation command's output is compared, as text with the wall times masked,
