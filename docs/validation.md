@@ -80,6 +80,7 @@ swift run -c release blastbench perimeter --study wall
 | Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.1–1.7 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own. [Brick walls](#brick-walls-debris) (Keys, 2016): loads within 15%, but the walls break into too few pieces, falling at full length in the open (means of −2 to +2 m against +0.2 to +0.6 m) and thrown half as far as measured in a shock tube. Collapse once, blind: [Mendonça's slabs](#blind-test-2-mendonças-slabs-under-an-open-air-charge), the two that collapsed left standing | Unsafe side for debris: held back rather than thrown, slabs never holed, brick walls thrown short (low); collapse missed in both slabs that collapsed (blind) |
 | Window glass         | Monk and Clubley's annealed windows in the Shoeburyness tunnel (4 mm, 0.89 m², four aspect ratios, about 33 kPa reflected for longer than they lasted): the app's large-deflection panes (Moore's plate, E1300's flaw model) break every pane, as every pane broke, at 0.82–1.07 of the twelve measured times and 0.69–1.15 of the deflection (the small-deflection panes before them at 0.40–0.46). Against ASTM E1300: its stresses within 8%, its load resistance 0.57–0.72 | Either way within about 20% for timing under a strong load (moderate); the threshold a third under E1300's design resistance, the safe side, not measured |
 | Fragments            | [Cooper (1996)](#fragments-against-coopers-data): his worked Mott and Gurney examples to rounding; one counted cast-iron bomb within a factor of 1.36 (rms) by Mott's form, 1.12 by Grady's; drag now the measured curve for tumbling cubes, 5% from the previous law. No arena test of launch speeds or ranges | Masses either way within a factor of 1.4 (moderate, one test); speeds and ranges untested (low) |
+| Ground shock         | Xia et al. (2022), 1 t of TNT on the ground, accelerations 0.5 m deep at 21 and 42 m: the vertical velocity from the manuals' relation and the layered soil column 20 to 30 times the measured accelerations' integral at 21 m and 50 to 80 times at 42 m, within three times a velocity gauge that clipped; the measured motion mostly horizontal, at ranges near and past where the ground's wave outruns the air; the soil not measured | Far too high in the vertical, the safe side; the horizontal motion that dominated not modelled, the unsafe side; illustrative |
 | Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 1–2%, structural responses 4–20%, residual deflections and failure 17–28%; the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
 
 No structural result has yet been shown to converge on today's defaults: the meshes quoted as
@@ -3455,6 +3456,61 @@ Hansche and Rinehart's measured curve for tumbling cubes, which moves the distan
 keeps 79 J by under 5%; Hoerner's fixed-orientation curves span 30% shorter to 50% longer. Cooper
 covers mild steel cylinders and 13 explosives; no arena test of launch speeds or ranges has been
 compared ([wanted](data-wanted.md#to-fetch)).
+
+## Ground motion under a 1 t surface burst
+
+The [ground shock](ground-shock.md) models' first comparison with a measurement: the vertical
+velocity below the ground under an open surface burst.
+
+### The test
+
+C. Xia, L. Chen, R. Xu, M. Cao, D. Chen and Q. Fang, *Applied Sciences* 12 (2022) 7987, CC BY:
+1 t of TNT on the ground in the Gobi desert, on hard alluvial and pluvial sediments. Three-axis
+accelerometers in a box in a pit 0.5 m deep at 21 and 42 m, and a velocity sensor at 21 m.
+The paper prints each component's peak and plots the histories. Those were digitised from its
+vector figures into `Fixtures/XiaChen2022`, within 0.2 m/s² of the printed peaks, and
+integrated. The velocity sensor clipped at about 0.085 m/s. Its component is not stated, and it
+read more than any integrated component reaches. The soil was not measured: the seismic speed,
+457 m/s, is the authors' fit of UFC 3-340-01's direct-induced relation to the two peaks, and the
+density, 2,050 kg/m³, their numerical model's.
+
+### The model
+
+`blastbench groundmotion`: a quarter of the burst on the recommended air, on 0.5 and 0.25 m
+cells (the air's peaks 90% and 93% of Kingery–Bulmash's on 0.25 m cells, impulses within 6%),
+its ground streamed every 0.2 ms to the manuals' estimate and to soil columns of the
+fitted soil that unload at one, two and three times its loading speed. The same points are
+also fed Kingery–Bulmash's Friedlander pulse.
+
+### Results
+
+| Range | Measured vertical velocity, integrated (m/s) | Model, fed the air model (0.25 m) | Model, fed Kingery–Bulmash | Ratio |
+|---|---|---|---|---|
+| 21 m | 0.009–0.012 (a velocity gauge clipped at 0.085) | 0.221–0.239 | 0.241–0.258 | 18–29 (at most 3 against the clipped gauge) |
+| 42 m | 0.0008–0.0012 | 0.057–0.059 | 0.060–0.062 | 48–78 |
+
+- At both ranges every model gives about P/(ρc). The estimate and the columns agree within a few
+  per cent, as at 0.5 m the soil's unloading has hardly begun to wear the pulse down.
+- No plausible soil closes the gap. Loading at 1,800 m/s, the column still gives five to seven
+  times the integrated vertical at 21 m and thirteen to twenty times at 42 m.
+- The models' vertical accelerations, 20 to 310 m/s² fed the air model against a measured 3.6 and
+  0.36, are the shock's rise over the soil's impedance, the rise set by the cells and the
+  column's averaging window, and are not a prediction.
+- The measured horizontal accelerations were three to eight times the vertical. At 21 m the air's
+  front ran at 582 m/s, between the fitted soil speed and √2 times it, and at 42 m at 412 m/s,
+  outrun by the soil. Both models say they do not cover that motion.
+
+### What this does and does not show
+
+- It shows the vertical air-induced velocity, as the manuals relate it and the column carries it,
+  far above what was measured near and past the outrunning limit. A one-dimensional vertical
+  model is not a description of the ground's motion there.
+- It does not test either model where it claims to hold, closer in and superseismic: no gauge
+  stood there. One shot, two gauges at one depth, two records of the same motion that disagree,
+  and an unmeasured soil make it a weak test even at these ranges.
+- The ground shock's standing stays illustrative, unbanded. Prairie Flat or Pre-Dice Throw II,
+  with gauges at several depths on both sides of the superseismic limit and the soil measured,
+  would test it properly ([data wanted](data-wanted.md#to-fetch)).
 
 ## Blast loads against empirical references
 
