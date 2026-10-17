@@ -372,7 +372,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
                 || !inputs.scenario.envelopeSources(.mesh).isEmpty
         case .mapBuildings: return !inputs.scenario.envelopeSources(.map).isEmpty
         case .ventedGlazing:
-            return inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes && config.gravity == nil
+            return inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes
         case .shellElements:
             return any { $0.elementKind == .shell || $0.solidElementKind.contains(.shell) }
         case .shellSectionShear: return any { $0.shellSectionShear }
@@ -634,7 +634,8 @@ public enum StandingTable {
                 note:
                     "Envelopes' panes break in the air when their one-way glass does (within 0.3 ms on its own "
                     + "loads) and open their windows whole, so the blast fills the rooms and loads the walls from "
-                    + "inside; the default where it can run. The inside stays illustrative: the detailed "
+                    + "inside; walls, roofs and slabs judged failed open too; the default where it can run. The "
+                    + "inside stays illustrative: the detailed "
                     + "references let broken glass go element by element and cannot judge it; against UFC "
                     + "3-340-02's loads through open windows the walls inside come at 0.31 to 1.22 of the UFC's "
                     + "(the back walls within 25%), where the one-way fill gives 0.15 to 0.42.",
@@ -1122,6 +1123,8 @@ public enum StandingTable {
         "StructureMaterial.steelRateDependent": .option([.alternativeRateLaws]),
         "StructureMaterial.units": .option([.smearedMasonry]),
         "StructureMaterial.isTransparent": .input,
+        // Timber's properties; its standing follows from its material class.
+        "StructureMaterial.timber": .input,
         // Connections.
         "Anchorage.normalStiffness": .input,
         "Anchorage.shearStiffness": .input,
@@ -1763,12 +1766,13 @@ struct StandingScene {
 
     /// The kinds of material in the scene's structures, weakest standing last.
     enum MaterialClass: Int, Comparable {
-        case reinforcedConcrete, plainConcrete, steel, masonry, glass
+        case reinforcedConcrete, plainConcrete, steel, masonry, glass, timber
         static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
 
         init(_ material: StructureMaterial) {
             switch material.model {
             case .vonMises: self = .steel
+            case .timber: self = .timber
             case .concrete:
                 self =
                     material.isTransparent
@@ -1917,6 +1921,18 @@ struct StandingScene {
                     "A glass pane at 3 m", "Breaks under 1 kg and survives 0.5 g",
                     "validation.md#verification-against-theory"))
             parts.append("glass a brittle concrete, checked only to break and survive")
+        }
+        if classes.contains(.timber) {
+            evidence.append(
+                StandingEvidence(
+                    "Cross-laminated timber panels in the Ottawa shock tube (Poulin, 2019)",
+                    "Static stiffness within 4–13%, peak 12–25% high (flexure, as tested); shots that left the "
+                        + "panels elastic stay elastic (0.72–1.21 of the peak deflection), nine of twelve that broke "
+                        + "them break or split the model's and three near the threshold hold; the dynamic increase "
+                        + "of 1.28 comes from the same shots",
+                    "validation.md#cross-laminated-timber-panels-in-a-shock-tube"))
+            parts.append(
+                "timber compared on CLT panels in a shock tube: stiffness close, strength 12–25% high")
         }
         var resolution: [String] = []
         if let through = elementsThrough, through <= 6, through >= 4, classes.contains(.reinforcedConcrete) {
@@ -2099,8 +2115,7 @@ struct StandingScene {
                     $0.x > 0 && $0.y > 0
                 } != false
         }.count
-        let vented =
-            inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes && inputs.configuration.gravity == nil
+        let vented = inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes
         return result(
             .envelopeDamage, .approximation,
             "One way, from each component's load, "

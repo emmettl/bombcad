@@ -66,9 +66,10 @@ public final class BlastSolver {
     /// Lets the envelopes' glazing break in the air (building-envelopes.md, "Venting"): each pane of
     /// the components recorded (`configureEnvelopeComponents`, which must come first) takes the glass
     /// of its building's construction, steps it with the air, and opens in the air when it breaks;
-    /// each building's rooms are followed. In refined air the finer cells under a broken pane open
-    /// too, in the patches placed and those placed later. Not with gravity, whose still air varies
-    /// with height.
+    /// each wall, roof and slab likewise takes its one-way systems (`EnvelopeWallFailure`) and
+    /// opens when its damage is failed; each building's rooms are followed. In refined air the
+    /// finer cells under an opened component open too, in the patches placed and those placed
+    /// later; under gravity an opened cell holds the background at rest at its height.
     public func configureEnvelopeVenting(
         objects: [SceneObject], constructions: (UUID) -> EnvelopeConstruction
     )
@@ -76,9 +77,6 @@ public final class BlastSolver {
     {
         guard let recorder = envelopeComponentRecorder else {
             throw BlastError.allocationFailed("envelope venting without the component recorder")
-        }
-        guard configuration.gravity == nil else {
-            throw BlastError.allocationFailed("envelope venting with gravity in the air")
         }
         let mask = try stationaryMask(observing: objects)
         envelopeVenting = try EnvelopeVenting(
@@ -2762,6 +2760,26 @@ public final class BlastSolver {
                 MTLSize(width: venting.paneCount, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))
         }
+        if venting.wallCount > 0 {
+            var counts = SIMD2<UInt32>(UInt32(venting.wallCount), UInt32(venting.paneCount))
+            encoder.setComputePipelineState(venting.wallPipeline)
+            encoder.setBuffer(recorder.current, offset: 0, index: 0)
+            encoder.setBuffer(venting.wallBuffer, offset: 0, index: 1)
+            encoder.setBuffer(venting.wallSystemBuffer, offset: 0, index: 2)
+            encoder.setBuffer(venting.wallTableBuffer, offset: 0, index: 3)
+            encoder.setBuffer(venting.wallStateBuffer, offset: 0, index: 4)
+            encoder.setBuffer(venting.wallClockBuffer, offset: 0, index: 5)
+            encoder.setBuffer(venting.statusBuffer, offset: 0, index: 6)
+            encoder.setBuffer(venting.openedBuffer, offset: 0, index: 7)
+            encoder.setBuffer(controlBuffer, offset: 0, index: 8)
+            encoder.setBytes(&counts, length: 8, index: 9)
+            encoder.setBuffer(venting.ownerRooms, offset: 0, index: 10)
+            encoder.setBuffer(venting.roomDispatch, offset: 0, index: 11)
+            encoder.setBuffer(venting.roomList, offset: 0, index: 12)
+            encoder.dispatchThreads(
+                MTLSize(width: venting.wallCount, height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))
+        }
         if venting.paneCellCount > 0 {
             var count = UInt32(venting.paneCellCount)
             encoder.setComputePipelineState(venting.openPipeline)
@@ -2777,6 +2795,8 @@ public final class BlastSolver {
             encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 9)
             encoder.setBuffer(controlBuffer, offset: 0, index: 10)
             encoder.setBytes(&count, length: 4, index: 11)
+            // Read only under gravity.
+            encoder.setBuffer(gravityTable(scale: 1) ?? venting.statusBuffer, offset: 0, index: 12)
             encoder.dispatchThreads(
                 MTLSize(width: venting.paneCellCount, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))
@@ -2801,6 +2821,7 @@ public final class BlastSolver {
             encoder.setBuffer(venting.roomResults, offset: 0, index: 4)
             encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 5)
             encoder.setBuffer(controlBuffer, offset: 0, index: 6)
+            encoder.setBuffer(gravityTable(scale: 1) ?? venting.roomResults, offset: 0, index: 7)
             encoder.dispatchThreadgroups(
                 indirectBuffer: venting.roomDispatch, indirectBufferOffset: 0,
                 threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))

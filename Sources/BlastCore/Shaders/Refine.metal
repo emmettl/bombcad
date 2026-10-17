@@ -2257,8 +2257,8 @@ struct PaneLookup {
     float pad2;
 };
 
-// Whether the point lies in a coarse cell of a pane that has broken: its finer cells are air
-// whatever block holds them, as the coarse cell is.
+// Whether the point lies in a coarse cell of a pane, or of a wall, roof or slab, that has broken:
+// its finer cells are air whatever block holds them, as the coarse cell is.
 static inline bool inOpenedPane(float3 point, const device PaneLookup *lookup, const device uint *status) {
     PaneLookup v = lookup[0];
     const device uint2 *cells = (const device uint2 *)(lookup + 1);
@@ -2276,7 +2276,11 @@ static inline bool inOpenedPane(float3 point, const device PaneLookup *lookup, c
         uint middle = (low + high) / 2;
         if (cells[middle].x < index) low = middle + 1; else high = middle;
     }
-    return low < v.count && cells[low].x == index && status[cells[low].y] != 0u;
+    // A cell may stand for a pane and the wall holding it: open once either is.
+    for (uint k = low; k < v.count && cells[k].x == index; ++k) {
+        if (status[cells[k].y] != 0u) return true;
+    }
+    return false;
 }
 
 kernel void refineFill(device Cell *fine [[buffer(0)]],
@@ -2728,6 +2732,7 @@ kernel void refineOpenPanes(device Cell *fineA [[buffer(0)]],
                             constant SolverUniforms &u [[buffer(10)]],
                             const device StepControl &control [[buffer(11)]],
                             constant uint &scale [[buffer(12)]],
+                            const device float4 *gravityTable [[buffer(13)]],
                             uint gid [[thread_position_in_grid]]) {
     PaneLookup panes = lookup[0];
     const device uint2 *paneCells = (const device uint2 *)(lookup + 1);
@@ -2752,6 +2757,10 @@ kernel void refineOpenPanes(device Cell *fineA [[buffer(0)]],
         return;
     }
     uint at = fineIndex(uint(patch), fine, tile, u);
+    // Already air (a pane in a wall that went first, or a fine cell the block never held).
+    if ((fineMask[at] & 1u) == 0u) {
+        return;
+    }
     fineMask[at] = 0;
     fineWall[at] = packed_float3(0.0f);
     Cell still;
@@ -2760,10 +2769,14 @@ kernel void refineOpenPanes(device Cell *fineA [[buffer(0)]],
     still.my = u.stillMy;
     still.mz = u.stillMz;
     still.energy = u.stillEnergy;
+    // Under gravity, the background at rest at the fine cell's height (this level's table).
+    if (u.gravity != 0.0f) {
+        still = gravityRestOf(gravityTable, fine.z);
+    }
     fineA[at] = still;
     fineB[at] = still;
     if (carriesSpecies(u)) {
-        float2 air = float2(0.0f, u.stillOxygen);
+        float2 air = float2(0.0f, u.stillOxygen / u.stillRho * still.rho);
         speciesA[at] = air;
         speciesB[at] = air;
     }

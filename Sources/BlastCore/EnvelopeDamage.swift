@@ -357,6 +357,13 @@ public enum EnvelopeDamageAssessment {
                     let level: EnvelopeDamageLevel = first == nil ? .none : .failed
                     damage.levels = level...level
                 }
+                if damage.material != .annealedGlass,
+                    let failed = vented?.walls.first(where: { $0.component == load.id })?.failedAtS
+                {
+                    // Failed in the air, and opened: the GPU's model is this one's, on the step's load.
+                    damage.failedAtS = failed
+                    damage.levels = damage.levels.lowerBound ... .failed
+                }
                 components.append(damage)
                 if damage.material == .annealedGlass, let at = damage.failedAtS { broken.append((load, at)) }
                 if let pane = facadePane(load, construction: construction) { components.append(pane) }

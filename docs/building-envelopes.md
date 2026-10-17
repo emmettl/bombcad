@@ -735,8 +735,20 @@ since 17 October 2026 ("Vent broken glazing", below), with the one-way fill wher
   the shock arrives lets in what the same window open from the start does, within 10% at both
   gauges inside, uniform and once and twice refined, cut in its opening or set in its wall
   (`EnvelopeVentingTests`).
-- **Not** with gravity, whose still air varies with height: it refuses it. Map buildings are solid
-  blocks without glazing, so nothing in them vents.
+- **Walls, roofs and slabs that fail** (since 17 October 2026). Each takes the single degrees of
+  freedom the one-way damage judges it by (`EnvelopeWallFailure`: a panel's or one-way strip's
+  fixed and simply supported bounds, a freestanding wall's cantilever both ways), stepped on the GPU
+  with the air from its own net pressure as `SDOFSystem.response` steps them, permanent set and
+  rebound included. When its damage is failed (concrete past 10° once yielded, masonry with no
+  resistance left; a panel's either bound, a cantilever's the way its load has pushed harder so
+  far, as `cantileverLoad` turns it) its cells open as a pane's do, its panes with it, and the
+  damage takes it as failed then. A brick wall falls in the air within 0.5 ms of its one-way model on
+  its own load (`EnvelopeVentingTests`). Façade strips, a solid block's faces with nothing behind,
+  do not open.
+- **Gravity.** An opened cell holds the background at rest at its height, and a room's mean is of
+  its cells' overpressure against the ambient pressure at theirs; the pane breaks and the room
+  fills as without gravity, within 0.3 ms and 10%. Map buildings are solid blocks without glazing,
+  so nothing in them vents.
 
 Against the [damage references](#damage-references) (`scenebench envelope-damage
 --representations=vented`, the same scenes as the envelope twins with venting on; 17 October 2026),
@@ -781,8 +793,7 @@ through a window the UFC has no number.
 
 **In the app.** "Vent broken glazing", in the Run tab under the charge, for scenes with glazed
 envelopes, structures beside them or not, refined or not; on by default since 17 October 2026.
-With gravity in the air it is disabled and the run takes the one-way fill, as does one that
-cannot vent for any other reason, and the damage section says why. It is saved in the project as
+A run that cannot vent takes the one-way fill, and the damage section says why. It is saved in the project as
 `ventsGlazing` only when on and venting can run, so a run saved before then, whose file has no
 key, keeps its fill and its fingerprint, and a project glazed before opens with venting off until
 it is turned on; a project without glazing opens with it on, for glazing added later. With it on, each building's panes break when the air's did (their histories up to then
@@ -810,6 +821,17 @@ illustrative.
   is 31.9 and 30.0 kPa vented against the fill's 28.2 and 27.2, and the worst wall is hazardous
   rather than failed, as the air let in pushes back on the walls from inside, which the fill
   never does. The run took 254 s against the fill's 273.
+
+**Walls that fail, on the damage references** (`scenebench envelope-damage --walls=rc,glass
+--charges=200,500 --representations=vented`, 17 October 2026; outputs in
+`/Volumes/StudioData/bombcad/envelope-damage/vented-walls/`): with concrete walls, at 200 kg no
+wall fails one way and the inside stays at ambient, where the detailed building's rises to 1.6 kPa
+as its walls crack; at 500 kg the wall facing the charge fails in the air at 54.3 ms and the
+inside reads 3.2 kPa at the gauge, 2.8 kPa as the room's mean, against the detailed building's 6.5
+kPa, and the street's two front buildings' facing walls at 53.8 ms (gauges 6.7 and 6.8 kPa). The
+one-way fill sees none of it: no pane, no inside. The glazed buildings change only at 500 kg,
+where the isolated one's facing wall also falls, at 99.2 ms, after its panes. The office preset's
+neighbours, whose worst wall is hazardous with venting, are as before.
 
 It became the default on the user's choice (17 October 2026), on UFC 3-340-02's evidence: the
 walls inside 0.31–1.22 of the UFC's loads with venting, 0.15–0.42 with the fill. The standing's
@@ -863,8 +885,9 @@ the inside pressure (see [standing](standing.md)).
 
 ### Future work
 
-- **Venting more.** [Venting](#venting-glazing-that-breaks-in-the-air) opens broken glazing in the
-  air, uniform or refined; walls that fail stay closed, and with gravity the one-way fill stands in.
+- **Venting more.** [Venting](#venting-glazing-that-breaks-in-the-air) opens broken glazing and
+  failed walls, roofs and slabs whole, uniform or refined, with gravity or not; a wall breached in
+  part (a hole, a spalled patch) stays closed.
 - **Pressure–impulse curves.** Each component's peak overpressure and impulse placed against
   curves of equal damage: cheaper still, needing no time history.
 - **Fragility curves.** A probability of each damage state from the same loads, where published.
