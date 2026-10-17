@@ -139,7 +139,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-23"
+    public static let currentTable = "standing-table-25"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -629,7 +629,9 @@ public enum StandingTable {
                 limit: .illustrative,
                 note:
                     "Pipes and bars too small for the cells take room, resist the air, make turbulence and fold "
-                    + "a flame, as PDRFoam's porous cells and sub-grid flame do; it is compared with no test yet.",
+                    + "a flame, as PDRFoam's porous cells and sub-grid flame do. Against MERGE's rigs the finer "
+                    + "pitches come within 0.4 to 1.2 of the measured peaks but the coarser three to five times "
+                    + "too high, half the pitch giving no more where MERGE's gave seven times.",
                 document: "congestion-model.md")
         case .ventedGlazing:
             return Entry(
@@ -1531,6 +1533,32 @@ struct StandingScene {
 
     /// The deflagration's checks: no charge fires, so the comparisons with Kingery–Bulmash do not
     /// apply.
+    /// Hydrogen's and town gas's own comparisons, where the scene burns them.
+    private func fuelEvidence(_ gas: FlammableGas?) -> [StandingEvidence] {
+        switch gas {
+        case .hydrogen?:
+            return [
+                StandingEvidence(
+                    "FM Global's 63.7 m³ chamber, lean hydrogen of 12.1–19.7% (Bauwens, Chao and Dorofeev, 2011)",
+                    "0.19–0.39 of the measured peaks, the unsafe side, on lean hydrogen's measured growth law; in "
+                        + "a closed sphere K_G about 0.4 of the measured",
+                    "deflagration.md#checks")
+            ]
+        case .townGas?:
+            return [
+                StandingEvidence(
+                    "Town gas (Bartknecht's 60/40 hydrogen and methane) in a closed sphere",
+                    "K_G about 0.77 of the measured; not compared vented", "deflagration.md#checks"),
+                StandingEvidence(
+                    "Ronan Point's flat on town gas, against the inquiry's estimates",
+                    "12 kPa against the 21 kPa put on the flank, and nothing collapses: the unsafe side",
+                    "large-panel-flats.md#against-the-inquirys-estimates"),
+            ]
+        default:
+            return []
+        }
+    }
+
     private var deflagrationEvidence: [StandingEvidence] {
         [
             StandingEvidence(
@@ -1576,18 +1604,31 @@ struct StandingScene {
                     + "the model does not resolve: the pressures follow it steeply, as about its third power."
             )
         }
+        let gas = inputs.scenario.deflagration?.gas
+        let fuel =
+            gas == .hydrogen
+            ? "Lean hydrogen reads lower still, the unsafe side: 0.19–0.39 of FM Global's vented tests, and K_G "
+                + "in a closed sphere about 0.4 of the measured. For methane, "
+            : gas == .townGas
+                ? "Town gas, half hydrogen, was compared only in a closed sphere (K_G about 0.77 of the measured) "
+                    + "and at Ronan Point, where the flat's 12 kPa is below the inquiry's 21 on the flank, the "
+                    + "unsafe side; not vented. For methane, "
+                : ""
+        // Methane's comparisons, after another fuel's own where the scene burns one.
+        let methane =
+            "reads low, the unsafe side, where a vented room is lit in the middle: 0.4–0.6 of FM Global's "
+            + "tests (0.9–1.8 lit at the back wall), the back of the flame stalling; all fall below EN 14994 "
+            + "and NFPA 68, and a peak is uncertain by about ±20% on 0.1 m cells. The wrinkling's one "
+            + "constant was fitted, and the instability's onset measured, in that chamber. In a closed "
+            + "vessel the laminar rise times come within 1–3% of the thin-flame model, partly two errors "
+            + "crossing, and K_G cannot converge on the four-cell front. An open, congested cloud (a process "
+            + "plant's racks and vessels) has been compared with no test: there congestion speeds a real "
+            + "flame to Mach 0.4–0.7 (Baker–Strehlow–Tang, medium to high congestion), which the flame "
+            + "here does not reach, so its pressures are a lower bound, possibly several times low."
         return result(
             kind, .illustrative,
-            "Reads low, the unsafe side, where a vented room is lit in the middle: 0.4–0.6 of FM Global's "
-                + "tests (0.9–1.8 lit at the back wall), the back of the flame stalling; all fall below EN 14994 "
-                + "and NFPA 68, and a peak is uncertain by about ±20% on 0.1 m cells. The wrinkling's one "
-                + "constant was fitted, and the instability's onset measured, in that chamber. In a closed "
-                + "vessel the laminar rise times come within 1–3% of the thin-flame model, partly two errors "
-                + "crossing, and K_G cannot converge on the four-cell front. An open, congested cloud (a process "
-                + "plant's racks and vessels) has been compared with no test: there congestion speeds a real "
-                + "flame to Mach 0.4–0.7 (Baker–Strehlow–Tang, medium to high congestion), which the flame "
-                + "here does not reach, so its pressures are a lower bound, possibly several times low.",
-            evidence: deflagrationEvidence + terrainEvidence,
+            fuel.isEmpty ? methane.prefix(1).uppercased() + methane.dropFirst() : fuel + methane,
+            evidence: deflagrationEvidence + fuelEvidence(gas) + terrainEvidence,
             assumptions: [
                 "Burnt and unburnt gas are treated as air; the heat released is the share of the heat of "
                     + "combustion that reaches the stoichiometric AICC pressure.",

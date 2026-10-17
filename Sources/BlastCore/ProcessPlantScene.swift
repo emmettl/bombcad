@@ -66,6 +66,47 @@ public enum ProcessPlantScene {
         return boxes
     }
 
+    /// The racks' pipes, each tier's five 0.5 m pipes at 1.5 m as a congestion array (one set along
+    /// x, a pitch deep), for the scene with the congestion model in place of the fitted factor.
+    static var rackCongestion: [CongestionArray] {
+        var arrays: [CongestionArray] = []
+        for y0: Float in [26, 46] {
+            for z: Float in [4, 7, 10] {
+                arrays.append(
+                    CongestionArray(
+                        name: "Rack at y \(Int(y0)), tier at \(Int(z)) m",
+                        region: Box(min: SIMD3(2, y0, z - 0.5), max: SIMD3(36.5, y0 + 7.5, z + 1)),
+                        diameter: 0.5, pitch: 1.5, axes: [0]))
+            }
+        }
+        return arrays
+    }
+
+    /// The scene with its racks' pipes as congestion (`rackCongestion`) rather than blocks, and the
+    /// burning velocity's factor back at 1: the congestion model's own flame (docs/congestion-model.md).
+    public static var congestedScenario: Scenario {
+        var scenario = scenario
+        let pipes = Set(rackPipes)
+        scenario.boxes = scenario.boxes.filter { !pipes.contains($0) }
+        scenario.congestion = rackCongestion
+        scenario.deflagration?.acceleration.factor = 1
+        return scenario
+    }
+
+    /// The racks' pipes as blocks.
+    static var rackPipes: [Box] {
+        var boxes: [Box] = []
+        for y0: Float in [26, 46] {
+            for z: Float in [4, 7, 10] {
+                for n in 0..<5 {
+                    let y = y0 + 0.5 + 1.5 * Float(n)
+                    boxes.append(Box(min: SIMD3(2, y, z), max: SIMD3(36.5, y + 0.5, z + 0.5)))
+                }
+            }
+        }
+        return boxes
+    }
+
     /// A building of plates as shells on a frame of bars as beams, resting on the ground.
     static func steelBox(
         at origin: SIMD3<Float>, size: SIMD3<Float>, plate: Float, frame: Float, spacing: Float,

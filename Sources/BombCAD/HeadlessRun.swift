@@ -503,13 +503,13 @@ enum HeadlessRun {
     /// workers in for them. `costs` keeps what the consumers cost, for `auto` to place them by
     /// in this run and later ones. `view` is handed the solver at each frame, the frame's number,
     /// and whether it is the run's last sample, which may fall between frames, for a viewer
-    /// elsewhere (see `WatchJob`), and `viewVolume` asked, before each frame's batch, for any block
-    /// of air it will read, for the GPU to cut out. Cancelling the task stops the run.
+    /// elsewhere (see `WatchJob`), and `viewRequest` asked, before each frame's batch, for what it
+    /// will read of the air (a block, the view field) for the GPU to cut out. Cancelling the task stops the run.
     static func perform(
         _ document: ProjectDocument, options: Options, progress: ((Double) -> Void)? = nil,
         consumer injected: (any FrameConsumer)? = nil, costs store: ConsumerCostStore? = nil,
         view: ((BlastSolver, Int, Bool) -> Void)? = nil,
-        viewVolume: ((BlastSolver) -> AirSliceRequest?)? = nil,
+        viewRequest: ((BlastSolver) -> FrameRequest)? = nil,
         connect: (String) async throws -> SweepWorkerClient = {
             try await RemoteSweepWorker.connect(host: $0)
         }
@@ -672,7 +672,7 @@ enum HeadlessRun {
                 return hold
             }
         }
-        if framed, fragmentFeed != nil || options.thermal != nil || viewVolume != nil {
+        if framed, fragmentFeed != nil || options.thermal != nil || viewRequest != nil {
             // The GPU cuts out what a frame's consumers need at the end of the batch that lands on
             // it, as `onSample` will ask for it, rather than the CPU while the GPU waits.
             model.prepareBatch = { solver, limit in
@@ -690,7 +690,10 @@ enum HeadlessRun {
                         cellSize: solver.grid.cellSize)
                     request.airSlice = AirSliceRequest(region: region.box, stride: region.stride)
                 }
-                if request.airSlice == nil, let wanted = viewVolume?(solver) { request.airSlice = wanted }
+                if let wanted = viewRequest?(solver) {
+                    request.airSlice = request.airSlice ?? wanted.airSlice
+                    request.viewField = wanted.viewField
+                }
                 solver.frameRequest = request
             }
         }
