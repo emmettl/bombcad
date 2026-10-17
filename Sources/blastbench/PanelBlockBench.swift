@@ -12,7 +12,7 @@ import simd
 //   blastbench panelblock --case gravity [--time 0.5]
 //       the block alone under its own weight, damped at 50/s as the IFC corpus's check is, and
 //       judged the same way: stands, stands and deflects, or falls
-//   blastbench panelblock --case gas|street [--dx 0.25] [--frames 0.1,0.5,1,2,4] [--out dir]
+//   blastbench panelblock --case gas|street [--vent 25 (kPa)] [--storeys 12] [--dx 0.25] [--frames 0.1,0.5,1,2,4] [--out dir]
 //                         [--mass 250] [--azimuth 0.6] [--elevation 0.3] [--distance 60]
 //       the preset coupled to the air, a snapshot at each frame's time
 //
@@ -30,11 +30,15 @@ func runPanelBlock(device: MTLDevice) throws {
     }
     let preset: ScenarioPreset = which == .gas ? .largePanelGas : .largePanelStreet
     // `--storeys 3`: a lower block, for trying things quickly.
+    // `--vent 3`: the gas flat's windows going at 3 kPa rather than 25.
     var scenario =
-        option("storeys").flatMap { Int($0) }.map {
-            LargePanelBlock.scenario(which, name: preset.title, storeys: $0)
-        }
-        ?? preset.scenario
+        option("storeys") == nil && option("vent") == nil
+        ? preset.scenario
+        : LargePanelBlock.scenario(
+            which, name: preset.title,
+            storeys: option("storeys").flatMap { Int($0) } ?? LargePanelBlock.storeys,
+            windowRelease: option("vent").flatMap { Float($0) }.map { $0 * 1000 }
+                ?? LargePanelBlock.windowRelease)
     if flag("standing") {
         // What the app shows for the preset: each result's standing, and what is not compared.
         var inputs = StandingInputs(scenario: scenario, cellSize: option("dx").flatMap { Float($0) } ?? 0.125)
