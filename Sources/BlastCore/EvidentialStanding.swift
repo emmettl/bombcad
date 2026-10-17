@@ -780,10 +780,12 @@ public enum StandingTable {
         case .profiledSheets:
             return Entry(
                 title: "Profiled steel sheeting", affects: [.structuralDamage], limit: .illustrative,
-                note: "Sheets are a skin with their ribs as beams, fixed to their rails and purlins without "
-                    + "pull-out. Against Langdon's corrugated panels the elastic peaks are 0.5–1.3 of those "
-                    + "measured, but plastic ones scatter from a tenth to three times, the connections give "
-                    + "way above 2 bar where the panels held, and local buckling is not modelled.",
+                note:
+                    "Sheets are a skin with their ribs as beams, their thin flanges softening once they buckle, "
+                    + "fixed to their rails and purlins without pull-out. Against Langdon's corrugated panels, "
+                    + "held by her connections as springs, the permanent sets are 0.55–1.73 of those measured on "
+                    + "10 of 13 tests both ways and none runs away; where buckling comes on before plate theory "
+                    + "says (three tests) they read a fifth or less. No test of cladding on screws compared.",
                 document: "profiled-sheeting.md#against-langdons-corrugated-panels")
         case .inclinedBars:
             return Entry(
@@ -1095,6 +1097,7 @@ public enum StandingTable {
         "StructureModel.interfaceBond": .option([.interfaceBond]),
         "StructureModel.unitJoints": .option([.smearedMasonry]),
         "StructureModel.solidSheets": .option([.profiledSheets]),
+        "StructureModel.springSupports": .input,
         "StructureModel.shellSectionShear": .option([.shellSectionShear]),
         "StructureModel.secondCracks": .option([.noSecondCracks]),
         "StructureModel.bareBars": .option([.noBareBars]),
@@ -1153,6 +1156,7 @@ public enum StandingTable {
         "StructureMaterial.isTransparent": .input,
         // Timber's properties; its standing follows from its material class.
         "StructureMaterial.timber": .input,
+        "StructureMaterial.localBuckling": .input,
         // Connections.
         "Anchorage.normalStiffness": .input,
         "Anchorage.shearStiffness": .input,
