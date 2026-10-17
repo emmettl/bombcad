@@ -1974,8 +1974,9 @@ struct StandingScene {
         return result(
             .envelopeDamage, .approximation,
             "One way, from each component's load, with the air seeing the building whole: glass breakage "
-                + "and its time, and concrete panels' rotation between fixed and simply supported edges, as "
-                + "approximations; brick and the inside pressure through broken panes illustrative.",
+                + "and its time, concrete panels' rotation between fixed and simply supported edges, and "
+                + "freestanding walls as cantilevers from their foot, as approximations; brick panels and the "
+                + "inside pressure through broken panes illustrative.",
             evidence: [
                 StandingEvidence(
                     "UFC 3-340-02's worked examples 3A-5, 3A-6(a) and 4A-1", "Within 1%",
@@ -1986,6 +1987,17 @@ struct StandingScene {
                         + "concrete walls between the fixed and simply supported bounds",
                     "building-envelopes.md#one-way-damage-single-degree-of-freedom"),
                 StandingEvidence(
+                    "Freestanding walls against measurement: Alsubaei's perimeter walls and Keys's brick walls",
+                    "6 of 7 outcomes as measured, built as tested; the blockwork's top within 16% (32 mm "
+                        + "against 28); the half-scale concrete wall 5.4° where light cracking was seen, the safe "
+                        + "side (the detailed model 2.1°)",
+                    "building-envelopes.md#freestanding-walls"),
+                StandingEvidence(
+                    "One-way reinforced masonry walls under measured loads (Hayman, 2014)",
+                    "1.16–1.91 times the measured mid-height displacement, a level worse on four of five, the "
+                        + "one that blew out failed: the safe side",
+                    "building-envelopes.md#one-way-walls"),
+                StandingEvidence(
                     "Monk and Clubley's annealed windows in the Shoeburyness tunnel (12 timed panes)",
                     "Every pane broken, as in the tests, at 0.82–1.07 of the measured time and 0.69–1.15 of the "
                         + "deflection", "validation.md#window-glass"),
@@ -1995,9 +2007,11 @@ struct StandingScene {
                     "validation.md#the-threshold-against-astm-e1300"),
             ],
             assumptions: [
-                "Not covered: freestanding (cantilever) walls; no comparison with measurement for concrete or "
-                    + "brick, and glass only under a load far past what breaks it (its threshold against E1300's design "
-                    + "resistance); references on one mesh and one air grid.",
+                "Compared with measurement as freestanding and one-way walls, and glass only under a load far "
+                    + "past what breaks it (its threshold against E1300's design resistance): panels held on all "
+                    + "their edges have none; references on one mesh and one air grid.",
+                "A freestanding wall's cap or canopy adds no mass, and reinforced blockwork is taken as "
+                    + "concrete: the measured walls were judged as built.",
                 "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
                     + "2° is flagged as beyond the one-way model.",
                 "Glass is annealed, on Moore's large-deflection plate, simply supported, breaking at E1300's "
