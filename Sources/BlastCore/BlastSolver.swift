@@ -66,8 +66,9 @@ public final class BlastSolver {
     /// Lets the envelopes' glazing break in the air (building-envelopes.md, "Venting"): each pane of
     /// the components recorded (`configureEnvelopeComponents`, which must come first) takes the glass
     /// of its building's construction, steps it with the air, and opens in the air when it breaks;
-    /// each building's rooms are followed. Not with gravity, whose still air varies with height,
-    /// nor with refined air yet.
+    /// each building's rooms are followed. In refined air the finer cells under a broken pane open
+    /// too, in the patches placed and those placed later. Not with gravity, whose still air varies
+    /// with height.
     public func configureEnvelopeVenting(
         objects: [SceneObject], constructions: (UUID) -> EnvelopeConstruction
     )
@@ -76,13 +77,19 @@ public final class BlastSolver {
         guard let recorder = envelopeComponentRecorder else {
             throw BlastError.allocationFailed("envelope venting without the component recorder")
         }
-        guard configuration.gravity == nil, refinement == nil else {
-            throw BlastError.allocationFailed("envelope venting with gravity or refinement")
+        guard configuration.gravity == nil else {
+            throw BlastError.allocationFailed("envelope venting with gravity in the air")
         }
         let mask = try stationaryMask(observing: objects)
         envelopeVenting = try EnvelopeVenting(
             device: device, library: library, grid: grid, mask: mask, objects: objects,
             components: recorder.components, rigidBoxes: rigidBoxes ?? [], constructions: constructions)
+        for level in refinementLevels { level.setPanes(ventedPanes) }
+    }
+
+    /// Venting's panes as the refined levels take them.
+    private var ventedPanes: (cells: MTLBuffer, status: MTLBuffer, lookup: PaneLookup)? {
+        envelopeVenting.map { ($0.sortedPaneCellBuffer, $0.statusBuffer, $0.paneLookup) }
     }
 
     /// When fragments hole envelope panes, by component id, s from the start (`FragmentCloud.paneHoles`):
@@ -192,6 +199,7 @@ public final class BlastSolver {
         envelopeComponentRecorder = nil
         componentsNeedInitialSample = false
         envelopeVenting = nil
+        for level in refinementLevels { level.setPanes(nil) }
         keptAirBuffer = nil
     }
 
@@ -1874,6 +1882,7 @@ public final class BlastSolver {
             let fine = grid.cellSize / Float(level.parentScale * level.ratio)
             level.setBoxes(rigidBoxes?.map { $0.holdingCells(of: fine) })
             level.setTerrain(rigidBoxes == nil ? nil : terrain)
+            level.setPanes(ventedPanes)
         }
         for level in refinementLevels { level.coarseCut = cut ? terrainCut : nil }
         updateGaugeChildren()
@@ -2736,6 +2745,17 @@ public final class BlastSolver {
             encoder.dispatchThreads(
                 MTLSize(width: venting.paneCellCount, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))
+            // And the refined levels' cells under them.
+            if let refinement {
+                refinement.encodeOpenPanes(
+                    encoder,
+                    uniforms: refinement.levelUniforms(
+                        from: uniforms, threshold: configuration.refinementThreshold, grid: grid),
+                    control: controlBuffer)
+            }
+            if let finerRefinement, let finer = finerUniforms(uniforms) {
+                finerRefinement.encodeOpenPanes(encoder, uniforms: finer, control: controlBuffer)
+            }
         }
         if !venting.rooms.isEmpty {
             encoder.setComputePipelineState(venting.roomPipeline)

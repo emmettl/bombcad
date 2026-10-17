@@ -2243,6 +2243,42 @@ kernel void refineArguments(device atomic_int *counters [[buffer(0)]],
 
 // Matches `TerrainUniforms` in Refinement.swift.
 // Step 7f: fills each new patch from the coarse air (at the step's end).
+// Envelope venting's panes as the fine levels see them (`EnvelopeVenting.sortedPaneCellBuffer`): this
+// header, then the coarse cells standing for panes, (cell, pane) sorted by cell; and each pane's
+// status (0 whole).
+struct PaneLookup {
+    uint count;
+    uint nx;
+    uint ny;
+    uint nz;
+    float coarseDx;
+    float pad0;
+    float pad1;
+    float pad2;
+};
+
+// Whether the point lies in a coarse cell of a pane that has broken: its finer cells are air
+// whatever block holds them, as the coarse cell is.
+static inline bool inOpenedPane(float3 point, const device PaneLookup *lookup, const device uint *status) {
+    PaneLookup v = lookup[0];
+    const device uint2 *cells = (const device uint2 *)(lookup + 1);
+    if (v.count == 0u) {
+        return false;
+    }
+    int3 c = int3(floor(point / v.coarseDx));
+    if (any(c < 0) || any(c >= int3(v.nx, v.ny, v.nz))) {
+        return false;
+    }
+    uint index = uint(c.x) + v.nx * (uint(c.y) + v.ny * uint(c.z));
+    uint low = 0;
+    uint high = v.count;
+    while (low < high) {
+        uint middle = (low + high) / 2;
+        if (cells[middle].x < index) low = middle + 1; else high = middle;
+    }
+    return low < v.count && cells[low].x == index && status[cells[low].y] != 0u;
+}
+
 kernel void refineFill(device Cell *fine [[buffer(0)]],
                        const device Cell *coarse [[buffer(1)]],
                        const device uchar *mask [[buffer(2)]],
@@ -2272,6 +2308,8 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
                        device uint *patchCut [[buffer(26)]],
                        const device float4 *cutRecords [[buffer(27)]],
                        device atomic_uint *maxSpeed [[buffer(28)]],
+                       const device PaneLookup *panes [[buffer(29)]],
+                       const device uint *paneStatus [[buffer(30)]],
                        uint gid [[thread_position_in_grid]]) {
     uint r = u.refineRatio;
     uint side = uint(patchSize) * r;
@@ -2314,6 +2352,10 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
         float3 centre = (float3(fineCoordinates) + 0.5f) * (u.dx / float(r));
         for (uint n = 0; n < boxCount && !rigid; ++n) {
             rigid = all(centre >= boxes[2 * n].xyz) && all(centre <= boxes[2 * n + 1].xyz);
+        }
+        // A vented pane's cells are air once it has broken, whatever block holds them.
+        if (rigid && inOpenedPane(centre, panes, paneStatus)) {
+            rigid = false;
         }
         if (!rigid && terrain.enabled != 0) {
             byTerrain = cutCells ? geometry.low.x == 0.0f : centre.z < terrainHeight(centre.xy, terrain, terrainHeights);
@@ -2669,3 +2711,60 @@ kernel void refineKeepCurrent(device Cell *first [[buffer(0)]],
     }
 }
 
+
+// Envelope venting in refined air: after the step a pane breaks in, the finer cells of this level
+// under its coarse cells (`scale` along an edge) in patches already placed become air holding the
+// still air, as `openEnvelopePanes` makes the coarse cells; patches placed later take them as air
+// (`inOpenedPane` in `refineFill`). A thread a fine cell.
+kernel void refineOpenPanes(device Cell *fineA [[buffer(0)]],
+                            device Cell *fineB [[buffer(1)]],
+                            device float2 *speciesA [[buffer(2)]],
+                            device float2 *speciesB [[buffer(3)]],
+                            device uchar *fineMask [[buffer(4)]],
+                            device packed_float3 *fineWall [[buffer(5)]],
+                            const device int *patchOfTile [[buffer(6)]],
+                            const device PaneLookup *lookup [[buffer(7)]],
+                            const device uint *paneStatus [[buffer(8)]],
+                            constant SolverUniforms &u [[buffer(10)]],
+                            const device StepControl &control [[buffer(11)]],
+                            constant uint &scale [[buffer(12)]],
+                            uint gid [[thread_position_in_grid]]) {
+    PaneLookup panes = lookup[0];
+    const device uint2 *paneCells = (const device uint2 *)(lookup + 1);
+    uint per = scale * scale * scale;
+    if (gid >= panes.count * per || control.dt <= 0.0f) {
+        return;
+    }
+    uint2 entry = paneCells[gid / per];
+    if (paneStatus[entry.y] != 1u) {
+        return;
+    }
+    uint local = gid % per;
+    int3 coarse = int3(entry.x % panes.nx, (entry.x / panes.nx) % panes.ny, entry.x / (panes.nx * panes.ny));
+    int3 fine = coarse * int(scale) + int3(local % scale, (local / scale) % scale, local / (scale * scale));
+    int3 parent = fine / int(u.refineRatio);
+    int3 tile = parent / patchSize;
+    if (any(tile >= int3(u.refineTileNx, u.refineTileNy, u.refineTileNz))) {
+        return;
+    }
+    int patch = patchOfTile[tileIndex(tile, u)];
+    if (patch < 0) {
+        return;
+    }
+    uint at = fineIndex(uint(patch), fine, tile, u);
+    fineMask[at] = 0;
+    fineWall[at] = packed_float3(0.0f);
+    Cell still;
+    still.rho = u.stillRho;
+    still.mx = u.stillMx;
+    still.my = u.stillMy;
+    still.mz = u.stillMz;
+    still.energy = u.stillEnergy;
+    fineA[at] = still;
+    fineB[at] = still;
+    if (carriesSpecies(u)) {
+        float2 air = float2(0.0f, u.stillOxygen);
+        speciesA[at] = air;
+        speciesB[at] = air;
+    }
+}
