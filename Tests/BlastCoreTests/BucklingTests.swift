@@ -41,4 +41,19 @@ struct BucklingTests {
         let r = try BucklingStudy.impact(device: device, speed: 200, seeds: 4)
         #expect(abs(r.measured / r.predicted - 1) < 0.25, "\(r.measured) m against \(r.predicted) m")
     }
+
+    @Test("Bowed as Eurocode 3 takes members to be, a strut carries its buckling curve's resistance")
+    func curves() throws {
+        // A pinned S355 strut under a slowly rising load, bowed by default.
+        for (curve, slenderness) in [(BucklingCurve.a, Float(1)), (.b, 0.5), (.b, 1), (.b, 2), (.c, 1)] {
+            let r = try BucklingStudy.curve(device: device, slenderness: slenderness, curve: curve)
+            let ratio = r.model / (r.eurocode ?? 1)
+            #expect(
+                abs(ratio - 1) < 0.05,
+                "curve \(curve) at λ̄ \(slenderness): χ \(r.model) against \(r.eurocode ?? 0)")
+        }
+        // Straight, near λ̄ = 1 it carries its squash load.
+        let straight = try BucklingStudy.curve(device: device, slenderness: 1, curve: nil)
+        #expect(straight.model > 0.95)
+    }
 }

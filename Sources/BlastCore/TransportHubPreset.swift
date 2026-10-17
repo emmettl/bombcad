@@ -80,6 +80,16 @@ extension ScenarioPreset {
         for (index, material) in materials.enumerated() where material != structure.material {
             structure.setMaterial(material, of: index)
         }
+        // Buckling curves (EN 1993-1-1 Table 6.2): hot-finished hollow sections a; the UC columns about
+        // their minor axis c; the purlins, rolled I-sections, the default b.
+        for (index, box) in solids.enumerated() {
+            let width = min(box.size.x, box.size.y, box.size.z)
+            if materials[index] == chord.equivalent(width: chord.width) || abs(width - post.width) < 1e-4 {
+                structure.setBucklingCurve(.a, of: index)
+            } else if materials[index] == column.equivalent() {
+                structure.setBucklingCurve(.c, of: index)
+            }
+        }
         let (cx0, cx1, cy1, ch): (Float, Float, Float, Float) = (6, 30, y0 + 20, 8)
         var scenario = Scenario(
             name: title, domainSize: SIMD3(80, 100, 24), boxes: [],

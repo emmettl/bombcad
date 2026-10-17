@@ -566,7 +566,10 @@ settles to its critical load, whatever the damping (2 or 20 s⁻¹). One beam ac
 buckles it correctly. The beams' large rotations, from quaternion directors, carry it into the
 post-buckled shape: 60–90 mm sideways.
 
-**Inelastic** (S355, clamped at both ends, elastic–perfectly plastic):
+These checks against closed forms run on perfectly straight members
+(`memberImperfections = false`), as the closed forms assume.
+
+**Inelastic, perfectly straight** (S355, clamped at both ends, elastic–perfectly plastic):
 
 | Slenderness λ̄ | Peak | min(N_cr, N_pl) | Eurocode 3, curve a |
 |---|---|---|---|
@@ -578,7 +581,47 @@ post-buckled shape: 60–90 mm sideways.
 A stocky strut squashes at f_y A. A slender one buckles at its Euler load, or 12–24% past it at
 this speed of shortening. Near λ̄ = 1, where buckling and yield meet, the beams carry the perfect
 strut's load: 1.5 times Eurocode 3's design resistance. The design resistance allows for the
-member's crookedness and for the residual stresses of rolling, and the beams model neither.
+member's crookedness and for the residual stresses of rolling. Straight members model neither.
+
+**Bowed, by default** (since 17 October 2026, `MemberImperfection`). Every steel member is now
+bowed as Eurocode 3 takes members to be:
+- Its line of beams is cut at its joints: the nodes it shares with another member, a shell or a
+  tie, and its ends.
+- Each length of four or more beams between joints gets a half sine across its weaker side.
+- The amplitude is EN 1993-1-1 §5.3.2(11)'s for an imperfection in the buckling mode,
+  e₀ = α (λ̄ − 0.2) W_pl / A (γ_M1 = 1). Here λ̄ is the length's as a pinned strut, and α is the
+  member's buckling curve's (`StructureModel.bucklingCurve`, b by default, or each member's own).
+- The beams' kernel adds each end's offset and turn to its node's motion and takes away the strain
+  the bow alone would carry. So a bowed member starts unstressed, its axial force bends it through
+  the bow, and the bow turns with it.
+- The nodes stay on the straight line for the air, contact and drawing, a few millimetres off.
+- Members of an elastic stand-in (yield above 2 GPa), concrete and timber stay straight.
+
+Pinned S355 struts 50 mm square, loaded by a head mass under gravity raised slowly (load control:
+the largest force the foot carries is the resistance, χ N_pl; `blastbench buckling
+--curve-slenderness`). The beams' χ over Eurocode 3's:
+
+| λ̄ | Curve a | Curve b | Curve c | Table 5.1's elastic bow, b | Its plastic bow, b |
+|---|---|---|---|---|---|
+| 0.2 | 1.00 | 1.00 | 1.00 | 0.96 | 0.94 |
+| 0.5 | 1.01 | 1.02 | 1.02 | 0.95 | 0.91 |
+| 0.8 | 1.00 | 1.00 | 1.00 | 0.93 | 0.87 |
+| 1.0 | 0.98 | 0.98 | 0.99 | 0.92 | 0.86 |
+| 1.5 | 0.98 | 0.98 | 0.97 | 0.94 | 0.88 |
+| 2.0 | 1.01 | 0.99 | 0.98 | 0.96 | 0.92 |
+
+**Results.**
+- **The default bow is within 3% of every curve.** Twice the elements and twice the loading time
+  move χ by under 1%.
+- **Table 5.1's fixed bows (L/300 to L/150) read 2–18% low on these solid struts.** They were
+  sized for I-sections, whose W / A is larger beside their radius of gyration; §5.3.2(11)'s
+  amplitude follows the section.
+- **Residual stresses are not added.** The equivalent bow stands for them, as the code intends,
+  and with it the curves are met.
+- **A member clamped at its joints** is bowed as if pinned, a larger bow than its shorter
+  buckling length needs: the safe side.
+- **The hub's members.** Its hollow chords and posts take curve a, its UC columns c and its
+  purlins b.
 
 **Dynamic.** A strut struck at its end buckles behind the compression front. There the force is
 F₀ = E A v / c, and the bowing grows fastest at Lindberg's preferred wavelength,
@@ -646,20 +689,22 @@ their capacity, short of buckling.
     elements deep, was 43% too stiff ([validation](validation.md#glulam-beams-in-a-shock-tube)).
     Members wider than half their depth mesh as beams and are not affected, nor is bending out of
     the plane (floors, roofs, CLT panels).
-11. **Members are perfectly straight**, without residual stress. A strut of middling
-    slenderness carries up to 1.5 times Eurocode 3's design buckling resistance
-    ([buckling](#buckling)). Flanged sections drawn as rectangles (`SteelSection.equivalent`)
-    are stiffer about their minor axis than the section, a beam's well above it, so they buckle
-    that way at a higher load than they should.
+11. **Members are bowed, not modelled crooked.** Steel members carry Eurocode 3's equivalent
+    bow, so they buckle at their design curves' resistance ([buckling](#buckling)). The bow
+    stands for crookedness and rolling's residual stresses together; neither is modelled as
+    measured. It assumes pinned ends between joints, the safe side for members clamped there.
+    Flanged sections drawn as rectangles (`SteelSection.equivalent`) are stiffer about their
+    minor axis than the section, a beam's well above it, so they buckle that way at a higher
+    load than they should; their bow is sized for the rectangle.
 
 ## Future work
 
 - **Contact that knows the shells' thickness**, within the shells and between shells and solid
   elements.
 - **Punching against a test**, before and after punching, and with an eccentric load.
-- **Crooked members.** An initial bow (L/1000, as Eurocode 3's curves assume) and rolling's
-  residual stresses, so that struts of middling slenderness buckle at their design load, and a
-  flanged section's minor axis as it is.
+- **A flanged section's minor axis as it is**, so that a bowed I-section buckles about its weak
+  axis at its own load; and a test of imperfect struts under an impulsive axial load (Kenny's
+  thesis, in [data wanted](data-wanted.md)).
 
 ## Sources
 
