@@ -85,6 +85,16 @@ public final class BlastSolver {
             components: recorder.components, rigidBoxes: rigidBoxes ?? [], constructions: constructions)
     }
 
+    /// When fragments hole envelope panes, by component id, s from the start (`FragmentCloud.paneHoles`):
+    /// with venting on, each opens in the air on the step the run's clock reaches it, before its
+    /// glass would break. Kept across restarts.
+    public var ventsGlazing: Bool { envelopeVenting != nil }
+
+    public func setEnvelopePaneHoles(_ holes: [String: Double]) {
+        precondition(!batchInFlight, "Cannot set pane holes during a batch")
+        envelopeVenting?.setHoles(holes)
+    }
+
     /// The panes broken so far and what each building's rooms have seen, with venting on.
     public func envelopeVentingSnapshot() -> EnvelopeVentingSnapshot? {
         precondition(!batchInFlight, "Cannot read observers during a batch")
@@ -2693,6 +2703,7 @@ public final class BlastSolver {
             encoder.setBuffer(venting.roomDispatch, offset: 0, index: 9)
             encoder.setBuffer(venting.roomList, offset: 0, index: 10)
             encoder.setBuffer(venting.tableBuffer, offset: 0, index: 11)
+            encoder.setBuffer(venting.holeBuffer, offset: 0, index: 12)
             encoder.dispatchThreads(
                 MTLSize(width: venting.paneCount, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))
