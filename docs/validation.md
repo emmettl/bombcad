@@ -3572,6 +3572,19 @@ its area raised by (60 s / t)^(1/16)), so it breaks, and the model breaks it in 
 2.2 ms. Glass that thick breaks there because the load is large: 5 kg at 5 m reflects at three
 and a half atmospheres.
 
+### Laminated glass
+
+Laminated panes are compared with three open sets of tests in
+[building envelopes](building-envelopes.md#laminated-glass) (`LaminatedGlassTests`):
+
+- **Osnes et al.'s 15 shock-tube panes.** At E1300's median strength every pane cracks, eight
+  of them where the tests held. Their new glass was 1.55–1.85 times as strong. With it, 14 of 15
+  sort as measured, and the cracked panes go 0.67–0.89 of the measured deflection without tearing.
+- **Zhang et al.'s 5 framed panes in the open.** They are held, going 1.16–1.71 times as far as
+  measured.
+- **Hooper's 8 silicone-bonded panes.** All pull out of their joints, as measured, at 0.9–1.5 of
+  his speeds, but at about 73 mm where his held to 140–209 mm.
+
 ### What this does and does not show
 
 It shows that the app's glass breaks when it should under a strong long-duration wave, within

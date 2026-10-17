@@ -515,6 +515,54 @@ first floor fell at 250 kg, and with cracks on the lattice planes the front wall
 the bars' dowel action and slab–column joints a punching check, the shell frame fell at
 250 kg, where the solid elements stood at 1,000 kg; now it stands at 250 kg too (below).
 
+## Buckling
+
+Can the beams buckle? A transport hub's roof hangs on slender steel. So since 17 October 2026 a
+straight steel strut has been shortened slowly to check (`BucklingStudy`, `blastbench buckling`,
+`BucklingTests`). Its far end is held, and the end pushed in is a prescribed node, which keeps its
+spin, so that end cannot turn. A small sideways nudge in the shape of its first mode starts it
+bending.
+
+**Elastic, slowly** (50 mm square, E = 210 GPa):
+
+| Strut | Its ends | Carried once buckled | Theory |
+|---|---|---|---|
+| 3 m, 60 beams | Pinned and clamped | 2.04 P_E | 2.046 P_E |
+| 3 m, 60 beams | Both clamped | 3.99 P_E | 4 P_E |
+| 1.5 m, 15 beams (the test) | Pinned and clamped | 2.06 P_E | 2.046 P_E |
+| 1.5 m, 15 beams (the test) | Both clamped | 4.05 P_E | 4 P_E |
+
+Shortened at a finite speed, the strut goes past its critical load before it bows out. The peak
+was 2.26–2.74 P_E pinned and clamped at 0.5–2 mm/s on 3 m. Once it has bowed, the load it carries
+settles to its critical load, whatever the damping (2 or 20 s⁻¹). One beam across the section
+buckles it correctly. The beams' large rotations, from quaternion directors, carry it into the
+post-buckled shape: 60–90 mm sideways.
+
+**Inelastic** (S355, clamped at both ends, elastic–perfectly plastic):
+
+| Slenderness λ̄ | Peak | min(N_cr, N_pl) | Eurocode 3, curve a |
+|---|---|---|---|
+| 0.5 (1.1 m) | 886 kN | 887.5 kN, squash | 0.92 N_pl, 818 kN |
+| 1.0 (2.2 m) | 886 kN | 884 kN | 0.67 N_pl, 591 kN |
+| 1.5 (3.3 m) | 442 kN | 394 kN, Euler | 0.37 N_pl, 330 kN |
+| 2.0 (4.4 m) | 276 kN | 222 kN, Euler | 0.22 N_pl, 198 kN |
+
+A stocky strut squashes at f_y A. A slender one buckles at its Euler load, or 12–24% past it at
+this speed of shortening. Near λ̄ = 1, where buckling and yield meet, the beams carry the perfect
+strut's load: 1.5 times Eurocode 3's design resistance. The design resistance allows for the
+member's crookedness and for the residual stresses of rolling, and the beams model neither.
+
+**Dynamic.** A strut struck at its end buckles behind the compression front. There the force is
+F₀ = E A v / c, and the bowing grows fastest at Lindberg's preferred wavelength,
+λ = 2π √(2 E I / F₀), short of the Euler buckle. Gladden et al. measured λ ∝ v^(−1/2) in rods
+struck by projectiles. On a 20 mm square strut struck at 25–200 m/s:
+
+IMPACT
+
+No test of a steel column buckling under blast with its measured response has been compared.
+Nassr et al.'s columns under blast with axial load (McMaster, 2012) were loaded to a quarter of
+their capacity, short of buckling.
+
 ## Limitations
 
 1. **Midsurface geometry.** Members end on each other's midsurfaces and centrelines, so where
@@ -560,15 +608,30 @@ the bars' dowel action and slab–column joints a punching check, the shell fram
     elements deep, was 43% too stiff ([validation](validation.md#glulam-beams-in-a-shock-tube)).
     Members wider than half their depth mesh as beams and are not affected, nor is bending out of
     the plane (floors, roofs, CLT panels).
+11. **Members are perfectly straight**, without residual stress. A strut of middling
+    slenderness carries up to 1.5 times Eurocode 3's design buckling resistance
+    ([buckling](#buckling)). Flanged sections drawn as rectangles (`SteelSection.equivalent`)
+    are stiffer about their minor axis than the section, a beam's well above it, so they buckle
+    that way at a higher load than they should.
 
 ## Future work
 
 - **Contact that knows the shells' thickness**, within the shells and between shells and solid
   elements.
 - **Punching against a test**, before and after punching, and with an eccentric load.
+- **Crooked members.** An initial bow (L/1000, as Eurocode 3's curves assume) and rolling's
+  residual stresses, so that struts of middling slenderness buckle at their design load, and a
+  flanged section's minor axis as it is.
 
 ## Sources
 
+- J. R. Gladden, N. Z. Handzy, A. Belmonte and E. Villermaux, "Dynamic buckling and
+  fragmentation in brittle rods", *Physical Review Letters* 94, 035503, 2005 (arXiv
+  cond-mat/0410642). The preferred wavelength of a rod struck at its end, and its v^(−1/2) scaling
+  measured.
+- H. E. Lindberg and A. L. Florence, *Dynamic Pulse Buckling*, Martinus Nijhoff, 1987. The
+  preferred mode of a column under a suddenly applied load.
+- EN 1993-1-1:2005, §6.3.1. Buckling curves for compression members (curve a, α = 0.21).
 - S. Ahmad, B. M. Irons and O. C. Zienkiewicz, "Analysis of thick and thin shell structures by
   curved finite elements", *International Journal for Numerical Methods in Engineering* 2, 1970.
   The degenerated-solid shell.

@@ -205,8 +205,13 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
     ([warehouse](profiled-sheeting.md#the-portal-frame-warehouse-sample)), its sheeting
     illustrative; still needs fasteners that pull out in the shells and local buckling of thin
     cold-formed members.
-  - Transport hubs with long-span steel and glass roofs. Needs laminated glass that holds together
-    when broken, glass falling from overhead, and a check of slender members buckling under blast.
+  - Transport hubs with long-span steel and glass roofs: a sample is built
+    ([transport hub](transport-hub.md)). Its parts:
+    - [laminated glass](building-envelopes.md#laminated-glass) on envelopes, compared with three
+      open sets of tests;
+    - [glass falling from overhead](building-envelopes.md#glass-falling-from-overhead);
+    - [buckling](shell-model.md#buckling) checked against Euler and Lindberg.
+    It still needs crooked members, laminated glass in the structure model, and edge tearing.
 
 ### Distributed computing
 
