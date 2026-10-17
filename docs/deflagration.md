@@ -1,7 +1,7 @@
 # Gas deflagrations
 
-The second kind of source beside a high-explosive charge: a cloud of methane or propane mixed
-with air, filling a box in a scene, lit at a point. A flame spreads from the ignition point
+The second kind of source beside a high-explosive charge: a cloud of methane, propane, hydrogen
+or town gas mixed with air, filling a box in a scene, lit at a point. A flame spreads from the ignition point
 through the mixture, burning it and releasing its heat, and the gas the burning expands pushes
 the air ahead of it and out of any openings. Vent panels close openings until the pressure
 beside them reaches a release pressure. This is an accidental event of the kind the
@@ -20,6 +20,42 @@ does resolve, and by its own cellular instability from the onset radius measured
   for this room (the tests measured a tenth to a quarter of them).
 
 Nothing here supports judging the safety of a real room, vent or structure.
+
+## Where gas explosions stand
+
+As of 17 October 2026. Each band is the model's peak over the measured, unfitted unless said; the
+checks are under [Checks](#checks) and the [congestion model](congestion-model.md#merge).
+
+| Gas or case | Compared with | Band | Side | What is missing |
+|---|---|---|---|---|
+| Methane, a vented room | FM Global's 63.7 m³ chamber, six tests (Bauwens et al. 2008) | 0.9–1.8 lit at the back wall; 0.41–0.58 lit in the middle | either way; unsafe lit in the middle | the stall of the flame's back half; the Helmholtz–Taylor and acoustic peaks |
+| Methane, closed | 20 L to 25 m³ vessels, K_G 55–110 | 74 bar m/s on 48 cells (0.7–1.35) | either way | a front thin enough to resolve the last burning layer |
+| Propane | a closed sphere only, K_G 89 | 0.66 (59 bar m/s, 24 cells) | unsafe | any vented comparison; its measured instability onset |
+| Hydrogen, lean, vented | FM Global's chamber, eight tests (Bauwens et al. 2011) | 1.24–2.96 | safe | the external explosion and Helmholtz peaks |
+| Hydrogen, lean, vented | HySEA's containers (Skjold et al. 2017): through the doors; through roof film | 0.72–1.42; 0.19–0.45 | within scatter; unsafe | the roof film's opening pressure, not reported |
+| Hydrogen, closed | stoichiometric, K_G 550 (500–990 by vessel) | 0.89–0.99 | either way | rich hydrogen's own instability (no factor richer than φ 1) |
+| Town gas | a closed sphere (Bartknecht's 60/40 stand-in); Ronan Point's flat against the inquiry's estimate | 0.77; 12 kPa against 21 | unsafe | any vented test |
+| Congestion below the grid | MERGE's rigs, methane and propane | 0.43–1.16 at the finer pitches; 2.8–5.2 at the coarser | either way | the pitch's effect (half the pitch is seven times the peak in MERGE, about the same here) |
+| Congestion, flame speed | Baker–Strehlow–Tang's 3D flame Mach numbers | Mach 0.45–1.04 against 0.23–0.5 | fast | as above |
+| An open plant cloud | Texas City (the CSB's 2.5–2.8 psi at 37 m) | 0.01 psi with the model alone, so a fitted factor of 6.5 | unsafe unless fitted | the unit's congestion at grade |
+| Venting correlations | EN 14994 and NFPA 68 for the same rooms | a seventh to a fiftieth of theirs | below them, as the tests are | none: the correlations are envelopes |
+
+**What holds across them.**
+- **Energy:** a cloud's heat goes into the gas to within 10⁻⁵, and a closed vessel peaks at the
+  AICC pressure.
+- **Vented rooms:** they are within a factor of two to three where the flame runs from a wall to
+  the vent, lean hydrogen included once its 1/Le response is on.
+- **Congestion:** it is illustrative. The standing advises cells no larger than the arrays'
+  pitch, because larger cells grow the peak five to twelve times.
+
+**What is missing across them.**
+- the Helmholtz–Taylor and acoustically driven peaks;
+- vent panels' inertia;
+- transition to detonation;
+- the products' and the cloud's own properties: the products are taken as air with fitted heat,
+  and the cloud starts at the air's density;
+- the burning velocity's dependence on the unburnt gas's pressure and temperature;
+- a congestion model with the pitch's effect.
 
 ## Using it
 
@@ -561,32 +597,46 @@ configurations:
 - **Doors:** the whole end open, lit at the back wall's centre 1.2 m up (`blastbench deflagration
   vented --gas hydrogen --percent 15 --container doors --vent 5.64`).
 - **Roof:** 4, 6 or 8 m² of eight 1 m² roof openings sealed with perforated film, lit at the floor's
-  centre (`--container roof --vent 4,6,8`). The openings' layout is not given: two rows of four,
-  evenly spaced, the middle ones open first, are assumed.
+  centre (`--container roof --vent 4,6,8`). The openings are in four pairs across the roof, about
+  1.0, 2.1, 3.3 and 4.5 m from the back wall, read from the paper's Figure 7: 4 m² is the middle two
+  pairs, 6 m² adds the pair by the doors, and 8 m² all four.
 
 Peak overpressure inside, kPa, 0.1 m cells:
 
 | Test | Measured | Model, with 1/Le | Ratio | Without | Ratio |
 |---|---|---|---|---|---|
 | Doors, 15% (tests 1–6) | 3.9–7.7 (mean 5.2) | 5.54 | 0.72–1.42 (1.07 of the mean) | 0.70 | 0.13 |
-| Roof, 4 m², 21% (test 25) | 14.6 | 7.72 | 0.53 | 1.54 | 0.11 |
-| Roof, 6 m², 21% (test 21) | 12.0 | 4.80 | 0.40 | 0.88 | 0.07 |
-| Roof, 8 m², 21% (test 16) | 19.0 | 3.74 | 0.20 | 0.58 | 0.03 |
+| Roof, 4 m², 21% (test 25) | 14.6 | 6.55 | 0.45 | 1.54 | 0.11 |
+| Roof, 6 m², 21% (test 21) | 12.0 | 4.76 | 0.40 | 0.88 | 0.07 |
+| Roof, 8 m², 21% (test 16) | 19.0 | 3.53 | 0.19 | 0.58 | 0.03 |
+
+(Without 1/Le, the runs used evenly spaced openings; with them, the paper's 7.72, 4.80 and 3.74 kPa.)
 
 - **The doors:** within the six repeats' own scatter.
-- **The roof:** still on the unsafe side, 0.20–0.53. The measured peaks do not fall as the vent
-  grows (8 m² gave the highest), which no venting correlation has.
-- **What the roof tests have that the model does not:**
-  - the steel frame of 200 mm channels on the floor round the ignition point;
-  - the vents' layout;
-  - the flame's buoyancy, rising from the floor towards the openings;
-  - the external explosion above the roof.
+- **The roof:** still on the unsafe side, 0.19–0.45 (0.20–0.53 with the openings assumed evenly
+  spaced). The measured peaks do not fall as the vent grows (8 m² gave the highest), which no
+  venting correlation has.
+- **Four candidate causes, each added in turn** (kPa at 4 / 6 / 8 m²; 6.55 / 4.76 / 3.53 with the
+  paper's layout alone):
+  - the steel frame of 200 × 75 mm channels on the floor round the ignition point (`--frame`,
+    Figure 3): 0–4% more;
+  - gravity, for the burnt gas's buoyancy (`--gravity`): 10–20% less, the flame rising to the
+    openings sooner;
+  - 6 m of air above the roof for the external explosion (`--clearance 6`, against 2): 5–8% less;
+  - all three: 6.21 / 4.33 / 2.80 kPa, 0.43 / 0.36 / 0.15 of the measured.
+
+  The doors with all three read 6.01 kPa, still within their scatter. None of the four closes the
+  gap, so none is kept beyond the paper's layout.
+- **The likeliest cause left is the film itself.** It was 0.2 mm polyethylene, 0.185 kg/m²,
+  perforated along its edges, and its opening pressure is not given. Peaks that do not fall with
+  the vent's area are what a cover's opening sets. The commercial panels, at 0.1 bar, gave 19–25
+  kPa in the same tests. The model takes the film as open.
 
 **Where lean hydrogen stands.** The fitted coefficient was set aside, so nothing is fitted:
 - FM's chamber reads 1.2–3.0 of the measured peaks.
 - The containers' doors read within their scatter.
 - The closed sphere's K_G reads 0.89–0.99.
-- The containers' roof vents read 0.2–0.5.
+- The containers' roof vents read 0.2–0.45.
 
 So the containers' roof and FM's centre-lit tests fall outside 0.5–2, and the comparison stops
 here.
@@ -645,33 +695,35 @@ ICHS 2011), tabulated; HySEA's containers with obstacles, vent panels and strati
    the instability is meant to; a few percent of it is the grid's own flow at the front, which the
    σ-model reads as turbulence. On fine cells the front also corrugates on the grid, and then the
    instability partly counts the same wrinkling twice.
-4. **No obstacles' sub-grid turbulence**: obstacles larger than a cell or two shape the resolved
-   flow, and the σ-model's u′ in their wakes wrinkles the flame. Congestion below the grid's scale,
-   which drives the strongest accelerations, is not represented (porosity–distributed-resistance
-   codes such as FLACS model it). There is no transition to detonation.
+4. **Obstacles:** those larger than a cell or two shape the resolved flow, and the σ-model's u′ in
+   their wakes wrinkles the flame. Congestion below the grid's scale has its own illustrative model
+   ([Congestion below the grid](congestion-model.md)), within 0.4–1.2 of MERGE's finer pitches but
+   three to five times high at its coarser. There is no transition to detonation.
 5. **Products treated as air.** The heat is fitted to the AICC pressure at stoichiometric and
    applied at every concentration. The expansion ratio comes out 6.6 (ideal gas) or 7.1 (hot air)
    against 7.5. The cloud's own density is not represented. Rich and lean mixtures' heat follows
    the fuel or oxygen they burn, but their AICC pressures are not checked.
-6. **The burning velocity** does not depend on the unburnt gas's pressure and temperature, flame
-   stretch (Markstein) or heat loss. A flame is not quenched at walls, and dilution below the
+6. **The burning velocity** does not depend on the unburnt gas's pressure and temperature or heat
+   loss, and on flame stretch only through lean hydrogen's 1/Le and congestion's SCOPE wrinkling. A flame is not quenched at walls, and dilution below the
    flammability limit stops it only through the burning velocity.
 7. **K_G cannot converge on this front**: the last tenth of a closed vessel's mixture burns in a
    layer under 1% of its radius thick, and a front four cells thick needs hundreds of cells
    across the radius to resolve it (35 to 60 bar m/s on 12 to 96 cells, against 76).
 8. **Vent panels have no mass** and go at once. Panels of several kilograms a square metre hold
    on longer and raise the pressure, and EN 14994 corrects for their inertia.
-9. **The domain's open faces copy the cell inside them**, which lets gas flow back in. Burnt gas
-   wrapping round a room against an open face drew itself back in and pressurised the whole domain.
-   Leave a few metres of air round a vented room.
+9. **Open faces:** a vented room's checks run with far-field faces, ambient air beyond them. With
+   the faces copying the cell inside them (an option), burnt gas wrapping round a room against an
+   open face drew itself back in and pressurised the whole domain, so leave a few metres of air
+   round a vented room.
 10. **Refinement, still-air skipping and afterburning are turned off** with a deflagration, the
    first two because the flame is advanced everywhere on the coarse cells, the last because the
    cloud takes its species.
 
 ## Future work
 
-- Congestion below the grid, so that an open vapour cloud explosion is predicted rather than fitted:
-  scoped in [a proposal](congestion-proposal.md), not built.
+- Congestion below the grid with the pitch's effect, sharing the obstacles between what the grid
+  resolves and what it models ([what was tried](congestion-model.md#merge)), so that an open vapour
+  cloud explosion is predicted rather than fitted.
 - Find why a flame lit in the middle of a vented room stalls towards the back wall, where the tests
   and their LES ran at 3 m/s.
 - A young flame that burns at its speed from the start: a sub-grid ignition kernel, carried until
@@ -685,7 +737,8 @@ ICHS 2011), tabulated; HySEA's containers with obstacles, vent panels and strati
 - The burning velocity's dependence on pressure and temperature (Metghalchi and Keck), and the
   products' own heat capacities instead of a fitted share of the heat.
 - Vent panels with inertia, and panels that hinge.
-- Hydrogen, whose instabilities and venting are better measured (HySEA).
+- HySEA's containers with obstacles, vent panels and stratified mixtures, and the roof film's
+  opening; INERIS's 1 and 10.5 m³ vessels; rich hydrogen's instability.
 
 ## Sources
 

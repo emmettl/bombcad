@@ -131,11 +131,15 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
   as beams, its thin flanges buckling, screwed to its purlins by screws that pull through; Langdon's
   connections as spring supports. Against Langdon's corrugated panels 10 of 13 permanent sets are
   within half to twice of measured; against ADBLAST's screwed cladding in air the first deflection
-  is 0.90–1.35 of measured. As an envelope construction, by UFC's method for cold-formed panels,
-  illustrative.
-- **Next, for sheeting:** what is left after the blast (buckled shapes snapping through), buckling
-  earlier than plate theory says, and cladding torn off a purlin that deforms, which ADBLAST's
-  deliverables would judge ([data survey 3i](data-survey.md#3i-profiled-cladding-on-its-fixings)).
+  is 0.90–1.35 of measured. As an envelope construction, by UFC's method for cold-formed panels on
+  its effective section, illustrative: the same ADBLAST tests 0.50–1.37 of measured on whole
+  components, low on nine of ten, as a component's mean load under-reads its middle ribs.
+- **Next, for sheeting:**
+  - a sheeted component's load by band across its ribs, judged on the worst band;
+  - what is left after the blast (buckled shapes snapping through);
+  - buckling earlier than plate theory says;
+  - cladding torn off a purlin that deforms, which ADBLAST's deliverables would judge
+    ([data survey 3i](data-survey.md#3i-profiled-cladding-on-its-fixings)).
 - **Planned, new materials** ([new materials](new-materials.md)): timber, solid and engineered
   (glulam, CLT, plywood), orthotropic with failure along and across the grain, rate effects and
   connections, its elastic part adopted from ContinuumKit's `OrthotropicPlaneStress`.

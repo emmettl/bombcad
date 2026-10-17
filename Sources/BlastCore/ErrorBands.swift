@@ -407,6 +407,9 @@ public enum ValidationTables {
             id: "ventedHydrogen", low: 1.24, high: 2.96, document: "deflagration.md#checks",
             quote: "the peaks are 1.24–2.96 of the measured"),
         Figure(
+            id: "ventedHydrogenRoof", low: 0.19, high: 0.45, document: "deflagration.md#checks",
+            quote: "still on the unsafe side, 0.19–0.45"),
+        Figure(
             id: "ventedHydrogenWithoutLewis", low: 0.19, high: 0.39, document: "deflagration.md#checks",
             quote: "lean hydrogen vented at 0.19–0.39 of the measured peaks"),
         Figure(
@@ -1099,20 +1102,27 @@ extension StandingScene {
                         + "congested or its flame sped up by a fitted factor.")
             } else if has(.deflagration), inputs.scenario.deflagration?.gas == .hydrogen {
                 let lewis = inputs.scenario.deflagration?.acceleration.thermodiffusive != nil
-                bands.append(
-                    figure(
-                        lewis ? "ventedHydrogen" : "ventedHydrogenWithoutLewis", .ventedPressure,
-                        "Peak pressure in a vented room, lean hydrogen",
-                        low: "flame too slow", high: "over-read",
-                        validity: lewis
-                            ? "FM Global's 63.7 m³ chamber, 12.1–19.7% hydrogen lit in the middle and at the back "
-                                + "wall, 0.1 m cells, with the flame's 1/Le response, nothing fitted; HySEA's "
-                                + "containers vented through their doors within their scatter, through their roof "
-                                + "0.20–0.53 of the measured"
-                            : "FM Global's 63.7 m³ chamber, 12.1–19.7% hydrogen lit in the middle and at the back "
-                                + "wall, 0.1 m cells; lean hydrogen's measured growth law, without the flame's "
-                                + "thermodiffusive response",
-                        check: "Bauwens, Chao and Dorofeev's vented lean hydrogen"))
+                // With the 1/Le response the model has been 1.24–2.96 in FM Global's chamber, the safe
+                // side, but 0.19–0.45 in HySEA's containers vented through their roofs, the unsafe
+                // side; the standing cannot tell those vents apart, so the band spans both.
+                var band = figure(
+                    lewis ? "ventedHydrogen" : "ventedHydrogenWithoutLewis", .ventedPressure,
+                    "Peak pressure in a vented room, lean hydrogen",
+                    low: "flame too slow", high: "over-read",
+                    validity: lewis
+                        ? "FM Global's 63.7 m³ chamber, 12.1–19.7% hydrogen lit in the middle and at the back "
+                            + "wall, 0.1 m cells, with the flame's 1/Le response, nothing fitted: 1.24–2.96, the "
+                            + "safe side; HySEA's containers vented through their doors within their scatter, "
+                            + "through their roof 0.19–0.45, the unsafe side"
+                        : "FM Global's 63.7 m³ chamber, 12.1–19.7% hydrogen lit in the middle and at the back "
+                            + "wall, 0.1 m cells; lean hydrogen's measured growth law, without the flame's "
+                            + "thermodiffusive response",
+                    check: "Bauwens, Chao and Dorofeev's vented lean hydrogen")
+                if lewis {
+                    band.low = ValidationTables.figure("ventedHydrogenRoof").low
+                    band.check = "Bauwens, Chao and Dorofeev's vented lean hydrogen, and HySEA's containers"
+                }
+                bands.append(band)
             } else if has(.deflagration), inputs.scenario.deflagration?.gas == .townGas {
                 unbanded.append(
                     "Peak pressure in a vented room: town gas was compared only in a closed sphere and against "
@@ -1506,9 +1516,9 @@ extension StandingScene {
             }
             if kinds.contains(.profiledSteelSheeting) {
                 unbanded.append(
-                    "Profiled steel sheeting, by UFC's cold-formed panel method: no test of cladding on its "
-                        + "fixings compared (the shells against Langdon's panels: permanent sets within half to "
-                        + "twice on 10 of 13).")
+                    "Profiled steel sheeting, by UFC's cold-formed panel method: illustrative, no band. Against "
+                        + "ADBLAST's ten screwed cladding shots it reads 0.50–1.37 of the measured deflection under "
+                        + "the air's load on the whole panel, low on nine, and its screws held as measured.")
             }
             if kinds.contains(.crossLaminatedTimber) {
                 unbanded.append(

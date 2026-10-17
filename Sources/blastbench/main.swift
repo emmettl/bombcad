@@ -1834,14 +1834,20 @@ func runSnapshot() throws {
             "Structure: \(summary.activeElements) elements intact, \(summary.erodedElements) failed, "
                 + "deflection \(format(Double(summary.maxDisplacement) * 1000, 0)) mm "
                 + "(largest \(format(Double(largest) * 1000, 0)) mm), "
-                + "worst damage \(format(Double(min(summary.maxDamage, 1)) * 100, 0))%")
+                + "worst damage \(format(Double(min(summary.maxDamage, 1)) * 100, 0))%"
+                + (summary.selfWeightSag > 0
+                    ? "; sagged \(format(Double(summary.selfWeightSag) * 1000, 0)) mm under its own weight first"
+                    : ""))
     }
     if solver.bodies.count > 1 {
         for body in solver.bodies {
             guard let summary = body.summary() else { continue }
             print(
                 "  \(body.name): \(summary.erodedElements) of \(summary.activeElements + summary.erodedElements) "
-                    + "elements failed, moved up to \(format(Double(summary.maxDisplacement) * 1000, 0)) mm")
+                    + "elements failed, moved up to \(format(Double(summary.maxDisplacement) * 1000, 0)) mm"
+                    + (summary.selfWeightSag > 0
+                        ? " (after sagging \(format(Double(summary.selfWeightSag) * 1000, 0)) mm under its own weight)"
+                        : ""))
         }
     }
     // Each gauge's peak overpressure and positive impulse over the run.
@@ -5439,6 +5445,7 @@ do {
     case "settle": try runSettle(device: device)
     case "poulin": try runPoulin(device: device)
     case "tyndall": try runTyndall(device: device)
+    case "facade": try runFacade(device: device)
     case "lacroix": try runLacroix(device: device)
     case "beam": try runBeam()
     case "shear": try runShearBeam()
