@@ -90,6 +90,8 @@ fails, search the number at [discover.dtic.mil](https://discover.dtic.mil/).
 | Puttock et al., PDR model against MERGE, ERGOS and Buxton, *J. Loss Prev.* (2021) 104659 | Elsevier | The reference implementation's errors |
 | BFETS Phase 2 report, BG R-1579 | FABIG (purchase) | Full-scale module explosions, 27 tests |
 | CCPS, *Guidelines for Vapor Cloud Explosion…*, 2nd ed. (2010) | Wiley/AIChE | Congestion and blast curves in industry practice |
+| Kenny, *Dynamic pulse buckling of slender beams with geometric imperfections subjected to an axial impact*, PhD thesis, Dalhousie (2001), 10 MB, open | [hdl:10222/55746](http://hdl.handle.net/10222/55746), too large for this machine's fetcher; save to `data/Kenny2001/` | Impact tests of imperfect slender beams, elastic and plastic, beside his models: the steel beams' [dynamic buckling](shell-model.md#buckling) under a measured pulse, now checked only against Lindberg's closed form |
+| Ari-Gur, Weller and Singer, columns under axial impact, *IJSS* 18(7) (1982) 619–641 | Elsevier | The classic tests of columns struck at an end, imperfections measured |
 | Dewey, the TNT and ANFO equivalences of the Beirut explosion, *Shock Waves* 31 (2021) | [doi:10.1007/s00193-021-00992-1](https://doi.org/10.1007/s00193-021-00992-1) | Peak overpressure against distance from Rigby's arrival times: the nearest to a measured pressure curve for Beirut (more in `data/Beirut2020/TO-FETCH.md`) |
 
 The survey names a few more, each under its item: Hao et al. (2017), Ross and Krawinkler (1985),

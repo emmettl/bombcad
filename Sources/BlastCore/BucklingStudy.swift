@@ -47,6 +47,8 @@ public enum BucklingStudy {
             material: material,
             elementSize: elementSize, fixedBase: false)
         model.elementKind = .shell
+        // Perfectly straight, as the closed forms take it.
+        model.memberImperfections = false
         let solver = try ShellSolver(device: device, model: model)
         solver.gravity = 0
         solver.groundContact = false
@@ -125,6 +127,8 @@ public enum BucklingStudy {
             solids: [Box(min: SIMD3(0, -half, 1 - half), max: SIMD3(length, half, 1 + half))],
             material: material, elementSize: elementSize, fixedBase: false)
         model.elementKind = .shell
+        // Straight but for the random disturbance, as Lindberg takes it.
+        model.memberImperfections = false
         let predicted = 2 * Float.pi * (2 * material.youngsModulus * inertia / force).squareRoot()
         // Wavelengths from 4 elements to the compressed length, 1% apart, and their summed power.
         var wavelengths: [Float] = []
@@ -184,5 +188,68 @@ public enum BucklingStudy {
         // The wavelength with the most power.
         let best = power.indices.max { power[$0] < power[$1] }.map { wavelengths[$0] } ?? 0
         return (predicted, best, force, length)
+    }
+
+    /// Against Eurocode 3's buckling curves: a pinned strut of S355 (or `yieldStress`), square
+    /// `side` wide, as long as slenderness λ̄ = √(N_pl / N_cr) makes it, upright, its foot pinned and
+    /// its head held sideways only. Its head carries a mass of a hundred times the strut's, whose
+    /// weight is ramped by raising gravity slowly (over `cycles` of the longer of the strut's
+    /// first sideways and the mass's axial periods) to 1.2 N_pl: load control, so the largest
+    /// force its foot carries is the strut's resistance, χ N_pl. Bowed by `curve` (nil: straight).
+    public static func curve(
+        device: MTLDevice, slenderness: Float, curve: BucklingCurve?, side: Float = 0.05,
+        yieldStress: Float = 355e6, elements: Int = 24, cycles: Float = 40, bowDivisor: Float? = nil
+    ) throws -> (peak: Float, squash: Float, model: Float, eurocode: Float?, length: Float) {
+        let modulus: Float = 210e9
+        let rho: Float = 7850
+        let area = side * side
+        let inertia = side * side * side * side / 12
+        let squash = yieldStress * area
+        // λ̄ = (L / i) / (π √(E / f_y)).
+        let length =
+            slenderness * Float.pi * (modulus / yieldStress).squareRoot() * (inertia / area).squareRoot()
+        let material = StructureMaterial(
+            name: "Strut steel", density: rho, youngsModulus: modulus, poissonRatio: 0.3,
+            yieldStress: yieldStress,
+            hardeningModulus: 0, failureStrain: 1e30)
+        let half = side / 2
+        var model = StructureModel(
+            solids: [Box(min: SIMD3(-half, -half, 0.5), max: SIMD3(half, half, 0.5 + length))],
+            material: material, elementSize: length / Float(elements), fixedBase: false)
+        model.elementKind = .shell
+        model.memberImperfections = curve != nil
+        if let curve { model.bucklingCurve = curve }
+        // `bowDivisor`: Table 5.1's L / e₀ in place of the default amplitude.
+        let solver = try MemberImperfection.$divisorOverride.withValue(bowDivisor) {
+            try ShellSolver(device: device, model: model)
+        }
+        solver.groundContact = false
+        solver.damping = 0
+        let foot = solver.nodes { $0.z < 0.5 + 1e-4 }
+        let head = solver.nodes { $0.z > 0.5 + length - 1e-4 }
+        let headMass = 100 * rho * area * length / Float(max(head.count, 1))
+        solver.mutateNodes { nodes in
+            for n in foot { nodes[n].restrain(x: true, y: true, z: true) }
+            for n in head {
+                nodes[n].restrain(x: true, y: true)
+                nodes[n].mass = headMass
+            }
+        }
+        let omega = pow(Float.pi / length, 2) * (modulus * inertia / (rho * area)).squareRoot()
+        let axialPeriod =
+            2 * Float.pi * (headMass * Float(head.count) * length / (modulus * area)).squareRoot()
+        let duration = cycles * max(2 * Float.pi / omega, axialPeriod)
+        let top = 1.2 * squash / (headMass * Float(head.count))
+        var peak: Float = 0
+        let stepsPerSample = max(1, Int(duration / 400 / solver.criticalTimeStep))
+        while Float(solver.time) < duration {
+            solver.gravity = top * Float(solver.time) / duration
+            solver.advance(steps: stepsPerSample)
+            let force = foot.reduce(Float(0)) { $0 + solver.nodalForce($1).z }
+            peak = max(peak, abs(force))
+            // Past its peak by a third: it has gone.
+            if abs(force) < 0.67 * peak, peak > 0.05 * squash { break }
+        }
+        return (peak, squash, peak / squash, curve?.reduction(slenderness: slenderness), length)
     }
 }

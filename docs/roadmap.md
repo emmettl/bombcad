@@ -218,8 +218,10 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
     - [laminated glass](building-envelopes.md#laminated-glass) on envelopes, compared with three
       open sets of tests;
     - [glass falling from overhead](building-envelopes.md#glass-falling-from-overhead);
-    - [buckling](shell-model.md#buckling) checked against Euler and Lindberg.
-    It still needs crooked members, laminated glass in the structure model, and edge tearing.
+    - [buckling](shell-model.md#buckling) checked against Euler and Lindberg, and steel members
+      bowed by default to Eurocode 3's curves (within 3%).
+    It still needs laminated glass in the structure model, edge tearing, and a dynamic
+    buckling test (Kenny's thesis, in [data wanted](data-wanted.md)).
 
 ### Distributed computing
 
