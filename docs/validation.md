@@ -3437,6 +3437,14 @@ openings (IFC imports, detailed structures with glass in their openings converte
 their windows are closed now, so the loads outside and the panes' own differ, and their panes
 break; and with glass set in a wall, the wall's load no longer includes its window's.
 
+Refined air kept the leak a little longer: its patches take their outline from the blocks' boxes,
+and the pane's own box held no finer cell's centre either, so a window glazed in a cut opening
+was open in the patches. A glazed room 5 m from 5 kg read 16 kPa inside with the shocks sharpened
+and nothing on the coarse cells. Since the same day every plate thinner than a cell takes the layer
+of cells its middle lies in on each level (`Box.holdingCells`), panes among them, and the room
+stays sealed once or twice refined (`EnvelopePaneCellTests`). Refined envelope runs with glazing
+in cut openings change as the coarse ones did.
+
 ### What this does and does not show
 
 It shows that the app's glass breaks when it should under a strong long-duration wave, within

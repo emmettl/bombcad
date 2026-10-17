@@ -258,4 +258,30 @@ struct TerrainCutCellTests {
         #expect(solver.terrainCut != nil && solver.terrain != nil)
         #expect(solver.ventPanelOpenTimes.count == 1)
     }
+
+    @Test("A cell mostly ground under a block standing on it is solid, and a blast beside it stays finite")
+    func cappedSliver() throws {
+        // Ground a tenth of the way up its cells' second layer; a block whose base lies below it,
+        // so that the slivers of air under it would be shut in; 100 kg 5 m from its side.
+        var scenario = Scenario(
+            name: "Capped slivers", domainSize: SIMD3(48, 48, 16),
+            boxes: [Box(min: SIMD3(20, 18, 1.7), max: SIMD3(30, 30, 6))],
+            charge: Charge(mass: 100, position: SIMD3(15, 24, 2.5)))
+        scenario.reflectiveFaces = .all
+        scenario.terrain = Terrain.sampled(domain: scenario.domainSize, spacing: 0.5, source: "slivers") {
+            p in
+            1.9 + 0.0005 * p.x
+        }
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 1, configuration: cut())
+        let geometry = try #require(solver.terrainCut?.geometry)
+        // Under the block, the sliver is solid; beside it, air.
+        #expect(geometry.alpha(25, 24, 1) < 0.2 && solver.isSolid(25, 24, 1))
+        #expect(geometry.alpha(10, 24, 1) < 0.2 && !solver.isSolid(10, 24, 1))
+        let before = solver.totals()
+        _ = solver.advance(until: 0.03)
+        let after = solver.totals()
+        #expect(after.mass.isFinite && after.energy.isFinite)
+        #expect(abs(after.mass / before.mass - 1) < 1e-5, "mass \(after.mass / before.mass - 1)")
+        #expect(abs(after.energy / before.energy - 1) < 1e-5, "energy \(after.energy / before.energy - 1)")
+    }
 }
