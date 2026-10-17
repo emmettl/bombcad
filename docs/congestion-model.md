@@ -231,8 +231,29 @@ The racks' tiers stand at 4, 7 and 10 m in a cloud 6 m deep, lit on the ground b
 little of the congestion is in the flame's path. The unit's congestion at grade, which the CSB
 describes but does not measure, is not in the layout.
 
-**Next** (in this order):
-1. A transported flame wrinkling, with PDRFoam's rates of approach (G, R) and its flame-brush
-   diffusion: a lag that limits the feedback.
-2. Obstacles placed in the cells that hold them where the cells are finer than the pitch.
-3. A grid guideline the app advises.
+**The grid guideline.** The standing advises cells no larger than the congestion's smallest pitch
+("Congestion's cells", with peaks and impulse).
+- **Within it:** halving the cells moved MERGE's peaks by under a third.
+- **Above it:** the peaks grew five to twelve times as the cells went from 0.6 to 2.5 pitches
+  across. A cell then counts more obstacles, which strengthens their wakes' Schelkin term and the
+  feedback.
+- **Why it matters:** this is what stands between a user and the grid-coincidence result above.
+
+**Tried and not kept** (17 October 2026, to a day's limit; patches and outputs with the MERGE runs):
+- **A transported flame wrinkling,** as PDRFoam's transport model: carried with the flame, approaching
+  its equilibrium at G = 0.28/τ_η + 0.5 |u|/L_obs, and shaped across the flame brush. MERGE A with
+  methane fell to 0.04 of its peak (from 0.91). The obstacle turbulence starts from nothing, so G is
+  a small fraction of a per-second for the flame's first tens of milliseconds and the wrinkling never
+  builds. PDRFoam's own k also gains the resolved shear's production, which here the σ-model takes,
+  and it is near zero inside the rigs.
+- **Obstacles placed in the cells that hold them,** where the cells are finer than the pitch, as
+  PDRsetFields places them:
+  - **What it fixed:** MERGE's trends came right. Half the pitch gave 4.7–5.0 times the peak
+    (measured 6.5–7.9), and C* gave 7.1–9.8 times E's (5.7–8.3).
+  - **What it broke:** the level rose about fourfold with each halving of the cells. C and E were
+    0.13–0.26 of their peaks at half a pitch, 1.3–1.8 at a quarter and 4.0–7.2 at an eighth: the
+    resolved rows and the sub-grid model counted the same obstacles twice.
+
+Neither came within a factor of two at two grids a factor of two apart, so neither is kept. A
+model that gets the pitch's effect would have to share the obstacles between what the grid resolves
+and what it models, as the cells shrink.

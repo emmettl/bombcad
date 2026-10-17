@@ -1609,7 +1609,23 @@ extension StandingScene {
                     nil, "validation.md#slabs-under-contact-charges")
             }
         case .impulse, .peakOverpressure:
-            guard !has(.deflagration) else { return [] }
+            if let pitch = inputs.scenario.congestion?.map(\.pitch).min() {
+                // Congestion's grid (docs/congestion-model.md#merge): cells no larger than the pitch.
+                let suits = inputs.cellSize <= pitch * 1.01
+                add(
+                    "Congestion's cells", suits,
+                    suits
+                        ? "Cells no larger than the arrays' pitch: against MERGE's rigs the peaks moved by under a "
+                            + "third as the cells halved, the finer pitches within 0.43 to 1.16 of the measured and "
+                            + "the coarser 2.8 to 5.2 times high."
+                        : "Cells larger than the arrays' pitch count more obstacles each: against MERGE's rigs the "
+                            + "peak grew five to twelve times as the cells went from 0.6 to 2.5 pitches across.",
+                    suits
+                        ? nil
+                        : String(format: "Use cells of %.2f m or less, the arrays' smallest pitch.", pitch),
+                    "congestion-model.md#merge")
+            }
+            guard !has(.deflagration) else { return advice }
             if place == "confined" {
                 if !has(.afterburning) {
                     add(
