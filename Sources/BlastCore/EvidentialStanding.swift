@@ -139,7 +139,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-23"
+    public static let currentTable = "standing-table-24"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -629,7 +629,9 @@ public enum StandingTable {
                 limit: .illustrative,
                 note:
                     "Pipes and bars too small for the cells take room, resist the air, make turbulence and fold "
-                    + "a flame, as PDRFoam's porous cells and sub-grid flame do; it is compared with no test yet.",
+                    + "a flame, as PDRFoam's porous cells and sub-grid flame do. Against MERGE's rigs the finer "
+                    + "pitches come within 0.4 to 1.2 of the measured peaks but the coarser three to five times "
+                    + "too high, half the pitch giving no more where MERGE's gave seven times.",
                 document: "congestion-model.md")
         case .ventedGlazing:
             return Entry(

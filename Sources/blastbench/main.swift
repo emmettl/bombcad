@@ -87,6 +87,8 @@ import simd
 //   blastbench mendonca [--slabs 1,2,4,5,7,9,10] [--layers 8] [--dx 0.0125] [--ensemble 8]   (blind test 2; see MendoncaBench.swift)
 //   blastbench reynolds [--slabs HSCV1,HSCV4] [--layers 8] [--load tail] [--ensemble 8]   (blind test 3; see ReynoldsBench.swift)
 //   blastbench panelblock --case gravity|gas|street [--dx 0.25] [--frames 0.1,1,4]   (large-panel flats; see PanelBlockBench.swift)
+//   blastbench merge [--rigs A,C,E,C*] [--gas methane,propane] [--dx 0.25] [--factor 1] [--out f.json]
+//                    (MERGE's congested rigs through the congestion model; see MergeBench.swift)
 //   blastbench langdon [--tests c622] [--h 0.0572]   (corrugated panels under pulse pressure; see LangdonBench.swift)
 //   blastbench buildings [--dx 0.5] [--duration 0.12] [--mass 50] [--out f.json]
 //                        (three buildings across a street, together and each alone; see BuildingsBench.swift)
@@ -147,6 +149,8 @@ func chosenScenario() -> Scenario {
             exit(1)
         }
     }
+    // `--congested`: the process plant with its racks' pipes as congestion and the factor at 1.
+    if flag("congested"), option("preset") == "plant" { scenario = ProcessPlantScene.congestedScenario }
     // `--flame-factor 12`: a gas cloud's burning velocity times this (`FlameAcceleration.factor`).
     if let factor = option("flame-factor").flatMap({ Float($0) }) {
         scenario.deflagration?.acceleration.factor = factor
@@ -5499,6 +5503,7 @@ do {
     case "reynolds": try runReynolds(device: device)
     case "panelblock": try runPanelBlock(device: device)
     case "deflagration": try runDeflagration()
+    case "merge": try runMerge(device: device)
     case "perimeter": try runPerimeter(device: device)
     case "keys": try runKeys(device: device)
     case "langdon": try runLangdon(device: device)

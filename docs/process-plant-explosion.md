@@ -142,5 +142,10 @@ pressure is right. It cannot say what that pressure is: that came from the CSB's
 the factor. A congestion model, such as the Baker–Strehlow–Tang flame speeds or FLACS's sub-grid
 obstacles, is what would make it predictive.
 
+BombCAD's [congestion model](congestion-model.md) is not yet that: with the racks' pipes as
+congestion and the factor at 1 (`blastbench snapshot --preset plant --congested`), the scene gives
+0.01 psi at 37 m, as the model alone does. The racks' tiers stand mostly above the 6 m cloud, and
+the unit's congestion at grade is not in the layout. The factor stays at 6.5.
+
 [CSB]: https://www.csb.gov/assets/1/20/CSBFinalReportBP.pdf
 [CSB-T]: https://www.csb.gov/UserFiles/file/CSB_BPTrailerData6-30_06.pdf

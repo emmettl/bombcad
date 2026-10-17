@@ -99,11 +99,15 @@ public struct CongestionField: Sendable {
     /// scale L_obs (m): the cell's size where there are none.
     public var generation: [SIMD4<Float>]
     /// Per cell: the obstacles' area blockage across each axis (PDRFoam's B, sharp-edged ones
-    /// counted at their larger drag), and their count N, the obstacles crossing the cell.
+    /// counted at their larger drag), and their count N, the obstacles crossing the cell; both over
+    /// `unitWidth`.
     public var blockage: [SIMD4<Float>]
     /// Per cell: the count of obstacles along each axis (PDRFoam's ns, less what all three share),
     /// and the obstacles' wall area per volume A_w (m⁻¹).
     public var parallel: [SIMD4<Float>]
+    /// Per cell: the width its counts and blockage are over, the larger of the cell and the pitch
+    /// of the array taking most of it (the cell's size where there is none), m.
+    public var unitWidth: [Float]
     /// Whether any cell has obstacles.
     public var isEmpty: Bool
 
@@ -124,6 +128,9 @@ public struct CongestionField: Sendable {
         var area = [SIMD3<Float>](repeating: .zero, count: count)
         var along = [SIMD3<Float>](repeating: .zero, count: count)
         var touched = Set<Int>()
+        // The pitch of the array taking most of each cell, the unit cell its counts are over.
+        var widestShare = [Float](repeating: 0, count: count)
+        unitWidth = Array(repeating: grid.cellSize, count: count)
         for array in arrays {
             let region = array.region
             let floorMin = (region.min / dx).rounded(.down)
@@ -137,8 +144,11 @@ public struct CongestionField: Sendable {
             let made = SIMD3<Float>(
                 array.turbulenceGeneration(across: 0), array.turbulenceGeneration(across: 1),
                 array.turbulenceGeneration(across: 2))
-            // Per cell: each crossing pipe blocks D/Δ of the face, (Δ/p)² pipes of each set cross it.
-            let perSet = (dx / array.pitch) * (dx / array.pitch)
+            // Counted over the grid's cell as PDRsetFields counts them, (w/p)^2 pipes of each set crossing
+            // it, each blocking D/w of its face; but over a pitch where the cell is smaller (w the
+            // larger of the two), as a cell smaller than the pitch would hold either a pipe or none.
+            let width = max(dx, array.pitch)
+            let perSet = (width / array.pitch) * (width / array.pitch)
             let sets = Set(array.axes)
             var crossing = SIMD3<Float>.zero
             var parallelSets = SIMD3<Float>.zero
@@ -146,7 +156,7 @@ public struct CongestionField: Sendable {
                 crossing[axis] = Float(sets.filter { $0 != axis }.count)
                 parallelSets[axis] = sets.contains(axis) ? 1 : 0
             }
-            let ownArea = crossing * array.diameter * dx / (array.pitch * array.pitch)
+            let ownArea = crossing * array.diameter * width / (array.pitch * array.pitch)
             // Sharp-edged obstacles fold the flame as their larger drag has it (PDRsetFields' B).
             let effectiveArea = ownArea * (array.shape == .cylinder ? 1 : 2.0 / 1.2)
             for k in low.z..<high.z {
@@ -177,6 +187,10 @@ public struct CongestionField: Sendable {
                         parallel[index].z += parallelSets.z * perSet * share
                         parallel[index].w += array.wallArea * share
                         area[index] += ownArea * share
+                        if share >= widestShare[index] {
+                            widestShare[index] = share
+                            unitWidth[index] = width
+                        }
                         along[index] += parallelSets * perSet * share
                         touched.insert(index)
                         isEmpty = false
@@ -192,7 +206,7 @@ public struct CongestionField: Sendable {
             if n >= 0.05, simd_reduce_max(area[index]) >= 0.002, porosityDrag[index].x >= 0.1 {
                 var scale: Float = 0
                 for axis in 0..<3 {
-                    scale = max(scale, area[index][axis] / max(n - along[index][axis], 1) * dx)
+                    scale = max(scale, area[index][axis] / max(n - along[index][axis], 1) * unitWidth[index])
                 }
                 generation[index].w = scale
             }
@@ -214,6 +228,8 @@ final class CongestionBuffers {
     let generation: MTLBuffer
     let blockage: MTLBuffer
     let parallel: MTLBuffer
+    /// Each cell's `CongestionField.unitWidth`.
+    let unitWidth: MTLBuffer
     let turbulence: [MTLBuffer]
     /// Which of `turbulence` holds the latest.
     var current = 0
@@ -242,6 +258,13 @@ final class CongestionBuffers {
         generation = try buffer(field.generation, "congestion turbulence generation")
         blockage = try buffer(field.blockage, "congestion blockage")
         parallel = try buffer(field.parallel, "congestion parallel counts")
+        guard
+            let width = field.unitWidth.withUnsafeBytes({
+                device.makeBuffer(bytes: $0.baseAddress!, length: $0.count, options: .storageModeShared)
+            })
+        else { throw BlastError.allocationFailed("congestion unit width") }
+        width.label = "congestion unit width"
+        unitWidth = width
         let cells = field.porosityDrag.count
         turbulence = try (0..<2).map { n in
             guard
@@ -267,7 +290,7 @@ final class CongestionBuffers {
     }
 
     var memoryFootprint: Int {
-        ([porosityDrag, generation, blockage, parallel] + turbulence).reduce(0) { $0 + $1.length }
+        ([porosityDrag, generation, blockage, parallel, unitWidth] + turbulence).reduce(0) { $0 + $1.length }
     }
 }
 

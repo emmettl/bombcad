@@ -42,7 +42,7 @@ struct DeflagrationUniforms {
     var regionMaxX: Float = 0
     var regionMaxY: Float = 0
     var regionMaxZ: Float = 0
-    var obstacleTurbulenceScale: Float = 0
+    var marksteinNumber: Float = 0
     /// A tabulated laminar burning velocity (`FlammableGas.burningVelocityTable`): how many points,
     /// their equivalence ratios and speeds (m/s); none uses Gülder's fit above.
     var speedTableCount: UInt32 = 0
@@ -79,6 +79,10 @@ final class DeflagrationStage {
     /// The radius, in onset radii, beyond which the instability's wrinkling holds: the largest flames
     /// Bauwens et al. (2015) measured, four critical radii (0.9 m for methane), 2 m across.
     static let wrinklingLimit: Float = 4
+    /// The Markstein number congestion's SCOPE wrinkling takes: propane's near stoichiometric, from
+    /// the SCOPE fuel data of OpenFOAM's PDRFoam tutorial (its Markstein polynomial at phi = 1),
+    /// taken for a gas without its own (`FlammableGas.marksteinNumber`).
+    static let marksteinNumber: Float = 3.739
 
     let deflagration: Deflagration?
     /// The panels with a release pressure, in the order of `openTimes`.
@@ -216,10 +220,10 @@ final class DeflagrationStage {
                 u.turbulenceScale = FlameTurbulence.bradleyCoefficient * max(turbulence.scale, 0)
                 u.velocityPerViscosity = (2.0 / 3).squareRoot() / (FlameTurbulence.energyCoefficient * dx)
             }
-            // Congestion's obstacle turbulence wrinkles the flame with or without the sub-grid's.
-            u.obstacleTurbulenceScale =
-                FlameTurbulence.bradleyCoefficient
-                * max(acceleration.turbulence?.scale ?? FlameTurbulence().scale, 0)
+            // The mixture's Markstein number, for congestion's wrinkling (PDRFoam's SCOPE): the gas's
+            // own where it has one, propane's otherwise.
+            u.marksteinNumber =
+                gas.marksteinNumber(fraction: deflagration.concentration) ?? Self.marksteinNumber
             u.kinematicViscosity = FlameTurbulence.kinematicViscosity
             let lit = grid.cell(containing: deflagration.ignition)
             u.ignitionCell = UInt32(grid.index(lit.i, lit.j, lit.k))
@@ -266,6 +270,8 @@ final class DeflagrationStage {
         encoder.setBuffer(congestion?.parallel ?? burningBuffer, offset: 0, index: 9)
         encoder.setBuffer(
             congestion.map { $0.turbulence[$0.current] } ?? burningBuffer, offset: 0, index: 10)
+        encoder.setBuffer(congestion?.generation ?? burningBuffer, offset: 0, index: 11)
+        encoder.setBuffer(congestion?.unitWidth ?? burningBuffer, offset: 0, index: 12)
         dispatchCells(encoder, advancePipeline)
         dispatchCells(encoder, applyPipeline)
     }

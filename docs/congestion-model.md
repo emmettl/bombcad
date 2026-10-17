@@ -8,10 +8,11 @@ each cell. It is being built in stages, after [the proposal](congestion-proposal
 
 1. **The obstacles and the porous flow** (built, 17 October 2026).
 2. **The turbulence they make and the flame's folding** (built, 17 October 2026).
-3. **Validation** against MERGE's rigs, the Baker–Strehlow–Tang flame speeds and Texas City (to
-   come).
+3. **Validation** against MERGE's rigs, the Baker–Strehlow–Tang flame speeds and Texas City
+   (17 October 2026; [below](#merge)). It does not yet hold: the rigs with the finer pitch come
+   within a factor of about two, those with the coarser three to five times too high.
 
-Until stage 3 holds, the process plant sample keeps its fitted factor.
+So congestion stays illustrative, and the process plant sample keeps its fitted factor.
 
 ## The obstacles
 
@@ -33,12 +34,15 @@ From the arrays and each cell's overlap with their regions (`CongestionField`), 
 - **its turbulence generation across each axis, CT:** C_b × CR, with C_b 0.035 for a cylinder and
   0.08 for a bar.
 - **the obstacles' length scale L_obs:** the area blockage per obstacle across each axis times
-  the cell's width, the largest of the three. For a uniform array it is the diameter, once a cell
-  holds a pipe or more of each set; a cell's size where there are too few obstacles.
-- **their counts and blockage, for the flame's folding:** the count N of obstacles crossing the
-  cell, (Δ/p)² for each set, and of those along each axis, ns, less what all three share (as
-  PDRsetFields does); and the area blockage across each axis, B, (crossing sets) × D Δ / p², with
-  bars counted at their larger drag.
+  the width w below, the largest of the three. For a uniform array it is the diameter; a cell's
+  size where there are too few obstacles.
+- **their counts and blockage, for the flame's folding:** the count N of obstacles crossing a
+  width w, (w/p)² for each set, and of those along each axis, ns, less what all three share (as
+  PDRsetFields does); and the area blockage across each axis, B, (crossing sets) × D w / p², with
+  bars counted at their larger drag. PDRsetFields counts over the cell. Here w is the larger of
+  the cell and the pitch: an evenly spread array in a cell smaller than its pitch would otherwise
+  count less than one obstacle, and the folding would vanish as the grid is refined (see
+  [MERGE](#merge)).
 - **their wall area per volume A_w.**
 
 For MERGE's array A (43 mm pipes at 0.2 m along all three axes), β_v is 0.89 and, across any
@@ -89,10 +93,22 @@ constants are k–ε's own, C_μ 0.09 and C_2 1.92, with PDRFoam's C_4 0.1 and C
 ## The flame in congestion
 
 The flame's burning velocity (docs/deflagration.md) takes three more terms in congestion:
-- **The obstacle turbulence's wrinkling,** by Bradley's correlation as the sub-grid turbulence's,
-  1.48 a (u′/S_L)^½ (L/δ)^{1/6}. Here u′ = √(2k/3) and L = C_μ^¾ k^{3/2}/ε, the turbulence's own
-  length scale, at most a cell. Bradley's form grows as (u′ L^{1/3})^½, so the two wrinklings add
-  as their squares.
+- **The obstacle turbulence's wrinkling,** as PDRFoam's validated set-up has it (its tutorial's
+  `SCOPEBlend` of Gülder's and SCOPE's correlations):
+  - u′ = √(2k/3), plus PDRFoam's sub-grid Schelkin term u′_C √(û·CT·û |u|² w) (n^¼ − 1), for the
+    wakes within the width w;
+  - Gülder's 1 + 0.62 √(u′/S_L) u′/(ν ε)^¼;
+  - SCOPE's 1.6 (K Ma)^−⅓ u′/S_L, with K = 0.157 (u′/S_L)/√(u′ l/ν) and l = 0.336 √(3/2) u′ k/ε.
+    Ma is the mixture's Markstein number: the gas's own where it has one
+    (`FlammableGas.marksteinNumber`, hydrogen's), otherwise propane's 3.74 from PDRFoam's SCOPE fuel
+    data. Without a positive Ma, SCOPE drops out.
+  - The two are blended as (Ξ_G⁻⁴ + Ξ_S⁻⁴)^−¼. ε is taken as at least C_μ^¾ k^{3/2}/Δ (turbulence
+    below the grid is no larger than a cell).
+
+  The larger of this and the sub-grid turbulence's wrinkling (Bradley's, as outside congestion)
+  holds. Stage 2 used Bradley's form for the obstacle turbulence too, at its own length scale. That
+  gave MERGE's array A with methane a tenth of its measured peak, so stage 3 put PDRFoam's own in
+  its place.
 - **The flame's folding round the obstacles,** PDRFoam's sub-grid flame-wrinkling model
   (`basicSubGrid`), which multiplies the turbulent wrinkling:
 
@@ -105,8 +121,10 @@ The flame's burning velocity (docs/deflagration.md) takes three more terms in co
 - **The open share.** As in PDRFoam's b equation, the front's area is the whole cell's but its
   mixture only the open share's, so the open volume's mixture burns faster by 1/β_v.
 
-The cellular instability's growth with radius and the fitted factor still apply on top. Stage 3
-validates the whole against MERGE and sets the factor back to 1.
+The cellular instability's growth with radius does not multiply this in congestion: the larger of
+it and the turbulent wrinkling holds, as PDRFoam's own instability term (XiEqIn/Ξ + Ξ) fades into
+the turbulent one. Multiplied, it gave methane, the one gas with a measured onset, faster flames
+than propane, against MERGE's twice as much from propane. The fitted factor still applies on top.
 
 **Checks** (`CongestionTests`):
 - the fields for MERGE's array A, and for a rack's tier;
@@ -117,8 +135,10 @@ validates the whole against MERGE and sets the factor back to 1.
   (within 3% and 5%), within a fifth of their equilibrium;
 - the turbulence carried downstream of a rack, and decaying;
 - a flame running through a lattice of 20 mm pipes at 0.1 m (6% by volume) in a 2 m channel open
-  at one end: it burns 99% of the cloud in 0.2 s, against 1.5% in the open (the test asks for ten
-  times).
+  at one end burning more than ten times what it does in the open in 0.2 s;
+- on cells smaller than the pitch, the counts and blockage are a pitch's, with the drag and
+  generation per volume unchanged;
+- MERGE's rigs' lattices and scenes.
 
 **Not yet:**
 - The face porosity is the smaller of its cells' volume porosities, not PDRFoam's own β_i from
@@ -130,3 +150,89 @@ validates the whole against MERGE and sets the factor back to 1.
   compressibility term (−⅔ k ∇·u).
 - Congestion acts on the coarse cells only: a deflagration runs without refinement, but a charge
   in congestion would see it only where its air is not refined.
+
+## MERGE
+
+MERGE (Modelling and Experimental Research into Gas Explosions, Mercx 1994) lit stoichiometric
+methane and propane clouds at the centre of lattices of pipes along all three axes, twice as
+wide as high, standing on the ground. Four of its rigs are compared here
+(`CongestedRigStudy`, `blastbench merge`), each a tenth of its volume blocked:
+
+| Rig | Width × height (m) | Pipes | Methane (barg) | Propane (barg) |
+|---|---|---|---|---|
+| A | 4.5 × 2.25 | 43 mm at 0.2 m | 0.74 | 1.77 |
+| C | 4.5 × 2.25 | 86 mm at 0.4 m | 0.113 | 0.223 |
+| E | 9 × 4.5 | 168 mm at 0.8 m | 0.183 | 0.35 |
+| C* | 9 × 4.5 | 86 mm at 0.4 m | 1.04 | 2.89 |
+
+**The data.**
+- **Where the peaks come from:** Arntzen's 1998 thesis (Figure 8.6), digitised to about ±5%.
+  MERGE's own tables (Mercx 1994; Popat et al. 1996) and PDRFoam's comparison with them (Puttock
+  et al. 2021) are not open.
+- **The geometry:** from Gexcon's MERGE validation case.
+- **C\*:** Arntzen's large rig with twice E's pipes across. It is taken here as C's pipes in the
+  9 m rig, which is what his labels (pipes across the rig) give. Gexcon's CS rig is not it: its
+  117 mm pipes at 0.384 m would block 22%.
+- **Gexcon's E with propane (L2):** 0.22–0.23 barg in the rig, against the figure's 0.35.
+
+**The trends:** propane about twice methane, half the pitch about seven times, and twice the
+size 40–60% more.
+
+The model's peak is the largest at gauges on the ground in the rig, outside the cell the flame
+is lit in. That cell burns almost at constant volume as its kernel grows to its size, whereas
+MERGE's gauge 5 cm from ignition reads as the others do.
+
+**Results** (the model's peak over the measured, methane / propane; outputs in
+`/Volumes/StudioData/bombcad/merge/`):
+
+| Cells (A, C; E, C*) | A | C | E | C* |
+|---|---|---|---|---|
+| 0.25 m; 0.5 m | 0.91 / 0.51 | 4.1 / 2.9 | 4.0 / 2.8 | 1.16 / 0.61 |
+| 0.125 m; 0.25 m | 0.73 / 0.43 | 5.2 / 3.5 | 4.8 / 3.4 | 0.84 / 0.43 |
+
+- **What holds:** the rigs with the finer pitch (A, C*) come within 0.43–1.16, and twice the size
+  gives 1.5–1.9 times the peak (measured 1.4–1.6).
+- **What does not:**
+  - Those with the coarser pitch (C, E) come three to five times too high, so half the pitch gives
+    about the same peak, not seven times more.
+  - Propane is only 1.3–1.5 times methane.
+- **Grid:** halving the cell moves each result by under a third.
+
+**A coincidence of grid, stated plainly.** Counting the obstacles over the cell, as PDRsetFields
+does, gave all eight within a factor of two on the cells above: 0.54–1.16 (A 0.96/0.55, C
+0.72/0.54, E 0.70/0.55, C* 1.16/0.60). But C's and E's cells were then smaller than their pitch,
+so they counted less than one obstacle, which cut their folding. The agreement came from the grid:
+- On half those cells, the same model gave 0.02–0.2.
+- At the same cells per pitch for every rig, it gave 0.5–14 (1.25 cells per pitch) and 2.5–32
+  (2.5).
+
+Counting over the larger of the cell and the pitch, as now, takes the collapse away.
+
+**Why the pitch does not count.** With an array spread evenly through its cells, two rigs of the
+same D/p (A and C) get the same folding (b depends on D/p) and the same turbulence: its
+equilibrium k grows as (U³ CT L_obs)^⅔, and CT L_obs depends only on D/p. So the model's pitch
+effect is only what Gülder's and SCOPE's correlations give the length scale, which is the other
+way. PDRFoam and FLACS place each obstacle in the cells that hold it and, on cells finer than the
+pitch, partly resolve the rows the flame passes; MERGE's own FLACS runs (Arntzen) used 27 cells
+across a quarter rig. The flow, the turbulence and the burning also feed each other without
+limit: the model's flames reach Mach 0.5–1 across the rigs.
+
+**Against Baker–Strehlow–Tang.** BST's flame Mach numbers for free expansion (3D) at medium to
+high congestion (DNV, *Obstructed Region Explosion Model – Theory*, Table 2) are 0.23–0.34 for
+methane (low reactivity) and 0.44–0.5 for propane (medium). The model's mean flame speeds across
+the rigs, from the arrival times at the gauges, are Mach 0.45–0.84 for methane and 0.54–1.04 for
+propane. Propane's are at or above its class, and methane's about twice its class.
+
+**The process plant.** The [process plant sample](process-plant-explosion.md) does not use
+congestion, so its fitted factor (6.5) is unchanged. With its racks' pipes as congestion instead
+of blocks and the factor at 1 (`ProcessPlantScene.congestedScenario`, `blastbench snapshot --preset
+plant --congested`), it gives 0.01 psi at 37 m, as the model alone does, against the CSB's 2.5–2.8.
+The racks' tiers stand at 4, 7 and 10 m in a cloud 6 m deep, lit on the ground between them. So
+little of the congestion is in the flame's path. The unit's congestion at grade, which the CSB
+describes but does not measure, is not in the layout.
+
+**Next** (in this order):
+1. A transported flame wrinkling, with PDRFoam's rates of approach (G, R) and its flame-brush
+   diffusion: a lag that limits the feedback.
+2. Obstacles placed in the cells that hold them where the cells are finer than the pitch.
+3. A grid guideline the app advises.
