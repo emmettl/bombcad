@@ -466,8 +466,7 @@ public enum EnvelopeDamageAssessment {
                 peakNetPa: peak, rotationDeg: rotation, levels: levels, failedAtS: failed)
         }
         if load.kind == .pane {
-            let pane = EnvelopePanel.largeDeflectionGlass(
-                thickness: Double(construction.glassThicknessM), material: .annealedGlass, a: a, b: b)
+            let pane = annealedPane(thickness: Double(construction.glassThicknessM), a: a, b: b)
             var response = pane.response(pressures: pressures, step: load.binS)
             let arrival = pressures.firstIndex { abs($0) > 0.01 * peak && peak > 0 }.map {
                 Double($0) * load.binS
@@ -638,6 +637,32 @@ public enum EnvelopeDamageAssessment {
         }
     }
 
+    /// An annealed pane on the large-deflection plate (`EnvelopePanel.largeDeflectionGlass`),
+    /// built once for each thickness and size: building its backbone from Moore's curves costs more
+    /// than its response, and a district's façades share a few sizes.
+    static func annealedPane(thickness: Double, a: Double, b: Double) -> SDOFSystem {
+        paneSystems.system(SIMD3(thickness, a, b)) {
+            EnvelopePanel.largeDeflectionGlass(thickness: thickness, material: .annealedGlass, a: a, b: b)
+        }
+    }
+
+    private static let paneSystems = SystemCache()
+
+    /// The pane systems built so far, by thickness and size; shared between threads behind a lock.
+    final class SystemCache: @unchecked Sendable {
+        private let lock = NSLock()
+        private var systems: [SIMD3<Double>: SDOFSystem] = [:]
+
+        func system(_ key: SIMD3<Double>, _ make: () -> SDOFSystem) -> SDOFSystem {
+            lock.lock()
+            defer { lock.unlock() }
+            if let system = systems[key] { return system }
+            let system = make()
+            if systems.count < 4096 { systems[key] = system }
+            return system
+        }
+    }
+
     /// The pane a façade strip is taken to hold (`EnvelopeConstruction.facadePaneM`), judged on the
     /// strip's net load as a pane is: annealed glass of the construction's thickness on Moore's
     /// large-deflection plate, at its median strength. Nil for anything but a façade strip, or
@@ -650,8 +675,7 @@ public enum EnvelopeDamageAssessment {
         let size = construction.facadePaneM ?? EnvelopeConstruction.assumedFacadePane
         guard size.x > 0, size.y > 0 else { return nil }
         let (a, b) = (Double(min(size.x, size.y)), Double(max(size.x, size.y)))
-        let pane = EnvelopePanel.largeDeflectionGlass(
-            thickness: Double(construction.glassThicknessM), material: .annealedGlass, a: a, b: b)
+        let pane = annealedPane(thickness: Double(construction.glassThicknessM), a: a, b: b)
         let pressures = load.netPa
         let response = pane.response(pressures: pressures, step: load.binS)
         let level: EnvelopeDamageLevel = response.lostResistanceAt == nil ? .none : .failed
