@@ -137,7 +137,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-13"
+    public static let currentTable = "standing-table-14"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -281,6 +281,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case terrainStaircase
     case deflagration
     case ventPanels
+    case congestion
     case importedEnvelopes
     case mapBuildings
     case ventedGlazing
@@ -365,6 +366,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
                 && !config.cutsTerrain(of: inputs.scenario)
         case .deflagration: return inputs.scenario.deflagration != nil
         case .ventPanels: return !(inputs.scenario.ventPanels ?? []).isEmpty
+        case .congestion: return !(inputs.scenario.congestion ?? []).isEmpty
         case .importedEnvelopes:
             return !inputs.scenario.envelopeSources(.ifc).isEmpty
                 || !inputs.scenario.envelopeSources(.mesh).isEmpty
@@ -617,6 +619,15 @@ public enum StandingTable {
                     + "assumed two levels: no openings, interiors or roof shapes, and positions and heights as "
                     + "accurate as the map.",
                 document: "building-envelopes.md#buildings-from-map-data")
+        case .congestion:
+            return Entry(
+                title: "Congestion below the grid", affects: air + structure + [.envelopeExposure],
+                limit: .illustrative,
+                note:
+                    "Pipes and bars too small for the cells take room and resist the air, as PDRFoam's porous "
+                    + "cells do; the turbulence they make and the flame's folding are not yet modelled, and it is "
+                    + "compared with no test.",
+                document: "congestion-model.md")
         case .ventedGlazing:
             return Entry(
                 title: "Glazing vented in the air", affects: [.envelopeExposure, .envelopeDamage],
@@ -953,6 +964,7 @@ public enum StandingTable {
         "EnvelopeConstruction.capMassKgPerM": .input,
         "Scenario.deflagration": .option([.deflagration]),
         "Scenario.ventPanels": .option([.ventPanels]),
+        "Scenario.congestion": .option([.congestion]),
         // What the standing is derived from: the scene and the specs above, and one choice of its own.
         "StandingInputs.scenario": .input,
         "StandingInputs.cellSize": .input,
@@ -2135,7 +2147,10 @@ struct StandingScene {
                 "The glass's hazard is graded by GSA's conditions and ASTM F1642's ratings from where it "
                     + "would land, thrown whole from the pane's middle at its speed on breaking, the load pushing "
                     + "it on, over a 0.9 m sill; no test's fragments compared. A cased charge's fragments hole a "
-                    + "pane past Kim et al.'s breaking momentum, breaking it then if first.",
+                    + "pane past Kim et al.'s breaking momentum, breaking it then if first. With glazing vented "
+                    + "it opens in the air then, at a time from the fragments flown in still air before the run, "
+                    + "independent of the blast's effect on their flight: fine near the charge, where fragments "
+                    + "lead the shock.",
                 "Concrete by ASCE/SEI 59-11's limits for single-reinforced slabs; brick cracked or fallen, with "
                     + "no arching.",
             ]

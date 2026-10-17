@@ -554,6 +554,9 @@ final class SimulationModel {
     /// Where the run's fragments landed against the hazardous-fragment criteria, once the run has
     /// ended and those still in flight have been flown on to land.
     private(set) var fragmentHazard: GroundHazard?
+    /// The fragments whose holes open panes in the air, with venting on, when not the project's
+    /// own (`fragmentSpec`): a headless run's `--fragments`.
+    @ObservationIgnored var paneHoleSpec: FragmentSpec?
     /// The run's fragments that struck something judged (`FragmentImpact.penetration`), once
     /// landed; while the run goes, the live ones stand in. Envelope damage takes them.
     @ObservationIgnored var fragmentStrikes: [FragmentImpact]?
@@ -885,6 +888,7 @@ final class SimulationModel {
             bodyHistories = bodyRecords
             if let solver {
                 placeAutomatically()
+                setFragmentPaneHoles(solver)
                 startFragments(solver)
                 startGroundShock(solver)
                 startThermal(solver)
@@ -1930,6 +1934,21 @@ final class SimulationModel {
     // MARK: - Fragments
 
     /// Starts flying the project's fragments for a run beginning now, if it has any.
+    /// With glazing vented, the panes the run's fragments hole open in the air when they do: the
+    /// fragments flown first in still air to find when (`FragmentCloud.paneHoles`), so the air is
+    /// the same however the run is batched and however the fragments' consumer keeps up.
+    private func setFragmentPaneHoles(_ solver: BlastSolver) {
+        guard solver.ventsGlazing else { return }
+        guard let spec = paneHoleSpec ?? fragmentSpec, spec.count > 0, (try? spec.validate()) != nil else {
+            solver.setEnvelopePaneHoles([:])
+            return
+        }
+        solver.setEnvelopePaneHoles(
+            FragmentCloud.paneHoles(
+                spec: spec, scene: FragmentScene(scenario), density: scenario.atmosphere.density,
+                pressure: scenario.atmosphere.pressure, until: duration))
+    }
+
     private func startFragments(_ solver: BlastSolver) {
         guard let spec = fragmentSpec, spec.count + spec.tracers > 0, (try? spec.validate()) != nil else {
             return

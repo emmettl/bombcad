@@ -125,6 +125,11 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
 - **Next:** the rebound after a slab's peak; a shaken footing's lurch, and the rest of its
   energy (sand crushed across the whole contact, the shaken sand's own); pads' and dowels'
   laws; footings on a slope.
+- **Planned, new materials** ([new materials](new-materials.md)): timber, solid and engineered
+  (glulam, CLT, plywood), orthotropic with failure along and across the grain, rate effects and
+  connections, its elastic part adopted from ContinuumKit's `OrthotropicPlaneStress`; and thin
+  profiled metal sheeting for cladding and roofing, as a steel shell with rib beams, with fastener
+  pull-out and pull-over.
 - **Blocked:** a footing or connection under fast loading ([data survey 3b](data-survey.md#3b-a-footing-or-connection-under-fast-loading)).
 
 ### Freestanding objects and supports
@@ -185,6 +190,15 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   built and judged against the detailed buildings, with the cost of not venting
   ([one-way damage](building-envelopes.md#one-way-damage-single-degree-of-freedom)), and since
   16 October in the app (glass and concrete as approximations, brick and the inside illustrative).
+- **Now:** two sample buildings being built, a precast large-panel block and a process-plant
+  control room.
+- **Planned, building types** (what each needs is in [new materials](new-materials.md#what-each-building-type-needs)):
+  - UK terraced brick houses: cavity walls of two brick leaves with ties, timber joist floors and a
+    timber roof. Needs timber, wall ties, joist bearings and roof coverings as debris.
+  - Steel portal-frame warehouses with profiled metal cladding. Needs profiled sheeting, a fastener
+    law for pull-out and pull-over, and local buckling of thin cold-formed members.
+  - Transport hubs with long-span steel and glass roofs. Needs laminated glass that holds together
+    when broken, glass falling from overhead, and a check of slender members buckling under blast.
 
 ### Distributed computing
 
