@@ -61,6 +61,10 @@ struct DeflagrationTests {
         #expect(abs((hydrogen.criticalRadius(fraction: 0.15) ?? 0) - 0.023) < 0.003)
         #expect(hydrogen.criticalRadius(fraction: 0.2953) == nil)
         #expect(town.criticalRadius(fraction: 0.186) == nil)
+        // Lean hydrogen's Markstein number is negative, stoichiometric's positive; others have none.
+        #expect((hydrogen.marksteinNumber(fraction: 0.15) ?? 0) < -4)
+        #expect(abs((hydrogen.marksteinNumber(fraction: 0.2953) ?? 0) - 2.73) < 0.05)
+        #expect(town.marksteinNumber(fraction: 0.186) == nil)
     }
 
     @Test("Methane's critical radius follows Bauwens et al.'s measurements; propane has none")

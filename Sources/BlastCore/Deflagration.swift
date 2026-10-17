@@ -101,6 +101,29 @@ public enum FlammableGas: String, Sendable, Hashable, Codable, CaseIterable {
         return table[table.count - 1].radius
     }
 
+    /// The unburnt mixture's Markstein number at volume fraction `fraction`, Ma = L S_L / ν (L the
+    /// Markstein length relative to the unburnt gas, ν its kinematic viscosity, as Bradley uses it),
+    /// where measured; nil for a gas without one here. Hydrogen's from Taylor's Markstein lengths
+    /// (PhD thesis, Leeds, 1991, appendix), with his burning velocities and Cantera's viscosities at
+    /// 296 K: negative (thermodiffusively unstable) leaner than φ 0.85, −4.9 at φ 0.51, +2.7
+    /// stoichiometric; linear in φ between his mixtures and held at their ends.
+    public func marksteinNumber(fraction: Float) -> Float? {
+        guard self == .hydrogen else { return nil }
+        let table: [SIMD2<Float>] = [
+            SIMD2(0.23, -1.93), SIMD2(0.32, -3.22), SIMD2(0.41, -4.41), SIMD2(0.51, -4.85),
+            SIMD2(0.62, -4.68),
+            SIMD2(0.74, -3.09), SIMD2(0.86, 0.17), SIMD2(1.00, 2.73), SIMD2(1.15, 3.20), SIMD2(1.31, 4.74),
+            SIMD2(1.49, 6.64), SIMD2(1.68, 8.73), SIMD2(1.90, 8.42), SIMD2(2.41, 9.22), SIMD2(3.45, 10.07),
+            SIMD2(5.07, 15.08),
+        ]
+        let phi = equivalenceRatio(fraction: fraction)
+        guard phi > table[0].x else { return table[0].y }
+        for (a, b) in zip(table, table.dropFirst()) where phi <= b.x {
+            return a.y + (phi - a.x) / (b.x - a.x) * (b.y - a.y)
+        }
+        return table[table.count - 1].y
+    }
+
     /// How a cellular flame of this gas accelerates beyond its onset radius `onset` (m), where it
     /// was measured otherwise than methane's: the burning velocity growing as (r / onset)^power up
     /// to `limit` onset radii. nil takes the methane form (`DeflagrationStage.wrinklingPower` and
