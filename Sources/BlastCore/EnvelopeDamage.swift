@@ -23,6 +23,20 @@ public struct EnvelopeComponentLoad: Sendable {
     public var startS: Double
     /// Which way along `axis` its outer side faces, +1 or −1.
     public var outward: Int
+    /// Each side's equivalent uniform load on the middle third across its span, where recorded
+    /// (`EnvelopeComponentHistory.strip`), Pa per bin: what a sheet's ribs, spanning on their own,
+    /// are judged on.
+    public var stripPa: (outer: [Double], inner: [Double])?
+
+    /// The load on the middle third across the span, where recorded, else this.
+    public var strip: EnvelopeComponentLoad {
+        guard let stripPa else { return self }
+        var load = self
+        load.outerPa = stripPa.outer
+        load.innerPa = stripPa.inner
+        load.stripPa = nil
+        return load
+    }
 
     public init(
         id: String, owner: UUID, kind: Kind, region: Box, axis: Int, binS: Double, outerPa: [Double],
@@ -41,15 +55,34 @@ public struct EnvelopeComponentLoad: Sendable {
         self.outward = outward
     }
 
-    /// A recorded history's load: its bins' impulses over the bin width.
-    public init(_ history: EnvelopeComponentHistory) {
+    /// A recorded history's load: its bins' impulses over the bin width, as the equivalent uniform
+    /// load of its faces weighted by its deflected shape (`EnvelopeComponentHistory.plate`) where
+    /// recorded, which its damage is judged on (a sheeted one's on `strip`), or with `whole` the
+    /// mean over all its faces.
+    public init(_ history: EnvelopeComponentHistory) { self.init(history, whole: false) }
+
+    public init(_ history: EnvelopeComponentHistory, whole: Bool) {
+        self.init(history, equivalent: whole ? nil : history.plate)
+        if !whole, let strip = history.strip {
+            stripPa = (
+                strip.outerImpulsePaS.map { Double($0) / history.binS },
+                strip.innerImpulsePaS.map { Double($0) / history.binS }
+            )
+        }
+    }
+
+    init(_ history: EnvelopeComponentHistory, equivalent: EnvelopeComponentHistory.Equivalent?) {
         let kind = Kind(rawValue: history.component.kind.rawValue) ?? .wall
         self.init(
             id: history.component.id, owner: history.component.owner, kind: kind,
             region: history.component.region,
             axis: history.component.axis, binS: history.binS,
-            outerPa: history.outerImpulsePaS.map { Double($0) / history.binS },
-            innerPa: history.innerImpulsePaS.map { Double($0) / history.binS },
+            outerPa: (equivalent?.outerImpulsePaS ?? history.outerImpulsePaS).map {
+                Double($0) / history.binS
+            },
+            innerPa: (equivalent?.innerImpulsePaS ?? history.innerImpulsePaS).map {
+                Double($0) / history.binS
+            },
             supportEdges: history.component.supportEdges, startS: history.windowStartS ?? 0,
             outward: history.component.outward)
     }
