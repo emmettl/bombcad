@@ -113,6 +113,10 @@ struct FragmentDisplaySettings: View {
         if model.fragmentSpec != nil {
             Toggle("Fragments and landings", isOn: $model.renderSettings.showFragments)
             Toggle("Tracers", isOn: $model.renderSettings.showTracers)
+            Toggle("Hazardous fragment distance", isOn: $model.renderSettings.showHazard)
+                .help(
+                    "Where hazardous fragments (79 J or more) fall below one per 55.7 m² of ground, once a run's fragments have landed"
+                )
             LabeledSlider(
                 title: "Dot size",
                 value: Binding(

@@ -519,6 +519,9 @@ final class SimulationModel {
     var fragmentsHost: String?
     /// Where the fragments of the run stand: how many are in flight and landed.
     private(set) var fragmentStatus = ""
+    /// Where the run's fragments landed against the hazardous-fragment criteria, once the run has
+    /// ended and those still in flight have been flown on to land.
+    private(set) var fragmentHazard: GroundHazard?
     /// The run's fragments, in flight and landed, to draw.
     private(set) var fragmentLive: FragmentLive?
     @ObservationIgnored private(set) var fragments: (any FrameConsumer)?
@@ -653,6 +656,10 @@ final class SimulationModel {
             loads: loads, constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms)
         applyEnvelopeDamageColours()
     }
+
+    /// The structures' rubble flown on to where it lands, judged as a hazard; nil unless a
+    /// structure makes rubble (`StructureModel.rubbleParticles`).
+    func debrisResult() -> DebrisResult? { solver?.debris(scenario: scenario) }
 
     func envelopeDamageData() throws -> Data {
         guard !envelopeDamage.isEmpty else {
@@ -1657,7 +1664,7 @@ final class SimulationModel {
             }
             flown = SavedSimulationRun.Fragments(
                 spec: spec, launchSpeed: Double(fragmentLaunchSpeed), impacts: live.impacts,
-                airborne: (0..<live.fragmentCount).filter { !live.landed[$0] }.count)
+                airborne: (0..<live.fragmentCount).filter { !live.landed[$0] }.count, hazard: fragmentHazard)
         }
         var reckoned: ThermalResult?
         if let thermal, let spec = reckonedSpec {
@@ -1890,6 +1897,7 @@ final class SimulationModel {
         fragments = nil
         flownSpec = nil
         fragmentLive = nil
+        fragmentHazard = nil
         fragmentStatus = ""
     }
 
@@ -1923,6 +1931,14 @@ final class SimulationModel {
         }
         let place = fragments?.placement ?? ""
         if !place.isEmpty { text += " ·" + place }
+        if let hazard = fragmentHazard {
+            text +=
+                hazard.hazardDistance.map {
+                    String(format: ". Hazardous fragment distance %.0f m", $0)
+                        + (hazard.samplesAtDistance < GroundHazard.wellSampled
+                            ? " (few flown; fly more)" : "")
+                } ?? ". Nowhere over 1 hazardous fragment per 55.7 m²"
+        }
         fragmentStatus = text
     }
 
@@ -2510,7 +2526,14 @@ final class SimulationModel {
                 while fragments.report.frame < fragments.sent - 1, ContinuousClock.now < deadline {
                     try? await Task.sleep(for: .milliseconds(20))
                 }
-                if self?.fragments === fragments { self?.updateFragmentStatus() }
+                guard self?.fragments === fragments else { return }
+                self?.updateFragmentStatus()
+                // Those still in flight fly on to land, for the hazard: the run is over, and
+                // another starts afresh with new fragments.
+                let landed = try? await fragments.fragments(frameInterval: Self.fragmentFrameInterval)
+                guard let self, self.fragments === fragments, let hazard = landed?.hazard else { return }
+                self.fragmentHazard = hazard
+                self.updateFragmentStatus()
             }
         }
         if let thermal {
@@ -2642,6 +2665,12 @@ extension SimulationModel {
     /// Draws the run's particles: in flight, coloured by speed; tracers; and where fragments
     /// landed, coloured by their energy. Each is a position and a code, the kind (0 a fragment, 1
     /// a tracer, 2 a landing) plus a value from 0 to 1.
+    func hazardLines() -> [SIMD4<Float>] {
+        guard let fragmentHazard else { return [] }
+        let terrain = scenario.terrain
+        return HazardOverlay.lines(fragmentHazard) { terrain?.height(at: SIMD3($0, 0)) ?? 0 }
+    }
+
     func fragmentDots(showFragments: Bool, showTracers: Bool) -> [SIMD4<Float>] {
         // Straight from the consumer, so the dots move with every frame drawn.
         guard let live = fragments?.fragmentLive ?? fragmentLive else { return [] }

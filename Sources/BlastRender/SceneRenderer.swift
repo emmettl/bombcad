@@ -154,6 +154,8 @@ public struct RenderSettings: Sendable, Hashable {
     public var dotSize: Float = 5
     /// Where the fireball's cloud went, when a run follows it.
     public var showCloud = true
+    /// The hazardous fragment distance on the ground, when a run's fragments have landed.
+    public var showHazard = true
     /// A box to outline in the view, such as the one being edited.
     public var highlight: Box?
 
@@ -456,9 +458,9 @@ public final class SceneRenderer {
         }
     }
 
-    /// Lines to draw over the scene while `settings.showCloud` is set, of a width on screen
-    /// whatever their length: each two vectors, one end and a kind (0 to 4, as
-    /// `CloudOverlay.Kind`), and the other end and 0.
+    /// Lines to draw over the scene, of a width on screen whatever their length: each two vectors,
+    /// one end and a kind (0 to 4, as `CloudOverlay.Kind`; 5 and 6, as `HazardOverlay.Kind`), and
+    /// the other end and 0. The caller leaves out the kinds its settings hide.
     public func setLines(_ lines: [SIMD4<Float>]) {
         lineCount = lines.count / 2
         guard lineCount > 0 else { return }
@@ -703,7 +705,7 @@ public final class SceneRenderer {
             sceneEncoder.drawPrimitives(
                 type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: dotCount)
         }
-        if settings.showCloud, lineCount > 0, let lineBuffer {
+        if lineCount > 0, let lineBuffer {
             var mesh = MeshUniforms(
                 eye: SIMD4(eye, 1), right: SIMD4(right, 0), up: SIMD4(up, 0), forward: SIMD4(forward, 0),
                 projection: SIMD4(

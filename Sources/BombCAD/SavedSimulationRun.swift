@@ -64,6 +64,9 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
         var impacts: [FragmentImpact]
         /// Fragments still in flight when the run ended.
         var airborne: Int
+        /// Where they landed, those in flight flown on, against the hazardous-fragment criteria;
+        /// nil in runs kept before it, or kept before they had landed.
+        var hazard: GroundHazard? = nil
         /// Joules.
         var hardest: Double { Double(impacts.map(\.energy).max() ?? 0) }
 
@@ -76,6 +79,9 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                     hardest >= 1e6
                     ? String(format: ", hardest %.1f MJ", hardest / 1e6)
                     : String(format: ", hardest %.0f kJ", hardest / 1e3)
+            }
+            if let distance = hazard?.hazardDistance {
+                text += String(format: "; hazardous fragment distance %.0f m", distance)
             }
             return text
         }
@@ -373,6 +379,17 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
         for impact in fragments?.impacts.sorted(by: { $0.time < $1.time }) ?? [] {
             let label = field("Fragment \(impact.fragment) on \(impact.surface)")
             lines.append("\(field(name)),\(label),\(impact.time * 1000),\(impact.energy),J")
+        }
+        // The hazard is of the landings, not of a moment: its rows leave the time empty.
+        if let hazard = fragments?.hazard {
+            lines.append(
+                "\(field(name)),\"Hazardous fragment distance\",,\(hazard.hazardDistance ?? 0),m")
+            for (sector, distance) in hazard.sectorDistances.enumerated() {
+                let bearing = Int((Double(sector) * 360 / Double(hazard.sectors)).rounded())
+                lines.append(
+                    "\(field(name)),\(field("Hazardous fragment distance towards \(bearing)° from +x")),,\(distance ?? 0),m"
+                )
+            }
         }
         for building in envelopeExposure ?? [] {
             let label = "\(building.name) [\(building.id.uuidString)]"
