@@ -72,6 +72,11 @@ public enum GroundType: String, Codable, CaseIterable, Sendable {
         }
     }
 
+    /// The water table a crater in this ground meets unless told otherwise, metres below the
+    /// surface: at the surface for saturated soil, which is saturated because it lies below one;
+    /// nil, deep enough not to matter, for the rest.
+    public var typicalWaterTable: Float? { self == .saturated ? 0 : nil }
+
     /// The mass, in multiples of the charge's own, that a charge resting on this ground acts on
     /// the air with, as against free air: 2 on rigid ground, 1.8 on earth or rock, with Kinney and
     /// Graham's 1.5 to 2 as its range.
@@ -117,6 +122,11 @@ public struct CraterEstimate: Codable, Sendable, Equatable {
     public var apparentRadius: Float
     public var apparentDepth: Float
     public var radiusRange: ClosedRange<Float>
+    /// The water table, metres below the surface, where it is shallow enough to cut the crater's
+    /// depth: below it the walls slump, and the depth's range is that of the slumped walls'
+    /// slope (see `CraterShape.slumpedSlope`). Nil where the water table is deep.
+    public var waterTable: Float?
+    public var depthRange: ClosedRange<Float>?
     /// The lip of thrown and upturned earth round it: its crest's height above the original
     /// ground and radius, and how far out its ejecta reach (Glasstone and Dolan, §6.71–6.75).
     public var lipHeight: Float
@@ -188,7 +198,7 @@ public struct CraterEstimate: Codable, Sendable, Equatable {
     /// rigid ground, for a charge too high to dig one, or one of no mass.
     public init?(
         charge: Charge, groundHeight: Float, ground: GroundType, explosive: CraterExplosive = .tnt,
-        shape: CraterShape = .standard
+        waterTable: Float? = nil, shape: CraterShape = .standard
     ) {
         guard let efficiency = ground.crateringEfficiency, charge.mass > 0 else { return nil }
         let height = Self.heightOfBurst(charge, groundHeight: groundHeight)
@@ -206,28 +216,49 @@ public struct CraterEstimate: Codable, Sendable, Equatable {
         apparentRadius = radius
         // Depth about half the radius (Cooper, p. 430; Kinney and Graham: a quarter of the diameter).
         apparentDepth = radius * shape.depthRatio
+        // Below a water table the walls slump to 10–15° and the crater comes out shallower and
+        // broader (Glasstone and Dolan, §6.11): a bowl whose rim slopes at θ is R tan θ / 2 deep.
+        // It still reaches down to the water table, and never deeper than in dry ground.
+        if let table = waterTable.map({ max($0, 0) }), table < apparentDepth {
+            let dry = apparentDepth
+            func slumped(_ degrees: Float) -> Float {
+                min(dry, max(table, radius * tan(degrees * .pi / 180) / 2))
+            }
+            self.waterTable = table
+            apparentDepth = slumped(shape.slumpedSlope)
+            depthRange =
+                slumped(shape.slumpedSlopeRange.lowerBound)...slumped(shape.slumpedSlopeRange.upperBound)
+        }
         radiusRange = (radius * (1 - shape.radiusScatter))...(radius * (1 + shape.radiusScatter))
         lipHeight = apparentDepth * shape.lipHeightRatio
         lipCrestRadius = radius * shape.lipCrestRatio
         lipRadius = radius * shape.lipReachRatio
     }
 
-    /// The craters a scene's charges dig in `ground`.
+    /// The craters a scene's charges dig in `ground`, with its water table `waterTable` metres
+    /// down, or deep where nil.
     public static func craters(
-        of scenario: Scenario, ground: GroundType, explosive: CraterExplosive = .tnt
+        of scenario: Scenario, ground: GroundType, explosive: CraterExplosive = .tnt, waterTable: Float? = nil
     ) -> [CraterEstimate] {
         ([scenario.charge] + (scenario.additionalCharges ?? [])).compactMap { charge in
             CraterEstimate(
                 charge: charge, groundHeight: scenario.groundHeight(at: charge.position), ground: ground,
-                explosive: explosive)
+                explosive: explosive, waterTable: waterTable)
         }
     }
 
     public var summary: String {
-        String(
-            format: "Crater in %@: %.1f m across (%.1f–%.1f), %.1f m deep, lip %.2f m high out to %.1f m",
+        let depth =
+            depthRange.map { range in
+                String(
+                    format: "%.1f m deep (%.1f–%.1f), slumped below the water table %.1f m down",
+                    apparentDepth,
+                    range.lowerBound, range.upperBound, waterTable ?? 0)
+            } ?? String(format: "%.1f m deep", apparentDepth)
+        return String(
+            format: "Crater in %@: %.1f m across (%.1f–%.1f), %@, lip %.2f m high out to %.1f m",
             ground.title.lowercased(), apparentDiameter, 2 * radiusRange.lowerBound,
-            2 * radiusRange.upperBound, apparentDepth, lipHeight, lipRadius)
+            2 * radiusRange.upperBound, depth, lipHeight, lipRadius)
     }
 }
 
@@ -243,10 +274,15 @@ public struct CraterShape: Sendable, Equatable {
     public var lipHeightRatio: Float
     public var lipCrestRatio: Float
     public var lipReachRatio: Float
+    /// The slope, degrees, that a crater's walls slump to below a shallow water table: 10 to 15
+    /// degrees (Glasstone and Dolan, §6.11), 12.5 in the middle.
+    public var slumpedSlope: Float
+    public var slumpedSlopeRange: ClosedRange<Float>
 
     public static let standard = CraterShape(
-        depthRatio: 0.5, radiusScatter: 1.0 / 3, lipHeightRatio: 0.25, lipCrestRatio: 1.25, lipReachRatio: 2.5
-    )
+        depthRatio: 0.5, radiusScatter: 1.0 / 3, lipHeightRatio: 0.25, lipCrestRatio: 1.25,
+        lipReachRatio: 2.5,
+        slumpedSlope: 12.5, slumpedSlopeRange: 10...15)
 }
 
 extension Charge {
