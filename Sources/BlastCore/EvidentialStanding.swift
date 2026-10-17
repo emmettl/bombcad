@@ -1978,7 +1978,7 @@ struct StandingScene {
                     "building-envelopes.md#one-way-damage-single-degree-of-freedom"),
                 StandingEvidence(
                     "The same buildings free to respond (19 runs, 2–500 kg)",
-                    "Glass: all 45 panes the detailed buildings break, a median 1.7 ms early, and 7 more; "
+                    "Glass: all 45 panes the detailed buildings break, a median 0.3 ms later, and 6 more; "
                         + "concrete walls between the fixed and simply supported bounds",
                     "building-envelopes.md#one-way-damage-single-degree-of-freedom"),
                 StandingEvidence(
@@ -1994,19 +1994,23 @@ struct StandingScene {
                     "building-envelopes.md#one-way-walls"),
                 StandingEvidence(
                     "Monk and Clubley's annealed windows in the Shoeburyness tunnel (12 timed panes)",
-                    "Every pane broken, as in the tests, at 0.40–0.46 of the measured time: early, at a fifth of "
-                        + "the measured deflection", "validation.md#window-glass"),
+                    "Every pane broken, as in the tests, at 0.82–1.07 of the measured time and 0.69–1.15 of the "
+                        + "deflection", "validation.md#window-glass"),
+                StandingEvidence(
+                    "ASTM E1300's load resistance of eight annealed panes",
+                    "Its stresses within 8%; panes break at 0.57–0.72 of its load resistance (the safe side)",
+                    "validation.md#the-threshold-against-astm-e1300"),
             ],
             assumptions: [
                 "Compared with measurement as freestanding and one-way walls, and glass only under a load far "
-                    + "past what breaks it: panels held on all their edges have none; references on one mesh and "
-                    + "one air grid.",
+                    + "past what breaks it (its threshold against E1300's design resistance): panels held on all "
+                    + "their edges have none; references on one mesh and one air grid.",
                 "A freestanding wall's cap or canopy adds no mass, and reinforced blockwork is taken as "
                     + "concrete: the measured walls were judged as built.",
                 "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
                     + "2° is flagged as beyond the one-way model.",
-                "Glass is annealed, elastic until it breaks, without membrane stiffening, so it breaks early; "
-                    + "fragments' hazard is not graded.",
+                "Glass is annealed, on Moore's large-deflection plate, simply supported, breaking at E1300's "
+                    + "median strength with the whole pane at its largest stress; fragments' hazard is not graded.",
                 "Concrete by ASCE/SEI 59-11's limits for single-reinforced slabs; brick cracked or fallen, with "
                     + "no arching.",
             ]

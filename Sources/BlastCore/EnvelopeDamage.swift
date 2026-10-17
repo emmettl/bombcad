@@ -245,7 +245,7 @@ public enum EnvelopeDamageAssessment {
                 peakNetPa: peak, rotationDeg: rotation, levels: levels, failedAtS: failed)
         }
         if load.kind == .pane {
-            let pane = EnvelopePanel.glass(
+            let pane = EnvelopePanel.largeDeflectionGlass(
                 thickness: Double(construction.glassThicknessM), material: .annealedGlass, a: a, b: b)
             let response = pane.response(pressures: pressures, step: load.binS)
             let level: EnvelopeDamageLevel = response.lostResistanceAt == nil ? .none : .failed

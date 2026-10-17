@@ -330,16 +330,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/0.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "isolated-glass-10",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0391,
-      "sdofDuctility" : 17.16410011002692,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0398,
-      "sdofOnDetailedLoadsRotationDeg" : 69.13868529831205,
-      "sdofRotationDeg" : 38.20566448040562,
+      "sdofBrokenAtS" : 0.039,
+      "sdofDuctility" : 2.026151218126879,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.0397,
+      "sdofOnDetailedLoadsRotationDeg" : 60.973958030805825,
+      "sdofRotationDeg" : 14.63376328390656,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -351,16 +351,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/1.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "isolated-glass-10",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.023200000000000002,
-      "sdofDuctility" : 33.891736150010146,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.023200000000000002,
-      "sdofOnDetailedLoadsRotationDeg" : 62.20314009088982,
-      "sdofRotationDeg" : 57.24121560619032,
+      "sdofBrokenAtS" : 0.02305,
+      "sdofDuctility" : 8.064700577704393,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.02315,
+      "sdofOnDetailedLoadsRotationDeg" : 45.84494568804321,
+      "sdofRotationDeg" : 46.10394414953277,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -372,16 +372,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/2.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "isolated-glass-10",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0201,
-      "sdofDuctility" : 68.03946691142208,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0201,
-      "sdofOnDetailedLoadsRotationDeg" : 40.44400398362135,
-      "sdofRotationDeg" : 72.22889108738522,
+      "sdofBrokenAtS" : 0.02,
+      "sdofDuctility" : 16.870667285899717,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.020050000000000002,
+      "sdofOnDetailedLoadsRotationDeg" : 39.80642395439488,
+      "sdofRotationDeg" : 65.29964793372177,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : false,
@@ -392,16 +392,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/3.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "isolated-glass-10",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.046,
-      "sdofDuctility" : 10.310583654651236,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0483,
-      "sdofOnDetailedLoadsRotationDeg" : 72.05906888390096,
-      "sdofRotationDeg" : 25.30503930924632,
+      "sdofBrokenAtS" : 0.0461,
+      "sdofDuctility" : 1.526349006110391,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.049300000000000004,
+      "sdofOnDetailedLoadsRotationDeg" : 67.84461859753587,
+      "sdofRotationDeg" : 11.128035887101163,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedInteriorFailedShare" : 0,
@@ -492,16 +492,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/0.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "isolated-glass-2",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0781,
-      "sdofDuctility" : 0.8379744441112498,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0782,
-      "sdofOnDetailedLoadsRotationDeg" : 44.95490725443667,
-      "sdofRotationDeg" : 40.87698440154113,
+      "sdofBrokenAtS" : 0.10935,
+      "sdofDuctility" : 0.2630407500485318,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.12990000000000002,
+      "sdofOnDetailedLoadsRotationDeg" : 9.909375597401436,
+      "sdofRotationDeg" : 7.019201980164394,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -513,16 +513,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/1.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "isolated-glass-2",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0313,
-      "sdofDuctility" : 3.010201052998877,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0315,
-      "sdofOnDetailedLoadsRotationDeg" : 17.246288967747738,
-      "sdofRotationDeg" : 7.859257113419638,
+      "sdofBrokenAtS" : 0.031100000000000003,
+      "sdofDuctility" : 0.8583837726166921,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.0313,
+      "sdofOnDetailedLoadsRotationDeg" : 24.992283603704198,
+      "sdofRotationDeg" : 14.990011935832763,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -534,16 +534,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/2.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "isolated-glass-2",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0269,
-      "sdofDuctility" : 9.579029945087223,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.027,
-      "sdofOnDetailedLoadsRotationDeg" : 10.892878163360587,
-      "sdofRotationDeg" : 23.71391883895924,
+      "sdofBrokenAtS" : 0.0268,
+      "sdofDuctility" : 1.4132191473888787,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.0269,
+      "sdofOnDetailedLoadsRotationDeg" : 9.797485361088503,
+      "sdofRotationDeg" : 10.32166116545518,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : false,
@@ -554,16 +554,14 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/3.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "isolated-glass-2",
-      "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0853,
-      "sdofDuctility" : 0.7222474653930557,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0855,
-      "sdofOnDetailedLoadsRotationDeg" : 46.332242124829435,
-      "sdofRotationDeg" : 41.64760504614651,
+      "sdofBroken" : false,
+      "sdofDuctility" : 0.2588491414419863,
+      "sdofOnDetailedLoadsRotationDeg" : 2.1486219532881305,
+      "sdofRotationDeg" : 2.084031273666558,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedInteriorFailedShare" : 0,
@@ -655,16 +653,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/0.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "isolated-glass-200",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0199,
-      "sdofDuctility" : 259.83272011525844,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0201,
-      "sdofOnDetailedLoadsRotationDeg" : 87.18346291221981,
-      "sdofRotationDeg" : 85.20252231891347,
+      "sdofBrokenAtS" : 0.01985,
+      "sdofDuctility" : 62.476416971418445,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.02,
+      "sdofOnDetailedLoadsRotationDeg" : 85.60720825759167,
+      "sdofRotationDeg" : 82.91994379324655,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -676,16 +674,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/1.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "isolated-glass-200",
       "sdofBroken" : true,
       "sdofBrokenAtS" : 0.009600000000000001,
-      "sdofDuctility" : 617.9094480943488,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0097,
-      "sdofOnDetailedLoadsRotationDeg" : 88.41031876813058,
-      "sdofRotationDeg" : 87.97875774985442,
+      "sdofDuctility" : 159.21579762455062,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.009600000000000001,
+      "sdofOnDetailedLoadsRotationDeg" : 87.7279576483904,
+      "sdofRotationDeg" : 87.20975996957975,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -697,16 +695,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/2.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "isolated-glass-200",
       "sdofBroken" : true,
       "sdofBrokenAtS" : 0.0082,
-      "sdofDuctility" : 1373.9477996155495,
+      "sdofDuctility" : 346.4712129721482,
       "sdofOnDetailedLoadsBrokenAtS" : 0.0082,
-      "sdofOnDetailedLoadsRotationDeg" : 89.16320434597887,
-      "sdofRotationDeg" : 89.09068005633985,
+      "sdofOnDetailedLoadsRotationDeg" : 88.79911151378685,
+      "sdofRotationDeg" : 88.71698575630089,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -718,16 +716,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/3.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "isolated-glass-200",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0241,
-      "sdofDuctility" : 245.19028685448436,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0246,
-      "sdofOnDetailedLoadsRotationDeg" : 86.42392441719245,
-      "sdofRotationDeg" : 84.9174820602314,
+      "sdofBrokenAtS" : 0.024,
+      "sdofDuctility" : 58.83013616950516,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.02445,
+      "sdofOnDetailedLoadsRotationDeg" : 84.48494670634446,
+      "sdofRotationDeg" : 82.48599361027124,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedInteriorFailedShare" : 0,
@@ -819,16 +817,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/0.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "isolated-glass-50",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0285,
-      "sdofDuctility" : 95.17829454974394,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.028900000000000002,
-      "sdofOnDetailedLoadsRotationDeg" : 84.3546950648312,
-      "sdofRotationDeg" : 77.09513568864568,
+      "sdofBrokenAtS" : 0.0284,
+      "sdofDuctility" : 22.251539174372635,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.028800000000000003,
+      "sdofOnDetailedLoadsRotationDeg" : 80.76716255253913,
+      "sdofRotationDeg" : 70.77483547359513,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -840,16 +838,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/1.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "isolated-glass-50",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0154,
-      "sdofDuctility" : 153.8992797582037,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0155,
-      "sdofOnDetailedLoadsRotationDeg" : 85.79678115528897,
-      "sdofRotationDeg" : 81.93498520707203,
+      "sdofBrokenAtS" : 0.01535,
+      "sdofDuctility" : 40.622897960156045,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.0154,
+      "sdofOnDetailedLoadsRotationDeg" : 83.67204240759249,
+      "sdofRotationDeg" : 79.1856657760201,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -861,16 +859,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/2.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "isolated-glass-50",
       "sdofBroken" : true,
       "sdofBrokenAtS" : 0.0132,
-      "sdofDuctility" : 340.84277250429705,
+      "sdofDuctility" : 87.33673922909621,
       "sdofOnDetailedLoadsBrokenAtS" : 0.0132,
-      "sdofOnDetailedLoadsRotationDeg" : 87.0492717279397,
-      "sdofRotationDeg" : 86.33918501400294,
+      "sdofOnDetailedLoadsRotationDeg" : 85.6891666520162,
+      "sdofRotationDeg" : 84.92267035320612,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -882,16 +880,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/3.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "isolated-glass-50",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.033800000000000004,
-      "sdofDuctility" : 83.18131308904775,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0349,
-      "sdofOnDetailedLoadsRotationDeg" : 83.72767431246108,
-      "sdofRotationDeg" : 75.3096446612097,
+      "sdofBrokenAtS" : 0.03365,
+      "sdofDuctility" : 19.090068639195824,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.03475,
+      "sdofOnDetailedLoadsRotationDeg" : 79.70283296286874,
+      "sdofRotationDeg" : 67.87915254094739,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedInteriorFailedShare" : 0.0071428571827709675,
@@ -983,16 +981,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/0.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "isolated-glass-500",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.015000000000000001,
-      "sdofDuctility" : 491.7479459916684,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.015000000000000001,
-      "sdofOnDetailedLoadsRotationDeg" : 82.93721705632835,
-      "sdofRotationDeg" : 87.46080293591825,
+      "sdofBrokenAtS" : 0.0149,
+      "sdofDuctility" : 117.17390654603965,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.014950000000000001,
+      "sdofOnDetailedLoadsRotationDeg" : 79.90118135471842,
+      "sdofRotationDeg" : 86.21115675669802,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -1004,16 +1002,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/1.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "isolated-glass-500",
       "sdofBroken" : true,
       "sdofBrokenAtS" : 0.006900000000000001,
-      "sdofDuctility" : 1823.605156404046,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.007,
-      "sdofOnDetailedLoadsRotationDeg" : 89.21928566482032,
-      "sdofRotationDeg" : 89.314871706996,
+      "sdofDuctility" : 451.82541982272414,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.006900000000000001,
+      "sdofOnDetailedLoadsRotationDeg" : 88.88715676699722,
+      "sdofRotationDeg" : 89.01608432602447,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -1025,16 +1023,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/2.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "isolated-glass-500",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.006,
-      "sdofDuctility" : 3646.5068594480404,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.006,
-      "sdofOnDetailedLoadsRotationDeg" : 89.64332092497884,
-      "sdofRotationDeg" : 89.65735752207543,
+      "sdofBrokenAtS" : 0.00595,
+      "sdofDuctility" : 901.9192551192613,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.00595,
+      "sdofOnDetailedLoadsRotationDeg" : 89.48609845007238,
+      "sdofRotationDeg" : 89.50706136377194,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -1046,16 +1044,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/3.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "isolated-glass-500",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0184,
-      "sdofDuctility" : 502.3412476618468,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.018600000000000002,
-      "sdofOnDetailedLoadsRotationDeg" : 72.67670183265496,
-      "sdofRotationDeg" : 87.51428128157285,
+      "sdofBrokenAtS" : 0.0183,
+      "sdofDuctility" : 118.15771638587874,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.01845,
+      "sdofOnDetailedLoadsRotationDeg" : 67.27356653418433,
+      "sdofRotationDeg" : 86.24261283940068,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedInteriorFailedShare" : 0,
@@ -2027,16 +2025,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/0.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-10",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0391,
-      "sdofDuctility" : 17.898983935633936,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0398,
-      "sdofOnDetailedLoadsRotationDeg" : 66.09521642065808,
-      "sdofRotationDeg" : 39.37851866971515,
+      "sdofBrokenAtS" : 0.039,
+      "sdofDuctility" : 2.2720934074886676,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.0397,
+      "sdofOnDetailedLoadsRotationDeg" : 58.12455025573836,
+      "sdofRotationDeg" : 16.320262307018602,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -2048,16 +2046,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/1.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-10",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.023200000000000002,
-      "sdofDuctility" : 39.7499496240951,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.023200000000000002,
-      "sdofOnDetailedLoadsRotationDeg" : 53.33861620637678,
-      "sdofRotationDeg" : 61.25036028237761,
+      "sdofBrokenAtS" : 0.02305,
+      "sdofDuctility" : 9.226655941848666,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.02315,
+      "sdofOnDetailedLoadsRotationDeg" : 36.23652260525685,
+      "sdofRotationDeg" : 49.93562649324207,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -2069,16 +2067,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/2.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-10",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0201,
-      "sdofDuctility" : 69.12106002411886,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0201,
-      "sdofOnDetailedLoadsRotationDeg" : 41.12662858405291,
-      "sdofRotationDeg" : 72.4898541285203,
+      "sdofBrokenAtS" : 0.02,
+      "sdofDuctility" : 17.120679578456045,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.020050000000000002,
+      "sdofOnDetailedLoadsRotationDeg" : 40.61832334736649,
+      "sdofRotationDeg" : 65.61809622702633,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -2090,16 +2088,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/3.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-10",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.046,
-      "sdofDuctility" : 19.425818229800093,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.048400000000000006,
-      "sdofOnDetailedLoadsRotationDeg" : 65.96062213808953,
-      "sdofRotationDeg" : 41.69454010546451,
+      "sdofBrokenAtS" : 0.0461,
+      "sdofDuctility" : 2.1777356663850727,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.049300000000000004,
+      "sdofOnDetailedLoadsRotationDeg" : 63.21635996025126,
+      "sdofRotationDeg" : 15.676484181565781,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedInteriorFailedShare" : 0,
@@ -2191,16 +2189,16 @@
       "id" : "00000000-0000-4000-8000-000000000002\/pane\/0.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-10",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.023200000000000002,
-      "sdofDuctility" : 39.74994796690673,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.023200000000000002,
-      "sdofOnDetailedLoadsRotationDeg" : 48.724210649800725,
-      "sdofRotationDeg" : 61.25035927508962,
+      "sdofBrokenAtS" : 0.02305,
+      "sdofDuctility" : 9.226656582286607,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.02315,
+      "sdofOnDetailedLoadsRotationDeg" : 31.526651085836203,
+      "sdofRotationDeg" : 49.935628452302126,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -2212,16 +2210,16 @@
       "id" : "00000000-0000-4000-8000-000000000002\/pane\/1.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-10",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0391,
-      "sdofDuctility" : 17.89896897606726,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0398,
-      "sdofOnDetailedLoadsRotationDeg" : 64.1450299653535,
-      "sdofRotationDeg" : 39.378495185937226,
+      "sdofBrokenAtS" : 0.039,
+      "sdofDuctility" : 2.2720939254452412,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.0397,
+      "sdofOnDetailedLoadsRotationDeg" : 56.2487247312074,
+      "sdofRotationDeg" : 16.320265829459952,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -2233,16 +2231,16 @@
       "id" : "00000000-0000-4000-8000-000000000002\/pane\/2.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-10",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0201,
-      "sdofDuctility" : 69.12105540221262,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0201,
-      "sdofOnDetailedLoadsRotationDeg" : 41.44995096979612,
-      "sdofRotationDeg" : 72.48985302922522,
+      "sdofBrokenAtS" : 0.02,
+      "sdofDuctility" : 17.120678611487254,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.020050000000000002,
+      "sdofOnDetailedLoadsRotationDeg" : 40.91470320818245,
+      "sdofRotationDeg" : 65.61809501027679,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -2254,16 +2252,16 @@
       "id" : "00000000-0000-4000-8000-000000000002\/pane\/3.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-10",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.046,
-      "sdofDuctility" : 19.425838534476423,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0483,
-      "sdofOnDetailedLoadsRotationDeg" : 64.11600369107347,
-      "sdofRotationDeg" : 41.69456985031912,
+      "sdofBrokenAtS" : 0.0461,
+      "sdofDuctility" : 2.1777363769918385,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.04915,
+      "sdofOnDetailedLoadsRotationDeg" : 61.654500119467805,
+      "sdofRotationDeg" : 15.676489045391254,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedInteriorFailedShare" : 0,
@@ -2354,16 +2352,16 @@
       "id" : "00000000-0000-4000-8000-000000000003\/pane\/0.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-10",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.06720000000000001,
-      "sdofDuctility" : 10.28430672321401,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.06760000000000001,
-      "sdofOnDetailedLoadsRotationDeg" : 37.005509317931725,
-      "sdofRotationDeg" : 25.248587393964236,
+      "sdofBrokenAtS" : 0.06715,
+      "sdofDuctility" : 1.1538283731623586,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.06755,
+      "sdofOnDetailedLoadsRotationDeg" : 7.841151897515217,
+      "sdofRotationDeg" : 8.457553970785671,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -2375,16 +2373,16 @@
       "id" : "00000000-0000-4000-8000-000000000003\/pane\/1.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-10",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0517,
-      "sdofDuctility" : 10.936107887937531,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.051800000000000006,
-      "sdofOnDetailedLoadsRotationDeg" : 37.34081047148663,
-      "sdofRotationDeg" : 26.633292589639808,
+      "sdofBrokenAtS" : 0.051500000000000004,
+      "sdofDuctility" : 1.9704439524883768,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.0517,
+      "sdofOnDetailedLoadsRotationDeg" : 15.124964301727246,
+      "sdofRotationDeg" : 14.248020034397177,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -2396,16 +2394,16 @@
       "id" : "00000000-0000-4000-8000-000000000003\/pane\/2.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-10",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0476,
-      "sdofDuctility" : 22.767314109463904,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0478,
-      "sdofOnDetailedLoadsRotationDeg" : 53.854257367821205,
-      "sdofRotationDeg" : 46.233875708189544,
+      "sdofBrokenAtS" : 0.04745,
+      "sdofDuctility" : 3.5981211736599312,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.047650000000000005,
+      "sdofOnDetailedLoadsRotationDeg" : 31.921226117779756,
+      "sdofRotationDeg" : 24.87665578593114,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : false,
@@ -2416,16 +2414,16 @@
       "id" : "00000000-0000-4000-8000-000000000003\/pane\/3.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-10",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0775,
-      "sdofDuctility" : 3.170418954671989,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0784,
-      "sdofOnDetailedLoadsRotationDeg" : 10.70288509431691,
-      "sdofRotationDeg" : 8.271920681400358,
+      "sdofBrokenAtS" : 0.09745000000000001,
+      "sdofDuctility" : 0.29364052235132687,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.09805,
+      "sdofOnDetailedLoadsRotationDeg" : 41.89710240718918,
+      "sdofRotationDeg" : 47.0345198167074,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedInteriorFailedShare" : 0,
@@ -2517,16 +2515,16 @@
       "id" : "00000000-0000-4000-8000-000000000004\/pane\/0.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-10",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0517,
-      "sdofDuctility" : 10.93609298871003,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.051800000000000006,
-      "sdofOnDetailedLoadsRotationDeg" : 37.28060609912956,
-      "sdofRotationDeg" : 26.633261310292898,
+      "sdofBrokenAtS" : 0.051500000000000004,
+      "sdofDuctility" : 1.970444010507725,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.0517,
+      "sdofOnDetailedLoadsRotationDeg" : 15.074232082755621,
+      "sdofRotationDeg" : 14.248020436844469,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : false,
@@ -2537,16 +2535,16 @@
       "id" : "00000000-0000-4000-8000-000000000004\/pane\/1.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-10",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.06720000000000001,
-      "sdofDuctility" : 10.284305590247813,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.06760000000000001,
-      "sdofOnDetailedLoadsRotationDeg" : 36.93539151850725,
-      "sdofRotationDeg" : 25.248584958829596,
+      "sdofBrokenAtS" : 0.06715,
+      "sdofDuctility" : 1.153829005688799,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.06755,
+      "sdofOnDetailedLoadsRotationDeg" : 7.8418002336531165,
+      "sdofRotationDeg" : 8.457558540143287,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -2558,16 +2556,16 @@
       "id" : "00000000-0000-4000-8000-000000000004\/pane\/2.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-10",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0476,
-      "sdofDuctility" : 22.767314774098466,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0478,
-      "sdofOnDetailedLoadsRotationDeg" : 53.66537744209896,
-      "sdofRotationDeg" : 46.23387654371715,
+      "sdofBrokenAtS" : 0.04745,
+      "sdofDuctility" : 3.5981220899877147,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.047650000000000005,
+      "sdofOnDetailedLoadsRotationDeg" : 31.71409473670875,
+      "sdofRotationDeg" : 24.87666135452794,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : false,
@@ -2578,16 +2576,16 @@
       "id" : "00000000-0000-4000-8000-000000000004\/pane\/3.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-10",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0775,
-      "sdofDuctility" : 3.1704190490353357,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0784,
-      "sdofOnDetailedLoadsRotationDeg" : 10.66326830897026,
-      "sdofRotationDeg" : 8.271920924196293,
+      "sdofBrokenAtS" : 0.09745000000000001,
+      "sdofDuctility" : 0.29364056280263656,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.09805,
+      "sdofOnDetailedLoadsRotationDeg" : 41.90676310666234,
+      "sdofRotationDeg" : 47.03452051492068,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedInteriorFailedShare" : 0,
@@ -2679,16 +2677,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/0.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-50",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0285,
-      "sdofDuctility" : 103.02722316093649,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.028900000000000002,
-      "sdofOnDetailedLoadsRotationDeg" : 84.42324315041265,
-      "sdofRotationDeg" : 78.0488904538014,
+      "sdofBrokenAtS" : 0.0284,
+      "sdofDuctility" : 23.77935953546292,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.028800000000000003,
+      "sdofOnDetailedLoadsRotationDeg" : 80.87018796440996,
+      "sdofRotationDeg" : 71.92727479692834,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -2700,16 +2698,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/1.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-50",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0154,
-      "sdofDuctility" : 166.26080118722254,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0155,
-      "sdofOnDetailedLoadsRotationDeg" : 85.72437239693934,
-      "sdofRotationDeg" : 82.52757735525424,
+      "sdofBrokenAtS" : 0.01535,
+      "sdofDuctility" : 43.66578970218926,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.0154,
+      "sdofOnDetailedLoadsRotationDeg" : 83.60953114687946,
+      "sdofRotationDeg" : 79.92327065894978,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -2721,16 +2719,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/2.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-50",
       "sdofBroken" : true,
       "sdofBrokenAtS" : 0.0132,
-      "sdofDuctility" : 344.50759014695626,
+      "sdofDuctility" : 88.2774306899438,
       "sdofOnDetailedLoadsBrokenAtS" : 0.0132,
-      "sdofOnDetailedLoadsRotationDeg" : 87.07732378490707,
-      "sdofRotationDeg" : 86.37802396740317,
+      "sdofOnDetailedLoadsRotationDeg" : 85.73758639503718,
+      "sdofRotationDeg" : 84.97649646265184,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -2742,16 +2740,16 @@
       "id" : "00000000-0000-4000-8000-000000000001\/pane\/3.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-50",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.033800000000000004,
-      "sdofDuctility" : 110.01139280562195,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0349,
-      "sdofOnDetailedLoadsRotationDeg" : 84.49134477016085,
-      "sdofRotationDeg" : 78.7877712216462,
+      "sdofBrokenAtS" : 0.03365,
+      "sdofDuctility" : 25.259825227253586,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.03475,
+      "sdofOnDetailedLoadsRotationDeg" : 80.92148659996151,
+      "sdofRotationDeg" : 72.92315151953592,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedInteriorFailedShare" : 0,
@@ -2843,16 +2841,16 @@
       "id" : "00000000-0000-4000-8000-000000000002\/pane\/0.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-50",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0154,
-      "sdofDuctility" : 166.2607712289007,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0155,
-      "sdofOnDetailedLoadsRotationDeg" : 85.72870786226397,
-      "sdofRotationDeg" : 82.5275760240236,
+      "sdofBrokenAtS" : 0.01535,
+      "sdofDuctility" : 43.66578370322593,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.0154,
+      "sdofOnDetailedLoadsRotationDeg" : 83.60645446075236,
+      "sdofRotationDeg" : 79.92326930294296,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -2864,16 +2862,16 @@
       "id" : "00000000-0000-4000-8000-000000000002\/pane\/1.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-50",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0285,
-      "sdofDuctility" : 103.02724285439307,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.028900000000000002,
-      "sdofOnDetailedLoadsRotationDeg" : 84.46914466631621,
-      "sdofRotationDeg" : 78.04889267254589,
+      "sdofBrokenAtS" : 0.0284,
+      "sdofDuctility" : 23.77936407862566,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.028800000000000003,
+      "sdofOnDetailedLoadsRotationDeg" : 80.92742703163476,
+      "sdofRotationDeg" : 71.92727802529463,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -2885,16 +2883,16 @@
       "id" : "00000000-0000-4000-8000-000000000002\/pane\/2.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-50",
       "sdofBroken" : true,
       "sdofBrokenAtS" : 0.0132,
-      "sdofDuctility" : 344.5076466806002,
+      "sdofDuctility" : 88.27744290928256,
       "sdofOnDetailedLoadsBrokenAtS" : 0.0132,
-      "sdofOnDetailedLoadsRotationDeg" : 87.09072129725742,
-      "sdofRotationDeg" : 86.37802456018659,
+      "sdofOnDetailedLoadsRotationDeg" : 85.75107732466914,
+      "sdofRotationDeg" : 84.97649715444571,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -2906,16 +2904,16 @@
       "id" : "00000000-0000-4000-8000-000000000002\/pane\/3.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-50",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.033800000000000004,
-      "sdofDuctility" : 110.01139278018294,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0349,
-      "sdofOnDetailedLoadsRotationDeg" : 84.4836563066197,
-      "sdofRotationDeg" : 78.78777121911918,
+      "sdofBrokenAtS" : 0.03365,
+      "sdofDuctility" : 25.259825468639853,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.03475,
+      "sdofOnDetailedLoadsRotationDeg" : 80.9164192100439,
+      "sdofRotationDeg" : 72.92315167323056,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedInteriorFailedShare" : 0,
@@ -3007,16 +3005,16 @@
       "id" : "00000000-0000-4000-8000-000000000003\/pane\/0.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-50",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.054400000000000004,
-      "sdofDuctility" : 74.63648428612301,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0548,
-      "sdofOnDetailedLoadsRotationDeg" : 33.65079583487328,
-      "sdofRotationDeg" : 73.71272422924255,
+      "sdofBrokenAtS" : 0.0543,
+      "sdofDuctility" : 16.0584195252936,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.054650000000000004,
+      "sdofOnDetailedLoadsRotationDeg" : 31.959805268553524,
+      "sdofRotationDeg" : 64.20919103493317,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -3028,16 +3026,16 @@
       "id" : "00000000-0000-4000-8000-000000000003\/pane\/1.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-50",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0397,
-      "sdofDuctility" : 99.96624697833785,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0398,
-      "sdofOnDetailedLoadsRotationDeg" : 46.625702537843395,
-      "sdofRotationDeg" : 77.69393932479194,
+      "sdofBrokenAtS" : 0.03955,
+      "sdofDuctility" : 23.204194287807816,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.039650000000000005,
+      "sdofOnDetailedLoadsRotationDeg" : 45.78754745750104,
+      "sdofRotationDeg" : 71.50943633796797,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -3049,16 +3047,16 @@
       "id" : "00000000-0000-4000-8000-000000000003\/pane\/2.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-50",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0363,
-      "sdofDuctility" : 117.4962288869755,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0364,
-      "sdofOnDetailedLoadsRotationDeg" : 53.64260043744579,
-      "sdofRotationDeg" : 79.48557205327768,
+      "sdofBrokenAtS" : 0.0362,
+      "sdofDuctility" : 27.771647260920464,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.0363,
+      "sdofOnDetailedLoadsRotationDeg" : 53.15845610885192,
+      "sdofRotationDeg" : 74.38893376744142,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -3070,16 +3068,16 @@
       "id" : "00000000-0000-4000-8000-000000000003\/pane\/3.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-50",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0609,
-      "sdofDuctility" : 54.07891178755545,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.061900000000000004,
-      "sdofOnDetailedLoadsRotationDeg" : 55.867421489911955,
-      "sdofRotationDeg" : 68.03831404238687,
+      "sdofBrokenAtS" : 0.0608,
+      "sdofDuctility" : 10.887247076887853,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.061750000000000006,
+      "sdofOnDetailedLoadsRotationDeg" : 40.420835422827054,
+      "sdofRotationDeg" : 54.5210461709506,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedInteriorFailedShare" : 0,
@@ -3171,16 +3169,16 @@
       "id" : "00000000-0000-4000-8000-000000000004\/pane\/0.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-50",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0397,
-      "sdofDuctility" : 99.96624266149513,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0398,
-      "sdofOnDetailedLoadsRotationDeg" : 46.75420057476903,
-      "sdofRotationDeg" : 77.69393880957219,
+      "sdofBrokenAtS" : 0.03955,
+      "sdofDuctility" : 23.20419386329119,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.039650000000000005,
+      "sdofOnDetailedLoadsRotationDeg" : 45.79322503573009,
+      "sdofRotationDeg" : 71.50943602268974,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -3192,16 +3190,16 @@
       "id" : "00000000-0000-4000-8000-000000000004\/pane\/1.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-50",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.054400000000000004,
-      "sdofDuctility" : 74.6364943866423,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0548,
-      "sdofOnDetailedLoadsRotationDeg" : 33.650709677009566,
-      "sdofRotationDeg" : 73.7127263165546,
+      "sdofBrokenAtS" : 0.0543,
+      "sdofDuctility" : 16.058421485594167,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.054650000000000004,
+      "sdofOnDetailedLoadsRotationDeg" : 31.958514804220254,
+      "sdofRotationDeg" : 64.20919377491832,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -3213,16 +3211,16 @@
       "id" : "00000000-0000-4000-8000-000000000004\/pane\/2.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-50",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0363,
-      "sdofDuctility" : 117.49623947833786,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.0364,
-      "sdofOnDetailedLoadsRotationDeg" : 53.84476168291637,
-      "sdofRotationDeg" : 79.48557297993472,
+      "sdofBrokenAtS" : 0.0362,
+      "sdofDuctility" : 27.771648444623448,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.0363,
+      "sdofOnDetailedLoadsRotationDeg" : 53.36464898732159,
+      "sdofRotationDeg" : 74.38893440038211,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedBroken" : true,
@@ -3234,16 +3232,16 @@
       "id" : "00000000-0000-4000-8000-000000000004\/pane\/3.0",
       "kind" : "pane",
       "material" : "annealedGlass",
-      "periodMs" : 64.71150097049333,
+      "periodMs" : 28.31238289811765,
       "run" : "street-glass-50",
       "sdofBroken" : true,
-      "sdofBrokenAtS" : 0.0609,
-      "sdofDuctility" : 54.07891025328966,
-      "sdofOnDetailedLoadsBrokenAtS" : 0.061900000000000004,
-      "sdofOnDetailedLoadsRotationDeg" : 54.94264077180995,
-      "sdofRotationDeg" : 68.03831347857488,
+      "sdofBrokenAtS" : 0.0608,
+      "sdofDuctility" : 10.887246161285395,
+      "sdofOnDetailedLoadsBrokenAtS" : 0.061750000000000006,
+      "sdofOnDetailedLoadsRotationDeg" : 39.5342525349299,
+      "sdofRotationDeg" : 54.52104389353858,
       "shortSpanM" : 1.25,
-      "ultimateKPa" : 2.7559808612440193
+      "ultimateKPa" : 39.39014280443588
     },
     {
       "detailedInteriorFailedShare" : 0,
@@ -3887,6 +3885,7 @@
     }
   ],
   "edges" : "simplySupported",
+  "glass" : "large",
   "notes" : [
     "SDOF after UFC 3-340-02 on the envelope run's loads; detailed: stage 3a's buildings free to respond.",
     "Rotation atan(peak \/ (short span \/ 2)), in degrees, either way."
@@ -3896,6 +3895,12 @@
       "buildings" : 1,
       "detailedWallClockS" : 29.04012700007297,
       "envelopeWallClockS" : 11.167181249940768,
+      "fillImpulsePaS" : [
+        0
+      ],
+      "fillPeakKPa" : [
+        0
+      ],
       "insideImpulsePaS" : [
         4.636292934417725
       ],
@@ -3903,12 +3908,18 @@
         0.2255390625
       ],
       "run" : "isolated-brick-10",
-      "sdofS" : 0.0004746679999999999
+      "sdofS" : 0.00038329300000000005
     },
     {
       "buildings" : 1,
       "detailedWallClockS" : 25.611690333345905,
       "envelopeWallClockS" : 10.27108733332716,
+      "fillImpulsePaS" : [
+        0
+      ],
+      "fillPeakKPa" : [
+        0
+      ],
       "insideImpulsePaS" : [
         2.197528123855591
       ],
@@ -3916,12 +3927,18 @@
         0.1147421875
       ],
       "run" : "isolated-brick-2",
-      "sdofS" : 0.00043087600000000007
+      "sdofS" : 0.00031933300000000004
     },
     {
       "buildings" : 1,
       "detailedWallClockS" : 29.636637916555628,
       "envelopeWallClockS" : 10.675982166547328,
+      "fillImpulsePaS" : [
+        0
+      ],
+      "fillPeakKPa" : [
+        0
+      ],
       "insideImpulsePaS" : [
         33.468292236328125
       ],
@@ -3929,12 +3946,18 @@
         1.0042265625
       ],
       "run" : "isolated-brick-50",
-      "sdofS" : 0.000424584
+      "sdofS" : 0.000344667
     },
     {
       "buildings" : 1,
       "detailedWallClockS" : 39.529498083284125,
       "envelopeWallClockS" : 11.098297166638076,
+      "fillImpulsePaS" : [
+        15.020779007880996
+      ],
+      "fillPeakKPa" : [
+        0.9414033482250379
+      ],
       "insideImpulsePaS" : [
         84.56996154785156
       ],
@@ -3942,12 +3965,18 @@
         0.9916640625
       ],
       "run" : "isolated-glass-10",
-      "sdofS" : 0.000613207
+      "sdofS" : 0.000654251
     },
     {
       "buildings" : 1,
       "detailedWallClockS" : 39.712945291539654,
       "envelopeWallClockS" : 12.649140416644514,
+      "fillImpulsePaS" : [
+        4.843800721922726
+      ],
+      "fillPeakKPa" : [
+        0.17184397880452162
+      ],
       "insideImpulsePaS" : [
         7.9380388259887695
       ],
@@ -3955,12 +3984,18 @@
         0.1736171875
       ],
       "run" : "isolated-glass-2",
-      "sdofS" : 0.000565125
+      "sdofS" : 0.000993166
     },
     {
       "buildings" : 1,
       "detailedWallClockS" : 46.98590920842253,
       "envelopeWallClockS" : 12.212907708482817,
+      "fillImpulsePaS" : [
+        187.809067964669
+      ],
+      "fillPeakKPa" : [
+        9.063224387245937
+      ],
       "insideImpulsePaS" : [
         202.29351806640625
       ],
@@ -3968,12 +4003,18 @@
         10.9881328125
       ],
       "run" : "isolated-glass-200",
-      "sdofS" : 0.000720416
+      "sdofS" : 0.000624876
     },
     {
       "buildings" : 1,
       "detailedWallClockS" : 41.2204154166393,
       "envelopeWallClockS" : 10.666585750179365,
+      "fillImpulsePaS" : [
+        57.740017082734994
+      ],
+      "fillPeakKPa" : [
+        4.117193082447659
+      ],
       "insideImpulsePaS" : [
         50.52302932739258
       ],
@@ -3981,12 +4022,18 @@
         2.5667578125
       ],
       "run" : "isolated-glass-50",
-      "sdofS" : 0.000717
+      "sdofS" : 0.0006366650000000001
     },
     {
       "buildings" : 1,
       "detailedWallClockS" : 41.34255204163492,
       "envelopeWallClockS" : 15.210411666659638,
+      "fillImpulsePaS" : [
+        504.34688009131503
+      ],
+      "fillPeakKPa" : [
+        16.716951552348576
+      ],
       "insideImpulsePaS" : [
         476.3777160644531
       ],
@@ -3994,12 +4041,18 @@
         22.4206484375
       ],
       "run" : "isolated-glass-500",
-      "sdofS" : 0.00087604
+      "sdofS" : 0.000666332
     },
     {
       "buildings" : 1,
       "detailedWallClockS" : 27.18530408316292,
       "envelopeWallClockS" : 12.040141708450392,
+      "fillImpulsePaS" : [
+        0
+      ],
+      "fillPeakKPa" : [
+        0
+      ],
       "insideImpulsePaS" : [
         4.487860202789307
       ],
@@ -4007,12 +4060,18 @@
         0.2701640625
       ],
       "run" : "isolated-rc-10",
-      "sdofS" : 0.00024858400000000004
+      "sdofS" : 0.000263125
     },
     {
       "buildings" : 1,
       "detailedWallClockS" : 26.480091416742653,
       "envelopeWallClockS" : 12.243563041556627,
+      "fillImpulsePaS" : [
+        0
+      ],
+      "fillPeakKPa" : [
+        0
+      ],
       "insideImpulsePaS" : [
         2.8241384029388428
       ],
@@ -4020,12 +4079,18 @@
         0.119125
       ],
       "run" : "isolated-rc-2",
-      "sdofS" : 0.00023291700000000002
+      "sdofS" : 0.000259001
     },
     {
       "buildings" : 1,
       "detailedWallClockS" : 31.53225520811975,
       "envelopeWallClockS" : 13.673091291682795,
+      "fillImpulsePaS" : [
+        0
+      ],
+      "fillPeakKPa" : [
+        0
+      ],
       "insideImpulsePaS" : [
         51.654205322265625
       ],
@@ -4033,12 +4098,18 @@
         1.633515625
       ],
       "run" : "isolated-rc-200",
-      "sdofS" : 0.00033875
+      "sdofS" : 0.000280918
     },
     {
       "buildings" : 1,
       "detailedWallClockS" : 29.1600027915556,
       "envelopeWallClockS" : 11.918363416800275,
+      "fillImpulsePaS" : [
+        0
+      ],
+      "fillPeakKPa" : [
+        0
+      ],
       "insideImpulsePaS" : [
         5.8822340965271
       ],
@@ -4046,12 +4117,18 @@
         0.362984375
       ],
       "run" : "isolated-rc-50",
-      "sdofS" : 0.000334667
+      "sdofS" : 0.000268626
     },
     {
       "buildings" : 1,
       "detailedWallClockS" : 35.675479291705415,
       "envelopeWallClockS" : 14.485080625163391,
+      "fillImpulsePaS" : [
+        0
+      ],
+      "fillPeakKPa" : [
+        0
+      ],
       "insideImpulsePaS" : [
         609.5972290039062
       ],
@@ -4059,12 +4136,20 @@
         6.534546875
       ],
       "run" : "isolated-rc-500",
-      "sdofS" : 0.000470751
+      "sdofS" : 0.000301958
     },
     {
       "buildings" : 2,
       "detailedWallClockS" : 42.40837970841676,
       "envelopeWallClockS" : 9.370823625009507,
+      "fillImpulsePaS" : [
+        0,
+        0
+      ],
+      "fillPeakKPa" : [
+        0,
+        0
+      ],
       "insideImpulsePaS" : [
         6.06659460067749,
         6.139867305755615
@@ -4074,12 +4159,24 @@
         0.3485859375
       ],
       "run" : "pair-rc-50",
-      "sdofS" : 0.000671708
+      "sdofS" : 0.0005537900000000001
     },
     {
       "buildings" : 4,
       "detailedWallClockS" : 73.2075812916737,
       "envelopeWallClockS" : 10.750089458422735,
+      "fillImpulsePaS" : [
+        0,
+        0,
+        0,
+        0
+      ],
+      "fillPeakKPa" : [
+        0,
+        0,
+        0,
+        0
+      ],
       "insideImpulsePaS" : [
         4.849606513977051,
         4.880272388458252,
@@ -4093,12 +4190,24 @@
         0.09659375
       ],
       "run" : "street-brick-10",
-      "sdofS" : 0.0017812099999999999
+      "sdofS" : 0.001348543
     },
     {
       "buildings" : 4,
       "detailedWallClockS" : 128.37369237514213,
       "envelopeWallClockS" : 12.186567333294079,
+      "fillImpulsePaS" : [
+        21.228813727973414,
+        21.228817231535544,
+        15.842842677280426,
+        15.842826714276898
+      ],
+      "fillPeakKPa" : [
+        0.9414029444002663,
+        0.9414031813420733,
+        1.1387515357345692,
+        1.1387508255545544
+      ],
       "insideImpulsePaS" : [
         75.3553695678711,
         70.60977172851562,
@@ -4112,12 +4221,24 @@
         0.107890625
       ],
       "run" : "street-glass-10",
-      "sdofS" : 0.002459916
+      "sdofS" : 0.002786039
     },
     {
       "buildings" : 4,
       "detailedWallClockS" : 119.66288920817897,
       "envelopeWallClockS" : 11.6638322500512,
+      "fillImpulsePaS" : [
+        71.69876674685479,
+        71.69877115488526,
+        73.2802891764579,
+        73.28028896897298
+      ],
+      "fillPeakKPa" : [
+        4.117193093818511,
+        4.1171936070972,
+        2.9253386549826392,
+        2.925338501065344
+      ],
       "insideImpulsePaS" : [
         58.33154296875,
         57.034488677978516,
@@ -4131,12 +4252,24 @@
         1.4905078125
       ],
       "run" : "street-glass-50",
-      "sdofS" : 0.0027603349999999996
+      "sdofS" : 0.002639457
     },
     {
       "buildings" : 4,
       "detailedWallClockS" : 74.20926808333024,
       "envelopeWallClockS" : 14.357053874991834,
+      "fillImpulsePaS" : [
+        0,
+        0,
+        0,
+        0
+      ],
+      "fillPeakKPa" : [
+        0,
+        0,
+        0,
+        0
+      ],
       "insideImpulsePaS" : [
         4.682456016540527,
         4.712013244628906,
@@ -4150,12 +4283,24 @@
         0.072828125
       ],
       "run" : "street-rc-10",
-      "sdofS" : 0.0009731289999999998
+      "sdofS" : 0.001035499
     },
     {
       "buildings" : 4,
       "detailedWallClockS" : 77.95050229155459,
       "envelopeWallClockS" : 14.342531916685402,
+      "fillImpulsePaS" : [
+        0,
+        0,
+        0,
+        0
+      ],
+      "fillPeakKPa" : [
+        0,
+        0,
+        0,
+        0
+      ],
       "insideImpulsePaS" : [
         6.0655341148376465,
         6.14147424697876,
@@ -4169,7 +4314,7 @@
         0.1177734375
       ],
       "run" : "street-rc-50",
-      "sdofS" : 0.0012348330000000003
+      "sdofS" : 0.00109292
     }
   ]
 }
