@@ -137,7 +137,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-17"
+    public static let currentTable = "standing-table-18"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -624,9 +624,8 @@ public enum StandingTable {
                 title: "Congestion below the grid", affects: air + structure + [.envelopeExposure],
                 limit: .illustrative,
                 note:
-                    "Pipes and bars too small for the cells take room and resist the air, as PDRFoam's porous "
-                    + "cells do; the turbulence they make and the flame's folding are not yet modelled, and it is "
-                    + "compared with no test.",
+                    "Pipes and bars too small for the cells take room, resist the air, make turbulence and fold "
+                    + "a flame, as PDRFoam's porous cells and sub-grid flame do; it is compared with no test yet.",
                 document: "congestion-model.md")
         case .ventedGlazing:
             return Entry(
