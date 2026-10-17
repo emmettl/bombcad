@@ -529,7 +529,8 @@ illustrative.
   ([Data wanted](data-wanted.md#to-fetch)). The only one so far, Xia et al.'s, stood near and
   past the outrunning limit.
 - The motion the ground's own wave carries ahead of the blast where it outruns it, mostly
-  horizontal, which dominated Xia et al.'s records.
+  horizontal, which dominated Xia et al.'s records: proposed as an axisymmetric elastic
+  half-space driven by the air's ground pressures ([proposal](ground-shock-outrunning.md)).
 
 ## Sources
 
