@@ -118,6 +118,31 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
         #expect(town[.peakOverpressure]?.unbanded?.contains { $0.contains("town gas") } == true)
     }
 
+    /// The process plant is no vented room, a gas explosion is no TNT fireball, and a sheeted
+    /// warehouse has no concrete walls: each takes only the bands that fit it.
+    @Test func samplesTakeOnlyTheBandsThatFitThem() throws {
+        func scene(_ preset: ScenarioPreset) -> SceneStanding {
+            var inputs = StandingInputs(
+                scenario: preset.scenario, cellSize: 0.25, configuration: .recommended)
+            inputs.thermal = ThermalSpec()
+            inputs.cloud = CloudSpec()
+            return SceneStanding(inputs)
+        }
+        let plant = scene(.processPlantExplosion)
+        #expect((plant[.peakOverpressure]?.bands ?? []).isEmpty)
+        #expect(plant[.peakOverpressure]?.unbanded?.contains { $0.contains("vented room") } == true)
+        #expect((plant[.impulse]?.bands ?? []).isEmpty)
+        #expect((plant[.thermal]?.bands ?? []).isEmpty && (plant[.cloud]?.bands ?? []).isEmpty)
+        let room = scene(.ventedGasRoom)
+        #expect(!(room[.peakOverpressure]?.bands ?? []).isEmpty && (room[.impulse]?.bands ?? []).isEmpty)
+        let warehouse = scene(.portalWarehouse)
+        let envelope = warehouse[.envelopeDamage]
+        #expect(envelope?.bands?.contains { $0.quantity.hasPrefix("Concrete") } != true)
+        #expect(envelope?.unbanded?.contains { $0.hasPrefix("Profiled steel sheeting") } == true)
+        let office = scene(.officeTower)
+        #expect(office[.envelopeDamage]?.bands?.contains { $0.quantity == "When a pane breaks" } == true)
+    }
+
     @Test func everyOptionIsSetBySomeInput() {
         let reached = Set(
             StandingTable.fields.values.flatMap { field -> [ModelOption] in

@@ -3,8 +3,8 @@ import Metal
 import simd
 
 /// One finer level of the air: patches of (4r)^3 cells over the blocks of 4 x 4 x 4 cells of the
-/// grid it refines that the shock crosses, from a pool of fixed size, placed and advanced on the
-/// GPU (see `Refine.metal`). The first level refines the coarse grid; a second refines the first
+/// grid it refines that the shock crosses, from a pool that grows as they do up to a fixed size,
+/// placed and advanced on the GPU (see `Refine.metal`). The first level refines the coarse grid; a second refines the first
 /// (its `parent`), and its patch list, cells, outline and structure counts lie in the first
 /// level's buffers after the first level's own, so that a kernel given the first level's can
 /// reach both. Owned by `BlastSolver`.
@@ -15,7 +15,12 @@ final class AirRefinement {
     let bodyComposition: Bool
     /// Fine cells along a patch's edge.
     let side: Int
-    let maxPatches: Int
+    /// The patches the pool holds now; it grows (`grow`) towards `capacity` as more are wanted,
+    /// each patch keeping its place, so that a level that never fills it steps as one made at
+    /// `capacity` would.
+    private(set) var maxPatches: Int
+    /// The most patches the pool may hold (its memory's worth).
+    let capacity: Int
     /// The grid's size in blocks of `patchSize` cells.
     let tileDims: SIMD3<Int>
     /// The level this one refines, or nil for the coarse grid.
@@ -25,36 +30,36 @@ final class AirRefinement {
     /// Where this level's patch list, and its cells, start in the buffers it shares with its
     /// parent, in entries (0 for the first level).
     let patchOffset: Int
-    let cellOffset: Int
+    private(set) var cellOffset: Int
 
     /// Per block: its patch, or -1.
     let patchOfTile: MTLBuffer
     /// Per pool slot: the block it refines, or `UInt32.max` while free.
-    let tileOfPatch: MTLBuffer
-    private let freeStack: MTLBuffer
+    private(set) var tileOfPatch: MTLBuffer
+    private var freeStack: MTLBuffer
     /// The free stack's height, the count of new patches and the count of listed patches.
-    private let counters: MTLBuffer
-    let patchList: MTLBuffer
-    private let newPatches: MTLBuffer
+    private var counters: MTLBuffer
+    private(set) var patchList: MTLBuffer
+    private var newPatches: MTLBuffer
     /// Threadgroup counts of the sweep, halo, reflux, restriction, fill and ghost dispatches, then
     /// the number of patches in use.
     let arguments: MTLBuffer
     let wanted: MTLBuffer
     /// Per coarse cell of each patch: whether it was solid when the fine cells last saw it.
-    private let seenMask: MTLBuffer
+    private var seenMask: MTLBuffer
     /// Per pool slot: whether the patch lies over an outline that differs from the coarse cells',
     /// and so stays until the next reset.
-    let pinned: MTLBuffer
+    private(set) var pinned: MTLBuffer
     /// Per fine cell: solid (bit 0) and rigid (bit 1), the fine cells' own outline; the velocity
     /// of the structure where it is solid; and the structure's points counted into it.
-    let fineMask: MTLBuffer
-    let fineWall: MTLBuffer
+    private(set) var fineMask: MTLBuffer
+    private(set) var fineWall: MTLBuffer
     var useLocalBoxRemap = true
     var boxRemapMode: ExperimentalBoxRemap = .redistribution
     var measureBoxRemap = false
     private(set) var boxRemapProfile: [String: Double] = [:]
     private var experimentalBoxImpulse: MTLBuffer?
-    let fineOccupancy: MTLBuffer
+    private(set) var fineOccupancy: MTLBuffer
     /// Gravity's background at this level's resolution (see `gravityCellOf` in Solver.metal),
     /// while the air has gravity.
     var gravityTable: MTLBuffer?
@@ -77,23 +82,23 @@ final class AirRefinement {
     private var terrainUniforms = TerrainUniforms()
     /// The fine state, twice for the sweeps to alternate between; the first is current between
     /// coarse steps, since a step takes an even number of fine sweeps.
-    let fine: [MTLBuffer]
-    private let halo: MTLBuffer
+    private(set) var fine: [MTLBuffer]
+    private var halo: MTLBuffer
     /// Two fine cells either side of each patch along the sweep under way, and what they are.
-    private let ghosts: MTLBuffer
-    private let ghostKinds: MTLBuffer
-    private let fineFlux: MTLBuffer
+    private var ghosts: MTLBuffer
+    private var ghostKinds: MTLBuffer
+    private var fineFlux: MTLBuffer
     /// Each fine cell's impulse since its patch was placed, and each coarse cell's impulse then.
-    let fineImpulse: MTLBuffer
-    private let impulseBase: MTLBuffer
-    let coarseFlux: MTLBuffer
+    private(set) var fineImpulse: MTLBuffer
+    private var impulseBase: MTLBuffer
+    private(set) var coarseFlux: MTLBuffer
     /// With afterburning: the fine cells' fuel and oxygen (twice, as `fine`), their ghosts', and
     /// their flux registers, fine and coarse, laid out as the others; each a placeholder without.
     let species: Bool
-    let fineSpecies: [MTLBuffer]
-    private let ghostSpecies: MTLBuffer
-    private let fineSpeciesFlux: MTLBuffer
-    let coarseSpeciesFlux: MTLBuffer
+    private(set) var fineSpecies: [MTLBuffer]
+    private var ghostSpecies: MTLBuffer
+    private var fineSpeciesFlux: MTLBuffer
+    private(set) var coarseSpeciesFlux: MTLBuffer
     private let device: MTLDevice
 
     private let library: MTLLibrary
@@ -151,11 +156,11 @@ final class AirRefinement {
     /// patch has cut cells, and what each fine column passes up out of the top of its stack of
     /// patches (two float4 a column of each patch). See Refine.metal.
     let cutTerrain: Bool
-    private let fineCut: MTLBuffer?
-    private let fineDefects: MTLBuffer?
+    private var fineCut: MTLBuffer?
+    private var fineDefects: MTLBuffer?
     var fineCutBuffer: MTLBuffer? { fineCut }
-    private let patchCut: MTLBuffer?
-    private let passedUp: MTLBuffer?
+    private var patchCut: MTLBuffer?
+    private var passedUp: MTLBuffer?
     /// The coarse grid's cut cells, which refluxing, restriction and filling read and write (set on
     /// every level; a level beneath another reads its parent's fine geometry instead).
     var coarseCut: TerrainCutBuffers? {
@@ -216,10 +221,11 @@ final class AirRefinement {
 
     /// A level of `memory` bytes. With `parent`, it refines that level (of the same ratio), whose
     /// shared buffers must have been made with room for it (`reserve`, in blocks and in cells).
+    /// The pool starts with `start` patches, or its whole `memory`'s worth.
     init(
         device: MTLDevice, library: MTLLibrary, grid: Grid, ratio: Int, memory: Int, species: Bool = false,
         bodyComposition: Bool = false, parent: AirRefinement? = nil,
-        reserve: (tiles: Int, cells: Int) = (0, 0), cut: Bool = false
+        reserve: (tiles: Int, cells: Int) = (0, 0), cut: Bool = false, start: Int? = nil
     )
         throws
     {
@@ -236,7 +242,8 @@ final class AirRefinement {
             grid: grid, ratio: ratio, parentScale: parentScale, memory: memory, species: species,
             bodyComposition: bodyComposition, cut: cut)
         tileDims = layout.tileDims
-        maxPatches = layout.maxPatches
+        capacity = layout.maxPatches
+        maxPatches = min(max(start ?? capacity, 1), capacity)
         let tiles = tileDims.x * tileDims.y * tileDims.z
         let fineCells = maxPatches * side * side * side
 
@@ -303,7 +310,7 @@ final class AirRefinement {
         }
         tileOfPatch = try buffer(maxPatches * 4, "tile of patch")
         freeStack = try buffer(maxPatches * 4, "free patches")
-        counters = try buffer(16, "refinement counters")
+        counters = try buffer(32, "refinement counters")
         patchList = try buffer(maxPatches * 4, "patches in use")
         newPatches = try buffer(maxPatches * 4, "new patches")
         arguments = try buffer(32 * 4, "refinement dispatches")
@@ -472,6 +479,12 @@ final class AirRefinement {
 
     /// Patches in use after the last regrid.
     var patchCount: Int { Int(arguments.contents().load(fromByteOffset: 24 * 4, as: UInt32.self)) }
+    /// The most patches in use at once since the last reset, and whether the pool ever ran out
+    /// (more blocks wanted refining than it had patches free, so some were not).
+    var poolUse: (most: Int, ranOut: Bool) {
+        let count = counters.contents().bindMemory(to: Int32.self, capacity: 8)
+        return (Int(count[4]), count[5] != 0)
+    }
 
     /// This level's cells along each axis.
     func cellDims(_ grid: Grid) -> SIMD3<Int> { SIMD3(grid.nx, grid.ny, grid.nz) &* (parentScale * ratio) }
@@ -726,8 +739,9 @@ final class AirRefinement {
         memset(tileOfPatch.contents(), 0xFF, maxPatches * 4)
         let stack = freeStack.contents().bindMemory(to: UInt32.self, capacity: maxPatches)
         for n in 0..<maxPatches { stack[n] = UInt32(maxPatches - 1 - n) }
-        let count = counters.contents().bindMemory(to: Int32.self, capacity: 4)
+        let count = counters.contents().bindMemory(to: Int32.self, capacity: 8)
         (count[0], count[1], count[2], count[3]) = (Int32(maxPatches), 0, 0, 0)
+        (count[4], count[5]) = (0, 0)
         memset(arguments.contents(), 0, arguments.length)
         memset(wanted.contents(), 0, wanted.length)
         memset(fineFlux.contents(), 0, fineFlux.length)
@@ -741,6 +755,118 @@ final class AirRefinement {
         for buffer in [fineCut, fineDefects, patchCut, passedUp].compactMap({ $0 }) {
             memset(buffer.contents(), 0, buffer.length)
         }
+    }
+
+    /// Patches in use after the last regrid, read while the GPU is idle.
+    var livePatches: Int { maxPatches - Int(counters.contents().load(as: Int32.self)) }
+
+    /// Makes the pool hold `patches` (no more than `capacity`) while the GPU is idle. Every patch
+    /// keeps its slot and its cells, the new slots are as a pool made that size holds slots never
+    /// used, and they go to the bottom of the free stack in the order such a pool would hand them
+    /// out, so that a run whose pool grows ahead of the patches it uses steps exactly as one
+    /// made at full size. A first level holding its child's part of the shared buffers moves that
+    /// part after its own (`child`, in cells before and after the child grows): call `adopt()` on
+    /// the child after. Each buffer is swapped for its larger one before the next is made, so
+    /// that only one is held twice over at a time.
+    func grow(to patches: Int, child: (old: Int, new: Int) = (0, 0)) throws {
+        let patches = min(max(patches, maxPatches), capacity)
+        guard patches > maxPatches || child.new != child.old else { return }
+        let old = maxPatches
+        let added = patches - old
+        let cells = side * side * side
+        let state = MemoryLayout<CellState>.stride
+        func regrow(_ buffer: MTLBuffer, _ perPatch: Int, fill: Int32 = 0) throws -> MTLBuffer {
+            guard perPatch > 0, added > 0 else { return buffer }
+            let new = try makeBuffer(patches * perPatch, buffer.label ?? "refinement")
+            memcpy(new.contents(), buffer.contents(), old * perPatch)
+            memset(new.contents() + old * perPatch, fill, added * perPatch)
+            return new
+        }
+        if parent == nil {
+            // The shared buffers: this level's cells, then its child's. All three are made before
+            // any is swapped, so that the child's part never lies in two places.
+            func regrowShared(_ buffer: MTLBuffer, _ perCell: Int) throws -> (MTLBuffer, MTLBuffer, Int) {
+                (
+                    buffer,
+                    try makeBuffer((patches * cells + child.new) * perCell, buffer.label ?? "refinement"),
+                    perCell
+                )
+            }
+            let shared = [
+                try regrowShared(fineMask, 1), try regrowShared(fineOccupancy, 16),
+                try regrowShared(fine[0], state),
+            ]
+            for (buffer, new, perCell) in shared {
+                memcpy(new.contents(), buffer.contents(), old * cells * perCell)
+                memset(new.contents() + old * cells * perCell, 0, added * cells * perCell)
+                memcpy(
+                    new.contents() + patches * cells * perCell, buffer.contents() + old * cells * perCell,
+                    min(child.old, child.new) * perCell)
+                if child.new > child.old {
+                    memset(
+                        new.contents() + (patches * cells + child.old) * perCell, 0,
+                        (child.new - child.old) * perCell)
+                }
+            }
+            (fineMask, fineOccupancy, fine[0]) = (shared[0].1, shared[1].1, shared[2].1)
+        }
+        guard added > 0 else { return }
+        // Each of this level's own buffers; a failure part way leaves some larger than the pool,
+        // which does no harm, as the free stack (last) still holds only the slots there were.
+        tileOfPatch = try regrow(tileOfPatch, 4, fill: 0xFF)
+        patchList = try regrow(patchList, 4)
+        newPatches = try regrow(newPatches, 4)
+        pinned = try regrow(pinned, 4)
+        let block = Self.patchSize * Self.patchSize * Self.patchSize
+        seenMask = try regrow(seenMask, block)
+        fineWall = try regrow(fineWall, cells * 12)
+        halo = try regrow(halo, 512 * state)
+        ghosts = try regrow(ghosts, 4 * side * side * state)
+        ghostKinds = try regrow(ghostKinds, 4 * side * side)
+        fineFlux = try regrow(fineFlux, 6 * side * side * 5 * 4)
+        fineImpulse = try regrow(fineImpulse, cells * 4)
+        impulseBase = try regrow(impulseBase, block * 4)
+        coarseFlux = try regrow(coarseFlux, 6 * Self.patchSize * Self.patchSize * 5 * 4)
+        fine[1] = try regrow(fine[1], cells * state)
+        let pair = species ? 8 : 0
+        fineSpecies[0] = try regrow(fineSpecies[0], cells * pair)
+        fineSpecies[1] = try regrow(fineSpecies[1], cells * pair)
+        ghostSpecies = try regrow(ghostSpecies, 4 * side * side * pair)
+        fineSpeciesFlux = try regrow(fineSpeciesFlux, 6 * side * side * pair)
+        coarseSpeciesFlux = try regrow(coarseSpeciesFlux, 6 * Self.patchSize * Self.patchSize * pair)
+        if let buffer = fineCut { fineCut = try regrow(buffer, cells * 32) }
+        if let buffer = fineDefects { fineDefects = try regrow(buffer, cells * 32) }
+        if let buffer = patchCut { patchCut = try regrow(buffer, 4) }
+        if let buffer = passedUp { passedUp = try regrow(buffer, side * side * 32) }
+        if let buffer = combinedBodyOccupancy { combinedBodyOccupancy = try regrow(buffer, cells * 16) }
+        if let buffer = experimentalBoxImpulse { experimentalBoxImpulse = try regrow(buffer, cells * 6 * 4) }
+        let stackBuffer = try makeBuffer(patches * 4, "free patches")
+        let stack = stackBuffer.contents().bindMemory(to: UInt32.self, capacity: patches)
+        for n in 0..<added { stack[n] = UInt32(patches - 1 - n) }
+        memcpy(stackBuffer.contents() + added * 4, freeStack.contents(), old * 4)
+        freeStack = stackBuffer
+        let count = counters.contents().bindMemory(to: Int32.self, capacity: 8)
+        count[0] += Int32(added)
+        count[3] += Int32(added)
+        maxPatches = patches
+    }
+
+    /// Takes up the parent's shared buffers, and this level's place in them, after the parent
+    /// grew (`grow`).
+    func adopt() {
+        guard let parent else { return }
+        fineMask = parent.fineMask
+        fineOccupancy = parent.fineOccupancy
+        fine[0] = parent.fine[0]
+        cellOffset = parent.maxPatches * parent.side * parent.side * parent.side
+    }
+
+    private func makeBuffer(_ length: Int, _ label: String) throws -> MTLBuffer {
+        guard let buffer = device.makeBuffer(length: max(length, 16), options: .storageModeShared) else {
+            throw BlastError.allocationFailed("\(label) (\(length) bytes)")
+        }
+        buffer.label = label
+        return buffer
     }
 
     private func group(_ pipeline: MTLComputePipelineState, _ width: Int) -> MTLSize {
