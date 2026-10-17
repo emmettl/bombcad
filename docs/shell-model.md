@@ -301,6 +301,15 @@ Kuilen's Hashin-type criteria (HERON 58, 2013):
   fibres broken where the grain runs that way and split where it runs across, so a CLT panel
   goes when its lamellae have broken both ways through.
 
+**In the app:**
+- **Materials:** Softwood C24, Glulam GL24h, and CLT of five C24 lamellae, with the grain along x,
+  are among the editor's materials. "Material properties" sets their grain, lamellae, moduli,
+  strengths and dynamic increase factor.
+- **Meshing:** a piece of timber is meshed as shells and beams whatever its "Elements" choice,
+  as profiled sheeting is.
+- **Sample:** the "Terraced houses, brick and timber" sample is a 1930s row of three with timber
+  floors and roof (below).
+
 **Grades** (`TimberProperties.strengthClass`, `crossLaminatedPanel`, `StructureMaterial.timber(_:)`):
 
 | Grade | E₀ / E₉₀ / G (GPa) | f_m / f_c,0 / f_t,90 / f_c,90 / f_v / f_r (MPa, mean, before the factor) | Density (kg/m³) | Dynamic increase factor |
@@ -336,6 +345,24 @@ Where the numbers come from:
     (Lacroix's thesis, 2017);
   - 1.4 on solid timber (CSA S850-12, provisional; Jacques et al. 2014 found 1.41 on studs'
     rupture modulus).
+
+### The terraced houses
+
+`ScenarioPreset.terracedHouses`: a row of three two-storey houses as built in the UK from the
+1930s, 5 m wide and 8.5 m deep with 2.6 m storeys, under 25 kg in the street 10 m in front.
+- **Walls:** cavity walls of two 102.5 mm brick leaves 50 mm apart, at the front, back and
+  gables, with one-brick party walls. The leaves are not tied: wall ties are not modelled.
+- **Floors and roof:** timber joists, 47 × 200 mm C24 at 400 mm under 22 mm boards. The 125 mm
+  mesh cannot hold the joists, so each floor is smeared into a 98 mm timber plate with the
+  joists' bending stiffness, mass and bending capacity per metre, spanning between the party
+  walls. The pitched roof is a flat roof of the same make at the eaves, since boxes square to
+  the axes cannot pitch.
+- **Openings:** windows front and back on each floor, and a front door, open (no glass).
+- **Sources:** the University of the West of England's Construction Web ("Evolution of building
+  elements": 1930s cavity walls of brick both ways, 200 × 50 mm joists at 300–400 mm, cut roofs
+  on the party walls) and the English Housing Survey's *Floor space in English homes* (2018).
+  The storey height is assumed. Pre-1919 terraces, a third of them, have solid one-brick walls
+  instead.
 
 ## Coupling to the air
 

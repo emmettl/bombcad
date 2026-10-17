@@ -19,6 +19,9 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
         /// Profiled steel sheeting on rails or purlins, spanning one way between them
         /// (`EnvelopePanel.profiledSheetOneWay`): a portal-frame shed's cladding and roof.
         case profiledSteelSheeting
+        /// Cross-laminated timber spanning one way on its outer lamellae's grain
+        /// (`EnvelopePanel.crossLaminatedOneWay`): CLT buildings' walls and roofs.
+        case crossLaminatedTimber
 
         public var label: String {
             switch self {
@@ -26,6 +29,7 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
             case .unreinforcedMasonry: "Unreinforced masonry"
             case .reinforcedBlockwork: "Reinforced blockwork"
             case .profiledSteelSheeting: "Profiled steel sheeting"
+            case .crossLaminatedTimber: "Cross-laminated timber"
             }
         }
     }
@@ -120,6 +124,7 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
         switch kind {
         case .unreinforcedMasonry: 0.215
         case .profiledSteelSheeting: SheetProfile.swedsteelSTW35.depth
+        case .crossLaminatedTimber: 0.105
         case .reinforcedConcrete, .reinforcedBlockwork: 0.2
         }
     }

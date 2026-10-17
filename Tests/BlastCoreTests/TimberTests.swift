@@ -293,6 +293,25 @@ struct TimberTests {
             abs(at - expected) < 0.03 * expected, "broke at \(at / 1e3) kN, expected \(expected / 1e3) kN")
     }
 
+    @Test(
+        "A piece of timber is meshed as shells whatever its elements were chosen as; mixed with concrete, so is it"
+    )
+    func timberMeshesAsShells() throws {
+        var model = StructureModel(
+            solids: [Box(min: SIMD3(1, 1, 0), max: SIMD3(4, 1.1, 2.5))], material: .crossLaminatedTimber,
+            elementSize: 0.125, fixedBase: true)
+        #expect(model.elementKind == .solid && model.isAllShells)
+        let scenario = Scenario(
+            name: "CLT wall", domainSize: SIMD3(6, 3, 4), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(0.5, 1.5, 0.5)), structure: model)
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.25)
+        #expect(solver.shells != nil && solver.structure == nil)
+        // With a concrete footing beside it, the body is mixed: solids and shells.
+        model.solids.append(Box(min: SIMD3(1, 1.1, 0), max: SIMD3(4, 1.6, 0.5)))
+        model.setMaterial(.reinforcedConcrete, of: 1)
+        #expect(model.isMixed && model.elementKind(of: 0) == .shell && model.elementKind(of: 1) == .solid)
+    }
+
     @Test("Timber in solid elements is refused; layered, it is integrated lamella by lamella")
     func solidsRefused() throws {
         let model = StructureModel(

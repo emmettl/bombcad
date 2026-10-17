@@ -177,7 +177,9 @@ not a detailed model.
 3. **Profiled sheeting** as a steel shell with rib beams, and a fastener law, judged against
    Langdon's panels and the cladding–girt tests.
 4. **Wall ties and joist bearings** for the terraced house, then the three building types as
-   samples, as the precast block and the control room are now.
+   samples, as the precast block and the control room are now. *The terraced row is a sample
+   since 17 October 2026* ([shell model](shell-model.md#the-terraced-houses)), with its floors
+   smeared, its cavity leaves untied and its roof flat; the ties and bearings remain.
 
 Each step ends with a product proposal or a stop: a material preset and a building sample in the
 app, or a recorded reason not to go further.

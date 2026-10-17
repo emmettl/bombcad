@@ -351,7 +351,11 @@ final class SimulationModel {
     }
     var editedStructure: StructureModel? { editedObject?.structure }
     var editedMaterial: StructureMaterial { editedStructure?.material ?? .reinforcedConcrete }
-    var editedElementKind: ElementKind { editedStructure?.elementKind ?? .solid }
+    /// Shells where every piece is meshed so, as timber always is, whatever was chosen.
+    var editedElementKind: ElementKind {
+        guard let structure = editedStructure else { return .solid }
+        return structure.isAllShells ? .shell : structure.elementKind
+    }
     var editedSolidElementSize: Float { editedObject?.preferredSolidElementSize ?? settings.solidElementSize }
     func rememberSolidElementSize(_ size: Float, objectID: UUID? = nil) {
         guard let id = objectID ?? editedObject?.id else { return }
