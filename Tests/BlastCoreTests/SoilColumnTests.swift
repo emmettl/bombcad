@@ -278,8 +278,6 @@ struct SoilColumnTests {
         }
         // Frames a millisecond apart, each with the peak and positive impulse kept every 10 µs.
         var load = GroundLoad()
-        // The same, the shock rising over 0.2 ms as the front crosses a cell.
-        var rising = GroundLoad()
         var (kept, impulse) = (0.0, 0.0)
         var t = 0.0
         let fine = 1e-6
@@ -295,38 +293,30 @@ struct SoilColumnTests {
             load.append(
                 time: time, overpressure: Float(pressure(time)), peak: Float(kept), impulse: Float(impulse))
             impulses.append(impulse)
-            rising.append(
-                time: time, overpressure: Float(pressure(time)), peak: Float(kept), impulse: Float(impulse),
-                rise: 2e-4)
         }
-        #expect(abs(rising.integral(from: 0, to: 0.005) / impulses[5] - 1) < 2e-3)
-        #expect(rising.knots.map(\.pressure).max() == load.knots.map(\.pressure).max())
-        // Frames closer together than the rise: the rise is kept whole, running past the frame
-        // it starts in, and the impulse to within its share.
-        var close = GroundLoad()
-        (kept, impulse) = (0, 0)
-        t = 0
-        for frame in 0...100 {
-            let time = Double(frame) * 2e-4
-            while t < time - fine / 2 {
-                let p = pressure(t + fine / 2)
-                kept = max(kept, p)
-                impulse += max(p, 0) * fine
-                t += fine
-            }
-            close.append(
-                time: time, overpressure: Float(pressure(time)), peak: Float(kept), impulse: Float(impulse),
-                rise: 6e-4)
-        }
-        let top = close.knots.indices.max { close.knots[$0].pressure < close.knots[$1].pressure }!
-        #expect(abs(close.knots[top].time - close.knots[top - 1].time - 6e-4) < 1e-9)
-        #expect(abs(close.integral(from: 0, to: 0.0053) / load.integral(from: 0, to: 0.0053) - 1) < 0.03)
         // Through the positive phase, frame by frame, the solver's impulse.
         for frame in 3...5 {
             let rebuilt = load.integral(from: 0, to: Double(frame) * 1e-3)
             #expect(abs(rebuilt / impulses[frame] - 1) < 1e-4)
         }
         #expect(abs(load.knots.map(\.pressure).max()! / peak - 1) < 1e-3)
+        // A frame that catches the shock at its peak still makes a jump there, not a ramp from
+        // the frame before, and the averaged column sees the triangle shaved only by its window.
+        var caught = GroundLoad()
+        for frame in 0...8 {
+            let t = Double(frame) * 1e-3
+            let s = min(max(t - 0.002, 0), 0.004)
+            caught.append(
+                time: t, overpressure: t < 0.002 ? 0 : Float(80e3 * (1 - s / 0.004)),
+                peak: t < 0.002 ? 0 : 80e3, impulse: Float(80e3 * (s - s * s / 0.008)))
+        }
+        let jump = caught.knots.indices.dropFirst().first { caught.knots[$0].pressure == 80e3 }!
+        #expect(
+            caught.knots[jump - 1].time == caught.knots[jump].time && caught.knots[jump - 1].pressure == 0)
+        var averaged = SoilColumn(profile: SoilProfile(uniform: GroundSoil()), depth: 1)
+        let window = 12 * averaged.timeStep
+        averaged.advance(to: 0.008, load: caught, window: window)
+        #expect(abs(averaged.peakLoad / (80e3 * (1 - window / 0.008)) - 1) < 0.01)
         // The column driven by the rebuilt load moves much as it does under the real one.
         let profile = SoilProfile(layers: [
             SoilLayer(thickness: 1, density: 1600, waveSpeed: 300, unloadingWaveSpeed: 600)

@@ -150,22 +150,18 @@ the compaction the blast leaves behind.
 - **The load between frames.** A frame comes every millisecond, too coarse for a shock's
   rise, but each carries the solver's peak and positive impulse so far, kept every time step.
   The load is rebuilt between frames as straight lines that keep both. Where the peak rose above
-  the two frames' values, the shock arrives and rises to that peak, then falls in a line to the
-  next frame's value. Its arrival is placed so that the interval's positive impulse is the
+  the earlier frame's value, the shock arrives with a jump to that peak, then falls in a line to
+  the next frame's value, its arrival placed so that the interval's positive impulse is the
   solver's. Elsewhere a line runs through a midpoint chosen to keep the impulse, held between
-  zero and the peak, and each frame's midpoint makes up any difference left between the load
-  laid down and the solver's impulse. Each of the column's steps then takes the load's mean over
-  a window centred on it: the time the front takes to cross one of the solver's cells (the
-  width of the solver's own shock), and no less than twelve of the column's steps (0.6 ms at
-  the default). That keeps the impulse exactly and lets the shock rise over the window. A
-  sharper rise or kink makes the surface's node ring, up to two fifths too fast in soil that
-  unloads at twice its loading speed, and an elastic column a third too fast where frames
-  come 0.2 ms apart. The window is centred, so the column's arrivals can be up to half of it
-  early, and a peak falling after the shock is shaved: by w/(2t_d) for a triangle of length t_d
-  and window w, 7% for a 4 ms pulse, a fifth for the 1.4 ms pulse 4 m from 100 kg, 5% for
-  1 t at 21 m. The earlier rise shaped into the load kept the peak, but only by holding the
-  load high through the rise and paying the impulse back later, and that payback made the
-  column ring where frames came close together.
+  zero and the peak. Each of the column's steps then takes the load's mean over a window of
+  twelve of its steps centred on it (0.6 ms at the default). That keeps the impulse exactly and
+  gives the jump its rise: a sharper rise makes the surface's node ring, up to two fifths too
+  fast in soil that unloads at twice its loading speed. The window is not widened to the time
+  the front takes to cross a cell, as the solver's own shock is already that wide in the peak
+  and impulse it keeps. It is centred, so the column's arrivals can be up to half of it early,
+  and it shaves a peak falling after the shock by w/(2t_d) for a triangle of length t_d and
+  window w: 7% for a 4 ms pulse, a fifth for the 1.4 ms pulse 4 m from 100 kg, 5% for 1 t at
+  21 m.
 - **Sideways.** The column is vertical, and the air presses only straight down on the ground,
   so nothing in it drives horizontal shear. A horizontal shear column is natural for an
   earthquake coming up from below, not for a load pressing from above. The horizontal velocity

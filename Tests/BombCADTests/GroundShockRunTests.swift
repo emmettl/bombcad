@@ -126,7 +126,8 @@ struct GroundShockRunTests {
         let json = #"""
             {"model": "column", "line": {"from": [2.5, 4], "to": [5.5, 4], "count": 4}, "depths": [0, 0.5, 2],
              "profile": {"layers": [{"thickness": 1, "unloadingWaveSpeed": 600},
-                                    {"thickness": 3, "density": 1900, "waveSpeed": 900}], "base": "rigid"}}
+                                    {"thickness": 3, "density": 1900, "waveSpeed": 900}], "base": "rigid",
+                         "timeStep": 1e-5}}
             """#
         let file = folder.appending(path: "ground.json")
         try Data(json.utf8).write(to: file)
@@ -142,7 +143,8 @@ struct GroundShockRunTests {
             #expect(point.profile?.depths.last == 2 && point.responses.map(\.depth) == [0, 0.5, 2])
             #expect(point.responses[0].verticalVelocity > point.responses[1].verticalVelocity)
             // The surface moves at the plane-wave relation of the top layer, give or take the
-            // load's rebuilding between frames.
+            // load's rebuilding between frames and its averaging over the column's window (a
+            // finer step here, so a narrower window, for this small charge's short pulses).
             let plane = point.peakOverpressure / (1600 * 300)
             #expect(abs(point.responses[0].verticalVelocity / plane - 1) < 0.1)
         }

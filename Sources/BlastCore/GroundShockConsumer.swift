@@ -273,14 +273,12 @@ public struct GroundShockConsumer: Sendable {
             // Nothing for a point never yet open; one under a block or the structure for a frame
             // carries nothing then.
             guard let sample = latest[n] else { continue }
-            // The column takes the load averaged over the time the shock's front takes to cross a
-            // cell, and over no fewer than a dozen of its steps: a shock or a kink sharper than
-            // that makes the surface's node ring, up to two fifths too fast in soil that unloads
-            // stiffly. The average keeps the impulse.
-            let speed = AirInducedGroundShock.frontSpeed(
-                overpressure: peaks[n], ambientPressure: air.pressure, ambientDensity: air.density,
-                gamma: air.gamma)
-            let window = max(Double(slice.cellSize / speed), Self.riseSteps * columns[n].timeStep)
+            // The column takes the load averaged over a dozen of its steps: a shock or a kink
+            // sharper than that makes the surface's node ring, up to two fifths too fast in soil
+            // that unloads stiffly. The average keeps the impulse. (The solver's own shock is
+            // already a cell wide in the peak and impulse it keeps, so the window is not widened
+            // to a cell's crossing: that would smear it twice.)
+            let window = Self.riseSteps * columns[n].timeStep
             loads[n].append(
                 time: slice.time, overpressure: histories[n].last ?? 0, peak: peaks[n],
                 impulse: max(sample.impulse, 0))

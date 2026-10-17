@@ -195,7 +195,7 @@ public struct GroundResponse: Codable, Sendable, Equatable {
     public var history: [Float]?
     /// The column's only: the peak downward and upward vertical acceleration, m/s², both positive.
     /// At the front it is the rebuilt load's rise over the soil's impedance, so it is only as
-    /// fine as that rise: a cell's crossing or twelve of the column's steps.
+    /// fine as that rise: the solver's own shock, or twelve of the column's steps.
     public var verticalAcceleration: Float?
     public var upwardAcceleration: Float?
 
