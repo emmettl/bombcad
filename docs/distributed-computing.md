@@ -639,6 +639,76 @@ cell of the field. What is left is the app's side: a **Run on** for the blast, t
 from the frames that arrive rather than from a solver here, and edits and playback going the
 other way.
 
+## Macs nearby, without SSH
+
+Everything above reaches the other Mac over SSH, which needs Remote Login and a key on the Mac
+doing the work, and is started from the Mac sending it. For a laptop working a Studio that is the
+wrong way round: the Studio here takes no SSH logins. Built in October 2026 (`NearbyWorkers.swift`,
+`NearbyPairing.swift`), with Apple's Network framework; setting it up is in
+[Macs nearby](run-comparison.md#macs-nearby-without-ssh).
+
+**How it works.**
+
+- **Sharing.** The Mac doing the work runs `NearbyServer` (the app's setting, or `BombCAD serve`),
+  advertising two Bonjour services under its name: `_bombcad-pair._tcp` for pairing and
+  `_bombcad._tcp` for sessions. Their TXT records give its identifier, BombCAD version, worker
+  protocol and solver version and GPU, so the other Mac can list it, and grey it out if the
+  versions cannot work together, before connecting.
+- **Pairing, once.** Plain TCP. Each side makes a fresh X25519 key; the sending Mac commits to its
+  public key and a nonce (their SHA-256) before seeing the other's, then reveals them, so a Mac in
+  the middle cannot choose keys after seeing both. Both derive the same six-digit code from the
+  shared secret and the whole exchange (HKDF). The sharing Mac's user allows it, seeing the code;
+  the sending Mac's user confirms the sharing Mac shows the same; each side then proves it holds
+  the key (HMAC over the exchange) before either keeps it. A Mac in the middle pairing with each
+  side separately has a different secret with each, so the two codes differ but for one chance in
+  a million. The key, 256 bits, is kept in the Keychain, or a file readable only by its owner.
+- **Sessions.** TLS 1.2 with that key as a pre-shared key (`TLS_PSK_WITH_AES_128_GCM_SHA256`), the
+  sharing Mac holding every paired Mac's key under its identifier and restarting the listener when
+  one is added or forgotten. The first message asks for any gate (the same `RemoteGate` an SSH
+  worker checks); the sharing Mac answers, then starts a `BombCAD worker` process and carries
+  bytes between it and the connection. From there the messages are those of an SSH worker,
+  unchanged, so every job type works as it does over SSH. A paired Mac is `nearby:<its name>`
+  wherever an SSH host is taken; `RemoteSweepWorker.connect` sends those this way.
+- **Links.** Bonjour reports every interface a Mac is seen on: the mini here on the Thunderbolt
+  bridge, Wi-Fi and two link-local interfaces. Left to itself, the connection took a link-local
+  one, at Wi-Fi's speed; so the link is chosen, fastest first: the bridge, wired Ethernet with an
+  IPv4 address, Wi-Fi, then the rest (`BOMBCAD_NEARBY_LINK` forces one, for measuring).
+
+**Measured, 17 October 2026,** the mini serving (`BombCAD serve` started over SSH, its pairings in
+a file), the Studio sending; the mini shared with CI (load averages 82 to 130), so whole runs say
+little. The city block with every 2nd cell of the air as a volume, 1.7 MB a frame, 171 frames:
+
+| Link | Connecting | Lag, median (95%) |
+|---|---|---|
+| SSH, Thunderbolt | 0.5 to 4.4 s | 43 to 45 ms (54 to 84 ms) |
+| Nearby, Thunderbolt | 0.1 s | 43 to 48 ms (67 to 131 ms) |
+| SSH, Wi-Fi | 0.6 to 1.6 s | 107 to 128 ms (225 to 244 ms) |
+| Nearby, Wi-Fi | 0.1 to 0.8 s | 255 to 261 ms (576 to 601 ms) |
+
+- **Connecting** takes a tenth of a second instead of SSH's half a second to four: no login, no
+  check of the copied build.
+- **Over Thunderbolt** the two are alike in a run. Raw, 50 MB echoed both ways at once took
+  0.12 s, about 0.8 GB/s each way, as fast as SSH's 0.6 to 0.9 GB/s; a small watched run (frames of
+  10 kB) had 1.9 ms of lag.
+- **Over Wi-Fi, the mini's sending is slow.** Timed alone, 100 MB from the mini to the Studio
+  through Network.framework took 7 to 13 MB/s, with TLS or without, IPv4 or IPv6, any service
+  class, ECN off or on, at any priority; from the Studio to the mini 44 MB/s; plain sockets from a
+  process the mini's SSH started, 42 to 43 MB/s; Network.framework receiving on the Studio from a
+  plain socket, 43 MB/s. So it is Network.framework sending on the mini, over Wi-Fi only. Its
+  interfaces use the user-space network stack (`CHANNEL_IO`), whose work runs in the sending
+  process: with the mini at loads near 100 that would starve it where the kernel's sockets are not,
+  but it is not yet shown. **Open**: measure again in the mini's quiet window; if it holds, carry a
+  session's bulk on a plain socket keyed by the pairing.
+- **Not measured here:** the Studio as the sharing Mac, the thin client's own direction. The
+  Studio's firewall is on and asks, for each new build started from a shell, whether it may accept
+  connections, which wants someone at the Studio; the signed app asks once.
+
+**Tests** pair two stores in one process over a pair of queues (codes agree; declined on either
+side; a key revealed other than the one committed to; a Mac in the middle), and run a real
+listener on this Mac with a sweep case to the same answer, refusing an unpaired Mac, a wrong key
+and a busy gate. They find the listener at its port, not by Bonjour: a test process's Bonjour
+answers never came (Local Network privacy, it seems), and waiting for them hung the suite.
+
 ## Better first
 
 - **A bigger single GPU.** An M3 Ultra (80-core GPU, 819 GB/s, up to 512 GB) would run about
