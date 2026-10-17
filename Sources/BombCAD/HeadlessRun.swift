@@ -20,6 +20,7 @@ enum HeadlessRun {
                            [--cloud <spec.json> [--sounding <sounding.csv>] [--cloud-results <file.json>]]
                            [--ground-shock <spec.json> [--ground-results <file.json>]]
                            [--envelope-results <file.json>] [--envelope-histories <file.json>] [--envelope-damage <file.json>]
+                           [--envelope-window <seconds>]
                            [--standing <file.json>]
                            [--consumer <ssh host> | auto | fragments=<where>,thermal=<where>,ground=<where>]
                            [--worker <ssh host>]…
@@ -38,6 +39,8 @@ enum HeadlessRun {
         damage model. --envelope-damage judges each envelope building one way from those histories
         (concrete panels' levels between fixed and simply supported edges, panes broken and when,
         the inside through them) and writes it as JSON; each building's line is printed too.
+        --envelope-window starts each component's history when the air at it first moves and keeps
+        that many seconds of it, not the whole run: across a district, the bins stay fine.
         --thermal reckons the fireball's thermal radiation on the ground and the scene's faces,
         frame by frame; the receivers go into the USD scene and, with --thermal-results, a JSON
         file. --cloud hands the hot gas left at the end of the run over to a model of the
@@ -105,6 +108,9 @@ enum HeadlessRun {
         /// Where each envelope component's pressure history goes, as JSON.
         var envelopeHistories: URL?
         var envelopeDamage: URL?
+        /// Seconds of each component's history kept from when its air first moves; nil for the
+        /// whole run from t = 0.
+        var envelopeWindow: Double?
         var groundResults: URL?
         /// Where the standing of the run's results goes, as JSON.
         var standing: URL?
@@ -134,7 +140,7 @@ enum HeadlessRun {
                             "vdb-fields", "fragments",
                             "consumer", "fragment-results", "thermal", "thermal-results", "cloud",
                             "cloud-results", "sounding", "ground-shock", "ground-results", "envelope-results",
-                            "envelope-histories", "envelope-damage",
+                            "envelope-histories", "envelope-damage", "envelope-window",
                             "frame-interval", "worker", "standing", "advise", "ground", "water-table",
                         ]
                         .contains(key)
@@ -160,6 +166,12 @@ enum HeadlessRun {
             options.envelopeResults = values["envelope-results"].map { URL(filePath: $0) }
             options.envelopeHistories = values["envelope-histories"].map { URL(filePath: $0) }
             options.envelopeDamage = values["envelope-damage"].map { URL(filePath: $0) }
+            if let text = values["envelope-window"] {
+                guard let seconds = Double(text), seconds > 0, seconds.isFinite else {
+                    throw ProjectFileError.invalid("--envelope-window takes a time in seconds above 0.")
+                }
+                options.envelopeWindow = seconds
+            }
             options.standing = values["standing"].map { URL(filePath: $0) }
             if let text = values["advise"] {
                 guard let target = AdvisorTarget(text: text) else {
@@ -518,7 +530,9 @@ enum HeadlessRun {
         model.envelopeHistoriesByDefault = false
         model.envelopeHistoryOptions =
             options.envelopeHistories == nil && options.envelopeDamage == nil
-            ? nil : EnvelopeHistoryOptions(windowS: inputs.settings.duration)
+            ? nil
+            : options.envelopeWindow.map { EnvelopeHistoryOptions(windowS: $0, windowFromArrival: true) }
+                ?? EnvelopeHistoryOptions(windowS: inputs.settings.duration)
         model.applyExperimentInputs(inputs)
         try await waitUntil(model) { model.experimentIsReady }
         if options.envelopeResults != nil || options.envelopeHistories != nil
