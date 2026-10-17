@@ -31,6 +31,9 @@ public enum TyndallCLTTest {
         /// Measured mean reflected peak (Pa) and impulse (Pa s) on the front.
         public var reflected: Float
         public var impulse: Float
+        /// Measured mean incident peak (Pa) and impulse (Pa s) at the free-field gauges, 75 ft out.
+        public var incident: Float
+        public var incidentImpulse: Float
         /// Measured front-wall centre displacements (m), first floor then second, inbound and
         /// rebound (rebound negative, away from the charge).
         public var firstFloor: SIMD2<Float>
@@ -44,30 +47,39 @@ public enum TyndallCLTTest {
     public static let tests: [Test] = [
         Test(
             number: 1, charge: 14.5, height: (18 + 7.24 / 2) * inch, reflected: 5.05 * psi,
-            impulse: 19.9e-3 * psi,
+            impulse: 19.9e-3 * psi, incident: 2.41 * psi, incidentImpulse: 10.9e-3 * psi,
             firstFloor: SIMD2(1.09, -1.77) * inch, secondFloor: SIMD2(0.83, -1.38) * inch,
             damage: "superficial"),
         Test(
             number: 2, charge: 30.4, height: (18 + 9.17 / 2) * inch, reflected: 7.94 * psi,
-            impulse: 32.9e-3 * psi,
+            impulse: 32.9e-3 * psi, incident: 3.45 * psi, incidentImpulse: 18.0e-3 * psi,
             firstFloor: SIMD2(1.96, -2.75) * inch, secondFloor: SIMD2(1.47, -2.15) * inch,
             damage: "superficial"),
         Test(
             number: 3, charge: 90.3, height: (18 + 15.3 / 2) * inch, reflected: 13.2 * psi,
-            impulse: 65.2e-3 * psi,
+            impulse: 65.2e-3 * psi, incident: 5.15 * psi, incidentImpulse: 33.3e-3 * psi,
             firstFloor: SIMD2(3.90, -6.12) * inch, secondFloor: SIMD2(3.07, -3.84) * inch,
             damage: "moderate: the first-storey front cracked at mid-span"),
     ]
 
     public static let standoff: Float = 22.86
     public static let side: Float = 4.57
+    /// The front's place: 30 m along x (the charge 7 m in from the domain's face behind it), its
+    /// middle at y = 10 m in a domain 20 m wide.
+    static let front: Float = 30
+    static let middle: Float = 10
+    /// The first harness's domain, 32 x 16 m with the charge 1.1 m from the face behind it, for
+    /// comparison (`tight`).
+    nonisolated(unsafe) public static var tight = false
 
-    /// The building with its front at x = 24 m, centred on y = 8 m; the charge on the axis.
+    /// The building with its front at x = 30 m, centred on y = 10 m; the charge on the axis; a
+    /// free-field gauge on the ground on the same 75 ft arc, 7 m to the side.
     public static func scenario(_ test: Test, elementSize: Float = 0.15) -> Scenario {
         let t3: Float = 0.105
         let t5: Float = 0.175
-        let x0: Float = 24
-        let (y0, y1) = (8 - side / 2, 8 + side / 2)
+        let x0 = tight ? 24 : front
+        let middle = tight ? 8 : Self.middle
+        let (y0, y1) = (middle - side / 2, middle + side / 2)
         let x1 = x0 + side
         let floor: Float = 12 * 12 * inch
         let roof = floor + (14 * 12 + 4 - 24) * inch
@@ -88,13 +100,19 @@ public enum TyndallCLTTest {
         model.setMaterial(Self.material(lamellae: 5, grainAxis: 0), of: walls.count)
         model.setMaterial(Self.material(lamellae: 3, grainAxis: 0), of: walls.count + 1)
         model.elementKind = .shell
-        let centre = SIMD3<Float>(x0 - standoff, 8, test.height)
+        let centre = SIMD3<Float>(x0 - standoff, middle, test.height)
+        let aside: Float = 7
         return Scenario(
-            name: "Tyndall test \(test.number)", domainSize: SIMD3(32, 16, 12), boxes: [],
+            name: "Tyndall test \(test.number)", domainSize: tight ? SIMD3(32, 16, 12) : SIMD3(36, 20, 12),
+            boxes: [],
             charge: Charge(mass: test.charge, position: centre),
             gauges: [
-                Gauge("Front, first storey", at: SIMD3(x0 - 0.05, 8, 1.8)),
-                Gauge("Front, second storey", at: SIMD3(x0 - 0.05, 8, floor + 1.8)),
+                Gauge("Front, first storey", at: SIMD3(x0 - 0.05, middle, 1.8)),
+                Gauge("Front, second storey", at: SIMD3(x0 - 0.05, middle, floor + 1.8)),
+                Gauge(
+                    "Free field, 75 ft",
+                    at: SIMD3(
+                        centre.x + (standoff * standoff - aside * aside).squareRoot(), middle + aside, 0.05)),
             ], structure: model)
     }
 
@@ -112,9 +130,12 @@ public enum TyndallCLTTest {
         /// rebound (negative).
         public var firstFloor: SIMD2<Float>
         public var secondFloor: SIMD2<Float>
-        /// Reflected peak (Pa) and positive impulse (Pa s) at the first-storey front gauge.
+        /// Reflected peak (Pa) and positive-phase impulse (Pa s) at the first-storey front gauge,
+        /// and the incident ones at the free-field gauge.
         public var reflected: Float
         public var impulse: Float
+        public var incident: Float
+        public var incidentImpulse: Float
         public var maxDamage: Float
         public var removed: Int
     }
@@ -130,8 +151,9 @@ public enum TyndallCLTTest {
         try solver.load(scenario)
         guard let shells = solver.shells else { throw BlastError.allocationFailed("shells") }
         let floor: Float = 12 * 12 * inch
-        let first = shells.nearestNode(to: SIMD3(24.05, 8, floor / 2))
-        let second = shells.nearestNode(to: SIMD3(24.05, 8, floor + 1.9))
+        let (x0, y) = tight ? (Float(24), Float(8)) : (front, middle)
+        let first = shells.nearestNode(to: SIMD3(x0 + 0.05, y, floor / 2))
+        let second = shells.nearestNode(to: SIMD3(x0 + 0.05, y, floor + 1.9))
         // Rest, under the building's own weight, settled before the blast.
         solver.settleStructures()
         let rest = (shells.node(first).displacement.x, shells.node(second).displacement.x)
@@ -156,15 +178,27 @@ public enum TyndallCLTTest {
             }
         }
         let ambient = scenario.atmosphere.pressure
-        let samples = solver.gaugeHistories.first ?? []
-        var impulse: Float = 0
-        for (p, q) in zip(samples, samples.dropFirst()) {
-            impulse += Float(q.time - p.time) * max(0.5 * (p.pressure + q.pressure) - ambient, 0)
+        // The positive phase, as the report gives it: from the shock to the pressure's first fall
+        // back below ambient.
+        func positive(_ samples: [GaugeSample]) -> (peak: Float, impulse: Float) {
+            guard let start = samples.firstIndex(where: { $0.pressure - ambient > 0.01 * ambient }) else {
+                return (0, 0)
+            }
+            var impulse: Float = 0
+            var peak: Float = 0
+            for (p, q) in zip(samples[start...], samples[(start + 1)...]) {
+                if q.pressure < ambient { break }
+                impulse += Float(q.time - p.time) * (0.5 * (p.pressure + q.pressure) - ambient)
+                peak = max(peak, q.pressure - ambient)
+            }
+            return (peak, impulse)
         }
+        let wall = positive(solver.gaugeHistories.first ?? [])
+        let free = positive(solver.gaugeHistories.count > 2 ? solver.gaugeHistories[2] : [])
         let summary = shells.summary()
         return Result(
-            firstFloor: firstFloor, secondFloor: secondFloor,
-            reflected: (samples.map(\.pressure).max() ?? ambient) - ambient, impulse: impulse,
-            maxDamage: summary.maxDamage, removed: summary.erodedElements)
+            firstFloor: firstFloor, secondFloor: secondFloor, reflected: wall.peak, impulse: wall.impulse,
+            incident: free.peak, incidentImpulse: free.impulse, maxDamage: summary.maxDamage,
+            removed: summary.erodedElements)
     }
 }

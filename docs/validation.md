@@ -2795,30 +2795,43 @@ Cross-Laminated Timber Structures* (Karagozian & Case TR-17-17.1, for WoodWorks,
 - **The joints:** the walls' bases are held at the slab, and the panels are joined rigidly where
   they meet (the tests' screwed angles are not rigid).
 - **The rest:** the door and the boarded window are closed. The building settles under its
-  weight. Air of 0.25 m refined by 2, recommended air.
+  weight. Air of 0.25 m refined by 2, recommended air, over a domain of 36 × 20 × 12 m with the
+  front 30 m along it.
+- **The load compared:** the reflected pressure on the front's centre, its impulse over the
+  positive phase (from the shock's arrival to the first return below ambient), and the incident
+  pressure at ground level on the same arc, 7 m to the side, against the report's free-field
+  gauges.
 
-| Test | Reflected peak (kPa), measured / model | Impulse (kPa ms) | First storey, in / rebound (mm), measured | Model | Second storey, measured | Model | Damage, test / model |
-|---|---|---|---|---|---|---|---|
-| 1, 14.5 kg | 34.8 / 25.1 | 137 / 212 | 28 / −45 | 29 / −30 | 21 / −35 | 25 / −28 | superficial / some layer at full damage, nothing removed |
-| 2, 30.4 kg | 54.7 / 39.6 | 227 / 400 | 50 / −70 | 53 / −44 | 37 / −55 | 44 / −47 | superficial / some layer at full damage, nothing removed |
-| 3, 90.3 kg | 91.0 / 87.5 | 450 / 694 | 99 / −155 | 120 / −136 | 78 / −98 | 137 / −141 | moderate, first-storey front cracked / 78 elements removed |
+| Test | Reflected peak (kPa), measured / model | Impulse (kPa ms) | Incident peak (kPa) | Incident impulse (kPa ms) | First storey, in / rebound (mm), measured | Model | Second storey, measured | Model | Damage, test / model |
+|---|---|---|---|---|---|---|---|---|---|
+| 1, 14.5 kg | 34.8 / 25.1 | 137 / 140 | 16.6 / 12.3 | 75 / 66 | 28 / −45 | 18 / −24 | 21 / −35 | 23 / −30 | superficial / some layer at full damage, nothing removed |
+| 2, 30.4 kg | 54.7 / 39.5 | 227 / 223 | 23.8 / 20.7 | 124 / 102 | 50 / −70 | 29 / −36 | 37 / −55 | 35 / −43 | superficial / some layer at full damage, nothing removed |
+| 3, 90.3 kg | 91.0 / 88.2 | 450 / 472 | 35.5 / 39.2 | 230 / 204 | 99 / −155 | 113 / −101 | 78 / −98 | 78 / −91 | moderate, first-storey front cracked / 66 elements removed |
 
 **What it shows:**
-- **First storey inbound:** within 6% on tests 1 and 2, and 21% high on test 3, where the front
-  broke more than it did in the test.
-- **Second storey:** 19–76% high.
-- **Rebound:** 66–88% of measured. The real walls swung back further: the screwed angles at their
-  bases and the floors give, where the model's joints are rigid.
 - **The load:**
-  - The reflected peak is 4–28% low on 0.25 m air, as peaks are on coarse air
-    ([blast loads](#blast-loads-against-empirical-references)).
-  - The impulse is 54–76% high. The report's measured impulses are below Kingery–Bulmash's,
-    which its authors put down to clearing round the small fronts. The model's front clears too,
-    so the gap is open: it may lie in the one gauge against the report's mean of several, or in
-    the neighbours left out.
-- **A first full-scale check of timber with the air:** with the inbound deflections close and
-  the load's impulse high, the walls are likely somewhat stiffer or stronger than the real ones.
-  The connections, modelled rigid, are the first suspect.
+  - The front's impulse over its positive phase is within 5% of the report's on all three
+    tests. An earlier harness integrated every positive pressure to the end of the run, the
+    reflections off the ground and the building's own rear included, and read 54–76% high;
+    that gap was the harness's.
+  - The reflected peak is 3–28% low and the incident peak up to 26% low on the lighter charges,
+    as peaks are on coarse air ([blast loads](#blast-loads-against-empirical-references)). The
+    incident impulse is 11–18% low.
+- **The domain matters to the first storey:** in a tighter domain (32 × 16 × 12 m, the front at
+  26 m), test 1 has the same positive-phase impulse (140 kPa ms) but its first storey goes in
+  29 mm against 18 mm here; the second storey 25 against 23 mm. The late flow round the
+  building, after the positive phase, differs with the domain's far-field faces and moves the
+  wall. The larger domain is the one reported.
+- **First storey inbound:** 0.58–0.64 of measured on tests 1 and 2, and 14% high on test 3,
+  where the front broke more than it did in the test.
+- **Second storey:** within 10% on all three.
+- **Rebound:** 51–93% of measured, least at the first storey. The real walls swung back
+  further: the screwed angles at their bases and the floors give, where the model's joints are
+  rigid.
+- **A first full-scale check of timber with the air:** with the load's impulse matched, the
+  second storey agrees and the first storey's span is too stiff under the lighter charges and
+  too weak under the heaviest. The connections, modelled rigid, are the first suspect for both
+  the lighter charges and the rebound; the late flow's dependence on the domain is the second.
 
 ## Slabs under contact charges
 

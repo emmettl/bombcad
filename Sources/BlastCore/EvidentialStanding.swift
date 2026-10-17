@@ -2012,9 +2012,9 @@ struct StandingScene {
             evidence.append(
                 StandingEvidence(
                     "Cross-laminated timber buildings at Tyndall, 22.9 m from 14.5–90 kg (Weaver et al., 2017)",
-                    "The front's first storey inbound within 6% on the two lighter charges and 21% high on the "
-                        + "heaviest, the second storey 19–76% high, rebound 66–88% of measured; the front's "
-                        + "impulse 54–76% above the report's",
+                    "The front's impulse within 5% of the report's; the second storey within 10%, the first "
+                        + "storey inbound 0.58–0.64 of measured on the two lighter charges and 14% high on the "
+                        + "heaviest, and sensitive to the domain; rebound 51–93% of measured",
                     "validation.md#cross-laminated-timber-buildings-at-tyndall"))
             parts.append(
                 "timber compared on CLT panels and glulam beams in a shock tube, its strength calibrated, and on "
