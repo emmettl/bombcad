@@ -839,7 +839,7 @@ final class SimulationModel {
         }
     }
 
-    private static func defaultDuration(for scenario: Scenario) -> Double {
+    static func defaultDuration(for scenario: Scenario) -> Double {
         // A structure keeps moving long after the blast wave has left the domain.
         let crossing = (scenario.acousticCrossingTime * 100).rounded(.up) / 100
         return scenario.structure == nil ? crossing : max(crossing, 0.25)

@@ -44,12 +44,22 @@ enum SweepWorkerMessage: Codable, Equatable, Sendable {
     case ensemble(EnsembleJob)
     /// Worker to app: what the sample came to.
     case ensembleFinished(UUID, EnsembleOutcome)
+    /// App to worker: run this project, sending what a viewer draws as it goes (see `WatchJob`);
+    /// it ends, as `run` does, with `finished`.
+    case watch(WatchJob)
+    /// Worker to app: the latest frame of a watched run, its values in the payload (see
+    /// `ViewFrame`).
+    case view(UUID, ViewFrame.Header)
+    /// App to worker: this frame of a watched run has been taken; another may be sent.
+    case viewAck(UUID, Int)
+    /// Worker to app, just before `finished`: what sending the watched run's frames cost.
+    case viewStats(UUID, ViewStats)
 
     static let cancelled = "cancelled"
 }
 
 struct SweepWorkerHello: Codable, Equatable, Sendable {
-    static let protocolVersion = 10
+    static let protocolVersion = 11
     var protocolVersion = Self.protocolVersion
     var solverVersion = SavedSimulationRun.solverVersion
     var device: String

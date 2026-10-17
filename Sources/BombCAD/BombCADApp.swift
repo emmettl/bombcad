@@ -3,7 +3,7 @@ import SwiftUI
 
 /// `BombCAD run …` runs a project without a window (see `HeadlessRun`), `BombCAD sweep …` runs a
 /// sweep (see `HeadlessSweep`), `BombCAD ensemble …` reruns validation cases over their uncertain
-/// inputs (see `HeadlessEnsemble`), `BombCAD cloud …` follows a run's cloud again (see `HeadlessCloud`), `BombCAD worker` serves sweep cases over its standard input and output (see `SweepWorker`), `BombCAD interface-smoke` draws a new document's views offscreen through a change of source (see `InterfaceSmoke`); anything else opens the app.
+/// inputs (see `HeadlessEnsemble`), `BombCAD cloud …` follows a run's cloud again (see `HeadlessCloud`), `BombCAD worker` serves sweep cases over its standard input and output (see `SweepWorker`), `BombCAD watch …` runs a project on another Mac and watches it from this one (see `HeadlessWatch`), `BombCAD interface-smoke` draws a new document's views offscreen through a change of source (see `InterfaceSmoke`); anything else opens the app.
 @main
 enum BombCADMain {
     static func main() {
@@ -15,6 +15,10 @@ enum BombCADMain {
         case "run":
             Task { @MainActor in
                 exit(await HeadlessRun.main(Array(arguments.dropFirst())))
+            }
+        case "watch":
+            Task { @MainActor in
+                exit(await HeadlessWatch.main(Array(arguments.dropFirst())))
             }
         case "sweep":
             Task { @MainActor in
