@@ -75,6 +75,23 @@ enum SweepWorker {
                             if jobs.current?.id == job.id { jobs.current = nil }
                         }
                     )
+                case .watch(let job):
+                    if let running = jobs.current {
+                        try? writer.send(.failed(job.id, "The worker is already running \(running.id)."))
+                        continue
+                    }
+                    let sender = job.view.map { ViewSender(id: job.id, writer: writer, spec: $0) }
+                    jobs.viewers[job.id] = sender
+                    jobs.current = (
+                        job.id,
+                        Task {
+                            await watch(job, sender: sender, writer: writer)
+                            jobs.viewers[job.id] = nil
+                            if jobs.current?.id == job.id { jobs.current = nil }
+                        }
+                    )
+                case .viewAck(let id, let frame):
+                    jobs.viewers[id]?.acknowledge(frame)
                 case .cancel(let id):
                     if let running = jobs.current, running.id == id { running.task.cancel() }
                     jobs.sessions.removeValue(forKey: id)?.cancel()
@@ -104,6 +121,8 @@ enum SweepWorker {
     private final class Jobs {
         var current: (id: UUID, task: Task<Void, Never>)?
         var sessions: [UUID: ConsumerRunner] = [:]
+        /// Watched runs' senders, for their acknowledgements.
+        var viewers: [UUID: ViewSender] = [:]
 
         func stop() async {
             guard let task = current?.task else { return }
@@ -132,6 +151,38 @@ enum SweepWorker {
                     .failed(job.id, "The result could not be sent: \(error.localizedDescription)"))
             }
         case .failure(let error): try? writer.send(.failed(job.id, error.localizedDescription))
+        }
+    }
+
+    /// Runs a watched project, sending its frames as `sender` allows, then what that cost and
+    /// the result.
+    private static func watch(_ job: WatchJob, sender: ViewSender?, writer: SweepWorkerWriter) async {
+        do {
+            var document = try ProjectDocument(archive: job.project.archive())
+            document.savedRuns = []
+            var options = HeadlessRun.Options(project: URL(filePath: "/dev/null"))
+            options.name = job.name
+            options.frameInterval = job.frameInterval
+            let start = ContinuousClock.now
+            let result = try await HeadlessRun.perform(
+                document, options: options,
+                progress: { fraction in writer.enqueue(.progress(job.id, fraction)) },
+                view: sender.map { sender in
+                    { solver, frame, last in sender.frame(solver, number: frame, last: last) }
+                },
+                viewVolume: sender.map { sender in { sender.volumeRequest($0) } }
+            )
+            let took = start.duration(to: .now)
+            if let sender {
+                let seconds = Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18
+                writer.enqueue(.viewStats(job.id, await sender.finish(runSeconds: seconds)))
+            }
+            let archive = SweepWorkerArchive(try result.document.makeArchive())
+            try writer.send(.finished(job.id, archive))
+        } catch is CancellationError {
+            try? writer.send(.failed(job.id, SweepWorkerMessage.cancelled))
+        } catch {
+            try? writer.send(.failed(job.id, error.localizedDescription))
         }
     }
 

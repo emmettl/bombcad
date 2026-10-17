@@ -15,6 +15,48 @@ public enum HazardCriteria {
     public static let injuryEnergyJ: Float = 14.9
 }
 
+/// Hazardous fragments (79 J or more) crossing spheres round the charge near the horizontal, where
+/// a person standing at that range would meet them: the density DDESB judges by, on a surface
+/// normal to the fragments' paths (TP-12, Zaker 1975: a person's 6 ft² presented to them),
+/// rather than where they land. Counted by `FragmentCloud` as each flies.
+public struct FragmentCrossings: Codable, Sendable, Equatable {
+    /// The spheres' radii, m (`GroundHazard.edges` out to 5 km, the first 1 m).
+    public var radii: [Float]
+    public var sectors: Int
+    /// How far from the horizontal a crossing counts, radians either way.
+    public var band: Float
+    /// Real hazardous fragments crossing each sphere in each direction (`sphere * sectors +
+    /// sector`), and the flown ones among them.
+    public var counts: [Float]
+    public var samples: [Int]
+
+    public static let standardBand: Float = 10 * .pi / 180
+
+    public init(sectors: Int = 8, band: Float = standardBand) {
+        radii = Array(GroundHazard.edges(reaching: 5_000).dropFirst())
+        self.sectors = sectors
+        self.band = band
+        counts = Array(repeating: 0, count: radii.count * sectors)
+        samples = Array(repeating: 0, count: radii.count * sectors)
+    }
+
+    /// The sphere `s`'s area in one direction's cell of the band, m².
+    public func area(sphere s: Int) -> Float {
+        radii[s] * radii[s] * (2 * .pi / Float(sectors)) * 2 * sin(band)
+    }
+
+    public func density(sphere s: Int, sector: Int) -> Float {
+        counts[s * sectors + sector] / area(sphere: s)
+    }
+
+    /// The direction a point lies in from `centre`, as `GroundHazard`'s sectors are.
+    static func sector(of offset: SIMD2<Float>, sectors: Int) -> Int {
+        var angle = atan2(offset.y, offset.x) + .pi / Float(sectors)
+        if angle < 0 { angle += 2 * .pi }
+        return min(Int(angle / (2 * .pi) * Float(sectors)), sectors - 1)
+    }
+}
+
 /// Where fragments or debris landed on the open ground round a charge, by range and direction:
 /// the areal density of hazardous ones, and the hazardous fragment distance, past which it stays
 /// below one per 55.7 m² (`HazardCriteria`). Pieces stopped by a structure or block are counted
@@ -42,14 +84,29 @@ public struct GroundHazard: Codable, Sendable, Equatable {
     /// on open ground (m from the charge).
     public var stoppedHazardous: Float
     public var furthestHazardous: Float?
+    /// The same criterion in flight (`FragmentCrossings`): each direction's distance, the
+    /// furthest sphere crossed at one per 55.7 m² or more, and the fragments flown setting it;
+    /// nil in results without crossings.
+    public var airDistances: [Float?]?
+    public var airSamples: [Int]?
 
-    /// The hazardous fragment distance, the largest of the sectors', m; nil with no cell over it.
-    public var hazardDistance: Float? { sectorDistances.compactMap { $0 }.max() }
+    /// On the ground, the largest of the sectors' distances, m; nil with no cell over it.
+    public var groundDistance: Float? { sectorDistances.compactMap { $0 }.max() }
+    /// In flight, the largest of the sectors' distances, m.
+    public var airDistance: Float? { airDistances?.compactMap { $0 }.max() }
+
+    /// The hazardous fragment distance: the larger of the ground's and the air's, m.
+    public var hazardDistance: Float? { [groundDistance, airDistance].compactMap { $0 }.max() }
 
     /// The pieces flown in the cell that sets the hazard distance: a handful means it is set by
     /// sampling as much as by the fragments, and more should be flown.
     public var samplesAtDistance: Int {
-        guard let distance = hazardDistance, let ring = edges.firstIndex(of: distance).map({ $0 - 1 }) else {
+        if let air = airDistance, air >= groundDistance ?? 0, let distances = airDistances,
+            let samples = airSamples
+        {
+            return distances.indices.filter { distances[$0] == air }.map { samples[$0] }.max() ?? 0
+        }
+        guard let distance = groundDistance, let ring = edges.firstIndex(of: distance).map({ $0 - 1 }) else {
             return 0
         }
         return (0..<sectors).filter { sectorDistances[$0] == distance }
@@ -80,7 +137,8 @@ public struct GroundHazard: Codable, Sendable, Equatable {
     /// metre across and each after 10% wider out to the furthest landing, so the distance is to
     /// within 10% at any range.
     public init(
-        impacts: [FragmentImpact], centre: SIMD2<Float>, sectors: Int = 8, edges given: [Float]? = nil
+        impacts: [FragmentImpact], centre: SIMD2<Float>, sectors: Int = 8, edges given: [Float]? = nil,
+        crossings: FragmentCrossings? = nil
     ) {
         precondition(sectors > 0)
         let ground = impacts.filter { $0.surface == "ground" }
@@ -126,6 +184,20 @@ public struct GroundHazard: Codable, Sendable, Equatable {
             }
         }
         sectorDistances = distances
+        if let crossings {
+            var air: [Float?] = Array(repeating: nil, count: crossings.sectors)
+            var setBy = Array(repeating: 0, count: crossings.sectors)
+            for sector in 0..<crossings.sectors {
+                if let s = crossings.radii.indices.last(where: {
+                    crossings.density(sphere: $0, sector: sector) >= criterion
+                }) {
+                    air[sector] = crossings.radii[s]
+                    setBy[sector] = crossings.samples[s * crossings.sectors + sector]
+                }
+            }
+            airDistances = air
+            airSamples = setBy
+        }
     }
 
     /// One line: the hazard distance, how it is sampled, and the shares hazardous and injurious.
@@ -133,6 +205,9 @@ public struct GroundHazard: Codable, Sendable, Equatable {
         let distance =
             hazardDistance.map {
                 String(format: "hazardous fragment distance %.0f m", $0)
+                    + (airDistance.map { String(format: " (in flight %.0f m", $0) } ?? "")
+                    + (airDistance != nil
+                        ? String(format: ", on the ground %.0f m)", groundDistance ?? 0) : "")
                     + (samplesAtDistance < Self.wellSampled
                         ? " (set by \(samplesAtDistance) flown; fly more)" : "")
             } ?? "no ground over 1 hazardous fragment per 55.7 m²"

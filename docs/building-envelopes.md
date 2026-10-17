@@ -539,9 +539,10 @@ and set against the same component of the detailed building free to respond (sum
 [recorder](#surface-exposure-and-loads) keeps both sides' histories at 0.1 ms) and judge every building
 one way as the run goes, at most once a second and again when it stops:
 
-- **Construction.** Each envelope's walls are reinforced concrete, unreinforced masonry or
-  reinforced blockwork (grouted or hollow, as a concrete of the masonry's strength), with a
-  thickness, a concrete roof, a reinforcement ratio and annealed glass; and, for concrete and
+- **Construction.** Each envelope's walls are reinforced concrete, unreinforced masonry,
+  reinforced blockwork (grouted or hollow, as a concrete of the masonry's strength) or profiled
+  steel sheeting on rails ([profiled sheeting](profiled-sheeting.md#in-the-one-way-damage-of-envelopes)),
+  with a thickness, a concrete or sheeted roof, a reinforcement ratio and annealed glass; and, for concrete and
   blockwork walls, their bars in one central mat or in both faces (with the cover), the concrete's
   or the masonry's strength, the bars' yield, and the mass of a cap or canopy carried on a
   freestanding wall's top. These are read from an IFC import's material layers or a map building's

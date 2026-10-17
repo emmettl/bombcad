@@ -71,7 +71,9 @@ concrete block (hollow, as breeze block; see the
 (brittle: cracking at 45 MPa, with the fracture energy, 8 J/m², of its toughness, and gone
 after half a millimetre), meant for panes meshed as shells (and drawn as see-through glass, turning milky as it cracks), alone or in a
 [mixed body](shell-model.md#shells-and-solids-together). A 1 m square pane of 6 mm glass held
-at its edges breaks under 1 kg at 3 m and survives 0.5 g.
+at its edges breaks under 1 kg at 3 m and survives 0.5 g. A plate of steel can be made a profiled
+sheet, trapezoidal or sinusoidal, meshed as a skin with its ribs as beams
+([profiled steel sheeting](profiled-sheeting.md)).
 
 ## Elements
 
