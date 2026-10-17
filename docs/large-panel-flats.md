@@ -6,9 +6,10 @@ the kind that partly collapsed at Ronan Point in 1968:
 - **Large-panel flats: street charge**
 
 They are showcases, run on the model as it stands. Nothing here has been compared with a
-measurement. Collapse has been compared once, blind, and missed (see the [standing](#its-standing)).
+measurement; the gas flat is set against the inquiry's own estimates of what each wall needed
+to give ([below](#against-the-inquirys-estimates)). Collapse has been compared once, blind, and missed (see the [standing](#its-standing)).
 
-![The street charge, 2 s: one bay's floors falling as their flank walls go](large-panel-street-2000ms.png)
+![The street charge, 4 s: the east bay's lower storeys down in the street, its top three hanging off the cross wall, the west bays standing](large-panel-street-4000ms.png)
 
 ## The building
 
@@ -44,27 +45,50 @@ Stoichiometric methane fills the back half of the west corner flat on the tenth 
 eighteenth of 22, and was town gas, which the model does not have), lit at the cooker. The flat's
 two windows are vent panels. Air on 0.125 m cells (`blastbench panelblock --case gas`).
 
-GAS_IMAGE
+![Gas in the corner flat, 0.7 s: the face wall under its front window burst outwards, the load-bearing flank wall (left) standing](large-panel-gas-700ms.png)
 
 **With the windows holding to 25 kPa (the preset)**, so that the pressure can find the walls:
-- the flat reaches **15 kPa by 0.5 s**;
+- the flat reaches **14 kPa by 0.5 s**;
 - there the **light face wall under the front window breaks out** (20 elements fail) and the
   flat vents through it; the pressure rises no further and the gas burns out over two seconds,
   much of it outside;
-- the **flank wall slides 22 mm on its joints and holds**: in this block it would slide off at
-  about 20 kPa (its friction under the two storeys and roof above), close to the 2.8 psi (19 kPa)
-  the inquiry's tests found for Ronan Point's;
-- **nothing collapses.** The weakest part of this flat's enclosure is its face wall, not the
-  load-bearing flank, and the explosion goes out through it.
+- the **flank wall's joints slide 7 mm and hold**;
+- **nothing collapses.** The flat vents through its face wall before the pressure on the flank
+  wall reaches what its joints hold.
 
 **With ordinary glazing**, windows going at 3 kPa (`--vent 3`), the panels release at 0.3 s
-and the flat vents at **3.3 kPa**; the flank wall slides 3 mm.
+and the flat vents at **3.3 kPa**; the flank wall slides 3 mm (a run before structures were settled
+under their own weight first, 17 October 2026).
 
-So the gas does not set off a progressive collapse here, where at Ronan Point it did: there the
-pressure, by the inquiry's account, displaced the flank wall before anything else gave. Whether
-a flat's face walls and windows or its flank wall go first decides it, and this block's face walls
-are the assumed part (87.5 mm of 20 MPa concrete; Ronan Point's are not described beyond being
-light and non-load-bearing).
+### Against the inquiry's estimates
+
+The inquiry worked out what each part of flat 90's enclosure needed to give (§118–126), for a
+flat with four storeys above it:
+
+| Part | The inquiry, Ronan Point's flat 90 | This block's flat, the model |
+|---|---|---|
+| Light face walls | blew out "almost immediately", at about ¼ psi (1.7 kPa) (§118) | held to 14 kPa, then broke out under the front window |
+| Flank panel's joint at floor level | displaced at about 800 lb/ft² (5.54 psi, 38 kPa), friction at the dry mortar relieved by the gas on the floor (§122) | held (friction 0.7 under the wall and the floors above it) |
+| Flank panel's joint at ceiling level (H.2) | broken at about 400 lb/ft² (2.78 psi, 19 kPa), the gas lifting the ceiling off the shelf's friction, the tie plate acting only once the stud reached the end of its slot (§123) | slid 7 mm at 14 kPa and stopped as the flat vented |
+| Floor slabs | down at 3.89 psi (27 kPa), the ceiling up at 2.22 psi (15 kPa) in tests (§124) | the ceiling lifted but did not fail |
+| What starts the collapse | "an average gas pressure on the flank wall of 3 lb/in²" (21 kPa) (§126) | not reached: 14 kPa |
+
+**The model's flank is not stronger than the inquiry's.** Its joints had begun to slide at
+14 kPa, below the inquiry's 19 kPa for the joint at the ceiling, as the gas lifted the floor above off it, which is
+the mechanism the inquiry describes; with two storeys and the roof above it rather than four, it
+has less weight to hold it. What the inquiry's flat had that this one does not is pressure: about
+3 psi on the flank wall, from a gas that had collected in the hall and burnt before the face walls
+and window could vent it. Here the flat's pressure stops rising at 14 kPa, for two reasons, both on
+the side of too little:
+- **the flame.** Methane, where Ronan Point had town gas, half hydrogen, whose burning velocity is two to
+  three times methane's; and the model's vented flames read low, 0.4–0.6 of FM Global's tests lit in the
+  middle (the [standing](#its-standing) says so for every vented gas scene);
+- **the face wall**, here a panel of 87.5 mm concrete bonded to the walls, held to 14 kPa where
+  the inquiry's went at ¼ psi. A weaker face wall would vent the flat sooner and lower the
+  pressure further, so it is not what spares the flank; the flame is.
+
+So the model, given this flat, under-reads a Ronan Point–type gas event: the unsafe side, through
+the gas load rather than the joints. Nothing here was tuned to reach the inquiry's 3 psi.
 
 ## A street charge
 
@@ -73,26 +97,23 @@ air on 0.25 m cells, 1.2 million of them):
 
 ![The street charge, 1.5 s: the east bay's floors hinge down off their flank walls](large-panel-street-1500ms.png)
 
-![The same, 2 s: the east bay's floors folding down the face, the rest of the block standing](large-panel-street-2000ms.png)
-
 The ground floor's flank wall takes 2.7 MPa of reflected pressure and is pushed into the
-building; its floor goes with it. In the first 0.1 s half the joints' pairs have lost their
-strength and 1,151 have slid off their seats, but the cross walls hold. Then the east bay goes
+building; its floor goes with it. In the first 0.3 s half the joints' pairs have lost their
+strength and 2,345 have slid off their seats, but the cross walls hold. Then the east bay goes
 storey by storey from the bottom up: each flank wall panel loses the floor it stood on, slides
 off and drops, and the bay's floors, losing their flank-end bearing, hinge down about the cross
-wall, where the continuous floor cracks over it (4.8 m at 0.6 s, 6.2 m at 1.5 s). The two west
-bays stand. It is the mechanism of Ronan Point's corner, the floors of one bay falling once the
-wall at their end is gone, set off from below rather than from the eighteenth floor.
-
-**The run blows up between 2 and 3 s**, as the falling bay's pieces land on the ground (see
-[below](#what-the-runs-found-along-the-way)); the frames up to 2 s are before it. The outcome
-for the block as a whole after 2 s is not known from this run.
+wall, where the continuous floor cracks over it (5.0 m at 1 s, 6.5 m at 1.5 s). From 2 s the
+bay's lower floors tear off the cross wall and fall into the street; by 4 s nine storeys of the
+bay lie in a pile in front of the block, 24,891 elements failed, and its top three floors still
+hang, cantilevered off the cross wall. The two west bays stand. It is the mechanism of Ronan
+Point's corner, the floors of one bay falling once the wall at their end is gone, set off from
+below rather than from the eighteenth floor.
 
 | Charge at 8 m | What happens |
 |---|---|
 | 250 kg | The joints slide up to 118 mm and 678 pairs come off their seats; no element fails, and the block stands, 126 mm out at 3 s |
-| 500 kg (the preset) | The east bay comes down storey by storey, as above; blows up after 2 s |
-| 1,000 kg | The ground floor's flank wall and floor are thrown 4 m in 0.16 s; the run blows up within 0.3 s |
+| 500 kg (the preset) | The east bay comes down storey by storey, as above |
+| 1,000 kg | The ground floor's flank wall and floor are thrown 4 m in 0.16 s; the run blew up within 0.3 s as they landed, before the fix below |
 
 ## What the runs found along the way
 
@@ -106,10 +127,11 @@ for the block as a whole after 2 s is not known from this run.
   opened them. Fixed (see [vent panels](deflagration.md#vent-panels)).
 - **A young flame is slow on coarse cells** ([deflagration](deflagration.md#limitations)): on
   0.25 m cells the flat's gas had hardly burnt in 3 s. The gas preset needs 0.125 m.
-- **Fast debris on the ground can blow a solid structure up.** Under 1,000 kg at 8 m the
-  ground-floor flank wall is thrown 4 m in 0.16 s, and where its pieces land the structure went
-  to NaN within 0.05 s; with either node contact or ground contact off it did not. Not fixed
-  here.
+- **Fast debris on the ground blew a solid structure up.** Under 1,000 kg at 8 m the ground-floor
+  flank wall is thrown 4 m in 0.16 s, and where its pieces landed the structure went to NaN
+  within 0.05 s (with node contact or ground contact off it did not); under 500 kg it did so
+  after 2 s. A bare element pressed flat on the hard ground was left with no volume; it is now
+  removed (df4baa88), and the 500 kg run goes to 4 s.
 
 ## Its standing
 
@@ -124,13 +146,17 @@ What is and is not compared, in short:
   large-panel joint, and no H.2 joint, has been compared.
 - **The gas:** the flame against FM Global's vented chamber (0.4–0.6 of its peaks lit in the
   middle, 0.9–1.8 at a back wall); not in a flat, not with town gas, whose hydrogen burns
-  faster than the methane used here.
+  faster than the methane used here. Against the inquiry's estimates the flat's pressure reads
+  low, the unsafe side: 14 kPa where Ronan Point's flank wall saw about 21 kPa
+  ([above](#against-the-inquirys-estimates)).
+- **The flank joint against the inquiry's estimate:** sliding at 14 kPa where the inquiry put
+  the H.2 joint's strength at 19 kPa, so not on the unsafe side; an estimate, not a test.
 - **The collapse:** not compared. Ronan Point's corner fell from the 22nd floor to the podium;
   this block is not Ronan Point, and its outcome is not a prediction of it.
 
 ## Cost
 
 670,560 solid elements on a 87.5 mm step make it the most expensive layout here: 3 s of the street
-charge took 76 minutes, 4 s of the gas 83, 1,250 to 1,500 times slower than real time on an M4 Max
+charge took 89 minutes, 4 s of the gas 83, 1,250 to 1,350 times slower than real time on an M4 Max
 shared with other work ([performance](performance.md#collapse)). In the app, set *Stop after* to
 3 or 4 s: the default stops at a quarter of a second.

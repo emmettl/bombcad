@@ -155,7 +155,7 @@ public enum LargePanelBlock {
         /// the flat's two windows hold to `windowRelease`.
         case gas
         /// 500 kg in the street, 8 m from the far flank wall, a metre up. 250 kg slides the
-        /// joints; at 1,000 kg the debris thrown on the ground blows the run up within 0.2 s.
+        /// joints; 1,000 kg throws the ground floor's flank wall 4 m in 0.16 s.
         case street
     }
 

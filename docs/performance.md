@@ -501,7 +501,7 @@ parts (18,400 node pairs), contact on from the start, in a session shared with o
 | Run | Air | Simulated | Wall time |
 |---|---|---|---|
 | Under its own weight, damped, no air | none | 0.5 s | 280 s (560× slower than real time) |
-| 500 kg in the street | 1.2 million cells of 0.25 m, frozen at 0.76 s | 3 s | 4,565 s (1,520×) |
+| 500 kg in the street | 1.2 million cells of 0.25 m, frozen at 0.75 s | 4 s | 5,348 s (1,340×), its settling under its own weight first included |
 | Gas in a corner flat (windows at 3 kPa) | 6.4 million cells of 0.125 m, never frozen | 1.5 s | 2,590 s (1,730×) |
 | Gas in a corner flat (windows at 25 kPa, the preset) | 6.4 million cells of 0.125 m, never frozen | 4 s | 4,995 s (1,250×) |
 The structure dominates: its time step is set by the 87.5 mm elements, about four times shorter than
