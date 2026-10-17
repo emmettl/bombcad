@@ -288,7 +288,11 @@ A cased kilogram 5 m in front of a glazed window (`FragmentVentingTests`, 0.25 m
 its pane at 3.15 ms, which opens on that step; the blast alone breaks the glass at 13.0 ms. By
 20 ms the room's mean has peaked at 1.47 kPa through the hole (past 1 kPa at 15.6 ms), against
 75 Pa with the glass left to the blast, and the run is the same to the bit however its steps
-are batched.
+are batched. `FragmentCloud.envelopeHoles` gives every hole the same flight makes through envelope
+walls, roofs and panes, with its time, place and area, for the air to open them: a hole is the
+fragment's mean presented area (times the real fragments it stands for), for want of a cited
+hole size (UFC 3-340-02 §4-60.1 describes craters wider than the fragment but gives no size), so
+the open area is a lower bound.
 
 **In the app** a strike on a judged target is drawn larger than a landing: grey where the
 fragment stopped, amber where it spalled the far face, crimson where it went through. The
