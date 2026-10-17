@@ -128,6 +128,7 @@ public enum EnvelopeDamageLevel: Int, Codable, Sendable, Comparable, CaseIterabl
 public struct EnvelopeComponentDamage: Codable, Sendable, Identifiable {
     public enum Material: String, Codable, Sendable {
         case reinforcedConcrete, unreinforcedMasonry, annealedGlass, reinforcedBlockwork, profiledSteel
+        case crossLaminatedTimber
     }
     public var id: String
     public var owner: UUID
@@ -515,6 +516,11 @@ public enum EnvelopeDamageAssessment {
             return profiledSheet(
                 load, construction: construction, roof: isRoof, pressures: pressures, peak: peak)
         }
+        if kind == .crossLaminatedTimber {
+            return crossLaminated(
+                load, construction: construction, roof: isRoof,
+                span: load.oneWaySpan.map { min($0, largestSpan) } ?? a, pressures: pressures, peak: peak)
+        }
         if let span = load.oneWaySpan.map({ min($0, largestSpan) }) {
             return oneWay(
                 load, kind: kind, thickness: thickness, span: span, construction: construction,
@@ -543,6 +549,9 @@ public enum EnvelopeDamageAssessment {
         case .profiledSteelSheeting:
             return profiledSheet(
                 load, construction: construction, roof: isRoof, pressures: pressures, peak: peak)
+        case .crossLaminatedTimber:
+            return crossLaminated(
+                load, construction: construction, roof: isRoof, span: a, pressures: pressures, peak: peak)
         case .unreinforcedMasonry:
             var masonry = StructureMaterial.masonry
             masonry.steel = nil
@@ -587,6 +596,11 @@ public enum EnvelopeDamageAssessment {
         case .profiledSteelSheeting:
             // Sheeting spans between its rails whether or not the wall stands alone.
             return profiledSheet(load, construction: construction, roof: false, pressures: net, peak: peak)
+        case .crossLaminatedTimber:
+            return crossLaminated(
+                load, construction: construction, roof: false, span: height, cantilever: true,
+                pressures: pressures,
+                peak: peak)
         case .reinforcedConcrete, .reinforcedBlockwork:
             let section = construction.wallBars(thickness: thickness)
             let response = EnvelopePanel.reinforcedConcreteCantilever(
@@ -652,6 +666,9 @@ public enum EnvelopeDamageAssessment {
         case .profiledSteelSheeting:
             return profiledSheet(
                 load, construction: construction, roof: isRoof, pressures: pressures, peak: peak)
+        case .crossLaminatedTimber:
+            return crossLaminated(
+                load, construction: construction, roof: isRoof, span: span, pressures: pressures, peak: peak)
         case .unreinforcedMasonry:
             var masonry = StructureMaterial.masonry
             masonry.steel = nil

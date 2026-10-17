@@ -1,9 +1,12 @@
 # ContinuumKit adoption
 
-BombCAD pins [ContinuumKit `0.1.0-alpha.25`](https://github.com/emmettl/ContinuumKit/releases/tag/0.1.0-alpha.25)
-and commits the resolved Git revision (`c3f5d08`). Since alpha.19 the pressure-gradient
+BombCAD pins [ContinuumKit `0.1.0-alpha.26`](https://github.com/emmettl/ContinuumKit/releases/tag/0.1.0-alpha.26)
+and commits the resolved Git revision (`c855423`). Since alpha.19 the pressure-gradient
 fit (`FiniteVolumePressureFit`) solves its least squares with the shared `PivotedQR`;
-since alpha.25 contact's table and search are the shared `ContactSearchMetal`. Source picking and fragment segments use the
+since alpha.25 contact's table and search are the shared `ContactSearchMetal`; since alpha.26
+its timber shells and beams run a single-precision copy of the shared `TimberFailure`, which
+BombCAD contributed ([ContinuumKit#93](https://github.com/emmettl/ContinuumKit/pull/93)) and tests
+its copy against (`TimberTests`). Source picking and fragment segments use the
 shared closed-box query in `SceneModel`; application ownership and mechanical
 coupling remain in BombCAD.
 

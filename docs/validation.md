@@ -2773,6 +2773,54 @@ Doudak, J. Struct. Eng. 144(9), 2018.
 - **Mid-span:** without its rotations held there (which symmetry holds anyway), a beam on two
   pins turns freely about its axis. It broke 16% early.
 
+## Cross-laminated timber buildings at Tyndall
+
+**The test.** Weaver, Newberry, O'Laughlin and Podesto, *Results from Blast Tests of Full-Scale
+Cross-Laminated Timber Structures* (Karagozian & Case TR-17-17.1, for WoodWorks, 2017; open).
+- **The buildings:** three single-bay, two-storey buildings, 4.57 m square on a concrete slab.
+  - Walls and roof are 3-ply (105 mm), the walls' outer lamellae vertical; the second floor is
+    5-ply (175 mm).
+  - The walls bear on steel angles screwed and anchored to the slab, and meet the floors on clip
+    angles.
+  - The front, facing the charge, has no openings.
+- **The charges:** flake TNT, 22.86 m from the front: 14.5, 30.4 and 90.3 kg in tests 1 to 3.
+- **Measured:** the mean reflected pressure and impulse on the fronts, and the front wall's centre
+  at the first and second storeys, inbound and rebound (its Table 4-2).
+- **The harness:** `TyndallCLTTest`, `blastbench tyndall`.
+
+**The model:**
+- **The building:** the Nordic E1 one alone. Its neighbours, 3.4 m away on the same arc and
+  turned towards the charge, are left out.
+- **The material:** CLT shells of E1, as for Poulin's panels, with their strength along the grain
+  calibrated on Poulin's static tests and the dynamic increase of 1.28.
+- **The joints:** the walls' bases are held at the slab, and the panels are joined rigidly where
+  they meet (the tests' screwed angles are not rigid).
+- **The rest:** the door and the boarded window are closed. The building settles under its
+  weight. Air of 0.25 m refined by 2, recommended air.
+
+| Test | Reflected peak (kPa), measured / model | Impulse (kPa ms) | First storey, in / rebound (mm), measured | Model | Second storey, measured | Model | Damage, test / model |
+|---|---|---|---|---|---|---|---|
+| 1, 14.5 kg | 34.8 / 25.1 | 137 / 212 | 28 / −45 | 29 / −30 | 21 / −35 | 25 / −28 | superficial / some layer at full damage, nothing removed |
+| 2, 30.4 kg | 54.7 / 39.6 | 227 / 400 | 50 / −70 | 53 / −44 | 37 / −55 | 44 / −47 | superficial / some layer at full damage, nothing removed |
+| 3, 90.3 kg | 91.0 / 87.5 | 450 / 694 | 99 / −155 | 120 / −136 | 78 / −98 | 137 / −141 | moderate, first-storey front cracked / 78 elements removed |
+
+**What it shows:**
+- **First storey inbound:** within 6% on tests 1 and 2, and 21% high on test 3, where the front
+  broke more than it did in the test.
+- **Second storey:** 19–76% high.
+- **Rebound:** 66–88% of measured. The real walls swung back further: the screwed angles at their
+  bases and the floors give, where the model's joints are rigid.
+- **The load:**
+  - The reflected peak is 4–28% low on 0.25 m air, as peaks are on coarse air
+    ([blast loads](#blast-loads-against-empirical-references)).
+  - The impulse is 54–76% high. The report's measured impulses are below Kingery–Bulmash's,
+    which its authors put down to clearing round the small fronts. The model's front clears too,
+    so the gap is open: it may lie in the one gauge against the report's mean of several, or in
+    the neighbours left out.
+- **A first full-scale check of timber with the air:** with the inbound deflections close and
+  the load's impulse high, the walls are likely somewhat stiffer or stronger than the real ones.
+  The connections, modelled rigid, are the first suspect.
+
 ## Slabs under contact charges
 
 The first comparison of debris: the speed of the concrete thrown off the far face of slabs
