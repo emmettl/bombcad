@@ -60,7 +60,7 @@ The standing is worked out from the scene's actual settings each time they chang
   approximation; base connections cap them at verified; simplified cars make freestanding motion
   illustrative. Options with their own evidence (shells, bars that slip, footings) add it.
 - **What is left out.** Each scene lists what it could involve that nothing here models: a
-  rigid ground with no crater, collapse compared once (blind, and missed) and debris only once, ignition and fire, and so on.
+  rigid ground with no crater (or, on earth or rock, a crater estimated but not modelled), collapse compared once (blind, and missed) and debris only once, ignition and fire, and so on.
 
 ## In the app
 
