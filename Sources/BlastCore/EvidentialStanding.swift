@@ -135,7 +135,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-8"
+    public static let currentTable = "standing-table-9"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -2204,9 +2204,11 @@ struct StandingScene {
             .groundShock, .illustrative,
             column
                 ? "A layered soil column under each point, checked against closed-form solutions; against "
-                    + "one measured surface burst, its vertical velocity 20 to 80 times too high."
-                : "The design manuals' one-dimensional air-induced ground shock; against one measured "
-                    + "surface burst, its vertical velocity 20 to 80 times too high.",
+                    + "one measured surface burst, its vertical velocity 20 to 80 times too high (the safe side), "
+                    + "while the horizontal motion that dominated it is not modelled (the unsafe side)."
+                : "The design manuals' one-dimensional air-induced ground shock; against one measured surface "
+                    + "burst, its vertical velocity 20 to 80 times too high (the safe side), while the horizontal "
+                    + "motion that dominated it is not modelled (the unsafe side).",
             evidence: (column
                 ? [
                     StandingEvidence(
