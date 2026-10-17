@@ -144,9 +144,11 @@ struct GroundShockRunTests {
             #expect(point.responses[0].verticalVelocity > point.responses[1].verticalVelocity)
             // The surface moves at the plane-wave relation of the top layer, give or take the
             // load's rebuilding between frames and its averaging over the column's window (a
-            // finer step here, so a narrower window, for this small charge's short pulses).
+            // finer step here, so a narrower window, for this small charge's short pulses). The
+            // point the blast covers at time zero is loaded at once, and the surface of soil that
+            // unloads stiffly rings a tenth over such a jump.
             let plane = point.peakOverpressure / (1600 * 300)
-            #expect(abs(point.responses[0].verticalVelocity / plane - 1) < 0.1)
+            #expect(abs(point.responses[0].verticalVelocity / plane - 1) < 0.12)
         }
         #expect(ground.summary.contains("a column of 2 layers"))
     }
