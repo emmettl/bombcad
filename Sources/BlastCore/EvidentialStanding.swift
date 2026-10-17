@@ -70,6 +70,7 @@ public enum ResultKind: String, Codable, CaseIterable, Sendable, Identifiable {
     case cloud
     case fragments
     case groundShock
+    case crater
 
     public var id: Self { self }
 
@@ -87,6 +88,7 @@ public enum ResultKind: String, Codable, CaseIterable, Sendable, Identifiable {
         case .cloud: "Rise and cloud"
         case .fragments: "Fragments"
         case .groundShock: "Ground shock"
+        case .crater: "Crater"
         }
     }
 }
@@ -303,6 +305,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case jointsBetweenParts
     case footings
     case softGround
+    /// Earth or rock under the charge (`SolverConfiguration.ground`): less of its energy for the air.
+    case groundCoupling
     case cyclicSand
     case freeBase
     case importedStructure
@@ -399,6 +403,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
                     || s.supportAnchorages.contains { $0?.footing != nil }
             }
         case .softGround: return config.groundStiffness != nil && !structures.isEmpty
+        case .groundCoupling: return config.ground.map { $0 != .rigid } ?? false
         case .cyclicSand:
             return any { s in
                 (s.fixedBase && s.baseAnchorage?.footing?.soil.cyclic != nil)
@@ -763,6 +768,15 @@ public enum StandingTable {
                     + "from 2.15 to 1.36 m against 0.64 m. Not for paving or slabs; the air sees the ground as "
                     + "hard.",
                 document: "validation.md#brick-walls-debris")
+        case .groundCoupling:
+            return Entry(
+                title: "Ground that takes energy", affects: air, limit: .approximation,
+                note:
+                    "On earth or rock, a charge on the surface acts on the air as 1.8 times its mass in "
+                    + "free air rather than rigid ground's 2, the middle of Kinney and Graham's 1.5 to 2, tapering "
+                    + "back with height as the share going into the ground falls (Cooper). The same for every soil; "
+                    + "nothing compared here with a burst measured over soft ground.",
+                document: "cratering.md#the-air-on-soft-ground")
         case .cyclicSand:
             return Entry(
                 title: "Sand that settles under cycles", affects: structure, limit: nil,
@@ -973,6 +987,7 @@ public enum StandingTable {
         "SolverConfiguration.afterburnLimit": .option([.afterburnLimit]),
         "SolverConfiguration.terrainCutCells": .option([.terrainStaircase]),
         "SolverConfiguration.groundStiffness": .option([.softGround]),
+        "SolverConfiguration.ground": .option([.groundCoupling]),
         // The structure.
         "StructureModel.solids": .input,
         "StructureModel.openings": .input,
@@ -1169,6 +1184,7 @@ extension SceneStanding {
         if inputs.cloud != nil { results.append(scene.cloud()) }
         if inputs.fragments != nil { results.append(scene.fragments()) }
         if inputs.groundShock != nil { results.append(scene.groundShock()) }
+        if scene.options.contains(.groundCoupling) { results.append(scene.crater()) }
         // Each set option caps the results it touches and is named on them.
         for option in scene.options {
             let entry = StandingTable.entry(for: option)
@@ -2205,6 +2221,27 @@ struct StandingScene {
             ] + shared, documents: ["fragments.md#limitations"])
     }
 
+    func crater() -> ResultStanding {
+        result(
+            .crater, .approximation,
+            "Cooper's cube-root scaling for the apparent crater's radius by soil and height of burst, with "
+                + "Kinney and Graham's one-sigma scatter of a third; the depth is a rule of thumb.",
+            evidence: [
+                StandingEvidence(
+                    "Six measured craters: three 500-ton TNT shots at Suffield, Sailor Hat, Minor Scale and Beirut",
+                    "Five of six apparent diameters within a third (the Suffield shots 1.04–1.26); depths 0.2–0.3 of "
+                        + "the rule where the water table was high",
+                    "cratering.md#against-measured-craters")
+            ],
+            assumptions: [
+                "The crater does not act on the blast: it forms after the blast has gone, so the air keeps the "
+                    + "ground as it was.",
+                "Bursts on or above the ground, not buried ones.",
+                "Depth and lip are rules of thumb; a high water table or flowing fill can leave a far shallower "
+                    + "crater.",
+            ], documents: ["cratering.md#limitations"])
+    }
+
     func groundShock() -> ResultStanding {
         let column = has(.soilColumn)
         return result(
@@ -2233,7 +2270,10 @@ struct StandingScene {
     func unsupported() -> [String] {
         var effects = [
             "Nothing here is validated for engineering decisions or for judging the safety of a real structure.",
-            "The ground is rigid and reflecting: no crater, displaced soil or ground coupling to the air.",
+            options.contains(.groundCoupling)
+                ? "The crater is estimated, not modelled: no displaced soil, ejecta or ground shock driven by the "
+                    + "charge, and the air keeps the ground as it was before the blast."
+                : "The ground is rigid and reflecting: no crater, displaced soil or ground coupling to the air.",
         ]
         if !structures.isEmpty {
             effects.append(

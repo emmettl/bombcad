@@ -1437,6 +1437,10 @@ extension StandingScene {
             }
         case .freestandingMotion, .fragments, .groundShock, .surfaceHeating:
             unbanded.append("Nothing measured to band it.")
+        case .crater:
+            unbanded.append(
+                "The apparent diameter's one-sigma scatter is a third either way (Kinney and Graham's 200 "
+                    + "accidental explosions), given with each crater; its depth has no band.")
         }
         return (bands, unbanded)
     }
@@ -1576,7 +1580,7 @@ extension StandingScene {
                     has(.afterburning) ? ValidationTables.burningDocument : "validation.md#afterburning")
             }
         case .envelopeExposure, .envelopeDamage, .freestandingMotion, .thermal, .surfaceHeating, .cloud,
-            .fragments, .groundShock:
+            .fragments, .groundShock, .crater:
             break
         }
         return advice

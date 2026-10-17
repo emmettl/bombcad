@@ -348,6 +348,9 @@ extension BlastSolver {
     ///
     /// The scenario's domain must match the solver's grid.
     public func load(_ scenario: Scenario) throws {
+        // On earth or rock, the charges as the air sees them: part of their energy goes into the
+        // ground. Rigid ground leaves the scene as it is.
+        let scenario = configuration.ground.map { scenario.coupled(to: $0) } ?? scenario
         try scenario.validateObjectOwnership()
         clearEnvelopeExposure()
         configuration.ambientPressure = scenario.atmosphere.pressure

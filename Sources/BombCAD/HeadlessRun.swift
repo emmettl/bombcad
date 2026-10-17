@@ -12,7 +12,8 @@ enum HeadlessRun {
         Usage: BombCAD run <project.bombcad | layout.json> [--name <name>] [--out <new.bombcad>]
                            [--csv <file.csv>] [--resolution coarse|medium|fine|<metres>] [--mass <kg TNT>]
                            [--advise peak:20%|impulse:15%|deflection:30%|time:10m]
-                           [--duration <seconds>] [--ground rigid|soil|<MN/m³>] [--usd <scene.usda>] [--vdb <folder>
+                           [--duration <seconds>] [--ground rigid|soil|<MN/m³>|<ground type>]
+                           [--usd <scene.usda>] [--vdb <folder>
                            [--vdb-fields overpressure,shock,peak,impulse]] [--frame-interval <ms>]
                            [--fragments <spec.json> [--fragment-results <file.json>]]
                            [--thermal <spec.json> [--thermal-results <file.json>]]
@@ -56,7 +57,9 @@ enum HeadlessRun {
         within a time, by the standing's error bands and the cost model, and does not run.
         --resolution and --mass change the inputs as a sweep case would, and --ground what the
         structures' debris lands on: the hard ground, or soil (50 MN/m³ unless a subgrade modulus is
-        given, 10 to 150); the project itself is never modified. The summary ends with the standing of each result (docs/standing.md), which
+        given, 10 to 150). A ground type (rock, soilOverSandstone, playa, alluvium, clay,
+        glacialSoil, clayShale, saturated) also digs each charge's crater, estimated and drawn after
+        the run, and leaves the air less of a charge near it. The project itself is never modified. The summary ends with the standing of each result (docs/standing.md), which
         --standing writes as JSON and the USD scene, the volumes and the results files carry too.
         """
 
@@ -71,6 +74,8 @@ enum HeadlessRun {
         /// With `--ground`, what the structures' debris lands on: soil of this subgrade modulus
         /// (Pa/m), or, as `.some(nil)`, the hard ground.
         var ground: Float??
+        /// With `--ground` naming a type, what the ground is made of (with its debris modulus).
+        var groundType: GroundType?
         var usd: URL?
         /// A new folder for the air's volumes, one OpenVDB file a frame, and their grids.
         var vdb: URL?
@@ -172,14 +177,21 @@ enum HeadlessRun {
             }
             if let text = values["ground"] {
                 switch text {
-                case "rigid": options.ground = .some(nil)
+                case "rigid":
+                    options.ground = .some(nil)
+                    options.groundType = .rigid
                 case "soil": options.ground = .some(SolverConfiguration.soilSubgradeModulus)
+                case let name where GroundType(rawValue: name) != nil:
+                    let type = GroundType(rawValue: name)!
+                    options.groundType = type
+                    options.ground = .some(type.debrisModulus)
                 default:
                     guard let modulus = Float(text).map({ $0 * 1e6 }),
                         SolverConfiguration.soilSubgradeRange.contains(modulus)
                     else {
                         throw ProjectFileError.invalid(
-                            "--ground takes rigid, soil or a subgrade modulus from 10 to 150 MN/m³.")
+                            "--ground takes rigid, soil, a subgrade modulus from 10 to 150 MN/m³, or a ground type: "
+                                + GroundType.allCases.map(\.rawValue).joined(separator: ", ") + ".")
                     }
                     options.ground = .some(modulus)
                 }
@@ -353,6 +365,10 @@ enum HeadlessRun {
         if let ground = options.ground {
             inputs.settings.groundStiffness = ground
         }
+        if let type = options.groundType {
+            inputs.settings.ground = type == .rigid ? nil : type
+        }
+
         try inputs.validate()
         return inputs
     }
@@ -750,6 +766,7 @@ enum HeadlessRun {
             scene?.addCloud(result.frames(), secondsPerFrame: spec.frameInterval)
             cloud = result
         }
+        scene?.addCraters(inputs.settings.craters(over: inputs.scenario))
         try scene?.finish()
         finished = true
         // The project's own inputs, with the new run among its saved ones.
@@ -897,6 +914,9 @@ enum HeadlessRun {
             lines.append(
                 "  Structure: largest deflection \(format(structure.peak, 1)) mm, "
                     + "\(format(structure.failedFraction * 100, 1))% of elements failed")
+        }
+        for crater in run.settings.craters(over: run.scenario) {
+            lines.append("  " + crater.summary)
         }
         return lines.joined(separator: "\n")
     }

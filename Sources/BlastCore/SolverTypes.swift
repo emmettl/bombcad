@@ -206,6 +206,12 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// brick walls (docs/validation.md#brick-walls-debris). The air sees the ground as hard either
     /// way. Read when a scene is loaded.
     public var groundStiffness: Float?
+    /// What the ground is made of, for the air (`GroundType`): on earth or rock a charge near it
+    /// keeps a smaller share of its energy for the air (`Charge.coupled`), the rest going into its
+    /// crater and the ground shock. Nil, the default, for the rigid, reflecting ground. The air's
+    /// ground stays where it was before the blast either way: the crater forms after it has gone.
+    /// Read when a scene is loaded.
+    public var ground: GroundType?
 
     /// The soil's subgrade modulus for soft ground: medium dense sand under a footing about a metre
     /// wide (as `Anchorage.soil`), and the range foundation texts give from loose sand to dense
