@@ -108,7 +108,7 @@ point says little about the next. 6.5 is used. A single run's peak is uncertain 
 the envelope buildings not yet in the air, gave 3.6 psi).
 
 **With the fitted flame** (`blastbench snapshot --preset plant --dx 0.5 --time 2
---envelope-damage`; 87–219 s on the Studio, depending on its load from other work):
+--envelope-damage`; 39–219 s on the Studio, depending on its load from other work):
 
 | Where | Model | Texas City (CSB) |
 |---|---|---|
