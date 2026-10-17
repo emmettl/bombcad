@@ -2310,24 +2310,21 @@ final class SimulationModel {
                 solver = created
             }
             if let solver, !scenario.envelopeObjects.isEmpty {
-                if scenario.structuralObjects.isEmpty {
-                    do {
-                        try solver.configureEnvelopeExposure(objects: scenario.envelopeObjects)
-                        // The components' histories feed their one-way damage, so the app keeps them for
-                        // every run of envelopes; headless runs only when asked.
-                        if let options = envelopeHistoryOptions
-                            ?? (envelopeHistoriesByDefault ? EnvelopeHistoryOptions(windowS: duration) : nil)
-                        {
-                            try solver.configureEnvelopeComponents(
-                                objects: scenario.envelopeObjects, options: options)
-                        }
-                        envelopeExposure = solver.envelopeExposureSummaries() ?? []
-                    } catch {
-                        envelopeExposureStatus = "Surface results unavailable: \(error.localizedDescription)"
+                // Envelopes are stationary whatever else moves: a structure beside them never takes
+                // the air at their faces, and its debris passes them by (one way).
+                do {
+                    try solver.configureEnvelopeExposure(objects: scenario.envelopeObjects)
+                    // The components' histories feed their one-way damage, so the app keeps them for
+                    // every run of envelopes; headless runs only when asked.
+                    if let options = envelopeHistoryOptions
+                        ?? (envelopeHistoriesByDefault ? EnvelopeHistoryOptions(windowS: duration) : nil)
+                    {
+                        try solver.configureEnvelopeComponents(
+                            objects: scenario.envelopeObjects, options: options)
                     }
-                } else {
-                    envelopeExposureStatus =
-                        "Surface results require a scene containing only stationary envelopes. This scene also has deformable structures."
+                    envelopeExposure = solver.envelopeExposureSummaries() ?? []
+                } catch {
+                    envelopeExposureStatus = "Surface results unavailable: \(error.localizedDescription)"
                 }
             }
             errorMessage = nil

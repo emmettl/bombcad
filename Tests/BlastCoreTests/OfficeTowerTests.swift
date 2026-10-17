@@ -72,5 +72,16 @@ struct OfficeTowerTests {
         // The neighbours across the street are envelopes, their windows glazed.
         #expect(scenario.envelopeObjects.count == 2)
         #expect(scenario.envelopeObjects.allSatisfy { $0.envelope?.panes.count == 40 })
+        // Each pane closes its window in the air at the app's cell sizes, so that envelope damage
+        // has its faces to judge.
+        for cell: Float in [0.5, 0.25] {
+            for pane in scenario.envelopeObjects.flatMap({ $0.envelope!.panes }) {
+                let centres = (0..<3).map { axis in
+                    Int((pane.max[axis] / cell - 0.5).rounded(.down))
+                        - Int((pane.min[axis] / cell - 0.5).rounded(.up)) + 1
+                }
+                #expect(centres.allSatisfy { $0 > 0 }, "\(pane) on \(cell) m cells")
+            }
+        }
     }
 }

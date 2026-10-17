@@ -1990,6 +1990,11 @@ struct StandingScene {
             ])
     }
 
+    /// Said of the envelopes in a scene with structures, which may move beside them.
+    static let envelopesBesideStructures =
+        "Beside moving structures, one way: a structure never takes the air at an envelope's faces, and its "
+        + "debris passes the envelopes by, neither loading nor damaging them."
+
     func envelopeDamage() -> ResultStanding {
         let envelopes = inputs.scenario.envelopeObjects.map(\.id)
         let assumed = envelopes.filter { inputs.scenario.envelopeConstruction(for: $0).source == .assumed }
@@ -2054,7 +2059,8 @@ struct StandingScene {
                     ? [
                         "\(assumed) of \(envelopes.count) envelopes' construction assumed (0.2 m concrete, 0.3%)."
                     ]
-                    : []),
+                    : [])
+                + (inputs.scenario.structuralObjects.isEmpty ? [] : [Self.envelopesBesideStructures]),
             documents: ["building-envelopes.md#one-way-damage-single-degree-of-freedom"])
     }
 
@@ -2076,7 +2082,8 @@ struct StandingScene {
             assumptions: [
                 "Fixed geometry: no broken windows, deformation, collapse or changing shielding.",
                 "Openings and walls thinner than a cell can vanish.",
-            ], documents: ["building-envelopes.md#scope-and-verification"])
+            ] + (inputs.scenario.structuralObjects.isEmpty ? [] : [Self.envelopesBesideStructures]),
+            documents: ["building-envelopes.md#scope-and-verification"])
     }
 
     func freestandingMotion() -> ResultStanding {
