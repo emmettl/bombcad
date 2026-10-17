@@ -591,8 +591,9 @@ extension BlastSolver {
                 }
             }
         }
-        // A cut cell holds air in only its fluid share of the sphere's part of it.
-        let total = weights.reduce(Float(0)) { $0 + $1.fraction * Float(fluidShare($1.index)) }
+        // A cut cell holds air in only its fluid share of the sphere's part of it, a porous cell
+        // in its open share.
+        let total = weights.reduce(Float(0)) { $0 + $1.fraction * Float(openShare($1.index)) }
         guard total > 0 else { return }
 
         let volume = total * dx * dx * dx
