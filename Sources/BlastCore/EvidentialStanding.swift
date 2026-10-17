@@ -900,6 +900,13 @@ public enum StandingTable {
         "EnvelopeConstruction.glassThicknessM": .input,
         "EnvelopeConstruction.source": .input,
         "EnvelopeConstruction.detail": .input,
+        "EnvelopeConstruction.barsInBothFaces": .input,
+        "EnvelopeConstruction.barCoverM": .input,
+        "EnvelopeConstruction.concreteStrengthMPa": .input,
+        "EnvelopeConstruction.barYieldMPa": .input,
+        "EnvelopeConstruction.blockworkGrouted": .input,
+        "EnvelopeConstruction.masonryStrengthMPa": .input,
+        "EnvelopeConstruction.capMassKgPerM": .input,
         "Scenario.deflagration": .option([.deflagration, .terrainStaircase]),
         "Scenario.ventPanels": .option([.ventPanels]),
         "Deflagration.gas": .input,
@@ -2010,8 +2017,8 @@ struct StandingScene {
                 "Compared with measurement as freestanding and one-way walls, and glass only under a load far "
                     + "past what breaks it (its threshold against E1300's design resistance): panels held on all "
                     + "their edges have none; references on one mesh and one air grid.",
-                "A freestanding wall's cap or canopy adds no mass, and reinforced blockwork is taken as "
-                    + "concrete: the measured walls were judged as built.",
+                "Reinforced blockwork is judged as a concrete of the masonry's strength, graded by the "
+                    + "concrete's limits; a freestanding wall's cap adds only the mass its construction gives.",
                 "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
                     + "2° is flagged as beyond the one-way model.",
                 "Glass is annealed, on Moore's large-deflection plate, simply supported, breaking at E1300's "

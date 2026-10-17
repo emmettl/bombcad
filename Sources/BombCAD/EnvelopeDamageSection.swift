@@ -169,10 +169,14 @@ struct EnvelopeDamageSection: View {
         switch component.material {
         case .annealedGlass:
             return component.failedAtS.map { String(format: "broken at %.1f ms", $0 * 1000) } ?? "whole"
-        case .reinforcedConcrete:
-            return String(
-                format: "%.2f–%.2f°, %@", component.rotationDeg.lowerBound, component.rotationDeg.upperBound,
-                levels(component.levels).lowercased())
+        case .reinforcedConcrete, .reinforcedBlockwork:
+            let rotation =
+                component.rotationDeg.lowerBound == component.rotationDeg.upperBound
+                ? String(format: "%.2f°", component.rotationDeg.upperBound)
+                : String(
+                    format: "%.2f–%.2f°", component.rotationDeg.lowerBound, component.rotationDeg.upperBound)
+            return rotation + ", " + levels(component.levels).lowercased()
+                + (component.cantilever == true ? " (standing free)" : "")
         case .unreinforcedMasonry:
             return component.failedAtS.map { String(format: "fallen at %.1f ms", $0 * 1000) }
                 ?? (component.levels.upperBound == .none ? "uncracked" : "cracked")

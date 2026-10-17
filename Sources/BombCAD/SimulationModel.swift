@@ -403,12 +403,27 @@ final class SimulationModel {
         guard settings.scenario.object(id: id)?.envelope != nil else { return }
         let old = settings.scenario.envelopeConstruction(for: id)
         guard old.walls != walls || old.source != .user else { return }
-        settings.scenario.setEnvelopeConstruction(
-            EnvelopeConstruction(
-                objectID: id, walls: walls,
-                wallThicknessM: walls == old.walls ? old.wallThicknessM : nil, roof: old.roof,
-                roofThicknessM: old.roofThicknessM, reinforcementRatio: old.reinforcementRatio,
-                glassThicknessM: old.glassThicknessM, source: .user, detail: "chosen in the editor"))
+        var construction = old
+        construction.walls = walls
+        if walls != old.walls {
+            construction.wallThicknessM = walls == .unreinforcedMasonry ? 0.215 : 0.2
+        }
+        construction.source = .user
+        construction.detail = "chosen in the editor"
+        settings.scenario.setEnvelopeConstruction(construction)
+    }
+
+    /// Changes an envelope's construction as the user's choice: `edit` applied to the one
+    /// recorded for it (or the default).
+    func editEnvelopeConstruction(id: UUID, _ edit: (inout EnvelopeConstruction) -> Void) {
+        guard settings.scenario.object(id: id)?.envelope != nil else { return }
+        let old = settings.scenario.envelopeConstruction(for: id)
+        var construction = old
+        edit(&construction)
+        construction.source = .user
+        construction.detail = "set in the editor"
+        guard construction != old else { return }
+        settings.scenario.setEnvelopeConstruction(construction)
     }
 
     var inspectedImportID: UUID?

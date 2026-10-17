@@ -63,6 +63,14 @@ only structures made since: a project saved before then keeps its 12% and runs a
 an older structure the new default, set its steel's rupture strain to 0.15. The encoding version
 is unchanged.
 
+Each envelope's construction (`scenario.envelopeConstructions`) gained, on 17 October 2026, the
+walls' bars in both faces and their cover, the concrete's and masonry's strength, the bars' yield,
+blockwork's grout and a cap's mass, each left out of the file when unset; constructions saved before
+carry none of them and open with the defaults (a central mat, 30 MPa, 500 MPa bars, no cap), as they
+ran. A construction whose walls are the new reinforced blockwork cannot be read by an older build,
+which refuses the project rather than taking the walls as something else. The encoding version is
+unchanged.
+
 The versioned `scenario.objectOwnership` record stores fixed-block and structural-object IDs
 and names, structural component IDs, an optional retained source reference and object order.
 It accompanies the existing geometry without duplicating numerical inputs. Legacy inputs
