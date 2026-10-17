@@ -144,6 +144,9 @@ public struct Scenario: Sendable, Hashable, Codable {
     /// Panels closing openings until the overpressure beside them reaches their release pressure,
     /// for either kind of source. (Optional for older layouts.)
     public var ventPanels: [VentPanel]?
+    /// Obstacles smaller than the air's cells, as arrays of pipes or bars (`CongestionArray`): the
+    /// air flows through them as through a porous, resisting medium. (Optional for older layouts.)
+    public var congestion: [CongestionArray]?
 
     public init(
         name: String, domainSize: SIMD3<Float>, boxes: [Box], charge: Charge, gauges: [Gauge] = [],
@@ -198,7 +201,8 @@ extension Scenario {
     private enum CodingKeys: String, CodingKey {
         case name, domainSize, boxes, rigidObjects, rigidCars, importNotes, importedModels, charge,
             additionalCharges, gauges, structure, atmosphere, reflectiveFaces, objectOwnership,
-            additionalStructures, buildingEnvelopes, terrain, deflagration, ventPanels, attributions,
+            additionalStructures, buildingEnvelopes, terrain, deflagration, ventPanels, congestion,
+            attributions,
             envelopeSources, envelopeConstructions
     }
 
@@ -242,6 +246,7 @@ extension Scenario {
             [EnvelopeConstruction].self, forKey: .envelopeConstructions)
         deflagration = try c.decodeIfPresent(Deflagration.self, forKey: .deflagration)
         ventPanels = try c.decodeIfPresent([VentPanel].self, forKey: .ventPanels)
+        congestion = try c.decodeIfPresent([CongestionArray].self, forKey: .congestion)
         let additional =
             try c.decodeIfPresent([AdditionalStructure].self, forKey: .additionalStructures) ?? []
         guard additional.count < Self.maximumStructures, additional.isEmpty || structure != nil else {
@@ -298,6 +303,7 @@ extension Scenario {
         try c.encodeIfPresent(terrain, forKey: .terrain)
         try c.encodeIfPresent(deflagration, forKey: .deflagration)
         if let ventPanels, !ventPanels.isEmpty { try c.encode(ventPanels, forKey: .ventPanels) }
+        if let congestion, !congestion.isEmpty { try c.encode(congestion, forKey: .congestion) }
         let physicsOnly = encoder.userInfo[Self.physicsInputEncoding] as? Bool == true
         if !physicsOnly {
             try c.encodeIfPresent(attributions, forKey: .attributions)
@@ -422,6 +428,7 @@ extension BlastSolver {
         }
         rigidBoxes = scenario.rigidBoxes
         terrain = scenario.terrain
+        try loadCongestion(scenario.congestion ?? [])
         terrainCut = try cut.map { try TerrainCutBuffers(geometry: $0, device: device) }
         // The structure is added to the mask on the GPU, by the same rule that later tracks it.
         try scenario.validateStructuralSeparation()

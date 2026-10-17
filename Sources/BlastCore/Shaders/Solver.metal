@@ -223,6 +223,15 @@ constant bool burnLimit = is_function_constant_defined(burnLimitConstant) && bur
 constant bool cutCellsConstant [[function_constant(13)]];
 constant bool cutCells = is_function_constant_defined(cutCellsConstant) && cutCellsConstant;
 
+// Congestion below the grid (`CongestionArray`, docs/congestion-model.md): cells holding obstacles
+// too small to resolve are porous. Each keeps the share β_v of its volume open to the air, and a
+// face the smaller of its two cells' shares (so that the update never outruns the step's Courant
+// number); the update is each face's flux times its open share over the open volume, with the
+// pressure on the obstacles' faces, p (β_high - β_low), so that still air stays still. Their drag
+// is applied after the step (`congestionDrag`). Without congestion its code is left out.
+constant bool porousAirConstant [[function_constant(14)]];
+constant bool porousAir = is_function_constant_defined(porousAirConstant) && porousAirConstant;
+
 // A column's cut cells: where its records start, its first cell of air (cells below are solid),
 // its first whole cell (cells from it up are whole), and its first cell at least half full (the
 // one its smaller cells give the rest of their difference to). Columns run to nx and ny
@@ -1119,7 +1128,8 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
                              device float *coarseSpeciesFlux, const device uchar *boxMask, device float *boxImpulse,
                              const device float4 *gravityTable, const device float *viscosity,
                              const device uint4 *cutColumns, const device float4 *cutRecords,
-                             const device float4 *cutWalls, device float4 *cutDefects, const device uint *cutCeilings) {
+                             const device float4 *cutWalls, device float4 *cutDefects, const device uint *cutCeilings,
+                             const device float4 *congestion) {
     int index = cell.x + int(u.nx) * (cell.y + int(u.ny) * cell.z);
     // With cut cells, whether this cell lies below the highest the cut cells' work reaches over its
     // tile's columns (`TerrainCutGeometry.tileCeilings`): above it there is none to do.
@@ -1381,6 +1391,24 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
 
     Cell c = src[index];
     float3 momentum = toSweep(float3(c.mx, c.my, c.mz), axis);
+    // Porous cells: each face's flux through its open share, over the cell's open volume.
+    float porosity = 1.0f;
+    float porosityLow = 1.0f;
+    float porosityHigh = 1.0f;
+    if (porousAir) {
+        porosity = congestion[index].x;
+        porosityLow = kindM1 == kindFluid ? min(porosity, congestion[index - stride].x) : porosity;
+        porosityHigh = kindP1 == kindFluid ? min(porosity, congestion[index + stride].x) : porosity;
+        float open = 1.0f / porosity;
+        fluxLow.mass *= porosityLow * open;
+        fluxLow.momentum *= porosityLow * open;
+        fluxLow.energy *= porosityLow * open;
+        fluxHigh.mass *= porosityHigh * open;
+        fluxHigh.momentum *= porosityHigh * open;
+        fluxHigh.energy *= porosityHigh * open;
+        // The obstacles' push back: what the pressure on the open faces leaves unbalanced.
+        momentum.x += lambda * w0.p * (porosityHigh - porosityLow) * open;
+    }
     float rho = c.rho - lambda * (fluxHigh.mass - fluxLow.mass);
     momentum -= lambda * (fluxHigh.momentum - fluxLow.momentum);
     float energy = c.energy - lambda * (fluxHigh.energy - fluxLow.energy);
@@ -1543,13 +1571,14 @@ kernel void sweep(device Cell *src [[buffer(0)]],
                   const device float4 *cutWalls [[buffer(22)]],
                   device float4 *cutDefects [[buffer(23)]],
                   const device uint *cutCeilings [[buffer(24)]],
+                  const device float4 *congestion [[buffer(25)]],
                   uint3 tid [[thread_position_in_grid]]) {
     if (tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz) {
         return;
     }
     sweepCell(int3(tid), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags,
               speciesSrc, speciesDst, patchOfTile, coarseFlux, coarseSpeciesFlux, boxMask, boxImpulse,
-              gravityTable, viscosity, cutColumns, cutRecords, cutWalls, cutDefects, cutCeilings);
+              gravityTable, viscosity, cutColumns, cutRecords, cutWalls, cutDefects, cutCeilings, congestion);
 }
 
 // Sweeps the cells of the tiles listed in `tiles`, one threadgroup per tile; each thread takes
@@ -1579,6 +1608,7 @@ kernel void sweepTiles(device Cell *src [[buffer(0)]],
                        const device float4 *cutWalls [[buffer(22)]],
                        device float4 *cutDefects [[buffer(23)]],
                        const device uint *cutCeilings [[buffer(24)]],
+                       const device float4 *congestion [[buffer(25)]],
                        uint3 group [[threadgroup_position_in_grid]],
                        uint3 local [[thread_position_in_threadgroup]],
                        uint3 groupSize [[threads_per_threadgroup]]) {
@@ -1590,7 +1620,7 @@ kernel void sweepTiles(device Cell *src [[buffer(0)]],
         if (cell.x < u.nx && cell.y < u.ny && cell.z < u.nz) {
             sweepCell(int3(cell), src, dst, mask, peak, impulse, control, maxSpeed, u, wallVelocity, tileFlags,
                       speciesSrc, speciesDst, patchOfTile, coarseFlux, coarseSpeciesFlux, boxMask, boxImpulse,
-                      gravityTable, viscosity, cutColumns, cutRecords, cutWalls, cutDefects, cutCeilings);
+                      gravityTable, viscosity, cutColumns, cutRecords, cutWalls, cutDefects, cutCeilings, congestion);
         }
     }
 }
@@ -1761,6 +1791,34 @@ kernel void redistributeCutDefects(device Cell *state [[buffer(0)]],
 }
 
 // After a restart: wakes the tiles within reach of every fluid cell that is not still.
+// Congestion's drag (`CongestionField`): the obstacles in a porous cell take momentum at
+// CR_i ρ|u| per unit volume along each axis, implicitly over the step, so that it never reverses the
+// flow; the kinetic energy it takes stays in the gas as heat.
+kernel void congestionDrag(device Cell *state [[buffer(0)]],
+                           const device float4 *congestion [[buffer(1)]],
+                           const device uchar *mask [[buffer(2)]],
+                           const device StepControl &control [[buffer(3)]],
+                           constant SolverUniforms &u [[buffer(4)]],
+                           uint3 tid [[thread_position_in_grid]]) {
+    if (tid.x >= u.nx || tid.y >= u.ny || tid.z >= u.nz || control.dt <= 0.0f) {
+        return;
+    }
+    uint index = tid.x + u.nx * (tid.y + u.ny * tid.z);
+    float4 field = congestion[index];
+    if (mask[index] != 0 || all(field.yzw == 0.0f)) {
+        return;
+    }
+    Cell c = state[index];
+    float rho = max(c.rho, u.densityFloor);
+    float3 momentum = float3(c.mx, c.my, c.mz);
+    float speed = length(momentum) / rho;
+    momentum /= 1.0f + control.dt * speed * field.yzw;
+    c.mx = momentum.x;
+    c.my = momentum.y;
+    c.mz = momentum.z;
+    state[index] = c;
+}
+
 kernel void wakeTiles(const device Cell *state [[buffer(0)]],
                       const device uchar *mask [[buffer(1)]],
                       device uchar *tileFlags [[buffer(2)]],
