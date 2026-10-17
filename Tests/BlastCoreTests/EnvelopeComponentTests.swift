@@ -325,4 +325,74 @@ struct EnvelopeComponentHistoryTests {
         #expect(read <= faces, "\(read) cells read a step against \(faces) faces")
         #expect(surfaces > 0)
     }
+
+    @Test("Beside a moving structure an envelope is recorded and judged, its faces' air never taken")
+    func besideMovingStructure() throws {
+        // A concrete wall a cell from an envelope's face, thrown 0.3 m towards it by 80 kg.
+        var scene = Scenario(
+            name: "Wall beside an envelope", domainSize: SIMD3(10, 6, 4), boxes: [],
+            charge: Charge(mass: 80, position: SIMD3(4, 3, 1.2)))
+        let wall = Box(min: SIMD3(6, 1.5, 0), max: SIMD3(6.25, 4.5, 2.5))
+        scene.objects.append(
+            SceneObject(
+                name: "Wall",
+                representation: .deformable(
+                    StructureModel(
+                        solids: [wall], material: .reinforcedConcrete, elementSize: 0.125, fixedBase: true))))
+        try scene.addEnvelopeObject(
+            BuildingEnvelope(
+                solids: [Box(min: SIMD3(6.5, 1, 0), max: SIMD3(7, 5, 3))],
+                panes: [Box(min: SIMD3(6.5, 2, 1), max: SIMD3(6.75, 3, 2))]),
+            name: "Envelope")
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        // The envelope's west face's air: the cells at x 6.25–6.5 m across it.
+        let face = (0..<12).flatMap { k in (4..<20).map { j in (25, j, k) } }
+        let inside = (0..<12).flatMap { k in (4..<20).map { j in (26, j, k) } }
+        func run(observed: Bool) throws -> (solver: BlastSolver, taken: Int) {
+            let solver = try BlastSolver(device: device, scenario: scene, cellSize: 0.25)
+            if observed {
+                try solver.configureEnvelopeExposure(objects: scene.envelopeObjects)
+                try solver.configureEnvelopeComponents(
+                    objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: 0.05))
+            }
+            var taken = 0
+            for _ in 0..<10 {
+                _ = solver.advance(until: solver.time + 0.005)
+                taken = max(taken, face.filter { solver.isSolid($0.0, $0.1, $0.2) }.count)
+                #expect(inside.allSatisfy { solver.isSolid($0.0, $0.1, $0.2) })
+            }
+            return (solver, taken)
+        }
+        // Unobserved, the wall takes half the face's air as it comes; observed, none of it.
+        let unobserved = try run(observed: false)
+        #expect(unobserved.taken > 50, "\(unobserved.taken)")
+        let observed = try run(observed: true)
+        #expect(observed.taken == 0)
+        #expect(observed.solver.keptAirCells?.contains(observed.solver.grid.index(25, 12, 4)) == true)
+        let summary = try #require(observed.solver.bodySummary())
+        #expect(summary.maxDisplacement > 0.25, "\(summary.maxDisplacement)")
+        // Its components are recorded, and the building judged.
+        let histories = try #require(observed.solver.envelopeComponentHistories())
+        let loads = histories.filter { !$0.invalid }.map(EnvelopeComponentLoad.init)
+        #expect(!loads.isEmpty)
+        let damage = EnvelopeDamageAssessment.assess(
+            loads: loads, constructions: { scene.envelopeConstruction(for: $0) },
+            rooms: [scene.envelopeObjects[0].id: 1])
+        #expect(damage.count == 1 && damage[0].panes == 1)
+        // The standing says the envelopes are one way beside the structure, and not without one.
+        func says(_ scenario: Scenario) -> Bool {
+            let standing = SceneStanding(
+                StandingInputs(scenario: scenario, cellSize: 0.25, configuration: .init()))
+            return standing.results.filter { $0.kind == .envelopeDamage || $0.kind == .envelopeExposure }
+                .allSatisfy { $0.assumptions.contains(StandingScene.envelopesBesideStructures) }
+        }
+        #expect(says(scene))
+        // Nothing is kept without a body: an envelope-only scene runs as before.
+        var alone = scene
+        try alone.removeObject(id: scene.structuralObjects[0].id)
+        let only = try BlastSolver(device: device, scenario: alone, cellSize: 0.25)
+        try only.configureEnvelopeExposure(objects: alone.envelopeObjects)
+        #expect(only.keptAirCells == nil)
+        #expect(!says(alone))
+    }
 }

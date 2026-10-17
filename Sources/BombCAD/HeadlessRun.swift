@@ -31,7 +31,7 @@ enum HeadlessRun {
         overpressure and shock unless it says otherwise. --fragments flies a cased charge's fragments
         and tracers through the blast, one way, frame by frame; they go into the USD scene and, with
         --fragment-results, a JSON file. --envelope-results writes individual stationary-building
-        surface records as JSON; scenes with only envelopes collect compact surface summaries in kept
+        surface records as JSON; scenes with envelopes collect compact surface summaries in kept
         runs and CSV too. --envelope-histories writes each building component's pressure history
         (wall, slab and roof panels, panes, façade strips; both sides, 0.1 ms bins) as JSON, for a
         damage model. --envelope-damage judges each envelope building one way from those histories
@@ -451,9 +451,8 @@ enum HeadlessRun {
             ("--envelope-histories", options.envelopeHistories),
             ("--envelope-damage", options.envelopeDamage),
         ] where asked != nil {
-            guard !inputs.scenario.envelopeObjects.isEmpty, inputs.scenario.structuralObjects.isEmpty else {
-                throw ProjectFileError.invalid(
-                    "\(option) requires a scene containing only stationary envelopes.")
+            guard !inputs.scenario.envelopeObjects.isEmpty else {
+                throw ProjectFileError.invalid("\(option) requires a scene with envelope buildings.")
             }
         }
         try options.groundShock?.validate(domain: inputs.scenario.domainSize)

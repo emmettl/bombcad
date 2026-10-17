@@ -41,8 +41,12 @@ also participates in import placement and picking occlusion.
 
 An optional `BlastSolver.configureEnvelopeExposure(objects:)` recorder reports the boundary
 that the air grid actually resolves. It accepts envelopes and fully pinned detailed reference
-bodies at time zero. Moving-body references are rejected. Loading another scene or replacing
-the body set clears the recorder; restarting resets its values.
+bodies at time zero. Moving-body references are rejected. Envelopes are stationary whatever else
+moves: beside them other bodies may move, and since 17 October 2026 a moving body never takes the
+air beside the faces recorded (the remask leaves those cells air, `remaskPrepare`'s kept air) and
+its debris passes the envelopes by, one way, neither loading nor damaging them. A scene of
+envelopes alone, or of structures alone, runs as before, to the bit. Loading another scene or
+replacing the body set clears the recorder; restarting resets its values.
 
 Every owned solid cell face next to a fluid cell becomes a receiver with area `dx²`, a
 position at the voxel face and a normal pointing into air. Interior and exterior surfaces
@@ -61,9 +65,8 @@ Snapshots retain current overpressure (Pa), peak positive overpressure (Pa), pos
 impulse (Pa s) and signed pressure impulse (Pa s). Summing `-normal × area × overpressure`
 gives an estimated force in N; using signed impulse gives an estimated vector impulse in N s.
 Signed accumulation preserves suction and cancellation between opposite faces. The core
-recorder is opt-in. The app automatically enables it for scenes containing envelopes without
-deformable structures; other ordinary scenes allocate no surface recorder. Mixed scenes
-continue to run, with the inspection restriction shown in the sidebar.
+recorder is opt-in. The app automatically enables it for scenes containing envelopes, with
+deformable structures or without; other ordinary scenes allocate no surface recorder.
 
 The Run tab's **Building surface exposure** section selects an owner and shows its recorded
 window, resolved area, maximum surface overpressure, area-weighted mean positive impulse,
@@ -90,7 +93,7 @@ Headless runs collect the same summaries. To write full surface records alongsid
 .build/release/BombCAD run envelope-layout.json --duration 0.12 --out envelope-run.bombcad --envelope-results surfaces.json --csv exposure.csv
 ```
 
-`--envelope-results` requires a scene containing only stationary envelopes and at least one
+`--envelope-results` requires a scene with envelopes (other bodies may move beside them) and at least one
 resolved exposed face per owner. It refuses a pre-existing destination. Unavailable surface
 recording does not prevent ordinary blast runs, but an explicitly requested surface export
 fails with its reason instead of writing absent results as zeros.
@@ -503,7 +506,7 @@ and set against the same component of the detailed building free to respond (sum
   detailed peaks; 0.87–2.23 with the small-deflection panes, which broke sooner). It cannot see a
   breached concrete wall (1.6 and 6.5 kPa at 200 and 500 kg).
 
-**In the app.** Runs of envelope-only scenes record each component's load (the
+**In the app.** Runs of scenes with envelopes, structures beside them or not, record each component's load (the
 [recorder](#surface-exposure-and-loads) keeps both sides' histories at 0.1 ms) and judge every building
 one way as the run goes, at most once a second and again when it stops:
 
