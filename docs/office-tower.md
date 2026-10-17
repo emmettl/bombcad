@@ -5,6 +5,12 @@ tower](shell-model.md) of flat slabs on concrete columns. It is a speculative of
 concrete core, a steel frame with composite floors, and a glazed curtain wall. Across the street
 stand two smaller buildings as envelopes, and a van's worth of explosive is parked at the kerb.
 
+**Standing.** A showcase on the model as it stands, compared as a building with nothing measured
+([standing](standing.md)). Its gauges take the open blast's bands (Kingery–Bulmash on today's
+air). Its structure is an approximation: steel is verified against beam theory, not a test, and
+its toughened glass is the annealed panes' model with a higher strength. Its damage is
+illustrative, and the neighbours' envelope damage is the one-way model's, an approximation.
+
 ![The office 250 ms after 1,000 kg at the kerb: its front glazing gone on the lower floors, glass and frame thrown into the street and out of its sides](office-tower.png)
 
 ## The building

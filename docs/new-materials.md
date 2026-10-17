@@ -5,11 +5,14 @@ houses, steel portal-frame warehouses, and transport hubs. This page says what e
 which of those needs are new materials: timber, and thin profiled metal sheeting with its
 fasteners. It also checks whether timber can use ContinuumKit's orthotropic law rather than a new
 BombCAD law, as the shared-numerics rule asks
-([ContinuumKit adoption](continuumkit-adoption.md)). It is a plan and a feasibility check; nothing
-here is built yet.
+([ContinuumKit adoption](continuumkit-adoption.md)). It was written as a plan and a feasibility
+check. Both materials have since been built (17 October 2026): timber in shells and beams
+([shell model](shell-model.md#timber)), compared with the Ottawa shock tube's CLT panels and glulam
+beams, its strength calibrated on their static tests; and [profiled steel
+sheeting](profiled-sheeting.md), illustrative.
 
-Two other sample buildings are being built now: a precast large-panel block and a process-plant
-control room. They are not covered here.
+Two other sample buildings have since been built: a precast [large-panel block](large-panel-flats.md)
+and a [process plant](process-plant-explosion.md) with its control room. They are not covered here.
 
 ## What each building type needs
 
