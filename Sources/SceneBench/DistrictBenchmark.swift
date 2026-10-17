@@ -4,7 +4,7 @@ import Metal
 import simd
 
 /// `scenebench district <district-scene's inputs> [--radii 250,500,1000] [--steps 40] [--window 5]
-/// [--from-arrival] [--until seconds] [--out file.json]`: what a district of map buildings costs
+/// [--from-arrival] [--budget MB] [--until seconds] [--out file.json]`: what a district of map buildings costs
 /// as it grows. For each radius, `district-scene`'s square scene of twice it about the centre; the time to place the buildings, build the
 /// solver, configure the surface recorder and the components' histories, the memory each takes,
 /// and the time a step takes with the surface recorder alone and with the histories too. With
@@ -28,8 +28,10 @@ enum DistrictBenchmark {
         var stepS: Double
         var stepWithHistoriesS: Double
         var eventS: Double?
+        var eventWithHistoriesS: Double?
         var eventSteps: Int?
         var eventTimeS: Double?
+        var binS: Double?
     }
 
     static func seconds(_ start: ContinuousClock.Instant) -> Double {
@@ -52,6 +54,7 @@ enum DistrictBenchmark {
         let steps = value("steps").flatMap(Int.init) ?? 40
         let options = EnvelopeHistoryOptions(
             windowS: value("window").flatMap(Double.init) ?? 5,
+            memoryBudget: (value("budget").flatMap(Int.init) ?? 256) << 20,
             windowFromArrival: args.contains("--from-arrival"))
         let until = value("until").flatMap(Double.init)
         var rows: [Row] = []
@@ -99,7 +102,7 @@ enum DistrictBenchmark {
                 _ = solver.advance(steps: steps)
                 let perStep = seconds(clock) / Double(steps)
                 if histories { row.stepWithHistoriesS = perStep } else { row.stepS = perStep }
-                if histories, let until {
+                if let until {
                     clock = .now
                     var taken = 0
                     while solver.time < until {
@@ -107,15 +110,23 @@ enum DistrictBenchmark {
                         taken += batch.steps
                         guard batch.steps > 0, batch.isStable else { break }
                     }
-                    row.eventS = seconds(clock)
+                    let took = seconds(clock)
+                    if !histories {
+                        row.eventS = took
+                        print(
+                            String(format: "  event to %.3f s: %d steps in %.1f s", solver.time, taken, took))
+                        continue
+                    }
+                    row.eventWithHistoriesS = took
                     row.eventSteps = taken
                     row.eventTimeS = solver.time
                     let recorded = solver.envelopeComponentHistories() ?? []
+                    row.binS = recorded.first?.binS
                     print(
                         String(
                             format:
-                                "  event to %.3f s: %d steps in %.1f s; %d of %d components loaded, %d truncated",
-                            solver.time, taken, row.eventS!,
+                                "  with histories: %d steps in %.1f s; bins %.2f ms; %d of %d components loaded, %d truncated",
+                            taken, took, (row.binS ?? 0) * 1000,
                             recorded.filter { $0.peakOuterPa > 1000 || $0.peakInnerPa > 1000 }.count,
                             recorded.count, recorded.filter(\.truncated).count))
                 }
