@@ -43,7 +43,21 @@ swift build -c release --product blastbench
 
 ## What it shows
 
-RESULTS
+![The transport hub 300 ms after 100 kg in the forecourt: the shed's frames standing, its roof glass cracked in patches; the concourse beside it](transport-hub.png)
+
+Run on 0.5 m air for 300 ms (1,417 steps, 30 s on the Studio), the run above:
+
+- **The concourse's front** takes a reflected 59.5 kPa and 621 Pa s. Every one of its 28
+  laminated panes cracks. 22 have left their frames by 100 ms and all 28 by 300 ms, so the windows are GSA 5. Pulled out of their silicone, the rooflights fall whole 8 m
+  onto the concourse floor at 14 m/s: 3.0 kJ over each square metre, each pane far past 79 J.
+  Through the gone panes, the one-way fill puts 0.9 kPa inside, the air having moved by then.
+- **The shed** is open, so the blast reaches under its roof (15.7 kPa at the platforms) as well
+  as over it (13.0 kPa). The roof glass is loaded on both faces and cracks in patches. The frames
+  stand: 13 of 9,510 elements fail, and the largest deflection is 334 mm.
+- **The concourse walls** are moderately damaged.
+
+The roof glass is toughened, not laminated, so how it falls is not graded: the structure
+model's glass is shells, whose broken pieces become debris.
 
 ## Limitations
 
