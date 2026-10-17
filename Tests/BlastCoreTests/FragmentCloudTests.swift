@@ -116,12 +116,98 @@ struct FragmentCloudTests {
         var cloud = FragmentCloud(particles: [
             .init(position: SIMD3(5, 50, 50), velocity: SIMD3(100, 0, 0), mass: mass, area: area)
         ])
-        // Subsonic: a constant drag coefficient of 0.9.
+        // Below Mach 0.5: a constant drag coefficient of 0.82, Hansche and Rinehart's tumbling cubes at Mach 0.5.
         let (a, b) = uniform(density: 1.2, duration: 0.05)
         cloud.advance(from: a, to: b)
-        let k = 1.2 * 0.9 * area / (2 * mass)
+        let k = 1.2 * 0.82 * area / (2 * mass)
         let expected = 100 / (1 + k * 100 * 0.05)
         #expect(abs(cloud.particles[0].velocity.x / expected - 1) < 0.01)
+    }
+
+    @Test("Mott's scaling gives Cooper's Example 27.7: 140 fragments, 1 over 10 g, 87 over 0.1 g")
+    func cooperExample() throws {
+        // A steel cylinder 1 in inside, a quarter-inch wall, 1 in long, B = 0.08 (Detasheet).
+        var spec = FragmentSpec()
+        spec.wallThickness = 0.25 * 0.0254
+        spec.innerDiameter = 0.0254
+        spec.mottCoefficient = 0.08
+        spec.casingMass = 0.279 * 0.453_592_37
+        spec.count = 200_000
+        let factor = try #require(spec.mottFactor)
+        #expect(abs(factor - 0.0315) < 0.0001)
+        #expect(abs(spec.realFragmentCount - 140.6) < 0.2)
+        let scenario = Scenario(
+            name: "Cylinder", domainSize: SIMD3(repeating: 10), boxes: [],
+            charge: Charge(mass: 0.0114, position: SIMD3(5, 5, 1)))
+        let cloud = FragmentCloud(spec: spec, scenario: scenario)
+        // Each flown fragment stands for as many real ones as share the casing's mass: Mott's
+        // masses vary by √5 times their mean, so 200,000 drawn are within about 1% of it.
+        let weight = cloud.particles[0].weight
+        #expect(cloud.particles.allSatisfy { $0.weight == weight })
+        #expect(abs(Double(weight) * 200_000 / spec.realFragmentCount - 1) < 0.02)
+        // Counts over each mass, as Cooper's table has them (rounded down: 1, 2, 5, 13, 31, 87).
+        for (grams, expected) in [(10.0, 1.26), (5.0, 5.02), (1.0, 31.7), (0.1, 87.7)] {
+            let over =
+                Double(weight) * Double(cloud.particles.filter { Double($0.mass) > grams / 1000 }.count)
+            #expect(abs(over / expected - 1) < 0.05, "over \(grams) g: \(over)")
+        }
+        // Gurney, his Example 27.8: M/C 6.39, √(2E) 2,357 m/s, 0.898 km/s.
+        var gurney = FragmentSpec()
+        gurney.casingMass = 6.39
+        gurney.gurneyVelocity = 2357
+        #expect(abs(gurney.launchSpeed(chargeMass: 1) - 898) < 1)
+    }
+
+    @Test("Grady's exponent keeps the mean and the casing's mass, and an explosive sets B and √(2E)")
+    func exponentAndExplosive() throws {
+        var spec = FragmentSpec()
+        spec.casingMass = 10
+        spec.count = 20_000
+        spec.massExponent = 1
+        let scenario = Scenario(
+            name: "Cased", domainSize: SIMD3(repeating: 40), boxes: [],
+            charge: Charge(mass: 10, position: SIMD3(20, 20, 1)))
+        let masses = FragmentCloud(spec: spec, scenario: scenario).particles.map(\.mass)
+        #expect(abs(masses.reduce(0, +) / 10 - 1) < 1e-3)
+        // Exponential: the median is the mean times ln 2.
+        let median = masses.sorted()[masses.count / 2]
+        #expect(abs(median / (10 / 20_000 * 0.6931) - 1) < 0.05)
+        let decoded = try JSONDecoder().decode(
+            FragmentSpec.self,
+            from: Data(#"{"explosive": "composition b", "casingMass": 1, "count": 10}"#.utf8))
+        #expect(decoded.gurneyVelocity == 2720 && decoded.massExponent == 0.5)
+        #expect(throws: (any Error).self) {
+            var bad = decoded
+            bad.explosive = "Plastic"
+            try bad.validate()
+        }
+        // Saved as it was before the exponent, when it is Mott's.
+        let saved = try #require(String(data: JSONEncoder().encode(decoded), encoding: .utf8))
+        #expect(!saved.contains("massExponent"))
+    }
+
+    @Test("Fragments in the air when the blast ends fly on in still air until they land")
+    func landing() {
+        var cloud = FragmentCloud(particles: [
+            .init(position: SIMD3(5, 50, 1), velocity: SIMD3(300, 0, 20), mass: 0.01, area: 1e-4),
+            .init(position: SIMD3(8, 8, 8), velocity: .zero, mass: 0, area: 0),
+        ])
+        let (a, b) = uniform(density: 1.2, duration: 0.01)
+        cloud.advance(from: a, to: b)
+        #expect(cloud.airborne == 2)
+        cloud.land(in: Primitive(density: 1.2, pressure: 101_325))
+        #expect(cloud.impacts.count == 1 && cloud.impacts[0].surface == "ground")
+        #expect(cloud.impacts[0].position.x > 100 && cloud.impacts[0].speed < 300)
+        // The tracer stays where it was, still in the air.
+        #expect(!cloud.particles[1].landed && cloud.particles[1].position == SIMD3(8, 8, 8))
+    }
+
+    @Test("The drag coefficient follows the measured tumbling curve")
+    func dragCurve() {
+        #expect(FragmentCloud.dragCoefficient(mach: 0.2) == 0.82)
+        #expect(abs(FragmentCloud.dragCoefficient(mach: 1.25) - 1.25) < 1e-6)
+        #expect(abs(FragmentCloud.dragCoefficient(mach: 3) - 1.1) < 1e-6)
+        #expect(FragmentCloud.dragCoefficient(mach: 6) == 1.1)
     }
 
     @Test("A tracer goes with the air")

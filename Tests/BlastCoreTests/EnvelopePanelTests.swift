@@ -58,6 +58,39 @@ struct EnvelopePanelTests {
         #expect(held.lostResistanceAt == nil)
     }
 
+    @Test(
+        "Moore's pane starts as the small-deflection plate simply supported, and membrane action stiffens it")
+    func largeDeflectionGlass() {
+        let pane = EnvelopePanel.largeDeflectionGlass(
+            thickness: 0.006, material: .annealedGlass, a: 1.25, b: 1.5)
+        let small = EnvelopePanel.glass(
+            thickness: 0.006, material: .annealedGlass, a: 1.25, b: 1.5, edges: .simplySupported)
+        // Moore's curves begin where the plate is nearly linear (ν 0.22 against Timoshenko's 0.3).
+        #expect(abs(pane.stiffness / small.stiffness - 1) < 0.08)
+        // At five thicknesses the secant stiffness is several times the initial.
+        let five = pane.backbone.first { $0.x >= 0.03 }!
+        #expect(five.y / five.x > 3 * pane.stiffness)
+        // It lets go at ten thicknesses, as UFC takes it.
+        #expect(abs(pane.backbone[pane.backbone.count - 2].x - 0.06) < 1e-9 && pane.backbone.last!.y == 0)
+        // The median 60 s strength of 1.875 m² of annealed glass by E1300's constants.
+        #expect(abs(pane.brittle!.strength / 27.9e6 - 1) < 0.01)
+    }
+
+    @Test("Glass held at 1.5 times its 60 s strength breaks after 60 s / 1.5¹⁶ (Brown's integral)")
+    func staticFatigue() throws {
+        // A stiff, overdamped system that settles at once, its stress in proportion to its deflection.
+        let k = 1e9
+        let system = SDOFSystem(
+            massPerArea: 1, loadMassElastic: 1, loadMassPlastic: 1, backbone: [SIMD2(1, k), SIMD2(2, 2 * k)],
+            dampingRatio: 3,
+            brittle: SDOFSystem.Brittle(
+                stress: [SIMD2(1, 1e8)], strength: 1e7 / 1.5, referenceDuration: 60, fatigueExponent: 16))
+        // The pressure holds it at 0.1 m, a stress of 10 MPa: 1.5 times the strength.
+        let response = system.response(pressures: Array(repeating: 0.1 * k, count: 1_200), step: 1e-4)
+        let broken = try #require(response.lostResistanceAt)
+        #expect(abs(broken / (60 / pow(1.5, 16)) - 1) < 0.01, "\(broken)")
+    }
+
     @Test("Unreinforced masonry cracks at f_t t² / 6 and has nothing left at its thickness")
     func masonry() {
         let wall = EnvelopePanel.unreinforcedMasonry(thickness: 0.215, material: .masonry, a: 4, b: 6)

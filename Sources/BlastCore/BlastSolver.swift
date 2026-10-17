@@ -768,6 +768,17 @@ public final class BlastSolver {
         try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
     }
 
+    /// The same, keeping the terrain's state (its cut cells, surface and heights): for cells that do
+    /// not change the ground, such as a vent panel's.
+    func editMaskKeepingTerrain(_ body: (UnsafeMutableBufferPointer<UInt8>) throws -> Void) rethrows {
+        precondition(!batchInFlight, "Cannot edit the mask while a batch is in flight")
+        frameExtractor?.invalidate()
+        rigidBoxes = nil
+        needsRigidMaskCapture = true
+        let pointer = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
+    }
+
     /// Chooses the cells whose pressure is recorded every step. Clears existing histories. With
     /// `points`, one per cell, a gauge whose cell is refined reads the fine cell holding its point.
     public func setGauges(cells: [(i: Int, j: Int, k: Int)], points: [SIMD3<Float>]? = nil) {

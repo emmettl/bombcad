@@ -29,10 +29,46 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
     public var dampingRatio: Double
     /// The span whose support rotation sets the load–mass factor (UFC §3-17.4), m, if known.
     public var span: Double?
+    /// A brittle component that stiffens as it deflects (glass, `largeDeflectionGlass`): its
+    /// resistance follows the backbone both ways, with no permanent set, until it breaks.
+    public var brittle: Brittle?
+
+    /// When a brittle component breaks: its largest principal stress against its deflection, and
+    /// glass's static fatigue (Brown's integral), a stress σ(t) breaking it when ∫ (σ/S)ⁿ dt
+    /// reaches the reference duration, S its strength held for that long.
+    public struct Brittle: Codable, Hashable, Sendable {
+        /// (deflection m, largest principal stress Pa) points, deflection increasing.
+        public var stress: [SIMD2<Double>]
+        /// Pa, held for `referenceDuration`.
+        public var strength: Double
+        /// s.
+        public var referenceDuration: Double
+        /// n; nil breaks it as soon as the stress reaches the strength.
+        public var fatigueExponent: Double?
+
+        public init(
+            stress: [SIMD2<Double>], strength: Double, referenceDuration: Double, fatigueExponent: Double?
+        ) {
+            self.stress = stress
+            self.strength = strength
+            self.referenceDuration = referenceDuration
+            self.fatigueExponent = fatigueExponent
+        }
+
+        /// The largest principal stress at deflection `x` either way, Pa.
+        public func stress(at x: Double) -> Double {
+            let x = abs(x)
+            guard x > stress[0].x else { return stress[0].y * x / stress[0].x }
+            for (a, b) in zip(stress, stress.dropFirst()) where x <= b.x {
+                return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x)
+            }
+            return stress.last!.y
+        }
+    }
 
     public init(
         massPerArea: Double, loadMassElastic: Double, loadMassPlastic: Double, backbone: [SIMD2<Double>],
-        reboundFactor: Double = 1, dampingRatio: Double = 0, span: Double? = nil
+        reboundFactor: Double = 1, dampingRatio: Double = 0, span: Double? = nil, brittle: Brittle? = nil
     ) {
         precondition(massPerArea > 0 && loadMassElastic > 0 && loadMassPlastic > 0)
         precondition(!backbone.isEmpty && backbone[0].x > 0 && backbone[0].y > 0)
@@ -44,6 +80,7 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
         self.reboundFactor = reboundFactor
         self.dampingRatio = dampingRatio
         self.span = span
+        self.brittle = brittle
     }
 
     /// An elastic–perfectly plastic system: stiffness `stiffness` (Pa/m) up to `ultimate` (Pa).
@@ -98,7 +135,15 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
         let period = period
         // Velocity Verlet is stable below T/π; T/200 keeps the closed-form cases in the tests
         // within 0.1%.
-        let substeps = max(1, Int((step / (period / 200)).rounded(.up)))
+        // A stiffening backbone's steepest segment sets the shortest period it reaches.
+        var steepest = stiffness
+        if brittle != nil {
+            for (a, b) in zip(backbone, backbone.dropFirst()) where b.y > a.y {
+                steepest = max(steepest, (b.y - a.y) / (b.x - a.x))
+            }
+        }
+        let shortest = min(period, 2 * .pi * (loadMassElastic * massPerArea / steepest).squareRoot())
+        let substeps = max(1, Int((step / (shortest / 200)).rounded(.up)))
         let h = step / Double(substeps)
         let k = stiffness
         let damping = 2 * dampingRatio * (loadMassElastic * massPerArea * k).squareRoot()
@@ -116,7 +161,14 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
             }
             return loadMassPlastic
         }
+        var broken = false
+        var fatigue = 0.0  // ∫ (σ/S)ⁿ dt so far, s
         func resistance(at x: Double) -> Double {
+            if brittle != nil {
+                // Elastic on the backbone both ways until it breaks.
+                guard !broken else { return 0 }
+                return x < 0 ? -reboundFactor * envelope(-x) : envelope(x)
+            }
             var r = k * (x - permanent)
             // Inward, the backbone at the furthest inward deflection yet (so unloading and
             // reloading follow the elastic line back to it); outward, the rebound resistance.
@@ -154,8 +206,27 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
                 response.peakTime = time
             }
             response.reboundDeflection = min(response.reboundDeflection, x)
+            if let brittle, !broken {
+                let sigma = brittle.stress(at: x)
+                response.peakStress = max(response.peakStress ?? 0, sigma)
+                if let n = brittle.fatigueExponent {
+                    fatigue += h * pow(sigma / brittle.strength, n)
+                    broken = fatigue >= brittle.referenceDuration
+                } else {
+                    broken = sigma >= brittle.strength
+                }
+                if broken {
+                    response.lostResistanceAt = time
+                    response.stressAtBreak = sigma
+                    response.deflectionAtBreak = abs(x)
+                }
+            }
             if response.lostResistanceAt == nil, backbone.last!.y == 0, abs(x) >= backbone.last!.x {
                 response.lostResistanceAt = time
+                if brittle != nil {
+                    broken = true
+                    response.deflectionAtBreak = abs(x)
+                }
             }
         }
         response.residualDeflection = permanent
@@ -181,6 +252,11 @@ public struct SDOFResponse: Codable, Hashable, Sendable {
     /// When the deflection, either way, passed the backbone's last point with no resistance left,
     /// if it did.
     public var lostResistanceAt: Double?
+    /// A brittle component's largest principal stress reached while whole, Pa, and the stress and
+    /// the deflection (m, either way) at which it broke.
+    public var peakStress: Double?
+    public var stressAtBreak: Double?
+    public var deflectionAtBreak: Double?
 
     /// Peak deflection over X_E (UFC §3-14.2).
     public var ductility: Double { peakDeflection / equivalentElasticDeflection }

@@ -1,0 +1,91 @@
+{
+  "reference": "Hayman, M.G.C. (2014). Response of one-way reinforced masonry flexural walls under blast loading. MASc thesis, McMaster University (advisors El-Dakhakhni, Tait).",
+  "page_convention": "Thesis page numbers (printed); PDF page = thesis page + 21 for the main body. Front matter in roman numerals.",
+  "rights": {
+    "statement": "Title page carries only a copyright notice for Mark Hayman, 2014. No licence, no reproduction permission, no data-use terms anywhere in the front matter.",
+    "source": "p. i (PDF p.1); descriptive note p. ii (PDF p.2), which also gives a wrong title ('Two-Way ... Infill Walls') and 'xx, 102' pages"
+  },
+  "common": {
+    "scale": "third-scale, true replica of the standard 190 mm stretcher block, running bond, fully grouted",
+    "wall_height_mm": 1000, "wall_width_mm": 1000, "thickness_mm": 63.3,
+    "courses": 15, "blocks_long": 7.5,
+    "span_mm": 1000,
+    "span_note": "Analyses use L = 1000 mm (Fig 3.1 span axis 0-1000 mm); support rotation = atan(mid deflection / 500 mm), checked against Table 2.3. The clear span between the roller supports is not stated separately.",
+    "mortar": {"type": "S", "proportions_by_weight_cement_lime_sand": "1:0.2:3.53", "flow_pct": 128, "cube_strength_MPa": 30.3, "cube_cov_pct": 5.2, "n_cubes": 15, "cube_size_mm": 50},
+    "grout": {"type": "fine", "proportions_by_weight_cement_sand": "1:3.9", "cylinder_strength_MPa": 23.0, "cov_pct": 6.9, "cylinder_mm": "100 dia x 200"},
+    "prism": {"f_m_MPa": 20.8, "f_m_cov_pct": 9.6, "E_m_GPa": 11.8, "E_m_cov_pct": 9.8, "type": "4-block-high prisms, 2 per mortar batch, CSA S304.1", "tension": "No prism tensile data available. Modulus of rupture assumed to be 0.62*sqrt(f'm) (p.59)"},
+    "steel": {
+      "D4": {"area_mm2": 26, "fy_MPa": 478, "fy_cov_pct": 0.99, "type": "deformed"},
+      "D7": {"area_mm2": 45, "fy_MPa": 484, "fy_cov_pct": 4.15, "type": "deformed"},
+      "W1.7": {"area_mm2": 11, "fy_MPa": 270, "fy_cov_pct": 2.33, "type": "smooth, hooked at ends around the outer vertical bars"},
+      "notes": "Yield by 0.2% offset ('idealized'). No ultimate strength, elongation or steel grade given. Bilinear steel law in the analysis (p.59)."
+    },
+    "bar_location": "one vertical bar per cell, a single layer at mid-thickness (Fig 2.1b drawing). d ~31.7 mm is inferred, not stated.",
+    "source": "pp.29-31, 53 (Table 2.1), 46 (Fig 2.1), 58-59"
+  },
+  "setup": {
+    "boundary": "one-way, simply supported top and bottom. A steel C127x4.8 channel is fixed to the wall's base and top; each channel bears on a 50.8 mm diameter solid steel rod welded to the middle of the top and bottom HSS. The side edges are not described as supported. DP2 and DP3 matched, which the thesis takes as confirming one-way action.",
+    "axial_load": "none (axial load is listed as future work, p.95)",
+    "bunker": "six welded HSS 102x152x12 mm; six HSS 102x102x12 mm across the back carry the DP frame; closed box clad with 6.4 mm steel plate to stop engulfment; steel wing walls and parapet to reduce clearing; concrete blocks stacked against the sides (photo)",
+    "gauges": "reflected-pressure gauges PCB 113A21 and Kistler 211B2: two at wall mid-height either side of the wall (in the wing walls), one 250 mm above the wall top (1250 mm above the base), one inside the bunker; sampled at 1 MHz",
+    "DPs": "Penny+Giles SLS190-300 (300 mm stroke) on the rear face. DP1 at centre, 500 mm (8th course); DP2 at centre, 750 mm (11th course); DP3 at 750 mm, 250 mm from the edge",
+    "static_tests": "One wall per group tested statically (method not described). Group I result discarded (test failure). Group II peak 60.9 kN vs 53.3 kN theory (Table 3.1)",
+    "source": "pp.29, 31-32, 46 (Fig 2.2), 65, 89 (Table 3.1), 95"
+  },
+  "specimens": [
+    {"id": "WML6", "group": "I", "vertical": "15 D4, one per cell (65 mm text / 63.3 mm table)", "rho_v_pct": 0.62, "horizontal": "15 W1.7, one per course", "rho_h_pct": 0.26, "source": "p.33, p.53 Table 2.1, p.46 Fig 2.1"},
+    {"id": "WML12", "group": "I", "vertical": "15 D4", "rho_v_pct": 0.62, "horizontal": "15 W1.7", "rho_h_pct": 0.26, "source": "p.53 Table 2.1"},
+    {"id": "WML30", "group": "I", "vertical": "15 D4", "rho_v_pct": 0.62, "horizontal": "15 W1.7", "rho_h_pct": 0.26, "source": "p.53 Table 2.1"},
+    {"id": "WMH6", "group": "II", "vertical": "15 D7, one per cell", "rho_v_pct": 1.07, "horizontal": "15 W1.7", "rho_h_pct": 0.26, "source": "p.53 Table 2.1"},
+    {"id": "WMH12", "group": "II", "vertical": "15 D7", "rho_v_pct": 1.07, "horizontal": "15 W1.7", "rho_h_pct": 0.26, "source": "p.53 Table 2.1"},
+    {"id": "WMH30", "group": "II", "vertical": "15 D7", "rho_v_pct": 1.07, "horizontal": "15 W1.7", "rho_h_pct": 0.26, "source": "p.53 Table 2.1"}
+  ],
+  "section_analysis": {
+    "group_I": {"c_over_d": 0.42, "curvature_ductility": 1.21, "Rmax_static_kN": 40.5, "note": "under-reinforced (balanced c/d 0.59)"},
+    "group_II": {"c_over_d": 0.73, "curvature_ductility": 0.61, "Rmax_static_kN": 53.3, "note": "over-reinforced"},
+    "source": "pp.61-62, 89 Table 3.1"
+  },
+  "shots": [
+    {"wall": "WML6", "charge_TNT_kg": 6, "standoff_m": 5, "Z_m_per_kg13": 2.75, "Pr_kPa": 498.2, "ir_kPa_ms": 465.7, "KB_Pr_kPa": 417.8, "KB_ir_kPa_ms": 450.8, "ratio_to_ConWep_P": 0.96, "ratio_to_ConWep_I": 1.03, "source": "p.53 Table 2.1; p.54 Table 2.2; p.89 Table 3.3"},
+    {"wall": "WML12", "charge_TNT_kg": 12, "standoff_m": 5, "Z_m_per_kg13": 2.18, "Pr_kPa": 918.5, "ir_kPa_ms": 868.6, "KB_Pr_kPa": 801.7, "KB_ir_kPa_ms": 748.1, "ratio_to_ConWep_P": 1.06, "ratio_to_ConWep_I": 0.90, "source": "as above"},
+    {"wall": "WML30", "charge_TNT_kg": 30, "standoff_m": 5, "Z_m_per_kg13": 1.61, "Pr_kPa": 2549.1, "ir_kPa_ms": 1274.3, "KB_Pr_kPa": 2063.1, "KB_ir_kPa_ms": 1480.5, "ratio_to_ConWep_P": 0.86, "ratio_to_ConWep_I": 1.07, "source": "as above"},
+    {"wall": "WMH6", "charge_TNT_kg": 6, "standoff_m": 5, "Z_m_per_kg13": 2.75, "Pr_kPa": 479.8, "ir_kPa_ms": 465.7, "KB_Pr_kPa": 417.8, "KB_ir_kPa_ms": 450.8, "ratio_to_ConWep_P": 0.90, "ratio_to_ConWep_I": 1.12, "note": "impulse identical to WML6's, possibly copied", "source": "as above"},
+    {"wall": "WMH12", "charge_TNT_kg": 12, "standoff_m": 5, "Z_m_per_kg13": 2.18, "Pr_kPa": 1062.6, "ir_kPa_ms": 575.5, "KB_Pr_kPa": 801.7, "KB_ir_kPa_ms": 748.1, "ratio_to_ConWep_P": 0.93, "ratio_to_ConWep_I": 1.07, "source": "as above"},
+    {"wall": "WMH30", "charge_TNT_kg": 30, "standoff_m": 5, "Z_m_per_kg13": 1.61, "Pr_kPa": 2554.9, "ir_kPa_ms": 1082.6, "KB_Pr_kPa": 2063.1, "KB_ir_kPa_ms": 1480.5, "ratio_to_ConWep_P": 1.04, "ratio_to_ConWep_I": 0.84, "source": "as above"}
+  ],
+  "shots_common": {
+    "explosive": "Pentex-D (D-454 cast boosters), 5 to 25 kg actual mass. Implied 5/10/25 kg from TNT eq./1.2; only the range is stated.",
+    "tnt_factor": "1.2 assumed (range 1.2-1.5 per Orica, p.31; 1.0-1.5 per Dusenberry, p.57)",
+    "burst": "surface detonation, charge on the ground (pp.2, 91). No height of burst given; height of the wall base above ground not given.",
+    "pressure_processing": "Gauges rang, so modified Friedlander fits by least squares give Pr and ir (p.35, p.72). Positive-phase durations and decay coefficients are not tabulated. For tests without clear records, the P-I plots use data from Smith et al. (2014), labelled 'PN' (p.75); which tests is not stated.",
+    "inconsistency": "Table 2.2 (test/ConWep, mean 0.97/1.01) cannot be reconciled with Table 3.3 (test/K-B, e.g. WML6 P 1.19). Both claim a K-B basis.",
+    "one_shot_per_wall": "Each of the six walls took a single blast (p.33). No cumulative damage.",
+    "source": "pp.iii, 2, 31-33, 35, 57, 72, 75, 91"
+  },
+  "measured": [
+    {"wall": "WML6", "peak_mid_mm": 15.55, "support_rotation_deg": 1.78, "t_peak_ms_fig": "~1.3 (plot time; motion begins ~0.6)", "residual_mm_fig": "~0 to 2 at 18 ms", "rebound_mm_fig": "~-9", "damage": "full-width rear bed-joint crack at course 9, partial crack at course 10; loaded face undamaged", "damage_state": "Moderate", "source": "pp.33, 36, 41, 54 Table 2.3/2.4; Figs 2.5a, 2.7a pp.49-50"},
+    {"wall": "WML12", "peak_mid_mm": 36.99, "support_rotation_deg": 4.24, "t_peak_ms_fig": "~1.8-2.0", "residual_mm_fig": "permanent set reported but not quantified; DP1 still oscillating at end of record: ~17 at 14 ms, ~12 at 18 ms", "damage": "rear bed-joint cracks courses 5-14; slight spalling on loaded face", "damage_state": "Heavy", "source": "pp.33-34, 36, 41-42, 54; Fig 2.5b"},
+    {"wall": "WML30", "peak_mid_mm": null, "support_rotation_deg": null, "damage": "fractured in two at the course-9 bed joint; bars necked and ruptured; rear bed cracks courses 3-13, many full width, plus head-joint cracks; loaded face full-width bed cracks courses 8-11. DP record not meaningful.", "damage_state": "Blowout", "source": "p.34, 36, 42, 54"},
+    {"wall": "WMH6", "peak_mid_mm": 14.57, "peak_mid_mm_alt": 15.6, "support_rotation_deg": 1.67, "t_peak_ms_fig": "~1.2", "residual_mm_fig": "~0", "rebound_mm_fig": "~-10", "damage": "no visible cracks, no permanent deformation", "damage_state": "Superficial", "note": "Table 3.4 gives 15.6 mm", "source": "p.34, 36, 42, 54; p.90 Table 3.4"},
+    {"wall": "WMH12", "peak_mid_mm": 18.05, "support_rotation_deg": 2.07, "t_peak_ms_fig": "~1.0-1.1", "residual_mm_fig": "~0", "rebound_mm_fig": "~-15", "damage": "full-width rear bed-joint cracks, hairline once closed; loaded face essentially undamaged (text also calls it a single bed-joint crack, p.39)", "damage_state": "Moderate (Table 2.4/3.5); the text on p.42 says Heavy", "source": "p.34, 36, 42, 54"},
+    {"wall": "WMH30", "peak_mid_mm": 50.82, "support_rotation_deg": 5.81, "t_peak_ms_fig": "~1.5-2", "residual_mm_fig": "~38 (DP1), ~26 (DP2) at 18 ms", "damage": "rear full-width bed cracks; vertical crack courses 6-11 and others; rear mortar spalling and debonding; loaded face full-width bed cracks and face-shell spalling that exposed the bars; crushing on the loaded face", "damage_state": "Heavy", "source": "pp.34-36, 43, 54; Fig 2.5e"}
+  ],
+  "measured_notes": "Time-of-peak, residual and rebound values marked _fig were read by eye from Figs 2.5/2.7 (pp.49-51), which run ~18 ms. They are approximate and not given numerically in the thesis. The traces carry large negative spikes, likely noise. The thesis calls the response near-impulsive, with load duration much shorter than the natural period (p.95).",
+  "predictions": {
+    "ch2_simplified_SDOF": {"method": "elastic, I_av = (I_g+I_cr)/2 (I_g for WMH6), K = 384EI/5L^3, triangular load from the Friedlander-fit Pmax and td, K_LM 0.78, no strain rate",
+      "peak_mm": {"WML6": 17.30, "WML12": 28.80, "WML30": 56.83, "WMH6": 13.62, "WMH12": 27.02, "WMH30": 53.33},
+      "rotation_deg": {"WML6": 1.99, "WML12": 3.30, "WML30": 6.49, "WMH6": 1.56, "WMH12": 3.10, "WMH30": 6.09},
+      "source": "pp.37-39, 54 Table 2.3"},
+    "ch3_models_peak_mm": {
+      "WML6": {"linear": 14.3, "bilinear": 17.6, "nonlinear": 16.2, "SBEDS": 16.4, "Biggs": 17.5},
+      "WML12": {"linear": 23.8, "bilinear": 43.1, "nonlinear": 41.0, "SBEDS": 44.3, "Biggs": 52.4},
+      "WML30": {"linear": 47.3, "bilinear": 162.7, "nonlinear": 160.2, "SBEDS": 190.4, "Biggs": 106.7},
+      "WMH6": {"linear": 13.5, "bilinear": 14.2, "nonlinear": 15.5, "SBEDS": 11.4, "Biggs": 9.7},
+      "WMH12": {"linear": 22.5, "bilinear": 30.9, "nonlinear": 32.3, "SBEDS": 29.4, "Biggs": 18.9},
+      "WMH30": {"linear": 44.8, "bilinear": 109.8, "nonlinear": 108.9, "SBEDS": 124.6, "Biggs": 54.9},
+      "source": "p.90 Table 3.4"},
+    "resistance_functions": "Fibre moment-curvature: Thorenfeldt masonry law in compression and in tension (MOR 0.62*sqrt(f'm)), bilinear steel. Deflection by double integration of curvature. Rmax = 8Mmax/L. Bilinear K = 384E*I_av/5L^3 with I_av = 0.75 I_cr + 0.25 I_g, flat after Rmax. Nonlinear: I_g to cracking, then tension stiffening, flat after peak. K_LM 0.78 elastic / 0.66 plastic, continuous in the nonlinear model. DIFs: CEB 1990 (masonry compression), Malvar & Ross 1998 (tension), Malvar 1998 (steel), from an iterated average curvature rate. Elastic-limit support rotation 0.54/0.64 deg (Group I/II) without strain rate, 0.72-0.75/0.93-0.99 deg with it.",
+    "peak_dynamic_reaction_kN": {"WML6": [39.1, 39.3, 45.8], "WML12": [74.9, 75.0, 87.9], "WML30": [192.8, 192.9, 223.9], "WMH6": [39.1, 39.1, 45.8], "WMH12": [74.9, 75.0, 87.9], "WMH30": [192.8, 192.9, 223.9], "order": "bilinear, nonlinear, SBEDS", "source": "p.89 Table 3.2"},
+    "source": "pp.58-71, 78, 89-90"
+  }
+}

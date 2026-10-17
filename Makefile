@@ -71,7 +71,7 @@ ci-test:
 check: lint build-strict test ci-test
 
 # What CI runs on each push to main, as a backstop to the full check run before pushing: about
-# ten minutes on the mini. The full check runs nightly and by hand (see
+# 15 to 20 minutes on the mini. The full check runs nightly and by hand (see
 # docs/continuous-integration.md).
 check-light: lint ci-test build-strict test-core release-smoke
 

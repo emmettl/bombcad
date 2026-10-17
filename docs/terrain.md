@@ -271,7 +271,21 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell
   to 2–4e-8 over 120 steps, refined once (650 patches along the slope) or twice (4,200 at the
   second level), also with afterburning and gravity (`TerrainCutCellTests`). Without terrain, or
   with cut cells off, the refined runs' digests are unchanged to the bit, once or twice.
-- **A deflagration's air** keeps the staircase.
+- **A deflagration's air** is cut too, since 17 October 2026 (it kept the staircase before). Its
+  mixture is carried across cut cells at the same limited linear mass fractions on both sides of
+  each face, with the sub-grid mixing's carrying through each face's open part, and near the cut
+  cells a small cell's species are not held at zero while its difference is shared out (holding
+  them made gas). A closed box over a hill, half filled with methane–air and burning, holds its
+  mass and the cloud's gas to 2–7e-7 and its energy with the heat yet to come to 1e-6
+  (`TerrainCutCellTests`). Vent panels keep the terrain (placing them used to forget it, on the
+  staircase too). Mixture filling the space above a 20° and a 30° slope, lit 0.1 m above it,
+  without gravity, the same problem as on a flat floor turned (`blastbench deflagration slope
+  --angle 20|30 --until 0.45`, 5 cm cells): the burnt gas reaches equivalent hemispheres of 0.4,
+  0.6, 0.8 and 1.0 m at 186, 248, 304 and 350 ms on the flat floor; on cut cells at 184, 242, 292
+  and 334 ms (20°) and 192, 254, 304 and 346 ms (30°), within 1–5%; on the staircase at 180, 236,
+  282 and 322 ms (20°) and 158, 214, 258 and 296 ms (30°), 3–8% and 14–15% early, its steps
+  speeding the flame as obstacles do. A deflagration's air is never refined, so it is cut on the
+  uniform grid only. FM Global's vented chamber, on a flat floor, is unchanged to the bit.
 - **Saved runs.** A run over terrain on cut cells records `"terrainCutCells": true` in its
   settings; one on the staircase, and every run saved before cut cells, records nothing, and a
   project saved so reopens on the staircase it ran on. The standing names "Terrain as a
@@ -479,12 +493,14 @@ surface cross a cell a metre. The GPU and the CPU agree on every receiver.
 
 ## Limitations
 
-1. **A staircase of whole cells when chosen** (or under a deflagration). Slopes are then steps one
+1. **A staircase of whole cells when chosen.** Slopes are then steps one
    cell high, at each refinement level's own cells. They delay Mach reflection by 3–11° and
    under-read the triple point's angle by 20–75% on 100–400 cells along a run (above), converging
    at first order. [Cut cells](#cut-cells), the default, remove this; refined, the triple point
    reads up to 0.5° lower than on a uniform grid of the finest cells.
-2. **Rigid, smooth and reflecting.** No cratering, no soil that gives or absorbs, no vegetation or
+2. **Rigid, smooth and reflecting.** No crater cut during the run (an empirical one is estimated
+   and drawn after it, see [cratering](cratering.md)), no soil that gives or absorbs (soft ground
+   takes a share of a charge's energy before the run, the same place), no vegetation or
    roughness besides the staircase's, no snow or water. The floor under the terrain still reflects.
 3. **Refinement near the surface.** Placing a patch gains still air on one side of the surface and
    gives up gas on the other (0.08% of a closed box's gas in 120 steps over a hill). Patches along

@@ -32,6 +32,9 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// Soft ground under the structures' debris, the soil's subgrade modulus in Pa/m; nil, and left
     /// out of the file and the fingerprint, for the hard ground.
     var groundStiffness: Float?
+    /// What the ground is made of, for the crater and the share of the charge's energy the air
+    /// keeps; nil, and left out of the file and the fingerprint, for the rigid ground.
+    var ground: GroundType?
     /// False when the structures' outline in the air counted each element at its centre, as every
     /// run did before 16 October 2026; true when by overlap; nil, and left out of the file and the
     /// fingerprint, where the scene has no structure, or for a run saved before then.
@@ -50,6 +53,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         terrainCutCells =
             settings.terrainCutCells && settings.scenario.terrain.map { !$0.isFlat } == true ? true : nil
         groundStiffness = settings.softGround ? settings.groundStiffness : nil
+        ground = settings.ground == .rigid ? nil : settings.ground
         outlineByOverlap = settings.scenario.structuralObjects.isEmpty ? nil : settings.outlineByOverlap
         solidElementSize = settings.solidElementSize
         self.duration = duration
@@ -72,6 +76,13 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// at its centre; by default without, so that structures added later are counted by overlap.
     func countsByOverlap(over scenario: Scenario) -> Bool {
         outlineByOverlap ?? scenario.structuralObjects.isEmpty
+    }
+
+    /// The craters the charges of `scenario` dig in the ground these settings name; none on the
+    /// rigid ground. They form after the blast, so they are worked out from the scene, not the run.
+    func craters(over scenario: Scenario) -> [CraterEstimate] {
+        guard let ground else { return [] }
+        return CraterEstimate.craters(of: scenario, ground: ground)
     }
 
     /// The grid as people say it: a preset's name ("medium") or its cells ("4 m").
