@@ -1,6 +1,6 @@
 # Ground motion where the ground's wave outruns the blast: a proposal
 
-**Status: proposed, not built (17 October 2026).** A plan for the motion that the one-dimensional
+**Status: stage 1 built and checked (17 October 2026); stage 2 under way.** A plan for the motion that the one-dimensional
 models in [Ground shock](ground-shock.md) leave out. That is the regime of Xia et al.'s gauges,
 where both models put the vertical velocity 20 to 80 times too high and miss the horizontal
 motion that dominated ([the comparison](ground-shock.md#against-measured-ground-motion)), and of
@@ -122,6 +122,24 @@ Checks before any comparison: Pekeris's surface pulse for a suddenly applied poi
 Poisson solid; Cole and Huth's steady stresses under a load moving at sub-, trans- and
 superseismic speeds; Rayleigh-wave dispersion over a layer against Haskell's; energy radiated
 through the perfectly matched layer; agreement with the column where the front is superseismic.
+
+## Stage 1: the solver and its checks
+
+`AxisymmetricElasticGrid` and `AxisymmetricElasticStepper` (`Sources/BlastCore/AxisymmetricElastic.swift`):
+Virieux's velocity–stress grid in (r, z), its radial derivatives in conservative form so that
+the axis carries no singularity, the surface loaded through σ_zz with σ_rz mirrored above it,
+and a convolutional perfectly matched layer on the far side and the bottom. It runs on the CPU;
+the API follows ContinuumKit's prepared grid, forcing and observation. The checks
+(`AxisymmetricElasticTests`):
+
+| Check | Reference | Result |
+|---|---|---|
+| A disk pressed on the surface, 0.2 m across, switched on over 6 ms | Lamb's problem by the exact transform solution, summed by Bouchon's discrete wavenumber method (itself checked against Boussinesq's static displacement to 3%) | The surface's downward velocity at 2 and 3 m within 8% of the peak throughout; nothing before the P wave |
+| A step of pressure sweeping out at 2 and 3 c_P | Cole and Huth's plane solution: v_z = p₀η_P(η_S² + s²)/(μR), v_r = −p₀s(2η_Pη_S − η_S² + s²)/(μR) | Within 5% (v_z) and 8% (v_r) behind the front; still ahead of it |
+| The same at 1.4 c_S (transseismic) and 0.7 c_S (subseismic) | Waves outrun the load | Motion ahead of the front: 6% of the peak half a millisecond ahead (transseismic), 30% or more (subseismic) |
+| Rayleigh waves over 1 m of soil at 100 m/s on a half-space at 200 m/s | Haskell's secular function (checked against Rayleigh's 0.9194 c_S on one material) | Phase speed within 4% from 30 to 100 Hz, 149 down to 92 m/s (40–50 Hz, two or three wavelengths out, read 8–17% off and are not used) |
+| The perfectly matched layer | Energy left inside | Under 2% after the waves leave; with rigid edges over 30% stays |
+| A front sweeping at 20 c_P | The elastic soil column, and p/(ρc_P) | The downward velocity a metre down within 3% of both; the outwards motion the plane solution's S-wave share, 2sη_S/(η_S² − s²), within 15% |
 
 ## Stages
 
