@@ -1160,6 +1160,25 @@ public final class BlastSolver {
         updateGaugeChildren()
     }
 
+    /// Binds the refined levels for a surface reader (`RefinedAir` in Solver.metal) at `first`
+    /// and the five indices after it: the first level's patches, fine state and outline, then the
+    /// second level's; placeholders where there is no such level.
+    private func bindRefinedAir(_ encoder: MTLComputeCommandEncoder, from first: Int) {
+        encoder.setBuffer(refinement?.patchOfTile ?? refinementPlaceholder, offset: 0, index: first)
+        encoder.setBuffer(refinement?.fine[0] ?? refinementPlaceholder, offset: 0, index: first + 1)
+        encoder.setBuffer(refinement?.fineMask ?? refinementPlaceholder, offset: 0, index: first + 2)
+        if let deep = finerRefinement, let parent = deep.parent {
+            encoder.setBuffer(parent.patchOfTile, offset: deep.patchOffset * 4, index: first + 3)
+            encoder.setBuffer(
+                parent.fine[0], offset: deep.cellOffset * MemoryLayout<CellState>.stride, index: first + 4)
+            encoder.setBuffer(parent.fineMask, offset: deep.cellOffset, index: first + 5)
+        } else {
+            for index in first + 3...first + 5 {
+                encoder.setBuffer(refinementPlaceholder, offset: 0, index: index)
+            }
+        }
+    }
+
     /// Binds the second level's patches, cells and outline for the gauges (any buffer without).
     private func encodeFinerGaugeBuffers(_ encoder: MTLComputeCommandEncoder) {
         if let deep = finerRefinement, let parent = deep.parent {
@@ -3052,6 +3071,8 @@ public final class BlastSolver {
         encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 6)
         encoder.setBytes(&parameters, length: 16, index: 7)
         encoder.setBuffer(tileFlagBuffer, offset: 0, index: 8)
+        // Where the air is refined, its finest cells against each face.
+        bindRefinedAir(encoder, from: 9)
         encoder.dispatchThreads(
             MTLSize(width: observer.faces.count, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: observer.pipeline.threadExecutionWidth, height: 1, depth: 1)
@@ -3107,17 +3128,7 @@ public final class BlastSolver {
         encoder.setBuffer(recorder.faceList, offset: 0, index: 9)
         encoder.setBuffer(recorder.stillPressure, offset: 0, index: 10)
         // The refined air, for faces in it (`readsRefinedAir`); the second level's as the gauges'.
-        encoder.setBuffer(refinement?.patchOfTile ?? refinementPlaceholder, offset: 0, index: 11)
-        encoder.setBuffer(refinement?.fine[0] ?? refinementPlaceholder, offset: 0, index: 12)
-        encoder.setBuffer(refinement?.fineMask ?? refinementPlaceholder, offset: 0, index: 13)
-        if let deep = finerRefinement, let parent = deep.parent {
-            encoder.setBuffer(parent.patchOfTile, offset: deep.patchOffset * 4, index: 14)
-            encoder.setBuffer(
-                parent.fine[0], offset: deep.cellOffset * MemoryLayout<CellState>.stride, index: 15)
-            encoder.setBuffer(parent.fineMask, offset: deep.cellOffset, index: 16)
-        } else {
-            for index in 14...16 { encoder.setBuffer(refinementPlaceholder, offset: 0, index: index) }
-        }
+        bindRefinedAir(encoder, from: 11)
         encoder.dispatchThreadgroups(
             indirectBuffer: recorder.faceDispatch, indirectBufferOffset: 0,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
@@ -3271,6 +3282,8 @@ public final class BlastSolver {
         encoder.setBytes(&probe, length: 16, index: 5)
         encoder.setBytes(&weight, length: 4, index: 6)
         encoder.setBytes(&sampling, length: 16, index: 7)
+        // Where the air is refined, the finest cell holding each point.
+        bindRefinedAir(encoder, from: 8)
         encoder.dispatchThreads(
             MTLSize(width: plane.nx, height: plane.ny, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1))

@@ -149,6 +149,61 @@ struct EnvelopeComponentHistoryTests {
         #expect(!history.truncated && !history.invalid && history.outerMaxPa == nil)
     }
 
+    @Test("Refined air gives the surface recorder the load of a grid of its finest cells, as the components")
+    func refinedFacade() throws {
+        // 1 kg at 4 m from a closed box's front wall, on 0.25 m cells refined by 2 and on uniform
+        // 0.125 m cells (`blastbench facade` at this scale: within 0.6% on 10 and 40 kg).
+        func front(cellSize: Float, refinement: Int) throws -> (
+            peak: Double, impulse: Double, surfacePeak: Double, surfaceImpulse: Double
+        ) {
+            var scene = Scenario(
+                name: "Facade", domainSize: SIMD3(11, 7, 4), boxes: [],
+                charge: Charge(mass: 1, position: SIMD3(2, 3.5, 0.25)))
+            let solids = [
+                Box(min: SIMD3(6, 2, 0), max: SIMD3(6.25, 5, 2)),
+                Box(min: SIMD3(8.75, 2, 0), max: SIMD3(9, 5, 2)),
+                Box(min: SIMD3(6.25, 2, 0), max: SIMD3(8.75, 2.25, 2)),
+                Box(min: SIMD3(6.25, 4.75, 0), max: SIMD3(8.75, 5, 2)),
+                Box(min: SIMD3(6, 2, 1.75), max: SIMD3(9, 5, 2)),
+            ]
+            try scene.addEnvelopeObject(BuildingEnvelope(solids: solids), name: "Building")
+            var configuration = SolverConfiguration.recommended
+            configuration.refinement = refinement
+            configuration.refinementMemory = 64 << 20
+            let solver = try BlastSolver(
+                device: #require(MTLCreateSystemDefaultDevice()), scenario: scene, cellSize: cellSize,
+                configuration: configuration)
+            try solver.configureEnvelopeComponents(
+                objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: 0.012))
+            try solver.configureEnvelopeExposure(objects: scene.envelopeObjects)
+            _ = solver.advance(until: 0.012)
+            let surface = try #require(solver.envelopeExposureSummaries()?.first)
+            let wall = try #require(
+                solver.envelopeComponentHistories()?.first {
+                    $0.component.kind == .wall && $0.component.source == 0
+                })
+            return (
+                Double(wall.peakOuterPa), wall.outerImpulsePaS.map(Double.init).reduce(0, +),
+                Double(surface.peakPositivePa), surface.surfacePositiveImpulseNS
+            )
+        }
+        let refined = try front(cellSize: 0.25, refinement: 2)
+        let uniform = try front(cellSize: 0.125, refinement: 1)
+        let coarse = try front(cellSize: 0.25, refinement: 1)
+        #expect(abs(refined.peak / uniform.peak - 1) < 0.03, "\(refined.peak) Pa against \(uniform.peak)")
+        #expect(
+            abs(refined.impulse / uniform.impulse - 1) < 0.03, "\(refined.impulse) against \(uniform.impulse)"
+        )
+        #expect(uniform.peak > 1.1 * coarse.peak)
+        #expect(
+            abs(refined.surfacePeak / uniform.surfacePeak - 1) < 0.03,
+            "\(refined.surfacePeak) Pa against \(uniform.surfacePeak)")
+        #expect(
+            abs(refined.surfaceImpulse / uniform.surfaceImpulse - 1) < 0.03,
+            "\(refined.surfaceImpulse) against \(uniform.surfaceImpulse)")
+        #expect(uniform.surfacePeak > 1.1 * coarse.surfacePeak)
+    }
+
     @Test("Each side's binned impulse is the mean of its faces' own integrals")
     func againstFaces() throws {
         // The street study's building, four walls and a roof: components in more than one

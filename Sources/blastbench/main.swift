@@ -5445,6 +5445,7 @@ do {
     case "settle": try runSettle(device: device)
     case "poulin": try runPoulin(device: device)
     case "tyndall": try runTyndall(device: device)
+    case "facade": try runFacade(device: device)
     case "lacroix": try runLacroix(device: device)
     case "beam": try runBeam()
     case "shear": try runShearBeam()
