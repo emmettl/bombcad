@@ -201,8 +201,10 @@ struct EnvelopeImportStudyTests {
         #expect(exact.differingCells == 0 && exact.peakL1 == 0 && exact.impulseL1 == 0, "\(exact)")
         #expect(exact.loadingDifference < 1e-9, "\(exact)")
         #expect(cases.allSatisfy { $0.faces > 0 })
-        // The bounds cut a little more than the holes: frames, sills and reveals.
-        #expect(comparisons[1].differingCells > 0)
+        // The bounds cut a little more than the holes (frames, sills and reveals), but what they
+        // leave of each wall beside a cut, thinner than a cell along the wall, takes its cell again
+        // (`Box.holdingCells`), so on 0.5 m cells the cuts open exactly the converter's own holes.
+        #expect(comparisons[1].differingCells == 0, "\(comparisons[1])")
     }
 
     @Test(

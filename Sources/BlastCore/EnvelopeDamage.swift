@@ -18,10 +18,13 @@ public struct EnvelopeComponentLoad: Sendable {
     /// Whether each of the region's edges is supported, as `EnvelopeComponent.supportEdges`
     /// ([-u, +u, -v, +v]); nil if not known, when a wall is taken as a panel held on its edges.
     public var supportEdges: [Bool]?
+    /// When the first bin starts, s (`EnvelopeComponentHistory.windowStartS`); before it the air
+    /// at the component was still.
+    public var startS: Double
 
     public init(
         id: String, owner: UUID, kind: Kind, region: Box, axis: Int, binS: Double, outerPa: [Double],
-        innerPa: [Double], supportEdges: [Bool]? = nil
+        innerPa: [Double], supportEdges: [Bool]? = nil, startS: Double = 0
     ) {
         self.id = id
         self.owner = owner
@@ -32,6 +35,7 @@ public struct EnvelopeComponentLoad: Sendable {
         self.outerPa = outerPa
         self.innerPa = innerPa
         self.supportEdges = supportEdges
+        self.startS = startS
     }
 
     /// A recorded history's load: its bins' impulses over the bin width.
@@ -43,7 +47,7 @@ public struct EnvelopeComponentLoad: Sendable {
             axis: history.component.axis, binS: history.binS,
             outerPa: history.outerImpulsePaS.map { Double($0) / history.binS },
             innerPa: history.innerImpulsePaS.map { Double($0) / history.binS },
-            supportEdges: history.component.supportEdges)
+            supportEdges: history.component.supportEdges, startS: history.windowStartS ?? 0)
     }
 
     /// A wall standing free: its foot held (on the ground or a slab) and its top not, so a
@@ -226,7 +230,7 @@ public struct GlazingHazard: Codable, Sendable, Equatable {
         // Moving in (or at rest, holed by a fragment before the blast), the load goes on pushing
         // it until, having pushed, it turns outward.
         if speed >= 0 {
-            var bin = Int(at / binS)
+            var bin = max(Int(at / binS), 0)
             // The rest of the bin it broke in, then whole bins.
             var span = Double(bin + 1) * binS - at
             var pushed = speed > 0
@@ -308,7 +312,8 @@ public enum EnvelopeDamageAssessment {
         loads: [EnvelopeComponentLoad], constructions: (UUID) -> EnvelopeConstruction,
         rooms: [UUID: Double] = [:], strikes: [FragmentImpact]? = nil
     ) -> [EnvelopeBuildingDamage] {
-        let owners = Array(Set(loads.map(\.owner))).sorted { $0.uuidString < $1.uuidString }
+        let byOwner = Dictionary(grouping: loads, by: \.owner)
+        let owners = byOwner.keys.sorted { $0.uuidString < $1.uuidString }
         // The first fragment through each pane, by its component's id.
         var holed: [String: Double] = [:]
         for strike in strikes ?? [] where strike.penetration?.outcome == .perforated {
@@ -318,18 +323,25 @@ public enum EnvelopeDamageAssessment {
         }
         return owners.map { owner in
             let construction = constructions(owner)
-            let mine = loads.filter { $0.owner == owner }
+            let mine = byOwner[owner] ?? []
             var components: [EnvelopeComponentDamage] = []
-            var openings: [(area: Double, opens: Double, outer: [Double])] = []
+            var broken: [(load: EnvelopeComponentLoad, at: Double)] = []
             for load in mine {
                 guard let damage = assess(load, construction: construction, holedAt: holed[load.id]) else {
                     continue
                 }
                 components.append(damage)
-                if damage.material == .annealedGlass, let broken = damage.failedAtS {
-                    let spans = load.spans
-                    openings.append((spans.short * spans.long, broken, load.outerPa))
-                }
+                if damage.material == .annealedGlass, let at = damage.failedAtS { broken.append((load, at)) }
+            }
+            // The broken panes' outer pressures from the first of their windows' starts.
+            let first = broken.map(\.load.startS).min() ?? 0
+            let openings = broken.map { pane in
+                let spans = pane.load.spans
+                let lead = Int(((pane.load.startS - first) / pane.load.binS).rounded())
+                return (
+                    area: spans.short * spans.long, opens: pane.at - first,
+                    outer: [Double](repeating: 0, count: lead) + pane.load.outerPa
+                )
             }
             let structural = components.filter { $0.material != .annealedGlass }
             let low = structural.map(\.levels.lowerBound).max() ?? .none
@@ -377,10 +389,30 @@ public enum EnvelopeDamageAssessment {
         atan(max(response.peakDeflection, -response.reboundDeflection) / (span / 2)) * 180 / .pi
     }
 
-    /// One component's damage, or nil for a component of no known kind; a pane a fragment holed
-    /// at `holedAt` s, if that came first, breaks then, its glass pushed in from rest by the load
-    /// after it.
+    /// One component's damage, or nil for a component of no known kind; its failure's time from
+    /// t = 0. A pane a fragment holed at `holedAt` s, if that came first, breaks then, its glass
+    /// pushed in from rest by the load after it.
     public static func assess(
+        _ load: EnvelopeComponentLoad, construction: EnvelopeConstruction, holedAt: Double? = nil
+    )
+        -> EnvelopeComponentDamage?
+    {
+        guard
+            var damage = assessFromStart(
+                load, construction: construction, holedAt: holedAt.map { max($0 - load.startS, 0) })
+        else { return nil }
+        damage.failedAtS = damage.failedAtS.map { $0 + load.startS }
+        damage.blastArrivalS = damage.blastArrivalS.map { $0 + load.startS }
+        // Holed before its window began: when it was, not the window's start.
+        if damage.fragmentBrokeAtS != nil {
+            damage.fragmentBrokeAtS = holedAt
+            damage.failedAtS = holedAt
+        }
+        return damage
+    }
+
+    /// The same, its failure's time from the load's first bin.
+    static func assessFromStart(
         _ load: EnvelopeComponentLoad, construction: EnvelopeConstruction, holedAt: Double? = nil
     )
         -> EnvelopeComponentDamage?

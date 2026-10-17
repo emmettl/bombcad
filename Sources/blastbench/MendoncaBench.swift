@@ -13,7 +13,7 @@ import UniformTypeIdentifiers
 //                       [--inputs Samples/Mendonca2020/inputs/slabs.json] [--out dir]
 //                       after the reveal: [--charge-factor 1.5] [--ft-factor 0.5] [--gf-factor 1] [--fc-factor 1]
 //                       [--fy-factor 1] [--afterburn] [--no-rate] [--bond splitting] [--rate-window steps]
-//                       [--margin 1] [--domain-height 3.2] [--under-block 0.06]
+//                       [--margin 1] [--domain-height 3.2] [--under-block 0.06] [--settle]
 //                       [--ensemble 8 [--seed 1] [--samples 1-8]]   (the inputs' spread)
 //
 // Writes each slab's result as JSON, its histories as CSV and its faces' cracks as PNG and text
@@ -166,6 +166,9 @@ func runMendonca(device: MTLDevice) throws {
                     solver.configuration.refinementLevels = levels
                 }
                 applyChosenMask(&solver.configuration)
+                // `--settle`: the slab brought to rest under its own weight before the blast, as runs
+                // have been since 17 October 2026 (the prediction took it as the run started).
+                if flag("settle") { solver.configuration.settlesStructures = true }
                 if flag("recommended") {
                     let recommended = SolverConfiguration.recommended
                     solver.configuration.airModel = recommended.airModel

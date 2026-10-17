@@ -52,7 +52,7 @@ Every owned solid cell face next to a fluid cell becomes a receiver with area `d
 position at the voxel face and a normal pointing into air. Interior and exterior surfaces
 both contribute. Shared solid faces and domain boundaries contribute nothing, including the
 ground attachment. Buildings with overlapping owned solid cells are rejected by the recorder;
-every requested building must have at least one resolved face.
+a building with no resolved face (buried, or wholly against its neighbours) is kept with none.
 
 After each complete fluid step, a receiver reads the pressure at its adjacent coarse fluid
 cell centre, including restricted fine state. This is a cell-pressure approximation to
@@ -94,7 +94,7 @@ Headless runs collect the same summaries. To write full surface records alongsid
 ```
 
 `--envelope-results` requires a scene with envelopes (other bodies may move beside them) and at least one
-resolved exposed face per owner. It refuses a pre-existing destination. Unavailable surface
+resolved exposed face. It refuses a pre-existing destination. Unavailable surface
 recording does not prevent ordinary blast runs, but an explicitly requested surface export
 fails with its reason instead of writing absent results as zeros.
 
@@ -138,8 +138,11 @@ order). Each step's value is integrated into 0.1 ms bins by its overlap with the
 exact whatever the step; the peak of each side, and of the net (outer less inner, pushing inward),
 is kept from every step. Options: the bin width; the window; a memory budget (256 MB by default)
 that widens the bins to a whole multiple when needed and says so; per-bin maxima (twice the
-memory); and openings recorded as panes in the open opening, for what the inside sees once glass
-has gone. Steps past the window are not binned and the history says `truncated`.
+memory); openings recorded as panes in the open opening, for what the inside sees once glass
+has gone; and windows that start when a component's air first wakes (`windowFromArrival`, the
+start in `windowStartS`), so that across a district the window need cover only one building's
+load. Steps past the window are not binned and the history says `truncated`. Components with no
+face on the air are left out.
 
 Headless runs write them with `--envelope-histories <file.json>`; kept runs do not store them yet.
 Recording leaves the air bit-identical, and each side's binned impulse equals the mean of its faces'
@@ -403,7 +406,9 @@ Project tests cover mixed scenes, version rejection and Undo/Redo restoring the 
 structure. Existing ownership, project and multi-body checks cover compatibility.
 
 The envelopes inherit the existing idealised blast model and grid-dependent geometry.
-Unresolved openings and thin walls can disappear. Fixed geometry cannot represent broken
+Openings narrower than a cell can close. Walls and slabs thinner than a cell take the layer of
+cells their middle lies in (since 17 October 2026: before, a wall between two cell centres vanished, its faces
+recorded nothing and the blast passed through it), so they are a cell thick in the air. Fixed geometry cannot represent broken
 windows, collapse, debris or evolving shielding. This establishes stationary exposure
 behaviour and its computational cost; it does not validate invented buildings against
 measurements or establish kilogram-to-kiloton physical coverage.

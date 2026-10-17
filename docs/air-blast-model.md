@@ -50,7 +50,10 @@ the app paints on the ground and on rigid blocks.
 ## Obstacles and boundaries
 
 - Rigid blocks and the structure are voxelised into a solid mask. A block cell is solid when
-  its centre is inside the block; a structure cell is solid when at least a third of it is
+  its centre is inside the block; a plate too thin to hold a cell's centre across it (a 0.2 m wall
+  on 0.5 m cells) but a cell or more in its other directions takes across it the one layer of
+  cells its middle lies in, on the coarse grid and each refined level, rather than vanishing as it
+  did before 17 October 2026 (a rod thinner than a cell still can); a structure cell is solid when at least a third of it is
   filled by intact elements (see [Structural model](structural-model.md#coupling-to-the-air)). Counted
   at the elements' centres, a structure's outline can flicker where those centres lie on cell
   faces; counted by their overlap with the cells, the default since 16 October 2026, it does not

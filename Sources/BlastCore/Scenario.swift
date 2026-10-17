@@ -362,8 +362,9 @@ extension BlastSolver {
 
         mutateMask { mask in
             mask.update(repeating: 0)
-            for box in scenario.rigidBoxes {
-                // A cell is solid when its centre lies inside the block.
+            for box in scenario.rigidBoxes.map({ $0.holdingCells(of: dx) }) {
+                // A cell is solid when its centre lies inside the block (widened where it is too thin
+                // to hold one; see `Box.holdingCells`).
                 let low = box.min / dx - 0.5
                 let high = box.max / dx - 0.5
                 let iRange = cellRange(low.x, high.x, count: grid.nx)
@@ -692,4 +693,29 @@ private func cellRange(_ low: Float, _ high: Float, count: Int) -> Range<Int> {
     let lower = min(max(Int(low.rounded(.up)), 0), count)
     let upper = min(max(Int(high.rounded(.up)), lower), count)
     return lower..<upper
+}
+
+extension Box {
+    /// The block as the air's mask takes it on cells of `cellSize`: unchanged where it holds a cell's
+    /// centre along every axis. A plate too thin to hold one across it (a 0.2 m wall on 0.5 m cells,
+    /// between two centres), but at least a cell in its other two directions, takes across it the
+    /// layer of cells its middle lies in, so that the blast does not pass through it. A block thin
+    /// in two directions (a rod, or the sliver an opening leaves beside it) is left as it is. A
+    /// block's cells are those whose centres it holds, so one thicker than a cell never changes.
+    public func holdingCells(of cellSize: Float) -> Box {
+        var result = self
+        let size = self.size
+        for axis in 0..<3 {
+            // As the rasteriser: a centre (n + 0.5) cellSize in [min, max).
+            let lower = (self.min[axis] / cellSize - 0.5).rounded(.up)
+            let upper = (self.max[axis] / cellSize - 0.5).rounded(.up)
+            guard upper <= lower, size[(axis + 1) % 3] >= cellSize, size[(axis + 2) % 3] >= cellSize else {
+                continue
+            }
+            let middle = ((self.min[axis] + self.max[axis]) / 2 / cellSize).rounded(.down)
+            result.min[axis] = middle * cellSize
+            result.max[axis] = (middle + 1) * cellSize
+        }
+        return result
+    }
 }
