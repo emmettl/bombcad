@@ -202,8 +202,7 @@ final class ViewSender: @unchecked Sendable {
     private var inFlight: [Int: ContinuousClock.Instant] = [:]
     private var stats = ViewStats()
     private var lastFaces = -1
-    /// The scene view's field reader, made at the first frame, and whether its setup has gone.
-    private var fieldReader: ViewFieldReader?
+    /// Whether the scene view's setup has gone.
     private var setupSent = false
 
     init(id: UUID, writer: SweepWorkerWriter, spec: ViewSpec) {
@@ -266,8 +265,7 @@ final class ViewSender: @unchecked Sendable {
             let compression = spec.compression
             writer.enqueue(.viewSetup(id)) { Self.compress(setup, compression) }
         }
-        if fieldReader == nil { fieldReader = try? ViewFieldReader(device: solver.device) }
-        guard let field = try? fieldReader?.read(solver, stride: stride) else { return nil }
+        guard let field = try? solver.viewField(stride: stride) else { return nil }
         return SceneViewCodec.encode(ViewFrame(solver: solver, field: field))
     }
 
@@ -278,13 +276,15 @@ final class ViewSender: @unchecked Sendable {
         return compressed
     }
 
-    /// The volume to cut out on the GPU at the end of the next frame's batch, if a frame is likely
-    /// to be built then; one built without it is read on the CPU.
-    func volumeRequest(_ solver: BlastSolver) -> AirSliceRequest? {
-        guard let stride = spec.volumeStride, lock.withLock({ inFlight.count < spec.window }) else {
-            return nil
-        }
-        return AirSliceRequest(region: Self.domain(solver), stride: stride)
+    /// What to cut out on the GPU at the end of the next frame's batch, the volume and the scene
+    /// view's field, if a frame is likely to be built then; one built without them reads them
+    /// after, waiting for the GPU.
+    func frameRequest(_ solver: BlastSolver) -> FrameRequest {
+        var request = FrameRequest()
+        guard lock.withLock({ inFlight.count < spec.window }) else { return request }
+        request.airSlice = spec.volumeStride.map { AirSliceRequest(region: Self.domain(solver), stride: $0) }
+        request.viewField = spec.sceneStride
+        return request
     }
 
     private static func domain(_ solver: BlastSolver) -> Box {
