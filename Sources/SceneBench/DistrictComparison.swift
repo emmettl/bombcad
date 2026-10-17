@@ -5,7 +5,7 @@ import simd
 
 /// `scenebench district-compare <district-scene's inputs> [--radius 1000] [--until 3]
 /// [--window 0.5] [--budget 2048] [--ground saturated] [--observers rigby.csv] [--pane 1.2,1.5]
-/// [--design-probability 0.008] --out folder`: the district's event, and what an accident survey
+/// [--design-probability 0.008] [--staircase] [--bare] [--trace] --out folder`: the district's event, and what an accident survey
 /// can be set against: arrival times at observers' positions (Rigby et al.'s CSV: lat, lon, and
 /// the time seen), peak overpressures on a line of gauges over the open side, and each building's
 /// glass and structure from its components' histories, by distance from the charge.
@@ -129,7 +129,10 @@ enum DistrictComparison {
         }
         scene.gauges = Array(gauges.prefix(BlastSolver.maxGauges))
 
-        var configuration = SolverConfiguration()
+        // The recommended air (far-field faces: copying faces at a district's low top channel the
+        // wave), or the bare core with `--bare`; whole cells for the terrain with `--staircase`.
+        var configuration = args.contains("--bare") ? SolverConfiguration() : .recommended
+        configuration.terrainCutCells = !args.contains("--staircase")
         if let name = value("ground") {
             guard let type = GroundType(rawValue: name) else {
                 throw BlastError.allocationFailed("--ground \(name)")
@@ -158,9 +161,21 @@ enum DistrictComparison {
         var steps = 0
         var lastReport = 0.0
         while solver.time < until {
-            let batch = solver.advance(until: until)
+            let batch =
+                args.contains("--trace")
+                ? solver.advance(steps: 16, timeLimit: until) : solver.advance(until: until)
             steps += batch.steps
-            guard batch.steps > 0, batch.isStable else { break }
+            guard batch.steps > 0, batch.isStable else {
+                print("Unstable at t \(solver.time) s")
+                break
+            }
+            if args.contains("--trace") {
+                print(
+                    String(
+                        format: "  t %.5f s, %d steps, dt %.2e s, max overpressure %.3g Pa, swept %.4f",
+                        solver.time,
+                        batch.steps, batch.lastTimeStep, batch.maxOverpressure, batch.sweptFraction))
+            }
             if solver.time - lastReport >= 0.25 {
                 lastReport = solver.time
                 print(
