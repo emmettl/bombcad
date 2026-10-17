@@ -192,12 +192,56 @@ pre-formed fragments or improvised casings. `FragmentCloudTests` check the first
   tumbling curve needs no such choice, so it is now the default; it moves the distances by under
   5%.
 
+## Hazard
+
+Where the fragments land on open ground is judged as the US explosives safety standards judge an
+arena test (`GroundHazard`):
+
+- **Hazardous fragments** strike with 79 J (58 ft-lb) or more, and the **hazardous fragment
+  distance** is where they fall below one per 55.7 m² (600 ft²) of ground, a 1% chance of one
+  striking a person's 0.56 m² (6 ft²): DoD 6055.09-M, equation V3.E3.T2-1 (now DESR 6055.09),
+  as FAA Guide 437.53-1 (2011) restates it. Fragments of 14.9 J (11 ft-lb) or more, FAA's
+  threshold for serious injury, are counted too.
+- Landings are binned in rings round the charge (the first a metre across, each after a tenth
+  wider, so the distance is found to within 10% at any range) and eight directions, each landing counting for the real fragments it stands for. Each
+  direction's distance is the outer edge of its furthest cell at or over the criterion; the
+  hazard distance is the largest. Fragments stopped by a structure or block are counted apart:
+  they do not reach the open ground behind it.
+- **Sampling.** The density in a far cell rests on the few fragments flown that land there. When
+  fewer than ten set the distance, the summary says so: fly more fragments (`count`) and the
+  distance settles.
+
+**An example**: 100 kg of TNT in a 150 kg steel cylinder (12 mm wall, 250 mm bore, its axis
+level along x), 1 m above open ground. Mott gives 18,400 fragments of a mean 8 g, launched at
+1,725 m/s. With 200,000 flown, every one landed, 42% of them hazardous and the furthest
+hazardous one 1,334 m out. The hazardous fragment distance is 49.8 m side-on to the casing,
+where its spray goes (set by 38 and 46 fragments flown), and within the first metre elsewhere,
+where only those thrown down land close. With 20,000 flown it was 50–55 m, set by 5–6 fragments
+and flagged to fly more. Most hazardous fragments go far, but thinly: past 50 m they are under
+one per 55.7 m². (`/Volumes/StudioData/bombcad/fragments/hazard/`.)
+
+Shown in the summary printed, in `--fragment-results` (`hazard`: the cells, the directions'
+distances, the shares hazardous and injurious, the furthest hazardous landing), in the USD scene
+as a ring of points (`/Scene/FragmentHazard`), and in the app (below).
+
+**In the app**, once a run ends, the fragments still in flight are flown on to land, and the line
+under the Fragments section gives the hazardous fragment distance. Under Display, **Hazardous
+fragment distance** draws it on the ground: a red circle at the distance, and a lighter arc in
+each direction that falls short of it, at its own distance. A kept run keeps the hazard: Compare
+gives the distance, and the CSV a row for it and for each direction.
+
+The same criteria judge [debris](structural-model.md#debris-as-a-hazard) where a run makes it (rubble particles,
+`StructureModel.rubbleParticles`), flown on from where the run leaves it (`DebrisResult`,
+`BombCAD run --debris-results`), and the [glass of envelope buildings](building-envelopes.md#one-way-damage-single-degree-of-freedom)
+is graded by GSA's and ASTM's window hazard levels.
+
 ## Output
 
 - **The USD scene** (`--usd`) gains `/Scene/Fragments` and `/Scene/Tracers`, Points prims whose
   positions follow the frames; a fragment's width is its edge. Blender imports them as point clouds.
-- **`--fragment-results`** writes the impacts, masses and counts as JSON, without the
-  trajectories, which are in the scene.
+- **`--fragment-results`** writes the impacts, masses, counts and [hazard](#hazard) as JSON,
+  without the trajectories, which are in the scene; `/Scene/FragmentHazard` rings the hazard
+  distance.
 - The summary printed gives the fragments landed on each surface and the highest impact energy,
   and how much air was sent and how long the run waited.
 
@@ -216,6 +260,10 @@ pre-formed fragments or improvised casings. `FragmentCloudTests` check the first
 - In the app, frames fall at the ends of batches, just past each millisecond, so its fragments vary
   a little from run to run (above).
 - A kept run keeps the fragments' impacts, not their paths.
+- The hazard distance is as good as the ranges, which no arena test has checked, and counts only
+  landings on open ground: no ricochet, no fragments stopped by people or vegetation, and the
+  density of fragments passing through the air above a person is not counted, only where they
+  land.
 
 ## Sources
 
@@ -228,4 +276,6 @@ pre-formed fragments or improvised casings. `FragmentCloudTests` check the first
   velocity irregular fragments that rotate or tumble, *Defence Technology* 13 (2017) 269–280,
   doi:10.1016/j.dt.2017.03.008: the projected area of a tumbling body (a quarter of its surface)
   and Hansche and Rinehart's measured drag of tumbling cubes, Mach 0.5 to 3.5.
+- FAA, *Calculation of Safety Clear Zones for Experimental Permits*, Guide 437.53-1 (2011): the
+  hazardous fragment's 79 J and 600 ft² from DoD 6055.09-M, and its own 11 ft-lb.
 - D. E. Grady, *Fragmentation of Rings and Shells*, Springer, 2006: the exponential form.
