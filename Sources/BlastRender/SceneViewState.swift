@@ -346,8 +346,7 @@ extension ViewFrame {
     /// The run's view now, read from its solver at full resolution; between batches, as
     /// `BlastSolver.refreshVisualization`, which this calls.
     public init(solver: BlastSolver) throws {
-        try self.init(
-            solver: solver, field: try ViewFieldReader(device: solver.device).read(solver, stride: 1))
+        self.init(solver: solver, field: try ViewFieldReader(device: solver.device).read(solver, stride: 1))
     }
 
     /// The run's view now with `field` read already, as `ViewFieldReader.read` reads it.
