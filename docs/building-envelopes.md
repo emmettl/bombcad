@@ -746,6 +746,35 @@ since 17 October 2026 ("Vent broken glazing", below), with the one-way fill wher
   damage takes it as failed then. A brick wall falls in the air within 0.5 ms of its one-way model on
   its own load (`EnvelopeVentingTests`). Façade strips, a solid block's faces with nothing behind,
   do not open.
+- **Holes through walls** (since 17 October 2026). A cased charge's fragments, flown before the
+  run in still air as for the panes they hole (`FragmentCloud.envelopeHoles`), perforate walls,
+  roofs and slabs by the penetration methods (fragments.md); each perforation is a hole of the
+  fragment's presented area, times the real fragments it stands for, for want of a cited hole size
+  (UFC 3-340-02 §4-60.1 describes craters wider than the fragment but gives no size), so the open
+  area is a lower bound. A hole goes through the component it strikes as the column of its cells
+  there (`BlastSolver.setEnvelopeWallHoles`); a column opens on the run's clock when its holes fill
+  half its face, and a hole larger than that opens every column whose centre lies within its
+  radius. A finer model would pass the flow through a cell's holed share as an aperture, as cut
+  cells and the congestion model's open faces do; the cells are solid in the mask, so it is not yet
+  done.
+- **Breaches** (`BlastSolver.setEnvelopeCloseIn`, `UFCSpallBreach`). Each concrete wall, roof and
+  slab is judged column by column across its face by UFC 3-340-02 §4-55's threshold spall and
+  breach curves (equations 4-178 and 4-179, the spall parameter of 4-180a or, touching the charge,
+  4-180b, with the casing's weight), at the range from the charge's centre to the column's middle;
+  the columns past the breach threshold open when the blast reaches them (Kingery–Bulmash's
+  arrival there). Spalling, which does not go through, opens nothing; the damage shows each
+  component spalled or breached. The breach curve is Figure 4-65a's within 4% for Ψ of 1.8 to 14
+  (`UFCSpallBreachTests`); on Hupfauf's eight contact slabs it breaches all four that breached and
+  two of the four that held, as the upper bound to the tests' breaches it is.
+  Checked (`scenebench venting-checks --case cased`, `--case references-fragments`, 0.25 m, 17
+  October 2026): 20 kg in a 20 kg steel case 4 m off a 0.2 m concrete box perforates its wall 4
+  times, 16 cm² in all, a fortieth of a cell's face, and opens nothing (UFC 3-340-02's leakage
+  through 16 cm² into its 121 m³ would be about 10 Pa); 1 m off, bare, the wall spalls, and cased
+  it is breached (the casing lowers the spall parameter): 166 columns open from 0.2 ms and the
+  inside reaches 89 kPa. The breach patch is wherever the curve says breach, so it bounds the
+  hole's extent from above. On the damage references' isolated buildings cased one to one,
+  fragments perforate the concrete 11 times at 50 kg and 101 at 200 kg, open nothing, and the
+  inside is as without them.
 - **Gravity.** An opened cell holds the background at rest at its height, and a room's mean is of
   its cells' overpressure against the ambient pressure at theirs; the pane breaks and the room
   fills as without gravity, within 0.3 ms and 10%. Map buildings are solid blocks without glazing,

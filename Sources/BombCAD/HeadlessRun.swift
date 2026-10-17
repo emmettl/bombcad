@@ -501,10 +501,15 @@ enum HeadlessRun {
     /// runs. `progress` is told the fraction of the simulated time reached, now and then.
     /// `connect` starts a worker on a host named in `options.consumers`; tests stand in-process
     /// workers in for them. `costs` keeps what the consumers cost, for `auto` to place them by
-    /// in this run and later ones. Cancelling the task stops the run.
+    /// in this run and later ones. `view` is handed the solver at each frame, the frame's number,
+    /// and whether it is the run's last sample, which may fall between frames, for a viewer
+    /// elsewhere (see `WatchJob`), and `viewVolume` asked, before each frame's batch, for any block
+    /// of air it will read, for the GPU to cut out. Cancelling the task stops the run.
     static func perform(
         _ document: ProjectDocument, options: Options, progress: ((Double) -> Void)? = nil,
         consumer injected: (any FrameConsumer)? = nil, costs store: ConsumerCostStore? = nil,
+        view: ((BlastSolver, Int, Bool) -> Void)? = nil,
+        viewVolume: ((BlastSolver) -> AirSliceRequest?)? = nil,
         connect: (String) async throws -> SweepWorkerClient = {
             try await RemoteSweepWorker.connect(host: $0)
         }
@@ -564,6 +569,7 @@ enum HeadlessRun {
         let framed =
             options.vdb != nil || options.fragments != nil || injected != nil || options.thermal != nil
             || options.groundShock != nil || (options.usd != nil && inputs.scenario.structure != nil)
+            || view != nil
         // Before the inputs load, which sets the first sample time. The cloud needs only the
         // last sample, at the end of the run, which then stops nowhere else.
         model.airSampleInterval = framed || options.cloud == nil ? interval : inputs.settings.duration
@@ -666,7 +672,7 @@ enum HeadlessRun {
                 return hold
             }
         }
-        if framed, fragmentFeed != nil || options.thermal != nil {
+        if framed, fragmentFeed != nil || options.thermal != nil || viewVolume != nil {
             // The GPU cuts out what a frame's consumers need at the end of the batch that lands on
             // it, as `onSample` will ask for it, rather than the CPU while the GPU waits.
             model.prepareBatch = { solver, limit in
@@ -684,6 +690,7 @@ enum HeadlessRun {
                         cellSize: solver.grid.cellSize)
                     request.airSlice = AirSliceRequest(region: region.box, stride: region.stride)
                 }
+                if request.airSlice == nil, let wanted = viewVolume?(solver) { request.airSlice = wanted }
                 solver.frameRequest = request
             }
         }
@@ -702,6 +709,10 @@ enum HeadlessRun {
                 guard framed else { return }
                 // The last sample, at the end of the run, can fall between frames.
                 let index = (solver.time / interval).rounded()
+                if let view {
+                    let last = solver.time >= end - 1e-9
+                    if last || abs(solver.time - index * interval) < 1e-6 { view(solver, Int(index), last) }
+                }
                 guard exportError == nil, abs(solver.time - index * interval) < 1e-6, Int(index) == frame
                 else {
                     return
