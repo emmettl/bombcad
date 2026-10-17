@@ -40,21 +40,26 @@ reaching the ground, 1.7 mm at most, no joint separated or off its seat.
 
 ## Gas in a corner flat
 
-Stoichiometric methane fills the back half of the west corner flat on the tenth floor
-(43 m³, the kitchen and hall: Ronan Point's gas collected in the hall of a corner flat on the
-eighteenth of 22, and was town gas, which the model does not have), lit at the cooker. The flat's
-two windows are vent panels. Air on 0.125 m cells (`blastbench panelblock --case gas`).
+Stoichiometric town gas, Ronan Point's own fuel ([a British town gas](deflagration.md#hydrogen-and-town-gas),
+half hydrogen), fills the back half of the west corner flat on the tenth floor (43 m³, the kitchen
+and hall: Ronan Point's gas collected in the hall of a corner flat on the eighteenth of 22), lit at
+the cooker. The flat's two windows are vent panels. Air on 0.125 m cells (`blastbench panelblock
+--case gas`; `--gas methane` for the methane the preset had before town gas was in the model).
 
 ![Gas in the corner flat, 0.7 s: the face wall under its front window burst outwards, the load-bearing flank wall (left) standing](large-panel-gas-700ms.png)
 
 **With the windows holding to 25 kPa (the preset)**, so that the pressure can find the walls:
-- the flat reaches **14 kPa by 0.5 s**;
+- the flat reaches **12 kPa on the flank wall by 0.5 s** (3.9 kPa at 0.3 s, 9.6 at 0.4);
 - there the **light face wall under the front window breaks out** (20 elements fail) and the
-  flat vents through it; the pressure rises no further and the gas burns out over two seconds,
+  flat vents through it; the pressure rises no further and the gas burns out over three seconds,
   much of it outside;
-- the **flank wall's joints slide 7 mm and hold**;
+- the **flank wall's joints slide 1 mm and hold**;
 - **nothing collapses.** The flat vents through its face wall before the pressure on the flank
   wall reaches what its joints hold.
+
+**On methane** (`--gas methane`) it goes the same way: 14 kPa at 0.5 s, the face wall out, the
+flank sliding 7 mm. Town gas burns a third faster at stoichiometric (0.55 against 0.41 m/s), but
+the pressure stops at what the face wall holds, 12–15 kPa, whichever gas.
 
 **With ordinary glazing**, windows going at 3 kPa (`--vent 3`), the panels release at 0.3 s
 and the flat vents at **3.3 kPa**; the flank wall slides 3 mm (a run before structures were settled
@@ -67,28 +72,31 @@ flat with four storeys above it:
 
 | Part | The inquiry, Ronan Point's flat 90 | This block's flat, the model |
 |---|---|---|
-| Light face walls | blew out "almost immediately", at about ¼ psi (1.7 kPa) (§118) | held to 14 kPa, then broke out under the front window |
+| Light face walls | blew out "almost immediately", at about ¼ psi (1.7 kPa) (§118) | held to 12 kPa (14 on methane), then broke out under the front window |
 | Flank panel's joint at floor level | displaced at about 800 lb/ft² (5.54 psi, 38 kPa), friction at the dry mortar relieved by the gas on the floor (§122) | held (friction 0.7 under the wall and the floors above it) |
-| Flank panel's joint at ceiling level (H.2) | broken at about 400 lb/ft² (2.78 psi, 19 kPa), the gas lifting the ceiling off the shelf's friction, the tie plate acting only once the stud reached the end of its slot (§123) | slid 7 mm at 14 kPa and stopped as the flat vented |
+| Flank panel's joint at ceiling level (H.2) | broken at about 400 lb/ft² (2.78 psi, 19 kPa), the gas lifting the ceiling off the shelf's friction, the tie plate acting only once the stud reached the end of its slot (§123) | slid 1 mm at 12 kPa (7 mm at 14 on methane) and stopped as the flat vented |
 | Floor slabs | down at 3.89 psi (27 kPa), the ceiling up at 2.22 psi (15 kPa) in tests (§124) | the ceiling lifted but did not fail |
-| What starts the collapse | "an average gas pressure on the flank wall of 3 lb/in²" (21 kPa) (§126) | not reached: 14 kPa |
+| What starts the collapse | "an average gas pressure on the flank wall of 3 lb/in²" (21 kPa) (§126) | not reached: 12 kPa |
 
-**The model's flank is not stronger than the inquiry's.** Its joints had begun to slide at
-14 kPa, below the inquiry's 19 kPa for the joint at the ceiling, as the gas lifted the floor above off it, which is
-the mechanism the inquiry describes; with two storeys and the roof above it rather than four, it
-has less weight to hold it. What the inquiry's flat had that this one does not is pressure: about
-3 psi on the flank wall, from a gas that had collected in the hall and burnt before the face walls
-and window could vent it. Here the flat's pressure stops rising at 14 kPa, for two reasons, both on
-the side of too little:
-- **the flame.** Methane, where Ronan Point had town gas, half hydrogen, whose burning velocity is two to
-  three times methane's; and the model's vented flames read low, 0.4–0.6 of FM Global's tests lit in the
-  middle (the [standing](#its-standing) says so for every vented gas scene);
-- **the face wall**, here a panel of 87.5 mm concrete bonded to the walls, held to 14 kPa where
+**The model's flank is not stronger than the inquiry's.** On methane its joints slid 7 mm at
+14 kPa, below the inquiry's 19 kPa for the joint at the ceiling, as the gas lifted the floor above
+off it, the mechanism the inquiry describes; with two storeys and the roof above it rather than
+four, it has less weight to hold it. What the inquiry's flat had that this one does not is
+pressure: about 3 psi on the flank wall, from gas that had collected in the hall (it put the hall's
+peak at about 12 psi, from a buckled fuse-box cover, §64) and burnt before the face walls and window
+could vent it. Here the flat's pressure stops at 12–14 kPa, on its own town gas as on methane:
+- **the flame.** Town gas, about half hydrogen, burns a third faster than methane at stoichiometric
+  in the model's table; but the model's vented flames read low, 0.4–0.6 of FM Global's methane tests
+  lit in the middle and 0.19–0.39 of their lean hydrogen tests ([deflagration](deflagration.md#hydrogen-and-town-gas-1)),
+  and a flame lit in the middle of a uniform cloud of 43 m³ is not one lit in a hall full of a
+  layer of gas;
+- **the face wall**, here a panel of 87.5 mm concrete bonded to the walls, held to 12 kPa where
   the inquiry's went at ¼ psi. A weaker face wall would vent the flat sooner and lower the
   pressure further, so it is not what spares the flank; the flame is.
 
-So the model, given this flat, under-reads a Ronan Point–type gas event: the unsafe side, through
-the gas load rather than the joints. Nothing here was tuned to reach the inquiry's 3 psi.
+So the model, given this flat, under-reads a Ronan Point–type gas event, on Ronan Point's own gas:
+the unsafe side, through the gas load rather than the joints. Nothing here was tuned to reach the
+inquiry's 3 psi.
 
 ## A street charge
 
@@ -144,12 +152,13 @@ blast left standing), and failure that holds under mesh refinement, which none d
 What is and is not compared, in short:
 - **The joints:** the friction law against Batalha's precast seat tests (μ within 2–4%); no
   large-panel joint, and no H.2 joint, has been compared.
-- **The gas:** the flame against FM Global's vented chamber (0.4–0.6 of its peaks lit in the
-  middle, 0.9–1.8 at a back wall); not in a flat, not with town gas, whose hydrogen burns
-  faster than the methane used here. Against the inquiry's estimates the flat's pressure reads
-  low, the unsafe side: 14 kPa where Ronan Point's flank wall saw about 21 kPa
+- **The gas:** town gas's burning velocities are Lautkaski's, from vented-oven flame speeds;
+  the flame has been compared in FM Global's vented chamber with methane (0.4–0.6 of its peaks lit
+  in the middle, 0.9–1.8 at a back wall) and lean hydrogen (0.19–0.39), not with town gas and not
+  in a flat. Against the inquiry's estimates the flat's pressure reads
+  low, the unsafe side: 12 kPa (14 on methane) where Ronan Point's flank wall saw about 21 kPa
   ([above](#against-the-inquirys-estimates)).
-- **The flank joint against the inquiry's estimate:** sliding at 14 kPa where the inquiry put
+- **The flank joint against the inquiry's estimate:** sliding at 12–14 kPa where the inquiry put
   the H.2 joint's strength at 19 kPa, so not on the unsafe side; an estimate, not a test.
 - **The collapse:** not compared. Ronan Point's corner fell from the 22nd floor to the podium;
   this block is not Ronan Point, and its outcome is not a prediction of it.

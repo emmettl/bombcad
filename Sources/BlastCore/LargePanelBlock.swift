@@ -162,10 +162,10 @@ public enum LargePanelBlock {
 
     /// The tenth floor (index 9), whose corner flat holds the gas.
     public static let gasStorey = 9
-    /// The overpressure at which the gas flat's windows go: 25 kPa, so that, as at Ronan Point,
-    /// the pressure finds the flank wall first (it slides at about 20 kPa here, the inquiry's
-    /// tests 2.8 psi). Ordinary single glazing goes at a few kPa; at 3 kPa the flat vents at
-    /// 3.3 kPa and nothing moves.
+    /// The overpressure at which the gas flat's windows go: 25 kPa, so that the pressure can find
+    /// the walls (the inquiry put the flank wall's H.2 joint at 2.78 psi, 19 kPa, §123). Here the
+    /// light face wall goes first, at 12–15 kPa. Ordinary single glazing goes at a few kPa; at 3 kPa
+    /// the flat (on methane) vents at 3.3 kPa and nothing moves.
     public static let windowRelease: Float = 25_000
     public static let streetCharge: Float = 500
     public static let streetDistance: Float = 8
