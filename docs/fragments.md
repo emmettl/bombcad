@@ -78,7 +78,14 @@ any field left out takes its default:
 Turn on **Cased charge** in the Run tab's Fragments section. It starts with a casing a tenth of
 the charge's mass, 2,000 fragments and 300 tracers across 16 m round the charge, and sets the
 casing's mass, the number of fragments and tracers, and the casing's shape; the launch speed it
-gives is shown. The description is saved with the project (as `fragments.json`), takes effect
+gives is shown. **Casing metal** is steel (Mott's distribution) or cast iron (Grady's exponential,
+`massExponent` 1, at 7,200 kg/m³), as [below](#against-coopers-data). **Casing dimensions** sets
+the wall's thickness and the inside diameter. Turned on, they start from a casing that holds the
+charge (TNT at 1,600 kg/m³, a cylinder twice as long as wide, or a sphere) and weighs the casing's
+mass as a thin wall. With them the fragments' number and sizes follow Mott's scaling, a caption
+gives how many there are and their mean mass, and the fragments' standing becomes an
+approximation. `BombCAD run --fragments casing.json --casing 0.006,0.25,castIron` does the same
+for a headless run, in metres. The description is saved with the project (as `fragments.json`), takes effect
 from the next run, and is undone and redone with the layout's edits (⌘Z). With Macs set for sweeps in Settings, **Fly on** sends the fragments to
 the one chosen, over a connection kept open between runs and shared with any other model run
 there; should that Mac drop, they carry on here.

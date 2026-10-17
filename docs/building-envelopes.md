@@ -100,7 +100,7 @@ fails with its reason instead of writing absent results as zeros.
 
 ## Envelope components and their pressure histories
 
-For damage estimates on envelope buildings ([future work](#future-work-damage-for-envelope-buildings)),
+For damage estimates on envelope buildings ([built](#damage-for-envelope-buildings-built)),
 `BlastSolver.configureEnvelopeComponents(objects:options:)` records the load on each part of a
 building that responds on its own: stage 1 of that work. The definitions are agreed with the
 damage model that reads them (`/Volumes/StudioData/bombcad/envelope-damage/component-spec.md`, v1.2).
@@ -511,7 +511,11 @@ and set against the same component of the detailed building free to respond (sum
   pressure, the room's air compressing adiabatically) gives 0.9, 4.1, 9.1 and 16.7 kPa against
   the detailed gauges' 1.0, 2.6, 11.0 and 22.4 at 10, 50, 200 and 500 kg (0.75–1.60 times the
   detailed peaks; 0.87–2.23 with the small-deflection panes, which broke sooner). It cannot see a
-  breached concrete wall (1.6 and 6.5 kPa at 200 and 500 kg).
+  breached concrete wall (1.6 and 6.5 kPa at 200 and 500 kg). On the same openings UFC 3-340-02's
+  leakage fill (§2-15.5) gives 0.92, 4.37, 8.45 and 13.15 kPa, so the orifice is 0.94–1.27 times
+  the UFC's own; but through windows this size both stay at 0.15–0.42 of the load the UFC puts on
+  the wall behind, where the air through an open window comes within 25% of it ([UFC
+  comparison](validation.md#inside-buildings-against-ufc-3-340-02s-loads-through-openings)).
 
 **In the app.** Runs of scenes with envelopes, structures beside them or not, record each component's load (the
 [recorder](#surface-exposure-and-loads) keeps both sides' histories at 0.1 ms) and judge every building
@@ -683,39 +687,50 @@ standing slabs about 4–5 mm where the meters, which the record finds carry the
 measured the panel brackets the test; where it comes from the air close in, SDOF and the detailed
 model err alike, which points at the load or the rig rather than at the panel.
 
-## Future work: damage for envelope buildings
+## Damage for envelope buildings: built
 
 Envelopes make district-scale scenes possible: the air is cheap at that scale (a 3.3 km domain of
 145 million cells ran a 500 t burst in 137 s on an unloaded M4 Max; see
 [large scenes](large-scenes.md)), but a scene holds at most 16 deformable bodies. Every other
-building is a rigid, exposure-only envelope that never breaks, so a district run says what each
-building is loaded with and nothing about what happens to it.
+building is a rigid, exposure-only envelope. The plan was a cheaper damage model for those, from
+the loads already recorded on their faces, one way, with the air still seeing a rigid building.
+That model is now built: each wall panel, roof and pane is a single degree of freedom after UFC
+3-340-02 and the PDC's SBEDS, driven by its own pressure history
+([one-way damage](#one-way-damage-single-degree-of-freedom), with
+[freestanding walls](#freestanding-walls), [one-way walls](#one-way-walls) and
+[slabs held on their edges](#slabs-held-on-their-edges)). It is judged as the run goes, in the app
+and headless.
 
-A cheaper damage model would give envelope buildings a damage estimate from the loads already
-recorded on their faces, one way at first, with the air still seeing a rigid building:
+The four questions set before building it, and where each is answered:
 
-- **Per component, single degree of freedom** (in the manner of UFC 3-340-02 and the PDC's SBEDS):
-  each wall panel, storey or glazing pane an equivalent spring-mass driven by the pressure history
-  on its faces, giving its peak deflection or support rotation and so a damage level.
-- **Pressure–impulse curves**: each component's peak overpressure and impulse placed against
-  curves of equal damage, cheaper still and needing no time history.
-- **Fragility curves**: a probability of each damage state from the same loads, where published.
+1. **Its error against the detailed model.** The [damage references](#damage-references) run the
+   same layouts with the detailed buildings free, and
+   [one-way damage](#one-way-damage-single-degree-of-freedom) sets each component against them:
+   the same 45 panes break, concrete walls' rotation lies between the fixed and simply supported
+   bounds, and brick walls come in at a median 1.10.
+2. **Its error against measurement.** Window glass breaks at 0.82–1.07 of Monk and Clubley's
+   measured times ([window glass](validation.md#window-glass)). Six of seven freestanding walls'
+   outcomes are as measured, after Alsubaei and Keys ([freestanding walls](#freestanding-walls)).
+   Hayman's one-way walls come out 1.16 to 1.91 times as far ([one-way walls](#one-way-walls)).
+3. **The error from not venting.** A one-way fill through the broken panes gives the inside 0.75–1.60
+   times the detailed buildings' peaks, and 0.94–1.27 times UFC 3-340-02's leakage fill on the same
+   openings, but cannot see a breached concrete wall
+   ([one-way damage](#one-way-damage-single-degree-of-freedom),
+   [UFC comparison](validation.md#inside-buildings-against-ufc-3-340-02s-loads-through-openings)). The air itself still sees every
+   envelope whole.
+4. **Its cost per building against the air's.** Under 1 ms a building, against 14–35 s for a
+   detailed one beside 10–15 s of air
+   ([one-way damage](#one-way-damage-single-degree-of-freedom)). The pressure histories it reads
+   cost 0.37 MB for a street's four buildings and 4.4 MB for 64
+   ([envelope components](#envelope-components-and-their-pressure-histories)).
 
-What decides whether it is worth building, to answer before any of it is:
+Its standing is an approximation for glass and concrete panels, and illustrative for brick and
+the inside pressure (see [standing](standing.md)).
 
-1. **Its error against the detailed model.** The matched pairs above use pinned detailed
-   references, so they compare loads, not damage; the [damage references](#damage-references) run
-   the same layouts with the detailed buildings free to respond, for the reduced model's damage per
-   component to be set against theirs.
-2. **Its error against measurement**, where data exist: the [perimeter walls](validation.md#perimeter-walls-under-field-blasts)
-   (Alsubaei), the [brick walls](validation.md#brick-walls-debris) (Keys), and UFC 3-340-02's
-   charts as they are digitised in `UFC340.swift`.
-3. **The error from not venting.** Glazing or walls that fail while the air still sees them whole
-   leave the inside loads wrong; set against the detailed run's internal loads, this says how far
-   a one-way model can be trusted, and whether failed openings must be opened in the air.
-4. **Its cost per building against the air's**, which should be small: the recorder's faces
-   already hold peak and impulse, and a single-degree-of-freedom model's pressure histories are
-   now kept per component ([above](#envelope-components-and-their-pressure-histories)).
+### Future work
 
-Until those comparisons are made, its results would stand as an approximation where a chart or
-curve applies and as illustrative otherwise (see [standing](standing.md)).
+- **Venting in the air.** Opening the cells of panes and walls that fail, so that the inside fills
+  and the blast flows through a broken building as it would. It is not on the main line yet.
+- **Pressure–impulse curves.** Each component's peak overpressure and impulse placed against
+  curves of equal damage: cheaper still, needing no time history.
+- **Fragility curves.** A probability of each damage state from the same loads, where published.
