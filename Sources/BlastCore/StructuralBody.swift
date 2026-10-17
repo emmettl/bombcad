@@ -62,6 +62,90 @@ public final class StructuralBody: Identifiable {
         }
     }
 
+    /// The gravity the body falls under: its parts' largest.
+    var gravity: Float { max(solids?.gravity ?? 0, shells?.gravity ?? 0) }
+
+    /// Whether any node's motion is set by the scene (bit 3 of either kind of node, or bit 6 of a
+    /// solid's), which a settle would disturb.
+    var hasSetMotion: Bool {
+        var set = false
+        solids?.mutateNodes { nodes in set = set || nodes.contains { $0.flags & 72 != 0 } }
+        shells?.mutateNodes { nodes in set = set || nodes.contains { $0.flags & 8 != 0 } }
+        return set
+    }
+
+    /// Whether the body is as it was loaded: whole, undeformed and still. One that a scene or a
+    /// harness has since moved or broken is not settled.
+    var isAsLoaded: Bool {
+        if solids?.hasFailed == true || shells?.hasFailed == true { return false }
+        var still = true
+        solids?.mutateNodes { nodes in
+            still = still && nodes.allSatisfy { $0.displacement == .zero && $0.velocity == .zero }
+        }
+        shells?.mutateNodes { nodes in
+            still =
+                still
+                && nodes.allSatisfy { $0.displacement == .zero && $0.velocity == .zero && $0.spin == .zero }
+        }
+        return still
+    }
+
+    /// Mass-proportional damping of every part, 1/s.
+    var damping: Float {
+        get { solids?.damping ?? shells!.damping }
+        set {
+            solids?.damping = newValue
+            shells?.damping = newValue
+        }
+    }
+
+    /// Advances the body alone, without the air, by `steps` of its critical step.
+    func advanceAlone(steps: Int) {
+        if let mixed {
+            mixed.advance(steps: steps)
+        } else {
+            solids?.advance(steps: steps)
+            shells?.advance(steps: steps)
+        }
+    }
+
+    /// The body's kinetic energy of translation (J) and its mass (kg).
+    func motion() -> (energy: Double, mass: Double) {
+        var energy = 0.0
+        var mass = 0.0
+        solids?.mutateNodes { nodes in
+            for node in nodes where node.mass > 0 {
+                energy += 0.5 * Double(node.mass) * Double(simd_length_squared(node.velocity))
+                mass += Double(node.mass)
+            }
+        }
+        shells?.mutateNodes { nodes in
+            // Tied shell nodes (bit 8) move with the solid, which carries their mass.
+            for node in nodes where node.mass > 0 && node.flags & 256 == 0 {
+                energy += 0.5 * Double(node.mass) * Double(simd_length_squared(node.velocity))
+                mass += Double(node.mass)
+            }
+        }
+        return (energy, mass)
+    }
+
+    /// Stops every node where it is and starts the body's clocks again, keeping its deformation,
+    /// stresses and damage.
+    func holdStill() {
+        solids?.mutateNodes { nodes in
+            for n in nodes.indices { nodes[n].velocity = .zero }
+        }
+        shells?.mutateNodes { nodes in
+            for n in nodes.indices {
+                nodes[n].velocity = .zero
+                nodes[n].spin = .zero
+            }
+        }
+        solids?.time = 0
+        shells?.time = 0
+        time = 0
+    }
+
     func checkpoint() {
         solids?.failedAtCheckpoint = solids?.hasFailed
         shells?.failedAtCheckpoint = shells?.hasFailed
