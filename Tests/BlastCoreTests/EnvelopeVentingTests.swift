@@ -111,4 +111,51 @@ struct EnvelopeVentingTests {
         #expect(
             second.panes.first?.brokenAtS == broke && second.rooms.first?.peakPa == first.rooms.first?.peakPa)
     }
+
+    @Test(
+        "In refined air a broken pane opens its finer cells too: glass gone at once lets in what an open window does"
+    )
+    func refined() throws {
+        // Glass 0.3 mm thick, gone as the shock arrives; against the same window open from the start.
+        func run(_ envelope: BuildingEnvelope, levels: Int, vented: Bool) throws -> [Float] {
+            var scene = Scenario(
+                name: "Glazed", domainSize: SIMD3(16, 20, 6), boxes: [],
+                charge: Charge(mass: 5, position: SIMD3(7, 2, 1)),
+                gauges: [Gauge("Inside", at: SIMD3(7, 10, 1.5)), Gauge("Back", at: SIMD3(7, 12.5, 1.5))])
+            try scene.addEnvelopeObject(envelope, name: "Building")
+            var config = SolverConfiguration.recommended
+            config.airSleepThreshold = 0
+            config.refinement = levels == 0 ? 1 : 2
+            config.refinementLevels = max(levels, 1)
+            let solver = try BlastSolver(
+                device: #require(MTLCreateSystemDefaultDevice()), scenario: scene, cellSize: 0.25,
+                configuration: config)
+            if vented {
+                try solver.configureEnvelopeComponents(
+                    objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: 0.04))
+                try solver.configureEnvelopeVenting(objects: scene.envelopeObjects) {
+                    var thin = EnvelopeConstruction.assumed(objectID: $0)
+                    thin.glassThicknessM = 0.0003
+                    return thin
+                }
+            }
+            _ = solver.advance(until: 0.03)
+            if vented {
+                let broke = try #require(solver.envelopeVentingSnapshot()?.panes.first?.brokenAtS)
+                #expect(broke < 0.007, "\(levels) levels: broke at \(broke) s")
+            }
+            return solver.gaugeHistories.map { ($0.map(\.pressure).max() ?? 0) - config.ambientPressure }
+        }
+        let cut = try building(origin: SIMD3(4, 7, 0), cutOpening: true)
+        let open = try BuildingEnvelope(solids: cut.solids, openings: cut.openings, panes: [])
+        for levels in [0, 1, 2] {
+            let reference = try run(open, levels: levels, vented: false)
+            for glazed in [cut, try building(origin: SIMD3(4, 7, 0), cutOpening: false)] {
+                let peaks = try run(glazed, levels: levels, vented: true)
+                for (peak, wanted) in zip(peaks, reference) {
+                    #expect(abs(peak / wanted - 1) < 0.1, "\(levels) levels: \(peak) Pa against \(wanted)")
+                }
+            }
+        }
+    }
 }

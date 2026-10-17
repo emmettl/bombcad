@@ -166,8 +166,9 @@ struct SimulationSettings: Equatable {
     /// counted at its centre, as before.
     var outlineByOverlap = true
     /// Envelopes' glazing breaks in the air and the blast fills their rooms
-    /// (`BlastSolver.configureEnvelopeVenting`), instead of the one-way fill: an option.
-    var ventsGlazing = false
+    /// (`BlastSolver.configureEnvelopeVenting`), by default since 17 October 2026; off, or where it
+    /// cannot run (gravity in the air), the one-way fill.
+    var ventsGlazing = true
     /// The structures brought to rest under their own weight before the blast
     /// (`SolverConfiguration.settlesStructures`), as since 17 October 2026; false for their weight
     /// taken as the run starts, as before.
@@ -810,7 +811,7 @@ final class SimulationModel {
                 settings.gravity = run.gravity ?? false
                 settings.terrainCutCells = run.cutsTerrain(over: scenario)
                 settings.outlineByOverlap = run.countsByOverlap(over: scenario)
-                settings.ventsGlazing = run.ventsGlazing ?? false
+                settings.ventsGlazing = run.ventsGlazing(over: scenario)
                 settings.settlesStructures = run.settlesStructures(over: scenario)
                 settings.softGround = run.groundStiffness != nil
                 settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
@@ -961,7 +962,7 @@ final class SimulationModel {
             settings.gravity = run.gravity ?? false
             settings.terrainCutCells = run.cutsTerrain(over: document.scenario)
             settings.outlineByOverlap = run.countsByOverlap(over: document.scenario)
-            settings.ventsGlazing = run.ventsGlazing ?? false
+            settings.ventsGlazing = run.ventsGlazing(over: document.scenario)
             settings.settlesStructures = run.settlesStructures(over: document.scenario)
             settings.softGround = run.groundStiffness != nil
             settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
@@ -1171,7 +1172,7 @@ final class SimulationModel {
         settings.gravity = inputs.settings.gravity ?? false
         settings.terrainCutCells = inputs.settings.cutsTerrain(over: inputs.scenario)
         settings.outlineByOverlap = inputs.settings.countsByOverlap(over: inputs.scenario)
-        settings.ventsGlazing = inputs.settings.ventsGlazing ?? false
+        settings.ventsGlazing = inputs.settings.ventsGlazing(over: inputs.scenario)
         settings.settlesStructures = inputs.settings.settlesStructures(over: inputs.scenario)
         settings.softGround = inputs.settings.groundStiffness != nil
         settings.groundStiffness = inputs.settings.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
@@ -1345,7 +1346,8 @@ final class SimulationModel {
     /// Adds a rigid block in the middle of the domain.
     func addBlock() {
         guard settings.scenario.rigidBoxes.count < SceneRenderer.maxBoxes else {
-            errorMessage = "The layout has reached the 2,048 rigid region limit."
+            errorMessage =
+                "The layout has reached the \(SceneRenderer.maxBoxes.formatted()) rigid region limit."
             return
         }
         let centre = settings.scenario.domainSize / 2
@@ -1377,7 +1379,8 @@ final class SimulationModel {
 
     func duplicateBlock(id: UUID) {
         guard settings.scenario.rigidBoxes.count < SceneRenderer.maxBoxes else {
-            errorMessage = "The layout has reached the 2,048 rigid region limit."
+            errorMessage =
+                "The layout has reached the \(SceneRenderer.maxBoxes.formatted()) rigid region limit."
             return
         }
         do { selection = .block(try settings.scenario.duplicateFixedObject(id: id)) } catch {
@@ -2403,7 +2406,10 @@ final class SimulationModel {
                                     scenario.envelopeConstruction(for: $0)
                                 }
                             } catch {
-                                envelopeVentingStatus = "Glazing not vented: \(error.localizedDescription)"
+                                envelopeVentingStatus =
+                                    settings.gravity
+                                    ? "Glazing not vented with gravity in the air: the inside is the one-way fill's."
+                                    : "Glazing not vented (\(error.localizedDescription)): the inside is the one-way fill's."
                             }
                         }
                     }

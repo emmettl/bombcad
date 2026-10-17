@@ -60,6 +60,10 @@ final class EnvelopeVenting {
     let holeBuffer: MTLBuffer
     /// (cell, pane) for each cell only a pane holds solid.
     let paneCellBuffer: MTLBuffer
+    /// The same sorted by cell, for refined air to look a fine cell's coarse cell up in, with the
+    /// grid it lies on (`PaneLookup`).
+    let sortedPaneCellBuffer: MTLBuffer
+    let paneLookup: PaneLookup
     /// Each owner: 1 once a pane of it has broken, when its rooms start to be read.
     let openedBuffer: MTLBuffer
     let roomBuffer: MTLBuffer
@@ -282,6 +286,12 @@ final class EnvelopeVenting {
         holeBuffer = try make(
             [SIMD2<UInt32>](repeating: SIMD2(repeating: .max), count: panes.count), "pane holes")
         paneCellBuffer = try make(paneCells, "pane cells")
+        paneLookup = PaneLookup(
+            count: UInt32(paneCells.count), nx: UInt32(grid.nx), ny: UInt32(grid.ny), nz: UInt32(grid.nz),
+            coarseDx: grid.cellSize)
+        // Led by its header (4 entries of (cell, pane)'s size).
+        let header = withUnsafeBytes(of: paneLookup) { Array($0.bindMemory(to: SIMD2<UInt32>.self)) }
+        sortedPaneCellBuffer = try make(header + paneCells.sorted { $0.x < $1.x }, "pane cells by cell")
         openedBuffer = try make([UInt32](repeating: 0, count: ownerIDs.count), "opened envelopes")
         roomBuffer = try make(rooms, "envelope rooms")
         roomCellBuffer = try make(roomCells, "envelope rooms' cells")
@@ -300,7 +310,7 @@ final class EnvelopeVenting {
     var memoryFootprint: Int {
         [
             glassBuffer, tableBuffer, paneBuffer, stateBuffer, statusBuffer, holeBuffer, paneCellBuffer,
-            openedBuffer,
+            sortedPaneCellBuffer, openedBuffer,
             roomBuffer,
             roomCellBuffer,
             roomResults, ownerRooms, roomList, roomDispatch,

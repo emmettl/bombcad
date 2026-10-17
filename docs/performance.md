@@ -494,6 +494,20 @@ The air is frozen after 1.2 to 1.3 s; the rest is the structure alone, falling. 
 about 14 times the tower per second simulated: it has 2.4 times the elements, and a time step a
 third as long, since its steel and curtain-wall frame carry waves faster.
 
+**A large-panel block of flats** ([its page](large-panel-flats.md); `blastbench panelblock`), solid
+elements of 87.5 mm, two through each wall and floor, 670,560 of them with 92 joints between
+parts (18,400 node pairs), contact on from the start, in a session shared with other GPU work:
+
+| Run | Air | Simulated | Wall time |
+|---|---|---|---|
+| Under its own weight, damped, no air | none | 0.5 s | 280 s (560× slower than real time) |
+| 500 kg in the street | 1.2 million cells of 0.25 m, frozen at 0.75 s | 4 s | 5,348 s (1,340×), its settling under its own weight first included |
+| Gas in a corner flat (windows at 3 kPa) | 6.4 million cells of 0.125 m, never frozen | 1.5 s | 2,590 s (1,730×) |
+| Gas in a corner flat (windows at 25 kPa, the preset) | 6.4 million cells of 0.125 m, never frozen | 4 s | 4,995 s (1,250×) |
+The structure dominates: its time step is set by the 87.5 mm elements, about four times shorter than
+the frame's, and it has 30 times the frame's elements. The gas needs 0.125 m cells, its young flame
+being too slow on coarser ones, and a deflagration keeps the air awake and unrefined throughout.
+
 ## The slab benchmark
 
 With shells (`blastbench slab --shells 2,1`), 80 ms of the validation slab takes 0.4 s and 0.9 s

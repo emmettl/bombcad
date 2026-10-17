@@ -66,8 +66,9 @@ public final class BlastSolver {
     /// Lets the envelopes' glazing break in the air (building-envelopes.md, "Venting"): each pane of
     /// the components recorded (`configureEnvelopeComponents`, which must come first) takes the glass
     /// of its building's construction, steps it with the air, and opens in the air when it breaks;
-    /// each building's rooms are followed. Not with gravity, whose still air varies with height,
-    /// nor with refined air yet.
+    /// each building's rooms are followed. In refined air the finer cells under a broken pane open
+    /// too, in the patches placed and those placed later. Not with gravity, whose still air varies
+    /// with height.
     public func configureEnvelopeVenting(
         objects: [SceneObject], constructions: (UUID) -> EnvelopeConstruction
     )
@@ -76,13 +77,19 @@ public final class BlastSolver {
         guard let recorder = envelopeComponentRecorder else {
             throw BlastError.allocationFailed("envelope venting without the component recorder")
         }
-        guard configuration.gravity == nil, refinement == nil else {
-            throw BlastError.allocationFailed("envelope venting with gravity or refinement")
+        guard configuration.gravity == nil else {
+            throw BlastError.allocationFailed("envelope venting with gravity in the air")
         }
         let mask = try stationaryMask(observing: objects)
         envelopeVenting = try EnvelopeVenting(
             device: device, library: library, grid: grid, mask: mask, objects: objects,
             components: recorder.components, rigidBoxes: rigidBoxes ?? [], constructions: constructions)
+        for level in refinementLevels { level.setPanes(ventedPanes) }
+    }
+
+    /// Venting's panes as the refined levels take them.
+    private var ventedPanes: (cells: MTLBuffer, status: MTLBuffer, lookup: PaneLookup)? {
+        envelopeVenting.map { ($0.sortedPaneCellBuffer, $0.statusBuffer, $0.paneLookup) }
     }
 
     /// When fragments hole envelope panes, by component id, s from the start (`FragmentCloud.paneHoles`):
@@ -192,6 +199,7 @@ public final class BlastSolver {
         envelopeComponentRecorder = nil
         componentsNeedInitialSample = false
         envelopeVenting = nil
+        for level in refinementLevels { level.setPanes(nil) }
         keptAirBuffer = nil
     }
 
@@ -814,6 +822,16 @@ public final class BlastSolver {
         let pointer = stateBuffers[current].contents().bindMemory(
             to: CellState.self, capacity: grid.cellCount)
         try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
+    }
+
+    /// Keeps `cells`, just made solid in the mask with structures already in place (the vent
+    /// panels, placed after them), in the rigid mask their remasking starts from too, rather than
+    /// leaving them to be lost at the first remask or recapturing a mask that holds their outlines.
+    func keepInRigidMask(_ cells: [Int]) {
+        guard !bodies.isEmpty else { return }
+        let rigid = rigidMaskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        for index in cells { rigid[index] = 1 }
+        needsRigidMaskCapture = false
     }
 
     /// Direct access to the solid mask (non-zero marks a rigid cell). Call `restart()` after editing.
@@ -1864,6 +1882,7 @@ public final class BlastSolver {
             let fine = grid.cellSize / Float(level.parentScale * level.ratio)
             level.setBoxes(rigidBoxes?.map { $0.holdingCells(of: fine) })
             level.setTerrain(rigidBoxes == nil ? nil : terrain)
+            level.setPanes(ventedPanes)
         }
         for level in refinementLevels { level.coarseCut = cut ? terrainCut : nil }
         updateGaugeChildren()
@@ -2433,7 +2452,9 @@ public final class BlastSolver {
         }
         return BatchResult(
             steps: Int(control.activeSteps), elapsed: elapsed, lastTimeStep: Double(lastStep),
-            isStable: control.batchTime.isFinite && control.dt.isFinite,
+            // A NaN anywhere in the air makes the wave speed NaN, which the step's maximum
+            // passes over, so the step itself stays finite: the overpressure says it.
+            isStable: control.batchTime.isFinite && control.dt.isFinite && !control.maxOverpressure.isNaN,
             maxOverpressure: control.maxOverpressure, sweptFraction: swept,
             refinedTiles: refinement?.patchCount ?? 0, finerRefinedTiles: finerRefinement?.patchCount ?? 0,
             firstLevelSubsteps: levelSubsteps(control, level: 0),
@@ -2726,6 +2747,17 @@ public final class BlastSolver {
             encoder.dispatchThreads(
                 MTLSize(width: venting.paneCellCount, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))
+            // And the refined levels' cells under them.
+            if let refinement {
+                refinement.encodeOpenPanes(
+                    encoder,
+                    uniforms: refinement.levelUniforms(
+                        from: uniforms, threshold: configuration.refinementThreshold, grid: grid),
+                    control: controlBuffer)
+            }
+            if let finerRefinement, let finer = finerUniforms(uniforms) {
+                finerRefinement.encodeOpenPanes(encoder, uniforms: finer, control: controlBuffer)
+            }
         }
         if !venting.rooms.isEmpty {
             encoder.setComputePipelineState(venting.roomPipeline)

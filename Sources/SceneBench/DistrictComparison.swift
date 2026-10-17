@@ -5,7 +5,7 @@ import simd
 
 /// `scenebench district-compare <district-scene's inputs> [--radius 1000] [--until 3]
 /// [--window 0.5] [--budget 2048] [--ground saturated] [--observers rigby.csv] [--pane 1.2,1.5]
-/// [--design-probability 0.008] --out folder`: the district's event, and what an accident survey
+/// [--design-probability 0.008] [--glass 0.006,0.004] [--staircase] [--bare] [--trace] --out folder`: the district's event, and what an accident survey
 /// can be set against: arrival times at observers' positions (Rigby et al.'s CSV: lat, lon, and
 /// the time seen), peak overpressures on a line of gauges over the open side, and each building's
 /// glass and structure from its components' histories, by distance from the charge.
@@ -42,6 +42,8 @@ enum DistrictComparison {
         var peakNetPa: Float
         var brokenMedian: Bool
         var brokenDesign: Bool
+        /// Median then design for each `--glass` thickness in turn (the first as above).
+        var broken: [Bool]
     }
 
     struct Building: Codable {
@@ -63,6 +65,8 @@ enum DistrictComparison {
         var facingSides: Int
         var facingBrokenMedian: Double
         var facingBrokenDesign: Double
+        /// Sides broken for each `--glass` thickness, median then design.
+        var sidesBroken: [Double]
         var concrete: [Int]
         var stone: [Int]
     }
@@ -129,7 +133,10 @@ enum DistrictComparison {
         }
         scene.gauges = Array(gauges.prefix(BlastSolver.maxGauges))
 
-        var configuration = SolverConfiguration()
+        // The recommended air (far-field faces: copying faces at a district's low top channel the
+        // wave), or the bare core with `--bare`; whole cells for the terrain with `--staircase`.
+        var configuration = args.contains("--bare") ? SolverConfiguration() : .recommended
+        configuration.terrainCutCells = !args.contains("--staircase")
         if let name = value("ground") {
             guard let type = GroundType(rawValue: name) else {
                 throw BlastError.allocationFailed("--ground \(name)")
@@ -158,9 +165,25 @@ enum DistrictComparison {
         var steps = 0
         var lastReport = 0.0
         while solver.time < until {
-            let batch = solver.advance(until: until)
+            // `--trace [steps]`: batches of that many steps (16), each printed.
+            let batch =
+                args.contains("--trace")
+                ? solver.advance(steps: value("trace").flatMap(Int.init) ?? 16, timeLimit: until)
+                : solver.advance(until: until)
             steps += batch.steps
-            guard batch.steps > 0, batch.isStable else { break }
+            // No steps: within the solver's tolerance of the end.
+            guard batch.steps > 0 else { break }
+            guard batch.isStable else {
+                print("Unstable at t \(solver.time) s")
+                break
+            }
+            if args.contains("--trace") {
+                print(
+                    String(
+                        format: "  t %.5f s, %d steps, dt %.2e s, max overpressure %.3g Pa, swept %.4f",
+                        solver.time,
+                        batch.steps, batch.lastTimeStep, batch.maxOverpressure, batch.sweptFraction))
+            }
             if solver.time - lastReport >= 0.25 {
                 lastReport = solver.time
                 print(
@@ -205,6 +228,10 @@ enum DistrictComparison {
         let pane = (value("pane").map { $0.split(separator: ",").compactMap { Double($0) } } ?? [1.2, 1.5])
         let paneArea = pane[0] * pane[1]
         let design = value("design-probability").flatMap(Double.init) ?? 0.008
+        // Glass thicknesses to judge, m: the construction's (nil) unless `--glass` lists them.
+        let glass: [Double?] =
+            value("glass").map { $0.split(separator: ",").compactMap { Double($0) }.map { Optional($0) } }
+            ?? [nil]
         let strengths = [
             GlassStrength.sixtySecond(area: paneArea),
             GlassStrength.sixtySecond(area: paneArea, probability: design),
@@ -244,7 +271,7 @@ enum DistrictComparison {
             for (key, members) in bySide.sorted(by: { $0.key < $1.key }) {
                 let axis = key / 2
                 let outward = key % 2 == 1 ? 1 : -1
-                var broken = [false, false]
+                var broken = [Bool](repeating: false, count: 2 * glass.count)
                 var peak: Float = 0
                 for index in members {
                     let load = loads[index]
@@ -252,10 +279,11 @@ enum DistrictComparison {
                     let largest = net.map(abs).max() ?? 0
                     peak = max(peak, Float(largest))
                     guard largest > 300 else { continue }
-                    for (s, strength) in strengths.enumerated() where !broken[s] {
+                    for s in broken.indices where !broken[s] {
                         let system = EnvelopePanel.largeDeflectionGlass(
-                            thickness: Double(construction.glassThicknessM), material: .annealedGlass,
-                            a: pane[0], b: pane[1], sixtySecondStrength: strength)
+                            thickness: glass[s / 2] ?? Double(construction.glassThicknessM),
+                            material: .annealedGlass, a: pane[0], b: pane[1],
+                            sixtySecondStrength: strengths[s % 2])
                         broken[s] = system.response(pressures: net, step: load.binS).lostResistanceAt != nil
                     }
                 }
@@ -263,7 +291,7 @@ enum DistrictComparison {
                 sides.append(
                     Side(
                         axis: axis, outward: outward, facesCharge: axis < 2 && faces, strips: members.count,
-                        peakNetPa: peak, brokenMedian: broken[0], brokenDesign: broken[1]))
+                        peakNetPa: peak, brokenMedian: broken[0], brokenDesign: broken[1], broken: broken))
             }
             buildings.append(
                 Building(
@@ -291,8 +319,9 @@ enum DistrictComparison {
                     sidesBrokenMedian: share(sides, \.brokenMedian),
                     sidesBrokenDesign: share(sides, \.brokenDesign),
                     facingSides: facing.count, facingBrokenMedian: share(facing, \.brokenMedian),
-                    facingBrokenDesign: share(facing, \.brokenDesign), concrete: levels(\.concrete),
-                    stone: levels(\.stone)))
+                    facingBrokenDesign: share(facing, \.brokenDesign),
+                    sidesBroken: (0..<(2 * glass.count)).map { s in share(sides) { $0.broken[s] } },
+                    concrete: levels(\.concrete), stone: levels(\.stone)))
         }
         let result = Report(
             massKg: scene.charge.mass, radiusM: radius, cellSizeM: dx, ground: value("ground"),
@@ -332,6 +361,18 @@ enum DistrictComparison {
                     b.sidesBrokenMedian, b.sidesBrokenDesign, b.facingBrokenMedian, b.facingBrokenDesign,
                     b.concrete.map(String.init).joined(separator: ",") as NSString,
                     b.stone.map(String.init).joined(separator: ",") as NSString))
+        }
+        if glass.count > 1 {
+            print(
+                "Sides broken (median / design) for each glass thickness, \(glass.map { "\(($0 ?? 0) * 1000) mm" }):"
+            )
+            for b in bands {
+                print(
+                    String(format: "  %4.0f–%4.0f m  ", b.fromM, b.toM)
+                        + stride(from: 0, to: b.sidesBroken.count, by: 2).map {
+                            String(format: "%.2f / %.2f", b.sidesBroken[$0], b.sidesBroken[$0 + 1])
+                        }.joined(separator: "   "))
+            }
         }
     }
 }

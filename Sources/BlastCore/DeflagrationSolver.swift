@@ -343,6 +343,8 @@ extension BlastSolver {
         deflagrationStage = nil
         let panels = (scenario.ventPanels ?? []).filter { $0.releasePressure > 0 }
         let panelCells = placeVentPanels(panels)
+        // Structures are already in place: their remasking starts from the rigid mask.
+        keepInRigidMask(panelCells.map(\.index))
         guard Self.keepsAirUnrefined(scenario) else { return }
         if scenario.deflagration != nil { configuration.afterburning = false }
         if scenario.deflagration?.acceleration.turbulence != nil, configuration.mixing == nil {

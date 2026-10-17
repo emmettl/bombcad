@@ -233,6 +233,34 @@ struct DeflagrationTests {
         #expect(solver.peakOverpressure(30, 10, 10) == 0)
     }
 
+    @Test("A vent panel holds beside a deformable structure until it releases, and then stays open")
+    func ventPanelBesideStructure() throws {
+        // As above, with a concrete block in the room's far corner: its remasking starts from the
+        // rigid mask, which the panel, placed after the structure, must be in too.
+        var scenario = Scenario(
+            name: "Room", domainSize: SIMD3(4, 2, 2), boxes: [],
+            charge: Charge(mass: 0.02, position: SIMD3(1, 1, 1)),
+            structure: StructureModel(
+                solids: [Box(min: SIMD3(3.2, 0.2, 0), max: SIMD3(3.6, 0.6, 0.4))], elementSize: 0.1,
+                fixedBase: true))
+        scenario.reflectiveFaces = BoundaryFaces.all.subtracting(.xMax)
+        scenario.ventPanels = [
+            VentPanel(box: Box(min: SIMD3(2, 0, 0), max: SIMD3(2.2, 2, 2)), releasePressure: 20_000)
+        ]
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.1)
+        solver.advance(until: 0.0008)
+        #expect(solver.deflagrationState()?.panelOpenTimes == [nil])
+        #expect(solver.isSolid(20, 10, 10))
+        #expect(solver.isSolid(21, 10, 10))
+        solver.advance(until: 0.01)
+        let opened = try #require(solver.deflagrationState()?.panelOpenTimes.first ?? nil)
+        #expect(opened > 0.001 && opened < 0.004, "opened at \(opened) s")
+        solver.advance(until: 0.02)
+        #expect(!solver.isSolid(20, 10, 10))
+        #expect(!solver.isSolid(21, 10, 10))
+        #expect(solver.peakOverpressure(30, 10, 10) > 10_000)
+    }
+
     @Test("A cloud lit in a small room opens its vent panel, which then holds the pressure down")
     func ventedRoom() throws {
         var study = VentedRoomStudy()

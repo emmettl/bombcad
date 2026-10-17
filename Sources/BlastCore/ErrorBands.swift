@@ -306,6 +306,14 @@ public enum ValidationTables {
             document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
             quote: "(0.75–1.60 times the"),
         Figure(
+            id: "envelopeInsideVented", low: 0.31, high: 1.22,
+            document: "validation.md#inside-buildings-against-ufc-3-340-02s-loads-through-openings",
+            quote: "0.31 to 0.58", "1.03 to 1.22 in the deep one"),
+        Figure(
+            id: "envelopeInsideFillUFC", low: 0.15, high: 0.42,
+            document: "validation.md#inside-buildings-against-ufc-3-340-02s-loads-through-openings",
+            quote: "0.15 to 0.42 of the UFC's back-wall load"),
+        Figure(
             id: "slabSolid", low: 1.04, high: 1.15, document: "validation.md#summary",
             quote: "solid elements 113–125 mm (104–115%) on 4 to 32 elements through"),
         Figure(
@@ -1416,6 +1424,26 @@ extension StandingScene {
                 band.derivedMesh = "0.125 m shells, 8 layers"
                 band.document = page
                 return band
+            }
+            // The inside's walls against UFC 3-340-02's loads through openings: the air's, glazing
+            // vented, or the one-way fill's, which stands in where venting cannot run.
+            let ufc = "UFC 3-340-02 §2-15.4's loads on the walls inside"
+            let box = "a rigid box struck head-on through an open front window, 14–23% of the wall, 2–16 psi"
+            if inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes && inputs.configuration.gravity == nil
+            {
+                bands.removeAll { $0.quantity == "Inside peak through broken panes" }
+                bands.append(
+                    figure(
+                        "envelopeInsideVented", .insidePressure,
+                        "Peak pressure on the walls inside, glazing vented",
+                        low: "under-read", high: "over-read", validity: box, check: ufc))
+            } else if inputs.scenario.hasEnvelopePanes {
+                bands.append(
+                    figure(
+                        "envelopeInsideFillUFC", .insidePressure,
+                        "Peak pressure on the walls inside, one-way fill", low: "under-read",
+                        high: "over-read",
+                        validity: box, check: ufc))
             }
             unbanded.append("Roofs, and walls beside a failing one, go beyond both concrete bounds: no band.")
             let freestanding = inputs.scenario.envelopeObjects.contains { object in
