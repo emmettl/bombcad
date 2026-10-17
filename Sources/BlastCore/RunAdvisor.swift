@@ -298,9 +298,10 @@ public enum RunAdvisor {
             seen.insert($0.setting).inserted
         }.sorted { $0.cost.seconds < $1.cost.seconds }
         let stoodIn = weigh(current, within: memory).flatMap { $0.standsFor == nil ? nil : $0 }
-        // What this Mac cannot hold: the settings as they are, and the cheapest that meets a
-        // target nothing here meets, with the Mac it would fit.
-        var tooLarge: [String] = []
+        // Open faces too near the structure (`Scenario.tightOpenFaces`); what this Mac cannot hold:
+        // the settings as they are, and the cheapest that meets a target nothing here meets, with
+        // the Mac it would fit.
+        var tooLarge: [String] = scenario.tightFacesNote.map { [$0] } ?? []
         let here = AdvisorMachine.gigabytes(memory)
         func fits(_ need: Int) -> String {
             if let machine = elsewhere.filter({ $0.memory >= need }).min(by: { $0.memory < $1.memory }) {
