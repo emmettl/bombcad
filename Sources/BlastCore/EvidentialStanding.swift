@@ -1579,6 +1579,14 @@ struct StandingScene {
             "Air: \(cellDescription); the comparison's 0.5, 0.25 and 0.125 m cells for 100 kg were 0.108, 0.054 "
                 + "and 0.027 m/kg^(1/3).")
         if let range = gaugeRange { resolution.append("Gauges lie \(range) from the charge.") }
+        if let distance = structureDistance, (0.75...1.3).contains(distance) {
+            evidence.append(
+                StandingEvidence(
+                    "Yao et al.'s 4 × 5 m slabs, the reflected pressure at the top face's centre, 0.8 to 1.26 "
+                        + "m/kg^(1/3) on today's air",
+                    "Within 11% at 1.0 and 1.26 m/kg^(1/3), 19% low at 0.8; read off plots",
+                    "validation.md#yaos-large-slabs"))
+        }
         evidence += terrainEvidence
         return result(
             .peakOverpressure, level, summary, evidence: evidence, assumptions: sourceAssumptions,
@@ -1965,6 +1973,12 @@ struct StandingScene {
                     "Full-scale slabs under close-in charges",
                     "Unsafe side: spalled only under the charge, on fine air and 12 elements through, and never "
                         + "holed", "validation.md#slabs-under-close-in-charges"))
+            evidence.append(
+                StandingEvidence(
+                    "Yao et al.'s 20 kg over a 4 × 5 m slab, 0.22 m/kg^(1/3)",
+                    "Unsafe side: its top face undamaged where the test's cratered 1.02 × 0.76 m, bars exposed, "
+                        + "and spalled wider beneath; one test, no measured deflection",
+                    "validation.md#yaos-large-slabs"))
             evidence.append(
                 StandingEvidence(
                     "Slabs under contact charges (Hupfauf, 2024)",
