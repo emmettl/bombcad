@@ -308,6 +308,13 @@ public enum TwoFaceSlabTests {
         let nodes: [(Int, Int, Int)] = probes.map { _, point in
             (index(point.x, 0), index(point.y, 1), index(point.z, 2))
         }
+        // From the slab at rest under its own weight, as the tests' gauges read.
+        solver.settleStructures()
+        func along(_ node: (Int, Int, Int)) -> Float {
+            structure.storedNode(node.0, node.1, node.2) != nil
+                ? structure.displacement(node.0, node.1, node.2)[thicknessAxis] : 0
+        }
+        let rest = nodes.map(along)
         let start = ContinuousClock.now
         var histories = [[SIMD2<Float>]](repeating: [], count: probes.count)
         var nextReport = 0.01
@@ -318,10 +325,7 @@ public enum TwoFaceSlabTests {
             let result = solver.advance(steps: 8, timeLimit: duration)
             if result.steps == 0 && !solver.airIsAsleep { break }
             for (n, node) in nodes.enumerated() {
-                let u =
-                    structure.storedNode(node.0, node.1, node.2) != nil
-                    ? structure.displacement(node.0, node.1, node.2)[thicknessAxis] : 0
-                histories[n].append(SIMD2(Float(solver.time), sign * u))
+                histories[n].append(SIMD2(Float(solver.time), sign * (along(node) - rest[n])))
             }
             inspect?(structure, solver.time)
             if structure.tracesWork, let first = histories[0].last?.y, first > highest {

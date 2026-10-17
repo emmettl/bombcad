@@ -138,6 +138,22 @@ struct EnvelopeInspectionTests {
         #expect(throws: ProjectFileError.self) {
             try HeadlessRun.Options.parse([input.path, "--envelope-results", surfaces.path])
         }
+        // A window from arrival: each history starts where its air first moved.
+        let later = folder.appending(path: "from-arrival.json")
+        let windowed = try HeadlessRun.Options.parse([
+            input.path, "--envelope-histories", later.path, "--envelope-window", "0.004",
+        ])
+        #expect(windowed.envelopeWindow == 0.004)
+        _ = try await HeadlessRun.execute(windowed)
+        let arrived = try JSONDecoder().decode(
+            [EnvelopeComponentHistory].self, from: Data(contentsOf: later))
+        #expect(arrived.count == 4 && arrived.allSatisfy { $0.windowStartS != nil })
+        #expect(arrived.allSatisfy { $0.outerImpulsePaS.count <= 41 })
+        #expect(throws: ProjectFileError.self) {
+            try HeadlessRun.Options.parse([
+                input.path, "--envelope-histories", histories.path, "--envelope-window", "0",
+            ])
+        }
         var air = try document()
         air.scenario = ScenarioPreset.openGround.scenario
         await #expect(throws: ProjectFileError.self) { try await HeadlessRun.perform(air, options: options) }

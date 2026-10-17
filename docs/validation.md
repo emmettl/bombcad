@@ -2629,7 +2629,10 @@ an aluminised charge, and say its TNT equivalence is low for impulse.
   grade's 16%;
 - the underside 1 m above the ground (not given);
 - the slab without its own weight, since the sensors read from the slab already resting under it,
-  and a slab given its weight as the run starts sags 2–3 mm.
+  and a slab given its weight as the run starts sags 2–3 mm. Since structures are [settled under
+  their own weight](structural-model.md#settling-under-its-own-weight) it can carry it
+  (`--weight`): T1's centre then peaks at 3.34 mm rather than 3.29, the same 0.96 mm within 2 ms
+  of the shock.
 
 | Test | Top-face pressure, centre (MPa) | 1 m out (MPa) | Underside centre, measured | Model, within 2 ms of the shock | Model, peak |
 |---|---|---|---|---|---|
@@ -3433,6 +3436,14 @@ either way, and were sampled by the harness. What changes is any envelope run wi
 openings (IFC imports, detailed structures with glass in their openings converted to envelopes):
 their windows are closed now, so the loads outside and the panes' own differ, and their panes
 break; and with glass set in a wall, the wall's load no longer includes its window's.
+
+Refined air kept the leak a little longer: its patches take their outline from the blocks' boxes,
+and the pane's own box held no finer cell's centre either, so a window glazed in a cut opening
+was open in the patches. A glazed room 5 m from 5 kg read 16 kPa inside with the shocks sharpened
+and nothing on the coarse cells. Since the same day every plate thinner than a cell takes the layer
+of cells its middle lies in on each level (`Box.holdingCells`), panes among them, and the room
+stays sealed once or twice refined (`EnvelopePaneCellTests`). Refined envelope runs with glazing
+in cut openings change as the coarse ones did.
 
 ### What this does and does not show
 

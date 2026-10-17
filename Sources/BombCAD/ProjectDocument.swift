@@ -46,6 +46,11 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// True when envelopes' glazing breaks in the air and the blast fills their rooms; nil, and
     /// left out of the file and the fingerprint, for the one-way fill, or where no envelope is glazed.
     var ventsGlazing: Bool?
+    /// True when the structures were brought to rest under their own weight before the blast
+    /// (`SolverConfiguration.settlesStructures`), as since 17 October 2026; false when they took
+    /// it as the run started; nil, and left out of the file and the fingerprint, where the scene
+    /// has no structure, or for a run saved before then.
+    var settlesStructures: Bool?
     var solidElementSize: Float
     var duration: Double
 
@@ -64,6 +69,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         waterTable = settings.ground == .rigid ? nil : settings.waterTable
         outlineByOverlap = settings.scenario.structuralObjects.isEmpty ? nil : settings.outlineByOverlap
         ventsGlazing = settings.ventsGlazing && settings.scenario.hasEnvelopePanes ? true : nil
+        settlesStructures = settings.scenario.structuralObjects.isEmpty ? nil : settings.settlesStructures
         solidElementSize = settings.solidElementSize
         self.duration = duration
     }
@@ -85,6 +91,13 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// at its centre; by default without, so that structures added later are counted by overlap.
     func countsByOverlap(over scenario: Scenario) -> Bool {
         outlineByOverlap ?? scenario.structuralObjects.isEmpty
+    }
+
+    /// Whether a run of `scenario` under these settings settles its structures under their own
+    /// weight first: as recorded over structures, where nil (a run saved before 17 October 2026)
+    /// is not; by default it does, so that structures added later are settled.
+    func settlesStructures(over scenario: Scenario) -> Bool {
+        settlesStructures ?? scenario.structuralObjects.isEmpty
     }
 
     /// The craters the charges of `scenario` dig in the ground these settings name; none on the

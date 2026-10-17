@@ -213,6 +213,13 @@ public enum SceneObjectError: Error, LocalizedError {
 
 extension Scenario {
     public static let maximumStructures = 16
+    /// The rigid boxes a scene with envelope buildings may hold (`rigidBoxes`): enough for a
+    /// district of map buildings, thousands of them, each merged into a few boxes. Blocks and
+    /// imported models are held to `maximumImportedBoxes` among themselves, and refined air tests
+    /// every box as it fills a new patch, so it grows slower as they add up.
+    public static let maximumRigidBoxes = 262_144
+    /// The rigid boxes of blocks and imported models, together.
+    public static let maximumImportedBoxes = 2048
     public var fixedObjects: [SceneObject] { objects.filter { $0.fixedBox != nil } }
     public var structuralObjects: [SceneObject] { objects.filter { $0.structure != nil } }
     /// Legacy single-body adapter. Multi-body code must select an owner explicitly.
@@ -353,7 +360,7 @@ extension Scenario {
                 == structuralObjects.compactMap(\.sourceModelID).count,
             objects.filter({ $0.fixedBox != nil }).allSatisfy({ $0.sourceModelID == nil }),
             envelopeObjects.allSatisfy({ $0.sourceModelID == nil }),
-            envelopeObjects.isEmpty || rigidBoxes.count <= 2048,
+            envelopeObjects.isEmpty || rigidBoxes.count <= Self.maximumRigidBoxes,
             objects.allSatisfy({ $0.preferredSolidElementSize.map { $0.isFinite && $0 > 0 } ?? true }),
             objects.allSatisfy({ !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
         else { throw SceneObjectError.invalidOwnership }
