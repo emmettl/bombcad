@@ -30,6 +30,18 @@ func runPanelBlock(device: MTLDevice) throws {
     }
     let preset: ScenarioPreset = which == .gas ? .largePanelGas : .largePanelStreet
     var scenario = preset.scenario
+    if flag("standing") {
+        // What the app shows for the preset: each result's standing, and what is not compared.
+        var inputs = StandingInputs(scenario: scenario, cellSize: option("dx").flatMap { Float($0) } ?? 0.125)
+        inputs.configuration.openFaces = SolverConfiguration.recommended.openFaces
+        let standing = SceneStanding(inputs)
+        for result in standing.results {
+            print("\(result.kind.title): \(result.level.title). \(result.summary)")
+            for option in result.options { print("  option: \(option)") }
+        }
+        for line in standing.unsupported { print("Not compared: \(line)") }
+        return
+    }
     if let mass = option("mass").flatMap({ Float($0) }) { scenario.charge.mass = mass }
     let cellSize = option("dx").flatMap { Float($0) } ?? 0.25
     let frames = (option("frames") ?? "0.1,0.5,1,2,4").split(separator: ",").compactMap { Double($0) }
