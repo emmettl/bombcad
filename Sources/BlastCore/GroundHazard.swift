@@ -1,0 +1,230 @@
+import Foundation
+import simd
+
+/// What makes a fragment, or a piece of debris, a hazard to people in the open, as the US
+/// explosives safety standards define it.
+public enum HazardCriteria {
+    /// A hazardous fragment strikes with 58 ft-lb (79 J) or more: DoD 6055.09-M, equation
+    /// V3.E3.T2-1 (now DESR 6055.09), as FAA Guide 437.53-1 (2011) restates it.
+    public static let hazardousEnergyJ: Float = 79
+    /// The hazardous fragment distance is where hazardous fragments fall below one per 600 ft²
+    /// (55.7 m²) of ground, a 1% chance of one striking a person's 6 ft² (same sources).
+    public static let hazardousAreaM2: Float = 55.7
+    /// FAA's lower threshold for a fragment that can seriously injure, 11 ft-lb (14.9 J) (Guide
+    /// 437.53-1, "Hazardous fragment").
+    public static let injuryEnergyJ: Float = 14.9
+}
+
+/// Where fragments or debris landed on the open ground round a charge, by range and direction:
+/// the areal density of hazardous ones, and the hazardous fragment distance, past which it stays
+/// below one per 55.7 m² (`HazardCriteria`). Pieces stopped by a structure or block are counted
+/// apart, as they do not reach open ground.
+public struct GroundHazard: Codable, Sendable, Equatable {
+    /// The charge's position on the map, m.
+    public var centre: SIMD2<Float>
+    /// The rings' edges, m from the charge, ring k from `edges[k]` to `edges[k + 1]`; the
+    /// directions' sectors, the first centred on +x, counting towards +y.
+    public var edges: [Float]
+    public var sectors: Int
+    public var rings: Int { edges.count - 1 }
+    /// Real pieces landed in each cell, ring by ring (`ring * sectors + sector`): all, those of
+    /// at least 79 J and those of at least 14.9 J.
+    public var landed: [Float]
+    public var hazardous: [Float]
+    public var injurious: [Float]
+    /// The pieces flown that landed hazardous in each cell, which each stand for `hazardous`'s
+    /// count between them: how well sampled the cell is.
+    public var samples: [Int]
+    /// The hazardous fragment distance in each sector, m: the outer edge of the furthest cell
+    /// whose density reaches one per 55.7 m²; nil where none does.
+    public var sectorDistances: [Float?]
+    /// Real hazardous pieces stopped by a structure or block, and the furthest hazardous landing
+    /// on open ground (m from the charge).
+    public var stoppedHazardous: Float
+    public var furthestHazardous: Float?
+
+    /// The hazardous fragment distance, the largest of the sectors', m; nil with no cell over it.
+    public var hazardDistance: Float? { sectorDistances.compactMap { $0 }.max() }
+
+    /// The pieces flown in the cell that sets the hazard distance: a handful means it is set by
+    /// sampling as much as by the fragments, and more should be flown.
+    public var samplesAtDistance: Int {
+        guard let distance = hazardDistance, let ring = edges.firstIndex(of: distance).map({ $0 - 1 }) else {
+            return 0
+        }
+        return (0..<sectors).filter { sectorDistances[$0] == distance }
+            .map { samples[ring * sectors + $0] }.max() ?? 0
+    }
+
+    /// Fewer hazardous pieces flown than this in the cell that sets the distance, and it is
+    /// sampling-limited.
+    public static let wellSampled = 10
+
+    /// The ground area of a cell, m².
+    public func area(ring: Int) -> Float {
+        let (inner, outer) = (edges[ring], edges[ring + 1])
+        return .pi * (outer * outer - inner * inner) / Float(sectors)
+    }
+
+    /// Hazardous pieces per m² in a cell.
+    public func density(ring: Int, sector: Int) -> Float {
+        hazardous[ring * sectors + sector] / area(ring: ring)
+    }
+
+    /// Real pieces landed in all, and the share of them that are hazardous and injurious.
+    public var landedCount: Float { landed.reduce(0, +) }
+    public var hazardousShare: Float { landedCount > 0 ? hazardous.reduce(0, +) / landedCount : 0 }
+    public var injuriousShare: Float { landedCount > 0 ? injurious.reduce(0, +) / landedCount : 0 }
+
+    /// From impacts round a charge at `centre`, in rings at `edges`, or by default the first a
+    /// metre across and each after 10% wider out to the furthest landing, so the distance is to
+    /// within 10% at any range.
+    public init(
+        impacts: [FragmentImpact], centre: SIMD2<Float>, sectors: Int = 8, edges given: [Float]? = nil
+    ) {
+        precondition(sectors > 0)
+        let ground = impacts.filter { $0.surface == "ground" }
+        func range(_ impact: FragmentImpact) -> Float {
+            simd_length(SIMD2(impact.position.x, impact.position.y) - centre)
+        }
+        let furthest = ground.map(range).max() ?? 0
+        let edges = given ?? Self.edges(reaching: furthest)
+        let rings = edges.count - 1
+        self.centre = centre
+        self.edges = edges
+        self.sectors = sectors
+        landed = Array(repeating: 0, count: rings * sectors)
+        hazardous = landed
+        injurious = landed
+        samples = Array(repeating: 0, count: rings * sectors)
+        stoppedHazardous = impacts.filter {
+            $0.surface != "ground" && $0.energy >= HazardCriteria.hazardousEnergyJ
+        }
+        .reduce(0) { $0 + $1.count }
+        furthestHazardous = ground.filter { $0.energy >= HazardCriteria.hazardousEnergyJ }.map(range).max()
+        for impact in ground {
+            let offset = SIMD2(impact.position.x, impact.position.y) - centre
+            let distance = range(impact)
+            let ring = min(max((edges.firstIndex { $0 > distance } ?? edges.count) - 1, 0), rings - 1)
+            var angle = atan2(offset.y, offset.x) + .pi / Float(sectors)
+            if angle < 0 { angle += 2 * .pi }
+            let sector = min(Int(angle / (2 * .pi) * Float(sectors)), sectors - 1)
+            let cell = ring * sectors + sector
+            landed[cell] += impact.count
+            if impact.energy >= HazardCriteria.injuryEnergyJ { injurious[cell] += impact.count }
+            if impact.energy >= HazardCriteria.hazardousEnergyJ {
+                hazardous[cell] += impact.count
+                samples[cell] += 1
+            }
+        }
+        sectorDistances = []
+        let criterion = 1 / HazardCriteria.hazardousAreaM2
+        var distances: [Float?] = Array(repeating: nil, count: sectors)
+        for sector in 0..<sectors {
+            if let ring = (0..<rings).last(where: { density(ring: $0, sector: sector) >= criterion }) {
+                distances[sector] = edges[ring + 1]
+            }
+        }
+        sectorDistances = distances
+    }
+
+    /// One line: the hazard distance, how it is sampled, and the shares hazardous and injurious.
+    public var summary: String {
+        let distance =
+            hazardDistance.map {
+                String(format: "hazardous fragment distance %.0f m", $0)
+                    + (samplesAtDistance < Self.wellSampled
+                        ? " (set by \(samplesAtDistance) flown; fly more)" : "")
+            } ?? "no ground over 1 hazardous fragment per 55.7 m²"
+        return distance
+            + String(
+                format: ", %.0f%% of landings hazardous (≥ 79 J), %.0f%% injurious (≥ 14.9 J)",
+                100 * hazardousShare,
+                100 * injuriousShare)
+            + (furthestHazardous.map { String(format: ", furthest hazardous %.0f m", $0) } ?? "")
+    }
+
+    /// Ring edges from the charge: 0, 1 m, then each 10% further than the last, past `furthest`.
+    static func edges(reaching furthest: Float) -> [Float] {
+        var edges: [Float] = [0, 1]
+        while edges.last! <= furthest { edges.append(edges.last! * 1.1) }
+        return edges
+    }
+}
+
+/// Debris thrown off a structure where a run makes it (`StructureModel.rubbleParticles`: failed
+/// concrete and masonry as particles keeping their mass), flown on from where the run left it in
+/// still air until it lands, like the fragments (`FragmentCloud.land`), each a tumbling cube of
+/// its own volume, and judged by the same criteria.
+public struct DebrisResult: Codable, Sendable, Equatable {
+    /// Each piece's landing, its `fragment` the piece's index: on the ground, or on a block.
+    /// Pieces at rest when the run ended land where they lie, with the energy they then had.
+    public var impacts: [FragmentImpact]
+    public var pieces: Int
+    /// kg.
+    public var mass: Float
+    public var hazard: GroundHazard
+
+    /// Pieces slower than this (m/s) when the run ends are taken as lying where they are.
+    public static let restSpeed: Float = 1
+
+    public init(
+        rubble: [RubbleParticle], centre: SIMD2<Float>, ambient: Primitive, blocks: [Box] = [],
+        terrain: Terrain? = nil
+    ) {
+        let pieces = rubble.filter { $0.mass > 0 }
+        var lying: [FragmentImpact] = []
+        var flying: [(index: Int, particle: FragmentCloud.Particle)] = []
+        for (index, piece) in pieces.enumerated() {
+            let speed = simd_length(piece.velocity)
+            if speed < Self.restSpeed {
+                let ground = terrain?.height(at: piece.position) ?? 0
+                lying.append(
+                    FragmentImpact(
+                        fragment: index, time: 0, position: piece.position, speed: speed,
+                        energy: piece.kineticEnergy,
+                        surface: piece.position.z - ground <= max(2 * piece.reach, 0.5)
+                            ? "ground" : "structure"))
+            } else {
+                let edge = cbrt(max(piece.volume, 1e-9))
+                flying.append(
+                    (
+                        index,
+                        FragmentCloud.Particle(
+                            position: piece.position, velocity: piece.velocity, mass: piece.mass,
+                            area: 1.5 * edge * edge)
+                    ))
+            }
+        }
+        var cloud = FragmentCloud(particles: flying.map(\.particle), blocks: blocks, terrain: terrain)
+        cloud.land(in: ambient)
+        let flown = cloud.impacts.map { impact in
+            var impact = impact
+            impact.fragment = flying[impact.fragment].index
+            return impact
+        }
+        impacts = (lying + flown).sorted { $0.fragment < $1.fragment }
+        self.pieces = pieces.count
+        mass = pieces.reduce(0) { $0 + $1.mass }
+        hazard = GroundHazard(impacts: impacts, centre: centre)
+    }
+
+    public var summary: String {
+        String(
+            format: "Debris: %d pieces, %.0f kg, highest landing energy %.0f J; ", pieces, mass,
+            impacts.map(\.energy).max() ?? 0) + hazard.summary
+    }
+}
+
+extension BlastSolver {
+    /// The structures' rubble now, flown on to where it lands (`DebrisResult`); nil unless a
+    /// structure makes rubble.
+    public func debris(scenario: Scenario) -> DebrisResult? {
+        guard bodies.contains(where: { $0.model.rubbleParticles }) else { return nil }
+        let rubble = bodies.flatMap { $0.solids?.rubbleParticles().map(\.particle) ?? [] }
+        return DebrisResult(
+            rubble: rubble, centre: SIMD2(scenario.charge.position.x, scenario.charge.position.y),
+            ambient: Primitive(density: ambientDensity, pressure: configuration.ambientPressure),
+            blocks: scenario.rigidBoxes, terrain: scenario.terrain)
+    }
+}

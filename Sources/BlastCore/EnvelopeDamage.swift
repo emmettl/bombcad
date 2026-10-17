@@ -135,9 +135,106 @@ public struct EnvelopeComponentDamage: Codable, Sendable, Identifiable {
     public var levels: ClosedRange<EnvelopeDamageLevel>
     /// Glass: broken, and when (s); masonry: fallen, and when.
     public var failedAtS: Double?
+    /// A window's glass: how far into the room it is thrown, as GSA and ASTM grade it; nil for a
+    /// skylight or anything else.
+    public var glazing: GlazingHazard? = nil
     /// True for a freestanding wall, judged as a cantilever from its foot rather than a panel on
     /// its edges; nil for a panel (left out of the JSON, which older records lack).
     public var cantilever: Bool?
+}
+
+/// How hazardous a window's glass is to the room behind it, by where it lands: GSA-TS01's
+/// performance conditions and ASTM F1642's hazard ratings, which a test judges by fragments on
+/// the floor within 1 and 3 m of the window and on a witness panel 3 m in, below or above 0.6 m
+/// (GSA, 2 ft) or 0.5 m (ASTM). Here the glass flies as one piece from the pane's middle, at
+/// the speed it broke with and gained from the load that went on pushing it, falling under
+/// gravity without drag, the pane's sill `sillM` above the floor.
+public struct GlazingHazard: Codable, Sendable, Equatable {
+    public enum Condition: String, Codable, Sendable, CaseIterable, Comparable {
+        /// 1: not broken; 2: cracked, held by the frame (not distinguished here); 3a: lands within
+        /// 1 m; 3b: within 3 m; 4: strikes the witness panel at 3 m no higher than 0.6 m; 5:
+        /// higher.
+        case one = "1"
+        case two = "2"
+        case threeA = "3a"
+        case threeB = "3b"
+        case four = "4"
+        case five = "5"
+
+        public static func < (a: Self, b: Self) -> Bool {
+            allCases.firstIndex(of: a)! < allCases.firstIndex(of: b)!
+        }
+    }
+
+    public enum Rating: String, Codable, Sendable, CaseIterable {
+        case noBreak = "No break"
+        case noHazard = "No hazard"
+        case minimal = "Minimal hazard"
+        case
+            veryLow = "Very low hazard"
+        case low = "Low hazard"
+        case high = "High hazard"
+    }
+
+    /// The glass's speed into the room, m/s.
+    public var speedMS: Double
+    /// Where it lands on the floor, m from the window, if before the witness panel.
+    public var landsAtM: Double?
+    /// Its height crossing the witness panel's plane, m above the floor, if it gets there.
+    public var panelHeightM: Double?
+    public var condition: Condition
+    public var rating: Rating
+
+    public static let sillM = 0.9
+    public static let nearM = 1.0
+    public static let panelM = 3.0
+    public static let gsaPanelHeightM = 0.6
+    public static let astmPanelHeightM = 0.5
+
+    /// A pane that did not break.
+    public static let whole = GlazingHazard(
+        speedMS: 0, landsAtM: nil, panelHeightM: nil, condition: .one, rating: .noBreak)
+
+    /// Glass thrown level into the room at `speed` (m/s; none if moving outward) from `height` m
+    /// above the floor.
+    public static func thrown(speed: Double, height: Double) -> GlazingHazard {
+        let g = 9.81
+        let v = max(speed, 0)
+        let h = max(height, 0)
+        let landing = v * (2 * h / g).squareRoot()
+        if landing <= panelM {
+            return GlazingHazard(
+                speedMS: v, landsAtM: landing, panelHeightM: nil,
+                condition: landing <= nearM ? .threeA : .threeB,
+                rating: landing <= nearM ? .minimal : .veryLow)
+        }
+        let time = panelM / v
+        let z = h - 0.5 * g * time * time
+        return GlazingHazard(
+            speedMS: v, landsAtM: nil, panelHeightM: z, condition: z <= gsaPanelHeightM ? .four : .five,
+            rating: z <= astmPanelHeightM ? .low : .high)
+    }
+
+    /// A broken pane `paneHeight` m tall of `massPerArea` kg/m²: its centre's speed at breaking,
+    /// then the net load (Pa, in bins `binS` s long) pushing it on as a free mass until that
+    /// load first stops pushing inward.
+    public static func broken(
+        response: SDOFResponse, netPa: [Double], binS: Double, massPerArea: Double, paneHeight: Double
+    ) -> GlazingHazard {
+        guard let at = response.lostResistanceAt else { return whole }
+        var speed = response.velocityAtLoss ?? 0
+        if speed > 0 {
+            var bin = Int(at / binS)
+            // The rest of the bin it broke in, then whole bins.
+            var span = Double(bin + 1) * binS - at
+            while bin < netPa.count, netPa[bin] > 0 {
+                speed += netPa[bin] * span / massPerArea
+                bin += 1
+                span = binS
+            }
+        }
+        return thrown(speed: speed, height: sillM + paneHeight / 2)
+    }
 }
 
 /// One building's one-way damage.
@@ -153,6 +250,8 @@ public struct EnvelopeBuildingDamage: Codable, Sendable, Identifiable {
     public var panes: Int
     public var panesBroken: Int
     public var firstPaneBrokenAtS: Double?
+    /// Its windows' worst glazing hazard (GSA's condition, ASTM's rating), nil without windows.
+    public var worstGlazing: GlazingHazard? = nil
     /// Inside, from a one-way fill through the broken panes (`EnvelopeDamageAssessment.fill`):
     /// peak overpressure (Pa) and positive impulse (Pa s). Zero with no pane broken.
     public var insidePeakPa: Double
@@ -230,7 +329,11 @@ public enum EnvelopeDamageAssessment {
                 structuralLevels: low...max(low, high),
                 beyondOneWay: structural.contains { $0.rotationDeg.upperBound > frameFlagDeg },
                 panes: panes.count, panesBroken: panes.filter { $0.failedAtS != nil }.count,
-                firstPaneBrokenAtS: panes.compactMap(\.failedAtS).min(), insidePeakPa: inside.peak,
+                firstPaneBrokenAtS: panes.compactMap(\.failedAtS).min(),
+                worstGlazing: panes.compactMap(\.glazing).max {
+                    ($0.condition, $0.speedMS) < ($1.condition, $1.speedMS)
+                },
+                insidePeakPa: inside.peak,
                 insideImpulsePaS: inside.impulse)
         }
     }
@@ -272,7 +375,13 @@ public enum EnvelopeDamageAssessment {
             let response = pane.response(pressures: pressures, step: load.binS)
             let level: EnvelopeDamageLevel = response.lostResistanceAt == nil ? .none : .failed
             let rotation = Self.rotation(response, span: a)
-            return damage(.annealedGlass, rotation...rotation, level...level, response.lostResistanceAt)
+            var result = damage(.annealedGlass, rotation...rotation, level...level, response.lostResistanceAt)
+            if load.axis != 2 {
+                result.glazing = GlazingHazard.broken(
+                    response: response, netPa: pressures, binS: load.binS, massPerArea: pane.massPerArea,
+                    paneHeight: Double(load.region.size.z))
+            }
+            return result
         }
         if load.isFreestanding {
             return cantilever(load, construction: construction, pressures: pressures, peak: peak)

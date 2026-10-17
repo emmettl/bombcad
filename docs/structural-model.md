@@ -1005,6 +1005,20 @@ sand (50 by default, as a footing's soil), on solid elements only; the rigid gro
 default, the one comparison (Keys's walls in the open, one run each) narrowing the debris by a
 third but not to what was measured. The standing names it ("Soft ground under debris").
 
+### Debris as a hazard
+
+With rubble particles on, a headless run flies the rubble on from where
+it ends, in still air as the [fragments](fragments.md#hazard) are, each piece a tumbling cube of
+its own volume, until it lands, and judges the landings against the hazardous-fragment criteria
+(79 J; one per 55.7 m²): the summary gives the pieces, their mass, the hardest landing and the
+hazard distance, `--debris-results` writes them as JSON and the USD scene rings the distance
+(`/Scene/DebrisHazard`). Pieces slower than 1 m/s at the end lie where they are, with the energy
+they then had, so debris that landed during the run is counted but not how hard it landed: the
+hazard near the structure is undercounted. Debris from structures is thrown short of the tests
+([Hupfauf's slabs](validation.md#slabs-under-contact-charges),
+[Keys's walls](validation.md#brick-walls-debris)), so
+its hazard distance is on the unsafe side. The app does not yet make rubble.
+
 ## Verification
 
 See [Validation](validation.md). In brief: stress-wave speed, cantilever deflection and natural
