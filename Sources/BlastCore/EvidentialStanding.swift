@@ -137,7 +137,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-21"
+    public static let currentTable = "standing-table-22"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -640,7 +640,14 @@ public enum StandingTable {
                     + "inside stays illustrative: the detailed "
                     + "references let broken glass go element by element and cannot judge it; against UFC "
                     + "3-340-02's loads through open windows the walls inside come at 0.31 to 1.22 of the UFC's "
-                    + "(the back walls within 25%), where the one-way fill gives 0.15 to 0.42.",
+                    + "(the back walls within 25%), where the one-way fill gives 0.15 to 0.42. Fragments' "
+                    + "perforations open holes through walls, each the fragment's presented area, for want of a "
+                    + "cited hole size (UFC 3-340-02 §4-60.1 describes craters wider than the fragment but gives "
+                    + "no size): the open area is a lower bound, a cell opening when its holes fill half its "
+                    + "face. Concrete past UFC 3-340-02's threshold breach curve (Figure 4-65a, equation 4-179) "
+                    + "opens where it is breached, at the blast's arrival there: illustrative; on Hupfauf's "
+                    + "contact slabs it breaches all four that did and two of four that held, as the upper "
+                    + "bound it is.",
                 document: "building-envelopes.md#venting-glazing-that-breaks-in-the-air")
         case .ventPanels:
             return Entry(
