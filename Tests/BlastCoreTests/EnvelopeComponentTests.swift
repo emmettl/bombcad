@@ -229,6 +229,32 @@ struct EnvelopeComponentHistoryTests {
         }
     }
 
+    @Test("Histories repeat bit for bit however the steps are cut into batches")
+    func batching() throws {
+        var scene = try scene()
+        scene.charge = Charge(mass: 0.05, position: SIMD3(4, 1.5, 1))
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        func histories(_ batch: Int) throws -> [EnvelopeComponentHistory] {
+            let solver = try BlastSolver(device: device, scenario: scene, cellSize: 0.25)
+            try solver.configureEnvelopeComponents(
+                objects: scene.envelopeObjects,
+                options: EnvelopeHistoryOptions(windowS: 0.05, binMaxima: true))
+            for _ in 0..<(48 / batch) { _ = solver.advance(steps: batch) }
+            return try #require(solver.envelopeComponentHistories())
+        }
+        let whole = try histories(48)
+        for batch in [1, 5] {
+            let cut = try histories(batch == 5 ? 6 : batch)
+            for (a, b) in zip(whole, cut) {
+                #expect(
+                    a.outerImpulsePaS.map(\.bitPattern) == b.outerImpulsePaS.map(\.bitPattern), "\(batch)")
+                #expect(
+                    a.innerImpulsePaS.map(\.bitPattern) == b.innerImpulsePaS.map(\.bitPattern), "\(batch)")
+                #expect(a.peakNetPa.bitPattern == b.peakNetPa.bitPattern)
+            }
+        }
+    }
+
     @Test("Recording leaves coarse and refined air bit-identical", arguments: [1, 2])
     func passive(refinement: Int) throws {
         var scene = try scene()

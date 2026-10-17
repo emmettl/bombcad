@@ -509,9 +509,9 @@ extension Scenario {
                     id: building.id, objectID: id, heightSource: heights.source, base: ground, top: top,
                     boxes: boxes.count, cells: cells.count))
         }
-        guard copy.rigidBoxes.count <= 2048 else {
+        guard copy.rigidBoxes.count <= Scenario.maximumRigidBoxes else {
             throw MapBuilding.Failure.malformed(
-                "the buildings need \(copy.rigidBoxes.count) boxes in all and a scene holds 2,048; "
+                "the buildings need \(copy.rigidBoxes.count) boxes in all and a scene holds \(Scenario.maximumRigidBoxes); "
                     + "choose a coarser resolution or a smaller area")
         }
         if let attribution, !report.placed.isEmpty, !(copy.attributions ?? []).contains(attribution) {
