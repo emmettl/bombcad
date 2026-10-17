@@ -137,7 +137,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-8"
+    public static let currentTable = "standing-table-9"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -588,7 +588,9 @@ public enum StandingTable {
                 note: "A methane or propane cloud's flame: checked against the thin-flame model in a closed "
                     + "vessel and wrinkled by sub-grid turbulence and its measured cellular instability; in FM "
                     + "Global's vented chamber it reaches 0.9–1.8 times the tests' peaks lit at the back wall, "
-                    + "0.4–0.6 lit in the middle, and below the (conservative) venting correlations.",
+                    + "0.4–0.6 lit in the middle, and below the (conservative) venting correlations. An open, "
+                    + "congested cloud, as at a process plant, has been compared with no test: congestion speeds "
+                    + "real flames to hundreds of metres a second, beyond what it resolves.",
                 document: "deflagration.md#limitations")
         case .importedEnvelopes:
             return Entry(
@@ -1468,6 +1470,12 @@ struct StandingScene {
                 "Lit at the back wall, 0.9–1.8 times the measured peaks; lit in the middle, 0.4–0.6, the "
                     + "flame stalling towards the back wall; geometric mean 0.76",
                 "deflagration.md#bauwens-chaffee-and-dorofeev-2008"),
+            StandingEvidence(
+                "BP Texas City 2005 (CSB), a layout after it",
+                "The model's own flame gives 0.01 psi at 37 m against the CSB's 2.5–2.8: congestion's "
+                    + "acceleration is not resolved. With the burning velocity times 6.5, fitted there: 2.4 psi, "
+                    + "the brick control room failing at 1.6 psi (1.5–2.5, heavily damaged)",
+                "process-plant-explosion.md#results"),
         ]
     }
 
@@ -1477,6 +1485,12 @@ struct StandingScene {
         if !(inputs.scenario.ventPanels ?? []).isEmpty {
             resolution.append("Vent panels have no mass and release at once.")
         }
+        if let factor = inputs.scenario.deflagration?.acceleration.factor, factor != 1 {
+            resolution.append(
+                "The burning velocity is raised \(String(format: "%g", factor)) times, a fit standing for what "
+                    + "the model does not resolve: the pressures follow it steeply, as about its third power."
+            )
+        }
         return result(
             kind, .illustrative,
             "Reads low, the unsafe side, where a vented room is lit in the middle: 0.4–0.6 of FM Global's "
@@ -1484,7 +1498,10 @@ struct StandingScene {
                 + "and NFPA 68, and a peak is uncertain by about ±20% on 0.1 m cells. The wrinkling's one "
                 + "constant was fitted, and the instability's onset measured, in that chamber. In a closed "
                 + "vessel the laminar rise times come within 1–3% of the thin-flame model, partly two errors "
-                + "crossing, and K_G cannot converge on the four-cell front.",
+                + "crossing, and K_G cannot converge on the four-cell front. An open, congested cloud (a process "
+                + "plant's racks and vessels) has been compared with no test: there congestion speeds a real "
+                + "flame to Mach 0.4–0.7 (Baker–Strehlow–Tang, medium to high congestion), which the flame "
+                + "here does not reach, so its pressures are a lower bound, possibly several times low.",
             evidence: deflagrationEvidence + terrainEvidence,
             assumptions: [
                 "Burnt and unburnt gas are treated as air; the heat released is the share of the heat of "
@@ -1493,7 +1510,11 @@ struct StandingScene {
                     + "correlation, and by its cellular instability from the onset radius measured in FM Global's "
                     + "chamber, held beyond four onset radii; a young flame is slow until it is about seventeen "
                     + "cells across.",
-            ], resolution: resolution, documents: ["deflagration.md#checks", "deflagration.md#limitations"])
+            ], resolution: resolution,
+            documents: [
+                "deflagration.md#checks", "deflagration.md#limitations",
+                "process-plant-explosion.md#what-the-model-can-and-cannot-represent",
+            ])
     }
 
     func peakOverpressure() -> ResultStanding {
@@ -1558,6 +1579,14 @@ struct StandingScene {
             "Air: \(cellDescription); the comparison's 0.5, 0.25 and 0.125 m cells for 100 kg were 0.108, 0.054 "
                 + "and 0.027 m/kg^(1/3).")
         if let range = gaugeRange { resolution.append("Gauges lie \(range) from the charge.") }
+        if let distance = structureDistance, (0.75...1.3).contains(distance) {
+            evidence.append(
+                StandingEvidence(
+                    "Yao et al.'s 4 × 5 m slabs, the reflected pressure at the top face's centre, 0.8 to 1.26 "
+                        + "m/kg^(1/3) on today's air",
+                    "Within 11% at 1.0 and 1.26 m/kg^(1/3), 19% low at 0.8; read off plots",
+                    "validation.md#yaos-large-slabs"))
+        }
         evidence += terrainEvidence
         return result(
             .peakOverpressure, level, summary, evidence: evidence, assumptions: sourceAssumptions,
@@ -1946,6 +1975,12 @@ struct StandingScene {
                         + "holed", "validation.md#slabs-under-close-in-charges"))
             evidence.append(
                 StandingEvidence(
+                    "Yao et al.'s 20 kg over a 4 × 5 m slab, 0.22 m/kg^(1/3)",
+                    "Unsafe side: its top face undamaged where the test's cratered 1.02 × 0.76 m, bars exposed, "
+                        + "and spalled wider beneath; one test, no measured deflection",
+                    "validation.md#yaos-large-slabs"))
+            evidence.append(
+                StandingEvidence(
                     "Slabs under contact charges (Hupfauf, 2024)",
                     "The far face on the axis 0.9–2.3 times the fit on today's air, with the outline counted by "
                         + "overlap (0.9–1.3 on the 20 cm slabs; 0.88–1.82 at the elements' centres, 1.1–1.7 on the "
@@ -2239,20 +2274,21 @@ struct StandingScene {
         result(
             .crater, .approximation,
             "Cooper's cube-root scaling for the apparent crater's radius by soil and height of burst, with "
-                + "Kinney and Graham's one-sigma scatter of a third; the depth is a rule of thumb.",
+                + "Kinney and Graham's one-sigma scatter of a third; the depth is a rule of thumb, slumped below a "
+                + "shallow water table.",
             evidence: [
                 StandingEvidence(
                     "Six measured craters: three 500-ton TNT shots at Suffield, Sailor Hat, Minor Scale and Beirut",
-                    "Five of six apparent diameters within a third (the Suffield shots 1.04–1.26); depths 0.2–0.3 of "
-                        + "the rule where the water table was high",
+                    "Five of six apparent diameters within a third (the Suffield shots 1.04–1.26); the three wet "
+                        + "sites' depths 0.84–1.41 of the estimate with the water table near the surface",
                     "cratering.md#against-measured-craters")
             ],
             assumptions: [
                 "The crater does not act on the blast: it forms after the blast has gone, so the air keeps the "
                     + "ground as it was.",
                 "Bursts on or above the ground, not buried ones.",
-                "Depth and lip are rules of thumb; a high water table or flowing fill can leave a far shallower "
-                    + "crater.",
+                "Depth and lip are rules of thumb; below a water table the walls are taken to slump to 10–15°, "
+                    + "and flowing fill can leave a shallower crater still.",
             ], documents: ["cratering.md#limitations"])
     }
 

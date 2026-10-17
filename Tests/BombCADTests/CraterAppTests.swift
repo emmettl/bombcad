@@ -39,9 +39,10 @@ struct CraterAppTests {
         #expect(rigid.runSettings?.ground == nil)
         let json = try String(decoding: JSONEncoder().encode(rigid.runSettings!), as: UTF8.self)
         #expect(!json.contains("ground\""))
-        let soil = document(ground: .glacialSoil)
+        var soil = document(ground: .glacialSoil)
+        soil.runSettings?.waterTable = 1.5
         let reopened = try ProjectDocument(archive: soil.makeArchive())
-        #expect(reopened.runSettings?.ground == .glacialSoil)
+        #expect(reopened.runSettings?.ground == .glacialSoil && reopened.runSettings?.waterTable == 1.5)
         // The ground changes the air, so it is in the fingerprint; rigid ground leaves it as it was.
         let plain = try SavedSimulationRun.fingerprint(rigid.scenario, settings: rigid.runSettings!)
         let soft = try SavedSimulationRun.fingerprint(soil.scenario, settings: soil.runSettings!)
@@ -64,6 +65,22 @@ struct CraterAppTests {
         }
         let inputs = try HeadlessRun.inputs(for: document(), options: options)
         #expect(inputs.settings.ground == .saturated && inputs.settings.groundStiffness == 15e6)
+        // Saturated soil brings its water table at the surface; --water-table moves it or sends it deep.
+        #expect(inputs.settings.waterTable == 0)
+        let lowered = try HeadlessRun.Options.parse([
+            "a.bombcad", "--ground", "saturated", "--water-table", "2.5",
+        ])
+        #expect(try HeadlessRun.inputs(for: document(), options: lowered).settings.waterTable == 2.5)
+        let deep = try HeadlessRun.Options.parse([
+            "a.bombcad", "--ground", "saturated", "--water-table", "deep",
+        ])
+        #expect(try HeadlessRun.inputs(for: document(), options: deep).settings.waterTable == nil)
+        #expect(throws: ProjectFileError.self) {
+            try HeadlessRun.Options.parse(["a.bombcad", "--water-table", "-1"])
+        }
+        // A water table on rigid ground means nothing and is dropped.
+        let rigidWet = try HeadlessRun.Options.parse(["a.bombcad", "--water-table", "1"])
+        #expect(try HeadlessRun.inputs(for: document(), options: rigidWet).settings.waterTable == nil)
     }
 
     @Test("A headless run on soil prints the crater and puts it in the scene and the CSV")

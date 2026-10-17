@@ -35,6 +35,10 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// What the ground is made of, for the crater and the share of the charge's energy the air
     /// keeps; nil, and left out of the file and the fingerprint, for the rigid ground.
     var ground: GroundType?
+    /// How far below the surface the water table is, metres, where it cuts the crater's depth;
+    /// nil, and left out of the file and the fingerprint, where it is deep or the ground rigid.
+    /// The crater's alone: the air does not see it.
+    var waterTable: Float?
     /// False when the structures' outline in the air counted each element at its centre, as every
     /// run did before 16 October 2026; true when by overlap; nil, and left out of the file and the
     /// fingerprint, where the scene has no structure, or for a run saved before then.
@@ -59,6 +63,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
             settings.terrainCutCells && settings.scenario.terrain.map { !$0.isFlat } == true ? true : nil
         groundStiffness = settings.softGround ? settings.groundStiffness : nil
         ground = settings.ground == .rigid ? nil : settings.ground
+        waterTable = settings.ground == .rigid ? nil : settings.waterTable
         outlineByOverlap = settings.scenario.structuralObjects.isEmpty ? nil : settings.outlineByOverlap
         settlesStructures = settings.scenario.structuralObjects.isEmpty ? nil : settings.settlesStructures
         solidElementSize = settings.solidElementSize
@@ -95,7 +100,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// rigid ground. They form after the blast, so they are worked out from the scene, not the run.
     func craters(over scenario: Scenario) -> [CraterEstimate] {
         guard let ground else { return [] }
-        return CraterEstimate.craters(of: scenario, ground: ground)
+        return CraterEstimate.craters(of: scenario, ground: ground, waterTable: waterTable)
     }
 
     /// The grid as people say it: a preset's name ("medium") or its cells ("4 m").
@@ -108,7 +113,8 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         guard Resolution(rawValue: resolution) != nil, solidElementSize.isFinite, solidElementSize > 0,
             duration.isFinite, duration > 0, shockLevels.map({ $0 == 2 }) ?? true,
             shockThreshold.map({ $0.isFinite && $0 > 0 && $0 <= 1 }) ?? true,
-            groundStiffness.map({ $0.isFinite && $0 > 0 }) ?? true
+            groundStiffness.map({ $0.isFinite && $0 > 0 }) ?? true,
+            waterTable.map({ $0.isFinite && $0 >= 0 && $0 <= 1000 }) ?? true
         else { throw ProjectFileError.invalid("Project simulation settings are invalid.") }
     }
 }

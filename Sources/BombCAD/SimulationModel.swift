@@ -175,6 +175,9 @@ struct SimulationSettings: Equatable {
     /// What the ground is made of: rigid, or earth or rock that a charge near it digs a crater in
     /// and gives part of its energy to.
     var ground = GroundType.rigid
+    /// The water table under it, metres down, where shallow enough to cut the crater's depth; nil
+    /// where deep.
+    var waterTable: Float?
 
     var chargeMass: Float {
         get { scenario.charge.mass }
@@ -782,6 +785,7 @@ final class SimulationModel {
                 settings.softGround = run.groundStiffness != nil
                 settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
                 settings.ground = run.ground ?? .rigid
+                settings.waterTable = run.waterTable
                 settings.solidElementSize = run.solidElementSize
                 duration = run.duration
             }
@@ -930,6 +934,7 @@ final class SimulationModel {
             settings.softGround = run.groundStiffness != nil
             settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
             settings.ground = run.ground ?? .rigid
+            settings.waterTable = run.waterTable
             settings.solidElementSize = run.solidElementSize
             duration = run.duration
         }
@@ -1138,6 +1143,7 @@ final class SimulationModel {
         settings.softGround = inputs.settings.groundStiffness != nil
         settings.groundStiffness = inputs.settings.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
         settings.ground = inputs.settings.ground ?? .rigid
+        settings.waterTable = inputs.settings.waterTable
         settings.solidElementSize = inputs.settings.solidElementSize
         duration = inputs.settings.duration
         handledSettings = settings

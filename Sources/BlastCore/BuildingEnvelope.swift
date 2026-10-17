@@ -135,3 +135,44 @@ extension Scenario {
             representation: .envelope(try BuildingEnvelope(structure: body)))
     }
 }
+
+extension BuildingEnvelope {
+    /// The cells of the grid that stand for pane `index` in the air: across its face, those whose
+    /// centres lie within it (as a block's cells are found); through it, those whose centres lie in
+    /// a solid of the building holding it whole (its wall, where the glass is set in the wall
+    /// without an opening), or else the one its middle plane passes through, so that glass thinner
+    /// than a cell still closes its window. They are solid from the start, carry the pane's load,
+    /// and open when it breaks.
+    public func paneCells(_ index: Int, grid: Grid) -> [Int] {
+        let pane = panes[index]
+        let size = pane.size
+        let thin = size.x <= size.y && size.x <= size.z ? 0 : (size.y <= size.z ? 1 : 2)
+        let dx = grid.cellSize
+        let counts = [grid.nx, grid.ny, grid.nz]
+        func range(_ low: Float, _ high: Float, _ axis: Int) -> Range<Int> {
+            // As the mask's rasteriser: a cell whose centre lies in [low, high).
+            let lower = min(max(Int((low / dx - 0.5).rounded(.up)), 0), counts[axis])
+            let upper = min(max(Int((high / dx - 0.5).rounded(.up)), lower), counts[axis])
+            return lower..<upper
+        }
+        var ranges = (0..<3).map { range(pane.min[$0], pane.max[$0], $0) }
+        let holders = solids.filter { solid in
+            (0..<3).allSatisfy { solid.min[$0] <= pane.min[$0] && solid.max[$0] >= pane.max[$0] }
+        }
+        var through = Set(ranges[thin])
+        for solid in holders { through.formUnion(range(solid.min[thin], solid.max[thin], thin)) }
+        if through.isEmpty {
+            let middle = Int(floor((pane.min[thin] + pane.max[thin]) / 2 / dx))
+            through.insert(min(max(middle, 0), counts[thin] - 1))
+        }
+        ranges[thin] = 0..<0
+        var cells: [Int] = []
+        let along = through.sorted()
+        for k in (thin == 2 ? along : Array(ranges[2])) {
+            for j in (thin == 1 ? along : Array(ranges[1])) {
+                for i in (thin == 0 ? along : Array(ranges[0])) { cells.append(grid.index(i, j, k)) }
+            }
+        }
+        return cells
+    }
+}

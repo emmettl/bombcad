@@ -119,7 +119,14 @@ damage model that reads them (`/Volumes/StudioData/bombcad/envelope-damage/compo
 - **Panes** (`BuildingEnvelope.panes`, new) are glazing, solid in the air: a one-way damage model
   takes a pane as closed until it fails, so it records the reflected load the glass carries. Each
   is one component, held on four edges. A detailed structure's annealed glass becomes panes when it
-  is converted to an envelope, and scenes with panes save at scene encoding 10.
+  is converted to an envelope, and scenes with panes save at scene encoding 10. Glass is thinner
+  than a cell, so a pane takes cells of its own in the air (`BuildingEnvelope.paneCells`, since 17
+  October 2026): across it, those whose centres lie in it; through it, those in a solid of the
+  building holding it whole (its wall, where the glass is set in the wall without an opening), or
+  else the one its middle plane crosses. They are solid from the start and carry the pane's load.
+  Before, a pane in a cut opening crossed no cell's centre, so its window was open in the air and
+  the pane recorded nothing, and glass set in a wall had its load counted as the wall's (see
+  [validation](validation.md#glazing-in-the-air) for what that changes).
 
 Ids are `<owner>/<kind>/<source>.<panel>`. The street study's buildings come out as one panel a
 wall and one roof panel.
