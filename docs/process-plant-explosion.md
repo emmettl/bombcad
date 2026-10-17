@@ -108,15 +108,15 @@ point says little about the next. 6.5 is used. A single run's peak is uncertain 
 the envelope buildings not yet in the air, gave 3.6 psi).
 
 **With the fitted flame** (`blastbench snapshot --preset plant --dx 0.5 --time 2
---envelope-damage`; 219 s on the Studio, under load from other work):
+--envelope-damage`; 87–219 s on the Studio, depending on its load from other work):
 
 | Where | Model | Texas City (CSB) |
 |---|---|---|
 | In the process area | 6.4 psi (44 kPa) | 2–5 psi over most of the unit, 10+ psi at the compressor deck |
 | Free field, 37 m from the drum | 2.4 psi | 2.5–2.8 psi at the double-wide and QA/QC trailers (fitted) |
 | On the module's face | 8.3 psi, reflected | |
-| At the brick control room, 62 m | 1.6 psi; its walls fail and all six panes break | 1.5–2.5 psi at the ISOM satellite control room, masonry, heavily damaged |
-| At the concrete office, 108 m | 0.8 psi; 9 of its 10 panes break, the walls and roof undamaged | about 1 psi at the first row of tanks; windows broken out to 0.75 mile |
+| At the brick control room, 62 m | 1.6 psi; its walls fail and five of its six panes break | 1.5–2.5 psi at the ISOM satellite control room, masonry, heavily damaged |
+| At the concrete office, 108 m | 0.8 psi; moderate damage, and 5 of its 10 panes break | about 1 psi at the first row of tanks; windows broken out to 0.75 mile |
 | Free field, 100 m | 0.4 psi | about 0.5 psi beyond the 1 psi line |
 
 - **The blast-resistant module** slides 3.9 m from where it stood, its walls whole: no element
@@ -129,12 +129,12 @@ the envelope buildings not yet in the air, gave 3.6 psi).
   trailers' walls and roofs failing out to 67–76 m: the model's steel cabin comes off more lightly
   than the record's trailers, the unsafe side.
 - **The envelope buildings** show the components' damage: the brick control room failed, as the
-  ISOM satellite control room was heavily damaged; the concrete office keeps its walls and loses
-  its glass.
+  ISOM satellite control room was heavily damaged; the concrete office is moderately damaged and
+  loses half its glass.
 
 ![The plant and its buildings, the peak overpressure over 2 s, with the factor fitted](process-plant-overview.png)
 
-![The module and cabin, pushed off where they stood (grey), and the control room (red, failed) and the office (blue, windows broken)](process-plant-buildings.png)
+![The module and cabin, pushed off where they stood (grey), the control room (red, failed) and the office (moderately damaged)](process-plant-buildings.png)
 
 **What to take from it.** The scene shows how the buildings around a plant fare against one
 another, the module against the cabin and the masonry against the concrete, once the cloud's

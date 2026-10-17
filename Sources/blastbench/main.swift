@@ -127,7 +127,9 @@ func preset(named name: String?) -> ScenarioPreset {
 func chosenScenario() -> Scenario {
     var scenario = preset(named: option("preset")).scenario
     // `--flame-factor 12`: a gas cloud's burning velocity times this (`FlameAcceleration.factor`).
-    if let factor = option("flame-factor").flatMap({ Float($0) }) { scenario.deflagration?.acceleration.factor = factor }
+    if let factor = option("flame-factor").flatMap({ Float($0) }) {
+        scenario.deflagration?.acceleration.factor = factor
+    }
     if flag("shells") || option("shells") != nil, var structure = scenario.structure {
         structure.elementKind = .shell
         structure.elementSize = option("shells").flatMap { Float($0) } ?? 0.25
