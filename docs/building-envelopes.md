@@ -482,6 +482,16 @@ load–mass factors through yield. `EnvelopePanel` builds the systems:
   construction sets another (`facadePaneM`, zero for none), judged on the strip's mean net load
   as a pane is. It counts with the building's panes; it lets nothing into the block, which has no
   room. The standing says so.
+- **A mix of panes in each façade**: a construction's `glazing` (`GlazingMix`: pane types with
+  their size, thickness and share of the glass, and the glazed share of the façade) gives each
+  façade strip a number of panes of each type; each breaks with ASTM E1300's probability,
+  1 − exp(−k A σ⁷), for the 60 s stress its load gives it on the large-deflection plate (the
+  whole pane at its largest stress), and one deflected past ten thicknesses lets go. A building
+  reports, for each side and all together, the panes expected and expected to break and the
+  chance that any does (`facadeGlass`, `glass`), which the envelope list and headless lines
+  show. Map buildings take a mix by their tag and height: older low-rise (to 10 m; small panes,
+  4 mm), apartments (to 30 m; 4 and 6 mm), tall or commercial (6–10 mm, larger), industrial.
+  These are assumptions: no survey of glazing by building was found.
 - **Annealed glass** (since 17 October): D. M. Moore's large-deflection plate (JPL 80-34) as UFC
   3-340-02's figures 6-52 and 6-53 give it, simply supported, membrane action stiffening it; it
   breaks when its largest principal stress, weighed over time by glass's static fatigue (Brown's

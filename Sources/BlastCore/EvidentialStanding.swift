@@ -2300,7 +2300,9 @@ struct StandingScene {
                     ? [
                         "\(blocks) buildings of solid blocks (as map buildings are) taken to hold a window "
                             + "in each storey of each façade, 1.2 × 1.5 m unless set, judged on the storey's "
-                            + "mean load."
+                            + "mean load; map buildings' façades also as a mix of panes by their kind and "
+                            + "height, assumed (no survey of glazing found), each breaking with E1300's "
+                            + "probability, the whole pane at its largest stress."
                     ]
                     : [])
                 + (inputs.scenario.structuralObjects.isEmpty ? [] : [Self.envelopesBesideStructures]),
