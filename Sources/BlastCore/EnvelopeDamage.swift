@@ -521,11 +521,18 @@ public enum EnvelopeDamageAssessment {
             let high = structural.map(\.levels.upperBound).max() ?? .none
             let panes = components.filter { $0.material.isGlass }
             let air = vented?.inside(of: owner)
-            let inside =
+            func filled() -> (peak: Double, impulse: Double) {
+                fill(volume: rooms[owner] ?? 0, openings: openings, bin: mine.first?.binS ?? 1e-4)
+            }
+            var inside =
                 openings.isEmpty
                 ? (peak: 0.0, impulse: 0.0)
-                : air.map { (peak: $0.peakPa, impulse: $0.impulsePaS) }
-                    ?? fill(volume: rooms[owner] ?? 0, openings: openings, bin: mine.first?.binS ?? 1e-4)
+                : air.map { (peak: $0.peakPa, impulse: $0.impulsePaS) } ?? filled()
+            // Laminated panes stay shut in the air when they go, so the fill through them stands in.
+            if construction.laminate != nil, air != nil, !openings.isEmpty {
+                let through = filled()
+                inside = (max(inside.peak, through.peak), max(inside.impulse, through.impulse))
+            }
             return EnvelopeBuildingDamage(
                 id: owner, construction: construction, components: components,
                 structuralLevels: low...max(low, high),

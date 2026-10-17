@@ -34,4 +34,11 @@ struct BucklingTests {
             clamped: true)
         #expect(abs(r.peakForce / r.squash - 1) < 0.02)
     }
+
+    @Test("A strut struck at its end buckles at Lindberg's preferred wavelength")
+    func impact() throws {
+        // At 200 m/s a 20 mm square strut buckles about 0.26 m apart, behind the front.
+        let r = try BucklingStudy.impact(device: device, speed: 200, seeds: 4)
+        #expect(abs(r.measured / r.predicted - 1) < 0.25, "\(r.measured) m against \(r.predicted) m")
+    }
 }

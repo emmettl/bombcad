@@ -104,12 +104,12 @@ public enum BucklingStudy {
     /// preferred mode; Gladden et al. measured λ ∝ v^(−1/2) in rods struck by projectiles, *PRL*
     /// 94, 2005), at the rate F₀ / 2√(ρA EI). Returned: that λ and the wavelength the strut's
     /// sideways speed shows most of, over the compressed length, once that rate has grown the
-    /// disturbance `growth` times e; the strut is made long enough that the front has not
-    /// reached its far end.
+    /// disturbance `growth` times e, its power summed over `seeds` random disturbances; the strut
+    /// is made long enough that the front has not reached its far end.
     public static func impact(
         device: MTLDevice, side: Float = 0.02, elementSize: Float = 0.02, speed: Float = 50,
         growth: Float = 5,
-        noise: Float = 0.01
+        noise: Float = 0.01, seeds: Int = 1
     ) throws -> (predicted: Float, measured: Float, force: Float, length: Float) {
         let c = (210e9 / Float(7850)).squareRoot()
         let force = 210e9 * side * side * speed / c
@@ -125,56 +125,64 @@ public enum BucklingStudy {
             solids: [Box(min: SIMD3(0, -half, 1 - half), max: SIMD3(length, half, 1 + half))],
             material: material, elementSize: elementSize, fixedBase: false)
         model.elementKind = .shell
-        let solver = try ShellSolver(device: device, model: model)
-        solver.gravity = 0
-        solver.groundContact = false
-        let fixed = solver.nodes { $0.x < 1e-4 }
-        let pushed = solver.nodes { $0.x > length - 1e-4 }
+        let predicted = 2 * Float.pi * (2 * material.youngsModulus * inertia / force).squareRoot()
+        // Wavelengths from 4 elements to the compressed length, 1% apart, and their summed power.
+        var wavelengths: [Float] = []
+        var wavelength = 4 * elementSize
+        while wavelength < c * time - 4 * elementSize {
+            wavelengths.append(wavelength)
+            wavelength *= 1.01
+        }
+        var power = [Float](repeating: 0, count: wavelengths.count)
         var seed: UInt64 = 0x9E37_79B9_7F4A_7C15
         func random() -> Float {
             seed = seed &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
             return Float(seed >> 40) / Float(1 << 24) * 2 - 1
         }
-        solver.mutateNodes { nodes in
-            for n in fixed { nodes[n].restrain(x: true, y: true, z: true, rotation: true) }
-            for n in pushed {
-                nodes[n].restrain(y: true, z: true)
-                nodes[n].isPrescribed = true
-                nodes[n].velocity = SIMD3(-speed, 0, 0)
+        for _ in 0..<max(seeds, 1) {
+            let solver = try ShellSolver(device: device, model: model)
+            solver.gravity = 0
+            solver.groundContact = false
+            let fixed = solver.nodes { $0.x < 1e-4 }
+            let pushed = solver.nodes { $0.x > length - 1e-4 }
+            solver.mutateNodes { nodes in
+                for n in fixed { nodes[n].restrain(x: true, y: true, z: true, rotation: true) }
+                for n in pushed {
+                    nodes[n].restrain(y: true, z: true)
+                    nodes[n].isPrescribed = true
+                    nodes[n].velocity = SIMD3(-speed, 0, 0)
+                }
+                for n in nodes.indices where !fixed.contains(n) && !pushed.contains(n) {
+                    nodes[n].velocity.z = noise * random()
+                }
             }
-            for n in nodes.indices where !fixed.contains(n) && !pushed.contains(n) {
-                nodes[n].velocity.z = noise * random()
+            while Float(solver.time) < time {
+                solver.advance(
+                    steps: max(1, Int(((time - Float(solver.time)) / solver.criticalTimeStep).rounded(.up))))
+            }
+            // The compressed length, short of the front and the driven end.
+            let positions = solver.referencePositions
+            let front = length - c * Float(solver.time)
+            let samples = positions.indices.filter {
+                positions[$0].x > front + 2 * elementSize && positions[$0].x < length - 2 * elementSize
+                    && abs(positions[$0].y) < 1e-4
+            }
+            .sorted { positions[$0].x < positions[$1].x }
+            let xs = samples.map { positions[$0].x }
+            let vs = samples.map { solver.node($0).velocity.z }
+            for (n, wavelength) in wavelengths.enumerated() {
+                let k = 2 * Float.pi / wavelength
+                var re: Float = 0
+                var im: Float = 0
+                for (x, v) in zip(xs, vs) {
+                    re += v * cos(k * x)
+                    im += v * sin(k * x)
+                }
+                power[n] += re * re + im * im
             }
         }
-        while Float(solver.time) < time {
-            solver.advance(
-                steps: max(1, Int(((time - Float(solver.time)) / solver.criticalTimeStep).rounded(.up))))
-        }
-        let predicted = 2 * Float.pi * (2 * material.youngsModulus * inertia / force).squareRoot()
-        // The compressed length, short of the front and the driven end.
-        let positions = solver.referencePositions
-        let front = length - c * Float(solver.time)
-        let samples = positions.indices.filter {
-            positions[$0].x > front + 2 * elementSize && positions[$0].x < length - 2 * elementSize
-                && abs(positions[$0].y) < 1e-4
-        }
-        .sorted { positions[$0].x < positions[$1].x }
-        let xs = samples.map { positions[$0].x }
-        let vs = samples.map { solver.node($0).velocity.z }
-        // The wavelength with the most power, scanned from 4 elements to the compressed length.
-        var best: (power: Float, wavelength: Float) = (0, 0)
-        var wavelength = 4 * elementSize
-        while wavelength < (xs.last ?? 0) - (xs.first ?? 0) {
-            let k = 2 * Float.pi / wavelength
-            var re: Float = 0
-            var im: Float = 0
-            for (x, v) in zip(xs, vs) {
-                re += v * cos(k * x)
-                im += v * sin(k * x)
-            }
-            if re * re + im * im > best.power { best = (re * re + im * im, wavelength) }
-            wavelength *= 1.01
-        }
-        return (predicted, best.wavelength, force, length)
+        // The wavelength with the most power.
+        let best = power.indices.max { power[$0] < power[$1] }.map { wavelengths[$0] } ?? 0
+        return (predicted, best, force, length)
     }
 }

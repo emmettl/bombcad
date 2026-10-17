@@ -557,7 +557,17 @@ F₀ = E A v / c, and the bowing grows fastest at Lindberg's preferred wavelengt
 λ = 2π √(2 E I / F₀), short of the Euler buckle. Gladden et al. measured λ ∝ v^(−1/2) in rods
 struck by projectiles. On a 20 mm square strut struck at 25–200 m/s:
 
-IMPACT
+| Struck at | F₀ | Lindberg's λ | The beams' (8 random starts) | Ratio |
+|---|---|---|---|---|
+| 25 m/s | 406 kN | 0.738 m | 0.797 m | 1.08 |
+| 50 m/s | 812 kN | 0.522 m | 0.579 m | 1.11 |
+| 100 m/s | 1,624 kN | 0.369 m | 0.443 m | 1.20 |
+| 200 m/s | 3,248 kN | 0.261 m | 0.269 m | 1.03 |
+
+The wavelength is measured as the peak of the sideways speed's spectrum over the compressed
+length, after five e-folds of the fastest growth, summed over eight random starts. One start
+alone scatters by ±20%. It scales as v^(−0.52), against Gladden et al.'s measured and Lindberg's
+v^(−1/2). The beams buckle about the right wavelength under a sudden load, 3–20% long.
 
 No test of a steel column buckling under blast with its measured response has been compared.
 Nassr et al.'s columns under blast with axial load (McMaster, 2012) were loaded to a quarter of

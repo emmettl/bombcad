@@ -1546,6 +1546,8 @@ func runSnapshot() throws {
                 print(
                     "\(name): code \(EnvelopeDamageColour.code(building)), \(building.structuralLevels.lowerBound.label)"
                         + "–\(building.structuralLevels.upperBound.label), panes \(building.panesBroken)/\(building.panes)"
+                        + ", \(building.components.filter { $0.material.isGlass && $0.failedAtS != nil }.count) gone"
+                        + ", inside \(format(building.insidePeakPa / 1000, 1)) kPa"
                         + (building.worstGlazing.map { ", glazing GSA \($0.condition.rawValue)" } ?? "")
                         + (building.worstOverhead.map {
                             ", roof glass \($0.fall.rawValue)"

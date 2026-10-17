@@ -6,7 +6,7 @@ import Metal
 //
 //   blastbench buckling [--length 3] [--side 0.05] [--dx 0.05,0.025] [--yield 355] [--rate 0.02]
 //                       [--shortening 0.006] [--nudge 0.002] [--damping 20] [--clamped]
-//   blastbench buckling --impact 25,50,100 [--side 0.02] [--dx 0.02] [--growth 5]
+//   blastbench buckling --impact 25,50,100 [--side 0.02] [--dx 0.02] [--growth 5] [--seeds 8]
 
 func runBuckling(device: MTLDevice) throws {
     if let speeds = option("impact") {
@@ -15,7 +15,8 @@ func runBuckling(device: MTLDevice) throws {
             let r = try BucklingStudy.impact(
                 device: device, side: option("side").flatMap { Float($0) } ?? 0.02,
                 elementSize: option("dx").flatMap { Float($0) } ?? 0.02, speed: speed,
-                growth: option("growth").flatMap { Float($0) } ?? 5)
+                growth: option("growth").flatMap { Float($0) } ?? 5,
+                seeds: option("seeds").flatMap { Int($0) } ?? 8)
             print(
                 String(
                     format:
