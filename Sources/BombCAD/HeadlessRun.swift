@@ -612,7 +612,9 @@ enum HeadlessRun {
         if let spec = options.thermal {
             kinds.append(("thermal", .thermal(spec, consumerScene, live: false)))
         }
-        if let spec = options.groundShock { kinds.append(("ground", .groundShock(spec, live: false))) }
+        if let spec = options.groundShock {
+            kinds.append(("ground", .groundShock(spec.settingHalfSpace(from: inputs.scenario), live: false)))
+        }
         if let injected {
             feeds.append(Feed(injected, place: injected is RemoteFrameConsumer ? "on a worker" : "here"))
         }
@@ -847,6 +849,7 @@ enum HeadlessRun {
         let envelopeData = try options.envelopeResults.map { _ in try model.envelopeResultsData() }
         let historyData = try options.envelopeHistories.map { _ in try model.envelopeHistoriesData() }
         if let url = options.envelopeDamage {
+            model.fragmentStrikes = fragments?.impacts.filter { $0.penetration != nil }
             model.refreshEnvelopeDamage()
             try model.envelopeDamageData().write(to: url, options: .withoutOverwriting)
             streams += model.envelopeDamage.map { building in

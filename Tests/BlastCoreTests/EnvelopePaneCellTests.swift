@@ -59,4 +59,37 @@ struct EnvelopePaneCellTests {
             #expect(max(pane.peakOuterPa, pane.peakInnerPa) > 1000, "cut \(cut)")
         }
     }
+
+    @Test("A glazed room stays sealed in refined air, once and twice refined, as on the coarse cells")
+    func sealedWhenRefined() throws {
+        // A walled 6 m square, its window glazed in a cut opening, 5 kg 5 m off.
+        var scene = Scenario(
+            name: "Glazed room", domainSize: SIMD3(16, 20, 6), boxes: [],
+            charge: Charge(mass: 5, position: SIMD3(7, 2, 1)),
+            gauges: [Gauge("Inside", at: SIMD3(7, 10, 1.5))])
+        let solids = [
+            Box(min: SIMD3(4, 7, 0), max: SIMD3(10, 7.2, 3)),
+            Box(min: SIMD3(4, 12.8, 0), max: SIMD3(10, 13, 3)),
+            Box(min: SIMD3(4, 7.2, 0), max: SIMD3(4.2, 12.8, 3)),
+            Box(min: SIMD3(9.8, 7.2, 0), max: SIMD3(10, 12.8, 3)),
+            Box(min: SIMD3(4, 7, 3), max: SIMD3(10, 13, 3.2)),
+        ]
+        try scene.addEnvelopeObject(
+            BuildingEnvelope(
+                solids: solids, openings: [Box(min: SIMD3(6.25, 7, 1), max: SIMD3(7.75, 7.2, 2.25))],
+                panes: [Box(min: SIMD3(6.25, 7.097, 1), max: SIMD3(7.75, 7.103, 2.25))]),
+            name: "Room")
+        for levels in [0, 1, 2] {
+            var config = SolverConfiguration.recommended
+            config.airSleepThreshold = 0
+            config.refinement = levels == 0 ? 1 : 2
+            config.refinementLevels = max(levels, 1)
+            let solver = try BlastSolver(
+                device: #require(MTLCreateSystemDefaultDevice()), scenario: scene, cellSize: 0.25,
+                configuration: config)
+            _ = solver.advance(until: 0.03)
+            let inside = (solver.gaugeHistories[0].map(\.pressure).max() ?? 0) - config.ambientPressure
+            #expect(abs(inside) < 50, "\(levels) levels: \(inside) Pa inside")
+        }
+    }
 }

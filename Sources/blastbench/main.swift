@@ -1705,8 +1705,17 @@ func runSnapshot() throws {
             // `--hazard`: those in flight land, and the hazard distance is drawn as the app draws it.
             let landed = flag("hazard") ? fragments.result(frameInterval: 0.001) : nil
             for impact in landed?.impacts ?? fragments.cloud.impacts {
+                if let outcome = impact.penetration?.outcome {
+                    // A strike on a judged target, as the app draws it.
+                    dots.append(
+                        SIMD4(
+                            impact.position, 4 + (outcome == .stopped ? 0.1 : outcome == .spalled ? 0.5 : 0.9)
+                        ))
+                    continue
+                }
                 dots.append(SIMD4(impact.position, 2 + min(max(log10(max(impact.energy, 1)) / 7, 0), 0.999)))
             }
+            if let landed, !landed.strikeSummary.isEmpty { print("Strikes" + landed.strikeSummary) }
             print("Fragments: \(fragments.cloud.airborne) in flight, \(fragments.cloud.impacts.count) landed")
             if let hazard = landed?.hazard {
                 print("Hazard: " + hazard.summary)
@@ -5399,7 +5408,8 @@ do {
     case "heating": try runHeating()
     case "terrain": try runTerrain(device: device)
     case "landscape": try runLandscape(device: device)
-    case "groundmotion": try runGroundMotion(device: device)
+    case "groundmotion":
+        if flag("calibrate") { try runGroundMotionCalibration() } else { try runGroundMotion(device: device) }
     case "advise": try runAdvise(device: device)
     case "hrynyk": try runHrynyk(device: device)
     case "mendonca": try runMendonca(device: device)
