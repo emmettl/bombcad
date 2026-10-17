@@ -130,6 +130,9 @@ struct EnvelopeDamageSection: View {
                     "; glazing hazard: GSA \(glazing.condition.rawValue), ASTM \(glazing.rating.rawValue.lowercased())"
                 line += String(format: " (glass at %.0f m/s)", glazing.speedMS)
             }
+            if let overhead = building.worstOverhead, overhead.fall != .none {
+                line += "; " + overheadLine(overhead)
+            }
         }
         if let broken = building.panesBrokenByFragments, broken > 0 {
             line +=
@@ -144,6 +147,27 @@ struct EnvelopeDamageSection: View {
         }
         if building.beyondOneWay { line += "; beyond the one-way model (a panel past 2°)" }
         return line
+    }
+
+    /// What a building's roof glazing drops on the floor below.
+    static func overheadLine(_ hazard: OverheadGlassHazard) -> String {
+        switch hazard.fall {
+        case .none: return "roof glass whole"
+        case .held: return "roof glass cracked, held by its interlayer"
+        case .whole:
+            return String(
+                format: "roof glass falls whole %.1f m at %.0f m/s, %.0f kg striking with %.0f J (%@)",
+                hazard.dropM,
+                hazard.impactSpeedMS, hazard.massKg, hazard.pieceEnergyJ ?? 0,
+                hazard.hazardous ? "hazardous" : "under 79 J")
+        case .shards:
+            return String(
+                format:
+                    "roof glass falls in shards %.1f m at %.0f m/s, %.0f J/m²; shards over %.0f mm strike "
+                    + "with 79 J, over %.0f mm with 14.9 J", hazard.dropM, hazard.impactSpeedMS,
+                hazard.energyPerAreaJM2, (hazard.hazardousShardM ?? 0) * 1000,
+                (hazard.injuriousShardM ?? 0) * 1000)
+        }
     }
 
     static func code(_ building: EnvelopeBuildingDamage) -> Int { EnvelopeDamageColour.code(building) }
@@ -194,6 +218,12 @@ struct EnvelopeDamageSection: View {
         switch component.material {
         case .annealedGlass:
             return component.failedAtS.map { String(format: "broken at %.1f ms", $0 * 1000) } ?? "whole"
+        case .laminatedGlass:
+            if let gone = component.failedAtS {
+                return String(format: "cracked, out of its frame at %.1f ms", gone * 1000)
+            }
+            return component.crackedAtS.map { String(format: "cracked at %.1f ms, held", $0 * 1000) }
+                ?? "whole"
         case .reinforcedConcrete, .reinforcedBlockwork:
             let rotation =
                 component.rotationDeg.lowerBound == component.rotationDeg.upperBound

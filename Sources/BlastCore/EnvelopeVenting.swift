@@ -252,6 +252,9 @@ final class EnvelopeVenting {
         var paneIndices: [Int] = []
         for (n, component) in components.enumerated() where component.kind == .pane {
             let construction = constructions(component.owner)
+            // Laminated glass stays in its frame when it cracks, and the stepper here has no
+            // membrane: its panes stay shut in the air, judged by the one-way model alone.
+            guard construction.laminate == nil else { continue }
             let spans = component.spans
             let a = min(Double(min(spans.x, spans.y)), EnvelopeDamageAssessment.largestSpan)
             let b = min(Double(max(spans.x, spans.y)), EnvelopeDamageAssessment.largestSpan)
