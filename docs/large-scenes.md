@@ -109,6 +109,41 @@ Reading these:
   cells (0.2 m/kg^(1/3)) do in half a second what 4 m cells do in over two minutes, within 5% beyond Z = 3 and
   10% beyond Z = 2.
 
+### Following weak shocks further: tried, and not needed to 40 m/kg^(1/3)
+
+The refinement follows a shock where the pressure jumps across a cell by more than the threshold's
+share of the lower pressure, so its reach is an absolute jump (about 500 Pa at 0.005). Two criteria
+that scale with the shock instead were tried on the same burst (500 t, 16 m cells refined twice,
+with afterburning and hot air, the Mac shared; 17 October 2026), added to the threshold's:
+
+| Criterion | Z = 10 | 14 | 20 | 28 | 40 | Most patches | Time |
+|---|---|---|---|---|---|---|---|
+| Threshold 0.1 alone (the default) | 61% | 55% | 52% | 51% | 53% | 533 | 5 s |
+| Threshold 0.005 | 85% | 82% | 78% | 77% | 79% | 3,518 | 55 s |
+| Jump over 0.3 of the larger overpressure | 84% | 80% | 77% | 75% | 77% | 10,872 | 100 s |
+| Löhner's indicator over 0.5, floor 0.1% of ambient | 85% | 82% | 79% | 80% | 80% | 4,058 | 73 s |
+| Löhner's over 0.7 | 85% | 82% | 78% | 71% | 58% | 2,436 | 27 s |
+| Löhner's over 0.5, floor 0.5% | 85% | 83% | 77% | 64% | 57% | 2,161 | 22 s |
+
+- **The jump against the overpressure refines the wake**, not less of it: where the wave passes
+  through zero into its negative phase, any jump is a large share of the overpressure there.
+- **Löhner's indicator** (the second difference over the first differences' sum, with an absolute
+  floor in place of his share of the pressure) follows the shock to 40 m/kg^(1/3) at 0.5, at 1.3
+  times threshold 0.005's time; stricter, it loses the front as it smears; a higher floor is an
+  absolute threshold again.
+- **Threshold 0.005 is near the least that following the shock costs there**: by 40 m/kg^(1/3)
+  the shock's own shell, a patch thick, is about 3,500 patches of this quarter domain, which is
+  what it uses at most. A criterion that scales with the shock would pay only beyond the reach of
+  0.005's 500 Pa (by estimate, beyond about 60 m/kg^(1/3)), which no comparison here reaches; the
+  advisor already chooses 0.005 where its reach is wanted.
+- **The finest cell sets the peak's share**, as above: 8 m cells refined twice (2 m at the shock)
+  at threshold 0.005 give **84–94% of Kingery–Bulmash at every distance from 1 to 40 m/kg^(1/3)**
+  along the axis (92–97% on the diagonal), impulses 87–95%, in 12 minutes on the shared Mac and a
+  14 GB pool of patches (15,742 at most). That is the setting for peaks close to the reference at
+  kilometre scale, if the memory is there.
+
+The criteria are kept on the branch `claude/weak-shocks` for the record, not in the solver.
+
 ### The domain's height
 
 The domain's top is open, and lets waves leave, but not perfectly: a little of each wave is
@@ -258,9 +293,8 @@ would mean moving every kind of object in a scene.
 
 ## Future work
 
-- A refinement criterion that follows weak shocks without refining the wake: a jump relative to
-  the overpressure rather than to the pressure, so that the default follows a shock to
-  40 m/kg^(1/3) at threshold 0.005's cost or less.
+- Following weak shocks beyond 60 m/kg^(1/3), where threshold 0.005's reach ends: Löhner's
+  indicator follows them at 1.3 times its cost (see [above](#following-weak-shocks-further-tried-and-not-needed-to-40-mkg13)).
 - A domain grown about its centre.
 - Large-HE field data: the Defense Nuclear Agency's Minor Scale and Misers Bluff reports, for
   gauge records over flat ground, and any over hills.

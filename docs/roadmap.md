@@ -111,8 +111,10 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
 - **Done:** afterburning, hot air and dissociation; refinement in one or two levels; gravity,
   sub-grid mixing and radiative cooling as options ([air-blast model](air-blast-model.md));
   terrain on cut cells ([terrain](terrain.md#cut-cells)); bursts checked to 40 m/kg^(1/3) ([large scenes](large-scenes.md)).
-- **Next:** a refinement criterion that follows weak shocks over kilometres; close in, a mapped
-  one-dimensional start or the products' own composition for the hottest gas.
+- **Next:** close in, a mapped one-dimensional start or the products' own composition for the
+  hottest gas. Weak shocks to 40 m/kg^(1/3) need no new criterion: threshold 0.005 follows them
+  at about the least it can cost, and 8 m cells refined twice give 84–94% of Kingery–Bulmash's
+  peaks out to there ([large scenes](large-scenes.md#following-weak-shocks-further-tried-and-not-needed-to-40-mkg13)).
 - **Deferred:** cut cells for moving solids.
 
 ### Structures and supports

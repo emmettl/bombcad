@@ -596,7 +596,7 @@ its block's largest peak, impulse and shock indicator and its overpressure of la
 so a front one cell thick still shows. Measured the same day, the blast on the Studio, the mini
 drawing it over Wi-Fi:
 
-| Scene, field | A frame sent | Shown | Update, median | Lag, median | Held the run, a frame |
+| Scene, field | A frame sent | Shown | Update, median | Lag, median | Held the run, a frame (first build) |
 |---|---|---|---|---|---|
 | city, every 4th cell | 1.2 MB | all | 216 ms | 102 ms | 22 ms |
 | city, every 2nd cell | 7.2 MB | 169 of 171 | 213 ms | 245 ms | 29 ms |
@@ -610,10 +610,25 @@ drawing it over Wi-Fi:
 - **Drawing here is cheap.** Uploading a frame into the view's buffers took 1 to 5 ms on the
   mini at every 2nd or 4th cell, and decoding it 1 to 7 ms; drawing a 1280 × 720 image and writing
   it as a PNG 50 to 70 ms.
-- **The run pays for the field.** 22 to 33 ms a frame held on the thread driving the GPU, 8 to
-  11% of the city run, against 2.5 ms for the ground's paint alone: the field is rebuilt and
-  cut down in command buffers of their own, each waited for. Encoding both into the frame's
-  last batch, as the fragments' air is cut out, would leave only the copy.
+- **The run paid for the field, at first.** 22 to 33 ms a frame held on the thread driving the
+  GPU, 8 to 11% of the city run, against 2.5 ms for the ground's paint alone: the field was
+  rebuilt and cut down in command buffers of their own, each waited for, and the structure's
+  surface was read for the paint as well as its meshes for the view. Now the view field is a
+  `FrameRequest` like the fragments' air: the visualisation and `extractViewField`
+  (Extract.metal) run at the end of the batch that lands on the frame, and
+  `BlastSolver.viewField(stride:)` takes what they wrote; the frame is encoded on the writer's
+  queue; and with a scene view the paint leaves out the surface. Timed again, old and new
+  builds alternating, the Studio loaded (load averages 13 to 113):
+
+  | Held the run, a frame | Before | After |
+  |---|---|---|
+  | city, every 4th cell | 9.2 to 16.7 ms | 4.0 to 4.7 ms |
+  | city, every 2nd cell | 16.1 to 38.6 ms | 9.6 to 10.8 ms |
+  | three-storey building, every 2nd cell | 22.5 to 39.1 ms | 5.4 to 8.9 ms |
+
+  What is left is mostly copying the field out of the GPU's buffer (34 MB a frame at every 2nd
+  cell of the city block) and the ground's paint. The field cut out in the batch is the one
+  worked out after it, bit for bit, and asking for it leaves the run the same.
 - **The structure's mesh is the rest.** The three-storey building's frames compress only 1.6
   times, being displacements and rotations in full precision.
 
