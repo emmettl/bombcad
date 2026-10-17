@@ -113,6 +113,15 @@ final class EnvelopeExposure {
             return try BuildingEnvelope(structure: body)
         }
         let blocks = geometry.map(\.blocks)
+        // The cells standing for each pane are its own, whichever block (if any) holds their centres
+        // (`BuildingEnvelope.paneCells`).
+        var paneOwner: [Int: (owner: Int, block: Int)] = [:]
+        for (owner, envelope) in geometry.enumerated() {
+            for pane in envelope.panes.indices {
+                guard let block = envelope.blockSources.firstIndex(of: .pane(pane)) else { continue }
+                for cell in envelope.paneCells(pane, grid: grid) { paneOwner[cell] = (owner, block) }
+            }
+        }
         var faces: [(face: Face, owner: Int, block: Int)] = []
         for k in 0..<grid.nz {
             for j in 0..<grid.ny {
@@ -121,9 +130,13 @@ final class EnvelopeExposure {
                     guard mask[cell] != 0 else { continue }
                     let point = grid.cellCentre(i, j, k)
                     var matches: [(owner: Int, block: Int)] = []
-                    for owner in blocks.indices {
-                        if let block = blocks[owner].firstIndex(where: { $0.contains(point) }) {
-                            matches.append((owner, block))
+                    if let pane = paneOwner[cell] {
+                        matches = [pane]
+                    } else {
+                        for owner in blocks.indices {
+                            if let block = blocks[owner].firstIndex(where: { $0.contains(point) }) {
+                                matches.append((owner, block))
+                            }
                         }
                     }
                     guard matches.count <= 1 else { throw SceneObjectError.interObjectContact }

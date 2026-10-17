@@ -9,8 +9,10 @@ blast, is not built.
 **Standing: approximation for the crater's diameter, illustrative for its depth and lip.** The
 diameter comes from P. W. Cooper's cube-root scaling with Kinney and Graham's scatter. Five of
 six measured craters fall within that scatter, three of them the 500-ton TNT shots at Suffield
-([below](#against-measured-craters)). The depth is a rule of thumb, three to five times too deep
-where the water table was high. The air's share on soft ground is an approximation, the same for
+([below](#against-measured-craters)). The depth is a rule of thumb in dry ground. Below a shallow
+water table the walls slump to Glasstone and Dolan's 10–15°. That brings the three wet sites'
+depths within 0.84–1.41 of the estimate, against 0.19–0.31 by the dry rule
+([below](#below-a-water-table)). The air's share on soft ground is an approximation, the same for
 every soil.
 
 **The crater does not act on the blast.** A crater forms over a time of order √(D/g): about
@@ -31,14 +33,21 @@ In the app, the Run tab's Terrain section has a **Made of** picker:
   crater and leaves the air less of a charge near it. It also puts the debris on soil, with a
   subgrade modulus to match, which the stiffness slider can still change.
 
-A caption under the picker gives the crater the charge would dig. The ground type is saved with
-the project's run settings (`ground` in `settings.json`, left out for rigid ground) and is part
-of the run's fingerprint, because it changes the air.
+Under earth or rock, **Water table near the surface** and its depth set where the water table is
+(see [below](#below-a-water-table)). Choosing saturated soil turns it on, with the water at the
+surface; the other types leave it off, deep enough not to matter. A caption under the picker
+gives the crater the charge would dig.
 
-Headless, `--ground` takes a type as well as `rigid`, `soil` or a modulus:
+The ground type and the water table are saved with the project's run settings (`ground` and
+`waterTable` in `settings.json`, left out for rigid ground and a deep water table). Both are part
+of the run's fingerprint: the ground because it changes the air, the water table as a run input
+beside it.
+
+Headless, `--ground` takes a type as well as `rigid`, `soil` or a modulus, and `--water-table`
+takes a depth in metres or `deep`:
 
 ```bash
-swift run -c release BombCAD run street.bombcad --ground glacialSoil --usd street.usda --csv street.csv
+swift run -c release BombCAD run street.bombcad --ground glacialSoil --water-table 1.5 --usd street.usda
 ```
 
 The summary then ends with a line per crater. For 500 t of TNT on glacial soil, for example:
@@ -95,6 +104,35 @@ scatter", put down to mixed explosives and soils.
   at 2.5 radii, the middle of their "two to three times" (§6.74).
 - The lip then holds about two thirds of the bowl's volume. Glasstone and Dolan put the ejecta at
   55% of the apparent crater's mass, before counting the upturned rim.
+
+### Below a water table
+
+A water table near the surface keeps a crater shallow. In saturated soil with a high water table,
+the walls slump and the crater becomes "shallower and broader", towards slopes of about 10 to 15
+degrees (Glasstone and Dolan, §6.11). Water rushing in carries material that would have formed
+the lip into the bottom. They also note "hydraulic fill" making a wet crater's final depth
+shallower (§6.09), and a water table flattening and widening the crater (§6.78). GEER put
+Beirut's shallow crater down to its water table 1.5 m below the quay.
+
+BombCAD takes the slope as 12.5°, the middle of the range. A bowl whose rim slopes at θ is
+R tan θ / 2 deep, so the apparent depth below a water table d_w metres down is:
+
+D = min(D_dry, max(d_w, R tan θ / 2))
+
+- The walls below the water slump to θ.
+- The crater still reaches the water table, because the dry ground above it holds its shape.
+- It is never deeper than in dry ground, so a water table below the dry crater changes nothing.
+- 10° and 15° give the depth's range, reported with it. The lip, a quarter of the depth, comes
+  down with it.
+- The radius is left as it is. Glasstone and Dolan say wet craters are broader but give no figure,
+  and saturated soil's cratering efficiency already digs wider.
+
+**Why a slope and not a depth.** No open source gives a crater's depth as a function of the water
+table's: not Cooper, nor Kinney and Graham, nor UFC 3-340-02. TM 5-855-1 and the crater databases
+(AFWL-TR-71-144, Gould's DNA 6187F) were not to hand ([data wanted](data-wanted.md)). Glasstone
+and Dolan's slope is the one open, quantitative statement. The measured wet craters' own depth
+over radius sits inside it: 0.124 at Prairie Flat and 0.131 at Dial Pack, against 0.088–0.134 for
+10–15°. Beirut's 0.077 is below it, where fill also flowed into the basin.
 
 **True and apparent craters.** The true crater is the hole the charge digs. Fallback and slough
 from its walls then fill part of it back, and what is left is the apparent crater (Cooper,
@@ -177,12 +215,24 @@ band is one sigma. Where a figure is second-hand, it says so.
   unconfirmed, and if it was softer ground the gap closes. The estimate under-reads on average,
   by 1.18 over all six, as Glasstone and Dolan's remark that moist ground digs wider would lead
   one to expect.
-- **Depths.** These are the weak point. At the three wet sites the measured depth is 0.27 (Dial
-  Pack), 0.31 (Prairie Flat) and 0.19 (Beirut) of the rule of thumb. GEER puts Beirut's shallow
-  crater down to the water table 1.5 m below the deck and to fill flowing into the basin; its
-  depth over diameter, 0.04, is "below the lower range" measured for large blasts. At dry White
-  Sands the depth is 1.32 of the rule. A water table cuts a crater's depth, and stage 1 does not
-  know where it is.
+- **Depths.** By the dry rule, the three wet sites' measured depths are 0.27 (Dial Pack), 0.31
+  (Prairie Flat) and 0.19 (Beirut) of the estimate. With the water table near the surface, they
+  are 1.23, 1.41 and 0.84 of it:
+
+  | Event | Water table | Depth, dry rule | Depth, slumped (10–15°) | Measured | Measured over slumped |
+  |---|---|---|---|---|---|
+  | Prairie Flat | High: the crater "filled rapidly with water" | 16.9 m | 3.8 m (3.0–4.5) | 5.3 m | 1.41 |
+  | Dial Pack | High, the same site | 16.9 m | 3.8 m (3.0–4.5) | 4.6 m | 1.23 |
+  | Beirut | 1.5 m below the quay (GEER) | 24.2 m | 5.4 m (4.3–6.5) | 4–5 m | 0.84 |
+  | Minor Scale | Deep (dry lake bed) | 18.5 m | — | 24 m (second-hand) | 1.32 of the dry rule |
+
+  The Suffield shots' water-table depths were not found open: they are taken as within the slumped
+  depth, which the craters' flooding implies, and any depth up to 3.8 m gives the same result. Two
+  of the three wet craters lie within the slope's range once the radius's own under-reading is
+  allowed for (Prairie Flat's radius is 1.26 of the estimate). Beirut is shallower still,
+  0.04 of its diameter, "below the lower range" measured for large blasts (GEER), with its fill
+  flowing into the basin. At dry White Sands, with no water table, the dry rule is 1.32 too
+  shallow.
 - **Beirut's yield.** Aouad and others found 257–287 t of TNT from the crater by another scaling
   law, below the 0.5 kt from the blast. On saturated soil with TNT's K, this estimate needs about
   0.95 kt for 120 m: inside the range of the yield estimates (0.2–1.1 kt), but nearly twice the
@@ -202,8 +252,9 @@ The DTIC copies were refused or down while this was written.
   points and thermal sight lines see the pre-blast ground.
 - Surface and above-ground bursts only; a charge below the surface counts as on it. Buried bursts
   scale differently (Cooper's W^(1/3.4) fits, §29.4) and are not covered.
-- The depth is a rule of thumb, three to five times too deep where the water table is high. There
-  is no setting for the water table.
+- The depth is a rule of thumb in dry ground, and below a water table rests on one slope (10–15°)
+  rather than on any measured relation with the water table's depth. Wet craters' widening and
+  their slow slumping (hours in sand, months in clay; Glasstone and Dolan, §6.11) are not modelled.
 - One K for every explosive, chosen on two events.
 - The air's share is the same for every soil, and its taper with height is the crater's coupling
   curve, not a measured airblast one.

@@ -128,6 +128,36 @@ struct CraterTests {
         #expect(lip / bowl > 0.55 && lip / bowl < 0.8, "lip/bowl \(lip / bowl)")
     }
 
+    @Test(
+        "Below a shallow water table the walls slump to 10–15°: a fifth as deep; deep water changes nothing")
+    func waterTable() throws {
+        // 500 short tons of TNT resting on Suffield's glacial soil.
+        let charge = Charge(mass: 500 * 907.185, position: .zero)
+        let dry = try #require(CraterEstimate(charge: charge, groundHeight: 0, ground: .glacialSoil))
+        #expect(abs(dry.apparentRadius - 33.85) < 0.02 && abs(dry.apparentDepth - 16.93) < 0.01)
+        #expect(dry.waterTable == nil && dry.depthRange == nil)
+        // The water 1.5 m down: R tan 12.5° / 2, 3.75 m (2.98 to 4.53 for 10 to 15°).
+        let wet = try #require(
+            CraterEstimate(charge: charge, groundHeight: 0, ground: .glacialSoil, waterTable: 1.5))
+        #expect(abs(wet.apparentDepth - 3.752) < 0.005)
+        #expect(
+            abs(wet.depthRange!.lowerBound - 2.984) < 0.005 && abs(wet.depthRange!.upperBound - 4.535) < 0.005
+        )
+        #expect(wet.apparentRadius == dry.apparentRadius && wet.waterTable == 1.5)
+        #expect(abs(wet.lipHeight - wet.apparentDepth / 4) < 1e-6)
+        #expect(wet.summary.contains("slumped below the water table 1.5 m down"))
+        // Between the slumped depth and the dry one, the crater reaches down to the water table.
+        let middle = try #require(
+            CraterEstimate(charge: charge, groundHeight: 0, ground: .glacialSoil, waterTable: 8))
+        #expect(middle.apparentDepth == 8 && middle.depthRange == 8...8)
+        // Deeper than the dry crater: no change, to the bit.
+        let deep = try #require(
+            CraterEstimate(charge: charge, groundHeight: 0, ground: .glacialSoil, waterTable: 20))
+        #expect(deep == dry)
+        // Saturated soil lies below a water table at the surface.
+        #expect(GroundType.saturated.typicalWaterTable == 0 && GroundType.clay.typicalWaterTable == nil)
+    }
+
     @Test("A crater cuts into a terrain lifted above the floor, and refuses to go below it")
     func cratered() throws {
         let terrain = Terrain(
