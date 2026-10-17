@@ -133,7 +133,36 @@ struct EnvelopeDamageTests {
         // The whole building, assessed together, gives its foot the stone above.
         let building = EnvelopeDamageAssessment.assess(
             loads: [strip(0), strip(3), strip(6)], constructions: { _ in stone })
-        #expect(building.first?.components.map(\.levels.upperBound) == [.heavy, .failed, .failed])
+        #expect(
+            building.first?.components.filter { $0.kind != .pane }.map(\.levels.upperBound)
+                == [.heavy, .failed, .failed])
+    }
+
+    @Test("A façade strip holds a window where nothing says otherwise, which breaks under a strong load")
+    func facadeGlazing() {
+        let owner = UUID()
+        let strip = Box(min: SIMD3(0, 0, 0), max: SIMD3(6, 0.5, 3))
+        func building(_ peak: Double, pane: SIMD2<Float>? = nil) -> EnvelopeBuildingDamage? {
+            var construction = EnvelopeConstruction.assumed(objectID: owner)
+            construction.facadePaneM = pane
+            return EnvelopeDamageAssessment.assess(
+                loads: [
+                    load("f", .facade, owner: owner, region: strip, axis: 1, outer: pulse(peak, over: 0.1))
+                ],
+                constructions: { _ in construction }
+            ).first
+        }
+        let strong = building(8e3)
+        let weak = building(500)
+        #expect(strong?.panes == 1 && strong?.panesBroken == 1 && strong?.firstPaneBrokenAtS != nil)
+        #expect(weak?.panes == 1 && weak?.panesBroken == 0)
+        // Glass broken alone colours the building so.
+        #expect(strong.map { EnvelopeDamageColour.code($0) } == 2)
+        #expect(building(8e3, pane: .zero)?.panes == 0)
+        // A larger pane breaks under less.
+        let medium = building(3e3)
+        let large = building(3e3, pane: SIMD2(2, 2.5))
+        #expect((medium?.panesBroken ?? 1) <= (large?.panesBroken ?? 0))
     }
 
     @Test("The view's shader draws the same six colours as the palette")

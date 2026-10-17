@@ -314,6 +314,7 @@ public enum EnvelopeDamageAssessment {
                 }
                 components.append(damage)
                 if damage.material == .annealedGlass, let at = damage.failedAtS { broken.append((load, at)) }
+                if let pane = facadePane(load, construction: construction) { components.append(pane) }
             }
             // The broken panes' outer pressures from the first of their windows' starts.
             let first = broken.map(\.load.startS).min() ?? 0
@@ -548,6 +549,34 @@ public enum EnvelopeDamageAssessment {
             let rotation = Self.rotation(response, span: span)
             return damage(.unreinforcedMasonry, rotation...rotation, level...level, response.lostResistanceAt)
         }
+    }
+
+    /// The pane a façade strip is taken to hold (`EnvelopeConstruction.facadePaneM`), judged on the
+    /// strip's net load as a pane is: annealed glass of the construction's thickness on Moore's
+    /// large-deflection plate, at its median strength. Nil for anything but a façade strip, or
+    /// without one. Its breaking counts with the building's panes; it opens no hole into the
+    /// room, as a block, which a façade strip belongs to, has none.
+    public static func facadePane(_ load: EnvelopeComponentLoad, construction: EnvelopeConstruction)
+        -> EnvelopeComponentDamage?
+    {
+        guard load.kind == .facade else { return nil }
+        let size = construction.facadePaneM ?? EnvelopeConstruction.assumedFacadePane
+        guard size.x > 0, size.y > 0 else { return nil }
+        let (a, b) = (Double(min(size.x, size.y)), Double(max(size.x, size.y)))
+        let pane = EnvelopePanel.largeDeflectionGlass(
+            thickness: Double(construction.glassThicknessM), material: .annealedGlass, a: a, b: b)
+        let pressures = load.netPa
+        let response = pane.response(pressures: pressures, step: load.binS)
+        let level: EnvelopeDamageLevel = response.lostResistanceAt == nil ? .none : .failed
+        let rotation = Self.rotation(response, span: a)
+        var damage = EnvelopeComponentDamage(
+            id: load.id + "/pane", owner: load.owner, kind: .pane, material: .annealedGlass, shortSpanM: a,
+            peakNetPa: pressures.map(abs).max() ?? 0, rotationDeg: rotation...rotation, levels: level...level,
+            failedAtS: response.lostResistanceAt.map { $0 + load.startS })
+        damage.glazing = GlazingHazard.broken(
+            response: response, netPa: pressures, binS: load.binS, massPerArea: pane.massPerArea,
+            paneHeight: Double(size.y))
+        return damage
     }
 
     /// The weight per metre of a wall's own masonry above it, to the building's top, N/m: what a

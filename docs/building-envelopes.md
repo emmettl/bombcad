@@ -477,6 +477,11 @@ load–mass factors through yield. `EnvelopePanel` builds the systems:
   and rocks against it, 8 P (t − x) / h² over its height h, as SBEDS treats a wall held by its
   axial load; it takes the larger of the two. For 0.5 m masonry a storey tall and 6 m wide at the foot of
   three storeys that is about 25 kPa, against about 17 kPa from cracking, clamped.
+- **A window in each façade strip**: a block's storey strips (map buildings are blocks, with no
+  panes of their own) are each taken to hold one annealed pane, 1.2 × 1.5 m unless the
+  construction sets another (`facadePaneM`, zero for none), judged on the strip's mean net load
+  as a pane is. It counts with the building's panes; it lets nothing into the block, which has no
+  room. The standing says so.
 - **Annealed glass** (since 17 October): D. M. Moore's large-deflection plate (JPL 80-34) as UFC
   3-340-02's figures 6-52 and 6-53 give it, simply supported, membrane action stiffening it; it
   breaks when its largest principal stress, weighed over time by glass's static fatigue (Brown's
