@@ -139,7 +139,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-27"
+    public static let currentTable = "standing-table-30"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -978,6 +978,7 @@ public enum StandingTable {
         "EnvelopeConstruction.roofThicknessM": .input,
         "EnvelopeConstruction.reinforcementRatio": .input,
         "EnvelopeConstruction.glassThicknessM": .input,
+        "EnvelopeConstruction.laminate": .input,
         "EnvelopeConstruction.facadePaneM": .input,
         "EnvelopeConstruction.glazing": .input,
         "EnvelopeConstruction.source": .input,
@@ -1065,6 +1066,7 @@ public enum StandingTable {
         "SolverConfiguration.refinementOwnSteps": .option([.adaptiveSubsteps]),
         "SolverConfiguration.refinementFinerThreshold": .numerical,
         "SolverConfiguration.refinementMemory": .numerical,
+        "SolverConfiguration.refinementStartMemory": .numerical,
         "SolverConfiguration.structureMaskSampling": .numerical,
         "SolverConfiguration.structureMaskFill": .numerical,
         "SolverConfiguration.structureMaskOverlap": .numerical,
@@ -2203,6 +2205,19 @@ struct StandingScene {
                 } != false
         }.count
         let vented = inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes
+        let laminated = envelopes.contains { inputs.scenario.envelopeConstruction(for: $0).laminate != nil }
+        let laminatedEvidence =
+            laminated
+            ? [
+                StandingEvidence(
+                    "Laminated panes: Osnes et al.'s 15 shock-tube panes, Zhang et al.'s 5 and Hooper's 8 "
+                        + "framed windows in the open",
+                    "Cracking: every Osnes pane at E1300's median strength, 8 of which held (their new glass "
+                        + "1.6 times as strong); cracked panes held, 0.67–0.89 of Osnes's deflection, 1.2–1.7 "
+                        + "of Zhang's; all of Hooper's silicone-bonded panes pulled out, as measured, at 0.9–1.5 "
+                        + "of his speeds but at 73 mm where his held to 140–209 mm",
+                    "building-envelopes.md#laminated-glass")
+            ] : []
         return result(
             .envelopeDamage, .approximation,
             "One way, from each component's load, "
@@ -2262,7 +2277,7 @@ struct StandingScene {
                         + "façades damaged, half at 1.1–2.1 km by the glass assumed; 0.5 m stone falls where "
                         + "partial collapses were found and cracks to about 1.2 km",
                     "validation.md#a-district-beirut-2020"),
-            ],
+            ] + laminatedEvidence,
             assumptions: [
                 "Compared with measurement as freestanding and one-way walls, as slabs held on their edges "
                     + "(mostly on two; one panel clamped all round), and glass only under a load far past what "
@@ -2280,14 +2295,22 @@ struct StandingScene {
                 "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
                     + "2° is flagged as beyond the one-way model.",
                 "Glass is annealed, on Moore's large-deflection plate, simply supported, breaking at E1300's "
-                    + "median strength with the whole pane at its largest stress.",
+                    + "median strength with the whole pane at its largest stress"
+                    + (laminated
+                        ? "; laminated glass as one pane of its effective thicknesses (E1300's), which cracks "
+                            + "so and is then a membrane at the cracked laminate's plateau tension (Hooper's) "
+                            + "until its interlayer's failure strain or its frame's hold is passed: GSA 2 while "
+                            + "held, thrown whole when not, never vented in the air."
+                        : "."),
                 "The glass's hazard is graded by GSA's conditions and ASTM F1642's ratings from where it "
                     + "would land, thrown whole from the pane's middle at its speed on breaking, the load pushing "
                     + "it on, over a 0.9 m sill; no test's fragments compared. A cased charge's fragments hole a "
                     + "pane past Kim et al.'s breaking momentum, breaking it then if first. With glazing vented "
                     + "it opens in the air then, at a time from the fragments flown in still air before the run, "
                     + "independent of the blast's effect on their flight: fine near the charge, where fragments "
-                    + "lead the shock.",
+                    + "lead the shock. Roof glazing that goes falls to the building's foot without drag, "
+                    + "graded at 79 J and 14.9 J, whole if laminated, else by the shard that would reach them; no "
+                    + "falling test compared.",
                 "Concrete by ASCE/SEI 59-11's limits for single-reinforced slabs; brick cracked or fallen, with "
                     + "no arching, a wall rocking against the weight of its own masonry above it.",
             ]

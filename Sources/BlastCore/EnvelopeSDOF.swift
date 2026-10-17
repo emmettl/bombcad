@@ -32,6 +32,44 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
     /// A brittle component that stiffens as it deflects (glass, `largeDeflectionGlass`): its
     /// resistance follows the backbone both ways, with no permanent set, until it breaks.
     public var brittle: Brittle?
+    /// A laminated pane's interlayer: once the glass has cracked, the plies' fragments held on it
+    /// carry the load as a membrane instead of the pane losing its resistance (`LaminatedGlass`).
+    public var membrane: Membrane?
+
+    /// A cracked laminated pane as a membrane under uniform tension T (N/m): pressure against
+    /// deflection p = shape T x / span², both ways, until it tears (deflection over span reaching
+    /// `tearRatio`) or pulls out of its frame (the tension, reached as the deflection grows to
+    /// `plateauDeflection`, exceeding the edge's `edgeCapacity`, N/m).
+    public struct Membrane: Codable, Hashable, Sendable {
+        public var tension: Double
+        public var shape: Double
+        public var span: Double
+        public var tearRatio: Double
+        public var plateauDeflection: Double
+        public var edgeCapacity: Double?
+
+        public init(
+            tension: Double, shape: Double, span: Double, tearRatio: Double, plateauDeflection: Double,
+            edgeCapacity: Double?
+        ) {
+            self.tension = tension
+            self.shape = shape
+            self.span = span
+            self.tearRatio = tearRatio
+            self.plateauDeflection = plateauDeflection
+            self.edgeCapacity = edgeCapacity
+        }
+
+        /// The resistance at deflection `x`, Pa, either way.
+        public func resistance(at x: Double) -> Double { shape * tension * x / (span * span) }
+
+        /// Whether it has torn or pulled out at deflection `x`.
+        public func isLost(at x: Double) -> Bool {
+            if abs(x) / span >= tearRatio { return true }
+            if let edgeCapacity, tension * min(abs(x) / plateauDeflection, 1) > edgeCapacity { return true }
+            return false
+        }
+    }
 
     /// When a brittle component breaks: its largest principal stress against its deflection, and
     /// glass's static fatigue (Brown's integral), a stress σ(t) breaking it when ∫ (σ/S)ⁿ dt
@@ -68,7 +106,8 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
 
     public init(
         massPerArea: Double, loadMassElastic: Double, loadMassPlastic: Double, backbone: [SIMD2<Double>],
-        reboundFactor: Double = 1, dampingRatio: Double = 0, span: Double? = nil, brittle: Brittle? = nil
+        reboundFactor: Double = 1, dampingRatio: Double = 0, span: Double? = nil, brittle: Brittle? = nil,
+        membrane: Membrane? = nil
     ) {
         precondition(massPerArea > 0 && loadMassElastic > 0 && loadMassPlastic > 0)
         precondition(!backbone.isEmpty && backbone[0].x > 0 && backbone[0].y > 0)
@@ -81,6 +120,7 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
         self.dampingRatio = dampingRatio
         self.span = span
         self.brittle = brittle
+        self.membrane = membrane
     }
 
     /// An elastic–perfectly plastic system: stiffness `stiffness` (Pa/m) up to `ultimate` (Pa).
@@ -162,11 +202,14 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
             return loadMassPlastic
         }
         var broken = false
+        var cracked = false  // a laminated pane's glass, still held on its interlayer
         var fatigue = 0.0  // ∫ (σ/S)ⁿ dt so far, s
         func resistance(at x: Double) -> Double {
             if brittle != nil {
-                // Elastic on the backbone both ways until it breaks.
+                // Elastic on the backbone both ways until it breaks; a cracked laminated pane on
+                // its interlayer's membrane until that tears or pulls out.
                 guard !broken else { return 0 }
+                if cracked, let membrane { return membrane.resistance(at: x) }
                 return x < 0 ? -reboundFactor * envelope(-x) : envelope(x)
             }
             var r = k * (x - permanent)
@@ -206,7 +249,13 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
                 response.peakTime = time
             }
             response.reboundDeflection = min(response.reboundDeflection, x)
-            if let brittle, !broken {
+            if cracked, !broken, let membrane, membrane.isLost(at: x) {
+                broken = true
+                response.lostResistanceAt = time
+                response.velocityAtLoss = v
+                response.deflectionAtLoss = abs(x)
+            }
+            if let brittle, !broken, !cracked {
                 let sigma = brittle.stress(at: x)
                 response.peakStress = max(response.peakStress ?? 0, sigma)
                 if let n = brittle.fatigueExponent {
@@ -215,14 +264,21 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
                 } else {
                     broken = sigma >= brittle.strength
                 }
-                if broken {
+                if broken, membrane != nil {
+                    // Laminated: the glass cracks; the pane holds on its interlayer.
+                    broken = false
+                    cracked = true
+                    response.crackedAt = time
+                    response.stressAtBreak = sigma
+                    response.deflectionAtBreak = abs(x)
+                } else if broken {
                     response.lostResistanceAt = time
                     response.velocityAtLoss = v
                     response.stressAtBreak = sigma
                     response.deflectionAtBreak = abs(x)
                 }
             }
-            if response.lostResistanceAt == nil, backbone.last!.y == 0, abs(x) >= backbone.last!.x {
+            if !cracked, response.lostResistanceAt == nil, backbone.last!.y == 0, abs(x) >= backbone.last!.x {
                 response.lostResistanceAt = time
                 response.velocityAtLoss = v
                 if brittle != nil {
@@ -269,6 +325,10 @@ public struct SDOFResponse: Codable, Hashable, Sendable {
     /// (S (∫ (σ/S)ⁿ dt / t_ref)^(1/n)). For a component that never breaks (its strength set out of
     /// reach), the load's equivalent stress, from which a probability of breaking follows.
     public var equivalentStress: Double?
+    /// A laminated pane's: when its glass cracked, s (its interlayer then carries it; it is lost
+    /// only when that tears or pulls out, `lostResistanceAt`), and its deflection then, m.
+    public var crackedAt: Double?
+    public var deflectionAtLoss: Double?
 
     /// Peak deflection over X_E (UFC §3-14.2).
     public var ductility: Double { peakDeflection / equivalentElasticDeflection }

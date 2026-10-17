@@ -63,6 +63,8 @@ Incident peak overpressure, as a share of Kingery–Bulmash's, along the mirrore
 
 \* A pool of 4 or 8 GB for the refined blocks was asked for and reserved; the most in use was a
 eighth to a quarter of it (the default 1 GB holds the threshold-0.1 and 0.02 runs on 16 m cells).
+The pools now grow as they are used ([below](#the-refined-pools-memory)), so these runs hold far
+less.
 
 The domains are 3.3 km square and 0.83 km high. The times are this Mac's (an M4 Max) with
 nothing else running, the mean of two runs that agreed within 5%; the runs first timed here, on a
@@ -201,6 +203,87 @@ set is 28.7 GB and its largest buffer 21.6 GB, so about 400 million cells is the
 200–250 million is sensible while anything else uses the GPU: 4 m cells over 3.3 × 3.3 × 0.83 km
 (144M cells) held 8.2 GB. No single buffer comes near its limit. A grid is also limited to 2,048
 cells along any axis by the view's volume texture, a limit memory reaches first.
+
+### The refined pool's memory
+
+Each refined level keeps its patches in a pool. The pool used to be made at its full size,
+`refinementMemory`, at the start, so that which blocks were refined when it ran out did not depend
+on the order the GPU's threads ran in (see [the air model](air-blast-model.md)). It now starts at 64 MB
+(`refinementStartMemory`) and grows between command buffers, a quarter at a time or more, to stay
+eight steps of its fastest growth ahead of the patches in use (`BlastSolver.makeRefinementRoom`).
+`refinementMemory` is now the most it may grow to.
+
+A grown pool steps exactly as a full one would:
+
+- every patch keeps its slot and its cells;
+- the new slots are what a full pool's unused slots are, never yet used;
+- the free stack hands out slots from its top, in the same order at any size, and the new slots go
+  to its bottom.
+
+A pool too small for the patches around the charge at the start is grown fourfold and the run
+started again. One that runs out while it could still grow is reported
+(`refinementPoolGrewLate`), though none has.
+
+The digests (`blastbench digest`, `--refine-start full`, `64` and `1`) match to the bit, on:
+
+- one level and two, ratio 2 and 4;
+- with gravity, afterburning and terrain cut cells;
+- with solid and shell structures.
+
+The 500 t burst refined twice to 2 m (8 m cells, threshold 0.005, a 12 GB cap) gave every
+gauge's peak, impulse and arrival unchanged (17 October 2026), in about half the memory:
+
+| | First level | Second level | Air in all | Process |
+|---|---|---|---|---|
+| Patches in use at most | 15,816 | 43,911 | | |
+| Pool made whole (before) | 55,781 | 111,563 | 14.2 GB | |
+| Pool grown (now) | 20,022 | 62,852 | 7.7 GB | 6.4 GB resident |
+
+A patch at ratio 2 takes about 63 kB, 77 kB with the fuel and oxygen of afterburning, and 112 kB
+over terrain cut cells. Of the 77 kB:
+
+| Share | What |
+|---|---|
+| 27% | the fine state, twice |
+| 22% | each fine cell's mask, wall velocity, structure count and impulse |
+| 13% | the coarse halo saved each step |
+| 13% | fine and coarse flux registers |
+| 14% | fuel and oxygen, with their ghosts and fluxes |
+| 7% | ghost cells |
+
+The structure's count and wall velocity (19%) are needed only with a body, and a cut-cell scene's
+cut-cell records (29% of its 112 kB) only near the terrain. Leaving them out without a body
+would cut a grown pool by a further fifth. It was not done: every kernel that reads them would
+have to be checked for a run without one, and growing already removes the pool's empty share,
+which was 60–80% of it.
+
+`RunCost` prices each level's pool from the blocks its busiest moment is expected to hold
+(`RunCost.poolShares`). It is fitted to this run and to the Beirut-class one below, on the
+larger of the two: the tall domain is priced 1.4 times what it held, the low one as it held. The advisor weighs each setting with that memory, the
+coarse grid's and the pools', against what this Mac lets the air take: seven tenths of its
+recommended working set, 19.7 GB on the Studio (M4 Max, 36 GB) and 12.4 GB on the mini (M4,
+24 GB). The app lets the pools grow into whatever that leaves beside the coarse grid, never less
+than 1 GB, so the refinement the advisor prices is what the run gets. Where a target needs more
+memory than this Mac has, the advice says so, and names the sweep worker it would fit
+(`AdvisorMachine`; each worker reports its memory when it connects).
+
+**A Beirut-class domain.** The Beirut, 2020 district comparison runs 0.5 kt over a domain of
+5 × 5 × 0.32 km on uniform 4 m cells (125 million cells, about 8 GB of air). Its open-ground
+analogue was run at 2 m at the shock: a quarter of the domain, 500 t at its corner, 8 m cells
+refined twice at threshold 0.005, without buildings or terrain. That took 343 s on the shared
+Studio, and the pools held 10,252 and 25,745 patches (2.8 GB) beside 0.29 GB of coarse air. By
+symmetry, the whole domain takes:
+
+- 1.1 GB of coarse air and 11 GB of pools on flat ground;
+- 16 GB of pools over terrain cut cells (112 kB a patch), so 17 GB of air, plus the components'
+  histories (4 GB in the district run).
+
+This fits the Studio's 19.7 GB for the air, and the machine's 36 GB with the histories. It does
+not fit the mini's 12.4 GB with cut cells; it might on flat ground, and with the terrain as whole
+cells (`--staircase`, 77 kB a patch, about 12 GB of air). Pools made whole, as before, would have
+had to be asked for at least 13 GB up front with cut cells and no margin. The streets and
+buildings refine reflections that open ground does not, so the district will hold more than this
+analogue. The advisor's estimate and the run's `refinementPools` will say how much.
 
 **Cost.** Cost goes with the scaled cell and the scaled extent (above). The tile skipping of
 still air helps only until the shock has crossed the domain, which is most of the run. For

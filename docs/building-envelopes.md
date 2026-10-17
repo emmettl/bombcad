@@ -575,8 +575,9 @@ one way as the run goes, at most once a second and again when it stops:
     it afterwards, as a free mass until the load stops pushing in, falling without drag from a
     0.9 m sill: on the floor within 1 m (GSA 3a, ASTM minimal hazard), within 3 m (3b, very low),
     or striking a witness panel 3 m in, at most 0.6 m up (GSA 4; ASTM low to 0.5 m, high above)
-    or higher (5, high). A cracked pane held in its frame (GSA 2) is not told apart, nor are the
-    tests' counts of fragments and perforations; skylights are not graded. The building's line
+    or higher (5, high). A cracked laminated pane held in its frame is GSA 2 (ASTM no hazard;
+    [laminated glass](#laminated-glass)); the tests' counts of fragments and perforations are not
+    told apart, and skylights are not graded. The building's line
     gives its worst pane. Criteria as Graham's summary of GSA-TS01 (2003) and ASTM F1642 gives
     them; no test's fragments are compared. A cased charge's fragments that hole a pane first break
     it then, before the blast if they arrive first, and the building's line counts them and the
@@ -906,6 +907,94 @@ rigid box struck head-on, with windows clear of glass; real glazing fails over a
 more and its fragments fly in, which neither model has. Measured rooms behind breaking windows
 would settle it.
 
+## Laminated glass
+
+Since 17 October 2026 a construction can glaze its windows with laminated glass
+(`EnvelopeConstruction.laminate`, a `LaminatedGlass`: two plies, a PVB or ionoplast interlayer, and
+what its frame holds). Annealed stays the default. `LaminatedGlass.facade` is 6 mm + 1.52 mm PVB +
+6 mm in structural silicone with a 20 mm bite.
+
+**The model** (`EnvelopePanel.laminatedGlass`, `SDOFSystem.Membrane`):
+
+- **Before it cracks**, the pane is the annealed model, Moore's plate at the plies'
+  Wölfel–Bennison effective thicknesses: for deflection, and for the stress in the more stressed ply.
+  These are ASTM E1300's for laminated glass, with the interlayer's shear modulus taken at 1 ms
+  (64 MPa for PVB from Hooper's Prony series, 140 MPa for ionoplast). It cracks as annealed glass
+  breaks, by Brown's integral to E1300's median strength.
+- **Once cracked**, the plies carry nothing in bending. The interlayer holds the fragments and
+  carries the load as a membrane at the cracked laminate's plateau tension: p = k T x / a², with
+  k from Poisson's solution for a uniformly tensioned rectangle (13.6 square, 8 for a strip).
+  The tension T is Hooper's measured plateau stress for random cracks, σ = m log₁₀ ε̇ + σ₀, at
+  10 s⁻¹, times the interlayer's thickness. That is 24 kN/m for 1.52 mm PVB; ionoplast is taken at
+  its yield, 47 MPa.
+- **It tears** when the membrane's average strain, (8/3)(x/a)², reaches the cracked laminate's
+  failure strain. For PVB this is Hooper's: about 150% for 1.52 and 2.28 mm, 20% for 0.76 mm,
+  10% for 0.38 mm. For ionoplast it is 120%.
+- **It pulls out** when the tension at the edge, building up to T by 6.7% of the span (Hooper's
+  cracked-laminate yield strain), passes what the frame holds. Structural silicone holds 1.1 MPa
+  over its bite, the strength Hooper recommends designing to; a deep clamp (nil) holds.
+- **Hazard.** A pane cracked and held is GSA's condition 2 (ASTM F1642: no hazard). A torn or
+  pulled-out pane is thrown whole, as an annealed one is.
+- **Not modelled.** Venting leaves laminated panes shut in the air: the GPU stepper has no
+  membrane, and they open only by the one-way fill.
+
+**Against measurement** (`LaminatedGlassTests`). The sources are open, and their numbers are
+transcribed in the test.
+
+| Data | Panes | Result |
+| --- | --- | --- |
+| Osnes, Holmen, Hopperstad and Børvik, *IJIE* 132 (2019), SIMLab shock tube | 15 panes of 3.8/1.52/3.8 mm, 0.3 m square, clamped on neoprene, 168–259 kPa | At E1300's median every pane cracks, the eight that held too. Bisecting each shot for the strength at which it just holds puts the glass of the held panes above 66.8 MPa (60 s), and that of the cracked ones up to 79.3 MPa: 1.55–1.85 times E1300's 42.9 MPa. At 69 MPa, 14 of 15 sort as measured (C-01 held and C-02 cracked on near-identical loads); they crack at 0.87–1.04 ms (measured 0.42–1.08), go 0.67–0.89 times as far as measured once cracked, and none tears (none did). |
+| Zhang, Hao and Wang, *IJIE* 78 (2015), field tests | 5 panes, 1.5 × 1.2 m, clamped in steel frames, 10 kg TNT at 9–12.3 m | All crack and are held, going 1.16–1.71 times the measured 220–326 mm. Morison's model gave 1.13–1.39, UFC's 0.66–0.76. Two panes left their frames (one partly, one on the rebound), which a clamped edge here cannot. One tore a little at 0.23 of its span. |
+| Hooper, PhD thesis (Imperial, 2011), Spadeadam | 8 panes, 1.5 × 1.2 to 3.6 × 2.0 m, structural silicone, 15–500 kg | All crack. The seven 1.52 mm panes pull out, as all did, at 22–33 m/s (measured peak speeds 17–29), but at 73–122 mm where the joints held to 140–209 mm, and on the way in where three tests' panes failed on the rebound. The 0.76 mm pane tears at 17 ms and 466 mm; the test's tore at every edge by 8.5 ms. |
+
+What this says:
+
+- **New glass is stronger than E1300's median.** E1300's flaw constants describe weathered glass
+  in service, which is what buildings hold, so they stay the default. A test's new panes can be
+  given their own strength (`sixtySecondStrength`). Osnes et al.'s own model used 90 MPa as an
+  instantaneous fracture stress (their stochastic model predicted 55–120 MPa).
+- **Once cracked, the pane is held about as far as measured** on small clamped panes (a little
+  short), and too far on large framed ones. The membrane at a single plateau tension has no
+  strain hardening, and no relief of the load as the pane moves away from it. At 20–30 m/s that
+  relief is a sizeable share of the reflected pressure on a large pane, and nothing here models it.
+- **Whether the pane is lost** turns on its frame, as the tests found: silicone bites are lost at
+  Hooper's design strength, clamps hold. The edge tension builds faster here than in his panes,
+  so pull-out comes early.
+- **Tearing is the weakest part.** An average-strain criterion reads the tears at the edges late.
+  Hooper's 0.76 mm pane tore at about 0.11 of its span; Zhang's 1.52 mm one began at 0.23;
+  Osnes's held at 0.4. No single span ratio fits all three.
+
+The standing is an approximation, with the evidence above in its line.
+
+### Glass falling from overhead
+
+Roof panes and skylights were not graded before. Since 17 October 2026 each gets an
+`OverheadGlassHazard`, and the building's line gives its worst one (`worstOverhead`, by energy over
+the floor).
+
+- **When the pane leaves its frame**, it falls from where it was to the building's lowest point,
+  taken as the floor below, without drag. It starts with its downward speed on going, plus what
+  the load gives it afterwards, as `GlazingHazard` does for a window.
+- **The output.** Its drop, its speed striking the floor, the mass that falls, and its energy
+  over the pane's area (J/m²).
+- **Graded** against the fragment criteria (`HazardCriteria`): 79 J hazardous, 14.9 J injurious.
+  - Laminated glass that cracks and stays is held.
+  - Laminated glass that leaves its frame falls whole, its interlayer still holding its glass. Its
+    energy is the pane's, far past 79 J from any height: a 1.2 × 1.5 m pane of 6 + 1.52 + 6 mm
+    from 8 m strikes with 31 kJ.
+  - Annealed glass falls in shards whose sizes no open source found gives (Fletcher, Richmond and
+    Yelverton's 1980 measurements could not be reached). So the line gives the side of the square
+    shard, of the glass's thickness, that strikes with 79 J and with 14.9 J: 184 and 80 mm for
+    6 mm glass striking at 18 m/s after an 8 m drop. The pane counts as hazardous when a shard that size
+    fits in it.
+- **Not modelled.** No falling test is compared. The criteria are for fragments striking a
+  person, not glass landing on one. CWCT's guidance (TU10) notes that toughened glass falls in
+  clumps of up to 250 mm and 2 kg. Toughened glass is not modelled.
+
+**A ContinuumKit candidate.** The cracked-laminate membrane (Hooper's plateau tension, Poisson's
+shape factor, the failure-strain tear) is general and does not depend on BombCAD. Edgerton's
+glass impacts could use it once its edge tearing is better founded.
+
 ## Damage for envelope buildings: built
 
 Envelopes make district-scale scenes possible: the air is cheap at that scale (a 3.3 km domain of
@@ -954,6 +1043,11 @@ the inside pressure (see [standing](standing.md)).
 - **Venting more.** [Venting](#venting-glazing-that-breaks-in-the-air) opens broken glazing and
   failed walls, roofs and slabs whole, uniform or refined, with gravity or not; a wall breached in
   part (a hole, a spalled patch) stays closed.
+- **Falling glass's pieces.** Measured fragment sizes for broken annealed panes (Fletcher et al.,
+  1980), so shards can be counted per area against 79 J as the ground hazard is.
+- **Laminated glass's edges.** Tearing at the frame (Hooper's single-crack tests, Table 5.3),
+  the edge tension's build-up, and the load's relief as a large pane moves away from it; and
+  laminated panes venting in the air when they go.
 - **Pressure–impulse curves.** Each component's peak overpressure and impulse placed against
   curves of equal damage: cheaper still, needing no time history.
 - **Fragility curves.** A probability of each damage state from the same loads, where published.

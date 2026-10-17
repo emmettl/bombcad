@@ -599,7 +599,10 @@ a candidate (cells finer than any grid compared count as the finest compared), i
   `RunAdvisor.ownStepsShare`), which is the open and the street but not close in, and the Run
   tab's "Adaptive substeps" can turn them off;
 - the structure's element-updates at 300 million a second;
-- 57 bytes a cell (73 with afterburning), plus the refined blocks' pool.
+- 57 bytes a cell (73 with afterburning), plus the pools the refined levels are expected to grow
+  to (`RunCost.poolShares`). A setting fits if both fit in what this Mac lets the air take. Where a
+  target needs more, the advice says so, and names the sweep worker that would hold it (see
+  [large scenes](large-scenes.md#the-refined-pools-memory)).
 
 `blastbench advise --calibrate --time` sets it against runs timed on a quiet Mac (load under 2,
 nothing else on the GPU; two rounds that agreed within 5%), the street and open ground of this

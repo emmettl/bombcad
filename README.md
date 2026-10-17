@@ -68,15 +68,15 @@ including `BombCAD run` and the `blastbench` command-line tool.
 |------|---------------|----------|
 | Air | Blast waves round obstacles; by default afterburning, hot and dissociating air and far-field open faces; refinement near the shock in one or two levels, each with its own substeps as an option; gravity and sub-grid mixing as options | [Air-blast model](docs/air-blast-model.md) |
 | Terrain | A heightfield ground the blast, receivers, objects and footings see, imported from a DEM, cut through the air's cells so slopes reflect as slopes, under a deflagration too | [Terrain](docs/terrain.md) |
-| Structures | Solid, shell and beam elements; concrete cracking, crushing, bond and dowel action; masonry as units and joints; steel; glass | [Structural model](docs/structural-model.md), [concrete](docs/concrete-model.md), [shells](docs/shell-model.md) |
+| Structures | Solid, shell and beam elements; concrete cracking, crushing, bond and dowel action; masonry as units and joints; steel; glass; timber (CLT panels, glulam beams); profiled steel sheeting | [Structural model](docs/structural-model.md), [concrete](docs/concrete-model.md), [shells](docs/shell-model.md) |
 | Supports | Fixed bases, breakable connections at any angle, footings on layered soil with embedment; debris landing on soil instead of a rigid ground | [Structural model](docs/structural-model.md#footings) |
 | Freestanding objects | Boxes and cars that slide, lift, tip and collide, each in the air; car parks and furnished rooms | [Freestanding objects](docs/freestanding-objects.md) |
-| Fragments | A cased charge's fragments, with Mott's masses from the casing, Gurney's speed and a measured drag, flown through the blast; hazard outputs to come | [Fragments](docs/fragments.md) |
+| Fragments | A cased charge's fragments, with Mott's masses from the casing, Gurney's speed and a measured drag, flown through the blast; what they penetrate, the hazardous fragment distance, and blast hazards to people | [Fragments](docs/fragments.md), [hazards](docs/hazards.md) |
 | Thermal | The fireball's radiation on surfaces, ray-marched on the GPU, and the surfaces' heating; paused as illustrative | [Thermal radiation](docs/thermal-radiation.md), [surface heating](docs/surface-heating.md) |
 | Cloud | The fireball's rise, condensation, rain and spread in a measured or standard atmosphere | [Fireball rise](docs/fireball-rise.md) |
 | Ground shock | The design manuals' estimate, or a layered soil column under each point | [Ground shock](docs/ground-shock.md) |
 | Craters | An empirical crater for each charge on earth or rock, kept shallow below a water table, after the blast; and the energy soft ground takes from the air | [Cratering](docs/cratering.md) |
-| Gas deflagrations | A methane or propane cloud lit in a room, with vent panels; a vapour cloud explosion at a process plant beside its buildings, after Texas City 2005 | [Gas deflagrations](docs/deflagration.md), [process plant](docs/process-plant-explosion.md) |
+| Gas deflagrations | A methane, propane, hydrogen or town gas cloud lit in a room, with vent panels; congestion below the grid; a vapour cloud explosion at a process plant beside its buildings, after Texas City 2005 | [Gas deflagrations](docs/deflagration.md), [process plant](docs/process-plant-explosion.md) |
 | Building envelopes | Exposure-only buildings, up to districts of them from map data, each wall, roof and pane judged for damage as it goes: glass, concrete and brick panels, freestanding and one-way walls, slabs, and the pressure let inside | [Building envelopes](docs/building-envelopes.md#one-way-damage-single-degree-of-freedom), [street interactions](docs/street-interaction.md) |
 | Other Macs | Sweeps and the effects beside the blast placed on other Macs by cost | [Distributed computing](docs/distributed-computing.md) |
 
@@ -150,11 +150,15 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [Thermal radiation](docs/thermal-radiation.md) | The fireball's radiant heat on the ground and the scene's faces, from the air model's hot gas, here or on another Mac |
 | [Surfaces heated by the fireball](docs/surface-heating.md) | Each receiver's absorbed radiation conducted into its material for its peak surface temperature, with illustrative ignition thresholds |
 | [The fireball's rise and cloud](docs/fireball-rise.md) | The hot gas left after the blast, followed as a rising, entraining cloud that spreads once it stops, carried by the wind |
-| [Gas deflagrations](docs/deflagration.md) | An illustrative second source: a methane or propane cloud lit in a room, and vent panels that release at a pressure |
+| [Gas deflagrations](docs/deflagration.md) | An illustrative second source: a methane, propane, hydrogen or town gas cloud lit in a room, and vent panels that release at a pressure |
+| [Congestion below the grid](docs/congestion-model.md) | Pipes and bars too small for the cells, as a porous medium that folds a flame, against MERGE's rigs |
+| [Blast hazards](docs/hazards.md) | K-factor safety distances, the minimum safe distance and injury to people standing in the scene |
+| [New materials](docs/new-materials.md) | Timber and profiled sheeting: what they need, and how they were compared |
 | [Ground shock](docs/ground-shock.md) | An illustrative estimate of the ground's shaking away from the charge, or a layered soil column, fed the overpressure on the ground |
 | [Cratering](docs/cratering.md) | The crater each charge digs in earth or rock, by empirical scaling, kept shallow below a water table, and the share of its energy the air keeps |
 | [The steel and glass office](docs/office-tower.md) | A sample layout of modern construction: how it is meshed, stands under gravity and takes a tonne at the kerb |
 | [Profiled steel sheeting](docs/profiled-sheeting.md) | Trapezoidal and sinusoidal steel cladding and roofs, as shells and as an envelope construction; compared with Langdon's corrugated panels; the portal-frame warehouse sample |
+| [The transport hub](docs/transport-hub.md) | A station's train shed under a long-span steel and glass roof, beside a concourse glazed with laminated glass; glass falling from overhead, and struts buckling |
 | [Distributed computing](docs/distributed-computing.md) | Sweeps on several Macs, and the effects beside the blast placed on other Macs by cost |
 | [Run comparison](docs/run-comparison.md)    | Saved runs, comparing them, and headless runs                   |
 | [USD export](docs/usd-export.md) | Writing a run over time as USD and OpenVDB volumes, for rendering in Blender and elsewhere |
