@@ -158,90 +158,98 @@ enum DistrictComparison {
             }
             configuration.ground = type
         }
-        let solver = try BlastSolver(
-            device: device, scenario: scene, cellSize: dx, configuration: configuration)
-        // A gauge in a building is lifted to the first air above it.
-        let points = scene.gauges.map(\.position)
-        let cells = points.map { p -> (i: Int, j: Int, k: Int) in
-            let i = Int(p.x / dx)
-            let j = Int(p.y / dx)
-            var k = Int(p.z / dx)
-            while k < solver.grid.nz - 1, solver.isSolid(i, j, k) { k += 1 }
-            return (i, j, k)
-        }
-        solver.setGauges(cells: cells, points: points)
-        try solver.configureEnvelopeComponents(
-            objects: scene.envelopeObjects,
-            options: EnvelopeHistoryOptions(
-                windowS: value("window").flatMap(Double.init) ?? 0.5,
-                memoryBudget: (value("budget").flatMap(Int.init) ?? 2048) << 20, windowFromArrival: true))
-        print("\(solver.grid.cellCount) cells, \(solver.envelopeComponents()?.count ?? 0) components")
-        let start = ContinuousClock.now
-        var steps = 0
-        var lastReport = 0.0
-        while solver.time < until {
-            // `--trace [steps]`: batches of that many steps (16), each printed.
-            let batch =
-                args.contains("--trace")
-                ? solver.advance(steps: value("trace").flatMap(Int.init) ?? 16, timeLimit: until)
-                : solver.advance(until: until)
-            steps += batch.steps
-            // No steps: within the solver's tolerance of the end.
-            guard batch.steps > 0 else { break }
-            guard batch.isStable else {
-                print("Unstable at t \(solver.time) s")
-                break
+        // The event, in a scope of its own, so that the solver and its pools are let go before the
+        // buildings are judged from what it recorded.
+        let (finalTime, steps, wall, arrivals, linePoints, recorded) = try {
+            () throws -> (Double, Int, Double, [Arrival], [LinePoint], [EnvelopeComponentHistory]) in
+            let solver = try BlastSolver(
+                device: device, scenario: scene, cellSize: dx, configuration: configuration)
+            // A gauge in a building is lifted to the first air above it.
+            let points = scene.gauges.map(\.position)
+            let cells = points.map { p -> (i: Int, j: Int, k: Int) in
+                let i = Int(p.x / dx)
+                let j = Int(p.y / dx)
+                var k = Int(p.z / dx)
+                while k < solver.grid.nz - 1, solver.isSolid(i, j, k) { k += 1 }
+                return (i, j, k)
             }
-            if args.contains("--trace") {
-                print(
-                    String(
-                        format: "  t %.5f s, %d steps, dt %.2e s, max overpressure %.3g Pa, swept %.4f",
-                        solver.time,
-                        batch.steps, batch.lastTimeStep, batch.maxOverpressure, batch.sweptFraction))
+            solver.setGauges(cells: cells, points: points)
+            try solver.configureEnvelopeComponents(
+                objects: scene.envelopeObjects,
+                options: EnvelopeHistoryOptions(
+                    windowS: value("window").flatMap(Double.init) ?? 0.5,
+                    memoryBudget: (value("budget").flatMap(Int.init) ?? 2048) << 20, windowFromArrival: true))
+            print("\(solver.grid.cellCount) cells, \(solver.envelopeComponents()?.count ?? 0) components")
+            let start = ContinuousClock.now
+            var steps = 0
+            var lastReport = 0.0
+            while solver.time < until {
+                // `--trace [steps]`: batches of that many steps (16), each printed.
+                let batch =
+                    args.contains("--trace")
+                    ? solver.advance(steps: value("trace").flatMap(Int.init) ?? 16, timeLimit: until)
+                    : solver.advance(until: until)
+                steps += batch.steps
+                // No steps: within the solver's tolerance of the end.
+                guard batch.steps > 0 else { break }
+                guard batch.isStable else {
+                    print("Unstable at t \(solver.time) s")
+                    break
+                }
+                if args.contains("--trace") {
+                    print(
+                        String(
+                            format: "  t %.5f s, %d steps, dt %.2e s, max overpressure %.3g Pa, swept %.4f",
+                            solver.time,
+                            batch.steps, batch.lastTimeStep, batch.maxOverpressure, batch.sweptFraction))
+                }
+                if solver.time - lastReport >= 0.25 {
+                    lastReport = solver.time
+                    print(
+                        String(
+                            format: "  t %.3f s, %d steps, %.0f s", solver.time, steps,
+                            DistrictBenchmark.seconds(start)))
+                }
             }
-            if solver.time - lastReport >= 0.25 {
-                lastReport = solver.time
-                print(
-                    String(
-                        format: "  t %.3f s, %d steps, %.0f s", solver.time, steps,
-                        DistrictBenchmark.seconds(start)))
+            let wall = DistrictBenchmark.seconds(start)
+            print(String(format: "Ran to %.3f s in %d steps, %.0f s", solver.time, steps, wall))
+            for (level, pool) in solver.refinementPools.enumerated() {
+                print("Refined level \(level + 1): \(pool)")
             }
-        }
-        let wall = DistrictBenchmark.seconds(start)
-        print(String(format: "Ran to %.3f s in %d steps, %.0f s", solver.time, steps, wall))
-        for (level, pool) in solver.refinementPools.enumerated() {
-            print("Refined level \(level + 1): \(pool)")
-        }
 
-        // Arrival: the first sample 500 Pa above the gauge's first.
-        let mass = Double(scene.charge.mass)
-        func arrival(_ samples: [GaugeSample]) -> (Double?, Float) {
-            guard let first = samples.first?.pressure else { return (nil, 0) }
-            let at = samples.first { $0.pressure - first > 500 }?.time
-            return (at, (samples.map(\.pressure).max() ?? first) - first)
-        }
-        let histories = solver.gaugeHistories
-        var arrivals: [Arrival] = []
-        for (n, observer) in observers.enumerated() where n < histories.count {
-            let distance = Double(simd_distance(observer.at, SIMD2(charge.x, charge.y)))
-            let (at, peak) = arrival(histories[n])
-            arrivals.append(
-                Arrival(
-                    name: observer.name, kind: observer.kind, distanceM: distance, observedS: observer.seen,
-                    observedEarliestS: observer.earliest, simulatedS: at, peakPa: peak,
-                    kingeryBulmashS: KingeryBulmash.point(at: distance / cbrt(mass))?.arrival(mass: mass)))
-        }
-        var linePoints: [LinePoint] = []
-        for (n, d) in line.enumerated() where observers.count + n < histories.count {
-            let (_, peak) = arrival(histories[observers.count + n])
-            linePoints.append(
-                LinePoint(
-                    distanceM: Double(d), peakPa: peak,
-                    kingeryBulmashPa: KingeryBulmash.point(at: Double(d) / cbrt(mass))?.incidentPressure))
-        }
+            // Arrival: the first sample 500 Pa above the gauge's first.
+            let mass = Double(scene.charge.mass)
+            func arrival(_ samples: [GaugeSample]) -> (Double?, Float) {
+                guard let first = samples.first?.pressure else { return (nil, 0) }
+                let at = samples.first { $0.pressure - first > 500 }?.time
+                return (at, (samples.map(\.pressure).max() ?? first) - first)
+            }
+            let histories = solver.gaugeHistories
+            var arrivals: [Arrival] = []
+            for (n, observer) in observers.enumerated() where n < histories.count {
+                let distance = Double(simd_distance(observer.at, SIMD2(charge.x, charge.y)))
+                let (at, peak) = arrival(histories[n])
+                arrivals.append(
+                    Arrival(
+                        name: observer.name, kind: observer.kind, distanceM: distance,
+                        observedS: observer.seen,
+                        observedEarliestS: observer.earliest, simulatedS: at, peakPa: peak,
+                        kingeryBulmashS: KingeryBulmash.point(at: distance / cbrt(mass))?.arrival(mass: mass))
+                )
+            }
+            var linePoints: [LinePoint] = []
+            for (n, d) in line.enumerated() where observers.count + n < histories.count {
+                let (_, peak) = arrival(histories[observers.count + n])
+                linePoints.append(
+                    LinePoint(
+                        distanceM: Double(d), peakPa: peak,
+                        kingeryBulmashPa: KingeryBulmash.point(at: Double(d) / cbrt(mass))?.incidentPressure))
+            }
 
-        // Buildings.
-        let recorded = (solver.envelopeComponentHistories() ?? []).filter { !$0.invalid }
+            // Buildings.
+            let recorded = (solver.envelopeComponentHistories() ?? []).filter { !$0.invalid }
+            return (solver.time, steps, wall, arrivals, linePoints, recorded)
+        }()
         let loads = recorded.map(EnvelopeComponentLoad.init)
         let pane = (value("pane").map { $0.split(separator: ",").compactMap { Double($0) } } ?? [1.2, 1.5])
         let paneArea = pane[0] * pane[1]
@@ -360,7 +368,7 @@ enum DistrictComparison {
         }
         let result = Report(
             massKg: scene.charge.mass, radiusM: radius, cellSizeM: dx, ground: value("ground"),
-            untilS: solver.time,
+            untilS: finalTime,
             steps: steps, wallS: wall, binS: recorded.first?.binS, arrivals: arrivals, line: linePoints,
             bands: bands, buildings: judged)
         let encoder = JSONEncoder()

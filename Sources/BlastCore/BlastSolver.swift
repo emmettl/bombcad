@@ -2846,11 +2846,19 @@ public final class BlastSolver {
                 body.shells?.stepOverride = common
             }
         }
+        // Steps much longer than sound in still air takes to cross a cell can only come from air
+        // that has run away (a sound speed near nothing, finite but wrong) while some was swept;
+        // air asleep beside a structure steps as the structure does, and is not judged so.
+        let runaway =
+            !airIsAsleep && control.activeSteps > 0 && swept > 0
+            && elapsed / Double(control.activeSteps)
+                > 2 * Double(configuration.cfl * grid.cellSize) / Double(ambientSoundSpeed)
         return BatchResult(
             steps: Int(control.activeSteps), elapsed: elapsed, lastTimeStep: Double(lastStep),
             // A NaN anywhere in the air makes the wave speed NaN, which the step's maximum
             // passes over, so the step itself stays finite: the overpressure says it.
-            isStable: control.batchTime.isFinite && control.dt.isFinite && !control.maxOverpressure.isNaN,
+            isStable: control.batchTime.isFinite && control.dt.isFinite && !control.maxOverpressure.isNaN
+                && !runaway,
             maxOverpressure: control.maxOverpressure, sweptFraction: swept,
             refinedTiles: refinement?.patchCount ?? 0, finerRefinedTiles: finerRefinement?.patchCount ?? 0,
             firstLevelSubsteps: levelSubsteps(control, level: 0),
