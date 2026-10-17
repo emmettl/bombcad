@@ -63,11 +63,14 @@ public enum TyndallCLTTest {
     public static let side: Float = 4.57
 
     /// The building with its front at x = 24 m, centred on y = 8 m; the charge on the axis.
-    public static func scenario(_ test: Test, elementSize: Float = 0.15) -> Scenario {
+    public static func scenario(
+        _ test: Test, elementSize: Float = 0.15, pad: SIMD3<Float> = .zero
+    ) -> Scenario {
         let t3: Float = 0.105
         let t5: Float = 0.175
-        let x0: Float = 24
-        let (y0, y1) = (8 - side / 2, 8 + side / 2)
+        let x0: Float = 24 + pad.x
+        let yc: Float = 8 + pad.y
+        let (y0, y1) = (yc - side / 2, yc + side / 2)
         let x1 = x0 + side
         let floor: Float = 12 * 12 * inch
         let roof = floor + (14 * 12 + 4 - 24) * inch
@@ -88,13 +91,18 @@ public enum TyndallCLTTest {
         model.setMaterial(Self.material(lamellae: 5, grainAxis: 0), of: walls.count)
         model.setMaterial(Self.material(lamellae: 3, grainAxis: 0), of: walls.count + 1)
         model.elementKind = .shell
-        let centre = SIMD3<Float>(x0 - standoff, 8, test.height)
+        let centre = SIMD3<Float>(x0 - standoff, yc, test.height)
         return Scenario(
-            name: "Tyndall test \(test.number)", domainSize: SIMD3(32, 16, 12), boxes: [],
+            name: "Tyndall test \(test.number)", domainSize: SIMD3(32 + pad.x, 16 + 2 * pad.y, 12 + pad.z),
+            boxes: [],
             charge: Charge(mass: test.charge, position: centre),
             gauges: [
-                Gauge("Front, first storey", at: SIMD3(x0 - 0.05, 8, 1.8)),
-                Gauge("Front, second storey", at: SIMD3(x0 - 0.05, 8, floor + 1.8)),
+                Gauge("Front, first storey", at: SIMD3(x0 - 0.05, yc, 1.8)),
+                Gauge("Front, second storey", at: SIMD3(x0 - 0.05, yc, floor + 1.8)),
+                Gauge("Front, first storey edge", at: SIMD3(x0 - 0.05, y0 + 0.3, 1.8)),
+                Gauge("Roof", at: SIMD3(x0 + side / 2, yc, top + 0.1)),
+                Gauge("Back", at: SIMD3(x1 + 0.05, yc, 1.8)),
+                Gauge("Side", at: SIMD3(x0 + side / 2, y0 - 0.05, 1.8)),
             ], structure: model)
     }
 
@@ -121,17 +129,23 @@ public enum TyndallCLTTest {
 
     public static func run(
         device: MTLDevice, test: Test, cellSize: Float = 0.25, refinement: Int = 2, elementSize: Float = 0.15,
-        duration: Double = 0.25, progress: ((String) -> Void)? = nil
+        duration: Double = 0.25, pad: SIMD3<Float> = .zero,
+        history: ((Double, Float, Float, [Float]) -> Void)? = nil,
+        configure: ((inout SolverConfiguration) -> Void)? = nil,
+        progress: ((String) -> Void)? = nil
     ) throws -> Result {
-        let scenario = scenario(test, elementSize: elementSize)
+        let scenario = scenario(test, elementSize: elementSize, pad: pad)
+        let x0 = 24 + pad.x
+        let yc = 8 + pad.y
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
         solver.configuration = .recommended
         solver.configuration.refinement = refinement
+        configure?(&solver.configuration)
         try solver.load(scenario)
         guard let shells = solver.shells else { throw BlastError.allocationFailed("shells") }
         let floor: Float = 12 * 12 * inch
-        let first = shells.nearestNode(to: SIMD3(24.05, 8, floor / 2))
-        let second = shells.nearestNode(to: SIMD3(24.05, 8, floor + 1.9))
+        let first = shells.nearestNode(to: SIMD3(x0 + 0.05, yc, floor / 2))
+        let second = shells.nearestNode(to: SIMD3(x0 + 0.05, yc, floor + 1.9))
         // Rest, under the building's own weight, settled before the blast.
         solver.settleStructures()
         let rest = (shells.node(first).displacement.x, shells.node(second).displacement.x)
@@ -144,6 +158,9 @@ public enum TyndallCLTTest {
             // Inbound is away from the charge, along +x.
             let a = shells.node(first).displacement.x - rest.0
             let b = shells.node(second).displacement.x - rest.1
+            history?(
+                solver.time, a, b,
+                solver.gaugeHistories.map { ($0.last?.pressure ?? 0) - scenario.atmosphere.pressure })
             firstFloor = SIMD2(max(firstFloor.x, a), min(firstFloor.y, a))
             secondFloor = SIMD2(max(secondFloor.x, b), min(secondFloor.y, b))
             if let progress, solver.time >= nextReport {

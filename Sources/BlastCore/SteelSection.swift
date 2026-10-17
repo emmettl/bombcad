@@ -15,9 +15,13 @@ public struct SteelSection: Sendable, Hashable {
     public var area: Float
     public var secondMoment: Float
     public var plasticModulus: Float
+    /// A cold-formed section's wall thickness (m), what screws into it hold in; nil for a rolled
+    /// section.
+    public var thickness: Float?
 
     public init(
-        name: String, depth: Float, width: Float, area: Float, secondMoment: Float, plasticModulus: Float
+        name: String, depth: Float, width: Float, area: Float, secondMoment: Float, plasticModulus: Float,
+        thickness: Float? = nil
     ) {
         self.name = name
         self.depth = depth
@@ -25,6 +29,7 @@ public struct SteelSection: Sendable, Hashable {
         self.area = area
         self.secondMoment = secondMoment
         self.plasticModulus = plasticModulus
+        self.thickness = thickness
     }
 
     // UK sections, from the SCI's tables of section properties (P363, the "Blue Book").

@@ -711,6 +711,8 @@ public struct StructureModel: Sendable, Hashable, Codable {
     public var solidSheets: [SheetAssignment?] = []
     /// Connections along shell edges as springs to fixed ground (shells only).
     public var springSupports: [SpringSupport] = []
+    /// Profiled sheets screwed to the beams they lie on, as `expandingSheets` leaves them.
+    public var sheetFastenings: [SheetFastening] = []
     /// In a body of both kinds, the shells' size; `elementSize` if nil.
     public var shellElementSize: Float?
     /// Layers of concrete (or other material) through the thickness of each shell.
@@ -952,12 +954,16 @@ public struct StructureModel: Sendable, Hashable, Codable {
         model.solidSheets = []
         for index in solids.indices {
             guard let sheet = sheet(of: index) else { continue }
-            ProfiledSheet(
+            let built = ProfiledSheet(
                 profile: sheet.profile, region: solids[index], span: sheet.ribAxis,
                 steel: material(of: index),
                 crestSide: sheet.crestSide ?? 1
             )
             .build(in: &model, at: index)
+            if let fastening = sheet.fastening {
+                model.sheetFastenings.append(
+                    SheetFastening(solids: built, fastening: fastening, crestSide: sheet.crestSide ?? 1))
+            }
         }
         return model
     }
@@ -1747,7 +1753,7 @@ extension StructureModel {
         case reinforcement, inclinedBars, solidReinforcement, solidMaterial, solidSourceParts
         case elementKind, shellLayers, supports, supportAnchorages, secondCracks
         case bareBars, removesFragments, crackSlip, bondSlip,
-            solidElementKind, solidSheets, springSupports
+            solidElementKind, solidSheets, springSupports, sheetFastenings
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
         case pressedInterlock, regimeOverride, loadingOverride, regimeDefaults
         case hourglassFollowsCracking, hourglassCapsSteel, discreteBars, barsAsTrusses, trussDiameter
@@ -1804,6 +1810,7 @@ extension StructureModel {
             try container.encode(solidSheets, forKey: .solidSheets)
         }
         if !springSupports.isEmpty { try container.encode(springSupports, forKey: .springSupports) }
+        if !sheetFastenings.isEmpty { try container.encode(sheetFastenings, forKey: .sheetFastenings) }
         try container.encodeIfPresent(shellElementSize, forKey: .shellElementSize)
         try container.encodeIfPresent(interfaceBond, forKey: .interfaceBond)
         try container.encode(unitJoints, forKey: .unitJoints)
@@ -1862,6 +1869,7 @@ extension StructureModel {
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
         solidSheets = try container.decodeIfPresent([SheetAssignment?].self, forKey: .solidSheets) ?? []
         springSupports = try container.decodeIfPresent([SpringSupport].self, forKey: .springSupports) ?? []
+        sheetFastenings = try container.decodeIfPresent([SheetFastening].self, forKey: .sheetFastenings) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)
         interfaceBond = try container.decodeIfPresent(SIMD2<Float>.self, forKey: .interfaceBond)
         unitJoints = try container.decodeIfPresent(Bool.self, forKey: .unitJoints) ?? true
@@ -1991,22 +1999,31 @@ public struct SpringSupport: Codable, Hashable, Sendable {
     public var edge: Int
     public var along: Int
     public var pull: SpringLaw
+    /// Across the edge towards +across, and (if given) towards -across: a sheet's screws pulled
+    /// through one way, the sheet bearing on its support the other.
     public var across: SpringLaw
+    public var acrossNegative: SpringLaw?
     /// Turning about +edge, and about -edge.
     public var turnPositive: SpringLaw
     public var turnNegative: SpringLaw
+    /// Whether the edge comes away altogether once the across spring has given way to nothing: a
+    /// sheet off its screws (nil for no).
+    public var releases: Bool?
 
     public init(
-        region: Box, edge: Int, along: Int, pull: SpringLaw, across: SpringLaw, turnPositive: SpringLaw,
-        turnNegative: SpringLaw
+        region: Box, edge: Int, along: Int, pull: SpringLaw, across: SpringLaw,
+        acrossNegative: SpringLaw? = nil,
+        turnPositive: SpringLaw, turnNegative: SpringLaw, releases: Bool? = nil
     ) {
         self.region = region
         self.edge = edge
         self.along = along
         self.pull = pull
         self.across = across
+        self.acrossNegative = acrossNegative
         self.turnPositive = turnPositive
         self.turnNegative = turnNegative
+        self.releases = releases
     }
 
     /// The axis across the edge, normal to `edge` and `along`.

@@ -782,6 +782,28 @@ Ten values in the code were written from memory and should be checked against th
   tempered sheets at several overpressures and impulses at EMRTC, Socorro (osti.gov refused the
   connection here). Tempered and laminated glass, and short-duration waves, have no comparison.
 
+## 3i. Profiled cladding on its fixings
+
+- **Needed** (for profiled steel sheeting, [profiled sheeting](profiled-sheeting.md)): trapezoidal
+  or sinusoidal sheets on purlins or rails that deform, screwed as built, under a blast whose
+  charge and stand-off are given; their deflection, the purlins' response, and whether and where
+  the screws pulled through or out.
+- **Read, 17 October 2026:**
+  - G. S. Langdon's thesis (Liverpool, 2003; Fixtures/Langdon2003): corrugated stainless panels
+    with welded connections under pulse pressure. No screws.
+  - ADBLAST (Hoffmeister et al., RFCS EUR 27487, 2015; Fixtures/ADBLAST2015): TR84 sheets screwed
+    to rigid tubes under C4, compared in air; and sheets on a U 60 purlin with screws, the 0.75 mm
+    ones pulling through, not compared, as the report gives no test's charge nor the purlin's span.
+  - K. Fischer, A. Stolz, C. Roller (Engineering Transactions 67, 2019, CC BY-SA): 30 shock-tube
+    tests of point-fixed trapezoidal sheets at Fraunhofer EMI, screws torn out at 15 kPa. The
+    paper gives neither the profile nor the thicknesses.
+- **Searched, not found:** an HSE or CPNI report on building cladding's fixings under blast;
+  full-scale tests of pre-engineered metal buildings (an ASCE Structures Congress 2025 talk
+  mentions some, without data); fastener pull-out at blast rates.
+- **Still wanted:** ADBLAST's deliverables D4 (tests on cladding systems), D5 (on cladding with
+  substructure) and D6 (their simulations), with each shot's charge and records; EMI's profile
+  and thicknesses for Fischer et al.'s series.
+
 ## 3g. The reference curves' own scatter
 
 - **Needed:** the scatter of the tests behind Kingery–Bulmash, UFC 3-340-02's gas pressure and
