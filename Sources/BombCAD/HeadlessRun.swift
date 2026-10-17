@@ -15,7 +15,8 @@ enum HeadlessRun {
                            [--duration <seconds>] [--ground rigid|soil|<MN/m³>|<ground type>] [--water-table <m>|deep]
                            [--usd <scene.usda>] [--vdb <folder>
                            [--vdb-fields overpressure,shock,peak,impulse]] [--frame-interval <ms>]
-                           [--fragments <spec.json> [--fragment-results <file.json>]]
+                           [--fragments <spec.json> [--casing <wall m>,<inside diameter m>[,steel|castIron]]
+                            [--fragment-results <file.json>]]
                            [--thermal <spec.json> [--thermal-results <file.json>]]
                            [--cloud <spec.json> [--sounding <sounding.csv>] [--cloud-results <file.json>]]
                            [--ground-shock <spec.json> [--ground-results <file.json>]]
@@ -32,7 +33,8 @@ enum HeadlessRun {
         milliseconds of simulated time (1 by default); --vdb-fields picks the volumes' grids,
         overpressure and shock unless it says otherwise. --fragments flies a cased charge's fragments
         and tracers through the blast, one way, frame by frame; they go into the USD scene and, with
-        --fragment-results, a JSON file. --envelope-results writes individual stationary-building
+        --fragment-results, a JSON file. --casing gives the casing's wall thickness and inside
+        diameter in metres, and its metal, so that the fragments follow Mott's scaling. --envelope-results writes individual stationary-building
         surface records as JSON; scenes with envelopes collect compact surface summaries in kept
         runs and CSV too. --envelope-histories writes each building component's pressure history
         (wall, slab and roof panels, panes, façade strips; both sides, 0.1 ms bins) as JSON, for a
@@ -143,7 +145,7 @@ enum HeadlessRun {
                         [
                             "name", "out", "csv", "resolution", "mass", "duration", "usd", "vdb",
                             "vdb-fields", "fragments",
-                            "consumer", "fragment-results", "thermal", "thermal-results", "cloud",
+                            "consumer", "fragment-results", "casing", "thermal", "thermal-results", "cloud",
                             "cloud-results", "sounding", "ground-shock", "ground-results", "envelope-results",
                             "envelope-histories", "envelope-damage", "envelope-window", "debris-results",
                             "frame-interval", "worker", "standing", "advise", "ground", "water-table",
@@ -251,6 +253,30 @@ enum HeadlessRun {
             if let path = values["fragments"] {
                 let spec = try JSONDecoder().decode(
                     FragmentSpec.self, from: Data(contentsOf: URL(filePath: path)))
+                try spec.validate()
+                options.fragments = spec
+            }
+            if let text = values["casing"] {
+                guard var spec = options.fragments else {
+                    throw ProjectFileError.invalid("--casing needs --fragments.")
+                }
+                let parts = text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+                guard (2...3).contains(parts.count), let thickness = Float(parts[0]),
+                    let diameter = Float(parts[1]),
+                    thickness.isFinite, diameter.isFinite, thickness > 0, diameter > 0
+                else {
+                    throw ProjectFileError.invalid(
+                        "--casing takes the wall thickness and inside diameter in metres, and optionally steel or castIron."
+                    )
+                }
+                spec.wallThickness = thickness
+                spec.innerDiameter = diameter
+                if parts.count == 3 {
+                    guard let metal = CasingMetal(rawValue: parts[2]) else {
+                        throw ProjectFileError.invalid("--casing's metal is steel or castIron.")
+                    }
+                    spec.metal = metal
+                }
                 try spec.validate()
                 options.fragments = spec
             }

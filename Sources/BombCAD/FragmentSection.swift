@@ -16,8 +16,9 @@ struct FragmentSection: View {
             Toggle("Cased charge", isOn: enabled)
                 .help(
                     "Flies the casing's fragments, and tracers that follow the air, through the blast from "
-                        + "the start of each run. Illustrative: Gurney launch speeds, Mott masses, and drag "
-                        + "from the blast; they do not push back on the air or the structure.")
+                        + "the start of each run: Gurney launch speeds, Mott masses, and drag from the blast; they "
+                        + "do not push back on the air or the structure. Illustrative, or an approximation given "
+                        + "the casing's dimensions.")
             if model.fragmentSpec != nil {
                 StandingRow(model: model, kinds: [.fragments])
                 LabeledSlider(
@@ -35,6 +36,42 @@ struct FragmentSection: View {
                 Picker("Casing shape", selection: spec(\.casing)) {
                     Text("Cylinder").tag(FragmentSpec.Casing.cylinder)
                     Text("Sphere").tag(FragmentSpec.Casing.sphere)
+                }
+                Picker("Casing metal", selection: metal) {
+                    ForEach(CasingMetal.allCases, id: \.self) { Text($0.title).tag(Optional($0)) }
+                    if model.fragmentSpec?.metal == nil {
+                        Text("As its description says").tag(CasingMetal?.none)
+                    }
+                }
+                .help(
+                    "Steel breaks as Mott's distribution says; cast iron, brittle, as Grady's exponential, which "
+                        + "fits a counted cast-iron bomb within a factor of 1.12 where Mott's is within 1.36."
+                )
+                Toggle("Casing dimensions", isOn: dimensioned)
+                    .help(
+                        "The casing's wall thickness and inside diameter. With them the fragments' number and "
+                            + "sizes follow Mott's scaling, and their standing is an approximation; without, the "
+                            + "number is chosen and they are illustrative. Turned on, it starts from a casing "
+                            + "that holds the charge and weighs the casing's mass.")
+                if let thickness = model.fragmentSpec?.wallThickness,
+                    let diameter = model.fragmentSpec?.innerDiameter
+                {
+                    LabeledSlider(
+                        title: "Wall thickness",
+                        value: Binding(
+                            get: { log10(Double(thickness)) },
+                            set: { model.fragmentSpec?.wallThickness = Self.rounded(Float(pow(10, $0))) }),
+                        range: log10(0.0005)...log10(0.1), text: String(format: "%.1f mm", thickness * 1000))
+                    LabeledSlider(
+                        title: "Inside diameter",
+                        value: Binding(
+                            get: { log10(Double(diameter)) },
+                            set: { model.fragmentSpec?.innerDiameter = Self.rounded(Float(pow(10, $0))) }),
+                        range: log10(0.02)...log10(3), text: String(format: "%.0f mm", diameter * 1000))
+                    Text(mottCaption)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Picker("Tracers", selection: spec(\.tracers)) {
                     ForEach(
@@ -61,6 +98,46 @@ struct FragmentSection: View {
 
     private var launchSpeed: Int {
         Int(model.fragmentSpec?.launchSpeed(chargeMass: model.settings.chargeMass) ?? 0)
+    }
+
+    private var metal: Binding<CasingMetal?> {
+        Binding(get: { model.fragmentSpec?.metal }, set: { model.fragmentSpec?.metal = $0 })
+    }
+
+    private var dimensioned: Binding<Bool> {
+        Binding(
+            get: { model.fragmentSpec?.wallThickness != nil },
+            set: { on in
+                guard var spec = model.fragmentSpec else { return }
+                if on, let size = spec.casingDimensions(chargeMass: model.settings.chargeMass) {
+                    spec.wallThickness = Self.rounded(size.thickness)
+                    spec.innerDiameter = Self.rounded(size.diameter)
+                } else {
+                    spec.wallThickness = nil
+                    spec.innerDiameter = nil
+                }
+                model.fragmentSpec = spec
+            })
+    }
+
+    /// Three significant figures, in metres.
+    private static func rounded(_ metres: Float) -> Float {
+        let step = pow(10, floor(log10(metres)) - 2)
+        return (metres / step).rounded() * step
+    }
+
+    /// What Mott's scaling makes of the casing: how many fragments, their mean mass, and what each
+    /// one flown stands for.
+    private var mottCaption: String {
+        guard let spec = model.fragmentSpec, let mean = spec.mottMeanMass else { return "" }
+        let real = spec.realFragmentCount
+        let each = spec.count > 0 ? real / Double(spec.count) : 0
+        return String(
+            format:
+                "Mott's scaling: about %@ fragments of %@ on average; each of the %@ flown stands for %@.",
+            Int(real.rounded()).formatted(),
+            mean >= 1 ? String(format: "%.2f kg", mean) : String(format: "%.1f g", mean * 1000),
+            spec.count.formatted(), each >= 10 ? String(format: "%.0f", each) : String(format: "%.2f", each))
     }
 
     private var enabled: Binding<Bool> {
