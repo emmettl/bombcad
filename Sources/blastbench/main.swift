@@ -63,7 +63,7 @@ import simd
 //                          (a temporal mixing layer's growth, against dθ/dt = 0.014 ΔU)
 //   blastbench thermal [--preset street] [--frames 60] [--samples 128] [--model volume] [--absorption 0.1] [--terrain hill]
 //                      (the volume's march, or the shape's and sphere's visibility, on CPU and GPU)
-//   blastbench deflagration [vessel|vented|tube|ball|layout] [--gas methane|propane] [--percent 9.5] [--air thermal]
+//   blastbench deflagration [vessel|vented|tube|ball|slope|layout] [--gas methane|propane] [--percent 9.5] [--air thermal]
 //                           [--laminar] [--turbulence 0.7] [--factor 1] [--wrinkling 1] [--mixing [--mixing-model smagorinsky]]
 //                           vented: [--vent 5.4] [--dx 0.1] [--ignition back] [--release Pa] [--posts 0.2] [--speeds]
 //                           [--arrivals f.csv] [--history f.csv] [--front] [--axis --until s]; ball: [--closed] [--shells]
@@ -5277,6 +5277,8 @@ do {
     case "deflagration": try runDeflagration()
     case "perimeter": try runPerimeter(device: device)
     case "keys": try runKeys(device: device)
+    case "envelope-walls": try runEnvelopeWalls(device: device)
+    case "nian": try runNian(device: device)
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
         exit(2)

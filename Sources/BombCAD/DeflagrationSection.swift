@@ -52,7 +52,7 @@ struct GasCloudSection: View {
     var body: some View {
         if let cloud = model.settings.scenario.deflagration {
             Section("Gas cloud") {
-                Picker("Gas", selection: binding(\.gas)) {
+                Picker("Gas", selection: binding(\.gas, in: cloud)) {
                     ForEach(FlammableGas.allCases, id: \.self) { Text($0.displayName).tag($0) }
                 }
                 .onChange(of: cloud.gas) {
@@ -139,10 +139,10 @@ struct GasCloudSection: View {
         }
     }
 
-    private func binding<T>(_ path: WritableKeyPath<Deflagration, T>) -> Binding<T> {
-        Binding(
-            get: { model.settings.scenario.deflagration![keyPath: path] },
-            set: { model.settings.scenario.deflagration?[keyPath: path] = $0 })
+    /// `path` of the cloud, or of `cloud`, as the section was drawn, once a menu choice has taken
+    /// the cloud away and SwiftUI reads the binding before the section goes (`Binding.into`).
+    func binding<T>(_ path: WritableKeyPath<Deflagration, T>, in cloud: Deflagration) -> Binding<T> {
+        .into($model.settings.scenario.deflagration, path, fallback: cloud[keyPath: path])
     }
 
     @ViewBuilder
@@ -216,8 +216,10 @@ struct VentPanelSection: View {
                 value: Binding(
                     get: { Double(panel.releasePressure / 1000) },
                     set: {
-                        model.settings.scenario.ventPanels?[index].releasePressure =
-                            Float(($0 * 2).rounded() / 2) * 1000
+                        Binding<Float>.element(
+                            $model.settings.scenario.ventPanels, at: index, \.releasePressure,
+                            fallback: panel.releasePressure
+                        ).wrappedValue = Float(($0 * 2).rounded() / 2) * 1000
                     }),
                 range: 0...50, text: String(format: "%.1f kPa", panel.releasePressure / 1000))
             ForEach(0..<3, id: \.self) { axis in
@@ -233,19 +235,26 @@ struct VentPanelSection: View {
             if panel.releasePressure <= 0 {
                 Text("An open vent: nothing fills the opening.").font(.caption).foregroundStyle(.secondary)
             }
-            Button("Remove", role: .destructive) { model.settings.scenario.ventPanels?.remove(at: index) }
+            Button("Remove", role: .destructive) {
+                if model.settings.scenario.ventPanels?.indices.contains(index) == true {
+                    model.settings.scenario.ventPanels?.remove(at: index)
+                }
+            }
         }
     }
 
     private func coordinate(_ index: Int, _ corner: WritableKeyPath<Box, SIMD3<Float>>, _ axis: Int)
         -> Binding<Double>
     {
-        Binding(
-            get: { Double(model.settings.scenario.ventPanels?[index].box[keyPath: corner][axis] ?? 0) },
-            set: {
-                model.settings.scenario.ventPanels?[index].box[keyPath: corner][axis] = Float(
-                    ($0 * 4).rounded() / 4)
-            })
+        // The panel may be removed while its sliders are still being read (`Binding.element`).
+        let value = Binding<SIMD3<Float>>.element(
+            $model.settings.scenario.ventPanels, at: index,
+            (\VentPanel.box as WritableKeyPath<VentPanel, Box>).appending(path: corner),
+            fallback: SIMD3<Float>(repeating: 0)
+        )
+        return Binding(
+            get: { Double(value.wrappedValue[axis]) },
+            set: { value.wrappedValue[axis] = Float(($0 * 4).rounded() / 4) })
     }
 
     /// A 2 m square panel, half a metre thick, on the cloud's (or the charge's) side facing +x.

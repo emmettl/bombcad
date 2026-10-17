@@ -67,7 +67,7 @@ More evidence is worth more than more features.
   an [independent review](validation-review.md) of the record, its wording and numbers
   corrected; the model's spread over uncertain inputs in nine cases
   ([ensembles](validation.md#the-models-spread-from-uncertain-inputs)); the reference curves' own
-  scatter ([data wanted 3g](data-wanted.md#3g-the-reference-curves-own-scatter)); each result's
+  scatter ([data survey 3g](data-survey.md#3g-the-reference-curves-own-scatter)); each result's
   [standing and error bands](standing.md), direction first.
   A [mesh-refinement study](validation.md#convergence-on-todays-defaults) on one pinned commit:
   nothing converges with the measurement inside the change; failures flip with mesh and step.
@@ -125,7 +125,7 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
 - **Next:** the rebound after a slab's peak; a shaken footing's lurch, and the rest of its
   energy (sand crushed across the whole contact, the shaken sand's own); pads' and dowels'
   laws; footings on a slope.
-- **Blocked:** a footing or connection under fast loading ([data wanted 3b](data-wanted.md#3b-a-footing-or-connection-under-fast-loading)).
+- **Blocked:** a footing or connection under fast loading ([data survey 3b](data-survey.md#3b-a-footing-or-connection-under-fast-loading)).
 
 ### Freestanding objects and supports
 
@@ -142,7 +142,9 @@ Supports are under [structures and supports](#structures-and-supports) above.
 
 One way and separable ([distributed computing](distributed-computing.md#the-long-term-visions-effects)).
 
-- **Done, illustrative:** [fragments](fragments.md); the fireball's
+- **Done, an approximation:** [fragments](fragments.md) from a casing's dimensions, Mott's
+  masses within 1.4 of Cooper's counted bomb, measured drag (17 October); hazard outputs next.
+- **Done, illustrative:** the fireball's
   [thermal radiation](thermal-radiation.md) and [surface heating](surface-heating.md); its
   [rise and cloud](fireball-rise.md); [ground shock](ground-shock.md), as the manuals'
   estimate or a layered soil column; [gas deflagrations](deflagration.md), started: FM Global's

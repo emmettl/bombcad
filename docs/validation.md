@@ -78,6 +78,8 @@ swift run -c release blastbench perimeter --study wall
 | Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 11% to 14 mrad of rotation (against the larger of its two directions), 5–14% low beyond; settlement 1.3–1.7 times that measured. The same footing shaken (FoRDy, eight events on three structures): settlement 0.4–1.3 times (0.6–1.3 but for the embedded footing's first event), the surface footing's peak rotation within 10% where the test did not lurch one way (the embedded footing's first event a quarter); energy a cycle 0.5–1.2 times slowly and 0.3–1.2 times shaken, damping ratios 10–27% against 17–32%. Both on sand of 80 MPa, an estimate, twice the default's; the sand's heave set on the slow test | Rocking moment either way to 14 mrad and 5–14% low beyond (moderate); settlement within a factor of 1.7 (moderate); energy too little, a sixth to two thirds of a shaken event's (low), as for a footing that lurches; on a sand twice the default's |
 | Held out (blind)     | Hrynyk's three plain slabs struck repeatedly by a falling weight, predicted on frozen defaults before the measurements were unsealed: first impacts 1.15–1.29 times the measured peak (too flexible, as the calibrated beams were); later impacts 0.56–0.83, residuals a seventh to a third, and none of the three slabs' punching failures predicted. Mendonça's seven slabs under an open-air charge: the two nearest the charge collapsed, the model leaving them standing; the declared peaks 0.31–1.23 of measured on the survivors, those near 1 made by an artefact of the sleeping air as the slabs landed after the blast threw them up; the blast's own peak a tenth to a quarter of the meters'. Reynolds's six high-strength slabs in the contest slab's rig (v0.3.0): peaks 0.77–1.06 of measured on the five that held in the model, 0.87 on average at 4 in; the sixth, the lightly reinforced slab under the larger load, broken through where the test held at 182 mm; the blast face never crushed where four of the standing slabs' tests were | Hrynyk: between, by the protocol's rule, the calibrated error on undamaged slabs, much worse and on the unsafe side once they are damaged. Mendonça: worse, by the rule, far too stiff and too strong, the unsafe side. Reynolds: worse, by the rule, on the one broken slab (the safe side); the others within the calibrated band, a little stiff |
 | Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.1–1.7 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own. [Brick walls](#brick-walls-debris) (Keys, 2016): loads within 15%, but the walls break into too few pieces, falling at full length in the open (means of −2 to +2 m against +0.2 to +0.6 m) and thrown half as far as measured in a shock tube. Collapse once, blind: [Mendonça's slabs](#blind-test-2-mendonças-slabs-under-an-open-air-charge), the two that collapsed left standing | Unsafe side for debris: held back rather than thrown, slabs never holed, brick walls thrown short (low); collapse missed in both slabs that collapsed (blind) |
+| Window glass         | Monk and Clubley's annealed windows in the Shoeburyness tunnel (4 mm, 0.89 m², four aspect ratios, about 33 kPa reflected for longer than they lasted): the app's large-deflection panes (Moore's plate, E1300's flaw model) break every pane, as every pane broke, at 0.82–1.07 of the twelve measured times and 0.69–1.15 of the deflection (the small-deflection panes before them at 0.40–0.46). Against ASTM E1300: its stresses within 8%, its load resistance 0.57–0.72 | Either way within about 20% for timing under a strong load (moderate); the threshold a third under E1300's design resistance, the safe side, not measured |
+| Fragments            | [Cooper (1996)](#fragments-against-coopers-data): his worked Mott and Gurney examples to rounding; one counted cast-iron bomb within a factor of 1.36 (rms) by Mott's form, 1.12 by Grady's; drag now the measured curve for tumbling cubes, 5% from the previous law. No arena test of launch speeds or ranges | Masses either way within a factor of 1.4 (moderate, one test); speeds and ranges untested (low) |
 | Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 1–2%, structural responses 4–20%, residual deflections and failure 17–28%; the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
 
 No structural result has yet been shown to converge on today's defaults: the meshes quoted as
@@ -3047,6 +3049,47 @@ joints running away within 30 ms (`blastbench perimeter --study wall --wall maso
 nodes of broken blockwork leaving at 10³ m/s; cracks smeared over a whole face where the tests
 showed a few; and a footing that cannot be held by a slab cast against it.
 
+## A blast wall with its length known
+
+The shielding Alsubaei's walls could not test, for want of their wing walls' length: X. Nian et al.,
+*Defence Technology* 31 (2024) 567–579 (open access, CC BY-NC-ND; derived numbers in
+`Fixtures/Nian2024`), a reinforced concrete wall 6 m long, 2.5 m high and 0.4 m thick standing alone,
+5 and 20 kg of TNT on the ground on its axis 3 m in front, with side-on gauges in the ground on a line
+through the charge parallel to the wall (3, 5, 7 and 9 m from it), one reflected gauge in the face
+0.22 m up, and side-on gauges in the ground 2, 4 and 6 m behind it. Two shots, both with the wall; a
+few gauges behind it failed, and those that read were, the authors say, abnormal and low-pass filtered
+at 2 kHz. `blastbench nian` runs it: the wall rigid, the recommended air, each charge with the wall and
+without it, on 100 and 50 mm cells (17 October 2026).
+
+Peaks, kPa, measured / model on 50 mm cells (100 mm), and the wall's factor (with it over without):
+
+| Gauge | 5 kg: measured | model | 20 kg: measured | model | The wall's factor, 5 / 20 kg |
+|---|---|---|---|---|---|
+| In front, 3 m along | 310 | 335 (285) | 1,620 | 1,077 (896) | 1.00 |
+| 5 m along | 122 | 106 (97) | 220 | 311 (285) | 1.00 |
+| 7 m along | 63 | 55 (50) | 170 | 145 (134) | 1.00 |
+| 9 m along | 49 | 36 (32) | 120 | 86 (80) | 1.00 |
+| Face, 0.22 m up (reflected) | 3,240 | 1,238 (924) | 7,720 | 5,137 (3,389) | |
+| 2 m behind | 14.3 | 27.1 (24.6) | – | 56.8 (50.9) | 0.29 / 0.21 |
+| 4 m behind | – | 27.9 (25.2) | 52.1 | 65.3 (59.8) | 0.55 / 0.50 |
+| 6 m behind | 12.2 | 26.0 (23.9) | – | 63.2 (60.5) | 0.78 / 0.80 |
+
+**In front,** where the gauges see the open wave beside the wall, the model is 1–11% below the
+paper's own ConWep values (5 kg: 370, 118, 61, 40 kPa; 20 kg: 1,090, 340, 160, 90) and the measured
+scatter about them is larger: at 20 kg the first two gauges read 1.5 and 0.65 of ConWep. The
+reflected peak at the wall's foot is 0.79 and 0.83 of ConWep's on 50 mm cells and still rising with
+the mesh; the measured 3.24 MPa at 5 kg, twice ConWep's, is a narrow spike.
+
+**Behind the wall the model shields less than the test**: 1.9 and 2.1 times the measured peaks at 5 kg
+and 1.25 times at 20 kg, rising a little as the cells are halved. With a whole, known length, the wave
+over the top and round the ends (6 m of wall, 3 m from the charge) leaves 0.3 of the open peak 2 m
+behind, rising to 0.8 by 6 m; the paper's factors against its empirical free field are 0.12–0.33.
+The measured peaks behind are the filtered records of gauges the authors call abnormal, and a 2 kHz
+filter takes a sharp front's peak down; how far, without the raw records, cannot be said. Behind
+Alsubaei's walls the model shielded more than measured; behind this one, less. Both lie on the side
+of the measurement's own doubts, so neither settles how well the model diffracts over a wall:
+this one errs on the safe side for what stands behind.
+
 ## Brick walls' debris
 
 Where a brick wall's debris lands: single-leaf brick walls broken by a blast, every brick
@@ -3181,6 +3224,121 @@ separates the courses in the test (the pieces' own momentum through an open join
 it, or the brick-mortar interface's dynamic strength) needs the high-speed film's motion, not
 only its cracks. Also for later: the tunnel walls of the 4.9 m section, thrown 20–50 m, and the
 drag on broken pieces in flight.
+
+## Window glass
+
+The one-way glass model of [envelope damage](building-envelopes.md#one-way-damage-single-degree-of-freedom)
+against measurement: when annealed panes break under a long blast wave.
+
+### The tests
+
+S. Monk and S. K. Clubley (University of Southampton), ISIEMS 2017
+([Fixtures/MonkClubley](../Fixtures/MonkClubley/README.md)): eight trials in the 10.2 m section of
+the air blast tunnel at MOD Shoeburyness, two identical panes a trial on sealed cubicles facing
+the wave. Each pane was 4 mm annealed glass of 0.89 m², at aspect ratios 1:1, 1:1.3, 1:1.7 and 1:2,
+in a steel frame bolted against spacers over foam strips (65 mm bite), which the authors call rigid.
+The reflected pressure on the cubicles rose to about 33 kPa within 0.8 ms (spikes to 38.8 kPa) and
+stayed there past 4.5 ms, 724 kPa·ms in all over a 100 ms positive phase. Every pane broke, within
+4 ms; twelve were timed by high-speed video (two trials' records were lost), and the centre's
+deflection at the first crack measured.
+
+### The model
+
+Two models of the pane as one degree of freedom on its clear opening (70 GPa, ν 0.22, 2,500
+kg/m³), the app's since 17 October and the one before it:
+
+- **Large deflection, the app's** (`EnvelopePanel.largeDeflectionGlass`): D. M. Moore's plate
+  (JPL Publication 80-34, 1980), as UFC 3-340-02's figures 6-52 and 6-53 give its stresses and
+  deflection, simply supported and free to move in its plane at the edges, membrane action
+  stiffening it once it deflects more than a third of its thickness; the load–mass factor UFC's
+  for glass. It breaks when its largest principal stress, weighed over time by glass's static
+  fatigue (Brown's integral, exponent 16), reaches the median 60 s strength of ASTM E1300's flaw
+  model (Beason and Morgan) with the whole pane at that stress, 32.3 MPa for these panes; or when
+  it deflects ten times its thickness (UFC: the edges let go).
+- **Small deflection, before**: elastic on small-deflection plate theory until the largest bending
+  stress reaches 45 MPa, then nothing; fixed edges in the app, simply supported beside them.
+
+The load is the median of all sixteen pressure records read off the paper's figure 8, and, as a
+check, a step at each aspect ratio's mean pressure to its break from table 2 (its impulse at the
+break over its break time, 32–33 kPa). `GlassMeasurementTests`.
+
+### Results
+
+| Aspect ratio | Opening (m) | Measured break, ms (each) | Large deflection | Small, fixed | Small, simply supported | Deflection at break, measured |
+|---|---|---|---|---|---|---|
+| 1:1   | 0.815 × 0.815 | 3.45 (3.29, 3.61)              | 2.92 ms, 0.85; 18.5 mm | 1.60 ms, 0.46; 5.0 mm | 2.90 ms, 0.84; 17.2 mm | 21 ± 6 mm |
+| 1:1.3 | 0.697 × 0.945 | 3.69 (3.65, 3.72)              | 3.01 ms, 0.82; 18.1 mm | 1.48 ms, 0.40; 4.2 mm | 2.61 ms, 0.71; 13.8 mm | 26 ± 6 mm |
+| 1:1.7 | 0.595 × 1.100 | 3.01 (2.74, 2.76, 2.94, 3.60)  | 3.21 ms, 1.07; 18.5 mm | 1.33 ms, 0.44; 3.3 mm | 2.32 ms, 0.77; 10.7 mm | 16 ± 5 mm |
+| 1:2   | 0.537 × 1.204 | 2.98 (2.44, 2.78, 3.18, 3.52)  | 2.97 ms, 1.00; 15.2 mm | 1.24 ms, 0.42; 2.8 mm | 2.17 ms, 0.73; 9.2 mm  | 16 ± 6 mm |
+
+Each model cell gives the break time, its ratio to the measured mean, and the deflection at which
+the model breaks; the measured deflections are table 2's means and 90% confidence half-widths.
+
+- **Every pane breaks, as every pane did**, but the load was several times what the panes resist
+  statically, so this series tests when a pane breaks, not whether.
+- **Large deflection: 0.82–1.07 of the measured time** (0.93 on average), at 0.69–1.15 of the
+  measured deflection; 0.76–1.00 on table 2's step, at full pressure from the start. It breaks at
+  74–77 MPa: the 32 MPa held for 60 s, raised by the 3 ms its stress takes to build, near the 80
+  MPa Del Linz et al. (2015) estimate for glass breaking under blast.
+- **Small deflection: 0.40–0.46 of the time with fixed edges**, 0.71–0.84 simply supported, at a
+  fifth of the measured deflection with fixed edges (0.16–0.24; 0.53–0.82 simply supported).
+  The measured panes deflected four to six and a half times their thickness before cracking,
+  where membrane action carries much of the load and keeps the bending stress down; without it
+  the pane reaches 45 MPa far sooner. A pane loaded this far past its resistance moves almost as
+  a free mass, so its break time goes as the square root of its break deflection: √0.2 ≈ 0.45.
+- **The trend with aspect ratio is not followed** by either: the tests broke latest at 1:1.3,
+  within their scatter (90% intervals ±0.2–1.0 ms).
+- **How much of the pane bears its largest stress** sets the strength (as the seventh root): the
+  whole pane, the default, is the least strength the flaw model allows. A third of it gives
+  0.86–1.13 of the measured times, a tenth 0.91–1.19, late for the 1:1.7 and 1:2 panes.
+
+### The threshold, against ASTM E1300
+
+No test here finds where a pane only just breaks. The closest open check is ASTM E1300's load
+resistance, the load breaking 8 panes in 1,000 held for 3 s, from the same flaw model integrated
+over a finite-difference plate's stresses (Vallabhan), for eight annealed panes as Soules, Morse
+and Norville tabulate them (`GlassMeasurementTests.e1300Threshold`):
+
+- **The plate.** At E1300's load resistance Moore's curves give its largest principal stress
+  within 0.94–1.08 and its deflection within 0.89–1.06, from a 0.25 × 1.83 m pane of 6 mm to a
+  2.3 × 3.0 m pane of 12 mm.
+- **The strength.** At the same probability and duration, with the whole pane at its largest
+  stress, the panes break at 0.57–0.72 of E1300's load resistance: under lower loads than E1300's,
+  so further out from a charge, the safe side. With a tenth of the pane at that stress they
+  break at 0.85–1.08 of it, but late against Monk and Clubley's (above).
+
+### Against the detailed model's panes
+
+On the [damage references](building-envelopes.md#damage-references)' 52 panes of 6 mm, 1.5 ×
+1.25 m (`scenebench envelope-sdof --glass=large|small|large-at-45`): the large-deflection panes
+break the same 45 the detailed buildings break, a median 1.01 of their time (0.67–1.31), and 6
+more under peaks of 3.7–7.3 kPa; the small-deflection panes with fixed edges broke the 45 at 0.94
+(0.59–1.20) and 7 more. At the detailed model's own strength, 45 MPa at once, the large-deflection
+panes give 0.99 (0.65–1.28).
+
+### What this does and does not show
+
+It shows that the app's glass breaks when it should under a strong long-duration wave, within
+about 20% of the measured time, and that its plate gives E1300's stresses within 8%. Its
+threshold is the flaw model's with the whole pane stressed, a third lower than E1300's design
+resistance: more panes broken at a distance, the safe side. Measured thresholds, panes that held
+beside panes that broke, are still wanted (see the [data
+survey](data-survey.md#3h-window-glass-breaking-under-a-blast)), and tempered or laminated glass,
+fixed or yielding frames and short-duration waves have no comparison. The load is read off a
+figure, 5–7% under the impulses table 2 gives at the break. One facility and one glass, with
+intrinsic strength scatter the paper puts above the aspect ratio's effect.
+
+## Fragments against Cooper's data
+
+A cased charge's fragments ([Fragments](fragments.md#against-coopers-data)) against the data in
+Cooper's *Explosives Engineering* (1996), digitised in `Fixtures/Cooper1996/`: his worked
+examples are reproduced (Mott's 140.6 fragments from a 1 in cylinder, Gurney's 0.898 km/s); the
+one counted test, a cast-iron aerial bomb, is within a factor of 1.36 (rms) of Mott's form from
+0.13 to 8.8 g, and within 1.12 of Grady's exponential (`massExponent` 1). The drag is now
+Hansche and Rinehart's measured curve for tumbling cubes, which moves the distance a fragment
+keeps 79 J by under 5%; Hoerner's fixed-orientation curves span 30% shorter to 50% longer. Cooper
+covers mild steel cylinders and 13 explosives; no arena test of launch speeds or ranges has been
+compared ([wanted](data-wanted.md#to-fetch)).
 
 ## Blast loads against empirical references
 
@@ -3734,7 +3892,7 @@ measured in nearly closed rooms (scaled vent area under 0.015), with a standard 
 11%. The model's 98% to 108% with afterburning and hot air is inside that scatter, so it agrees
 with the curve about as well as the tests do; the default's 48% at the lightest charge is far
 outside it. The tests behind the curve are still wanted
-([Data wanted](data-wanted.md#3g-the-reference-curves-own-scatter)).
+([Data survey](data-survey.md#3g-the-reference-curves-own-scatter)).
 
 Cooper (*Explosives Engineering*, pp. 153–158) works a closed vessel through by hand: 2 kg of
 TNT burnt completely in 14.1 m³ of air (0.14 kg/m³) leaves 7.35 atm of overpressure, 0.745 MPa.

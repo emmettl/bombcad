@@ -434,7 +434,7 @@ the run's cost is the frames' extra steps, not the estimate.
 - The ground points in the app as a grid over an area as well as a line, and the column's depth
   drawn in the view beside them rather than only in a chart.
 - A comparison with measured air-induced ground motion
-  ([Data wanted](data-wanted.md#3a-air-induced-ground-shock)).
+  ([Data survey](data-survey.md#3a-air-induced-ground-shock)).
 
 ## Sources
 
@@ -469,7 +469,7 @@ the run's cost is the frames' extra steps, not the estimate.
 The soil column's closed form for bilinear soil, the series above, was derived here by
 characteristics and checked against the column; it is not quoted from any of these sources.
 The manuals' own text could not be consulted while this was written (see
-[Data wanted](data-wanted.md#3a-air-induced-ground-shock)). The relations above are the standard
+[Data survey](data-survey.md#3a-air-induced-ground-shock)). The relations above are the standard
 ones they are known for, re-derived here and checked analytically by the tests. Equation numbers
 are therefore not quoted, and the √2 cut-off for the horizontal estimate is this project's
 choice.

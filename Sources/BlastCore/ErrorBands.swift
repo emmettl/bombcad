@@ -279,9 +279,8 @@ public enum ValidationTables {
     /// heading and holds the figure's numbers.
     public static let figures: [Figure] = [
         Figure(
-            id: "envelopeGlassBreak", low: 0.59, high: 1.20,
-            document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
-            quote: "(0.59–1.20 of the detailed time)"),
+            id: "envelopeGlassBreak", low: 0.82, high: 1.07, document: "validation.md#window-glass",
+            quote: "0.82–1.07 of the measured time"),
         Figure(
             id: "envelopeConcreteFixed", low: 0.61, high: 1.03,
             document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
@@ -295,9 +294,9 @@ public enum ValidationTables {
             document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
             quote: "(0.82–2.54)"),
         Figure(
-            id: "envelopeInsideFill", low: 0.87, high: 2.23,
+            id: "envelopeInsideFill", low: 0.75, high: 1.60,
             document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
-            quote: "(0.87–2.23 times the detailed peaks)"),
+            quote: "(0.75–1.60 times the"),
         Figure(
             id: "slabSolid", low: 1.04, high: 1.15, document: "validation.md#summary",
             quote: "solid elements 113–125 mm (104–115%) on 4 to 32 elements through"),
@@ -1362,11 +1361,14 @@ extension StandingScene {
         case .envelopeDamage:
             let page = "building-envelopes.md#one-way-damage-single-degree-of-freedom"
             let check = "The same buildings free to respond, 0.125 m shells"
-            bands += [
+            bands.append(
                 figure(
                     "envelopeGlassBreak", .breakageTime, "When a pane breaks", lowIsUnsafe: false,
-                    low: "too early",
-                    high: "too late", validity: "6 mm annealed panes 1.5 × 1.25 m, 2–500 kg", check: check),
+                    low: "too early", high: "too late",
+                    validity: "4 mm annealed panes of 0.89 m² in a rigid frame, every one broken by a long "
+                        + "wave reflected at about 33 kPa",
+                    check: "Monk and Clubley's twelve timed panes, Shoeburyness"))
+            bands += [
                 figure(
                     "envelopeConcreteFixed", .peakDeflection, "Concrete wall rotation, fixed edges",
                     low: "too stiff",
@@ -1393,6 +1395,15 @@ extension StandingScene {
                 return band
             }
             unbanded.append("Roofs, and walls beside a failing one, go beyond both concrete bounds: no band.")
+            let freestanding = inputs.scenario.envelopeObjects.contains { object in
+                object.envelope?.components(owner: object.id).contains(where: \.isFreestanding) ?? false
+            }
+            if freestanding {
+                unbanded.append(
+                    "Freestanding walls are judged as cantilevers from their foot, outside these bands (derived "
+                        + "on panels held on their edges); compared with Alsubaei's and Keys's measured walls "
+                        + "instead (building-envelopes.md#freestanding-walls).")
+            }
         case .thermal:
             if !burning {
                 unbanded.append(

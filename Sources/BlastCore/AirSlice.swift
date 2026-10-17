@@ -97,6 +97,18 @@ public struct AirSlice: Sendable, Equatable {
 }
 
 extension AirSlice {
+    /// Still `air` everywhere, at `time`: a slice of no grid, which every point is outside, for
+    /// flying on after the blast's last frame. Steps over it are limited as over cells of
+    /// `cellSize`.
+    public static func still(_ air: Primitive, time: Double, cellSize: Float = 2) -> AirSlice {
+        let values = [air.density, air.velocity.x, air.velocity.y, air.velocity.z, air.pressure / 1e6].map {
+            Float16($0)
+        }
+        return AirSlice(
+            time: time, cellSize: cellSize, grid: .zero, first: .zero, counts: SIMD3(repeating: 1), stride: 1,
+            values: values, ambient: air)
+    }
+
     /// Which cells a slice of `region` every `stride`-th cell holds: the first, and how many
     /// along each axis, enough to reach past the region's far side, as far as the grid goes.
     struct Layout: Equatable {

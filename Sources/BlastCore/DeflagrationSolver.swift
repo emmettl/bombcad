@@ -304,23 +304,31 @@ extension BlastSolver {
         guard let stage = deflagrationStage else { return nil }
         let volume = Double(grid.cellSize) * Double(grid.cellSize) * Double(grid.cellSize)
         var unburnt = 0.0
-        var burnt = 0
+        var burnt = 0.0
         let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
         if stage.deflagration != nil {
             let densities = withState { cells in cells.map(\.density) }
             readSpecies { species in
                 guard let species else { return }
                 for index in 0..<grid.cellCount where mask[index] == 0 {
+                    // A cut cell's densities are of the air it holds, its share of the cell.
                     let s = species[index]
-                    unburnt += Double(s.x)
-                    if s.y > 0.5 * densities[index] && s.x < 0.5 * s.y { burnt += 1 }
+                    let share = fluidShare(index)
+                    unburnt += Double(s.x) * share
+                    if s.y > 0.5 * densities[index] && s.x < 0.5 * s.y { burnt += share }
                 }
             }
         }
         return DeflagrationState(
             unburnt: unburnt * volume, initialUnburnt: stage.initialUnburnt,
-            burntVolume: Double(burnt) * volume,
+            burntVolume: burnt * volume,
             panelOpenTimes: stage.openTimes)
+    }
+
+    /// Whether `scenario` has a deflagration or vent panels, neither of which works with refined air
+    /// (see `loadDeflagration`).
+    static func keepsAirUnrefined(_ scenario: Scenario) -> Bool {
+        scenario.deflagration != nil || (scenario.ventPanels ?? []).contains { $0.releasePressure > 0 }
     }
 
     /// Sets up the scenario's deflagration and vent panels, if any, before the air is filled:
@@ -332,7 +340,7 @@ extension BlastSolver {
         deflagrationStage = nil
         let panels = (scenario.ventPanels ?? []).filter { $0.releasePressure > 0 }
         let panelCells = placeVentPanels(panels)
-        guard scenario.deflagration != nil || !panels.isEmpty else { return }
+        guard Self.keepsAirUnrefined(scenario) else { return }
         if scenario.deflagration != nil { configuration.afterburning = false }
         if scenario.deflagration?.acceleration.turbulence != nil, configuration.mixing == nil {
             configuration.mixing = .sigma
@@ -382,11 +390,12 @@ extension BlastSolver {
     /// now on; the panels' cells as (cell, panel) pairs, panels numbered among those with a
     /// release pressure.
     private func placeVentPanels(_ panels: [VentPanel]) -> [(index: Int, panel: Int)] {
-        // Editing the mask forgets the blocks' outline, so leave it alone without panels.
+        // Editing the mask forgets the blocks' outline, so leave it alone without panels. The terrain's
+        // is kept: a panel's cells, cut cells among them, are solid only until it opens.
         guard !panels.isEmpty else { return [] }
         var cells: [(index: Int, panel: Int)] = []
         let dx = grid.cellSize
-        mutateMask { mask in
+        editMaskKeepingTerrain { mask in
             for (n, panel) in panels.enumerated() {
                 let low = panel.box.min / dx - 0.5
                 let high = panel.box.max / dx - 0.5
@@ -407,8 +416,8 @@ extension BlastSolver {
     }
 
     /// Fills the cloud's region with unburnt mixture: each fluid cell takes the share of its
-    /// volume inside the region (sampled at 4 x 4 x 4 points), as unburnt mixture density, and
-    /// as the density of gas from the cloud.
+    /// volume inside the region (sampled at 4 x 4 x 4 points; of a cut cell, of the points above
+    /// the ground), as unburnt mixture density, and as the density of gas from the cloud.
     func depositCloud(_ deflagration: Deflagration) -> Double {
         let dx = grid.cellSize
         let region = deflagration.region
@@ -426,6 +435,9 @@ extension BlastSolver {
                             let index = grid.index(i, j, k)
                             guard mask[index] == 0 else { continue }
                             var inside = 0
+                            var air = samples * samples * samples
+                            let fluid = fluidShare(index)
+                            if fluid < 1 { air = 0 }
                             for c in 0..<(samples * samples * samples) {
                                 let offset =
                                     (SIMD3<Float>(
@@ -433,14 +445,18 @@ extension BlastSolver {
                                         Float(c / (samples * samples)))
                                         + 0.5) / Float(samples)
                                 let point = (SIMD3<Float>(Float(i), Float(j), Float(k)) + offset) * dx
+                                if fluid < 1, let ground = terrain, point.z < ground.height(at: point) {
+                                    continue
+                                }
+                                if fluid < 1 { air += 1 }
                                 if region.contains(point) { inside += 1 }
                             }
                             guard inside > 0 else { continue }
-                            let share = Float(inside) / Float(samples * samples * samples)
+                            let share = Float(inside) / Float(air)
                             // Unburnt mixture, and all gas from the cloud (see Deflagration.metal).
                             let mixture = share * cells[index].density
                             species[index] = SIMD2(mixture, mixture)
-                            total += Double(mixture)
+                            total += Double(mixture) * fluid
                         }
                     }
                 }

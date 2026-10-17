@@ -41,7 +41,8 @@ struct EnvelopeDamageTests {
         let loads = [
             // The facing wall of the isolated building at 200 kg: about 350 kPa over 2 ms.
             load("w", .wall, owner: owner, region: wall, axis: 1, outer: pulse(350e3, over: 0.002)),
-            load("p", .pane, owner: owner, region: pane, axis: 1, outer: pulse(70e3, over: 0.004)),
+            // A pane under a longer pulse, which it outlasts a while (the large-deflection pane breaks at about 3 ms).
+            load("p", .pane, owner: owner, region: pane, axis: 1, outer: pulse(70e3, over: 0.01)),
             load("q", .pane, owner: owner, region: pane, axis: 1, outer: pulse(500, over: 0.004)),
         ]
         let damage = EnvelopeDamageAssessment.assess(

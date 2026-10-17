@@ -18,8 +18,9 @@ func runDeflagration() throws {
         let data = try JSONEncoder().encode(ScenarioPreset.ventedGasRoom.scenario)
         try data.write(to: URL(fileURLWithPath: option("out") ?? "gas-room.json"))
     case "tube", "ball": try runTube(device: device, gas: gas, ball: mode == "ball")
+    case "slope": try runSlope(device: device, gas: gas)
     default:
-        print("Unknown deflagration check \(mode). Use vessel, vented, tube, ball or layout.")
+        print("Unknown deflagration check \(mode). Use vessel, vented, tube, ball, slope or layout.")
         exit(2)
     }
 }
@@ -440,5 +441,74 @@ private func inspectHottest(_ solver: BlastSolver) {
                 + " rho \(format(Double(p.density), 4)), T \(format(Double(t), 0)) K,"
                 + " u \(p.velocity), b \(share.map { format(Double($0[grid.index(c.i, c.j, c.k)]), 3) } ?? "-")"
         )
+    }
+}
+
+/// `blastbench deflagration slope [--angle 20] [--dx 0.05] [--until 0.3] [--laminar]`: mixture filling the
+/// half space above ground, lit just above it, without gravity, on a plane sloping at `angle` (cut
+/// cells, then the staircase) and on a flat floor, the same problem turned. Prints when the burnt gas
+/// reaches each equivalent hemisphere's radius, and the peak overpressure at gauges 1 m from the
+/// ignition along the ground upslope, downslope and across, and above it, each 0.2 m off the ground.
+private func runSlope(device: MTLDevice, gas: FlammableGas) throws {
+    let angle = option("angle").flatMap { Float($0) } ?? 20
+    let dx = option("dx").flatMap { Float($0) } ?? 0.05
+    let until = option("until").flatMap { Double($0) } ?? 0.3
+    let theta = angle * .pi / 180
+    let foot: Float = 0.4
+    let length: Float = 4.8
+    let height: Float = 1.6 + (length - foot) * tan(theta)
+    let domain = SIMD3<Float>(length, length, height)
+    let x0 = length / 2
+    let distance: Float = 1
+    let offGround: Float = 0.2
+    let radii = [0.4, 0.6, 0.8, 1.0]
+    print(
+        "\(gas.displayName)–air filling the space above ground, lit \(format(Double(2 * dx), 2)) m above it, "
+            + "no gravity, \(format(Double(dx), 3)) m cells; a \(format(Double(angle), 0))° slope against a flat floor"
+    )
+    print(
+        pad("ground", 22) + radii.map { pad("t(r=\(format($0, 1))) ms", 13) }.joined()
+            + pad("up kPa", 9) + pad("down kPa", 10) + pad("across kPa", 12) + pad("above kPa", 11) + "run s")
+    for (name, sloped, cut) in [
+        ("slope, cut cells", true, true), ("slope, staircase", true, false), ("flat floor", false, false),
+    ] {
+        // The ground's frame: a point on it under the ignition, its normal and the upslope direction.
+        let base =
+            sloped ? SIMD3<Float>(x0, length / 2, (x0 - foot) * tan(theta)) : SIMD3<Float>(x0, length / 2, 0)
+        let normal = sloped ? SIMD3<Float>(-sin(theta), 0, cos(theta)) : SIMD3<Float>(0, 0, 1)
+        let upslope = sloped ? SIMD3<Float>(cos(theta), 0, sin(theta)) : SIMD3<Float>(1, 0, 0)
+        let across = SIMD3<Float>(0, 1, 0)
+        var scenario = Scenario(
+            name: "Slope", domainSize: domain, boxes: [], charge: Charge(mass: 0, position: .zero))
+        if sloped { scenario.terrain = .slope(domain: domain, spacing: dx / 2, foot: foot, angle: angle) }
+        let ignition = base + 2 * dx * normal
+        scenario.deflagration = Deflagration(
+            gas: gas, region: Box(min: .zero, max: domain), ignition: ignition,
+            acceleration: flag("laminar") ? .laminar : FlameAcceleration())
+        let gauges = [upslope, -upslope, across, normal].map { base + distance * $0 + offGround * normal }
+        scenario.gauges = gauges.enumerated().map { Gauge("gauge \($0.offset)", at: $0.element) }
+        var configuration = SolverConfiguration()
+        configuration.terrainCutCells = cut
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: dx, configuration: configuration)
+        let clock = Date()
+        var reached = [Double?](repeating: nil, count: radii.count)
+        while solver.time < until {
+            solver.advance(until: solver.time + 0.002)
+            guard let state = solver.deflagrationState() else { break }
+            let radius = cbrt(3 * state.burntVolume / (2 * Double.pi))
+            for (n, r) in radii.enumerated() where reached[n] == nil && radius >= r {
+                reached[n] = solver.time
+            }
+            if reached.last! != nil { break }
+        }
+        let peaks = gauges.map { point -> Double in
+            let cell = solver.grid.cell(containing: point)
+            return Double(solver.peakOverpressure(cell.i, cell.j, cell.k)) / 1000
+        }
+        print(
+            pad(name, 22) + reached.map { pad($0.map { format($0 * 1000, 1) } ?? "-", 13) }.joined()
+                + pad(format(peaks[0], 2), 9) + pad(format(peaks[1], 2), 10) + pad(format(peaks[2], 2), 12)
+                + pad(format(peaks[3], 2), 11) + format(Date().timeIntervalSince(clock), 0))
     }
 }
