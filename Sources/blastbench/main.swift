@@ -117,6 +117,7 @@ func preset(named name: String?) -> ScenarioPreset {
     case "blockwall": .blockWall
     case "chamber": .internalExplosion
     case "gasroom": .ventedGasRoom
+    case "plant": .processPlantExplosion
     default: .streetCanyon
     }
 }
@@ -125,6 +126,10 @@ func preset(named name: String?) -> ScenarioPreset {
 /// (0.25 when given without a size) if asked.
 func chosenScenario() -> Scenario {
     var scenario = preset(named: option("preset")).scenario
+    // `--flame-factor 12`: a gas cloud's burning velocity times this (`FlameAcceleration.factor`).
+    if let factor = option("flame-factor").flatMap({ Float($0) }) {
+        scenario.deflagration?.acceleration.factor = factor
+    }
     if flag("shells") || option("shells") != nil, var structure = scenario.structure {
         structure.elementKind = .shell
         structure.elementSize = option("shells").flatMap { Float($0) } ?? 0.25
@@ -1493,6 +1498,16 @@ func runSnapshot() throws {
                 constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms)
             renderer.setEnvelopeDamage(
                 Dictionary(uniqueKeysWithValues: damage.map { ($0.id, EnvelopeDamageColour.code($0)) }))
+            // `--envelope-loads`: each component's faces and peak loads, to check what the air reached.
+            if flag("envelope-loads") {
+                for history in histories {
+                    print(
+                        "  \(history.component.kind) of \(history.component.owner.uuidString.prefix(8)): "
+                            + "faces \(history.faceCount), peak outer "
+                            + "\(format(Double(history.peakOuterPa) / 1000, 1)) kPa, "
+                            + "net \(format(Double(history.peakNetPa) / 1000, 1)) kPa")
+                }
+            }
             for building in damage {
                 let name = scenario.object(id: building.id)?.name ?? "Building"
                 print(
@@ -1690,6 +1705,10 @@ func runSnapshot() throws {
         renderer.setDots(dots)
         if let size = option("dot").flatMap({ Float($0) }) { renderer.settings.dotSize = size }
         var camera = OrbitCamera.framing(scenario)
+        // `--target 40,40,2`: the point the camera looks at, rather than the scene's framing.
+        if let values = option("target")?.split(separator: ",").compactMap({ Float($0) }), values.count == 3 {
+            camera.target = SIMD3(values[0], values[1], values[2])
+        }
         if let distance = option("distance").flatMap({ Float($0) }) { camera.distance = distance }
         if let azimuth = option("azimuth").flatMap({ Float($0) }) { camera.azimuth = azimuth }
         if let elevation = option("elevation").flatMap({ Float($0) }) { camera.elevation = elevation }
@@ -1736,6 +1755,27 @@ func runSnapshot() throws {
                 + "deflection \(format(Double(summary.maxDisplacement) * 1000, 0)) mm "
                 + "(largest \(format(Double(largest) * 1000, 0)) mm), "
                 + "worst damage \(format(Double(min(summary.maxDamage, 1)) * 100, 0))%")
+    }
+    if solver.bodies.count > 1 {
+        for body in solver.bodies {
+            guard let summary = body.summary() else { continue }
+            print(
+                "  \(body.name): \(summary.erodedElements) of \(summary.activeElements + summary.erodedElements) "
+                    + "elements failed, moved up to \(format(Double(summary.maxDisplacement) * 1000, 0)) mm")
+        }
+    }
+    // Each gauge's peak overpressure and positive impulse over the run.
+    let ambient = solver.configuration.ambientPressure
+    for (gauge, samples) in zip(scenario.gauges, solver.gaugeHistories) where !samples.isEmpty {
+        var peak: Float = 0
+        var impulse: Double = 0
+        for (a, b) in zip(samples, samples.dropFirst()) {
+            impulse += Double(max(b.pressure - ambient, 0)) * (b.time - a.time)
+            peak = max(peak, b.pressure - ambient)
+        }
+        print(
+            "  \(gauge.name): \(format(Double(peak) / 1000, 1)) kPa "
+                + "(\(format(Double(peak) / 6894.76, 2)) psi), \(format(impulse, 0)) Pa s")
     }
 }
 

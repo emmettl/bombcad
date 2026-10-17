@@ -159,14 +159,13 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   forms after the blast, so it is reported, drawn and exported when the run ends and does not
   act on the air; on earth or rock a charge keeps 0.9 of its mass for the air, the ground taking
   the rest (a ground setting, tied to the debris's soft ground). Five of six measured craters
-  within a third, the 500-ton shots at Suffield among them; depths three to five times too deep
-  where the water table was high.
+  within a third, the 500-ton shots at Suffield among them; with a water-table setting (walls
+  slumped to 10–15°, Glasstone and Dolan), the wet sites' depths within 0.84–1.41.
 - **Cratering, stage 2, next:** a crater coupled to the blast near the charge, with soil that
   flows, ejecta and the shock driven into the ground, for close-in work. It starts with a
   ContinuumKit and Edgerton check under the sharing rule: neither had a cratering or soil-flow
   model on 17 October 2026, but Edgerton's volume solver and cohesive cracks overlap.
-- **Next:** the cloud's top after two minutes; a comparison with measured ground motion; a water
-  table for the crater's depth.
+- **Next:** the cloud's top after two minutes; a comparison with measured ground motion.
 - **Blocked:** measurements wanted in [data wanted](data-wanted.md) 3a (ground shock), 3d (a
   cloud's growth), 3e (fireball radiation) and 3f (a vented deflagration).
 

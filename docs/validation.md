@@ -3419,6 +3419,19 @@ more under peaks of 3.7–7.3 kPa; the small-deflection panes with fixed edges b
 (0.59–1.20) and 7 more. At the detailed model's own strength, 45 MPa at once, the large-deflection
 panes give 0.99 (0.65–1.28).
 
+### Glazing in the air
+
+Until 17 October 2026 an envelope's pane thinner than a cell held no cell of the air: in a cut
+opening its window was an open hole and the pane recorded no load, so the app's one-way glass never
+broke it; set in a wall without an opening, its window's load was counted as the wall's. A pane now
+holds the cells across its window through its wall ([panes](building-envelopes.md#envelope-components-and-their-pressure-histories)).
+The comparisons on this page are unchanged: Monk and Clubley's and E1300's drive the glass with
+their own loads, and the damage references' panes are set in their walls, whose cells the air held
+either way, and were sampled by the harness. What changes is any envelope run with glazing in cut
+openings (IFC imports, detailed structures with glass in their openings converted to envelopes):
+their windows are closed now, so the loads outside and the panes' own differ, and their panes
+break; and with glass set in a wall, the wall's load no longer includes its window's.
+
 ### What this does and does not show
 
 It shows that the app's glass breaks when it should under a strong long-duration wave, within

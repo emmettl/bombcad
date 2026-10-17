@@ -143,6 +143,17 @@ final class EnvelopeExposure {
                 }
             }
         }
+        // The cells standing for each pane are its own, whichever block (if any) holds their centres
+        // (`BuildingEnvelope.paneCells`).
+        for (owner, envelope) in geometry.enumerated() {
+            for pane in envelope.panes.indices {
+                guard let block = envelope.blockSources.firstIndex(of: .pane(pane)) else { continue }
+                for cell in envelope.paneCells(pane, grid: grid) {
+                    owned[cell] = (owner, block)
+                    shared.remove(cell)
+                }
+            }
+        }
         guard shared.allSatisfy({ mask[$0] == 0 }) else { throw SceneObjectError.interObjectContact }
         var faces: [(face: Face, owner: Int, block: Int)] = []
         for cell in owned.keys.sorted() where mask[cell] != 0 {

@@ -217,7 +217,7 @@ device, each gauge's peak and the structure's largest deflection.
 | `--resolution coarse\|medium\|fine` | Runs on another air grid, resampling attached imports as a grid sweep case does |
 | `--mass <kg>` | Changes the primary charge, as a mass sweep case does |
 | `--duration <s>` | Changes the simulated duration |
-| `--ground rigid\|soil\|<MN/m³>\|<type>` | What the structures' debris lands on; a ground type (`rock`, `playa`, `alluvium`, `glacialSoil`, `saturated`, …) also digs each charge's crater and leaves the air less of a charge near it; see [Cratering](cratering.md) |
+| `--ground rigid\|soil\|<MN/m³>\|<type>` | What the structures' debris lands on; a ground type (`rock`, `playa`, `alluvium`, `glacialSoil`, `saturated`, …) also digs each charge's crater and leaves the air less of a charge near it; `--water-table <m>\|deep` sets the water table, which keeps a crater shallow; see [Cratering](cratering.md) |
 | `--usd <scene.usda>` | Writes the scene and the structure's surface over time for rendering elsewhere; see [Exporting a run for rendering](usd-export.md) |
 | `--vdb <folder>` | Writes the air as OpenVDB volumes, a file a frame, into a new folder; see [Exporting a run for rendering](usd-export.md#the-air) |
 | `--fragments <spec.json>` | Flies a cased charge's fragments and tracers through the blast, one way, a frame at a time; see [Fragments](fragments.md) |
