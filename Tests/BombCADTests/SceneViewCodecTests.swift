@@ -33,6 +33,7 @@ struct SceneViewCodecTests {
         #expect(try SceneViewCodec.decodeSetup(SceneViewCodec.encode(setup)) == setup)
         let frame = try ViewFrame(solver: solver)
         let bytes = SceneViewCodec.encode(frame)
+        #expect(SceneViewCodec.size(frame) == bytes.count)
         #expect(try SceneViewCodec.decodeFrame(bytes) == frame)
         #expect(throws: ProjectFileError.self) { try SceneViewCodec.decodeFrame(bytes.dropLast(3)) }
         #expect(throws: ProjectFileError.self) { try SceneViewCodec.decodeFrame(bytes + Data([0])) }
@@ -44,14 +45,13 @@ struct SceneViewCodecTests {
     @Test("The field read whole is the solver's; coarser, each texel keeps its block's extremes")
     func coarseField() throws {
         let (solver, _) = try solver()
-        let reader = try ViewFieldReader(device: solver.device)
-        let fine = try reader.read(solver, stride: 1)
+        let fine = try solver.viewField(stride: 1)
         #expect(fine == (try ViewFrame(solver: solver)).field)
         let grid = solver.grid
         let fineValues = fine.withUnsafeBytes { Array($0.bindMemory(to: Float16.self)) }
         for stride in [2, 3] {
-            let coarse = try reader.read(solver, stride: stride)
-            let size = ViewFieldReader.size(of: grid, stride: stride)
+            let coarse = try solver.viewField(stride: stride)
+            let size = solver.viewFieldSize(stride: stride)
             #expect(coarse.count == size.x * size.y * size.z * 8)
             let values = coarse.withUnsafeBytes { Array($0.bindMemory(to: Float16.self)) }
             var expected = [Float16](repeating: 0, count: values.count)

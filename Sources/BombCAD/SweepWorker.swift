@@ -170,7 +170,7 @@ enum SweepWorker {
                 view: sender.map { sender in
                     { solver, frame, last in sender.frame(solver, number: frame, last: last) }
                 },
-                viewVolume: sender.map { sender in { sender.volumeRequest($0) } }
+                viewRequest: sender.map { sender in { sender.frameRequest($0) } }
             )
             let took = start.duration(to: .now)
             if let sender {

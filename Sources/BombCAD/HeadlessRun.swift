@@ -446,7 +446,7 @@ enum HeadlessRun {
     static func execute(_ options: Options, costs: ConsumerCostStore? = nil) async throws -> (
         run: SavedSimulationRun, fragments: FragmentResult?, streams: [String], thermal: ThermalResult?,
         cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?, blastGPUSeconds: Double,
-        standing: SceneStanding
+        standing: SceneStanding, hazards: [String]
     ) {
         var document = try ProjectDocument.read(from: options.project)
         // Without --out the earlier runs are not needed, and must not use up the run limit.
@@ -492,7 +492,7 @@ enum HeadlessRun {
         }
         return (
             result.run, result.fragments, result.streams, result.thermal, result.cloud, result.ground,
-            result.envelopes, result.blastGPUSeconds, result.standing
+            result.envelopes, result.blastGPUSeconds, result.standing, result.hazards
         )
     }
 
@@ -503,20 +503,20 @@ enum HeadlessRun {
     /// workers in for them. `costs` keeps what the consumers cost, for `auto` to place them by
     /// in this run and later ones. `view` is handed the solver at each frame, the frame's number,
     /// and whether it is the run's last sample, which may fall between frames, for a viewer
-    /// elsewhere (see `WatchJob`), and `viewVolume` asked, before each frame's batch, for any block
-    /// of air it will read, for the GPU to cut out. Cancelling the task stops the run.
+    /// elsewhere (see `WatchJob`), and `viewRequest` asked, before each frame's batch, for what it
+    /// will read of the air (a block, the view field) for the GPU to cut out. Cancelling the task stops the run.
     static func perform(
         _ document: ProjectDocument, options: Options, progress: ((Double) -> Void)? = nil,
         consumer injected: (any FrameConsumer)? = nil, costs store: ConsumerCostStore? = nil,
         view: ((BlastSolver, Int, Bool) -> Void)? = nil,
-        viewVolume: ((BlastSolver) -> AirSliceRequest?)? = nil,
+        viewRequest: ((BlastSolver) -> FrameRequest)? = nil,
         connect: (String) async throws -> SweepWorkerClient = {
             try await RemoteSweepWorker.connect(host: $0)
         }
     ) async throws -> (
         run: SavedSimulationRun, document: ProjectDocument, fragments: FragmentResult?, streams: [String],
         thermal: ThermalResult?, cloud: CloudResult?, ground: GroundShockResult?, envelopes: Data?,
-        blastGPUSeconds: Double, standing: SceneStanding, envelopeHistories: Data?
+        blastGPUSeconds: Double, standing: SceneStanding, envelopeHistories: Data?, hazards: [String]
     ) {
         var document = document
         let inputs = try inputs(for: document, options: options)
@@ -672,7 +672,7 @@ enum HeadlessRun {
                 return hold
             }
         }
-        if framed, fragmentFeed != nil || options.thermal != nil || viewVolume != nil {
+        if framed, fragmentFeed != nil || options.thermal != nil || viewRequest != nil {
             // The GPU cuts out what a frame's consumers need at the end of the batch that lands on
             // it, as `onSample` will ask for it, rather than the CPU while the GPU waits.
             model.prepareBatch = { solver, limit in
@@ -690,7 +690,10 @@ enum HeadlessRun {
                         cellSize: solver.grid.cellSize)
                     request.airSlice = AirSliceRequest(region: region.box, stride: region.stride)
                 }
-                if request.airSlice == nil, let wanted = viewVolume?(solver) { request.airSlice = wanted }
+                if let wanted = viewRequest?(solver) {
+                    request.airSlice = request.airSlice ?? wanted.airSlice
+                    request.viewField = wanted.viewField
+                }
                 solver.frameRequest = request
             }
         }
@@ -851,6 +854,9 @@ enum HeadlessRun {
             scene?.addCloud(result.frames(), secondsPerFrame: spec.frameInterval)
             cloud = result
         }
+        // The blast's hazards: the safety standards' distances, the minimum safe distance (with the
+        // fragments' hazard, when flown) and the injury at standing height over the run.
+        model.setFragmentHazard(fragments?.hazard)
         // The structures' rubble flown on to land, while the scene can still take its ring.
         let debris = model.debrisResult()
         if let debris { scene?.addHazard(debris.hazard, name: "DebrisHazard") }
@@ -879,7 +885,7 @@ enum HeadlessRun {
         }
         return (
             run, document, fragments, streams, thermalResult, cloud, groundResult, envelopeData,
-            model.blastGPUSeconds, standing, historyData
+            model.blastGPUSeconds, standing, historyData, model.blastHazardSummary
         )
     }
 
@@ -1105,6 +1111,7 @@ enum HeadlessRun {
             print(summary(result.run, wallSeconds: wallSeconds, blastGPUSeconds: result.blastGPUSeconds))
             if let fragments = result.fragments { print("  " + fragments.summary) }
             for stream in result.streams { print("  " + stream) }
+            for line in result.hazards { print("  Hazards: " + line) }
             for line in result.thermal?.summary ?? [] { print("  " + line) }
             for line in result.cloud?.summary ?? [] { print("  " + line) }
             if let ground = result.ground { print("  " + ground.summary) }

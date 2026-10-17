@@ -385,6 +385,9 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     public var isTransparent = false
     /// Timber's orthotropy and layers, for `MaterialModel.timber`.
     public var timber: TimberProperties?
+    /// A beam's flange that buckles locally (a thin-walled section's, as a profiled sheet's rib):
+    /// its fibres on that side lose their compressive stress past an onset strain. Nil for none.
+    public var localBuckling: LocalBuckling?
 
     /// A von Mises material.
     public init(
@@ -695,6 +698,8 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// its ribs along the axis given, meshed as shells (`ProfiledSheet`) of its own material's
     /// steel at the profile's yield. Encoded only when some solid has one.
     public var solidSheets: [SheetAssignment?] = []
+    /// Connections along shell edges as springs to fixed ground (shells only).
+    public var springSupports: [SpringSupport] = []
     /// In a body of both kinds, the shells' size; `elementSize` if nil.
     public var shellElementSize: Float?
     /// Layers of concrete (or other material) through the thickness of each shell.
@@ -936,7 +941,9 @@ public struct StructureModel: Sendable, Hashable, Codable {
         for index in solids.indices {
             guard let sheet = sheet(of: index) else { continue }
             ProfiledSheet(
-                profile: sheet.profile, region: solids[index], span: sheet.ribAxis, steel: material(of: index)
+                profile: sheet.profile, region: solids[index], span: sheet.ribAxis,
+                steel: material(of: index),
+                crestSide: sheet.crestSide ?? 1
             )
             .build(in: &model, at: index)
         }
@@ -1372,6 +1379,13 @@ struct MaterialParameters {
     var splittingEnergy: Float = 0
     var shearEnergy: Float = 0
     var rollingEnergy: Float = 0
+    // Local buckling (`LocalBuckling`): the axis + 1 (0 for none), the side, the onset, the
+    // softening strain and the residual share.
+    var bucklingAxis: UInt32 = 0
+    var bucklingSide: Float = 0
+    var bucklingOnset: Float = 1e30
+    var bucklingSoftening: Float = 1
+    var bucklingResidual: Float = 1
 }
 
 /// Layout matches `CouplingUniforms` in `Structure.metal`.
@@ -1716,7 +1730,7 @@ extension StructureModel {
         case reinforcement, inclinedBars, solidReinforcement, solidMaterial, solidSourceParts
         case elementKind, shellLayers, supports, supportAnchorages, secondCracks
         case bareBars, removesFragments, crackSlip, bondSlip,
-            solidElementKind, solidSheets
+            solidElementKind, solidSheets, springSupports
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
         case pressedInterlock, regimeOverride, loadingOverride, regimeDefaults
         case hourglassFollowsCracking, hourglassCapsSteel, discreteBars, barsAsTrusses, trussDiameter
@@ -1772,6 +1786,7 @@ extension StructureModel {
         if solidSheets.contains(where: { $0 != nil }) {
             try container.encode(solidSheets, forKey: .solidSheets)
         }
+        if !springSupports.isEmpty { try container.encode(springSupports, forKey: .springSupports) }
         try container.encodeIfPresent(shellElementSize, forKey: .shellElementSize)
         try container.encodeIfPresent(interfaceBond, forKey: .interfaceBond)
         try container.encode(unitJoints, forKey: .unitJoints)
@@ -1829,6 +1844,7 @@ extension StructureModel {
         bondSlip = try container.decodeIfPresent(BondSlip.self, forKey: .bondSlip)
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
         solidSheets = try container.decodeIfPresent([SheetAssignment?].self, forKey: .solidSheets) ?? []
+        springSupports = try container.decodeIfPresent([SpringSupport].self, forKey: .springSupports) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)
         interfaceBond = try container.decodeIfPresent(SIMD2<Float>.self, forKey: .interfaceBond)
         unitJoints = try container.decodeIfPresent(Bool.self, forKey: .unitJoints) ?? true
@@ -1920,5 +1936,77 @@ extension Box {
     /// Whether `inner` lies within this box, to a millimetre: a pane set in an opening.
     func holds(_ inner: Box) -> Bool {
         (0..<3).allSatisfy { inner.min[$0] >= min[$0] - 1e-3 && inner.max[$0] <= max[$0] + 1e-3 }
+    }
+}
+
+/// Local buckling of a thin-walled beam's compression flange, in a beam of von Mises steel that
+/// stands for it (`ProfiledSheet`'s ribs): fibres on the flange's side of the section, past
+/// `onsetStrain` in compression, carry a stress falling linearly from the yield to `residual` of
+/// it over a further `softeningStrain`, the largest compression they have reached setting it.
+/// The softening hinge of a class 4 section, on the fibres' strains.
+public struct LocalBuckling: Codable, Hashable, Sendable {
+    /// The global axis across the section along which the flange lies, and its side of the
+    /// section's middle (+1, -1, or 0 for both sides).
+    public var axis: Int
+    public var side: Int
+    public var onsetStrain: Float
+    public var softeningStrain: Float
+    public var residual: Float
+
+    public init(axis: Int, side: Int, onsetStrain: Float, softeningStrain: Float, residual: Float) {
+        self.axis = axis
+        self.side = side
+        self.onsetStrain = onsetStrain
+        self.softeningStrain = softeningStrain
+        self.residual = residual
+    }
+}
+
+/// A connection along a shell's edge as springs to fixed ground at its nodes, each spring per
+/// metre of edge shared among the nodes by their lengths along it: pulling along `along`, across
+/// along `across`, and turning about the edge, which runs along `edge`, along which the nodes are
+/// held still. Each is elastic, then
+/// yields and hardens (or softens) linearly, unloading elastically (`SpringLaw`); the turning
+/// one differs either way. Langdon's connections of her corrugated panels are such springs.
+public struct SpringSupport: Codable, Hashable, Sendable {
+    /// The nodes it holds: those of the shells inside.
+    public var region: Box
+    public var edge: Int
+    public var along: Int
+    public var pull: SpringLaw
+    public var across: SpringLaw
+    /// Turning about +edge, and about -edge.
+    public var turnPositive: SpringLaw
+    public var turnNegative: SpringLaw
+
+    public init(
+        region: Box, edge: Int, along: Int, pull: SpringLaw, across: SpringLaw, turnPositive: SpringLaw,
+        turnNegative: SpringLaw
+    ) {
+        self.region = region
+        self.edge = edge
+        self.along = along
+        self.pull = pull
+        self.across = across
+        self.turnPositive = turnPositive
+        self.turnNegative = turnNegative
+    }
+
+    /// The axis across the edge, normal to `edge` and `along`.
+    public var acrossAxis: Int { 3 - edge - along }
+}
+
+/// A spring's law per metre: elastic at `stiffness` (N/m per m, or N m/rad per m) to `yield` (N
+/// per m, or N m per m), then at `hardening`, which is negative for one that softens, its
+/// resistance never below zero; unloading elastically.
+public struct SpringLaw: Codable, Hashable, Sendable {
+    public var stiffness: Float
+    public var yield: Float
+    public var hardening: Float
+
+    public init(stiffness: Float, yield: Float = .infinity, hardening: Float = 0) {
+        self.stiffness = stiffness
+        self.yield = yield
+        self.hardening = hardening
     }
 }

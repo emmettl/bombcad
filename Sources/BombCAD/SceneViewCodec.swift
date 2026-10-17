@@ -96,6 +96,24 @@ enum SceneViewCodec {
         return out.data
     }
 
+    /// The bytes `encode(frame)` writes, worked out without writing them.
+    static func size(_ frame: ViewFrame) -> Int {
+        var bytes = 8 + 8 + frame.field.count + 8
+        for body in frame.bodies {
+            bytes += 2
+            if let solids = body.solids {
+                bytes +=
+                    8 + 12 * solids.displacements.count + 8 + solids.flags.count + 8 + 4 * solids.damage.count
+            }
+            if let shells = body.shells {
+                bytes += 8 + 12 * shells.displacements.count + 8 + 16 * shells.rotations.count
+                bytes += 8 + shells.flags.count + 8 + shells.beamFlags.count
+                bytes += 8 + 4 * shells.damage.count + 8 + 4 * shells.beamDamage.count
+            }
+        }
+        return bytes
+    }
+
     static func decodeFrame(_ data: Data) throws -> ViewFrame {
         var input = Reader(data)
         let time = try input.double()

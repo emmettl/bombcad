@@ -107,7 +107,8 @@ struct WatchTests {
         _ = try await worker.start()
         let job = WatchJob(
             id: UUID(), name: "Watched", project: SweepWorkerArchive(try document().makeArchive()),
-            view: ViewSpec(window: 1, compression: .lz4))
+            // Every acknowledgement is waited for, however loaded the Mac.
+            view: ViewSpec(window: 1, compression: .lz4, ackWait: 600))
         var headers: [WatchFrame.Header] = []
         var peaks: [Float] = []
         let result = try await worker.watch(job) { header, payload in
@@ -116,7 +117,11 @@ struct WatchTests {
             worker.writer.enqueue(.viewAck(job.id, header.frame))
         }
         let stats = try #require(result.stats)
-        #expect(stats.sent == headers.count && stats.lags.count == stats.sent && stats.frames >= stats.sent)
+        // Every frame sent arrives before the stats, on the one connection, and every one is
+        // acknowledged and waited for (ackWait), so these are counts, not timings.
+        #expect(stats.sent == headers.count)
+        #expect(stats.lags.count == stats.sent)
+        #expect(stats.frames >= stats.sent)
         #expect(headers.map(\.frame) == headers.map(\.frame).sorted())
         #expect(abs((headers.last?.time ?? 0) - 0.004) < 1e-9)
         #expect(headers.allSatisfy { $0.counts.x > 0 && $0.counts.y > 0 && $0.faces == 0 })
@@ -133,7 +138,7 @@ struct WatchTests {
         // A viewer that never answers holds nothing up: the first frame and the last are sent.
         let silent = WatchJob(
             id: UUID(), name: "Silent", project: SweepWorkerArchive(try document().makeArchive()),
-            view: ViewSpec(window: 1, compression: .none))
+            view: ViewSpec(window: 1, compression: .none, ackWait: 0.2))
         var silentFrames: [Int] = []
         let unanswered = try await worker.watch(silent) { header, _ in silentFrames.append(header.frame) }
         #expect(silentFrames == [0, 4] && unanswered.stats?.lags.isEmpty == true)

@@ -2597,8 +2597,14 @@ public final class BlastSolver {
             encoder, request: frameRequest, grid: grid, state: stateBuffers[current], mask: maskBuffer,
             species: currentSpecies, hasSpecies: speciesHoldDetonationProducts, control: controlBuffer,
             uniforms: makeUniforms())
-        if updateVisualization {
+        if updateVisualization || frameRequest.viewField != nil {
             encodeVisualization(encoder)
+        }
+        // After the visualisation, which it is cut down from, in the same encoder.
+        if let stride = frameRequest.viewField {
+            frameExtractor?.encodeViewField(
+                encoder, stride: stride, grid: grid, field: visualizationTexture, control: controlBuffer,
+                always: false)
         }
         encoder.endEncoding()
         return commandBuffer
@@ -2820,6 +2826,39 @@ public final class BlastSolver {
         guard steps > 0 else { return result.sweptFraction }
         return (total.sweptFraction * Double(total.steps) + result.sweptFraction * Double(result.steps))
             / Double(steps)
+    }
+
+    /// The visualisation field every `stride`-th cell along each axis (`viewFieldSize`), each texel
+    /// its block's extremes, as `rgba16Float` texels, eight bytes each, x fastest: for a view of
+    /// the run drawn elsewhere. Cut out at the end of the batch that ended now if `frameRequest`
+    /// asked for it, so the GPU need not be waited for again; otherwise worked out now, blocking
+    /// until done. Call it only while no batch is in flight.
+    public func viewField(stride: Int) throws -> Data {
+        precondition(!batchInFlight, "Cannot read the view field while a batch is in flight")
+        precondition(stride >= 1)
+        if let field = frameExtractor?.viewField(stride: stride, grid: grid, time: time, steps: stepCount) {
+            return field
+        }
+        if frameExtractor == nil { frameExtractor = try FrameExtractor(library: library) }
+        guard let frameExtractor, let commandBuffer = commandQueue.makeCommandBuffer(),
+            let encoder = commandBuffer.makeComputeCommandEncoder()
+        else { throw BlastError.allocationFailed("view field") }
+        encodeVisualization(encoder)
+        frameExtractor.encodeViewField(
+            encoder, stride: stride, grid: grid, field: visualizationTexture, control: controlBuffer,
+            always: true)
+        encoder.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        guard let field = frameExtractor.viewFieldData(viewFieldSize(stride: stride)) else {
+            throw BlastError.allocationFailed("view field")
+        }
+        return field
+    }
+
+    /// The view field's texels along each axis at `stride`, rounded up.
+    public func viewFieldSize(stride: Int) -> SIMD3<Int> {
+        FrameExtractor.viewFieldSize(grid, stride: stride)
     }
 
     /// Rebuilds `visualizationTexture` from the current state, blocking until done.

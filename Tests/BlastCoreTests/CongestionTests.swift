@@ -74,6 +74,37 @@ struct CongestionTests {
         #expect(rack.parallel[0].x == 1 && rack.blockage[0].w == 1)
     }
 
+    @Test("On cells smaller than the pitch the counts and blockage are a pitch's, not the cell's")
+    func countsOverAPitch() {
+        let field = CongestionField(arrays: [Self.lattice], grid: Grid(nx: 40, ny: 40, nz: 40, cellSize: 0.1))
+        let index = 20 + 40 * (20 + 40 * 20)
+        // Over a 0.2 m unit cell: one pipe of each set crosses it, the three counts sharing one, so
+        // two across any flow; each crossing set blocks 0.043 / 0.2 of its face.
+        #expect(abs(field.blockage[index].w - 2) < 1e-4)
+        #expect(abs(field.blockage[index].x - 2 * 0.043 / 0.2) < 1e-4)
+        #expect(field.unitWidth[index] == 0.2)
+        #expect(abs(field.generation[index].w - 0.043) < 1e-5)
+        // The drag and generation per volume do not depend on the cell.
+        let coarse = CongestionField(
+            arrays: [Self.lattice], grid: Grid(nx: 16, ny: 16, nz: 16, cellSize: 0.25))
+        let inside = 8 + 16 * (8 + 16 * 8)
+        #expect(abs(field.porosityDrag[index].y / coarse.porosityDrag[inside].y - 1) < 1e-5)
+        #expect(abs(field.generation[index].x / coarse.generation[inside].x - 1) < 1e-5)
+    }
+
+    @Test("MERGE's rigs: their lattices hold a tenth of their volume, the scene its cloud and gauges")
+    func mergeRigs() {
+        for rig in MergeRig.allCases {
+            let lattice = rig.congestion(at: .zero)
+            #expect(abs(lattice.volumeBlockage - 0.1) < 0.012, "\(rig.name) \(lattice.volumeBlockage)")
+            let study = CongestedRigStudy(rig: rig, gas: .methane, cellSize: rig.pitch)
+            let scenario = study.scenario()
+            #expect(scenario.congestion?.count == 1)
+            #expect(scenario.deflagration?.region == scenario.congestion?.first?.region)
+            #expect(scenario.gauges.count == 8)
+        }
+    }
+
     @Test("Still air in and around porous cells stays still")
     func stillAirStaysStill() throws {
         let solver = try solver(closedBox([Self.lattice]), cellSize: 0.25)
