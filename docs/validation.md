@@ -2608,6 +2608,52 @@ spalled and the model's do not; and Wang's slabs, as supported in the model, are
 too stiff, a matter of supports the paper leaves unclear. Wang's pressures check the load from
 an aluminised charge, and say its TNT equivalence is low for impulse.
 
+## Yao's large slabs
+
+**The test.** Yao, Li, Zhang, Deng and Zhou (Applied Sciences 13, 12552, 2023; CC BY 4.0):
+- **The slab:** 4 × 5 m and 150 mm thick, C35 concrete (cubes 37.2 MPa), two mats of 10 mm HRB400
+  bars at 85 mm (1.2%), simply supported on its long sides on 150 mm of L-shaped concrete supports.
+- **The charges:** TNT hung over the centre, 0.5 and 1 kg at 1 m and 1 kg at 0.8 m (1.26–0.8
+  m/kg^(1/3)) on one slab, and 20 kg at 1 m (0.22) on a second.
+- **Measured:** top-face pressures and underside displacements, read off the paper's plots (±0.1
+  MPa, ±0.03 mm), accelerations from its table, and the 20 kg test's damage.
+- **The data and harness:** [Fixtures/Yao2023](../Fixtures/Yao2023/README.md); `blastbench twoface
+  --yao T1,T2,T3,T4`.
+
+**The model:**
+- today's defaults: the recommended air, 25 mm cells refined by 2, and the contest slab's 8
+  elements through (18.75 mm);
+- concrete at 0.8 of the cube strength, bars at their measured 405 / 542 MPa, rupturing at the
+  grade's 16%;
+- the underside 1 m above the ground (not given);
+- the slab without its own weight, since the sensors read from the slab already resting under it,
+  and a slab given its weight as the run starts sags 2–3 mm.
+
+| Test | Top-face pressure, centre (MPa) | 1 m out (MPa) | Underside centre, measured | Model, within 2 ms of the shock | Model, peak |
+|---|---|---|---|---|---|
+| T1, 0.5 kg at 1 m | 1.70 / 1.88 | 0.50 / 0.62 | 0.35 mm | 0.96 mm | 3.29 mm at 10.7 ms |
+| T2, 1 kg at 1 m | 4.20 / 3.94 | 1.25 / 1.22 | 0.47 mm | 1.64 mm | 5.83 mm |
+| T3, 1 kg at 0.8 m | 8.60 / 6.97 | 1.90 / 1.21 | 0.86 mm | 1.94 mm | 6.43 mm |
+
+- **The load agrees.** The centre's pressure is within 11% at 1.26 and 1.0 m/kg^(1/3) and 19% low
+  at 0.8. The impulse there is 371, 596 and 792 kPa ms.
+- **The displacements do not compare.**
+  - The model's slab swings as a whole, peaking at 10–11 ms a quarter of its period, by the few
+    millimetres a 6.9 t slab of this stiffness takes from this impulse.
+  - The paper reports the largest displacement "at the time that the explosion wave reached the
+    slab", and its 500 ms record for T1 never passes about 0.3 mm. Its sensors evidently did not
+    see that swing.
+  - Read over the first 2 ms, the model gives 2–3 times the reported values. Taken as peaks, its
+    slab would be 8–12 times too flexible, against every other comparison here.
+  - Neither reading is scored. These three tests confirm the load only.
+- **The 20 kg test.** The model's slab bends to 147 mm and keeps 72 mm. Nothing on its top face is
+  crushed or removed, and 380 cm² of its underside is damaged. The test's slab, judged "moderate
+  damage", showed a top crater 1.02 × 0.76 m, its bars exposed, a wider spall beneath them, and over
+  ten long cracks. So the model is far too resistant locally, at 0.22 m/kg^(1/3): the close-in
+  direction the record already shows ([Chiquito](#slabs-under-close-in-charges), a third to a half
+  as far down). It is one test without a measured deflection, so it adds to that evidence but sets
+  no new band.
+
 ## Slabs under contact charges
 
 The first comparison of debris: the speed of the concrete thrown off the far face of slabs
