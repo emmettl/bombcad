@@ -2836,6 +2836,68 @@ Cross-Laminated Timber Structures* (Karagozian & Case TR-17-17.1, for WoodWorks,
   too weak under the heaviest. The connections, modelled rigid, are the first suspect for both
   the lighter charges and the rebound; the late flow's dependence on the domain is the second.
 
+## Terraced houses against wartime bomb damage
+
+**The data.** S. M. Gilbert, *A model for the effects of a condensed phase explosion in a built-up
+area* (PhD thesis, Loughborough University, 1994; open), chapter 5, from the Ministry of Home
+Security's surveys of British houses bombed in the Second World War:
+- **Categories** (its Table 5.1, as Jarrett used them): A demolished (over 75% of the external
+  brickwork destroyed); B to be pulled down (50–75% destroyed, or the rest unsafe); Cb
+  uninhabitable, the roof partly or wholly collapsed, up to 25% of one or two external walls
+  down; Ca uninhabitable with relatively minor structural damage; D habitable, with ceilings,
+  tiles and roof coverings damaged and minor cracks.
+- **Houses against distance** (its Table 5.7) from 250 kg semi-armour-piercing bombs, 96 kg of
+  TNT as a bare charge by Gilbert's effective charge: the share of houses at each distance in
+  category A, A or B, and A to C. They are mostly pre-war houses, solid 9-inch and cavity brick
+  mixed, and the categories are surveyors' judgements.
+- **Jarrett's radii**, as Gilbert revised them (his equation 5.4, R = k W^(1/3) / [1 + (3175 /
+  W)²]^(1/6), W in kg of TNT): for 96 kg, A 6.8 m, B 10.1 m, Cb 17.7 m and Ca 30.4 m. Half the
+  houses inside each radius are less damaged and half outside more.
+
+**The model.** The [terraced row](shell-model.md#the-terraced-houses) under 96 kg of TNT 0.3 m
+up, at each of the table's distances in front of the middle house's front wall
+(`blastbench house --mass 96 --standoff r --height 0.3`): air of 0.5 m, recommended air, the
+domain's open faces 18 m (4 m/kg^(1/3)) from the charge and the row. The middle house is graded
+by `TerracedRowDamage`, a brick element counted destroyed once removed or moved more than its
+leaf's thickness, a tenth of a second and three tenths after the burst. With the default brick
+(removed at a 3 mm crack) and with bricks kept to a 50 mm crack (`--erosion 0.05`):
+
+| Distance (m) | Surveyed: A / A–B / A–C | Surveyed median | 3 mm, 0.1 s | 3 mm, 0.3 s | 50 mm, 0.1 s | 50 mm, 0.3 s |
+|---|---|---|---|---|---|---|
+| 4.7 | 88% / – / – | A | A (85%) | A (99%) | A (78%) | A (95%) |
+| 7.8 | 28% / 88% / – | B | B (45%) | A (86%) | B (32%) | A (79%) |
+| 10.8 | 14% / 51% / 91% | B, near C | B (37%) | B (51%) | Cb (20%) | B (35%) |
+| 13.9 | – / 12% / 63% | C | Cb (14%) | B (48%) | Cb (5%) | B (32%) |
+| 16.9 | – / 3% / 37% | below C | Cb (2%) | B (44%) | D | Cb (24%) |
+| 20.0 | – / 8% / 26% | below C | Ca | B (27%) | D | Cb (8%) |
+| 23.0 | – / – / 15% | below C | Ca | Cb (5%) | D | Cb (2%) |
+
+The model's percentages are the external brickwork destroyed. By 0.3 s the tiles had moved on
+half of each roof at 23 m and on more of it nearer.
+
+**What it shows:**
+- **The blast's damage, at 0.1 s:** with bricks kept to a 50 mm crack, every house falls in the
+  surveyed median's category or the one below, out to 23 m, and within Jarrett's radii out to
+  13.9 m (one or two categories under them at 16.9–23 m). With the default 3 mm the houses read a
+  category above the median beyond 13.9 m.
+- **What follows, by 0.3 s:** the cracked front walls, held only at their ends by the party walls,
+  go over: 49–100% of the middle house's front at 13.9–16.9 m. The houses then read one or two
+  categories worse than surveyed beyond 11 m, either way. The surveyed houses mostly stood. A
+  cracked leaf with the floors and roof bearing on it, or arching between stiff ends, would
+  rock and settle back; the model's cracked leaves have no such resistance. Seating the roof on
+  the front and back walls as rafters' feet (unstrapped, as the joists) changed nothing.
+- **The cavity:** the leaves' load had to be fixed first ([shielded
+  faces](shell-model.md#coupling-to-the-air)). Each leaf had taken the whole blast, and with the
+  cavity at ambient the rooms' pressure blew the inner leaves out; as a sealed cavity the two
+  leaves share it. Joists come off their seats only inside 14 m.
+- **Not compared:** Glasstone and Dolan's houses at 5 and 1.7 psi (a long nuclear load), the
+  Peterborough explosion (about 800 kg; its 37 m clearance makes a domain of about 75 × 90 × 45
+  m), and the IRA bombs at Hyde Park and Manchester, for which no open survey of houses was found.
+  The DoD and GSA damage levels set limits on members' response, not observed damage.
+- **Limits of the comparison:** the bombs burst at or below the ground, some in craters, and the
+  surveys measured to the house, not its front wall; the effective charges are uncertain by about
+  25%; the houses were of many kinds, the model one row of one.
+
 ## Slabs under contact charges
 
 The first comparison of debris: the speed of the concrete thrown off the far face of slabs

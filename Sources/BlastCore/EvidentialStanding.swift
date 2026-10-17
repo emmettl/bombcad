@@ -139,7 +139,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-35"
+    public static let currentTable = "standing-table-36"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -2008,8 +2008,17 @@ struct StandingScene {
                             + "on the hard ground); one run of each wall", "validation.md#brick-walls-debris")
                 )
             }
+            evidence.append(
+                StandingEvidence(
+                    "Terraced brick houses graded against wartime bomb damage (Gilbert, 1994)",
+                    "From 96 kg, a tenth of a second in, the houses' damage categories fall a category above "
+                        + "the surveyed median beyond 14 m (within one with bricks kept to a 50 mm crack); by "
+                        + "0.3 s their unrestrained front walls have gone over, one or two categories worse "
+                        + "than surveyed beyond 11 m",
+                    "validation.md#terraced-houses-against-wartime-bomb-damage"))
             parts.append(
-                "masonry's joints verified; brick walls under blasts fall as one column, not in pieces")
+                "masonry's joints verified; brick walls under blasts fall as one column, not in pieces; brick "
+                    + "houses too damaged at the longer ranges of wartime bombs")
         }
         if classes.contains(.glass) {
             level = max(level, .approximation)

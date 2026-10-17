@@ -211,8 +211,12 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
 - **Now:** two sample buildings being built, a precast large-panel block and a process-plant
   control room.
 - **Planned, building types** (what each needs is in [new materials](new-materials.md#what-each-building-type-needs)):
-  - UK terraced brick houses: cavity walls of two brick leaves with ties, timber joist floors and a
-    timber roof. Needs timber, wall ties, joist bearings and roof coverings as debris.
+  - UK terraced brick houses: built ([the terraced houses](shell-model.md#the-terraced-houses)):
+    cavity walls tied across, timber joists seated in pockets, roof tiles thrown as debris.
+    Judged against wartime bomb damage
+    ([validation](validation.md#terraced-houses-against-wartime-bomb-damage)): right a tenth of
+    a second in, but cracked front walls then go over that surveyed houses kept standing. Next:
+    brick leaves' resistance once cracked (rocking and arching under the load above them).
   - Steel portal-frame warehouses with profiled metal cladding: a sample is built
     ([warehouse](profiled-sheeting.md#the-portal-frame-warehouse-sample)), its sheets screwed to
     its Zed purlins and rails and torn off as their screws pull through; the purlins at their
