@@ -166,8 +166,9 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
             let owners = scenario.envelopeObjects
             let dx = Resolution(rawValue: settings.resolution)!.cellSize
             let cells = scenario.grid(cellSize: dx).cellCount
-            guard !results.isEmpty, scenario.structuralObjects.isEmpty,
-                results.count == owners.count, Set(results.map(\.id)).count == results.count,
+            // Structures may stand beside the envelopes (since 17 October 2026).
+            guard !results.isEmpty, results.count == owners.count,
+                Set(results.map(\.id)).count == results.count,
                 Set(results.map(\.id)) == Set(owners.map(\.id)),
                 results.allSatisfy({ r in
                     r.name == scenario.object(id: r.id)?.name && r.elapsedS.isFinite

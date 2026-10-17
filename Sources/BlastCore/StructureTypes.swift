@@ -1144,6 +1144,9 @@ struct CouplingUniforms {
     var overlapUnits: UInt32 = 0
     /// 1: a cell turns solid an eighth above `threshold` and opens an eighth below it.
     var maskHysteresis: UInt32 = 0
+    /// 1 when the cells marked in the solver's kept air (beside stationary envelopes' recorded
+    /// faces) must stay air (see `remaskPrepare`).
+    var keepsAir: UInt32 = 0
 }
 
 /// When nodes of the structure repel each other.
