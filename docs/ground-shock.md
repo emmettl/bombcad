@@ -408,9 +408,10 @@ the run's cost is the frames' extra steps, not the estimate.
 - Horizontal motion only where the front is clearly superseismic, by a crude geometric argument,
   layer by layer for the column. Where the ground's wave outruns the blast, the motion that
   arrives first is not modelled at all.
-- **Not near the charge.** The crater, the ground shock the charge drives directly into the
-  ground, and ejecta are not modelled. Within a few crater radii (a few metres for 100 kg on the
-  ground) both models are meaningless. That region is two-way and needs its own model
+- **Not near the charge.** The ground shock the charge drives directly into the ground, and
+  ejecta, are not modelled; the crater is estimated empirically, after the blast
+  ([cratering](cratering.md)). Within a few crater radii (a few metres for 100 kg on the ground)
+  both models are meaningless. That region is two-way and needs its own model
   ([Distributed computing](distributed-computing.md#separate-models-on-separate-machines)).
 - One way: the soil does not absorb, soften or vent the blast. The air model's ground stays
   rigid.
