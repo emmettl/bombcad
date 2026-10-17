@@ -5,6 +5,7 @@ import Metal
 // ADBLAST's single-span cladding tests (Fixtures/ADBLAST2015; see AdblastCladdingTest.swift):
 //
 //   blastbench adblast [--tests 3,7] [--h 0.123] [--no-buckling] [--held] [--collapse] [--air [--dx 0.05]]
+//                      [--envelope]   (the one-way model, in the air's load on an envelope and under the measured pulse)
 //                      [--fixture Fixtures/ADBLAST2015/tests.json] [--out dir]
 //
 // Prints each test's measured and computed first peak and final deflection at mid-span, and writes
@@ -25,6 +26,28 @@ func runAdblast(device: MTLDevice) throws {
     func text(_ value: Float?) -> String { value.map { String(format: "%.1f", $0) } ?? "" }
     var summary =
         "test,charge_kg,thickness_mm,peak_kpa,impulse_kpa_ms,measured_first_mm,computed_first_mm,measured_plastic_mm,computed_final_mm,released\n"
+    if flag("envelope") {
+        // The rigid envelope's load depends only on the charge: one run serves every test of it.
+        var loads: [Float: [EnvelopeComponentLoad]] = [:]
+        func mm(_ value: Double) -> String { String(format: "%.0f", value * 1000) }
+        func line(_ result: AdblastCladdingTest.EnvelopeResult) -> String {
+            "\(mm(result.peak)) mm, \(result.level.label)\(result.screwsPulled ? ", screws pulled" : "")"
+        }
+        for test in tests where chosen?.contains(test.test) ?? true {
+            if loads[test.chargeKgC4] == nil {
+                loads[test.chargeKgC4] = try AdblastCladdingTest.envelopeLoadsInAir(
+                    test, along: 5, across: 3, cellSize: option("dx").flatMap { Float($0) } ?? 0.05,
+                    device: device)
+            }
+            let air = AdblastCladdingTest.envelope(test, loads: loads[test.chargeKgC4]!, along: 5, across: 3)
+            let measured = AdblastCladdingTest.envelopeOnMeasured(test)
+            print(
+                "Test \(test.test) (\(test.chargeKgC4) kg, \(test.thicknessMM) mm): first \(text(test.firstDynamicDeflectionMM)) "
+                    + "measured; one-way in the air's load on the middle band \(line(air.middle)), on the whole panel "
+                    + "\(line(air.whole)); under the measured pulse \(line(measured))")
+        }
+        return
+    }
     let inAir = flag("air")
     let cell = option("dx").flatMap { Float($0) } ?? 0.05
     for test in tests where chosen?.contains(test.test) ?? true {

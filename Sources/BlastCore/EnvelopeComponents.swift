@@ -397,6 +397,10 @@ final class EnvelopeComponentRecorder {
     /// Whether a face in a tile of still air reads the still air rather than its cell, which
     /// holds the same; off only to show that the two agree.
     var skipStillTiles = true
+    /// Whether a face in refined air reads the finest cells against it (their mean), rather than
+    /// its coarse cell, which averages them over the whole cell: the reflected load at a wall is
+    /// sharper than the cell beside it. Off only to compare.
+    var readsRefinedAir = true
     /// Components to a threadgroup, a SIMD group of 32 lanes each (Solver.metal).
     static let componentsPerGroup = 4
 
@@ -749,6 +753,7 @@ final class EnvelopeComponentRecorder {
         var binWidth: Float
         var faces: UInt32
         var fromArrival: UInt32
+        var readsRefined: UInt32 = 0
         var skipStill: UInt32 = 0
     }
 

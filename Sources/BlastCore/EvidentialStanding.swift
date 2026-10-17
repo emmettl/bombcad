@@ -139,7 +139,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-33"
+    public static let currentTable = "standing-table-35"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -794,7 +794,8 @@ public enum StandingTable {
                     + "by screws that pull through. Langdon's corrugated panels: 10 of 13 permanent sets within "
                     + "half to twice of measured. ADBLAST's screwed cladding in air: first deflection 0.90–1.35 "
                     + "of measured on all ten tests, but what is left after is not right, and cladding torn off "
-                    + "a deforming purlin is not compared.",
+                    + "a deforming purlin is not compared. Sheeted purlins and rails are held straight by the "
+                    + "screws, which under uplift, their free flange in compression, is the unsafe side.",
                 document: "profiled-sheeting.md#against-adblasts-cladding-tests")
         case .inclinedBars:
             return Entry(
@@ -989,6 +990,7 @@ public enum StandingTable {
         "EnvelopeConstruction.glassThicknessM": .input,
         "EnvelopeConstruction.laminate": .input,
         "EnvelopeConstruction.facadePaneM": .input,
+        "EnvelopeConstruction.glazing": .input,
         "EnvelopeConstruction.source": .input,
         "EnvelopeConstruction.detail": .input,
         "EnvelopeConstruction.barsInBothFaces": .input,
@@ -1070,6 +1072,7 @@ public enum StandingTable {
         "SolverConfiguration.minimumBalloonCells": .numerical,
         "SolverConfiguration.refinement": .option([.shockRefinement, .twoLevelRefinement]),
         "SolverConfiguration.refinementThreshold": .numerical,
+        "SolverConfiguration.refinementHoldsEnvelopes": .numerical,
         "SolverConfiguration.refinementMargin": .numerical,
         "SolverConfiguration.refinementLevels": .option([.twoLevelRefinement]),
         "SolverConfiguration.refinementOwnSteps": .option([.adaptiveSubsteps]),
@@ -1565,7 +1568,7 @@ struct StandingScene {
                     "deflagration.md#checks"),
                 StandingEvidence(
                     "HySEA's 20 ft containers, lean hydrogen of 15% and 21% (Skjold et al., 2017)",
-                    "Vented through the doors within the repeats' scatter (0.72–1.42); through the roof 0.20–0.53, "
+                    "Vented through the doors within the repeats' scatter (0.72–1.42); through the roof 0.19–0.45, "
                         + "the unsafe side",
                     "deflagration.md#checks"),
             ]
@@ -1633,7 +1636,7 @@ struct StandingScene {
         let fuel =
             gas == .hydrogen
             ? "Lean hydrogen, with its flame's 1/Le response, reads 1.24–2.96 of FM Global's vented tests and "
-                + "within the scatter of HySEA's containers vented through their doors, but 0.20–0.53 of those vented "
+                + "within the scatter of HySEA's containers vented through their doors, but 0.19–0.45 of those vented "
                 + "through their roof, the unsafe side; K_G in a closed sphere 0.89–0.99 of the measured. For methane, "
             : gas == .townGas
                 ? "Town gas, half hydrogen, was compared only in a closed sphere (K_G about 0.77 of the measured) "
@@ -2295,6 +2298,13 @@ struct StandingScene {
                         + "Mendonça's two collapses missed",
                     "building-envelopes.md#slabs-held-on-their-edges"),
                 StandingEvidence(
+                    "ADBLAST's screwed TR84 cladding shot in air (10 tests, 0.5–1.5 kg)",
+                    "Profiled sheeting: within 1.0–1.35 of the shell model's deflection under the same load; in "
+                        + "the air's load on the whole panel 0.50–1.37 of measured, low on nine (on the middle "
+                        + "ribs 0.62–1.07); graded heavy to failed where the sheets set but stayed on; the screws "
+                        + "held, as measured",
+                    "profiled-sheeting.md#against-adblasts-cladding-as-an-envelope"),
+                StandingEvidence(
                     "Monk and Clubley's annealed windows in the Shoeburyness tunnel (12 timed panes)",
                     "Every pane broken, as in the tests, at 0.82–1.07 of the measured time and 0.69–1.15 of the "
                         + "deflection", "validation.md#window-glass"),
@@ -2317,9 +2327,11 @@ struct StandingScene {
                 "Reinforced blockwork is judged as a concrete of the masonry's strength, graded by the "
                     + "concrete's limits; a freestanding wall's cap adds only the mass its construction gives.",
                 "Profiled steel sheeting spans one way between its rails or purlins by UFC 3-340-02's method for "
-                    + "cold-formed panels on the maker's effective section, graded by PDC-TR 06-08's limits for "
-                    + "deck whose membrane action its fixings limit, and blown off when its dynamic reaction passes "
-                    + "what its screws hold by EN 1993-1-3; no blast test of cladding or its fixings compared.",
+                    + "cold-formed panels on its effective section (the maker's, or by its compressed flat's "
+                    + "class, a slender one at Winter's width), graded by PDC-TR 06-08's limits for deck whose membrane action its "
+                    + "fixings limit, and blown off when the reaction pulling it off its screws, as it comes back "
+                    + "out or is sucked, passes what they hold by EN 1993-1-3; a component's mean load under-reads "
+                    + "its most loaded ribs.",
                 "Cross-laminated timber spans one way, elastic–perfectly plastic, its resistance from the mean "
                     + "bending strength with the Ottawa shock tube's dynamic increase, graded by WoodWorks' ductility "
                     + "limits from the Tyndall tests; no envelope-level test of its damage compared.",
@@ -2354,7 +2366,9 @@ struct StandingScene {
                     ? [
                         "\(blocks) buildings of solid blocks (as map buildings are) taken to hold a window "
                             + "in each storey of each façade, 1.2 × 1.5 m unless set, judged on the storey's "
-                            + "mean load."
+                            + "mean load; map buildings' façades also as a mix of panes by their kind and "
+                            + "height, assumed (no survey of glazing found), each breaking with E1300's "
+                            + "probability, the whole pane at its largest stress."
                     ]
                     : [])
                 + (inputs.scenario.structuralObjects.isEmpty ? [] : [Self.envelopesBesideStructures]),
