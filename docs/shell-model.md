@@ -246,8 +246,9 @@ Timber is a material for shells and beams only (`MaterialModel.timber`, `TimberP
 solid elements refuse it. Each shell layer is ContinuumKit's timber, copied into the kernel in
 single precision:
 - **Elastic part:** `OrthotropicPlaneStress`, stiff along the grain and soft across it.
-- **Failure:** `TimberFailure`, proposed to ContinuumKit for this (see
-  docs/extraction/TIMBER_FAILURE.md there).
+- **Failure:** `TimberFailure`, contributed to ContinuumKit for this and released in alpha.26
+  (docs/extraction/TIMBER_FAILURE.md there). One element driven past breaking along the grain,
+  across it and in shear follows the released law within 3% of each strength (`TimberTests`).
 
 **Grain.** It runs along a global axis (`grainAxis`), turned by `grainRotation` about each
 shell's normal. In a shell normal to that axis, it runs along the shell's first axis.
