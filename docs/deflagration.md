@@ -197,6 +197,13 @@ mass at the front instead (ρ_u S_T δ(G)), with the front carried at the unburn
 extrapolated to it, was starved or ran away as the grid's diffusion moved mixture across the
 band. Weller's form has neither problem.
 
+## On terrain
+
+Over sloping terrain the deflagration's air takes cut cells, as every scene's does (see
+[terrain](terrain.md#cut-cells)): the cloud is laid down in the air each cut cell holds, and its
+mixture is carried through each face's open part. On a 30° slope the staircase lets a flame grow
+14–15% faster than on a flat floor; cut cells hold it within 1–5%.
+
 ## Vent panels
 
 A panel is a box whose cells (those a block or the ground does not already fill) are solid until

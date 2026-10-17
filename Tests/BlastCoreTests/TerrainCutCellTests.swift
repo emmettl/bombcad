@@ -80,10 +80,13 @@ struct TerrainCutCellTests {
         #expect(changed == 0, "\(changed) cells changed")
     }
 
-    @Test("A closed box over a hill conserves its gas to round-off", arguments: [false, true])
-    func conservation(afterburning: Bool) throws {
+    @Test(
+        "A closed box over a hill conserves its gas to round-off, with sub-grid mixing too",
+        arguments: [(false, false), (true, false), (true, true)])
+    func conservation(afterburning: Bool, mixing: Bool) throws {
         var configuration = cut()
         configuration.afterburning = afterburning
+        if mixing { configuration.mixing = .sigma }
         let solver = try closedHill(configuration)
         let before = solver.totals()
         let fuel = solver.speciesTotals()
@@ -200,5 +203,59 @@ struct TerrainCutCellTests {
         let before = solver.totals()
         _ = solver.advance(steps: 200)
         #expect(abs(solver.totals().mass / before.mass - 1) < 1e-5)
+    }
+
+    /// A closed box over a hill a metre high, its lowest 0.8 m (the hill's flanks, not its top) full
+    /// of stoichiometric methane–air, lit a quarter of a metre above a flank: the cloud's edge crosses
+    /// the cut cells.
+    private func burningHill(_ configuration: SolverConfiguration, panels: [VentPanel] = []) throws
+        -> BlastSolver
+    {
+        var scenario = Scenario(
+            name: "Burning hill", domainSize: SIMD3(4, 2, 2), boxes: [],
+            charge: Charge(mass: 0, position: .zero))
+        scenario.reflectiveFaces = .all
+        scenario.terrain = .hill(
+            domain: scenario.domainSize, spacing: 0.05, centre: SIMD2(2.5, 1), height: 1, radius: 0.6)
+        scenario.deflagration = Deflagration(
+            gas: .methane, region: Box(min: .zero, max: SIMD3(4, 2, 0.8)), ignition: SIMD3(1.75, 1, 0.45))
+        scenario.ventPanels = panels
+        return try BlastSolver(
+            device: device, scenario: scenario, cellSize: 0.1, configuration: configuration)
+    }
+
+    @Test("A deflagration over a hill burns on cut cells, conserving its gas and the cloud's to round-off")
+    func deflagration() throws {
+        let solver = try burningHill(cut())
+        #expect(solver.terrainCut != nil)
+        let heat = Double(
+            Deflagration(gas: .methane, region: Box(min: .zero, max: .one), ignition: .zero)
+                .heatPerKilogram(
+                    atmosphere: Atmosphere(), airModel: solver.configuration.airModel,
+                    gamma: solver.configuration.gamma))
+        let before = solver.totals()
+        let cloud = solver.speciesTotals().oxygen
+        let unburnt = try #require(solver.deflagrationState()).unburnt
+        _ = solver.advance(until: 0.2)
+        let after = solver.totals()
+        let state = try #require(solver.deflagrationState())
+        // It burns, the flame reaching the hill's cut cells.
+        #expect(state.unburnt < unburnt * 0.998, "\(state.unburnt / unburnt)")
+        #expect(abs(after.mass / before.mass - 1) < 1e-5, "mass \(after.mass / before.mass - 1)")
+        // The cloud's gas, burnt or not, is carried, never made or lost.
+        #expect(abs(solver.speciesTotals().oxygen / cloud - 1) < 1e-5)
+        // Energy less the heat the unburnt mixture has yet to release.
+        let held = before.energy + unburnt * heat
+        let now = after.energy + state.unburnt * heat
+        #expect(abs(now / held - 1) < 1e-5, "energy \(now / held - 1)")
+    }
+
+    @Test("Vent panels keep the terrain's cut cells")
+    func ventPanelsKeepCutCells() throws {
+        let panel = VentPanel(
+            box: Box(min: SIMD3(0.5, 0.5, 0.2), max: SIMD3(0.6, 1.5, 1)), releasePressure: 5e3)
+        let solver = try burningHill(cut(), panels: [panel])
+        #expect(solver.terrainCut != nil && solver.terrain != nil)
+        #expect(solver.ventPanelOpenTimes.count == 1)
     }
 }

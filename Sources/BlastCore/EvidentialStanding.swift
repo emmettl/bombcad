@@ -135,7 +135,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-7"
+    public static let currentTable = "standing-table-8"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -571,7 +571,7 @@ public enum StandingTable {
             return Entry(
                 title: "Terrain as a staircase", affects: air + [.envelopeExposure], limit: .approximation,
                 note:
-                    "The staircase chosen, or a deflagration's air, keeps the terrain as whole cells: it delays Mach "
+                    "The staircase, when chosen, keeps the terrain as whole cells: it delays Mach "
                     + "reflection off a slope by 3–11° and under-reads the triple point's angle by 20–75% on "
                     + "100–400 cells, and windward faces' peaks read 1.3–1.5 times the cut cells', growing "
                     + "with resolution.",
@@ -900,7 +900,7 @@ public enum StandingTable {
         "EnvelopeConstruction.glassThicknessM": .input,
         "EnvelopeConstruction.source": .input,
         "EnvelopeConstruction.detail": .input,
-        "Scenario.deflagration": .option([.deflagration, .terrainStaircase]),
+        "Scenario.deflagration": .option([.deflagration]),
         "Scenario.ventPanels": .option([.ventPanels]),
         "Deflagration.gas": .input,
         "Deflagration.concentration": .input,
@@ -1118,6 +1118,11 @@ public enum StandingTable {
         "FragmentSpec.tracers": .input,
         "FragmentSpec.tracerRegion": .input,
         "FragmentSpec.seed": .numerical,
+        "FragmentSpec.wallThickness": .input,
+        "FragmentSpec.innerDiameter": .input,
+        "FragmentSpec.explosive": .input,
+        "FragmentSpec.mottCoefficient": .input,
+        "FragmentSpec.massExponent": .input,
         "GroundShockSpec.soil": .input,
         "GroundShockSpec.points": .input,
         "GroundShockSpec.line": .input,
@@ -1969,8 +1974,9 @@ struct StandingScene {
         return result(
             .envelopeDamage, .approximation,
             "One way, from each component's load, with the air seeing the building whole: glass breakage "
-                + "and its time, and concrete panels' rotation between fixed and simply supported edges, as "
-                + "approximations; brick and the inside pressure through broken panes illustrative.",
+                + "and its time, concrete panels' rotation between fixed and simply supported edges, and "
+                + "freestanding walls as cantilevers from their foot, as approximations; brick panels and the "
+                + "inside pressure through broken panes illustrative.",
             evidence: [
                 StandingEvidence(
                     "UFC 3-340-02's worked examples 3A-5, 3A-6(a) and 4A-1", "Within 1%",
@@ -1982,6 +1988,17 @@ struct StandingScene {
                         + "and walls beside a failing one beyond both",
                     "building-envelopes.md#one-way-damage-single-degree-of-freedom"),
                 StandingEvidence(
+                    "Freestanding walls against measurement: Alsubaei's perimeter walls and Keys's brick walls",
+                    "6 of 7 outcomes as measured, built as tested; the blockwork's top within 16% (32 mm "
+                        + "against 28); the half-scale concrete wall 5.4° where light cracking was seen, the safe "
+                        + "side (the detailed model 2.1°)",
+                    "building-envelopes.md#freestanding-walls"),
+                StandingEvidence(
+                    "One-way reinforced masonry walls under measured loads (Hayman, 2014)",
+                    "1.16–1.91 times the measured mid-height displacement, a level worse on four of five, the "
+                        + "one that blew out failed: the safe side",
+                    "building-envelopes.md#one-way-walls"),
+                StandingEvidence(
                     "Monk and Clubley's annealed windows in the Shoeburyness tunnel (12 timed panes)",
                     "Every pane broken, as in the tests, at 0.82–1.07 of the measured time and 0.69–1.15 of the "
                         + "deflection", "validation.md#window-glass"),
@@ -1991,9 +2008,11 @@ struct StandingScene {
                     "validation.md#the-threshold-against-astm-e1300"),
             ],
             assumptions: [
-                "Not covered: freestanding (cantilever) walls; no comparison with measurement for concrete or "
-                    + "brick, and glass only under a load far past what breaks it (its threshold against E1300's design "
-                    + "resistance); references on one mesh and one air grid.",
+                "Compared with measurement as freestanding and one-way walls, and glass only under a load far "
+                    + "past what breaks it (its threshold against E1300's design resistance): panels held on all "
+                    + "their edges have none; references on one mesh and one air grid.",
+                "A freestanding wall's cap or canopy adds no mass, and reinforced blockwork is taken as "
+                    + "concrete: the measured walls were judged as built.",
                 "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
                     + "2° is flagged as beyond the one-way model.",
                 "Glass is annealed, on Moore's large-deflection plate, simply supported, breaking at E1300's "
@@ -2142,13 +2161,41 @@ struct StandingScene {
     }
 
     func fragments() -> ResultStanding {
-        result(
-            .fragments, .illustrative, "Textbook ingredients; nothing compared with a fragmentation test.",
+        let evidence = [
+            StandingEvidence(
+                "Cooper's worked examples 27.7 and 27.8 (Mott's counts, Gurney's speed)",
+                "The same, to rounding",
+                "fragments.md#against-coopers-data"),
+            StandingEvidence(
+                "Cooper's Fig. 27.13: a cast-iron aerial bomb's counted fragments, 0.13 to 8.8 g",
+                "Mott's form within a factor of 1.36 (rms), too many small and too many of the largest; "
+                    + "Grady's exponential (massExponent 1) within 1.12", "fragments.md#against-coopers-data"),
+            StandingEvidence(
+                "Hansche and Rinehart's measured drag of tumbling cubes, Mach 0.5 to 3.5 (as Moxnes et al. 2017 restate it)",
+                "The drag curve itself; Hoerner's fixed orientations (Cooper's Figs. 27.15–27.18) put the "
+                    + "distance to 79 J 30% shorter to 50% longer", "fragments.md#against-coopers-data"),
+        ]
+        let shared = [
+            "One way: fragments do not push back on the air or the structure, and stop where they first hit.",
+            "Tumbling cubes of the casing's steel; no break-up, ricochet or penetration.",
+        ]
+        guard inputs.fragments?.mottFactor != nil else {
+            return result(
+                .fragments, .illustrative,
+                "Their number is chosen, not derived: give the casing's thickness and diameter for Mott's.",
+                evidence: evidence,
+                assumptions: ["The number of fragments is the description's, sharing the casing's mass."]
+                    + shared,
+                documents: ["fragments.md#limitations"])
+        }
+        return result(
+            .fragments, .approximation,
+            "Mott's masses and number, Gurney's speed and measured drag: the recognised method, checked against "
+                + "Cooper's data; no arena test of speeds or ranges.",
+            evidence: evidence,
             assumptions: [
-                "Gurney launch speeds and Mott masses; drag from the blast.",
-                "One way: fragments do not push back on the air or the structure.",
-                "Not for ranges or hazards.",
-            ], documents: ["fragments.md#limitations"])
+                "Mott's B for mild steel cylinders, Cooper's Table 27.2; other metals and shapes are not covered."
+            ] + shared, documents: ["fragments.md#limitations"])
     }
 
     func groundShock() -> ResultStanding {
