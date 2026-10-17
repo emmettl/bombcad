@@ -169,5 +169,22 @@ or notarization: a crash on removing the gas cloud had just been found on main. 
 published; 0.4.0 takes build 10, which also draws a new document's views through a change of source
 before signing and again before archiving (`BombCAD interface-smoke`, part of `make app-smoke`).
 
+Build 10 (0.4.0) was prepared on 2026-10-17 from `9482ba7`, with `make release` run once inside
+`gpu-slot`. All 306 app and 979 core tests passed. The packaged app ran the small project and drew its
+views through a change of source before signing and again before archiving. Apple accepted it
+(submission `b548eb9b-5031-48cd-800e-124a207db04e`). A fresh expansion of its ZIP:
+
+- matched the checksum (`78e1fe35e64abc82305fb383aacf2cf3164e733f2f43d25d8b8914ee06e44826`);
+- validated its stapled ticket;
+- passed `codesign --verify --deep --strict`;
+- was accepted by `spctl` as `Notarized Developer ID`;
+- holds the licence text and the four resource bundles its binary links (BombCAD's two,
+  ContinuumKit's contact search and scene render);
+- is version 0.4.0, build 10, arm64;
+- ran the small project from inside its bundle and drew its views through a change of source
+  (`make app-smoke`'s two steps, on that copy).
+
+Its notes, reviewed independently, are in `docs/release-notes/0.4.0.md`. It is not yet published.
+
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
