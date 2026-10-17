@@ -1,6 +1,9 @@
 import BlastCore
+import BlastRender
 import DocumentKit
 import Foundation
+import ImageIO
+import Metal
 
 /// A run on another Mac, watched from this one: the remote Mac's GPU runs the blast and sends,
 /// frame by frame, what a viewer draws rather than the solver's state: the paint on the ground
@@ -25,6 +28,10 @@ struct ViewSpec: Codable, Equatable, Sendable {
     /// With a stride, the overpressure in every `stride`-th cell of the air as well, a volume to
     /// draw.
     var volumeStride: Int?
+    /// With a stride, the scene as the app's renderer draws it as well: a `ViewSetup` once, then a
+    /// `ViewFrame` in each frame, the field `stride` times coarser than the solver's grid (see
+    /// `SceneViewCodec`).
+    var sceneStride: Int?
 }
 
 enum ViewCompression: String, Codable, Equatable, Sendable, CaseIterable {
@@ -71,6 +78,8 @@ enum WatchFrame {
         var quadsIncluded: Bool
         /// The volume's samples along each axis, zero without one.
         var volume = SIMD3<Int32>.zero
+        /// The scene view's bytes (`SceneViewCodec`), last, zero without one.
+        var scene = 0
         /// Before compression.
         var rawBytes: Int
         var compression: ViewCompression
@@ -78,7 +87,8 @@ enum WatchFrame {
 
     /// The frame's values, packed (not yet compressed), and the header's sizes.
     static func pack(
-        ground: GroundSlice, surface: StructureSurface?, includeQuads: Bool, volume: AirSlice? = nil
+        ground: GroundSlice, surface: StructureSurface?, includeQuads: Bool, volume: AirSlice? = nil,
+        scene: Data? = nil
     ) -> Data {
         var data = Data(capacity: 2 * ground.values.count + 12 * (surface?.points.count ?? 0))
         ground.values.enumerated().map { half($0.element * groundScales[$0.offset % 3]) }
@@ -95,6 +105,7 @@ enum WatchFrame {
             }
             .withUnsafeBytes { data.append(contentsOf: $0) }
         }
+        if let scene { data.append(scene) }
         return data
     }
 
@@ -106,6 +117,8 @@ enum WatchFrame {
         var damage: [Float]
         var quads: [Int32]?
         var volume: [Float]
+        /// The scene view's frame, encoded, if sent.
+        var scene: Data?
 
         /// The largest peak overpressure on open ground, Pa.
         var peak: Float {
@@ -128,16 +141,19 @@ enum WatchFrame {
         let samples = Int(header.volume.x) * Int(header.volume.y) * Int(header.volume.z)
         let expected =
             2 * columns + 12 * header.points + 2 * header.faces
-            + (header.quadsIncluded ? 16 * header.faces : 0) + 2 * samples
+            + (header.quadsIncluded ? 16 * header.faces : 0) + 2 * samples + header.scene
         guard raw.count == expected, raw.count == header.rawBytes else {
             throw ProjectFileError.invalid("A view frame held \(raw.count) bytes, not \(expected).")
         }
         return raw.withUnsafeBytes { bytes in
             var offset = 0
-            func take<T>(_ count: Int, _: T.Type) -> [T] {
-                defer { offset += count * MemoryLayout<T>.size }
-                return (0..<count).map {
-                    bytes.loadUnaligned(fromByteOffset: offset + $0 * MemoryLayout<T>.size, as: T.self)
+            func take<T: BitwiseCopyable>(_ count: Int, _: T.Type) -> [T] {
+                let length = count * MemoryLayout<T>.size
+                defer { offset += length }
+                return [T](unsafeUninitializedCapacity: count) { values, initialized in
+                    UnsafeMutableRawBufferPointer(values).copyMemory(
+                        from: UnsafeRawBufferPointer(rebasing: bytes[offset..<offset + length]))
+                    initialized = count
                 }
             }
             let ground = take(columns, Float16.self).enumerated().map {
@@ -150,7 +166,10 @@ enum WatchFrame {
             let damage = take(header.faces, Float16.self).map(Float.init)
             let quads = header.quadsIncluded ? take(4 * header.faces, Int32.self) : nil
             let volume = take(samples, Float16.self).map(Float.init)
-            return Decoded(ground: ground, points: points, damage: damage, quads: quads, volume: volume)
+            // Last, and copied whole: it is most of a frame with a scene view.
+            let scene = header.scene > 0 ? Data(raw.suffix(header.scene)) : nil
+            return Decoded(
+                ground: ground, points: points, damage: damage, quads: quads, volume: volume, scene: scene)
         }
     }
 }
@@ -183,6 +202,9 @@ final class ViewSender: @unchecked Sendable {
     private var inFlight: [Int: ContinuousClock.Instant] = [:]
     private var stats = ViewStats()
     private var lastFaces = -1
+    /// The scene view's field reader, made at the first frame, and whether its setup has gone.
+    private var fieldReader: ViewFieldReader?
+    private var setupSent = false
 
     init(id: UUID, writer: SweepWorkerWriter, spec: ViewSpec) {
         self.id = id
@@ -202,6 +224,7 @@ final class ViewSender: @unchecked Sendable {
         let ground = solver.groundSlice(low: .zero, high: extent)
         let surface = spec.structure ? solver.structureSurface() : nil
         let volume = spec.volumeStride.map { solver.airSlice(region: Self.domain(solver), stride: $0) }
+        let scene = spec.sceneStride.flatMap { sceneFrame(solver, stride: $0) }
         let read = start.duration(to: .now)
         let faces = surface?.faceCount ?? 0
         let includeQuads = surface != nil && faces != lastFaces
@@ -210,9 +233,9 @@ final class ViewSender: @unchecked Sendable {
         let header = WatchFrame.Header(
             frame: number, time: solver.time, cellSize: ground.cellSize, counts: ground.counts,
             points: surface?.points.count ?? 0, faces: faces, quadsIncluded: includeQuads,
-            volume: volume?.counts ?? .zero,
+            volume: volume?.counts ?? .zero, scene: scene?.count ?? 0,
             rawBytes: 2 * columns + 12 * (surface?.points.count ?? 0) + 2 * faces
-                + (includeQuads ? 16 * faces : 0) + 2 * (volume?.values.count ?? 0) / 5,
+                + (includeQuads ? 16 * faces : 0) + 2 * (volume?.values.count ?? 0) / 5 + (scene?.count ?? 0),
             compression: spec.compression)
         lock.withLock {
             inFlight[number] = start
@@ -222,13 +245,9 @@ final class ViewSender: @unchecked Sendable {
         writer.enqueue(.view(id, header)) { [self] in
             let packing = ContinuousClock.now
             var payload = WatchFrame.pack(
-                ground: ground, surface: surface, includeQuads: includeQuads, volume: volume)
+                ground: ground, surface: surface, includeQuads: includeQuads, volume: volume, scene: scene)
             let raw = payload.count
-            if let algorithm = spec.compression.algorithm,
-                let compressed = try? (payload as NSData).compressed(using: algorithm) as Data
-            {
-                payload = compressed
-            }
+            payload = Self.compress(payload, spec.compression)
             let took = packing.duration(to: .now)
             lock.withLock {
                 stats.rawBytes += raw
@@ -237,6 +256,26 @@ final class ViewSender: @unchecked Sendable {
             }
             return payload
         }
+    }
+
+    /// The scene view's frame now, encoded, its setup sent first the first time.
+    private func sceneFrame(_ solver: BlastSolver, stride: Int) -> Data? {
+        if !setupSent {
+            setupSent = true
+            let setup = SceneViewCodec.encode(ViewSetup(solver: solver, fieldStride: stride))
+            let compression = spec.compression
+            writer.enqueue(.viewSetup(id)) { Self.compress(setup, compression) }
+        }
+        if fieldReader == nil { fieldReader = try? ViewFieldReader(device: solver.device) }
+        guard let field = try? fieldReader?.read(solver, stride: stride) else { return nil }
+        return SceneViewCodec.encode(ViewFrame(solver: solver, field: field))
+    }
+
+    static func compress(_ data: Data, _ compression: ViewCompression) -> Data {
+        guard let algorithm = compression.algorithm,
+            let compressed = try? (data as NSData).compressed(using: algorithm) as Data
+        else { return data }
+        return compressed
     }
 
     /// The volume to cut out on the GPU at the end of the next frame's batch, if a frame is likely
@@ -283,6 +322,7 @@ enum HeadlessWatch {
         Usage: BombCAD watch (<project.bombcad | layout.json> | --preset <layout>)
                              (--on <ssh host> | --stdio) [--window <frames>]
                              [--compression none|lz4|lzfse|zlib] [--no-structure] [--volume <stride>]
+                             [--scene <stride>] [--render <folder> [--render-every <frames>]]
                              [--no-view] [--frame-interval <ms>] [--name <name>] [--out <new.bombcad>]
                              [--resolution coarse|medium|fine|<metres>] [--mass <kg TNT>] [--duration <seconds>]
 
@@ -290,8 +330,12 @@ enum HeadlessWatch {
         sends back, every --frame-interval milliseconds of simulated time (1 by default), what a
         viewer draws: the ground's paint over the whole grid (overpressure, peak, impulse, in half
         precision) and, unless --no-structure, the structure's surface; --volume adds the
-        overpressure in every stride-th cell of the air, a volume to draw. A frame is built only
-        while fewer than --window (2) are unacknowledged, so the run never waits for this Mac.
+        overpressure in every stride-th cell of the air, a volume to draw. --scene adds the scene as
+        the app's renderer draws it (the blast's field, stride times coarser than the solver's grid,
+        and every structure's mesh), and --render draws it here with that renderer, writing a PNG
+        image every --render-every frames (10) and the last to the folder; --render alone takes a
+        stride of 2. A frame is built only while fewer than --window (2) are unacknowledged, so the
+        run never waits for this Mac.
         Frames are compressed with --compression (lz4 by default). --no-view runs it unwatched, for
         comparison. The run comes back at the end, written with --out. --preset runs a built-in
         layout (streetCanyon, officeTower, …) for its default duration in place of a project.
@@ -308,6 +352,10 @@ enum HeadlessWatch {
         var view: ViewSpec? = ViewSpec()
         /// A built-in layout to run in place of a project, with its own duration.
         var preset: ScenarioPreset?
+        /// Where to write the scene view as the app's renderer draws it here, every `renderEvery`
+        /// frames and the last.
+        var render: URL?
+        var renderEvery = 10
 
         static func parse(_ arguments: [String]) throws -> Options {
             var rest: [String] = []
@@ -316,6 +364,8 @@ enum HeadlessWatch {
             var view: ViewSpec? = ViewSpec()
             var spec = ViewSpec()
             var preset: ScenarioPreset?
+            var render: URL?
+            var renderEvery = 10
             var index = 0
             func value() throws -> String {
                 guard index + 1 < arguments.count else {
@@ -338,6 +388,19 @@ enum HeadlessWatch {
                     preset = named
                 case "--no-view": view = nil
                 case "--no-structure": spec.structure = false
+                case "--scene":
+                    guard let stride = Int(try value()), stride >= 1 else {
+                        throw ProjectFileError.invalid(
+                            "--scene takes the field's stride, a whole number of cells, 1 or more.")
+                    }
+                    spec.sceneStride = stride
+                case "--render": render = URL(filePath: try value())
+                case "--render-every":
+                    guard let every = Int(try value()), every >= 1 else {
+                        throw ProjectFileError.invalid(
+                            "--render-every takes a whole number of frames, 1 or more.")
+                    }
+                    renderEvery = every
                 case "--volume":
                     guard let stride = Int(try value()), stride >= 1 else {
                         throw ProjectFileError.invalid(
@@ -371,7 +434,14 @@ enum HeadlessWatch {
             ] where given {
                 throw ProjectFileError.invalid("\(option) is not for a watched run.")
             }
-            return Options(run: run, host: host, stdio: stdio, view: view.map { _ in spec }, preset: preset)
+            if render != nil, spec.sceneStride == nil { spec.sceneStride = 2 }
+            if render != nil, view == nil {
+                throw ProjectFileError.invalid("--render needs a view; drop --no-view.")
+            }
+            return Options(
+                run: run, host: host, stdio: stdio, view: view.map { _ in spec }, preset: preset,
+                render: render,
+                renderEvery: renderEvery)
         }
     }
 
@@ -436,19 +506,34 @@ enum HeadlessWatch {
         let progressStream = options.stdio ? FileHandle.standardError : FileHandle.standardOutput
 
         let watcher = Watcher()
-        let start = ContinuousClock.now
-        let result = try await client.watch(job) { header, payload in
-            watcher.take(header, payload: payload, client: client, id: job.id, start: start)
-            if ContinuousClock.now - watcher.printed > .seconds(1) {
-                watcher.printed = .now
-                progressStream.write(
-                    Data(
-                        String(
-                            format: "  %.1f ms: frame %d, peak on the ground %.0f kPa, %d frames shown\n",
-                            header.time * 1000, header.frame, watcher.lastPeak / 1000, watcher.arrivals.count
-                        ).utf8))
-            }
+        if options.view?.sceneStride != nil {
+            watcher.scene = try SceneWatcher(
+                scenario: inputs.scenario, render: options.render, every: options.renderEvery)
         }
+        let start = ContinuousClock.now
+        let compression = options.view?.compression ?? .none
+        let result = try await client.watch(
+            job,
+            setup: { payload in
+                do {
+                    try watcher.scene?.start(decompressing: payload, compression)
+                } catch {
+                    watcher.scene?.failure = error.localizedDescription
+                }
+            },
+            frame: { header, payload in
+                watcher.take(header, payload: payload, client: client, id: job.id, start: start)
+                if ContinuousClock.now - watcher.printed > .seconds(1) {
+                    watcher.printed = .now
+                    progressStream.write(
+                        Data(
+                            String(
+                                format: "  %.1f ms: frame %d, peak on the ground %.0f kPa, %d frames shown\n",
+                                header.time * 1000, header.frame, watcher.lastPeak / 1000,
+                                watcher.arrivals.count
+                            ).utf8))
+                }
+            })
         let total = start.duration(to: .now).seconds
         let returned = try ProjectDocument(archive: result.archive.archive())
         guard let run = returned.savedRuns.first(where: { $0.name == name }) else {
@@ -504,6 +589,10 @@ enum HeadlessWatch {
             "  Lag, frame read there to its acknowledgement back: "
                 + describe(stats.lags.map { $0 * 1000 }, unit: "ms"),
         ]
+        if let scene = watcher.scene {
+            scene.finish()
+            lines.append(scene.summary(stride: options.view?.sceneStride ?? 1))
+        }
         return lines
     }
 
@@ -520,11 +609,12 @@ enum HeadlessWatch {
     }
 
     /// This side's record of the frames as they arrive.
-    private final class Watcher {
+    @MainActor private final class Watcher {
         var arrivals: [Double] = []
         var decodeSeconds = 0.0
         var lastPeak: Float = 0
         var printed = ContinuousClock.now
+        var scene: SceneWatcher?
 
         func take(
             _ header: WatchFrame.Header, payload: Data, client: SweepWorkerClient, id: UUID,
@@ -532,10 +622,124 @@ enum HeadlessWatch {
         ) {
             let arrived = ContinuousClock.now
             arrivals.append(start.duration(to: arrived).seconds)
-            if let decoded = try? WatchFrame.decode(header, payload: payload) { lastPeak = decoded.peak }
-            decodeSeconds += arrived.duration(to: .now).seconds
+            if let decoded = try? WatchFrame.decode(header, payload: payload) {
+                lastPeak = decoded.peak
+                decodeSeconds += arrived.duration(to: .now).seconds
+                if let bytes = decoded.scene { scene?.take(bytes, frame: header.frame) }
+            } else {
+                decodeSeconds += arrived.duration(to: .now).seconds
+            }
             client.writer.enqueue(.viewAck(id, header.frame))
         }
+    }
+}
+
+/// The watcher's scene view: the run elsewhere drawn by the app's own renderer here, from the
+/// `ViewSetup` and `ViewFrame`s it sends, uploaded into a `ViewUpload`, every `every` frames and
+/// the last written to `render` as PNG images if given.
+@MainActor
+final class SceneWatcher {
+    private let scenario: Scenario
+    private let render: URL?
+    private let every: Int
+    private let device: MTLDevice
+    private let queue: MTLCommandQueue
+    private let renderer: SceneRenderer
+    private var upload: ViewUpload?
+    private var lastFrame: Int?
+    private var lastRendered: Int?
+    var failure: String?
+    private(set) var setupBytes = 0
+    private(set) var frames = 0
+    private(set) var rendered = 0
+    private var decodeSeconds = 0.0
+    private var applySeconds = 0.0
+    private var renderSeconds = 0.0
+    private var fieldSize = SIMD3<Int>.zero
+
+    init(scenario: Scenario, render: URL?, every: Int) throws {
+        guard let device = MTLCreateSystemDefaultDevice(), let queue = device.makeCommandQueue() else {
+            throw ProjectFileError.invalid("Drawing the scene here needs a Metal device.")
+        }
+        if let render {
+            try FileManager.default.createDirectory(at: render, withIntermediateDirectories: true)
+        }
+        self.scenario = scenario
+        self.render = render
+        self.every = every
+        self.device = device
+        self.queue = queue
+        renderer = try SceneRenderer(device: device)
+    }
+
+    func start(decompressing payload: Data, _ compression: ViewCompression) throws {
+        let raw =
+            try compression.algorithm.map { try (payload as NSData).decompressed(using: $0) as Data }
+            ?? payload
+        setupBytes = payload.count
+        let setup = try SceneViewCodec.decodeSetup(raw)
+        fieldSize = setup.fieldSize
+        let upload = try ViewUpload(device: device, setup: setup)
+        renderer.setScene(scenario, view: upload.view)
+        self.upload = upload
+    }
+
+    /// Uploads a frame; snapshots run synchronously, so the GPU is done with the last one.
+    func take(_ bytes: Data, frame: Int) {
+        guard let upload, failure == nil else { return }
+        do {
+            let start = ContinuousClock.now
+            let decoded = try SceneViewCodec.decodeFrame(bytes)
+            let decodedAt = ContinuousClock.now
+            try upload.apply(decoded)
+            applySeconds += decodedAt.duration(to: .now).seconds
+            decodeSeconds += start.duration(to: decodedAt).seconds
+            frames += 1
+            lastFrame = frame
+            if render != nil, frame % every == 0 { snapshot(frame) }
+        } catch {
+            failure = error.localizedDescription
+        }
+    }
+
+    /// Draws the last frame, if it was not drawn already.
+    func finish() {
+        if render != nil, let lastFrame, lastRendered != lastFrame { snapshot(lastFrame) }
+    }
+
+    private func snapshot(_ frame: Int) {
+        guard let render else { return }
+        let start = ContinuousClock.now
+        guard
+            let image = renderer.snapshot(
+                commandQueue: queue, width: 1280, height: 720, camera: .framing(scenario))?.image
+        else {
+            failure = "The renderer drew nothing."
+            return
+        }
+        let url = render.appending(path: String(format: "frame-%04d.png", frame))
+        if let destination = CGImageDestinationCreateWithURL(url as CFURL, "public.png" as CFString, 1, nil) {
+            CGImageDestinationAddImage(destination, image, nil)
+            CGImageDestinationFinalize(destination)
+        }
+        renderSeconds += start.duration(to: .now).seconds
+        rendered += 1
+        lastRendered = frame
+    }
+
+    func summary(stride: Int) -> String {
+        if let failure { return "  Scene view failed: \(failure)" }
+        let perFrame = { (seconds: Double) in 1000 * seconds / Double(max(self.frames, 1)) }
+        return String(
+            format:
+                "  Scene view: field %d × %d × %d (every %d cells), setup %.2f MB; %d frames, decoding %.1f ms and uploading %.1f ms a frame%@",
+            fieldSize.x, fieldSize.y, fieldSize.z, stride, Double(setupBytes) / 1e6, frames,
+            perFrame(decodeSeconds),
+            perFrame(applySeconds),
+            rendered > 0
+                ? String(
+                    format: "; %d drawn here to %@, %.0f ms each", rendered, render?.path ?? "",
+                    1000 * renderSeconds / Double(rendered)) : "")
     }
 }
 

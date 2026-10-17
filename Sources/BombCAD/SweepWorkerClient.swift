@@ -25,6 +25,7 @@ final class SweepWorkerClient {
     private var progress: [UUID: (Double) -> Void] = [:]
     /// Watched runs' frames, and what sending them cost, kept until the result arrives.
     private var viewers: [UUID: (WatchFrame.Header, Data) -> Void] = [:]
+    private var viewSetups: [UUID: (Data) -> Void] = [:]
     private var viewStats: [UUID: (ViewStats, ContinuousClock.Instant)] = [:]
     private var closedError: Error?
     /// Why the worker stopped, for messages: what it last wrote to standard error, if anything.
@@ -156,14 +157,20 @@ final class SweepWorkerClient {
     }
 
     /// Runs a project on the worker, handing each frame sent to `frame`, which must acknowledge
-    /// it (`viewAck`) for more to come.
-    func watch(_ job: WatchJob, frame: @escaping (WatchFrame.Header, Data) -> Void) async throws
+    /// it (`viewAck`) for more to come, and a scene view's setup, before its first frame, to
+    /// `setup`.
+    func watch(
+        _ job: WatchJob, setup: @escaping (Data) -> Void = { _ in },
+        frame: @escaping (WatchFrame.Header, Data) -> Void
+    ) async throws
         -> WatchResult
     {
         let writer = self.writer
         viewers[job.id] = frame
+        viewSetups[job.id] = setup
         defer {
             viewers[job.id] = nil
+            viewSetups[job.id] = nil
             viewStats[job.id] = nil
         }
         let archive: SweepWorkerArchive = try await withTaskCancellationHandler {
@@ -248,6 +255,8 @@ final class SweepWorkerClient {
             progress[id]?(fraction)
         case .view(let id, let header):
             viewers[id]?(header, payload)
+        case .viewSetup(let id):
+            viewSetups[id]?(payload)
         case .viewStats(let id, let stats):
             viewStats[id] = (stats, .now)
         case .ensembleFinished(let id, let outcome):

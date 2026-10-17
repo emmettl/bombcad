@@ -304,11 +304,13 @@ public struct ViewFrame: Sendable, Equatable {
 }
 
 extension ViewSetup {
-    /// What a run's view needs once, read from its solver at full resolution.
-    public init(solver: BlastSolver) {
+    /// What a run's view needs once, read from its solver, the field `fieldStride` times coarser
+    /// than the solver's grid along each axis (see `ViewFieldReader`).
+    public init(solver: BlastSolver, fieldStride: Int = 1) {
         let grid = solver.grid
         self.init(
-            fieldSize: SIMD3(grid.nx, grid.ny, grid.nz), fieldCellSize: grid.cellSize,
+            fieldSize: ViewFieldReader.size(of: grid, stride: fieldStride),
+            fieldCellSize: grid.cellSize * Float(fieldStride),
             bodies: solver.bodies.map { body in
                 Body(
                     solids: body.solids.map { structure in
@@ -344,25 +346,14 @@ extension ViewFrame {
     /// The run's view now, read from its solver at full resolution; between batches, as
     /// `BlastSolver.refreshVisualization`, which this calls.
     public init(solver: BlastSolver) throws {
-        solver.refreshVisualization()
-        let grid = solver.grid
-        let field = solver.visualizationTexture
-        let length = grid.cellCount * 8
-        guard let copy = solver.device.makeBuffer(length: length, options: .storageModeShared),
-            let commandBuffer = solver.commandQueue.makeCommandBuffer(),
-            let blit = commandBuffer.makeBlitCommandEncoder()
-        else { throw BlastError.allocationFailed("view frame field") }
-        blit.copy(
-            from: field, sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-            sourceSize: MTLSize(width: grid.nx, height: grid.ny, depth: grid.nz), to: copy,
-            destinationOffset: 0,
-            destinationBytesPerRow: grid.nx * 8, destinationBytesPerImage: grid.nx * grid.ny * 8)
-        blit.endEncoding()
-        commandBuffer.commit()
-        commandBuffer.waitUntilCompleted()
+        try self.init(
+            solver: solver, field: try ViewFieldReader(device: solver.device).read(solver, stride: 1))
+    }
 
+    /// The run's view now with `field` read already, as `ViewFieldReader.read` reads it.
+    public init(solver: BlastSolver, field: Data) {
         self.init(
-            time: solver.time, field: Data(bytes: copy.contents(), count: length),
+            time: solver.time, field: field,
             bodies: solver.bodies.map { body in
                 Body(
                     solids: body.solids.map { structure in
@@ -399,6 +390,87 @@ extension ViewFrame {
         return Array(
             UnsafeBufferPointer(
                 start: buffer.contents().bindMemory(to: T.self, capacity: count), count: count))
+    }
+}
+
+/// Reads a solver's field for a view sent elsewhere, `stride` times coarser along each axis
+/// (`coarsenField` in ViewField.metal), keeping the GPU's buffers from one frame to the next.
+public final class ViewFieldReader {
+    private let device: MTLDevice
+    private let pipeline: MTLComputePipelineState
+    private var coarse: MTLTexture?
+    private var staging: MTLBuffer?
+
+    public init(device: MTLDevice) throws {
+        self.device = device
+        guard
+            let url = Bundle.module.url(
+                forResource: "ViewField", withExtension: "metal", subdirectory: "Shaders")
+        else { throw BlastError.missingShader("ViewField.metal") }
+        let library = try device.makeLibrary(source: String(contentsOf: url, encoding: .utf8), options: nil)
+        guard let function = library.makeFunction(name: "coarsenField") else {
+            throw BlastError.missingShader("coarsenField")
+        }
+        pipeline = try device.makeComputePipelineState(function: function)
+    }
+
+    /// The field's texels along each axis, `stride` times coarser than `grid`, rounded up.
+    public static func size(of grid: Grid, stride: Int) -> SIMD3<Int> {
+        precondition(stride >= 1)
+        return (SIMD3(grid.nx, grid.ny, grid.nz) &+ (stride - 1)) / stride
+    }
+
+    /// The field now as `rgba16Float` texels, eight bytes each, x fastest; between batches, as
+    /// `BlastSolver.refreshVisualization`, which this calls. Blocks until the GPU is done.
+    public func read(_ solver: BlastSolver, stride: Int) throws -> Data {
+        solver.refreshVisualization()
+        let size = Self.size(of: solver.grid, stride: stride)
+        let length = size.x * size.y * size.z * 8
+        if staging.map({ $0.length != length }) ?? true {
+            staging = device.makeBuffer(length: length, options: .storageModeShared)
+        }
+        guard let staging, let commandBuffer = solver.commandQueue.makeCommandBuffer() else {
+            throw BlastError.allocationFailed("view field")
+        }
+        var source = solver.visualizationTexture
+        if stride > 1 {
+            if coarse.map({ $0.width != size.x || $0.height != size.y || $0.depth != size.z }) ?? true {
+                let descriptor = MTLTextureDescriptor()
+                descriptor.textureType = .type3D
+                descriptor.pixelFormat = .rgba16Float
+                descriptor.width = size.x
+                descriptor.height = size.y
+                descriptor.depth = size.z
+                descriptor.usage = [.shaderRead, .shaderWrite]
+                descriptor.storageMode = .private
+                coarse = device.makeTexture(descriptor: descriptor)
+            }
+            guard let coarse, let encoder = commandBuffer.makeComputeCommandEncoder() else {
+                throw BlastError.allocationFailed("view field")
+            }
+            var step = UInt32(stride)
+            encoder.setComputePipelineState(pipeline)
+            encoder.setTexture(source, index: 0)
+            encoder.setTexture(coarse, index: 1)
+            encoder.setBytes(&step, length: 4, index: 0)
+            encoder.dispatchThreads(
+                MTLSize(width: size.x, height: size.y, depth: size.z),
+                threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 4))
+            encoder.endEncoding()
+            source = coarse
+        }
+        guard let blit = commandBuffer.makeBlitCommandEncoder() else {
+            throw BlastError.allocationFailed("view field")
+        }
+        blit.copy(
+            from: source, sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+            sourceSize: MTLSize(width: size.x, height: size.y, depth: size.z), to: staging,
+            destinationOffset: 0, destinationBytesPerRow: size.x * 8,
+            destinationBytesPerImage: size.x * size.y * 8)
+        blit.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        return Data(bytes: staging.contents(), count: length)
     }
 }
 

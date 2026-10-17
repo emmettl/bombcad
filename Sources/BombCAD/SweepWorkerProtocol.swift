@@ -54,12 +54,15 @@ enum SweepWorkerMessage: Codable, Equatable, Sendable {
     case viewAck(UUID, Int)
     /// Worker to app, just before `finished`: what sending the watched run's frames cost.
     case viewStats(UUID, ViewStats)
+    /// Worker to app, before a watched run's first frame with a scene view: its `ViewSetup`, in the
+    /// payload (see `SceneViewCodec`), compressed as the frames are.
+    case viewSetup(UUID)
 
     static let cancelled = "cancelled"
 }
 
 struct SweepWorkerHello: Codable, Equatable, Sendable {
-    static let protocolVersion = 11
+    static let protocolVersion = 12
     var protocolVersion = Self.protocolVersion
     var solverVersion = SavedSimulationRun.solverVersion
     var device: String
