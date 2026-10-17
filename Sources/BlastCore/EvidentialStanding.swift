@@ -139,7 +139,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-31"
+    public static let currentTable = "standing-table-32"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -787,14 +787,15 @@ public enum StandingTable {
                 document: "concrete-model.md#masonry-as-units-and-mortar-joints")
         case .profiledSheets:
             return Entry(
-                title: "Profiled steel sheeting", affects: [.structuralDamage], limit: .illustrative,
+                title: "Profiled steel sheeting", affects: [.structuralDamage], limit: .approximation,
                 note:
-                    "Sheets are a skin with their ribs as beams, their thin flanges softening once they buckle, "
-                    + "fixed to their rails and purlins without pull-out. Against Langdon's corrugated panels, "
-                    + "held by her connections as springs, the permanent sets are 0.55–1.73 of those measured on "
-                    + "10 of 13 tests both ways and none runs away; where buckling comes on before plate theory "
-                    + "says (three tests) they read a fifth or less. No test of cladding on screws compared.",
-                document: "profiled-sheeting.md#against-langdons-corrugated-panels")
+                    "Sheets are a skin with their ribs as beams, their thin flanges buckling (collapsing or "
+                    + "keeping their effective width by how they buckle), screwed to their rails and purlins "
+                    + "by screws that pull through. Langdon's corrugated panels: 10 of 13 permanent sets within "
+                    + "half to twice of measured. ADBLAST's screwed cladding in air: first deflection 0.90–1.35 "
+                    + "of measured on all ten tests, but what is left after is not right, and cladding torn off "
+                    + "a deforming purlin is not compared.",
+                document: "profiled-sheeting.md#against-adblasts-cladding-tests")
         case .inclinedBars:
             return Entry(
                 title: "Inclined bars", affects: structure, limit: nil,
@@ -1108,6 +1109,7 @@ public enum StandingTable {
         "StructureModel.unitJoints": .option([.smearedMasonry]),
         "StructureModel.solidSheets": .option([.profiledSheets]),
         "StructureModel.springSupports": .input,
+        "StructureModel.sheetFastenings": .input,
         "StructureModel.memberImperfections": .option([.perfectMembers]),
         "StructureModel.bucklingCurve": .input,
         "StructureModel.solidBucklingCurves": .input,

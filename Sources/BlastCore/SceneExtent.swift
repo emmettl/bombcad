@@ -61,6 +61,58 @@ extension Scenario {
         return max(height, charge.position.z + 1)
     }
 
+    /// The clearance, in m/kg^(1/3), that a scene with a structure wants between each open face
+    /// and both the charge and the structure. Far-field faces take a wave as meeting them square on;
+    /// a blast grazing a side or the top meets still air beyond it, which releases about half its
+    /// pressure there and sends a rarefaction back in. On Tyndall's CLT building (14.5 kg at
+    /// 22.9 m, docs/air-blast-model.md "Open faces near a structure") that rarefaction deepened the
+    /// front's negative phase and drove the wall's second swing to 29 mm. With every face at least 4.1
+    /// m/kg^(1/3) from the charge and the building, the domain gave 18 mm, as one with the faces
+    /// twice as far out did. With the top 1.7 from it the peak came out right, but the front's pressure was
+    /// still 2.5 kPa (RMS) off. The positive phase is the same in all: peaks and impulses alone need
+    /// far less.
+    public static let structureFaceClearance: Float = 4
+
+    /// For a scene with a structure, each open face nearer than `structureFaceClearance` to the
+    /// charge or to a structure, with its clearance in m/kg^(1/3), the nearest first: the faces whose
+    /// reflections may reach the structure's late response. A face beyond a structure as seen from
+    /// the charge counts from the charge alone: Tyndall's, 1.4 m/kg^(1/3) behind the building in
+    /// every run, did not move its front's response. Empty without a structure.
+    public var tightOpenFaces: [(name: String, clearance: Float)] {
+        let structures = structuralObjects.compactMap { $0.structure?.bounds }
+        guard !structures.isEmpty, charge.mass > 0 else { return [] }
+        let scale = cbrt(charge.mass)
+        let faces: [(BoundaryFaces, String, Int, Bool)] = [
+            (.xMin, "west (x = 0)", 0, false), (.xMax, "east", 0, true), (.yMin, "south (y = 0)", 1, false),
+            (.yMax, "north", 1, true), (.zMin, "floor", 2, false), (.zMax, "top", 2, true),
+        ]
+        var tight: [(name: String, clearance: Float)] = []
+        for (face, name, axis, high) in faces where !reflectiveFaces.contains(face) {
+            func distance(_ x: Float) -> Float { high ? domainSize[axis] - x : x }
+            let fromCharge = distance(charge.position[axis])
+            // Structures between the charge and the face shelter it; those beside or beyond count.
+            let beside = structures.filter { box in
+                !(high ? box.min[axis] > charge.position[axis] : box.max[axis] < charge.position[axis])
+            }
+            let nearest =
+                ([fromCharge] + beside.flatMap { [distance($0.min[axis]), distance($0.max[axis])] }).min()!
+            let clearance = max(nearest, 0) / scale
+            if clearance < Self.structureFaceClearance { tight.append((name, clearance)) }
+        }
+        return tight.sorted { $0.clearance < $1.clearance }
+    }
+
+    /// A line saying which open faces are too near (`tightOpenFaces`), or nil.
+    public var tightFacesNote: String? {
+        let tight = tightOpenFaces
+        guard !tight.isEmpty else { return nil }
+        let list = tight.map { String(format: "%@ %.1f", $0.name, $0.clearance) }.joined(separator: ", ")
+        return String(
+            format:
+                "Open faces near the charge or the structure (m/kg^(1/3)): %@. Their reflections can move the structure's response after the positive phase; keep each at least %.0f m/kg^(1/3) (%.0f m) away.",
+            list, Self.structureFaceClearance, Self.structureFaceClearance * cbrt(charge.mass))
+    }
+
     /// Resizes the domain from its origin, everything staying where it is. Throws if the scene's
     /// contents, its charge or its terrain would not fit; gauges left outside are removed, and
     /// their names returned.

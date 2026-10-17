@@ -289,6 +289,12 @@ struct SidebarView: View {
                 "The open top reflects a little of each wave; this height, 1.5 √(R W^(1/3)) above the "
                     + "charge for the farthest ground R, keeps what it sends down out of the gauges' positive phase."
             )
+            if let note = model.settings.scenario.tightFacesNote {
+                Label(note, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             Menu("Fit to the charge") {
                 ForEach([10, 20, 40] as [Float], id: \.self) { reach in
                     Button(

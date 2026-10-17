@@ -88,6 +88,10 @@ struct ShellUniforms {
     uint removesFragments;  // as in `StructureUniforms`
     uint loadShares;        // 1: the applied pressure acts by each element's share, after the table
     uint loadNodeShares;    // 1: and on the nodes by theirs, after the elements'
+    uint linkCount;         // fastened sheets' links, and where their data begin (bytes)
+    uint linkRecords;
+    uint linkStarts;
+    uint linkEntries;
 };
 
 // Gravity's pull per unit mass, when it has been turned (`turnedGravity`).
@@ -2007,6 +2011,63 @@ static inline float springForce(float x, thread float &offset, thread float &mov
     return f;
 }
 
+// Fastened sheets' links (`ShellMesh.Link`), compiled into the nodes' pass only for bodies with them.
+constant bool linksConstant [[function_constant(23)]];
+constant bool linked = is_function_constant_defined(linksConstant) && linksConstant;
+
+// Each link of a fastened sheet to the beam it lies on, before the nodes move: the screws in
+// tension as the sheet pulls off, until it pulls through and comes away (for good); the sheet
+// bearing on the beam the other way, stiffly; in shear, the screws bearing in the sheet. Writes
+// the force on the sheet's node; the beam's takes the opposite.
+kernel void shellLinks(const device ShellNode *nodes [[buffer(0)]],
+                       device uchar *table [[buffer(1)]],
+                       constant ShellUniforms &u [[buffer(2)]],
+                       const device StepControl &control [[buffer(3)]],
+                       uint l [[thread_position_in_grid]]) {
+    bool active;
+    shellStep(u, control, active);
+    if (!active || l >= u.linkCount) {
+        return;
+    }
+    device float4 *link = (device float4 *)(table + u.linkRecords) + 6 * l;
+    float4 head = link[0];
+    uint a = uint(head.x);
+    uint b = uint(head.y);
+    uint code = uint(head.z);
+    uint normal = code % 3u;
+    float off = code >= 3u ? 1.0f : -1.0f;
+    float length = head.w;
+    float4 tension = link[1];
+    float4 shear = link[2];
+    float4 state = link[3];
+    float4 moved = link[4];
+    if (state.w > 0.5f) {
+        link[5] = float4(0.0f);
+        return;
+    }
+    float3 relative = float3(nodes[a].displacement) - float3(nodes[b].displacement);
+    uint t1 = (normal + 1u) % 3u;
+    uint t2 = (normal + 2u) % 3u;
+    float apart = off * relative[normal];
+    float normalOffset = state.x, normalMoved = moved.x;
+    bool pulling = apart - normalOffset >= 0.0f;
+    float4 law = pulling ? tension : float4(10.0f * tension.x, 1e30f, 0.0f, 0.0f);
+    float pulled = springForce(apart, normalOffset, normalMoved, law, length);
+    bool released = pulling && tension.y + tension.z * normalMoved <= 0.0f;
+    float firstOffset = state.y, firstMoved = moved.y, secondOffset = state.z, secondMoved = moved.z;
+    float first = springForce(relative[t1], firstOffset, firstMoved, shear, length);
+    float second = springForce(relative[t2], secondOffset, secondMoved, shear, length);
+    float3 force = float3(0.0f);
+    if (!released) {
+        force[normal] = -off * pulled;
+        force[t1] = -first;
+        force[t2] = -second;
+    }
+    link[3] = float4(normalOffset, firstOffset, secondOffset, released ? 1.0f : 0.0f);
+    link[4] = float4(normalMoved, firstMoved, secondMoved, 0.0f);
+    link[5] = float4(force, 0.0f);
+}
+
 kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
                        const device ShellForces *forces [[buffer(1)]],
                        device uchar *flags [[buffer(2)]],
@@ -2109,6 +2170,18 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
     }
     // A node on a spring support (`SpringSupport`): springs to fixed ground pulling along the edge's
     // span, across it, and turning about the edge, each elastic then hardening or softening.
+    // A fastened sheet's node, or a beam's under one: its links' forces.
+    if (linked) {
+        const device uchar *bytes = (const device uchar *)loadTable;
+        const device uint *starts = (const device uint *)(bytes + u.linkStarts);
+        const device uint *entries = (const device uint *)(bytes + u.linkEntries);
+        const device float4 *records = (const device float4 *)(bytes + u.linkRecords);
+        for (uint i = starts[n]; i < starts[n + 1]; ++i) {
+            uint entry = entries[i];
+            float3 linkForce = records[6 * (entry >> 1) + 5].xyz;
+            force += (entry & 1u) != 0 ? -linkForce : linkForce;
+        }
+    }
     // The springs follow the applied load's table and shares, from the next 16 bytes: each node's
     // support (+ 1), its length for pulling and for turning, its springs' plastic offsets and
     // plastic movements, three to a node; then each support's laws, five to a support.
@@ -2118,7 +2191,8 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
         uint s = uint(springs[3 * n].x) - 1u;
         float length = springs[3 * n].y;
         const device float4 *springLaw = springs + 3 * u.nodeCount;
-        uint3 axes = uint3(springLaw[5 * s + 4].xyz);
+        uint3 axes = uint3(springLaw[6 * s + 4].xyz);
+        bool releases = springLaw[6 * s + 4].w > 0.5f;
         float4 offsets = springs[3 * n + 1];
         float4 moved = springs[3 * n + 2];
         float3 displacement = float3(node.displacement);
@@ -2126,14 +2200,26 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
         float turn = 2.0f * atan2(q[axes.x], q.w);
         float pullOffset = offsets.x, acrossOffset = offsets.y, turnOffset = offsets.z;
         float pullMoved = moved.x, acrossMoved = moved.y, openMoved = moved.z, closeMoved = moved.w;
-        float pull = springForce(displacement[axes.y], pullOffset, pullMoved, springLaw[5 * s], length);
-        float across = springForce(displacement[axes.z], acrossOffset, acrossMoved, springLaw[5 * s + 1], length);
-        float turnLength = springs[3 * n].z;
-        bool opening = turn - turnOffset >= 0.0f;
-        float turning = turnLength <= 0.0f ? 0.0f
-            : opening ? springForce(turn, turnOffset, openMoved, springLaw[5 * s + 2], turnLength)
-                      : springForce(turn, turnOffset, closeMoved, springLaw[5 * s + 3], turnLength);
-        springs[3 * n + 1] = float4(pullOffset, acrossOffset, turnOffset, 0.0f);
+        // Released (offsets.w): off its support altogether.
+        bool released = offsets.w > 0.5f;
+        float pull = 0.0f, across = 0.0f, turning = 0.0f;
+        if (!released) {
+            pull = springForce(displacement[axes.y], pullOffset, pullMoved, springLaw[6 * s], length);
+            float4 acrossLaw = displacement[axes.z] - acrossOffset >= 0.0f ? springLaw[6 * s + 1] : springLaw[6 * s + 5];
+            across = springForce(displacement[axes.z], acrossOffset, acrossMoved, acrossLaw, length);
+            released = releases && acrossLaw.y + acrossLaw.z * acrossMoved <= 0.0f;
+            float turnLength = springs[3 * n].z;
+            bool opening = turn - turnOffset >= 0.0f;
+            turning = turnLength <= 0.0f ? 0.0f
+                : opening ? springForce(turn, turnOffset, openMoved, springLaw[6 * s + 2], turnLength)
+                          : springForce(turn, turnOffset, closeMoved, springLaw[6 * s + 3], turnLength);
+            if (released) {
+                pull = 0.0f;
+                across = 0.0f;
+                turning = 0.0f;
+            }
+        }
+        springs[3 * n + 1] = float4(pullOffset, acrossOffset, turnOffset, released ? 1.0f : 0.0f);
         springs[3 * n + 2] = float4(pullMoved, acrossMoved, openMoved, closeMoved);
         force[axes.y] -= pull;
         force[axes.z] -= across;

@@ -29,6 +29,21 @@ struct SceneExtentTests {
             abs(scenario.suggestedHeight - scenario.headroom(forRange: scenario.farthestGroundRange)) < 1e-3)
     }
 
+    @Test("Open faces near the charge or a structure are named, with their scaled clearance")
+    func tightFaces() {
+        let test = TyndallCLTTest.tests[0]
+        // The harness's domain: the charge 1.1 m from the face behind it (0.46 m/kg^(1/3)).
+        let tight = TyndallCLTTest.scenario(test).tightOpenFaces
+        #expect(tight.first?.name == "west (x = 0)")
+        #expect(abs((tight.first?.clearance ?? 0) - 1.14 / cbrt(14.5)) < 0.01)
+        #expect(TyndallCLTTest.scenario(test).tightFacesNote?.contains("4 m/kg^(1/3)") == true)
+        // Moved out 12, 8 and 6 m, which the wall's response converged in, none is.
+        let padded = TyndallCLTTest.scenario(test, pad: SIMD3(12, 8, 6)).tightOpenFaces
+        #expect(padded.isEmpty, "\(padded)")
+        // Without a structure, nothing to say.
+        #expect(ScenarioPreset.openGround.scenario.tightOpenFaces.isEmpty)
+    }
+
     @Test("Resizing keeps the contents, drops gauges left outside, and refuses to cut anything off")
     func resize() throws {
         var scenario = ScenarioPreset.openGround.scenario
