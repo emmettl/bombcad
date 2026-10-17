@@ -235,7 +235,8 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
                 result.depths == groundShock.spec.depths,
                 result.soil == groundShock.spec.soil,
                 (result.model ?? .estimate) == groundShock.spec.model, result.frameTimes == nil,
-                result.profile == (groundShock.spec.model == .column ? groundShock.spec.columnProfile : nil),
+                result.profile
+                    == (groundShock.spec.model == .estimate ? nil : groundShock.spec.columnProfile),
                 result.points.allSatisfy({ point in
                     finite(point.peakOverpressure) && finite(point.impulse) && finite(point.duration)
                         && finite(point.frontSpeed) && point.history.isEmpty

@@ -177,7 +177,21 @@ struct StepControl {
     float levelStep1;
     uint levelSubstepSum0;
     uint levelSubstepSum1;
+    // The run's clock, in ticks of 2^-40 s since the restart, low and high words (see `runClock`).
+    uint clockLow;
+    uint clockHigh;
 };
+
+// The run's clock in ticks of 2^-40 s: each step's dt, a float, converts exactly, so that the time
+// at a step is the same however the run's steps are cut into batches (a batch's float sum of its
+// steps from its start rounded with each cut). The host carries it from batch to batch.
+static inline ulong runClock(const device StepControl &control) {
+    return ulong(control.clockLow) | (ulong(control.clockHigh) << 32);
+}
+
+static inline float runClockSeconds(const device StepControl &control) {
+    return float(runClock(control)) * 9.094947017729282e-13f;  // 2^-40
+}
 
 // The gas's equation of state. An ideal gas has p = (gamma - 1) times the internal energy per
 // volume. Thermally perfect air is an ideal gas whose molecules also store energy in vibration
@@ -1992,6 +2006,10 @@ kernel void prepareStep(device StepControl &control [[buffer(0)]],
 
     control.dt = dt;
     control.batchTime += dt;
+    ulong clock = (ulong(control.clockLow) | (ulong(control.clockHigh) << 32))
+        + ulong(max(dt, 0.0f) * 1099511627776.0f);
+    control.clockLow = uint(clock);
+    control.clockHigh = uint(clock >> 32);
     control.stepIndex += 1;
     control.activeSteps += dt > 0.0f ? 1 : 0;
 }
@@ -2071,7 +2089,7 @@ kernel void sampleExposurePlane(const device Cell *state [[buffer(0)]],
         record.x = max(record.x, overpressure);
         record.y += overpressure * control.dt;
         if (record.z < 0 && overpressure >= probe.y) {
-            record.z = probe.z + control.batchTime;
+            record.z = runClockSeconds(control);
         }
     }
     exposure[point] = record;

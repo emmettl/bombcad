@@ -137,7 +137,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-11"
+    public static let currentTable = "standing-table-12"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -328,6 +328,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case measuredSounding
     case cloudSpread
     case soilColumn
+    case halfSpace
     case freestandingBoxes
     case freestandingCars
 
@@ -432,6 +433,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .measuredSounding: return inputs.cloud?.sounding != nil
         case .cloudSpread: return inputs.cloud?.spread == true
         case .soilColumn: return inputs.groundShock?.model == .column
+        case .halfSpace: return inputs.groundShock?.model == .halfspace
         case .freestandingBoxes: return !(inputs.scenario.rigidObjects ?? []).isEmpty
         case .freestandingCars: return !(inputs.scenario.rigidCars ?? []).isEmpty
         }
@@ -885,8 +887,17 @@ public enum StandingTable {
             return Entry(
                 title: "Layered soil column", affects: [.groundShock], limit: .illustrative,
                 note: "A layered soil column under each point, solved through the ground's overpressure "
-                    + "history; checked against closed-form solutions, not against a measurement.",
+                    + "history; checked against closed-form solutions; against Xia's 1 t burst its vertical "
+                    + "velocity 20 to 80 times the measured.",
                 document: "ground-shock.md#the-soil-column")
+        case .halfSpace:
+            return Entry(
+                title: "Elastic half-space", affects: [.groundShock], limit: .illustrative,
+                note:
+                    "An axisymmetric elastic half-space under the charge, driven by the air's ground pressures "
+                    + "and a calibrated direct source; checked against Lamb's problem, Cole and Huth's moving load "
+                    + "and Haskell's dispersion; against Xia's 1 t burst still far too high in the vertical.",
+                document: "ground-shock-outrunning.md")
         case .freestandingBoxes:
             return Entry(
                 title: "Freestanding boxes", affects: [.freestandingMotion], limit: .verified,
@@ -1182,7 +1193,8 @@ public enum StandingTable {
         "GroundShockSpec.line": .input,
         "GroundShockSpec.depths": .input,
         "GroundShockSpec.arrivalThreshold": .input,
-        "GroundShockSpec.model": .option([.soilColumn]),
+        "GroundShockSpec.model": .option([.soilColumn, .halfSpace]),
+        "GroundShockSpec.halfSpace": .input,
         "GroundShockSpec.profile": .input,
         "GroundSoil.density": .input,
         "GroundSoil.waveSpeed": .input,
@@ -2330,8 +2342,36 @@ struct StandingScene {
             ], documents: ["cratering.md#limitations"])
     }
 
+    func halfSpaceGroundShock() -> ResultStanding {
+        result(
+            .groundShock, .illustrative,
+            "An elastic half-space about the charge, checked against Lamb's problem, Cole and Huth and Haskell; "
+                + "against one measured surface burst, its vertical velocity 15 to 60 times too high (the safe "
+                + "side), its horizontal within one and a half times at 21 m but 15 to 20 times too high at 42 m.",
+            evidence: [
+                StandingEvidence(
+                    "The axisymmetric solver against Lamb's problem, Cole and Huth's moving load and Haskell's "
+                        + "Rayleigh dispersion",
+                    "Within 8% of Lamb's surface pulse; 5–8% behind a superseismic front; 4% in phase speed",
+                    "ground-shock-outrunning.md#stage-1-the-solver-and-its-checks"),
+                StandingEvidence(
+                    "Xia et al.'s 1 t surface burst, 0.5 m deep at 21 and 42 m",
+                    "Vertical 15–60 times the measured accelerations' integral; horizontal 1.5 times at 21 m, "
+                        + "15–20 times at 42 m",
+                    "ground-shock-outrunning.md#stage-2-against-xia-et-al"),
+            ],
+            assumptions: [
+                "Elastic and axisymmetric about the charge: no yielding near it, no buildings or terrain.",
+                "The charge's direct source calibrated once against UFC 3-340-01 at 8 ft/lb^(1/3); its waves fall "
+                    + "away as r^(-1/2) against UFC's r^(-2.5).",
+                "One way: the ground stays rigid for the air.",
+                "Not for design, buried services or vibration limits.",
+            ], documents: ["ground-shock-outrunning.md"])
+    }
+
     func groundShock() -> ResultStanding {
         let column = has(.soilColumn)
+        if has(.halfSpace) { return halfSpaceGroundShock() }
         return result(
             .groundShock, .illustrative,
             column
