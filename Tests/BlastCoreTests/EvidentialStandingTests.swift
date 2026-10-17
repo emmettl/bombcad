@@ -111,7 +111,7 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
         let methane = scene(.methane)[.peakOverpressure]?.bands ?? []
         #expect(methane.contains { $0.check.contains("Bauwens et al.'s vented") })
         let hydrogen = scene(.hydrogen)
-        #expect((hydrogen[.peakOverpressure]?.bands ?? []).map(\.ratio) == ["19–39%"])
+        #expect((hydrogen[.peakOverpressure]?.bands ?? []).map(\.ratio) == ["124–296%"])
         #expect(hydrogen[.peakOverpressure]?.summary.hasPrefix("Lean hydrogen") == true)
         let town = scene(.townGas)
         #expect((town[.peakOverpressure]?.bands ?? []).isEmpty)
