@@ -692,7 +692,11 @@ their capacity, short of buckling.
 11. **Members are bowed, not modelled crooked.** Steel members carry Eurocode 3's equivalent
     bow, so they buckle at their design curves' resistance ([buckling](#buckling)). The bow
     stands for crookedness and rolling's residual stresses together; neither is modelled as
-    measured. It assumes pinned ends between joints, the safe side for members clamped there.
+    measured. It assumes pinned ends between joints, the safe side for members clamped there. A
+    beam bent about its strong axis with nothing holding it sideways between joints (a sheet's
+    screws count as holding it) gets the same bow, about twice the one §5.3.4(3) gives for
+    lateral-torsional buckling, so it buckles sideways sooner than it should: a lone 6 m Zed
+    purlin collapses sideways under 0.9 of its in-plane capacity, where straight it holds.
     Flanged sections drawn as rectangles (`SteelSection.equivalent`) are stiffer about their
     minor axis than the section, a beam's well above it, so they buckle that way at a higher
     load than they should; their bow is sized for the rectangle.

@@ -38,8 +38,8 @@ public enum BucklingCurve: String, Codable, Sendable, CaseIterable, Hashable {
 }
 
 /// The bows steel beams start with (`StructureModel.memberImperfections`). Each steel member's
-/// line of beams is cut at its joints: every node another member, a shell or a tie shares, and its
-/// ends. Each length between joints, of at least four beams, is given a half sine across its
+/// line of beams is cut at its joints: every node another member, a shell, a tie or a sheet's
+/// screw shares, and its ends. Each length between joints, of at least four beams, is given a half sine across its
 /// weaker side (either, for a square) of the amplitude EN 1993-1-1 §5.3.2(11) takes for a member's
 /// imperfection in its buckling mode, e₀ = α (λ̄ − 0.2) W_pl / A (γ_M1 = 1), λ̄ = √(N_pl / N_cr)
 /// for the length pinned at its joints and W_pl / A a quarter of the weaker side: so its
@@ -69,6 +69,11 @@ enum MemberImperfection {
         var sharedElsewhere = [Bool](repeating: false, count: mesh.positions.count)
         for element in mesh.elements {
             for corner in 0..<4 { sharedElsewhere[Int(element.nodes[corner])] = true }
+        }
+        // A sheet screwed to a beam holds it there.
+        for link in mesh.links {
+            sharedElsewhere[Int(link.sheet)] = true
+            sharedElsewhere[Int(link.beam)] = true
         }
         for tie in mesh.ties {
             sharedElsewhere[Int(tie.slave)] = true
