@@ -68,6 +68,28 @@ struct EnvelopeDamageTests {
         #expect(abs(held.peak / 5e3 - 1) < 0.02)
     }
 
+    @Test(
+        "UFC 3-340-02 Example 2A-12's room fills by equation 2-31 as the UFC works it, and the orifice fill near it"
+    )
+    func leakage() {
+        // Figure 2-235 at the example's first difference, 3.5 psi: it reads 8.75 psi ft/ms.
+        let psi = 6_894.757
+        let first =
+            EnvelopeDamageAssessment.leakageCoefficient(difference: 3.5 * psi) / (psi * 0.3048 * 1_000)
+        #expect(abs(first - 8.75) < 0.2)
+        #expect(EnvelopeDamageAssessment.leakageCoefficient(difference: -3.5 * psi) < 0)
+        // A 3 by 3 ft opening into 1,000 ft³ under 3.5 psi falling to nothing over 55 ms. The
+        // UFC's table, in 5.5 ms steps, peaks at 1.41 psi near 30 ms; in fine steps it is 1.29.
+        let bin = 5e-4
+        let outer = (0..<280).map { max(3.5 * (1 - Double($0) * bin / 0.055), 0) * psi }
+        let opening = [(area: 9 * 0.3048 * 0.3048, opens: 0.0, outer: outer)]
+        let volume = 1_000 * 0.3048 * 0.3048 * 0.3048
+        let ufc = EnvelopeDamageAssessment.leakageFill(volume: volume, openings: opening, bin: bin)
+        #expect(abs(ufc.peak / psi - 1.29) < 0.04, "\(ufc.peak / psi) psi")
+        let orifice = EnvelopeDamageAssessment.fill(volume: volume, openings: opening, bin: bin)
+        #expect(orifice.peak / ufc.peak > 1 && orifice.peak / ufc.peak < 1.25, "\(orifice.peak / psi) psi")
+    }
+
     @Test("Brick cracks, then falls once its deflection passes its thickness")
     func masonry() {
         let owner = UUID()
