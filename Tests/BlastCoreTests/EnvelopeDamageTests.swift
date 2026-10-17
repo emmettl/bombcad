@@ -106,6 +106,36 @@ struct EnvelopeDamageTests {
         #expect(heavy?.levels == .failed ... .failed && heavy?.failedAtS != nil)
     }
 
+    @Test("Stone carrying the storeys above rocks against their weight and holds where a top storey falls")
+    func overburden() {
+        let owner = UUID()
+        let stone = EnvelopeConstruction(
+            objectID: owner, walls: .unreinforcedMasonry, wallThicknessM: 0.5, source: .user, detail: "")
+        // A façade strip a storey tall at the foot, in the middle and at the top of a building 9 m
+        // tall, under the same 40 kPa, 0.2 s pulse.
+        func strip(_ z: Float) -> EnvelopeComponentLoad {
+            load(
+                "s\(z)", .facade, owner: owner, region: Box(min: SIMD3(0, 0, z), max: SIMD3(6, 0.5, z + 3)),
+                axis: 1, outer: pulse(40e3, over: 0.2, total: 0.5))
+        }
+        let foot = EnvelopeDamageAssessment.assess(strip(0), construction: stone, buildingTop: 9)
+        let top = EnvelopeDamageAssessment.assess(strip(6), construction: stone, buildingTop: 9)
+        let unloaded = EnvelopeDamageAssessment.assess(strip(0), construction: stone)
+        #expect(top?.levels == .failed ... .failed && unloaded?.levels == .failed ... .failed)
+        #expect(foot.map { $0.levels.upperBound < .failed } == true, "\(String(describing: foot?.levels))")
+        // Its rocking resistance, 8 P t / h² with P the 6 m of stone above.
+        var masonry = StructureMaterial.masonry
+        masonry.steel = nil
+        let p = Double(masonry.density) * 9.81 * 0.5 * 6
+        let system = EnvelopePanel.unreinforcedMasonry(
+            thickness: 0.5, material: masonry, a: 3, b: 6, axialLoad: p, height: 3)
+        #expect(abs(system.backbone[0].y - 8 * p * 0.5 / 9) < 1e-6 * system.backbone[0].y)
+        // The whole building, assessed together, gives its foot the stone above.
+        let building = EnvelopeDamageAssessment.assess(
+            loads: [strip(0), strip(3), strip(6)], constructions: { _ in stone })
+        #expect(building.first?.components.map(\.levels.upperBound) == [.heavy, .failed, .failed])
+    }
+
     @Test("The view's shader draws the same six colours as the palette")
     func shaderPalette() throws {
         let shader = try String(

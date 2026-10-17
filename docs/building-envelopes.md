@@ -472,7 +472,11 @@ load–mass factors through yield. `EnvelopePanel` builds the systems:
   dynamic strengths (UFC Table 4-1: 1.17 and 1.19), the stiffness of a clamped or simply supported
   plate (Timoshenko) on the mean of the gross and cracked sections, elastic–perfectly plastic.
 - **Unreinforced masonry**: elastic until the largest moment reaches f_t t²/6, then rocking with
-  the resistance falling to nothing at a deflection of its thickness; no arching.
+  the resistance falling to nothing at a deflection of its thickness; no arching. A wall with
+  storeys above it carries the weight of its own masonry above (its floors' loads are not known)
+  and rocks against it, 8 P (t − x) / h² over its height h, as SBEDS treats a wall held by its
+  axial load; it takes the larger of the two. For 0.5 m masonry a storey tall and 6 m wide at the foot of
+  three storeys that is about 25 kPa, against about 17 kPa from cracking, clamped.
 - **Annealed glass** (since 17 October): D. M. Moore's large-deflection plate (JPL 80-34) as UFC
   3-340-02's figures 6-52 and 6-53 give it, simply supported, membrane action stiffening it; it
   breaks when its largest principal stress, weighed over time by glass's static fatigue (Brown's

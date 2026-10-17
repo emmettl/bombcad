@@ -2098,7 +2098,7 @@ struct StandingScene {
                     + "would land, thrown whole from the pane's middle at its speed on breaking, the load pushing "
                     + "it on, over a 0.9 m sill; no test's fragments compared.",
                 "Concrete by ASCE/SEI 59-11's limits for single-reinforced slabs; brick cracked or fallen, with "
-                    + "no arching.",
+                    + "no arching, a wall rocking against the weight of its own masonry above it.",
             ]
                 + (assumed > 0
                     ? [
