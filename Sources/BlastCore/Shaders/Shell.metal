@@ -1554,9 +1554,13 @@ static inline float beamConcrete(float axial, float2 shear, float instantaneous,
     return stress;
 }
 
-// One steel fibre of a beam: uniaxial von Mises with linear hardening; shear stays elastic.
-static inline float beamVonMises(float axial, float2 shear, thread ShellLayer &state, constant MaterialParameters &m,
-                                 constant ShellUniforms &u, thread float2 &shearStress, thread LayerOutcome &outcome) {
+// One steel fibre of a beam: uniaxial von Mises with linear hardening; shear stays elastic. A
+// fibre on a flange that buckles locally (`buckles`), past its onset in compression, carries no
+// more than a stress falling from the yield to the residual share of it (`LocalBuckling`), its
+// largest compression kept in `crack.y`.
+static inline float beamVonMises(float axial, float2 shear, bool buckles, thread ShellLayer &state,
+                                 constant MaterialParameters &m, constant ShellUniforms &u,
+                                 thread float2 &shearStress, thread LayerOutcome &outcome) {
     float young = m.youngsModulus;
     float stress = young * (axial - state.crack.x);
     float yield = m.yieldStress + m.hardening * state.crush.y;
@@ -1565,6 +1569,17 @@ static inline float beamVonMises(float axial, float2 shear, thread ShellLayer &s
         state.crack.x += stress > 0.0f ? increment : -increment;
         state.crush.y += increment;
         stress = young * (axial - state.crack.x);
+    }
+    if (buckles) {
+        state.crack.y = max(state.crack.y, -axial);
+        float past = (state.crack.y - m.bucklingOnset) / m.bucklingSoftening;
+        if (past > 0.0f) {
+            float cap = m.yieldStress * max(m.bucklingResidual, 1.0f - (1.0f - m.bucklingResidual) * past);
+            if (stress < -cap) {
+                state.crack.x = axial + cap / young;
+                stress = -cap;
+            }
+        }
     }
     shearStress = u.shearFactor * m.mu * shear;
     outcome.torn = float2(0.0f);
@@ -1746,10 +1761,17 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
             ShellLayer state = loadLayer(fibres[slot]);
             float2 shearStress;
             LayerOutcome outcome;
+            // A fibre on a flange that buckles locally: on its side of the section, along its axis.
+            bool buckles = false;
+            if (m.bucklingAxis != 0) {
+                uint across = m.bucklingAxis - 1;
+                float place = across == i2 ? eta : (across == i3 ? zeta : 0.0f);
+                buckles = place != 0.0f && (m.bucklingSide == 0.0f || place * m.bucklingSide > 0.0f);
+            }
             float stress = m.materialModel == 2
                 ? beamTimber(axial, shear, L, state, m, u, shearStress, outcome)
                 : m.materialModel == 0
-                ? beamVonMises(axial, shear, state, m, u, shearStress, outcome)
+                ? beamVonMises(axial, shear, buckles, state, m, u, shearStress, outcome)
                 : beamConcrete(axial, shear, instantaneous, dt, confinement, beam.barCount > 0 && m.steelPoints > 0,
                                state, m, u, crossing, slide, cap, shearStress, outcome);
             storeLayer(fibres[slot], state);
@@ -1931,6 +1953,31 @@ static inline float4 quaternionProduct(float4 p, float4 q) {
 }
 
 // Gathers the forces and moments of the elements around every node and advances its motion.
+// Spring supports (`SpringSupport`), compiled in only for bodies with them.
+constant bool springSupportsConstant [[function_constant(22)]];
+constant bool springSupported = is_function_constant_defined(springSupportsConstant) && springSupportsConstant;
+
+// One spring of a spring support at a node standing for `length` of its edge: its force (or
+// moment) at movement `x`, elastic from its plastic offset, the yield hardening (or softening, to
+// nothing) with the plastic movement accumulated; `law` per metre: stiffness, yield, hardening.
+static inline float springForce(float x, thread float &offset, thread float &moved, float4 law, float length) {
+    float k = law.x * length;
+    float h = law.z * length;
+    float f = k * (x - offset);
+    float r = max(0.0f, (law.y + law.z * moved) * length);
+    if (fabs(f) > r) {
+        float step = (fabs(f) - r) / max(k + h, 1e-6f * k);
+        moved += step;
+        if (law.y + law.z * moved <= 0.0f) {
+            offset = x;  // softened to nothing: no more resistance
+            return 0.0f;
+        }
+        offset += f > 0.0f ? step : -step;
+        f = k * (x - offset);
+    }
+    return f;
+}
+
 kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
                        const device ShellForces *forces [[buffer(1)]],
                        device uchar *flags [[buffer(2)]],
@@ -1961,7 +2008,7 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
                        const device FootingConstants *footingConstants [[buffer(27)]],
                        const device FootingState *footingStates [[buffer(28)]],
                        device float4 *footingLinks [[buffer(29)]],
-                       const device float2 *loadTable [[buffer(30)]],
+                       device float2 *loadTable [[buffer(30)]],
                        uint n [[thread_position_in_grid]]) {
     bool active;
     float dt = shellStep(u, control, active);
@@ -2030,6 +2077,38 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
             force += pointForce;
             moment += cross(arm + turn, pointForce);
         }
+    }
+    // A node on a spring support (`SpringSupport`): springs to fixed ground pulling along the edge's
+    // span, across it, and turning about the edge, each elastic then hardening or softening.
+    // The springs follow the applied load's table and shares, from the next 16 bytes: each node's
+    // support (+ 1), its length for pulling and for turning, its springs' plastic offsets and
+    // plastic movements, three to a node; then each support's laws, five to a support.
+    device float4 *springs = (device float4 *)((device uchar *)loadTable
+        + ((256u * 8u + (max(u.elementCount, 1u) + max(u.nodeCount, 1u)) * 4u + 15u) & ~15u));
+    if (springSupported && springs[3 * n].x > 0.0f) {
+        uint s = uint(springs[3 * n].x) - 1u;
+        float length = springs[3 * n].y;
+        const device float4 *springLaw = springs + 3 * u.nodeCount;
+        uint3 axes = uint3(springLaw[5 * s + 4].xyz);
+        float4 offsets = springs[3 * n + 1];
+        float4 moved = springs[3 * n + 2];
+        float3 displacement = float3(node.displacement);
+        float4 q = node.rotation;
+        float turn = 2.0f * atan2(q[axes.x], q.w);
+        float pullOffset = offsets.x, acrossOffset = offsets.y, turnOffset = offsets.z;
+        float pullMoved = moved.x, acrossMoved = moved.y, openMoved = moved.z, closeMoved = moved.w;
+        float pull = springForce(displacement[axes.y], pullOffset, pullMoved, springLaw[5 * s], length);
+        float across = springForce(displacement[axes.z], acrossOffset, acrossMoved, springLaw[5 * s + 1], length);
+        float turnLength = springs[3 * n].z;
+        bool opening = turn - turnOffset >= 0.0f;
+        float turning = turnLength <= 0.0f ? 0.0f
+            : opening ? springForce(turn, turnOffset, openMoved, springLaw[5 * s + 2], turnLength)
+                      : springForce(turn, turnOffset, closeMoved, springLaw[5 * s + 3], turnLength);
+        springs[3 * n + 1] = float4(pullOffset, acrossOffset, turnOffset, 0.0f);
+        springs[3 * n + 2] = float4(pullMoved, acrossMoved, openMoved, closeMoved);
+        force[axes.y] -= pull;
+        force[axes.z] -= across;
+        moment[axes.x] -= turning;
     }
     // Loose debris is part of no element the air loads, so the air pushes it directly, as solid
     // debris is; its volume is its share of the elements it belonged to.
