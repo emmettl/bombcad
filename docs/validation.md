@@ -3455,7 +3455,9 @@ one counted test, a cast-iron aerial bomb, is within a factor of 1.36 (rms) of M
 Hansche and Rinehart's measured curve for tumbling cubes, which moves the distance a fragment
 keeps 79 J by under 5%; Hoerner's fixed-orientation curves span 30% shorter to 50% longer. Cooper
 covers mild steel cylinders and 13 explosives; no arena test of launch speeds or ranges has been
-compared ([wanted](data-wanted.md#to-fetch)).
+compared ([wanted](data-wanted.md#to-fetch)). What fragments do to what they strike follows UFC 3-340-02 and THOR, whose
+worked examples it reproduces within 1% ([Fragments](fragments.md#what-fragments-do-to-what-they-strike)); no
+penetration test has been compared.
 
 ## Ground motion under a 1 t surface burst
 

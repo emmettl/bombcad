@@ -807,6 +807,7 @@ enum HeadlessRun {
         let envelopeData = try options.envelopeResults.map { _ in try model.envelopeResultsData() }
         let historyData = try options.envelopeHistories.map { _ in try model.envelopeHistoriesData() }
         if let url = options.envelopeDamage {
+            model.fragmentStrikes = fragments?.impacts.filter { $0.penetration != nil }
             model.refreshEnvelopeDamage()
             try model.envelopeDamageData().write(to: url, options: .withoutOverwriting)
             streams += model.envelopeDamage.map { building in

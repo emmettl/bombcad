@@ -542,7 +542,9 @@ one way as the run goes, at most once a second and again when it stops:
     or higher (5, high). A cracked pane held in its frame (GSA 2) is not told apart, nor are the
     tests' counts of fragments and perforations; skylights are not graded. The building's line
     gives its worst pane. Criteria as Graham's summary of GSA-TS01 (2003) and ASTM F1642 gives
-    them; no test's fragments are compared.
+    them; no test's fragments are compared. A cased charge's fragments that hole a pane first break
+    it then, before the blast if they arrive first, and the building's line counts them and the
+    fragments striking its walls ([Fragments](fragments.md#what-fragments-do-to-what-they-strike)).
   - A building with a panel past 2° is flagged as beyond the one-way model.
 - **Shown.**
   - The sidebar's Envelope building damage section lists each building's levels, its panes broken

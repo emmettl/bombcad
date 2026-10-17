@@ -137,7 +137,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-11"
+    public static let currentTable = "standing-table-12"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -2092,7 +2092,8 @@ struct StandingScene {
                     + "median strength with the whole pane at its largest stress.",
                 "The glass's hazard is graded by GSA's conditions and ASTM F1642's ratings from where it "
                     + "would land, thrown whole from the pane's middle at its speed on breaking, the load pushing "
-                    + "it on, over a 0.9 m sill; no test's fragments compared.",
+                    + "it on, over a 0.9 m sill; no test's fragments compared. A cased charge's fragments hole a "
+                    + "pane past Kim et al.'s breaking momentum, breaking it then if first.",
                 "Concrete by ASCE/SEI 59-11's limits for single-reinforced slabs; brick cracked or fallen, with "
                     + "no arching.",
             ]
@@ -2252,10 +2253,18 @@ struct StandingScene {
                 "Hansche and Rinehart's measured drag of tumbling cubes, Mach 0.5 to 3.5 (as Moxnes et al. 2017 restate it)",
                 "The drag curve itself; Hoerner's fixed orientations (Cooper's Figs. 27.15–27.18) put the "
                     + "distance to 79 J 30% shorter to 50% longer", "fragments.md#against-coopers-data"),
+            StandingEvidence(
+                "UFC 3-340-02's worked Examples 4A-10 to 4A-12 (fragments into concrete), and its steel "
+                    + "plate equation against THOR's mild steel",
+                "The examples within 1%; the two steel methods' speeds to perforate within 2%; no "
+                    + "penetration test compared", "fragments.md#what-fragments-do-to-what-they-strike"),
         ]
         let shared = [
             "One way: fragments do not push back on the air or the structure, and stop where they first hit.",
-            "Tumbling cubes of the casing's steel; no break-up, ricochet or penetration.",
+            "Tumbling cubes of the casing's steel, no break-up or ricochet. What they strike is judged one "
+                + "way by UFC 3-340-02 (concrete; masonry as concrete of its strength, for want of its own "
+                + "method), THOR (metal plates) and a measured breaking momentum (glass); a fragment stops at "
+                + "the first surface, through or not, and does not load it.",
             "Hazard distance: the DDESB's, where landings of 79 J or more on open ground fall below one per "
                 + "55.7 m², in 8 directions; as good as the ranges, which no arena test has checked.",
         ]

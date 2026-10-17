@@ -154,6 +154,21 @@ public struct FragmentResult: Codable, Sendable, Equatable {
             + (misses > 0 ? "; \(misses) samples fell outside the air sent" : "")
             + (lost > 0 ? "; \(lost) lost to the numerics" : "")
             + (hazard.map { "; " + $0.summary } ?? "")
+            + strikeSummary
+    }
+
+    /// The fragments judged against what they struck (`FragmentImpact.penetration`), real
+    /// counts: stopped, spalled and through.
+    public var strikeSummary: String {
+        let judged = impacts.filter { $0.penetration != nil }
+        guard !judged.isEmpty else { return "" }
+        func count(_ outcome: PenetrationResult.Outcome) -> Float {
+            judged.filter { $0.penetration?.outcome == outcome }.reduce(0) { $0 + $1.count }
+        }
+        return String(
+            format: "; struck targets: %.0f stopped, %.0f spalled, %.0f through", count(.stopped),
+            count(.spalled),
+            count(.perforated))
     }
 }
 

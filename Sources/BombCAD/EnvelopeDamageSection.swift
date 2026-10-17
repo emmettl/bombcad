@@ -122,6 +122,17 @@ struct EnvelopeDamageSection: View {
                 line += String(format: " (glass at %.0f m/s)", glazing.speedMS)
             }
         }
+        if let broken = building.panesBrokenByFragments, broken > 0 {
+            line +=
+                "; fragments broke \(broken) pane\(broken == 1 ? "" : "s")"
+                + ((building.panesBrokenBeforeBlast ?? 0) > 0
+                    ? " (\(building.panesBrokenBeforeBlast!) before the blast)" : "")
+        }
+        if let struck = building.wallStrikes, struck > 0 {
+            line += String(
+                format: "; walls struck by %.0f fragments, %.0f spalling and %.0f through", struck,
+                building.wallsSpalled ?? 0, building.wallsPerforated ?? 0)
+        }
         if building.beyondOneWay { line += "; beyond the one-way model (a panel past 2°)" }
         return line
     }

@@ -547,6 +547,9 @@ final class SimulationModel {
     /// Where the run's fragments landed against the hazardous-fragment criteria, once the run has
     /// ended and those still in flight have been flown on to land.
     private(set) var fragmentHazard: GroundHazard?
+    /// The run's fragments that struck something judged (`FragmentImpact.penetration`), once
+    /// landed; while the run goes, the live ones stand in. Envelope damage takes them.
+    @ObservationIgnored var fragmentStrikes: [FragmentImpact]?
     /// The run's fragments, in flight and landed, to draw.
     private(set) var fragmentLive: FragmentLive?
     @ObservationIgnored private(set) var fragments: (any FrameConsumer)?
@@ -677,8 +680,13 @@ final class SimulationModel {
             uniqueKeysWithValues: scenario.envelopeObjects.map {
                 ($0.id, EnvelopeDamageAssessment.roomVolume(of: $0.envelope!))
             })
+        // Fragments striking the buildings: the landed ones once in, the live ones meanwhile.
+        let strikes =
+            fragmentStrikes
+            ?? (fragments?.fragmentLive ?? fragmentLive)?.impacts.filter { $0.penetration != nil }
         envelopeDamage = EnvelopeDamageAssessment.assess(
-            loads: loads, constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms)
+            loads: loads, constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms,
+            strikes: strikes)
         applyEnvelopeDamageColours()
     }
 
@@ -1929,6 +1937,7 @@ final class SimulationModel {
         flownSpec = nil
         fragmentLive = nil
         fragmentHazard = nil
+        fragmentStrikes = nil
         fragmentStatus = ""
     }
 
@@ -2560,9 +2569,13 @@ final class SimulationModel {
                 // Those still in flight fly on to land, for the hazard: the run is over, and
                 // another starts afresh with new fragments.
                 let landed = try? await fragments.fragments(frameInterval: Self.fragmentFrameInterval)
-                guard let self, self.fragments === fragments, let hazard = landed?.hazard else { return }
+                guard let self, self.fragments === fragments, let landed, let hazard = landed.hazard else {
+                    return
+                }
                 self.fragmentHazard = hazard
+                self.fragmentStrikes = landed.impacts.filter { $0.penetration != nil }
                 self.updateFragmentStatus()
+                if !self.envelopeDamage.isEmpty { self.refreshEnvelopeDamage() }
             }
         }
         if let thermal {
@@ -2691,15 +2704,18 @@ final class SimulationModel {
 }
 
 extension SimulationModel {
-    /// Draws the run's particles: in flight, coloured by speed; tracers; and where fragments
-    /// landed, coloured by their energy. Each is a position and a code, the kind (0 a fragment, 1
-    /// a tracer, 2 a landing) plus a value from 0 to 1.
+    /// The hazardous fragment distance on the ground (`HazardOverlay`), once the run's
+    /// fragments have landed.
     func hazardLines() -> [SIMD4<Float>] {
         guard let fragmentHazard else { return [] }
         let terrain = scenario.terrain
         return HazardOverlay.lines(fragmentHazard) { terrain?.height(at: SIMD3($0, 0)) ?? 0 }
     }
 
+    /// Draws the run's particles: in flight, coloured by speed; tracers; where fragments landed,
+    /// coloured by their energy; and where they struck a judged target, by what they did. Each is
+    /// a position and a code, the kind (0 a fragment, 1 a tracer, 2 a landing, 4 a strike) plus a
+    /// value from 0 to 1.
     func fragmentDots(showFragments: Bool, showTracers: Bool) -> [SIMD4<Float>] {
         // Straight from the consumer, so the dots move with every frame drawn.
         guard let live = fragments?.fragmentLive ?? fragmentLive else { return [] }
@@ -2715,6 +2731,12 @@ extension SimulationModel {
         }
         if showFragments {
             for impact in live.impacts {
+                if let outcome = impact.penetration?.outcome {
+                    // A strike on a judged target, by what it did (Render.metal's kind 4).
+                    let value: Float = outcome == .stopped ? 0.1 : outcome == .spalled ? 0.5 : 0.9
+                    dots.append(SIMD4(impact.position, 4 + value))
+                    continue
+                }
                 // log10 of the energy over 7 decades: 1 J to 10 MJ.
                 dots.append(SIMD4(impact.position, 2 + min(max(log10(max(impact.energy, 1)) / 7, 0), 0.999)))
             }
