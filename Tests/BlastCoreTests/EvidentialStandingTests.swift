@@ -101,6 +101,23 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
         }
     }
 
+    /// Hydrogen takes its own vented band; town gas, never vented in a comparison, none.
+    @Test func aDeflagrationsBandFollowsItsFuel() throws {
+        func scene(_ gas: FlammableGas) -> SceneStanding {
+            var scenario = ScenarioPreset.ventedGasRoom.scenario
+            scenario.deflagration?.gas = gas
+            return standing(scenario, cellSize: 0.125)
+        }
+        let methane = scene(.methane)[.peakOverpressure]?.bands ?? []
+        #expect(methane.contains { $0.check.contains("Bauwens et al.'s vented") })
+        let hydrogen = scene(.hydrogen)
+        #expect((hydrogen[.peakOverpressure]?.bands ?? []).map(\.ratio) == ["19–39%"])
+        #expect(hydrogen[.peakOverpressure]?.summary.hasPrefix("Lean hydrogen") == true)
+        let town = scene(.townGas)
+        #expect((town[.peakOverpressure]?.bands ?? []).isEmpty)
+        #expect(town[.peakOverpressure]?.unbanded?.contains { $0.contains("town gas") } == true)
+    }
+
     @Test func everyOptionIsSetBySomeInput() {
         let reached = Set(
             StandingTable.fields.values.flatMap { field -> [ModelOption] in
