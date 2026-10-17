@@ -412,6 +412,16 @@ struct SavedSimulationRun: Codable, Equatable, Identifiable, Sendable {
             lines.append(
                 "\(field(name)),\"Fireball temperature\",\(frame.time * 1000),\(frame.temperature),K")
         }
+        // The craters, after the blast: at the run's end, as the scene shows them.
+        for (n, crater) in settings.craters(over: scenario).enumerated() {
+            let label = n == 0 ? "Crater" : "Crater \(n + 1)"
+            for (series, value) in [
+                ("apparent diameter", crater.apparentDiameter), ("apparent depth", crater.apparentDepth),
+                ("lip height", crater.lipHeight),
+            ] {
+                lines.append("\(field(name)),\(field(label + " " + series)),\(elapsedTime * 1000),\(value),m")
+            }
+        }
         // The credits the scene's data asks for, without a time or a value.
         for credit in scenario.attributions ?? [] {
             lines.append("\(field(name)),\(field("Attribution: " + credit)),,,")

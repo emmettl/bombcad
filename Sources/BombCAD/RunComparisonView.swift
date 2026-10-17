@@ -232,6 +232,9 @@ struct RunComparisonView: View {
                         }
                         if let fragments = run.fragments { Text(fragments.summary) }
                         if let groundShock = run.groundShock { Text(groundShock.summary) }
+                        ForEach(Array(run.settings.craters(over: run.scenario).enumerated()), id: \.offset) {
+                            Text($0.element.summary)
+                        }
                         ForEach(run.envelopeExposure ?? []) { building in
                             Text(
                                 String(

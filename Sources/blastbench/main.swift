@@ -50,7 +50,7 @@ import simd
 //                      (a layout's structure under gravity alone, damped: stands, deflects or falls)
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mass kg] [--fit-reach Z]
 //                       [--mode peak|now|impulse|fluence|irradiance]
-//                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json]
+//                       [--fragments spec.json [--dot 5]] [--ground-shock spec.json] [--ground <type> [--explosive anfo]]
 //                       [--thermal spec.json [--thermal-compare [--thermal-compare-with shape]]
 //                        [--thermal-variants a.json,b.json]]
 //                       [--air thermal] [--afterburn] [--radiate [--absorption 0.1] [--soot-yield 0.185]]
@@ -1520,6 +1520,15 @@ func runSnapshot() throws {
         if let opacity = option("opacity").flatMap({ Float($0) }) { renderer.settings.waveOpacity = opacity }
         if let scale = option("scale").flatMap({ Float($0) }) { renderer.settings.pressureScale = scale }
         renderer.settings.showCharge = time == 0
+        // `--ground alluvium [--explosive anfo]`: the craters the charges dig, shaded in as the app
+        // does once a run ends (the air here still sees rigid ground).
+        if let name = option("ground"), let ground = GroundType(rawValue: name) {
+            let craters = CraterEstimate.craters(
+                of: scenario, ground: ground,
+                explosive: option("explosive").flatMap(CraterExplosive.init) ?? .tnt)
+            renderer.settings.craters = craters.map(CraterMark.init)
+            for crater in craters { print("  " + crater.summary) }
+        }
         var dots: [SIMD4<Float>] = []
         if let ground {
             var result = ground.result(frameInterval: 0)

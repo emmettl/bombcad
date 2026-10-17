@@ -154,7 +154,19 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   flame's speed on coarse cells, and a thinner front, without which K_G cannot converge.
 - **Paused:** the fireball's radiation, about 21% radiated against Dial Pack's 5.1%; if it
   resumes, flame sheets round a fuel-rich core and the missing hot shock layer.
-- **Next:** the cloud's top after two minutes; a comparison with measured ground motion.
+- **Cratering, stage 1, done (approximation for the diameter):** [an empirical crater](cratering.md)
+  by Cooper's scaling for each soil and height of burst, with Kinney and Graham's scatter; it
+  forms after the blast, so it is reported, drawn and exported when the run ends and does not
+  act on the air; on earth or rock a charge keeps 0.9 of its mass for the air, the ground taking
+  the rest (a ground setting, tied to the debris's soft ground). Five of six measured craters
+  within a third, the 500-ton shots at Suffield among them; depths three to five times too deep
+  where the water table was high.
+- **Cratering, stage 2, next:** a crater coupled to the blast near the charge, with soil that
+  flows, ejecta and the shock driven into the ground, for close-in work. It starts with a
+  ContinuumKit and Edgerton check under the sharing rule: neither had a cratering or soil-flow
+  model on 17 October 2026, but Edgerton's volume solver and cohesive cracks overlap.
+- **Next:** the cloud's top after two minutes; a comparison with measured ground motion; a water
+  table for the crater's depth.
 - **Blocked:** measurements wanted in [data wanted](data-wanted.md) 3a (ground shock), 3d (a
   cloud's growth), 3e (fireball radiation) and 3f (a vented deflagration).
 
