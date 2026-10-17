@@ -336,6 +336,40 @@ struct EnvelopeComponentHistoryTests {
         }
     }
 
+    @Test(
+        "In refined air a wall reads the finest cells against it: nearer the finer grid's peak than its coarse cells"
+    )
+    func refinedFaces() throws {
+        var scene = Scenario(
+            name: "Wall", domainSize: SIMD3(10, 10, 4), boxes: [],
+            charge: Charge(mass: 0.5, position: SIMD3(3, 5, 0.5)))
+        try scene.addEnvelopeObject(
+            BuildingEnvelope(solids: [Box(min: SIMD3(6, 2, 0), max: SIMD3(6.5, 8, 3))]), name: "Wall")
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        func peak(cell: Float, refinement: Int, fine: Bool) throws -> Float {
+            var config = SolverConfiguration()
+            config.refinement = refinement
+            config.refinementMemory = 64 << 20
+            let solver = try BlastSolver(
+                device: device, scenario: scene, cellSize: cell, configuration: config)
+            try solver.configureEnvelopeComponents(
+                objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: 0.01))
+            solver.envelopeComponentRecorder?.readsRefinedAir = fine
+            _ = solver.advance(until: 0.008)
+            // The side facing the charge, which for a wall alone may be its inner.
+            return try #require(
+                solver.envelopeComponentHistories()?.map { max($0.peakOuterPa, $0.peakInnerPa) }.max())
+        }
+        let uniform = try peak(cell: 0.25, refinement: 1, fine: true)
+        let refinedFine = try peak(cell: 0.5, refinement: 2, fine: true)
+        let refinedCoarse = try peak(cell: 0.5, refinement: 2, fine: false)
+        // 24.4 kPa on 0.25 m cells; refined, 24.3 kPa read fine and 21.9 kPa read coarse.
+        #expect(refinedFine > refinedCoarse, "\(refinedFine) \(refinedCoarse)")
+        #expect(
+            abs(refinedFine - uniform) < abs(refinedCoarse - uniform),
+            "\(refinedFine) \(refinedCoarse) \(uniform)")
+    }
+
     @Test("Past the window steps are not binned and say so; a budget too small widens the bins")
     func windowAndBudget() throws {
         let scene = try scene()

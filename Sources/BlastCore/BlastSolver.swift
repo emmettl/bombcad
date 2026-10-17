@@ -3018,6 +3018,7 @@ public final class BlastSolver {
         var parameters = recorder.parameters(initial: initial)
         // Faces in still tiles read the still air; under gravity it is not uniform.
         parameters.skipStill = recorder.skipStillTiles && configuration.gravity == nil ? 1 : 0
+        parameters.readsRefined = recorder.readsRefinedAir && refinement != nil ? 1 : 0
         let perGroup = EnvelopeComponentRecorder.componentsPerGroup
         let length = MemoryLayout<EnvelopeComponentRecorder.Parameters>.stride
         // Which components' air has woken; those still asleep finished there, the rest listed
@@ -3059,6 +3060,18 @@ public final class BlastSolver {
         encoder.setBuffer(recorder.sideBuffer, offset: 0, index: 8)
         encoder.setBuffer(recorder.faceList, offset: 0, index: 9)
         encoder.setBuffer(recorder.stillPressure, offset: 0, index: 10)
+        // The refined air, for faces in it (`readsRefinedAir`); the second level's as the gauges'.
+        encoder.setBuffer(refinement?.patchOfTile ?? refinementPlaceholder, offset: 0, index: 11)
+        encoder.setBuffer(refinement?.fine[0] ?? refinementPlaceholder, offset: 0, index: 12)
+        encoder.setBuffer(refinement?.fineMask ?? refinementPlaceholder, offset: 0, index: 13)
+        if let deep = finerRefinement, let parent = deep.parent {
+            encoder.setBuffer(parent.patchOfTile, offset: deep.patchOffset * 4, index: 14)
+            encoder.setBuffer(
+                parent.fine[0], offset: deep.cellOffset * MemoryLayout<CellState>.stride, index: 15)
+            encoder.setBuffer(parent.fineMask, offset: deep.cellOffset, index: 16)
+        } else {
+            for index in 14...16 { encoder.setBuffer(refinementPlaceholder, offset: 0, index: index) }
+        }
         encoder.dispatchThreadgroups(
             indirectBuffer: recorder.faceDispatch, indirectBufferOffset: 0,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
