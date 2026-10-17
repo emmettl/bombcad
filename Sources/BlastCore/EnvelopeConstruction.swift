@@ -49,6 +49,11 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
     public var reinforcementRatio: Float
     /// Annealed glass in every pane, this thick.
     public var glassThicknessM: Float
+    /// The pane a façade strip is taken to hold (a block's storey strip, as map buildings have),
+    /// width and height, m: nil for `assumedFacadePane`, zero for none.
+    public var facadePaneM: SIMD2<Float>?
+    /// A window in each storey of a façade, where nothing says otherwise.
+    public static let assumedFacadePane = SIMD2<Float>(1.2, 1.5)
     public var source: Source
     /// The tag, the materials read, or what was assumed, in words.
     public var detail: String

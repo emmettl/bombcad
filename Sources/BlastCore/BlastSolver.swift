@@ -2471,7 +2471,9 @@ public final class BlastSolver {
         }
         return BatchResult(
             steps: Int(control.activeSteps), elapsed: elapsed, lastTimeStep: Double(lastStep),
-            isStable: control.batchTime.isFinite && control.dt.isFinite,
+            // A NaN anywhere in the air makes the wave speed NaN, which the step's maximum
+            // passes over, so the step itself stays finite: the overpressure says it.
+            isStable: control.batchTime.isFinite && control.dt.isFinite && !control.maxOverpressure.isNaN,
             maxOverpressure: control.maxOverpressure, sweptFraction: swept,
             refinedTiles: refinement?.patchCount ?? 0, finerRefinedTiles: finerRefinement?.patchCount ?? 0,
             firstLevelSubsteps: levelSubsteps(control, level: 0),

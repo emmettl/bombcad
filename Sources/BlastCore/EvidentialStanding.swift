@@ -955,6 +955,7 @@ public enum StandingTable {
         "EnvelopeConstruction.roofThicknessM": .input,
         "EnvelopeConstruction.reinforcementRatio": .input,
         "EnvelopeConstruction.glassThicknessM": .input,
+        "EnvelopeConstruction.facadePaneM": .input,
         "EnvelopeConstruction.source": .input,
         "EnvelopeConstruction.detail": .input,
         "EnvelopeConstruction.barsInBothFaces": .input,
@@ -2093,6 +2094,12 @@ struct StandingScene {
         let envelopes = inputs.scenario.envelopeObjects.map(\.id)
         let assumed = envelopes.filter { inputs.scenario.envelopeConstruction(for: $0).source == .assumed }
             .count
+        let blocks = inputs.scenario.envelopeObjects.filter { object in
+            (object.envelope?.solids ?? []).contains { BuildingEnvelope.role($0) == .block }
+                && inputs.scenario.envelopeConstruction(for: object.id).facadePaneM.map {
+                    $0.x > 0 && $0.y > 0
+                } != false
+        }.count
         let vented =
             inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes && inputs.configuration.gravity == nil
         return result(
@@ -2167,11 +2174,18 @@ struct StandingScene {
                     + "independent of the blast's effect on their flight: fine near the charge, where fragments "
                     + "lead the shock.",
                 "Concrete by ASCE/SEI 59-11's limits for single-reinforced slabs; brick cracked or fallen, with "
-                    + "no arching.",
+                    + "no arching, a wall rocking against the weight of its own masonry above it.",
             ]
                 + (assumed > 0
                     ? [
                         "\(assumed) of \(envelopes.count) envelopes' construction assumed (0.2 m concrete, 0.3%)."
+                    ]
+                    : [])
+                + (blocks > 0
+                    ? [
+                        "\(blocks) buildings of solid blocks (as map buildings are) taken to hold a window "
+                            + "in each storey of each façade, 1.2 × 1.5 m unless set, judged on the storey's "
+                            + "mean load."
                     ]
                     : [])
                 + (inputs.scenario.structuralObjects.isEmpty ? [] : [Self.envelopesBesideStructures]),
