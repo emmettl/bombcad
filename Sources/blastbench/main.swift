@@ -57,6 +57,9 @@ import simd
 //                       [--air thermal] [--afterburn] [--radiate [--absorption 0.1] [--soot-yield 0.185]]
 //                       [--stationary-walls] [--cloud spec.json [--frame-cloud] [--cloud-results out.json]]
 //   blastbench dialpack [--dx 4] [--time 1] [--tons 500] [--domain 480] [--radiate] [--refine 2]
+//   blastbench hazards [--mass 100] [--fragments spec.json [--height 1]]
+//                      (the safety standards' distances, the minimum safe distance and the free
+//                      field's injury radii, a charge on the ground)
 //   blastbench fragment-throw [--count 100000]
 //                      (hazardous fragment distance against DoD 4145.26-M's single items in the open)
 //                       [--csv out.csv]   (500 t of TNT's fireball radiation, against DREO 642)
@@ -1385,6 +1388,8 @@ func runSnapshot() throws {
 
     let solver = try makeAirSolver(scenario, cellSize: cellSize)
     solver.configuration.movingWalls = !flag("stationary-walls")
+    // `--blast-hazards`: the safety distances and the injury at standing height, as the app draws them.
+    if flag("blast-hazards") { try solver.configureExposurePlane(heightM: 1.5, arrivalThresholdPa: 1_000) }
     let started = ContinuousClock.now
     var sleptAt: Double?
     var largest: Float = 0  // the structure's largest deflection, sampled every batch
@@ -1767,6 +1772,19 @@ func runSnapshot() throws {
             if let azimuth = option("azimuth").flatMap({ Float($0) }) { camera.azimuth = azimuth }
             if let elevation = option("elevation").flatMap({ Float($0) }) { camera.elevation = elevation }
             renderer.setLines(CloudOverlay.lines(cloud, eye: camera.eye))
+        }
+        if flag("blast-hazards"), let snapshot = solver.exposureSnapshot() {
+            let centre = SIMD2(scenario.charge.position.x, scenario.charge.position.y)
+            let field = InjuryField(snapshot, centre: centre)
+            print("Injury: " + field.summary)
+            var lines: [SIMD4<Float>] = []
+            for k in [KFactorDistance.k24, .k40] {
+                lines += HazardOverlay.ring(
+                    centre: centre, radius: k.distance(kilograms: scenario.charge.mass), kind: .kFactor)
+            }
+            lines += HazardOverlay.contour(field, level: .eardrumThreshold, kind: .eardrum)
+            lines += HazardOverlay.contour(field, level: .lethality50, kind: .lung)
+            renderer.setLines(lines)
         }
 
         guard
@@ -5421,6 +5439,39 @@ do {
     case "precast": try runPrecast()
     case "thermal": try runThermal()
     case "dialpack": try runDialPack()
+    case "hazards":
+        // The safety standards' distances and the free field's injury radii for a charge on the ground.
+        let mass = option("mass").flatMap { Float($0) } ?? 100
+        var fragments: GroundHazard?
+        if let path = option("fragments") {
+            let spec = try JSONDecoder().decode(
+                FragmentSpec.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
+            let height = option("height").flatMap { Float($0) } ?? 1
+            let scene = Scenario(
+                name: "Hazards", domainSize: SIMD3(100, 100, 50), boxes: [],
+                charge: Charge(mass: mass, position: SIMD3(50, 50, height)))
+            var cloud = FragmentCloud(spec: spec, scene: FragmentScene(scene))
+            cloud.land(in: Primitive(density: 1.225, pressure: 101_325))
+            fragments = GroundHazard(
+                impacts: cloud.impacts, centre: SIMD2(50, 50), crossings: cloud.crossings)
+            print("Fragments: " + fragments!.summary)
+        }
+        for k in KFactorDistance.all {
+            print(
+                String(format: "%@ (%.2f m/kg^(1/3)): %6.1f m", k.name, k.metric, k.distance(kilograms: mass))
+                    + (k.overpressurePa.map { String(format: ", %.1f kPa", $0 / 1000) } ?? "") + " — " + k.use
+            )
+        }
+        print("M" + MinimumSafeDistance(kilograms: mass, fragments: fragments).summary.dropFirst())
+        for stance in [BlastInjury.Stance.open, .againstWall] {
+            let radii = BlastInjury.freeFieldRadii(kilograms: Double(mass), stance: stance)
+            print(
+                (stance == .open ? "In the open: " : "Against a wall facing it: ")
+                    + BlastInjury.Level.allCases.dropFirst().map { level in
+                        level.title.lowercased()
+                            + (radii[level].map { String(format: " to %.1f m", $0) } ?? " nowhere")
+                    }.joined(separator: "; "))
+        }
     case "fragment-throw":
         // BombCAD's hazardous fragment distance against DoD 4145.26-M's for single items in the open.
         let count = option("count").flatMap { Int($0) } ?? 100_000

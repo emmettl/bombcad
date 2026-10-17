@@ -840,6 +840,10 @@ enum HeadlessRun {
             scene?.addCloud(result.frames(), secondsPerFrame: spec.frameInterval)
             cloud = result
         }
+        // The blast's hazards: the safety standards' distances, the minimum safe distance (with the
+        // fragments' hazard, when flown) and the injury at standing height over the run.
+        model.setFragmentHazard(fragments?.hazard)
+        streams += model.blastHazardSummary.map { "Hazards: " + $0 }
         // The structures' rubble flown on to land, while the scene can still take its ring.
         let debris = model.debrisResult()
         if let debris { scene?.addHazard(debris.hazard, name: "DebrisHazard") }

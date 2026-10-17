@@ -229,6 +229,11 @@ struct SidebarView: View {
                         text: String(format: "%.2f", model.renderSettings.waveOpacity))
                 }
                 FragmentDisplaySettings(model: model)
+                Toggle("Safety distances and injury", isOn: $model.renderSettings.showBlastHazards)
+                    .help(
+                        "The safety standards' K24 and K40 distances and the minimum safe distance as blue rings, "
+                            + "and after a run where eardrums begin to rupture (amber) and where half would die "
+                            + "(dark red), at standing height.")
                 if model.groundShockSpec != nil {
                     Toggle("Ground points", isOn: $model.renderSettings.showGroundPoints)
                 }
@@ -239,6 +244,17 @@ struct SidebarView: View {
                                 + "stopped rising, where it stopped in orange, and its track across the ground."
                         )
                 }
+            }
+
+            Section("Hazards") {
+                ForEach(model.blastHazardSummary, id: \.self) { line in
+                    Text(line).font(.caption).fixedSize(horizontal: false, vertical: true)
+                }
+                Text(
+                    "K-factor distances are the safety standards' policy distances (DoD 4145.26-M), not "
+                        + "predictions; the injury curves come from animal tests under ideal pulses."
+                )
+                .font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
 
             Section("Solver") { SolverStats(model: model) }

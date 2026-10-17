@@ -1490,6 +1490,10 @@ extension StandingScene {
                 "One measured surface burst, too far off to band: the vertical velocity 20 to 80 times the "
                     + "measured, the horizontal not modelled, near and past where the ground's wave outruns the air."
             )
+        case .blastInjury:
+            unbanded.append(
+                "Checked against the curves' own published distances and the free field, not against injury data."
+            )
         case .freestandingMotion, .fragments, .surfaceHeating:
             unbanded.append("Nothing measured to band it.")
         case .crater:
@@ -1635,7 +1639,7 @@ extension StandingScene {
                     has(.afterburning) ? ValidationTables.burningDocument : "validation.md#afterburning")
             }
         case .envelopeExposure, .envelopeDamage, .freestandingMotion, .thermal, .surfaceHeating, .cloud,
-            .fragments, .groundShock, .crater:
+            .fragments, .groundShock, .crater, .blastInjury:
             break
         }
         return advice
