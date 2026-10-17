@@ -44,9 +44,13 @@ simplification is listed here.
 - **The glass** is one pane of 10 mm toughened glass, standing for an insulating unit. It fails
   as annealed glass does, at its own strength.
 - **The neighbours across the street** are envelopes: rigid and exposure-only, each with forty
-  windows of 6 mm annealed glass. [Envelope damage](building-envelopes.md) does not judge them
-  yet. Its recorders need every body in the scene to be stationary at the start, and the tower
-  is not; until that is relaxed, the neighbours shape the blast but are not judged.
+  windows of 6 mm annealed glass, judged one way by [envelope damage](building-envelopes.md)
+  as the tower moves: its outline never takes the air at their faces, and its debris passes them
+  by. Each pane fills its window through the wall's thickness in the air, so that the window is
+  closed at any cell size (until 17 October 2026 it was a 6 mm box no cell centre lay in, and
+  the windows were open holes, never judged). Run headless for 0.1 s on coarse air, both lose all
+  forty panes, the first at 10 ms, their rooms rising to about 25 kPa, and their front walls go
+  past the one-way model's 2°.
 
 ## Under gravity
 

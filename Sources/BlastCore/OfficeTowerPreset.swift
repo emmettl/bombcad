@@ -229,8 +229,10 @@ extension ScenarioPreset {
                     windows.append(
                         Box(min: SIMD3(x, front - wall - 0.01, z), max: SIMD3(x + 1.5, front + 0.01, z + 1.8))
                     )
-                    glass.append(
-                        Box(min: SIMD3(x, front - 0.103, z), max: SIMD3(x + 1.5, front - 0.097, z + 1.8)))
+                    // The pane fills its opening through the wall's thickness, so that the air sees the
+                    // window closed at any cell size (a 6 mm box holds no cell's centre); envelope damage
+                    // takes the glass's thickness from the building's construction.
+                    glass.append(Box(min: SIMD3(x, front - wall, z), max: SIMD3(x + 1.5, front, z + 1.8)))
                 }
             }
             let id = UUID(uuidString: String(format: "0FF1CE00-0000-4000-8000-%012d", n + 1))!
