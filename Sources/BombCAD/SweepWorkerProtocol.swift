@@ -67,6 +67,9 @@ struct SweepWorkerHello: Codable, Equatable, Sendable {
     var solverVersion = SavedSimulationRun.solverVersion
     var device: String
     var operatingSystem = ProcessInfo.processInfo.operatingSystemVersionString
+    /// The GPU memory the worker's Mac lets the air take (`AdvisorMachine`), for the advisor to
+    /// say which Mac a run too large for this one would fit; nil from workers before it was sent.
+    var memory: Int?
 }
 
 struct SweepWorkerJob: Codable, Equatable, Sendable {

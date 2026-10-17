@@ -1062,6 +1062,7 @@ public enum StandingTable {
         "SolverConfiguration.refinementOwnSteps": .option([.adaptiveSubsteps]),
         "SolverConfiguration.refinementFinerThreshold": .numerical,
         "SolverConfiguration.refinementMemory": .numerical,
+        "SolverConfiguration.refinementStartMemory": .numerical,
         "SolverConfiguration.structureMaskSampling": .numerical,
         "SolverConfiguration.structureMaskFill": .numerical,
         "SolverConfiguration.structureMaskOverlap": .numerical,

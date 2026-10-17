@@ -46,7 +46,8 @@ enum SweepWorker {
     static func serve(input: FileHandle, output: FileHandle) async {
         let writer = SweepWorkerWriter(output)
         let device = MTLCreateSystemDefaultDevice()?.name ?? "No Metal device"
-        guard (try? writer.send(.hello(SweepWorkerHello(device: device)))) != nil else { return }
+        let hello = SweepWorkerHello(device: device, memory: AdvisorMachine.thisMac.memory)
+        guard (try? writer.send(.hello(hello))) != nil else { return }
         let jobs = Jobs()
         do {
             for try await packet in SweepWorkerFrame.packets(from: input) {

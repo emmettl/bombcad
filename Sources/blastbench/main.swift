@@ -1027,6 +1027,11 @@ func configureRefinement(_ configuration: inout SolverConfiguration) {
     if let memory = option("refine-memory").flatMap({ Int($0) }) {
         configuration.refinementMemory = memory << 20
     }
+    // `--refine-start full` makes the pools whole from the start, as before they grew; a number,
+    // in MB, starts them there instead of `refinementStartMemory`. The run is the same either way.
+    if let start = option("refine-start") {
+        configuration.refinementStartMemory = start == "full" ? nil : Int(start).map { $0 << 20 }
+    }
 }
 
 /// With `--radiate`, the luminous gas loses the heat it radiates: as `--thermal`'s description

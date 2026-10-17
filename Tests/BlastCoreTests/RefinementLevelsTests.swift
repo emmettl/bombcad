@@ -191,6 +191,54 @@ struct RefinementLevelsTests {
         #expect(same)
     }
 
+    @Test("A pool that starts small and grows steps exactly as one made at full size", arguments: [1, 2])
+    func growingPool(levels: Int) throws {
+        var configuration = twoLevels()
+        configuration.refinementLevels = levels
+        configuration.refinementStartMemory = nil
+        let full = try closedBox(configuration)
+        // Room for a few patches: too few for those around the charge at the start, so the run
+        // starts again with more, then grows as the shock spreads.
+        configuration.refinementStartMemory = 1 << 20
+        let grown = try closedBox(configuration)
+        let start = grown.refinementPools.map(\.held)
+        for _ in 0..<6 {
+            full.advance(steps: 10)
+            grown.advance(steps: 10)
+        }
+        let pools = grown.refinementPools
+        #expect(zip(pools, start).allSatisfy { $0.held > $1 && $0.held < $0.capacity })
+        #expect(zip(pools, full.refinementPools).allSatisfy { $0.most == $1.most && !$0.ranOut })
+        #expect(!grown.refinementPoolGrewLate)
+        let same = full.withState { a in grown.withState { b in zip(a, b).allSatisfy { $0 == $1 } } }
+        #expect(same)
+        // And every level's blocks refined alike, holding the same cells (in whichever slots: freed
+        // slots return to the pool in the order threads run, in a pool of any size).
+        for (a, b) in zip(full.refinementLevels, grown.refinementLevels) {
+            let cells = a.side * a.side * a.side
+            let tiles = a.tileDims.x * a.tileDims.y * a.tileDims.z
+            let mapA = a.patchOfTile.contents().bindMemory(to: Int32.self, capacity: a.patchOffset + tiles)
+            let mapB = b.patchOfTile.contents().bindMemory(to: Int32.self, capacity: b.patchOffset + tiles)
+            let stateA = a.fine[0].contents() + a.cellOffset * MemoryLayout<CellState>.stride
+            let stateB = b.fine[0].contents() + b.cellOffset * MemoryLayout<CellState>.stride
+            var alike = true
+            for tile in 0..<tiles {
+                let (pa, pb) = (Int(mapA[a.patchOffset + tile]), Int(mapB[b.patchOffset + tile]))
+                guard (pa >= 0) == (pb >= 0) else {
+                    alike = false
+                    break
+                }
+                guard pa >= 0 else { continue }
+                let bytes = cells * MemoryLayout<CellState>.stride
+                if memcmp(stateA + pa * bytes, stateB + pb * bytes, bytes) != 0 {
+                    alike = false
+                    break
+                }
+            }
+            #expect(alike)
+        }
+    }
+
     /// Peak overpressure at 3 m from 1 kg on the ground, on cells of `cellSize`.
     private func peakAtThreeMetres(cellSize: Float, levels: Int) throws -> (peak: Float, refined: Int) {
         let scenario = Scenario(
