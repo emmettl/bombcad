@@ -28,29 +28,29 @@ func runPoulin(device: MTLDevice) throws {
                 (b.y - a.y) / max(b.x - a.x, 1) > 10 / max(stiffness, 1)
             }
             let peak = runaway?.0 ?? result.curve.last ?? .zero
-            print(
-                String(
-                    format:
-                        "  %d-ply: stiffness %.2f / %.2f kN/mm; peak load %.1f / %.1f kN at %.1f / %.1f mm; "
-                        + "damage fibre %.2f, splitting %.2f, rolling %.2f", plies, measured.stiffness / 1e6,
-                    stiffness / 1e6, measured.load / 1e3, peak.x / 1e3, measured.deflection * 1000,
-                    peak.y * 1000,
-                    result.fibre, result.splitting, result.rolling))
+            let line =
+                "  \(plies)-ply: stiffness \(format(Double(measured.stiffness) / 1e6, 2)) / "
+                + "\(format(Double(stiffness) / 1e6, 2)) kN/mm; peak load \(format(Double(measured.load) / 1e3, 1)) / "
+                + "\(format(Double(peak.x) / 1e3, 1)) kN at \(format(Double(measured.deflection) * 1000, 1)) / "
+                + "\(format(Double(peak.y) * 1000, 1)) mm; first broken: \(result.firstMode ?? "nothing") at "
+                + "\(format(Double(result.firstAt) / 1e3, 1)) kN"
+            print(line)
         }
     }
     print("\nShots (dynamic increase \(rate)): peak mid-span deflection measured / model, and failure")
     print(
-        "  shot        kPa   kPa ms   measured     model   at ms   fibre  split  roll  removed  measured mode"
+        "  shot        kPa   kPa ms   measured     model   at ms   removed  first broken (ms)          measured mode"
     )
     for shot in PoulinCLTTest.shots where names?.contains(shot.name) ?? true {
         let result = try PoulinCLTTest.run(device: device, shot: shot, elementSize: h, rate: rate)
+        let first = result.firstMode.map { "\($0) (\(format(Double(result.firstAt) * 1000, 1)))" } ?? "-"
         print(
-            String(
-                format: "  %-10@ %5.1f  %6.0f  %7.1f mm %7.1f mm  %5.1f   %5.2f  %5.2f %5.2f  %6d   %@",
-                shot.name,
-                shot.pressure / 1e3, shot.impulse, shot.deflection * 1000, result.deflection * 1000,
-                result.time * 1000, result.fibre, result.splitting, result.rolling, result.removed, shot.mode)
-        )
+            "  " + pad(shot.name, 10) + pad(format(Double(shot.pressure) / 1e3, 1), 7)
+                + pad(format(Double(shot.impulse), 0), 8)
+                + pad(format(Double(shot.deflection) * 1000, 1) + " mm", 11)
+                + pad(format(Double(result.deflection) * 1000, 1) + " mm", 11)
+                + pad(format(Double(result.time) * 1000, 1), 8) + pad("\(result.removed)", 9) + pad(first, 27)
+                + shot.mode)
         fflush(stdout)
     }
 }

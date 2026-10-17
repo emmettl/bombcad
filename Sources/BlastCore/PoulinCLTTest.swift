@@ -81,10 +81,13 @@ public enum PoulinCLTTest {
     public static func movingMass(plies: Int) -> Float { plies == 3 ? 342.1 : 384.5 }
 
     /// Grade E1's lamellae (PRG 320-2019, Tables A1 and A3: E 11,700 MPa along the panel; the
-    /// Canadian specified strengths along it, f_t 15.4, f_c 19.3 and rolling shear 0.50 MPa), the
+    /// Canadian specified strengths along it, f_t 15.4 and f_c 19.3 MPa), the
     /// other moduli by its Annex X3 (E90 = E/30, G = E/16, G_R = G/10), raised to their means with
     /// the JCSS model's coefficients of variation as `TimberProperties.strengthClass` does; across
-    /// the grain and in shear along it, C24's. `rate` is the strengths' dynamic increase factor.
+    /// the grain, in shear along it and in rolling shear, C24's (PRG 320's specified rolling
+    /// strength, 0.50 MPa, is a design value; raised to a mean by the same rule it is 0.77 MPa,
+    /// below every mean the literature gives, 1.0 to 1.9). `rate` is the strengths' dynamic
+    /// increase factor.
     public static func material(plies: Int, rate: Float, rollingScale: Float = 1) -> StructureMaterial {
         let e: Float = 11.7e9
         var properties = TimberProperties(
@@ -94,7 +97,7 @@ public enum PoulinCLTTest {
         let c24 = TimberProperties.strengthClass(.c24)
         properties.tensionAlong = 15.4e6 * TimberProperties.lognormalMean(cov: 0.3)
         properties.compressionAlong = 19.3e6 * TimberProperties.lognormalMean(cov: 0.2)
-        properties.rollingStrength = 0.50e6 * TimberProperties.lognormalMean(cov: 0.25)
+        properties.rollingStrength = c24.rollingStrength
         properties.tensionAcross = c24.tensionAcross
         properties.compressionAcross = c24.compressionAcross
         properties.shearStrength = c24.shearStrength
@@ -111,15 +114,20 @@ public enum PoulinCLTTest {
         public var splitting: Float
         public var rolling: Float
         public var removed: Int
+        /// The first mode to break through a layer (damage 1), and when (s; for a static push,
+        /// the load in N); nil if none did.
+        public var firstMode: String?
+        public var firstAt: Float = 0
         /// For a static push: the total load (N) against mid-span deflection (m).
         public var curve: [SIMD2<Float>] = []
     }
 
-    /// The panel on its supports, with the device's mass on its load lines and its force, of
-    /// `history` (total newtons against time), shared between strips under them.
+    /// The panel on its supports, with the device's mass on its load lines (unless `withDevice`
+    /// is false, as for the static tests' jack) and its force, of `history` (total newtons against
+    /// time), shared between strips under them.
     static func panel(
         device: MTLDevice, plies: Int, elementSize: Float, rate: Float, history: [SIMD2<Float>],
-        rollingScale: Float = 1
+        rollingScale: Float = 1, withDevice: Bool = true
     ) throws -> (ShellSolver, middle: [Int]) {
         let h = elementSize
         let thickness = 0.035 * Float(plies)
@@ -140,7 +148,7 @@ public enum PoulinCLTTest {
         let middle = solver.nodes { abs($0.x - lengthwise / 2) < h / 4 }
         // The panel's clear span and the device take the moving mass.
         let clear = 450 * thickness * across * lengthwise
-        let device = max(movingMass(plies: plies) - clear, 0)
+        let device = withDevice ? max(movingMass(plies: plies) - clear, 0) : 0
         solver.mutateNodes { nodes in
             for n in supports {
                 nodes[n].restrain(z: true)
@@ -168,7 +176,7 @@ public enum PoulinCLTTest {
     static func damage(_ solver: ShellSolver, plies: Int, rate: Float) -> (
         fibre: Float, splitting: Float, rolling: Float
     ) {
-        guard let timber = material(plies: plies, rate: rate).timber else { return (0, 0, 0) }
+        guard let timber = solver.model.material.timber else { return (0, 0, 0) }
         func damage(_ r: Float, _ ratio: Float) -> Float {
             r <= 1 ? 0 : ratio <= 1 ? 1 : min(1, ratio / (ratio - 1) * (1 - 1 / r))
         }
@@ -193,6 +201,16 @@ public enum PoulinCLTTest {
         return (fibre, splitting, rolling)
     }
 
+    /// The mode that has broken through a layer, if any: rolling shear first, then fibre, then
+    /// splitting, where several have.
+    static func firstBroken(_ solver: ShellSolver, plies: Int, rate: Float) -> String? {
+        let modes = damage(solver, plies: plies, rate: rate)
+        if modes.rolling >= 1 { return "rolling shear" }
+        if modes.fibre >= 1 { return "flexure (fibre)" }
+        if modes.splitting >= 1 { return "splitting" }
+        return nil
+    }
+
     /// One shot: the triangle of its peak and impulse, run for `duration`.
     public static func run(
         device: MTLDevice, shot: Shot, elementSize: Float = 0.0745, rate: Float = 1.28,
@@ -205,42 +223,50 @@ public enum PoulinCLTTest {
             history: [SIMD2(0, force), SIMD2(fall, 0), SIMD2(fall + 1, 0)])
         var peak: Float = 0
         var when: Float = 0
+        var first: (String, Float)?
         let chunk = max(1, Int(0.0002 / Double(solver.criticalTimeStep)))
         while solver.time < duration {
             solver.advance(steps: chunk)
             let w = middle.map { -solver.node($0).displacement.z }.reduce(0, +) / Float(middle.count)
             if w > peak { (peak, when) = (w, Float(solver.time)) }
+            if first == nil, let mode = firstBroken(solver, plies: shot.plies, rate: rate) {
+                first = (mode, Float(solver.time))
+            }
         }
         let modes = damage(solver, plies: shot.plies, rate: rate)
         return Result(
             deflection: peak, time: when, fibre: modes.fibre, splitting: modes.splitting,
             rolling: modes.rolling,
-            removed: solver.summary().erodedElements)
+            removed: solver.summary().erodedElements, firstMode: first?.0, firstAt: first?.1 ?? 0)
     }
 
-    /// The static test: the load raised steadily over `time` to `load` (N), damped, without the
-    /// dynamic increase; the curve of load against mid-span deflection.
+    /// The static test: the load raised steadily over `time` to `load` (N) by the jack alone,
+    /// lightly damped, without the dynamic increase; the curve of load against mid-span deflection.
     public static func push(
-        device: MTLDevice, plies: Int, load: Float, elementSize: Float = 0.0745,
-        time: Double = 1.0, rollingScale: Float = 1
+        device: MTLDevice, plies: Int, load: Float, elementSize: Float = 0.0745, time: Double = 3.0,
+        rollingScale: Float = 1
     ) throws -> Result {
         let (solver, middle) = try panel(
             device: device, plies: plies, elementSize: elementSize, rate: 1,
             history: [SIMD2(0, 0), SIMD2(Float(time), load), SIMD2(Float(time) + 1, load)],
-            rollingScale: rollingScale)
-        solver.damping = 200
+            rollingScale: rollingScale, withDevice: false)
+        solver.damping = 50
         var curve: [SIMD2<Float>] = []
-        let chunk = max(1, Int(0.002 / Double(solver.criticalTimeStep)))
+        var first: (String, Float)?
+        let chunk = max(1, Int(0.005 / Double(solver.criticalTimeStep)))
         while solver.time < time {
             solver.advance(steps: chunk)
             let w = middle.map { -solver.node($0).displacement.z }.reduce(0, +) / Float(middle.count)
-            curve.append(SIMD2(load * Float(solver.time / time), w))
+            let applied = load * Float(solver.time / time)
+            curve.append(SIMD2(applied, w))
+            if first == nil, let mode = firstBroken(solver, plies: plies, rate: 1) { first = (mode, applied) }
             if w > 0.3 { break }
         }
         let modes = damage(solver, plies: plies, rate: 1)
         return Result(
             deflection: curve.last?.y ?? 0, time: Float(solver.time), fibre: modes.fibre,
             splitting: modes.splitting,
-            rolling: modes.rolling, removed: solver.summary().erodedElements, curve: curve)
+            rolling: modes.rolling, removed: solver.summary().erodedElements, firstMode: first?.0,
+            firstAt: first?.1 ?? 0, curve: curve)
     }
 }

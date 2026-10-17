@@ -259,11 +259,19 @@ grain runs along the beam: it is elastic along it at E_0, with G across it.
 - **Integration through the thickness:** two Gauss points in each lamella, which is exact for
   their elastic bending. One rule over the whole thickness would not be, since the stiffness
   jumps from lamella to lamella.
-- **Shear through the thickness:** along the grain it takes G, and across it rolling shear
-  G_R. The section's stiffness in each direction is the shear analogy's, as EN 1995-1-1:2025
-  takes for CLT: a² / (t₁/2G₁ + Σ tᵢ/Gᵢ + tₙ/2Gₙ), with a the distance between the outer
-  lamellae's centres. This replaces the shells' usual 5/6, which is kept for one lamella. With
-  5/6, a 3-ply panel's shear stiffness came out five times the analogy's.
+- **Shear through the thickness:** the section's shear force is its shear stiffness times the
+  shells' transverse shear strain. In each direction that stiffness is the shear analogy's, as EN
+  1995-1-1:2025 takes for CLT: a² / (t₁/2G₁ + Σ tᵢ/Gᵢ + tₙ/2Gₙ). Here a is the distance between
+  the outer lamellae's centres, G is along the grain, and G_R (rolling shear) is across it. One
+  lamella takes 5/6 of G.
+- **Spreading the shear:** it is spread through the thickness as equilibrium spreads it in
+  bending (Jourawski, S(z)/EI with each lamella's modulus that way). Each layer takes its share as
+  the strain that carries it at its own damage.
+- **Damage:** the analogy takes each lamella at its damaged modulus, so a lamella broken in
+  rolling shear takes the section's shear stiffness with it, as the shear must pass through it.
+- **Why not each layer's own strain:** with every layer at the shells' one shear strain, a 3-ply
+  panel's crossed lamella carried a tenth of its rolling shear, and its stiffness was five times
+  the analogy's.
 
 **Breaking.** Three brittle modes are judged on the undamaged stress, after Sandhaas and van de
 Kuilen's Hashin-type criteria (HERON 58, 2013):

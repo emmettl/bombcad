@@ -271,8 +271,6 @@ struct MaterialParameters {
     uint lamellaCount;
     uint lamellaCrossed;
     float lamellaTop[8];
-    float shearCorrectionAlong;   // through-thickness shear's correction along and across the
-    float shearCorrectionAcross;  // outer lamellae's grain (the shear analogy)
     // Timber's strengths at blast rates and fracture energies (TimberFailure).
     float tensionAlong;
     float compressionAlong;

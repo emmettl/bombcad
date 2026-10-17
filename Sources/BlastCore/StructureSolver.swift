@@ -2106,8 +2106,6 @@ public final class StructureSolver {
             parameters.grainPoisson = timber.poissonRatio
             parameters.grainAxis = UInt32(timber.grainAxis)
             parameters.grainRotation = timber.grainRotation
-            (parameters.shearCorrectionAlong, parameters.shearCorrectionAcross) =
-                (timber.shearCorrection.x, timber.shearCorrection.y)
             let rate = timber.strengthFactor
             parameters.tensionAlong = rate * timber.tensionAlong
             parameters.compressionAlong = rate * timber.compressionAlong

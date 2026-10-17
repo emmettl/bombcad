@@ -585,14 +585,105 @@ static inline float timberDamage(float r, float ratio) {
     return min(1.0f, ratio / (ratio - 1.0f) * (1.0f - 1.0f / r));
 }
 
+// The timber lamella holding `zeta`: whether it crosses the grain, its thickness (m) in a shell
+// `t` thick, and whether it is an outer one.
+struct TimberLamella {
+    bool crossed;
+    float thickness;
+    bool outer;
+};
+
+static inline TimberLamella timberLamella(constant MaterialParameters &m, float zeta, float t) {
+    uint count = min(m.lamellaCount, 8u);
+    TimberLamella lamella = {false, t, true};
+    for (uint l = 0; l < count; ++l) {
+        if (zeta <= m.lamellaTop[l] || l + 1 == count) {
+            lamella.crossed = ((m.lamellaCrossed >> l) & 1u) != 0u;
+            lamella.thickness = 0.5f * t * (m.lamellaTop[l] - (l == 0 ? -1.0f : m.lamellaTop[l - 1]));
+            lamella.outer = l == 0 || l + 1 == count;
+            break;
+        }
+    }
+    return lamella;
+}
+
+// Rolling shear's damage from its largest index, its softening smeared over the lamella.
+static inline float timberRollingDamage(constant MaterialParameters &m, float index, float through) {
+    float ratio = (m.rollingEnergy / through) / (0.5f * m.rollingStrength * m.rollingStrength / m.rollingShear);
+    return timberDamage(index, ratio);
+}
+
+// The section's shear stiffness per unit thickness (GA/t), along and across the outer lamellae's
+// grain, at one in-plane point of a timber shell whose `n` layers are stored from `slot`: the
+// shear analogy with each layer at its damaged modulus, so that a lamella broken in rolling shear
+// takes the section's shear stiffness with it (the shear passes through every lamella in turn).
+// One lamella takes 5/6 of its layers' mean.
+static inline float2 timberSectionShear(constant MaterialParameters &m, const device ShellLayerStore *layers,
+                                        uint slot, uint n, constant float2 *rule, float t) {
+    float2 compliance = float2(0.0f);
+    float2 mean = float2(0.0f);
+    for (uint l = 0; l < n; ++l) {
+        float zeta = rule[l].x;
+        float share = 0.5f * rule[l].y;
+        ShellLayer state = loadLayer(layers[slot + l]);
+        TimberLamella lamella = timberLamella(m, zeta, t);
+        float split = 1.0f - min(state.residual.y, 0.999f);
+        float roll = 1.0f - min(timberRollingDamage(m, state.residual.x, lamella.thickness), 0.999f);
+        float2 g = lamella.crossed ? float2(m.rollingShear * roll, m.grainShear * split)
+                                   : float2(m.grainShear * split, m.rollingShear * roll);
+        compliance += (lamella.outer ? 0.5f : 1.0f) * share / g;
+        mean += share * g;
+    }
+    uint count = min(m.lamellaCount, 8u);
+    if (count < 2u) {
+        return (5.0f / 6.0f) * mean;
+    }
+    float lever = 1.0f - 0.25f * (m.lamellaTop[0] + 1.0f) - 0.25f * (1.0f - m.lamellaTop[count - 2]);
+    return lever * lever / compliance;
+}
+
+// Timber's shear stress through the thickness at `zeta` per unit of its mean, along (across = 0)
+// or across the outer lamellae's grain: as equilibrium spreads it in bending (Jourawski), the
+// first moment S(z) of the stiffness above z over the section's EI, with each lamella's modulus
+// that way. It integrates to one over [-1, 1].
+static inline float timberShearShape(constant MaterialParameters &m, float zeta, uint across) {
+    uint count = max(min(m.lamellaCount, 8u), 1u);
+    float area = 0.0f;
+    float first = 0.0f;
+    for (uint l = 0; l < count; ++l) {
+        float b0 = l == 0 ? -1.0f : m.lamellaTop[l - 1];
+        float b1 = m.lamellaCount == 0 ? 1.0f : m.lamellaTop[l];
+        bool crossed = m.lamellaCount != 0 && ((m.lamellaCrossed >> l) & 1u) != 0u;
+        float e = crossed != (across != 0u) ? m.acrossGrain : m.youngsModulus;
+        area += e * (b1 - b0);
+        first += 0.5f * e * (b1 * b1 - b0 * b0);
+    }
+    float neutral = first / area;
+    float stiffness = 0.0f;
+    float moment = 0.0f;
+    for (uint l = 0; l < count; ++l) {
+        float b0 = (l == 0 ? -1.0f : m.lamellaTop[l - 1]) - neutral;
+        float b1 = (m.lamellaCount == 0 ? 1.0f : m.lamellaTop[l]) - neutral;
+        bool crossed = m.lamellaCount != 0 && ((m.lamellaCrossed >> l) & 1u) != 0u;
+        float e = crossed != (across != 0u) ? m.acrossGrain : m.youngsModulus;
+        stiffness += e * (b1 * b1 * b1 - b0 * b0 * b0) / 3.0f;
+        float low = max(b0, zeta - neutral);
+        if (b1 > low) {
+            moment += 0.5f * e * (b1 * b1 - low * low);
+        }
+    }
+    return moment / stiffness;
+}
+
 // Timber: ContinuumKit's `OrthotropicPlaneStress` and `TimberFailure`, in single precision, in
 // each layer's grain frame. The grain runs along the global axis `grainAxis` where that is the
 // element's second in-plane axis (along its first otherwise), turned by `grainRotation` about the
 // normal and across in a crossed lamella. The strain's third component is the tensor shear, as
 // the other laws take it; ContinuumKit's is the engineering shear.
-// - Through the thickness, shear along the grain takes the in-plane shear modulus and shear
-//   across it, rolling the fibres, the rolling modulus, each corrected as the section's shear
-//   analogy says in place of the shells' usual factor.
+// - Through the thickness, the section's shear force along and across the outer lamellae's grain
+//   is its shear stiffness (the shear analogy) times the shear strain, spread through the
+//   thickness as equilibrium spreads it (`timberShearShape`). Each layer takes its share as the
+//   strain that gives it under its own moduli: along its grain G, across it rolling shear.
 // - Three brittle modes soften over their fracture energies: fibre tension, splitting (opening
 //   across the grain with sliding along it, in the plane and through it) and rolling shear. The
 //   in-plane modes are smeared over the element, rolling shear over its lamella.
@@ -600,8 +691,8 @@ static inline float timberDamage(float r, float ratio) {
 // - State: the fibre and splitting indices in `crack`, the rolling index and the splitting
 //   damage in `residual`, the crushing strains along and across in `crush`.
 static inline float3 shellTimber(float3 strain, float2 transverse, float zeta, uint i2, float band, float t,
-                                 thread ShellLayer &state, constant MaterialParameters &m, constant ShellUniforms &u,
-                                 thread float2 &shear, thread LayerOutcome &outcome) {
+                                 float2 sectionShear, thread ShellLayer &state, constant MaterialParameters &m,
+                                 constant ShellUniforms &u, thread float2 &shear, thread LayerOutcome &outcome) {
     float base = (m.grainAxis == i2 ? 0.5f * M_PI_F : 0.0f) + m.grainRotation;
     float angle = base;
     float through = t;
@@ -624,8 +715,18 @@ static inline float3 shellTimber(float3 strain, float2 transverse, float zeta, u
     float e1 = c * c * strain.x + s * s * strain.y + c * s * gamma;
     float e2 = s * s * strain.x + c * c * strain.y - c * s * gamma;
     float g12 = 2.0f * c * s * (strain.y - strain.x) + (c * c - s * s) * gamma;
-    float gAlong = c * transverse.x + s * transverse.y;
-    float gRolling = c * transverse.y - s * transverse.x;
+    float cb = cos(base);
+    float sb = sin(base);
+    float2 outerStrain = float2(cb * transverse.x + sb * transverse.y, cb * transverse.y - sb * transverse.x);
+    float2 outerStress = 2.0f * sectionShear * float2(timberShearShape(m, zeta, 0u), timberShearShape(m, zeta, 1u)) *
+                         outerStrain;
+    float co = cos(angle - base);
+    float so = sin(angle - base);
+    // The layer's share as the strain that carries it at its damage so far.
+    float splitBefore = max(1.0f - state.residual.y, 1e-3f);
+    float rollBefore = max(1.0f - timberRollingDamage(m, state.residual.x, through), 1e-3f);
+    float gAlong = (co * outerStress.x + so * outerStress.y) / (m.grainShear * splitBefore);
+    float gRolling = (co * outerStress.y - so * outerStress.x) / (m.rollingShear * rollBefore);
 
     // Crushing, along and across together.
     float2 plastic = state.crush;
@@ -664,10 +765,10 @@ static inline float3 shellTimber(float3 strain, float2 transverse, float zeta, u
                                              : 0.0f));
     float splittingRatio = (mixed / band) / initiation;
     float rollingIndex = max(state.residual.x, fabs(tTZ) / m.rollingStrength);
-    float rollingRatio = (m.rollingEnergy / through) / (0.5f * m.rollingStrength * m.rollingStrength / m.rollingShear);
+
     float fibre = timberDamage(fibreIndex, fibreRatio);
     float splitting = max(state.residual.y, timberDamage(splittingIndex, splittingRatio));
-    float rolling = timberDamage(rollingIndex, rollingRatio);
+    float rolling = timberRollingDamage(m, rollingIndex, through);
     state.crack = float2(fibreIndex, splittingIndex);
     state.residual = float2(rollingIndex, splitting);
 
@@ -678,11 +779,7 @@ static inline float3 shellTimber(float3 strain, float2 transverse, float zeta, u
                            c * s * (s1 - s2) + (c * c - s * s) * tau);
     float along = (1.0f - splitting) * tLZ;
     float across = (1.0f - rolling) * tTZ;
-    float2 layer = float2(c * along - s * across, s * along + c * across);
-    float cb = cos(base);
-    float sb = sin(base);
-    float2 outer = float2(cb * layer.x + sb * layer.y, cb * layer.y - sb * layer.x);
-    outer *= float2(m.shearCorrectionAlong, m.shearCorrectionAcross);
+    float2 outer = float2(co * along - so * across, so * along + co * across);
     shear = float2(cb * outer.x - sb * outer.y, sb * outer.x + cb * outer.y);
     // Torn across an element axis where the layer can no longer carry tension along it: its
     // fibres broken where its grain runs that way, split where it runs across.
@@ -920,6 +1017,9 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
         bool destroyedEverywhere = true;
         bool openEverywhere = true;
         float rateSum = 0.0f;
+        float2 timberShear = m.materialModel == 2
+            ? timberSectionShear(m, layers, (e * 4 + g) * n, n, thickness, t)
+            : float2(0.0f);
         for (uint l = 0; l < n; ++l) {
             // Gauss-Legendre points through the thickness, exact for elastic bending.
             float zeta = thickness[l].x;
@@ -939,7 +1039,7 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
             float2 shear;
             LayerOutcome outcome;
             float3 stress = m.materialModel == 2
-                ? shellTimber(strain, transverse, zeta, i2, sqrt(a * b), t, state, m, u, shear, outcome)
+                ? shellTimber(strain, transverse, zeta, i2, sqrt(a * b), t, timberShear, state, m, u, shear, outcome)
                 : m.materialModel == 0
                 ? shellVonMises(strain, transverse, state, m, u, shear, outcome)
                 : shellConcrete(strain, transverse, instantaneous, dt, state, m, u, el.barCount > 0, crossing,

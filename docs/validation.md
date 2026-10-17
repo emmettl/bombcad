@@ -2660,6 +2660,78 @@ an aluminised charge, and say its TNT equivalence is low for impulse.
   as far down). It is one test without a measured deflection, so it adds to that evidence but sets
   no new band.
 
+## Cross-laminated timber panels in a shock tube
+
+**The test.** M. M. Poulin's MASc thesis (University of Ottawa, 2019, open), with Poulin, Viau,
+Lacroix and Doudak, J. Struct. Eng. 144(2), 2018.
+- **The panels:** eighteen Nordic CLT panels of grade E1 (ANSI/APA PRG 320: 35 mm lamellae,
+  1950f-1.7E machine stress-rated spruce-pine-fir along the panel). They were 3-ply (105 mm) and
+  5-ply (175 mm), 445 mm wide, and simply supported over 2,235 mm.
+- **The loading:** a hinged steel device collected the shock tube's pressure over an equivalent
+  3.55 m² and pressed it onto the panel as two line loads at the third points, as in the static
+  four-point bending tests. The panel and the device moved 342 kg (3-ply) or 385 kg (5-ply).
+- **Measured:** the reflected pressure and impulse of every shot, the peak mid-span deflection
+  and the failure mode (its Table 4.3); and the static tests' stiffness and peak (its Table 4.1).
+- **The harness:** `PoulinCLTTest`, `blastbench poulin`.
+
+**The model:**
+- [timber shells](shell-model.md#timber), 74.5 mm, with three or five lamellae;
+- E1's modulus along the panel (11.7 GPa) and its other moduli by PRG 320's Annex X3;
+- strengths along the grain from E1's specified values, raised to their means as the strength
+  classes' are; across the grain, in shear and in rolling shear, C24's;
+- the strengths raised by 1.28, the dynamic increase Poulin found on these panels' resistance;
+- the device's mass on the load lines;
+- each shot's pressure as a triangle of its peak and impulse, since the thesis plots the
+  histories but does not tabulate them.
+
+**Static four-point bending** (no dynamic increase):
+
+| Panels | Stiffness (kN/mm), measured / model | Peak load (kN), measured / model | Fails first, test / model |
+|---|---|---|---|
+| 3-ply | 2.10 / 2.02 | 68.4 / 76.8 | flexure (at finger joints), rolling shear near the peak / flexure |
+| 5-ply | 5.90 / 6.66 | 128.6 / 160.2 | the same / flexure |
+
+**The shots:**
+
+| Shot | kPa | kPa ms | Peak deflection, measured / model (mm) | Failure, test / model |
+|---|---|---|---|---|
+| CLT3-4.1, 7.1, 8.1, 9.1, 10.1, 11.1 | 5.8–12.2 | 59–131 | 10.1–18.7 / 8.0–17.6 (0.78–1.21) | elastic / elastic |
+| CLT5-6.1, 7.1 | 7.2–7.3 | 82 | 6.4–6.5 / 4.7 (0.72–0.73) | elastic / elastic |
+| CLT3-4.2 | 38.7 | 379 | 105 / 107, broke | rolling shear / rolling shear |
+| CLT3-7.2 | 52.8 | 440 | 119 / 93, broke | rolling shear / rolling shear |
+| CLT3-8.2 | 49.0 | 468 | 90 / 122, broke | rolling shear, then flexure / rolling shear |
+| CLT3-5.1 | 48.2 | 442 | 89 / 115, broke | flexure / rolling shear |
+| CLT3-6.1 | 52.6 | 614 | 144 / 390, broke | flexure / splitting |
+| CLT3-10.2 | 34.0 | 374 | 99 / 51, broke at 31 ms | flexure / rolling shear |
+| CLT5-5.1 | 58.6 | 691 | 58 / 126, broke | rolling shear / splitting |
+| CLT5-4.1, 6.2 | 53.7–55.8 | 602–610 | 78–81 / 37–38, split after the peak | flexure / splitting |
+| CLT3-9.2, 11.2 | 30.9–32.9 | 322–345 | 58–73 / 44–47, held | rolling shear, flexure / none |
+| CLT5-7.2 | 51.2 | 481 | 37 / 30, held | flexure / none |
+
+**What it shows:**
+- **Stiffness:** within 4% (3-ply) and 13% (5-ply) statically. The elastic shots' peaks are
+  0.72–1.21 of measured, mostly low (stiff), as the 5-ply panels' static stiffness is.
+- **Strength:** flexure breaks first statically, as in the tests, but 12% (3-ply) and 25% (5-ply)
+  above the measured peaks. The tests broke at finger joints, which the model's clear-wood fracture
+  energy (60 kJ/m² along the grain) does not know of, so it softens too slowly.
+- **The shots:** every elastic shot stays elastic. Nine of the twelve that broke the panels
+  break or split the model's. Three near the threshold (31–51 kPa) hold.
+  - Rolling shear breaks first where the tests saw it in three of five.
+  - The 5-ply panels split rather than fail in flexure.
+  - Once broken, the model's panels run on further than the tests' (whose deflection stopped
+    when they broke).
+- **Caveat:** the dynamic increase of 1.28 comes from these same shots, so the shots' split into
+  broken and held is not independent of them. The static tests, without it, are.
+
+**Why the shear needed the section.** With every layer at the shells' one transverse shear
+strain, the crossed lamella carried a tenth of its rolling shear and the outer ones too much. A
+panel then broke statically in rolling shear at 76% of the measured peak, and its stiffness came
+out 20% high.
+- **Shear stress:** the shells now spread the section's shear through the thickness as
+  equilibrium does, S(z)/EI.
+- **Shear stiffness:** that of the shear analogy, with each lamella at its damaged modulus, so a
+  lamella broken in rolling shear takes the section's shear stiffness with it.
+
 ## Slabs under contact charges
 
 The first comparison of debris: the speed of the concrete thrown off the far face of slabs

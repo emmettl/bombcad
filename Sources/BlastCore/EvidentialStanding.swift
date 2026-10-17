@@ -1906,14 +1906,16 @@ struct StandingScene {
             parts.append("glass a brittle concrete, checked only to break and survive")
         }
         if classes.contains(.timber) {
-            level = max(level, .illustrative)
             evidence.append(
                 StandingEvidence(
-                    "Timber's elastic law and layers",
-                    "Its stress is ContinuumKit's orthotropic plane stress to 1%, and timber and cross-laminated "
-                        + "cantilevers sag within 2% of layered beam theory; it never cracks, splits or crushes",
-                    "shell-model.md#timber"))
-            parts.append("timber elastic only: it never breaks, so its damage means nothing")
+                    "Cross-laminated timber panels in the Ottawa shock tube (Poulin, 2019)",
+                    "Static stiffness within 4–13%, peak 12–25% high (flexure, as tested); shots that left the "
+                        + "panels elastic stay elastic (0.72–1.21 of the peak deflection), nine of twelve that broke "
+                        + "them break or split the model's and three near the threshold hold; the dynamic increase "
+                        + "of 1.28 comes from the same shots",
+                    "validation.md#cross-laminated-timber-panels-in-a-shock-tube"))
+            parts.append(
+                "timber compared on CLT panels in a shock tube: stiffness close, strength 12–25% high")
         }
         var resolution: [String] = []
         if let through = elementsThrough, through <= 6, through >= 4, classes.contains(.reinforcedConcrete) {

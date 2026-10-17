@@ -175,28 +175,6 @@ public struct TimberProperties: Sendable, Hashable, Codable {
         return tgammaf(1 + 1 / k) / pow(-log(Float(0.95)), 1 / k)
     }
 
-    /// Through-thickness shear's correction, along and across the outer lamellae's grain: the
-    /// shear stiffness the shear analogy gives a cross-laminated section (Kreuzinger, as in
-    /// EN 1995-1-1:2025 for CLT), a^2 / (t_1 / (2 G_1) + the inner t_i / G_i + t_n / (2 G_n)) with
-    /// a between the outer lamellae's centres, over the layers' own, the sum of G_i t_i. One
-    /// lamella takes 5/6, as a homogeneous section.
-    var shearCorrection: SIMD2<Float> {
-        guard lamellae.count > 1 else { return SIMD2(repeating: 5.0 / 6.0) }
-        let total = lamellae.reduce(0) { $0 + $1.share }
-        let shares = lamellae.map { $0.share / total }
-        let between = 1 - shares[0] / 2 - shares[shares.count - 1] / 2
-        func correction(along: Bool) -> Float {
-            let moduli = lamellae.map { $0.crossed == along ? rollingShearModulus : shearModulus }
-            var compliance: Float = 0
-            for (i, (share, modulus)) in zip(shares, moduli).enumerated() {
-                compliance += (i == 0 || i == shares.count - 1 ? 0.5 : 1) * share / modulus
-            }
-            let own = zip(shares, moduli).reduce(0) { $0 + $1.0 * $1.1 }
-            return between * between / (compliance * own)
-        }
-        return SIMD2(correction(along: true), correction(along: false))
-    }
-
     /// The lamellae's tops through the thickness, from -1 (bottom face) to 1 (top face).
     var lamellaTops: [Float] {
         let total = lamellae.reduce(0) { $0 + $1.share }
@@ -1332,9 +1310,6 @@ struct MaterialParameters {
     var lamellaCount: UInt32 = 0
     var lamellaCrossed: UInt32 = 0
     var lamellaTop: (Float, Float, Float, Float, Float, Float, Float, Float) = (0, 0, 0, 0, 0, 0, 0, 0)
-    /// Through-thickness shear's correction along and across the outer lamellae's grain.
-    var shearCorrectionAlong: Float = 0
-    var shearCorrectionAcross: Float = 0
     /// Timber's strengths at blast rates (Pa) and fracture energies (J/m^2), as
     /// `TimberProperties` has them.
     var tensionAlong: Float = 1e30
