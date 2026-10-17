@@ -610,10 +610,11 @@ public struct FragmentCloud: Sendable {
         }
         let speed = simd_length(particle.velocity)
         let cosine = speed > 0 ? abs(particle.velocity[axis]) / speed : 1
-        let result = target.assess(
+        var result = target.assess(
             mass: particle.mass, area: particle.area, speed: speed,
             thickness: target.thickness ?? box.size[axis],
             obliquity: acos(min(cosine, 1)))
+        if result.outcome == .perforated { result.holeAreaM2 = particle.area }
         return (result, target)
     }
 

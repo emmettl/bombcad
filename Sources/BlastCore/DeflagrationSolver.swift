@@ -42,6 +42,7 @@ struct DeflagrationUniforms {
     var regionMaxX: Float = 0
     var regionMaxY: Float = 0
     var regionMaxZ: Float = 0
+    var obstacleTurbulenceScale: Float = 0
 }
 
 /// The GPU side of a deflagration: the flame, if there is one, and the vent panels, which also
@@ -88,7 +89,7 @@ final class DeflagrationStage {
     static func make(
         device: MTLDevice, library: MTLLibrary, grid: Grid, deflagration: Deflagration?, panels: [VentPanel],
         panelCells: [(index: Int, panel: Int)], heat: Float, unburntDensity: Float, expansionRatio: Float,
-        configuration: SolverConfiguration
+        configuration: SolverConfiguration, congested: Bool = false
     ) throws -> DeflagrationStage {
         func buffer(_ length: Int, _ label: String) throws -> MTLBuffer {
             guard let buffer = device.makeBuffer(length: max(length, 16), options: .storageModeShared) else {
@@ -102,7 +103,11 @@ final class DeflagrationStage {
         let resources = Resources(
             burning: try buffer(cells * MemoryLayout<Float>.stride, "burning"),
             pipelines: try ["advanceFlame", "applyBurning", "ventPressure", "ventRelease"].map {
-                try ShaderLibrary.pipeline($0, in: library)
+                // The flame in congestion takes its obstacles' turbulence and folding.
+                congested && $0 == "advanceFlame"
+                    ? try ShaderLibrary.pipeline(
+                        $0, in: library, constants: ShaderLibrary.withPorousAir(MTLFunctionConstantValues()))
+                    : try ShaderLibrary.pipeline($0, in: library)
             },
             panelCells: try buffer(panelCells.count * MemoryLayout<SIMD2<UInt32>>.stride, "vent panel cells"),
             peaks: try buffer(panels.count * 4, "vent panel peaks"),
@@ -182,8 +187,12 @@ final class DeflagrationStage {
             if let turbulence = acceleration.turbulence {
                 u.turbulenceScale = FlameTurbulence.bradleyCoefficient * max(turbulence.scale, 0)
                 u.velocityPerViscosity = (2.0 / 3).squareRoot() / (FlameTurbulence.energyCoefficient * dx)
-                u.kinematicViscosity = FlameTurbulence.kinematicViscosity
             }
+            // Congestion's obstacle turbulence wrinkles the flame with or without the sub-grid's.
+            u.obstacleTurbulenceScale =
+                FlameTurbulence.bradleyCoefficient
+                * max(acceleration.turbulence?.scale ?? FlameTurbulence().scale, 0)
+            u.kinematicViscosity = FlameTurbulence.kinematicViscosity
             let lit = grid.cell(containing: deflagration.ignition)
             u.ignitionCell = UInt32(grid.index(lit.i, lit.j, lit.k))
             u.ignitionX = deflagration.ignition.x
@@ -200,12 +209,12 @@ final class DeflagrationStage {
     /// `viscosity` the air's eddy viscosity while it has sub-grid mixing.
     func encodeStep(
         _ encoder: MTLComputeCommandEncoder, state: MTLBuffer, species: MTLBuffer?, mask: MTLBuffer,
-        rigidMask: MTLBuffer, viscosity: MTLBuffer?, control: MTLBuffer
+        rigidMask: MTLBuffer, viscosity: MTLBuffer?, control: MTLBuffer, congestion: CongestionBuffers? = nil
     ) {
         if deflagration != nil, let species {
             encodeFlame(
                 encoder, state: state, species: species, mask: mask, viscosity: viscosity ?? burningBuffer,
-                control: control)
+                control: control, congestion: congestion)
         }
         if uniforms.panelCellCount > 0 {
             encodeVents(encoder, state: state, mask: mask, rigidMask: rigidMask, control: control)
@@ -214,7 +223,7 @@ final class DeflagrationStage {
 
     private func encodeFlame(
         _ encoder: MTLComputeCommandEncoder, state: MTLBuffer, species: MTLBuffer, mask: MTLBuffer,
-        viscosity: MTLBuffer, control: MTLBuffer
+        viscosity: MTLBuffer, control: MTLBuffer, congestion: CongestionBuffers?
     ) {
         encoder.setBuffer(state, offset: 0, index: 0)
         encoder.setBuffer(species, offset: 0, index: 1)
@@ -223,6 +232,12 @@ final class DeflagrationStage {
         // Read only with flame turbulence, which turns the air's mixing on (see `loadDeflagration`).
         encoder.setBuffer(viscosity, offset: 0, index: 4)
         encoder.setBuffer(control, offset: 0, index: 5)
+        // Read only in congestion, whose flame kernel is compiled to read them.
+        encoder.setBuffer(congestion?.porosityDrag ?? burningBuffer, offset: 0, index: 7)
+        encoder.setBuffer(congestion?.blockage ?? burningBuffer, offset: 0, index: 8)
+        encoder.setBuffer(congestion?.parallel ?? burningBuffer, offset: 0, index: 9)
+        encoder.setBuffer(
+            congestion.map { $0.turbulence[$0.current] } ?? burningBuffer, offset: 0, index: 10)
         dispatchCells(encoder, advancePipeline)
         dispatchCells(encoder, applyPipeline)
     }
@@ -316,7 +331,7 @@ extension BlastSolver {
                 for index in 0..<grid.cellCount where mask[index] == 0 {
                     // A cut cell's densities are of the air it holds, its share of the cell.
                     let s = species[index]
-                    let share = fluidShare(index)
+                    let share = openShare(index)
                     unburnt += Double(s.x) * share
                     if s.y > 0.5 * densities[index] && s.x < 0.5 * s.y { burnt += share }
                 }
@@ -362,7 +377,7 @@ extension BlastSolver {
         deflagrationStage = try DeflagrationStage.make(
             device: device, library: library, grid: grid, deflagration: scenario.deflagration, panels: panels,
             panelCells: panelCells, heat: heat, unburntDensity: scenario.atmosphere.density,
-            expansionRatio: expansion, configuration: configuration)
+            expansionRatio: expansion, configuration: configuration, congested: congestion != nil)
     }
 
     /// The air's eddy viscosity in each cell (m²/s) as the last step worked it out, or nil without
@@ -461,7 +476,7 @@ extension BlastSolver {
                             // Unburnt mixture, and all gas from the cloud (see Deflagration.metal).
                             let mixture = share * cells[index].density
                             species[index] = SIMD2(mixture, mixture)
-                            total += Double(mixture) * fluid
+                            total += Double(mixture) * openShare(index)
                         }
                     }
                 }
