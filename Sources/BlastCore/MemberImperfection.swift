@@ -180,15 +180,15 @@ enum MemberImperfection {
                     let q = simd_quatf(angle: size, axis: angle / size)
                     return SIMD4(q.imag, q.real)
                 }
-                let L = beam.length
+                let span = beam.length
                 let o = perBeam * b
                 offsets[o] = SIMD4(states[0].offset, 1)
                 offsets[o + 1] = SIMD4(states[1].offset, 0)
                 offsets[o + 2] = quaternion(states[0].turn)
                 offsets[o + 3] = quaternion(states[1].turn)
-                offsets[o + 4] = SIMD4((states[1].offset - states[0].offset) / L, 0)
-                offsets[o + 5] = SIMD4(0.5 * section.x * (offset2[1] - offset2[0]) / L, 0)
-                offsets[o + 6] = SIMD4(0.5 * section.y * (offset3[1] - offset3[0]) / L, 0)
+                offsets[o + 4] = SIMD4((states[1].offset - states[0].offset) / span, 0)
+                offsets[o + 5] = SIMD4(0.5 * section.x * (offset2[1] - offset2[0]) / span, 0)
+                offsets[o + 6] = SIMD4(0.5 * section.y * (offset3[1] - offset3[0]) / span, 0)
                 offsets[o + 7] = SIMD4(0.5 * (offset2[0] + offset2[1]), 0)
                 offsets[o + 8] = SIMD4(0.5 * (offset3[0] + offset3[1]), 0)
                 any = true

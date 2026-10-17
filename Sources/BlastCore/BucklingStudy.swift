@@ -200,15 +200,17 @@ public enum BucklingStudy {
         device: MTLDevice, slenderness: Float, curve: BucklingCurve?, side: Float = 0.05,
         yieldStress: Float = 355e6, elements: Int = 24, cycles: Float = 40, bowDivisor: Float? = nil
     ) throws -> (peak: Float, squash: Float, model: Float, eurocode: Float?, length: Float) {
-        let E: Float = 210e9
+        let modulus: Float = 210e9
         let rho: Float = 7850
         let area = side * side
         let inertia = side * side * side * side / 12
         let squash = yieldStress * area
         // λ̄ = (L / i) / (π √(E / f_y)).
-        let length = slenderness * Float.pi * (E / yieldStress).squareRoot() * (inertia / area).squareRoot()
+        let length =
+            slenderness * Float.pi * (modulus / yieldStress).squareRoot() * (inertia / area).squareRoot()
         let material = StructureMaterial(
-            name: "Strut steel", density: rho, youngsModulus: E, poissonRatio: 0.3, yieldStress: yieldStress,
+            name: "Strut steel", density: rho, youngsModulus: modulus, poissonRatio: 0.3,
+            yieldStress: yieldStress,
             hardeningModulus: 0, failureStrain: 1e30)
         let half = side / 2
         var model = StructureModel(
@@ -233,8 +235,9 @@ public enum BucklingStudy {
                 nodes[n].mass = headMass
             }
         }
-        let omega = pow(Float.pi / length, 2) * (E * inertia / (rho * area)).squareRoot()
-        let axialPeriod = 2 * Float.pi * (headMass * Float(head.count) * length / (E * area)).squareRoot()
+        let omega = pow(Float.pi / length, 2) * (modulus * inertia / (rho * area)).squareRoot()
+        let axialPeriod =
+            2 * Float.pi * (headMass * Float(head.count) * length / (modulus * area)).squareRoot()
         let duration = cycles * max(2 * Float.pi / omega, axialPeriod)
         let top = 1.2 * squash / (headMass * Float(head.count))
         var peak: Float = 0
