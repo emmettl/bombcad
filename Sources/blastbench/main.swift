@@ -5288,6 +5288,7 @@ do {
     case "keys": try runKeys(device: device)
     case "envelope-walls": try runEnvelopeWalls(device: device)
     case "nian": try runNian(device: device)
+    case "envelope-slabs": try runEnvelopeSlabs(device: device)
     default:
         print("Unknown command \(command). Use throughput, structure, validate, slab or snapshot.")
         exit(2)
