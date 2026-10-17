@@ -90,6 +90,52 @@ after a 1 kg burst; far-field faces leave it within tens of pascals). On the val
 Kingery–Bulmash gauges the two agree to the per cent in every peak, impulse and arrival; on the
 street they give the same peaks and impulses within 4%.
 
+### Open faces near a structure
+
+A far-field face takes each wave as meeting it head on. A blast running along a side or the top
+meets still air beyond the face. Its reflection coefficient there is (cos θ − 1)/(cos θ + 1), so
+a grazing wave (θ near 90°) loses about half its pressure at the face and sends a rarefaction
+back in. Peaks and positive impulses barely notice. A structure's late response does.
+
+On Tyndall's CLT building, test 1 (14.5 kg at 22.9 m, `blastbench tyndall --tests 1 --pad
+back,side,top --history`; 17 October 2026), with 0.25 m cells refined by 2:
+
+- The front wall's first inbound peak was 16 mm in every domain, and its positive-phase load
+  the same.
+- In the harness's domain (the charge 1.1 m from the face behind it, the building 5.7 m from the
+  sides), the rarefaction from the side faces deepened the front's negative phase to −11.8 kPa at
+  66 ms (−4 kPa in a large domain). That drove the wall's second swing to 29 mm.
+
+| Faces moved out (behind the charge, sides, top) | Nearest face, m/kg^(1/3) | First storey, inbound / rebound | Front pressure, RMS from the largest |
+|---|---|---|---|
+| none (the harness) | 0.46 (behind the charge) | 29 / −30 mm | 3.2 kPa |
+| behind the charge, 5.9 m | 1.7 (top) | 25 / −29 mm | |
+| sides, 2 m | 0.46 | 21 / −25 mm | |
+| 5.9, 2, 0 m | 1.7 (top) | 18 / −24 mm | 2.5 kPa |
+| 12, 8, 6 m | 4.1 (top) | 18 / −24 mm | 0.9 kPa |
+| 24, 16, 12 m | 6.6 (top) | 18 / −24 mm | (reference) |
+| none, copying faces | 0.46 | 18 / −17 mm | 3.4 kPa |
+| 12, 8, 6 m, copying faces | 4.1 | 18 / −24 mm | 0.8 kPa |
+
+The pressure history converges once every face is about 4 m/kg^(1/3) from both the charge and the
+building (the building is 7.9 m high to its parapet). The face behind the building was 3.4 m
+(1.4 m/kg^(1/3)) from it in every run and did not move the front's response, so a face beyond a
+structure as seen from the charge counts from the charge alone. The app's Domain section and the advisor say when a scene with a structure has an open
+face nearer than that (`Scenario.tightOpenFaces`, `Scenario.structureFaceClearance`). The domain
+can be grown only from its origin, so faces below the origin are moved by moving the scene.
+
+A better boundary was tried in place of the clearance. The faces took each wave as a plane one
+from the largest charge, at its angle, letting a grazing wave carry on past the face. It is not
+used:
+
+- On Tyndall it gave 20 mm in the harness's domain and 22 mm with the faces 2.9 m/kg^(1/3) out.
+- Under a 167 m top over the 500 t burst, it overshot as copying faces do: peaks 63–74% and
+  impulses 150–180% of Kingery–Bulmash's out to 40 m/kg^(1/3). Head-on far-field faces drained
+  the wave to 2% there.
+
+A plane wave at its angle cannot carry the spherical spreading beyond a face, so no local face
+condition stands in for the room. It is kept on the branch `claude/oblique-far-field`.
+
 ## The charge
 
 The charge is a "bursting balloon": a sphere of hot, dense gas at rest.
@@ -612,7 +658,9 @@ UFC 3-340-02, lowest for light charges.
    impulse at gauges 4–14 m inside its faces read 8–21% of UFC's value too high against a domain
    twice the size (three times gives the same as twice), and a domain too small for a light
    structure drained below ambient and pushed it over (see
-   [Validation](validation.md#the-negative-phase-against-ufc-3-340-02)).
+   [Validation](validation.md#the-negative-phase-against-ufc-3-340-02)). A structure's late
+   response wants its open faces about 4 m/kg^(1/3) from it and from the charge (see
+   [Open faces near a structure](#open-faces-near-a-structure)).
 
    A characteristic far-field condition (the incoming Riemann invariant taken from still air)
    was tried and was much worse: in a split scheme it treats each face as if waves met it head
