@@ -85,8 +85,10 @@ func envelopeWallCases(names: [String]?) -> [EnvelopeWallCase] {
         "alsubaei-half", wall: .halfScale, anfo: 14,
         construction: {
             EnvelopeConstruction(
-                objectID: $0, walls: .reinforcedConcrete, wallThicknessM: 0.2, reinforcementRatio: 0.0039,
-                source: .user, detail: "0.2 m, 10 mm at 200 mm each face")
+                objectID: $0, walls: .reinforcedConcrete, wallThicknessM: 0.2,
+                reinforcementRatio: 2 * 392.5e-6 / 0.2,
+                source: .user, detail: "0.2 m, 40 MPa, 10 mm at 200 mm in each face", barsInBothFaces: true,
+                barCoverM: 0.03, concreteStrengthMPa: 40, barYieldMPa: 420)
         },
         // 10 mm at 200 mm, the tension face's bars 30 mm in.
         asBuilt: EnvelopePanel.reinforcedConcreteCantilever(
@@ -99,8 +101,12 @@ func envelopeWallCases(names: [String]?) -> [EnvelopeWallCase] {
         "alsubaei-canopied", wall: .canopied, anfo: 125,
         construction: {
             EnvelopeConstruction(
-                objectID: $0, walls: .reinforcedConcrete, wallThicknessM: 0.4, reinforcementRatio: 0.0039,
-                source: .user, detail: "0.4 m stem, 20 mm at 200 mm each face")
+                objectID: $0, walls: .reinforcedConcrete, wallThicknessM: 0.4,
+                reinforcementRatio: 2 * 1570e-6 / 0.4,
+                source: .user,
+                detail: "0.4 m stem, 40 MPa, 20 mm at 200 mm in each face, a 1,152 kg/m canopy",
+                barsInBothFaces: true, barCoverM: 0.06, concreteStrengthMPa: 40, barYieldMPa: 420,
+                capMassKgPerM: 1.2 * 0.4 * 2400)
         },
         // 20 mm at 200 mm, 60 mm in; the canopy (1.2 × 0.4 m) carried on its top.
         asBuilt: EnvelopePanel.reinforcedConcreteCantilever(
@@ -122,8 +128,11 @@ func envelopeWallCases(names: [String]?) -> [EnvelopeWallCase] {
             "alsubaei-block\(Int(anfo))", wall: .masonry, anfo: anfo,
             construction: {
                 EnvelopeConstruction(
-                    objectID: $0, walls: .reinforcedConcrete, wallThicknessM: 0.4, reinforcementRatio: 0.0039,
-                    source: .user, detail: "0.4 m, taken as concrete: the app has no reinforced blockwork")
+                    objectID: $0, walls: .reinforcedBlockwork, wallThicknessM: 0.4,
+                    reinforcementRatio: 2 * 1570e-6 / 0.4, source: .user,
+                    detail: "0.4 m hollow blockwork, 20 mm bars 100 mm in from each face",
+                    barsInBothFaces: true,
+                    barCoverM: 0.1, barYieldMPa: 420, blockworkGrouted: false)
             },
             // Hollow blocks with a 20 mm bar in every cell along the middle of each leaf (100 mm
             // in), the cells filled with foam: a reinforced wall of the blockwork's strength.

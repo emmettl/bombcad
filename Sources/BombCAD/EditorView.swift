@@ -143,6 +143,7 @@ struct EditorView: View {
                             Button("Remove", systemImage: "trash") { model.removeEnvelope(id: object.id) }
                                 .labelStyle(.iconOnly)
                         }
+                        EnvelopeConstructionEditor(model: model, id: object.id)
                     }
                 } header: {
                     Text("Exposure-only buildings")
