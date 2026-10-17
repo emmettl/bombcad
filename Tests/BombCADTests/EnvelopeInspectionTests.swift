@@ -86,7 +86,7 @@ struct EnvelopeInspectionTests {
                 && model.envelopeExposure.allSatisfy { $0.elapsedS == 0 && $0.surfacePositiveImpulseNS == 0 })
     }
 
-    @Test("Mixed scenes keep running and explain why envelope surface inspection is unavailable")
+    @Test("Mixed scenes record their envelopes' surfaces beside the moving structures")
     func mixed() async throws {
         var scene = try StreetInteractionStudy.make(.pair)
         try scene.useEnvelope(id: scene.structuralObjects[0].id)
@@ -94,8 +94,8 @@ struct EnvelopeInspectionTests {
         document.runSettings?.resolution = "coarse"
         let model = SimulationModel(document: document)
         try await wait { model.experimentIsReady }
-        #expect(model.errorMessage == nil && model.envelopeExposure.isEmpty)
-        #expect(model.envelopeExposureStatus.contains("deformable"))
+        #expect(model.errorMessage == nil && model.envelopeExposureStatus.isEmpty)
+        #expect(model.envelopeExposure.map(\.id) == scene.envelopeObjects.map(\.id))
     }
 
     @Test("Headless export keeps summaries in a project and writes complete face records")

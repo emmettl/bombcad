@@ -67,8 +67,9 @@ struct IFCCorpusTests {
         var gravityDisplacement: Float?
         var gravityReaction: Float?
         var gravityEroded: Int?
-        /// The reaction at clamped nodes, over the weight, which `gravityReaction` (the connections'
-        /// own) leaves out; and the share of the weight on nodes that moved under 10 mm.
+        /// The reaction at clamped nodes, over the weight, which `gravityReaction` left out before
+        /// it came from `GravityCheck` (kept for older rows); and the share of the weight on nodes
+        /// that moved under 10 mm.
         var gravityClamped: Float?
         var gravityHeld: Float?
         /// Panes of glass, and the shell elements the mesh gives them.
@@ -342,46 +343,16 @@ struct IFCCorpusTests {
                         if ProcessInfo.processInfo.environment["BOMBCAD_IFC_CORPUS_NOTIES"] != nil {
                             model.tiesTouching = nil
                         }
-                        let solver = try ShellSolver(device: device, model: model)
-                        solver.damping = 50
-                        // The mean speed of the weight on non-tied nodes that moved over 10 mm.
-                        func moving() -> Float {
-                            var weight: Float = 0
-                            var momentum: Float = 0
-                            solver.mutateNodes { nodes in
-                                for node in nodes
-                                where node.flags & 128 == 0 && simd_length(node.displacement) >= 0.01 {
-                                    weight += node.mass
-                                    momentum += node.mass * simd_length(SIMD3(node.vx, node.vy, node.vz))
-                                }
-                            }
-                            return weight > 0 ? momentum / weight : 0
-                        }
-                        let steps = Int(0.3 / Double(solver.criticalTimeStep))
-                        solver.advance(steps: steps * 5 / 6)
-                        let early = moving()
-                        solver.advance(steps: steps - steps * 5 / 6)
-                        row.gravitySettling = [early, moving()]
-                        var mass: Float = 0
-                        // A tied node's mass is added to its master's, so it is counted once, there.
-                        solver.mutateNodes {
-                            mass = $0.filter { $0.flags & 128 == 0 }.reduce(0) { $0 + $1.mass }
-                        }
-                        row.gravityDisplacement = solver.summary().maxDisplacement
-                        row.gravityEroded = solver.summary().erodedElements
-                        row.gravityReaction = (solver.anchorSummary()?.reaction.z ?? 0) / (mass * 9.81)
-                        solver.mutateNodes { nodes in
-                            var clamped: Float = 0
-                            var held: Float = 0
-                            for n in nodes.indices {
-                                if nodes[n].isClamped { clamped -= solver.nodalForce(n).z }
-                                if nodes[n].flags & 128 == 0, simd_length(nodes[n].displacement) < 0.01 {
-                                    held += nodes[n].mass
-                                }
-                            }
-                            row.gravityClamped = clamped / (mass * 9.81)
-                            row.gravityHeld = held / mass
-                        }
+                        var inspected: ShellSolver?
+                        let check = try GravityCheck.run(model, device: device) { inspected = $0 }
+                        let solver = try #require(inspected)
+                        let mass = check.weight / solver.gravity
+                        row.gravitySettling = [check.settling.early, check.settling.late]
+                        row.gravityDisplacement = check.peak
+                        row.gravityEroded = check.eroded
+                        // The clamps' reaction is in `carried`.
+                        row.gravityReaction = check.carried
+                        row.gravityHeld = check.still
                         if ProcessInfo.processInfo.environment["BOMBCAD_IFC_CORPUS_DETAIL"] != nil {
                             var clamped = 0
                             solver.mutateNodes { clamped = $0.filter(\.isClamped).count }

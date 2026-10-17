@@ -279,8 +279,8 @@ public enum ValidationTables {
     /// heading and holds the figure's numbers.
     public static let figures: [Figure] = [
         Figure(
-            id: "envelopeGlassBreak", low: 0.40, high: 0.46, document: "validation.md#window-glass",
-            quote: "0.40–0.46 of the measured time with fixed edges"),
+            id: "envelopeGlassBreak", low: 0.82, high: 1.07, document: "validation.md#window-glass",
+            quote: "0.82–1.07 of the measured time"),
         Figure(
             id: "envelopeConcreteFixed", low: 0.61, high: 1.03,
             document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
@@ -290,13 +290,21 @@ public enum ValidationTables {
             document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
             quote: "0.61/1.19", "1.03/1.87"),
         Figure(
+            id: "envelopeSlabMeasured", low: 0.97, high: 2.59,
+            document: "building-envelopes.md#slabs-held-on-their-edges",
+            quote: "reads 0.97–2.59 of the"),
+        Figure(
+            id: "envelopeSlabCloseIn", low: 0.45, high: 1.42,
+            document: "building-envelopes.md#slabs-held-on-their-edges",
+            quote: "Wu's slabs at 0.45–1.42 simply supported"),
+        Figure(
             id: "envelopeBrick", low: 0.82, high: 2.54,
             document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
             quote: "(0.82–2.54)"),
         Figure(
-            id: "envelopeInsideFill", low: 0.87, high: 2.23,
+            id: "envelopeInsideFill", low: 0.75, high: 1.60,
             document: "building-envelopes.md#one-way-damage-single-degree-of-freedom",
-            quote: "(0.87–2.23 times the detailed peaks)"),
+            quote: "(0.75–1.60 times the"),
         Figure(
             id: "slabSolid", low: 1.04, high: 1.15, document: "validation.md#summary",
             quote: "solid elements 113–125 mm (104–115%) on 4 to 32 elements through"),
@@ -1380,6 +1388,21 @@ extension StandingScene {
                     validity: "the wall facing the charge, 0.2 m, 50–500 kg",
                     check: check),
                 figure(
+                    "envelopeSlabMeasured", .peakDeflection,
+                    "Concrete panel deflection against measurement, simply supported, measured load",
+                    low: "too stiff", high: "too soft",
+                    validity:
+                        "one-way 102 mm slabs under the blast load simulator's measured loads, 37–109 MPa; "
+                        + "the fixed bound reads a tenth or less, so the measured lies between",
+                    check: "The contest slab and Reynolds's six"),
+                figure(
+                    "envelopeSlabCloseIn", .peakDeflection,
+                    "Concrete panel deflection against measurement, simply supported, the model's close-in load",
+                    low: "too stiff", high: "too soft",
+                    validity:
+                        "100 mm slabs on two edges, 0.2–1.6 kg at 0.43 m/kg^(1/3), the load the model's air",
+                    check: "Wu et al.'s slabs"),
+                figure(
                     "envelopeBrick", .peakDeflection, "Brick wall rotation", low: "too stiff",
                     high: "too soft",
                     validity: "0.215 m smeared brick, 2–50 kg, past 0.1°", check: check),
@@ -1395,6 +1418,15 @@ extension StandingScene {
                 return band
             }
             unbanded.append("Roofs, and walls beside a failing one, go beyond both concrete bounds: no band.")
+            let freestanding = inputs.scenario.envelopeObjects.contains { object in
+                object.envelope?.components(owner: object.id).contains(where: \.isFreestanding) ?? false
+            }
+            if freestanding {
+                unbanded.append(
+                    "Freestanding walls are judged as cantilevers from their foot, outside these bands (derived "
+                        + "on panels held on their edges); compared with Alsubaei's and Keys's measured walls "
+                        + "instead (building-envelopes.md#freestanding-walls).")
+            }
         case .thermal:
             if !burning {
                 unbanded.append(
@@ -1428,6 +1460,10 @@ extension StandingScene {
             }
         case .freestandingMotion, .fragments, .groundShock, .surfaceHeating:
             unbanded.append("Nothing measured to band it.")
+        case .crater:
+            unbanded.append(
+                "The apparent diameter's one-sigma scatter is a third either way (Kinney and Graham's 200 "
+                    + "accidental explosions), given with each crater; its depth has no band.")
         }
         return (bands, unbanded)
     }
@@ -1567,7 +1603,7 @@ extension StandingScene {
                     has(.afterburning) ? ValidationTables.burningDocument : "validation.md#afterburning")
             }
         case .envelopeExposure, .envelopeDamage, .freestandingMotion, .thermal, .surfaceHeating, .cloud,
-            .fragments, .groundShock:
+            .fragments, .groundShock, .crater:
             break
         }
         return advice

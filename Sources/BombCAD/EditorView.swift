@@ -116,7 +116,7 @@ struct EditorView: View {
                             VStack(alignment: .leading) {
                                 Text(object.name)
                                 Text(
-                                    "\(object.envelope!.solids.count) walls/roofs · \(object.envelope!.openings.count) openings"
+                                    "\(object.envelope?.solids.count ?? 0) walls/roofs · \(object.envelope?.openings.count ?? 0) openings"
                                 )
                                 .font(.caption).foregroundStyle(.secondary)
                                 let construction = model.settings.scenario.envelopeConstruction(
@@ -143,6 +143,7 @@ struct EditorView: View {
                             Button("Remove", systemImage: "trash") { model.removeEnvelope(id: object.id) }
                                 .labelStyle(.iconOnly)
                         }
+                        EnvelopeConstructionEditor(model: model, id: object.id)
                     }
                 } header: {
                     Text("Exposure-only buildings")

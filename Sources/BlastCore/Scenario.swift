@@ -348,6 +348,9 @@ extension BlastSolver {
     ///
     /// The scenario's domain must match the solver's grid.
     public func load(_ scenario: Scenario) throws {
+        // On earth or rock, the charges as the air sees them: part of their energy goes into the
+        // ground. Rigid ground leaves the scene as it is.
+        let scenario = configuration.ground.map { scenario.coupled(to: $0) } ?? scenario
         try scenario.validateObjectOwnership()
         clearEnvelopeExposure()
         configuration.ambientPressure = scenario.atmosphere.pressure
@@ -381,7 +384,8 @@ extension BlastSolver {
             cut = TerrainCutGeometry(
                 terrain: terrain, grid: grid,
                 samples: TerrainCutGeometry.samples(
-                    ratio: configuration.refinement, levels: configuration.refinementLevels))
+                    ratio: Self.keepsAirUnrefined(scenario) ? 1 : configuration.refinement,
+                    levels: configuration.refinementLevels))
             if cut?.cutColumns.isEmpty == true { cut = nil }
         }
         if let cut {

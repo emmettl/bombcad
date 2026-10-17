@@ -53,11 +53,19 @@ public struct FragmentResult: Codable, Sendable, Equatable {
     public var misses: Int
     /// Particles whose flight became non-finite, taken out of it.
     public var lost = 0
+    /// How many real fragments each flown stands for, by fragment, when a casing's dimensions set
+    /// their number (`FragmentSpec.wallThickness`); nil when each is one.
+    public var weights: [Float]?
+
+    /// How many real fragments the flown ones stand for.
+    public var representedCount: Double {
+        weights.map { $0.reduce(0) { $0 + Double($1) } } ?? Double(fragmentCount)
+    }
 
     /// The trajectories are left out of JSON, which they would swamp: they travel as
     /// `trajectoryData` and are in the USD scene.
     private enum CodingKeys: String, CodingKey {
-        case launchSpeed, masses, impacts, airborne, fragmentCount, frameInterval, misses, lost
+        case launchSpeed, masses, impacts, airborne, fragmentCount, frameInterval, misses, lost, weights
     }
 
     public init(from decoder: Decoder) throws {
@@ -71,6 +79,7 @@ public struct FragmentResult: Codable, Sendable, Equatable {
         frameInterval = try c.decode(Double.self, forKey: .frameInterval)
         misses = try c.decode(Int.self, forKey: .misses)
         lost = try c.decodeIfPresent(Int.self, forKey: .lost) ?? 0
+        weights = try c.decodeIfPresent([Float].self, forKey: .weights)
     }
 
     /// Every frame's positions as little-endian 32-bit floats, after the frame and particle counts.
@@ -114,7 +123,7 @@ public struct FragmentResult: Codable, Sendable, Equatable {
     public init(
         launchSpeed: Float, masses: [Float], impacts: [FragmentImpact], airborne: Int,
         frames: [[SIMD3<Float>]],
-        fragmentCount: Int, frameInterval: Double, misses: Int, lost: Int = 0
+        fragmentCount: Int, frameInterval: Double, misses: Int, lost: Int = 0, weights: [Float]? = nil
     ) {
         self.launchSpeed = launchSpeed
         self.masses = masses
@@ -125,6 +134,7 @@ public struct FragmentResult: Codable, Sendable, Equatable {
         self.frameInterval = frameInterval
         self.misses = misses
         self.lost = lost
+        self.weights = weights
     }
 
     public var summary: String {
@@ -172,11 +182,17 @@ public struct FragmentConsumer: Sendable {
             speed: max(region?.speed ?? 0, cloud.launchSpeed), airborne: cloud.airborne)
     }
 
+    /// What the fragments came to, the flights of those still airborne after the last frame
+    /// finished in still air, so that each lands (see `FragmentCloud.land`).
     public func result(frameInterval: Double) -> FragmentResult {
-        FragmentResult(
-            launchSpeed: cloud.launchSpeed, masses: cloud.particles.prefix(cloud.fragmentCount).map(\.mass),
-            impacts: cloud.impacts, airborne: cloud.airborne, frames: frames,
-            fragmentCount: cloud.fragmentCount,
-            frameInterval: frameInterval, misses: cloud.misses, lost: cloud.lost)
+        var cloud = cloud
+        if let last { cloud.land(in: last.ambient) }
+        let fragments = cloud.particles.prefix(cloud.fragmentCount)
+        return FragmentResult(
+            launchSpeed: cloud.launchSpeed, masses: fragments.map(\.mass),
+            impacts: cloud.impacts, airborne: cloud.airborne - cloud.particles.filter { $0.mass <= 0 }.count,
+            frames: frames, fragmentCount: cloud.fragmentCount,
+            frameInterval: frameInterval, misses: cloud.misses, lost: cloud.lost,
+            weights: fragments.allSatisfy { $0.weight == 1 } ? nil : fragments.map(\.weight))
     }
 }

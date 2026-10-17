@@ -34,6 +34,12 @@ public struct EnvelopeComponent: Codable, Hashable, Sendable, Identifiable {
         return (axes[0], axes[1])
     }
 
+    /// A wall standing free: its foot held and its top not, so a cantilever (`EnvelopeDamageAssessment`).
+    /// A wall's in-plane axes are horizontal then z, so its foot and top are the third and fourth edges.
+    public var isFreestanding: Bool {
+        kind == .wall && axis != 2 && supportEdges.count == 4 && supportEdges[2] && !supportEdges[3]
+    }
+
     /// The region's sizes along u and v, in metres.
     public var spans: SIMD2<Float> {
         let (u, v) = inPlaneAxes
@@ -144,6 +150,7 @@ extension BuildingEnvelope {
             var uSupports: [Float] = []
             var vSupports: [Float] = []
             var span: (u: Float?, v: Float?)
+            var caps: [Box] = []
             if axis == 2 {
                 // Roof if nothing of the building stands above it, else a slab; cut where walls
                 // meet it from below.
@@ -165,13 +172,26 @@ extension BuildingEnvelope {
                 span = (Self.slabSpan.x, Self.slabSpan.y)
             } else {
                 kind = .wall
+                // A slab or roof on the wall's top that rests on no other wall (a cap or canopy
+                // carried by this wall alone) does not hold it: the wall stands free under it.
+                caps = solids.enumerated().filter { n, other in
+                    guard n != index, case .plate(2) = roles[n], abs(other.min.z - solid.max.z) <= eps,
+                        touches(other, solid)
+                    else { return false }
+                    return !solids.enumerated().contains { m, wall in
+                        guard m != index, m != n, case .plate(let wallAxis) = roles[m], wallAxis != 2 else {
+                            return false
+                        }
+                        return abs(wall.max.z - other.min.z) <= eps && touches(wall, other)
+                    }
+                }.map(\.element)
                 var held = false
                 for (n, other) in solids.enumerated() where n != index && touches(other, solid) {
                     guard case .plate(let otherAxis) = roles[n] else { continue }
                     if otherAxis == 2 {
                         // A slab or roof meets the wall: where it crosses the wall's height, a
-                        // support; touching its top or foot, it holds the wall.
-                        held = true
+                        // support; touching its top or foot, it holds the wall (but for a cap).
+                        if !caps.contains(other) { held = true }
                         if other.min.z > solid.min.z + eps && other.max.z < solid.max.z - eps {
                             vSupports.append((other.min.z + other.max.z) / 2)
                         }
@@ -209,7 +229,9 @@ extension BuildingEnvelope {
                             ? supported(region, thin: axis, along: v, high: false, others: others)
                             : isSupportCut(vs[j], vSupports),
                         j == vs.count - 2
-                            ? supported(region, thin: axis, along: v, high: true, others: others)
+                            ? supported(
+                                region, thin: axis, along: v, high: true,
+                                others: others.filter { !caps.contains($0) })
                             : isSupportCut(vs[j + 1], vSupports),
                     ]
                     let panel = i + (us.count - 1) * j

@@ -1344,6 +1344,8 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
     Flux cutHigh = fluxHigh;
     float cutShare = 1.0f;
     float registerAperture = 1.0f;
+    float cutApertureLow = 1.0f;
+    float cutApertureHigh = 1.0f;
     if (nearCut) {
         uint4 column = cutColumnOf(cell, cutColumns, u);
         if (cell.z < int(column.z)) {
@@ -1361,6 +1363,8 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
             cutHigh = update.high;
             defect = update.defect;
             registerAperture = registerLow ? apertureLow : apertureHigh;
+            cutApertureLow = apertureLow;
+            cutApertureHigh = apertureHigh;
         }
     }
     if (fluxRegister >= 0) {
@@ -1392,15 +1396,27 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
     float2 species = float2(0.0f);
     if (carriesSpecies(u)) {
         float2 own = speciesSrc[index];
-        float2 fraction = own / max(c.rho, u.densityFloor);
+        // A deflagration's cloud has a sharp edge, and on cut cells a small cell's whole-cell update
+        // can take more of it than the cell holds, until its difference is shared out (see
+        // `redistributeCutDefects`). Holding that at zero would make gas, so it is not; instead the
+        // faces' mass fractions are of what is there, none for a cell left short, which both cells
+        // beside a face take alike, and nothing short is carried on.
+        bool leftShort = u.deflagration != 0u;
+        float2 fraction = (leftShort ? max(own, 0.0f) : own) / max(c.rho, u.densityFloor);
         // Beyond a far-field face, still air: its oxygen and no products.
         float2 ambient = farFieldFaces(u) ? float2(0.0f, u.stillOxygen / u.stillRho) : fraction;
-        float2 below = kindM1 == kindFluid ? speciesSrc[index - stride] / wM1.rho
-                                           : (kindM1 == kindOpen ? ambient : fraction);
-        float2 above = kindP1 == kindFluid ? speciesSrc[index + stride] / wP1.rho
-                                           : (kindP1 == kindOpen ? ambient : fraction);
+        float2 belowSpecies = kindM1 == kindFluid ? speciesSrc[index - stride] : float2(0.0f);
+        float2 aboveSpecies = kindP1 == kindFluid ? speciesSrc[index + stride] : float2(0.0f);
+        if (leftShort) {
+            belowSpecies = max(belowSpecies, 0.0f);
+            aboveSpecies = max(aboveSpecies, 0.0f);
+        }
+        float2 below = kindM1 == kindFluid ? belowSpecies / wM1.rho : (kindM1 == kindOpen ? ambient : fraction);
+        float2 above = kindP1 == kindFluid ? aboveSpecies / wP1.rho : (kindP1 == kindOpen ? ambient : fraction);
         float2 inflow = speciesFlux(fluxLow.mass, below, fraction);
         float2 outflow = speciesFlux(fluxHigh.mass, fraction, above);
+        float2 lowFace = float2(0.0f);
+        float2 highFace = float2(0.0f);
         if (u.deflagration != 0u) {
             // A deflagration's mixture is carried at limited linear (MUSCL) mass fractions at the
             // faces instead: at the upwind cell's, the grid's diffusion would spread its flame
@@ -1408,16 +1424,16 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
             // same value, so the species stay conserved.
             float2 below2 = below;
             if (kindM1 == kindFluid && classify(mask, index, -2, stride, i, n, lowWall, highWall) == kindFluid) {
-                below2 = speciesSrc[index - 2 * stride] / wM2.rho;
+                below2 = max(speciesSrc[index - 2 * stride], 0.0f) / wM2.rho;
             }
             float2 above2 = above;
             if (kindP1 == kindFluid && classify(mask, index, 2, stride, i, n, lowWall, highWall) == kindFluid) {
-                above2 = speciesSrc[index + 2 * stride] / wP2.rho;
+                above2 = max(speciesSrc[index + 2 * stride], 0.0f) / wP2.rho;
             }
-            float2 lowFace = fluxLow.mass > 0.0f ? below + 0.5f * minmodPair(below - below2, fraction - below)
-                                                 : fraction - 0.5f * minmodPair(fraction - below, above - fraction);
-            float2 highFace = fluxHigh.mass > 0.0f ? fraction + 0.5f * minmodPair(fraction - below, above - fraction)
-                                                   : above - 0.5f * minmodPair(above - fraction, above2 - above);
+            lowFace = fluxLow.mass > 0.0f ? below + 0.5f * minmodPair(below - below2, fraction - below)
+                                          : fraction - 0.5f * minmodPair(fraction - below, above - fraction);
+            highFace = fluxHigh.mass > 0.0f ? fraction + 0.5f * minmodPair(fraction - below, above - fraction)
+                                            : above - 0.5f * minmodPair(above - fraction, above2 - above);
             inflow = fluxLow.mass * lowFace;
             outflow = fluxHigh.mass * highFace;
         }
@@ -1427,14 +1443,24 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
             outflow -= carrierHigh * (above - fraction);
         }
         if (cutRecord >= 0) {
-            // The species' difference too, at the conservative mass fluxes.
-            float2 cutIn = speciesFlux(cutLow.mass, below, fraction);
-            float2 cutOut = speciesFlux(cutHigh.mass, fraction, above);
+            // The species' difference too, at the conservative mass fluxes and the faces' own mass
+            // fractions (a deflagration's limited linear ones), and the mixing's carrying through
+            // each face's open part: through each face as the cell beyond it takes them.
+            float2 cutIn = u.deflagration != 0u ? cutLow.mass * lowFace : speciesFlux(cutLow.mass, below, fraction);
+            float2 cutOut = u.deflagration != 0u ? cutHigh.mass * highFace : speciesFlux(cutHigh.mass, fraction, above);
+            if (airMixing) {
+                cutIn -= cutApertureLow * carrierLow * (fraction - below);
+                cutOut -= cutApertureHigh * carrierHigh * (above - fraction);
+            }
             float2 kept = -lambda * ((cutOut - cutIn) - cutShare * (outflow - inflow));
             float4 held = cutDefects[2 * cutRecord + 1];
             cutDefects[2 * cutRecord + 1] = float4(held.xy + kept, held.zw);
         }
-        species = max(own - lambda * (outflow - inflow), 0.0f);
+        // Near a deflagration's cut cells nothing is held at zero (see `leftShort`).
+        species = own - lambda * (outflow - inflow);
+        if (!(leftShort && nearCut)) {
+            species = max(species, 0.0f);
+        }
         if (speciesRegister >= 0) {
             float2 through = (registerLow ? inflow : outflow) * (registerAperture * dt);
             coarseSpeciesFlux[speciesRegister] = through.x;
@@ -1669,7 +1695,10 @@ kernel void redistributeCutDefects(device Cell *state [[buffer(0)]],
         }
         state[index] = c;
         if (withSpecies) {
-            species[index] = max(species[index] + changeEnergy.xy / alpha, 0.0f);
+            // A deflagration's are not held at zero: a cell above the cloud's edge can be given a
+            // difference that takes what a small cell beneath gave too much of (see `sweepCell`).
+            float2 given = species[index] + changeEnergy.xy / alpha;
+            species[index] = u.deflagration != 0u ? given : max(given, 0.0f);
         }
         float ambient = airGravity ? gravityAmbientOf(gravityTable, k, u) : u.ambientPressure;
         peak[index] = max(peak[index], pressure - ambient);
