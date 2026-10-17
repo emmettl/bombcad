@@ -334,6 +334,15 @@ struct SidebarView: View {
                     "Lets hot gas rise: the air starts at rest in a standard atmosphere and the fireball "
                         + "lifts off the ground over the seconds after the blast. Leaves the blast's loads as "
                         + "they are; runs that long need a tall domain.")
+            if model.settings.scenario.hasEnvelopePanes {
+                Toggle("Vent broken glazing", isOn: $model.settings.ventsGlazing)
+                    .disabled(model.settings.gravity || model.settings.sharpShocks)
+                    .help(
+                        "Opens envelope buildings' windows in the air when their glass breaks, so that the blast "
+                            + "fills the rooms and loads the walls from inside, instead of a one-way fill that the "
+                            + "air never sees. The inside stays illustrative. Not with gravity or sharpened shocks; "
+                            + "about 1.03 to 1.07 times the run's time.")
+            }
             Toggle("Sharpen shocks", isOn: $model.settings.sharpShocks)
                 .help(
                     "Refines the air twice over where the shock is, so that peak pressures and the loads "

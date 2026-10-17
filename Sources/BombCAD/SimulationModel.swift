@@ -165,6 +165,9 @@ struct SimulationSettings: Equatable {
     /// since 16 October 2026 (`SolverConfiguration.structureMaskOverlap`); false for each element
     /// counted at its centre, as before.
     var outlineByOverlap = true
+    /// Envelopes' glazing breaks in the air and the blast fills their rooms
+    /// (`BlastSolver.configureEnvelopeVenting`), instead of the one-way fill: an option.
+    var ventsGlazing = false
     /// Debris lands on soil, a Winkler bed of `groundStiffness` (Pa/m), instead of the hard ground.
     var softGround = false
     var groundStiffness = SolverConfiguration.soilSubgradeModulus
@@ -648,6 +651,8 @@ final class SimulationModel {
     /// (`EnvelopeDamageAssessment`), and why there is none when there is none.
     private(set) var envelopeDamage: [EnvelopeBuildingDamage] = []
     private(set) var envelopeDamageStatus = ""
+    /// Why the glazing is not vented though asked to be, or empty.
+    private(set) var envelopeVentingStatus = ""
     /// Whether the view colours envelopes by their damage (over the air's paint) once judged.
     var showsEnvelopeDamage = true {
         didSet { applyEnvelopeDamageColours() }
@@ -667,18 +672,25 @@ final class SimulationModel {
     func refreshEnvelopeDamage() {
         lastEnvelopeDamage = .now
         guard let histories = solver?.envelopeComponentHistories(), !histories.isEmpty else { return }
-        updateEnvelopeDamage(loads: histories.filter { !$0.invalid }.map(EnvelopeComponentLoad.init))
+        // A vented pane's faces open with its glass: its history up to then is its load.
+        let vented = solver?.envelopeVentingSnapshot()
+        updateEnvelopeDamage(
+            loads: histories.filter { !$0.invalid || (vented != nil && $0.component.kind == .pane) }
+                .map(EnvelopeComponentLoad.init),
+            vented: vented)
     }
 
-    /// Judges each envelope building from its components' loads, and colours it in the view.
-    func updateEnvelopeDamage(loads: [EnvelopeComponentLoad]) {
+    /// Judges each envelope building from its components' loads (and with venting the air's
+    /// panes and rooms), and colours it in the view.
+    func updateEnvelopeDamage(loads: [EnvelopeComponentLoad], vented: EnvelopeVentingSnapshot? = nil) {
         let scenario = settings.scenario
         let rooms = Dictionary(
             uniqueKeysWithValues: scenario.envelopeObjects.map {
                 ($0.id, EnvelopeDamageAssessment.roomVolume(of: $0.envelope!))
             })
         envelopeDamage = EnvelopeDamageAssessment.assess(
-            loads: loads, constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms)
+            loads: loads, constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms,
+            vented: vented)
         applyEnvelopeDamageColours()
     }
 
@@ -784,6 +796,7 @@ final class SimulationModel {
                 settings.gravity = run.gravity ?? false
                 settings.terrainCutCells = run.cutsTerrain(over: scenario)
                 settings.outlineByOverlap = run.countsByOverlap(over: scenario)
+                settings.ventsGlazing = run.ventsGlazing ?? false
                 settings.softGround = run.groundStiffness != nil
                 settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
                 settings.ground = run.ground ?? .rigid
@@ -929,6 +942,7 @@ final class SimulationModel {
             settings.gravity = run.gravity ?? false
             settings.terrainCutCells = run.cutsTerrain(over: document.scenario)
             settings.outlineByOverlap = run.countsByOverlap(over: document.scenario)
+            settings.ventsGlazing = run.ventsGlazing ?? false
             settings.softGround = run.groundStiffness != nil
             settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
             settings.ground = run.ground ?? .rigid
@@ -1137,6 +1151,7 @@ final class SimulationModel {
         settings.gravity = inputs.settings.gravity ?? false
         settings.terrainCutCells = inputs.settings.cutsTerrain(over: inputs.scenario)
         settings.outlineByOverlap = inputs.settings.countsByOverlap(over: inputs.scenario)
+        settings.ventsGlazing = inputs.settings.ventsGlazing ?? false
         settings.softGround = inputs.settings.groundStiffness != nil
         settings.groundStiffness = inputs.settings.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
         settings.ground = inputs.settings.ground ?? .rigid
@@ -2257,6 +2272,7 @@ final class SimulationModel {
         envelopeExposure = []
         envelopeDamage = []
         envelopeExposureStatus = ""
+        envelopeVentingStatus = ""
         if batchInFlight {
             isLoadingInputs = true
             // The GPU still owns the solver's buffers; rebuild when the batch lands.
@@ -2287,6 +2303,7 @@ final class SimulationModel {
         envelopeExposure = []
         envelopeDamage = []
         envelopeExposureStatus = ""
+        envelopeVentingStatus = ""
         stopThermal()
         stopCloud()
         completedRunSettings = nil
@@ -2343,6 +2360,15 @@ final class SimulationModel {
                     {
                         try solver.configureEnvelopeComponents(
                             objects: scenario.envelopeObjects, options: options)
+                        if settings.ventsGlazing && scenario.hasEnvelopePanes {
+                            do {
+                                try solver.configureEnvelopeVenting(objects: scenario.envelopeObjects) {
+                                    scenario.envelopeConstruction(for: $0)
+                                }
+                            } catch {
+                                envelopeVentingStatus = "Glazing not vented: \(error.localizedDescription)"
+                            }
+                        }
                     }
                     envelopeExposure = solver.envelopeExposureSummaries() ?? []
                 } catch {

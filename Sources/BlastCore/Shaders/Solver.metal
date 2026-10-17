@@ -2186,7 +2186,7 @@ static inline float stillSum(const device float *still, uint count, uint lane) {
 static inline void finishComponent(uint index, float2 sum, uint broken, uint4 side, uint lane,
                                    const device StepControl &control, constant ComponentRecording &r,
                                    device float4 *peaks, device float2 *bins, device float2 *maxima,
-                                   device atomic_uint *truncated) {
+                                   device atomic_uint *truncated, device float2 *current) {
     for (ushort offset = componentLanes / 2; offset > 0; offset /= 2) {
         sum += simd_shuffle_down(sum, offset);
         broken |= simd_shuffle_down(broken, offset);
@@ -2200,6 +2200,8 @@ static inline void finishComponent(uint index, float2 sum, uint broken, uint4 si
     peak.z = max(peak.z, outer - inner);
     peak.w = broken != 0 ? 1.0f : peak.w;
     peaks[index] = peak;
+    // The step's two sides, for what reads them before the next (`stepEnvelopePanes`).
+    current[index] = float2(outer, inner);
     float dt = r.initial != 0 ? 0.0f : control.dt;
     // The step, in seconds from the start of the batch's first bin.
     float end = r.startFraction + (r.initial != 0 ? 0.0f : control.batchTime);
@@ -2247,6 +2249,7 @@ kernel void markEnvelopeComponents(const device StepControl &control [[buffer(2)
                                    device float2 *bins [[buffer(17)]],
                                    device float2 *maxima [[buffer(18)]],
                                    device atomic_uint *truncated [[buffer(19)]],
+                                   device float2 *current [[buffer(20)]],
                                    uint group [[threadgroup_position_in_grid]],
                                    uint simd [[simdgroup_index_in_threadgroup]],
                                    uint groups [[simdgroups_per_threadgroup]],
@@ -2272,7 +2275,7 @@ kernel void markEnvelopeComponents(const device StepControl &control [[buffer(2)
     if (woken || r.initial != 0) return;
     uint4 side = sides[index];
     float2 sum = float2(stillSum(stillPressure, side.y, lane), stillSum(stillPressure, side.w, lane));
-    finishComponent(index, sum, 0u, side, lane, control, r, peaks, bins, maxima, truncated);
+    finishComponent(index, sum, 0u, side, lane, control, r, peaks, bins, maxima, truncated, current);
 }
 
 // Every face's pressure: a threadgroup an awake component, its threads taking every
@@ -2353,6 +2356,7 @@ kernel void sampleEnvelopeComponents(const device float *pressures [[buffer(0)]]
                                      device float2 *bins [[buffer(6)]],
                                      device float2 *maxima [[buffer(7)]],
                                      device atomic_uint *truncated [[buffer(8)]],
+                                     device float2 *current [[buffer(9)]],
                                      constant ComponentRecording &r [[buffer(10)]],
                                      const device float *stillPressure [[buffer(11)]],
                                      device uint *faceDispatch [[buffer(12)]],
@@ -2374,7 +2378,195 @@ kernel void sampleEnvelopeComponents(const device float *pressures [[buffer(0)]]
     } else {
         sum = float2(stillSum(stillPressure, side.y, lane), stillSum(stillPressure, side.w, lane));
     }
-    finishComponent(index, sum, broken, side, lane, control, r, peaks, bins, maxima, truncated);
+    finishComponent(index, sum, broken, side, lane, control, r, peaks, bins, maxima, truncated, current);
+}
+
+// Envelope venting (EnvelopeVenting.swift): each pane's glass the one-way model's single degree of
+// freedom (`SDOFSystem.response` for `EnvelopePanel.largeDeflectionGlass`), K_LM m x'' + R(x) = p
+// with p the step's net pressure on it (outer less inner): R its stiffening backbone, elastic both
+// ways; by velocity Verlet at a 200th of the shortest period it reaches or less; breaking when
+// Brown's integral of its largest principal stress, the integral of (sigma / S)^n dt, reaches the
+// reference duration, or when it deflects past where its edges let go. Its cells open after the
+// step. A thread a pane. A pane that broke in the step before is marked open first.
+struct EnvelopeGlass {
+    float mass;
+    float substep;
+    float strength;
+    float reference;
+    float exponent;
+    float letsGo;
+    uint first;
+    uint count;
+};
+
+// The backbone's resistance (x) and the largest principal stress (y) at deflection `d` >= 0, as
+// `SDOFSystem.envelope` and `Brittle.stress` interpolate them: from (0, 0) to the first point, then
+// point to point, and the last point's beyond.
+static inline float2 glassAt(float d, const device float4 *table, uint first, uint count) {
+    float4 lead = table[first];
+    if (d <= lead.x) return float2(lead.y, lead.z) * (d / lead.x);
+    uint low = 0;
+    uint high = count - 1;
+    if (d >= table[first + high].x) return table[first + high].yz;
+    // table[low].x < d <= table[high].x
+    while (high - low > 1) {
+        uint middle = (low + high) / 2;
+        if (table[first + middle].x < d) low = middle; else high = middle;
+    }
+    float4 a = table[first + low];
+    float4 b = table[first + high];
+    float f = (d - a.x) / (b.x - a.x);
+    return float2(a.y + (b.y - a.y) * f, a.z + (b.z - a.z) * f);
+}
+
+kernel void stepEnvelopePanes(const device float2 *current [[buffer(0)]],
+                              const device uint2 *panes [[buffer(1)]],
+                              const device EnvelopeGlass *glass [[buffer(2)]],
+                              device float4 *state [[buffer(3)]],
+                              device uint *status [[buffer(4)]],
+                              device atomic_uint *opened [[buffer(5)]],
+                              const device StepControl &control [[buffer(6)]],
+                              constant uint &count [[buffer(7)]],
+                              const device uint2 *ownerRooms [[buffer(8)]],
+                              device atomic_uint *roomDispatch [[buffer(9)]],
+                              device uint *roomList [[buffer(10)]],
+                              const device float4 *table [[buffer(11)]],
+                              uint pane [[thread_position_in_grid]]) {
+    if (pane >= count || control.dt <= 0.0f) return;
+    uint was = status[pane];
+    if (was == 1u) status[pane] = 2u;
+    float4 motion = state[2 * pane];
+    float4 clock = state[2 * pane + 1];
+    clock.x += control.dt;
+    if (was != 0u) {
+        state[2 * pane + 1] = clock;
+        return;
+    }
+    EnvelopeGlass g = glass[pane];
+    float2 sides = current[panes[pane].x];
+    float p = sides.x - sides.y;
+    uint n = max(1u, uint(ceil(control.dt / g.substep)));
+    float h = control.dt / float(n);
+    float x = motion.x;
+    float v = motion.y;
+    float fatigue = motion.z;
+    float r = sign(x) * glassAt(fabs(x), table, g.first, g.count).x;
+    bool broken = false;
+    for (uint i = 0; i < n && !broken; ++i) {
+        v += 0.5f * h * (p - r) / g.mass;
+        x += h * v;
+        float2 at = glassAt(fabs(x), table, g.first, g.count);
+        r = sign(x) * at.x;
+        v += 0.5f * h * (p - r) / g.mass;
+        if (g.exponent > 0.0f) {
+            fatigue += h * pow(at.y / g.strength, g.exponent);
+            broken = fatigue >= g.reference;
+        } else {
+            broken = at.y >= g.strength;
+        }
+        broken = broken || fabs(x) >= g.letsGo;
+        if (broken) {
+            clock.y = clock.x - control.dt + float(i + 1) * h;
+            status[pane] = 1u;
+            // The building's first broken pane lists its rooms for reading from now on, in the
+            // order the buildings open.
+            uint owner = panes[pane].y;
+            if (atomic_exchange_explicit(opened + owner, 1u, memory_order_relaxed) == 0u) {
+                uint2 range = ownerRooms[owner];
+                uint at = atomic_fetch_add_explicit(roomDispatch, range.y, memory_order_relaxed);
+                for (uint k = 0; k < range.y; ++k) roomList[at + k] = range.x + k;
+            }
+        }
+    }
+    state[2 * pane] = float4(x, v, fatigue, 0.0f);
+    state[2 * pane + 1] = clock;
+}
+
+// The cells of the panes that broke in the step just taken leave the mask (and the rigid mask the
+// structures' outline starts from) and hold the still air, as a cell under glass has from the
+// start: the pane's volume of air at rest at ambient, the flow's own mass, momentum and energy
+// untouched. The tiles round them wake. A thread a cell.
+kernel void openEnvelopePanes(const device uint2 *cells [[buffer(0)]],
+                              const device uint *status [[buffer(1)]],
+                              device uchar *mask [[buffer(2)]],
+                              device uchar *rigidMask [[buffer(3)]],
+                              device Cell *stateA [[buffer(4)]],
+                              device Cell *stateB [[buffer(5)]],
+                              device float2 *speciesA [[buffer(6)]],
+                              device float2 *speciesB [[buffer(7)]],
+                              device uchar *tileFlags [[buffer(8)]],
+                              constant SolverUniforms &u [[buffer(9)]],
+                              const device StepControl &control [[buffer(10)]],
+                              constant uint &count [[buffer(11)]],
+                              uint tid [[thread_position_in_grid]]) {
+    if (tid >= count || control.dt <= 0.0f) return;
+    uint2 entry = cells[tid];
+    if (status[entry.y] != 1u) return;
+    uint index = entry.x;
+    mask[index] = 0;
+    rigidMask[index] = 0;
+    Cell still;
+    still.rho = u.stillRho;
+    still.mx = u.stillMx;
+    still.my = u.stillMy;
+    still.mz = u.stillMz;
+    still.energy = u.stillEnergy;
+    stateA[index] = still;
+    stateB[index] = still;
+    if (carriesSpecies(u)) {
+        float2 air = float2(0.0f, u.stillOxygen);
+        speciesA[index] = air;
+        speciesB[index] = air;
+    }
+    if (u.tileNx != 0) {
+        int3 cell = int3(index % u.nx, (index / u.nx) % u.ny, index / (u.nx * u.ny));
+        wakeTilesAround(cell, tileFlags, tileWoken, u);
+    }
+}
+
+// Each room of an opened building: its cells' mean overpressure this step, its peak and positive
+// impulse. A threadgroup of 256 a room, its sum in a fixed order.
+struct EnvelopeRoom {
+    uint owner;
+    uint first;
+    uint count;
+    uint pad;
+};
+
+kernel void sampleEnvelopeRooms(const device Cell *state [[buffer(0)]],
+                                const device EnvelopeRoom *rooms [[buffer(1)]],
+                                const device uint *cells [[buffer(2)]],
+                                const device uint *roomList [[buffer(3)]],
+                                device float4 *results [[buffer(4)]],
+                                constant SolverUniforms &u [[buffer(5)]],
+                                const device StepControl &control [[buffer(6)]],
+                                uint group [[threadgroup_position_in_grid]],
+                                uint local [[thread_index_in_threadgroup]]) {
+    threadgroup float partial[256];
+    // Only the rooms of buildings opened are dispatched (`roomList`, by `stepEnvelopePanes`).
+    uint index = roomList[group];
+    EnvelopeRoom room = rooms[index];
+    if (control.dt <= 0.0f) return;
+    float sum = 0.0f;
+    for (uint n = local; n < room.count; n += 256u) {
+        Cell c = state[cells[room.first + n]];
+        float rho = max(c.rho, u.densityFloor);
+        float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / rho;
+        sum += gasPressure(rho, c.energy - kinetic, u.airModel, u.gamma) - u.ambientPressure;
+    }
+    partial[local] = sum;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    for (uint stride = 128u; stride > 0u; stride /= 2u) {
+        if (local < stride) partial[local] += partial[local + stride];
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+    }
+    if (local != 0) return;
+    float mean = partial[0] / float(max(room.count, 1u));
+    float4 result = results[index];
+    result.x = max(result.x, mean);
+    result.y += max(mean, 0.0f) * control.dt;
+    result.z = mean;
+    results[index] = result;
 }
 
 // Seeds the wave-speed maximum from the initial condition.

@@ -248,10 +248,14 @@ public struct EnvelopeBuildingDamage: Codable, Sendable, Identifiable {
     public var firstPaneBrokenAtS: Double?
     /// Its windows' worst glazing hazard (GSA's condition, ASTM's rating), nil without windows.
     public var worstGlazing: GlazingHazard? = nil
-    /// Inside, from a one-way fill through the broken panes (`EnvelopeDamageAssessment.fill`):
-    /// peak overpressure (Pa) and positive impulse (Pa s). Zero with no pane broken.
+    /// Inside, from a one-way fill through the broken panes (`EnvelopeDamageAssessment.fill`), or
+    /// with venting the air's own, its worst room's mean: peak overpressure (Pa) and positive
+    /// impulse (Pa s). Zero with no pane broken.
     public var insidePeakPa: Double
     public var insideImpulsePaS: Double
+    /// True when the inside and the panes' breaking are the air's, its glazing vented
+    /// (`BlastSolver.configureEnvelopeVenting`); nil for the one-way fill (left out of the JSON).
+    public var vented: Bool?
 }
 
 /// How an envelope building's damage is shown: one colour for each of six codes, the view's
@@ -286,9 +290,11 @@ public enum EnvelopeDamageAssessment {
     /// Rotation past which a panel's frame is flagged as beyond the one-way model, degrees.
     public static let frameFlagDeg = 2.0
 
+    /// With `vented`, the run's glazing broke in the air: each pane breaks when the GPU's glass did
+    /// (its history after that is the open window's), and the inside is the air's worst room.
     public static func assess(
         loads: [EnvelopeComponentLoad], constructions: (UUID) -> EnvelopeConstruction,
-        rooms: [UUID: Double] = [:]
+        rooms: [UUID: Double] = [:], vented: EnvelopeVentingSnapshot? = nil
     ) -> [EnvelopeBuildingDamage] {
         let owners = Array(Set(loads.map(\.owner))).sorted { $0.uuidString < $1.uuidString }
         return owners.map { owner in
@@ -297,7 +303,14 @@ public enum EnvelopeDamageAssessment {
             var components: [EnvelopeComponentDamage] = []
             var openings: [(area: Double, opens: Double, outer: [Double])] = []
             for load in mine {
-                guard let damage = assess(load, construction: construction) else { continue }
+                guard var damage = assess(load, construction: construction) else { continue }
+                if damage.material == .annealedGlass,
+                    let pane = vented?.panes.first(where: { $0.component == load.id })
+                {
+                    damage.failedAtS = pane.brokenAtS
+                    let level: EnvelopeDamageLevel = pane.brokenAtS == nil ? .none : .failed
+                    damage.levels = level...level
+                }
                 components.append(damage)
                 if damage.material == .annealedGlass, let broken = damage.failedAtS {
                     let spans = load.spans
@@ -308,10 +321,12 @@ public enum EnvelopeDamageAssessment {
             let low = structural.map(\.levels.lowerBound).max() ?? .none
             let high = structural.map(\.levels.upperBound).max() ?? .none
             let panes = components.filter { $0.material == .annealedGlass }
+            let air = vented?.inside(of: owner)
             let inside =
                 openings.isEmpty
                 ? (peak: 0.0, impulse: 0.0)
-                : fill(volume: rooms[owner] ?? 0, openings: openings, bin: mine.first?.binS ?? 1e-4)
+                : air.map { (peak: $0.peakPa, impulse: $0.impulsePaS) }
+                    ?? fill(volume: rooms[owner] ?? 0, openings: openings, bin: mine.first?.binS ?? 1e-4)
             return EnvelopeBuildingDamage(
                 id: owner, construction: construction, components: components,
                 structuralLevels: low...max(low, high),
@@ -322,7 +337,7 @@ public enum EnvelopeDamageAssessment {
                     ($0.condition, $0.speedMS) < ($1.condition, $1.speedMS)
                 },
                 insidePeakPa: inside.peak,
-                insideImpulsePaS: inside.impulse)
+                insideImpulsePaS: inside.impulse, vented: vented == nil ? nil : true)
         }
     }
 

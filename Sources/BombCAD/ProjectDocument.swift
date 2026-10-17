@@ -43,6 +43,9 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// run did before 16 October 2026; true when by overlap; nil, and left out of the file and the
     /// fingerprint, where the scene has no structure, or for a run saved before then.
     var outlineByOverlap: Bool?
+    /// True when envelopes' glazing breaks in the air and the blast fills their rooms; nil, and
+    /// left out of the file and the fingerprint, for the one-way fill, or where no envelope is glazed.
+    var ventsGlazing: Bool?
     var solidElementSize: Float
     var duration: Double
 
@@ -60,6 +63,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         ground = settings.ground == .rigid ? nil : settings.ground
         waterTable = settings.ground == .rigid ? nil : settings.waterTable
         outlineByOverlap = settings.scenario.structuralObjects.isEmpty ? nil : settings.outlineByOverlap
+        ventsGlazing = settings.ventsGlazing && settings.scenario.hasEnvelopePanes ? true : nil
         solidElementSize = settings.solidElementSize
         self.duration = duration
     }

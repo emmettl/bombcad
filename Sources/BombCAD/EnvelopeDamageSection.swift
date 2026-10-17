@@ -16,6 +16,9 @@ struct EnvelopeDamageSection: View {
                 Toggle("Show damage in the view", isOn: $model.showsEnvelopeDamage)
                     .help("Colour each envelope by its damage instead of the air's pressure.")
                 Legend()
+                if !model.envelopeVentingStatus.isEmpty {
+                    Text(model.envelopeVentingStatus).font(.caption).foregroundStyle(.orange)
+                }
                 if model.envelopeDamage.isEmpty {
                     Text(
                         model.envelopeDamageStatus.isEmpty
@@ -58,7 +61,9 @@ struct EnvelopeDamageSection: View {
                                             ?? "")
                                         + (building.insidePeakPa > 0
                                             ? String(
-                                                format: "; inside %.1f kPa (illustrative)",
+                                                format: building.vented == true
+                                                    ? "; inside %.1f kPa, the air's (illustrative)"
+                                                    : "; inside %.1f kPa (illustrative)",
                                                 building.insidePeakPa / 1000)
                                             : "")
                                 )
@@ -80,7 +85,9 @@ struct EnvelopeDamageSection: View {
                     .help("Each building's and component's one-way damage, with its construction, as JSON.")
                 }
                 Text(
-                    "One way: the air sees each building whole. Concrete is a range between fixed and simply supported edges, judged by ASCE/SEI 59-11's limits; brick and the inside are illustrative."
+                    model.envelopeDamage.contains { $0.vented == true }
+                        ? "One way, but for the glazing: broken panes open in the air and the blast fills the rooms. Concrete is a range between fixed and simply supported edges, judged by ASCE/SEI 59-11's limits; brick and the inside are illustrative."
+                        : "One way: the air sees each building whole. Concrete is a range between fixed and simply supported edges, judged by ASCE/SEI 59-11's limits; brick and the inside are illustrative."
                 )
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
@@ -114,7 +121,9 @@ struct EnvelopeDamageSection: View {
                 line += String(format: ", first at %.1f ms", first * 1000)
             }
             if building.insidePeakPa > 0 {
-                line += String(format: ", inside %.1f kPa", building.insidePeakPa / 1000)
+                line += String(
+                    format: building.vented == true ? ", inside %.1f kPa (vented)" : ", inside %.1f kPa",
+                    building.insidePeakPa / 1000)
             }
             if let glazing = building.worstGlazing, glazing.condition > .two {
                 line +=

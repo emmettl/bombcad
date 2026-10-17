@@ -416,7 +416,7 @@ enum EnvelopeDamageBenchmark {
 
     static func runOne(
         device: MTLDevice, layout: StreetInteractionStudy.Layout, wall: Wall, charge: Float, dx: Float,
-        duration: Double, bin: Double, revision: String, directory: URL, envelope: Bool
+        duration: Double, bin: Double, revision: String, directory: URL, envelope: Bool, vented: Bool = false
     ) throws {
         let detailed = try scene(layout: layout, wall: wall, charge: charge)
         // The envelope twin: the same scene with each building exposure-only, its glass solid.
@@ -427,6 +427,18 @@ enum EnvelopeDamageBenchmark {
         config.airSleepCrossings = 0
         let start = ProcessInfo.processInfo.systemUptime
         let solver = try BlastSolver(device: device, scenario: scene, cellSize: dx, configuration: config)
+        // Vented: the envelope twin whose panes break in the air (EnvelopeVenting.swift), its glass
+        // the harness's.
+        if vented {
+            let objects = scene.envelopeObjects
+            try solver.configureEnvelopeComponents(
+                objects: objects, options: EnvelopeHistoryOptions(windowS: duration + 0.01, binS: bin))
+            try solver.configureEnvelopeVenting(objects: objects) { id in
+                var construction = EnvelopeConstruction.assumed(objectID: id)
+                construction.glassThicknessM = paneThickness
+                return construction
+            }
+        }
         var tracked: [(SceneObject, [Tracked])] = []
         var settledSpeed: [String: Float] = [:]
         for object in detailed.structuralObjects where envelope {
@@ -616,6 +628,12 @@ enum EnvelopeDamageBenchmark {
                     c.broken = t.brokenAt != nil
                     c.brokenAtS = t.brokenAt
                 }
+                if c.kind == "pane", let venting = solver.envelopeVentingSnapshot(),
+                    let pane = venting.panes.first(where: { $0.component == c.id })
+                {
+                    c.broken = pane.brokenAtS != nil
+                    c.brokenAtS = pane.brokenAtS
+                }
                 components.append(c)
             }
             _ = b
@@ -635,7 +653,7 @@ enum EnvelopeDamageBenchmark {
         }
         let record = Record(
             sourceRevision: revision, device: device.name, layout: layout.rawValue,
-            representation: envelope ? "envelope" : "detailed", wall: wall,
+            representation: vented ? "vented" : envelope ? "envelope" : "detailed", wall: wall,
             chargeKg: charge,
             chargePosition: scene.charge.position, domainSize: scene.domainSize, offset: offset,
             air: Air(
@@ -651,7 +669,9 @@ enum EnvelopeDamageBenchmark {
             notes: notes(wall), components: components, gauges: gauges)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
-        let name = "\(layout.rawValue)-\(wall.rawValue)-\(Int(charge))" + (envelope ? "-envelope" : "")
+        let name =
+            "\(layout.rawValue)-\(wall.rawValue)-\(Int(charge))"
+            + (vented ? "-vented" : envelope ? "-envelope" : "")
         try encoder.encode(record).write(to: directory.appending(path: "\(name).json"))
         print("\(name): \(String(format: "%.0f", record.wallClockS)) s, stable \(stable)")
         for c in components {
@@ -672,6 +692,21 @@ enum EnvelopeDamageBenchmark {
                 String(
                     format: "  gauge %@: %.1f kPa, %.0f Pa s", g.name, g.peakOverpressurePa / 1000,
                     g.positiveImpulsePaS))
+        }
+        if let venting = solver.envelopeVentingSnapshot() {
+            for pane in venting.panes {
+                print(
+                    "  vented pane \(pane.component.split(separator: "/").last ?? ""): "
+                        + (pane.brokenAtS.map { String(format: "broken at %.1f ms", $0 * 1000) } ?? "whole")
+                        + String(format: ", deflection %.2f mm", pane.deflectionM * 1000))
+            }
+            for room in venting.rooms {
+                print(
+                    String(
+                        format: "  room of %@: %.1f m³, mean %.2f kPa, %.1f Pa s",
+                        room.owner.uuidString.prefix(8) as CVarArg,
+                        room.volumeM3, room.peakPa / 1000, room.impulsePaS))
+            }
         }
     }
 
@@ -725,7 +760,7 @@ enum EnvelopeDamageBenchmark {
                         try runOne(
                             device: device, layout: layout, wall: wall, charge: charge, dx: dx,
                             duration: duration, bin: 1e-4, revision: revision, directory: directory,
-                            envelope: representation == "envelope")
+                            envelope: representation != "detailed", vented: representation == "vented")
                     }
                 }
             }
