@@ -167,7 +167,7 @@ struct SimulationSettings: Equatable {
     var outlineByOverlap = true
     /// Envelopes' glazing breaks in the air and the blast fills their rooms
     /// (`BlastSolver.configureEnvelopeVenting`), by default since 17 October 2026; off, or where it
-    /// cannot run (gravity in the air), the one-way fill.
+    /// cannot run, the one-way fill.
     var ventsGlazing = true
     /// The structures brought to rest under their own weight before the blast
     /// (`SolverConfiguration.settlesStructures`), as since 17 October 2026; false for their weight
@@ -686,7 +686,7 @@ final class SimulationModel {
         // A vented pane's faces open with its glass: its history up to then is its load.
         let vented = solver?.envelopeVentingSnapshot()
         updateEnvelopeDamage(
-            loads: histories.filter { !$0.invalid || (vented != nil && $0.component.kind == .pane) }
+            loads: histories.filter { !$0.invalid || vented?.keeps($0) == true }
                 .map(EnvelopeComponentLoad.init),
             vented: vented)
     }
@@ -2405,9 +2405,7 @@ final class SimulationModel {
                                 }
                             } catch {
                                 envelopeVentingStatus =
-                                    settings.gravity
-                                    ? "Glazing not vented with gravity in the air: the inside is the one-way fill's."
-                                    : "Glazing not vented (\(error.localizedDescription)): the inside is the one-way fill's."
+                                    "Glazing not vented (\(error.localizedDescription)): the inside is the one-way fill's."
                             }
                         }
                     }

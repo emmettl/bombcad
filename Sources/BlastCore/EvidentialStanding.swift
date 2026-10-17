@@ -370,7 +370,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
                 || !inputs.scenario.envelopeSources(.mesh).isEmpty
         case .mapBuildings: return !inputs.scenario.envelopeSources(.map).isEmpty
         case .ventedGlazing:
-            return inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes && config.gravity == nil
+            return inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes
         case .shellElements:
             return any { $0.elementKind == .shell || $0.solidElementKind.contains(.shell) }
         case .shellSectionShear: return any { $0.shellSectionShear }
@@ -624,7 +624,8 @@ public enum StandingTable {
                 note:
                     "Envelopes' panes break in the air when their one-way glass does (within 0.3 ms on its own "
                     + "loads) and open their windows whole, so the blast fills the rooms and loads the walls from "
-                    + "inside; the default where it can run. The inside stays illustrative: the detailed "
+                    + "inside; walls, roofs and slabs judged failed open too; the default where it can run. The "
+                    + "inside stays illustrative: the detailed "
                     + "references let broken glass go element by element and cannot judge it; against UFC "
                     + "3-340-02's loads through open windows the walls inside come at 0.31 to 1.22 of the UFC's "
                     + "(the back walls within 25%), where the one-way fill gives 0.15 to 0.42.",
@@ -2080,8 +2081,7 @@ struct StandingScene {
         let envelopes = inputs.scenario.envelopeObjects.map(\.id)
         let assumed = envelopes.filter { inputs.scenario.envelopeConstruction(for: $0).source == .assumed }
             .count
-        let vented =
-            inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes && inputs.configuration.gravity == nil
+        let vented = inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes
         return result(
             .envelopeDamage, .approximation,
             "One way, from each component's load, "

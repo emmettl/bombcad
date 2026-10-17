@@ -2573,11 +2573,14 @@ kernel void openEnvelopePanes(const device uint2 *cells [[buffer(0)]],
                               constant SolverUniforms &u [[buffer(9)]],
                               const device StepControl &control [[buffer(10)]],
                               constant uint &count [[buffer(11)]],
+                              const device float4 *gravityTable [[buffer(12)]],
                               uint tid [[thread_position_in_grid]]) {
     if (tid >= count || control.dt <= 0.0f) return;
     uint2 entry = cells[tid];
     if (status[entry.y] != 1u) return;
     uint index = entry.x;
+    // Already opened (a pane in a wall that went first): its air is the flow's now.
+    if (mask[index] == 0) return;
     mask[index] = 0;
     rigidMask[index] = 0;
     Cell still;
@@ -2586,10 +2589,14 @@ kernel void openEnvelopePanes(const device uint2 *cells [[buffer(0)]],
     still.my = u.stillMy;
     still.mz = u.stillMz;
     still.energy = u.stillEnergy;
+    // Under gravity, the background at rest at the cell's height.
+    if (u.gravity != 0.0f) {
+        still = gravityRestOf(gravityTable, int(index / (u.nx * u.ny)));
+    }
     stateA[index] = still;
     stateB[index] = still;
     if (carriesSpecies(u)) {
-        float2 air = float2(0.0f, u.stillOxygen);
+        float2 air = float2(0.0f, u.stillOxygen / u.stillRho * still.rho);
         speciesA[index] = air;
         speciesB[index] = air;
     }
@@ -2597,6 +2604,157 @@ kernel void openEnvelopePanes(const device uint2 *cells [[buffer(0)]],
         int3 cell = int3(index % u.nx, (index / u.nx) % u.ny, index / (u.nx * u.ny));
         wakeTilesAround(cell, tileFlags, tileWoken, u);
     }
+}
+
+
+// Envelope venting's walls, roofs and slabs (`EnvelopeWallFailure`): each of a component's single
+// degrees of freedom as `SDOFSystem.response` steps it, K_LM m x'' + c x' + R(x) = p, R its backbone
+// with permanent set (inward the backbone at the furthest inward deflection yet, outward the
+// rebound resistance), K_LM elastic until it yields, then the mean of elastic and plastic up to 2°
+// of support rotation, then plastic; by velocity Verlet at a 200th of its elastic period. The
+// component fails when a system's level does (concrete past 10° once yielded, masonry with no
+// resistance left): a panel's either bound, a cantilever's the way its load has pushed harder so
+// far. Its cells open after the step, as a pane's. A thread a component.
+struct EnvelopeWallSystem {
+    float mass;
+    float loadMassElastic;
+    float loadMassPlastic;
+    float span;
+    float reboundFactor;
+    float damping;
+    float substep;
+    float stiffness;
+    float yieldPast;
+    float rotationPast;
+    float lostPast;
+    float sign;
+    uint first;
+    uint count;
+    uint pad0;
+    uint pad1;
+};
+
+// The backbone's resistance at deflection `x` >= 0, as `SDOFSystem.envelope`.
+static inline float wallEnvelope(float x, const device float4 *table, EnvelopeWallSystem s) {
+    float4 lead = table[s.first];
+    if (x <= lead.x) return s.stiffness * x;
+    for (uint k = 1; k < s.count; ++k) {
+        float4 b = table[s.first + k];
+        if (x <= b.x) {
+            float4 a = table[s.first + k - 1];
+            return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
+        }
+    }
+    return table[s.first + s.count - 1].y;
+}
+
+kernel void stepEnvelopeWalls(const device float2 *current [[buffer(0)]],
+                              const device uint4 *walls [[buffer(1)]],
+                              const device EnvelopeWallSystem *systems [[buffer(2)]],
+                              const device float4 *table [[buffer(3)]],
+                              device float4 *state [[buffer(4)]],
+                              device float4 *clocks [[buffer(5)]],
+                              device uint *status [[buffer(6)]],
+                              device atomic_uint *opened [[buffer(7)]],
+                              const device StepControl &control [[buffer(8)]],
+                              constant uint2 &counts [[buffer(9)]],
+                              const device uint2 *ownerRooms [[buffer(10)]],
+                              device atomic_uint *roomDispatch [[buffer(11)]],
+                              device uint *roomList [[buffer(12)]],
+                              uint wall [[thread_position_in_grid]]) {
+    // counts: the walls, and the panes before them in `status`.
+    if (wall >= counts.x || control.dt <= 0.0f) return;
+    uint opener = counts.y + wall;
+    uint was = status[opener];
+    if (was == 1u) status[opener] = 2u;
+    float4 clock = clocks[wall];  // (time, broken at, largest net pressure, smallest)
+    clock.x += control.dt;
+    if (was != 0u) {
+        clocks[wall] = clock;
+        return;
+    }
+    uint4 w = walls[wall];  // (component, owner, first system, systems | cantilever << 16)
+    float2 sides = current[w.x];
+    float p = sides.x - sides.y;
+    clock.z = max(clock.z, p);
+    clock.w = min(clock.w, p);
+    uint count = w.w & 0xffffu;
+    bool cantilever = (w.w >> 16) != 0u;
+    // A cantilever is judged the way its load has pushed it harder so far (`cantileverLoad`).
+    uint judged = cantilever && -clock.w > clock.z ? 1u : 0u;
+    bool broken = false;
+    float brokeAt = 0.0f;
+    for (uint k = 0; k < count; ++k) {
+        EnvelopeWallSystem s = systems[w.z + k];
+        float4 a = state[2 * (w.z + k)];      // x, v, permanent set, peak inward
+        float4 b = state[2 * (w.z + k) + 1];  // rebound (<= 0), yielded, resistance, failed
+        float x = a.x, v = a.y, permanent = a.z, peak = a.w;
+        float rebound = b.x, r = b.z;
+        bool yielded = b.y != 0.0f;
+        bool failed = b.w != 0.0f;
+        float load = s.sign * p;
+        uint n = max(1u, uint(ceil(control.dt / s.substep)));
+        float h = control.dt / float(n);
+        float yieldX = table[s.first].x;
+        for (uint i = 0; i < n; ++i) {
+            float kick = s.loadMassElastic;
+            if (yielded) {
+                bool small = s.span > 0.0f && atan(max(fabs(x), peak) / (s.span / 2.0f)) <= 2.0f * M_PI_F / 180.0f;
+                kick = small ? 0.5f * (s.loadMassElastic + s.loadMassPlastic) : s.loadMassPlastic;
+            }
+            v += 0.5f * h * (load - r - s.damping * v) / (kick * s.mass);
+            x += h * v;
+            // The resistance at x (yielding moves the permanent set).
+            r = s.stiffness * (x - permanent);
+            float reached = max(max(x, peak), yieldX);
+            float upper = wallEnvelope(reached, table, s);
+            float outward = max(max(-x, -rebound), yieldX);
+            float lower = -s.reboundFactor * min(wallEnvelope(outward, table, s), upper);
+            if (r > upper) {
+                r = upper;
+                permanent = x - r / s.stiffness;
+                yielded = yielded || x > yieldX;
+            } else if (r < lower) {
+                r = lower;
+                permanent = x - r / s.stiffness;
+                yielded = yielded || -x > yieldX;
+            }
+            kick = s.loadMassElastic;
+            if (yielded) {
+                bool small = s.span > 0.0f && atan(max(fabs(x), peak) / (s.span / 2.0f)) <= 2.0f * M_PI_F / 180.0f;
+                kick = small ? 0.5f * (s.loadMassElastic + s.loadMassPlastic) : s.loadMassPlastic;
+            }
+            v += 0.5f * h * (load - r - s.damping * v) / (kick * s.mass);
+            peak = max(peak, x);
+            rebound = min(rebound, x);
+            if (!failed && ((peak > s.yieldPast && max(peak, -rebound) > s.rotationPast) || fabs(x) >= s.lostPast)) {
+                failed = true;
+                if (!cantilever || k == judged) {
+                    float t = clock.x - control.dt + float(i + 1) * h;
+                    brokeAt = broken ? min(brokeAt, t) : t;
+                    broken = true;
+                }
+            }
+        }
+        // A cantilever judged now by a system that failed earlier has failed too.
+        if (cantilever && k == judged && failed && !broken) {
+            broken = true;
+            brokeAt = clock.x;
+        }
+        state[2 * (w.z + k)] = float4(x, v, permanent, peak);
+        state[2 * (w.z + k) + 1] = float4(rebound, yielded ? 1.0f : 0.0f, r, failed ? 1.0f : 0.0f);
+    }
+    if (broken) {
+        clock.y = brokeAt;
+        status[opener] = 1u;
+        uint owner = w.y;
+        if (atomic_exchange_explicit(opened + owner, 1u, memory_order_relaxed) == 0u) {
+            uint2 range = ownerRooms[owner];
+            uint at = atomic_fetch_add_explicit(roomDispatch, range.y, memory_order_relaxed);
+            for (uint k = 0; k < range.y; ++k) roomList[at + k] = range.x + k;
+        }
+    }
+    clocks[wall] = clock;
 }
 
 // Each room of an opened building: its cells' mean overpressure this step, its peak and positive
@@ -2615,6 +2773,7 @@ kernel void sampleEnvelopeRooms(const device Cell *state [[buffer(0)]],
                                 device float4 *results [[buffer(4)]],
                                 constant SolverUniforms &u [[buffer(5)]],
                                 const device StepControl &control [[buffer(6)]],
+                                const device float4 *gravityTable [[buffer(7)]],
                                 uint group [[threadgroup_position_in_grid]],
                                 uint local [[thread_index_in_threadgroup]]) {
     threadgroup float partial[256];
@@ -2624,10 +2783,14 @@ kernel void sampleEnvelopeRooms(const device Cell *state [[buffer(0)]],
     if (control.dt <= 0.0f) return;
     float sum = 0.0f;
     for (uint n = local; n < room.count; n += 256u) {
-        Cell c = state[cells[room.first + n]];
+        uint index = cells[room.first + n];
+        Cell c = state[index];
         float rho = max(c.rho, u.densityFloor);
         float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / rho;
-        sum += gasPressure(rho, c.energy - kinetic, u.airModel, u.gamma) - u.ambientPressure;
+        // Under gravity, against the ambient pressure at the cell's height.
+        float ambient = u.gravity != 0.0f ? gravityAmbientOf(gravityTable, int(index / (u.nx * u.ny)), u)
+                                          : u.ambientPressure;
+        sum += gasPressure(rho, c.energy - kinetic, u.airModel, u.gamma) - ambient;
     }
     partial[local] = sum;
     threadgroup_barrier(mem_flags::mem_threadgroup);

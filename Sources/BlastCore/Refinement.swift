@@ -1699,6 +1699,8 @@ extension AirRefinement {
         encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 10)
         encoder.setBuffer(control, offset: 0, index: 11)
         encoder.setBytes(&scale, length: 4, index: 12)
+        // Read only under gravity.
+        encoder.setBuffer(gravityTable ?? fineWall, offset: 0, index: 13)
         encoder.dispatchThreads(
             MTLSize(width: Int(panes.lookup.count) * Int(scale * scale * scale), height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))

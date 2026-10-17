@@ -158,4 +158,91 @@ struct EnvelopeVentingTests {
             }
         }
     }
+
+    @Test("A brick wall that falls fails in the air when its one-way model does, opens, and the room fills")
+    func wallFails() throws {
+        let scene = try glazedScene(charge: 50)
+        let owner = scene.envelopeObjects[0].id
+        let brick = EnvelopeConstruction(
+            objectID: owner, walls: .unreinforcedMasonry, wallThicknessM: 0.1, source: .user, detail: "")
+        func vented() throws -> BlastSolver {
+            var config = SolverConfiguration.recommended
+            config.airSleepThreshold = 0
+            let solver = try BlastSolver(
+                device: #require(MTLCreateSystemDefaultDevice()), scenario: scene, cellSize: 0.25,
+                configuration: config)
+            try solver.configureEnvelopeComponents(
+                objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: 0.06))
+            try solver.configureEnvelopeVenting(objects: scene.envelopeObjects) { _ in brick }
+            return solver
+        }
+        let solver = try vented()
+        _ = solver.advance(until: 0.05)
+        let snapshot = try #require(solver.envelopeVentingSnapshot())
+        // The south wall, facing the charge.
+        let south = try #require(snapshot.walls.first { $0.component.hasSuffix("/wall/0.0") })
+        let failed = try #require(south.failedAtS)
+        let history = try #require(
+            solver.envelopeComponentHistories()?.first { $0.component.id == south.component })
+        let load = EnvelopeComponentLoad(history)
+        let model = try #require(EnvelopeWallFailure.make(load, construction: brick))
+        let net = load.netPa
+        let fallen = try #require(
+            model.systems[0].sdof.response(pressures: net, step: load.binS).lostResistanceAt)
+        #expect(
+            abs(fallen + load.startS - failed) < 5e-4, "GPU \(failed) s, one-way \(fallen + load.startS) s")
+        // Its cells are air, the room has filled, and the damage says so.
+        let grid = solver.grid
+        let region = history.component.region
+        let centre = (region.min + region.max) / 2
+        #expect(
+            !solver.isSolid(
+                Int(centre.x / grid.cellSize), Int(centre.y / grid.cellSize), Int(centre.z / grid.cellSize)))
+        #expect((snapshot.inside(of: owner)?.peakPa ?? 0) > 1000)
+        let loads = (solver.envelopeComponentHistories() ?? []).filter { !$0.invalid || snapshot.keeps($0) }
+            .map(EnvelopeComponentLoad.init)
+        let damage = try #require(
+            EnvelopeDamageAssessment.assess(loads: loads, constructions: { _ in brick }, vented: snapshot)
+                .first)
+        let wall = try #require(damage.components.first { $0.id == south.component })
+        #expect(wall.levels.upperBound == .failed && wall.failedAtS == failed)
+        // A restart stands it again; a run again repeats to the bit.
+        solver.restart()
+        #expect(
+            solver.isSolid(
+                Int(centre.x / grid.cellSize), Int(centre.y / grid.cellSize), Int(centre.z / grid.cellSize)))
+        let again = try vented()
+        _ = again.advance(until: 0.05)
+        #expect(
+            again.envelopeVentingSnapshot()?.walls.first { $0.component == south.component }?.failedAtS
+                == failed)
+    }
+
+    @Test("Under gravity a pane opens on the background at its height, and the room fills as without")
+    func gravity() throws {
+        let scene = try glazedScene(charge: 5)
+        var results: [(broke: Double, peak: Double)] = []
+        for gravity in [false, true] {
+            var config = SolverConfiguration.recommended
+            config.airSleepThreshold = 0
+            config.gravity = gravity ? AirGravity() : nil
+            let solver = try BlastSolver(
+                device: #require(MTLCreateSystemDefaultDevice()), scenario: scene, cellSize: 0.25,
+                configuration: config)
+            try solver.configureEnvelopeComponents(
+                objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: 0.04))
+            try solver.configureEnvelopeVenting(objects: scene.envelopeObjects) {
+                EnvelopeConstruction.assumed(objectID: $0)
+            }
+            _ = solver.advance(until: 0.03)
+            let snapshot = try #require(solver.envelopeVentingSnapshot())
+            results.append(
+                (
+                    try #require(snapshot.panes.first?.brokenAtS),
+                    snapshot.inside(of: scene.envelopeObjects[0].id)?.peakPa ?? 0
+                ))
+        }
+        #expect(abs(results[1].broke - results[0].broke) < 3e-4, "\(results)")
+        #expect(results[0].peak > 100 && abs(results[1].peak / results[0].peak - 1) < 0.1, "\(results)")
+    }
 }
