@@ -75,6 +75,23 @@ struct ElevationGridTests {
         #expect(grid.elevations.map(\.bitPattern) == original.elevations.map(\.bitPattern))
     }
 
+    @Test("An opening takes off what is narrower than its square and leaves a slope as it was")
+    func opening() {
+        // A ramp rising 1 m a cell east, with a building 3 cells across and 20 m tall on it.
+        var elevations = (0..<15).flatMap { _ in (0..<15).map { Float($0) } }
+        for j in 6...8 { for i in 6...8 { elevations[i + 15 * j] += 20 } }
+        elevations[0] = .nan
+        let grid = ElevationGrid(
+            columns: 15, rows: 15, southWest: .zero, step: SIMD2(30, 30), units: .metres,
+            elevations: elevations)
+        let ground = grid.opened(radius: 2)
+        #expect(ground.elevations[0].isNaN)
+        for j in 2..<13 {
+            for i in 2..<13 { #expect(ground.elevation(column: i, row: j) == Float(i), "\(i) \(j)") }
+        }
+        #expect(grid.opened(radius: 0) == grid)
+    }
+
     /// The same file as a BigTIFF: the classic file's bytes moved 16 on, behind a BigTIFF header,
     /// and its directory written again at the end with 8-byte counts and offsets (the strips' and
     /// tiles' offsets as LONG8).

@@ -47,6 +47,44 @@ public struct ElevationGrid: Sendable, Equatable {
         }
     }
 
+    /// The grid with whatever is narrower than a square `2 radius + 1` cells across taken off: a
+    /// morphological opening (the least over the square about each cell, then the greatest of
+    /// those), which leaves the ground of a surface model without its roofs and trees, assuming
+    /// the ground is the lowest point within the square. Slopes and plateaus wider than the square
+    /// keep their heights; cells without data are left out of both and stay without.
+    public func opened(radius: Int) -> ElevationGrid {
+        guard radius > 0 else { return self }
+        func filter(_ values: [Float], _ pick: (Float, Float) -> Float) -> [Float] {
+            // Rows then columns: a square's extreme is the extreme of its rows' extremes.
+            var across = values
+            for j in 0..<rows {
+                for i in 0..<columns {
+                    var best = Float.nan
+                    for n in max(i - radius, 0)...min(i + radius, columns - 1) {
+                        let value = values[n + columns * j]
+                        if !value.isNaN { best = best.isNaN ? value : pick(best, value) }
+                    }
+                    across[i + columns * j] = best
+                }
+            }
+            var out = across
+            for j in 0..<rows {
+                for i in 0..<columns {
+                    var best = Float.nan
+                    for n in max(j - radius, 0)...min(j + radius, rows - 1) {
+                        let value = across[i + columns * n]
+                        if !value.isNaN { best = best.isNaN ? value : pick(best, value) }
+                    }
+                    out[i + columns * j] = values[i + columns * j].isNaN ? .nan : best
+                }
+            }
+            return out
+        }
+        var grid = self
+        grid.elevations = filter(filter(elevations, min), max)
+        return grid
+    }
+
     /// The north-east cell's centre.
     public var northEast: SIMD2<Double> { southWest + step * SIMD2(Double(columns - 1), Double(rows - 1)) }
 

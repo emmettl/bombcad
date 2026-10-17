@@ -3,12 +3,9 @@ import Foundation
 import Metal
 import simd
 
-/// `scenebench district --osm map.osm [--dem dem.tif] --centre lon,lat [--radii 250,500,1000]
-/// [--dx 4] [--height 120] [--mass 500000] [--steps 40] [--window 5] [--from-arrival]
-/// [--until seconds] [--out file.json]`: what a district of map
-/// buildings costs as it grows. For each radius, a square scene of twice it about the centre,
-/// the map's buildings in it as envelopes on the DEM's terrain (sea level as the datum), a
-/// hemispherical charge on the ground at the centre; the time to place the buildings, build the
+/// `scenebench district <district-scene's inputs> [--radii 250,500,1000] [--steps 40] [--window 5]
+/// [--from-arrival] [--until seconds] [--out file.json]`: what a district of map buildings costs
+/// as it grows. For each radius, `district-scene`'s square scene of twice it about the centre; the time to place the buildings, build the
 /// solver, configure the surface recorder and the components' histories, the memory each takes,
 /// and the time a step takes with the surface recorder alone and with the histories too. With
 /// `--until`, the whole event to that time is run once more with both recorders, and timed.
@@ -47,42 +44,20 @@ enum DistrictBenchmark {
         func numbers(_ name: String, _ fallback: [Double]) -> [Double] {
             value(name).map { $0.split(separator: ",").compactMap { Double($0) } } ?? fallback
         }
-        guard let osm = value("osm"), let device = MTLCreateSystemDefaultDevice() else {
-            throw BlastError.allocationFailed("--osm and a Metal device")
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw BlastError.allocationFailed("a Metal device")
         }
-        let centre = numbers("centre", [35.519042, 33.901425])
-        let dx = Float(value("dx").flatMap(Double.init) ?? 4)
-        let height = Float(value("height").flatMap(Double.init) ?? 120)
-        let mass = Float(value("mass").flatMap(Double.init) ?? 500_000)
+        let inputs = try DistrictInputs.read(args)
+        let dx = inputs.cellSize
         let steps = value("steps").flatMap(Int.init) ?? 40
         let options = EnvelopeHistoryOptions(
             windowS: value("window").flatMap(Double.init) ?? 5,
             windowFromArrival: args.contains("--from-arrival"))
         let until = value("until").flatMap(Double.init)
-        let start = ContinuousClock.now
-        let buildings = try MapBuilding.read(contentsOf: URL(filePath: osm))
-        print("Read \(buildings.count) buildings in \(String(format: "%.2f", seconds(start))) s")
-        let dem = try value("dem").map { try ElevationGrid(contentsOf: URL(filePath: $0)) }
         var rows: [Row] = []
         for radius in numbers("radii", [250, 500, 1000]).map(Float.init) {
-            // The scene's south-west corner, in degrees: local metres by the same equirectangular
-            // mapping the placement and the crop use.
-            let metresPerDegree = 6_371_008.8 * Double.pi / 180
-            let corner = SIMD2(
-                centre[0] - Double(radius) / (metresPerDegree * cos(centre[1] * .pi / 180)),
-                centre[1] - Double(radius) / metresPerDegree)
-            var scene = Scenario(
-                name: "District \(Int(radius)) m", domainSize: SIMD3(2 * radius, 2 * radius, height),
-                boxes: [],
-                charge: Charge(mass: mass, position: SIMD3(radius, radius, 0)))
-            if let dem {
-                scene.terrain = try dem.terrain(
-                    origin: corner, size: SIMD2(2 * radius, 2 * radius), spacing: dx, datum: 0, name: "DEM"
-                ).terrain
-            }
             var clock = ContinuousClock.now
-            let report = try scene.addMapBuildings(
-                buildings, placement: MapBuildingPlacement(origin: corner, resolution: dx))
+            let (scene, report) = try inputs.scene(radius: radius)
             let place = seconds(clock)
             let boxes = scene.envelopeObjects.reduce(0) { $0 + $1.envelope!.blocks.count }
             print(

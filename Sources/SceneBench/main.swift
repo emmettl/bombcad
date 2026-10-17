@@ -54,6 +54,10 @@ enum SceneBench {
             try EnvelopeBenchmark.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "district-scene" {
+            try DistrictScene.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "district" {
             try DistrictBenchmark.run(Array(args.dropFirst()))
             return
