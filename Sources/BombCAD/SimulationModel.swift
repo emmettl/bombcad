@@ -686,10 +686,14 @@ final class SimulationModel {
     }
 
     @ObservationIgnored private var lastEnvelopeDamage = ContinuousClock.now
+    /// How long the last judgement took: a district's runs into seconds, so while running it is
+    /// made again only after twenty times that.
+    @ObservationIgnored private var envelopeDamageCost = Duration.zero
 
     /// Judges each envelope building from the recorder's histories so far, if it records them.
     func refreshEnvelopeDamage() {
         lastEnvelopeDamage = .now
+        defer { envelopeDamageCost = ContinuousClock.now - lastEnvelopeDamage }
         guard let histories = solver?.envelopeComponentHistories(), !histories.isEmpty else { return }
         // A vented pane's faces open with its glass: its history up to then is its load.
         let vented = solver?.envelopeVentingSnapshot()
@@ -2775,9 +2779,12 @@ final class SimulationModel {
         guard let solver else { return }
         lastTracePublication = .now
         envelopeExposure = solver.envelopeExposureSummaries() ?? []
-        // SDOF over every component is cheap but not free: at most once a second while running,
-        // and once more when the run stops.
-        if !isRunning || ContinuousClock.now - lastEnvelopeDamage > .seconds(1) { refreshEnvelopeDamage() }
+        // SDOF over every component is cheap but not free: at most once a second while running
+        // (less often where it takes long), and once more when the run stops.
+        if !isRunning || ContinuousClock.now - lastEnvelopeDamage > max(.seconds(1), envelopeDamageCost * 20)
+        {
+            refreshEnvelopeDamage()
+        }
         recordSampleIfDue(solver)
         structureSummary = solver.bodySummary()
         bodySummaries = Dictionary(

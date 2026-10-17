@@ -2255,6 +2255,12 @@ struct StandingScene {
                     "ASTM E1300's load resistance of eight annealed panes",
                     "Its stresses within 8%; panes break at 0.57–0.72 of its load resistance (the safe side)",
                     "validation.md#the-threshold-against-astm-e1300"),
+                StandingEvidence(
+                    "A district against its surveys: Beirut, 2020, 14,169 map buildings at 0.2–1.1 kt",
+                    "One typical pane a storey breaks inside 1.25 km where GEER found 0.39–0.84 of street "
+                        + "façades damaged, half at 1.1–2.1 km by the glass assumed; 0.5 m stone falls where "
+                        + "partial collapses were found and cracks to about 1.2 km",
+                    "validation.md#a-district-beirut-2020"),
             ],
             assumptions: [
                 "Compared with measurement as freestanding and one-way walls, as slabs held on their edges "
@@ -2304,7 +2310,8 @@ struct StandingScene {
         result(
             .envelopeExposure, .approximation,
             "Stationary surfaces whose loads come from the air beside them; a wall facing a charge has Kingery–"
-                + "Bulmash's reflected impulse, but no street of buildings has been compared.",
+                + "Bulmash's reflected impulse; across a district the shock arrives when it was seen, its peak "
+                + "on 4 m cells about three quarters of Kingery–Bulmash's.",
             evidence: [
                 StandingEvidence(
                     "Surface integration against per-step pressure on the CPU",
@@ -2314,6 +2321,11 @@ struct StandingScene {
                     "Kingery–Bulmash, a rigid wall facing the charge, on the shipped air",
                     "Reflected impulse 93–113% from 1 m/kg^(1/3) on 0.25 m cells",
                     ValidationTables.burningDocument),
+                StandingEvidence(
+                    "Beirut, 2020: the shock's arrival at 30 observers 250 m to 2.35 km (Rigby et al.)",
+                    "At 0.5 kt a median 0.98 of the times seen, 25 of 27 from 400 m out within 10%; peaks "
+                        + "0.68–0.78 of Kingery–Bulmash on 4 m cells",
+                    "validation.md#a-district-beirut-2020"),
             ],
             assumptions: [
                 "Fixed geometry: no broken windows, deformation, collapse or changing shielding.",
