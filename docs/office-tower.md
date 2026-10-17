@@ -63,8 +63,9 @@ corpus](ifc-import-corpus.md#under-gravity) judges imported buildings (`GravityC
 
 The older twelve-storey tower stands the same way (99.9%, 7 mm).
 
-Gravity comes on at once when a run starts; there is no settling first. The frame then sags
-its 7 mm while the blast is on its way.
+Since 17 October 2026 the frame is brought to rest under its own weight before the blast
+([settling](structural-model.md#settling-under-its-own-weight)). Before then gravity came on at
+once when a run started, and the frame sagged its 7 mm while the blast was on its way.
 
 ## The blast
 
