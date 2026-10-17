@@ -13,11 +13,15 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
         /// Brick, block or stone without reinforcement and without arching
         /// (`EnvelopePanel.unreinforcedMasonry`).
         case unreinforcedMasonry
+        /// Concrete blockwork with bars in its cells, grouted or not: judged as reinforced
+        /// concrete of the masonry's strength (walls only).
+        case reinforcedBlockwork
 
         public var label: String {
             switch self {
             case .reinforcedConcrete: "Reinforced concrete"
             case .unreinforcedMasonry: "Unreinforced masonry"
+            case .reinforcedBlockwork: "Reinforced blockwork"
             }
         }
     }
@@ -48,12 +52,37 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
     public var source: Source
     /// The tag, the materials read, or what was assumed, in words.
     public var detail: String
+    /// The walls' bars (concrete or blockwork): a mat in each face, `barCoverM` from it to the
+    /// bars' centres, the ratio shared between the two; nil or false for one central mat.
+    public var barsInBothFaces: Bool?
+    public var barCoverM: Float?
+    /// The walls' concrete strength, MPa; nil for the default 30.
+    public var concreteStrengthMPa: Float?
+    /// The walls' bars' yield strength, MPa; nil for the default 500.
+    public var barYieldMPa: Float?
+    /// Reinforced blockwork: fully grouted (nil or true) or hollow, its cells holding only the
+    /// bars; and its compressive strength on the gross area, MPa, nil for 10 grouted or 3 hollow
+    /// (the model's concrete block).
+    public var blockworkGrouted: Bool?
+    public var masonryStrengthMPa: Float?
+    /// A cap or canopy carried on a freestanding wall's top, kg per metre of wall: mass that moves
+    /// with the top without holding it, as a slab on other walls would; nil for none.
+    public var capMassKgPerM: Float?
 
     public init(
         objectID: UUID, walls: Kind = .reinforcedConcrete, wallThicknessM: Float? = nil,
         roof: Kind = .reinforcedConcrete, roofThicknessM: Float = 0.2, reinforcementRatio: Float = 0.003,
-        glassThicknessM: Float = 0.006, source: Source, detail: String
+        glassThicknessM: Float = 0.006, source: Source, detail: String, barsInBothFaces: Bool? = nil,
+        barCoverM: Float? = nil, concreteStrengthMPa: Float? = nil, barYieldMPa: Float? = nil,
+        blockworkGrouted: Bool? = nil, masonryStrengthMPa: Float? = nil, capMassKgPerM: Float? = nil
     ) {
+        self.barsInBothFaces = barsInBothFaces
+        self.barCoverM = barCoverM
+        self.concreteStrengthMPa = concreteStrengthMPa
+        self.barYieldMPa = barYieldMPa
+        self.blockworkGrouted = blockworkGrouted
+        self.masonryStrengthMPa = masonryStrengthMPa
+        self.capMassKgPerM = capMassKgPerM
         self.objectID = objectID
         self.walls = walls
         self.wallThicknessM = wallThicknessM ?? (walls == .unreinforcedMasonry ? 0.215 : 0.2)
@@ -63,6 +92,45 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
         self.glassThicknessM = glassThicknessM
         self.source = source
         self.detail = detail
+    }
+
+    /// The walls' material for the concrete-like systems (reinforced concrete or blockwork): the
+    /// app's reinforced concrete at the strengths given, or blockwork as a concrete of the
+    /// masonry's strength, its modulus 1,000 times it (Eurocode 6, as the concrete block preset),
+    /// 2,100 kg/m³ grouted or 1,400 hollow.
+    public var wallMaterial: StructureMaterial {
+        var steel = SteelProperties.grade500
+        if let yield = barYieldMPa {
+            steel.ultimateStress *= yield * 1e6 / steel.yieldStress
+            steel.yieldStress = yield * 1e6
+        }
+        if walls == .reinforcedBlockwork {
+            let grouted = blockworkGrouted ?? true
+            let strength = (masonryStrengthMPa ?? (grouted ? 10 : 3)) * 1e6
+            var material = StructureMaterial.concrete(
+                name: "Reinforced blockwork", compressiveStrength: strength, density: grouted ? 2100 : 1400,
+                steel: steel)
+            material.youngsModulus = 1000 * strength
+            return material
+        }
+        var material = StructureMaterial.reinforcedConcrete
+        if let strength = concreteStrengthMPa {
+            material = .concrete(name: material.name, compressiveStrength: strength * 1e6, steel: steel)
+            material.rateDependent = true
+        } else {
+            material.steel = steel
+        }
+        return material
+    }
+
+    /// The walls' tension bars for a section `thickness` thick: their depth from the compression
+    /// face and area per metre (one face's share when in both faces).
+    public func wallBars(thickness: Double) -> (depth: Double, steelArea: Double) {
+        let steel = Double(reinforcementRatio) * thickness
+        if barsInBothFaces == true {
+            return (thickness - Double(barCoverM ?? 0.03), steel / 2)
+        }
+        return (thickness / 2, steel)
     }
 
     /// The default when nothing says otherwise: 0.2 m reinforced concrete at 0.3% each way under a

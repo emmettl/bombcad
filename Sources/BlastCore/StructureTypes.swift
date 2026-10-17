@@ -304,8 +304,19 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
         return material
     }()
 
+    /// Thermally toughened glass (EN 12150-1): annealed glass whose surfaces are held in
+    /// compression, so that it cracks only at its characteristic bending strength of 120 MPa.
+    /// Broken, it dices; here it fails as annealed glass does, at the higher stress.
+    public static let toughenedGlass: Self = {
+        var material = annealedGlass
+        material.name = "Toughened glass"
+        material.tensileStrength = 120e6
+        return material
+    }()
+
     public static let presets: [Self] = [
         .reinforcedConcrete, .plainConcrete, .masonry, .concreteBlock, .structuralSteel, .annealedGlass,
+        .toughenedGlass,
     ]
 
     public var shearModulus: Float { youngsModulus / (2 * (1 + poissonRatio)) }

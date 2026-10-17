@@ -51,12 +51,11 @@ public struct BuildingEnvelope: Hashable, Sendable, Codable {
         blockSources = sources
     }
 
-    /// A detailed structure's envelope: its solids and openings, with its annealed-glass solids as
-    /// panes.
+    /// A detailed structure's envelope: its solids and openings, with its glass solids (annealed or
+    /// toughened) as panes.
     public init(structure: StructureModel) throws {
         let glass = structure.solids.indices.map { index in
-            index < structure.solidMaterial.count
-                && structure.solidMaterial[index]?.name == StructureMaterial.annealedGlass.name
+            index < structure.solidMaterial.count && structure.solidMaterial[index]?.isTransparent == true
         }
         try self.init(
             solids: structure.solids.indices.filter { !glass[$0] }.map { structure.solids[$0] },

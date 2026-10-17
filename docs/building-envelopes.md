@@ -507,11 +507,16 @@ and set against the same component of the detailed building free to respond (sum
 [recorder](#surface-exposure-and-loads) keeps both sides' histories at 0.1 ms) and judge every building
 one way as the run goes, at most once a second and again when it stops:
 
-- **Construction.** Each envelope's walls are reinforced concrete or unreinforced masonry, with a
-  thickness, a concrete roof, a reinforcement ratio and annealed glass. These are read from an IFC
-  import's material layers or a map building's `building:material` tag; otherwise the default is
-  assumed (0.2 m concrete, 0.3% each way, 6 mm glass) and the standing says how many were assumed.
-  The editor's Exposure-only buildings section changes them, and projects save them.
+- **Construction.** Each envelope's walls are reinforced concrete, unreinforced masonry or
+  reinforced blockwork (grouted or hollow, as a concrete of the masonry's strength), with a
+  thickness, a concrete roof, a reinforcement ratio and annealed glass; and, for concrete and
+  blockwork walls, their bars in one central mat or in both faces (with the cover), the concrete's
+  or the masonry's strength, the bars' yield, and the mass of a cap or canopy carried on a
+  freestanding wall's top. These are read from an IFC import's material layers or a map building's
+  `building:material` tag; otherwise the default is assumed (0.2 m concrete, 0.3% each way in a
+  central mat, 30 MPa, 500 MPa bars, 6 mm glass) and the standing says how many were assumed. The
+  editor's Exposure-only buildings section changes them (its Construction group), and projects
+  save them.
 - **Levels.**
   - Concrete is a range of support rotation between fixed and simply supported edges, judged by
     ASCE/SEI 59-11's limits for single-reinforced slabs: moderate to 2°, heavy to 5°, hazardous to
@@ -562,15 +567,17 @@ swift build -c release --product blastbench
 
 Each wall is put in its test's scene as an envelope (`PerimeterWallTests`' and `MasonryDebrisTests`'
 geometry and charge, the wing walls rigid, the recommended air on 50 and 100 mm cells), its loads
-recorded, and judged as built (its bars, depths and strengths) and by the app's own assessment of the
-construction one would give it (17 October 2026):
+recorded, and judged as built (its bars, depths and strengths), and by the app's own assessment of the
+construction one gives it in the editor, first with what the construction could say before 17 October
+2026 (a central mat, the default strengths, no cap, blockwork as concrete), then with its bars in both
+faces, its strengths, the canopy's mass and reinforced blockwork:
 
-| Wall | Charge | Cantilever, as built | The app's assessment | Measured | The detailed model |
+| Wall | Charge | Cantilever, as built | The app, before / now | Measured | The detailed model |
 |---|---|---|---|---|---|
-| Alsubaei, half-scale concrete, 1 m high, 0.2 m | 14 kg ANFO at 2 m | top 94 mm, 5.4°, hazardous | 4.2°, heavy | light cracking at the foot, no significant deformation (after 12 shots) | clamped: top 37 mm (2.1°); on its footing in sand it rocks, 196 mm |
-| Alsubaei, canopied concrete, 2 m stem, 0.4 m | 125 kg at 4 m | top 61 mm, 1.7°, moderate | 7.2°, hazardous (no canopy mass) | unfaced: cracks at the foot and across the back, no significant deformation; foam-faced: 7–35 mm at mid-height | clamped: top 54 mm, mid-height 25 mm |
-| Alsubaei, reinforced blockwork, 2 m, 0.4 m | 25 kg at 4 m | top 32 mm, 0.9°, moderate | 0.4°, moderate (as concrete) | top 28 mm; bed joints cracked | top 37 mm |
-| The same | 125 kg at 4 m | 11.8°, failed | 5.4°, hazardous (as concrete) | collapsed | comes apart |
+| Alsubaei, half-scale concrete, 1 m high, 0.2 m | 14 kg ANFO at 2 m | top 94 mm, 5.4°, hazardous | 4.2°, heavy / 5.4°, hazardous | light cracking at the foot, no significant deformation (after 12 shots) | clamped: top 37 mm (2.1°); on its footing in sand it rocks, 196 mm |
+| Alsubaei, canopied concrete, 2 m stem, 0.4 m | 125 kg at 4 m | top 61 mm, 1.7°, moderate | 7.2°, hazardous / 1.7°, moderate | unfaced: cracks at the foot and across the back, no significant deformation; foam-faced: 7–35 mm at mid-height | clamped: top 54 mm, mid-height 25 mm |
+| Alsubaei, reinforced blockwork, 2 m, 0.4 m | 25 kg at 4 m | top 32 mm, 0.9°, moderate | 0.4°, moderate / 0.9°, moderate | top 28 mm; bed joints cracked | top 37 mm |
+| The same | 125 kg at 4 m | 11.8°, failed | 5.4°, hazardous / 11.8°, failed | collapsed | comes apart |
 | Keys, single-leaf brick, 2 m, 102.5 mm, WR1A / WR1B / WR2C | 41 kg TNT at 10.6 / 13 / 15 m | falls at 0.07 / 0.11 / 0.17 s | the same | all broke and fell | falls as one column |
 
 Six of the seven outcomes are as measured. The miss is the half-scale wall, which both the
@@ -579,8 +586,9 @@ validation record's air gives that close-in ANFO wall a load a tenth above the d
 may be more than it took. The blockwork's top is within 16% of its double-integrated 28 mm. The
 concrete cantilever goes further than the detailed wall clamped (94 against 37 mm, 61 against 54),
 as SDOF's elastic–perfectly plastic far-range strengths would: the detailed bars harden and strengthen
-with their rate. The app's own assessment errs where the construction it knows falls short: the
-canopy's mass, and reinforced blockwork, which it takes as concrete. Keys's walls fall within 0.2 s of
+with their rate. With the construction able to say what the walls were (bars in both faces, the
+strengths, the canopy's mass, reinforced blockwork), the app's own assessment gives what the bench
+gives on all seven; before, it erred where it could not. Keys's walls fall within 0.2 s of
 the shock where the detailed walls take about a second to topple: once a 102.5 mm wall's top is a
 thickness out, nothing holds it.
 

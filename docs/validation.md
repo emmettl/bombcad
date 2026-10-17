@@ -452,6 +452,63 @@ a scene on today's defaults is not affected. The
 blind result stands as scored. **The gap that stands is the two collapses**, at 0.93 and 1.16
 m/kg^(1/3), on the unsafe side.
 
+**Why slabs 1 and 10 stand** (17 October 2026; calibration).
+- **The runs:** today's main (outline by overlap; gauges in the first air cell off each face), the
+  recommended air with far-field faces (`--recommended`), the air kept awake, 100 ms.
+- **Meshes:** on 8 elements with 2.5 m of air beyond the slab; then, on 1 m (which gives slab 1 within
+  10%: 12.9 against 11.8 mm), with the air refined twice (`--refine 2 --levels 2`) and on 16
+  elements through.
+
+| Run | Slab 1 (1.3 m) | Slab 10 (1.6 m) |
+|---|---|---|
+| 8 elements, 2.5 m of air | 11.8 mm at 8.6 ms, stands | 5.9 mm at 3.5 ms, stands |
+| Air refined twice | 13.1 mm, stands | 5.9 mm, stands |
+| 16 elements through | 12.4 mm, stands | 6.2 mm, stands |
+| Measured | collapsed (top face: concentric circles) | collapsed (radial cracks); the meters ran out to 145 and 499 mm |
+
+None of these ruptures a bar or removes an element. Nothing in the mesh or the air's resolution
+decides it.
+
+**The load is not short.**
+- **Slab 1:** the model's top-face corners read 3.7 MPa and 475–506 kPa ms, two to three times
+  the gauges (0.8–1.6 MPa, 158–252 kPa ms).
+- **Slab 10:** about 2.1 MPa and 363–389 kPa ms, within the gauges' scatter (1.1–3.1 MPa,
+  142–885 kPa ms).
+- **The push from beneath:** the model's ground 0.4 m below pushes back on the underside, 727 Pa s
+  under slab 1's centre against 1,251 on its top.
+
+**What holds them,** knob by knob on slab 1 (1 m of air, 8 elements):
+
+| Knob | First peak | Outcome |
+|---|---|---|
+| None | 12.9 mm | stands |
+| f_t × 0.25 | 16.6 mm | stands |
+| Bars' yield × 0.5 | 17.2 mm | stands |
+| A rigid block under the slab, cutting the push from beneath (`--under-block 0.06`) | 23.1 mm | stands |
+| f_t × 0.25 and the block | 30.6 mm | stands |
+
+- **The push from beneath** halves the motion.
+- **The slab's strength** is its cracking load (statically 68 kPa, 59 without the rate laws, against
+  a yield line of about 33 kPa: 5 mm bars at 150 mm), and weakening it adds about a third.
+- **Even together they leave a slab of 31 mm** whose bars have not ruptured.
+- **The collapse needs bars to break and the slab to come through,** and two things in the model
+  stand in the way:
+  - Its bars rupture by their plastic strain averaged over half a crack spacing, so a light mesh's
+    single wide crack must open several millimetres before anything breaks.
+  - Slab 1's concentric circles on the top face read as punching or direct shear near the charge,
+    which the model's cracks across the lattice cannot slide into
+    ([what holds the cone](#what-holds-the-cone-traced); the embedded crack that would let them was
+    [tried and not adopted](concrete-model.md#embedded-cracks-tried-and-not-adopted)).
+
+**A plain stop.** No affordable change found here makes these slabs collapse.
+- **The load:** the top load errs high, and the push from beneath depends on what lay under the
+  slabs (a steel box of unstated size on clay), which the sources do not settle.
+- **The slab:** its strength and stiffness are the record's known error, already traced to its own
+  mechanics on these meshes.
+- **The failure mode:** it needs the sliding cracks that were not adopted.
+
+The collapses stay missed, on the unsafe side, as the standing says.
+
 **Read against the calibrated record.** The calibrated open-air slabs were 40–70% too stiff under
 Wu's small charges and a third to a half as far down close in (Chiquito). Here the blast peak is
 a tenth to a quarter of the meters' at 1.44 m/kg^(1/3). The two slabs at 0.93 and 1.16 m/kg^(1/3)

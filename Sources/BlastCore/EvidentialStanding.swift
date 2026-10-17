@@ -900,6 +900,13 @@ public enum StandingTable {
         "EnvelopeConstruction.glassThicknessM": .input,
         "EnvelopeConstruction.source": .input,
         "EnvelopeConstruction.detail": .input,
+        "EnvelopeConstruction.barsInBothFaces": .input,
+        "EnvelopeConstruction.barCoverM": .input,
+        "EnvelopeConstruction.concreteStrengthMPa": .input,
+        "EnvelopeConstruction.barYieldMPa": .input,
+        "EnvelopeConstruction.blockworkGrouted": .input,
+        "EnvelopeConstruction.masonryStrengthMPa": .input,
+        "EnvelopeConstruction.capMassKgPerM": .input,
         "Scenario.deflagration": .option([.deflagration]),
         "Scenario.ventPanels": .option([.ventPanels]),
         "Deflagration.gas": .input,
@@ -1984,7 +1991,8 @@ struct StandingScene {
                 StandingEvidence(
                     "The same buildings free to respond (19 runs, 2–500 kg)",
                     "Glass: all 45 panes the detailed buildings break, a median 0.3 ms later, and 6 more; "
-                        + "concrete walls between the fixed and simply supported bounds",
+                        + "the walls facing the charge between the fixed and simply supported bounds, roofs "
+                        + "and walls beside a failing one beyond both",
                     "building-envelopes.md#one-way-damage-single-degree-of-freedom"),
                 StandingEvidence(
                     "Freestanding walls against measurement: Alsubaei's perimeter walls and Keys's brick walls",
@@ -2010,8 +2018,8 @@ struct StandingScene {
                 "Compared with measurement as freestanding and one-way walls, and glass only under a load far "
                     + "past what breaks it (its threshold against E1300's design resistance): panels held on all "
                     + "their edges have none; references on one mesh and one air grid.",
-                "A freestanding wall's cap or canopy adds no mass, and reinforced blockwork is taken as "
-                    + "concrete: the measured walls were judged as built.",
+                "Reinforced blockwork is judged as a concrete of the masonry's strength, graded by the "
+                    + "concrete's limits; a freestanding wall's cap adds only the mass its construction gives.",
                 "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
                     + "2° is flagged as beyond the one-way model.",
                 "Glass is annealed, on Moore's large-deflection plate, simply supported, breaking at E1300's "
@@ -2038,10 +2046,9 @@ struct StandingScene {
                     "Agrees, with suction; uniform "
                         + "pressure cancels", "building-envelopes.md#scope-and-verification"),
                 StandingEvidence(
-                    "Kingery–Bulmash, a rigid wall facing the charge",
-                    "Reflected impulse within 6% beyond 1.5 "
-                        + "m/kg^(1/3) on 0.25 m cells or finer",
-                    "validation.md#kingerybulmash-the-design-practice-standard"),
+                    "Kingery–Bulmash, a rigid wall facing the charge, on the shipped air",
+                    "Reflected impulse 93–113% from 1 m/kg^(1/3) on 0.25 m cells",
+                    ValidationTables.burningDocument),
             ],
             assumptions: [
                 "Fixed geometry: no broken windows, deformation, collapse or changing shielding.",
