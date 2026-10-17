@@ -91,6 +91,8 @@ enum DistrictComparison {
         func value(_ name: String) -> String? {
             args.firstIndex(of: "--\(name)").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
         }
+        // A line at a time, so that what is printed survives a failure later on.
+        setvbuf(stdout, nil, _IOLBF, 0)
         guard let out = value("out"), let device = MTLCreateSystemDefaultDevice() else {
             throw BlastError.allocationFailed("--out folder and a Metal device")
         }
@@ -313,8 +315,8 @@ enum DistrictComparison {
         if let folder = value("save-loads") {
             let heights = Dictionary(uniqueKeysWithValues: judged.map { ($0.id, $0.heightM) })
             try DistrictGlass.save(
-                to: URL(filePath: folder), loads: loads, objects: objects,
-                distance: { distances[$0] ?? .infinity },
+                to: URL(filePath: folder), loads: loads, objects: objects.filter { distances[$0.id] != nil },
+                distance: { distances[$0] ?? 0 },
                 height: { heights[$0] ?? 0 },
                 mix: { scene.envelopeConstruction(for: $0).glazing?.name ?? "" })
         }
