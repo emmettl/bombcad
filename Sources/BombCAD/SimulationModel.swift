@@ -168,6 +168,9 @@ struct SimulationSettings: Equatable {
     /// Debris lands on soil, a Winkler bed of `groundStiffness` (Pa/m), instead of the hard ground.
     var softGround = false
     var groundStiffness = SolverConfiguration.soilSubgradeModulus
+    /// What the ground is made of: rigid, or earth or rock that a charge near it digs a crater in
+    /// and gives part of its energy to.
+    var ground = GroundType.rigid
 
     var chargeMass: Float {
         get { scenario.charge.mass }
@@ -293,6 +296,10 @@ final class SimulationModel {
     /// Observed: `canKeepRun` reads nothing else until a run completes, so a view showing it
     /// must learn of the completion through this.
     private var completedRunSettings: ProjectRunSettings?
+
+    /// The craters the finished run's charges dug, to shade into the ground; none before a run ends,
+    /// for a crater forms after the blast, or on rigid ground.
+    var craters: [CraterEstimate] { completedRunSettings?.craters(over: scenario) ?? [] }
     static let structureSampleInterval = 0.001
     /// Called with the solver every `structureSampleInterval` of simulated time from time zero,
     /// while no batch is in flight. A run with a structure stops there anyway to sample it; one
@@ -769,6 +776,7 @@ final class SimulationModel {
                 settings.outlineByOverlap = run.countsByOverlap(over: scenario)
                 settings.softGround = run.groundStiffness != nil
                 settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
+                settings.ground = run.ground ?? .rigid
                 settings.solidElementSize = run.solidElementSize
                 duration = run.duration
             }
@@ -912,6 +920,7 @@ final class SimulationModel {
             settings.outlineByOverlap = run.countsByOverlap(over: document.scenario)
             settings.softGround = run.groundStiffness != nil
             settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
+            settings.ground = run.ground ?? .rigid
             settings.solidElementSize = run.solidElementSize
             duration = run.duration
         }
@@ -1118,6 +1127,7 @@ final class SimulationModel {
         settings.outlineByOverlap = inputs.settings.countsByOverlap(over: inputs.scenario)
         settings.softGround = inputs.settings.groundStiffness != nil
         settings.groundStiffness = inputs.settings.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
+        settings.ground = inputs.settings.ground ?? .rigid
         settings.solidElementSize = inputs.settings.solidElementSize
         duration = inputs.settings.duration
         handledSettings = settings
@@ -2243,6 +2253,7 @@ final class SimulationModel {
             shockThreshold: settings.shockThreshold, adaptiveSubsteps: settings.adaptiveSubsteps,
             terrainCutCells: settings.terrainCutCells,
             groundStiffness: settings.softGround ? settings.groundStiffness : nil,
+            ground: settings.ground == .rigid ? nil : settings.ground,
             outlineByOverlap: settings.outlineByOverlap)
     }
 

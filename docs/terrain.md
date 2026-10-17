@@ -498,7 +498,9 @@ surface cross a cell a metre. The GPU and the CPU agree on every receiver.
    under-read the triple point's angle by 20–75% on 100–400 cells along a run (above), converging
    at first order. [Cut cells](#cut-cells), the default, remove this; refined, the triple point
    reads up to 0.5° lower than on a uniform grid of the finest cells.
-2. **Rigid, smooth and reflecting.** No cratering, no soil that gives or absorbs, no vegetation or
+2. **Rigid, smooth and reflecting.** No crater cut during the run (an empirical one is estimated
+   and drawn after it, see [cratering](cratering.md)), no soil that gives or absorbs (soft ground
+   takes a share of a charge's energy before the run, the same place), no vegetation or
    roughness besides the staircase's, no snow or water. The floor under the terrain still reflects.
 3. **Refinement near the surface.** Placing a patch gains still air on one side of the surface and
    gives up gas on the other (0.08% of a closed box's gas in 120 steps over a hill). Patches along

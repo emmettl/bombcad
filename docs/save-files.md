@@ -142,7 +142,9 @@ when present, holds the Run tab's ground points and soil (see
 
 `settings.json` stores resolution (`coarse`, `medium`, `fine`), `detailedCharge`, `sharpShocks`,
 `solidElementSize` (the size restored when switching from shells to solids), and `duration`
-in seconds. The scenario itself holds the charge, atmosphere and structural settings.
+in seconds; `groundStiffness` for soil under debris and `ground`, a ground type for the crater
+and the air's share ([cratering](cratering.md#choosing-the-ground)), each left out for rigid
+ground. The scenario itself holds the charge, atmosphere and structural settings.
 
 `view.json` stores camera target, distance, azimuth, elevation and field of view, plus display
 mode, scales, decades, wave visibility/opacity and charge visibility. It does not store the
