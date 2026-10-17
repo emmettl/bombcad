@@ -24,6 +24,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     case internalExplosion
     case furnishedRoom
     case ventedGasRoom
+    case processPlantExplosion
 
     public var id: String { rawValue }
 
@@ -52,6 +53,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .internalExplosion: "Internal explosion (test)"
         case .furnishedRoom: "Furnished room (freestanding)"
         case .ventedGasRoom: "Gas explosion, vented room"
+        case .processPlantExplosion: "Vapour cloud explosion at a process plant"
         }
     }
 
@@ -64,6 +66,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         var result = authoredScenario
         // Presets are reproducible inputs, including those assembled by editing other presets.
         let bodies = result.structuralObjects
+        let envelopes = result.envelopeObjects
         result.objects = result.boxes.enumerated().map {
             SceneObject.legacyBlock($0.element, index: $0.offset)
         }
@@ -73,6 +76,8 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
             if bodies.count > 1 { object.name = body.name }
             result.objects.append(object)
         }
+        // Envelope buildings keep their own identities, which their constructions name.
+        result.objects += envelopes
         return result
     }
 
@@ -481,6 +486,10 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .furnishedRoom:
             // Freestanding furniture in a rigid room under an internal explosion: see PopulatedScene.
             return PopulatedScene.furnishedRoom.scenario
+        case .processPlantExplosion:
+            // A vapour cloud explosion beside portable buildings, after Texas City 2005: see
+            // ProcessPlantScene.
+            return ProcessPlantScene.scenario
         case .ventedGasRoom:
             // A room of about FM Global's chamber's size (Bauwens et al. 2008) full of
             // stoichiometric methane, lit in the middle, its 2 x 2 m vent closed by a panel that

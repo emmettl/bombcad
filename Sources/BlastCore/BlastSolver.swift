@@ -34,10 +34,11 @@ public final class BlastSolver {
     private var gpuProfiler: BatchGPUProfiler?
     public private(set) var lastBatchGPUProfile: BatchGPUProfile?
 
-    /// Records stationary voxel-face exposure. Deformable reference bodies must be fully pinned.
-    /// Must be configured at time zero after loading. Ordinary runs allocate no recorder.
+    /// Records stationary voxel-face exposure. Deformable reference bodies must be fully pinned,
+    /// or start well clear of every envelope (`stationaryMask`). Must be configured at time zero
+    /// after loading. Ordinary runs allocate no recorder.
     public func configureEnvelopeExposure(objects: [SceneObject]) throws {
-        let mask = try stationaryMask()
+        let mask = try stationaryMask(envelopes: objects)
         envelopeExposure = try EnvelopeExposure(
             device: device, library: library, grid: grid,
             mask: mask, objects: objects)
@@ -48,7 +49,7 @@ public final class BlastSolver {
     /// `EnvelopeComponentHistory`), on the same terms as `configureEnvelopeExposure`; it can run
     /// beside it or alone. Ordinary runs allocate no recorder.
     public func configureEnvelopeComponents(objects: [SceneObject], options: EnvelopeHistoryOptions) throws {
-        let mask = try stationaryMask()
+        let mask = try stationaryMask(envelopes: objects)
         envelopeComponentRecorder = try EnvelopeComponentRecorder(
             device: device, library: library, grid: grid, mask: mask, objects: objects, options: options)
         componentsNeedInitialSample = true
@@ -63,11 +64,28 @@ public final class BlastSolver {
         return envelopeComponentRecorder?.histories(elapsed: time)
     }
 
-    /// The air's mask, at time zero with every body stationary, for the envelope recorders.
-    private func stationaryMask() throws -> UnsafeBufferPointer<UInt8> {
+    /// The air's mask, at time zero, for the envelope recorders, which read it once: every body
+    /// stationary, or, if it moves, starting at least four cells and 2 m clear of every envelope in
+    /// `envelopes`, so that what it does cannot change the cells beside them (a piece of it thrown
+    /// that far is not seen there).
+    private func stationaryMask(envelopes: [SceneObject]) throws -> UnsafeBufferPointer<UInt8> {
         precondition(!batchInFlight, "Cannot configure observers during a batch")
+        let margin = max(4 * grid.cellSize, 2)
+        let regions = envelopes.compactMap { object -> Box? in
+            guard let blocks = object.envelope?.blocks, let first = blocks.first else { return nil }
+            return blocks.dropFirst().reduce(first) {
+                Box(min: simd_min($0.min, $1.min), max: simd_max($0.max, $1.max))
+            }
+        }
+        func clear(_ body: StructuralBody) -> Bool {
+            let bounds = body.model.bounds
+            return regions.allSatisfy { region in
+                any(bounds.max + margin .<= region.min) || any(region.max + margin .<= bounds.min)
+            }
+        }
         guard time == 0, experimentalBoxes.isEmpty,
             bodies.allSatisfy({ body in
+                if !regions.isEmpty && clear(body) { return true }
                 var fixed = true
                 if let solid = body.solids {
                     let nodes = UnsafeBufferPointer(
