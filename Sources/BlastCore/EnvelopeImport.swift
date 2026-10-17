@@ -182,9 +182,9 @@ extension Scenario {
             reports.append(report)
         }
         if copy.importedModels?.isEmpty == true { copy.importedModels = nil }
-        guard copy.rigidBoxes.count <= 2048 else {
+        guard copy.rigidBoxes.count <= Scenario.maximumRigidBoxes else {
             throw ImportedMesh.ImportError.invalid(
-                "The scene's envelopes and blocks would hold \(copy.rigidBoxes.count) fragments; it holds 2,048."
+                "The scene's envelopes and blocks would hold \(copy.rigidBoxes.count) fragments; it holds \(Scenario.maximumRigidBoxes)."
             )
         }
         copy.importNotes = (copy.importNotes ?? []) + reports.map(\.note)

@@ -229,6 +229,88 @@ struct EnvelopeComponentHistoryTests {
         }
     }
 
+    @Test("A window from arrival holds the same bins as one from t = 0, from the bin the air first moved in")
+    func fromArrival() throws {
+        var scene = Scenario(
+            name: "Two walls", domainSize: SIMD3(16, 8, 6), boxes: [],
+            charge: Charge(mass: 0.2, position: SIMD3(2, 4, 1)))
+        for x: Float in [4, 12] {
+            try scene.addEnvelopeObject(
+                BuildingEnvelope(
+                    solids: [Box(min: SIMD3(x, 2, 0), max: SIMD3(x + 0.5, 6, 3))],
+                    panes: [Box(min: SIMD3(x, 3, 1), max: SIMD3(x + 0.25, 5, 2))]),
+                name: "Wall \(x)")
+        }
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        func histories(fromArrival: Bool) throws -> [EnvelopeComponentHistory] {
+            let solver = try BlastSolver(device: device, scenario: scene, cellSize: 0.25)
+            try solver.configureEnvelopeComponents(
+                objects: scene.envelopeObjects,
+                options: EnvelopeHistoryOptions(
+                    windowS: 0.05, binMaxima: true, windowFromArrival: fromArrival))
+            _ = solver.advance(steps: 160)
+            return try #require(solver.envelopeComponentHistories())
+        }
+        let zero = try histories(fromArrival: false)
+        let arrival = try histories(fromArrival: true)
+        #expect(zero.allSatisfy { $0.windowStartS == nil })
+        let near = try #require(arrival.first?.windowStartS)
+        let far = try #require(arrival.last?.windowStartS)
+        #expect(far > near, "\(arrival.map(\.windowStartS))")
+        for (a, b) in zip(zero, arrival) {
+            let start = Int((b.windowStartS! / b.binS).rounded())
+            #expect(b.outerImpulsePaS.count == a.outerImpulsePaS.count - start)
+            #expect(
+                a.outerImpulsePaS.dropFirst(start).map(\.bitPattern) == b.outerImpulsePaS.map(\.bitPattern))
+            #expect(
+                a.innerImpulsePaS.dropFirst(start).map(\.bitPattern) == b.innerImpulsePaS.map(\.bitPattern))
+            #expect(a.outerMaxPa!.dropFirst(start).map(\.bitPattern) == b.outerMaxPa!.map(\.bitPattern))
+            #expect(a.peakNetPa.bitPattern == b.peakNetPa.bitPattern)
+            // Before it, the air at the wall was still.
+            #expect(a.outerImpulsePaS.prefix(start).allSatisfy { abs($0) < 1e-6 })
+        }
+        // Judged, the two agree, times from t = 0.
+        func judged(_ histories: [EnvelopeComponentHistory]) -> [EnvelopeBuildingDamage] {
+            EnvelopeDamageAssessment.assess(
+                loads: histories.map(EnvelopeComponentLoad.init),
+                constructions: { scene.envelopeConstruction(for: $0) },
+                rooms: Dictionary(uniqueKeysWithValues: scene.envelopeObjects.map { ($0.id, 2.0) }))
+        }
+        let (fromZero, fromArrival) = (judged(zero), judged(arrival))
+        #expect(fromZero.map(\.panesBroken) == fromArrival.map(\.panesBroken))
+        #expect(fromZero.contains { $0.panesBroken > 0 })
+        for (a, b) in zip(fromZero, fromArrival) {
+            #expect(abs((a.firstPaneBrokenAtS ?? 0) - (b.firstPaneBrokenAtS ?? 0)) <= 1e-4)
+            #expect(abs(a.insidePeakPa - b.insidePeakPa) <= 1e-3 * a.insidePeakPa + 1)
+        }
+    }
+
+    @Test("Histories repeat bit for bit however the steps are cut into batches")
+    func batching() throws {
+        var scene = try scene()
+        scene.charge = Charge(mass: 0.05, position: SIMD3(4, 1.5, 1))
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        func histories(_ batch: Int) throws -> [EnvelopeComponentHistory] {
+            let solver = try BlastSolver(device: device, scenario: scene, cellSize: 0.25)
+            try solver.configureEnvelopeComponents(
+                objects: scene.envelopeObjects,
+                options: EnvelopeHistoryOptions(windowS: 0.05, binMaxima: true))
+            for _ in 0..<(48 / batch) { _ = solver.advance(steps: batch) }
+            return try #require(solver.envelopeComponentHistories())
+        }
+        let whole = try histories(48)
+        for batch in [1, 5] {
+            let cut = try histories(batch == 5 ? 6 : batch)
+            for (a, b) in zip(whole, cut) {
+                #expect(
+                    a.outerImpulsePaS.map(\.bitPattern) == b.outerImpulsePaS.map(\.bitPattern), "\(batch)")
+                #expect(
+                    a.innerImpulsePaS.map(\.bitPattern) == b.innerImpulsePaS.map(\.bitPattern), "\(batch)")
+                #expect(a.peakNetPa.bitPattern == b.peakNetPa.bitPattern)
+            }
+        }
+    }
+
     @Test("Recording leaves coarse and refined air bit-identical", arguments: [1, 2])
     func passive(refinement: Int) throws {
         var scene = try scene()

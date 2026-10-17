@@ -397,6 +397,8 @@ public enum MendoncaSlabTest {
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: settings.cellSize)
         solver.configuration.refinement = settings.refinement
         solver.configuration.mappedCharge = settings.mappedCharge
+        // The prediction's slabs took their weight as the run started.
+        solver.configuration.settlesStructures = false
         configure(solver)
         if settings.airAwake {
             solver.configuration.airSleepThreshold = 0
@@ -489,6 +491,14 @@ public enum MendoncaSlabTest {
             }
             return Float(weighted / max(total, 1e-12))
         }
+        // From the slab at rest under its own weight, as the tests' gauges read.
+        solver.settleStructures()
+        func bearings() -> SIMD2<Float> {
+            SIMD2(
+                structure.displacement(near + bearing / 2, cj, bottom).z,
+                structure.displacement(far - bearing / 2, cj, bottom).z)
+        }
+        let rest = (centre: centre(), lift: meanLift(), bearings: bearings())
         var bodyHistory: [SIMD4<Float>] = [.zero]
 
         let start = ContinuousClock.now
@@ -507,17 +517,14 @@ public enum MendoncaSlabTest {
             if slept == nil && solver.airIsAsleep { slept = solver.time }
             if !solver.airIsAsleep { followSlab() }
             if solver.time >= nextSample - 1e-9 {
-                let u = centre()
+                let u = centre() - rest.centre
                 if !u.isFinite {
                     blownUp = true
                     break
                 }
                 history.append(SIMD2(Float(solver.time), u))
-                bodyHistory.append(
-                    SIMD4(
-                        Float(solver.time), meanLift(),
-                        structure.displacement(near + bearing / 2, cj, bottom).z,
-                        structure.displacement(far - bearing / 2, cj, bottom).z))
+                let seats = bearings() - rest.bearings
+                bodyHistory.append(SIMD4(Float(solver.time), meanLift() - rest.lift, seats.x, seats.y))
                 while nextSample <= solver.time + 1e-9 { nextSample += settings.sampleInterval }
             }
             if let progress, solver.time >= nextReport {

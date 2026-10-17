@@ -133,6 +133,10 @@ extension Scenario {
         boxes + envelopeObjects.flatMap { $0.envelope!.blocks }
             + (importedModels ?? []).flatMap(\.rigidBoxes)
     }
+    /// The rigid boxes of blocks and imported models, envelopes left out.
+    var importedRigidBoxCount: Int {
+        boxes.count + (importedModels ?? []).reduce(0) { $0 + $1.rigidBoxes.count }
+    }
     public func resamplingImports(cellSize: Float) throws -> Self {
         var copy = self
         for original in importedModels ?? []
@@ -174,7 +178,10 @@ extension Scenario {
                 copy.importedModels?[index] = updated
             }
         }
-        guard copy.rigidBoxes.count <= 2048 else {
+        // Blocks and imports are held to their own limit; envelopes to the scene's.
+        guard copy.importedRigidBoxCount <= Self.maximumImportedBoxes,
+            copy.rigidBoxes.count <= Self.maximumRigidBoxes
+        else {
             throw ImportedMesh.ImportError.invalid(
                 "The combined layout exceeds the 2,048 rigid region limit at this resolution.")
         }
@@ -207,7 +214,7 @@ extension Scenario {
         } else {
             models.append(imported)
         }
-        guard boxes.count + models.reduce(0, { $0 + $1.rigidBoxes.count }) <= 2048 else {
+        guard boxes.count + models.reduce(0, { $0 + $1.rigidBoxes.count }) <= Self.maximumImportedBoxes else {
             throw ImportedMesh.ImportError.invalid(
                 "The combined layout exceeds the 2,048 rigid region limit.")
         }

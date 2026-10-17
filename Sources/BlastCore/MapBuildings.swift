@@ -313,7 +313,7 @@ private final class OSMReader: NSObject, XMLParserDelegate {
 
 /// What became of a set of map buildings placed in a scene.
 public struct MapBuildingReport: Sendable, Equatable {
-    public enum HeightSource: String, Sendable, CaseIterable { case height, levels, assumed }
+    public enum HeightSource: String, Sendable, CaseIterable { case height, levels, grid, assumed }
     public struct Placed: Sendable, Equatable {
         public var id: String
         public var objectID: UUID
@@ -342,6 +342,7 @@ public struct MapBuildingReport: Sendable, Equatable {
 
     public var summary: String {
         "\(placed.count) buildings placed (\(count(.height)) by height, \(count(.levels)) by levels, "
+            + (count(.grid) > 0 ? "\(count(.grid)) from the height grid, " : "")
             + "\(count(.assumed)) assumed), \(skipped.count) left out"
             + (overlapCells > 0 ? ", \(overlapCells) overlapping cells given up" : "")
             + (clipped > 0 ? ", \(clipped) roofs lowered to the domain's top" : "")
@@ -357,6 +358,10 @@ public struct MapBuildingPlacement: Sendable {
     /// Metres a level, for `building:levels`, and the levels assumed where nothing is tagged.
     public var levelHeight: Float = 3
     public var assumedLevels: Float = 2
+    /// Building heights in metres on a grid of longitude and latitude, such as GHSL's average net
+    /// building height: where a building's tags give no height, the cell holding its footprint's
+    /// centre gives it, if above 0. A cell's mean over its built-up area, not the building's own.
+    public var heightGrid: ElevationGrid?
 
     public init(origin: SIMD2<Double>, resolution: Float) {
         self.origin = origin
@@ -371,8 +376,8 @@ public struct MapBuildingPlacement: Sendable {
     }
 
     /// The height of `building` and where it came from: `height`, else `building:levels` (plus
-    /// `roof:levels`) at `levelHeight`, else `assumedLevels`; less `min_height` or
-    /// `building:min_level` below it.
+    /// `roof:levels`) at `levelHeight`, else `heightGrid`, else `assumedLevels`; less `min_height`
+    /// or `building:min_level` below it.
     public func heights(_ building: MapBuilding) -> (
         bottom: Float, top: Float, source: MapBuildingReport.HeightSource
     ) {
@@ -382,11 +387,23 @@ public struct MapBuildingPlacement: Sendable {
             (top, source) = (height, .height)
         } else if let levels = building.levels, levels > 0 {
             (top, source) = ((levels + max(building.roofLevels ?? 0, 0)) * levelHeight, .levels)
+        } else if let grid = heightGrid, let height = Self.gridHeight(grid, building), height > 0 {
+            (top, source) = (height, .grid)
         } else {
             (top, source) = (assumedLevels * levelHeight, .assumed)
         }
         let bottom = max(building.minHeight ?? (building.minLevel.map { $0 * levelHeight } ?? 0), 0)
         return (min(bottom, top), top, source)
+    }
+
+    /// The grid's value in the cell holding the centre of the footprint's outer ring's vertices.
+    static func gridHeight(_ grid: ElevationGrid, _ building: MapBuilding) -> Float? {
+        guard let ring = building.rings.first, !ring.isEmpty else { return nil }
+        let centre = ring.reduce(SIMD2<Double>.zero, +) / Double(ring.count)
+        let cell = SIMD2<Int>(((centre - grid.southWest) / grid.step).rounded(.toNearestOrAwayFromZero))
+        guard cell.x >= 0, cell.y >= 0, cell.x < grid.columns, cell.y < grid.rows else { return nil }
+        let value = grid.elevation(column: cell.x, row: cell.y)
+        return value.isNaN ? nil : value
     }
 }
 
@@ -509,9 +526,9 @@ extension Scenario {
                     id: building.id, objectID: id, heightSource: heights.source, base: ground, top: top,
                     boxes: boxes.count, cells: cells.count))
         }
-        guard copy.rigidBoxes.count <= 2048 else {
+        guard copy.rigidBoxes.count <= Scenario.maximumRigidBoxes else {
             throw MapBuilding.Failure.malformed(
-                "the buildings need \(copy.rigidBoxes.count) boxes in all and a scene holds 2,048; "
+                "the buildings need \(copy.rigidBoxes.count) boxes in all and a scene holds \(Scenario.maximumRigidBoxes); "
                     + "choose a coarser resolution or a smaller area")
         }
         if let attribution, !report.placed.isEmpty, !(copy.attributions ?? []).contains(attribution) {

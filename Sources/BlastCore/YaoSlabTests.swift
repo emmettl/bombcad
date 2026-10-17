@@ -86,6 +86,31 @@ extension TwoFaceSlabTests {
             ], structure: model)
     }
 
+    /// Holds the slab as the tests' supports did: resting on them (pushing up only), held in plane
+    /// along the first bearing's middle line and across at the centre of each, simply supported.
+    public static func yaoHold(
+        _ structure: StructureSolver, _ nodes: UnsafeMutableBufferPointer<StructureNode>,
+        _ index: (Float, Int) -> Int
+    ) {
+        let h = structure.model.elementSize
+        let bottom = index(yaoSlab.min.z, 2)
+        let middle = index(yaoCentre.y, 1)
+        for j in 0...structure.ey {
+            for i in 0...structure.ex {
+                let x = structure.origin.x + Float(i) * h
+                let fromEdge = min(x - yaoSlab.min.x, yaoSlab.max.x - x)
+                guard fromEdge <= yaoBearing + 1e-4, let n = structure.storedNode(i, j, bottom) else {
+                    continue
+                }
+                nodes[n].restsOnSupport = true
+                if abs(fromEdge - yaoBearing / 2) < h / 2 {
+                    let first = x - yaoSlab.min.x < yaoSlab.max.x - x
+                    nodes[n].restrain(x: first, y: j == middle)
+                }
+            }
+        }
+    }
+
     /// Runs one of Yao's tests: probes on the underside at the centre, 1 m towards a supported
     /// side, 1 m towards a free side and 1 m along the diagonal, as the paper's Figure 3 places them.
     public static func run(
@@ -110,27 +135,7 @@ extension TwoFaceSlabTests {
             device: device, scenario: scenario, slab: yaoSlab, thicknessAxis: 2, probes: probes,
             cellSize: cellSize, refinement: refinement, duration: duration, chargeTowardsLow: false,
             afterburning: afterburning, airModel: airModel, openFaces: openFaces,
-            hold: { structure, nodes, index in
-                // Resting on the supports (pushing up only), held in plane along the first
-                // bearing's middle line and across at the centre of each: simply supported.
-                let h = structure.model.elementSize
-                let bottom = index(yaoSlab.min.z, 2)
-                let middle = index(yaoCentre.y, 1)
-                for j in 0...structure.ey {
-                    for i in 0...structure.ex {
-                        let x = structure.origin.x + Float(i) * h
-                        let fromEdge = min(x - yaoSlab.min.x, yaoSlab.max.x - x)
-                        guard fromEdge <= yaoBearing + 1e-4, let n = structure.storedNode(i, j, bottom) else {
-                            continue
-                        }
-                        nodes[n].restsOnSupport = true
-                        if abs(fromEdge - yaoBearing / 2) < h / 2 {
-                            let first = x - yaoSlab.min.x < yaoSlab.max.x - x
-                            nodes[n].restrain(x: first, y: j == middle)
-                        }
-                    }
-                }
-            },
+            hold: yaoHold,
             prepare: { structure in
                 // Without its own weight: the tests' sensors read from the slab resting under it,
                 // and a slab given its weight as the run starts sags 2-3 mm (twice its static

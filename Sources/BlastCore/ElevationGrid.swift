@@ -47,6 +47,44 @@ public struct ElevationGrid: Sendable, Equatable {
         }
     }
 
+    /// The grid with whatever is narrower than a square `2 radius + 1` cells across taken off: a
+    /// morphological opening (the least over the square about each cell, then the greatest of
+    /// those), which leaves the ground of a surface model without its roofs and trees, assuming
+    /// the ground is the lowest point within the square. Slopes and plateaus wider than the square
+    /// keep their heights; cells without data are left out of both and stay without.
+    public func opened(radius: Int) -> ElevationGrid {
+        guard radius > 0 else { return self }
+        func filter(_ values: [Float], _ pick: (Float, Float) -> Float) -> [Float] {
+            // Rows then columns: a square's extreme is the extreme of its rows' extremes.
+            var across = values
+            for j in 0..<rows {
+                for i in 0..<columns {
+                    var best = Float.nan
+                    for n in max(i - radius, 0)...min(i + radius, columns - 1) {
+                        let value = values[n + columns * j]
+                        if !value.isNaN { best = best.isNaN ? value : pick(best, value) }
+                    }
+                    across[i + columns * j] = best
+                }
+            }
+            var out = across
+            for j in 0..<rows {
+                for i in 0..<columns {
+                    var best = Float.nan
+                    for n in max(j - radius, 0)...min(j + radius, rows - 1) {
+                        let value = across[i + columns * n]
+                        if !value.isNaN { best = best.isNaN ? value : pick(best, value) }
+                    }
+                    out[i + columns * j] = values[i + columns * j].isNaN ? .nan : best
+                }
+            }
+            return out
+        }
+        var grid = self
+        grid.elevations = filter(filter(elevations, min), max)
+        return grid
+    }
+
     /// The north-east cell's centre.
     public var northEast: SIMD2<Double> { southWest + step * SIMD2(Double(columns - 1), Double(rows - 1)) }
 
@@ -237,7 +275,7 @@ extension ElevationGrid {
 // MARK: - GeoTIFF
 
 extension ElevationGrid {
-    /// Reads a single-band GeoTIFF of elevations: classic (not Big) TIFF in either byte order,
+    /// Reads a single-band GeoTIFF of elevations: classic TIFF or BigTIFF in either byte order,
     /// in strips or tiles, uncompressed or LZW or Deflate, with or without a horizontal or
     /// floating-point predictor; 8, 16 or 32-bit integers or 32 or 64-bit floats. It is placed by
     /// its ModelPixelScale and ModelTiepoint tags (or a ModelTransformation without rotation), its
@@ -326,21 +364,32 @@ struct TIFFReader {
         default: throw ElevationGrid.Failure.malformed("not a TIFF")
         }
         let magic = Self.read(data, 2, 2, littleEndian)
-        if magic == 43 { throw ElevationGrid.Failure.unsupported("BigTIFF") }
-        guard magic == 42 else { throw ElevationGrid.Failure.malformed("not a TIFF") }
-        let ifd = Int(Self.read(data, 4, 4, littleEndian))
-        guard ifd + 2 <= data.count else { throw ElevationGrid.Failure.malformed("the directory is missing") }
-        let count = Int(Self.read(data, ifd, 2, littleEndian))
+        // BigTIFF (43) is the classic layout with 8-byte offsets and counts: its directory's count,
+        // each entry's count and value, and the header's pointer to the directory.
+        guard magic == 42 || magic == 43 else { throw ElevationGrid.Failure.malformed("not a TIFF") }
+        let big = magic == 43
+        if big, data.count < 16 || Self.read(data, 4, 2, littleEndian) != 8 {
+            throw ElevationGrid.Failure.malformed("a BigTIFF header with offsets other than 8 bytes")
+        }
+        let word = big ? 8 : 4
+        let ifd = Int(Self.read(data, big ? 8 : 4, word, littleEndian))
+        let countSize = big ? 8 : 2
+        let entrySize = big ? 20 : 12
+        guard ifd + countSize <= data.count else {
+            throw ElevationGrid.Failure.malformed("the directory is missing")
+        }
+        let count = Int(Self.read(data, ifd, countSize, littleEndian))
         for n in 0..<count {
-            let at = ifd + 2 + 12 * n
-            guard at + 12 <= data.count else {
+            let at = ifd + countSize + entrySize * n
+            guard at + entrySize <= data.count else {
                 throw ElevationGrid.Failure.malformed("the directory is cut short")
             }
             let tag = UInt16(Self.read(data, at, 2, littleEndian))
             let type = UInt16(Self.read(data, at + 2, 2, littleEndian))
-            let values = Int(Self.read(data, at + 4, 4, littleEndian))
+            let values = Int(Self.read(data, at + 4, word, littleEndian))
             let size = values * Self.typeSize(type)
-            let offset = size <= 4 ? at + 8 : Int(Self.read(data, at + 8, 4, littleEndian))
+            let offset =
+                size <= word ? at + 4 + word : Int(Self.read(data, at + 4 + word, word, littleEndian))
             guard offset + size <= data.count else {
                 throw ElevationGrid.Failure.malformed("tag \(tag) runs past the end")
             }
@@ -353,7 +402,7 @@ struct TIFFReader {
         case 1, 2, 6, 7: 1
         case 3, 8: 2
         case 4, 9, 11: 4
-        case 5, 10, 12: 8
+        case 5, 10, 12, 16, 17, 18: 8
         default: 1
         }
     }
@@ -370,7 +419,7 @@ struct TIFFReader {
     func integers(_ tag: UInt16) -> [Int]? {
         guard let entry = entries[tag] else { return nil }
         let size = Self.typeSize(entry.type)
-        guard [1, 3, 4].contains(entry.type) else { return nil }
+        guard [1, 3, 4, 16].contains(entry.type) else { return nil }
         return (0..<entry.count).map { Int(Self.read(data, entry.offset + size * $0, size, littleEndian)) }
     }
 
