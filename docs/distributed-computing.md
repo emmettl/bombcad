@@ -586,12 +586,43 @@ the decoding on the watcher included. What it found:
   overpressure, in half precision, and the viewer should draw the field coarser than the solver
   holds it.
 
+**Drawn here by the app's renderer.** The renderer draws from a `SceneViewState`, which a run
+elsewhere can fill (`ViewSetup` once, a `ViewFrame` each frame, uploaded by `ViewUpload`, all in
+BlastRender). `watch --scene <stride>` has the worker send those too (`SceneViewCodec`, binary,
+compressed as the rest; protocol 12 adds `viewSetup`), and `--render <folder>` draws each frame
+with `SceneRenderer` on this Mac and writes PNG images. The field goes at every stride-th cell
+along each axis, cut down on the GPU (`coarsenField` in ViewField.metal): each coarse texel keeps
+its block's largest peak, impulse and shock indicator and its overpressure of largest magnitude,
+so a front one cell thick still shows. Measured the same day, the blast on the Studio, the mini
+drawing it over Wi-Fi:
+
+| Scene, field | A frame sent | Shown | Update, median | Lag, median | Held the run, a frame |
+|---|---|---|---|---|---|
+| city, every 4th cell | 1.2 MB | all | 216 ms | 102 ms | 22 ms |
+| city, every 2nd cell | 7.2 MB | 169 of 171 | 213 ms | 245 ms | 29 ms |
+| three-storey building, every 2nd cell | 7.6 MB | all | 459 ms | 323 ms | 33 ms |
+| city, every cell | 34 MB | 55 of 171 | 489 ms | 778 ms | 117 ms |
+
+- **Every 4th cell looks like the whole.** On the city block it is 64 times less field, and the
+  picture drawn here keeps the same fronts in the same streets, slightly softer and wider; every
+  2nd cell is hard to tell from the whole. The whole field saturates Wi-Fi (35 MB/s carried),
+  and two frames in three are skipped.
+- **Drawing here is cheap.** Uploading a frame into the view's buffers took 1 to 5 ms on the
+  mini at every 2nd or 4th cell, and decoding it 1 to 7 ms; drawing a 1280 × 720 image and writing
+  it as a PNG 50 to 70 ms.
+- **The run pays for the field.** 22 to 33 ms a frame held on the thread driving the GPU, 8 to
+  11% of the city run, against 2.5 ms for the ground's paint alone: the field is rebuilt and
+  cut down in command buffers of their own, each waited for. Encoding both into the frame's
+  last batch, as the fragments' air is cut out, would leave only the copy.
+- **The structure's mesh is the rest.** The three-storey building's frames compress only 1.6
+  times, being displacements and rotations in full precision.
+
 **What it means for the app.** A thin client is practical over ordinary Wi-Fi for everything
 drawn on surfaces, live, at the run's own pace, for about 1% of the run, and for the air as a
-volume at about every second cell. The rest is the app's side: a **Run on** for the blast, and
-views that draw from frames sent rather than from a solver here. The renderer's side has begun:
-it draws from a `SceneViewState`, which a run elsewhere can fill (`ViewSetup`, `ViewFrame` and
-`ViewUpload` in BlastRender), though at the solver's full resolution so far.
+volume at about every second cell, and for the scene as the app draws it at every 2nd to 4th
+cell of the field. What is left is the app's side: a **Run on** for the blast, the viewport fed
+from the frames that arrive rather than from a solver here, and edits and playback going the
+other way.
 
 ## Better first
 
