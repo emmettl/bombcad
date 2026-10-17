@@ -1,6 +1,7 @@
 import BlastCore
 import Foundation
 import Metal
+import simd
 
 /// `blastbench groundmotion`: the ground shock under Xia et al.'s 1 t TNT surface burst (Applied
 /// Sciences 12, 7987, 2022), at their gauges' ranges and depth, against what they measured
@@ -51,8 +52,32 @@ func runGroundMotion(device: MTLDevice) throws {
         }
         return spec
     }
-    let models: [(String, Float?)] =
-        [("estimate", nil)] + ratios.map { ("column r=\(format(Double($0), 0))", $0) }
+    // The half-space: the soil with a Poisson's ratio of `--poisson` (0.3), centred on the charge
+    // in the domain's corner, with the charge's direct source at its calibrated share and without.
+    let poisson = option("poisson").flatMap(Float.init) ?? 0.3
+    let shearRatio = ((1 - 2 * poisson) / (2 * (1 - poisson))).squareRoot()
+    let halfCell = option("half-cell").flatMap(Float.init)
+    func halfSpec(share: Float?, dx: Float) -> GroundShockSpec {
+        var spec = spec(nil, dx: dx)
+        spec.model = .halfspace
+        spec.profile = SoilProfile(
+            layers: [
+                SoilLayer(
+                    thickness: 1, density: density, waveSpeed: speed, shearWaveSpeed: speed * shearRatio)
+            ], timeStep: step)
+        spec.halfSpace = HalfSpaceSetup(
+            centre: .zero, chargeMass: Float(mass), elasticShare: share, cellSize: halfCell)
+        return spec
+    }
+    let models: [(String, (Float) -> GroundShockSpec)] =
+        [("estimate", { spec(nil, dx: $0) })]
+        + ratios.map { ratio in ("column r=\(format(Double(ratio), 0))", { spec(ratio, dx: $0) }) }
+        + (flag("no-halfspace")
+            ? []
+            : [
+                ("halfspace", { halfSpec(share: nil, dx: $0) }),
+                ("halfspace, air only", { halfSpec(share: 0, dx: $0) }),
+            ])
     print(
         String(
             format:
@@ -85,47 +110,36 @@ func runGroundMotion(device: MTLDevice) throws {
         }
         return (point.arrival(mass: mass), peak, positive, (low + high) / 2)
     }
-    func kbSlice(time: Double, dx: Float, history: inout [(peak: Double, impulse: Double, last: Double)])
-        -> GroundSlice
-    {
-        let nx = Int32(ceil(Double(ranges.max()! + 2) / Double(dx)))
+    /// Kingery–Bulmash's ground along the x axis at `time`, a cell at every dx: the Friedlander
+    /// pulse's overpressure, its peak once arrived, and its positive impulse in closed form,
+    /// ∫₀^s P(1 − u/T)e^(−bu/T) du = PT[(1 − e^(−bX))/b − (1 − e^(−bX)(1 + bX))/b²], X = min(s/T, 1).
+    func kbSlice(time: Double, dx: Float) -> GroundSlice {
+        let nx = Int32(ceil(Double(ranges.max()! * 1.2 + 10) / Double(dx)))
         var values = [Float](repeating: 0, count: 3 * Int(nx) * 2)
-        for (n, range) in ranges.enumerated() {
-            guard let f = friedlander(at: range) else { continue }
-            func pressure(_ t: Double) -> Double {
-                let s = t - f.arrival
-                return s < 0 ? 0 : f.peak * (1 - s / f.duration) * exp(-f.decay * s / f.duration)
-            }
-            // Peak and positive impulse kept finely between frames, as the solver keeps them.
-            var t = history[n].last
-            let fine = 1e-6
-            while t < time - fine / 2 {
-                let p = pressure(t + fine / 2)
-                history[n].peak = max(history[n].peak, p)
-                history[n].impulse += max(p, 0) * fine
-                t += fine
-            }
-            history[n].last = time
-            let i = Int(range / dx)
+        for k in 0..<Int(nx) {
+            guard let f = friedlander(at: (Float(k) + 0.5) * dx) else { continue }
+            let s = time - f.arrival
+            guard s >= 0 else { continue }
+            let p = f.peak * (1 - s / f.duration) * exp(-f.decay * s / f.duration)
+            let x = min(s / f.duration, 1)
+            let b = f.decay
+            let impulse =
+                f.peak * f.duration * ((1 - exp(-b * x)) / b - (1 - exp(-b * x) * (1 + b * x)) / (b * b))
             for j in 0..<2 {
-                for k in max(i - 2, 0)...min(i + 2, Int(nx) - 1) {
-                    let base = 3 * (k + Int(nx) * j)
-                    values[base] = Float(pressure(time))
-                    values[base + 1] = Float(history[n].peak)
-                    values[base + 2] = Float(history[n].impulse)
-                }
+                let base = 3 * (k + Int(nx) * j)
+                values[base] = Float(p)
+                values[base + 1] = Float(f.peak)
+                values[base + 2] = Float(impulse)
             }
         }
         return GroundSlice(
             time: time, cellSize: dx, grid: SIMD3(nx, 2, 4), first: .zero, counts: SIMD2(nx, 2),
-            values: values,
-            ambientDensity: 1.225, ambientPressure: 101_325, gamma: 1.4)
+            values: values, ambientDensity: 1.225, ambientPressure: 101_325, gamma: 1.4)
     }
 
     for dx in cells {
-        var consumers = models.map { GroundShockConsumer(spec: spec($0.1, dx: dx)) }
-        var kbConsumers = models.map { GroundShockConsumer(spec: spec($0.1, dx: dx)) }
-        var kbHistory = ranges.map { _ in (peak: 0.0, impulse: 0.0, last: 0.0) }
+        var consumers = models.map { GroundShockConsumer(spec: $0.1(dx)) }
+        var kbConsumers = models.map { GroundShockConsumer(spec: $0.1(dx)) }
         var air: [String: Any] = [:]
         if !flag("kb-only") {
             // A quarter of the burst, in the corner, as the landscape bench sets it.
@@ -144,7 +158,12 @@ func runGroundMotion(device: MTLDevice) throws {
             applyChosenAir(&configuration)
             let solver = try BlastSolver(
                 device: device, scenario: scenario, cellSize: dx, configuration: configuration)
-            let region = consumers[0].region(cellSize: dx)
+            // The ground under every model's points, and round the half-space's disc.
+            let regions = consumers.map { $0.region(cellSize: dx) }
+            let region = (
+                low: regions.map(\.low).reduce(regions[0].low, simd_min),
+                high: regions.map(\.high).reduce(regions[0].high, simd_max)
+            )
             print(
                 String(
                     format: "\n%.3f m cells: %d x %d x %d = %.1fM cells%@", dx, solver.grid.nx,
@@ -191,7 +210,7 @@ func runGroundMotion(device: MTLDevice) throws {
         // The same frames from Kingery–Bulmash.
         var t = 0.0
         while t <= duration + 1e-9 {
-            let slice = kbSlice(time: t, dx: dx, history: &kbHistory)
+            let slice = kbSlice(time: t, dx: dx)
             for n in kbConsumers.indices { kbConsumers[n].consume(slice) }
             t += frame
         }
@@ -244,16 +263,18 @@ func runGroundMotion(device: MTLDevice) throws {
                 for (m, result) in results.enumerated() {
                     guard let response = result.points[n].responses.last else { continue }
                     var line = String(
-                        format: "      %-12@ v %.4f m/s, d %.2f mm", models[m].0 as NSString,
+                        format: "      %-20@ v %.4f m/s, d %.2f mm", models[m].0 as NSString,
                         response.verticalVelocity,
                         response.verticalDisplacement * 1000)
                     if let a = response.verticalAcceleration, let up = response.upwardAcceleration {
                         line += String(format: ", a %.1f down %.1f up m/s²", a, up)
                     }
+                    if let h = response.horizontalVelocity { line += String(format: ", horizontal %.4f", h) }
                     if let truth {
                         line += String(
-                            format: "; against measured vertical a %.2f down, v %.4f (integrated)",
-                            truth.verticalAccelerationDown, truth.integratedVerticalVelocity)
+                            format: "; measured vertical a %.2f down, v %.4f, horizontal %.4f (integrated)",
+                            truth.verticalAccelerationDown, truth.integratedVerticalVelocity,
+                            truth.integratedHorizontalSpeed ?? .nan)
                     }
                     print(line)
                 }
@@ -272,10 +293,65 @@ private struct XiaMeasurement: Decodable {
         var range: Double
         var verticalAccelerationDown: Double
         var integratedVerticalVelocity: Double
+        var integratedHorizontalSpeed: Double?
     }
     var ranges: [Range]
 }
 
 private func elapsedSeconds(_ duration: Duration) -> Double {
     Double(duration.components.seconds) + Double(duration.components.attoseconds) * 1e-18
+}
+
+/// `blastbench groundmotion --calibrate`: the half-space's direct source alone, no air, against
+/// UFC 3-340-01's direct-induced peak particle velocity, v = f · 160 · (R/W^(1/3))^(−n) ft/s with
+/// f = 0.14 for a surface burst, in dense sand (n = 2.5; c_P 1,600 ft/s, 488 m/s; 1,900 kg/m³;
+/// Poisson's ratio 0.3), for 1 t of TNT, 0.5 m down. The source's elastic share for the model's
+/// peak resultant velocity to equal UFC's at R/W^(1/3) = 8 ft/lb^(1/3) is the calibration.
+func runGroundMotionCalibration() throws {
+    let mass = option("mass").flatMap(Double.init) ?? 1000
+    let probe = option("probe").flatMap(Float.init) ?? 0.01
+    let (density, speed, n) = (Float(1900), Float(488), 2.5)
+    let scaled = [4.0, 6.0, 8.0, 12.0, 16.0]
+    let pounds = cbrt(mass * 2.204_62)
+    let ranges = scaled.map { Float($0 * pounds * 0.3048) }
+    var spec = GroundShockSpec()
+    spec.model = .halfspace
+    spec.points = ranges.map { SIMD2($0, 0) }
+    spec.depths = [option("depth").flatMap(Float.init) ?? 0.5]
+    spec.profile = SoilProfile(
+        layers: [
+            SoilLayer(
+                thickness: 1, density: density, waveSpeed: speed,
+                shearWaveSpeed: speed * SoilLayer.defaultShearRatio)
+        ])
+    let setup = HalfSpaceSetup(
+        centre: .zero, chargeMass: Float(mass), elasticShare: probe,
+        cellSize: option("half-cell").flatMap(Float.init))
+    let engine = try HalfSpaceGroundShock(spec: spec, setup: setup)
+    let end = Double(ranges.max()!) / (Double(speed) * Double(SoilLayer.defaultShearRatio) * 0.9) + 0.05
+    let empty = [(overpressure: Float, peak: Float, impulse: Float)?](
+        repeating: nil, count: engine.grid.radialCells)
+    var t = 0.0
+    while t < end {
+        t += 1e-3
+        engine.consume(rings: empty, time: t)
+    }
+    print(
+        String(
+            format:
+                "Direct source alone, %.0f kg, share %.3g: dense sand %.0f kg/m³ at %.0f m/s, n = %.1f, %.2f m deep; grid %.3f m",
+            mass, probe, density, speed, n, spec.depths[0], engine.grid.spacing))
+    var calibrated = Double.nan
+    for (k, range) in ranges.enumerated() {
+        let model = engine.peakResultant[k]
+        let ufc = DirectInducedSource.ufcPeakVelocity(range: Double(range), mass: mass, n: n)
+        let share = Double(probe) * pow(ufc / model, 2)
+        if scaled[k] == 8 { calibrated = share }
+        print(
+            String(
+                format:
+                    "  %5.1f ft/lb^(1/3), %5.1f m: model %.4f m/s, UFC %.4f m/s, ratio %.2f; share for UFC here %.3g",
+                scaled[k], range, model, ufc, model / ufc, share))
+    }
+    print(String(format: "Calibrated share at 8 ft/lb^(1/3): %.3g", calibrated))
 }

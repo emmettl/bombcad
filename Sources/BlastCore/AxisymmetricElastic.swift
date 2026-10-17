@@ -167,15 +167,17 @@ public struct ElasticReceiver: Sendable, Equatable {
     }
 }
 
-/// The motion at a receiver: velocities, m/s, radial (outwards) and vertical (downwards).
+/// The motion at a receiver: velocities, m/s, radial (outwards) and vertical (downwards), and
+/// the vertical stress, Pa, compression positive.
 public struct ElasticReading: Sendable, Equatable {
     public var radial: Double
     public var vertical: Double
+    public var verticalStress: Double
 }
 
 /// Steps the axisymmetric half-space: velocities at half steps, stresses at whole ones, the
 /// surface pressed by a pressure at each loaded cell. Single owner; not concurrently callable.
-public final class AxisymmetricElasticStepper {
+public final class AxisymmetricElasticStepper: @unchecked Sendable {
     public let grid: AxisymmetricElasticGrid
     /// Steps taken; stresses are at `time`, velocities half a step behind.
     public private(set) var stepIndex = 0
@@ -335,7 +337,8 @@ public final class AxisymmetricElasticStepper {
         receivers.map { receiver in
             ElasticReading(
                 radial: sample(vr, 0, 0, radius: receiver.radius, depth: receiver.depth),
-                vertical: sample(vz, 0.5, 0.5, radius: receiver.radius, depth: receiver.depth))
+                vertical: sample(vz, 0.5, 0.5, radius: receiver.radius, depth: receiver.depth),
+                verticalStress: -sample(szz, 0.5, 0, radius: receiver.radius, depth: receiver.depth))
         }
     }
 

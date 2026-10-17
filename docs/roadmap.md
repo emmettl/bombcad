@@ -149,8 +149,9 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
 - **Done, illustrative:** the fireball's
   [thermal radiation](thermal-radiation.md) and [surface heating](surface-heating.md); its
   [rise and cloud](fireball-rise.md); [ground shock](ground-shock.md), as the manuals'
-  estimate or a layered soil column, against one measured 1 t burst 20 to 80 times too high in
-  the vertical, near the outrunning limit; [gas deflagrations](deflagration.md), started: FM Global's
+  estimate or a layered soil column, or an elastic half-space
+  about the charge, against one measured 1 t burst 15 to 80 times too high in the vertical near
+  the outrunning limit, the half-space's horizontal within 1.5 times at 21 m; [gas deflagrations](deflagration.md), started: FM Global's
   vented tests within 0.4–1.6 of the measured peaks, with sub-grid turbulence and the measured
   cellular instability.
 - **Now:** why the deflagration's flame stalls when lit in the middle (0.4–0.6 there), a young

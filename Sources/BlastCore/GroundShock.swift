@@ -37,6 +37,11 @@ public enum GroundShockModel: String, Codable, Sendable, CaseIterable {
     /// A layered soil column under each point, solved step by step through the overpressure's
     /// history on the ground (`SoilColumn`).
     case column
+    /// A layered elastic half-space about the charge, driven by the air's ground pressures
+    /// averaged round rings centred on it and, inside the crater, by the charge's direct source
+    /// (`HalfSpaceGroundShock`): waves that travel sideways and outrun the blast, vertical and
+    /// radial motion.
+    case halfspace
 }
 
 /// Where to estimate the ground's shaking under the blast, and in what soil. An illustrative
@@ -63,6 +68,8 @@ public struct GroundShockSpec: Codable, Sendable, Equatable {
     public var model = GroundShockModel.estimate
     /// The column's layers; nil for one elastic layer of `soil` going on for ever.
     public var profile: SoilProfile?
+    /// The half-space's axis and charge; nil for `BombCAD run` to set from the scene's charge.
+    public var halfSpace: HalfSpaceSetup?
     /// Ground points, (x, y) in metres.
     public var points: [SIMD2<Float>] = []
     public var line: Line?
@@ -74,7 +81,7 @@ public struct GroundShockSpec: Codable, Sendable, Equatable {
     public init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case soil, model, profile, points, line, depths, arrivalThreshold
+        case soil, model, profile, halfSpace, points, line, depths, arrivalThreshold
     }
 
     /// Any field left out takes its default.
@@ -84,6 +91,7 @@ public struct GroundShockSpec: Codable, Sendable, Equatable {
         soil = try c.decodeIfPresent(GroundSoil.self, forKey: .soil) ?? d.soil
         model = try c.decodeIfPresent(GroundShockModel.self, forKey: .model) ?? d.model
         profile = try c.decodeIfPresent(SoilProfile.self, forKey: .profile)
+        halfSpace = try c.decodeIfPresent(HalfSpaceSetup.self, forKey: .halfSpace)
         points = try c.decodeIfPresent([SIMD2<Float>].self, forKey: .points) ?? d.points
         line = try c.decodeIfPresent(Line.self, forKey: .line)
         depths = try c.decodeIfPresent([Float].self, forKey: .depths) ?? d.depths
@@ -94,7 +102,7 @@ public struct GroundShockSpec: Codable, Sendable, Equatable {
     public var columnProfile: SoilProfile { profile ?? SoilProfile(uniform: soil) }
 
     /// The soil at the surface: the profile's top layer for the column, `soil` for the estimate.
-    public var surfaceSoil: GroundSoil { model == .column ? columnProfile.surface : soil }
+    public var surfaceSoil: GroundSoil { model == .estimate ? soil : columnProfile.surface }
 
     /// The most elements a column may take, and the most element-steps a frame a millisecond
     /// long may cost over all the points, to keep the column light enough to run alongside.

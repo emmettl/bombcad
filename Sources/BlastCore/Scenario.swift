@@ -398,11 +398,21 @@ extension BlastSolver {
         }
         if let cut {
             // The cells below each column's first cell of air are solid; the cut cells hold air.
+            // A cell less than half air with a block standing on it is solid too: its air would be
+            // shut in between the ground and the block, and the difference it could pass up no
+            // further would come back to it, magnified as many times as it is small, every step
+            // (see `redistributeCutDefects`). A building whose base lies below the ground makes them.
             let firstAir = cut.firstAirCells
             mutateMask { mask in
                 for j in 0..<grid.ny {
                     for i in 0..<grid.nx {
-                        for k in 0..<Int(firstAir[i + grid.nx * j]) { mask[grid.index(i, j, k)] = 1 }
+                        let first = Int(firstAir[i + grid.nx * j])
+                        for k in 0..<first { mask[grid.index(i, j, k)] = 1 }
+                        if first + 1 < grid.nz, mask[grid.index(i, j, first + 1)] != 0,
+                            cut.alpha(i, j, first) < TerrainCutGeometry.receivingShare
+                        {
+                            mask[grid.index(i, j, first)] = 1
+                        }
                     }
                 }
             }

@@ -126,7 +126,9 @@ damage model that reads them (`/Volumes/StudioData/bombcad/envelope-damage/compo
   else the one its middle plane crosses. They are solid from the start and carry the pane's load.
   Before, a pane in a cut opening crossed no cell's centre, so its window was open in the air and
   the pane recorded nothing, and glass set in a wall had its load counted as the wall's (see
-  [validation](validation.md#glazing-in-the-air) for what that changes).
+  [validation](validation.md#glazing-in-the-air) for what that changes). In refined air's patches
+  the pane takes the layer of finer cells its middle lies in (`Box.holdingCells`), so its window is
+  closed there too.
 
 Ids are `<owner>/<kind>/<source>.<panel>`. The street study's buildings come out as one panel a
 wall and one roof panel.

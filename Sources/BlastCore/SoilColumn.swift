@@ -15,20 +15,31 @@ public struct SoilLayer: Codable, Sendable, Equatable {
     public var unloadingWaveSpeed: Float?
     /// The Rayleigh damping ratio at the profile's two damping frequencies; 0 for none.
     public var damping: Float
+    /// The speed of a shear wave, m/s, for the half-space (`GroundShockModel.halfspace`); nil for
+    /// a Poisson's ratio of 0.3, `defaultShearRatio` times the loading wave speed. The column,
+    /// one-dimensional, does not use it.
+    public var shearWaveSpeed: Float?
 
     public init(
         thickness: Float, density: Float, waveSpeed: Float, unloadingWaveSpeed: Float? = nil,
-        damping: Float = 0
+        damping: Float = 0, shearWaveSpeed: Float? = nil
     ) {
         self.thickness = thickness
         self.density = density
         self.waveSpeed = waveSpeed
         self.unloadingWaveSpeed = unloadingWaveSpeed
         self.damping = damping
+        self.shearWaveSpeed = shearWaveSpeed
     }
 
+    /// c_S/c_P for a Poisson's ratio of 0.3: √((1 − 2ν)/(2(1 − ν))).
+    public static let defaultShearRatio = Float((0.4 / 1.4).squareRoot())
+
+    /// The shear wave speed, m/s: as given, or for a Poisson's ratio of 0.3.
+    public var shearSpeed: Float { shearWaveSpeed ?? waveSpeed * Self.defaultShearRatio }
+
     private enum CodingKeys: String, CodingKey {
-        case thickness, density, waveSpeed, unloadingWaveSpeed, damping
+        case thickness, density, waveSpeed, unloadingWaveSpeed, damping, shearWaveSpeed
     }
 
     public init(from decoder: Decoder) throws {
@@ -39,6 +50,7 @@ public struct SoilLayer: Codable, Sendable, Equatable {
         waveSpeed = try c.decodeIfPresent(Float.self, forKey: .waveSpeed) ?? d.waveSpeed
         unloadingWaveSpeed = try c.decodeIfPresent(Float.self, forKey: .unloadingWaveSpeed)
         damping = try c.decodeIfPresent(Float.self, forKey: .damping) ?? 0
+        shearWaveSpeed = try c.decodeIfPresent(Float.self, forKey: .shearWaveSpeed)
     }
 
     /// The unloading wave speed, the loading one if none is given.
@@ -166,6 +178,9 @@ public struct SoilProfile: Codable, Sendable, Equatable {
                 positive(layer.thickness) && layer.thickness <= 1000 && positive(layer.density)
                     && positive(layer.waveSpeed)
                     && (layer.unloadingWaveSpeed.map { positive($0) && $0 >= layer.waveSpeed } ?? true)
+                    && (layer.shearWaveSpeed.map {
+                        positive($0) && $0 * Float(2).squareRoot() < layer.waveSpeed
+                    } ?? true)
                     && layer.damping.isFinite && (0...0.5).contains(layer.damping)
             }
             && positive(dampingFrequencies.x) && dampingFrequencies.y.isFinite
