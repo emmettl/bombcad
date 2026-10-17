@@ -69,7 +69,8 @@ public enum LargePanelBlock {
     }
 
     /// The structure.
-    public static func model() -> StructureModel {
+    /// The structure, `storeys` high (twelve unless asked).
+    public static func model(storeys: Int = storeys) -> StructureModel {
         let o = origin
         var walls: [Box] = []
         var floors: [Box] = []
@@ -162,9 +163,10 @@ public enum LargePanelBlock {
     public static let streetCharge: Float = 250
     public static let streetDistance: Float = 8
 
-    public static func scenario(_ event: Event, name: String) -> Scenario {
+    public static func scenario(_ event: Event, name: String, storeys: Int = storeys) -> Scenario {
         let o = origin
-        let model = model()
+        let model = model(storeys: storeys)
+        let height = Float(storeys) * storeyHeight
         switch event {
         case .gas:
             let z0 = base(ofStorey: gasStorey)

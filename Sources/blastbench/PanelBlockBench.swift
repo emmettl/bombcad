@@ -29,7 +29,12 @@ func runPanelBlock(device: MTLDevice) throws {
         exit(2)
     }
     let preset: ScenarioPreset = which == .gas ? .largePanelGas : .largePanelStreet
-    var scenario = preset.scenario
+    // `--storeys 3`: a lower block, for trying things quickly.
+    var scenario =
+        option("storeys").flatMap { Int($0) }.map {
+            LargePanelBlock.scenario(which, name: preset.title, storeys: $0)
+        }
+        ?? preset.scenario
     if flag("standing") {
         // What the app shows for the preset: each result's standing, and what is not compared.
         var inputs = StandingInputs(scenario: scenario, cellSize: option("dx").flatMap { Float($0) } ?? 0.125)
@@ -53,8 +58,64 @@ func runPanelBlock(device: MTLDevice) throws {
     let solver = try BlastSolver(
         device: device, scenario: scenario, cellSize: cellSize, configuration: .recommended)
     // Pieces that come off their seats fall on what is below them.
-    for body in solver.bodies { body.solids?.contactMode = .always }
+    // Diagnostics: `--contact after|off` (always by default), `--no-ground`.
+    let contact: ContactMode =
+        switch option("contact") {
+        case "after": .afterFailure
+        case "off": .off
+        default: flag("default-contact") ? .afterFailure : .always
+        }
+    for body in solver.bodies {
+        body.solids?.contactMode = contact
+        if flag("no-ground") { body.solids?.groundContact = false }
+    }
     let model = scenario.structure
+    if flag("mask") {
+        // Where the corner flat leaks: flood the air's open cells from the cooker through a box
+        // two cells round the flat, and list the open cells reached outside it.
+        solver.advance(steps: 4)
+        let c = solver.grid.cellSize
+        let o = SIMD3<Float>(4, 4, 0)
+        let z0 = LargePanelBlock.base(ofStorey: LargePanelBlock.gasStorey)
+        let inside = Box(
+            min: o + SIMD3(0, 0, z0 - LargePanelBlock.h),
+            max: o
+                + SIMD3(LargePanelBlock.wallLines[1].high, LargePanelBlock.depth, z0 + 27 * LargePanelBlock.h)
+        )
+        func cell(_ p: SIMD3<Float>) -> SIMD3<Int> { SIMD3<Int>((p / c).rounded(.down)) }
+        let low = cell(inside.min) &- 2
+        let high = cell(inside.max) &+ 2
+        let start = cell(scenario.charge.position)
+        var seen: Set<SIMD3<Int>> = [start]
+        var stack = [start]
+        var leaks: [SIMD3<Int>] = []
+        while let n = stack.popLast() {
+            for d in [
+                SIMD3(1, 0, 0), SIMD3(-1, 0, 0), SIMD3(0, 1, 0), SIMD3(0, -1, 0), SIMD3(0, 0, 1),
+                SIMD3(0, 0, -1),
+            ] {
+                let m = n &+ d
+                guard all(m .>= low), all(m .<= high), !seen.contains(m), !solver.isSolid(m.x, m.y, m.z)
+                else { continue }
+                seen.insert(m)
+                let centre = (SIMD3<Float>(m) + 0.5) * c
+                if all(centre .> inside.min) && all(centre .< inside.max) {
+                    stack.append(m)
+                } else {
+                    leaks.append(m)
+                }
+            }
+        }
+        print("open cells reached from the cooker: \(seen.count); outside the flat: \(leaks.count)")
+        for m in leaks.prefix(40) {
+            let p = (SIMD3<Float>(m) + 0.5) * c - o
+            print(
+                String(
+                    format: "  leak at x %.3f y %.3f z %.3f (block coordinates; storey base %.3f)", p.x, p.y,
+                    p.z, z0))
+        }
+        return
+    }
     print(
         String(
             format: "%@: %d elements, %d joints, %.2f m air cells, %d frames to %.1f s",
@@ -106,6 +167,7 @@ func runPanelBlock(device: MTLDevice) throws {
                 format: ": %d elements intact, %d failed, deflection %.0f mm (largest %.0f mm)",
                 summary.activeElements,
                 summary.erodedElements, summary.maxDisplacement * 1000, largest * 1000)
+            if summary.hasBlownUp { line += " BLOWN UP" }
         }
         if let pairs = solver.bodies.first?.solids?.pairSummary() {
             line += String(
