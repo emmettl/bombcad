@@ -137,7 +137,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-19"
+    public static let currentTable = "standing-table-20"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -305,6 +305,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case hourglassWithoutSteel
     case interfaceBond
     case smearedMasonry
+    case profiledSheets
     case inclinedBars
     case baseConnections
     case jointsBetweenParts
@@ -395,6 +396,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .hourglassWithoutSteel: return !concrete.isEmpty && any { !$0.hourglassCapsSteel }
         case .interfaceBond: return any { $0.interfaceBond != nil }
         case .smearedMasonry: return materials.contains { $0.units != nil } && any { !$0.unitJoints }
+        case .profiledSheets: return any { $0.solidSheets.contains { $0 != nil } }
         case .inclinedBars: return any { !$0.inclinedBars.isEmpty }
         case .baseConnections:
             return any { s in
@@ -764,6 +766,14 @@ public enum StandingTable {
                 title: "Masonry without unit joints", affects: [.structuralDamage], limit: .approximation,
                 note: "Masonry is smeared as a weak concrete, without its mortar joints.",
                 document: "concrete-model.md#masonry-as-units-and-mortar-joints")
+        case .profiledSheets:
+            return Entry(
+                title: "Profiled steel sheeting", affects: [.structuralDamage], limit: .illustrative,
+                note: "Sheets are a skin with their ribs as beams, fixed to their rails and purlins without "
+                    + "pull-out. Against Langdon's corrugated panels the elastic peaks are 0.5–1.3 of those "
+                    + "measured, but plastic ones scatter from a tenth to three times, the connections give "
+                    + "way above 2 bar where the panels held, and local buckling is not modelled.",
+                document: "profiled-sheeting.md#against-langdons-corrugated-panels")
         case .inclinedBars:
             return Entry(
                 title: "Inclined bars", affects: structure, limit: nil,
@@ -965,6 +975,12 @@ public enum StandingTable {
         "EnvelopeConstruction.blockworkGrouted": .input,
         "EnvelopeConstruction.masonryStrengthMPa": .input,
         "EnvelopeConstruction.capMassKgPerM": .input,
+        "EnvelopeConstruction.wallSheet": .input,
+        "EnvelopeConstruction.roofSheet": .input,
+        "EnvelopeConstruction.sheetSpanM": .input,
+        "EnvelopeConstruction.sheetContinuous": .input,
+        "EnvelopeConstruction.screwsPerM": .input,
+        "EnvelopeConstruction.railThicknessM": .input,
         "Scenario.deflagration": .option([.deflagration]),
         "Scenario.ventPanels": .option([.ventPanels]),
         "Scenario.congestion": .option([.congestion]),
@@ -1067,6 +1083,7 @@ public enum StandingTable {
         "StructureModel.supportAnchorages": .option([.baseConnections, .footings]),
         "StructureModel.interfaceBond": .option([.interfaceBond]),
         "StructureModel.unitJoints": .option([.smearedMasonry]),
+        "StructureModel.solidSheets": .option([.profiledSheets]),
         "StructureModel.shellSectionShear": .option([.shellSectionShear]),
         "StructureModel.secondCracks": .option([.noSecondCracks]),
         "StructureModel.bareBars": .option([.noBareBars]),
@@ -2124,8 +2141,8 @@ struct StandingScene {
                         + "it breaks: "
                     : "with the air seeing the building whole and the inside a one-way fill: ")
                 + "glass breakage and its time, concrete panels' rotation between fixed and simply supported "
-                + "edges, and freestanding walls as cantilevers from their foot, as approximations; brick panels "
-                + "and the inside pressure through broken panes illustrative.",
+                + "edges, and freestanding walls as cantilevers from their foot, as approximations; brick panels, "
+                + "profiled steel sheeting and the inside pressure through broken panes illustrative.",
             evidence: [
                 StandingEvidence(
                     "UFC 3-340-02 §2-15.4's loads on the walls inside, through an open front window (16 cases, "
@@ -2176,6 +2193,10 @@ struct StandingScene {
                     + "one air grid.",
                 "Reinforced blockwork is judged as a concrete of the masonry's strength, graded by the "
                     + "concrete's limits; a freestanding wall's cap adds only the mass its construction gives.",
+                "Profiled steel sheeting spans one way between its rails or purlins by UFC 3-340-02's method for "
+                    + "cold-formed panels on the maker's effective section, graded by PDC-TR 06-08's limits for "
+                    + "deck whose membrane action its fixings limit, and blown off when its dynamic reaction passes "
+                    + "what its screws hold by EN 1993-1-3; no blast test of cladding or its fixings compared.",
                 "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
                     + "2° is flagged as beyond the one-way model.",
                 "Glass is annealed, on Moore's large-deflection plate, simply supported, breaking at E1300's "

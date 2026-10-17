@@ -16,12 +16,16 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
         /// Concrete blockwork with bars in its cells, grouted or not: judged as reinforced
         /// concrete of the masonry's strength (walls only).
         case reinforcedBlockwork
+        /// Profiled steel sheeting on rails or purlins, spanning one way between them
+        /// (`EnvelopePanel.profiledSheetOneWay`): a portal-frame shed's cladding and roof.
+        case profiledSteelSheeting
 
         public var label: String {
             switch self {
             case .reinforcedConcrete: "Reinforced concrete"
             case .unreinforcedMasonry: "Unreinforced masonry"
             case .reinforcedBlockwork: "Reinforced blockwork"
+            case .profiledSteelSheeting: "Profiled steel sheeting"
             }
         }
     }
@@ -73,6 +77,17 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
     /// A cap or canopy carried on a freestanding wall's top, kg per metre of wall: mass that moves
     /// with the top without holding it, as a slab on other walls would; nil for none.
     public var capMassKgPerM: Float?
+    /// Profiled steel sheeting: the walls' and the roof's profiles, by name from
+    /// `SheetProfile.library` (nil for the 32 mm wall and 45 mm roof profiles); the rails' and
+    /// purlins' spacing it spans, m (nil for 1.8); whether it is continuous over them (nil or
+    /// true) or a single span; and its screws per metre at each rail or purlin (nil for 3) into
+    /// steel this thick, m (nil for 2 mm).
+    public var wallSheet: String?
+    public var roofSheet: String?
+    public var sheetSpanM: Float?
+    public var sheetContinuous: Bool?
+    public var screwsPerM: Float?
+    public var railThicknessM: Float?
 
     public init(
         objectID: UUID, walls: Kind = .reinforcedConcrete, wallThicknessM: Float? = nil,
@@ -90,13 +105,30 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
         self.capMassKgPerM = capMassKgPerM
         self.objectID = objectID
         self.walls = walls
-        self.wallThicknessM = wallThicknessM ?? (walls == .unreinforcedMasonry ? 0.215 : 0.2)
+        self.wallThicknessM = wallThicknessM ?? Self.defaultThickness(walls)
         self.roof = roof
         self.roofThicknessM = roofThicknessM
         self.reinforcementRatio = reinforcementRatio
         self.glassThicknessM = glassThicknessM
         self.source = source
         self.detail = detail
+    }
+
+    /// The thickness a wall of `kind` takes unless said: 215 mm of masonry, a sheet's profile
+    /// depth, otherwise 200 mm.
+    public static func defaultThickness(_ kind: Kind) -> Float {
+        switch kind {
+        case .unreinforcedMasonry: 0.215
+        case .profiledSteelSheeting: SheetProfile.swedsteelSTW35.depth
+        case .reinforcedConcrete, .reinforcedBlockwork: 0.2
+        }
+    }
+
+    /// The sheeting's profile on the roof or the walls.
+    public func sheet(roof: Bool) -> SheetProfile {
+        let name = roof ? roofSheet : wallSheet
+        return SheetProfile.library.first { $0.name == name }
+            ?? (roof ? SheetProfile.swedsteelSTR45 : SheetProfile.swedsteelSTW35)
     }
 
     /// The walls' material for the concrete-like systems (reinforced concrete or blockwork): the

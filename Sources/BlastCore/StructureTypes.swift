@@ -678,6 +678,10 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// A body with both kinds is meshed as two, tied together where shells meet solid elements;
     /// `elementSize` is then the solid elements' size and `shellElementSize` the shells'.
     public var solidElementKind: [ElementKind?] = []
+    /// Profiled metal sheets, by index into `solids`: a solid with one is a sheet of that profile,
+    /// its ribs along the axis given, meshed as shells (`ProfiledSheet`) of its own material's
+    /// steel at the profile's yield. Encoded only when some solid has one.
+    public var solidSheets: [SheetAssignment?] = []
     /// In a body of both kinds, the shells' size; `elementSize` if nil.
     public var shellElementSize: Float?
     /// Layers of concrete (or other material) through the thickness of each shell.
@@ -887,11 +891,43 @@ public struct StructureModel: Sendable, Hashable, Codable {
         if solidMaterial.indices.contains(index) { solidMaterial.remove(at: index) }
         if solidElementKind.indices.contains(index) { solidElementKind.remove(at: index) }
         if solidSourceParts.indices.contains(index) { solidSourceParts.remove(at: index) }
+        if solidSheets.indices.contains(index) { solidSheets.remove(at: index) }
     }
 
-    /// How solid `index` is meshed.
+    /// How solid `index` is meshed: a profiled sheet always as shells.
     public func elementKind(of index: Int) -> ElementKind {
-        (solidElementKind.indices.contains(index) ? solidElementKind[index] : nil) ?? elementKind
+        if sheet(of: index) != nil { return .shell }
+        return (solidElementKind.indices.contains(index) ? solidElementKind[index] : nil) ?? elementKind
+    }
+
+    /// The profiled sheet solid `index` is, if it is one.
+    public func sheet(of index: Int) -> SheetAssignment? {
+        solidSheets.indices.contains(index) ? solidSheets[index] : nil
+    }
+
+    /// Makes solid `index` a profiled sheet, or (nil) a plain solid again.
+    public mutating func setSheet(_ sheet: SheetAssignment?, of index: Int) {
+        guard solids.indices.contains(index) else { return }
+        while solidSheets.count <= index { solidSheets.append(nil) }
+        solidSheets[index] = sheet
+        while solidSheets.last.map({ $0 == nil }) == true { solidSheets.removeLast() }
+    }
+
+    /// The same body with each profiled sheet built as `ProfiledSheet` builds it: its solid the
+    /// skin, as thick as the profile is deep, the ribs appended after the other solids. The
+    /// body as the shell solver meshes it.
+    public func expandingSheets() -> StructureModel {
+        guard solidSheets.contains(where: { $0 != nil }) else { return self }
+        var model = self
+        model.solidSheets = []
+        for index in solids.indices {
+            guard let sheet = sheet(of: index) else { continue }
+            ProfiledSheet(
+                profile: sheet.profile, region: solids[index], span: sheet.ribAxis, steel: material(of: index)
+            )
+            .build(in: &model, at: index)
+        }
+        return model
     }
 
     /// Meshes solid `index` with `kind`.
@@ -938,6 +974,7 @@ public struct StructureModel: Sendable, Hashable, Codable {
         part.solids = chosen.map { solids[$0] }
         part.solidMaterial = chosen.map { solidMaterial.indices.contains($0) ? solidMaterial[$0] : nil }
         part.solidReinforcement = chosen.map { reinforcement(of: $0) }
+        part.solidSheets = chosen.map { sheet(of: $0) }
         part.solidElementKind = []
         if kind == .shell, let shellElementSize { part.elementSize = shellElementSize }
         return part
@@ -1666,7 +1703,7 @@ extension StructureModel {
         case reinforcement, inclinedBars, solidReinforcement, solidMaterial, solidSourceParts
         case elementKind, shellLayers, supports, supportAnchorages, secondCracks
         case bareBars, removesFragments, crackSlip, bondSlip,
-            solidElementKind
+            solidElementKind, solidSheets
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
         case pressedInterlock, regimeOverride, loadingOverride, regimeDefaults
         case hourglassFollowsCracking, hourglassCapsSteel, discreteBars, barsAsTrusses, trussDiameter
@@ -1719,6 +1756,9 @@ extension StructureModel {
         }
         try container.encodeIfPresent(bondSlip, forKey: .bondSlip)
         try container.encode(solidElementKind, forKey: .solidElementKind)
+        if solidSheets.contains(where: { $0 != nil }) {
+            try container.encode(solidSheets, forKey: .solidSheets)
+        }
         try container.encodeIfPresent(shellElementSize, forKey: .shellElementSize)
         try container.encodeIfPresent(interfaceBond, forKey: .interfaceBond)
         try container.encode(unitJoints, forKey: .unitJoints)
@@ -1775,6 +1815,7 @@ extension StructureModel {
             try container.decodeIfPresent(Bool.self, forKey: .releasesCrushedBareHourglass) ?? false
         bondSlip = try container.decodeIfPresent(BondSlip.self, forKey: .bondSlip)
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
+        solidSheets = try container.decodeIfPresent([SheetAssignment?].self, forKey: .solidSheets) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)
         interfaceBond = try container.decodeIfPresent(SIMD2<Float>.self, forKey: .interfaceBond)
         unitJoints = try container.decodeIfPresent(Bool.self, forKey: .unitJoints) ?? true
