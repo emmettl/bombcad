@@ -139,7 +139,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-30"
+    public static let currentTable = "standing-table-31"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -1960,7 +1960,16 @@ struct StandingScene {
                     "Elastic bars and cantilevers",
                     "Wave speed, tip deflection and first period within 5% of "
                         + "theory", "validation.md#verification-against-theory"))
-            parts.append("steel verified against beam and wave theory, no test")
+            evidence.append(
+                StandingEvidence(
+                    "Steel struts buckling (blastbench buckling)",
+                    "Elastic buckling within 2% of Euler; at a slenderness near 1 about 1.5 times Eurocode 3's "
+                        + "resistance, the members being perfect (the unsafe side); an impact's buckled wavelength "
+                        + "1.03–1.20 times Lindberg's",
+                    "shell-model.md#buckling"))
+            parts.append(
+                "steel verified against beam, wave and buckling theory, no test; perfect members buckle about "
+                    + "half again later than Eurocode 3's near a slenderness of 1")
         }
         if classes.contains(.masonry) {
             level = max(level, .verified)
