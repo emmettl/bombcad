@@ -75,13 +75,30 @@ public enum PoulinCLTTest {
         plies == 3 ? (68.4e3, 0.0347, 2.1e6) : (128.6e3, 0.0236, 5.9e6)
     }
 
+    /// The outer lamella's stress at the static tests' peak (Table 4.1), by layered beam theory
+    /// with E1's moduli (11.7 GPa along, 390 MPa across): M z E / EI, with M = (R/2) (L/3) / b.
+    public static func staticRupture(plies: Int) -> Float {
+        let e: Float = 11.7e9
+        let t: Float = 0.035
+        let depth = t * Float(plies)
+        var stiffness: Float = 0
+        for l in 0..<plies {
+            let centre = (Float(l) + 0.5) * t - depth / 2
+            let modulus = l % 2 == 0 ? e : e / 30
+            stiffness += modulus * (t * t * t / 12 + t * centre * centre)
+        }
+        let moment = staticMeasured(plies: plies).load / 2 * (span / 3) / width
+        return moment * (depth / 2) * e / stiffness
+    }
+
     public static let span: Float = 2.235
     public static let width: Float = 0.445
     public static let loadedArea: Float = 3.55
     public static func movingMass(plies: Int) -> Float { plies == 3 ? 342.1 : 384.5 }
 
-    /// Grade E1's lamellae (PRG 320-2019, Tables A1 and A3: E 11,700 MPa along the panel; the
-    /// Canadian specified strengths along it, f_t 15.4 and f_c 19.3 MPa), the
+    /// Grade E1's lamellae (PRG 320-2019, Tables A1 and A3: E 11,700 MPa along the panel and the
+    /// Canadian specified compressive strength along it, 19.3 MPa), the fibres breaking at the
+    /// static tests' outer-lamella stress (`staticRupture`), the
     /// other moduli by its Annex X3 (E90 = E/30, G = E/16, G_R = G/10), raised to their means with
     /// the JCSS model's coefficients of variation as `TimberProperties.strengthClass` does; across
     /// the grain, in shear along it and in rolling shear, C24's (PRG 320's specified rolling
@@ -95,7 +112,8 @@ public enum PoulinCLTTest {
             rollingShearModulus: rollingScale * e / 160,
             lamellae: TimberProperties.crossLaminated(plies))
         let c24 = TimberProperties.strengthClass(.c24)
-        properties.tensionAlong = 15.4e6 * TimberProperties.lognormalMean(cov: 0.3)
+        // Calibrated on the static tests: the outer lamella's stress at their peak.
+        properties.tensionAlong = staticRupture(plies: plies)
         properties.compressionAlong = 19.3e6 * TimberProperties.lognormalMean(cov: 0.2)
         properties.rollingStrength = c24.rollingStrength
         properties.tensionAcross = c24.tensionAcross

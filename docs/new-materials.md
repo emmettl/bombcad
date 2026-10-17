@@ -160,7 +160,9 @@ not a detailed model.
 ## Order of work
 
 1. **Timber beams**: a one-axis law along the grain in beam fibres, with brittle tension, plastic
-   compression and a rate factor, judged against the Ottawa glulam beams.
+   compression and a rate factor, judged against the Ottawa glulam beams. *Done 17 October 2026*
+   ([shell model](shell-model.md#timber),
+   [validation](validation.md#glulam-beams-in-a-shock-tube)).
 2. **Timber shells**: ContinuumKit's orthotropic law ported to the shell layers and tested
    against the released Swift law, then the combined failure criterion, judged against the
    Ottawa CLT panels. Coordinate with Codex first, in case Edgerton's plywood resumes.
@@ -171,7 +173,7 @@ not a detailed model.
      ([shell model](shell-model.md#timber)).
    - It is compared with Poulin's panels
      ([validation](validation.md#cross-laminated-timber-panels-in-a-shock-tube)).
-   - Timber beams are still elastic along the grain (step 1).
+   - The fibres break at once, as the Ottawa members did.
 3. **Profiled sheeting** as a steel shell with rib beams, and a fastener law, judged against
    Langdon's panels and the cladding–girt tests.
 4. **Wall ties and joist bearings** for the terraced house, then the three building types as

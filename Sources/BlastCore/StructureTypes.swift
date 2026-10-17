@@ -65,8 +65,13 @@ public struct TimberProperties: Sendable, Hashable, Codable {
     public var shearStrength: Float = 1e30
     public var rollingStrength: Float = 1e30
     /// Fracture energies (J/m^2): breaking the fibres in tension, splitting (opening across the
-    /// grain), sliding along it and rolling shear.
-    public var fibreEnergy: Float = 60e3
+    /// grain), sliding along it and rolling shear. The fibres' is 0 by default: they break at
+    /// once, as the University of Ottawa's glulam beams and CLT panels did, at finger joints and
+    /// defects, and as Lacroix recommends for glulam (a brittle resistance curve). Clear wood's
+    /// 60 kJ/m^2 (Sandhaas and van de Kuilen) softened members over several times their breaking
+    /// strain, and they carried 12-25% more than measured. (ContinuumKit's `TimberFailure`
+    /// rejects a zero energy; a band too long for its energy breaks at once there too.)
+    public var fibreEnergy: Float = 0
     public var splittingEnergy: Float = 500
     public var shearEnergy: Float = 1200
     public var rollingEnergy: Float = 600
@@ -111,31 +116,35 @@ public struct TimberProperties: Sendable, Hashable, Codable {
     ///   Annex X3; the Studiengemeinschaft Holzleimbau's Glulam-Bulletin, 2019).
     /// - **Strengths:** the classes' characteristic values, raised to their means with the JCSS
     ///   Probabilistic Model Code's distributions (Part 3.5, 2006): bending lognormal with a CoV of
-    ///   0.25 (0.15 for glulam), tension along 1.2 times that, compression along 0.8 times it, shear
+    ///   0.25 (0.15 for glulam), which the fibres break at, compression along 0.8 times it, shear
     ///   and rolling shear the same, tension across Weibull at 2.5 times density's 0.1, and
     ///   compression across normal at 0.1. Rolling shear's characteristic value is 1.0 MPa (the
     ///   Glulam-Bulletin, under the German national annex).
-    /// - **Fracture energies:** spruce's (Sandhaas and van de Kuilen, HERON 58, 2013).
+    /// - **Fracture energies:** spruce's (Sandhaas and van de Kuilen, HERON 58, 2013) across the
+    ///   grain and in shear; along it the fibres break at once (`fibreEnergy`).
     /// - **Dynamic increase factor:** 1.4 on solid timber's strengths (CSA S850-12, as Poulin's
     ///   thesis quotes it; Jacques et al. 2014 found 1.41 on studs' rupture modulus) and 1.14 on
     ///   glulam's (Lacroix's thesis, 2017, for beams without finger joints in their outer
     ///   laminations). Cross-laminated timber takes 1.28 (`crossLaminatedPanel(_:of:)`).
     public static func strengthClass(_ grade: TimberGrade) -> TimberProperties {
         let glulam = grade == .gl24h || grade == .gl28h
-        // Characteristic strengths (MPa): tension and compression along, tension and compression
+        // Characteristic strengths (MPa): bending, compression along, tension and compression
         // across, shear; and mean moduli (MPa): E0, E90, G.
-        let (ft0, fc0, ft90, fc90, fv, e0, e90, g): (Float, Float, Float, Float, Float, Float, Float, Float) =
+        let (fm, fc0, ft90, fc90, fv, e0, e90, g): (Float, Float, Float, Float, Float, Float, Float, Float) =
             switch grade {
-            case .c16: (8.5, 17, 0.4, 2.2, 3.2, 8000, 270, 500)
-            case .c24: (14.5, 21, 0.4, 2.5, 4.0, 11000, 370, 690)
-            case .c30: (19, 24, 0.4, 2.7, 4.0, 12000, 400, 750)
-            case .gl24h: (19.2, 24, 0.5, 2.5, 3.5, 11500, 300, 650)
-            case .gl28h: (22.3, 28, 0.5, 2.5, 3.5, 12600, 300, 650)
+            case .c16: (16, 17, 0.4, 2.2, 3.2, 8000, 270, 500)
+            case .c24: (24, 21, 0.4, 2.5, 4.0, 11000, 370, 690)
+            case .c30: (30, 24, 0.4, 2.7, 4.0, 12000, 400, 750)
+            case .gl24h: (24, 24, 0.5, 2.5, 3.5, 11500, 300, 650)
+            case .gl28h: (28, 28, 0.5, 2.5, 3.5, 12600, 300, 650)
             }
         let bending: Float = glulam ? 0.15 : 0.25
         var properties = TimberProperties(
             alongGrain: e0 * 1e6, acrossGrain: e90 * 1e6, shearModulus: g * 1e6, rollingShearModulus: g * 1e5)
-        properties.tensionAlong = ft0 * 1e6 * Self.lognormalMean(cov: 1.2 * bending)
+        // The fibres break at the bending strength: members under a blast bend, and in bending
+        // timber breaks at its rupture modulus, about 1.6 times its strength in pure tension
+        // (JCSS: E[R_t,0] = 0.6 E[R_m]), so a member in pure tension is that much too strong.
+        properties.tensionAlong = fm * 1e6 * Self.lognormalMean(cov: bending)
         properties.compressionAlong = fc0 * 1e6 * Self.lognormalMean(cov: 0.8 * bending)
         properties.tensionAcross = ft90 * 1e6 * Self.weibullMean(cov: 0.25)
         properties.compressionAcross = fc90 * 1e6 / (1 - 1.645 * 0.1)
@@ -625,6 +634,10 @@ public struct PressureLoad: Sendable, Hashable {
     /// For shells, each element's share of the pressure, in the mesh's order (a line load
     /// spread over the elements under it); nil for all of it everywhere.
     public var elementShares: [Float]?
+    /// For shells and beams, each node's share of the table as a force (N per Pa of the table),
+    /// pushing against the loaded faces' outward normal, in the mesh's node order: a load the
+    /// beams take; nil for none.
+    public var nodeShares: [Float]?
 
     public init(axis: Int, positiveSide: Bool, history: [SIMD2<Float>]) {
         self.axis = axis

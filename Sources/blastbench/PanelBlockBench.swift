@@ -32,13 +32,14 @@ func runPanelBlock(device: MTLDevice) throws {
     // `--storeys 3`: a lower block, for trying things quickly.
     // `--vent 3`: the gas flat's windows going at 3 kPa rather than 25.
     var scenario =
-        option("storeys") == nil && option("vent") == nil
+        option("storeys") == nil && option("vent") == nil && option("gas") == nil
         ? preset.scenario
         : LargePanelBlock.scenario(
             which, name: preset.title,
             storeys: option("storeys").flatMap { Int($0) } ?? LargePanelBlock.storeys,
             windowRelease: option("vent").flatMap { Float($0) }.map { $0 * 1000 }
-                ?? LargePanelBlock.windowRelease)
+                ?? LargePanelBlock.windowRelease,
+            gas: option("gas").flatMap(FlammableGas.init(rawValue:)) ?? .townGas)
     if flag("standing") {
         // What the app shows for the preset: each result's standing, and what is not compared.
         var inputs = StandingInputs(scenario: scenario, cellSize: option("dx").flatMap { Float($0) } ?? 0.125)
