@@ -139,7 +139,7 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
     /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-36"
+    public static let currentTable = "standing-table-37"
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -1984,8 +1984,10 @@ struct StandingScene {
                     "Wave speed, tip deflection and first period within 5% of "
                         + "theory", "validation.md#verification-against-theory"),
                 StandingEvidence(
-                    "Steel struts against Eurocode 3's buckling curves a, b and c, bowed by default",
-                    "0.97–1.02 of the design resistance over slenderness 0.2–2", "shell-model.md#buckling"),
+                    "Steel struts buckling (blastbench buckling)",
+                    "Straight, elastic buckling within 2% of Euler; bowed by default, 0.97–1.02 of Eurocode 3's "
+                        + "curves a, b and c over slenderness 0.2–2; an impact's buckled wavelength 1.03–1.20 times "
+                        + "Lindberg's", "shell-model.md#buckling"),
                 StandingEvidence(
                     "Nassr's steel beams and columns in the open (W150 and W200, 50–250 kg of ANFO)",
                     "Beams 0.59–1.23 of the measured deflection, columns 0.35–1.68: within a quarter on the "
@@ -2092,6 +2094,12 @@ struct StandingScene {
                 "Independent bodies meet through contact between their nodes, the spring and damper of contact "
                     + "within a body, checked for momentum and energy but never against a test; they must start "
                     + "apart and never bond.")
+        }
+        // Open faces too near: their reflections move the response after the positive phase.
+        if let note = inputs.scenario.tightFacesNote {
+            resolution.append(
+                note + " On Tyndall's CLT building a domain this tight gave 29 mm at the first storey where "
+                    + "18 mm is converged.")
         }
         let configuration = inputs.configuration
         if configuration.airSleepThreshold > 0 || configuration.airSleepCrossings > 0 {

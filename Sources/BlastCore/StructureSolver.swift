@@ -852,6 +852,7 @@ public final class StructureSolver {
     /// Restores the undeformed, stress-free, stationary body.
     public func reset() {
         time = 0
+        settledDisplacements = nil
         failureGateBuffer.contents().storeBytes(of: 0, as: UInt32.self)
         failedAtCheckpoint = nil
         memset(contactForceBuffer.contents(), 0, contactForceBuffer.length)
@@ -1416,9 +1417,21 @@ public final class StructureSolver {
         return total
     }
 
+    /// Each node's displacement in the shape it settled to under its own weight
+    /// (`BlastSolver.settleStructures()`), from which `summary()` measures; nil when not settled.
+    public private(set) var settledDisplacements: [SIMD3<Float>]?
+
+    /// Records the present shape as the one the structure settled to, so that deflections are
+    /// measured from it.
+    public func recordSettledShape() {
+        mutateNodes { nodes in settledDisplacements = nodes.map(\.displacement) }
+    }
+
     /// Scans the mesh for damage and deflection. Costs a pass over the lattice on the CPU.
     public func summary() -> StructureSummary {
         var summary = StructureSummary()
+        let settled = settledDisplacements
+        var sagSquared: Float = 0
         let instances = instanceBuffer.contents().bindMemory(to: UInt32.self, capacity: max(elementCount, 1))
         let flags = flagBuffer.contents().bindMemory(to: UInt8.self, capacity: ex * ey * ez)
         var maxSquared: Float = 0
@@ -1440,13 +1453,17 @@ public final class StructureSolver {
                 let (i, j, k) = elementCoordinates(index)
                 for corner in 0..<8 {
                     let (a, b, c) = (i + (corner & 1), j + ((corner >> 1) & 1), k + ((corner >> 2) & 1))
-                    let squared = simd_length_squared(nodes[nodeIndex(a, b, c)].displacement)
+                    let node = nodeIndex(a, b, c)
+                    let rest = settled?[node] ?? .zero
+                    let squared = simd_length_squared(nodes[node].displacement - rest)
                     if !squared.isFinite { summary.hasBlownUp = true }
                     maxSquared = max(maxSquared, squared)
+                    sagSquared = max(sagSquared, simd_length_squared(rest))
                 }
             }
         }
         summary.maxDisplacement = maxSquared.squareRoot()
+        summary.selfWeightSag = sagSquared.squareRoot()
         return summary
     }
 
