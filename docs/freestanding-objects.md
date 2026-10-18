@@ -292,7 +292,18 @@ pieces in the room now move up to 5 mm differently out of 0.13–1.9 m. And load
 the blocks' order, not the pool's, so a run repeats to the bit (the room's had parted after
 0.05 s). Over the scenes' first 0.1 s on the CI Mac mini (base M4, shared with other work, so
 indicative), the coupling's time fell from 3 to 1 s in the pen, 41 to 13 s in the room and 66
-to 32 s in the car park, against the air's 14, 85 and 225 s there.
+to 32 s in the car park, against the air's 14, 85 and 225 s there. At the scenes' full lengths,
+free, on the same Mac:
+
+| Scene | Simulated | Coupling before / after | A step before / after | Run before / after |
+| --- | ---: | ---: | ---: | ---: |
+| Car park with parked cars | 0.5 s | 611 / 155 s | 56 / 15 ms | 1,417 / 771 s |
+| Furnished room | 0.3 s | 67 / 21 s | 13 / 4.1 ms | 155 / 85 s |
+| Crowded pen | 0.3 s | 8 / 3 s | 3.4 / 1.3 ms | 17 / 11 s |
+
+The car park's run before shared the Mac with more work (load averages of 12 to 25 against 3 to
+8), which flatters the change there; the room's and the pen's ran alike. Held, reading the loads
+alone, the coupling fell from 48 to 34 s, 9 to 3 s and 2 to 1 s.
 
 Motion and contact together stay under 1% of the time even for 48 boxes; mechanics alone, 256
 boxes take 39 ms a step (the contact table above). No throughput is promised from these figures.
