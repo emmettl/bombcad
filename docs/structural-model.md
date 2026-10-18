@@ -152,13 +152,15 @@ How it works (`BlastSolver.settleStructures()`):
   deformation, stresses and any cracking from its own weight stay.
 - **Falling bodies:** a body that is still moving after 1 s, such as one falling or not standing,
   is put back undeformed. It then starts as it did before.
-- **Chattering joints** (since 18 October 2026): a body whose nodes still move at 1 s but whose
+- **Still, if not quiet** (since 18 October 2026): a body whose nodes still move at 1 s but whose
   displacement over the last 5 ms part has stood still, its mean speed over the part (the change
-  of its displacement over the part's time) within 1% of the largest, has settled all the same. A
-  joint on a footing chatters at rest: the nodes it ties move at a few cm/s and microns, the
-  footing's and the body's oscillation never damped out between the joint and the footing's own
-  motion, and the frame on a hillside's footings stalled at 1.3% of its largest speed, level
-  footings too. Bodies that settled before the limit settle as they did.
+  of its displacement over the part's time) within 1% of the largest, has settled all the same.
+  Bodies that settled before the limit settle as they did. It was added for bodies on footings,
+  whose joints chattered at rest at a few cm/s and microns and never came below 1%: the joint
+  was worked out from the scene's positions, tens of metres rounded to microns, and its stiffness
+  turned the rounding into a fresh traction every step. It is now worked out from displacements
+  ([footings](#footings)), and the frame on a hillside settles in 0.18 s; the rule stays for any
+  other body that rings without moving.
 
 It is left out, so that the run is as before, bit for bit:
 - with the option off;
@@ -852,6 +854,16 @@ stepped across a 1 in 4 slope ("Two-storey frame on a hillside"). The footing's 
 the level footing's (Gazetas has no slope factor), the soil's radiation is the level
 half-space's, the pressure at rest is Jáky's for level ground, and cohesive soil's own slope
 factor (Vesić's 1 − 2β / (π + 2) on cohesion) is not needed, the soil being sand.
+
+**The joint to the footing** is worked out from displacements alone (`footingJoint`): the
+point's place relative to the footing's top as its own displacement less the footing's and less
+how the footing's turning has carried it, never as the difference of two positions. A scene's
+positions are tens of metres, rounded to microns in single precision, and the joint's stiffness
+(E/h, 2.4 × 10¹¹ Pa/m for concrete on 0.125 m elements) turned that rounding into about a
+megapascal of traction, fresh every step: a frame on footings 26 m from the origin chattered at
+rest at 4-8 cm/s and never settled (until 18 October 2026). Rerun since, FoRCy's slow test moved
+by under 0.004 in its moment ratios and FoRDy's shaken events by up to 2.4 mrad in their peak
+rotations ([validation](validation.md#a-footing-shaken-on-dry-sand)).
 
 **Not modelled.** The footing is rigid, rectangular and flat-bottomed. Embedded, the soil
 against its sides is springs with limits, its rocking past their reach a spring on the footing
