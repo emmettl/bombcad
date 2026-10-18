@@ -53,6 +53,8 @@ import simd
 //                      [--elastic | --elastic-share 0.12 --memory 0 --heave 0]   (the sand's settling; also for shaking)
 //   blastbench shaking [--tests ssg04-dsw,ssg04-shw,ssg03-dsw] [--shear 80] [--bearing 814] [--samples Samples/FoRDy]
 //                      [--history out-%.csv] [--massless] [--damping 0.2]   (a wall on a footing shaken at its base, against FoRDy's SSG03/SSG04)
+//   blastbench hillside [--mass 500] [--dx 0.25] [--duration 0.1] [--every 0.01]
+//                       (the two-storey frame on a hillside, each column's footing set in the slope)
 //   blastbench gravity [--preset office] [--time 0.3] [--damping 50]
 //                      (a layout's structure under gravity alone, damped: stands, deflects or falls)
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mass kg] [--fit-reach Z]
@@ -142,6 +144,7 @@ func preset(named name: String?) -> ScenarioPreset {
     case "warehouse": .portalWarehouse
     case "terraced": .terracedHouses
     case "hub": .transportHub
+    case "hillside": .hillsideFrame
     default: .streetCanyon
     }
 }
@@ -5555,6 +5558,7 @@ do {
     case "facade": try runFacade(device: device)
     case "walloffset": try runWallOffset(device: device)
     case "house": try runHouse(device: device)
+    case "hillside": try runHillside(device: device)
     case "lacroix": try runLacroix(device: device)
     case "nassr": try runNassr(device: device)
     case "beam": try runBeam()

@@ -2947,3 +2947,43 @@ kernel void shellPairGather(const device float4 *pairState [[buffer(0)]],
     }
     contact[n] = force;
 }
+
+// On a terrain, after the node pass: a shell or beam node that falls onto it lands there as on
+// the floor (`shellNodes`), the ground's height the terrain's under it; one buried at rest is held
+// no deeper than it started. Held, prescribed, tied and connected nodes are left to their supports.
+// Dispatched only over a terrain.
+kernel void shellTerrainLanding(device ShellNode *nodes [[buffer(0)]],
+                                const device float4 *reference [[buffer(1)]],
+                                constant ShellUniforms &u [[buffer(2)]],
+                                const device StepControl &control [[buffer(3)]],
+                                const device uint *anchorStart [[buffer(4)]],
+                                constant TerrainUniforms &t [[buffer(5)]],
+                                const device float *heights [[buffer(6)]],
+                                uint n [[thread_position_in_grid]]) {
+    if (n >= u.nodeCount) {
+        return;
+    }
+    bool active;
+    float dt = shellStep(u, control, active);
+    if (!active || u.groundFriction < 0.0f) {
+        return;
+    }
+    ShellNode node = nodes[n];
+    if (node.mass <= 0.0f || (node.flags & (15u | shellTied | shellOnSolid)) != 0u
+        || (u.anchored != 0 && anchorStart[n + 1] > anchorStart[n])) {
+        return;
+    }
+    float3 rest = reference[n].xyz;
+    float3 displacement = float3(node.displacement);
+    float3 velocity = float3(node.velocity);
+    float buried = max(terrainHeight(rest.xy, t, heights) - rest.z, 0.0f);
+    float ground = terrainHeight(rest.xy + displacement.xy, t, heights) - buried;
+    if (rest.z + displacement.z >= ground) {
+        return;
+    }
+    displacement.z = ground - rest.z;
+    velocity.z = max(velocity.z, 0.0f);
+    velocity.xy *= max(0.0f, 1.0f - u.groundFriction * dt);
+    nodes[n].displacement = displacement;
+    nodes[n].velocity = velocity;
+}
