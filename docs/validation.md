@@ -2796,10 +2796,10 @@ Cross-Laminated Timber Structures* (Karagozian & Case TR-17-17.1, for WoodWorks,
 - **The joints:** the walls' bases are held at the slab, and the panels are joined rigidly where
   they meet (the tests' screwed angles are not rigid).
 - **The rest:** the door and the boarded window are closed. The building settles under its
-  weight. Air of 0.25 m refined by 2, recommended air, over a domain of 36 × 20 × 12 m with the
-  front 30 m along it. `blastbench tyndall --pad 6,2,0` gives the same faces but the one behind
-  the building, 2 m further out, which does not move the front
-  ([open faces near a structure](air-blast-model.md#open-faces-near-a-structure)).
+  weight. Air of 0.25 m refined by 2, recommended air. Every open face is 4 m/kg^(1/3) from the
+  charge and the building ([open faces near a
+  structure](air-blast-model.md#open-faces-near-a-structure)): `blastbench tyndall --tests n
+  --pad back,side,top` with 9,4.5,6, 12,7,9 and 17,12.5,14 m for tests 1 to 3.
 - **The load compared:** the reflected pressure on the front's centre, its impulse over the
   positive phase (from the shock's arrival to the first return below ambient), and the incident
   pressure at ground level on the same arc, 7 m to the side, against the report's free-field
@@ -2807,34 +2807,34 @@ Cross-Laminated Timber Structures* (Karagozian & Case TR-17-17.1, for WoodWorks,
 
 | Test | Reflected peak (kPa), measured / model | Impulse (kPa ms) | Incident peak (kPa) | Incident impulse (kPa ms) | First storey, in / rebound (mm), measured | Model | Second storey, measured | Model | Damage, test / model |
 |---|---|---|---|---|---|---|---|---|---|
-| 1, 14.5 kg | 34.8 / 25.1 | 137 / 140 | 16.6 / 12.3 | 75 / 66 | 28 / −45 | 18 / −24 | 21 / −35 | 23 / −30 | superficial / some layer at full damage, nothing removed |
-| 2, 30.4 kg | 54.7 / 39.5 | 227 / 223 | 23.8 / 20.7 | 124 / 102 | 50 / −70 | 29 / −36 | 37 / −55 | 35 / −43 | superficial / some layer at full damage, nothing removed |
-| 3, 90.3 kg | 91.0 / 88.2 | 450 / 472 | 35.5 / 39.2 | 230 / 204 | 99 / −155 | 113 / −101 | 78 / −98 | 78 / −91 | moderate, first-storey front cracked / 66 elements removed |
+| 1, 14.5 kg | 34.8 / 25.1 | 137 / 140 | 16.6 / 12.3 | 75 / 71 | 28 / −45 | 18 / −24 | 21 / −35 | 29 / −27 | superficial / some layer at full damage, nothing removed |
+| 2, 30.4 kg | 54.7 / 39.5 | 227 / 223 | 23.8 / 20.7 | 124 / 115 | 50 / −70 | 31 / −36 | 37 / −55 | 41 / −42 | superficial / some layer at full damage, nothing removed |
+| 3, 90.3 kg | 91.0 / 88.1 | 450 / 473 | 35.5 / 39.2 | 230 / 237 | 99 / −155 | 159 / −133 | 78 / −98 | 106 / −110 | moderate, first-storey front cracked / 64 elements removed |
 
 **What it shows:**
 - **The load:**
   - The front's impulse over its positive phase is within 5% of the report's on all three
-    tests. An earlier harness integrated every positive pressure to the end of the run, the
-    reflections off the ground and the building's own rear included, and read 54–76% high;
-    that gap was the harness's.
+    tests, and the incident impulse within 8%. An earlier harness integrated every positive
+    pressure to the end of the run, the reflections off the ground and the building's own rear
+    included, and read 54–76% high; that gap was the harness's.
   - The reflected peak is 3–28% low and the incident peak up to 26% low on the lighter charges,
-    as peaks are on coarse air ([blast loads](#blast-loads-against-empirical-references)). The
-    incident impulse is 11–18% low.
-- **The domain matters to the first storey:** in the harness's first domain (32 × 16 × 12 m, the
-  front at 24 m; no `--pad`), test 1 has the same positive-phase impulse (140 kPa ms) but its
-  first storey goes in 29 mm against 18 mm here; the second storey 25 against 23 mm. The side
-  faces, too near, deepen the front's negative phase and drive its second swing; faces 4 m/kg^(1/3)
-  out give the 18 mm found here ([open faces near a structure](air-blast-model.md#open-faces-near-a-structure)).
-- **First storey inbound:** 0.58–0.64 of measured on tests 1 and 2, and 14% high on test 3,
-  where the front broke more than it did in the test.
-- **Second storey:** within 10% on all three.
-- **Rebound:** 51–93% of measured, least at the first storey. The real walls swung back
-  further: the screwed angles at their bases and the floors give, where the model's joints are
-  rigid.
-- **A first full-scale check of timber with the air:** with the load's impulse matched, the
-  second storey agrees and the first storey's span is too stiff under the lighter charges and
-  too weak under the heaviest. The connections, modelled rigid, are the first suspect for both
-  the lighter charges and the rebound; the late flow's dependence on the domain is the second.
+    as peaks are on coarse air ([blast loads](#blast-loads-against-empirical-references)).
+- **The domain matters to the walls' later swings:** in the harness's first domain (32 × 16 ×
+  12 m, the charge 1.1 m from the face behind it), test 1's first storey went in 29 mm and test
+  3's 113 mm, against 18 and 159 mm here, with the same positive-phase load. Faces too near
+  reflect the grazing blast as a rarefaction that drives the wall's second swing; at 4 m/kg^(1/3)
+  the results no longer move ([open faces near a
+  structure](air-blast-model.md#open-faces-near-a-structure)).
+- **First storey inbound:** 0.62–0.64 of measured on tests 1 and 2, and 1.6 times on test 3,
+  where the front broke (64 elements removed) more than it did in the test.
+- **Second storey:** 1.1–1.4 times measured.
+- **Rebound:** 51–112% of measured, least at the first storey under the lighter charges. The
+  real walls swung back further there: the screwed angles at their bases and the floors give,
+  where the model's joints are rigid.
+- **A first full-scale check of timber with the air:** with the load matched, the first storey's
+  span is too stiff under the lighter charges and too weak once it cracks under the heaviest,
+  and the second storey too soft throughout. The connections, modelled rigid, are the first
+  suspect.
 
 ## Terraced houses against wartime bomb damage
 
