@@ -28,12 +28,17 @@ enum DistrictGlass {
         var strips: [Strip]
     }
 
-    /// GEER-070's façades (DesignSafe layer; data/Beirut2020/SURVEY.md §3.1): the share W1 or
-    /// worse by distance band, from 500 m, for the bands' printout.
-    static let geer: [(from: Double, to: Double, damaged: Double)] = [
-        (500, 750, 0.84), (750, 1000, 0.62), (1000, 1250, 0.39), (1250, 1500, 0.35), (1500, 1750, 0.38),
-        (1750, 2000, 0.28), (2000, 2500, 0.26), (2500, 3000, 0.11),
+    /// GEER-070's façades (DesignSafe layer; data/Beirut2020/SURVEY.md §3.1) by distance band, from
+    /// 500 m: the share W1 or worse (some windows broken) and the share W3 (nearly every window,
+    /// door and frame blown out), for the bands' printout.
+    static let geer: [(from: Double, to: Double, damaged: Double, blownOut: Double)] = [
+        (500, 750, 0.84, 577.0 / 750), (750, 1000, 0.62, 357.0 / 1298), (1000, 1250, 0.39, 301.0 / 1737),
+        (1250, 1500, 0.35, 449.0 / 2565), (1500, 1750, 0.38, 126.0 / 1380), (1750, 2000, 0.28, 6.0 / 386),
+        (2000, 2500, 0.26, 78.0 / 534), (2500, 3000, 0.11, 12.0 / 290),
     ]
+
+    /// A side counted as blown out, against GEER's W3: nine in ten of its panes expected broken.
+    static let blownOutFraction = 0.9
 
     static func save(
         to folder: URL, loads: [EnvelopeComponentLoad], objects: [SceneObject], distance: (UUID) -> Double,
@@ -64,7 +69,7 @@ enum DistrictGlass {
 
     /// Each building's façade sides' glass under `mix` (nil: the mix each was given), and its distance.
     static func judge(_ folder: URL, mix override: GlazingMix?) throws -> [(
-        distanceM: Double, sides: [GlazingBreakage]
+        distanceM: Double, mix: String, sides: [GlazingBreakage]
     )] {
         let index = try JSONDecoder().decode(
             Index.self, from: Data(contentsOf: folder.appending(path: "strips.json")))
@@ -85,29 +90,61 @@ enum DistrictGlass {
                 + mix.breakage(netPa: net, binS: strip.binS, areaM2: strip.areaM2)
         }
         return index.buildings.indices.map { n in
-            (index.buildings[n].distanceM, sides[n].keys.sorted().map { sides[n][$0]! })
+            (
+                index.buildings[n].distanceM, override?.name ?? index.buildings[n].mix,
+                sides[n].keys.sorted().map { sides[n][$0]! }
+            )
         }
     }
 
-    /// By the GEER bands: the share of panes broken, and the mean chance that a side has some broken.
-    static func bands(_ judged: [(distanceM: Double, sides: [GlazingBreakage])]) -> [(
-        from: Double, to: Double, panes: Double, sidesAny: Double, geer: Double
+    /// By the GEER bands: the share of panes broken, the mean chance that a side has some broken
+    /// (against GEER's W1 or worse) and the share of sides blown out (against its W3).
+    static func bands(_ judged: [(distanceM: Double, mix: String, sides: [GlazingBreakage])]) -> [(
+        from: Double, to: Double, panes: Double, sidesAny: Double, sidesBlown: Double, geer: Double,
+        geerBlown: Double
     )] {
         geer.map { band in
             let sides = judged.filter { $0.distanceM >= band.from && $0.distanceM < band.to }.flatMap(\.sides)
             let total = sides.reduce(GlazingBreakage(), +)
-            let any = sides.isEmpty ? 0 : sides.reduce(0) { $0 + $1.anyBroken } / Double(sides.count)
-            return (band.from, band.to, total.fraction, any, band.damaged)
+            let count = Double(max(sides.count, 1))
+            let any = sides.reduce(0) { $0 + $1.anyBroken } / count
+            let blown = Double(sides.filter { $0.fraction >= blownOutFraction }.count) / count
+            return (band.from, band.to, total.fraction, any, blown, band.damaged, band.blownOut)
         }
     }
 
-    static func printBands(_ title: String, _ judged: [(distanceM: Double, sides: [GlazingBreakage])]) {
-        print("\(title): panes broken, sides with some broken, GEER's façades damaged")
+    static func printBands(
+        _ title: String, _ judged: [(distanceM: Double, mix: String, sides: [GlazingBreakage])]
+    ) {
+        let total = judged.flatMap(\.sides).reduce(GlazingBreakage(), +)
+        print(
+            String(
+                format: "%@: %.0f m² of glass broken of %.0f m² (%.0f of %.0f panes)", title, total.brokenM2,
+                total.glazedM2, total.broken, total.panes))
+        // Inside 3 km, the reach of the surveys, by mix: the glass assumed and the glass broken.
+        let near = judged.filter { $0.distanceM < 3000 }
+        for mix in Set(near.map(\.mix)).sorted() {
+            let glass = near.filter { $0.mix == mix }.flatMap(\.sides).reduce(GlazingBreakage(), +)
+            print(
+                String(
+                    format: "  inside 3 km, %@: %d buildings, %.0f m² of glass, %.0f m² broken (%.2f)", mix,
+                    near.filter { $0.mix == mix }.count, glass.glazedM2, glass.brokenM2,
+                    glass.glazedM2 > 0 ? glass.brokenM2 / glass.glazedM2 : 0))
+        }
+        let inside = near.flatMap(\.sides).reduce(GlazingBreakage(), +)
+        print(
+            String(
+                format: "  inside 3 km: %d buildings, %.0f m² of glass, %.0f m² broken (%.2f)", near.count,
+                inside.glazedM2, inside.brokenM2, inside.glazedM2 > 0 ? inside.brokenM2 / inside.glazedM2 : 0)
+        )
+        print(
+            "\(title): panes broken, sides with some broken | GEER W1+, sides blown out (\(blownOutFraction)) | GEER W3"
+        )
         for band in bands(judged) {
             print(
                 String(
-                    format: "  %4.0f–%4.0f m  %.2f  %.2f  %.2f", band.from, band.to, band.panes,
-                    band.sidesAny, band.geer))
+                    format: "  %4.0f–%4.0f m  %.2f  %.2f | %.2f  %.2f | %.2f", band.from, band.to, band.panes,
+                    band.sidesAny, band.geer, band.sidesBlown, band.geerBlown))
         }
     }
 

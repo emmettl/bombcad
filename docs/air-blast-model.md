@@ -227,25 +227,70 @@ air (next) it does not.
 
 ### A finely resolved start
 
-`SolverConfiguration.mappedCharge` starts a lone charge from a one-dimensional solution
-instead of the balloon. The blast is solved with spherical symmetry (the same MUSCL–Hancock
-and HLLC scheme, with the face areas 4πr² and the pressure's geometric source), on a radial
-grid of a few millimetres, from a sphere of the charge's own size (TNT's density), until its
-shock reaches 0.8 of the distance to the nearest block, structure or open face, at most 16
-cells; a charge on the ground spreads as one of twice the mass, mirrored. The state is then
-laid onto the grid (each cell averaged over 64 samples, the radial momentum turned into
-vectors) and the clock set to the time that took. Gauges and cells the shock has already
-passed take their histories, peaks and impulses from the one-dimensional solution.
+Since 18 October 2026 a lone charge starts from a one-dimensional solution instead of the
+balloon (`SolverConfiguration.mappedCharge`, on in `recommended` and, with afterburning and hot
+air, in the app's runs; a project saved before then keeps the balloon). The blast is solved with
+spherical symmetry (the same MUSCL–Hancock and HLLC scheme, with the face areas 4πr² and the
+pressure's geometric source), on a radial grid of a twentieth of the charge's radius, from a
+sphere of the charge's own size (TNT's density). It reaches as far as it can before meeting
+anything: 0.8 of the distance to the nearest block, structure, ground that is not flat or open
+face, at most 64 cells and 6 m/kg^(1/3). A charge on the ground spreads as one of twice the
+mass, mirrored. The state is then laid onto the grid (each cell averaged over 64 samples, the
+radial momentum turned into vectors) and the clock set to the time that took. Gauges, cells and
+the injury plane (`configureExposurePlane`) the shock has already passed take their histories,
+peaks, impulses and arrivals from the one-dimensional solution. Where it cannot reach three
+cells, or with dissociating air, gravity, sub-grid mixing, radiative cooling, the afterburning
+limit or more than one charge, the balloon starts it instead.
 
-The one-dimensional solver keeps its energy within 1% and, from a point source, spreads as
-Sedov and Taylor say within 8%. On the Kingery–Bulmash comparison (on 0.5 m cells, mapped out
-to 8 m) the incident peaks inside the mapped region read 116% to 131% instead of 57% to 66%:
-no longer smeared, but now high, as an ideal gas expanding from the charge's own size does
-next to a real explosive. Beyond the mapped region nothing changes: within a couple of metres
-the grid smears the shock again as much as before (62% to 73% from 9 m out, against 62% to
-69%). So it gives exact one-dimensional records close in and a correct start, but no lasting
-gain in resolution; refinement of the grid near the shock (below) does that. It is off by
-default, and only for a single charge, an ideal gas and no afterburning.
+**Its gas.** The one-dimensional solution has the air's own gas, the ideal gas or hot air (the
+same vibrational energy, in double precision), and with afterburning carries the products and the
+air's oxygen and burns them at the grid's rate. A fine grid mixes the fireball far less than the
+coarse cells mix the balloon's, so it diffuses the products and oxygen with an eddy diffusivity
+κ W^(1/3), κ = 16 m²/s/kg^(1/3): fitted once, on 10 kg on 0.5 m cells, and checked on 1 and 100
+kg and 0.25 m cells. With it, hot air and afterburning the one-dimensional burst gains just what
+its products burn (to 1%; `MappedChargeTests`).
+
+**Against Kingery–Bulmash** (`blastbench validate --mass`, incident; see
+[Validation](validation.md#the-mapped-start-18-october)), from 1 m/kg^(1/3):
+
+| | Balloon | Mapped |
+|---|---|---|
+| 10 and 100 kg, 0.25–0.5 m cells | 32–84% | 83–117% |
+| 1 kg, 0.25 and 0.5 m cells | 11–47% | 63–99% |
+| 10 kg, 0.5 m refined once / twice | 29–69% / 48–83% | 72–109% at both |
+
+- **Impulse:** within 5–15% at every grid beyond 1 m/kg^(1/3). It holds beyond the mapped radius,
+  so nothing is counted twice. Refined, the patches placed at the restart take their coarse
+  cells' impulse again once the passage is laid down (`Refinement.reseedImpulseBase`); without
+  that the impulse beyond 6 m was lost (5–38%).
+- **Close in:** at 0.5–0.75 m/kg^(1/3) the incident impulse reads 125–175%, where
+  Kingery–Bulmash rests on few tests.
+- **Reflected peaks:** on a wall, with the start held back by it, within a few points of the
+  balloon's, and as low: the grid still smears the reflection.
+- **Past the mapped radius:** the grid smears the shock again over a few metres: 100 kg on
+  0.25 m cells, mapped 12.8 m out (0.8 of the way to the domain's top), reads 83–86% at 18–23 m.
+
+**The injury reach** at standing height (10 kg on 0.25 m cells, `InjuryFieldTests`) comes to
+0.80 and 0.65 of the free field's for the lungs' threshold and 50% lethality, against the
+balloon's 0.69 and 0.50; the eardrums' are unchanged at 0.84–0.86. Standing height is still short
+of a surface burst's ground-level curves close in, where the wave off the ground arrives apart.
+
+**Its cost** is the one-dimensional solution's own, on the CPU before the run: about 4 s out to 4
+m/kg^(1/3) and 8 s to 6 on an M4 Max, whatever the charge (`blastbench mapped-cost`), which the
+run advisor adds (`RunCost.mappedStartSeconds`). It is solved once for each charge, gas and
+reach and kept (the last four), so a scene run again starts at once. The solver is its own
+module (`RadialBlast`), built optimised even for tests, which would otherwise take many minutes
+over it. In the app the solution stops at half the run's duration if its shock has not reached
+the radius by then, so that a short run still steps the grid (`BlastSolver.mappedStartLatest`).
+Without the cap in scaled distance, a small charge on coarse cells would be solved hundreds of
+charge radii out, for many minutes.
+
+**The comparisons of structures** (slabs, walls, rooms, envelopes and the rest) were run on the
+balloon start. Their harnesses are pinned to it (`SolverConfiguration.balloonStart`) until each
+is run again ([the list](validation.md#still-on-the-balloon-start)).
+
+**Sharing.** Neither ContinuumKit nor Edgerton has a one-dimensional solver. `SphericalBlast`
+can be extracted into ContinuumKit, by its process, if another project needs a resolved start.
 
 ### Hot air
 
@@ -608,6 +653,36 @@ shocks" switch (ratio 2) and, under it, "Twice over again" (two levels); `blastb
   street, and moves the peaks of `validate` up by 1 to 2.5%, towards Kingery–Bulmash, and
   impulses and arrivals under 1%; close in, where every substep is taken, nothing changes (see
   [Performance](performance.md#refinement)).
+- **Held beside envelopes and structures (options, off by default).** Refinement follows the shock
+  and leaves a building once the shock has passed. Two options hold it in a band about each
+  object while the air there is loaded past so many pascals:
+  - `refinementHoldsEnvelopes`, beside the envelope recorder's faces (see
+    [building envelopes](building-envelopes.md#surface-exposure-and-loads));
+  - `refinementHoldsStructures`, a cell beyond each structure's solids as built;
+    `blastbench … --hold-structures 100`.
+
+  For structures it does not pay. On Tyndall's CLT building, test 1, in a domain at the open
+  faces' clearance, 0.5 m cells refined by 2 against uniform 0.25 m cells (18 October 2026):
+
+  | Air | Front reflected peak | Front positive phase | First storey, in / rebound | Second storey, in / rebound | Run |
+  |---|---|---|---|---|---|
+  | uniform 0.25 m | 25.2 kPa | 137.2 Pa s | 17 / −22 mm | 27 / −26 mm | 13 s |
+  | refined, threshold 0.1 | 19.7 kPa | 137.8 Pa s | 15 / −21 mm | 28 / −23 mm | 13 s |
+  | the same, held at 100 Pa | 21.2 kPa | 135.7 Pa s | 15 / −21 mm | 27 / −22 mm | 20 s |
+  | refined, threshold 0.02 | 25.2 kPa | 137.0 Pa s | 16 / −22 mm | 27 / −22 mm | 15 s |
+  | the same, held at 100 Pa | 25.2 kPa | 137.0 Pa s | 16 / −22 mm | 27 / −23 mm | 17 s |
+
+  The measured positive phase was 137 Pa s.
+  - **What sets the peak at the building is the threshold.** The shock reaches it at about
+    13 kPa, below threshold 0.1's reach of 20 kPa, so the shock crosses the building's cells
+    unrefined. Held, the band refines the air only within a cell of the wall, too late to
+    sharpen a shock that has already crossed 22 m of coarse cells. At 0.02 the refinement
+    follows the shock to the building and gives the uniform grid's peak without a band.
+  - **The structure's response barely moves:** within 1 mm, at 13–54% more time.
+  - **Wu's slab S8 (1.6 kg at 0.5 m)** moved by 0.1 mm at 18% more time.
+
+  The standing's bands, which take the cells the shock is on as it passes, and the advisor's
+  choice of threshold already capture this, so neither option is in the defaults.
 - **Exactness.** It is all done on the GPU, with no round trip to the CPU between steps, and
   every sum runs in a fixed order: runs repeat exactly, uniform air refined everywhere stays
   exactly uniform, and mass and energy in a closed box are conserved to rounding (within 10⁻⁴,

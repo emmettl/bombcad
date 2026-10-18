@@ -36,17 +36,120 @@ m/kg^(1/3) with W in kg (K × 0.3967), for TNT-equivalent weight (`KFactorDistan
 | K328 | 130.1 | — | Non-essential personnel at intentional detonations, not less than 381 m | §C5.18.6.3 |
 
 The **minimum safe distance** is never shorter than the published distance that applies: the
-inhabited building distance (K40), and for a cased charge DoD's default hazardous fragment
-distance for items not tested, Table AP2.T2's "open" column (`107.87 + 24.14 ln Q` m under 45.4 kg,
+inhabited building distance (K40); for a charge inside a building (within an envelope's or a
+structure's bounds), DESR 6055.09's distance for debris from a structure (Edition 1 Change 2, Table
+V3.E3.T2's "Structure" column: 61 m to 14.1 kg, `-251.87 + 118.56 ln Q` m to 204.1 kg, 381 m
+above); and for a cased charge DoD's default hazardous fragment distance for items not tested, Table AP2.T2's "open" column (`107.87 + 24.14 ln Q` m under 45.4 kg,
 not less than 71.9 m; `-251.87 + 118.56 ln Q` m to 204.1 kg; 381 m above). BombCAD's own
 [hazardous fragment distance](fragments.md#hazard) is shown beside them as an **estimate**: it
 reads short of DoD's test-derived distances by a sixth to a half
 ([fragments.md](fragments.md#against-dods-distances)), so it governs only where it is the larger.
-The summary says which governs. A bare charge in the open takes K40 (DoD 4145.26-M
+BombCAD's own [envelope debris distance](#debris-from-failed-envelope-components) is likewise an
+estimate beside them, governing only where larger. The summary says which governs. A bare charge in the open takes K40 (DoD 4145.26-M
 §C5.8.1.7.1.8).
 
 These are distances for a bare charge in the open: they do not see the scene's buildings,
 channelling or shielding, which the run's own fields below do.
+
+## Debris from failed envelope components
+
+When envelope damage judges a wall, roof or pane failed, it throws its debris (`EnvelopeDebris`,
+since 18 October 2026), and the run's hazards judge where it lands as they judge fragments:
+hazardous where more than one piece of 79 J or more lands per 55.7 m² (DDESB TP-21 §4.2), in the
+fragments' rings and sectors.
+
+- **Launch speed:** the one-way model's own speed at failure, UFC 3-340-02 §4-58.2.1 (Equation
+  4-187: the load's impulse less the resistance's, over the effective mass), at the point of
+  largest deflection. A piece elsewhere on the component takes that times its place on the
+  mechanism's shape, as UFC says: "from a maximum at the point of maximum deflection to zero at
+  the supports" ([equivalent loads](building-envelopes.md#envelope-components-and-their-pressure-histories)).
+- **When it fails:**
+  - masonry, when it has lost its resistance (fallen);
+  - glass, when it breaks;
+  - concrete, as it passes 10° of support rotation;
+  - CLT, as it passes ductility 2;
+  - sheeting, when its screws pull off, at the furthest of its rebound.
+- **After failure:** concrete, masonry and timber fly at that speed ("the maximum velocity of the
+  fragment after failure vf is equal to the maximum velocity of the element at incipient failure
+  vi"): broken up, the gas leaves round them. Glass and sheets, thin and whole, go on being pushed
+  by the load still on them until it turns, as the [glazing hazard](building-envelopes.md) takes
+  a pane.
+- **Direction:** each section turns about the held edge nearest it, so each piece leaves square
+  to its section as turned at failure (10° for concrete), towards that edge. The upper half of a
+  wall leaves a little upwards, the lower half a little downwards, and a toppling wall's bricks
+  downwards.
+- **Pieces** (assumptions):
+  - masonry: its bricks, 215 × 65 mm through a leaf;
+  - concrete: rubble cubes of half its thickness;
+  - annealed glass: 50 mm shards; laminated glass: the pane whole;
+  - sheeting: a metre of sheet between rails;
+  - CLT: 0.3 m strips.
+
+  Each component's face is sampled 16 × 16 ways, each sample standing for its share of the pieces.
+- **Flight:** with the fragments' drag (a tumbling body of its mean presented area) through still
+  air. Pieces stop on the scene's blocks and on the buildings' solids that did not fail, and land on
+  the ground or terrain.
+
+In the app the debris's rings join the fragments' under Display, and the Hazards section gives its
+line and the minimum safe distance with it. Headless, it is a `Hazards:` line, with
+`--envelope-damage`. `blastbench envelope-debris` runs the Kasun cubicle below;
+`blastbench envelope-walls` runs Keys's walls.
+
+**Against measurement:**
+- **Keys's brick walls** (Keys, 2016; 41 kg TNT at 10.6–15 m, 2 m single-leaf walls falling as
+  cantilevers, `Fixtures/Keys2016`): their debris's mass-weighted mean reach is 0.25–0.53 m from
+  the wall's face, against 0.23–0.64 m measured; the median 0.25 m, as measured; 90% within
+  0.25–0.75 m against 1.25–2.25 m; the furthest 0.5–1.5 m against 3–6 m. Bricks that bounce and
+  roll are not modelled, so the far tail is short. None lands with 79 J (a brick falling 2 m
+  carries about 55 J), so none is hazardous.
+- **The Kasun cubicle** (Norwegian and Swedish tests: 2 × 2 × 2 m inside, 0.15 m reinforced
+  concrete, 80 kg inside):
+  - launch: the walls and roof fail at 2.6–2.8 ms, their pieces leaving at up to 118–131 m/s,
+    against the Klotz Group's debris launch velocity, 525 √(γ L / M) = 124 m/s (Weerheijm and
+    Conway, IESS 2018);
+  - venting: the failed walls and roof open in the air from 2.6 ms, and the gas leaves. The
+    overpressure inside, 12.9 MPa at 2 ms, is 61 kPa at 5 ms, 25 kPa at 20 ms and 1 kPa at
+    30 ms. Shut, it stays at 12–18 MPa.
+  - reach: hazardous debris to 129 m, its furthest hazardous piece at 258 m, against the tests'
+    1 per 56 m² at 290–315 m (Kummer, IESS 2018, Fig. 11; the Klotz Group's tool 260 m). That is
+    under half, the unsafe side. Here the pieces are 1 kg cubes leaving within 10° of square to
+    their sections; the tests' spread of sizes and angles is not modelled. DESR's structure
+    distance for 80 kg, 268 m, governs the minimum safe distance.
+- **Kasun III's launch speeds** (the same cubicle, its bars 12 mm at 100 mm in both faces; Weerheijm,
+  Stolz, Riedel and Mediavilla, TU Delft repository, Table 2, from high-speed film). PETN is taken
+  as 1.27 TNT, and the bench builds the cubicle with these bars (1.5% of the section). At failure,
+  at the largest deflection:
+
+  | Charge | Measured, mean (least) | The model | The Klotz Group's formula |
+  |---|---|---|---|
+  | 6.9 kg PETN | 52 m/s (29) | 44–49 m/s | 41 m/s |
+  | 110 kg PETN | 224 m/s (173) | 171–192 m/s | 164 m/s |
+
+  The light charge reads 0.84–0.95 of the measured mean, the heavy one 0.76–0.86, near its
+  least. At 14 kg/m³ the shock adds to the gas pressure that the one-way model is driven by.
+
+**Why Kasun's reach is short** (18 October 2026). `blastbench envelope-debris --levers` throws the same
+failed walls with one thing changed at a time, at 80 kg:
+
+| Changed | Hazardous to | Furthest hazardous piece |
+|---|---|---|
+| Nothing (1 kg cubes, 10° off square) | 129 m | 258 m |
+| Cubes of 0.3 kg / 8.1 kg / 32 kg | 189 / 73 / 41 m | 208 / 349 / 400 m |
+| Drag halved / doubled | 142 / 129 m | 349 / 176 m |
+| Launched square / 20° / 45° off it | 60 / 172 / 189 m | 57 / 334 / 348 m |
+
+No one lever reaches the tests' 290–315 m. Small pieces give the density but not the range;
+large ones the range but not the density. The tests had both, a spread of sizes and of angles,
+which the model has not. The open record does not give the spread:
+- Kasun's piece masses, their pickup by distance, and any bounce and roll are in the FOI and
+  Forsvarsbygg reports (FOI-R--2202--SE for 80 kg), which are to be ordered;
+- the Kasun III database is in a DDESB seminar paper that could not be reached;
+- DDESB TP-21 treats bounce and roll only in words.
+
+MSIAC's plot of Kasun's inhabited building distances (van der Voort et al., IESS 2018) reads about
+330–380 m near 80 kg, longer still. The model is left as it is, its reach recorded as under half,
+and DESR's structure distance stands under it. The reports wanted are in
+[Data wanted](data-wanted.md#to-request).
 
 ## Injury
 
@@ -115,6 +218,11 @@ not a probe.
 - No tertiary injury (a person thrown against something: UFC 3-340-02 names 2.3 psi as where
   people in the open may be thrown off balance) and no quaternary injury; fragments and debris
   are [their own hazards](fragments.md#hazard).
+- **Envelope debris:**
+  - its pieces' sizes are assumed;
+  - launch angles come only from the sections' turn at failure;
+  - pieces neither bounce, roll nor break on landing;
+  - against the Kasun tests its hazardous reach is under half.
 - One standing height (1.5 m); probes beside a solid are not read, and close in the cells' peaks
   read low.
 - K-factor distances: the primary charge only, as a bare charge in the open; additional charges
@@ -128,6 +236,8 @@ not a probe.
 - Whole-body translation (tertiary injury), if open data supports a criterion.
 - Probes at a prone height, and a person against each wall read from the wall's own surface
   pressures.
+- Envelope debris: a mass distribution by loading density (DDESB TP-14 Revision 5, not open in
+  full); launch angles spread as tests show; bounce and roll.
 
 ## Sources
 
@@ -139,5 +249,17 @@ not a probe.
   Defence Research Establishment: Bowen's and Bass's curves, and their distances (Table 12.1).
 - I. G. Bowen, E. R. Fletcher and D. R. Richmond, *Estimate of man's tolerance to the direct
   effects of air blast*, DASA-2113, 1968 (as Teland gives it).
+- DESR 6055.09, *DoD Explosives Safety Regulation*, Edition 1 Change 2 (2025), Table V3.E3.T2:
+  the hazardous fragment distances, "Open" and "Structure".
+- DDESB Technical Paper 21, Revision 2 (Swisdak, Tatom and Conway, 2017), §4.2: the hazardous
+  debris density, 1 per 55.7 m² at 79 J.
+- UFC 3-340-02 (2008) §4-57 and §4-58.2.1: post-failure fragments and their velocity (Equation 4-187).
+- J. Weerheijm and R. Conway, *The Klotz Group contribution to explosives safety*, NDIA IESS 2018:
+  the debris launch velocity; S. Kummer, *A fast running model for lethality due to wall debris
+  throw from above ground magazines*, NDIA IESS 2018, Fig. 11: the Kasun tests' debris density.
+- R. A. Keys, *Experimental & computational structural analysis of masonry panels subject to long
+  duration blast loading*, PhD thesis, University of Southampton, 2016, and R. Keys and S. K.
+  Clubley, *Engineering Structures* 130 (2017) 229–241: the brick walls' debris
+  (`Fixtures/Keys2016`).
 - C. R. Bass, K. A. Rafaels and R. S. Salzar, Pulmonary injury risk assessment for short-duration
   blasts, *Journal of Trauma* 65 (2008) 604–615 (as Teland gives it).

@@ -19,6 +19,8 @@ public struct EnvelopeWallFailure: Sendable {
         public var lostPast: Double
         /// +1 for the load as recorded, -1 turned (a cantilever's other way).
         public var sign: Double
+        /// Yielded either way, not only inward (concrete, `EnvelopeDamageAssessment.concreteDuctility`).
+        public var eitherWay = false
     }
 
     public var systems: [System]
@@ -40,7 +42,8 @@ public struct EnvelopeWallFailure: Sendable {
         func concrete(_ sdof: SDOFSystem, rotationSpan: Double, sign: Double = 1) -> System {
             System(
                 sdof: sdof, yieldPast: sdof.equivalentElasticDeflection,
-                rotationPast: tan(failedRotation) * rotationSpan, lostPast: .infinity, sign: sign)
+                rotationPast: tan(failedRotation) * rotationSpan, lostPast: .infinity, sign: sign,
+                eitherWay: !EnvelopeDamageAssessment.concreteInwardOnly)
         }
         // Profiled sheeting between its rails or purlins, whatever the component's size: failed past
         // PDC-TR 06-08's hazardous limit, ductility 6 or 4° of support rotation, whichever comes

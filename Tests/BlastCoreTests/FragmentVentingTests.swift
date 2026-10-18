@@ -25,7 +25,8 @@ struct FragmentVentingTests {
     }
 
     func vented(_ scene: Scenario, holes: [String: Double]) throws -> BlastSolver {
-        var config = SolverConfiguration.recommended
+        // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+        var config = SolverConfiguration.recommended.balloonStart
         config.airSleepThreshold = 0
         let solver = try BlastSolver(
             device: #require(MTLCreateSystemDefaultDevice()), scenario: scene, cellSize: 0.25,

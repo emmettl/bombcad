@@ -191,7 +191,8 @@ func runEnvelopeWalls(device: MTLDevice) throws {
                 [EnvelopeComponentHistory].self,
                 from: Data(contentsOf: from.appending(path: "\(wallCase.id).json")))
         } else {
-            var configuration = SolverConfiguration.recommended
+            // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+            var configuration = SolverConfiguration.recommended.balloonStart
             configuration.airSleepThreshold = 0
             configuration.airSleepCrossings = 0
             let solver = try BlastSolver(
@@ -228,6 +229,39 @@ func runEnvelopeWalls(device: MTLDevice) throws {
                         format: "    the app's assessment (%@): %.2f°, %@%@", wallCase.construction.detail,
                         app.rotationDeg.upperBound, app.levels.upperBound.label,
                         app.failedAtS.map { String(format: ", fallen at %.2f s", $0) } ?? ""))
+                // What it throws, landed, mass-weighted by distance from its face towards the
+                // charge, in Keys's 0.5 m bins from 2 m in front.
+                if let debris = EnvelopeDebris.make(
+                    loads: [load], components: [app], centre: wallCase.scenario.charge.position,
+                    ambient: Primitive(density: 1.225, pressure: 101_325)),
+                    let source = debris.sources.first
+                {
+                    let face = load.region.min[load.axis]
+                    var masses = [Float](repeating: 0, count: 400)
+                    for impact in debris.impacts where impact.surface == "ground" {
+                        let bin = Int(
+                            ((impact.position[load.axis] - face + 2) / MasonryDebrisTests.binWidth).rounded(
+                                .down))
+                        if masses.indices.contains(bin) {
+                            masses[bin] += impact.count * Float(source.pieceKg)
+                        }
+                    }
+                    let spread = MasonryDebrisTests.Spread(firstBin: -2, masses: masses)
+                    print(
+                        String(
+                            format:
+                                "    thrown: %.0f kg in %.0f pieces of %.2f kg, fastest %.1f m/s, mean %.1f m/s; landed %@",
+                            source.massKg, source.pieces, source.pieceKg, source.fastestMS, source.meanMS,
+                            spread.description))
+                    if let trial = MasonryDebrisTests.trials.first(where: { "keys-\($0.id)" == wallCase.id })
+                    {
+                        print(
+                            "    measured debris: "
+                                + MasonryDebrisTests.Spread(firstBin: trial.firstBin, masses: trial.masses)
+                                .description)
+                    }
+                    print("    " + debris.summary)
+                }
             }
             let tail =
                 wallCase.masonry

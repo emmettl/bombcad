@@ -2237,6 +2237,14 @@ kernel void prepareStep(device StepControl &control [[buffer(0)]],
         control.activeTiles = tiles;
     }
     float fastest = as_type<float>(atomic_load_explicit(maxSpeed, memory_order_relaxed));
+    // A cell whose density has fallen to nothing reads a wave speed that is NaN, or negative from
+    // a negative density, and either outranks every real speed in the bitwise maximum; the step
+    // would then be far longer than the air allows (a refined district once took steps of 0.6 s
+    // where 3 ms were right). The batch stops there instead, unstable.
+    if (!(fastest >= 0.0f) || isinf(fastest)) {
+        control.stopped = 3;
+        control.maxOverpressure = NAN;
+    }
     float dt = u.cfl * u.dx / max(fastest, 1e-6f);
     if (u.maxStep > 0.0f) {
         dt = min(dt, u.maxStep);
@@ -2949,7 +2957,7 @@ struct EnvelopeWallSystem {
     float sign;
     uint first;
     uint count;
-    uint pad0;
+    uint eitherWay;  // 1: yielded either way (concrete), not only inward
     uint pad1;
 };
 
@@ -3046,7 +3054,8 @@ kernel void stepEnvelopeWalls(const device float2 *current [[buffer(0)]],
             v += 0.5f * h * (load - r - s.damping * v) / (kick * s.mass);
             peak = max(peak, x);
             rebound = min(rebound, x);
-            if (!failed && ((peak > s.yieldPast && max(peak, -rebound) > s.rotationPast) || fabs(x) >= s.lostPast)) {
+            float yieldedBy = s.eitherWay != 0 ? max(peak, -rebound) : peak;
+            if (!failed && ((yieldedBy > s.yieldPast && max(peak, -rebound) > s.rotationPast) || fabs(x) >= s.lostPast)) {
                 failed = true;
                 if (!cantilever || k == judged) {
                     float t = clock.x - control.dt + float(i + 1) * h;

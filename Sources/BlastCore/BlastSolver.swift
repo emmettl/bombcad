@@ -1,5 +1,6 @@
 import Foundation
 import Metal
+import RadialBlast
 import simd
 
 /// GPU finite-volume solver for the compressible Euler equations around rigid obstacles.
@@ -29,6 +30,13 @@ public final class BlastSolver {
     /// batch: the steps' times it gives are the same however the run is batched.
     private var clockTicks: UInt64 = 0
     private var exposurePlane: ExposurePlane?
+    /// The one-dimensional solution a charge was mapped from, where it was and how far it reached,
+    /// for an exposure plane set up after it (`configureExposurePlane`); nil otherwise.
+    var mappedStart: (blast: SphericalBlast, centre: SIMD3<Float>, radius: Float)?
+    /// The latest a mapped start may begin, s: its one-dimensional solution stops there should the
+    /// shock not have reached its radius yet, so that a short run still steps the grid. Nil for no
+    /// limit; the app sets half the run's duration. Takes effect at the next `load`.
+    public var mappedStartLatest: Double?
     private var exposureNeedsInitialSample = false
     private(set) var envelopeExposure: EnvelopeExposure?
     private var envelopeNeedsInitialSample = false
@@ -40,7 +48,8 @@ public final class BlastSolver {
 
     /// Records stationary voxel-face exposure. Deformable reference bodies observed must be fully
     /// pinned; other bodies may move, and never take the air beside the faces recorded (see
-    /// `keepAir`). Must be configured at time zero after loading. Ordinary runs allocate no recorder.
+    /// `keepAir`). Must be configured before the first step after loading. Ordinary runs allocate no
+    /// recorder.
     public func configureEnvelopeExposure(objects: [SceneObject]) throws {
         let mask = try stationaryMask(observing: objects)
         let exposure = try EnvelopeExposure(
@@ -65,28 +74,51 @@ public final class BlastSolver {
         applyFacadeBand()
     }
 
-    /// The air beside the component recorder's faces (their fluid cells and a cell round them), in
-    /// which refinement is held while loaded (`SolverConfiguration.refinementHoldsEnvelopes`).
+    /// The air beside the component recorder's faces (their fluid cells and a cell round them),
+    /// and about each structure's solids (a cell beyond them), in which refinement is held while
+    /// loaded (`SolverConfiguration.refinementHoldsEnvelopes`, `refinementHoldsStructures`).
     private var facadeBand: MTLBuffer?
 
-    /// Sets the band on each refined level, or takes it off.
+    /// Sets the band on each refined level, or takes it off. The structures' part follows their
+    /// solids as built, not as they move: it is made afresh whenever the levels are.
     private func applyFacadeBand() {
-        guard let threshold = configuration.refinementHoldsEnvelopes,
-            let recorder = envelopeComponentRecorder,
-            !refinementLevels.isEmpty
-        else {
+        let envelopes = configuration.refinementHoldsEnvelopes.flatMap { threshold in
+            envelopeComponentRecorder.map { ($0, threshold) }
+        }
+        let structures = configuration.refinementHoldsStructures.flatMap { threshold in
+            bodies.isEmpty ? nil : (bodies.map(\.model), threshold)
+        }
+        guard envelopes != nil || structures != nil, !refinementLevels.isEmpty else {
+            facadeBand = nil
             for level in refinementLevels {
                 level.facadeBand = nil
                 level.facadeBandParameters.on = 0
             }
             return
         }
-        if facadeBand == nil,
-            let buffer = device.makeBuffer(length: max(1, grid.cellCount), options: .storageModeShared)
-        {
+        let threshold = min(envelopes?.1 ?? .infinity, structures?.1 ?? .infinity)
+        if facadeBand == nil {
+            facadeBand = device.makeBuffer(length: max(1, grid.cellCount), options: .storageModeShared)
+        }
+        if let buffer = facadeBand {
             let band = buffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
             memset(band, 0, grid.cellCount)
-            for face in recorder.faces {
+            for model in structures?.0 ?? [] {
+                for solid in model.solids {
+                    // The cells whose centres lie within a cell of the solid.
+                    let low = simd_max(SIMD3<Int>(((solid.min / grid.cellSize) - 1.5).rounded(.up)), .zero)
+                    let high = simd_min(
+                        SIMD3<Int>(((solid.max / grid.cellSize) + 0.5).rounded(.down)),
+                        SIMD3(grid.nx, grid.ny, grid.nz) &- 1)
+                    guard all(low .<= high) else { continue }
+                    for k in low.z...high.z {
+                        for j in low.y...high.y {
+                            for i in low.x...high.x { band[grid.index(i, j, k)] = 1 }
+                        }
+                    }
+                }
+            }
+            for face in envelopes?.0.faces ?? [] {
                 let index = Int(face.fluid)
                 let cell = SIMD3(index % grid.nx, (index / grid.nx) % grid.ny, index / (grid.nx * grid.ny))
                 for dz in -1...1 {
@@ -388,13 +420,14 @@ public final class BlastSolver {
         return envelopeComponentRecorder?.histories(elapsed: time)
     }
 
-    /// The air's mask at time zero, for the envelope recorders observing `objects`. Envelopes are
-    /// stationary; a detailed structure observed as one (a damage reference's) must be pinned, with
+    /// The air's mask before the first step, for the envelope recorders observing `objects`.
+    /// Envelopes are stationary; a detailed structure observed as one (a damage reference's) must be pinned, with
     /// every other body, while beside envelopes alone other bodies may move.
     private func stationaryMask(observing objects: [SceneObject]) throws -> UnsafeBufferPointer<UInt8> {
         precondition(!batchInFlight, "Cannot configure observers during a batch")
         let observesStructures = objects.contains { $0.structure != nil }
-        guard time == 0, experimentalBoxes.isEmpty,
+        // Before the first step: a mapped start's clock starts at its solution's time.
+        guard stepCount == 0, experimentalBoxes.isEmpty,
             !observesStructures
                 || bodies.allSatisfy({ body in
                     var fixed = true
@@ -412,7 +445,7 @@ public final class BlastSolver {
                     }
                     return fixed
                 })
-        else { throw BlastError.allocationFailed("stationary envelope observation at time zero") }
+        else { throw BlastError.allocationFailed("stationary envelope observation before the first step") }
         return UnsafeBufferPointer(
             start: maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount),
             count: grid.cellCount)
@@ -454,10 +487,16 @@ public final class BlastSolver {
     public func configureExposurePlane(heightM: Float, arrivalThresholdPa: Float, spacingM: Float? = nil)
         throws
     {
-        precondition(!batchInFlight && time == 0, "Configure probes before stepping")
-        exposurePlane = try ExposurePlane(
+        precondition(!batchInFlight && stepCount == 0, "Configure probes before stepping")
+        let plane = try ExposurePlane(
             device: device, library: library, grid: grid, height: heightM,
             threshold: arrivalThresholdPa, spacing: spacingM)
+        // A charge mapped from one dimension has already passed the plane within its mapped radius:
+        // there it takes the solution's own peak, impulse and arrival.
+        if let mappedStart {
+            plane.seed(mappedStart.blast, centre: mappedStart.centre, radius: mappedStart.radius)
+        }
+        exposurePlane = plane
         exposureNeedsInitialSample = true
     }
 
@@ -1871,7 +1910,7 @@ public final class BlastSolver {
     /// body without gravity, with motion set by the scene, or no longer as loaded (moved, set
     /// moving or broken since).
     public func settleStructures() {
-        guard configuration.settlesStructures, !structuresSettled, time == 0, stepCount == 0,
+        guard configuration.settlesStructures, !structuresSettled, stepCount == 0,
             ProcessInfo.processInfo.environment["BOMBCAD_SETTLE"] != "off"
         else { return }
         precondition(!batchInFlight, "Cannot settle while a batch is in flight")

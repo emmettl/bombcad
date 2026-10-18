@@ -82,7 +82,7 @@ swift run -c release blastbench perimeter --study wall
 | Inside buildings     | [UFC 3-340-02 §2-15](#inside-buildings-against-ufc-3-340-02s-loads-through-openings), its own charts' data: through an open window the air's back-wall load 0.74–1.22 of the UFC's, the side walls and the front's inside 0.31–0.67; the one-way fill 0.95–1.35 of the UFC's leakage fill and 0.15–0.42 of its back-wall load | A design method, not measurement; head-on, rigid, open windows |
 | Fragments            | [Cooper (1996)](#fragments-against-coopers-data): his worked Mott and Gurney examples to rounding; one counted cast-iron bomb within a factor of 1.36 (rms) by Mott's form, 1.12 by Grady's; drag now the measured curve for tumbling cubes, 5% from the previous law. Hazard distance 0.43–0.84 of DoD 4145.26-M's test-derived distances for two items, in flight |  Masses either way within a factor of 1.4 (moderate, one test); hazard distance short by a sixth to a half (the unsafe side; moderate); launch speeds untested (low) |
 | Ground shock         | Xia et al. (2022), 1 t of TNT on the ground, accelerations 0.5 m deep at 21 and 42 m: the vertical velocity from the manuals' relation and the layered soil column 20 to 30 times the measured accelerations' integral at 21 m and 50 to 80 times at 42 m, within three times a velocity gauge that clipped; the measured motion mostly horizontal, at ranges near and past where the ground's wave outruns the air; the soil not measured. An elastic half-space about the charge, with a direct source calibrated against UFC 3-340-01: the horizontal within 1.5 times at 21 m but 18 times at 42 m, the vertical still 15 to 60 times. With soil that yields (compaction and a Mohr–Coulomb cone, the source the crater's energy): the horizontal 2.1 to 2.4 times at 21 m and 10 to 11 times at 42 m, the vertical 16 to 90 times, the fall-off R^(−1.5) against the measured R^(−3.3) to R^(−3.8) | Far too high in the vertical, the safe side; the horizontal motion that dominated not modelled, the unsafe side; illustrative |
-| A district           | [Beirut, 2020](#a-district-beirut-2020): 14,169 map buildings over 5 km at 4 m; the shock's arrival at Rigby's 30 observers best at 0.5 kt (median 0.98 of observed; 25 of 27 from 400 m out within 10%); peaks 0.68–0.78 of Kingery–Bulmash at 4 m; one typical pane a storey breaks inside 1.25 km where GEER's street survey found 0.39–0.84 of façades damaged, its edge (1.1–2.2 km by the glass assumed) about Rigby 2024's 1.86 km; stone (0.5 m, carrying the storeys above) failing where GEER found partial collapse and cracked to about 1.2 km | Arrival times good; peaks low (the cells); glass moderate, set by the glass assumed more than the yield; structure illustrative (one construction for all) |
+| A district           | [Beirut, 2020](#a-district-beirut-2020): 14,169 map buildings over 5 km at 4 m; the shock's arrival at Rigby's 30 observers best at 0.5 kt (median 0.98 of observed; 25 of 27 from 400 m out within 10%); peaks 0.68–0.78 of Kingery–Bulmash at 4 m; one typical pane a storey breaks inside 1.25 km where GEER's street survey found 0.39–0.84 of façades damaged, its edge (1.1–2.2 km by the glass assumed) about Rigby 2024's 1.86 km; glass converged by 4 m (3 m within 0.03), a mix of panes by building giving the tail beyond 2 km, GEER's W3 beyond 1.5 km but every façade blown out inside 1.25 km; structure under-damaged: 0.5 m stone cracks but rarely falls where GEER found partial collapse, 0.2 m concrete hardly damaged beyond 750 m where GEER's RC was D1–D3 to 2 km, and not converged at 3 m | Arrival times good; peaks low (the cells); glass moderate, set by the glass assumed more than the yield; structure low, the unsafe side (one construction for all, not converged) |
 | Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 1–2%, structural responses 4–20%, residual deflections and failure 17–28%; the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
 
 No structural result has yet been shown to converge on today's defaults: the meshes quoted as
@@ -4450,6 +4450,89 @@ pressure is now held within a factor of two of the two sides'. And Keys' free-fi
 summed over the whole 3 s record, which the copying faces' draining had hidden; it is now the
 positive phase's, as the test's gauges give it.
 
+#### The mapped start (18 October)
+
+The fine one-dimensional start ([air-blast model](air-blast-model.md#a-finely-resolved-start))
+became the default on 18 October, on top of afterburning, hot air and far-field faces. Its mixing,
+κ = 16 m²/s/kg^(1/3), was fitted once, on 10 kg on 0.5 m cells, and checked on the rest. Outputs are
+on StudioData under `bombcad/mapped-start`.
+
+Against Kingery–Bulmash, a 100 kg surface burst on uniform grids (`blastbench validate`), as a
+percentage of the reference (the mapped start's bands' tables):
+
+| Range | Z | Incident peak: 0.5 m | 0.25 m | 0.125 m | Incident impulse: 0.5 m | 0.25 m | 0.125 m | Reflected peak: 0.5 m | 0.25 m | 0.125 m | Reflected impulse: 0.5 m | 0.25 m | 0.125 m |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 3.5 m | 0.75 | 119% | 115% | 116% | 128% | 127% | 127% | 15% | 32% | 57% | 70% | 85% | 96% |
+| 4.6 m | 1 | 108% | 116% | 117% | 96% | 96% | 95% | 22% | 40% | 62% | 79% | 95% | 102% |
+| 7.0 m | 1.5 | 116% | 113% | 113% | 96% | 95% | 93% | 34% | 55% | 76% | 97% | 107% | 113% |
+| 9.3 m | 2 | 104% | 101% | 87% | 100% | 98% | 97% | 45% | 64% | 83% | 103% | 111% | 115% |
+| 13.9 m | 3 | 104% | 103% | 91% | 108% | 105% | 104% | 60% | 77% | 92% | 114% | 118% | 119% |
+| 18.6 m | 4 | 101% | 83% | 93% | 105% | 106% | 104% | 68% | 83% | 95% | 115% | 118% | 117% |
+| 23.2 m | 5 | 103% | 86% | 94% | 103% | 106% | 103% | 72% | 87% | 97% | 115% | 117% | 114% |
+| 27.8 m | 6 | 78% | 87% | 95% | 106% | 106% | 104% | 74% | 88% | 97% | 114% | 115% | 113% |
+
+The mapped radius here is 0.8 of the way to the domain's top, 12.8 m, and less on the finer grids
+(64 cells, 8 m on 0.125 m cells). Within it the peaks are the one-dimensional solution's, 101–119%,
+with the same high close in on every grid. Beyond it the grid carries the wave, and the peaks fall
+back towards the balloon's: 78–104% beyond it (from 9.3 m on 0.125 m cells, 13.9 m on the others),
+against the balloon's 70–92% at 18–28 m.
+The arrival comes within 10% of the reference's time on every grid.
+
+Other charges and grids, incident peaks from 1 m/kg^(1/3) (`blastbench validate --mass`):
+
+| Charge, cells | Balloon | Mapped |
+|---|---|---|
+| 1 kg, 0.5 m | 11–38% | 63–95% |
+| 1 kg, 0.25 m | 27–47% | 86–99% |
+| 10 kg, 0.5 m | 32–55% | 102–109% |
+| 10 kg, 0.25 m | 57–69% | 99–117% |
+| 100 kg, 0.5 m | 55–72% | 101–116% |
+| 100 kg, 0.25 m | 74–84% | 83–116% (83–86% past the mapped radius, 16 m) |
+| 10 kg, 0.5 m, refined once | 29–69% | 72–109% |
+| 10 kg, 0.5 m, refined twice | 48–83% | 72–109% |
+
+- **Impulse:** within 5–15% beyond 1 m/kg^(1/3) on every grid, refined or not. The refined runs at
+  first lost it beyond 6 m (5–38%): the patches placed at the restart had taken their coarse cells'
+  impulse before the mapped passage was laid down. Fixed (`Refinement.reseedImpulseBase`).
+- **Reflected, 10 kg on 0.5 m refined once and twice:** the wall holds the start back, and the peaks
+  read within a few points of the balloon's (refined once 11–68% and 11–69%), the impulses within
+  about 10%. `blastbench validate --mass` had left the reflected scene at the preset's 100 kg until
+  18 October; fixed.
+- **Injury reach at standing height**, 10 kg on 0.25 m cells: the lungs' threshold and 50% lethality
+  at 0.80 and 0.65 of the free field's, against 0.69 and 0.50 from the balloon; the eardrums
+  unchanged (0.84–0.86).
+
+##### Still on the balloon start
+
+Every comparison of a structure, envelope, room or scene recorded before 18 October was run on the
+balloon. Their harnesses are pinned to it (`SolverConfiguration.balloonStart`, each with a comment)
+so that every recorded number still matches its code, and each comes off as it is run again on the
+mapped start. Those that take only the gas and faces from `recommended`, not the start, are on the
+balloon by construction.
+
+| Harness | Pinned | Owner |
+|---|---|---|
+| Wu and Wang's slabs (`TwoFaceSlabTests`), Yao's (`YaoSlabTests`), Chiquito's (`CloseInSlabTest`), Hupfauf's (`ContactSlabTest`) | by construction | the domain-faces recheck, then concrete |
+| The chamber (`ChamberTest`), rooms | by construction | concrete |
+| Alsubaei's walls (`PerimeterWallTests`) | by construction | walls |
+| Keys's brick walls (`MasonryDebrisTest`) | by construction | masonry |
+| The validation ensemble's wall (`ValidationEnsemble`) | pinned | ensembles |
+| The anchorage wall (`AnchorageStudy`, `blastbench anchorage`) | pinned | anchorage |
+| Tyndall's CLT (`TyndallCLTTest`) | pinned | new materials |
+| Envelope walls, slabs, Nian, façades, debris (`blastbench envelope-walls`, `envelope-slabs`, `nian`, `facade`, `envelope-debris`) | pinned | envelopes |
+| Envelope damage, venting, openings (`scenebench`), and their tests | pinned | envelopes |
+| Districts and Beirut (`scenebench district`, `district-compare`) | pinned | districts |
+| The panel block (`blastbench panelblock`) and terraced houses (`blastbench house`) | pinned | large panels |
+| Buildings, settling (`blastbench buildings`, `settle`) | pinned | structures |
+| Terrain, landscape, ground motion (`blastbench terrain`, `landscape`, `groundmotion`) | pinned | terrain, ground shock |
+| Dial Pack (`blastbench dialpack`) | pinned | thermal |
+| Mendonça (`blastbench mendonca`) | pinned | blind tests (frozen) |
+| `blastbench digest --recommended`, `aircost`, the air benches on `makeAirSolver` | pinned | numerics |
+| The run-cost and standing tests on `recommended` | pinned | numerics |
+
+`blastbench digest --recommended` gives the same hashes on the pinned code as on main.
+
+
 ### Kinney–Graham
 
 The same burst against the Kinney–Graham free-air formulae for 200 kg (a charge on perfectly
@@ -5539,10 +5622,21 @@ its limits). At 0.2, 0.5 and 1.1 kt of TNT on saturated ground:
   1.1 km with 8 mm and 2.1 km with 4 mm, about Rigby et al.'s 1.86 km for old annealed façades.
   Beyond 2 km GEER's quarter of façades damaged is matched only at the design strength or with
   thin panes.
-- **Structure**: 0.5 m stone carrying the masonry above it falls at 0.5–0.75 km (a third) and
-  cracks to about 1.2 km, where GEER's sandstone houses partly collapsed at 686–840 m and were
-  heavily damaged to about 1 km; 0.2 m concrete is moderately damaged within 750 m and hardly
-  beyond, where GEER's RC buildings were D1–D3 out to 2 km.
+- **Glass by a mix of panes** (by each building's height, assumed): the panes broken converge by
+  4 m cells (3 m moves them by at most 0.03); beyond 2 km some still break, as some did, but a
+  side with dozens of panes almost always has one broken, above GEER's share of façades damaged
+  (W1, some windows broken). Against GEER's W3 (nearly complete blow-out), sides with nine in ten
+  panes broken are 1.00–0.96 inside 1.25 km where GEER had 0.77–0.17, and GEER's 0.09 and 0.02 at
+  1.5–2 km: the model's façades break together. Inside 3 km the mixes assume 6.85 million m² of
+  glass and 0.38 of it breaks at 0.5 kt, 2.6 million m², 3.8 times the army's count of about
+  0.7 million m² of broken glass in the units it surveyed; the glazed share is an assumption, but
+  matching the count by it alone would leave a quarter of any plausible window.
+- **Structure**: 0.5 m stone carrying the masonry above it cracks at 0.5–1 km but falls in 8 of
+  293 buildings at 0.5–0.75 km, where 7 of GEER's 13 sandstone houses there partly collapsed;
+  0.2 m concrete is moderately damaged within 750 m and hardly beyond, where GEER's RC buildings
+  were D1–D3 out to 2 km. The structure has not converged (3 m cells crack more than 4 m). Until
+  façade strips were given their storey's span, they stood as tall as the cells cut them, and the
+  coarse grids' weaker walls matched GEER's collapses by an error.
 
 ## What is missing
 
