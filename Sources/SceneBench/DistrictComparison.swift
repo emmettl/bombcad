@@ -335,7 +335,10 @@ enum DistrictComparison {
             "Glass by the map's mixes",
             assessed.compactMap { building in
                 distances[building.id].map {
-                    ($0, (building.facadeGlass ?? []).filter { $0.axis < 2 }.map(\.glass))
+                    (
+                        $0, scene.envelopeConstruction(for: building.id).glazing?.name ?? "",
+                        (building.facadeGlass ?? []).filter { $0.axis < 2 }.map(\.glass)
+                    )
                 }
             })
         if let folder = value("save-loads") {
