@@ -2353,9 +2353,10 @@ struct StandingScene {
                     "validation.md#the-threshold-against-astm-e1300"),
                 StandingEvidence(
                     "A district against its surveys: Beirut, 2020, 14,169 map buildings at 0.2–1.1 kt",
-                    "One typical pane a storey breaks inside 1.25 km where GEER found 0.39–0.84 of street "
-                        + "façades damaged, half at 1.1–2.1 km by the glass assumed; 0.5 m stone falls where "
-                        + "partial collapses were found and cracks to about 1.2 km",
+                    "Glass (converged by 4 m cells) breaks inside 1.25 km where GEER found 0.39–0.84 of "
+                        + "street façades damaged, its edge set by the panes assumed; the structure low and "
+                        + "not converged: 0.5 m stone cracks where partial collapses were found, concrete "
+                        + "hardly damaged where GEER's was D1–D3",
                     "validation.md#a-district-beirut-2020"),
             ] + laminatedEvidence,
             assumptions: [

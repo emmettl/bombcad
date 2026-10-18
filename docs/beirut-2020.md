@@ -51,13 +51,14 @@ top (40 million cells) the event takes 172 s, and 184 s with every component's h
 histories cost 7%. The view draws the 40,000 blocks in about 20 ms a frame, through a grid of
 columns rather than testing every block.
 
-Two things were found and fixed on the way, and one set the domain:
+Things found and fixed on the way, and one that set the domain:
 
 - **A cut cell of 8% air** beside the charge, under a silo whose base lay below the opened
   ground, went negative and the run skipped silently to its end; it is now solid at load, and a
   batch with a NaN in the air is reported unstable.
-- **Masonry rocking against the masonry above it** (SBEDS's wall held by its axial load): the old
-  stone houses, judged without it, fell far too readily.
+- **Masonry rocking against the masonry above it** (SBEDS's wall held by its axial load), and
+  **a façade strip spanning its storey** rather than as tall as the cells cut it: without them
+  the old stone houses fell far too readily, and the coarser the grid the more.
 - **The domain's top.** At 160 m, faces that copy the air out channel the wave (1.7 times
   Kingery–Bulmash's peak at 2.4 km) and far-field faces drain it (0.2–0.3 times beyond 1.5 km);
   at 320 m the peaks are those of a 640 m top to 2.4 km, so the runs use 320 m.
@@ -156,8 +157,30 @@ building was found. By the map's mixes, on the same 4 m runs:
   million m² break at 0.2, 0.5 and 1.1 kt: two to five times the count, which surveyed only the
   units reported.
 
-These are on 4 m cells, which have not converged on the façades (below), so they are
-provisional.
+### What cell size the glass and the damage need
+
+The 1 km box (2 km square, 320 m top, 0.5 kt) on three grids, uniform cells:
+
+| | 8 m | 4 m | 3 m |
+|---|---|---|---|
+| Peaks on the line (of Kingery–Bulmash) | 0.54–0.69 | 0.68–0.78 | 0.78–0.83 |
+| Panes broken (map's mixes), 0.5–0.75 / 0.75–1 / 1–1.25 / 1.25–1.5 km | 0.99 / 0.94 / 0.80 / 0.52 | 1.00 / 1.00 / 0.98 / 0.89 | 1.00 / 1.00 / 0.98 / 0.92 |
+| Stone heavy / failed, 0.5–0.75 km (of about 290) | 206 / 2 | 249 / 7 | 269 / 10 |
+| Stone heavy, 0.75–1 km (of about 660) | 41 | 132 | 176 |
+| Concrete moderate, 0.5–0.75 km | 33 | 96 | 139 |
+
+- **The glass has converged by 4 m**: 3 m moves the panes broken by at most 0.03. The peaks are
+  still rising (by a tenth from 4 to 3 m), but the glass is past the edge of breaking where most
+  of it stands.
+- **The structure has not**: each grid finer cracks more stone and concrete, as the peaks rise;
+  3 m is the least these need, and finer would crack more still.
+- **A strip's height is its storey's.** Before this was fixed, façade strips stood as tall as the
+  cells cut them (4 m on 4 m cells, 8 m on 8 m), and a masonry strip's resistance falls with the
+  square of its height: the coarse grids' walls were the weak ones, and stone failed in 102
+  buildings at 0.5–0.75 km on 4 m cells where the storey's span gives 7.
+- Refinement (8 m refined twice to 2 m at the shock, the façades held refined while loaded) gave
+  0.80–0.86 of Kingery–Bulmash on the line to 900 m, but its finest pool filled within 14 GB and
+  its façades' results cannot be trusted; it is left to a larger Mac.
 
 ### Structure against the building survey (GEER, 2021)
 
@@ -168,15 +191,24 @@ comparison is of where the damage falls, at 0.5 kt:
 
 | Distance | Stone (0.5 m masonry): none / heavy / failed | GEER stone: D1–D2 / D3 / D4 | Concrete (0.2 m): none / moderate / heavy+ | GEER RC: D0–D1 / D2 / D3 |
 |---|---|---|---|---|
-| 0.5–0.75 km | 0 / 191 / 102 | 1 / 5 / 7 | 162 / 116 / 15 | 8 / 9 / 4 |
-| 0.75–1 km | 25 / 633 / 2 | 14 / 9 / 4 | 645 / 15 / 0 | 17 / 11 / 1 |
-| 1–1.25 km | 633 / 274 / 0 | 15 / 3 / 0 (1–1.5 km) | 907 / 0 / 0 | 19 / 10 / 2 (1–1.5 km) |
+| 0.5–0.75 km | 32 / 253 / 8 | 1 / 5 / 7 | 200 / 92 / 1 | 8 / 9 / 4 |
+| 0.75–1 km | 518 / 142 / 0 | 14 / 9 / 4 | 659 / 1 / 0 | 17 / 11 / 1 |
+| 1–1.25 km | 907 / 0 / 0 | 15 / 3 / 0 (1–1.5 km) | 907 / 0 / 0 | 19 / 10 / 2 (1–1.5 km) |
 
-Stone falls where GEER found partial collapse (D4 at 686–840 m) and cracks out to about 1.2 km,
-as the sandstone houses did; concrete is damaged moderately within 750 m and hardly beyond,
-where GEER's RC buildings were D1–D3 out to 2 km. The model's concrete panels see only the air's
-load on one wall at a time, not the frame, and GEER's D2–D3 in concrete buildings includes infill
-and partitions the envelope does not have.
+The model damages the buildings less than the survey found, and nearer the charge:
+
+- **Stone cracks where GEER's sandstone houses partly collapsed.** At 0.5–0.75 km nearly every
+  stone building cracks (heavy) but 8 of 293 fall, where 7 of GEER's 13 there were D4; at
+  0.75–1 km a fifth crack and none fall, where GEER had 9 of 27 at D3 and 4 at D4; beyond 1 km
+  nothing, where GEER found D1–D3. Each wall is judged as a 0.5 m panel carrying only the stone
+  above it, with no arching, its floors' loads unknown.
+- **Concrete is barely touched beyond 750 m**, where GEER's RC buildings were D1–D3 out to 2 km.
+  The envelope judges 0.2 m concrete walls; a Beirut "concrete" building is an RC frame with
+  hollow-block infill, whose façades are thin masonry, and GEER's classes include the infill and
+  partitions.
+- **The grid is part of it**: 3 m cells crack more than 4 m (above), so the structure here reads
+  low, and an earlier version, whose walls stood as tall as the cells, matched GEER's collapses
+  by an error.
 
 ## What the model can and cannot represent
 
@@ -188,11 +220,9 @@ and partitions the envelope does not have.
   either 0.2 m concrete or 0.5 m masonry for every building. GEER's survey shows the mix.
 - **The ground.** A bare-earth estimate from a surface model; the charge on saturated ground
   gives the air 0.9 of it; the crater is not in the air.
-- **Peaks at 4 m, and the glass with them.** The peaks are about three quarters of
-  Kingery–Bulmash's; finer cells near the shock would raise them. The façades' loads depend on
-  the grid more than the peaks do: on 8 m cells (peaks 0.55–0.67 of Kingery–Bulmash) a quarter
-  of sides break at 0.5–0.75 km and a fourteenth at 0.75–1 km, where 4 m breaks them all. The
-  glass has not converged with the cells, and 4 m may still under-read it.
+- **Peaks at 4 m, and the structure with them.** The peaks are about three quarters of
+  Kingery–Bulmash's and still rise on finer cells. The glass has converged by 4 m; the structure's
+  damage has not, and 3 m cells crack more of it (above).
 - **Open faces.** The 320 m top is 4 m/kg^(1/3) at 0.5 kt (3.1 at 1.1 kt). On 8 m cells a 640 m
   top gives the same glass and structure to within a building or two in every band. The side
   faces are not that far from the outer buildings: those beyond about 2.2 km lie within
