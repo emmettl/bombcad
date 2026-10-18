@@ -137,6 +137,11 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// dimension: past it the grid carries the wave well enough, and the one-dimensional solution's
     /// cost, which grows as the square of its reach in charge radii, stays within seconds.
     public var mappedChargeScaledReach: Float = 6
+    /// Whether the mapped charge's products have their own equation of state in the
+    /// one-dimensional solution (JWL, TNT's from the LLNL handbook) rather than the air's gas.
+    /// They are dilute, and press as the air's gas nearly would, by the time they are mapped. A
+    /// study (`blastbench products`, `closeair --products`), off by default.
+    public var mappedChargeProducts = false
     /// With afterburning, whether the products burn in the one-dimensional solution, or are carried
     /// unburnt to burn on the grid once mapped, as the balloon's do.
     public var mappedChargeBurns = true

@@ -99,7 +99,8 @@ func runKeys(device: MTLDevice) throws {
             airSleepThreshold: sleep,
             clearance: clearance, height: height, groundFriction: groundFriction, base: base,
             afterburning: burning, airModel: chosenGas(), openFaces: chosenFaces(),
-            groundStiffness: groundStiffness, progress: { print("  \($0)") })
+            groundStiffness: groundStiffness, balloonStart: flag("balloon-start"),
+            progress: { print("  \($0)") })
         print(
             String(
                 format: "  free field: %5.1f kPa, %5.0f kPa ms (measured %5.1f, %5.0f)",

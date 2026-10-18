@@ -77,10 +77,10 @@ swift run -c release blastbench perimeter --study wall
 | Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; laminar rise times within 1–3% at 48 cells across the radius (the default flame, cellular, 13–14% ahead); K_G 60 against 76 on 96 cells, unable to converge on a four-cell front. FM Global's six tests (digitised): lit at the back wall, 0.9–1.8 times the measured peaks; lit in the middle, 0.4–0.6, the flame stalling towards the back wall. Vented rooms: a seventh to a twenty-second of Molkov's correlation, which those tests show conservative | Verified for a laminar flame in a closed vessel; illustrative for vented rooms |
 | Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 11% to 14 mrad of rotation (against the larger of its two directions), 5–14% low beyond; settlement 1.3–1.7 times that measured. The same footing shaken (FoRDy, eight events on three structures): settlement 0.4–1.3 times (0.6–1.3 but for the embedded footing's first event), the surface footing's peak rotation within 10% where the test did not lurch one way (the embedded footing's first event a quarter); energy a cycle 0.5–1.2 times slowly and 0.3–1.2 times shaken, damping ratios 10–27% against 17–32%. Both on sand of 80 MPa, an estimate, twice the default's; the sand's heave set on the slow test | Rocking moment either way to 14 mrad and 5–14% low beyond (moderate); settlement within a factor of 1.7 (moderate); energy too little, a sixth to two thirds of a shaken event's (low), as for a footing that lurches; on a sand twice the default's |
 | Held out (blind)     | Hrynyk's three plain slabs struck repeatedly by a falling weight, predicted on frozen defaults before the measurements were unsealed: first impacts 1.15–1.29 times the measured peak (too flexible, as the calibrated beams were); later impacts 0.56–0.83, residuals a seventh to a third, and none of the three slabs' punching failures predicted. Mendonça's seven slabs under an open-air charge: the two nearest the charge collapsed, the model leaving them standing; the declared peaks 0.31–1.23 of measured on the survivors, those near 1 made by an artefact of the sleeping air as the slabs landed after the blast threw them up; the blast's own peak a tenth to a quarter of the meters'. Reynolds's six high-strength slabs in the contest slab's rig (v0.3.0): peaks 0.77–1.06 of measured on the five that held in the model, 0.87 on average at 4 in; the sixth, the lightly reinforced slab under the larger load, broken through where the test held at 182 mm; the blast face never crushed where four of the standing slabs' tests were | Hrynyk: between, by the protocol's rule, the calibrated error on undamaged slabs, much worse and on the unsafe side once they are damaged. Mendonça: worse, by the rule, far too stiff and too strong, the unsafe side. Reynolds: worse, by the rule, on the one broken slab (the safe side); the others within the calibrated band, a little stiff |
-| Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.1–1.7 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own. [Brick walls](#brick-walls-debris) (Keys, 2016): loads within 15%, but the walls break into too few pieces, falling at full length in the open (means of 1.6 m against 0.2 to 0.6 m) and thrown half as far as measured in a shock tube. Collapse once, blind: [Mendonça's slabs](#blind-test-2-mendonças-slabs-under-an-open-air-charge), the two that collapsed left standing | Unsafe side for debris: held back rather than thrown, slabs never holed, brick walls thrown short (low); collapse missed in both slabs that collapsed (blind) |
+| Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.1–1.7 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own. [Brick walls](#brick-walls-debris) (Keys, 2016): loads within 15%, but the walls break into too few pieces, falling at full length in the open (means of 1.6–1.8 m against 0.2 to 0.6 m) and thrown half as far as measured in a shock tube. Collapse once, blind: [Mendonça's slabs](#blind-test-2-mendonças-slabs-under-an-open-air-charge), the two that collapsed left standing | Unsafe side for debris: held back rather than thrown, slabs never holed, brick walls thrown short in the tunnel (low); in the open the brick walls' debris lies 1.0–1.5 m beyond the measured, the safe side for its reach, though the walls fall as one column where the tests' folded; collapse missed in both slabs that collapsed (blind) |
 | Window glass         | Monk and Clubley's annealed windows in the Shoeburyness tunnel (4 mm, 0.89 m², four aspect ratios, about 33 kPa reflected for longer than they lasted): the app's large-deflection panes (Moore's plate, E1300's flaw model) break every pane, as every pane broke, at 0.82–1.07 of the twelve measured times and 0.69–1.15 of the deflection (the small-deflection panes before them at 0.40–0.46). Against ASTM E1300: its stresses within 8%, its load resistance 0.57–0.72 | Either way within about 20% for timing under a strong load (moderate); the threshold a third under E1300's design resistance, the safe side, not measured |
 | Inside buildings     | [UFC 3-340-02 §2-15](#inside-buildings-against-ufc-3-340-02s-loads-through-openings), its own charts' data: through an open window the air's back-wall load 0.74–1.22 of the UFC's, the side walls and the front's inside 0.31–0.67; the one-way fill 0.95–1.35 of the UFC's leakage fill and 0.15–0.42 of its back-wall load | A design method, not measurement; head-on, rigid, open windows |
-| Fragments            | [Cooper (1996)](#fragments-against-coopers-data): his worked Mott and Gurney examples to rounding; one counted cast-iron bomb within a factor of 1.36 (rms) by Mott's form, 1.12 by Grady's; drag now the measured curve for tumbling cubes, 5% from the previous law. Hazard distance 0.43–0.84 of DoD 4145.26-M's test-derived distances for two items, in flight |  Masses either way within a factor of 1.4 (moderate, one test); hazard distance short by a sixth to a half (the unsafe side; moderate); launch speeds untested (low) |
+| Fragments            | [Cooper (1996)](#fragments-against-coopers-data): his worked Mott and Gurney examples to rounding; one counted cast-iron bomb within a factor of 1.36 (rms) by Mott's form, 1.12 by Grady's; drag now the measured curve for tumbling cubes, 5% from the previous law. Hazard distance 0.58–1.02 of DoD 4145.26-M's test-derived distances for two items, in flight; TP-12's own procedure 1.05–1.21 times it on the same fragments; Mott's scaling 1.00–1.36 times the masses of Sternberg's cylinders (TP-12 Table 1) |  Masses either way within a factor of 1.4 (moderate, one test); hazard distance up to two-fifths short (the unsafe side; moderate); launch speeds untested (low) |
 | Ground shock         | Xia et al. (2022), 1 t of TNT on the ground, accelerations 0.5 m deep at 21 and 42 m: the vertical velocity from the manuals' relation and the layered soil column 20 to 30 times the measured accelerations' integral at 21 m and 50 to 80 times at 42 m, within three times a velocity gauge that clipped; the measured motion mostly horizontal, at ranges near and past where the ground's wave outruns the air; the soil not measured. An elastic half-space about the charge, with a direct source calibrated against UFC 3-340-01: the horizontal within 1.5 times at 21 m but 18 times at 42 m, the vertical still 15 to 60 times. With soil that yields (compaction and a Mohr–Coulomb cone, the source the crater's energy): the horizontal 2.1 to 2.4 times at 21 m and 10 to 11 times at 42 m, the vertical 16 to 90 times, the fall-off R^(−1.5) against the measured R^(−3.3) to R^(−3.8) | Far too high in the vertical, the safe side; the horizontal motion that dominated not modelled, the unsafe side; illustrative |
 | A district           | [Beirut, 2020](#a-district-beirut-2020): 14,169 map buildings over 5 km at 4 m; the shock's arrival at Rigby's 30 observers best at 0.5 kt (median 0.98 of observed; 25 of 27 from 400 m out within 10%); peaks 0.68–0.78 of Kingery–Bulmash at 4 m; one typical pane a storey breaks inside 1.25 km where GEER's street survey found 0.39–0.84 of façades damaged, its edge (1.1–2.2 km by the glass assumed) about Rigby 2024's 1.86 km; glass converged by 4 m (3 m within 0.03), a mix of panes by building giving the tail beyond 2 km, GEER's W3 beyond 1.5 km but every façade blown out inside 1.25 km; structure under-damaged: 0.5 m stone cracks but rarely falls where GEER found partial collapse, 0.2 m concrete hardly damaged beyond 750 m where GEER's RC was D1–D3 to 2 km, and not converged at 3 m | Arrival times good; peaks low (the cells); glass moderate, set by the glass assumed more than the yield; structure low, the unsafe side (one construction for all, not converged) |
 | Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 1–2%, structural responses 4–20%, residual deflections and failure 17–28%; the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
@@ -428,6 +428,11 @@ and by far.
   - the lift-off doubles, 8.8 → 18.4 mm, and the end 2.38 → 2.56 mm (+8%): what follows the
     positive phase is still the domain's at 2.5 m of margin;
   - the corner gauges, 1 m from the side faces in the harness, 951 → 1,043 kPa and 252 → 300 kPa ms.
+
+  On the mapped start (`--recommended` since 18 October 2026; `--balloon-start` for the balloon), in
+  the same domain:
+  - the blast's peak 3.95 → 4.05 mm, the end 2.56 → 2.41 mm, the lift-off 18.4 → 15.0 mm;
+  - the gauges within 1%.
 
   So the comparisons scored here stand. The blind records are frozen and are not rerun. Post-reveal
   studies of the late response should use the rule's domain; on the harness's 12.5 mm cells that
@@ -2359,6 +2364,12 @@ Checked with every open face 4 m/kg^(1/3) from the charge and the slab (18 Octob
 mm air, 6 through, `--roomy`): left 112 → 111 mm and peak 155 → 153 mm, the record within 4 mm
 throughout; the harness's domain stands ([open faces at the clearance rule](#open-faces-at-the-clearance-rule)).
 
+On the mapped start, which the harness has used since 18 October 2026 (`--balloon-start` for the
+balloon), P7 at the rule goes further:
+- left 121 mm and peaking at 163 mm, against 111 and 153 on the balloon (+9%, +7%);
+- the slab's momentum at 5 ms 4% higher, the gauges beside it 4–6% higher;
+- still about a third of the measured 340 mm ([on the mapped start](#on-the-mapped-start)).
+
 With Malvar and Ross's tensile law instead, P7 was left 51, 103 and 91 mm down on the three
 grids, and P2 and S5 156–173 mm, spalling 1% of the far face on the fine air.
 
@@ -2605,7 +2616,10 @@ and the slab, on 50 mm air refined by 2, which reads the harness's impulses with
 measured, the peaks unchanged: the face 0.4 m behind the charge sent some of the blast back.
 The slabs' displacements do not move (within 0.1 mm at every gauge). On the harness's own 25 mm
 air the rule's domain would be about 200 million cells, past this Mac's memory, so the harness
-keeps its box and the roomy figures are the ones to quote ([open faces at the clearance rule](#open-faces-at-the-clearance-rule)). The paper's
+keeps its box and the roomy figures are the ones to quote ([open faces at the clearance rule](#open-faces-at-the-clearance-rule)).
+On the mapped start, at the rule, the peaks fall to 15.1, 14.3 and 13.6 MPa (−10%, −5%, −2%). The
+impulses come to 2.69, 2.51 and 2.26 MPa ms, 80%, 83% and 77% of measured (−4% to +1%), and the
+slabs' displacements stay within 0.1 mm ([on the mapped start](#on-the-mapped-start)). The paper's
 own ConWep curve peaks near 24 MPa. Deflection at the centre of the back, mm, measured / model:
 
 | Slab | Measured, peak / left | Edges fixed | Edges free to slide in their plane | With slip |
@@ -2680,8 +2694,9 @@ an aluminised charge, and say its TNT equivalence is low for impulse.
   - Read over the first 2 ms, the model gives 2.3–3.6 times the reported values. Taken as peaks,
     its slab would be 8–13 times too flexible, against every other comparison here.
   - Neither reading is scored. These three tests confirm the load only.
-- **The 20 kg test.** The model's slab bends to 126 mm and keeps 73 mm. Nothing on its top face is
-  crushed or removed, and 714 cm² of its underside is damaged.
+- **The 20 kg test.** The model's slab bends to 126 mm and keeps 73–74 mm. Nothing on its top face
+  is crushed or removed, and 714–918 cm² of its underside is damaged (the balloon and the mapped
+  start, the harness's default since 18 October 2026; [on the mapped start](#on-the-mapped-start)).
   - That is with every open face 4 m/kg^(1/3) from the charge and the slab, 10.5 m out (`--yao T4
     --roomy --dx 0.05 --refine 2`; 18 October 2026).
   - The harness's own box, whose sides are 0.5 m from the slab's edges, gives 167 mm and keeps 96
@@ -3505,6 +3520,11 @@ starter bars, `--roomy` on 100 mm air in both domains, the rigid wing walls carr
 faces): the top's peak 49.4 → 48.2 mm (−2%), mid-height 33.4 → 32.8 mm, the face's load the same
 within 2%. The wall is still swinging by ±10 mm at 0.3 s, so what is left there is not compared;
 the harness's domain stands ([open faces at the clearance rule](#open-faces-at-the-clearance-rule)).
+On the mapped start, since 18 October 2026 for both the walls and the air study (`--balloon-start`
+for the balloon):
+- the top peaks at 49.8 mm against 48.2 on the balloon, the face's load 3–5% higher;
+- the half-scale layout's column peaks move by 2% at most and its shielding by 0.01
+  ([on the mapped start](#on-the-mapped-start)).
 
 ### What this does and does not show
 
@@ -3626,7 +3646,8 @@ broken off or not. Three things had to be put right first, each found by these w
 ### Results
 
 Rerun 18 October 2026 on today's air: afterburning, hot air and far-field faces, the defaults
-since 15 October.
+since 15 October, and the charge started from the one-dimensional solution, the mapped start
+([on the mapped start](#on-the-mapped-start); `--balloon-start` for the balloon).
 
 The record before this one was on the ideal gas with copying faces. It was committed on 15
 October (cd10aca2) on a branch that did not yet have the new defaults, so "the day's defaults"
@@ -3636,12 +3657,14 @@ defaults' study ([mean throw 2.1 → 1.6–1.7 m](#afterburning-by-default-what-
 The rest of the way to 1.64 m, from 1.71–1.73, came on 17 October, when structures began to
 settle under their own weight before the blast by default (209c39c2): the wall now comes to rest
 on its bed before the shock, rather than sagging into it. Both moves were meant, and both
-bisected on WR1A (one GPU run per step, 18 October).
+bisected on WR1A (one GPU run per step, 18 October). The mapped start then took it to 1.77 m.
 
 The blast beside the walls, model / measured:
-- 99.2 / 115 kPa and 293 / 263 kPa ms at 10.6 m;
-- 65.6 / 73 and 246 / 241 at 13 m;
-- 50.0 / 53 and 215 / 234 at 15 m.
+- 101 / 115 kPa and 305 / 263 kPa ms at 10.6 m;
+- 67 / 73 and 256 / 241 at 13 m;
+- 52 / 53 and 223 / 234 at 15 m.
+
+On the balloon these are 2–4% lower.
 
 In the tunnel, which keeps the ideal gas and its driven inlet, the impulse is 4,171 / 3,952 kPa ms
 at BWL2C's inlet and the face peak 149 / 131 kPa. The inlet gauge's peak, 80 kPa against 60,
@@ -3653,13 +3676,15 @@ ground and, for the walls in the open, on soft ground (below):
 
 | Wall | Mean, model / measured | 90% within | Furthest | Soft ground: mean, 90% within |
 |------|------------------------|------------|----------|-------------------------------|
-| WR1A, 10.6 m | 1.64 / 0.23 m | 3.25 / 1.25 m | 5.5 / 3.0 m | 1.11 m, 1.75 m |
-| WR1B, 13 m | 1.60 / 0.64 m | 3.75 / 2.25 m | 5.0 / 6.0 m | 1.40 m, 2.25 m |
-| WR2C, 15 m | 1.61 / 0.42 m | 3.25 / 1.75 m | 4.5 / 3.5 m | 1.36 m, 2.25 m |
+| WR1A, 10.6 m | 1.77 / 0.23 m | 3.25 / 1.25 m | 6.0 / 3.0 m | 1.49 m, 2.75 m |
+| WR1B, 13 m | 1.68 / 0.64 m | 3.75 / 2.25 m | 5.5 / 6.0 m | 1.63 m, 3.75 m |
+| WR2C, 15 m | 1.62 / 0.42 m | 3.25 / 1.75 m | 4.5 / 3.5 m | 1.21 m, 1.75 m |
 | BWL2C, tunnel | 3.47 / 6.34 m | 6.75 / 8.25 m | 9.0 / 13 m | |
 | BWL3B, tunnel | 3.27 / 5.99 m | 6.75 / 9.75 m | 9.5 / 15 m | |
 
-WR1A's mean is 1.61–1.66 m across the three roundings (default, unfused, relaxed).
+On the balloon the three were 1.64, 1.60 and 1.61 m (1.11, 1.40 and 1.36 m on soft ground). Its
+roundings (default, unfused, relaxed) give WR1A 1.61–1.66 m there, so the mapped start's tenth is
+beyond them.
 
 On the old air the open walls were 2.10, 2.15 and −1.14 m out, and 1.36, 1.36 and −1.05 m on
 soft ground: WR2C fell towards the charge. The copying faces left the air about 2.7 kPa below
@@ -3669,7 +3694,7 @@ quarter nearer. Which part of the new air did that (the faces, the hot air or th
 was not separated.
 
 With every open face 4 m/kg^(1/3) from the charge and the wall (WR1A, clearance 14 m and 16 m up,
-18 October 2026), the debris lies where it did: mean 1.64 → 1.60 m, 90% within 3.25 m and
+18 October 2026, on the balloon), the debris lies where it did: mean 1.64 → 1.60 m, 90% within 3.25 m and
 nothing past 5.5 m in both, the wall falling away from the charge in both. The harness's 8 m stands
 ([open faces at the clearance rule](#open-faces-at-the-clearance-rule)).
 
@@ -3679,9 +3704,9 @@ base and the upper crack, landing mostly within a metre of where it stood. The m
 opens bed joints at 0.47, 0.69 and 0.92 m by 20 ms (none by 10 ms), WR1B at 0.54 and 0.77 m,
 WR2C at 0.69 and 0.84 m by 50 ms: the heights are right. But the courses between the cracks do
 not move apart. The wall is left leaning by centimetres at 1–1.6 m/s at most and rocks on its
-cracked joints as one column. It topples, landing at about 1.0, 1.25 and 1.45 s (WR1A, WR1B,
-WR2C) and gaining 2–3 kJ as it falls. Then it shatters as it strikes the ground: a quarter to a
-third of its elements are removed as it lands, and the pieces skid out to 4.5–5.5 m. All three
+cracked joints as one column. It topples, landing at about 0.85, 1.1 and 1.3 s (WR1A, WR1B,
+WR2C) and gaining 2–3 kJ as it falls. Then it shatters as it strikes the ground: a fifth to two
+fifths of its elements are removed as it lands, and the pieces skid out to 4.5–6 m. All three
 fall away from the charge. On the old air WR1B once fell towards it and WR2C did. The spread
 beyond the wall's own length is the landing's, not the blast's.
 
@@ -3694,8 +3719,8 @@ there.
   wall is no longer stopped dead: WR1A loses 799 elements rather than 1,747, lands in 20 pieces
   over 1 kg rather than 37, and its debris comes 0.7 m nearer (1.36 m, 90% within 3.25 m,
   nothing past 3.5 m). WR1B likewise; WR2C, which hardly breaks, is unchanged. The breakup
-  before landing is the same. On today's air, soft ground brings the three means to 1.11, 1.40
-  and 1.36 m, from 1.60–1.64 m, with nothing past 2–3 m.
+  before landing is the same. On today's air and the mapped start, soft ground brings the three
+  means to 1.49, 1.63 and 1.21 m, from 1.62–1.77 m, with nothing past 2.5–4 m.
 - **Bed joints that part sooner** (a cracked joint's tension cut once it had opened 2 or 5 mm,
   so a cracked stack could separate). No change on either ground (2.17–2.30 m hard, 1.20–1.59 m
   soft): the cracked joints rock, opening on one face while the other stays in compression,
@@ -3715,8 +3740,10 @@ so soft ground is not for it.
 It shows the loads are right beside these walls and in the tunnel (peaks within 15%, impulses
 within 12%), and that the model's brickwork cracks at the right heights but does not come
 apart there: the cracked joints rock, and the wall falls as one column. In the open the debris
-then lies 1.0–1.4 m too far out, mostly because the falling wall shatters on a rigid ground;
-in the tunnel it goes about half as far, being one large body rather than bricks in the wind.
+then lies 1.0–1.5 m too far out, mostly because the falling wall shatters on a rigid ground: as a
+hazard's reach that is the safe side, though how the wall comes apart is wrong;
+in the tunnel it goes about half as far, the unsafe side, being one large body rather than bricks in
+the wind.
 Faults in general use found by these walls, each with an option or fix: open faces near a
 structure drain the air (keep them several metres away), debris did not come to rest on the
 ground (Coulomb friction), debris was loaded only within 4 m of where its structure stood
@@ -4007,9 +4034,10 @@ one counted test, a cast-iron aerial bomb, is within a factor of 1.36 (rms) of M
 Hansche and Rinehart's measured curve for tumbling cubes, which moves the distance a fragment
 keeps 79 J by under 5%; Hoerner's fixed-orientation curves span 30% shorter to 50% longer. Cooper
 covers mild steel cylinders and 13 explosives; no arena test of launch speeds or ranges has been
-compared ([wanted](data-wanted.md#to-fetch)). The hazardous fragment distance, in flight as DDESB counts it, is 0.43–0.84 of DoD 4145.26-M's
-test-derived distances for a 155 mm projectile and a 500 lb bomb, short, the casing's wall
-deciding ([Fragments](fragments.md#against-dods-distances)). What fragments do to what they strike follows UFC 3-340-02 and THOR, whose
+compared ([wanted](data-wanted.md#to-fetch)). The hazardous fragment distance, in flight as DDESB counts it, is 0.58–1.02 of DoD 4145.26-M's
+test-derived distances for a 155 mm projectile and a 500 lb bomb, short with thick walls, the
+casing's wall deciding (0.43–0.84 until 18 October, when the band below the ground was counted;
+[against TP-12](fragments.md#against-ddesb-tp-12)) ([Fragments](fragments.md#against-dods-distances)). What fragments do to what they strike follows UFC 3-340-02 and THOR, whose
 worked examples it reproduces within 1% ([Fragments](fragments.md#what-fragments-do-to-what-they-strike)); no
 penetration test has been compared.
 
@@ -4536,25 +4564,73 @@ balloon by construction.
 
 | Harness | Pinned | Owner |
 |---|---|---|
-| Wu and Wang's slabs (`TwoFaceSlabTests`), Yao's (`YaoSlabTests`), Chiquito's (`CloseInSlabTest`), Hupfauf's (`ContactSlabTest`) | by construction | the domain-faces recheck, then concrete |
-| The chamber (`ChamberTest`), rooms | by construction | concrete |
-| Alsubaei's walls (`PerimeterWallTests`) | by construction | walls |
-| Keys's brick walls (`MasonryDebrisTest`) | by construction | masonry |
-| The validation ensemble's wall (`ValidationEnsemble`) | pinned | ensembles |
+| Hupfauf's slabs (`ContactSlabTest`) | by construction | concrete |
+| The chamber (`ChamberTest`), rooms | by construction; its four charges keep the balloon whatever the start (rerun 18 October, [on the mapped start](#on-the-mapped-start)) | concrete |
+| The validation ensemble's wall, and its Wu and Chiquito cases (`ValidationEnsemble`) | pinned (`balloonStart: true` for the slabs) | ensembles |
 | The anchorage wall (`AnchorageStudy`, `blastbench anchorage`) | pinned | anchorage |
 | Tyndall's CLT (`TyndallCLTTest`) | pinned | new materials |
-| Envelope walls, slabs, Nian, façades, debris (`blastbench envelope-walls`, `envelope-slabs`, `nian`, `facade`, `envelope-debris`) | pinned | envelopes |
+| Envelope walls, slabs, Nian, façades (`blastbench envelope-walls`, `envelope-slabs`, `nian`, `facade`) | pinned | envelopes |
 | Envelope damage, venting, openings (`scenebench`), and their tests | pinned | envelopes |
 | Districts and Beirut (`scenebench district`, `district-compare`) | pinned | districts |
 | The panel block (`blastbench panelblock`) and terraced houses (`blastbench house`) | pinned | large panels |
 | Buildings, settling (`blastbench buildings`, `settle`) | pinned | structures |
+| The transport hub's roof glass (`blastbench hubroof`) | pinned | glass |
 | Terrain, landscape, ground motion (`blastbench terrain`, `landscape`, `groundmotion`) | pinned | terrain, ground shock |
 | Dial Pack (`blastbench dialpack`) | pinned | thermal |
-| Mendonça (`blastbench mendonca`) | pinned | blind tests (frozen) |
+| Mendonça's blind runs (`blastbench mendonca` without `--recommended`) | their frozen air | blind tests (frozen) |
 | `blastbench digest --recommended`, `aircost`, the air benches on `makeAirSolver` | pinned | numerics |
 | The run-cost and standing tests on `recommended` | pinned | numerics |
 
 `blastbench digest --recommended` gives the same hashes on the pinned code as on main.
+
+Off the list since: Wu's, Wang's, Yao's and Chiquito's slabs, Alsubaei's walls and their air,
+Keys's walls in the open, Mendonça's `--recommended` studies and the Kasun cubicle (`envelope-debris`).
+Each was rerun on the mapped start ([on the mapped start](#on-the-mapped-start)), and each takes
+`--balloon-start` for the balloon.
+
+#### The products' own equation of state (18 October)
+
+The mapped start with its products as TNT's detonation products (JWL, the LLNL handbook's set;
+`mappedChargeProducts`, see the [air-blast model](air-blast-model.md#a-finely-resolved-start))
+rather than hot air. The one-dimensional solution alone, a 1 kg surface burst (`blastbench
+products`), against Kingery–Bulmash's incident curves, hot air / JWL / the handbook's other TNT
+set:
+
+| Z | Peak | Impulse | Arrival |
+|---|------|---------|---------|
+| 0.2 | 52 / 67 / 71% | 227 / 192 / 177% | 94 / 86 / 82% |
+| 0.3 | 64 / 81 / 83% | 204 / 198 / 197% | 106 / 95 / 91% |
+| 0.5 | 88 / 100 / 103% | 172 / 174 / 184% | 107 / 97 / 94% |
+| 0.75 | 109 / 111 / 114% | 127 / 121 / 123% | 101 / 94 / 92% |
+| 1 | 115 / 111 / 115% | 97 / 97 / 98% | 97 / 92 / 91% |
+| 2 to 6 | 103–104 / 99–102 / 101–103% | 89–107%, alike | 95–98 / 95–98 / 93–98% |
+
+On the grid, `blastbench closeair --mapped` with and without `--products` (1 kg above rigid
+ground, reflected square on below), hot air → JWL:
+
+| Z | Cells | Reflected peak | Reflected impulse |
+|---|-------|----------------|-------------------|
+| 0.3 | 20 / 10 / 5 mm | 35 → 39 / 64 → 75 / 105 → 131% | 85 → 84 / 101 → 99 / 104 → 103% |
+| 0.5 | 20 / 10 / 5 mm | 55 → 55 / 75 → 76 / 92 → 94% | 88 → 86 / 93 → 91 / 100 → 100% |
+| 0.75 | 20 mm | 58 → 57% | 98 → 96% |
+| 1 | 20 mm | 66 → 65% | 103 → 101% |
+
+- The impulse, which loads a structure, moves by 2% or less; the peak by 2 points or less from
+  0.5 m/kg^(1/3) out. At 0.3 the peak rises a quarter on 5 mm cells, from 105% of the curves to
+  131%, away from them, where they rest on few tests and gauges in one shot differ by up to 40%
+  (Rae and McAfee, above). Not adopted: the change is within close in's scatter, and away from
+  the curves.
+- The products have spread to some 10 kg/m³ by the time they are mapped, even 0.4 m/kg^(1/3)
+  out, where JWL's terms for dense products are gone; the grid's hot air then reads their
+  pressure 13–25% higher than JWL's ω does. Carried with their own law all the way to 7
+  m/kg^(1/3) in one dimension they change the peaks by 4% or less past 0.75, so a second gas on
+  the grid would not change open-air loads either; in contact it would
+  ([Hupfauf](#slabs-under-contact-charges)).
+- The fireball: the products reach as far (0.85 against 0.84 m/kg^(1/3) at 0.5 ms/kg^(1/3)) and
+  are as hot, as air at their energy, from 0.2 ms/kg^(1/3) on; Dial Pack's cells hand over far
+  later than that, so its record cannot tell them apart.
+- The one-dimensional solution takes 2.3–2.8 times as long (31–34 s against 12–14 s to 7
+  m/kg^(1/3)).
 
 
 ### Kinney–Graham
@@ -5377,6 +5453,35 @@ quoted from `--roomy` runs on 50 mm air refined by 2. That air reproduced Yao's 
 results within 1% and 2%. The runs and their outputs are on
 `/Volumes/StudioData/bombcad/roomy/`.
 
+### On the mapped start
+
+Since 18 October 2026 a lone charge starts from the one-dimensional solution rather than the balloon
+(see the [air-blast model](air-blast-model.md#a-finely-resolved-start)). The same cases were rerun
+in the rule's domains, the balloon (`--balloon-start`) against the mapped start, on one build. Each
+harness here now takes the mapped start by default:
+
+| Case | Compared | Balloon | Mapped | Change |
+|---|---|---|---|---|
+| Chiquito P7 | left (peak), mm; slab's momentum at 5 ms | 111 (153); 7,912 N s | 121 (163); 8,198 N s | +9% (+7%); +4% |
+| Wu S8 | peak / residual, mm | 16.1 / 8.3 | 16.2 / 8.0 | +1%, −4% |
+| Wang A | peak P1–P3, MPa; impulse P1–P3, MPa ms | 16.7, 15.0, 13.9; 2.80, 2.55, 2.24 | 15.1, 14.3, 13.6; 2.69, 2.51, 2.26 | −10% to −2%; −4% to +1% |
+| Yao T4 | centre's peak / left, mm; underside damaged | 126 / 73; 714 cm² | 126 / 74; 918 cm² | 0, +1%; +29% |
+| Mendonça slab 4 (`--recommended`) | blast's peak / end, mm | 3.95 / 2.56 | 4.05 / 2.41 | +2.5%, −6% |
+| Alsubaei blockwork, 25 kg | top's peak, mm; face's load | 48.2; 2,132 kPa, 1,753 Pa s | 49.8; 2,241 kPa, 1,803 Pa s | +3%; +5%, +3% |
+| Alsubaei's air, half scale | the columns' peaks | | | within 2% |
+| Keys WR1A | debris mean / furthest, m; free field | 1.60 / 5.5; 99 kPa, 293 kPa ms | 1.75 / 7.0; 101 kPa, 305 kPa ms | +9%; +2%, +4% |
+| The Kasun cubicle (`envelope-debris`) | launch speed; hazardous reach | 134–148 m/s; 129 m | 134–147 m/s; 129 m | under 1% |
+| Shang's chamber | roof edge | 47 / 25 mm | 47 / 25 mm | none: four charges, so the balloon either way |
+
+None changes its standing.
+- **Chiquito P7:** the slab goes a tenth further, still a third of the measured.
+- **Keys WR1A:** the debris goes a tenth further, the safe side for its reach.
+- **Wang A:** the near gauge reads a tenth lower.
+- **Yao T4:** a third more of its underside is damaged, its top still whole.
+
+The rest move by 6% at most. The chamber's four charges cannot be mapped, so it stays on the
+balloon, as the start's own rule says.
+
 ## Verification against theory
 
 The physical checks in the test suite are:
@@ -5655,6 +5760,12 @@ its limits). At 0.2, 0.5 and 1.1 kt of TNT on saturated ground:
   glass and 0.38 of it breaks at 0.5 kt, 2.6 million m², 3.8 times the army's count of about
   0.7 million m² of broken glass in the units it surveyed; the glazed share is an assumption, but
   matching the count by it alone would leave a quarter of any plausible window.
+- **Other sources**: at Stennett et al.'s six observers the shock arrives at 0.94–1.06 of their
+  times. Behind a block like the grain silos (Denny et al. 2025's 1:250 tests, 0.5 kt) the peak is
+  0.30–0.31 of the free field's at Z = 2 and 0.56–0.73 at Z = 3, as measured (about 0.3–0.4 and
+  0.5–0.9); farther out it recovers more slowly than their Viper::Blast's (0.82 against 1.0 at Z = 5;
+  0.90 against 0.92 at Z = 8). The JRC's EUROPLEXUS run (Valsamos et al. 2021) matched
+  Kingery–Bulmash to 750 m with a charge tuned to it.
 - **Structure**: 0.5 m stone carrying the masonry above it cracks at 0.5–1 km but falls in 8 of
   293 buildings at 0.5–0.75 km, where 7 of GEER's 13 sandstone houses there partly collapsed;
   0.2 m concrete is moderately damaged within 750 m and hardly beyond, where GEER's RC buildings

@@ -30,6 +30,8 @@ import simd
 //                      [--roomy] [--history out-%.csv]   (open faces 4 m/kg^(1/3) out; the deflection's record)
 //   blastbench twoface [--wu S8] [--wang A] [--yao T4] [--roomy] [--out dir]   (Wu's, Wang's and Yao's slabs;
 //                      --roomy moves every open face out to 4 m/kg^(1/3), as Scenario.openFaceRoom)
+//   --balloon-start on closein, twoface, perimeter, keys, envelope-debris and mendonca --recommended:
+//                      the charge started from the balloon these were recorded on before 18 October 2026
 //   blastbench contact [--tests SN142,SN131] [--dx 0.02] [--refine 2] [--levels 2] [--layers 12] [--time 0.003] [--step-divisor 4] [--charge 1.64] [--progress] [--fastest] [--column] [--no-debris-drag] [--no-contact]
 //   blastbench slab [--history] [--history-csv dir] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map] [--plan [0.1]]
 //                   [--stiffening [--profile [--line] [--column -44]]]   (where the tension along the span is carried)
@@ -45,7 +47,7 @@ import simd
 //                        [--panel]   (a 3 m panel resting on the ground, its edges tied to columns by each base)
 //   blastbench seat [--speeds 4,8,12] [--seats 0.1,0.2] [--time 1.5] [--h 0.1] [--dowels]
 //                   (a precast beam on corbels of two columns, one column struck away from the span)
-//   blastbench precast [--tests i0_50,i0_100,i0_150] [--friction 0.7] [--reversals 40] [--samples Samples/PrecastSeat] [--history out-%.csv]
+//   blastbench precast [--tests i0_50,i0_100,i0_150] [--friction 0.7] [--neoprene] [--reversals 40] [--samples Samples/PrecastSeat] [--history out-%.csv]
 //                      (a precast beam's seat cycled along its corbel, against Batalha et al.'s tests)
 //   blastbench rocking [--shear 40] [--bearing 814] [--packets a,b,c,d,e] [--speed 0.2] [--history out.csv]
 //                      [--elastic | --elastic-share 0.12 --memory 0 --heave 0]   (the sand's settling; also for shaking)
@@ -60,6 +62,7 @@ import simd
 //                        [--thermal-variants a.json,b.json]]
 //                       [--air thermal] [--afterburn] [--radiate [--absorption 0.1] [--soot-yield 0.185]]
 //                       [--stationary-walls] [--cloud spec.json [--frame-cloud] [--cloud-results out.json]]
+//                       [--standing]   (the standing a new document of the preset shows, in place of a run)
 //   blastbench dialpack [--dx 4] [--time 1] [--tons 500] [--domain 480] [--radiate] [--refine 2]
 //   blastbench hazards [--mass 100] [--fragments spec.json [--height 1]]
 //                      (the safety standards' distances, the minimum safe distance and the free
@@ -990,7 +993,7 @@ func runChamber() throws {
         afterburnEnergy: option("afterburn-energy").flatMap { Float($0) }.map { $0 * 1e6 },
         airModel: chosenGas(), openFaces: chosenFaces(),
         refinement: option("refine").flatMap { Int($0) } ?? 1,
-        contact: flag("no-contact") ? .off : nil,
+        contact: flag("no-contact") ? .off : nil, mappedCharge: flag("mapped"),
         // `--progress` reports every 10 ms of a long run.
         progress: flag("progress")
             ? { line in
@@ -1119,6 +1122,8 @@ func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver 
     configuration.afterburnLimit = chosenBurnLimit()
     applyChosenAir(&configuration)
     if flag("mapped") { configuration.mappedCharge = true }
+    // The mapped start's products with their own equation of state (JWL).
+    if flag("products") { configuration.mappedChargeProducts = true }
     if let time = option("burn-time").flatMap({ Float($0) }) { configuration.afterburnTime = time / 1000 }
     if let energy = option("afterburn-energy").flatMap({ Float($0) }) {
         configuration.afterburnEnergy = energy * 1e6
@@ -1429,6 +1434,18 @@ func runGravity(device: MTLDevice) throws {
 
 func runSnapshot() throws {
     var scenario = chosenScenario()
+    // `--standing [--dx 0.5]`: the scene's standing on the recommended air with glazing vented, as a
+    // new document of the preset shows it, printed in place of a run.
+    if flag("standing") {
+        let standing = SceneStanding(
+            StandingInputs(
+                scenario: scenario, cellSize: option("dx").flatMap { Float($0) } ?? 0.25,
+                configuration: .recommended, ventsGlazing: true))
+        for line in standing.lines { print(line) }
+        for line in standing.resolution { print("Resolution: \(line)") }
+        for line in standing.unsupported { print("Not compared: \(line)") }
+        return
+    }
     // `--street-envelopes`: the street study's four buildings as exposure-only envelopes.
     if flag("street-envelopes") {
         scenario = try StreetInteractionStudy.make(.street)
@@ -2894,6 +2911,7 @@ func runTwoFace() throws {
                 refinement: option("refine").flatMap { Int($0) } ?? 2, elementSize: yaoElement,
                 duration: duration,
                 afterburning: burning, airModel: chosenGas(), openFaces: chosenFaces(), roomy: flag("roomy"),
+                balloonStart: flag("balloon-start"),
                 adjust: adjust,
                 prepare: { solver in
                     // `--weightless`: the slab without its own weight, as compared before 17 October 2026.
@@ -2960,7 +2978,8 @@ func runTwoFace() throws {
                 refinement: option("refine").flatMap { Int($0) } ?? 2, elementSize: elementSize,
                 duration: duration,
                 heldLengthwise: flag("held"), afterburning: burning, airModel: chosenGas(),
-                openFaces: chosenFaces(), roomy: flag("roomy"), adjust: adjust,
+                openFaces: chosenFaces(), roomy: flag("roomy"), balloonStart: flag("balloon-start"),
+                adjust: adjust,
                 prepare: { solver in
                     prepareTrace(solver)
                     lastStructure = solver
@@ -3022,6 +3041,7 @@ func runTwoFace() throws {
                 edges: option("edges").flatMap { TwoFaceSlabTests.WangEdges(rawValue: $0) }
                     ?? (flag("hinged") ? .hinged : .fixed),
                 afterburning: burning, airModel: chosenGas(), openFaces: chosenFaces(), roomy: flag("roomy"),
+                balloonStart: flag("balloon-start"),
                 adjust: { scenario in
                     adjust(&scenario)
                     if let bond = chosenBondSlip(diameter: test.bar) { scenario.structure?.bondSlip = bond }
@@ -3093,7 +3113,7 @@ func runCloseIn() throws {
             refinement: refinement, mappedCharge: !flag("no-map"), afterburning: burning,
             airModel: chosenGas(), openFaces: chosenFaces(),
             heldLengthwise: !flag("sliding"), stepsPerSample: option("trace") != nil ? 1 : 16,
-            roomy: flag("roomy"),
+            roomy: flag("roomy"), balloonStart: flag("balloon-start"),
             adjust: { scenario in
                 if flag("no-rate") { scenario.structure?.material.rateDependent = false }
                 if let scale = option("charge-scale").flatMap({ Float($0) }) { scenario.charge.mass *= scale }
@@ -4301,14 +4321,18 @@ func runPrecast() throws {
     let limit = option("reversals").flatMap { Int($0) }
     let folder = URL(fileURLWithPath: option("samples") ?? "Samples/PrecastSeat")
     print(
-        "Precast seat cycled along its corbel, resting with friction \(format(Double(friction), 2))"
+        "Precast seat cycled along its corbel, "
+            + (flag("neoprene")
+                ? "on neoprene (friction falling with pressure)"
+                : "resting with friction \(format(Double(friction), 2))")
             + (limit.map { ", first \($0) reversals" } ?? ""))
     print(
         pad("test", 13) + pad("load", 8) + pad("sliding, model", 16) + pad("test", 10)
             + pad("energy, model", 15)
             + pad("test", 10) + pad("lag", 9) + pad("run time", 9))
     for test in tests {
-        var law = Anchorage.resting(friction: friction)
+        // `--neoprene`: friction falling with pressure, fitted to the pads' tests (`Anchorage.neoprenePad`).
+        var law = flag("neoprene") ? Anchorage.neoprenePad : Anchorage.resting(friction: friction)
         // `--pad 1e8` gives the joint a neoprene pad's shear stiffness, in Pa/m.
         law.shearStiffness = option("pad").flatMap { Float($0) }
         // `--normal 1e9` the joint's stiffness across, in Pa/m.
@@ -5543,6 +5567,7 @@ do {
     case "throughput": try runThroughput()
     case "structure": try runStructure()
     case "validate": try runValidation()
+    case "products": try runProducts()
     case "mapped-cost":
         // The fine one-dimensional start's own time (CPU), by charge and cell: `--masses 1,10,100
         // --dx 0.125,0.25,0.5 --cells 64`.
@@ -5625,6 +5650,15 @@ do {
                     format: "%-34@ in flight %6.1f m, ground %5.1f m, DoD %6.1f m: %.2f (%d flown set it)",
                     item.name as NSString, hazard.airDistance ?? 0, hazard.groundDistance ?? 0, item.measured,
                     (hazard.hazardDistance ?? 0) / item.measured, hazard.samplesAtDistance))
+            // DDESB TP-12's closed form from the same masses and speed: the flown cubes' shape
+            // factor, then TP-12's natural fragments' 2.6 g/cm³, each at its drag of 1.28.
+            print(
+                String(
+                    format: "%@ TP-12's procedure %6.1f m (cubes), %6.1f m (k 2.6 g/cm³)",
+                    String(repeating: " ", count: 34) as NSString,
+                    FragmentThrowComparison.zakerDistance(
+                        item, shapeFactor: 7850 / pow(1.5, 1.5), drag: 1.28),
+                    FragmentThrowComparison.zakerDistance(item, shapeFactor: 2600, drag: 1.28)))
         }
     case "bubble": try runBubble()
     case "mixinglayer": try runMixingLayer()

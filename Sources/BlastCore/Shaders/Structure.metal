@@ -2892,13 +2892,14 @@ struct AnchorLaw {
     float normal[3];     // across the joint into the body, when it is not under it; zero: up
     float closing;       // m it settles through at most, then bears without limit; 0: no limit
     float closed;        // Pa/m it bears with once closed
-    float spare[2];
+    float frictionExponent;   // friction falls as (pressure / reference)^-exponent; 0: constant
+    float frictionReference;  // Pa
 };
 
 AnchorLaw anchorLaw(constant StructureUniforms &u) {
     return AnchorLaw{u.anchorNormalStiffness, u.anchorShearStiffness, u.anchorTension, u.anchorPlateau,
                      u.anchorOpening, u.anchorCohesion, u.anchorCohesionSlip, u.anchorFriction, 0.0f,
-                     {0.0f, 0.0f, 0.0f}, 0.0f, 0.0f, {0.0f, 0.0f}};
+                     {0.0f, 0.0f, 0.0f}, 0.0f, 0.0f, 0.0f, 1.0f};
 }
 
 // Fraction of an anchorage's tensile strength left once it has opened by `peak`: all of it to
@@ -2963,7 +2964,10 @@ float3 anchorTraction(thread float4 &state, thread float &settlement, float3 dis
     // as it takes the tension, and sliding wears it.
     float2 shear = law.ks * (displacement.xy - slip);
     float cohesion = law.cohesion * (1.0f - wear) * (law.tension > 0.0f ? anchorEnvelope(peak, law) : 1.0f);
-    float limit = cohesion + law.friction * max(-normal, 0.0f);
+    float pressed = max(-normal, 0.0f);
+    float friction = law.frictionExponent > 0.0f && pressed > 0.0f
+        ? law.friction * pow(pressed / law.frictionReference, -law.frictionExponent) : law.friction;
+    float limit = cohesion + friction * pressed;
     float magnitude = length(shear);
     if (magnitude > limit) {
         float slide = (magnitude - limit) / law.ks;

@@ -14,14 +14,15 @@ extension BlastSolver {
     /// twentieth of its radius (2,000 to 20,000 cells) reaching 1.6 times `radius`.
     static func mappedSolution(
         _ charge: Charge, radius: Float, onGround: Bool, configuration: SolverConfiguration,
-        ambientDensity: Float
+        ambientDensity: Float, products: SphericalBlast.JWL? = nil, refined: Int = 1
     ) -> SphericalBlast {
         let multiplier: Double = onGround ? 2 : 1
         let mass = Double(charge.mass) * multiplier
         let energy = Double(charge.energy) * multiplier
-        let size = cbrt(3 * mass / (4 * Double.pi * 1600))
+        // With the products' own law, the charge at the explosive's own density.
+        let size = cbrt(3 * mass / (4 * Double.pi * (products?.density ?? 1600)))
         let extent = Double(radius) * 1.6
-        let cells = min(max(Int(extent / (size / 20)), 2000), 20000)
+        let cells = min(max(Int(extent / (size / 20)), 2000), 20000) * refined
         // The air's own gas and, with afterburning, its burning, at the real charge's rate.
         let burning: SphericalBlast.Afterburn? =
             configuration.afterburning
@@ -39,7 +40,20 @@ extension BlastSolver {
             gamma: Double(configuration.gamma), ambientDensity: Double(ambientDensity),
             ambientPressure: Double(configuration.ambientPressure),
             thermallyPerfect: configuration.airModel == .thermallyPerfect, afterburn: burning,
-            oxygenInAir: Double(Self.oxygenInAir))
+            oxygenInAir: Double(Self.oxygenInAir), products: products)
+    }
+
+    /// The one-dimensional start alone, for studying it: a surface burst of `mass` kg on rigid
+    /// ground under `configuration`, unrun, reaching `reach` m/kg^(1/3), with the detonation
+    /// products' own equation of state `products` (nil: as the air's gas), on `refined` times the
+    /// cells the start uses.
+    public static func mappedStartStudy(
+        mass: Float, reach: Float, configuration: SolverConfiguration, products: SphericalBlast.JWL?,
+        refined: Int = 1
+    ) -> SphericalBlast {
+        mappedSolution(
+            Charge(mass: mass, position: .zero), radius: reach * cbrt(mass), onGround: true,
+            configuration: configuration, ambientDensity: 1.225, products: products, refined: refined)
     }
 
     /// The wall time, cells and steps of the one-dimensional solution a charge of `mass` kg on the
@@ -61,7 +75,7 @@ extension BlastSolver {
     {
         var blast = Self.mappedSolution(
             charge, radius: radius, onGround: onGround, configuration: configuration,
-            ambientDensity: ambientDensity)
+            ambientDensity: ambientDensity, products: configuration.mappedChargeProducts ? .tnt : nil)
         blast.probes = probes.map { Double(simd_distance($0, charge.position)) }
         // Solved once for each charge, gas and reach (it is deterministic): a scene run again, or
         // another alike, starts from the same solution.

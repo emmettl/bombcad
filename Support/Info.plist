@@ -63,5 +63,12 @@
 			</dict>
 		</dict>
 	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>BombCAD finds Macs nearby that share their GPU, and shares this Mac's when you turn it on, to run simulations on them.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_bombcad._tcp</string>
+		<string>_bombcad-pair._tcp</string>
+	</array>
 </dict>
 </plist>

@@ -47,8 +47,8 @@ public struct KFactorDistance: Codable, Sendable, Equatable, Identifiable {
 /// The distance an exposure needs from a charge, never shorter than the published distance that
 /// applies: the inhabited building distance (K40), and for a cased charge DoD's default hazardous
 /// fragment distance for items not tested (DoD 4145.26-M Table AP2.T2, "OPEN"); BombCAD's own
-/// hazardous fragment distance is shown beside them as an estimate (it reads short of DoD's
-/// test-derived distances by a sixth to a half: fragments.md), and governs only where larger.
+/// hazardous fragment distance is shown beside them as an estimate (0.58–1.02 of DoD's
+/// test-derived distances, short with thick walls: fragments.md), and governs only where larger.
 public struct MinimumSafeDistance: Codable, Sendable, Equatable {
     public var overpressureM: Float
     /// DoD's default for a cased charge of this weight; nil for a bare charge, whose distance in the
@@ -134,7 +134,7 @@ public struct MinimumSafeDistance: Codable, Sendable, Equatable {
             + (fragmentM.map {
                 String(
                     format:
-                        "; BombCAD's fragment distance %.0f m, an estimate that reads short by a sixth to a half",
+                        "; BombCAD's fragment distance %.0f m, an estimate that reads up to two-fifths short",
                     $0)
             } ?? "")
             + (debrisM.map { String(format: "; BombCAD's envelope debris distance %.0f m, an estimate", $0) }

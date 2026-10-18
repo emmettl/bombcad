@@ -170,12 +170,15 @@ func runMendonca(device: MTLDevice) throws {
                 // have been since 17 October 2026 (the prediction took it as the run started).
                 if flag("settle") { solver.configuration.settlesStructures = true }
                 if flag("recommended") {
-                    // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
-                    let recommended = SolverConfiguration.recommended.balloonStart
+                    // The mapped start since 18 October 2026; `--balloon-start` for the balloon these
+                    // post-reveal studies were run on before then. The blind runs never take this path.
+                    let recommended =
+                        flag("balloon-start")
+                        ? SolverConfiguration.recommended.balloonStart : SolverConfiguration.recommended
                     solver.configuration.airModel = recommended.airModel
                     solver.configuration.afterburning = recommended.afterburning
                     solver.configuration.openFaces = recommended.openFaces
-                    solver.configuration.mappedCharge = false
+                    solver.configuration.mappedCharge = recommended.mappedCharge
                 }
             },
             progress: { print("  " + $0) })

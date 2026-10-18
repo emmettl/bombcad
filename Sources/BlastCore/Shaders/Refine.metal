@@ -1659,7 +1659,13 @@ static inline float2 speciesMean(int3 cell, uint patch, int3 tile, const device 
 
 // With the terrain's cut cells, a coarse cut cell's state from its fine cells: their air weighted by
 // their shares, over the coarse cell's own share (`coarseShare`), so that it holds what they hold.
-// Its fuel and oxygen likewise into `species`.
+// Its fuel and oxygen likewise into `species`. Where a rigid block's fine outline takes some of
+// them, over the shares of those left instead, the mean of the air there, as a cell without a cut
+// takes it (`fineMean`): over the coarse share, which knows nothing of the block, the coarse cell
+// came out short by the block's share, a fall in pressure that flagged the blocks beside for
+// refinement and, once its patch was released (as patches come and go when the pool runs out),
+// stayed in the coarse air. Beirut's 1 km box refined twice showed a precursor of -1.5 to -2.5 kPa
+// at the façades and arrivals at 0.8 s from 584 to 807 m, which this is suspected of.
 static inline Cell cutMean(int3 cell, uint patch, int3 tile, const device Cell *fine, const device uchar *fineMask,
                            const device float4 *fineCut, float coarseShare, const device float2 *fineSpecies,
                            bool takeSpecies, thread float2 &species, constant SolverUniforms &u) {
@@ -1667,12 +1673,16 @@ static inline Cell cutMean(int3 cell, uint patch, int3 tile, const device Cell *
     Cell sum = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
     species = float2(0.0f);
     bool withSpecies = takeSpecies && u.afterburnEnergy > 0.0f;
+    bool blocked = false;
+    float shares = 0.0f;
     for (int n = 0; n < r * r * r; ++n) {
         uint child = fineIndex(patch, cell * r + int3(n % r, (n / r) % r, n / (r * r)), tile, u);
+        blocked = blocked || (fineMask[child] & 2) != 0;
         if ((fineMask[child] & 1) != 0) {
             continue;
         }
         float share = fineCut[2 * child].x;
+        shares += share;
         Cell f = fine[child];
         sum.rho += share * f.rho;
         sum.mx += share * f.mx;
@@ -1683,7 +1693,7 @@ static inline Cell cutMean(int3 cell, uint patch, int3 tile, const device Cell *
             species += share * fineSpecies[child];
         }
     }
-    float inverse = 1.0f / (float(r * r * r) * coarseShare);
+    float inverse = blocked && shares > 0.0f ? 1.0f / shares : 1.0f / (float(r * r * r) * coarseShare);
     sum.rho *= inverse;
     sum.mx *= inverse;
     sum.my *= inverse;

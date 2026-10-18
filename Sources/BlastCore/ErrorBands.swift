@@ -1263,7 +1263,7 @@ extension StandingScene {
                                 validity:
                                     "2 to 15 kg at 0.5 and 1 m; 6 elements through, fine air; P7 is left 112 to 146 mm "
                                     + "down on 6 to 12 and holed on 16; with afterburning and hot air the heavy "
-                                    + "charges leave 110–196 mm against 340 and 510",
+                                    + "charges leave 110–196 mm against 340 and 510, P7 121 mm on the mapped start",
                                 check: "Full-scale slabs under close-in charges"),
                             derived:
                                 "6 elements through, calibrated; 6 to 12 leave P7 alike, and on 16 it holes",

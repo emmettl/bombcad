@@ -1084,6 +1084,7 @@ public enum StandingTable {
         "SolverConfiguration.mappedChargeScaledReach": .numerical,
         "SolverConfiguration.mappedChargeBurns": .numerical,
         "SolverConfiguration.mappedChargeMixing": .numerical,
+        "SolverConfiguration.mappedChargeProducts": .numerical,
         "SolverConfiguration.airSleepThreshold": .numerical,
         "SolverConfiguration.airSleepCrossings": .numerical,
         "SolverConfiguration.debrisReach": .numerical,
@@ -1210,6 +1211,8 @@ public enum StandingTable {
         "Anchorage.friction": .input,
         "Anchorage.bearingCapacity": .input,
         "Anchorage.closingGap": .input,
+        "Anchorage.frictionExponent": .input,
+        "Anchorage.frictionReferencePressure": .input,
         "Anchorage.footing": .option([.footings, .cyclicSand]),
         "Anchorage.side": .input,
         "Anchorage.jointNormal": .input,
@@ -2041,15 +2044,17 @@ struct StandingScene {
             evidence.append(
                 StandingEvidence(
                     "Brick walls' debris (Keys, 2016)",
-                    "Loads within 15%; the walls crack at the measured heights but fall as one column, lying "
-                        + "1.0–1.4 m too far out in the open and thrown half as far as measured in a shock tube",
+                    "Loads within 15%; the walls crack at the measured heights but fall as one column where the "
+                        + "tests' folded, so how they come apart is wrong; their debris lies 1.0–1.5 m too far out "
+                        + "in the open, the safe side for its reach, and is thrown half as far as measured in a "
+                        + "shock tube, the unsafe side",
                     "validation.md#brick-walls-debris"
                 ))
             if has(.softGround) {
                 evidence.append(
                     StandingEvidence(
                         "Brick walls' debris on soft ground (Keys, 2016)",
-                        "At 5×10⁷ Pa/m the mean distance 1.11–1.40 m against 0.23–0.64 m measured (1.60–1.64 m "
+                        "At 5×10⁷ Pa/m the mean distance 1.21–1.63 m against 0.23–0.64 m measured (1.62–1.77 m "
                             + "on the hard ground); one run of each wall", "validation.md#brick-walls-debris")
                 )
             }
@@ -2260,7 +2265,7 @@ struct StandingScene {
         if materialClasses.contains(.glass) || materialClasses.contains(.masonry) {
             level = .illustrative
             summary +=
-                " Masonry breaks into too few pieces: brick walls fall as one column, lying 1.5–2 m too far out in "
+                " Masonry breaks into too few pieces: brick walls fall as one column, lying 1.0–1.4 m too far out in "
                 + "the open, and are thrown half as far as measured in a shock tube. Glass breaking up has no comparison."
         }
         return result(
@@ -2607,9 +2612,15 @@ struct StandingScene {
             StandingEvidence(
                 "DoD 4145.26-M's hazardous fragment distances for single items in the open, from DDESB's test "
                     + "protocol (a 155 mm projectile 126.5 m, a 500 lb bomb 204.2 m), the items from public totals",
-                "0.43–0.77 and 0.57–0.84 in flight, short (the unsafe side), as the walls assumed go from thick "
-                    + "to thin; landings on the ground alone would be a sixth to a fifteenth",
+                "0.58–1.02 and 0.77–1.02 in flight, short (the unsafe side) to level, as the walls assumed go "
+                    + "from thick to thin; landings on the ground alone would be a sixth to a fifteenth",
                 "fragments.md#against-dods-distances"),
+            StandingEvidence(
+                "DDESB Technical Paper 12 (Zaker, 1975): its density on a surface normal to the rays, its "
+                    + "procedure, and Sternberg's steel cylinders' masses (its Table 1)",
+                "Its procedure on the same fragments gives 1.05–1.21 times the flown distance (it lets no "
+                    + "fragment fall); Mott's scaling with Cooper's B gives 1.00–1.36 times the mean mass of "
+                    + "Sternberg's fragments over a grain", "fragments.md#against-ddesb-tp-12"),
         ]
         let shared = [
             "One way: fragments do not push back on the air or the structure, and stop where they first hit.",
@@ -2619,8 +2630,8 @@ struct StandingScene {
                 + "the first surface, through or not, and does not load it.",
             "Hazard distance: the DDESB's, where fragments of 79 J or more fall below one per 55.7 m² on a "
                 + "surface across their paths near the horizontal (or on open ground, if further), in 8 directions; "
-                + "0.43–0.84 of DoD's test-derived distances for two items, short (the unsafe side), the casing's "
-                + "wall deciding; no fragment-by-fragment arena data compared.",
+                + "0.58–1.02 of DoD's test-derived distances for two items, up to two-fifths short (the unsafe "
+                + "side), the casing's wall deciding; no fragment-by-fragment arena data compared.",
         ]
         guard inputs.fragments?.mottFactor != nil else {
             return result(

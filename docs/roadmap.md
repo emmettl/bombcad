@@ -122,8 +122,9 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
   the mapped one-dimensional start, the default since 18 October 2026
   ([a finely resolved start](air-blast-model.md#a-finely-resolved-start)).
 - **Next:** rerun the comparisons still on the balloon start
-  ([list](validation.md#still-on-the-balloon-start)); close in, the products' own composition
-  for the hottest gas; reflected peaks near walls. Weak shocks to 40 m/kg^(1/3) need no new criterion: threshold 0.005 follows them
+  ([list](validation.md#still-on-the-balloon-start)); reflected peaks near walls; the products
+  as a second gas only for contact charges (their own equation of state in the mapped start was
+  tried and moves open-air loads too little, [record](validation.md#the-products-own-equation-of-state-18-october)). Weak shocks to 40 m/kg^(1/3) need no new criterion: threshold 0.005 follows them
   at about the least it can cost, and 8 m cells refined twice give 84–94% of Kingery–Bulmash's
   peaks out to there ([large scenes](large-scenes.md#following-weak-shocks-further-tried-and-not-needed-to-40-mkg13)).
 - **Deferred:** cut cells for moving solids.
@@ -140,9 +141,13 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
   hysteresis, hourglass control, tension stiffening and a crushing band ruled out; whether the
   specimen's hinge differed or its rig held the rebound back the record cannot say
   ([concrete model](concrete-model.md#how-the-model-got-here), step 16).
+- **Done:** precast seats on neoprene pads, friction falling with pressure, within 0.91–1.09 of
+  the measured energy ([measured seats](structural-model.md#base-connections)).
+- **Stopped, for data:** dowelled seats, a pinched, degrading hysteresis three tests cannot fix
+  (same section); CLT panels' screwed angle connections, measured only through the panels
+  ([data wanted](data-wanted.md#to-fetch)).
 - **Next:** a shaken footing's lurch, and the rest of its
-  energy (sand crushed across the whole contact, the shaken sand's own); pads' and dowels'
-  laws; footings on a slope.
+  energy (sand crushed across the whole contact, the shaken sand's own); footings on a slope.
 - **Done, approximation:** [profiled steel sheeting](profiled-sheeting.md) as a skin with its ribs
   as beams, its thin flanges buckling, screwed to its purlins by screws that pull through; Langdon's
   connections as spring supports. Against Langdon's corrugated panels 10 of 13 permanent sets are
