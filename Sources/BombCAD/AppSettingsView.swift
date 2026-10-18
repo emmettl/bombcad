@@ -54,6 +54,8 @@ struct AppSettingsView: View {
                     )
                 }
 
+                NearbySettingsSections(hosts: $sweepHosts)
+
                 Section {
                     ForEach(hosts, id: \.self) { host in
                         HStack(alignment: .firstTextBaseline) {
@@ -94,7 +96,7 @@ struct AppSettingsView: View {
                     Text("Sweeps on other Macs")
                 } footer: {
                     Text(
-                        "Sweep cases are shared with Apple silicon Macs reached over SSH without a password. BombCAD sends each a copy of itself the first time. A slower Mac is given only the cases it will finish before the rest of the sweep. Fragments fly on the first."
+                        "Sweep cases are shared with Macs nearby once paired, and with Apple silicon Macs reached over SSH without a password, to which BombCAD sends a copy of itself the first time. A slower Mac is given only the cases it will finish before the rest of the sweep. Fragments fly on the first."
                     )
                 }
             }
@@ -113,7 +115,7 @@ struct AppSettingsView: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 20)
         }
-        .frame(width: 480, height: 640)
+        .frame(width: 480, height: 720)
     }
 
     private var hosts: [String] { AppPreferences.hosts(sweepHosts) }

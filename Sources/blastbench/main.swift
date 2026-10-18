@@ -1119,6 +1119,8 @@ func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver 
     configuration.afterburnLimit = chosenBurnLimit()
     applyChosenAir(&configuration)
     if flag("mapped") { configuration.mappedCharge = true }
+    // The mapped start's products with their own equation of state (JWL).
+    if flag("products") { configuration.mappedChargeProducts = true }
     if let time = option("burn-time").flatMap({ Float($0) }) { configuration.afterburnTime = time / 1000 }
     if let energy = option("afterburn-energy").flatMap({ Float($0) }) {
         configuration.afterburnEnergy = energy * 1e6
@@ -5536,6 +5538,7 @@ do {
     case "throughput": try runThroughput()
     case "structure": try runStructure()
     case "validate": try runValidation()
+    case "products": try runProducts()
     case "mapped-cost":
         // The fine one-dimensional start's own time (CPU), by charge and cell: `--masses 1,10,100
         // --dx 0.125,0.25,0.5 --cells 64`.
@@ -5618,6 +5621,15 @@ do {
                     format: "%-34@ in flight %6.1f m, ground %5.1f m, DoD %6.1f m: %.2f (%d flown set it)",
                     item.name as NSString, hazard.airDistance ?? 0, hazard.groundDistance ?? 0, item.measured,
                     (hazard.hazardDistance ?? 0) / item.measured, hazard.samplesAtDistance))
+            // DDESB TP-12's closed form from the same masses and speed: the flown cubes' shape
+            // factor, then TP-12's natural fragments' 2.6 g/cm³, each at its drag of 1.28.
+            print(
+                String(
+                    format: "%@ TP-12's procedure %6.1f m (cubes), %6.1f m (k 2.6 g/cm³)",
+                    String(repeating: " ", count: 34) as NSString,
+                    FragmentThrowComparison.zakerDistance(
+                        item, shapeFactor: 7850 / pow(1.5, 1.5), drag: 1.28),
+                    FragmentThrowComparison.zakerDistance(item, shapeFactor: 2600, drag: 1.28)))
         }
     case "bubble": try runBubble()
     case "mixinglayer": try runMixingLayer()

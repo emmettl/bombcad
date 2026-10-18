@@ -66,7 +66,7 @@ struct InterfaceSnapshotTests {
         let store = try #require(UserDefaults(suiteName: suite))
         defer { store.removePersistentDomain(forName: suite) }
         try snapshot(
-            AppSettingsView().defaultAppStorage(store), size: CGSize(width: 480, height: 640),
+            AppSettingsView().defaultAppStorage(store), size: CGSize(width: 480, height: 720),
             appearance: appearance, to: folder.appending(path: "settings.png"))
     }
 

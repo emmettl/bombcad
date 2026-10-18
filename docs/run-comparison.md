@@ -140,6 +140,37 @@ cases, which only shifts what the scheduler gives it once measured; a worker tha
 takes no more in that sweep; and a sweep's end waits for any Mac still connecting, which on the
 first connection for a build includes copying it.
 
+## Macs nearby, without SSH
+
+A Mac on the same network can share its GPU without SSH, found by Bonjour and paired once.
+
+1. **On the Mac that will run the work**, turn on **Share this Mac's GPU with Macs nearby** in
+   Settings, under This Mac. macOS asks once whether BombCAD may accept incoming connections;
+   allow it. (Headless, `BombCAD serve` does the same until stopped.)
+2. **On the Mac that sends the work**, the sharing Mac appears under **Macs nearby**, with its GPU
+   and the links it is seen on. Choose **Pair…**.
+3. **Both Macs show a six-digit code.** Choose **Allow** on the sharing Mac only if the code is the
+   one the other Mac shows, and **It Matches** on the other. (Headless, `BombCAD pair` shows the
+   code and asks, or takes the sharing Mac's code with `--code`.)
+
+The paired Mac then joins the list of other Macs as `nearby:<its name>`, and is used wherever a
+Mac reached by SSH is: shared sweeps, the models fed alongside a run (**Run on**), and
+`BombCAD watch --on`, `BombCAD sweep --worker` and `BombCAD run --consumer` on the command line.
+`BombCAD nearby` lists the Macs sharing and those paired.
+
+- **Fastest link first.** A Mac seen on several links is reached over Thunderbolt if the two are
+  cabled, then wired Ethernet, then Wi-Fi.
+- **Same version on both.** The sharing Mac runs its own BombCAD, unlike an SSH worker, which is a
+  copy of this one; a Mac with a version that cannot take the work is shown but cannot be paired.
+- **Keys.** Each pairing is a 256-bit key kept in the Keychain on both Macs (or, with `--store` or
+  `BOMBCAD_NEARBY_STORE`, in a file only its owner can read, as for a Mac worked over SSH, whose
+  Keychain may be locked). **Forget** removes it; a forgotten Mac can no longer start a session.
+- **Only while sharing.** Nothing listens while sharing is off, and turning it off ends the
+  sessions open. The sharing Mac's gate for SSH workers (its CI runners, quiet window and load,
+  `~/.config/bombcad/remote.json`) applies to nearby sessions too.
+
+How it works and what it was measured to do: [Macs nearby](distributed-computing.md#macs-nearby-without-ssh).
+
 ## Measurements and interpretation
 
 For a multi-body run, the overall structural trace is the largest displacement across

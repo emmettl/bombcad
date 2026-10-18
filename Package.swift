@@ -48,7 +48,7 @@ let package = Package(
                 "BlastCore", "BlastRender", .product(name: "DocumentKit", package: "continuumkit"),
                 .product(name: "SceneRender", package: "continuumkit"),
             ]),
-        .executableTarget(name: "blastbench", dependencies: ["BlastCore", "BlastRender"]),
+        .executableTarget(name: "blastbench", dependencies: ["BlastCore", "BlastRender", "RadialBlast"]),
         .executableTarget(name: "SceneBench", dependencies: ["BlastCore", "BlastRender"]),
         .executableTarget(
             name: "RigidBoxDemo", dependencies: ["BlastCore"], resources: [.copy("viewer.html")]),
