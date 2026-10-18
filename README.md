@@ -195,11 +195,14 @@ Each model document lists its sources, its limitations and the work that would a
 
 | Target        | Contents                                                             |
 |---------------|----------------------------------------------------------------------|
-| `SceneModel` / `SceneView` | Shared geometry and camera in [SimulationKit](Packages/SimulationKit/README.md) |
+| `SceneModel` / `SceneView` | Shared geometry and camera from [ContinuumKit](https://github.com/emmettl/ContinuumKit) (formerly [SimulationKit](Packages/SimulationKit/README.md)); see [adoption](docs/continuumkit-adoption.md) |
 | `BlastCore`   | Air and structural solvers, materials, scenarios, effects, benchmark data |
 | `BlastRender` | Scene renderer, orbit camera, offscreen snapshots                    |
 | `BombCAD`     | SwiftUI app with the layout editor                                   |
 | `blastbench`  | Command-line throughput, validation and snapshot tool                |
+| `scenebench`  | Command-line benchmarks of building envelopes, streets and districts |
+| `RadialBlast` | The fine one-dimensional spherical start of a blast (`SphericalBlast`) |
+| `rigidboxdemo` | A self-contained HTML replay of the rigid-box mechanics            |
 
 ## Licence
 

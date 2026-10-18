@@ -50,7 +50,7 @@ takes a depth in metres or `deep`:
 swift run -c release BombCAD run street.bombcad --ground glacialSoil --water-table 1.5 --usd street.usda
 ```
 
-The summary then ends with a line per crater. For 500 t of TNT on glacial soil, for example:
+The summary then ends with a line per crater. For 500 short tons of TNT on glacial soil, for example:
 "Crater in glacial soil: 67.7 m across (45.1–90.3), 16.9 m deep, lip 4.23 m high out to 84.6 m".
 
 | Type (`--ground`) | Cooper's site | E_CR | Debris modulus |
@@ -202,7 +202,7 @@ band is one sigma. Where a figure is second-hand, it says so.
 
 | Event | Charge | Ground | Predicted (band) | Measured | Measured over predicted |
 |---|---|---|---|---|---|
-| Prairie Flat, 1968 | 500 t TNT, sphere resting on the ground | Glacial soil, Suffield; high water table | 67.7 m (45–90) | 85.5 m across, 5.3 m deep | 1.26 |
+| Prairie Flat, 1968 | 500 short tons TNT, sphere resting on the ground | Glacial soil, Suffield; high water table | 67.7 m (45–90) | 85.5 m across, 5.3 m deep | 1.26 |
 | Dial Pack, 1970 | 500 short tons TNT, sphere resting on the ground | Glacial soil, Suffield | 67.7 m (45–90) | 70.1 m, 4.6 m deep (second-hand) | 1.04 |
 | Snowball, 1964 | 500 short tons TNT, hemisphere | Glacial soil, Suffield; saturated | 67.7 m (45–90) | 73 m (second-hand) | 1.08 |
 | Sailor Hat Bravo, 1965 | 500 short tons TNT, stack | Rock (basalt, unconfirmed), Kahoʻolawe | 43.6 m (29–58) | 69 m (second-hand) | 1.58 |
@@ -224,15 +224,16 @@ band is one sigma. Where a figure is second-hand, it says so.
   | Prairie Flat | High: the crater "filled rapidly with water" | 16.9 m | 3.8 m (3.0–4.5) | 5.3 m | 1.41 |
   | Dial Pack | High, the same site | 16.9 m | 3.8 m (3.0–4.5) | 4.6 m | 1.23 |
   | Beirut | 1.5 m below the quay (GEER) | 24.2 m | 5.4 m (4.3–6.5) | 4–5 m | 0.84 |
-  | Minor Scale | Deep (dry lake bed) | 18.5 m | — | 24 m (second-hand) | 1.32 of the dry rule |
+  | Minor Scale | Deep (dry lake bed) | 18.5 m (ANFO's K) | — | 24 m (second-hand) | 1.30 of the dry rule |
 
   The Suffield shots' water-table depths were not found open: they are taken as within the slumped
   depth, which the craters' flooding implies, and any depth up to 3.8 m gives the same result. Two
   of the three wet craters lie within the slope's range once the radius's own under-reading is
   allowed for (Prairie Flat's radius is 1.26 of the estimate). Beirut is shallower still,
   0.04 of its diameter, "below the lower range" measured for large blasts (GEER), with its fill
-  flowing into the basin. At dry White Sands, with no water table, the dry rule is 1.32 too
-  shallow.
+  flowing into the basin. At dry White Sands, with no water table, the dry rule with ANFO's K is 1.30 too
+  shallow; with TNT's K, the choice made for its diameter, it gives 29.5 m, and the measured depth
+  is 0.81 of that.
 - **Beirut's yield.** Aouad and others found 257–287 t of TNT from the crater by another scaling
   law, below the 0.5 kt from the blast. On saturated soil with TNT's K, this estimate needs about
   0.95 kt for 120 m: inside the range of the yield estimates (0.2–1.1 kt), but nearly twice the
