@@ -105,6 +105,7 @@ The whole path has been run for real, with the `BombCAD-notary` profile, from 20
 | 0.3.0 (7)  | `b524a9d` | `de90ca6f-1803-4cd9-998b-525980d409c6` | Published as v0.3.0; crashes  |
 | 0.3.1 (8)  | `c874a6a` | `21d1ff1a-9ebd-45cf-98d6-712264341f22` | Made with the fix, not published |
 | 0.4.0 (10) | `9482ba7` | `b548eb9b-5031-48cd-800e-124a207db04e` | Published as v0.4.0           |
+| 0.5.0 (11) | `cde4b514` | `da25d621-e049-4f08-99bc-39ca876f0e3d` | Made and verified, not yet published |
 
 For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
 assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
@@ -189,6 +190,27 @@ Its notes, reviewed independently, are in `docs/release-notes/0.4.0.md`. Its ZIP
 manifest are attached to the GitHub release `v0.4.0`, published on 2026-10-17 with its tag on
 `9482ba7`; the copy downloaded back matched the checksum, validated its stapled ticket, passed
 `codesign --verify --deep --strict` and was accepted by `spctl`.
+
+Build 11 (0.5.0) was prepared on 2026-10-19 from `cde4b514` on the branch `release/0.5.0`:
+`b6a7abec` from main, which passed `make check-anywhere`, then the version, the notes' late
+changes and retaken pictures, and three fixes picked from main (a run on the fine start that
+samples no longer hangs, the release smoke that guards it, and a placement test that no longer
+depends on the Mac's load). A first `make release` on `6b57a0a5` stopped in its tests before
+signing: that placement test, run with every other session's GPU work beside it. With no quiet
+window and `make release` run outside `gpu-slot`, all 347 app and 1182 core tests passed, the
+packaged app ran the small project and the structure on the fine start, and drew its views
+through a change of source, before signing and again before archiving. Apple accepted it
+(submission `da25d621-e049-4f08-99bc-39ca876f0e3d`). A fresh expansion of its ZIP:
+
+- matched the checksum (`222c94d3fe5094be59ac18f4f22a34c634876d6951f086a45c688f411ce30e16`);
+- validated its stapled ticket;
+- passed `codesign --verify --deep --strict`;
+- was accepted by `spctl` as `Notarized Developer ID`;
+- holds the licence text and the four resource bundles its binary links (BombCAD's two,
+  ContinuumKit's contact search and scene render; RadialBlast has none);
+- is version 0.5.0, build 11, arm64;
+- ran the small project and the structure on the fine start from inside its bundle and drew its
+  views through a change of source (`Scripts/release.py smoke`, on that copy).
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
