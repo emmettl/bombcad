@@ -1077,7 +1077,9 @@ public final class StructureSolver {
         guard let tracing = constants.copy() as? MTLFunctionConstantValues else { return }
         var traced = true
         tracing.setConstantValue(&traced, type: .bool, index: 3)
-        traceElementPipeline = { try? ShaderLibrary.pipeline("structureElements", in: library, constants: tracing) }
+        traceElementPipeline = {
+            try? ShaderLibrary.pipeline("structureElements", in: library, constants: tracing)
+        }
         tracingPipeline = nil
     }
 
