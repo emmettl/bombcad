@@ -156,17 +156,20 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
                 ])
 
         case .blastWall:
-            // A free-standing cantilever wall, 250 mm thick and 3 m high, 6 m from the charge.
-            let wall = Box(x: 18...18.25, y: 10...22, height: 3)
+            // A free-standing cantilever wall, 250 mm thick and 3 m high, 6 m from the charge. Every
+            // open face is 15 m (4.1 m/kg^(1/3)) from the charge and the wall, as
+            // `Scenario.structureFaceClearance` asks: 1.6 times the air of the 32 × 32 × 16 m domain
+            // it had to 18 October 2026.
+            let wall = Box(x: 21...21.25, y: 15...27, height: 3)
             var structure = StructureModel(solids: [wall], elementSize: 0.0625)
             structure.addMat(to: wall, thicknessAxis: 0, areaPerMetre: Self.barArea, depth: Self.barDepth)
             return Scenario(
-                name: title, domainSize: SIMD3(32, 32, 16), boxes: [],
-                charge: Charge(mass: 50, position: SIMD3(12, 16, 1)),
+                name: title, domainSize: SIMD3(35, 42, 18), boxes: [],
+                charge: Charge(mass: 50, position: SIMD3(15, 21, 1)),
                 gauges: [
-                    Gauge("Wall, front", at: SIMD3(17.9, 16, 1.5)),
-                    Gauge("Wall, behind", at: SIMD3(18.4, 16, 1.5)),
-                    Gauge("5 m behind", at: SIMD3(23, 16, 1.5)),
+                    Gauge("Wall, front", at: SIMD3(20.9, 21, 1.5)),
+                    Gauge("Wall, behind", at: SIMD3(21.4, 21, 1.5)),
+                    Gauge("5 m behind", at: SIMD3(26, 21, 1.5)),
                 ],
                 structure: structure)
 

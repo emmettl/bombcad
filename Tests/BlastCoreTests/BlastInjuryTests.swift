@@ -68,6 +68,15 @@ struct BlastInjuryTests {
             #expect(abs(k.metric / (k.k * 0.3967) - 1) < 0.005, "\(k.name)")
         }
         #expect(abs(KFactorDistance.k40.distance(kilograms: 100) - 73.66) < 0.05)
+        // K328 is never shown under the standard's 381 m: 20 kg scales to 353 m.
+        #expect(abs(KFactorDistance.k328.distance(kilograms: 20) - 353) < 1)
+        #expect(KFactorDistance.k328.requiredDistance(kilograms: 20) == 381)
+        #expect(
+            KFactorDistance.k328.requiredDistance(kilograms: 100)
+                == KFactorDistance.k328.distance(kilograms: 100))
+        #expect(
+            KFactorDistance.k40.requiredDistance(kilograms: 20) == KFactorDistance.k40.distance(kilograms: 20)
+        )
         // Kingery–Bulmash's surface burst at those scaled distances: within a fifth of the
         // pressures the standard names.
         for k in [KFactorDistance.k18, .k24, .k40] {

@@ -469,7 +469,7 @@ public struct IFCStructure: Sendable {
                     box.min[narrow] = mid - width / 2
                     box.max[narrow] = mid + width / 2
                     let rectangle = width * depth
-                    var equivalent = reading.material
+                    var equivalent = reading.material.resolvingRateLaw()
                     equivalent.name += " (flanged \(Self.millimetres(depth)))"
                     equivalent.youngsModulus *=
                         0.175 * area * depth * depth / (width * depth * depth * depth / 12)

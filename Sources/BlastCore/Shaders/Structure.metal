@@ -287,6 +287,9 @@ struct MaterialParameters {
     float bucklingOnset;
     float bucklingSoftening;
     float bucklingResidual;
+    float rateConstant;    // Cowper and Symonds's D (1/s), 0 for none
+    float rateExponent;    // 1 / q
+    float rateTestFactor;  // 1 + (tensile test's rate / D)^(1/q)
 };
 
 constant uint maxMaterials = 8;
@@ -2816,12 +2819,15 @@ struct AnchorLaw {
     float friction;
     float bearing;       // Pa the ground bears before it yields and settles; 0: without limit
     float normal[3];     // across the joint into the body, when it is not under it; zero: up
+    float closing;       // m it settles through at most, then bears without limit; 0: no limit
+    float closed;        // Pa/m it bears with once closed
+    float spare[2];
 };
 
 AnchorLaw anchorLaw(constant StructureUniforms &u) {
     return AnchorLaw{u.anchorNormalStiffness, u.anchorShearStiffness, u.anchorTension, u.anchorPlateau,
                      u.anchorOpening, u.anchorCohesion, u.anchorCohesionSlip, u.anchorFriction, 0.0f,
-                     {0.0f, 0.0f, 0.0f}};
+                     {0.0f, 0.0f, 0.0f}, 0.0f, 0.0f, {0.0f, 0.0f}};
 }
 
 // Fraction of an anchorage's tensile strength left once it has opened by `peak`: all of it to
@@ -2839,7 +2845,9 @@ float anchorEnvelope(float peak, AnchorLaw law) {
 // carries when its side of the joint has moved by `displacement` and rises at `rise` m/s.
 // `damper` (Pa s/m) damps the bearing as contacts are. `state` is (slip x, slip y, wear, largest
 // opening so far), wear being the fraction of the strength that sliding has rubbed away; and
-// `settlement` how far the ground has yielded under it (negative, down). Both are updated.
+// `settlement` how far the ground has yielded under it (negative, down). Both are updated. With a
+// `closing` gap the yielding stops once it has settled that far (a cavity closed after its ties
+// buckled), and the joint then bears without limit, with the stiffness `closed`.
 float3 anchorTraction(thread float4 &state, thread float &settlement, float3 displacement, float rise, float damper,
                       AnchorLaw law) {
     float2 slip = state.xy;
@@ -2855,12 +2863,20 @@ float3 anchorTraction(thread float4 &state, thread float &settlement, float3 dis
     if (opening <= 0.0f) {
         // Ground that bears no more than `bearing` yields, and the base settles for good.
         float bearing = law.kn * opening;
-        if (law.bearing > 0.0f && bearing < -law.bearing) {
+        bool yields = law.bearing > 0.0f && (law.closing <= 0.0f || settlement > -law.closing);
+        if (yields && bearing < -law.bearing) {
             settlement = displacement.z + law.bearing / law.kn;
-            bearing = -law.bearing;
+            if (law.closing > 0.0f && settlement <= -law.closing) {
+                settlement = -law.closing;
+                yields = false;
+            }
+            bearing = law.kn * (displacement.z - settlement);
+        }
+        if (law.closing > 0.0f && !yields) {
+            bearing = max(law.kn, law.closed) * (displacement.z - settlement);
         }
         normal = min(bearing + damper * rise, 0.0f);
-        if (law.bearing > 0.0f) {
+        if (yields) {
             normal = max(normal, -law.bearing);
         }
     } else if (law.tension > 0.0f) {

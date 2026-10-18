@@ -44,6 +44,66 @@ struct SceneExtentTests {
         #expect(ScenarioPreset.openGround.scenario.tightOpenFaces.isEmpty)
     }
 
+    @Test("The faces' room moves each tight face out to the rule, the benchmarks' scenes with it")
+    func openFaceRoom() {
+        // Chiquito's P7: 13.05 kg, the slab 1.2 m from x = 0 and 2.5 m from y = 0.
+        let test = CloseInSlabTest.tests.first { $0.name == "P7" }!
+        let pad = CloseInSlabTest.scenario(test).openFaceRoom(step: 0.5)
+        let wanted = Scenario.structureFaceClearance * cbrt(test.charge)
+        #expect(pad.low.x == ((wanted - 1.2) / 0.5).rounded(.up) * 0.5)
+        #expect(pad.low.y == ((wanted - 2.5) / 0.5).rounded(.up) * 0.5)
+        #expect(pad.low.z == 0, "the ground reflects")
+        let roomy = CloseInSlabTest.scenario(test, pad: pad)
+        #expect(roomy.tightOpenFaces.isEmpty, "\(roomy.tightOpenFaces)")
+        #expect(roomy.charge.position == CloseInSlabTest.scenario(test).charge.position + pad.low)
+        // Wu's S8 and Yao's T4 likewise; the chamber across and above only.
+        let wu = TwoFaceSlabTests.wuTests.first { $0.name == "S8" }!
+        #expect(
+            TwoFaceSlabTests.scenario(wu, pad: TwoFaceSlabTests.scenario(wu).openFaceRoom(step: 0.5))
+                .tightOpenFaces.isEmpty)
+        let yao = TwoFaceSlabTests.yaoTests.first { $0.name == "T4" }!
+        #expect(
+            TwoFaceSlabTests.scenario(yao, pad: TwoFaceSlabTests.scenario(yao).openFaceRoom(step: 1.5))
+                .tightOpenFaces.isEmpty)
+        let room = ChamberTest.scenario().openFaceRoom(step: 0.5)
+        #expect(room.low.x == 0 && room.high.x == 0 && room.low.z == 0)
+        #expect(ChamberTest.scenario(pad: room).tightOpenFaces.isEmpty)
+        // A domain already roomy needs nothing.
+        let none = roomy.openFaceRoom(step: 0.5)
+        #expect(none.low == .zero && none.high == .zero)
+    }
+
+    @Test("Widening to the rule grows the far faces from the origin, nothing in the scene moving")
+    func grownToTheRule() throws {
+        // The deformable wall meets the rule as it ships.
+        let wall = ScenarioPreset.blastWall.scenario
+        #expect(wall.tightOpenFaces.isEmpty && wall.grownToTheRule() == nil)
+        // With its top and north face brought in, both are grown back out; the domain alone changes.
+        var tight = wall
+        tight.domainSize.y -= 6
+        tight.domainSize.z = 8
+        let grown = try #require(tight.grownToTheRule())
+        #expect(grown.left.isEmpty, "\(grown.left)")
+        #expect(grown.domain.x == tight.domainSize.x)
+        #expect(grown.domain.y > tight.domainSize.y && grown.domain.z > tight.domainSize.z)
+        var widened = tight
+        try widened.resizeDomain(to: grown.domain)
+        #expect(widened.tightOpenFaces.isEmpty)
+        var unmoved = widened
+        unmoved.domainSize = tight.domainSize
+        #expect(unmoved == tight, "only the domain's size changed")
+        // A charge near x = 0 leaves the west face for moving the scene, which this does not do.
+        var west = tight
+        west.charge.position.x = 3
+        let left = try #require(west.grownToTheRule()).left
+        #expect(left.map(\.name) == ["west (x = 0)"])
+        // Only the west face near: nothing to grow, and it is still named.
+        var origin = wall
+        origin.charge.position.x = 3
+        let only = try #require(origin.grownToTheRule())
+        #expect(only.domain == origin.domainSize && only.left.map(\.name) == ["west (x = 0)"])
+    }
+
     @Test("Resizing keeps the contents, drops gauges left outside, and refuses to cut anything off")
     func resize() throws {
         var scenario = ScenarioPreset.openGround.scenario

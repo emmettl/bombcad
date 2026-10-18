@@ -6,11 +6,13 @@ import Metal
 /// envelope component's pressure history costs. The street's four buildings (120 ms) and the
 /// 64-building neighbourhood (60 ms), each run with the surface recorder alone, as every
 /// envelope-only run is, and with the histories too, in alternating order, `rounds` times; and the
-/// surface recorder as it was before it skipped still air (`before`), to show what that saved.
+/// surface recorder as it was before it skipped still air (`before`), to show what that saved; and
+/// the histories with their components' governing bands (`bands`) against without (`histories`).
 enum EnvelopeHistoryBenchmark {
     struct Run: Codable {
         var scene: String
-        /// "before" (the surface recorder reading every face), "surfaces" or "histories".
+        /// "before" (the surface recorder reading every face), "surfaces", "histories" (without
+        /// bands) or "bands".
         var variant: String
         var histories: Bool
         var round: Int
@@ -35,17 +37,18 @@ enum EnvelopeHistoryBenchmark {
         var runs: [Run] = []
         for round in 0..<rounds {
             for (name, scene, duration) in scenes {
-                let variants = ["before", "surfaces", "histories"]
+                let variants = ["before", "surfaces", "histories", "bands"]
                 let order = round.isMultiple(of: 2) ? variants : variants.reversed()
                 for variant in order {
-                    let histories = variant == "histories"
+                    let histories = variant == "histories" || variant == "bands"
                     let solver = try BlastSolver(device: device, scenario: scene, cellSize: dx)
                     try solver.configureEnvelopeExposure(objects: scene.envelopeObjects)
                     let before = solver.memoryFootprint
                     if histories {
                         try solver.configureEnvelopeComponents(
-                            objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: duration)
-                        )
+                            objects: scene.envelopeObjects,
+                            options: EnvelopeHistoryOptions(
+                                windowS: duration, governingBands: variant == "bands"))
                     }
                     solver.envelopeStillTileSkipping = variant != "before"
                     let start = ContinuousClock.now
@@ -86,7 +89,9 @@ enum EnvelopeHistoryBenchmark {
                 }.sorted()
                 return (ratios[ratios.count / 2], ratios)
             }
-            let memory = runs.first { $0.scene == name && $0.histories }
+            let memory = runs.first { $0.scene == name && $0.variant == "histories" }
+            let banded = runs.first { $0.scene == name && $0.variant == "bands" }
+            let bands = ratio("bands", "histories")
             let skip = ratio("surfaces", "before")
             let histories = ratio("histories", "surfaces")
             let both = ratio("histories", "before")
@@ -103,7 +108,11 @@ enum EnvelopeHistoryBenchmark {
                         format: "%.3f (%@)", histories.0,
                         histories.1.map { String(format: "%.3f", $0) }.joined(separator: ", "))
                     + String(format: "; histories over before %.3f", both.0)
-                    + "; \(memory?.components ?? 0) components, \(memory?.historyBytes ?? 0) bytes")
+                    + "; \(memory?.components ?? 0) components, \(memory?.historyBytes ?? 0) bytes"
+                    + String(
+                        format: "; bands over histories %.3f (%@), %d bytes with them", bands.0,
+                        bands.1.map { String(format: "%.3f", $0) }.joined(separator: ", "),
+                        banded?.historyBytes ?? 0))
         }
         // The GPU's own seconds, by stage, summed over every batch, `rounds` times in alternating
         // order: the histories' kernel is part of the observation stage.

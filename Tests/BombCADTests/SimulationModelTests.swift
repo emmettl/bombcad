@@ -574,6 +574,31 @@ struct SimulationModelTests {
         #expect(model.zoomLimits == OrbitCamera.defaultZoomLimits, "a small scene keeps SceneView's limit")
     }
 
+    @Test("Widening to the rule clears the far faces at the advisor's price, the scene where it was")
+    func widenToTheRule() async throws {
+        let model = try await makeModel()
+        model.select(.blastWall)
+        #expect(model.wideningToTheRule == nil, "the wall meets the rule as it ships")
+        var size = model.domainSize
+        size.z = 8
+        model.resizeDomain(to: size)
+        let before = model.settings.scenario
+        let widening = try #require(model.wideningToTheRule)
+        #expect(widening.left.isEmpty && widening.domain.z > 8)
+        // More air costs more, and the estimate is the advisor's for the run as set.
+        #expect(
+            widening.widened.cells > widening.now.cells && widening.widened.seconds > widening.now.seconds)
+        let inputs = SimulationInputs(
+            scenario: before, settings: ProjectRunSettings(model: model), thermal: model.thermalSpec)
+        #expect(widening.now == inputs.cost(domain: before.domainSize))
+        model.widenToTheRule()
+        let after = model.settings.scenario
+        #expect(after.domainSize == widening.domain && after.tightFacesNote == nil)
+        #expect(after.charge == before.charge && after.gauges == before.gauges)
+        #expect(after.structuralObjects == before.structuralObjects)
+        #expect(model.wideningToTheRule == nil)
+    }
+
     @Test("A gauge line runs from the charge at the Kingery-Bulmash scaled distances that fit")
     func gaugeLine() async throws {
         let model = try await makeModel()

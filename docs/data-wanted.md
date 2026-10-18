@@ -91,12 +91,21 @@ fails, search the number at [discover.dtic.mil](https://discover.dtic.mil/).
 | BFETS Phase 2 report, BG R-1579 | FABIG (purchase) | Full-scale module explosions, 27 tests |
 | CCPS, *Guidelines for Vapor Cloud Explosion…*, 2nd ed. (2010) | Wiley/AIChE | Congestion and blast curves in industry practice |
 | Kenny, *Dynamic pulse buckling of slender beams with geometric imperfections subjected to an axial impact*, PhD thesis, Dalhousie (2001), 10 MB, open | [hdl:10222/55746](http://hdl.handle.net/10222/55746), too large for this machine's fetcher; save to `data/Kenny2001/` | Impact tests of imperfect slender beams, elastic and plastic, beside his models: the steel beams' [dynamic buckling](shell-model.md#buckling) under a measured pulse, now checked only against Lindberg's closed form |
+| Culache, steel moment connections at high rates, PhD thesis, Southampton (2017), open | [eprints.soton.ac.uk/436596](https://eprints.soton.ac.uk/436596/) | The joints' rotation and failure under rapid loading: the first test of the steel frames' connections ([steel members](validation.md#steel-beams-and-columns-in-the-open)) |
+| Sadek et al., steel moment connections under column removal, NIST TN 1669 (2010), open | [nvlpubs.nist.gov](https://nvlpubs.nist.gov/nistpubs/TechnicalNotes/NIST.TN.1669.pdf) | Full-scale beam–column assemblies pulled down at a lost column: the frames' catenary action and connection failure |
+| Dinu et al., close-range blasts on steel frames, SDSS 2016 | [UPT](https://www.ct.upt.ro/centre/cemsig/codec_files/3.c15-%20Effects%20of%20close%20range%20blasts%20on%20steel%20frames.%20Experimental%20testing%20and%20numerical%20validation.pdf) | Beam–column assemblies under charges close in: a frame's members and joints together |
 | Ari-Gur, Weller and Singer, columns under axial impact, *IJSS* 18(7) (1982) 619–641 | Elsevier | The classic tests of columns struck at an end, imperfections measured |
 | Dewey, the TNT and ANFO equivalences of the Beirut explosion, *Shock Waves* 31 (2021) | [doi:10.1007/s00193-021-00992-1](https://doi.org/10.1007/s00193-021-00992-1) | Peak overpressure against distance from Rigby's arrival times: the nearest to a measured pressure curve for Beirut (more in `data/Beirut2020/TO-FETCH.md`) |
 
 The survey names a few more, each under its item: Hao et al. (2017), Ross and Krawinkler (1985),
 Kiger and Slawson (1984), Bauwens et al.'s propane and hydrogen papers, Kingery and Bulmash
 (1984), and Oswald (2017).
+
+**Still to find**: needs no source in hand meets yet.
+
+| Need | What a test would have to show | Unlocks |
+|---|---|---|
+| Brick walls' blast resistance once cracked | Unreinforced brick walls (a cavity wall's 102.5 mm leaves, a solid 215 mm wall) built between returns or other stiff ends, blasted past cracking: deflection histories to the end of the motion, whether each wall stood, the axial load on it and how stiff its ends were, so that arching across between the returns, arching up between floors and rocking under the load above can be told apart | Whether the [terraced houses'](validation.md#terraced-houses-against-wartime-bomb-damage) cracked front walls should stand, as most surveyed houses did; without it any resistance added would be fitted to that judge |
 
 ## To request
 

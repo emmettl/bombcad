@@ -24,7 +24,8 @@ func runTyndall(device: MTLDevice) throws {
                 let v = text.split(separator: ",").compactMap { Float($0) }
                 return SIMD3(v[0], v[1], v[2])
             } ?? .zero
-        var rows = "time_s,first_mm,second_mm,front_kPa,front2_kPa,edge_kPa,roof_kPa,back_kPa,side_kPa\n"
+        var rows =
+            "time_s,first_mm,second_mm,front_kPa,front2_kPa,edge_kPa,roof_kPa,back_kPa,side_kPa,free_kPa\n"
         let result = try TyndallCLTTest.run(
             device: device, test: test, cellSize: cellSize, refinement: refinement, elementSize: elementSize,
             duration: duration, pad: pad,
@@ -48,6 +49,10 @@ func runTyndall(device: MTLDevice) throws {
         print(
             "  reflected \(format(Double(test.reflected) / 1e3, 1)) / \(format(Double(result.reflected) / 1e3, 1)) kPa, "
                 + "\(format(Double(test.impulse), 0)) / \(format(Double(result.impulse), 0)) kPa ms")
+        print(
+            "  incident \(format(Double(test.incident) / 1e3, 1)) / \(format(Double(result.incident) / 1e3, 1)) kPa, "
+                + "\(format(Double(test.incidentImpulse), 0)) / \(format(Double(result.incidentImpulse), 0)) kPa ms"
+        )
         print(
             "  first storey, in / rebound (mm): \(mm(test.firstFloor)) measured, \(mm(result.firstFloor)) model"
         )

@@ -249,7 +249,85 @@ struct EnvelopeComponentHistoryTests {
             #expect(!history.truncated)
             #expect(history.outerMaxPa?.count == history.outerImpulsePaS.count)
             #expect(history.outerMaxPa?.max() == history.peakOuterPa)
+            // Its equivalent uniform loads likewise, of the faces' integrals weighted by its shape
+            // (Biggs's ∫pφ / ∫φ): the plate's over every face, the strip's over the middle third
+            // across its span.
+            let axes = (0..<3).filter { $0 != component.axis }
+            let edges =
+                component.supportEdges.contains(true) ? component.supportEdges : [true, true, true, true]
+            let held = [(edges[0], edges[1]), (edges[2], edges[3])]
+            let free = (0..<2).filter { !held[$0].0 && !held[$0].1 }
+            let across =
+                free.count == 1
+                ? free[0] : component.region.size[axes[1]] > component.region.size[axes[0]] ? 1 : 0
+            for (strip, equivalent) in [(false, history.plate), (true, history.strip)] {
+                let equivalent = try #require(equivalent, "\(component.id)")
+                for (outward, binned) in [
+                    (component.outward, equivalent.outerImpulsePaS),
+                    (-component.outward, equivalent.innerImpulsePaS),
+                ] {
+                    var weighted = 0.0
+                    var total = 0.0
+                    for face in faces where face.normal[component.axis] == Float(outward) {
+                        let solid = face.positionM - face.normal * 0.125
+                        guard
+                            (0..<3).allSatisfy({
+                                solid[$0] >= component.region.min[$0] && solid[$0] <= component.region.max[$0]
+                            })
+                        else { continue }
+                        let at = (0..<2).map { a in
+                            min(
+                                max(
+                                    (solid[axes[a]] - component.region.min[axes[a]])
+                                        / component.region.size[axes[a]], 0), 1)
+                        }
+                        if strip && abs(at[across] - 0.5) > 1.0 / 6 + 1e-6 { continue }
+                        var phi: Float = 1
+                        for a in 0..<2 where !(strip && a == across) {
+                            phi *= EnvelopeComponentRecorder.shape(at[a], low: held[a].0, high: held[a].1)
+                        }
+                        weighted += Double(phi) * Double(face.signedImpulsePaS)
+                        total += Double(phi)
+                    }
+                    #expect(total > 0)
+                    let expected = weighted / total
+                    let sum = binned.map(Double.init).reduce(0, +)
+                    #expect(
+                        abs(sum - expected) <= 1e-3 * abs(expected) + 1e-5,
+                        "\(component.id) \(strip ? "strip" : "plate") \(outward): \(sum) \(expected)")
+                }
+            }
         }
+    }
+
+    @Test(
+        "Recording the equivalent loads leaves every component's own history bit-identical, and one without room keeps none"
+    )
+    func equivalentsPassive() throws {
+        var scene = try scene()
+        scene.charge = Charge(mass: 0.05, position: SIMD3(4, 1.5, 1))
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        func histories(_ options: EnvelopeHistoryOptions) throws -> [EnvelopeComponentHistory] {
+            let solver = try BlastSolver(device: device, scenario: scene, cellSize: 0.25)
+            try solver.configureEnvelopeComponents(objects: scene.envelopeObjects, options: options)
+            _ = solver.advance(steps: 60)
+            return try #require(solver.envelopeComponentHistories())
+        }
+        let with = try histories(EnvelopeHistoryOptions(windowS: 0.05, binMaxima: true))
+        let without = try histories(
+            EnvelopeHistoryOptions(windowS: 0.05, binMaxima: true, governingBands: false))
+        #expect(with.contains { $0.plate != nil && $0.strip != nil })
+        #expect(without.allSatisfy { $0.plate == nil && $0.strip == nil })
+        for (a, b) in zip(with, without) {
+            #expect(a.outerImpulsePaS.map(\.bitPattern) == b.outerImpulsePaS.map(\.bitPattern))
+            #expect(a.innerImpulsePaS.map(\.bitPattern) == b.innerImpulsePaS.map(\.bitPattern))
+            #expect(a.outerMaxPa!.map(\.bitPattern) == b.outerMaxPa!.map(\.bitPattern))
+            #expect(a.peakNetPa.bitPattern == b.peakNetPa.bitPattern)
+        }
+        // A budget the components alone fill keeps their bins' width, and no equivalent loads.
+        // (0.05 s of 0.1 ms bins and one over, 8 bytes each.)
+        let tight = try histories(EnvelopeHistoryOptions(windowS: 0.05, memoryBudget: with.count * 501 * 8))
+        #expect(tight.allSatisfy { $0.plate == nil && $0.strip == nil && $0.binS == with[0].binS })
     }
 
     @Test("A face in still air reads the still air: the same bits as reading its cell")
@@ -509,7 +587,9 @@ struct EnvelopeComponentHistoryTests {
         #expect(history.outerAreaM2 == 1 && history.innerAreaM2 == 1)
     }
 
-    @Test("Cost: a neighbourhood's histories take a few MB and read no more cells than the surface recorder")
+    @Test(
+        "Cost: a neighbourhood's histories take a few MB, under three times that with their equivalent loads, and read no more cells than the surface recorder"
+    )
     func cost() throws {
         var scene = Scenario(
             name: "Neighbourhood", domainSize: SIMD3(96, 96, 8), boxes: [],
@@ -529,12 +609,19 @@ struct EnvelopeComponentHistoryTests {
         try solver.configureEnvelopeExposure(objects: scene.envelopeObjects)
         let surfaces = solver.memoryFootprint - before
         try solver.configureEnvelopeComponents(
-            objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: 0.06))
+            objects: scene.envelopeObjects,
+            options: EnvelopeHistoryOptions(windowS: 0.06, governingBands: false))
         let histories = solver.memoryFootprint - before - surfaces
         let components = try #require(solver.envelopeComponents())
         #expect(components.count == 64 * 5)
-        // 320 components, 601 bins of two sides, and their faces once.
-        #expect(histories < 2_500_000, "\(histories) bytes")
+        // 320 components, 601 bins of two sides, and their faces once (with their weights).
+        #expect(histories < 2_600_000, "\(histories) bytes")
+        // With their equivalent loads, three times the bins and the faces about twice again.
+        try solver.configureEnvelopeComponents(
+            objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: 0.06))
+        let equivalents = solver.memoryFootprint - before - surfaces
+        print("Neighbourhood histories: \(histories) bytes, \(equivalents) with their equivalent loads")
+        #expect(equivalents < 3 * histories, "\(equivalents) bytes")
         let faces = solver.envelopeExposureSnapshot()!.reduce(0) { $0 + $1.surfaces.count }
         let read = solver.envelopeComponentHistories()!.reduce(0) { $0 + $1.faceCount }
         #expect(read <= faces, "\(read) cells read a step against \(faces) faces")

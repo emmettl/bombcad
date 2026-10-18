@@ -223,6 +223,44 @@ element, the bars of the validation slab ruptured early, as they once did in the
 **Von Mises** (steel and the elastic material) uses the plane-stress return of Simo and Taylor
 in shells and uniaxial plasticity in beams, on the Green-Lagrange strain, with elastic shear.
 
+**Steel's strain rate** (since 18 October 2026, `StructureMaterial.rateLaw`, `SteelRateLaw`):
+- **The law.** Structural steel's yield and hardening rise with its strain rate by Cowper and
+  Symonds's 1 + (ε̇ / D)^(1/q).
+- **From the tensile test's rate.** The factor is taken over its value at a tensile test's
+  2.5 × 10⁻⁴ /s (EN ISO 6892-1), the rate the yield is measured at, and never below 1. So a
+  member loaded slowly keeps its yield.
+- **The rate is the plastic strain rate,** the fibre's or layer's own, averaged over the
+  strain-rate window and read from the step before, as LS-DYNA's viscoplastic option takes it.
+  Driven by the total strain rate, a beam held sideways at 0.9 of its capacity crept to 268 mm. Its small
+  vibrations raised and lowered the yield, and each fall let the fibres already at yield flow a
+  little more. On the plastic rate the yield returns to static once flow stops, and the beam holds
+  as it does without the law (95 mm against 88).
+- **Checked on a stocky strut** (`BucklingTests`). Squashed at 10⁻³ /s it carries 1.00 of f_y A
+  (the law gives 1.03). At 0.3 /s it carries 1.23 (the law gives 1.26, read with the lag of the
+  average).
+- **The constants by grade.** A stronger steel's yield rises less.
+
+  | Yield | D, q | Source | Factor at 10⁻³, 0.3 and 1 /s |
+  |---|---|---|---|
+  | To 300 MPa (mild steel, S235, S275) | 40.4 /s, 5 | N. Jones, *Structural Impact*, 1989, Table 8.1 | 1.04, 1.26, 1.35 |
+  | To 400 MPa (S355, A992) | 68.8 /s, 5.8 | Fitted to Murray, Rowell and Thornton's A992, 372 MPa (ERDC, IESS 2018, Table 4), within 2% at 0.002–2 /s | 1.03, 1.24, 1.33 |
+  | Above (S420, S460, A572 grade 50) | 94.4 /s, 4.0 | Fitted to their A572 grade 50, 424 MPa (Table 3), within 2% | 1.02, 1.19, 1.27 |
+
+  Murray et al.'s steels, tested for UFC 3-340-02's coming steel chapter, rose 1.17–1.25 at
+  0.2 /s. That is within UFC's design range of rates (0.02–0.3 /s), and in line with the design factors
+  of about 1.2–1.3 quoted from it for structural steel in bending (its table not checked here). Steels stronger than they tested (quenched and
+  tempered) take the last row, likely too much still.
+- **The grade is read first.** A section's equivalent rectangle (`SteelSection.equivalent`), a
+  profiled sheet's skin and ribs, and an imported flanged member are scaled after their steel's
+  grade is read, from the steel's own yield.
+- **Cold-formed sheet** (S280GD–S350GD) takes the constants of its yield, which were measured on
+  hot-rolled steel.
+- **Where it applies.** Beams and shells of von Mises steel that carries a law (structural steel
+  does). A material without one, the closed-form studies' and a user's own, keeps its yield at
+  any rate.
+- **Not here.** The bars in concrete keep the CEB's law of the concrete model, and steel solid
+  elements have none.
+
 **Removal.** A shell is removed when, at any of its four points,
 
 - every layer is cracked past the removal width across one axis and no intact bars cross that
@@ -349,21 +387,55 @@ Where the numbers come from:
 
 ### The terraced houses
 
-`ScenarioPreset.terracedHouses`: a row of three two-storey houses as built in the UK from the
-1930s, 5 m wide and 8.5 m deep with 2.6 m storeys, under 25 kg in the street 10 m in front.
+`ScenarioPreset.terracedHouses` (`terracedRow` for other charges): a row of three two-storey
+houses as built in the UK from the 1930s, 5 m wide and 8.5 m deep with 2.6 m storeys, under
+25 kg in the street 10 m in front.
 - **Walls:** cavity walls of two 102.5 mm brick leaves 50 mm apart, at the front, back and
-  gables, with one-brick party walls. The leaves are not tied: wall ties are not modelled.
+  gables, the leaves bonded round the corners, with one-brick party walls.
+- **Wall ties** (`cavityWallTies`), smeared over each cavity wall as a [joint between
+  parts](structural-model.md#base-connections), the inner leaf's nodes tied to the outer's:
+  - 2.47 ties per m², one per 900 mm across and 450 mm up (PD 6697, Approved Document A; LABC
+    Warranty's *Wall tie replacement in existing buildings*, 2020, for ties of the 1930s);
+  - each pulls out at 1.18 kN and buckles at 0.55 kN, the means of as-built ties in Messali and
+    Ravenshorst's database of connections (TU Delft, 2019, Table 12);
+  - 0.3 kN/mm, held to 10 mm and gone at 50 mm, the shape of Arslan et al.'s pull-out tests
+    (*Construction and Building Materials* 266, 2021);
+  - no shear (Skroumpelou et al., 2018, measured 0.1–0.2 kN at 20 mm);
+  - once buckled, the leaves close the cavity freely and then bear on each other with friction
+    0.6 (`Anchorage.closingGap`).
 - **Floors and roof:** timber joists, 47 × 200 mm C24 at 400 mm under 22 mm boards. The 125 mm
   mesh cannot hold the joists, so each floor is smeared into a 98 mm timber plate with the
   joists' bending stiffness, mass and bending capacity per metre, spanning between the party
-  walls. The pitched roof is a flat roof of the same make at the eaves, since boxes square to
-  the axes cannot pitch.
+  walls and gables. The pitched roof is a flat roof of the same make at the eaves, since boxes
+  square to the axes cannot pitch.
+- **Joists' seats** (`joistPocket`): each plate stops 25 mm short of the walls. At the party walls
+  and gables its edge rests in a pocket 100 mm deep, unstrapped as before the 1980s (LABC: older
+  walls get no restraint from the floors). The joist bears on the brick, can lift off it, and is
+  held along its length by friction alone until it has slid out of the pocket. TU Delft's tests
+  of joists in pockets (Messali and Ravenshorst, 2019, Tables 1 and 2) found 0.5–0.7 kN to pull a
+  joist out, as friction 0.6–0.95 (here 0.7) and 0.02–0.06 MPa of initial shear strength (here
+  0.04, lost over 2 mm) on the joists' bearing. The brickwork above the pocket does not hold the
+  joist down. The front and back walls get no restraint from the floors.
+- **Roof covering** (`RoofCovering`): plain clay tiles, 73.2 kg/m² as laid (Keymer's), or
+  concrete interlocking tiles (50 kg/m², Marley) or Welsh slate (about 25 kg/m²). It is a layer
+  25 mm thick over the whole row, resting on the roof and the walls' tops by its weight and
+  friction 0.5 (`roofCoveringSeat`). The nails that BS 5534 puts in every fourth or fifth course
+  of plain tiles and in every slate are left out, since no measured pull-out was found, so
+  suction greater than its weight lifts it. It holds together weakly (10 kPa of tension), so once
+  lifted it breaks up into pieces about an element across and is thrown as debris. It sits 60 mm
+  above the roof, more than its battens, so that the mesh keeps its nodes apart from the walls'.
 - **Openings:** windows front and back on each floor, and a front door, open (no glass).
 - **Sources:** the University of the West of England's Construction Web ("Evolution of building
   elements": 1930s cavity walls of brick both ways, 200 × 50 mm joists at 300–400 mm, cut roofs
   on the party walls) and the English Housing Survey's *Floor space in English homes* (2018).
   The storey height is assumed. Pre-1919 terraces, a third of them, have solid one-brick walls
   instead.
+
+At rest the floors' seats carry the floors' weight within 3%, the covering rests on the roof
+and walls with its weight, and the ties carry nothing (`TerracedHousesTests`).
+`blastbench house` runs the row under any charge and grades each house by the wartime damage
+categories (`TerracedRowDamage`); its comparison with bombed houses is in
+[validation](validation.md#terraced-houses-against-wartime-bomb-damage).
 
 ## Coupling to the air
 
@@ -372,6 +444,25 @@ overpressure on its two sides, sampled half its thickness and half an air cell o
 midsurface (or further out if that cell is solid), along its current normal; where the air is
 [refined](air-blast-model.md#refining-near-the-shock), half a fine cell out, in the fine cells. A
 beam is loaded the same way on its four sides.
+
+**Shielded faces.** Two members' shells closer than an air cell, parallel and one over the other
+(the leaves of a cavity wall, a roof under its covering, layers laid face to face), leave no air
+between them that the grid resolves, so the first fluid cell beyond the inner face of either lies
+beyond the other: each would take the whole difference across the pair, and the pair twice the
+load. A face that another member's intact element faces across less than an air cell
+(`ShellMesh.shields`, found once from the mesh, the gap measured as they move) sees the air shut
+between them instead, as a closed volume compressed or expanded adiabatically from its gap at
+rest g₀: p₀ ((g₀ / g)^γ − 1), with g no less than a tenth of g₀; faces touching at rest see
+ambient air. A 1930s cavity is closed at its reveals, so its air leaks out only slowly; the leak
+is left out. Once the other element is removed or has moved more than a cell away, the face sees
+the air beyond again. Without this the [terraced houses'](#the-terraced-houses) cavity walls took
+the blast twice; with the cavity at ambient instead, the rooms' pressure, once they had filled
+through the windows, pushed every inner leaf out with nothing behind it. Of the presets and the
+profiled sheeting's harnesses (Langdon, ADBLAST), only the terraced houses have such faces (a
+scan of their meshes, 18 October 2026); imported IFC walls whose layers lie face to face
+(`tiesTouching`) have them too, and each layer now takes its own side instead of the whole
+difference. The large-panel flats and the Keys and Alsubaei walls are solid elements and are not
+affected. No recorded validation result outside the terraced houses has such faces.
 
 **Mask.** Each intact shell and beam marks the air cells its volume occupies, at points no more
 than half a cell apart. Any point makes its cell solid, and the cell moves with the mean
@@ -476,6 +567,14 @@ less stiffly, bend more.
 | Hole in it | Mask opens; blast passes through |
 
 ## Validation
+
+**Steel members.** Nassr's W150 and W200 beams and columns, blasted in the open, are the steel
+beams' first measured comparison: 0.59–1.23 of the measured deflection for the beams and
+0.35–1.68 for the columns. They are within a quarter on the shots near elastic and the
+curtain shot, and over-read about the weak axis, where the steel's missing strain-rate law
+shows ([steel members](validation.md#steel-beams-and-columns-in-the-open)). With that comparison
+`SteelSection.equivalent` came to scale the steel's hardening with its yield (it had kept the
+section's hardening against a scaled stiffness and yield, 2.5 times too steep for a W150).
 
 The contest slab of the [validation notes](validation.md) with shells, through
 `blastbench slab --shells 2,1,0.5`:

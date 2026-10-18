@@ -361,7 +361,7 @@ public struct ProfiledSheet: Sendable, Hashable {
         let (area, secondMoment, modulus) = profile.perWidth
         let depth = profile.depth
         let stiffness = share * secondMoment * strip / (width * depth * depth * depth / 12)
-        var material = steel
+        var material = steel.resolvingRateLaw(yield: profile.yieldStress)
         material.name = name
         material.youngsModulus = steel.youngsModulus * stiffness
         material.hardeningModulus = steel.hardeningModulus * stiffness

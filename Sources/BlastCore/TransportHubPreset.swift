@@ -92,7 +92,8 @@ extension ScenarioPreset {
         }
         let (cx0, cx1, cy1, ch): (Float, Float, Float, Float) = (6, 30, y0 + 20, 8)
         var scenario = Scenario(
-            name: title, domainSize: SIMD3(80, 100, 24), boxes: [],
+            // The top 4 m/kg^(1/3) (18.6 m) above the shed's roof (SceneExtent.structureFaceClearance).
+            name: title, domainSize: SIMD3(80, 100, 34), boxes: [],
             charge: Charge(mass: 100, position: SIMD3(33, y0 - 20, 1)),
             gauges: [
                 Gauge("Concourse front, outside", at: SIMD3((cx0 + cx1) / 2, y0 - 0.6, 2)),

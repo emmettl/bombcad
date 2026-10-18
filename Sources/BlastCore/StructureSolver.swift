@@ -701,14 +701,21 @@ public final class StructureSolver {
         pairs = try PartPairs(device: device, pairs: found, nodeCount: nodeCount)
         let stiffest = max(anchorStiffness?.normal ?? 0, anchorStiffness?.shear ?? 0)
         for pair in found where pair.reducedMass > 0 {
-            anchorFrequencySquared = max(anchorFrequencySquared, stiffest * pair.area / pair.reducedMass)
+            let closed = pair.law.closing.x > 0 ? pair.law.closing.y : 0
+            anchorFrequencySquared = max(
+                anchorFrequencySquared, max(stiffest, closed) * pair.area / pair.reducedMass)
         }
     }
 
     /// The connections between parts of the body after the last step, those of support region
     /// `support` alone if given, or nil without any.
     public func pairSummary(support: Int? = nil) -> PartPairs.Summary? {
-        pairs?.summary(slot: support.map { $0 + 1 }, nodes: { body in mutateNodes(body) })
+        guard let pairs else { return nil }
+        var summary = PartPairs.Summary()
+        mutateNodes { nodes in
+            summary = pairs.summary(slot: support.map { $0 + 1 }, displacement: { nodes[$0].displacement })
+        }
+        return summary
     }
 
     /// Makes the footings of connections that have one, under the nodes they tie.
@@ -2113,6 +2120,15 @@ public final class StructureSolver {
             hourglassStiffness: hourglassCoefficient * material.youngsModulus * h / 48,
             soundSpeed: material.dilatationalWaveSpeed)
         parameters.youngsModulus = material.youngsModulus
+        if let rateLaw = material.resolvingRateLaw().rateLaw, case .cowperSymonds(let d, let q) = rateLaw,
+            d > 0,
+            q > 0
+        {
+            let law = SIMD2<Float>(d, q)
+            parameters.rateConstant = law.x
+            parameters.rateExponent = 1 / law.y
+            parameters.rateTestFactor = 1 + pow(StructureMaterial.tensileTestRate / law.x, 1 / law.y)
+        }
         if let buckling = material.localBuckling {
             parameters.bucklingAxis = UInt32(buckling.axis + 1)
             parameters.bucklingSide = Float(buckling.side)

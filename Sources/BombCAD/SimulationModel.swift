@@ -1298,6 +1298,32 @@ final class SimulationModel {
         }
     }
 
+    /// The domain whose far faces meet the open faces' clearance (`Scenario.grownToTheRule`), with
+    /// the advisor's estimate of a run on it and on the domain as it is, and the faces at the origin
+    /// still tight; nil when no face is tight.
+    var wideningToTheRule:
+        (
+            domain: SIMD3<Float>, now: RunCostEstimate, widened: RunCostEstimate,
+            left: [(name: String, clearance: Float)]
+        )?
+    {
+        guard let grown = settings.scenario.grownToTheRule() else { return nil }
+        let inputs = SimulationInputs(
+            scenario: settings.scenario, settings: ProjectRunSettings(model: self), thermal: thermalSpec)
+        return (
+            grown.domain, inputs.cost(domain: settings.scenario.domainSize),
+            inputs.cost(domain: grown.domain),
+            grown.left
+        )
+    }
+
+    /// Grows the domain from its origin so that its far faces meet the open faces' clearance,
+    /// nothing in the scene moving (`Scenario.grownToTheRule`).
+    func widenToTheRule() {
+        guard let grown = settings.scenario.grownToTheRule(), grown.domain != domainSize else { return }
+        resizeDomain(to: grown.domain)
+    }
+
     /// Whether the scene is open, with nothing in it but its charge, gauges and terrain, and so
     /// can be fitted to its charge.
     var canFitOpenScene: Bool { settings.scenario.contentBounds == nil }
@@ -2838,7 +2864,7 @@ extension SimulationModel {
         var lines: [SIMD4<Float>] = []
         for k in [KFactorDistance.k24, .k40] {
             lines += HazardOverlay.ring(
-                centre: centre, radius: k.distance(kilograms: scenario.charge.mass), kind: .kFactor,
+                centre: centre, radius: k.requiredDistance(kilograms: scenario.charge.mass), kind: .kFactor,
                 ground: ground)
         }
         let safe = MinimumSafeDistance(
@@ -2866,7 +2892,10 @@ extension SimulationModel {
     var blastHazardSummary: [String] {
         let mass = scenario.charge.mass
         var lines = KFactorDistance.all.map { k in
-            String(format: "%@: %.0f m", k.name, k.distance(kilograms: mass)) + " — " + k.use.lowercased()
+            String(format: "%@: %.0f m", k.name, k.requiredDistance(kilograms: mass)) + " — "
+                + k.use.lowercased()
+                + (k.requiredDistance(kilograms: mass) > k.distance(kilograms: mass)
+                    ? String(format: "; the K-factor alone gives %.0f m", k.distance(kilograms: mass)) : "")
         }
         lines.append(
             "M"
