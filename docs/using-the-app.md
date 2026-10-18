@@ -392,7 +392,9 @@ keeps the result as a saved run, for scripts and other Macs; see
 write the scene, the structure and the blast over time for rendering elsewhere
 ([USD export](usd-export.md)). Sweeps can share their cases with other Macs over SSH,
 in the app or with `BombCAD sweep`; see
-[sharing a sweep](run-comparison.md#sharing-a-sweep-with-another-mac). With another Mac named in
+[sharing a sweep](run-comparison.md#sharing-a-sweep-with-another-mac). A Mac on the same network
+can instead share its GPU from Settings and be paired with a code, without SSH; see
+[Macs nearby](run-comparison.md#macs-nearby-without-ssh). With another Mac named in
 `~/.config/bombcad/remote.json`, `BombCAD sweep` and `BombCAD ensemble` take it whenever it is
 free, without `--worker`, and `make check-anywhere` runs the checks on whichever Mac is quieter;
 see [checks on the mini](continuous-integration.md#checks-on-the-mini-instead-of-this-mac).

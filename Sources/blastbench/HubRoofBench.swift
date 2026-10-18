@@ -11,7 +11,8 @@ func runHubRoof(device: MTLDevice) throws {
     let duration = option("time").flatMap(Double.init) ?? 0.3
     let scenario = ScenarioPreset.transportHub(title: "Transport hub", laminatedRoof: laminated)
     let solver = try BlastSolver(
-        device: device, scenario: scenario, cellSize: cell, configuration: .recommended)
+        // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+        device: device, scenario: scenario, cellSize: cell, configuration: .recommended.balloonStart)
     let result = solver.advance(until: duration)
     guard let shells = solver.bodies.first?.shells else { return }
     let summary = shells.summary()

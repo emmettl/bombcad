@@ -317,6 +317,7 @@ public struct FragmentCloud: Sendable {
         blockTargets = scene.blockTargets ?? []
         structureTargets = scene.structureTargets ?? []
         terrain = scene.terrain
+        crossings.chargeHeight = charge.position.z - (scene.terrain?.height(at: charge.position) ?? 0)
         var particles: [Particle] = []
         // P(mass > m) = exp(-(m/μ)^β), whose mean is μ Γ(1 + 1/β): 2μ for Mott's β = ½. The mean
         // is Mott's scaling's with a casing's dimensions, and each fragment flown then stands for
@@ -386,6 +387,7 @@ public struct FragmentCloud: Sendable {
         self.blockTargets = blockTargets
         self.structureTargets = structureTargets
         self.terrain = terrain
+        crossings.chargeHeight = centre.z - (terrain?.height(at: centre) ?? 0)
     }
 
     /// The box a consumer needs air over to carry every airborne particle `ahead` seconds on,

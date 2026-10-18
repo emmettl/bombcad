@@ -78,6 +78,38 @@ struct MappedChargeTests {
         #expect(short.time >= first.time / 2 && short.time < first.time && short.shockRadius < 2)
     }
 
+    @Test(
+        "The products' own equation of state: JWL alone, air alone, a sound speed that matches the isentrope")
+    func productsGasLaw() {
+        for thermallyPerfect in [false, true] {
+            let gas = SphericalBlast.Gas(gamma: 1.4, thermallyPerfect: thermallyPerfect, products: .tnt)
+            let air = SphericalBlast.Gas(gamma: 1.4, thermallyPerfect: thermallyPerfect)
+            // TNT's products at its own density and energy: the constant-volume explosion, some 8 GPa
+            // (A (1 − ω/R1) e^−R1 + B (1 − ω/R2) e^−R2 + ω ρ0 e0).
+            let explosion = gas.pressure(density: 1630, internalEnergy: 1630 * 4.184e6, products: 1)
+            #expect(explosion > 7.5e9 && explosion < 9e9, "\(explosion) Pa")
+            // Without products, the air's own law, exactly.
+            #expect(
+                gas.pressure(density: 1.2, internalEnergy: 3e5, products: 0)
+                    == air.pressure(density: 1.2, internalEnergy: 3e5))
+            for (rho, p, y) in [(1630.0, 8e9, 1.0), (50, 5e7, 0.6), (2, 4e5, 0.1), (1.5, 2e5, 1)] {
+                let e = gas.internalEnergy(density: rho, pressure: p, products: y)
+                let back = gas.pressure(density: rho, internalEnergy: e, products: y)
+                #expect(abs(back / p - 1) < 1e-9, "\(rho) kg/m³, \(p) Pa, \(y): \(back)")
+                // Along the isentrope de = p/ρ² dρ the pressure rises as c² dρ.
+                let step = rho * 1e-6
+                let up = gas.pressure(
+                    density: rho + step, internalEnergy: (rho + step) * (e / rho + p / (rho * rho) * step),
+                    products: y)
+                let down = gas.pressure(
+                    density: rho - step, internalEnergy: (rho - step) * (e / rho - p / (rho * rho) * step),
+                    products: y)
+                let c2 = gas.ratio(density: rho, pressure: p, products: y) * p / rho
+                #expect(abs((up - down) / (2 * step) / c2 - 1) < 1e-4, "\(rho) kg/m³, \(y)")
+            }
+        }
+    }
+
     @Test("Mapped onto the grid, the charge brings its energy, and gauges it passed keep their record")
     func mappedOntoGrid() throws {
         let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")

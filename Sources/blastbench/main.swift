@@ -45,7 +45,7 @@ import simd
 //                        [--panel]   (a 3 m panel resting on the ground, its edges tied to columns by each base)
 //   blastbench seat [--speeds 4,8,12] [--seats 0.1,0.2] [--time 1.5] [--h 0.1] [--dowels]
 //                   (a precast beam on corbels of two columns, one column struck away from the span)
-//   blastbench precast [--tests i0_50,i0_100,i0_150] [--friction 0.7] [--reversals 40] [--samples Samples/PrecastSeat] [--history out-%.csv]
+//   blastbench precast [--tests i0_50,i0_100,i0_150] [--friction 0.7] [--neoprene] [--reversals 40] [--samples Samples/PrecastSeat] [--history out-%.csv]
 //                      (a precast beam's seat cycled along its corbel, against Batalha et al.'s tests)
 //   blastbench rocking [--shear 40] [--bearing 814] [--packets a,b,c,d,e] [--speed 0.2] [--history out.csv]
 //                      [--elastic | --elastic-share 0.12 --memory 0 --heave 0]   (the sand's settling; also for shaking)
@@ -1119,6 +1119,8 @@ func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver 
     configuration.afterburnLimit = chosenBurnLimit()
     applyChosenAir(&configuration)
     if flag("mapped") { configuration.mappedCharge = true }
+    // The mapped start's products with their own equation of state (JWL).
+    if flag("products") { configuration.mappedChargeProducts = true }
     if let time = option("burn-time").flatMap({ Float($0) }) { configuration.afterburnTime = time / 1000 }
     if let energy = option("afterburn-energy").flatMap({ Float($0) }) {
         configuration.afterburnEnergy = energy * 1e6
@@ -4301,14 +4303,18 @@ func runPrecast() throws {
     let limit = option("reversals").flatMap { Int($0) }
     let folder = URL(fileURLWithPath: option("samples") ?? "Samples/PrecastSeat")
     print(
-        "Precast seat cycled along its corbel, resting with friction \(format(Double(friction), 2))"
+        "Precast seat cycled along its corbel, "
+            + (flag("neoprene")
+                ? "on neoprene (friction falling with pressure)"
+                : "resting with friction \(format(Double(friction), 2))")
             + (limit.map { ", first \($0) reversals" } ?? ""))
     print(
         pad("test", 13) + pad("load", 8) + pad("sliding, model", 16) + pad("test", 10)
             + pad("energy, model", 15)
             + pad("test", 10) + pad("lag", 9) + pad("run time", 9))
     for test in tests {
-        var law = Anchorage.resting(friction: friction)
+        // `--neoprene`: friction falling with pressure, fitted to the pads' tests (`Anchorage.neoprenePad`).
+        var law = flag("neoprene") ? Anchorage.neoprenePad : Anchorage.resting(friction: friction)
         // `--pad 1e8` gives the joint a neoprene pad's shear stiffness, in Pa/m.
         law.shearStiffness = option("pad").flatMap { Float($0) }
         // `--normal 1e9` the joint's stiffness across, in Pa/m.
@@ -5536,6 +5542,7 @@ do {
     case "throughput": try runThroughput()
     case "structure": try runStructure()
     case "validate": try runValidation()
+    case "products": try runProducts()
     case "mapped-cost":
         // The fine one-dimensional start's own time (CPU), by charge and cell: `--masses 1,10,100
         // --dx 0.125,0.25,0.5 --cells 64`.
@@ -5618,6 +5625,15 @@ do {
                     format: "%-34@ in flight %6.1f m, ground %5.1f m, DoD %6.1f m: %.2f (%d flown set it)",
                     item.name as NSString, hazard.airDistance ?? 0, hazard.groundDistance ?? 0, item.measured,
                     (hazard.hazardDistance ?? 0) / item.measured, hazard.samplesAtDistance))
+            // DDESB TP-12's closed form from the same masses and speed: the flown cubes' shape
+            // factor, then TP-12's natural fragments' 2.6 g/cm³, each at its drag of 1.28.
+            print(
+                String(
+                    format: "%@ TP-12's procedure %6.1f m (cubes), %6.1f m (k 2.6 g/cm³)",
+                    String(repeating: " ", count: 34) as NSString,
+                    FragmentThrowComparison.zakerDistance(
+                        item, shapeFactor: 7850 / pow(1.5, 1.5), drag: 1.28),
+                    FragmentThrowComparison.zakerDistance(item, shapeFactor: 2600, drag: 1.28)))
         }
     case "bubble": try runBubble()
     case "mixinglayer": try runMixingLayer()
