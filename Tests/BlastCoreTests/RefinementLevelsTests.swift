@@ -23,11 +23,13 @@ struct RefinementLevelsTests {
         return configuration
     }
 
-    private func closedBox(_ configuration: SolverConfiguration, offset: Float = 0) throws -> BlastSolver {
+    private func closedBox(_ configuration: SolverConfiguration, offset: Float = 0, mass: Float = 5) throws
+        -> BlastSolver
+    {
         var scenario = Scenario(
             name: "Closed box", domainSize: SIMD3(24, 20, 16),
             boxes: [Box(min: SIMD3(13 + offset, 6, 0), max: SIMD3(18 + offset, 14, 9))],
-            charge: Charge(mass: 5, position: SIMD3(8, 10, 1)))
+            charge: Charge(mass: mass, position: SIMD3(8, 10, 1)))
         scenario.reflectiveFaces = .all
         return try BlastSolver(
             device: device, scenario: scenario, cellSize: 0.5, configuration: configuration)
@@ -138,22 +140,23 @@ struct RefinementLevelsTests {
     func offsetOutlineConservation() throws {
         // The block's faces lie an eighth of a coarse cell off the coarse cells' faces, and a
         // quarter off the first level's: each level sees them where its own cells put them. As
-        // with one level, placing patches over the slivers of air a coarser outline counts as
-        // solid adds the still air they held (at most their volume's worth), and from then on the
-        // patches stay and the gas is conserved.
-        let solver = try closedBox(twoLevels(), offset: 0.125)
+        // with one level, placing patches in still air over the slivers a coarser outline counts
+        // as solid adds the air they held, and over those it counts as air gives theirs up (at
+        // most their volume's worth either way); once the blast fills the room the patches stay
+        // and the gas is conserved (100 kg raises it about 25 kPa).
+        let solver = try closedBox(twoLevels(), offset: 0.125, mass: 100)
         let before = solver.totals()
         var placed = before
         for n in 0..<4 {
-            // The blast has passed every face of the block by the first check.
-            let result = solver.advance(steps: n == 0 ? 200 : 100)
+            // The blast has filled the room by the first check.
+            let result = solver.advance(steps: n == 0 ? 600 : 100)
             #expect(result.isStable)
             #expect(result.finerRefinedTiles > 0)
             let now = solver.totals()
             if n == 0 {
                 placed = now
                 #expect(
-                    now.mass >= before.mass && (now.mass - before.mass) / before.mass < 0.006,
+                    abs(now.mass - before.mass) / before.mass < 0.006,
                     "mass \(before.mass) -> \(now.mass)")
             } else {
                 #expect(
@@ -265,6 +268,50 @@ struct RefinementLevelsTests {
         let free = try patches(hold: nil)
         let held = try patches(hold: 100)
         #expect(held > free, "\(held) held, \(free) without")
+    }
+
+    @Test("Blocks off the lattice, refined twice at 0.005, leave the air ahead of the shock still")
+    func blocksAheadStill() throws {
+        // Blocks 1.3 m square, their edges between the coarse cells, about a 1 kg burst: placing a
+        // patch beside one must not squeeze the gas its fine outline takes into what is left.
+        var boxes: [Box] = []
+        for x in stride(from: Float(2.2), through: 26, by: 3.1) {
+            for y in stride(from: Float(2.2), through: 26, by: 3.1)
+            where simd_distance(SIMD2(x, y), SIMD2(15, 15)) > 4 {
+                boxes.append(Box(min: SIMD3(x, y, 0), max: SIMD3(x + 1.3, y + 1.3, 3.1)))
+            }
+        }
+        let scenario = Scenario(
+            name: "Blocks", domainSize: SIMD3(30, 30, 8), boxes: boxes,
+            charge: Charge(mass: 1, position: SIMD3(15, 15, 0)))
+        var configuration = twoLevels(threshold: 0.005)
+        configuration.refinementMemory = 512 << 20
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 0.5, configuration: configuration)
+        _ = solver.advance(until: 0.02)
+        // The shock by Kingery-Bulmash, and the air beyond it by 2 m.
+        var radius = 1.0
+        while let point = KingeryBulmash.point(at: (radius + 0.25)), point.arrival(mass: 1) < solver.time {
+            radius += 0.25
+        }
+        let grid = solver.grid
+        var worst: Float = 0
+        solver.withState { cells in
+            for k in 0..<grid.nz {
+                for j in 0..<grid.ny {
+                    for i in 0..<grid.nx where !solver.isSolid(i, j, k) {
+                        let at = (SIMD3<Float>(Float(i), Float(j), Float(k)) + 0.5) * grid.cellSize
+                        guard Double(simd_distance(at, scenario.charge.position)) > radius + 2 else {
+                            continue
+                        }
+                        worst = max(
+                            worst, abs(solver.primitive(of: cells[grid.index(i, j, k)]).pressure - 101_325))
+                    }
+                }
+            }
+        }
+        #expect(radius > 6, "shock at \(radius) m")
+        #expect(worst < 300, "\(worst) Pa ahead of the shock at \(radius) m")
     }
 
     /// Peak overpressure at 3 m from 1 kg on the ground, on cells of `cellSize`.

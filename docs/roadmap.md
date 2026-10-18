@@ -97,9 +97,17 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
   ([validation](validation.md#hourglass-control)); stage 3, failed concrete kept as rubble
   particles, an option for debris: speeds nearer the tests', no holes
   ([rubble](validation.md#rubble-kept-as-particles-stage-3)).
-- **Next:** Peterson's short beams under impact: bond splitting along the bars and the strut's
-  crushing ([Peterson](validation.md#short-beams-struck-to-a-shear-failure)); then stage 2's
-  embedded cracks where members fail in shear, if Peterson's and OA1's modes call for them.
+- **Stopped, for data:** Peterson's short beams under impact
+  ([Peterson](validation.md#short-beams-struck-to-a-shear-failure)). Bars that slip by the Model
+  Code's splitting law (`--bond splitting`) take away the false split along the bars and give
+  the tests' crack angles, but then the beams without stirrups hold and those with stirrups at
+  45 mm fail; compression softening of cracked concrete (the modified compression field theory's),
+  crushing zones, less crushing energy, spalling and no confinement each fail nothing more, or
+  the wrong beams. Rerun on 18 October's defaults, the forces and failures stand. The struts crush
+  on their face, as the tests' spalled, but the beams never ask more of them, and the images
+  cannot say whether the spalling caused the failure; strut tests that can are in
+  [data wanted](data-wanted.md). Stage 2's embedded cracks were tried three times (14–15 October)
+  and not adopted: they soften slabs that do not fail.
 - **In reserve:** stage 4, a peridynamic zone, only if stage 3 cannot hole the right slabs.
 - **Deferred:** embedded strong discontinuities (E-FEM) until the data decides between them and
   the alternatives ([alternatives](concrete-strategy.md#3-alternatives-for-the-failure-zones-only)).
@@ -128,7 +136,12 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
   ([multiple-object scene](multiple-object-scene.md#implemented-contact-between-bodies)); base
   connections, joints at any angle and between parts, and footings on soil checked against FoRCy
   and FoRDy ([supports, as they were built](structural-model.md#supports-and-connections-as-they-were-built)).
-- **Next:** the rebound after a slab's peak; a shaken footing's lurch, and the rest of its
+- **Traced to an end:** the rebound after a slab's peak, set by the mid-span hinge turning back
+  about its bars once its crushed compression zone unloads; residual crack opening, the bars'
+  hysteresis, hourglass control, tension stiffening and a crushing band ruled out; whether the
+  specimen's hinge differed or its rig held the rebound back the record cannot say
+  ([concrete model](concrete-model.md#how-the-model-got-here), step 16).
+- **Next:** a shaken footing's lurch, and the rest of its
   energy (sand crushed across the whole contact, the shaken sand's own); pads' and dowels'
   laws; footings on a slope.
 - **Done, approximation:** [profiled steel sheeting](profiled-sheeting.md) as a skin with its ribs
@@ -225,8 +238,9 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
     cavity walls tied across, timber joists seated in pockets, roof tiles thrown as debris.
     Judged against wartime bomb damage
     ([validation](validation.md#terraced-houses-against-wartime-bomb-damage)): right a tenth of
-    a second in, but cracked front walls then go over that surveyed houses kept standing. Next:
-    brick leaves' resistance once cracked (rocking and arching under the load above them).
+    a second in, but cracked front walls then go over that surveyed houses kept standing. SBEDS's
+    rocking resistance would not hold them either (10–60 J/m² against about 600); stopped until
+    tests of brick walls blasted past cracking ([data wanted](data-wanted.md)) can say what does.
   - Steel portal-frame warehouses with profiled metal cladding: a sample is built
     ([warehouse](profiled-sheeting.md#the-portal-frame-warehouse-sample)), its sheets screwed to
     its Zed purlins and rails and torn off as their screws pull through; the purlins at their
@@ -238,8 +252,9 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
     - [glass falling from overhead](building-envelopes.md#glass-falling-from-overhead);
     - [buckling](shell-model.md#buckling) checked against Euler and Lindberg, and steel members
       bowed by default to Eurocode 3's curves (within 3%).
-    It still needs laminated glass in the structure model, edge tearing, and a dynamic
-    buckling test (Kenny's thesis, in [data wanted](data-wanted.md)).
+    - [laminated glass in the structure model](shell-model.md#laminated-glass), its roof laminated
+      as an option, judged on Osnes's and Hooper's panes.
+    It still needs a dynamic buckling test (Kenny's thesis, in [data wanted](data-wanted.md)).
 
 ### Distributed computing
 

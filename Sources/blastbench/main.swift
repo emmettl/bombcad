@@ -98,6 +98,7 @@ import simd
 //   blastbench buildings [--dx 0.5] [--duration 0.12] [--mass 50] [--out f.json]
 //                        (three buildings across a street, together and each alone; see BuildingsBench.swift)
 //   blastbench digest [--refine 2] [--refine-levels 2] [--steps 80] [--terrain flat|hill|ridge|slope] [--recommended]
+//                     [--gravity] [--case open]
 //                     [--gravity]   (hashes of short runs, to compare builds)
 
 let arguments = Array(CommandLine.arguments.dropFirst())
@@ -5119,7 +5120,9 @@ func runDigest() throws {
         ("street, afterburning", .streetCanyon, 0.5, true, false), ("wall", .blastWall, 0.25, false, false),
         ("wall as shells", .blastWall, 0.25, false, true),
     ]
-    for (name, preset, cellSize, afterburning, shells) in cases {
+    // `--case open` (or another case's name) runs that case alone.
+    for (name, preset, cellSize, afterburning, shells) in cases
+    where option("case").map({ $0 == name }) ?? true {
         // `--recommended` starts from the recommended air (afterburning throughout), `--gravity` adds
         // gravity in the air.
         // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
@@ -5165,11 +5168,15 @@ func runDigest() throws {
         print(
             "\(name), \(cellSize) m: \(String(hash, radix: 16)) after \(result.steps) steps, "
                 + "\(result.refinedTiles) refined blocks"
-                + (result.finerRefinedTiles > 0 ? ", \(result.finerRefinedTiles) at the second level" : ""))
+                + (result.finerRefinedTiles > 0 ? ", \(result.finerRefinedTiles) at the second level" : "")
+                // A run that broke (a NaN in the air) hashes whatever the NaN left, which need not
+                // be the same twice.
+                + (result.isStable ? "" : ", unstable")
+                + (solver.refinementPoolGrewLate ? ", a pool grew too late" : ""))
     }
     // The structure on its own, in solids and in shells: a wall struck hard enough to fail, over
     // more than one 2,000-substep run of `advance`, so that its contact joins in.
-    for shells in [false, true] {
+    for shells in [false, true] where option("case") == nil {
         let wall = Box(min: .zero, max: SIMD3(0.2, 2, 2))
         var model = StructureModel(solids: [wall], elementSize: 0.1, fixedBase: true)
         model.addMat(to: wall, thicknessAxis: 0, areaPerMetre: 4e-4, depth: 0.04)
@@ -5511,6 +5518,8 @@ do {
     case "settle": try runSettle(device: device)
     case "poulin": try runPoulin(device: device)
     case "tyndall": try runTyndall(device: device)
+    case "laminated": try runLaminated(device: device)
+    case "hubroof": try runHubRoof(device: device)
     case "facade": try runFacade(device: device)
     case "house": try runHouse(device: device)
     case "lacroix": try runLacroix(device: device)
