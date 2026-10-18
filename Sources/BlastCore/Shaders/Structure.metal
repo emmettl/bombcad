@@ -4266,3 +4266,113 @@ kernel void discreteBarGather(const device uint *gatherStart [[buffer(0)]],
     }
     barNodeForce[id] = float4(force, 0.0f);
 }
+
+// On a terrain, after the node pass: a node that falls onto it lands there as on the floor
+// (`structureNodes`, which keeps z = 0), the ground's height the terrain's under it
+// (`terrainHeight`). A node buried at rest, as a base set into a slope, is held no deeper than it
+// started, not thrown up to the surface. Held, prescribed and connected nodes are left to their
+// supports. Dispatched only over a terrain, so level ground's runs are as they were.
+kernel void structureTerrainLanding(device StructureNode *nodes [[buffer(0)]],
+                                    const device StepControl &control [[buffer(1)]],
+                                    constant StructureUniforms &u [[buffer(2)]],
+                                    const device uint *nodeList [[buffer(3)]],
+                                    const device float4 *anchors [[buffer(4)]],
+                                    constant TerrainUniforms &t [[buffer(5)]],
+                                    const device float *heights [[buffer(6)]],
+                                    uint threadIndex [[thread_position_in_grid]]) {
+    bool active;
+    float dt = structureStep(u, control, active);
+    if (!active || u.groundFriction < 0.0f) {
+        return;
+    }
+    StructureNode node = nodes[threadIndex];
+    if (node.mass <= 0.0f || (node.flags & 15u) != 0u || (u.anchored != 0 && anchors[3 * threadIndex].x > 0.0f)) {
+        return;
+    }
+    float3 reference = float3(u.originX, u.originY, u.originZ) + float3(latticeNode(nodeList[threadIndex], u)) * u.h;
+    float3 displacement = float3(node.displacement);
+    float3 velocity = float3(node.velocity);
+    float buried = max(terrainHeight(reference.xy, t, heights) - reference.z, 0.0f);
+    float ground = terrainHeight(reference.xy + displacement.xy, t, heights) - buried;
+    float penetration = ground - (reference.z + displacement.z);
+    if (penetration <= 0.0f) {
+        return;
+    }
+    if (u.groundStiffness > 0.0f) {
+        // Soft ground, as on the floor: a Winkler bed of the given modulus over h², damped at 30%.
+        float k = u.groundStiffness * u.h * u.h / node.mass;
+        float push = dt * (k * penetration - 2.0f * 0.3f * sqrt(k) * velocity.z);
+        float gained = max(push, 0.0f);
+        velocity.z += push;
+        if (u.groundCoulomb > 0.0f) {
+            float sliding = length(velocity.xy);
+            velocity.xy *= sliding > 0.0f ? max(0.0f, 1.0f - u.groundCoulomb * gained / sliding) : 0.0f;
+        } else {
+            velocity.xy *= max(0.0f, 1.0f - u.groundFriction * dt);
+        }
+    } else {
+        // Landing: the fall stopped at the surface (along z; friction in the plan), as on the floor.
+        float stopped = max(-velocity.z, 0.0f);
+        displacement.z = ground - reference.z;
+        velocity.z = max(velocity.z, 0.0f);
+        if (u.groundCoulomb > 0.0f) {
+            float sliding = length(velocity.xy);
+            velocity.xy *= sliding > 0.0f ? max(0.0f, 1.0f - u.groundCoulomb * stopped / sliding) : 0.0f;
+        } else {
+            velocity.xy *= max(0.0f, 1.0f - u.groundFriction * dt);
+        }
+    }
+    nodes[threadIndex].displacement = displacement;
+    nodes[threadIndex].velocity = velocity;
+}
+
+// A structure standing on the terrain's cut cells: a cut cell less than half air (below its
+// column's first cell at least half full) with the structure solid in the cell above it is shut in
+// between the ground and the structure. Its column's difference would come back to it, magnified
+// (1 − α)/α every step, as under a block (`redistributeCutDefects`; the scene's blocks are dealt
+// with when it loads). Between `remaskPrepare` and `remaskApply`, such a cell, and any shut in
+// beneath it, becomes solid, and stays so for the rest of the run: `capped` keeps each column's
+// lowest such cell (plus one), and every remask marks them again, so that a rocking footing does
+// not open and refill it. Its air is given up as a newly solid cell's is, and its difference for
+// the step is dropped. One thread a column with cut cells; dispatched only where a structure
+// stands on cut terrain.
+kernel void remaskCapSlivers(device uchar *mask [[buffer(0)]],
+                             const device uchar *rigid [[buffer(1)]],
+                             const device uint4 *columns [[buffer(2)]],
+                             const device uint *cutColumns [[buffer(3)]],
+                             device float4 *defects [[buffer(4)]],
+                             constant uint4 &dims [[buffer(5)]],
+                             device uint *capped [[buffer(6)]],
+                             uint gid [[thread_position_in_grid]]) {
+    if (gid >= dims.w) {
+        return;
+    }
+    uint columnIndex = cutColumns[gid];
+    uint4 column = columns[columnIndex];
+    uint i = columnIndex % (dims.x + 1u);
+    uint j = columnIndex / (dims.x + 1u);
+    uint stride = dims.x * dims.y;
+    uint base = i + dims.x * j;
+    // From the cell under the first at least half full down to the first of air: shut in while the
+    // cell above is solid (after `remaskPrepare`, bit 1 is the new outline).
+    int lowest = capped[gid] > 0u ? int(capped[gid]) - 1 : int(column.w);
+    for (int k = int(column.w) - 1; k >= int(column.y); --k) {
+        if (uint(k) + 1u >= dims.z) {
+            continue;
+        }
+        uint above = base + stride * uint(k + 1);
+        if (k < lowest && (mask[above] & 2) == 0 && rigid[above] == 0) {
+            break;
+        }
+        if (k < lowest) {
+            uint record = column.x + uint(k) - column.y;
+            defects[2u * record] = float4(0.0f);
+            defects[2u * record + 1u] = float4(0.0f);
+            lowest = k;
+        }
+        mask[base + stride * uint(k)] |= 2;
+    }
+    if (lowest < int(column.w)) {
+        capped[gid] = uint(lowest) + 1u;
+    }
+}

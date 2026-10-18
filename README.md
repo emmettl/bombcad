@@ -41,7 +41,14 @@ The [steel and glass office](docs/office-tower.md) and the [large-panel block of
 
 A signed, notarized build for Apple silicon Macs running macOS 15 or later is on the
 [Releases](https://github.com/emmettl/bombcad/releases) page. Expand the ZIP and move
-`BombCAD.app` to Applications; the `.sha256` file beside it checks the download.
+`BombCAD.app` to Applications; the `.sha256` file beside it checks the download. Or, with
+Homebrew:
+
+```bash
+brew install emmettl/tap/bombcad
+```
+
+which also puts the headless runner on the path as `bombcad`.
 
 ## Building and running
 
@@ -61,6 +68,13 @@ charge or gas cloud and the display; **Edit layout** builds and imports scenes (
 Runs can be saved, compared, swept across parameters on several Macs, and exported for
 rendering. Everything the app does is described in [Using the app](docs/using-the-app.md),
 including `BombCAD run` and the `blastbench` command-line tool.
+
+To work in Xcode, `make xcode` (needs [XcodeGen](https://github.com/yonaskolb/XcodeGen),
+`brew install xcodegen`) writes `Xcode/BombCAD.xcodeproj` from `Xcode/project.yml`. It opens the
+package with all its targets and tests, and a **BombCAD App** scheme that builds the real app as
+`make app` does and runs it under the debugger with Metal frame capture (pick
+`dist/BombCAD.app` the first time it asks). The package stays the build's source of truth; the
+project is generated, not committed.
 
 ## What it models
 

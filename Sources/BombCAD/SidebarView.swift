@@ -386,6 +386,8 @@ struct SidebarView: View {
         )
         .multilineTextAlignment(.trailing)
         .frame(maxWidth: 64)
+        // The row's "Extent" would name all three alike.
+        .accessibilityLabel("Extent \(["X", "Y", "Z"][axis]) (m)")
     }
 
     private var chargeSection: some View {

@@ -277,11 +277,25 @@ the desk, its chair, the side table and the cabinet pass their balance angles; t
 the pen the front boxes reach 7 m/s, the whole stack shifts by 0.1 m on average, and one box of
 48 tips over.
 
-The coupling costs as much as the air or more in every scene: it is the CPU remapping each
+The coupling cost as much as the air or more in every scene: it was the CPU remapping each
 object's region of fine cells, with masks and wall speeds, every step, which grows with the
-objects' surface and the fineness of their cells, not with the domain. Motion and contact
-together stay under 1% of the time even for 48 boxes; mechanics alone, 256 boxes take 39 ms a
-step (the contact table above). No throughput is promised from these figures.
+objects' surface and the fineness of their cells, not with the domain.
+
+Since 18 October 2026 the remap redistributes only the cells that open or close, finds each
+cell's new outline in slabs side by side, finds patches through the blocks' map rather than
+scanning the pool, and writes back only what changes; the loads are gathered side by side and
+summed in the blocks' order. On the same inputs it writes the same gas, outlines and walls to
+the bit as before, step by step, and the three scenes run to the bit as they did with the two
+fixes that came with it. Groups of boxes whose spans meet are now remapped together: a box in
+the corner of an L of others had been opened by their remap and closed by its own, and the
+pieces in the room now move up to 5 mm differently out of 0.13–1.9 m. And loads are summed in
+the blocks' order, not the pool's, so a run repeats to the bit (the room's had parted after
+0.05 s). Over the scenes' first 0.1 s on the CI Mac mini (base M4, shared with other work, so
+indicative), the coupling's time fell from 3 to 1 s in the pen, 41 to 13 s in the room and 66
+to 32 s in the car park, against the air's 14, 85 and 225 s there.
+
+Motion and contact together stay under 1% of the time even for 48 boxes; mechanics alone, 256
+boxes take 39 ms a step (the contact table above). No throughput is promised from these figures.
 
 ## In the app
 
@@ -371,9 +385,8 @@ mechanics checked against theory, not validated vehicle or furniture models.
 
 - Late flow is not converged (above), for one object or many; objects that touch share whole
   cells, and a cell trapped between them trades gas with air a cell or two away.
-- The coupling's cost, the CPU remap of each object's fine cells every step, exceeds the air's
-  in populated scenes; it would fall if only cells whose occupancy changes were remapped, or
-  if the remap moved to the GPU.
+- The coupling still runs on the CPU every step, now well below the air's time in populated
+  scenes (above); moving the outline pass to the GPU would cut it further.
 - Objects striking a deformable structure do so without air, and corners pressed into a face
   between its nodes are not found; the motion run in the app refuses a deformable structure.
 - Edge-on-edge contact between boxes crossed at an angle is not found; contact is inelastic
@@ -383,3 +396,14 @@ mechanics checked against theory, not validated vehicle or furniture models.
 - Next: a fractional shell boundary, the air's gravity with these objects (it is now an
   [option](air-blast-model.md#gravity) for the air alone), objects and a deformable structure in
   the air together.
+- Objects and a deformable structure in the air together need, as found on 18 October 2026:
+  (a) one layout for the coarse wall velocities, which a structure's coupling indexes by its
+  region or sparse tiles and the objects over the whole grid; (b) the structure's remask, coarse
+  and fine, keeping the objects' cells and their wall velocities (it rebuilds the outline from
+  the rigid mask and the elements, and the fine pass drops the objects' mark); (c) the objects'
+  remap keeping the structure's cells (it rebuilds from the scenery and the objects, so would
+  open and close them every step, moving gas about); (d) contact between the objects and the
+  structure's nodes at the structure's own step, the air's step held to it while an object is
+  near; (e) the app's and headless motion runs taking the structure. In stages: masks and walls
+  that coexist, tested with held objects beside a moving structure; then the contact, with a
+  car thrown against a wall against the reference without air; then the app.

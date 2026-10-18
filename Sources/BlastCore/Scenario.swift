@@ -394,7 +394,7 @@ extension BlastSolver {
             }
         }
         var cut: TerrainCutGeometry?
-        if let terrain = scenario.terrain, configuration.cutsTerrain(of: scenario) {
+        if let terrain = scenario.terrain, configuration.cutsTerrain(of: scenario, cellSize: grid.cellSize) {
             try terrain.validate(domain: scenario.domainSize)
             // A surface that crosses no cell (one lying on cells' faces) is its staircase.
             cut = TerrainCutGeometry(
@@ -442,13 +442,16 @@ extension BlastSolver {
         terrain = scenario.terrain
         try loadCongestion(scenario.congestion ?? [])
         terrainCut = try cut.map { try TerrainCutBuffers(geometry: $0, device: device) }
+        cappedSliverBuffer = nil
         // The structure is added to the mask on the GPU, by the same rule that later tracks it.
         try scenario.validateStructuralSeparation()
         // Each structure runs with the regime and loading the scene gives it, for its defaults.
         try setStructures(
             scenario.structuralObjects.map { object in
                 var object = object
-                if let model = object.structure { object.setStructure(model.detectingRegime(in: scenario)) }
+                if let model = object.structure {
+                    object.setStructure(model.detectingRegime(in: scenario).standing(on: scenario.terrain))
+                }
                 return object
             })
         // Soft ground, if chosen, under every structure's solid elements (shells keep the hard ground).
