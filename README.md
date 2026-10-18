@@ -69,6 +69,13 @@ Runs can be saved, compared, swept across parameters on several Macs, and export
 rendering. Everything the app does is described in [Using the app](docs/using-the-app.md),
 including `BombCAD run` and the `blastbench` command-line tool.
 
+To work in Xcode, `make xcode` (needs [XcodeGen](https://github.com/yonaskolb/XcodeGen),
+`brew install xcodegen`) writes `Xcode/BombCAD.xcodeproj` from `Xcode/project.yml`. It opens the
+package with all its targets and tests, and a **BombCAD App** scheme that builds the real app as
+`make app` does and runs it under the debugger with Metal frame capture (pick
+`dist/BombCAD.app` the first time it asks). The package stays the build's source of truth; the
+project is generated, not committed.
+
 ## What it models
 
 | Area | What is there | Document |
