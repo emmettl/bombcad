@@ -151,6 +151,13 @@ How it works (`BlastSolver.settleStructures()`):
   deformation, stresses and any cracking from its own weight stay.
 - **Falling bodies:** a body that is still moving after 1 s, such as one falling or not standing,
   is put back undeformed. It then starts as it did before.
+- **Chattering joints** (since 18 October 2026): a body whose nodes still move at 1 s but whose
+  displacement over the last 5 ms part has stood still, its mean speed over the part (the change
+  of its displacement over the part's time) within 1% of the largest, has settled all the same. A
+  joint on a footing chatters at rest: the nodes it ties move at a few cm/s and microns, the
+  footing's and the body's oscillation never damped out between the joint and the footing's own
+  motion, and the frame on a hillside's footings stalled at 1.3% of its largest speed, level
+  footings too. Bodies that settled before the limit settle as they did.
 
 It is left out, so that the run is as before, bit for bit:
 - with the option off;

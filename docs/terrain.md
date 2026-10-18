@@ -296,8 +296,19 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell
   (a twelfth air under the silo, 500 t 70 m off), and the run went to NaN. Refined levels apply
   the rule to their own cells as each patch is placed (since 18 October 2026): a block too thin
   for the coarse cells to stand on a sliver can cap a fine one, and refined once the same district
-  ran away 0.04 s in. A coarse cut cell whose fine cells are then all solid keeps what it had. A
-  structure that comes to rest on a sliver during a run is not caught by this rule.
+  ran away 0.04 s in. A coarse cut cell whose fine cells are then all solid keeps what it had.
+- **A structure on a sliver** (since 18 October 2026). A structure standing on the terrain, as on
+  footings stepped into a slope, caps cut cells in the same way, and "Two-storey frame on a
+  hillside" went unstable as the blast reached it. Each time the air's outline is remade
+  (`remaskCapSlivers`, between `remaskPrepare` and `remaskApply`), a cut cell less than half air
+  with the structure solid in the cell above, and any shut in beneath it, becomes solid, its
+  difference for the step dropped; it stays solid for the rest of the run, so that a rocking
+  footing does not open and refill it, even if the structure later slides away or falls (it held
+  less than half a cell of air). The pass runs only where a structure stands on the terrain, so
+  other runs are as they were to the bit. Refined air does not apply it to its own cells yet, so
+  for now refined runs with a structure standing on the terrain (a solid's base within half a
+  metre of the ground above the floor under it, `structureStandsOnTerrain`) keep the terrain as a
+  staircase (`cutsTerrain(of:)`); the same rule in `refineRemaskPrepare` is next.
   The two levels can still disagree. A fine sliver whose cell above is air at its own level but
   lies under a block in its parent's cells passes up into a solid cell. That happens where the
   second level's pool is full and the patch above is not placed. What such a column carries up

@@ -442,6 +442,7 @@ extension BlastSolver {
         terrain = scenario.terrain
         try loadCongestion(scenario.congestion ?? [])
         terrainCut = try cut.map { try TerrainCutBuffers(geometry: $0, device: device) }
+        cappedSliverBuffer = nil
         // The structure is added to the mask on the GPU, by the same rule that later tracks it.
         try scenario.validateStructuralSeparation()
         // Each structure runs with the regime and loading the scene gives it, for its defaults.

@@ -409,11 +409,12 @@ extension StructureModel {
         supports.indices.contains { anchorage(ofSupport: $0) == nil && containsSupport($0, at: point) }
     }
 
-    /// Whether `point` stands on the ground, for the clamp and the ground's connection: at z = 0
-    /// on level ground; on a terrain (`ground`), within half an element of the surface under it,
-    /// as near as a base built of elements can follow a slope.
+    /// Whether `point` stands on the ground, for the clamp and the ground's connection: at z = 0,
+    /// the floor, as always; on a terrain (`ground`) also within half an element of the surface
+    /// under it, as near as a base built of elements can follow a slope.
     func isOnGround(_ point: SIMD3<Float>) -> Bool {
-        guard let ground else { return abs(point.z) < 1e-4 }
+        if abs(point.z) < 1e-4 { return true }
+        guard let ground else { return false }
         return abs(point.z - ground.height(at: point)) <= 0.5 * max(elementSize, shellElementSize ?? 0) + 1e-4
     }
 

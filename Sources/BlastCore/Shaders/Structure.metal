@@ -4255,3 +4255,54 @@ kernel void structureTerrainLanding(device StructureNode *nodes [[buffer(0)]],
     nodes[threadIndex].displacement = displacement;
     nodes[threadIndex].velocity = velocity;
 }
+
+// A structure standing on the terrain's cut cells: a cut cell less than half air (below its
+// column's first cell at least half full) with the structure solid in the cell above it is shut in
+// between the ground and the structure. Its column's difference would come back to it, magnified
+// (1 − α)/α every step, as under a block (`redistributeCutDefects`; the scene's blocks are dealt
+// with when it loads). Between `remaskPrepare` and `remaskApply`, such a cell, and any shut in
+// beneath it, becomes solid, and stays so for the rest of the run: `capped` keeps each column's
+// lowest such cell (plus one), and every remask marks them again, so that a rocking footing does
+// not open and refill it. Its air is given up as a newly solid cell's is, and its difference for
+// the step is dropped. One thread a column with cut cells; dispatched only where a structure
+// stands on cut terrain.
+kernel void remaskCapSlivers(device uchar *mask [[buffer(0)]],
+                             const device uchar *rigid [[buffer(1)]],
+                             const device uint4 *columns [[buffer(2)]],
+                             const device uint *cutColumns [[buffer(3)]],
+                             device float4 *defects [[buffer(4)]],
+                             constant uint4 &dims [[buffer(5)]],
+                             device uint *capped [[buffer(6)]],
+                             uint gid [[thread_position_in_grid]]) {
+    if (gid >= dims.w) {
+        return;
+    }
+    uint columnIndex = cutColumns[gid];
+    uint4 column = columns[columnIndex];
+    uint i = columnIndex % (dims.x + 1u);
+    uint j = columnIndex / (dims.x + 1u);
+    uint stride = dims.x * dims.y;
+    uint base = i + dims.x * j;
+    // From the cell under the first at least half full down to the first of air: shut in while the
+    // cell above is solid (after `remaskPrepare`, bit 1 is the new outline).
+    int lowest = capped[gid] > 0u ? int(capped[gid]) - 1 : int(column.w);
+    for (int k = int(column.w) - 1; k >= int(column.y); --k) {
+        if (uint(k) + 1u >= dims.z) {
+            continue;
+        }
+        uint above = base + stride * uint(k + 1);
+        if (k < lowest && (mask[above] & 2) == 0 && rigid[above] == 0) {
+            break;
+        }
+        if (k < lowest) {
+            uint record = column.x + uint(k) - column.y;
+            defects[2u * record] = float4(0.0f);
+            defects[2u * record + 1u] = float4(0.0f);
+            lowest = k;
+        }
+        mask[base + stride * uint(k)] |= 2;
+    }
+    if (lowest < int(column.w)) {
+        capped[gid] = uint(lowest) + 1u;
+    }
+}

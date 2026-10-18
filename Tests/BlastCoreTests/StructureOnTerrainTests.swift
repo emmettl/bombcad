@@ -86,4 +86,29 @@ struct StructureOnTerrainTests {
             #expect(fallen < 1e-3, "\(connection == nil ? "clamped" : "connected"): fell \(fallen) m")
         }
     }
+
+    @Test(
+        "A block standing on cut terrain shuts in the slivers under it, and the air stays finite under a blast"
+    )
+    func cappedSlivers() throws {
+        // A 1 in 4 slope; a block clamped on it, its base 1.5 m up where the ground is 1.375-1.625 m,
+        // so that thin cut cells lie under its cells; 5 kg 3 m in front.
+        let domain = SIMD3<Float>(12, 8, 8)
+        let slope = Terrain.sampled(domain: domain, spacing: 0.5) { max(0, $0.x * 0.25) }
+        let block = StructureModel(
+            solids: [Box(min: SIMD3(5.5, 3.5, 1.5), max: SIMD3(6.5, 4.5, 3))], material: material,
+            elementSize: 0.25,
+            fixedBase: true)
+        var scenario = Scenario(
+            name: "Block on a slope", domainSize: domain, boxes: [],
+            charge: Charge(mass: 5, position: SIMD3(2.5, 4, slope.height(at: SIMD2(2.5, 4)) + 1)), gauges: [],
+            structure: block)
+        scenario.terrain = slope
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.25)
+        let result = solver.advance(until: 0.01)
+        #expect(result.isStable)
+        let capped = try #require(solver.cappedSliverBuffer)
+        let columns = capped.contents().bindMemory(to: UInt32.self, capacity: capped.length / 4)
+        #expect((0..<(capped.length / 4)).contains { columns[$0] > 0 })
+    }
 }

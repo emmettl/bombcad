@@ -13,7 +13,16 @@ func runHillside(device: MTLDevice) throws {
     let duration = option("duration").flatMap(Double.init) ?? 0.1
     var scenario = ScenarioPreset.hillsideFrame.scenario
     if let mass = option("mass").flatMap(Float.init) { scenario.charge.mass = mass }
-    if flag("dry"), let structure = scenario.structure {
+    if flag("dry"), var structure = scenario.structure {
+        // `--elastic`: the footings' sand elastic; `--massless`: no radiation damping; `--clamped`:
+        // the columns clamped at their bases, no footings.
+        for index in structure.supports.indices {
+            guard var law = structure.anchorage(ofSupport: index), var footing = law.footing else { continue }
+            if flag("elastic") { footing.soil.cyclic = nil }
+            if flag("massless") { footing.soil.radiationDamping = false }
+            law.footing = flag("no-footing") ? nil : footing
+            structure.setAnchorage(flag("clamped") ? nil : law, ofSupport: index)
+        }
         // The frame alone under its weight, damped, without the air: how it stands on its footings.
         let solver = try StructureSolver(
             device: device, model: structure.standing(on: flag("level") ? nil : scenario.terrain))
@@ -38,6 +47,20 @@ func runHillside(device: MTLDevice) throws {
                 print(
                     "    speed \(String(format: "%.2e", speed)) m/s, \(String(format: "%.4f", speed / peak)) of the peak"
                 )
+            }
+            // Where the fastest nodes are.
+            var fastest: [(speed: Float, at: SIMD3<Float>)] = []
+            for k in 0...solver.ez {
+                for j in 0...solver.ey {
+                    for i in 0...solver.ex {
+                        let node = solver.node(i, j, k)
+                        guard node.mass > 0 else { continue }
+                        fastest.append((simd_length(node.velocity), solver.referencePosition(i, j, k)))
+                    }
+                }
+            }
+            for entry in fastest.sorted(by: { $0.speed > $1.speed }).prefix(5) {
+                print("    node at \(entry.at): \(String(format: "%.2e", entry.speed)) m/s")
             }
             let summary = solver.summary()
             print(
@@ -86,6 +109,9 @@ func runHillside(device: MTLDevice) throws {
                     + "\(String(format: "%.0f", footing.soilForce.z / 1e3)) kN (\(String(format: "%.0f%%", used * 100)), "
                     + "peak \(String(format: "%.0f%%", peak[n] * 100))); slid "
                     + "\(String(format: "%.1f %.1f", footing.displacement.x * 1000, footing.displacement.y * 1000)) mm, "
+                    + "moved up \(String(format: "%.1f", footing.displacement.z * 1000)) mm, lifted "
+                    + "\(String(format: "%.1f", footing.uplift * 1000)) mm, joint up "
+                    + "\(String(format: "%.0f", -footing.jointForce.z / 1e3)) kN, "
                     + "settled \(String(format: "%.1f", footing.settlement * 1000)) mm, turned "
                     + "\(String(format: "%.2f", simd_length(footing.rotation) * 1000)) mrad; sides "
                     + "\(String(format: "%.0f %.0f", footing.sideForce.x / 1e3, footing.sideForce.y / 1e3)) kN, "
