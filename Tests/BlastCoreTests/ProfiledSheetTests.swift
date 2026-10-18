@@ -335,8 +335,11 @@ struct ProfiledSheetTests {
             solids: [Box(min: SIMD3(0, -width / 2, 0.9), max: SIMD3(6, width / 2, 1.1))],
             material: zed.equivalent(of: steel, width: width), elementSize: 0.25, fixedBase: false)
         model.elementKind = .shell
-        // Straight: its capacity in bending is the check, as the sheeting it carries holds it
-        // sideways; bowed and free, the rectangle standing for it buckles sideways first.
+        // Straight and held sideways along its length, as the sheeting it carries holds it: its
+        // capacity in bending is the check. Free, the rectangle standing for it is past its
+        // lateral-torsional buckling load at 0.9 of collapse and stands only while perfectly
+        // symmetric: bowed, or with its fibres' yields raised a little unevenly by the strain-rate
+        // law, it buckles sideways first.
         model.memberImperfections = false
         // Collapse at w = 8 M_c / L² per metre: 3.33 kN/m from M_c = 14.98 kN m.
         let collapse: Float = 8 * 14.98e3 / 36
@@ -347,6 +350,7 @@ struct ProfiledSheetTests {
             solver.damping = 80
             let ends = solver.nodes { $0.x < 1e-4 || $0.x > 6 - 1e-4 }
             solver.mutateNodes { nodes in
+                for n in nodes.indices { nodes[n].restrain(y: true) }
                 for n in ends { nodes[n].restrain(y: true, z: true) }
                 nodes[ends[0]].restrain(x: true)
             }

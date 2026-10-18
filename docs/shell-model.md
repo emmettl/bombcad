@@ -223,6 +223,44 @@ element, the bars of the validation slab ruptured early, as they once did in the
 **Von Mises** (steel and the elastic material) uses the plane-stress return of Simo and Taylor
 in shells and uniaxial plasticity in beams, on the Green-Lagrange strain, with elastic shear.
 
+**Steel's strain rate** (since 18 October 2026, `StructureMaterial.rateLaw`, `SteelRateLaw`):
+- **The law.** Structural steel's yield and hardening rise with its strain rate by Cowper and
+  Symonds's 1 + (ε̇ / D)^(1/q).
+- **From the tensile test's rate.** The factor is taken over its value at a tensile test's
+  2.5 × 10⁻⁴ /s (EN ISO 6892-1), the rate the yield is measured at, and never below 1. So a
+  member loaded slowly keeps its yield.
+- **The rate is the plastic strain rate,** the fibre's or layer's own, averaged over the
+  strain-rate window and read from the step before, as LS-DYNA's viscoplastic option takes it.
+  Driven by the total strain rate, a beam held sideways at 0.9 of its capacity crept to 268 mm. Its small
+  vibrations raised and lowered the yield, and each fall let the fibres already at yield flow a
+  little more. On the plastic rate the yield returns to static once flow stops, and the beam holds
+  as it does without the law (95 mm against 88).
+- **Checked on a stocky strut** (`BucklingTests`). Squashed at 10⁻³ /s it carries 1.00 of f_y A
+  (the law gives 1.03). At 0.3 /s it carries 1.23 (the law gives 1.26, read with the lag of the
+  average).
+- **The constants by grade.** A stronger steel's yield rises less.
+
+  | Yield | D, q | Source | Factor at 10⁻³, 0.3 and 1 /s |
+  |---|---|---|---|
+  | To 300 MPa (mild steel, S235, S275) | 40.4 /s, 5 | N. Jones, *Structural Impact*, 1989, Table 8.1 | 1.04, 1.26, 1.35 |
+  | To 400 MPa (S355, A992) | 68.8 /s, 5.8 | Fitted to Murray, Rowell and Thornton's A992, 372 MPa (ERDC, IESS 2018, Table 4), within 2% at 0.002–2 /s | 1.03, 1.24, 1.33 |
+  | Above (S420, S460, A572 grade 50) | 94.4 /s, 4.0 | Fitted to their A572 grade 50, 424 MPa (Table 3), within 2% | 1.02, 1.19, 1.27 |
+
+  Murray et al.'s steels, tested for UFC 3-340-02's coming steel chapter, rose 1.17–1.25 at
+  0.2 /s. That is within UFC's design range of rates (0.02–0.3 /s), and in line with the design factors
+  of about 1.2–1.3 quoted from it for structural steel in bending (its table not checked here). Steels stronger than they tested (quenched and
+  tempered) take the last row, likely too much still.
+- **The grade is read first.** A section's equivalent rectangle (`SteelSection.equivalent`), a
+  profiled sheet's skin and ribs, and an imported flanged member are scaled after their steel's
+  grade is read, from the steel's own yield.
+- **Cold-formed sheet** (S280GD–S350GD) takes the constants of its yield, which were measured on
+  hot-rolled steel.
+- **Where it applies.** Beams and shells of von Mises steel that carries a law (structural steel
+  does). A material without one, the closed-form studies' and a user's own, keeps its yield at
+  any rate.
+- **Not here.** The bars in concrete keep the CEB's law of the concrete model, and steel solid
+  elements have none.
+
 **Removal.** A shell is removed when, at any of its four points,
 
 - every layer is cracked past the removal width across one axis and no intact bars cross that

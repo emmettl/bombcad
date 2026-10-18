@@ -556,9 +556,37 @@ static inline float3 shellConcrete(float3 strain, float2 transverse, float insta
 // Plane-stress von Mises plasticity with linear hardening on the Green-Lagrange strain (a
 // St Venant-Kirchhoff material): the return of Simo and Taylor (1986), solving for the plastic
 // multiplier by Newton's method. Transverse shear stays elastic.
-static inline float3 shellVonMises(float3 strain, float2 transverse, thread ShellLayer &state,
+// Steel's yield raised by its plastic strain rate (`SteelRateLaw`): Cowper and Symonds's
+// 1 + (ε̇_p / D)^(1/q) over its value at the tensile test's rate, never below 1, with the layer's
+// plastic strain rate averaged over the strain-rate window (in its `slip.x`, which only concrete
+// uses otherwise) as of the step before. The plastic rate, not the total: vibration below yield
+// leaves the yield alone, and once flow stops it returns to its static value, so a member held
+// near its capacity does not creep by a yield that rises and falls (a viscoplastic overstress, as
+// LS-DYNA's viscoplastic option has it). 1 without the law.
+static inline float steelFlowFactor(thread ShellLayer &state, constant MaterialParameters &m) {
+    float effective = state.slip.x;
+    if (m.rateConstant <= 0.0f || !(effective > 2.5e-4f)) {
+        return 1.0f;
+    }
+    float raised = 1.0f + exp2(m.rateExponent * log2(effective / m.rateConstant));
+    return max(raised / m.rateTestFactor, 1.0f);
+}
+
+// The step's plastic strain `increment` into the averaged plastic strain rate the law reads.
+static inline void steelRateUpdate(float increment, float dt, thread ShellLayer &state,
+                                   constant MaterialParameters &m, constant ShellUniforms &u) {
+    if (m.rateConstant <= 0.0f || !(dt > 0.0f)) {
+        return;
+    }
+    state.slip.x += clamp(dt * u.rateFilter, 0.0f, 1.0f) * (increment / dt - state.slip.x);
+    state.rate = state.slip.x;
+}
+
+static inline float3 shellVonMises(float3 strain, float2 transverse, float dt, thread ShellLayer &state,
                                    constant MaterialParameters &m, constant ShellUniforms &u, thread float2 &shear,
                                    thread LayerOutcome &outcome) {
+    float flow = steelFlowFactor(state, m);
+    float before = state.crush.y;
     float young = m.youngsModulus;
     float nu = 0.5f * m.lambda / (m.lambda + m.mu);
     float g = m.mu;
@@ -582,7 +610,7 @@ static inline float3 shellVonMises(float3 strain, float2 transverse, thread Shel
     auto residual = [&](float dg) {
         float f2 = squared(dg);
         float equivalent = plastic + sqrt(2.0f / 3.0f) * dg * sqrt(2.0f * f2);
-        return sqrt(3.0f * f2) - (m.yieldStress + m.hardening * equivalent);
+        return sqrt(3.0f * f2) - flow * (m.yieldStress + m.hardening * equivalent);
     };
     float3 stress = trial;
     if (residual(0.0f) > 0.0f) {
@@ -606,6 +634,7 @@ static inline float3 shellVonMises(float3 strain, float2 transverse, thread Shel
         state.crack = plasticStrain.xy;
         state.crush = float2(plasticStrain.z, plastic);
     }
+    steelRateUpdate(plastic - before, dt, state, m, u);
     shear = u.shearFactor * g * transverse;
     outcome.torn = float2(0.0f);
     outcome.slid = float2(0.0f);
@@ -1084,7 +1113,7 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
             float3 stress = m.materialModel == 2
                 ? shellTimber(strain, transverse, zeta, i2, sqrt(a * b), t, timberShear, state, m, u, shear, outcome)
                 : m.materialModel == 0
-                ? shellVonMises(strain, transverse, state, m, u, shear, outcome)
+                ? shellVonMises(strain, transverse, dt, state, m, u, shear, outcome)
                 : shellConcrete(strain, transverse, instantaneous, dt, state, m, u, el.barCount > 0, crossing,
                                 float2(a, b), punchedThrough, sheared, shear, outcome);
             storeLayer(layers[slot], state);
@@ -1604,18 +1633,21 @@ static inline float beamConcrete(float axial, float2 shear, float instantaneous,
 // fibre on a flange that buckles locally (`buckles`), past its onset in compression, carries no
 // more than a stress falling from the yield to the residual share of it (`LocalBuckling`), its
 // largest compression kept in `crack.y`.
-static inline float beamVonMises(float axial, float2 shear, bool buckles, thread ShellLayer &state,
-                                 constant MaterialParameters &m, constant ShellUniforms &u,
-                                 thread float2 &shearStress, thread LayerOutcome &outcome) {
+static inline float beamVonMises(float axial, float2 shear, bool buckles, float dt,
+                                 thread ShellLayer &state, constant MaterialParameters &m,
+                                 constant ShellUniforms &u, thread float2 &shearStress, thread LayerOutcome &outcome) {
     float young = m.youngsModulus;
     float stress = young * (axial - state.crack.x);
-    float yield = m.yieldStress + m.hardening * state.crush.y;
+    float flow = steelFlowFactor(state, m);
+    float yield = flow * (m.yieldStress + m.hardening * state.crush.y);
+    float increment = 0.0f;
     if (fabs(stress) > yield) {
-        float increment = (fabs(stress) - yield) / (young + m.hardening);
+        increment = (fabs(stress) - yield) / (young + flow * m.hardening);
         state.crack.x += stress > 0.0f ? increment : -increment;
         state.crush.y += increment;
         stress = young * (axial - state.crack.x);
     }
+    steelRateUpdate(increment, dt, state, m, u);
     if (buckles) {
         state.crack.y = max(state.crack.y, -axial);
         float past = (state.crack.y - m.bucklingOnset) / m.bucklingSoftening;
@@ -1846,7 +1878,7 @@ kernel void beamElements(device ShellLayerStore *fibres [[buffer(0)]],
             float stress = m.materialModel == 2
                 ? beamTimber(axial, shear, L, state, m, u, shearStress, outcome)
                 : m.materialModel == 0
-                ? beamVonMises(axial, shear, buckles, state, m, u, shearStress, outcome)
+                ? beamVonMises(axial, shear, buckles, dt, state, m, u, shearStress, outcome)
                 : beamConcrete(axial, shear, instantaneous, dt, confinement, beam.barCount > 0 && m.steelPoints > 0,
                                state, m, u, crossing, slide, cap, shearStress, outcome);
             storeLayer(fibres[slot], state);

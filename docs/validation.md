@@ -2797,26 +2797,30 @@ open (`NassrSteelTest`, `blastbench nassr`):
   the depth about the weak axis, or the curtain.
 - **Axial load.** A head mass under gravity, raised before the blast.
 
-Largest mid-span deflection, mm, measured, and the model without and with Nassr's measured
-average strain-rate factor (Cowper and Symonds) on the yield:
+Largest mid-span deflection, mm, measured, and the model without a strain-rate law, with the
+steel's law by grade (the default since 18 October 2026; nothing fitted to these tests), and with
+Nassr's own measured average factor on the yield:
 
-| Shot | Member | Load (peak, impulse) | Measured | Model | Ratio | With the measured DIF | Ratio |
-|---|---|---|---|---|---|---|---|
-| 1, 50 kg, x-x | Beam | 307 kPa, 715 Pa s | 6.9 | 5.9 | 0.86 | 6.1 (1.28) | 0.88 |
-| | Column | | 5.3 | 6.3 | 1.20 | 6.6 | 1.25 |
-| 2, 100 kg, y-y | Beam | 623 kPa, 1,279 Pa s | 40.8 | 50.0 | 1.22 | 45.5 (1.38) | 1.11 |
-| | Column | | 56.1 | 94.1 | 1.68 | 90.2 | 1.61 |
-| 3, 150 kg, x-x | Beam | 1,560 kPa, 2,128 Pa s | 33.2 | 19.6 | 0.59 | 18.6 (1.44) | 0.56 |
-| | Column | | 30.9 | 20.4 | 0.66 | 19.3 | 0.62 |
-| 4, 250 kg, x-x | Beam | 4,283 kPa, 3,174 Pa s | not recorded | 36.5 | | 30.7 (1.46) | |
-| | Column | | 107 | 37.6 | 0.35 | 31.5 | 0.29 |
-| 5, 250 kg, x-x, curtain | Beam | 2,098 kPa, 3,144 Pa s | 62.8 | 77.1 | 1.23 | 60.5 (1.42) | 0.96 |
-| | Column | | 71.0 | 77.8 | 1.10 | 61.2 | 0.86 |
+| Shot | Member | Load (peak, impulse) | Measured | No rate law | Ratio | Rate law by grade | Ratio | Nassr's DIF | Ratio |
+|---|---|---|---|---|---|---|---|---|---|
+| 1, 50 kg, x-x | Beam | 307 kPa, 715 Pa s | 6.9 | 5.9 | 0.86 | 5.9 | 0.86 | 6.1 (1.28) | 0.88 |
+| | Column | | 5.3 | 6.3 | 1.20 | 6.3 | 1.20 | 6.6 | 1.25 |
+| 2, 100 kg, y-y | Beam | 623 kPa, 1,279 Pa s | 40.8 | 50.0 | 1.22 | 45.9 | 1.12 | 45.5 (1.38) | 1.11 |
+| | Column | | 56.1 | 94.1 | 1.68 | 90.5 | 1.61 | 90.2 | 1.61 |
+| 3, 150 kg, x-x | Beam | 1,560 kPa, 2,128 Pa s | 33.2 | 19.6 | 0.59 | 18.9 | 0.57 | 18.6 (1.44) | 0.56 |
+| | Column | | 30.9 | 20.4 | 0.66 | 19.6 | 0.63 | 19.3 | 0.62 |
+| 4, 250 kg, x-x | Beam | 4,283 kPa, 3,174 Pa s | not recorded | 36.5 | | 31.5 | | 30.7 (1.46) | |
+| | Column | | 107 | 37.6 | 0.35 | 32.5 | 0.30 | 31.5 | 0.29 |
+| 5, 250 kg, x-x, curtain | Beam | 2,098 kPa, 3,144 Pa s | 62.8 | 77.1 | 1.23 | 60.1 | 0.96 | 60.5 (1.42) | 0.96 |
+| | Column | | 71.0 | 77.8 | 1.10 | 60.7 | 0.85 | 61.2 | 0.86 |
+
+The rate law by grade ([steel's strain rate](shell-model.md#materials), Murray et al.'s A992
+constants for these 362–393 MPa steels) does what Nassr's measured factors do, unfitted.
 
 **Shots 1, 2 and 5.** The beams read 0.86–1.23 of measured, and the columns 1.10–1.68.
-- **Strain rate.** The model's steel has no strain-rate law, and Nassr measured rates that raise
-  the yield by 1.28–1.46 on average. Raised by them, the beams of shots 1, 2 and 5 come within
-  12%.
+- **Strain rate.** Without a strain-rate law the weak-axis beam and the curtain beam read 1.22 and
+  1.23. Nassr measured rates that raise the yield by 1.28–1.46 on average. With the steel's law by
+  grade, the beams of shots 1, 2 and 5 come within 14%: 0.86–1.12.
 - **Shot 2's column** reads 1.6–1.7 times as far. It is bent about its weak axis at 43% of its
   Euler load there, where the moment is amplified most.
 - **Section shape.** The rectangle standing for the I-section carries its moment in bending
@@ -2836,8 +2840,9 @@ average strain-rate factor (Cowper and Symonds) on the yield:
   where this model reads 0.59. The model and a hand estimate agree; his SDOF and the
   measurement do not with either.
 
-**Standing.** Steel members are now compared with measurement, one series, and within half to
-twice either way. The shots that stayed near elastic, and the curtain shot, are within a quarter.
+**Standing.** Steel members are now compared with measurement, one series, and read 0.57–1.12 of
+measured for the beams and 0.30–1.61 for the columns, with the rate law by grade. The beams of
+the shots near elastic and of the curtain shot are within 14%.
 
 **Not compared:**
 - **Connections.** Culache's high-rate moment connections (Southampton thesis, 2017, open), NIST
