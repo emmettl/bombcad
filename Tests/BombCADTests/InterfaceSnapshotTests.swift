@@ -239,6 +239,27 @@ struct InterfaceSnapshotTests {
         return document
     }
 
+    @Test(
+        "Open faces too near a structure are warned of in the Domain section", arguments: ["light", "dark"])
+    func tightFaces(style: String) throws {
+        let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
+        let folder = URL(filePath: output, directoryHint: .isDirectory).appending(path: style)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        var scene = ScenarioPreset.blastWall.scenario
+        let wall = try #require(scene.structure?.solids.first)
+        // The top just over the wall, far nearer than 4 m/kg^(1/3).
+        scene.domainSize.z = wall.max.z + 0.5
+        #expect(scene.tightFacesNote != nil)
+        var document = ProjectDocument(scenario: scene)
+        document.runSettings?.resolution = "coarse"
+        let model = SimulationModel(document: document)
+        try snapshot(
+            SidebarView(model: model).frame(width: 310, height: 6000), size: CGSize(width: 310, height: 6000),
+            appearance: style == "dark" ? .darkAqua : .aqua,
+            to: folder.appending(path: "run-tight-faces.png"),
+            expandToFit: false)
+    }
+
     /// A methane cloud in a vented room.
     private func gasRoom() -> ProjectDocument {
         var scene = Scenario(

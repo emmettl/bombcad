@@ -1803,7 +1803,8 @@ func runSnapshot() throws {
             var lines: [SIMD4<Float>] = []
             for k in [KFactorDistance.k24, .k40] {
                 lines += HazardOverlay.ring(
-                    centre: centre, radius: k.distance(kilograms: scenario.charge.mass), kind: .kFactor)
+                    centre: centre, radius: k.requiredDistance(kilograms: scenario.charge.mass),
+                    kind: .kFactor)
             }
             lines += HazardOverlay.contour(field, level: .eardrumThreshold, kind: .eardrum)
             lines += HazardOverlay.contour(field, level: .lethality50, kind: .lung)
@@ -5446,6 +5447,7 @@ do {
     case "poulin": try runPoulin(device: device)
     case "tyndall": try runTyndall(device: device)
     case "facade": try runFacade(device: device)
+    case "house": try runHouse(device: device)
     case "lacroix": try runLacroix(device: device)
     case "nassr": try runNassr(device: device)
     case "beam": try runBeam()
@@ -5491,7 +5493,9 @@ do {
         }
         for k in KFactorDistance.all {
             print(
-                String(format: "%@ (%.2f m/kg^(1/3)): %6.1f m", k.name, k.metric, k.distance(kilograms: mass))
+                String(
+                    format: "%@ (%.2f m/kg^(1/3)): %6.1f m", k.name, k.metric,
+                    k.requiredDistance(kilograms: mass))
                     + (k.overpressurePa.map { String(format: ", %.1f kPa", $0 / 1000) } ?? "") + " — " + k.use
             )
         }

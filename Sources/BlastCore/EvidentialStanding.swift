@@ -1197,6 +1197,7 @@ public enum StandingTable {
         "Anchorage.cohesionSlip": .input,
         "Anchorage.friction": .input,
         "Anchorage.bearingCapacity": .input,
+        "Anchorage.closingGap": .input,
         "Anchorage.footing": .option([.footings, .cyclicSand]),
         "Anchorage.side": .input,
         "Anchorage.jointNormal": .input,
@@ -2039,8 +2040,17 @@ struct StandingScene {
                             + "on the hard ground); one run of each wall", "validation.md#brick-walls-debris")
                 )
             }
+            evidence.append(
+                StandingEvidence(
+                    "Terraced brick houses graded against wartime bomb damage (Gilbert, 1994)",
+                    "From 96 kg, a tenth of a second in, the houses' damage categories fall a category above "
+                        + "the surveyed median beyond 14 m (within one with bricks kept to a 50 mm crack); by "
+                        + "0.3 s their unrestrained front walls have gone over, one or two categories worse "
+                        + "than surveyed beyond 11 m",
+                    "validation.md#terraced-houses-against-wartime-bomb-damage"))
             parts.append(
-                "masonry's joints verified; brick walls under blasts fall as one column, not in pieces")
+                "masonry's joints verified; brick walls under blasts fall as one column, not in pieces; brick "
+                    + "houses too damaged at the longer ranges of wartime bombs")
         }
         if classes.contains(.glass) {
             level = max(level, .approximation)
@@ -2069,9 +2079,9 @@ struct StandingScene {
             evidence.append(
                 StandingEvidence(
                     "Cross-laminated timber buildings at Tyndall, 22.9 m from 14.5–90 kg (Weaver et al., 2017)",
-                    "The front's first storey inbound within 6% on the two lighter charges and 21% high on the "
-                        + "heaviest, the second storey 19–76% high, rebound 66–88% of measured; the front's "
-                        + "impulse 54–76% above the report's",
+                    "The front's impulse within 5% of the report's, the faces 4 m/kg^(1/3) out; the first storey "
+                        + "inbound 0.62–0.64 of measured on the two lighter charges and 1.6 times on the heaviest, "
+                        + "the second storey 1.1–1.4 times, rebound 51–112%",
                     "validation.md#cross-laminated-timber-buildings-at-tyndall"))
             parts.append(
                 "timber compared on CLT panels and glulam beams in a shock tube, its strength calibrated, and on "
