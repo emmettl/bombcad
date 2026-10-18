@@ -394,7 +394,7 @@ extension BlastSolver {
             }
         }
         var cut: TerrainCutGeometry?
-        if let terrain = scenario.terrain, configuration.cutsTerrain(of: scenario) {
+        if let terrain = scenario.terrain, configuration.cutsTerrain(of: scenario, cellSize: grid.cellSize) {
             try terrain.validate(domain: scenario.domainSize)
             // A surface that crosses no cell (one lying on cells' faces) is its staircase.
             cut = TerrainCutGeometry(

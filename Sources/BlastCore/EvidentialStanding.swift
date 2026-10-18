@@ -379,7 +379,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .terrain: return inputs.scenario.terrain.map { !$0.isFlat } ?? false
         case .terrainStaircase:
             return (inputs.scenario.terrain.map { !$0.isFlat } ?? false)
-                && !config.cutsTerrain(of: inputs.scenario)
+                && !config.cutsTerrain(of: inputs.scenario, cellSize: inputs.cellSize)
         case .deflagration: return inputs.scenario.deflagration != nil
         case .ventPanels: return !(inputs.scenario.ventPanels ?? []).isEmpty
         case .congestion: return !(inputs.scenario.congestion ?? []).isEmpty

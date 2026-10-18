@@ -5204,7 +5204,19 @@ and sinks at 1.2; set 0.5 m into the slope, it stands under the deeper uphill si
 0.8 of the level footing's sliding resistance pushed uphill and slides under the same push
 downhill.
 
-**A frame on a hillside** (`blastbench hillside`, "Two-storey frame on a hillside"): RESULTS.
+**A frame on a hillside** (`blastbench hillside`, "Two-storey frame on a hillside"; air 0.25 m,
+recommended air, cut cells, 18 October 2026), a sample, not a comparison:
+- **At rest:** the frame settles on its six pads in 1 s (past its footing joints' chatter, see
+  [settling](structural-model.md#settling-under-its-own-weight)), the middle pads bearing 278 kN
+  and the others 173-183 kN, 13-21% of their capacity on the slope (1,342 kN, 0.56 of level
+  ground's), settling 1.4-3.4 mm.
+- **Under 500 kg 7 m in front:** the frame is pushed back and its front columns pull their pads
+  up: by 100 ms the front pads have lifted 87-113 mm off the sand and slid 31-51 mm back, the
+  back ones lifted 12-24 mm, the frame moved up to 128 mm, cracked (damage 0.10) and kept all its
+  elements. No pad bears more than it did at rest: at this charge uplift, not the slope's cut in
+  bearing, governs.
+- **The run:** stable on cut cells only since a structure shuts in the slivers under it
+  ([terrain](terrain.md#cut-cells)); before, it went non-finite as the blast arrived.
 
 ## Hourglass control
 

@@ -279,7 +279,7 @@ public enum RunCost {
             let patch = Double(
                 AirRefinement.bytesPerPatch(
                     ratio: configuration.refinement, species: burning,
-                    cut: configuration.cutsTerrain(of: scenario)))
+                    cut: configuration.cutsTerrain(of: scenario, cellSize: grid.cellSize)))
             let wanted =
                 (peakRefined.x / block * poolShares.x + peakRefined.y * r * r * r / block * poolShares.y)
                 * patch
@@ -289,7 +289,7 @@ public enum RunCost {
         let memory = coarseMemory(grid, configuration: configuration) + pools
         let updateCost =
             (burning ? afterburningUpdateCost : 1)
-            * (configuration.cutsTerrain(of: scenario) ? terrainCutUpdateCost : 1)
+            * (configuration.cutsTerrain(of: scenario, cellSize: grid.cellSize) ? terrainCutUpdateCost : 1)
         let twoLevels = configuration.refinement > 1 && configuration.refinementLevels > 1
         let overhead = Double(steps) * (stepOverhead + (twoLevels ? twoLevelStepOverhead : 0))
         if configuration.refinement > 1 && configuration.refinementOwnSteps {
