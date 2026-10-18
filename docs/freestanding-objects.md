@@ -396,3 +396,14 @@ mechanics checked against theory, not validated vehicle or furniture models.
 - Next: a fractional shell boundary, the air's gravity with these objects (it is now an
   [option](air-blast-model.md#gravity) for the air alone), objects and a deformable structure in
   the air together.
+- Objects and a deformable structure in the air together need, as found on 18 October 2026:
+  (a) one layout for the coarse wall velocities, which a structure's coupling indexes by its
+  region or sparse tiles and the objects over the whole grid; (b) the structure's remask, coarse
+  and fine, keeping the objects' cells and their wall velocities (it rebuilds the outline from
+  the rigid mask and the elements, and the fine pass drops the objects' mark); (c) the objects'
+  remap keeping the structure's cells (it rebuilds from the scenery and the objects, so would
+  open and close them every step, moving gas about); (d) contact between the objects and the
+  structure's nodes at the structure's own step, the air's step held to it while an object is
+  near; (e) the app's and headless motion runs taking the structure. In stages: masks and walls
+  that coexist, tested with held objects beside a moving structure; then the contact, with a
+  car thrown against a wall against the reference without air; then the app.
