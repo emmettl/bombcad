@@ -215,6 +215,56 @@ struct ExperimentalRigidWorldTests {
         #expect(abs(simulation.air.totals().mass / before.mass - 1) < 1e-6)
     }
 
+    @Test("Boxes are remapped in groups whose spans never meet: a box in the corner of an L joins it")
+    func remapGroups() {
+        func region(_ low: SIMD3<Int>, _ high: SIMD3<Int>) -> (low: SIMD3<Int>, high: SIMD3<Int>)? {
+            (low, high)
+        }
+        // An L of three whose regions meet; a fourth in its corner meeting none of them but inside
+        // the box around them; one out of the air; one far away.
+        let regions = [
+            region(SIMD3(3, 3, 0), SIMD3(7, 7, 5)), region(SIMD3(3, 6, 0), SIMD3(7, 10, 5)),
+            region(SIMD3(6, 3, 0), SIMD3(10, 7, 5)), region(SIMD3(8, 8, 0), SIMD3(13, 13, 5)), nil,
+            region(SIMD3(20, 20, 0), SIMD3(24, 24, 5)),
+        ]
+        #expect(BlastSolver.experimentalRemapGroups(regions) == [[0, 1, 2, 3], [5]])
+        // Apart, the corner box is remapped alone.
+        var apart = regions
+        apart[3] = region(SIMD3(12, 12, 0), SIMD3(16, 16, 5))
+        #expect(BlastSolver.experimentalRemapGroups(apart) == [[0, 1, 2], [3], [5]])
+    }
+
+    @Test("A box in the corner of an L of boxes is remapped with them, and the gas is kept")
+    func boxInsideAnotherGroupsSpan() throws {
+        // Three boxes in an L, whose regions meet and are remapped together, and a fourth in the
+        // L's corner whose own region meets none of theirs but lies in the box around them.
+        var scene = try boxes(
+            [
+                (SIMD3(1.0, 1.0, 0.6), SIMD3(0.4, 0.4, 0.4)), (SIMD3(1.0, 1.6, 0.6), SIMD3(0.4, 0.4, 0.4)),
+                (SIMD3(1.6, 1.0, 0.6), SIMD3(0.4, 0.4, 0.4)), (SIMD3(2.1, 2.1, 0.6), SIMD3(0.4, 0.4, 0.4)),
+            ], domain: SIMD3(3.6, 3.6, 1.6), charge: 0)
+        scene.reflectiveFaces = .all
+        var config = SolverConfiguration()
+        config.refinement = 2
+        config.refinementMemory = 64 << 20
+        let simulation = try ExperimentalRigidWorldSimulation(
+            device: device, scenario: scene, cellSize: 0.2, configuration: config)
+        simulation.gravity = .zero
+        simulation.air.fill { i, j, k in
+            Primitive(
+                density: 1.225 * (1 + 0.01 * Float(i % 5)), velocity: SIMD3(1, 2, 3),
+                pressure: 101325 * (1 + 0.02 * Float((j + k) % 3)))
+        }
+        let before = simulation.air.totals()
+        try simulation.applyImpulse(SIMD3(300, 200, 0), to: 0)
+        try simulation.applyImpulse(SIMD3(-200, 300, 0), to: 1)
+        try simulation.applyImpulse(SIMD3(300, -200, 0), to: 2)
+        try simulation.applyImpulse(SIMD3(-200, -200, 0), to: 3)
+        try simulation.advance(steps: 150)
+        #expect(simd_distance(simulation.members[0].centreOfMass, SIMD3(1.0, 1.0, 0.6)) > 0.1)
+        #expect(abs(simulation.air.totals().mass / before.mass - 1) < 1e-6)
+    }
+
     @Test("Moving boxes in the air exchange equal and opposite momentum with it")
     func severalBoxesMomentum() throws {
         var scene = try boxes(
