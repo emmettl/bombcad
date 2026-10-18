@@ -249,6 +249,18 @@ public struct SphericalBlast: Sendable {
     /// Radii at which the pressure is recorded, and their records (time, absolute pressure).
     public var probes: [Double] = []
     public private(set) var records: [[(time: Double, pressure: Double)]] = []
+    /// Times, ascending, at which the profile is kept (`snapshots`), each step that would pass one
+    /// shortened to land on it.
+    public var snapshotTimes: [Double] = []
+    /// The profile at a moment: per cell its density, internal energy per kilogram and unburnt
+    /// products (kg/m³).
+    public struct Snapshot: Sendable {
+        public var time: Double
+        public var density: [Float]
+        public var specificEnergy: [Float]
+        public var unburnt: [Float]
+    }
+    public private(set) var snapshots: [Snapshot] = []
 
     /// A sphere of hot gas holding `energy` joules and `mass` kilograms within `radius` metres,
     /// in still air holding `oxygen` kilograms of oxygen per kilogram; the grid reaches `extent`
@@ -418,6 +430,7 @@ public struct SphericalBlast: Sendable {
         var guardSteps = 0
         // The primitive state, once a step: the shock's reach, the step and the records all read it.
         var w = (0..<n).map(primitive)
+        var nextSnapshot = snapshotTimes.firstIndex { $0 > time } ?? snapshotTimes.count
         while shockRadius(w) < radius && time < limit && guardSteps < 2_000_000 {
             guardSteps += 1
             steps += 1
@@ -435,7 +448,9 @@ public struct SphericalBlast: Sendable {
                 }
             for (x, g) in zip(w, ratios) { fastest = max(fastest, abs(x.y) + (g * x.z / x.x).squareRoot()) }
             // The last step lands on the limit, so that solutions stopped there share one clock.
-            let dt = min(cfl * cellSize / fastest, limit - time)
+            let dt = min(
+                cfl * cellSize / fastest, limit - time,
+                nextSnapshot < snapshotTimes.count ? snapshotTimes[nextSnapshot] - time : .infinity)
             // Limited slopes (minmod, a monotonised central limiter's cautious member), then the
             // Hancock half step in primitive variables.
             func slope(_ a: SIMD3<Double>, _ b: SIMD3<Double>) -> SIMD3<Double> {
@@ -526,6 +541,16 @@ public struct SphericalBlast: Sendable {
                 }
             }
             time += dt
+            while nextSnapshot < snapshotTimes.count, time >= snapshotTimes[nextSnapshot] {
+                snapshots.append(
+                    Snapshot(
+                        time: time, density: density.map { Float($0) },
+                        specificEnergy: (0..<n).map { i in
+                            let rho = max(density[i], 1e-9)
+                            return Float((energy[i] - 0.5 * momentum[i] * momentum[i] / rho) / rho)
+                        }, unburnt: fuel.map { Float($0) }))
+                nextSnapshot += 1
+            }
             w = (0..<n).map(primitive)
             for i in 0..<n {
                 let overpressure = w[i].z - ambientPressure
@@ -670,6 +695,7 @@ extension SphericalBlast {
     private struct Key: Hashable {
         var setup: Setup
         var probes: [Double]
+        var snapshotTimes: [Double]
         var radius: Double
         var limit: Double
     }
@@ -684,7 +710,8 @@ extension SphericalBlast {
     /// it exactly.
     public func solved(toShockRadius radius: Double, until limit: Double = .infinity) -> SphericalBlast {
         precondition(steps == 0, "Only an unrun blast can be solved")
-        let key = Key(setup: setup, probes: probes, radius: radius, limit: limit)
+        let key = Key(
+            setup: setup, probes: probes, snapshotTimes: snapshotTimes, radius: radius, limit: limit)
         if let kept = Self.solutions.withLock({ list in list.last { $0.key == key }?.blast }) { return kept }
         var blast = self
         blast.run(toShockRadius: radius, until: limit)
@@ -694,5 +721,111 @@ extension SphericalBlast {
             if list.count > Self.kept { list.removeFirst(list.count - Self.kept) }
         }
         return blast
+    }
+}
+
+/// A one-dimensional fireball's luminous gas laid onto a lattice of voxels, for the thermal march:
+/// the gas at least `luminous` K hot, sampled `samples` times a side in each voxel.
+public enum RadialVoxels {
+    /// A charge's profile: its temperature (K) and unburnt products (kg/m³) cell by cell, its
+    /// cells' size, and where the luminous gas ends.
+    public struct Profile: Sendable {
+        public var centre: SIMD3<Float>
+        public var cellSize: Double
+        public var temperature: [Float]
+        public var unburnt: [Float]
+        public var reach: Float
+
+        public init(
+            centre: SIMD3<Float>, cellSize: Double, temperature: [Float], unburnt: [Float], reach: Float
+        ) {
+            self.centre = centre
+            self.cellSize = cellSize
+            self.temperature = temperature
+            self.unburnt = unburnt
+            self.reach = reach
+        }
+
+        func sample(_ r: Float) -> (temperature: Float, unburnt: Float) {
+            let x = Double(r) / cellSize - 0.5
+            let i = min(max(Int(x.rounded(.down)), 0), temperature.count - 1)
+            let j = min(i + 1, temperature.count - 1)
+            let t = Float(min(max(x - Double(i), 0), 1))
+            return (
+                temperature[i] + t * (temperature[j] - temperature[i]),
+                unburnt[i] + t * (unburnt[j] - unburnt[i])
+            )
+        }
+    }
+
+    /// Per voxel (x fastest) its luminous share in 255ths, its luminous gas's temperature (the
+    /// fourth root of its mean T⁴) and unburnt products; and over them all the luminous volume's
+    /// sum, its first moment and its T⁴'s, and the hottest sample. Each sample takes the profile
+    /// of the nearest charge.
+    public static func lay(
+        _ profiles: [Profile], luminous: Float, voxelSize v: Float, first: SIMD3<Int32>, counts: SIMD3<Int32>,
+        samples s: Int
+    ) -> (
+        fills: [UInt8], temperatures: [UInt16], unburnt: [Float], volume: Double, moment: SIMD3<Double>,
+        fourth: Double, hottest: Float
+    ) {
+        let total = Int(counts.x) * Int(counts.y) * Int(counts.z)
+        var fills = [UInt8](repeating: 0, count: total)
+        var temperatures = [UInt16](repeating: 0, count: total)
+        var unburnt = [Float](repeating: 0, count: total)
+        var volume = 0.0
+        var moment = SIMD3<Double>.zero
+        var fourth = 0.0
+        var hottest: Float = 0
+        let share = 1 / Double(s * s * s)
+        let voxel = Double(v) * Double(v) * Double(v)
+        let corner = v * 0.8661
+        for k in 0..<Int(counts.z) {
+            for j in 0..<Int(counts.y) {
+                for i in 0..<Int(counts.x) {
+                    let centre = (SIMD3<Float>(first &+ SIMD3(Int32(i), Int32(j), Int32(k))) + 0.5) * v
+                    // Voxels wholly beyond every charge's luminous gas are dark.
+                    guard profiles.contains(where: { simd_distance(centre, $0.centre) <= $0.reach + corner })
+                    else {
+                        continue
+                    }
+                    var lit = 0
+                    var t4 = 0.0
+                    var products = 0.0
+                    for c in 0..<s {
+                        for b in 0..<s {
+                            for a in 0..<s {
+                                let point =
+                                    centre + (SIMD3(Float(a), Float(b), Float(c)) + 0.5) / Float(s) * v - 0.5
+                                    * v
+                                var nearest = 0
+                                var distance = Float.infinity
+                                for (n, profile) in profiles.enumerated() {
+                                    let d = simd_distance(point, profile.centre)
+                                    if d < distance { (nearest, distance) = (n, d) }
+                                }
+                                let gas = profiles[nearest].sample(distance)
+                                guard gas.temperature >= luminous else { continue }
+                                lit += 1
+                                let t = Double(gas.temperature)
+                                t4 += t * t * t * t
+                                products += Double(gas.unburnt)
+                                hottest = max(hottest, gas.temperature)
+                            }
+                        }
+                    }
+                    guard lit > 0 else { continue }
+                    let index = i + Int(counts.x) * (j + Int(counts.y) * k)
+                    let fraction = Double(lit) * share
+                    fills[index] = UInt8(min((fraction * 255).rounded(), 255))
+                    temperatures[index] = UInt16(min(pow(t4 / Double(lit), 0.25).rounded(), 65535))
+                    unburnt[index] = Float(products / Double(lit))
+                    volume += fraction * voxel
+                    moment += fraction * voxel * SIMD3<Double>(centre)
+                    fourth += t4 * share * voxel
+                }
+            }
+        }
+        return (fills, temperatures, unburnt, volume, moment, fourth, hottest)
     }
 }

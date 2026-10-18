@@ -5572,6 +5572,7 @@ do {
     case "structure": try runStructure()
     case "validate": try runValidation()
     case "products": try runProducts()
+    case "gauging": try runGauging(device: device, cooling: try chosenCooling())
     case "twocharges": try runTwoCharges(solver: { try makeAirSolver($0, cellSize: $1) })
     case "mapped-cost":
         // The fine one-dimensional start's own time (CPU), by charge and cell: `--masses 1,10,100

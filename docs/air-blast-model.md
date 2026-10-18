@@ -838,7 +838,18 @@ UFC 3-340-02, lowest for light charges.
   ([above](#a-finely-resolved-start)); in contact, where the charge is too near anything to be
   mapped, a ball of air at the charge's density delivers about twice the products' impulse
   ([Hupfauf](validation.md#slabs-under-contact-charges)), and the products would need a second
-  gas on the grid. (Dissociation of the air is done, as an option; it changes the checked loads
+  gas on the grid. Deferred (18 October 2026) as larger than one validated regime warrants. The
+  plan, if contact charges become a priority:
+  - a products tracer per cell, as the grid's fuel species is only the unburnt products and
+    vanishes as they burn, so the species' layout changes;
+  - the products' JWL, beside the air's laws, at every call of the gas law (some 44, in the
+    solver, refinement, extraction, deflagration, gravity and structure shaders), in single
+    precision up to some 10 GPa;
+  - the tracer carried through refinement's transfers and the cut cells;
+  - wave bounds that do not assume an ideal gas's Roe average (Davis's, as in the
+    one-dimensional start).
+
+  It touches the refinement and cut-cell kernels, so it would be planned with their owners. (Dissociation of the air is done, as an option; it changes the checked loads
   by under 1%.)
 - **Delays between charges**: every charge fires at once. A delayed one would need its own
   start on the clock, its one-dimensional solution laid when the grid reaches its time.
