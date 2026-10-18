@@ -2567,6 +2567,13 @@ open face 4 m/kg^(1/3) from the charge and the slab (S8, `--roomy`, 18 October),
 16.3 → 16.1 mm and the residual 8.5 → 8.3 mm, within the roundings' spread; the harness's domain
 stands ([open faces at the clearance rule](#open-faces-at-the-clearance-rule)).
 
+On the mapped start, the harness's default since 18 October 2026, every open face at the rule
+(`--roomy`):
+- S8 peaks at 16.2 mm and D8 at 16.6 mm, the same in all three roundings;
+- they are left 8.0–8.2 mm down;
+- that is 0.90 and 1.19 times the measured peak, the band this test sets
+  ([on the mapped start](#on-the-mapped-start)).
+
 One layer or two: the tests' single layer near the underside did better under the small
 charges and worse under the large (18.0 mm against 13.9 at 1.6 kg). The model hardly tells
 them apart (14.4 against 14.9 mm). Traced by mechanism (`--work`), at the peak under 1.6 kg the
@@ -5560,6 +5567,7 @@ harness here now takes the mapped start by default:
 | Case | Compared | Balloon | Mapped | Change |
 |---|---|---|---|---|
 | Chiquito P7 | left (peak), mm; slab's momentum at 5 ms | 111 (153); 7,912 N s | 121 (163); 8,198 N s | +9% (+7%); +4% |
+| Chiquito S5, P2 (0.5 m) | left (peak), mm; slab's momentum at 5 ms | 200 (252), 201 (249); 11,722, 10,419 N s | 203 (256), 203 (255); 11,885, 10,573 N s | +1–2%; +1.4%; neither holed |
 | Wu S8 | peak / residual, mm | 16.1 / 8.3 | 16.2 / 8.0 | +1%, −4% |
 | Wang A | peak P1–P3, MPa; impulse P1–P3, MPa ms | 16.7, 15.0, 13.9; 2.80, 2.55, 2.24 | 15.1, 14.3, 13.6; 2.69, 2.51, 2.26 | −10% to −2%; −4% to +1% |
 | Yao T4 | centre's peak / left, mm; underside damaged | 126 / 73; 714 cm² | 126 / 74; 918 cm² | 0, +1%; +29% |
@@ -5568,6 +5576,7 @@ harness here now takes the mapped start by default:
 | Alsubaei's air, half scale | the columns' peaks | | | within 2% |
 | Keys WR1A | debris mean / furthest, m; free field | 1.60 / 5.5; 99 kPa, 293 kPa ms | 1.75 / 7.0; 101 kPa, 305 kPa ms | +9%; +2%, +4% |
 | The Kasun cubicle (`envelope-debris`) | launch speed; hazardous reach | 134–148 m/s; 129 m | 134–147 m/s; 129 m | under 1% |
+| Kasun III, 6.9 and 110 kg of PETN | launch speeds | 44–49; 171–192 m/s | 44–49; 172–192 m/s | under 1% |
 | Shang's chamber | roof edge | 47 / 25 mm | 48 / 27 mm | +2%, +8%: each charge mapped 0.36 m out since the start became one per charge |
 
 None changes its standing.

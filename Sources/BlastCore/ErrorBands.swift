@@ -366,9 +366,9 @@ public enum ValidationTables {
             id: "closeInPermanent", low: 0.33, high: 0.5, document: "validation.md#summary",
             quote: "the slab left a third to a half as far down as measured"),
         Figure(
-            id: "wuLargeToday", low: 0.91, high: 1.19,
+            id: "wuLargeToday", low: 0.90, high: 1.19,
             document: "validation.md#slabs-with-steel-in-both-faces",
-            quote: "0.91 and 1.18–1.19 times the measured peak"),
+            quote: "0.90 and 1.19 times the measured peak"),
         Figure(
             id: "debrisSpeedOverlap", low: 0.9, high: 2.3,
             document: "validation.md#slabs-under-contact-charges",
@@ -1245,8 +1245,10 @@ extension StandingScene {
                                 high: "too flexible",
                                 validity:
                                     "1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh (8 through), held at one edge; "
-                                    + "on today's build, either air (16.3–16.5 mm on today's, 16.1–16.3 on the ideal "
-                                    + "gas, against 18.0 and 13.9), the record's earlier −20% to +7% from an older one",
+                                    + "on the mapped start with the open faces at the clearance rule, 16.2 and 16.6 mm in "
+                                    + "all three roundings against 18.0 and 13.9 (16.3–16.5 in the harness's box on the "
+                                    + "balloon, 16.1–16.3 on the ideal gas), the record's earlier −20% to +7% from an older "
+                                    + "build",
                                 check: "Wu et al.'s slabs with steel in both faces"),
                             derived: "8 elements through only", meshes: 8...8, unbanded: &unbanded
                         ).map { [$0] } ?? []
