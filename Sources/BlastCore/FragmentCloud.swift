@@ -421,6 +421,10 @@ public struct FragmentCloud: Sendable {
                     // only follow the rate's own change, not its stiffness.
                     let drag = dragRate(particle, air)
                     if drag > 0 { dt = min(dt, max(Double(0.5 / drag), 1e-5)) }
+                    // Nor may gravity change its speed by more than a twentieth in a step: a slow
+                    // piece (debris falling off a wall) would otherwise land at the speed a step of
+                    // seconds ends with.
+                    dt = min(dt, Double(0.05 * max(speed, 1) / 9.81))
                 }
                 dt = max(dt, 1e-7)
                 let start = particle.position

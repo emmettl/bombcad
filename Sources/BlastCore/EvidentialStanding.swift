@@ -2322,8 +2322,8 @@ struct StandingScene {
                     "Freestanding walls against measurement: Alsubaei's perimeter walls and Keys's brick walls",
                     "On the equivalent load 5 of 7 outcomes as measured, built as tested (6 on the mean); the "
                         + "blockwork's top 28 mm against 28; the half-scale concrete wall 4.2° where light cracking "
-                        + "was seen, the safe side (the detailed model 2.1°); the blockwork at 125 kg 9.3°, short of "
-                        + "failing, where it collapsed",
+                        + "was seen, the safe side (the detailed model 2.1°); the blockwork at 125 kg 9.3° against "
+                        + "the 10° that fails it, where it collapsed: the unsafe side",
                     "building-envelopes.md#freestanding-walls"),
                 StandingEvidence(
                     "One-way reinforced masonry walls under measured loads (Hayman, 2014)",
@@ -2685,6 +2685,13 @@ struct StandingScene {
                     "10 kg on open ground, the run's own peaks at 1.5 m on 0.25 m cells against the free field",
                     "The eardrums' reach 0.87–0.88 of it; the lungs' 0.69 and, for 50% lethality, 0.48: close in "
                         + "the cells' peaks read low (the unsafe side)", "hazards.md#checks"),
+                StandingEvidence(
+                    "Envelope debris against Keys's brick walls (2016) and the Kasun cubicle (80 kg inside)",
+                    "Keys: the debris's mean reach 0.25–0.53 m against 0.23–0.64 m, its far tail short (0.5–1.5 m "
+                        + "against 3–6 m); Kasun: launched at up to 120–132 m/s against the Klotz Group's 124 m/s, "
+                        + "but hazardous debris to 142 m against the tests' 290–315 m, the unsafe side (DoD's "
+                        + "structure distance, 268 m, governs)",
+                    "hazards.md#debris-from-failed-envelope-components"),
             ],
             assumptions: [
                 "The curves come from animal tests under ideal (Friedlander) pulses, scaled to a 70 kg adult; "
@@ -2695,8 +2702,13 @@ struct StandingScene {
                 "A person standing in the open, or against a wall facing the charge, which sees the reflected "
                     + "pressure; probes beside a solid are not read.",
                 "K-factor distances (DoD 4145.26-M) are for a bare charge in the open, whatever the scene; the "
-                    + "minimum safe distance is never shorter than K40 and, for a cased charge, DoD's default "
-                    + "fragment distance; BombCAD's fragment distance, which reads short, is an estimate beside them.",
+                    + "minimum safe distance is never shorter than K40, for a cased charge DoD's default "
+                    + "fragment distance, and for a charge inside a building DESR 6055.09's structure debris "
+                    + "distance; BombCAD's fragment and envelope debris distances, which read short, are estimates "
+                    + "beside them.",
+                "Envelope debris: each failed component's pieces leave at its one-way model's speed at failure "
+                    + "(UFC 3-340-02 §4-58.2.1) over its mechanism's shape, square to its sections as turned; "
+                    + "what each construction breaks into is assumed, and pieces neither bounce nor roll.",
                 "Not for medical triage or casualty estimates.",
             ], documents: ["hazards.md#limitations"])
     }

@@ -722,6 +722,10 @@ heaviest low on the wall counts for less than its mean says:
   collapsed: a miss, on the unsafe side, which the mean's 11.8° had not made;
 - the brick walls fall as before.
 
+The mechanism's shape, which decides the 125 kg wall, has no load map to be checked against:
+Alsubaei's gauges stand on pipe columns behind the walls, and Keys gives one measured load a
+panel.
+
 Five of the seven outcomes are as measured on the equivalent load, six on the mean. The account below is of the mean's. Six of the seven outcomes are as measured. The miss is the half-scale wall, which both the
 cantilever and the detailed model bend far past the light cracking seen: the safe side, and the
 validation record's air gives that close-in ANFO wall a load a tenth above the design curves', which
@@ -1115,6 +1119,14 @@ The four questions set before building it, and where each is answered:
 
 Its standing is an approximation for glass and concrete panels, and illustrative for brick and
 the inside pressure (see [standing](standing.md)).
+
+### Debris from failed components
+
+A wall, roof or pane that fails is thrown: its one-way model's speed at failure over its
+mechanism's shape, its pieces flown to where they land and judged as fragments are, the minimum
+safe distance taking it in ([hazards](hazards.md#debris-from-failed-envelope-components), where
+it is compared with Keys's walls and the Kasun cubicle). Each component's damage keeps how it was
+thrown (`EnvelopeComponentDamage.launch`).
 
 ### Future work
 
