@@ -137,6 +137,9 @@ See the [capture procedure and limits](native-interface-review.md#constrained-of
 Animated run rendering and broader
 native interaction remain separate checks; the helper is skipped during ordinary test runs.
 
+On 18 October 2026 a fresh build of main was reviewed on the real screen, by the accessibility tree
+and the keyboard ([below](#on-the-real-screen-labels-and-keyboard)).
+
 ## Panels at the sidebar's width
 
 On 12 October 2026 the offscreen helper captured the panels not reviewed before, in light and dark
@@ -219,20 +222,59 @@ Passed: every line fits at 310 points in both appearances, the flag's sentence i
 Not checked: how the colours look on a real display, and VoiceOver. The legend has one combined
 accessibility label naming the six levels.
 
+## On the real screen: labels and keyboard
+
+18 October 2026, a fresh build of main (about `af18afdc`), driven with the user's approval through
+System Events: the accessibility tree read element by element, and focus followed with Tab, Escape
+and the menus. Full Keyboard Access was off (a system setting, not changed for the review), so Tab
+reached text fields and lists only.
+
+Found, and what was done (in 0.6.0):
+
+1. **Domain ▸ Extent**: the X, Y and Z fields were all named "Extent". Now "Extent X (m)", "Extent
+   Y (m)" and "Extent Z (m)".
+2. **Every trash button** was named "Remove". Each now names what it removes: "Remove Block 1",
+   "Remove gauge Near façade", and likewise exposure-only buildings and freestanding objects
+   (their Duplicate buttons too).
+3. **Advisor**: the target's field was named "Percent". It now reads as its picker does, "Peaks
+   within (%)", and "A run under (min)" for time.
+4. **Export for Rendering** opened with focus on the sheet itself, and Tab did not reach "A frame
+   every", a stepper, which is no key view without Full Keyboard Access. The interval is now a
+   field beside its stepper, focused when the sheet opens; the parameter sweep (its name prefix),
+   the run comparison (its arrival threshold) and the import (its corner's X) open in a field too.
+   Escape already closed each and returned focus.
+5. **Tab order** ran through the sidebar's fields, then stopped on nothing before cycling back: the
+   3D view, which takes first responder on a click but no keys. ContinuumKit's `OrbitControlView`
+   now leaves the Tab loop (`canBecomeKeyView` false; a click still ends a field's editing), on
+   branch `claude/orbit-view-key-loop` until its next release is tagged and BombCAD pins it.
+6. **No keyboard path** to Import Model, Parameter sweep, Compare runs, Keep Run or Export CSV,
+   which were toolbar or chart-panel buttons only. They are menu items now: File ▸ Import Model…
+   (⇧⌘I) and Export Results as CSV…; Simulation ▸ Keep Run… (⌘K), Compare Runs… (⇧⌘K) and
+   Parameter Sweep….
+7. **The window at its minimum**, 1000 × 692 with the toolbar, scrolled to the end in both tabs:
+   nothing cut. A gauge's coordinates wrap onto two lines; left.
+8. With a box opened, its fields read "Corner X (m)" with no name. Each now reads with its own,
+   "Block 1, corner X (m)"; a gauge's "Near façade, position X (m)".
+
+`AccessibilityLabelTests` holds 1–6 in the sources (offscreen, a hosted form's rows build no
+accessibility elements to read, so the labels themselves are read at each screen review), and
+ContinuumKit's `SceneRenderTests` the orbit view's place in the Tab loop. The new labels, the
+sheets' first focus and the menus have not yet been seen on the real screen.
+
 ## Remaining checks
 
-For a person at a real screen (with Full Keyboard Access on, in System Settings ▸ Keyboard):
+For a person at a real screen:
 
-- Tab from the sidebar's first field through Cell size, the Advisor's per-cent field, the gauge and
-  block editors' X/Y/Z fields and the freestanding objects' fields: order follows reading order and
-  every control is reached.
-- Open and close each sheet (Import, Export for Rendering, Parameter sweep, Compare runs) by
-  keyboard; focus returns to the control that opened it.
-- VoiceOver reads the fields named above by their titles, now hidden visually.
-- Resize the window to its minimum and scroll the sidebar to its end in both tabs; nothing is cut
-  that the offscreen captures did not show, and at other display scales.
-- Native light appearance and completed STL/IFC previews (the IFC panels need the converter, not
-  installed in the test process).
-- Imported-project save/reopen, multiple document windows and their independent state.
-- Interactive saved-run comparison and render-export panels.
+- The fixes above, on the screen: the labels as the accessibility tree reads them, each sheet
+  opening in its field, Tab no longer stopping on the 3D view (once ContinuumKit's release is
+  pinned), and the new menu items.
+- With Full Keyboard Access on (System Settings ▸ Keyboard): Tab through every control, buttons,
+  pickers, steppers and switches included, in reading order.
+- VoiceOver's speech itself, beyond the labels the tree carries.
+- Other display scales, and the window at its minimum there.
+- The native light appearance.
+- Completed STL and IFC previews (the IFC panels need the converter, not installed in the test
+  process).
+- Imported-project save and reopen, and several document windows with their own state.
+- The interactive saved-run comparison and render-export panels.
 - Animated run rendering; the checks above cover static layout and import views only.

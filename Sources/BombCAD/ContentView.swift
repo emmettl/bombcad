@@ -107,7 +107,7 @@ struct ContentView: View {
                 {
                     isImporting = true
                 }.disabled(importLoader.isLoading || model.sweep.isActive)
-                    .help("Open one OBJ, STL or IFC model, or drop it into the viewport.")
+                    .help("Open one OBJ, STL or IFC model, or drop it into the viewport (⇧⌘I).")
             }
             ToolbarItemGroup(placement: .primaryAction) {
                 Toggle("Place Charge", systemImage: "scope", isOn: $model.isPlacingCharge)
@@ -149,6 +149,12 @@ struct ContentView: View {
             importLoader.load(url)
         }
         .onChange(of: importLoader.failureID) { if let error = importLoader.error { fileError = error } }
+        // File ▸ Import Model…
+        .onChange(of: model.requestsModelImport) {
+            guard model.requestsModelImport else { return }
+            model.requestsModelImport = false
+            if !importLoader.isLoading, !model.sweep.isActive { isImporting = true }
+        }
         .sheet(
             item: Binding(
                 get: { model.inspectedImport }, set: { if $0 == nil { model.inspectedImportID = nil } }),
