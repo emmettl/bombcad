@@ -677,6 +677,10 @@ public final class BlastSolver {
     private let splatPipeline: MTLComputePipelineState
     private let remaskPreparePipeline: MTLComputePipelineState
     private let remaskApplyPipeline: MTLComputePipelineState
+    /// Shuts in the terrain's cut slivers under a structure standing on them (`remaskCapSlivers`).
+    private let remaskCapSliversPipeline: MTLComputePipelineState
+    /// Per column with cut cells, its lowest cell shut in under a structure, plus one (`remaskCapSlivers`).
+    var cappedSliverBuffer: MTLBuffer?
     private let debrisExchangePipeline: MTLComputePipelineState
     private let shellSplatPipeline: MTLComputePipelineState
     private let beamSplatPipeline: MTLComputePipelineState
@@ -840,6 +844,7 @@ public final class BlastSolver {
         shellEnvelopePipeline = try pipeline("shellBodyEnvelope")
         validateEnvelopesPipeline = try pipeline("validateBodyEnvelopes")
         remaskPreparePipeline = try pipeline("remaskPrepare")
+        remaskCapSliversPipeline = try pipeline("remaskCapSlivers")
         remaskApplyPipeline = try pipeline("remaskApply")
         debrisExchangePipeline = try pipeline("debrisExchange")
         shellSplatPipeline = try pipeline("shellSplat")
@@ -1852,6 +1857,34 @@ public final class BlastSolver {
         encoder.setBuffer(keptAirBuffer ?? refinementPlaceholder, offset: 0, index: 7)
         encoder.dispatchThreads(size, threadsPerThreadgroup: group)
 
+        // A structure standing on the terrain's cut cells shuts in the slivers under it.
+        if let terrainCut, !terrainCut.geometry.cutColumns.isEmpty,
+            bodies.contains(where: { $0.model.ground != nil })
+        {
+            var dims = SIMD4<UInt32>(
+                UInt32(grid.nx), UInt32(grid.ny), UInt32(grid.nz),
+                UInt32(terrainCut.geometry.cutColumns.count))
+            encoder.setComputePipelineState(remaskCapSliversPipeline)
+            encoder.setBuffer(maskBuffer, offset: 0, index: 0)
+            encoder.setBuffer(rigidMaskBuffer, offset: 0, index: 1)
+            encoder.setBuffer(terrainCut.columns, offset: 0, index: 2)
+            encoder.setBuffer(terrainCut.cutColumns, offset: 0, index: 3)
+            encoder.setBuffer(terrainCut.defects, offset: 0, index: 4)
+            encoder.setBytes(&dims, length: MemoryLayout<SIMD4<UInt32>>.stride, index: 5)
+            if cappedSliverBuffer == nil {
+                cappedSliverBuffer = device.makeBuffer(
+                    length: 4 * terrainCut.geometry.cutColumns.count, options: .storageModeShared)
+                if let cappedSliverBuffer {
+                    memset(cappedSliverBuffer.contents(), 0, cappedSliverBuffer.length)
+                }
+            }
+            encoder.setBuffer(cappedSliverBuffer, offset: 0, index: 6)
+            encoder.dispatchThreads(
+                MTLSize(width: terrainCut.geometry.cutColumns.count, height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(
+                    width: remaskCapSliversPipeline.threadExecutionWidth, height: 1, depth: 1))
+        }
+
         encoder.setComputePipelineState(remaskApplyPipeline)
         encoder.setBuffer(maskBuffer, offset: 0, index: 0)
         encoder.setBuffer(composed, offset: 0, index: 1)
@@ -1950,7 +1983,9 @@ public final class BlastSolver {
             var peak = 0.0
             var speed = 0.0
             var settled = false
+            var before: [(displacement: SIMD3<Float>, mass: Float)] = []
             while elapsed < Self.settleLimit {
+                if elapsed + Double(chunk) * step >= Self.settleLimit { before = body.displacements() }
                 body.advanceAlone(steps: chunk)
                 steps += chunk
                 elapsed += Double(chunk) * step
@@ -1960,6 +1995,25 @@ public final class BlastSolver {
                 if elapsed >= Self.settleMinimum && speed <= Self.settleTolerance * peak {
                     settled = true
                     break
+                }
+            }
+            if !settled, !before.isEmpty {
+                // Still moving at the limit: settled all the same if it has come to rest over its last
+                // chunk, its mean speed over it (its displacement's change) within the tolerance. A
+                // joint on a footing chatters at rest, its nodes' speed never falling to 1% of the
+                // sag's, its displacement still (`StructureOnTerrainTests`).
+                let after = body.displacements()
+                var squares = 0.0
+                var mass = 0.0
+                for (old, new) in zip(before, after) {
+                    let moved = Double(simd_length(new.displacement - old.displacement))
+                    squares += Double(new.mass) * moved * moved
+                    mass += Double(new.mass)
+                }
+                let mean = mass > 0 ? (squares / mass).squareRoot() / (Double(chunk) * step) : 0
+                if mean <= Double(Self.settleTolerance) * peak {
+                    settled = true
+                    speed = mean
                 }
             }
             body.damping = damping
@@ -1994,6 +2048,8 @@ public final class BlastSolver {
         time = 0
         stepCount = 0
         clockTicks = 0
+        // The slivers a structure shut in are found again from where it stands (`remaskCapSlivers`).
+        if let cappedSliverBuffer { memset(cappedSliverBuffer.contents(), 0, cappedSliverBuffer.length) }
         exposurePlane?.reset()
         exposureNeedsInitialSample = exposurePlane != nil
         envelopeExposure?.reset()
@@ -3706,7 +3762,7 @@ public final class BlastSolver {
             guard let buffer = device.makeBuffer(length: length, options: .storageModeShared) else {
                 throw BlastError.allocationFailed(label)
             }
-            values.withUnsafeBytes { memcpy(buffer.contents(), $0.baseAddress!, $0.count) }
+            _ = values.withUnsafeBytes { memcpy(buffer.contents(), $0.baseAddress!, $0.count) }
             buffer.label = label
             return buffer
         }

@@ -151,6 +151,13 @@ How it works (`BlastSolver.settleStructures()`):
   deformation, stresses and any cracking from its own weight stay.
 - **Falling bodies:** a body that is still moving after 1 s, such as one falling or not standing,
   is put back undeformed. It then starts as it did before.
+- **Chattering joints** (since 18 October 2026): a body whose nodes still move at 1 s but whose
+  displacement over the last 5 ms part has stood still, its mean speed over the part (the change
+  of its displacement over the part's time) within 1% of the largest, has settled all the same. A
+  joint on a footing chatters at rest: the nodes it ties move at a few cm/s and microns, the
+  footing's and the body's oscillation never damped out between the joint and the footing's own
+  motion, and the frame on a hillside's footings stalled at 1.3% of its largest speed, level
+  footings too. Bodies that settled before the limit settle as they did.
 
 It is left out, so that the run is as before, bit for bit:
 - with the option off;
@@ -354,7 +361,10 @@ falling as the pressure's −0.20th power (Magliulo et al.'s law for elastomeric
 −0.163). Its two constants were fitted on the first half of the cycles of the one-pad tests at 50
 and 150 kN, by their energy and sliding force, and the law judged on the rest: on the GPU, every
 pad test's energy within 0.91–1.09 of measured and its sliding force 0.86–0.92, two pads without
-refitting, as Batalha et al. found two pads as strong as one. Wear over the cycles and a pad
+refitting, as Batalha et al. found two pads as strong as one. The seat slides at less than the
+law gives at its mean pressure (0.355 of the load at 150 kN against 0.38): its points are pressed
+unevenly, and the law's friction falls with pressure, so the harder-pressed points give up more
+than the lighter gain. Wear over the cycles and a pad
 shear spring before sliding were tried and dropped: the wear made the later cycles worse, and
 the spring, sliding nothing in the small cycles, dissipated too little in them. The pressure is
 over the seat, 0.35 × 0.35 m; the pads' own size is in the paper, not read, so a pad of another
@@ -821,6 +831,26 @@ On the freestanding wall (`blastbench anchorage --bases footing --embed 1`), its
 thick set 1 m into the sand: the footing turns 186, 51, 20 and 6.5 mrad at 6, 10, 15 and 25 m
 against 395, 101, 37 and 12 on the surface, the wall sways 657, 178, 70 and 23 mm against
 1,372 (over), 355, 128 and 41, and at 6 m it is left leaning 0.6 m rather than going over.
+
+**On a slope** (`FootingGround`, from the scene's terrain when it runs: `StructureModel.ground`,
+set by `standing(on:)`). A footing on a hillside stays level, as footings are cut level into a
+slope, and stands where the body's base puts it, a support region a level for a stepped base; the
+terrain gives the soil round it. Embedded, each column of side points is buried as deep as the
+surface stands over the base there, so the uphill side bears from deeper than the downhill one
+(none where the base is out of the ground), and each side's active and passive pressures are
+C. A. Coulomb's for its ground rising or falling away from it: downhill the passive wedge, its
+ground falling away, gives about half at 20° (φ = 35°), uphill the active more. The given depth
+gives way to the terrain's: the mean over the perimeter sets Gazetas's factors, and the
+shallowest side the overburden on the base; the sides' slope is a plane fitted to the ground
+over the plan widened by its width B. The bearing capacity takes A. S. Vesić's ground factor
+(1 − tan β)², tan β the ground's steepest fall over 4B beyond the base's edge, the way the soil
+under it would be pushed out: on a slope's face the slope, near a crest b from it (1 − b/4B) of
+it, as Meyerhof's footings near a crest regain their level capacity. Checks and the judge are in
+[validation](validation.md#footings-on-a-slope); `blastbench hillside` runs the two-storey frame
+stepped across a 1 in 4 slope ("Two-storey frame on a hillside"). The footing's stiffness is
+the level footing's (Gazetas has no slope factor), the soil's radiation is the level
+half-space's, the pressure at rest is Jáky's for level ground, and cohesive soil's own slope
+factor (Vesić's 1 − 2β / (π + 2) on cohesion) is not needed, the soil being sand.
 
 **Not modelled.** The footing is rigid, rectangular and flat-bottomed. Embedded, the soil
 against its sides is springs with limits, its rocking past their reach a spring on the footing

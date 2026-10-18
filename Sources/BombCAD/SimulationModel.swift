@@ -457,6 +457,15 @@ final class SimulationModel {
     var isPlacingCharge = false
     /// Shows the sheet for exporting the project's run for rendering.
     var showsRenderExport = false
+    /// The parameter sweep's and the kept runs' comparison sheets, which the chart's buttons and
+    /// the menus open.
+    var showsParameterSweep = false
+    var showsRunComparison = false
+    /// Asked of the views that own them from the menus, and cleared there: choosing a model to
+    /// import, naming the run to keep, and saving the results as CSV.
+    var requestsModelImport = false
+    var requestsKeptRun = false
+    var requestsResultsExport = false
 
     private(set) var isRunning = false {
         didSet {

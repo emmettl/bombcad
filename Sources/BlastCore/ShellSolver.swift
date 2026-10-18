@@ -287,6 +287,9 @@ public final class ShellSolver {
     private let tiedBuffer: MTLBuffer
     private let tieBuffer: MTLBuffer
     private let tiePipeline: MTLComputePipelineState
+    /// What falls lands on the terrain (`StructureTerrain`), and the pass that lands it; nil on level ground.
+    private var terrain: StructureTerrain
+    private let terrainLandingPipeline: MTLComputePipelineState?
     /// Fastened sheets' links: their pass, and where their data begin in the load table's buffer.
     private let linkPipeline: MTLComputePipelineState?
     private let linkLayout: (records: Int, starts: Int, entries: Int)
@@ -380,6 +383,8 @@ public final class ShellSolver {
             try? ShaderLibrary.pipeline("shellNodes", in: library, constants: nodeConstants)
         }
         tiePipeline = try pipeline("shellTies")
+        terrain = try StructureTerrain(device: device, terrain: model.ground)
+        terrainLandingPipeline = model.ground == nil ? nil : try pipeline("shellTerrainLanding")
         linkPipeline = mesh.links.isEmpty ? nil : try pipeline("shellLinks")
         contactPipelines = try ["shellContactClear", "shellContactHash", "shellContactForces"].map(pipeline)
         pairPipelines = try ["shellPairs", "shellPairGather"].map(pipeline)
@@ -549,7 +554,7 @@ public final class ShellSolver {
             // faces in its region that face its joint.
             let lists = mesh.jointPoints(across: Self.fibresAcross, normals: model.connectionNormals) {
                 point, node in
-                guard let slot = model.connectionSlot(at: point), slot != 0 || abs(node.z) < 1e-4,
+                guard let slot = model.connectionSlot(at: point), slot != 0 || model.isOnGround(node),
                     let law = model.connection(inSlot: slot), law.betweenParts != true
                 else { return nil }
                 return (slot, law.across)
@@ -718,7 +723,7 @@ public final class ShellSolver {
             footings = try FootingSystem(
                 device: device, library: library, members: members, entityCount: fibreCount,
                 bodyMass: bodyMass,
-                contactDamping: contactDamping)
+                contactDamping: contactDamping, terrain: model.ground)
         }
         try setUpPairs()
     }
@@ -924,7 +929,7 @@ public final class ShellSolver {
                 // Nodes with points of a connected footprint are held by it instead.
                 let starts = fibreStartBuffer.contents().bindMemory(
                     to: UInt32.self, capacity: nodes.count + 1)
-                for n in nodes.indices where abs(mesh.positions[n].z) < 1e-4 {
+                for n in nodes.indices where model.isOnGround(mesh.positions[n]) {
                     if fibreCount == 0 || starts[n + 1] == starts[n] { nodes[n].isClamped = true }
                 }
             }
@@ -1499,6 +1504,18 @@ public final class ShellSolver {
             encoder.setBuffer(loadTableBuffer, offset: 0, index: 30)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            if let terrainLandingPipeline {
+                encoder.setComputePipelineState(terrainLandingPipeline)
+                encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
+                encoder.setBuffer(referenceBuffer, offset: 0, index: 1)
+                encoder.setBytes(&uniforms, length: MemoryLayout<ShellUniforms>.stride, index: 2)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 3)
+                encoder.setBuffer(fibreStartBuffer, offset: 0, index: 4)
+                encoder.setBytes(&terrain.uniforms, length: MemoryLayout<TerrainUniforms>.stride, index: 5)
+                encoder.setBuffer(terrain.heights, offset: 0, index: 6)
+                encoder.dispatchThreads(
+                    MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            }
             if !mesh.ties.isEmpty {
                 var ties = UInt32(mesh.ties.count)
                 encoder.setComputePipelineState(tiePipeline)
