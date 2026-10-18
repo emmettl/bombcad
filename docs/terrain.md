@@ -51,6 +51,20 @@ patches are pinned, as all patches whose outlines differ are, so the refined she
 ground is kept once the blast has passed. On [cut cells](#cut-cells) (refined once) none of this
 arises: the fine cells hold what the coarse cell held, share for share, and patches are released.
 
+Rigid blocks too, since 18 October 2026. A block whose edges fall between the coarse cells
+takes part of the cells beside it at a finer level, and sharing the gas squeezed it into what was
+left. At threshold 0.005 that flagged the blocks beside, and their patches did the same. In
+Beirut's district refined twice, the refinement ran ahead of the blast from building to building:
+a precursor of 20–200 kPa, 50–200 m ahead of the shock, which the gauges took for its arrival
+(0.72 s at 584 m, against 1.15 s by Kingery–Bulmash). Refined once it hardly showed, and over
+terrain alone not at all. A cut cell under a block's fine outline is likewise left as filled,
+not made to hold its coarse cell's gas share for share: the shares disagree there, and the
+correction pulled the pressure down by 1–5 kPa ahead of the blast. With both, the same district
+refined twice (600 m box, 8 m cells to 2 m at threshold 0.005) has nothing over 300 Pa ahead of
+the shock after the first 0.2 s. Its arrivals 552–584 m out come 3–4% before Kingery–Bulmash's,
+as unrefined ones do, and its peaks on the line are unchanged. A moving structure's outline
+still shares its gas.
+
 ## Importing a DEM
 
 `ElevationGrid` reads, with no library:

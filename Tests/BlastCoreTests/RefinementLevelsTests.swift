@@ -267,6 +267,50 @@ struct RefinementLevelsTests {
         #expect(held > free, "\(held) held, \(free) without")
     }
 
+    @Test("Blocks off the lattice, refined twice at 0.005, leave the air ahead of the shock still")
+    func blocksAheadStill() throws {
+        // Blocks 1.3 m square, their edges between the coarse cells, about a 1 kg burst: placing a
+        // patch beside one must not squeeze the gas its fine outline takes into what is left.
+        var boxes: [Box] = []
+        for x in stride(from: Float(2.2), through: 26, by: 3.1) {
+            for y in stride(from: Float(2.2), through: 26, by: 3.1)
+            where simd_distance(SIMD2(x, y), SIMD2(15, 15)) > 4 {
+                boxes.append(Box(min: SIMD3(x, y, 0), max: SIMD3(x + 1.3, y + 1.3, 3.1)))
+            }
+        }
+        let scenario = Scenario(
+            name: "Blocks", domainSize: SIMD3(30, 30, 8), boxes: boxes,
+            charge: Charge(mass: 1, position: SIMD3(15, 15, 0)))
+        var configuration = twoLevels(threshold: 0.005)
+        configuration.refinementMemory = 512 << 20
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 0.5, configuration: configuration)
+        _ = solver.advance(until: 0.02)
+        // The shock by Kingery-Bulmash, and the air beyond it by 2 m.
+        var radius = 1.0
+        while let point = KingeryBulmash.point(at: (radius + 0.25)), point.arrival(mass: 1) < solver.time {
+            radius += 0.25
+        }
+        let grid = solver.grid
+        var worst: Float = 0
+        solver.withState { cells in
+            for k in 0..<grid.nz {
+                for j in 0..<grid.ny {
+                    for i in 0..<grid.nx where !solver.isSolid(i, j, k) {
+                        let at = (SIMD3<Float>(Float(i), Float(j), Float(k)) + 0.5) * grid.cellSize
+                        guard Double(simd_distance(at, scenario.charge.position)) > radius + 2 else {
+                            continue
+                        }
+                        worst = max(
+                            worst, abs(solver.primitive(of: cells[grid.index(i, j, k)]).pressure - 101_325))
+                    }
+                }
+            }
+        }
+        #expect(radius > 6, "shock at \(radius) m")
+        #expect(worst < 300, "\(worst) Pa ahead of the shock at \(radius) m")
+    }
+
     /// Peak overpressure at 3 m from 1 kg on the ground, on cells of `cellSize`.
     private func peakAtThreeMetres(cellSize: Float, levels: Int) throws -> (peak: Float, refined: Int) {
         let scenario = Scenario(
