@@ -289,6 +289,38 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
 - **Next:** keyboard focus, VoiceOver and the window at its minimum on a real screen, which offscreen
   tests cannot reach ([remaining checks](native-interface-review.md#remaining-checks)).
 
+## Horizons
+
+Longer aims, set on 18 October 2026. The binding limit is how long a run takes on one Mac, so
+most are about reaching an answer for less, with the full solver kept as the referee. In order:
+
+1. **Refinement steered by the decision** (started). Refine where the answer the user asked
+   for is uncertain: a component near its damage threshold, an injury contour near a boundary,
+   a pane near breaking. Today refinement follows pressure gradients everywhere. The first step
+   is an error estimate on the advisor's target quantity driving the existing refinement flags,
+   judged on whether refined districts then beat uniform cells by a clear factor at equal
+   answers.
+2. **Answers in seconds.** Surrogates trained on BombCAD's own runs (reduced-order loads by
+   geometry and charge, or a small learned model of envelope response), giving an instant first
+   look that real runs then refine where it matters, and inheriting the standing's error bands.
+   The first step is a surrogate for envelope damage across a district, checked against Beirut's
+   runs.
+3. **City scale in minutes.** Gas dynamics only near the charge and in the streets that matter,
+   and further out the blast carried by ray-traced shielding and channelling (the thermal model
+   already uses Metal ray tracing) with scaled blast laws, handed over at a boundary. The first
+   step is a ray-traced far field set against Beirut's full run beyond 1 km.
+4. **Uncertainty by default.** Results as probabilities ("this façade fails with 70% chance")
+   from the scatter in yield, materials and rounding, cheap once item 2 exists.
+5. **From damage back to the explosion.** Infer yield, place and height from observed arrival
+   times, broken glass and damage, as the Beirut page does by hand for its yield. The first step
+   is fitting Beirut's yield and place to Rigby's arrivals and GEER's glass automatically.
+6. **Protective design.** The least set of glazing, wall and stand-off changes that meets a
+   hazard target, which needs item 2's speed.
+
+Under all of them is raw speed: everything kept on the GPU (no CPU remaps), compact storage for
+coarse levels, smarter steps, and work spread across Macs
+([distributed computing](distributed-computing.md)).
+
 ## Things tried and set aside
 
 - **Fixes for the wrong cause.** A fine mesh of the validation slab collapsed, and nonlocal
