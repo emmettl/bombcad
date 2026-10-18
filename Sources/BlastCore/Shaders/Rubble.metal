@@ -263,6 +263,8 @@ kernel void rubbleMove(device RubbleParticle *particles [[buffer(0)]],
                        const device int *debrisArea [[buffer(8)]],
                        device atomic_uint *couplingMap [[buffer(9)]],
                        device uint *state [[buffer(10)]],
+                       constant TerrainUniforms &t [[buffer(11)]],
+                       const device float *terrainHeights [[buffer(12)]],
                        uint index [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -295,11 +297,13 @@ kernel void rubbleMove(device RubbleParticle *particles [[buffer(0)]],
     float3 velocity = float3(p.velocity) + dt * (force / p.mass - gravityPull(u));
     velocity *= max(0.0f, 1.0f - u.damping * dt);
     position += dt * velocity;
-    if (position.z < 0.0f && u.groundFriction >= 0.0f) {
+    // The ground: the floor, or on a terrain its surface under the particle.
+    float ground = t.enabled != 0u ? terrainHeight(position.xy, t, terrainHeights) : 0.0f;
+    if (position.z < ground && u.groundFriction >= 0.0f) {
         // As the nodes land (`structureNodes`): Coulomb friction from the speed the ground stops
         // where `groundCoulomb` is set, otherwise the decay.
         float stopped = max(-velocity.z, 0.0f);
-        position.z = 0.0f;
+        position.z = ground;
         velocity.z = max(velocity.z, 0.0f);
         if (u.groundCoulomb > 0.0f) {
             float sliding = length(velocity.xy);

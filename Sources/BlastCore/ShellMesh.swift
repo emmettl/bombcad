@@ -683,7 +683,7 @@ struct ShellMesh {
         if model.connectionStiffness != nil {
             let points = jointPoints(across: ShellSolver.fibresAcross, normals: model.connectionNormals) {
                 point, node in
-                guard let slot = model.connectionSlot(at: point), slot != 0 || abs(node.z) < 1e-4,
+                guard let slot = model.connectionSlot(at: point), slot != 0 || model.isOnGround(node),
                     let law = model.connection(inSlot: slot)
                 else { return nil }
                 return (slot, law.across)
@@ -691,7 +691,7 @@ struct ShellMesh {
             for (n, list) in points.enumerated() where !list.isEmpty { anchored.insert(n) }
         }
         func held(_ p: SIMD3<Float>) -> Bool {
-            model.isClampedBySupport(at: p) || (model.fixedBase && abs(p.z) < 1e-4)
+            model.isClampedBySupport(at: p) || (model.fixedBase && model.isOnGround(p))
         }
         for i in solids.indices where !sets[i].isEmpty {
             for j in (i + 1)..<solids.count

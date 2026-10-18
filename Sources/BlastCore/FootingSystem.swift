@@ -191,9 +191,13 @@ public struct FootingSides: Sendable {
     public var coupling: SIMD2<Float>
 
     /// The sides of a footing `width` along x by `length` along y and `thickness` deep, set into
-    /// `soil` by `embedment`, whose base alone gives `base` (with its trench factor).
+    /// `soil` by `embedment`, whose base alone gives `base` (with its trench factor). On a
+    /// terrain, `ground`: each column of points is buried as deep as the surface stands over the
+    /// base there (none where the base is out of the ground), and each side's active and passive
+    /// pressures are those for its ground rising or falling away from it.
     public init(
-        width: Float, length: Float, thickness: Float, soil: Soil, embedment: Embedment, base: [Float]
+        width: Float, length: Float, thickness: Float, soil: Soil, embedment: Embedment, base: [Float],
+        ground: FootingGround? = nil
     ) {
         let factors = embedment.gazetasFactors(width: width, length: length, thickness: thickness)
         let surface = zip(base, factors.trench).map { $0 / $1 }
@@ -203,35 +207,62 @@ public struct FootingSides: Sendable {
         }
         let d = embedment.contactHeight(thickness: thickness)
         let unitWeight = soil.material.density * 9.81
-        // The springs: along the sides for the vertical stiffness, then across those facing x
-        // and y for the horizontal ones, less what the sides along the motion grip.
-        let wall = 2 * (width + length) * d
-        let along = max(target[0] - base[0], 0) / wall
-        let acrossX = max((target[1] - base[1] - along * 2 * width * d) / (2 * length * d), 0.01 * along)
-        let acrossY = max((target[2] - base[2] - along * 2 * length * d) / (2 * width * d), 0.01 * along)
-        var points: [Point] = []
         let n = Self.pointsAlong
         let m = Self.pointsDown
         func weight(_ k: Int, of count: Int) -> Float {
             (k == 0 || k == count - 1 ? 0.5 : 1) / Float(count - 1)
         }
-        for (normal, extent, stiffness) in [
-            (SIMD2<Float>(1, 0), length, acrossX), (SIMD2<Float>(-1, 0), length, acrossX),
-            (SIMD2<Float>(0, 1), width, acrossY), (SIMD2<Float>(0, -1), width, acrossY),
-        ] {
-            for i in 0..<n {
+        let sides: [(normal: SIMD2<Float>, extent: Float)] = [
+            (SIMD2(1, 0), length), (SIMD2(-1, 0), length), (SIMD2(0, 1), width), (SIMD2(0, -1), width),
+        ]
+        func plan(_ normal: SIMD2<Float>, _ extent: Float, _ i: Int) -> SIMD2<Float> {
+            let s = Float(i) / Float(n - 1) - 0.5
+            return normal * SIMD2(width, length) / 2 + SIMD2(-normal.y, normal.x) * s * extent
+        }
+        // How deep the ground stands over the base at each column, and the side's height in it.
+        let buried = sides.map { side in
+            (0..<n).map { i in
+                ground.map { $0.depth(at: plan(side.normal, side.extent, i)) } ?? embedment.depth
+            }
+        }
+        let heights = buried.map { $0.map { min(max($0, 0), thickness) } }
+        // The sides' areas in the soil, facing x and facing y.
+        let faces =
+            ground == nil
+            ? SIMD2(2 * length * d, 2 * width * d)
+            : (0..<4).reduce(SIMD2<Float>.zero) { total, k in
+                let area = (0..<n).reduce(Float(0)) {
+                    $0 + weight($1, of: n) * sides[k].extent * heights[k][$1]
+                }
+                return total + (k < 2 ? SIMD2(area, 0) : SIMD2(0, area))
+            }
+        // The springs: along the sides for the vertical stiffness, then across those facing x
+        // and y for the horizontal ones, less what the sides along the motion grip.
+        let wall = ground == nil ? 2 * (width + length) * d : faces.x + faces.y
+        let along = max(target[0] - base[0], 0) / max(wall, 1e-9)
+        // (On level ground in the order it always was, bit for bit.)
+        let grips =
+            ground == nil
+            ? SIMD2(along * 2 * width * d, along * 2 * length * d) : along * SIMD2(faces.y, faces.x)
+        let acrossX = max((target[1] - base[1] - grips.x) / max(faces.x, 1e-9), 0.01 * along)
+        let acrossY = max((target[2] - base[2] - grips.y) / max(faces.y, 1e-9), 0.01 * along)
+        var points: [Point] = []
+        for (k, side) in sides.enumerated() {
+            let coefficients =
+                ground.map { embedment.sloping(rise: $0.rise(away: side.normal)) }
+                ?? (embedment.atRest, embedment.active, embedment.passive)
+            let stiffness = k < 2 ? acrossX : acrossY
+            for i in 0..<n where heights[k][i] > 0 {
                 for j in 0..<m {
-                    let s = Float(i) / Float(n - 1) - 0.5
-                    let z = Float(j) / Float(m - 1) * d
-                    let depth = embedment.depth - z
-                    let tangent = SIMD2(-normal.y, normal.x)
-                    let plan = normal * SIMD2(width, length) / 2 + tangent * s * extent
+                    let z = Float(j) / Float(m - 1) * heights[k][i]
+                    let depth = buried[k][i] - z
+                    let place = plan(side.normal, side.extent, i)
                     points.append(
                         Point(
-                            place: SIMD3(plan.x, plan.y, z),
-                            area: weight(i, of: n) * weight(j, of: m) * extent * d,
-                            normal: normal, across: stiffness, along: along,
-                            pressures: SIMD3(embedment.atRest, embedment.active, embedment.passive)
+                            place: SIMD3(place.x, place.y, z),
+                            area: weight(i, of: n) * weight(j, of: m) * side.extent * heights[k][i],
+                            normal: side.normal, across: stiffness, along: along,
+                            pressures: SIMD3(coefficients.0, coefficients.1, coefficients.2)
                                 * unitWeight * depth))
                 }
             }
@@ -303,6 +334,12 @@ public struct FootingSummary: Sendable {
     /// across any side, in metres.
     public var sideForce: SIMD3<Float> = .zero
     public var sideGiveWay: Float = 0
+    /// On a terrain: the ground's mean slope round it (∂h/∂x, ∂h/∂y), the factor its slope puts
+    /// on the bearing capacity (`FootingGround`), and the most the soil bears under the whole
+    /// base, in newtons.
+    public var groundSlope: SIMD2<Float> = .zero
+    public var bearingFactor: Float = 1
+    public var capacity: Float = .infinity
 }
 
 /// The rigid footings under a body's connected bases (`Footing`), moved on the GPU by
@@ -411,10 +448,11 @@ final class FootingSystem {
     private let constants: [Constants]
 
     /// Footings for `members`, or nil when no connection has one. `bodyMass` stands on them,
-    /// for the damping of a bed of massless soil.
+    /// for the damping of a bed of massless soil. On `terrain`, each is set in the ground it
+    /// stands in (`FootingGround`).
     init?(
         device: MTLDevice, library: MTLLibrary, members: [Member], entityCount: Int, bodyMass: Float,
-        contactDamping: Float
+        contactDamping: Float, terrain: Terrain? = nil
     ) throws {
         let slots = Array(Set(members.filter { $0.law.footing != nil }.map(\.slot))).sorted()
         guard !slots.isEmpty else { return nil }
@@ -452,19 +490,52 @@ final class FootingSystem {
             let thickness = footing.thickness
             let centre = SIMD3(middle.x, middle.y, top - thickness / 2)
             let mass = footing.density * size.x * size.y * thickness
+            // On a terrain, the ground the footing stands in: its embedment as deep as the
+            // surface stands over the base round its sides, on average for the stiffness and on
+            // the shallowest side for the overburden that bears on the base; none out of it.
+            let ground = terrain.map {
+                FootingGround(terrain: $0, centre: middle, base: top - thickness, size: size)
+            }
+            var embedment = footing.embedment
+            var overburden = footing.embedment
+            if let ground, let given = footing.embedment {
+                let perimeter = (0..<16).flatMap { k -> [Float] in
+                    let s = (Float(k) + 0.5) / 16 - 0.5
+                    return [
+                        ground.depth(at: SIMD2(size.x / 2, s * size.y)),
+                        ground.depth(at: SIMD2(-size.x / 2, s * size.y)),
+                        ground.depth(at: SIMD2(s * size.x, size.y / 2)),
+                        ground.depth(at: SIMD2(s * size.x, -size.y / 2)),
+                    ]
+                }
+                let mean = perimeter.reduce(0) { $0 + max($1, 0) } / Float(perimeter.count)
+                let least = perimeter.min() ?? 0
+                embedment =
+                    mean > 1e-3
+                    ? Embedment(
+                        depth: mean, frictionAngle: given.frictionAngle, sideFriction: given.sideFriction)
+                    : nil
+                overburden =
+                    least > 1e-3
+                    ? Embedment(
+                        depth: least, frictionAngle: given.frictionAngle, sideFriction: given.sideFriction)
+                    : nil
+            }
             let soilBed = FootingBed(
-                width: size.x, length: size.y, soil: footing.soil, embedment: footing.embedment,
+                width: size.x, length: size.y, soil: footing.soil, embedment: embedment,
                 thickness: thickness)
-            let sides = footing.embedment.map {
+            let sides = embedment.map {
                 FootingSides(
                     width: size.x, length: size.y, thickness: thickness, soil: footing.soil, embedment: $0,
-                    base: soilBed.stiffness)
+                    base: soilBed.stiffness, ground: ground)
             }
-            // Set into the soil, the base bears the overburden's share as well.
+            // Set into the soil, the base bears the overburden's share as well; on a slope, less.
+            let slopeFactor =
+                ground?.bearingFactor(frictionAngle: footing.embedment?.frictionAngle ?? 35 * .pi / 180) ?? 1
             let capacity = footing.soil.bearingCapacity.map { surface in
-                footing.embedment?.bearingCapacity(
+                (overburden?.bearingCapacity(
                     surface: surface, width: size.x, length: size.y, material: footing.soil.material)
-                    ?? surface
+                    ?? surface) * slopeFactor
             }
             let impedance = soilBed.impedance
             typealias Mode = FootingImpedance.Mode
@@ -576,7 +647,8 @@ final class FootingSystem {
                     rotation: .zero, velocity: .zero, soilForce: .zero, soilMoment: .zero, jointForce: .zero,
                     bearing: 1, uplift: 0, settlement: 0,
                     contact: SIMD4(-size.x / 2, size.x / 2, -size.y / 2, size.y / 2),
-                    mass: mass))
+                    mass: mass, groundSlope: ground?.gradient ?? .zero, bearingFactor: slopeFactor,
+                    capacity: capacity.map { $0 * area } ?? .infinity))
             // Its highest frequency on the connection and the soil, as a free rigid body: each
             // spring alone against the mass or the least moment of inertia, and the dashpots'
             // rate.

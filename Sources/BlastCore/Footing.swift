@@ -247,6 +247,23 @@ public struct Embedment: Sendable, Hashable, Codable {
     /// The height of the sides in contact with the soil, for a footing `thickness` deep.
     public func contactHeight(thickness: Float) -> Float { min(depth, thickness) }
 
+    /// C. A. Coulomb's active and passive coefficients on a smooth vertical side whose ground
+    /// rises away from it at `rise` = tan β (falling away for β below zero), as the classical
+    /// wedge gives them (in any soil mechanics text, e.g. K. Terzaghi, *Theoretical Soil
+    /// Mechanics*, 1943, ch. V; written from memory): Kₐ = cos²φ / (1 + √(sin φ sin(φ − β) /
+    /// cos β))², Kₚ = cos²φ / (1 − √(sin φ sin(φ + β) / cos β))², which are Rankine's on level
+    /// ground. A slope steeper than φ cannot stand, so β is held within ±φ; downhill the passive
+    /// wedge, its ground falling away, gives less (half at β = −20°, φ = 35°), uphill the active
+    /// more, and the pressure at rest is never below it.
+    public func sloping(rise: Float) -> (atRest: Float, active: Float, passive: Float) {
+        let phi = frictionAngle
+        let beta = min(max(atan(rise), -phi), phi)
+        let c = cos(phi) * cos(phi)
+        let active = c / pow(1 + (sin(phi) * sin(phi - beta) / cos(beta)).squareRoot(), 2)
+        let passive = c / pow(1 - (sin(phi) * sin(phi + beta) / cos(beta)).squareRoot(), 2)
+        return (max(atRest, active), active, passive)
+    }
+
     /// Gazetas's factors on a surface footing's static stiffness for one `width` along x by
     /// `length` along y and `thickness` deep, embedded so: the trench factor (the base deeper) and
     /// the sidewall factor, by `FootingImpedance.Mode`. (Rocking has one factor, given as the
@@ -289,6 +306,101 @@ public struct Embedment: Sendable, Hashable, Codable {
         let ratio = depth <= b ? depth / b : atan(depth / b)
         let deep = 1 + 2 * tan(phi) * pow(1 - sin(phi), 2) * ratio
         return surface + material.density * 9.81 * depth * nq * shape * deep
+    }
+}
+
+/// The ground round a footing on the scene's terrain (`StructureModel.ground`): how deep the
+/// surface stands over the footing's base at each point of its plan, and how the ground slopes
+/// there.
+///
+/// The footing stays level, as footings on a hillside are cut level into it, and stands where
+/// the body's base puts it; the terrain gives the soil it is set in. Each side is buried as
+/// deep as the surface stands over the base along it, the uphill side deeper than the downhill
+/// one, and its active and passive pressures are Coulomb's for ground rising or falling away
+/// from it (`Embedment.sloping(rise:)`), the slope a plane fitted to the ground over the plan
+/// widened by its width B each way. The base bears less on a slope: A. S. Vesić's ground factor
+/// (1 − tan β)² on the bearing capacity ("Bearing capacity of shallow foundations", in
+/// *Foundation Engineering Handbook*, Winterkorn and Fang, eds., 1975, written from memory; M.
+/// López, A. Flores and S. Arévalo's open comparison, CILAMCE 2022, tabulates it for Vesić and
+/// for J. Brinch Hansen, 1970), with tan β the steepest fall of the ground over 4B beyond the
+/// base's edge, the way the soil under it would be pushed out. On a slope's face that is the
+/// slope; near a crest, b from it, the fall over 4B is (1 − b/4B) of the slope's, so that a
+/// footing at the crest bears as on the face and one 4B back as on level ground, as G. G.
+/// Meyerhof's footings near a crest do, regaining their level capacity two to six widths back
+/// ("The ultimate bearing capacity of foundations on slopes", 4th ICSMFE, 1957, Fig. 6). The
+/// judge is in docs/validation.md#footings-on-a-slope. Its stiffness is the level footing's.
+public struct FootingGround: Sendable, Hashable {
+    public var terrain: Terrain
+    /// The footing's plan centre, in scene metres, its base's height and its plan's extent.
+    public var centre: SIMD2<Float>
+    public var base: Float
+    public var size: SIMD2<Float>
+    /// The ground's mean slope over the plan widened by its width: (∂h/∂x, ∂h/∂y).
+    public var gradient: SIMD2<Float>
+    /// The tangent of the ground's steepest fall over four widths beyond the base's edge, and the
+    /// direction it falls, in plan.
+    public var fall: Float
+    public var downhill: SIMD2<Float>
+
+    /// The ground round a footing `size` in plan centred at `centre`, its base at `base`.
+    public init(terrain: Terrain, centre: SIMD2<Float>, base: Float, size: SIMD2<Float>) {
+        self.terrain = terrain
+        self.centre = centre
+        self.base = base
+        self.size = size
+        let width = min(size.x, size.y)
+        // A least-squares plane through the surface over the plan widened by its width.
+        let reach = size / 2 + width
+        let n = 17
+        var sums = SIMD3<Float>.zero  // Σ xh, Σ yh, Σ h
+        var squares = SIMD2<Float>.zero
+        for j in 0..<n {
+            for i in 0..<n {
+                let offset = reach * (2 * SIMD2(Float(i), Float(j)) / Float(n - 1) - 1)
+                let h = terrain.height(at: centre + offset)
+                sums += SIMD3(offset.x * h, offset.y * h, h)
+                squares += offset * offset
+            }
+        }
+        // The grid is symmetric about the centre: the plane's slopes are Σ xh / Σ x² and so on.
+        gradient = SIMD2(sums.x, sums.y) / squares
+        // The steepest fall from the base's edge over 4B, in 32 directions.
+        var fall: Float = 0
+        var downhill = SIMD2<Float>(1, 0)
+        for k in 0..<32 {
+            let angle = Float(k) * 2 * .pi / 32
+            let direction = SIMD2(cos(angle), sin(angle))
+            // Where a line from the centre along it leaves the plan.
+            let out = min(
+                abs(direction.x) > 1e-6 ? size.x / 2 / abs(direction.x) : .infinity,
+                abs(direction.y) > 1e-6 ? size.y / 2 / abs(direction.y) : .infinity)
+            let edge = centre + out * direction
+            let drop =
+                (terrain.height(at: edge) - terrain.height(at: edge + 4 * width * direction)) / (4 * width)
+            if drop > fall {
+                fall = drop
+                downhill = direction
+            }
+        }
+        self.fall = fall
+        self.downhill = downhill
+    }
+
+    /// How far the surface stands above the base at `offset` from the plan's centre; below zero
+    /// where the base is out of the ground.
+    public func depth(at offset: SIMD2<Float>) -> Float { terrain.height(at: centre + offset) - base }
+
+    /// The tangent of the ground's mean slope round the plan.
+    public var slope: Float { simd_length(gradient) }
+
+    /// How steeply the ground rises going away from a side facing `normal` (in plan), as a
+    /// tangent: above zero uphill, below it downhill.
+    public func rise(away normal: SIMD2<Float>) -> Float { simd_dot(gradient, normal) }
+
+    /// Vesić's ground factor on the bearing capacity, (1 − tan β)², β the ground's steepest fall
+    /// beyond the base and no steeper than `frictionAngle`.
+    public func bearingFactor(frictionAngle: Float) -> Float {
+        pow(1 - min(fall, tan(frictionAngle)), 2)
     }
 }
 
