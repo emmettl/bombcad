@@ -285,6 +285,23 @@ the radius by then, so that a short run still steps the grid (`BlastSolver.mappe
 Without the cap in scaled distance, a small charge on coarse cells would be solved hundreds of
 charge radii out, for many minutes.
 
+**The products' own equation of state** (tried 18 October 2026, kept as an option, off). With
+`mappedChargeProducts` the one-dimensional solution carries the detonation products as a tracer
+with TNT's Jones–Wilkins–Lee law (A 371.2 GPa, B 3.231 GPa, R1 4.15, R2 0.95, ω 0.30 at 1.63
+g/cm³, from the LLNL Explosives Handbook; the handbook's other TNT set, as ANSYS Autodyn carries
+it, as a check). Where products and air mix each presses as it would alone at its partial
+density, both at the mixture's energy per kilogram; the scheme bounds the waves as Davis does.
+It raises the incident peak close in (52 to 67% of Kingery–Bulmash at 0.2 m/kg^(1/3), 64 to 81%
+at 0.3, 88 to 100% at 0.5) and changes nothing past 0.75 (within 4%), nor the impulse; the
+products have spread to some 10 kg/m³ by the time they are mapped, where JWL's terms for dense
+products are gone, but there the air's gas reads their pressure 13–25% higher (ω 0.30 against
+the hot air's 0.33–0.40). On the grid it moves the reflected loads too little to adopt: the
+impulse within 2% from 0.3 m/kg^(1/3), the peak within 2 points from 0.5, and at 0.3 from 105%
+to 131% of the curves on 5 mm cells, away from them and within close in's scatter
+([validation](validation.md#the-products-own-equation-of-state-18-october)). It makes the
+one-dimensional solution 2.3 to 2.8 times as long. Where it would matter is in contact, where the
+charge is never mapped (see future work).
+
 **The comparisons of structures** (slabs, walls, rooms, envelopes and the rest) were run on the
 balloon start. Their harnesses are pinned to it (`SolverConfiguration.balloonStart`) until each
 is run again ([the list](validation.md#still-on-the-balloon-start)).
@@ -793,7 +810,8 @@ UFC 3-340-02, lowest for light charges.
    street's impulses by under 4% and the Kingery–Bulmash gauges' by under 1%.
 4. **One gas.** Detonation products are treated as air: by default as an ideal gas of γ = 1.4,
    or as thermally perfect air, so the fireball's composition, and its temperature, are not
-   realistic. It loses the heat it radiates only with radiative cooling on, and then only above
+   realistic. The mapped start can carry them as detonation products (JWL, an option), which
+   moves open-air loads too little to adopt; in contact, never mapped, they stay air. It loses the heat it radiates only with radiative cooling on, and then only above
    the luminous temperature, as a grey gas with soot, into black, cold surroundings.
 5. **Moving solids are a staircase of whole cells.** A moving wall pushes the gas through its
    ghost states, and its surface jumps a cell at a time. The gas is conserved within 0.3% as it
@@ -803,12 +821,17 @@ UFC 3-340-02, lowest for light charges.
 
 ## Future work
 
-- **The products' own composition** for the gas very close to a charge. (Dissociation of the
-  air is done, as an option; it changes the checked loads by under 1%.)
-- **Better source.** Two options, in order of effort: start from a one-dimensional, finely
-  resolved spherical solution and map it onto the grid once the shock has grown to several
-  cells; or carry the detonation products as a second gas with a Jones–Wilkins–Lee equation of
-  state and optional afterburn energy.
+- **The products' own equation of state on the grid, for charges in contact.** In the mapped
+  start it was tried and changes the loads from 0.3 m/kg^(1/3) out too little to adopt
+  ([above](#a-finely-resolved-start)); in contact, where the charge is too near anything to be
+  mapped, a ball of air at the charge's density delivers about twice the products' impulse
+  ([Hupfauf](validation.md#slabs-under-contact-charges)), and the products would need a second
+  gas on the grid. (Dissociation of the air is done, as an option; it changes the checked loads
+  by under 1%.)
+- **A mapped start for each charge.** Scenes of several charges (the chamber's four) start from
+  the balloon, as one solution cannot hold two centres. Each could be solved in one dimension
+  and mapped until their shells meet; as the solutions are kept by start, alike charges would
+  cost one solve.
 - **Better open boundaries**, if they are ever needed: a perfectly matched or sponge layer
   works at any angle, unlike the one-dimensional characteristic condition that was tried.
 - **More of the refinement**: patches placed and released over a fine outline without the gas

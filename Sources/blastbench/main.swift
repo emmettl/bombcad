@@ -1118,6 +1118,8 @@ func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver 
     configuration.afterburnLimit = chosenBurnLimit()
     applyChosenAir(&configuration)
     if flag("mapped") { configuration.mappedCharge = true }
+    // The mapped start's products with their own equation of state (JWL).
+    if flag("products") { configuration.mappedChargeProducts = true }
     if let time = option("burn-time").flatMap({ Float($0) }) { configuration.afterburnTime = time / 1000 }
     if let energy = option("afterburn-energy").flatMap({ Float($0) }) {
         configuration.afterburnEnergy = energy * 1e6
@@ -5527,6 +5529,7 @@ do {
     case "throughput": try runThroughput()
     case "structure": try runStructure()
     case "validate": try runValidation()
+    case "products": try runProducts()
     case "mapped-cost":
         // The fine one-dimensional start's own time (CPU), by charge and cell: `--masses 1,10,100
         // --dx 0.125,0.25,0.5 --cells 64`.

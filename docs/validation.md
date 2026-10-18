@@ -4505,6 +4505,50 @@ balloon by construction.
 
 `blastbench digest --recommended` gives the same hashes on the pinned code as on main.
 
+#### The products' own equation of state (18 October)
+
+The mapped start with its products as TNT's detonation products (JWL, the LLNL handbook's set;
+`mappedChargeProducts`, see the [air-blast model](air-blast-model.md#a-finely-resolved-start))
+rather than hot air. The one-dimensional solution alone, a 1 kg surface burst (`blastbench
+products`), against Kingery–Bulmash's incident curves, hot air / JWL / the handbook's other TNT
+set:
+
+| Z | Peak | Impulse | Arrival |
+|---|------|---------|---------|
+| 0.2 | 52 / 67 / 71% | 227 / 192 / 177% | 94 / 86 / 82% |
+| 0.3 | 64 / 81 / 83% | 204 / 198 / 197% | 106 / 95 / 91% |
+| 0.5 | 88 / 100 / 103% | 172 / 174 / 184% | 107 / 97 / 94% |
+| 0.75 | 109 / 111 / 114% | 127 / 121 / 123% | 101 / 94 / 92% |
+| 1 | 115 / 111 / 115% | 97 / 97 / 98% | 97 / 92 / 91% |
+| 2 to 6 | 103–104 / 99–102 / 101–103% | 89–107%, alike | 95–98 / 95–98 / 93–98% |
+
+On the grid, `blastbench closeair --mapped` with and without `--products` (1 kg above rigid
+ground, reflected square on below), hot air → JWL:
+
+| Z | Cells | Reflected peak | Reflected impulse |
+|---|-------|----------------|-------------------|
+| 0.3 | 20 / 10 / 5 mm | 35 → 39 / 64 → 75 / 105 → 131% | 85 → 84 / 101 → 99 / 104 → 103% |
+| 0.5 | 20 / 10 / 5 mm | 55 → 55 / 75 → 76 / 92 → 94% | 88 → 86 / 93 → 91 / 100 → 100% |
+| 0.75 | 20 mm | 58 → 57% | 98 → 96% |
+| 1 | 20 mm | 66 → 65% | 103 → 101% |
+
+- The impulse, which loads a structure, moves by 2% or less; the peak by 2 points or less from
+  0.5 m/kg^(1/3) out. At 0.3 the peak rises a quarter on 5 mm cells, from 105% of the curves to
+  131%, away from them, where they rest on few tests and gauges in one shot differ by up to 40%
+  (Rae and McAfee, above). Not adopted: the change is within close in's scatter, and away from
+  the curves.
+- The products have spread to some 10 kg/m³ by the time they are mapped, even 0.4 m/kg^(1/3)
+  out, where JWL's terms for dense products are gone; the grid's hot air then reads their
+  pressure 13–25% higher than JWL's ω does. Carried with their own law all the way to 7
+  m/kg^(1/3) in one dimension they change the peaks by 4% or less past 0.75, so a second gas on
+  the grid would not change open-air loads either; in contact it would
+  ([Hupfauf](#slabs-under-contact-charges)).
+- The fireball: the products reach as far (0.85 against 0.84 m/kg^(1/3) at 0.5 ms/kg^(1/3)) and
+  are as hot, as air at their energy, from 0.2 ms/kg^(1/3) on; Dial Pack's cells hand over far
+  later than that, so its record cannot tell them apart.
+- The one-dimensional solution takes 2.3–2.8 times as long (31–34 s against 12–14 s to 7
+  m/kg^(1/3)).
+
 
 ### Kinney–Graham
 

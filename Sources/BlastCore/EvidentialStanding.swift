@@ -1084,6 +1084,7 @@ public enum StandingTable {
         "SolverConfiguration.mappedChargeScaledReach": .numerical,
         "SolverConfiguration.mappedChargeBurns": .numerical,
         "SolverConfiguration.mappedChargeMixing": .numerical,
+        "SolverConfiguration.mappedChargeProducts": .numerical,
         "SolverConfiguration.airSleepThreshold": .numerical,
         "SolverConfiguration.airSleepCrossings": .numerical,
         "SolverConfiguration.debrisReach": .numerical,
