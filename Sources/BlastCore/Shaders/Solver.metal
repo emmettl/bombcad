@@ -2237,6 +2237,14 @@ kernel void prepareStep(device StepControl &control [[buffer(0)]],
         control.activeTiles = tiles;
     }
     float fastest = as_type<float>(atomic_load_explicit(maxSpeed, memory_order_relaxed));
+    // A cell whose density has fallen to nothing reads a wave speed that is NaN, or negative from
+    // a negative density, and either outranks every real speed in the bitwise maximum; the step
+    // would then be far longer than the air allows (a refined district once took steps of 0.6 s
+    // where 3 ms were right). The batch stops there instead, unstable.
+    if (!(fastest >= 0.0f) || isinf(fastest)) {
+        control.stopped = 3;
+        control.maxOverpressure = NAN;
+    }
     float dt = u.cfl * u.dx / max(fastest, 1e-6f);
     if (u.maxStep > 0.0f) {
         dt = min(dt, u.maxStep);

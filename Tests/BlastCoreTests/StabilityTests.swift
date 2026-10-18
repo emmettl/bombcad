@@ -6,7 +6,7 @@ import Testing
 
 @Suite("Stability")
 struct StabilityTests {
-    @Test("A NaN in the air makes the batch unstable, though its step reaches the time limit")
+    @Test("A NaN in the air stops the batch where it is, unstable, not at the time limit")
     func nanStops() throws {
         let scene = Scenario(
             name: "Open", domainSize: SIMD3(8, 8, 4), boxes: [],
@@ -16,7 +16,10 @@ struct StabilityTests {
         #expect(solver.advance(steps: 4).isStable)
         let index = solver.grid.index(20, 20, 2)
         solver.mutateState { $0[index].energy = .nan }
-        // The wave speed is NaN, so the step runs to the limit: only the overpressure says so.
+        let before = solver.time
+        // The NaN wave speed outranks every real one, and the step it would set reaches the time
+        // limit: the batch stops at the step after the NaN, which does nothing.
         #expect(!solver.advance(until: 0.05).isStable)
+        #expect(solver.time < before + 0.001, "\(solver.time) s")
     }
 }
