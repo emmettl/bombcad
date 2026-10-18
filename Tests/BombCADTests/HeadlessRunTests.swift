@@ -254,6 +254,50 @@ struct HeadlessRunTests {
         )
     }
 
+    @Test(
+        "On a mapped start handed over after several frames, a run with a structure ends and its frames keep their times"
+    )
+    func mappedStartFrames() async throws {
+        // 1 kg on the ground, a block 9 m off: mapped 6 m out (6 m/kg^(1/3)) on 0.5 m cells, the
+        // grid's clock starts at about 9 ms, after four frames. Sampling once waited for a first
+        // sample before the clock's start, and never stepped.
+        let block = Box(min: SIMD3(19, 9, 0), max: SIMD3(19.5, 11, 1))
+        var scene = Scenario(
+            name: "Mapped", domainSize: SIMD3(24, 20, 10), boxes: [],
+            charge: Charge(mass: 1, position: SIMD3(10, 10, 0)),
+            structure: StructureModel(solids: [block], elementSize: 0.25))
+        scene.gauges = [Gauge("Near", at: SIMD3(12, 10, 0.25))]
+        var document = ProjectDocument(scenario: scene)
+        document.runSettings?.resolution = "coarse"
+        document.runSettings?.duration = 0.016
+        document.runSettings?.detailedCharge = true
+        document.runSettings?.mappedStart = true
+        let folder = try directory()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let project = folder.appending(path: "mapped.bombcad")
+        try write(document, to: project)
+        let usd = folder.appending(path: "mapped.usda")
+        let volumes = folder.appending(path: "mapped.volumes")
+        let run = try await HeadlessRun.execute(
+            HeadlessRun.Options.parse([
+                project.path, "--usd", usd.path, "--vdb", volumes.path, "--frame-interval", "2",
+                "--vdb-fields", "overpressure",
+            ])
+        ).run
+        #expect(run.settings.startsMapped && run.structure != nil)
+        #expect(run.elapsedTime >= 0.016 - 1e-9)
+        // 0, 2, … 16 ms: the structure in every frame, the volumes only from the grid's start.
+        let text = try String(contentsOf: usd, encoding: .utf8)
+        #expect(text.contains("endTimeCode = 8\n"))
+        let points = try #require(text.range(of: "points.timeSamples"))
+        #expect(
+            text[points.upperBound...].contains("\n            0: [(")
+                && text[points.upperBound...].contains("\n            8: [("))
+        let files = try FileManager.default.contentsOfDirectory(atPath: volumes.path).sorted()
+        #expect(files.last == "blast.0008.vdb" && !files.contains("blast.0000.vdb"), "\(files)")
+        #expect(text.contains("8: @./mapped.volumes/blast.0008.vdb@"))
+    }
+
     @Test("The hot gas left at the end is handed over to the cloud, into the scene and a JSON file")
     func cloud() async throws {
         var scene = Scenario(

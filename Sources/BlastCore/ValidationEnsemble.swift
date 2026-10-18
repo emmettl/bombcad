@@ -389,9 +389,13 @@ public enum ValidationEnsemble {
             throw BlastError.allocationFailed("No Metal device")
         }
         let start = ContinuousClock.now
-        // An output that did not happen (a beam that never failed) is left out.
-        let outputs = try KernelRounding.$current.withValue(sample.rounding) {
-            try outputs(sample, device: device).filter(\.value.isFinite)
+        // An output that did not happen (a beam that never failed) is left out. In a pool of its own:
+        // what building a solver autoreleases keeps it alive until a pool drains, and an ensemble's
+        // runs, one after another on a worker's thread, kept every one's memory.
+        let outputs = try autoreleasepool {
+            try KernelRounding.$current.withValue(sample.rounding) {
+                try outputs(sample, device: device).filter(\.value.isFinite)
+            }
         }
         let took = start.duration(to: .now)
         return EnsembleOutcome(

@@ -65,6 +65,19 @@ struct ShellMesh {
         var fastening: Int
     }
     var links: [Link] = []
+    /// A steel beam's end held to the joint it stops at by a connection's springs
+    /// (`StructureModel.steelConnection`): the beam's own end node and the joint's; the beam's
+    /// axis, section and material, and its element's length.
+    struct Hinge {
+        var beamNode: UInt32
+        var jointNode: UInt32
+        var axis: Int
+        var section: SIMD2<Float>
+        var material: Int
+        var length: Float
+    }
+
+    var hinges: [Hinge] = []
     /// For each element beside a column head, the mean shear stress through its thickness at
     /// which the connection punches (see `punchingStrength`); zero for the rest.
     var punching: [Float] = []
@@ -567,6 +580,58 @@ struct ShellMesh {
             }
         }
         links = found
+        if model.steelConnection != nil { hinge(model: model, materials: materials) }
+    }
+
+    /// Gives each steel beam that stops at another member its own end node there, held to the
+    /// joint's by a hinge (`SteelConnection`). The joint's node stays with what holds it: a column
+    /// (a beam upright), a member that runs on through it, or a shell. A beam whose end meets
+    /// nothing, or only other beams that stop there too, keeps its node.
+    private mutating func hinge(model: StructureModel, materials: [StructureMaterial]) {
+        var solidsOfNode = [Set<Int>](repeating: [], count: positions.count)
+        var inShell = [Bool](repeating: false, count: positions.count)
+        for element in elements {
+            for corner in 0..<4 { inShell[Int(element.nodes[corner])] = true }
+        }
+        var beamsOfSolid: [Int: [Int]] = [:]
+        for (b, beam) in beams.enumerated() {
+            beamsOfSolid[beam.solid, default: []].append(b)
+            for end in 0..<2 { solidsOfNode[Int(beam.nodes[end])].insert(beam.solid) }
+        }
+        // Each line's two ends.
+        var endsOf: [Int: (low: UInt32, high: UInt32, axis: Int)] = [:]
+        for (solid, members) in beamsOfSolid {
+            let k = beams[members[0]].axis
+            let nodes = Set(members.flatMap { [beams[$0].nodes.x, beams[$0].nodes.y] })
+            guard let low = nodes.min(by: { positions[Int($0)][k] < positions[Int($1)][k] }),
+                let high = nodes.max(by: { positions[Int($0)][k] < positions[Int($1)][k] })
+            else { continue }
+            endsOf[solid] = (low, high, k)
+        }
+        func holds(_ node: UInt32, other solid: Int) -> Bool {
+            guard let ends = endsOf[solid] else { return false }
+            return ends.axis == 2 || (ends.low != node && ends.high != node)
+        }
+        for (solid, members) in beamsOfSolid.sorted(by: { $0.key < $1.key }) {
+            let first = beams[members[0]]
+            guard first.axis != 2, let ends = endsOf[solid], materials.indices.contains(first.material),
+                materials[first.material].model == .vonMises, materials[first.material].steel == nil,
+                materials[first.material].yieldStress < 0.05 * materials[first.material].youngsModulus
+            else { continue }
+            for end in [ends.low, ends.high] {
+                let others = solidsOfNode[Int(end)].subtracting([solid])
+                guard inShell[Int(end)] || others.contains(where: { holds(end, other: $0) }) else { continue }
+                guard let b = members.first(where: { beams[$0].nodes.x == end || beams[$0].nodes.y == end })
+                else { continue }
+                let fresh = UInt32(positions.count)
+                positions.append(positions[Int(end)])
+                if beams[b].nodes.x == end { beams[b].nodes.x = fresh } else { beams[b].nodes.y = fresh }
+                hinges.append(
+                    Hinge(
+                        beamNode: fresh, jointNode: end, axis: first.axis, section: beams[b].section,
+                        material: beams[b].material, length: beams[b].length))
+            }
+        }
     }
 
     /// Members that touch but share no node (layers stacked face to face, a beam meeting a column
@@ -618,7 +683,7 @@ struct ShellMesh {
         if model.connectionStiffness != nil {
             let points = jointPoints(across: ShellSolver.fibresAcross, normals: model.connectionNormals) {
                 point, node in
-                guard let slot = model.connectionSlot(at: point), slot != 0 || abs(node.z) < 1e-4,
+                guard let slot = model.connectionSlot(at: point), slot != 0 || model.isOnGround(node),
                     let law = model.connection(inSlot: slot)
                 else { return nil }
                 return (slot, law.across)
@@ -626,7 +691,7 @@ struct ShellMesh {
             for (n, list) in points.enumerated() where !list.isEmpty { anchored.insert(n) }
         }
         func held(_ p: SIMD3<Float>) -> Bool {
-            model.isClampedBySupport(at: p) || (model.fixedBase && abs(p.z) < 1e-4)
+            model.isClampedBySupport(at: p) || (model.fixedBase && model.isOnGround(p))
         }
         for i in solids.indices where !sets[i].isEmpty {
             for j in (i + 1)..<solids.count

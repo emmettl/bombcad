@@ -291,9 +291,12 @@ public struct SolverConfiguration: Sendable, Hashable {
     public init() {}
 
     /// Whether `scenario`'s terrain is cut through the cells when it loads: it has slopes and cut
-    /// cells are on.
-    public func cutsTerrain(of scenario: Scenario) -> Bool {
+    /// cells are on. For now, refined air with a structure standing on the terrain keeps the
+    /// staircase: the structure shuts in thin cut cells under it, which are made solid on the
+    /// coarse grid (`remaskCapSlivers`) but not yet on a level of refinement.
+    public func cutsTerrain(of scenario: Scenario, cellSize: Float = 0) -> Bool {
         terrainCutCells && (scenario.terrain.map { !$0.isFlat } ?? false)
+            && !(refinement > 1 && scenario.structureStandsOnTerrain(cellSize: cellSize))
     }
 }
 

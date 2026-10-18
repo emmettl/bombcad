@@ -89,6 +89,12 @@ struct ShellUniforms {
     var contactEncoded: UInt32 = 0
     /// Panes of laminated glass that can fragment (the solids), or 0 (`MaterialParameters.fragments`).
     var fragmentPanes: UInt32 = 0
+    /// Steel connections' hinges (`ShellMesh.Hinge`), and where their data begin in the load table
+    /// (bytes): eight records a hinge, then each node's first entry, then the entries.
+    var hingeCount: UInt32 = 0
+    var hingeRecords: UInt32 = 0
+    var hingeStarts: UInt32 = 0
+    var hingeEntries: UInt32 = 0
 }
 
 /// Layout matches `BeamElement` in `Shell.metal`.
@@ -287,8 +293,13 @@ public final class ShellSolver {
     private let tiedBuffer: MTLBuffer
     private let tieBuffer: MTLBuffer
     private let tiePipeline: MTLComputePipelineState
+    /// What falls lands on the terrain (`StructureTerrain`), and the pass that lands it; nil on level ground.
+    private var terrain: StructureTerrain
+    private let terrainLandingPipeline: MTLComputePipelineState?
     /// Fastened sheets' links: their pass, and where their data begin in the load table's buffer.
     private let linkPipeline: MTLComputePipelineState?
+    private let hingePipeline: MTLComputePipelineState?
+    private let hingeLayout: (records: Int, starts: Int, entries: Int)
     private let linkLayout: (records: Int, starts: Int, entries: Int)
     /// Nodes tied rigidly to a column's node at a slab.
     public var tieCount: Int { mesh.ties.count }
@@ -373,6 +384,8 @@ public final class ShellSolver {
         nodeConstants.setConstantValue(&sprung, type: .bool, index: 22)
         var linked = !mesh.links.isEmpty
         nodeConstants.setConstantValue(&linked, type: .bool, index: 23)
+        var hinged = !mesh.hinges.isEmpty
+        nodeConstants.setConstantValue(&hinged, type: .bool, index: 24)
         nodePipeline = try ShaderLibrary.pipeline("shellNodes", in: library, constants: nodeConstants)
         var turned = true
         nodeConstants.setConstantValue(&turned, type: .bool, index: 4)
@@ -380,7 +393,10 @@ public final class ShellSolver {
             try? ShaderLibrary.pipeline("shellNodes", in: library, constants: nodeConstants)
         }
         tiePipeline = try pipeline("shellTies")
+        terrain = try StructureTerrain(device: device, terrain: model.ground)
+        terrainLandingPipeline = model.ground == nil ? nil : try pipeline("shellTerrainLanding")
         linkPipeline = mesh.links.isEmpty ? nil : try pipeline("shellLinks")
+        hingePipeline = mesh.hinges.isEmpty ? nil : try pipeline("shellHinges")
         contactPipelines = try ["shellContactClear", "shellContactHash", "shellContactForces"].map(pipeline)
         pairPipelines = try ["shellPairs", "shellPairGather"].map(pipeline)
 
@@ -458,7 +474,11 @@ public final class ShellSolver {
         let linkStarts = springEnd + 6 * mesh.links.count * 16
         let linkEntries = linkStarts + ((mesh.positions.count + 1) * 4 + 15) & ~15
         linkLayout = (springEnd, linkStarts, linkEntries)
-        loadTableBuffer = try buffer(linkEntries + 2 * mesh.links.count * 4, "applied load table")
+        let hingeRecords = (linkEntries + 2 * mesh.links.count * 4 + 15) & ~15
+        let hingeStarts = hingeRecords + 8 * mesh.hinges.count * 16
+        let hingeEntries = hingeStarts + ((mesh.positions.count + 1) * 4 + 15) & ~15
+        hingeLayout = (hingeRecords, hingeStarts, hingeEntries)
+        loadTableBuffer = try buffer(hingeEntries + 2 * mesh.hinges.count * 4, "applied load table")
         // Something has failed (contact), then two flags a solid for laminated glass: cracked in
         // this element pass, and in fragments.
         failureGateBuffer = try buffer(4 * (2 + 2 * model.solids.count), "failure gate")
@@ -549,7 +569,7 @@ public final class ShellSolver {
             // faces in its region that face its joint.
             let lists = mesh.jointPoints(across: Self.fibresAcross, normals: model.connectionNormals) {
                 point, node in
-                guard let slot = model.connectionSlot(at: point), slot != 0 || abs(node.z) < 1e-4,
+                guard let slot = model.connectionSlot(at: point), slot != 0 || model.isOnGround(node),
                     let law = model.connection(inSlot: slot), law.betweenParts != true
                 else { return nil }
                 return (slot, law.across)
@@ -667,6 +687,50 @@ public final class ShellSolver {
             (loadTableBuffer.contents() + linkLayout.entries).copyMemory(
                 from: entries, byteCount: entries.count * 4)
         }
+        // The hinges: their nodes (the beam's end, the joint's) and the beam's axis; their bending
+        // springs about the beam's two cross axes (stiffness, the moment they turn plastically at),
+        // and the turn they fracture at; their pull and shear stiffness, torsional stiffness, and
+        // strength along the beam (zero for none);
+        // state and outputs zero. Then each node's hinges, the beam's end even, the joint's odd.
+        if !mesh.hinges.isEmpty, let connection = model.steelConnection {
+            var records: [SIMD4<Float>] = []
+            var lists = [[UInt32]](repeating: [], count: positions.count)
+            for (n, hinge) in mesh.hinges.enumerated() {
+                let steel = materials[hinge.material]
+                let (w, d) = (hinge.section.x, hinge.section.y)
+                // Second moments and plastic moments about the cross axes: the first (axis + 1) bends
+                // the section through its second side, the second through its first.
+                let about = SIMD2<Float>(d * d * d * w / 12, w * w * w * d / 12)
+                let plastic = steel.yieldStress * SIMD2<Float>(w * d * d / 4, d * w * w / 4)
+                // Half as stiff as the beam's element beside it, so the beam's end node, which has
+                // only its share of that element's mass, keeps the element's stable step.
+                let rotational = 2 * steel.youngsModulus * about / hinge.length
+                let axial = 0.5 * steel.youngsModulus * w * d / hinge.length
+                let torsional =
+                    steel.youngsModulus / (2 * (1 + steel.poissonRatio)) * (about.x + about.y) / hinge.length
+                records += [
+                    SIMD4(Float(hinge.beamNode), Float(hinge.jointNode), Float(hinge.axis), 0),
+                    SIMD4(
+                        rotational.x, rotational.y, connection.momentRatio * plastic.x,
+                        connection.momentRatio * plastic.y),
+                    SIMD4(
+                        axial, torsional, connection.fractureRotation,
+                        connection.tensionRatio.map { $0 * steel.yieldStress * w * d } ?? 0),
+                    .zero, .zero, .zero, .zero, .zero,
+                ]
+                lists[Int(hinge.beamNode)].append(UInt32(2 * n))
+                lists[Int(hinge.jointNode)].append(UInt32(2 * n + 1))
+            }
+            (loadTableBuffer.contents() + hingeLayout.records).copyMemory(
+                from: records, byteCount: records.count * MemoryLayout<SIMD4<Float>>.stride)
+            var starts: [UInt32] = [0]
+            for list in lists { starts.append(starts.last! + UInt32(list.count)) }
+            let entries = lists.flatMap { $0 }
+            (loadTableBuffer.contents() + hingeLayout.starts).copyMemory(
+                from: starts, byteCount: starts.count * 4)
+            (loadTableBuffer.contents() + hingeLayout.entries).copyMemory(
+                from: entries, byteCount: entries.count * 4)
+        }
         tiedBuffer = tiedStorage
         tieBuffer = try buffer(mesh.ties.count * 8, "shell ties")
         let tiePairs = tieBuffer.contents().bindMemory(
@@ -718,7 +782,7 @@ public final class ShellSolver {
             footings = try FootingSystem(
                 device: device, library: library, members: members, entityCount: fibreCount,
                 bodyMass: bodyMass,
-                contactDamping: contactDamping)
+                contactDamping: contactDamping, terrain: model.ground)
         }
         try setUpPairs()
     }
@@ -924,7 +988,7 @@ public final class ShellSolver {
                 // Nodes with points of a connected footprint are held by it instead.
                 let starts = fibreStartBuffer.contents().bindMemory(
                     to: UInt32.self, capacity: nodes.count + 1)
-                for n in nodes.indices where abs(mesh.positions[n].z) < 1e-4 {
+                for n in nodes.indices where model.isOnGround(mesh.positions[n]) {
                     if fibreCount == 0 || starts[n + 1] == starts[n] { nodes[n].isClamped = true }
                 }
             }
@@ -1143,6 +1207,57 @@ public final class ShellSolver {
         if any { failureGateBuffer.contents().storeBytes(of: 1, as: UInt32.self) }
     }
 
+    /// Steel connections' hinges (`SteelConnection`) that have fractured and let their beams go.
+    public var hingesReleased: Int {
+        guard !mesh.hinges.isEmpty else { return 0 }
+        let records = (loadTableBuffer.contents() + hingeLayout.records).bindMemory(
+            to: SIMD4<Float>.self, capacity: 8 * mesh.hinges.count)
+        return (0..<mesh.hinges.count).filter { records[8 * $0].w > 0.5 }.count
+    }
+
+    /// The hinges, their nodes (the beam's end, the joint's), and the largest turn each has made
+    /// about the beam's cross axes, rad.
+    public var hingeTurns: [(beamNode: Int, jointNode: Int, turn: Float, released: Bool)] {
+        guard !mesh.hinges.isEmpty else { return [] }
+        let records = (loadTableBuffer.contents() + hingeLayout.records).bindMemory(
+            to: SIMD4<Float>.self, capacity: 8 * mesh.hinges.count)
+        return mesh.hinges.indices.map {
+            (
+                Int(mesh.hinges[$0].beamNode), Int(mesh.hinges[$0].jointNode), records[8 * $0 + 3].z,
+                records[8 * $0].w > 0.5
+            )
+        }
+    }
+
+    /// Each hinge's plastic turn so far about the vertical and about the horizontal cross axis of
+    /// its beam, rad (zero for an upright beam's, which has none).
+    public var hingePlasticTurns: [(aboutVertical: Float, aboutHorizontal: Float)] {
+        guard !mesh.hinges.isEmpty else { return [] }
+        let records = (loadTableBuffer.contents() + hingeLayout.records).bindMemory(
+            to: SIMD4<Float>.self, capacity: 8 * mesh.hinges.count)
+        return mesh.hinges.indices.map {
+            let state = records[8 * $0 + 3]
+            // The first cross axis is (axis + 1) % 3, the second (axis + 2) % 3.
+            let firstIsVertical = (mesh.hinges[$0].axis + 1) % 3 == 2
+            return firstIsVertical ? (abs(state.x), abs(state.y)) : (abs(state.y), abs(state.x))
+        }
+    }
+
+    /// Each beam's nodes and axis.
+    public var beamNodes: [(first: Int, second: Int, axis: Int)] {
+        mesh.beams.map { (Int($0.nodes.x), Int($0.nodes.y), $0.axis) }
+    }
+
+    /// What holds each hinge's joint: "column" where an upright beam meets it, else "shell" where
+    /// a shell element does, else "beam".
+    public var hingeJointKinds: [String] {
+        let columns = Set(mesh.beams.filter { $0.axis == 2 }.flatMap { [$0.nodes.x, $0.nodes.y] })
+        let shells = Set(mesh.elements.flatMap { [$0.nodes.x, $0.nodes.y, $0.nodes.z, $0.nodes.w] })
+        return mesh.hinges.map {
+            columns.contains($0.jointNode) ? "column" : shells.contains($0.jointNode) ? "shell" : "beam"
+        }
+    }
+
     public var hasFailed: Bool { failureGateBuffer.contents().load(as: UInt32.self) != 0 }
     /// Whether something had failed as of the coupled solver's last checkpoint, which then
     /// stands in for `hasFailed` in deciding what to encode, so that contact and debris join at
@@ -1185,10 +1300,55 @@ public final class ShellSolver {
         mutateNodes { nodes in settledDisplacements = nodes.map(\.displacement) }
     }
 
+    /// Elements and beams still active with a node that has moved further than `limit` (m) or
+    /// is not finite, counted by material, with how many of those nodes are not finite: where a
+    /// run has thrown or lost nodes it should not have.
+    public func runaway(beyond limit: Float) -> (byMaterial: [String: Int], nonFinite: Int) {
+        var far = [Bool](repeating: false, count: nodeCount)
+        var nonFinite = 0
+        let settled = settledDisplacements
+        mutateNodes { nodes in
+            for (n, node) in nodes.enumerated() {
+                let moved = node.displacement - (settled?[n] ?? .zero)
+                let squared = simd_length_squared(moved)
+                let q = SIMD4(node.qx, node.qy, node.qz, node.qw)
+                let turned =
+                    abs(simd_length(q) - 1) > 0.01 || !simd_length(q).isFinite
+                    || simd_length(node.spin) > 1e4
+                if !squared.isFinite || turned { nonFinite += 1 }
+                far[n] = !squared.isFinite || squared > limit * limit || turned
+            }
+        }
+        var counts: [String: Int] = [:]
+        for (e, element) in mesh.elements.enumerated()
+        where flag(e) == .active && (0..<4).contains(where: { far[Int(element.nodes[$0])] }) {
+            counts[materials[element.material].name, default: 0] += 1
+        }
+        // Active elements stretched past 2 m along an edge, whatever their nodes' travel.
+        var at = mesh.positions
+        mutateNodes { nodes in for n in nodes.indices { at[n] += nodes[n].displacement } }
+        for (e, element) in mesh.elements.enumerated() where flag(e) == .active {
+            let longest =
+                (0..<4).map {
+                    simd_distance(at[Int(element.nodes[$0])], at[Int(element.nodes[($0 + 1) % 4])])
+                }
+                .max() ?? 0
+            if longest > 2 || !longest.isFinite {
+                counts["stretched: " + materials[element.material].name, default: 0] += 1
+            }
+        }
+        for (b, beam) in mesh.beams.enumerated()
+        where beamFlag(b) == .active && (far[Int(beam.nodes.x)] || far[Int(beam.nodes.y)]) {
+            counts["beam: " + materials[beam.material].name, default: 0] += 1
+        }
+        return (counts, nonFinite)
+    }
+
     public func summary() -> StructureSummary {
         var summary = StructureSummary()
         let damage = displayBuffer.contents().bindMemory(to: Float.self, capacity: max(elementCount, 1))
         var attached = [Bool](repeating: false, count: nodeCount)
+        var onBeam = [Bool](repeating: false, count: nodeCount)
         for (e, element) in mesh.elements.enumerated() {
             if flag(e) == .active {
                 summary.activeElements += 1
@@ -1202,13 +1362,21 @@ public final class ShellSolver {
         for (b, beam) in mesh.beams.enumerated() {
             if beamFlag(b) == .active {
                 summary.activeElements += 1
+                summary.activeBeams += 1
                 summary.maxDamage = max(summary.maxDamage, beamDamage[b])
-                for end in 0..<2 { attached[Int(beam.nodes[end])] = true }
+                for end in 0..<2 {
+                    attached[Int(beam.nodes[end])] = true
+                    onBeam[Int(beam.nodes[end])] = true
+                }
             } else {
                 summary.erodedElements += 1
+                summary.erodedBeams += 1
             }
         }
+        summary.hinges = mesh.hinges.count
+        summary.hingesReleased = hingesReleased
         var largest: Float = 0
+        var largestOnBeam: Float = 0
         var sag: Float = 0
         let settled = settledDisplacements
         mutateNodes { nodes in
@@ -1217,10 +1385,12 @@ public final class ShellSolver {
                 let squared = simd_length_squared(node.displacement - rest)
                 if !squared.isFinite { summary.hasBlownUp = true }
                 largest = max(largest, squared)
+                if onBeam[n] { largestOnBeam = max(largestOnBeam, squared) }
                 sag = max(sag, simd_length_squared(rest))
             }
         }
         summary.maxDisplacement = largest.squareRoot()
+        summary.maxBeamDisplacement = largestOnBeam.squareRoot()
         summary.selfWeightSag = sag.squareRoot()
         return summary
     }
@@ -1455,6 +1625,15 @@ public final class ShellSolver {
             }
             beforeNodes?(uniforms)
 
+            if let hingePipeline {
+                encoder.setComputePipelineState(hingePipeline)
+                encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
+                encoder.setBuffer(loadTableBuffer, offset: 0, index: 1)
+                encoder.setBytes(&uniforms, length: MemoryLayout<ShellUniforms>.stride, index: 2)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 3)
+                encoder.dispatchThreads(
+                    MTLSize(width: mesh.hinges.count, height: 1, depth: 1), threadsPerThreadgroup: group)
+            }
             if let linkPipeline {
                 encoder.setComputePipelineState(linkPipeline)
                 encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
@@ -1499,6 +1678,18 @@ public final class ShellSolver {
             encoder.setBuffer(loadTableBuffer, offset: 0, index: 30)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            if let terrainLandingPipeline {
+                encoder.setComputePipelineState(terrainLandingPipeline)
+                encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
+                encoder.setBuffer(referenceBuffer, offset: 0, index: 1)
+                encoder.setBytes(&uniforms, length: MemoryLayout<ShellUniforms>.stride, index: 2)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 3)
+                encoder.setBuffer(fibreStartBuffer, offset: 0, index: 4)
+                encoder.setBytes(&terrain.uniforms, length: MemoryLayout<TerrainUniforms>.stride, index: 5)
+                encoder.setBuffer(terrain.heights, offset: 0, index: 6)
+                encoder.dispatchThreads(
+                    MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            }
             if !mesh.ties.isEmpty {
                 var ties = UInt32(mesh.ties.count)
                 encoder.setComputePipelineState(tiePipeline)
@@ -1695,6 +1886,10 @@ public final class ShellSolver {
         uniforms.linkRecords = UInt32(linkLayout.records)
         uniforms.linkStarts = UInt32(linkLayout.starts)
         uniforms.linkEntries = UInt32(linkLayout.entries)
+        uniforms.hingeCount = UInt32(mesh.hinges.count)
+        uniforms.hingeRecords = UInt32(hingeLayout.records)
+        uniforms.hingeStarts = UInt32(hingeLayout.starts)
+        uniforms.hingeEntries = UInt32(hingeLayout.entries)
         if let fluid {
             uniforms.coupled = 1
             uniforms.ambientPressure = fluid.ambientPressure

@@ -53,6 +53,8 @@ import simd
 //                      [--elastic | --elastic-share 0.12 --memory 0 --heave 0]   (the sand's settling; also for shaking)
 //   blastbench shaking [--tests ssg04-dsw,ssg04-shw,ssg03-dsw] [--shear 80] [--bearing 814] [--samples Samples/FoRDy]
 //                      [--history out-%.csv] [--massless] [--damping 0.2]   (a wall on a footing shaken at its base, against FoRDy's SSG03/SSG04)
+//   blastbench hillside [--mass 500] [--dx 0.25] [--duration 0.1] [--every 0.01]
+//                       (the two-storey frame on a hillside, each column's footing set in the slope)
 //   blastbench gravity [--preset office] [--time 0.3] [--damping 50]
 //                      (a layout's structure under gravity alone, damped: stands, deflects or falls)
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mass kg] [--fit-reach Z]
@@ -142,6 +144,7 @@ func preset(named name: String?) -> ScenarioPreset {
     case "warehouse": .portalWarehouse
     case "terraced": .terracedHouses
     case "hub": .transportHub
+    case "hillside": .hillsideFrame
     default: .streetCanyon
     }
 }
@@ -171,6 +174,22 @@ func chosenScenario() -> Scenario {
         structure.elementKind = .shell
         structure.elementSize = option("shells").flatMap { Float($0) } ?? 0.25
         if let layers = option("shell-layers").flatMap({ Int($0) }) { structure.shellLayers = layers }
+        scenario.structure = structure
+    }
+    // `--rigid-joints`: steel members sharing their joints' nodes, without connections' hinges.
+    if flag("rigid-joints") { scenario.structure?.steelConnection = nil }
+    // `--straight-members`: steel members without Eurocode 3's bow; `--no-steel-rate`: steel without
+    // its strain-rate law. For finding what changed a result.
+    if flag("straight-members") { scenario.structure?.memberImperfections = false }
+    if flag("no-steel-rate"), var structure = scenario.structure {
+        structure.material.rateLaw = nil
+        structure.solidMaterial = structure.solidMaterial.map {
+            $0.map {
+                var m = $0
+                m.rateLaw = nil
+                return m
+            }
+        }
         scenario.structure = structure
     }
     // `--no-second-crack` carries tension that turns away from fixed crack axes across them.
@@ -1421,8 +1440,10 @@ func runGravity(device: MTLDevice) throws {
     let damping = option("damping").flatMap { Float($0) } ?? GravityCheck.damping
     let started = ContinuousClock.now
     var counts = (shells: 0, beams: 0)
+    var hinges = (released: 0, of: 0)
     let check = try GravityCheck.run(model, device: device, duration: duration, damping: damping) {
         counts = ($0.elementCount, $0.beamCount)
+        hinges = ($0.hingesReleased, $0.hingeTurns.count)
     }
     let seconds = (ContinuousClock.now - started) / .seconds(1)
     print(
@@ -1438,6 +1459,7 @@ func runGravity(device: MTLDevice) throws {
             format: "moving weight at %.2f s %.3f m/s, at %.2f s %.3f m/s (falling: %.3f m/s): %@ (%.0f s)",
             duration * 5 / 6, check.settling.early, duration, check.settling.late, 9.81 / damping,
             check.verdict.rawValue, seconds))
+    if hinges.of > 0 { print("\(hinges.released) of \(hinges.of) steel connections fractured") }
 }
 
 func runSnapshot() throws {
@@ -1914,6 +1936,73 @@ func runSnapshot() throws {
                 + (summary.selfWeightSag > 0
                     ? "; sagged \(format(Double(summary.selfWeightSag) * 1000, 0)) mm under its own weight first"
                     : ""))
+        if summary.activeBeams + summary.erodedBeams > 0 {
+            print(
+                "  Members: \(summary.erodedBeams) of \(summary.activeBeams + summary.erodedBeams) beam elements failed, "
+                    + "moved up to \(format(Double(summary.maxBeamDisplacement) * 1000, 0)) mm"
+                    + (summary.hinges > 0
+                        ? "; \(summary.hingesReleased) of \(summary.hinges) connections fractured" : ""))
+        }
+    }
+    // `--hinges`: the steel connections by the height of their joints, 4 m bands: how many have
+    // fractured, and the largest turn.
+    if flag("hinges"), let shells = solver.shells {
+        let positions = shells.referencePositions
+        var moved = [SIMD3<Float>](repeating: .zero, count: positions.count)
+        shells.mutateNodes { nodes in for n in nodes.indices { moved[n] = nodes[n].displacement } }
+        var bands: [Int: (count: Int, released: Int, turn: Float, sideways: SIMD2<Float>)] = [:]
+        for hinge in shells.hingeTurns {
+            let band = Int(positions[hinge.jointNode].z / 4)
+            var entry = bands[band] ?? (0, 0, 0, .zero)
+            entry.count += 1
+            entry.released += hinge.released ? 1 : 0
+            entry.turn = max(entry.turn, hinge.turn)
+            entry.sideways += SIMD2(moved[hinge.jointNode].x, moved[hinge.jointNode].y)
+            bands[band] = entry
+        }
+        // The floors' largest vertical movement, on the horizontal beams' nodes in each band.
+        var sag: [Int: Float] = [:]
+        for beam in shells.beamNodes where beam.axis != 2 {
+            for node in [beam.first, beam.second] {
+                let band = Int(positions[node].z / 4)
+                sag[band] = max(sag[band] ?? 0, abs(moved[node].z))
+            }
+        }
+        for (band, entry) in bands.sorted(by: { $0.key < $1.key }) {
+            print("    floors' beams moved up to \(format(Double(sag[band] ?? 0) * 1000, 0)) mm vertically")
+            let sideways = entry.sideways / Float(entry.count) * 1000
+            print(
+                "  connections at \(4 * band)–\(4 * band + 4) m: \(entry.released) of \(entry.count) fractured, "
+                    + "largest turn \(format(Double(entry.turn), 3)) rad; joints moved "
+                    + "(\(format(Double(sideways.x), 0)), \(format(Double(sideways.y), 0))) mm sideways on average"
+            )
+        }
+        var kinds: [String: (count: Int, released: Int)] = [:]
+        for (hinge, kind) in zip(shells.hingeTurns, shells.hingeJointKinds) {
+            kinds[kind, default: (0, 0)].count += 1
+            kinds[kind, default: (0, 0)].released += hinge.released ? 1 : 0
+        }
+        for (kind, entry) in kinds.sorted(by: { $0.key < $1.key }) {
+            print("  joints held by a \(kind): \(entry.released) of \(entry.count) fractured")
+        }
+        let plastic = shells.hingePlasticTurns
+        if !plastic.isEmpty {
+            let n = Double(plastic.count)
+            print(
+                "  plastic turn, mean (largest): about the vertical "
+                    + "\(format(plastic.reduce(0) { $0 + Double($1.aboutVertical) } / n, 3)) "
+                    + "(\(format(Double(plastic.map(\.aboutVertical).max() ?? 0), 3))) rad, about the horizontal "
+                    + "\(format(plastic.reduce(0) { $0 + Double($1.aboutHorizontal) } / n, 3)) "
+                    + "(\(format(Double(plastic.map(\.aboutHorizontal).max() ?? 0), 3))) rad")
+        }
+    }
+    // `--runaway m`: the active elements with a node moved further than m, by material.
+    if let limit = option("runaway").flatMap(Float.init), let shells = solver.shells {
+        let (counts, nonFinite) = shells.runaway(beyond: limit)
+        print(
+            "Runaway beyond \(format(Double(limit), 0)) m: \(nonFinite) nodes not finite, turned off unit or spinning over 10⁴ rad/s"
+        )
+        for (name, count) in counts.sorted(by: { $0.value > $1.value }) { print("  \(count)  \(name)") }
     }
     if solver.bodies.count > 1 {
         for body in solver.bodies {
@@ -5562,8 +5651,11 @@ do {
     case "walloffset": try runWallOffset(device: device)
     case "wallpeak": try runWallPeak(device: device)
     case "house": try runHouse(device: device)
+    case "hillside": try runHillside(device: device)
     case "lacroix": try runLacroix(device: device)
     case "nassr": try runNassr(device: device)
+    case "removal": try runColumnRemoval(device: device)
+    case "kenny": try runKenny(device: device)
     case "beam": try runBeam()
     case "shear": try runShearBeam()
     case "pushoff": try runPushOff()

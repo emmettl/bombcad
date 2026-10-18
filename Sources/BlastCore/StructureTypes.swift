@@ -745,6 +745,9 @@ public struct StructureModel: Sendable, Hashable, Codable {
     public var bucklingCurve: BucklingCurve = .b
     /// Members' own buckling curves, by index into `solids`; encoded only when some has one.
     public var solidBucklingCurves: [BucklingCurve?] = []
+    /// Steel beams joined to what they end on by hinges that turn and fracture (`SteelConnection`);
+    /// nil for members sharing their joints' nodes, rigid.
+    public var steelConnection: SteelConnection?
     /// In a body of both kinds, the shells' size; `elementSize` if nil.
     public var shellElementSize: Float?
     /// Layers of concrete (or other material) through the thickness of each shell.
@@ -858,6 +861,9 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// saved.
     public internal(set) var detectedRegime: StructuralRegime?
     public internal(set) var detectedLoading: StructuralLoading?
+    /// The terrain the model's footings stand in, from the scene it runs in (`standing(on:)`);
+    /// not saved. Nil on level ground.
+    public internal(set) var ground: Terrain?
     /// Whether a cracked solid element's hourglass control (the bending its one integration point
     /// cannot feel) stiffens only as its most opened crack's secant share of the elastic, instead
     /// of as an uncracked element whatever its cracking, up to the cap.
@@ -994,6 +1000,14 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// The same body with each profiled sheet built as `ProfiledSheet` builds it: its solid the
     /// skin, as thick as the profile is deep, the ribs appended after the other solids. The
     /// body as the shell solver meshes it.
+    /// This model with its footings set in `terrain` (`FootingGround`): each one's soil read
+    /// from the ground round it. A flat terrain, or none, leaves them on level ground.
+    public func standing(on terrain: Terrain?) -> StructureModel {
+        var model = self
+        model.ground = terrain.flatMap { $0.isFlat ? nil : $0 }
+        return model
+    }
+
     public func expandingSheets() -> StructureModel {
         guard solidSheets.contains(where: { $0 != nil }) else { return self }
         var model = self
@@ -1266,6 +1280,15 @@ public struct StructureSummary: Sendable, Hashable {
     public var maxDamage: Float = 0
     /// True when the solution has become numerically unstable (some displacement is not a number).
     public var hasBlownUp = false
+    /// Beam elements (members: columns, beams, braces) still carrying load, and those removed.
+    public var activeBeams = 0
+    public var erodedBeams = 0
+    /// Largest displacement now, in metres, of a node still attached to an active beam, from the
+    /// settled shape: the frame's own movement, without the panes and plates thrown off it.
+    public var maxBeamDisplacement: Float = 0
+    /// Steel connections' hinges (`SteelConnection`), and those that have fractured.
+    public var hinges = 0
+    public var hingesReleased = 0
 
     public init() {}
 
@@ -1284,6 +1307,11 @@ public struct StructureSummary: Sendable, Hashable {
         both.maxPlasticStrain = max(maxPlasticStrain, other.maxPlasticStrain)
         both.maxDamage = max(maxDamage, other.maxDamage)
         both.hasBlownUp = hasBlownUp || other.hasBlownUp
+        both.activeBeams += other.activeBeams
+        both.erodedBeams += other.erodedBeams
+        both.maxBeamDisplacement = max(maxBeamDisplacement, other.maxBeamDisplacement)
+        both.hinges += other.hinges
+        both.hingesReleased += other.hingesReleased
         return both
     }
 }
@@ -1831,7 +1859,7 @@ extension StructureModel {
         case bareBars, removesFragments, crackSlip, bondSlip,
             solidElementKind, solidSheets, springSupports, sheetFastenings, memberImperfections,
             bucklingCurve,
-            solidBucklingCurves
+            solidBucklingCurves, steelConnection
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
         case pressedInterlock, regimeOverride, loadingOverride, regimeDefaults
         case hourglassFollowsCracking, hourglassCapsSteel, discreteBars, barsAsTrusses, trussDiameter
@@ -1891,6 +1919,7 @@ extension StructureModel {
         if !sheetFastenings.isEmpty { try container.encode(sheetFastenings, forKey: .sheetFastenings) }
         if !memberImperfections { try container.encode(false, forKey: .memberImperfections) }
         if bucklingCurve != .b { try container.encode(bucklingCurve, forKey: .bucklingCurve) }
+        try container.encodeIfPresent(steelConnection, forKey: .steelConnection)
         if !solidBucklingCurves.isEmpty {
             try container.encode(solidBucklingCurves, forKey: .solidBucklingCurves)
         }
@@ -1955,6 +1984,7 @@ extension StructureModel {
         sheetFastenings = try container.decodeIfPresent([SheetFastening].self, forKey: .sheetFastenings) ?? []
         memberImperfections = try container.decodeIfPresent(Bool.self, forKey: .memberImperfections) ?? true
         bucklingCurve = try container.decodeIfPresent(BucklingCurve.self, forKey: .bucklingCurve) ?? .b
+        steelConnection = try container.decodeIfPresent(SteelConnection.self, forKey: .steelConnection)
         solidBucklingCurves =
             try container.decodeIfPresent([BucklingCurve?].self, forKey: .solidBucklingCurves) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)

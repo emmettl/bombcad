@@ -225,6 +225,9 @@ public final class StructureSolver {
     /// Failed concrete as particles (`StructureModel.rubbleParticles`), when the body has them.
     private(set) var rubbleSystem: RubbleSystem?
     private let pairPipeline: MTLComputePipelineState
+    /// What falls lands on the terrain (`StructureTerrain`), and the pass that lands it; nil on level ground.
+    private var terrain: StructureTerrain
+    private let terrainLandingPipeline: MTLComputePipelineState?
     private var stamp: UInt32 = 0
 
     public init(
@@ -320,6 +323,8 @@ public final class StructureSolver {
             try? ShaderLibrary.pipeline("structureNodes", in: library, constants: nodeConstants)
         }
         pairPipeline = try pipeline("structurePairs")
+        terrain = try StructureTerrain(device: device, terrain: model.ground)
+        terrainLandingPipeline = model.ground == nil ? nil : try pipeline("structureTerrainLanding")
         let contactConstants = MTLFunctionConstantValues()
         if rubble { contactConstants.setConstantValue(&rubble, type: .bool, index: 12) }
         contactClearPipeline = try ShaderLibrary.pipeline(
@@ -750,7 +755,7 @@ public final class StructureSolver {
         }
         footings = try FootingSystem(
             device: device, library: library, members: members, entityCount: nodeCount, bodyMass: bodyMass,
-            contactDamping: contactDamping)
+            contactDamping: contactDamping, terrain: model.ground)
     }
 
     /// The footings under the base after the last step, in the order of their connections (the
@@ -925,7 +930,13 @@ public final class StructureSolver {
                     {
                         anchors[3 * index].x += h * h / 4 * share
                         laws[index] = AnchorageParameters(law, material: model.material, elementSize: h)
-                    } else if onGround && nk == 0 && model.baseAnchorage == nil {
+                    } else if model.baseAnchorage == nil
+                        && (model.ground == nil
+                            ? onGround && nk == 0
+                            : model.fixedBase && corner < 4 && (k == 0 || compactIndex(i, j, k - 1) == nil)
+                                && model.isOnGround(point))
+                    {
+                        // On a terrain, the lower faces' nodes within half an element of it.
                         nodes[index].isFixed = true
                     }
                 }
@@ -1909,6 +1920,18 @@ public final class StructureSolver {
             encoder.setBuffer(discreteBarSystem?.nodeForce ?? placeholderBuffer, offset: 0, index: 30)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            if let terrainLandingPipeline {
+                encoder.setComputePipelineState(terrainLandingPipeline)
+                encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 1)
+                encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 2)
+                encoder.setBuffer(nodeListBuffer, offset: 0, index: 3)
+                encoder.setBuffer(anchorBuffer, offset: 0, index: 4)
+                encoder.setBytes(&terrain.uniforms, length: MemoryLayout<TerrainUniforms>.stride, index: 5)
+                encoder.setBuffer(terrain.heights, offset: 0, index: 6)
+                encoder.dispatchThreads(
+                    MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            }
             if let rubble = rubbleSystem {
                 encoder.setComputePipelineState(rubble.move)
                 encoder.setBuffer(rubble.particles, offset: 0, index: 0)
@@ -1922,6 +1945,8 @@ public final class StructureSolver {
                 encoder.setBuffer(fluid?.debrisArea ?? placeholderBuffer, offset: 0, index: 8)
                 encoder.setBuffer(fluid?.couplingMap ?? placeholderBuffer, offset: 0, index: 9)
                 encoder.setBuffer(rubble.state, offset: 0, index: 10)
+                encoder.setBytes(&terrain.uniforms, length: MemoryLayout<TerrainUniforms>.stride, index: 11)
+                encoder.setBuffer(terrain.heights, offset: 0, index: 12)
                 encoder.dispatchThreads(
                     MTLSize(width: rubble.count, height: 1, depth: 1), threadsPerThreadgroup: group)
             }

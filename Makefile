@@ -1,4 +1,4 @@
-.PHONY: build build-strict app app-smoke run test test-core release-smoke lint format icons ifc-converter ci-test check check-light check-remote check-anywhere release-check release
+.PHONY: xcode build build-strict app app-smoke run test test-core release-smoke lint format icons ifc-converter ci-test check check-light check-remote check-anywhere check-affected release-check release
 
 CONFIGURATION ?= release
 
@@ -15,6 +15,10 @@ icons:
 
 app:
 	bash Scripts/build-app.sh "$(CONFIGURATION)"
+
+# An Xcode project for working on the source (Xcode/project.yml; needs `brew install xcodegen`).
+xcode:
+	xcodegen --spec Xcode/project.yml
 
 run: app
 	open dist/BombCAD.app
@@ -66,6 +70,9 @@ ci-test:
 	python3 Scripts/test-nightly-suspects.py
 	python3 Scripts/test-build-strict.py
 	python3 Scripts/test-concrete-matrix.py
+	python3 Scripts/test-update-homebrew-tap.py
+	python3 Scripts/test-check-affected.py
+	python3 Scripts/test-release-notes.py
 	python3 Scripts/check-doc-links.py
 
 check: lint build-strict test ci-test
@@ -84,6 +91,11 @@ check-remote:
 
 check-anywhere:
 	python3 Scripts/remote.py anywhere $(TARGET)
+
+# The pre-push check sized to the change (Scripts/check-affected.py): documents and scripts get
+# lint and ci-test, other code its own tests too, and the solver's core the full check-anywhere.
+check-affected:
+	python3 Scripts/check-affected.py
 
 release-check:
 	python3 Scripts/release.py check

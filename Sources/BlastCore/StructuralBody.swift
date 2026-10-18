@@ -112,6 +112,21 @@ public final class StructuralBody: Identifiable {
     }
 
     /// The body's kinetic energy of translation (J) and its mass (kg).
+    /// Every node's displacement and mass, solids then shells (tied shell nodes left out, as in
+    /// `motion()`), to judge how far the body has moved over a while.
+    func displacements() -> [(displacement: SIMD3<Float>, mass: Float)] {
+        var result: [(SIMD3<Float>, Float)] = []
+        solids?.mutateNodes { nodes in
+            for node in nodes where node.mass > 0 { result.append((node.displacement, node.mass)) }
+        }
+        shells?.mutateNodes { nodes in
+            for node in nodes where node.mass > 0 && node.flags & 256 == 0 {
+                result.append((node.displacement, node.mass))
+            }
+        }
+        return result
+    }
+
     func motion() -> (energy: Double, mass: Double) {
         var energy = 0.0
         var mass = 0.0

@@ -457,6 +457,15 @@ final class SimulationModel {
     var isPlacingCharge = false
     /// Shows the sheet for exporting the project's run for rendering.
     var showsRenderExport = false
+    /// The parameter sweep's and the kept runs' comparison sheets, which the chart's buttons and
+    /// the menus open.
+    var showsParameterSweep = false
+    var showsRunComparison = false
+    /// Asked of the views that own them from the menus, and cleared there: choosing a model to
+    /// import, naming the run to keep, and saving the results as CSV.
+    var requestsModelImport = false
+    var requestsKeptRun = false
+    var requestsResultsExport = false
 
     private(set) var isRunning = false {
         didSet {
@@ -2178,7 +2187,12 @@ final class SimulationModel {
 
     /// Probes the thermal radiation, if placed automatically, here and on each Mac connected, so
     /// that the next run is placed by each Mac's speed now.
-    func probeAutomatic() async {
+    /// How long a run's costs wait for its companions to catch up before they are left
+    /// unrecorded; nil waits however long it takes (the tests, so that a loaded Mac cannot fail
+    /// them).
+    var costCatchUpTimeout: Duration? = .seconds(60)
+
+    func probeAutomatic(timeout: Duration? = .seconds(30)) async {
         guard thermalHost == ConsumerPlacement.automatic, !isRunning, let kind = companionKinds["thermal"],
             let spec = thermalSpec, (try? spec.validate()) != nil,
             let key = ConsumerCostStore.key(currentInputs, frameInterval: 0.001)
@@ -2186,7 +2200,8 @@ final class SimulationModel {
         var costs = costs(for: key)
         await ConsumerProbe.probe(
             "thermal", kind: kind, inputs: currentInputs,
-            workers: workers.sorted { $0.key < $1.key }.map { ($0.key, $0.value) }, into: &costs)
+            workers: workers.sorted { $0.key < $1.key }.map { ($0.key, $0.value) }, into: &costs,
+            timeout: timeout)
         keep(costs, for: key)
     }
 
@@ -2194,8 +2209,8 @@ final class SimulationModel {
     /// frame in: each where it ran, and the blast's GPU time, less that of companions here
     /// sharing its GPU.
     private func recordCosts(blastGPUSeconds: Double, elapsed: Double) async {
-        let deadline = ContinuousClock.now + .seconds(60)
-        while !companionsCaughtUp, ContinuousClock.now < deadline {
+        let deadline = costCatchUpTimeout.map { ContinuousClock.now + $0 }
+        while !companionsCaughtUp, deadline.map({ ContinuousClock.now < $0 }) ?? true {
             try? await Task.sleep(for: .milliseconds(20))
         }
         guard companionsCaughtUp, let key = runCostKey, elapsed > 0 else { return }
@@ -2477,13 +2492,19 @@ final class SimulationModel {
                     throw BlastError.allocationFailed(
                         "\(grid.cellCount / 1_000_000) million cells; try a coarser resolution")
                 }
-                let created = try BlastSolver(
-                    device: device, commandQueue: commandQueue, scenario: scenario,
-                    cellSize: settings.resolution.cellSize)
-                // Always: even with both options off the air takes the far-field faces (and gravity)
-                // from the settings, not the bare core's.
-                configureAir(created)
-                try created.load(scenario)
+                // In a pool of its own: what building a solver autoreleases keeps it alive until a
+                // pool drains, and a headless worker's runs, one after another, kept every one's
+                // memory (`SolverMemoryTests`).
+                let created = try autoreleasepool { () throws -> BlastSolver in
+                    let created = try BlastSolver(
+                        device: device, commandQueue: commandQueue, scenario: scenario,
+                        cellSize: settings.resolution.cellSize)
+                    // Always: even with both options off the air takes the far-field faces (and
+                    // gravity) from the settings, not the bare core's.
+                    configureAir(created)
+                    try created.load(scenario)
+                    return created
+                }
                 solver = created
             }
             // The blast's injury at a standing person's height, from the run's own peaks (`InjuryField`):
@@ -2549,7 +2570,8 @@ final class SimulationModel {
             uniqueKeysWithValues: (solver?.bodies ?? []).compactMap { body in
                 body.summary().map { (body.id, $0) }
             })
-        nextStructureSampleTime = sampleInterval
+        // The first sample after the run's start: a mapped start's clock starts at its solution's time.
+        nextStructureSampleTime = (floor((solver?.time ?? 0) / sampleInterval + 1e-6) + 1) * sampleInterval
         lastSampleTime = nil
         chargeIsBlocked = scenario.chargeIsBlocked
         openedVentPanels = 0
