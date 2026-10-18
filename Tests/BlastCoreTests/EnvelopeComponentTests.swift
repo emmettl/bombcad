@@ -167,7 +167,8 @@ struct EnvelopeComponentHistoryTests {
                 Box(min: SIMD3(6, 2, 1.75), max: SIMD3(9, 5, 2)),
             ]
             try scene.addEnvelopeObject(BuildingEnvelope(solids: solids), name: "Building")
-            var configuration = SolverConfiguration.recommended
+            // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+            var configuration = SolverConfiguration.recommended.balloonStart
             configuration.refinement = refinement
             configuration.refinementMemory = 64 << 20
             let solver = try BlastSolver(
