@@ -77,7 +77,7 @@ swift run -c release blastbench perimeter --study wall
 | Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; laminar rise times within 1–3% at 48 cells across the radius (the default flame, cellular, 13–14% ahead); K_G 60 against 76 on 96 cells, unable to converge on a four-cell front. FM Global's six tests (digitised): lit at the back wall, 0.9–1.8 times the measured peaks; lit in the middle, 0.4–0.6, the flame stalling towards the back wall. Vented rooms: a seventh to a twenty-second of Molkov's correlation, which those tests show conservative | Verified for a laminar flame in a closed vessel; illustrative for vented rooms |
 | Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 11% to 14 mrad of rotation (against the larger of its two directions), 5–14% low beyond; settlement 1.3–1.7 times that measured. The same footing shaken (FoRDy, eight events on three structures): settlement 0.4–1.3 times (0.6–1.3 but for the embedded footing's first event), the surface footing's peak rotation within 10% where the test did not lurch one way (the embedded footing's first event a quarter); energy a cycle 0.5–1.2 times slowly and 0.3–1.2 times shaken, damping ratios 10–27% against 17–32%. Both on sand of 80 MPa, an estimate, twice the default's; the sand's heave set on the slow test | Rocking moment either way to 14 mrad and 5–14% low beyond (moderate); settlement within a factor of 1.7 (moderate); energy too little, a sixth to two thirds of a shaken event's (low), as for a footing that lurches; on a sand twice the default's |
 | Held out (blind)     | Hrynyk's three plain slabs struck repeatedly by a falling weight, predicted on frozen defaults before the measurements were unsealed: first impacts 1.15–1.29 times the measured peak (too flexible, as the calibrated beams were); later impacts 0.56–0.83, residuals a seventh to a third, and none of the three slabs' punching failures predicted. Mendonça's seven slabs under an open-air charge: the two nearest the charge collapsed, the model leaving them standing; the declared peaks 0.31–1.23 of measured on the survivors, those near 1 made by an artefact of the sleeping air as the slabs landed after the blast threw them up; the blast's own peak a tenth to a quarter of the meters'. Reynolds's six high-strength slabs in the contest slab's rig (v0.3.0): peaks 0.77–1.06 of measured on the five that held in the model, 0.87 on average at 4 in; the sixth, the lightly reinforced slab under the larger load, broken through where the test held at 182 mm; the blast face never crushed where four of the standing slabs' tests were | Hrynyk: between, by the protocol's rule, the calibrated error on undamaged slabs, much worse and on the unsafe side once they are damaged. Mendonça: worse, by the rule, far too stiff and too strong, the unsafe side. Reynolds: worse, by the rule, on the one broken slab (the safe side); the others within the calibrated band, a little stiff |
-| Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.1–1.7 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own. [Brick walls](#brick-walls-debris) (Keys, 2016): loads within 15%, but the walls break into too few pieces, falling at full length in the open (means of −2 to +2 m against +0.2 to +0.6 m) and thrown half as far as measured in a shock tube. Collapse once, blind: [Mendonça's slabs](#blind-test-2-mendonças-slabs-under-an-open-air-charge), the two that collapsed left standing | Unsafe side for debris: held back rather than thrown, slabs never holed, brick walls thrown short (low); collapse missed in both slabs that collapsed (blind) |
+| Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.1–1.7 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own. [Brick walls](#brick-walls-debris) (Keys, 2016): loads within 15%, but the walls break into too few pieces, falling at full length in the open (means of 1.6 m against 0.2 to 0.6 m) and thrown half as far as measured in a shock tube. Collapse once, blind: [Mendonça's slabs](#blind-test-2-mendonças-slabs-under-an-open-air-charge), the two that collapsed left standing | Unsafe side for debris: held back rather than thrown, slabs never holed, brick walls thrown short (low); collapse missed in both slabs that collapsed (blind) |
 | Window glass         | Monk and Clubley's annealed windows in the Shoeburyness tunnel (4 mm, 0.89 m², four aspect ratios, about 33 kPa reflected for longer than they lasted): the app's large-deflection panes (Moore's plate, E1300's flaw model) break every pane, as every pane broke, at 0.82–1.07 of the twelve measured times and 0.69–1.15 of the deflection (the small-deflection panes before them at 0.40–0.46). Against ASTM E1300: its stresses within 8%, its load resistance 0.57–0.72 | Either way within about 20% for timing under a strong load (moderate); the threshold a third under E1300's design resistance, the safe side, not measured |
 | Inside buildings     | [UFC 3-340-02 §2-15](#inside-buildings-against-ufc-3-340-02s-loads-through-openings), its own charts' data: through an open window the air's back-wall load 0.74–1.22 of the UFC's, the side walls and the front's inside 0.31–0.67; the one-way fill 0.95–1.35 of the UFC's leakage fill and 0.15–0.42 of its back-wall load | A design method, not measurement; head-on, rigid, open windows |
 | Fragments            | [Cooper (1996)](#fragments-against-coopers-data): his worked Mott and Gurney examples to rounding; one counted cast-iron bomb within a factor of 1.36 (rms) by Mott's form, 1.12 by Grady's; drag now the measured curve for tumbling cubes, 5% from the previous law. Hazard distance 0.43–0.84 of DoD 4145.26-M's test-derived distances for two items, in flight |  Masses either way within a factor of 1.4 (moderate, one test); hazard distance short by a sixth to a half (the unsafe side; moderate); launch speeds untested (low) |
@@ -3625,12 +3625,27 @@ broken off or not. Three things had to be put right first, each found by these w
 
 ### Results
 
-Rerun 15 October 2026 on the day's defaults (the debris had been 1.9 m out for WR1A before; a
-build of 11 October, 66ffaee, gives 2.06 m, so nothing in between moved it). The blast beside
-the walls, model / measured: 97.5 / 115 kPa and 278 / 263 kPa ms at 10.6 m, 64.5 / 73 and
-236 / 241 at 13 m, 49.1 / 53 and 206 / 234 at 15 m; in the tunnel, an impulse of 4,171 / 3,952
-kPa ms at BWL2C's inlet and a face peak of 149 / 131 kPa (the inlet gauge's peak, 80 kPa against
-60, catches the wall's reflection).
+Rerun 18 October 2026 on today's air: afterburning, hot air and far-field faces, the defaults
+since 15 October.
+
+The record before this one was on the ideal gas with copying faces. It was committed on 15
+October (cd10aca2) on a branch that did not yet have the new defaults, so "the day's defaults"
+it named were the old air. Bisected, its WR1A mean of 2.10 m held until the defaults themselves
+changed (ea665719), which took it to 1.73 m. That move was meant and was recorded in the
+defaults' study ([mean throw 2.1 → 1.6–1.7 m](#afterburning-by-default-what-it-would-cost-and-move)).
+The rest of the way to 1.64 m, from 1.71–1.73, came on 17 October, when structures began to
+settle under their own weight before the blast by default (209c39c2): the wall now comes to rest
+on its bed before the shock, rather than sagging into it. Both moves were meant, and both
+bisected on WR1A (one GPU run per step, 18 October).
+
+The blast beside the walls, model / measured:
+- 99.2 / 115 kPa and 293 / 263 kPa ms at 10.6 m;
+- 65.6 / 73 and 246 / 241 at 13 m;
+- 50.0 / 53 and 215 / 234 at 15 m.
+
+In the tunnel, which keeps the ideal gas and its driven inlet, the impulse is 4,171 / 3,952 kPa ms
+at BWL2C's inlet and the face peak 149 / 131 kPa. The inlet gauge's peak, 80 kPa against 60,
+catches the wall's reflection.
 
 The debris, distances along the radial or tunnel from the wall's upstream face, mass-weighted
 (the 90% figure is the bin by which nine tenths of the mass has been counted), on the hard
@@ -3638,17 +3653,24 @@ ground and, for the walls in the open, on soft ground (below):
 
 | Wall | Mean, model / measured | 90% within | Furthest | Soft ground: mean, 90% within |
 |------|------------------------|------------|----------|-------------------------------|
-| WR1A, 10.6 m | 2.10 / 0.23 m | 4.75 / 1.25 m | 7.5 / 3.0 m | 1.36 m, 3.25 m |
-| WR1B, 13 m | 2.15 / 0.64 m | 4.25 / 2.25 m | 6.0 / 6.0 m | 1.36 m, 2.75 m |
-| WR2C, 15 m | −1.14 / 0.42 m | −0.25 / 1.75 m | 0.5 / 3.5 m | −1.05 m, −0.25 m |
+| WR1A, 10.6 m | 1.64 / 0.23 m | 3.25 / 1.25 m | 5.5 / 3.0 m | 1.11 m, 1.75 m |
+| WR1B, 13 m | 1.60 / 0.64 m | 3.75 / 2.25 m | 5.0 / 6.0 m | 1.40 m, 2.25 m |
+| WR2C, 15 m | 1.61 / 0.42 m | 3.25 / 1.75 m | 4.5 / 3.5 m | 1.36 m, 2.25 m |
 | BWL2C, tunnel | 3.47 / 6.34 m | 6.75 / 8.25 m | 9.0 / 13 m | |
 | BWL3B, tunnel | 3.27 / 5.99 m | 6.75 / 9.75 m | 9.5 / 15 m | |
 
+WR1A's mean is 1.61–1.66 m across the three roundings (default, unfused, relaxed).
+
+On the old air the open walls were 2.10, 2.15 and −1.14 m out, and 1.36, 1.36 and −1.05 m on
+soft ground: WR2C fell towards the charge. The copying faces left the air about 2.7 kPa below
+ambient round the wall for as long as it ran. On far-field faces it settles within 0.1 kPa of
+ambient. All three walls now fall away from the charge, and their debris lies a fifth to a
+quarter nearer. Which part of the new air did that (the faces, the hot air or the afterburning)
+was not separated.
+
 With every open face 4 m/kg^(1/3) from the charge and the wall (WR1A, clearance 14 m and 16 m up,
 18 October 2026), the debris lies where it did: mean 1.64 → 1.60 m, 90% within 3.25 m and
-nothing past 5.5 m in both, the wall falling away from the charge in both. (On this build the
-tight domain gives 1.64 m, not the 2.10 m above: the record has moved since 15 October for
-reasons other than the faces, not traced here.) The harness's 8 m stands
+nothing past 5.5 m in both, the wall falling away from the charge in both. The harness's 8 m stands
 ([open faces at the clearance rule](#open-faces-at-the-clearance-rule)).
 
 **In the open the walls crack in the right places but do not fold.** WR1A cracked along bed
@@ -3656,22 +3678,24 @@ joints at 0.5 m within 5 ms and at mid-height by 20 ms, and folded into three pi
 base and the upper crack, landing mostly within a metre of where it stood. The model's WR1A
 opens bed joints at 0.47, 0.69 and 0.92 m by 20 ms (none by 10 ms), WR1B at 0.54 and 0.77 m,
 WR2C at 0.69 and 0.84 m by 50 ms: the heights are right. But the courses between the cracks do
-not move apart. The wall is left leaning by centimetres at 1 m/s at most, rocks on its cracked
-joints as one column and topples over 1.1–1.2 s, gaining 2–3 kJ as it falls, then shatters as
-it strikes the ground: about two fifths of its elements are removed within 0.1 s of landing,
-and the pieces skid out to 7.5 m. WR1A and WR1B fall away from the charge (WR1B fell towards
-it in the earlier run), WR2C stands still until 1.3 s and then falls towards it. The spread
+not move apart. The wall is left leaning by centimetres at 1–1.6 m/s at most and rocks on its
+cracked joints as one column. It topples, landing at about 1.0, 1.25 and 1.45 s (WR1A, WR1B,
+WR2C) and gaining 2–3 kJ as it falls. Then it shatters as it strikes the ground: a quarter to a
+third of its elements are removed as it lands, and the pieces skid out to 4.5–5.5 m. All three
+fall away from the charge. On the old air WR1B once fell towards it and WR2C did. The spread
 beyond the wall's own length is the landing's, not the blast's.
 
-Two changes were tried for this, each as an option, on WR1A with the model's rounding
-scatter for scale (the default, unfused and relaxed roundings give means of 1.99–2.32 m):
+Two changes were tried for this, each as an option, on WR1A, on the old air, with the model's
+rounding scatter for scale: the default, unfused and relaxed roundings gave means of 1.99–2.32 m
+there.
 
 - **Soft ground** (`StructureSolver.groundStiffness`, a Winkler bed; see
   [On the ground](structural-model.md#on-the-ground)). At 5×10⁷ Pa/m, firm soil, the falling
   wall is no longer stopped dead: WR1A loses 799 elements rather than 1,747, lands in 20 pieces
   over 1 kg rather than 37, and its debris comes 0.7 m nearer (1.36 m, 90% within 3.25 m,
   nothing past 3.5 m). WR1B likewise; WR2C, which hardly breaks, is unchanged. The breakup
-  before landing is the same.
+  before landing is the same. On today's air, soft ground brings the three means to 1.11, 1.40
+  and 1.36 m, from 1.60–1.64 m, with nothing past 2–3 m.
 - **Bed joints that part sooner** (a cracked joint's tension cut once it had opened 2 or 5 mm,
   so a cracked stack could separate). No change on either ground (2.17–2.30 m hard, 1.20–1.59 m
   soft): the cracked joints rock, opening on one face while the other stays in compression,
@@ -3691,7 +3715,7 @@ so soft ground is not for it.
 It shows the loads are right beside these walls and in the tunnel (peaks within 15%, impulses
 within 12%), and that the model's brickwork cracks at the right heights but does not come
 apart there: the cracked joints rock, and the wall falls as one column. In the open the debris
-then lies 1.5–2 m too far out, mostly because the falling wall shatters on a rigid ground;
+then lies 1.0–1.4 m too far out, mostly because the falling wall shatters on a rigid ground;
 in the tunnel it goes about half as far, being one large body rather than bricks in the wind.
 Faults in general use found by these walls, each with an option or fix: open faces near a
 structure drain the air (keep them several metres away), debris did not come to rest on the
