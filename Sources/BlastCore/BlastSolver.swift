@@ -3680,7 +3680,18 @@ public final class BlastSolver {
         let solids = bodies.map(\.model).filter { model in
             model.elementKind == .solid && model.solidElementKind.allSatisfy { ($0 ?? .solid) == .solid }
         }
-        let geometry = StructureCutGeometry(models: solids, grid: grid)
+        // The scene's own solids (the terrain below its cut cells, rigid blocks) as they stand before
+        // the structures are counted in.
+        let scenery = rigidMaskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let terrainGeometry = terrainCut?.geometry
+        let grid = grid
+        let geometry = StructureCutGeometry(
+            models: solids, grid: grid, scenery: { scenery[$0] != 0 },
+            terrainCut: { index in
+                guard let terrainGeometry else { return false }
+                return terrainGeometry.alpha(
+                    index % grid.nx, (index / grid.nx) % grid.ny, index / (grid.nx * grid.ny)) < 1
+            })
         // With no cell cut (a structure on the lattice), the air is as without cut cells, kernels
         // and all: specialised for them, fast math may round the same sums differently.
         guard !geometry.cells.isEmpty else {

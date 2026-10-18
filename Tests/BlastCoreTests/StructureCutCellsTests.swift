@@ -70,4 +70,49 @@ struct StructureCutCellsTests {
             abs(after.energy - before.energy) / before.energy < 1e-4,
             "energy \(before.energy) -> \(after.energy)")
     }
+
+    @Test(
+        "Beside cut ground and a rigid block, no structure cut cell gives to either, and the gas is conserved"
+    )
+    func besideTerrainAndBlock() throws {
+        // Ground at 0.37 m cuts the cells from 0.25 to 0.5 m; the wall stands in it, its face 0.3 of
+        // a cell off the lattice, and a block stands 5 cm behind it.
+        var model = StructureModel(
+            solids: [Box(min: SIMD3(5.075, 2.5, 0), max: SIMD3(5.375, 3.5, 1))],
+            material: .elastic(density: 2400, youngsModulus: 30e9, poissonRatio: 0.2), elementSize: 0.025)
+        model.elementKind = .solid
+        var scenario = Scenario(
+            name: "Wall on cut ground", domainSize: SIMD3(10, 6, 4),
+            boxes: [Box(min: SIMD3(5.425, 2.25, 0), max: SIMD3(6.4, 3.75, 1.2))],
+            charge: Charge(mass: 1, position: SIMD3(2, 3, 0.5)), structure: model)
+        scenario.reflectiveFaces = .all
+        scenario.terrain = Terrain.sampled(domain: scenario.domainSize, spacing: 0.25, source: "cut ground") {
+            _ in
+            0.37
+        }
+        var configuration = SolverConfiguration()
+        configuration.settlesStructures = false
+        configuration.terrainCutCells = true
+        configuration.structureCutCells = true
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 0.25, configuration: configuration)
+        let geometry = try #require(solver.structureCut?.geometry)
+        let terrain = try #require(solver.terrainCut?.geometry)
+        let grid = solver.grid
+        func terrainCut(_ index: Int) -> Bool {
+            terrain.alpha(index % grid.nx, (index / grid.nx) % grid.ny, index / (grid.nx * grid.ny)) < 1
+        }
+        func solid(_ index: Int) -> Bool {
+            solver.isSolid(index % grid.nx, (index / grid.nx) % grid.ny, index / (grid.nx * grid.ny))
+        }
+        #expect(!geometry.cells.isEmpty)
+        for cell in geometry.cells { #expect(!terrainCut(Int(cell))) }
+        for target in geometry.targets where target >= 0 {
+            #expect(!terrainCut(Int(target)) && !solid(Int(target)), "receiver \(target)")
+        }
+        let before = solver.totals()
+        #expect(solver.advance(steps: 150).isStable)
+        let after = solver.totals()
+        #expect(abs(after.mass - before.mass) / before.mass < 1e-5, "mass \(before.mass) -> \(after.mass)")
+    }
 }

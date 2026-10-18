@@ -38,7 +38,14 @@ struct StructureCutGeometry {
     /// A cell this full or more takes others' differences.
     static let receivingShare: Float = 0.5
 
-    init(models: [StructureModel], grid: Grid) {
+    /// `scenery` says whether a cell (by grid index) is solid without the structures (the terrain
+    /// below its cut cells, rigid blocks), `terrainCut` whether the terrain's cut cells hold it: a
+    /// solid one is solid here, and a terrain cut cell is neither a record nor a cell that takes
+    /// one's difference, as the terrain's own update and redistribution are its.
+    init(
+        models: [StructureModel], grid: Grid, scenery: (Int) -> Bool = { _ in false },
+        terrainCut: (Int) -> Bool = { _ in false }
+    ) {
         let dx = grid.cellSize
         let dims = SIMD3(grid.nx, grid.ny, grid.nz)
         index = Array(repeating: -1, count: grid.cellCount)
@@ -95,6 +102,7 @@ struct StructureCutGeometry {
         var solidified = Set<Int>()
         func shareOf(_ c: SIMD3<Int>) -> Float {
             guard all(c .>= 0), all(c .< dims) else { return 0 }
+            if scenery(grid.index(c.x, c.y, c.z)) { return 0 }
             guard all(c .>= low), all(c .<= high) else { return 1 }
             let s = share[local(c)]
             return s < Self.minimumShare || solidified.contains(local(c)) ? 0 : s
@@ -115,7 +123,7 @@ struct StructureCutGeometry {
                     for i in low.x...high.x {
                         let c = SIMD3(i, j, k)
                         let alpha = shareOf(c)
-                        guard alpha > 0 else { continue }
+                        guard alpha > 0, !terrainCut(grid.index(c.x, c.y, c.z)) else { continue }
                         let lowFaces = SIMD3((0..<3).map { aperture(c, $0) })
                         let highFaces = SIMD3(
                             (0..<3).map { axis -> Float in
@@ -165,7 +173,7 @@ struct StructureCutGeometry {
                         for _ in 0..<2 {
                             c &+= step
                             guard all(c .>= 0), all(c .< dims) else { break }
-                            if shareOf(c) >= Self.receivingShare {
+                            if shareOf(c) >= Self.receivingShare && !terrainCut(grid.index(c.x, c.y, c.z)) {
                                 target = Int32(grid.index(c.x, c.y, c.z))
                                 break
                             }
@@ -178,9 +186,9 @@ struct StructureCutGeometry {
                             for side in [-1, 1] {
                                 var c = entry.cell
                                 c[axis] += side
-                                guard all(c .>= 0), all(c .< dims), shareOf(c) >= Self.receivingShare else {
-                                    continue
-                                }
+                                guard all(c .>= 0), all(c .< dims), shareOf(c) >= Self.receivingShare,
+                                    !terrainCut(grid.index(c.x, c.y, c.z))
+                                else { continue }
                                 let face = side < 0 ? entry.record[1 + axis] : aperture(c, axis)
                                 guard face > 0 else { continue }
                                 let along = -Float(side) * normal[axis]

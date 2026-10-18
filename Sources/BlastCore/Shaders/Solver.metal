@@ -2115,8 +2115,8 @@ static inline void applyCutChange(device Cell *state, device float2 *species, in
 
 // After a step's sweeps, with structures' cut cells (`StructureCutGeometry`), each record's
 // difference: the cell keeps its share alpha of it, and sets the rest aside (`passed`) for the cell
-// that takes it (`takeStructureCut`); a cell with none to give it to keeps it all, taken as at
-// least half air, as a column the terrain's block stops does. The differences are then cleared.
+// that takes it (`takeStructureCut`); a cell with none to give it to (at least half air) keeps it
+// all. The differences are then cleared.
 kernel void keepStructureCut(device Cell *state [[buffer(0)]],
                              device float2 *species [[buffer(1)]],
                              const device uint *cells [[buffer(2)]],
@@ -2149,8 +2149,9 @@ kernel void keepStructureCut(device Cell *state [[buffer(0)]],
     if (all(change == 0.0f) && all(changeEnergy == 0.0f)) {
         return;
     }
-    applyCutChange(state, species, index, cell, change, changeEnergy, gives ? alpha : max(alpha, 0.5f), peak, maxSpeed,
-                   tileFlags, u);
+    // A cell with none to give it to is at least half air (`StructureCutGeometry` makes the others
+    // solid), so keeping it all grows it by at most twice.
+    applyCutChange(state, species, index, cell, change, changeEnergy, alpha, peak, maxSpeed, tileFlags, u);
 }
 
 // The second pass: each cell that takes others' differences adds what they set aside, in a fixed

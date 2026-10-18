@@ -1042,7 +1042,9 @@ a cell at least half air (`StructureCutGeometry`).
   share of its own cell that is air.
 - **Limits.** Unrefined air only (refined runs keep the staircase). Solid elements only. The records
   are made from the structure as built and are not remade as it moves, so this is for walls and
-  slabs before they fail. A cell the terrain's cut cells hold is the terrain's.
+  slabs before they fail. A cell the terrain's cut cells hold is the terrain's: neither a structure
+  cut cell nor one that takes a difference. The ground below them and rigid blocks are solid to the
+  structure's cut cells as to the air.
 - **On the lattice** a structure has no cut cells, and the option leaves the air as it is, bit for
   bit (specialised for cut cells with nothing to do, fast math rounded the same sums differently).
 
