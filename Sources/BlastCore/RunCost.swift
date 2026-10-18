@@ -314,7 +314,7 @@ public enum RunCost {
     {
         guard configuration.mappedCharge, configuration.airModel != .dissociating,
             configuration.afterburnLimit == nil, configuration.gravity == nil, configuration.mixing == nil,
-            configuration.radiativeCooling == nil, scenario.deflagration == nil
+            scenario.deflagration == nil
         else { return 0 }
         let charges = [scenario.charge] + (scenario.additionalCharges ?? [])
         var solved: Set<SIMD2<Float>> = []

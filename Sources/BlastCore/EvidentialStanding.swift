@@ -2192,8 +2192,8 @@ struct StandingScene {
                 StandingEvidence(
                     "Wu et al.'s slabs with steel in both faces",
                     "Unsafe side under 0.2–0.8 kg, too stiff: 40–70% of the measured peak (S5 and D5 alike with "
-                        + "afterburning and hot air); 0.91 and 1.18–1.19 times under 1.6 kg on today's build, two "
-                        + "shots on one mesh, either air",
+                        + "afterburning and hot air); 0.90 and 1.19 times under 1.6 kg on the mapped start, the open "
+                        + "faces at the clearance rule, two shots on one mesh, in all three roundings",
                     "validation.md#slabs-with-steel-in-both-faces"))
             resolution.append(
                 String(
@@ -2315,8 +2315,9 @@ struct StandingScene {
         if materialClasses.contains(.glass) || materialClasses.contains(.masonry) {
             level = .illustrative
             summary +=
-                " Masonry breaks into too few pieces: brick walls fall as one column, lying 1.0–1.4 m too far out in "
-                + "the open, and are thrown half as far as measured in a shock tube. Glass breaking up has no comparison."
+                " Masonry breaks into too few pieces: brick walls fall as one column, lying 1.0–1.5 m too far out in "
+                + "the open (the safe side for their reach) and thrown half as far as measured in a shock tube (the "
+                + "unsafe side). Glass breaking up has no comparison."
         }
         return result(
             .structuralDamage, level, summary, evidence: evidence,
