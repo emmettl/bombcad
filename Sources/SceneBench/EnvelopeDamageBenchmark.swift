@@ -422,7 +422,8 @@ enum EnvelopeDamageBenchmark {
         // The envelope twin: the same scene with each building exposure-only, its glass solid.
         var scene = detailed
         if envelope { for object in detailed.structuralObjects { try scene.useEnvelope(id: object.id) } }
-        var config = SolverConfiguration.recommended
+        // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+        var config = SolverConfiguration.recommended.balloonStart
         config.airSleepThreshold = 0
         config.airSleepCrossings = 0
         let start = ProcessInfo.processInfo.systemUptime

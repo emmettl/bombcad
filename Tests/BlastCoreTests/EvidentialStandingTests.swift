@@ -124,7 +124,8 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
     @Test func samplesTakeOnlyTheBandsThatFitThem() throws {
         func scene(_ preset: ScenarioPreset) -> SceneStanding {
             var inputs = StandingInputs(
-                scenario: preset.scenario, cellSize: 0.25, configuration: .recommended)
+                // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+                scenario: preset.scenario, cellSize: 0.25, configuration: .recommended.balloonStart)
             inputs.thermal = ThermalSpec()
             inputs.cloud = CloudSpec()
             return SceneStanding(inputs)

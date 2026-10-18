@@ -60,7 +60,9 @@ struct StandingRunTests {
         #expect(inputs.cellSize == 0.5)
         #expect(inputs.configuration.afterburning && inputs.configuration.airModel == .thermallyPerfect)
         #expect(inputs.configuration.refinement == 2 && inputs.configuration.refinementLevels == 2)
-        #expect(Set(inputs.options) == [.afterburning, .hotAir, .twoLevelRefinement])
+        // Afterburning starts from the mapped one-dimensional burst since 18 October 2026.
+        #expect(inputs.configuration.mappedCharge)
+        #expect(Set(inputs.options) == [.afterburning, .hotAir, .twoLevelRefinement, .mappedCharge])
     }
 
     @Test("A headless run carries its standing into its summary, JSON, USD scene and volumes")

@@ -80,7 +80,8 @@ struct EnvelopePaneCellTests {
                 panes: [Box(min: SIMD3(6.25, 7.097, 1), max: SIMD3(7.75, 7.103, 2.25))]),
             name: "Room")
         for levels in [0, 1, 2] {
-            var config = SolverConfiguration.recommended
+            // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+            var config = SolverConfiguration.recommended.balloonStart
             config.airSleepThreshold = 0
             config.refinement = levels == 0 ? 1 : 2
             config.refinementLevels = max(levels, 1)

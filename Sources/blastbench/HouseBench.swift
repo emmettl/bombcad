@@ -25,7 +25,8 @@ func runHouse(device: MTLDevice) throws {
         scenario.structure?.material.erosionOpening = opening
     }
     let solver = try BlastSolver(
-        device: device, scenario: scenario, cellSize: cell, configuration: .recommended)
+        // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+        device: device, scenario: scenario, cellSize: cell, configuration: .recommended.balloonStart)
     guard let model = scenario.structure else { return }
     var rest: [SIMD3<Float>] = []
     func report(_ label: String) {

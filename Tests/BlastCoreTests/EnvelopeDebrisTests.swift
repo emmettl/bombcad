@@ -84,3 +84,34 @@ struct EnvelopeDebrisTests {
         #expect(open.governedBy == "overpressure (K40)")
     }
 }
+
+@Suite("Concrete judged either way")
+struct ConcreteEitherWayTests {
+    @Test(
+        "A concrete wall pushed out from inside is judged as the same wall pushed in, and throws its debris outward"
+    )
+    func outward() throws {
+        // 2 ms of 2 MPa on a 0.15 m wall 2 m square held all round: well past failing.
+        let pulse = (0..<300).map { $0 < 20 ? 2e6 : 0.0 }
+        let zero = Array(repeating: 0.0, count: pulse.count)
+        func load(outer: [Double], inner: [Double]) -> EnvelopeComponentLoad {
+            EnvelopeComponentLoad(
+                id: "wall", owner: UUID(), kind: .wall,
+                region: Box(min: SIMD3(0, 0, 0), max: SIMD3(0.15, 2, 2)),
+                axis: 0, binS: 1e-4, outerPa: outer, innerPa: inner, supportEdges: [true, true, true, true],
+                outward: -1)
+        }
+        let construction = EnvelopeConstruction(
+            objectID: UUID(), walls: .reinforcedConcrete, wallThicknessM: 0.15, source: .user, detail: "test",
+            barsInBothFaces: true)
+        let pushedIn = try #require(
+            EnvelopeDamageAssessment.assess(load(outer: pulse, inner: zero), construction: construction))
+        let pushedOut = try #require(
+            EnvelopeDamageAssessment.assess(load(outer: zero, inner: pulse), construction: construction))
+        #expect(pushedIn.levels.upperBound == .failed)
+        #expect(pushedOut.levels == pushedIn.levels)
+        let launchIn = try #require(pushedIn.launch)
+        let launchOut = try #require(pushedOut.launch)
+        #expect(launchIn.speedMS > 0 && abs(launchOut.speedMS + launchIn.speedMS) < 1e-9)
+    }
+}

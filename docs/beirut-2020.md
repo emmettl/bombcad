@@ -8,6 +8,25 @@ reports what the model and the sources say; it does not judge the event.
 
 ![The blast 1.5 s after the explosion, over the 14,169 map buildings within 2.5 km](beirut-2020.png)
 
+## What holds and what does not
+
+At 0.5 kt on 4 m cells, against the surveys below:
+
+- **Holds: the shock's arrival.** Over the city's own geometry the model finds Rigby's yield
+  again from his 30 observers; from 400 m out 25 of 27 arrive within 10% of the observed time.
+- **Holds: the glass's far edge, and its grid.** Beyond 1.5 km the share of façades blown out is
+  GEER's W3 (0.07 and 0.02 against 0.09 and 0.02), and the glass has converged by 4 m.
+- **Does not: the peaks.** They are 0.68–0.78 of Kingery–Bulmash and still rising on finer cells
+  (0.78–0.83 at 3 m); refinement gives 0.80–0.86 on the line, but a disturbance ahead of its
+  shock loads the façades early.
+- **Does not: the glass close in, or its total.** The model's façades break together: inside
+  1.5 km every side has some pane broken (GEER 0.35–0.84) and inside 1.25 km nearly all are blown
+  out (GEER 0.17–0.77). It breaks 3.8 times the army's count of broken glass, on a glazed share
+  that is assumed.
+- **Does not: the structure.** It has not converged with the grid, and it damages less than GEER
+  found: at 0.5–0.75 km 8 of 293 stone buildings fall where 7 of GEER's 13 partly collapsed, and
+  concrete is barely touched beyond 750 m. Every building is one of two typical walls, not Beirut's frames with block infill.
+
 ## The scene
 
 `scenebench district-scene` builds it from open data (the files are not in the repository; their
@@ -32,7 +51,9 @@ unreinforced masonry, for the old sandstone houses.
 scenebench district-scene --osm beirut-port-buildings.osm --dem Copernicus_DSM_COG_10_N33_00_E035_00_DEM.tif --ground-radius 100 --sea 1 --heights GHS_BUILT_H_ANBH_E2018_GLOBE_R2023A_4326_3ss_V1_0_R6_C22.tif --centre 35.519042,33.901425 --radius 2500 --dx 4 --height 320 --mass 500000 --out beirut.json
 ```
 
-`beirut.json` opens in the app and runs headless:
+In the app, **File ▸ New District…** lays out the same from the same files, with the faces at
+the open-face rule ([Using the app](using-the-app.md#a-district-from-a-map)). `beirut.json` opens in
+the app and runs headless:
 
 ```bash
 BombCAD run beirut.json --resolution 4 --ground saturated --duration 8 --envelope-window 0.5 --envelope-damage damage.json
@@ -134,7 +155,7 @@ commercial: large 6–10 mm panes), each breaking with E1300's probability, so a
 degrees (building-envelopes.md). The mixes are assumptions; no survey of Beirut's glazing by
 building was found. By the map's mixes, on the same 4 m runs:
 
-| Distance | Panes broken, 0.2 / 0.5 / 1.1 kt | Sides with some pane broken, 0.2 / 0.5 / 1.1 kt | GEER |
+| Distance | Panes broken, 0.2 / 0.5 / 1.1 kt | Sides with some pane broken, 0.2 / 0.5 / 1.1 kt | GEER W1 or worse |
 |---|---|---|---|
 | 0.5–0.75 km | 1.00 / 1.00 / 1.00 | 1.00 / 1.00 / 1.00 | 0.84 |
 | 0.75–1 km | 0.95 / 1.00 / 1.00 | 1.00 / 1.00 / 1.00 | 0.62 |
@@ -145,17 +166,58 @@ building was found. By the map's mixes, on the same 4 m runs:
 | 2–2.5 km | 0.02 / 0.11 / 0.33 | 0.24 / 0.63 / 0.89 | 0.26 |
 | 2.5–3 km | 0.00 / 0.01 / 0.05 | 0.03 / 0.21 / 0.57 | 0.11 |
 
-- **The tail is there now.** Beyond 2 km some panes break, as some did; but a side holds dozens
+GEER's W1 is "some windows broken, frames intact", so a side with some pane broken is the
+model's W1 or worse: the middle column is the like-for-like one, not the panes broken. GEER's W3
+is "nearly complete blow-out of windows, doors and frames"; against it, a side counted as blown
+out when nine in ten of its panes are expected broken (the model has no frames to blow out):
+
+| Distance | Sides blown out, 0.2 / 0.5 / 1.1 kt | GEER W3 |
+|---|---|---|
+| 0.5–0.75 km | 0.99 / 1.00 / 1.00 | 0.77 |
+| 0.75–1 km | 0.82 / 1.00 / 1.00 | 0.28 |
+| 1–1.25 km | 0.13 / 0.96 / 1.00 | 0.17 |
+| 1.25–1.5 km | 0.01 / 0.59 / 0.99 | 0.18 |
+| 1.5–1.75 km | 0.00 / 0.07 / 0.74 | 0.09 |
+| 1.75–2 km | 0.00 / 0.02 / 0.40 | 0.02 |
+| 2–2.5 km | 0.00 / 0.00 / 0.06 | 0.15 |
+| 2.5–3 km | 0.00 / 0.00 / 0.00 | 0.04 |
+
+- **The model's façades break together; GEER's do not.** At 0.5 kt every side inside 1.5 km has
+  some pane broken and nearly every side inside 1.25 km is blown out, where GEER found 117 of its
+  750 façades at 0.5–0.75 km with no visible damage and W3 falling to 0.17–0.28 by 1 km. Beyond
+  1.5 km the 0.5 kt blow-outs (0.07, 0.02) are GEER's (0.09, 0.02); the 2–2.5 km band's 0.15 W3 has
+  nothing in the model at any yield. Within a band the model's sides differ only by their mix and
+  their shielding; a street's differ also by glass type (toughened, laminated, filmed), by open
+  windows and shutters, and by repair in the two months before the photographs.
+- **The tail is there.** Beyond 2 km some panes break, as some did; but a side holds dozens
   of panes, so the chance that one breaks stays near one far out, above GEER's share of façades
-  damaged at every yield. GEER's "damaged" is what a photograph two months on still shows.
+  damaged at every yield.
 - **The panes broken follow the pane's size more than its thickness.** At 0.5 kt, all four mixes
   on the same loads: 1.25–1.5 km breaks 0.66 of the older low-rise mix's small panes, 0.88 of the
   apartments' and 0.98 of the large commercial panes; 2–2.5 km, 0.07, 0.11 and 0.24.
-- **The total is several times the army's count.** The Lebanese army counted about 550,000 m² of
-  glass and 140,000 m² of glass façades broken in the 85,000 units it surveyed (reported in the
-  press). Within the 5 km box the mixes hold 7.3 million m² of glass, of which 1.35, 2.6 and 3.7
-  million m² break at 0.2, 0.5 and 1.1 kt: two to five times the count, which surveyed only the
-  units reported.
+
+**The area of glass broken** is the glass assumed times the share of it that breaks, and the two
+are separate. Inside 3 km (the surveys' reach: 13,596 map buildings, 12,996 of them taken as
+apartments) the mixes assume 6.85 million m² of glass, 82% of it the apartments' 0.25 of façade;
+0.20, 0.38 and 0.54 of it breaks at 0.2, 0.5 and 1.1 kt, 1.35, 2.6 and 3.7 million m².
+
+| Inside 3 km, 0.5 kt | Buildings | Glass assumed | Broken | Share broken |
+|---|---|---|---|---|
+| Apartments (0.25 glazed) | 12,996 | 5.62 M m² | 2.03 M m² | 0.36 |
+| Tall or commercial (0.4) | 434 | 1.18 M m² | 0.56 M m² | 0.48 |
+| Older low-rise (0.15) | 99 | 0.03 M m² | 0.01 M m² | 0.51 |
+| Industrial (0.05) | 67 | 0.03 M m² | 0.004 M m² | 0.17 |
+
+The Lebanese army recorded about 550,000 m² of glass and 140,000 m² of glass façades broken in
+the 85,000 damaged units it surveyed (60,818 of them homes; reported in the press): a count of
+broken glass in surveyed units, not of glass replaced, and how it was measured is not reported.
+UN-Habitat puts 77,000 damaged flats in 10,000 buildings within 3 km, so the survey's reach is
+about the model's. The model breaks 3.8 times its 0.69 million m² at 0.5 kt. Broken area is in
+proportion to the glazed share, which no source gives for Beirut (it is an assumption, 0.05–0.4
+by type); to match the army with the model's breakage every mix would need a quarter of its glazed
+share (the apartments' 0.07 of façade, the commercial 0.11), below any plausible window. Both terms are high: the breakage, as GEER's W3
+shows inside 1.5 km, and most likely the glazed share as well; the army's count may be
+incomplete. The total cannot separate them.
 
 ### What cell size the glass and the damage need
 
@@ -178,9 +240,14 @@ The 1 km box (2 km square, 320 m top, 0.5 kt) on three grids, uniform cells:
   cells cut them (4 m on 4 m cells, 8 m on 8 m), and a masonry strip's resistance falls with the
   square of its height: the coarse grids' walls were the weak ones, and stone failed in 102
   buildings at 0.5–0.75 km on 4 m cells where the storey's span gives 7.
-- Refinement (8 m refined twice to 2 m at the shock, the façades held refined while loaded) gave
-  0.80–0.86 of Kingery–Bulmash on the line to 900 m, but its finest pool filled within 14 GB and
-  its façades' results cannot be trusted; it is left to a larger Mac.
+- **Refinement** (8 m refined twice to 2 m at the shock) gives 0.80–0.86 of Kingery–Bulmash on
+  the line to 900 m, more than 3 m cells, in 29 minutes on the mini (43 with the façades held
+  refined while loaded, which changes nothing here). But its finest pool fills within 14 GB, and
+  gauges 0.5–1 km out see something arrive at 0.78–0.84 s whatever their distance, ahead of the
+  shock (1.0–2.3 s there); a smaller scene shows it with room left in the pool, so it is the
+  refinement's own and not yet found. Its façades are loaded early (concrete moderate at 0.75–1 km in 312
+  buildings, where 3 m cells have 11), so its damage cannot be used. It is left to the refinement
+  work and a larger Mac.
 
 ### Structure against the building survey (GEER, 2021)
 
@@ -216,8 +283,9 @@ The model damages the buildings less than the survey found, and nearer the charg
   and the port as it now stands. Heights are GHSL's 90 m cell means for all but 276 buildings.
 - **A rigid district.** Envelopes stay whole in the air: no glass opening, no wall falling, no
   shielding changing as the buildings break. The silos stand.
-- **Typical glass and construction.** One pane size and thickness for every façade; walls of
-  either 0.2 m concrete or 0.5 m masonry for every building. GEER's survey shows the mix.
+- **Assumed glass and typical construction.** Each building's glass is one of four assumed mixes
+  by its height and tag, all annealed; walls are either 0.2 m concrete or 0.5 m masonry for every
+  building. GEER's survey shows the mix.
 - **The ground.** A bare-earth estimate from a surface model; the charge on saturated ground
   gives the air 0.9 of it; the crater is not in the air.
 - **Peaks at 4 m, and the structure with them.** The peaks are about three quarters of

@@ -170,7 +170,8 @@ func runMendonca(device: MTLDevice) throws {
                 // have been since 17 October 2026 (the prediction took it as the run started).
                 if flag("settle") { solver.configuration.settlesStructures = true }
                 if flag("recommended") {
-                    let recommended = SolverConfiguration.recommended
+                    // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+                    let recommended = SolverConfiguration.recommended.balloonStart
                     solver.configuration.airModel = recommended.airModel
                     solver.configuration.afterburning = recommended.afterburning
                     solver.configuration.openFaces = recommended.openFaces
