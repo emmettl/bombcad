@@ -5489,6 +5489,18 @@ do {
     case "mapped-cost":
         // The fine one-dimensional start's own time (CPU), by charge and cell: `--masses 1,10,100
         // --dx 0.125,0.25,0.5 --cells 64`.
+        // `--z 4,6,8`: the one-dimensional solution out to these scaled distances instead, which its
+        // cost depends on alone.
+        if let reaches = option("z") {
+            for z in reaches.split(separator: ",").compactMap({ Float($0) }) {
+                let cost = BlastSolver.mappedStartCost(
+                    mass: 10, cellSize: z * cbrt(10) / 64, cells: 64, configuration: .recommended)
+                print(
+                    "Z \(z): \(String(format: "%.2f", cost.seconds)) s, \(cost.cells) cells, \(cost.steps) steps"
+                )
+            }
+            break
+        }
         let masses = (option("masses") ?? "1,10,100,1000").split(separator: ",").compactMap { Float($0) }
         let cells = (option("dx") ?? "0.125,0.25,0.5,1").split(separator: ",").compactMap { Float($0) }
         let reach = option("cells").flatMap { Float($0) } ?? 64

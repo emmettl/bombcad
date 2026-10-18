@@ -133,6 +133,10 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// mapped (if nothing is nearer). 64 brought the incident peaks to 99–117% of Kingery–Bulmash
     /// on 0.25 m cells, where 16 left them at 67–89%.
     public var mappedChargeCells: Float = 64
+    /// The furthest, in scaled distance (m/kg^(1/3)), a mapped charge's blast is solved in one
+    /// dimension: past it the grid carries the wave well enough, and the one-dimensional solution's
+    /// cost, which grows as the square of its reach in charge radii, stays within seconds.
+    public var mappedChargeScaledReach: Float = 6
     /// With afterburning, whether the products burn in the one-dimensional solution, or are carried
     /// unburnt to burn on the grid once mapped, as the balloon's do.
     public var mappedChargeBurns = true

@@ -510,7 +510,9 @@ extension BlastSolver {
         var nearest = Float.infinity
         if shaped, let terrain = scenario.terrain {
             // The surface, sampled a quarter cell apart within the furthest the blast may be mapped.
-            let reach = configuration.mappedChargeCells * dx
+            let reach = min(
+                configuration.mappedChargeCells * dx,
+                configuration.mappedChargeScaledReach * cbrt(scenario.charge.mass))
             let step = 0.25 * dx
             let count = Int((2 * reach / step).rounded(.up))
             for b in 0...count {
@@ -534,7 +536,9 @@ extension BlastSolver {
         for (face, distance) in faces where !(face == .zMin && onGround) {
             nearest = min(nearest, distance)
         }
-        let radius = min(0.8 * nearest, configuration.mappedChargeCells * dx)
+        let radius = min(
+            0.8 * nearest, configuration.mappedChargeCells * dx,
+            configuration.mappedChargeScaledReach * cbrt(scenario.charge.mass))
         return radius >= 3 * dx ? (radius, onGround) : nil
     }
 

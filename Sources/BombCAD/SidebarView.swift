@@ -355,7 +355,8 @@ struct SidebarView: View {
                         "Solves a lone charge's first moments on a fine radial grid and maps them onto the "
                             + "air once the shock has spread as far as it can before meeting anything, instead "
                             + "of starting from a ball of hot gas a few cells across. Peaks close in come within "
-                            + "about a fifth of Kingery-Bulmash where the ball leaves them at half. Off, as "
+                            + "about a sixth of Kingery-Bulmash for charges of 10 kg and more, where the ball leaves "
+                            + "them a third to a half low. Off, as "
                             + "before 18 October 2026.")
             }
             if !model.settings.scenario.structuralObjects.isEmpty {

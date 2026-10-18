@@ -556,9 +556,14 @@ public enum StandingTable {
                 document: "air-blast-model.md#refining-near-the-shock")
         case .mappedCharge:
             return Entry(
-                title: "Finely resolved start", affects: air, limit: nil,
-                note: "The charge mapped onto the grid from a fine one-dimensional burst: the same energy as "
-                    + "the balloon within 3%.",
+                title: "Finely resolved start", affects: air + structure + [.envelopeExposure], limit: nil,
+                note:
+                    "The charge mapped onto the grid from a fine one-dimensional burst, as runs start since 18 "
+                    + "October 2026: from 1 m/kg^(1/3), incident peaks 83–117% of Kingery–Bulmash for 10 and 100 kg "
+                    + "on 0.25–0.5 m cells and 63–99% for 1 kg, where the balloon leaves 32–84% and 11–47%, its fireball's "
+                    + "mixing fitted once on 10 kg; impulses within 5–15%. The comparisons of structures, envelopes "
+                    + "and rooms were "
+                    + "run on the balloon start and are not yet run again on this one.",
                 document: "air-blast-model.md#a-finely-resolved-start")
         case .structureFixedInAir:
             return Entry(
@@ -1075,6 +1080,10 @@ public enum StandingTable {
         "SolverConfiguration.afterburnEnergy": .input,
         "SolverConfiguration.afterburnTime": .option([.afterburning]),
         "SolverConfiguration.mappedCharge": .option([.mappedCharge]),
+        "SolverConfiguration.mappedChargeCells": .numerical,
+        "SolverConfiguration.mappedChargeScaledReach": .numerical,
+        "SolverConfiguration.mappedChargeBurns": .numerical,
+        "SolverConfiguration.mappedChargeMixing": .numerical,
         "SolverConfiguration.airSleepThreshold": .numerical,
         "SolverConfiguration.airSleepCrossings": .numerical,
         "SolverConfiguration.debrisReach": .numerical,

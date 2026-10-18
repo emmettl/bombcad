@@ -298,10 +298,42 @@ public enum RunCost {
         let seconds =
             (coarseUpdates + fineUpdates * fineUpdateCost) * updateCost / cellUpdatesPerSecond
             + elementUpdates / elementUpdatesPerSecond + overhead
+            + mappedStartSeconds(scenario, cellSize: cellSize, configuration: configuration)
         return RunCostEstimate(
             cells: grid.cellCount, steps: steps, coarseUpdates: coarseUpdates, fineUpdates: fineUpdates,
             elementUpdates: elementUpdates, memory: memory, seconds: seconds, refinedShare: refinedShare,
             peakRefinedCells: peakRefined, refinementMemory: pools)
+    }
+
+    /// The fine one-dimensional start's own time, s, on the CPU before the run: as far out as its
+    /// caps allow (the cells, the scaled reach and 0.8 of the way to the domain's nearest open or
+    /// reflecting face; the blocks, which may hold it closer, are not looked at, so it errs high).
+    static func mappedStartSeconds(_ scenario: Scenario, cellSize: Float, configuration: SolverConfiguration)
+        -> Double
+    {
+        guard configuration.mappedCharge, configuration.airModel != .dissociating,
+            configuration.afterburnLimit == nil, configuration.gravity == nil, configuration.mixing == nil,
+            configuration.radiativeCooling == nil, scenario.deflagration == nil,
+            (scenario.additionalCharges ?? []).isEmpty, scenario.charge.mass > 0
+        else { return 0 }
+        let c = scenario.charge.position
+        let size = scenario.domainSize
+        var nearest = min(c.x, size.x - c.x, c.y, size.y - c.y, size.z - c.z)
+        if c.z > 0.5 * cellSize { nearest = min(nearest, c.z) }
+        let scale = cbrt(scenario.charge.mass)
+        let radius = min(
+            0.8 * nearest, configuration.mappedChargeCells * cellSize,
+            configuration.mappedChargeScaledReach * scale)
+        guard radius >= 3 * cellSize else { return 0 }
+        return mappedStartSeconds(scaledReach: Double(radius / scale))
+    }
+
+    /// The one-dimensional solution's time, s, out to `z` m/kg^(1/3), whatever the charge (its grid is
+    /// a twentieth of the charge's radius, at least 2,000 cells): 8.2 s to 4, 19.6 to 6, 38.8 to 8 on
+    /// a quiet M4 Max (`blastbench mapped-cost --z 4,6,8`, 18 October 2026). Within 2,000 cells the
+    /// steps, and so the time, grow as the reach; beyond, as its square.
+    public static func mappedStartSeconds(scaledReach z: Double) -> Double {
+        z <= 4 ? 2.05 * z : 0.43 * pow(z, 2.17)
     }
 
     /// The blast's arrival time (s) and incident overpressure (Pa) at `range` from a surface burst
