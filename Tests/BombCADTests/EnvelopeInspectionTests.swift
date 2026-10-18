@@ -165,7 +165,8 @@ struct EnvelopeInspectionTests {
         #expect(throws: ProjectFileError.self) {
             try HeadlessRun.Options.parse([input.path, "--envelope-results", surfaces.path])
         }
-        // A window from arrival: each history starts where its air first moved.
+        // A window from arrival: each history starts where the blast reached it (500 Pa); one it
+        // has not reached keeps no bins.
         let later = folder.appending(path: "from-arrival.json")
         let windowed = try HeadlessRun.Options.parse([
             input.path, "--envelope-histories", later.path, "--envelope-window", "0.004",
@@ -174,7 +175,8 @@ struct EnvelopeInspectionTests {
         _ = try await HeadlessRun.execute(windowed)
         let arrived = try JSONDecoder().decode(
             [EnvelopeComponentHistory].self, from: Data(contentsOf: later))
-        #expect(arrived.count == 4 && arrived.allSatisfy { $0.windowStartS != nil })
+        #expect(arrived.count == 4 && arrived.contains { $0.windowStartS != nil })
+        #expect(arrived.allSatisfy { $0.windowStartS != nil || $0.outerImpulsePaS.isEmpty })
         #expect(arrived.allSatisfy { $0.outerImpulsePaS.count <= 41 })
         #expect(throws: ProjectFileError.self) {
             try HeadlessRun.Options.parse([

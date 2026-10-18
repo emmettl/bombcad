@@ -231,7 +231,11 @@ The 1 km box (2 km square, 320 m top, 0.5 kt) on three grids, uniform cells:
 | Stone heavy, 0.75–1 km (of about 660) | 41 | 132 | 176 |
 | Concrete moderate, 0.5–0.75 km | 33 | 96 | 139 |
 
-- **The glass has converged by 4 m**: 3 m moves the panes broken by at most 0.03. The peaks are
+- **The glass has converged by 4 m**: 3 m moves the panes broken by at most 0.03. These runs
+  opened each component's 0.5 s window when its air woke, a tile ahead of the shock: about 0.13 s
+  before the load on 3 m cells, 0.17–0.2 s on 4 m, and 0.3–0.37 s on 8 m, which kept as little as
+  0.05 s of some loads at 1–1.25 km; part of the 8 m column's lower breakage is that. Windows now
+  open on 500 Pa at the component (building-envelopes.md). The peaks are
   still rising (by a tenth from 4 to 3 m), but the glass is past the edge of breaking where most
   of it stands.
 - **The structure has not**: each grid finer cracks more stone and concrete, as the peaks rise;
