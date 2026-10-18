@@ -3849,6 +3849,33 @@ Laminated panes are compared with three open sets of tests in
 - **Hooper's 8 silicone-bonded panes.** All pull out of their joints, as measured, at 0.9–1.5 of
   his speeds, but at about 73 mm where his held to 140–209 mm.
 
+**Meshed as shells** ([laminated glass](shell-model.md#laminated-glass), `blastbench laminated`,
+the same panes and loads, the glass at E1300's median strength, beside the envelope's single
+degree of freedom on each):
+
+| | Shells | Envelope (single degree of freedom) | Measured |
+|---|---|---|---|
+| Osnes: cracked as measured | 10 of 15 (A-04 to C-01 crack, which held) | 7 of 15 | 7 cracked |
+| Osnes: when it cracks | 0.69–0.94 ms | 0.61–0.85 ms | 0.42–1.08 ms |
+| Osnes: the cracked panes' deflection | 0.80–1.28 of measured, none torn | 0.67–0.89 | 70–122 mm, none torn |
+| Hooper 1–6: leave their silicone | 6.4–12.6 ms, all | 3.7–5.1 ms, all | 7–12 ms or on the rebound, all |
+| Hooper 1–6: their speed then | 0.87–1.24 of measured | 1.15–1.48 | 17–29 m/s |
+| Hooper 1–6: their deflection then | 0.57–1.11 of measured | | 140–207 mm |
+| Hooper 7–8 (3.3–3.6 m, 6 mm plies) | leave on cracking, 3.4–3.8 ms, 17–19 m/s | 6.5 and 17.4 ms | 11 and 8.5 ms, 24 and 31 m/s |
+
+- **Cracking:** the shells sort ten of Osnes's fifteen as measured at E1300's median, the
+  envelope seven; the envelope needs 69 MPa to sort fourteen. The shells crack where the plate's
+  stress first passes the ramp's strength, the envelope by the whole pane's flaw model.
+- **Cracked:** held by the interlayer, the shells' cracked panes go about as far as measured,
+  further than the envelope's do; none tears, as none did.
+- **Pulled out:** the shells leave their silicone at about the measured times and speeds, where the
+  envelope's leave in half the time; they tear some of their interlayer at the edges as they go
+  (panes 1, 3 and 4), which the tests did not.
+- **The large panes** leave as soon as they crack, at a sixth of the measured deflection: once
+  fragmented, nearly flat, a membrane needs far more tension than the silicone holds. Hooper's
+  panes held 5–7 ms longer, their fragments interlocking and the cracks taking time to run, which
+  fragments carrying nothing and spreading at once leave out.
+
 ### What this does and does not show
 
 It shows that the app's glass breaks when it should under a strong long-duration wave, within

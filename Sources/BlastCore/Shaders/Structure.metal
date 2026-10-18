@@ -290,6 +290,7 @@ struct MaterialParameters {
     float rateConstant;    // Cowper and Symonds's D (1/s), 0 for none
     float rateExponent;    // 1 / q
     float rateTestFactor;  // 1 + (tensile test's rate / D)^(1/q)
+    uint fragments;        // 1: laminated glass, whose pane fragments whole once it cracks
 };
 
 constant uint maxMaterials = 8;

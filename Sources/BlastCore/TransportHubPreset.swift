@@ -9,8 +9,8 @@ import simd
 ///   members, as the shells' lines lie along the axes; a Warren truss's diagonals would not),
 ///   300 × 12.5 mm chords and 200 × 10 mm posts at 3 m;
 /// - 356 UB purlins at 3 m between the trusses' top chords, carrying 10 mm toughened glass over the
-///   whole roof (the structure model's glass is a brittle solid; laminated glass is not built in
-///   it);
+///   whole roof, or with `laminatedRoof`, laminated panes 3 m square (6 + 1.52 mm PVB + 6 mm,
+///   `StructureMaterial.laminatedGlass`), each of which fragments on its own;
 /// - its ends and sides open to the tracks and platforms.
 /// Beside it stands the concourse, 24 × 20 m and 8 m high, as an envelope judged by envelope
 /// damage: concrete walls, a glazed front of sixteen 3 × 3 m laminated panes and twelve 3 × 2 m
@@ -20,6 +20,11 @@ import simd
 /// of both.
 extension ScenarioPreset {
     static func transportHubScenario(title: String) -> Scenario {
+        transportHub(title: title)
+    }
+
+    /// The transport hub (`transportHubScenario`), its shed's roof laminated if `laminatedRoof`.
+    public static func transportHub(title: String, laminatedRoof: Bool = false) -> Scenario {
         let (span, bay, bays, eaves, deep): (Float, Float, Int, Float, Float) = (36, 12, 4, 12, 3)
         let (x0, y0): (Float, Float) = (36, 40)
         let (x1, y1) = (x0 + span, y0 + Float(bays) * bay)
@@ -70,8 +75,21 @@ extension ScenarioPreset {
                 Box(min: SIMD3(x - dx, y0, top - dz), max: SIMD3(x + dx, y1, top + dz)),
                 purlin.equivalent(width: min(purlin.rectangleWidth, 0.24)))
         }
-        // The glass over the whole roof, on the purlins' and chords' line.
-        add(Box(min: SIMD3(x0, y0, top - 0.005), max: SIMD3(x1, y1, top + 0.005)), .toughenedGlass)
+        // The glass over the whole roof, on the purlins' and chords' line: toughened, or laminated
+        // panes 3 m square between the purlins.
+        if laminatedRoof {
+            let laminate = LaminatedGlass(
+                plies: [0.006, 0.006], interlayer: .pvb, interlayerThickness: 0.00152)
+            let half = Float(laminate.thickness) / 2
+            let pane = StructureMaterial.laminatedGlass(laminate, a: 3, b: 3)
+            for x in stride(from: x0, to: x1 - 0.01, by: 3) {
+                for y in stride(from: y0, to: y1 - 0.01, by: 3) {
+                    add(Box(min: SIMD3(x, y, top - half), max: SIMD3(x + 3, y + 3, top + half)), pane)
+                }
+            }
+        } else {
+            add(Box(min: SIMD3(x0, y0, top - 0.005), max: SIMD3(x1, y1, top + 0.005)), .toughenedGlass)
+        }
 
         var structure = StructureModel(
             solids: solids, material: column.equivalent(), elementSize: 0.5, fixedBase: true)

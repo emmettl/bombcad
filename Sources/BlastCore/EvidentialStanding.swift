@@ -1187,6 +1187,7 @@ public enum StandingTable {
         "StructureMaterial.timber": .input,
         "StructureMaterial.localBuckling": .input,
         "StructureMaterial.rateLaw": .input,
+        "StructureMaterial.interlayerThickness": .input,
         // Connections.
         "Anchorage.normalStiffness": .input,
         "Anchorage.shearStiffness": .input,
@@ -2060,6 +2061,21 @@ struct StandingScene {
                     "A glass pane at 3 m", "Breaks under 1 kg and survives 0.5 g",
                     "validation.md#verification-against-theory"))
             parts.append("glass a brittle concrete, checked only to break and survive")
+            let laminated = structures.contains { model in
+                ([model.material] + model.solidMaterial.compactMap { $0 }).contains {
+                    $0.interlayerThickness != nil
+                }
+            }
+            if laminated {
+                evidence.append(
+                    StandingEvidence(
+                        "Laminated panes as shells (Osnes et al., 2019; Hooper, 2011)",
+                        "Ten of fifteen shock-tube panes crack or hold as measured at E1300's median strength, "
+                            + "the cracked ones going 0.80–1.28 of the measured deflection untorn; six of eight "
+                            + "bonded panes leave their silicone at 0.87–1.24 of the measured speed, the two "
+                            + "largest as soon as they crack",
+                        "validation.md#laminated-glass"))
+            }
         }
         if classes.contains(.timber) {
             evidence.append(

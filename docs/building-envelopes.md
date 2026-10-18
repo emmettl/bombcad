@@ -987,6 +987,9 @@ would settle it.
 
 ## Laminated glass
 
+The structure model meshes laminated panes as shells by the same data
+([laminated glass](shell-model.md#laminated-glass)).
+
 Since 17 October 2026 a construction can glaze its windows with laminated glass
 (`EnvelopeConstruction.laminate`, a `LaminatedGlass`: two plies, a PVB or ionoplast interlayer, and
 what its frame holds). Annealed stays the default. `LaminatedGlass.facade` is 6 mm + 1.52 mm PVB +

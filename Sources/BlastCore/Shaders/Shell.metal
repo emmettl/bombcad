@@ -94,7 +94,9 @@ struct ShellUniforms {
     uint linkEntries;
     uint pairs;             // connections between two parts (`Anchorage.betweenParts`)
     uint contactEncoded;    // 1: contact's forces were found this substep, when it is on
+    uint fragmentPanes;     // panes of laminated glass that can fragment (the solids), or 0
 };
+
 
 // Gravity's pull per unit mass, when it has been turned (`turnedGravity`).
 float3 gravityPull(constant ShellUniforms &u) {
@@ -220,6 +222,7 @@ struct ShellElement {
     float a;  // side along the first axis
     float b;  // side along the second
     int shield[2];  // another member's element facing this one, below and above (-1: none)
+    uint pane;      // the solid it was made from, whose glass fragments as one (`fragments`)
 };
 
 struct ShellNode {
@@ -1117,6 +1120,18 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
                 : shellConcrete(strain, transverse, instantaneous, dt, state, m, u, el.barCount > 0, crossing,
                                 float2(a, b), punchedThrough, sheared, shear, outcome);
             storeLayer(layers[slot], state);
+            // Laminated glass: a crack open through a layer anywhere in the pane (its crack strain
+            // past 0.2%) marks it, and once the node pass has passed the mark on (deterministically,
+            // between substeps), the whole pane's glass is in fragments, which carry nothing: the
+            // interlayer holds them, as in Hooper's post-crack model.
+            if (m.fragments != 0u && u.fragmentPanes != 0u) {
+                if (max(state.crack.x, state.crack.y) > 2e-3f) {
+                    failureGate[1u + 2u * el.pane] = 1u;
+                }
+                if (failureGate[2u + 2u * el.pane] != 0u) {
+                    stress = float3(0.0f);
+                }
+            }
             rateSum += state.rate;
             worstDisplay = max(worstDisplay, state.display);
             remove = remove || outcome.failed;
@@ -1144,6 +1159,57 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
             float zeta = layout.x;
             // Punched, the top bars have ripped out of their cover and hold nothing.
             if (punchedThrough && zeta > 0.0f) {
+                continue;
+            }
+            // A laminated pane's interlayer (`StructureMaterial.interlayerThickness`): an isotropic
+            // membrane at the midsurface, in plane stress by von Mises with the cracked laminate's
+            // hardening (the steel curve), its plastic strain kept in the first bar's history and
+            // its equivalent plastic strain as the first bar's; torn once that passes the curve's end.
+            if (m.fragments != 0u) {
+                device ShellBar &film = bars[((e * 4 + g) * u.barSlots + s) * 2];
+                anyBars = true;
+                if (fabs(film.plastic) > 1e8f) {
+                    continue;
+                }
+                float3 green = float3(h1m[i1] + 0.5f * dot(h1m, h1m), h2m[i2] + 0.5f * dot(h2m, h2m),
+                                      0.5f * (h1m[i2] + h2m[i1] + dot(h1m, h2m)));
+                float3 plasticStrain = float3(film.history.reversalStrain, film.history.reversalStress,
+                                              film.history.targetStrain);
+                float3 elastic = green - plasticStrain;
+                float modulus = m.steelModulus;
+                float poisson = 0.45f;
+                float scale = modulus / (1.0f - poisson * poisson);
+                float3 trial = scale * float3(elastic.x + poisson * elastic.y, elastic.y + poisson * elastic.x,
+                                              (1.0f - poisson) * elastic.z);
+                float equivalent = sqrt(max(trial.x * trial.x - trial.x * trial.y + trial.y * trial.y
+                                            + 3.0f * trial.z * trial.z, 0.0f));
+                float accumulated = film.plastic;
+                float slope;
+                float yield = steelYield(accumulated, m, slope);
+                float3 stress = trial;
+                if (equivalent > yield && equivalent > 0.0f) {
+                    float increment = (equivalent - yield) / (modulus + max(slope, 0.0f));
+                    float3 direction = float3(2.0f * trial.x - trial.y, 2.0f * trial.y - trial.x, 3.0f * trial.z)
+                        / (2.0f * equivalent);
+                    plasticStrain += increment * direction;
+                    accumulated += increment;
+                    stress = trial * (steelYield(accumulated, m, slope) / equivalent);
+                }
+                if (accumulated > m.steelStrain[m.steelPoints - 1]) {
+                    film.plastic = 1e9f;  // torn for good
+                    continue;
+                }
+                film.plastic = accumulated;
+                film.history.reversalStrain = plasticStrain.x;
+                film.history.reversalStress = plasticStrain.y;
+                film.history.targetStrain = plasticStrain.z;
+                barsIntact = float2(1.0f);
+                float area = layout[1];
+                float3 f1 = e1 + h1m;
+                float3 f2 = e2 + h2m;
+                p1 += areaWeight * area * (stress.x * f1 + stress.z * f2);
+                p2 += areaWeight * area * (stress.y * f2 + stress.z * f1);
+                normalSum += areaWeight * area * stress.xy;
                 continue;
             }
             for (uint j = 0; j < 2; ++j) {
@@ -1264,7 +1330,9 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
         float2 slip = abs(transverse) * float2(a, b);
         bool slid = (slidEverywhere.x > 0.0f && slip.x >= slipLimit(barsIntact.x > 0.0f, m, u))
             || (slidEverywhere.y > 0.0f && slip.y >= slipLimit(barsIntact.y > 0.0f, m, u));
-        remove = remove || torn || slid || (destroyedEverywhere && bare) || openEverywhere;
+        // Laminated glass is held by its interlayer: only the interlayer's tearing removes it.
+        remove = m.fragments != 0u && u.fragmentPanes != 0u
+            ? torn : remove || torn || slid || (destroyedEverywhere && bare) || openEverywhere;
 
         float tieWeight[4] = {0.5f * (1.0f - p.y), 0.5f * (1.0f + p.y), 0.5f * (1.0f - p.x), 0.5f * (1.0f + p.x)};
         for (uint q = 0; q < 4; ++q) {
@@ -2152,7 +2220,7 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
                        constant ShellUniforms &u [[buffer(6)]],
                        const device StepControl &control [[buffer(7)]],
                        const device packed_float3 *contact [[buffer(8)]],
-                       const device uint *failureGate [[buffer(9)]],
+                       device uint *failureGate [[buffer(9)]],
                        const device BeamForces *beamForces [[buffer(10)]],
                        device uchar *beamFlags [[buffer(11)]],
                        const device uint *tiedStart [[buffer(12)]],
@@ -2179,6 +2247,10 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
     float dt = shellStep(u, control, active);
     if (!active || n >= u.nodeCount) {
         return;
+    }
+    // A laminated pane cracked in the element pass is in fragments from the next.
+    if (n < u.fragmentPanes) {
+        failureGate[2u + 2u * n] = max(failureGate[2u + 2u * n], failureGate[1u + 2u * n]);
     }
     ShellNode node = nodes[n];
     if ((node.flags & shellTied) != 0) {
@@ -2268,6 +2340,7 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
         const device float4 *springLaw = springs + 3 * u.nodeCount;
         uint3 axes = uint3(springLaw[6 * s + 4].xyz);
         bool releases = springLaw[6 * s + 4].w > 0.5f;
+        bool releasesOnPull = springLaw[6 * s + 4].w > 1.5f;
         float4 offsets = springs[3 * n + 1];
         float4 moved = springs[3 * n + 2];
         float3 displacement = float3(node.displacement);
@@ -2282,7 +2355,9 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
             pull = springForce(displacement[axes.y], pullOffset, pullMoved, springLaw[6 * s], length);
             float4 acrossLaw = displacement[axes.z] - acrossOffset >= 0.0f ? springLaw[6 * s + 1] : springLaw[6 * s + 5];
             across = springForce(displacement[axes.z], acrossOffset, acrossMoved, acrossLaw, length);
-            released = releases && acrossLaw.y + acrossLaw.z * acrossMoved <= 0.0f;
+            released = releases
+                && (acrossLaw.y + acrossLaw.z * acrossMoved <= 0.0f
+                    || (releasesOnPull && springLaw[6 * s].y + springLaw[6 * s].z * pullMoved <= 0.0f));
             float turnLength = springs[3 * n].z;
             bool opening = turn - turnOffset >= 0.0f;
             turning = turnLength <= 0.0f ? 0.0f
