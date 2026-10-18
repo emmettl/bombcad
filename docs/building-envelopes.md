@@ -55,9 +55,29 @@ both contribute. Shared solid faces and domain boundaries contribute nothing, in
 ground attachment. Buildings with overlapping owned solid cells are rejected by the recorder;
 a building with no resolved face (buried, or wholly against its neighbours) is kept with none.
 
-After each complete fluid step, a receiver reads the pressure at its adjacent coarse fluid
-cell centre, including restricted fine state. This is a cell-pressure approximation to
-surface loading, not the solver's wall Riemann flux or a calculated structural reaction.
+After each complete fluid step, a receiver reads the pressure of the air against it. Unrefined,
+that is its adjacent coarse fluid cell. Where the air is refined, it is the mean of the finest
+cells of that cell touching the face (r² of them refined once, r⁴ twice), their solid ones left
+out (`refinedFaceOverpressure` in Solver.metal, since 17 October 2026, as the component histories
+below read their faces). This is a cell-pressure
+approximation to surface loading, not the solver's wall Riemann flux or a calculated structural
+reaction.
+
+Before this, refined air was read through its coarse cell, which holds the mean of its fine
+cells' whole depth. That smeared the reflected wave over a coarse cell. On a 6 × 6 × 4 m box's
+front wall (`blastbench facade --fine`, 0.5 m cells):
+
+| Air | 10 kg at 12 m: peak, impulse | 40 kg at 20 m, refined twice: peak, impulse |
+|---|---|---|
+| Uniform at the finest cells (0.25 / 0.125 m) | 51.7 / 55.4 kPa; 192 / 173 Pa s | |
+| Refined once / twice, read through the coarse cell | 47.2 / 47.7 kPa; 188 / 167 Pa s | 54.2 kPa, 192 Pa s |
+| Refined once / twice, read from the finest cells | 51.7 / 55.2 kPa; 191 / 172 Pa s | 62.3 kPa, 196 Pa s |
+
+The refined runs now match the uniform ones within 0.6%. The reading costs nothing measurable,
+and runs without refinement read as before, to the bit. The component histories, and through
+them the panes, walls and breaches that vent the air, read the same way. So does the exposure
+plane, which takes the finest cell holding each point (`finestPointPressure`). The gauges, the structure's
+coupling, and the peak and impulse fields already took the finest cells.
 The initial pressure participates in the peak; temporal integrals use right endpoints for
 every accepted fluid interval, including a clipped final interval. Time-limit no-op steps add
 nothing. A changed solid/fluid pair marks the receiver invalid.

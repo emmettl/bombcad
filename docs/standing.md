@@ -193,7 +193,18 @@ change to the record fails the test until the table follows.
 
 The content is one reviewed table in code, `StandingTable` in
 `Sources/BlastCore/EvidentialStanding.swift`. When the validation record or the limitations table
-changes, change the table with it and advance `SceneStanding.currentTable`.
+changes, change the table with it.
+
+**Its identity is derived, not numbered** (`StandingFingerprint`, since 18 October 2026). It is a
+hash of every option's entry, the fields' roles, the figures, scatters, spreads and roundings the
+bands are read from, and the standing of every sample scene on the shipped air, written
+canonically. Dictionaries and sets are sorted, fields are taken in label order, and numbers are
+written to six significant figures, so the same content gives the same identity on any Mac. A kept
+run records it as `standing-` and eight hexadecimal digits, shown as "standing a1b2c3d4". Runs kept
+before carry "standing-table-1" to "standing-table-36", shown as "standing table 36", and read as
+judged by a different table. Two changes made apart now merge without renumbering. A change on a
+code path no sample scene reaches leaves the identity as it was, until the next change that one
+does reach.
 
 `EvidentialStandingTests` keep it honest:
 

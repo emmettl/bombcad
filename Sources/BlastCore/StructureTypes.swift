@@ -1228,8 +1228,13 @@ public struct StructureSummary: Sendable, Hashable {
     /// Elements removed after reaching the failure strain.
     public var erodedElements = 0
     /// Largest displacement now, in metres, of a node still attached to an active element: the
-    /// structure's deflection at this moment, not the largest it has reached.
+    /// structure's deflection at this moment, not the largest it has reached. Measured from the
+    /// shape it settled to under its own weight, where it was settled, so that it reads zero
+    /// before the blast arrives (`selfWeightSag` holds the sag itself).
     public var maxDisplacement: Float = 0
+    /// Largest displacement, in metres, of the shape the structure settled to under its own weight
+    /// before the blast, from its undeformed shape; zero where it was not settled.
+    public var selfWeightSag: Float = 0
     /// Largest equivalent plastic strain (von Mises) or compressive strain (concrete) in an
     /// active element.
     public var maxPlasticStrain: Float = 0
@@ -1251,6 +1256,7 @@ public struct StructureSummary: Sendable, Hashable {
         both.activeElements += other.activeElements
         both.erodedElements += other.erodedElements
         both.maxDisplacement = max(maxDisplacement, other.maxDisplacement)
+        both.selfWeightSag = max(selfWeightSag, other.selfWeightSag)
         both.maxPlasticStrain = max(maxPlasticStrain, other.maxPlasticStrain)
         both.maxDamage = max(maxDamage, other.maxDamage)
         both.hasBlownUp = hasBlownUp || other.hasBlownUp

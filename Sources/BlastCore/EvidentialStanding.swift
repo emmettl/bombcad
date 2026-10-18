@@ -138,8 +138,18 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// it leaves out. Saved with a kept run, so that the run keeps the standing it was made under
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
-    /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-33"
+    /// The table's identity, derived from its content (`StandingFingerprint`), so that a kept run
+    /// says which it was judged by. Before 18 October 2026 it was numbered by hand,
+    /// "standing-table-1" to "standing-table-36", and kept runs still carry those.
+    public static var currentTable: String { StandingFingerprint.current }
+
+    /// The table's identity as shown: "standing table 36" for a numbered one, else
+    /// "standing a1b2c3d4".
+    public var tableTitle: String {
+        table.hasPrefix("standing-table-")
+            ? "standing table " + table.dropFirst("standing-table-".count)
+            : "standing " + table.dropFirst("standing-".count)
+    }
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -794,7 +804,8 @@ public enum StandingTable {
                     + "by screws that pull through. Langdon's corrugated panels: 10 of 13 permanent sets within "
                     + "half to twice of measured. ADBLAST's screwed cladding in air: first deflection 0.90–1.35 "
                     + "of measured on all ten tests, but what is left after is not right, and cladding torn off "
-                    + "a deforming purlin is not compared.",
+                    + "a deforming purlin is not compared. Sheeted purlins and rails are held straight by the "
+                    + "screws, which under uplift, their free flange in compression, is the unsafe side.",
                 document: "profiled-sheeting.md#against-adblasts-cladding-tests")
         case .inclinedBars:
             return Entry(
@@ -1280,7 +1291,10 @@ public enum StandingTable {
 
 extension SceneStanding {
     /// The standing of each result `inputs` produce, by the table above.
-    public init(_ inputs: StandingInputs) {
+    public init(_ inputs: StandingInputs) { self.init(inputs, table: Self.currentTable) }
+
+    /// The standing of `inputs`, recorded as judged by `table`.
+    init(_ inputs: StandingInputs, table: String) {
         let scene = StandingScene(inputs)
         var results = [scene.peakOverpressure(), scene.impulse(), scene.blastInjury()]
         if !scene.structures.isEmpty { results += [scene.structuralResponse(), scene.structuralDamage()] }
@@ -1319,7 +1333,9 @@ extension SceneStanding {
             results[index].unbanded = unbanded
             results[index].regimes = scene.regimes(for: results[index].kind)
         }
-        self.init(results: results, resolution: scene.resolutionNotes(), unsupported: scene.unsupported())
+        self.init(
+            table: table, results: results, resolution: scene.resolutionNotes(),
+            unsupported: scene.unsupported())
         gauges = scene.gaugeBands()
     }
 }
@@ -1567,7 +1583,7 @@ struct StandingScene {
                     "deflagration.md#checks"),
                 StandingEvidence(
                     "HySEA's 20 ft containers, lean hydrogen of 15% and 21% (Skjold et al., 2017)",
-                    "Vented through the doors within the repeats' scatter (0.72–1.42); through the roof 0.20–0.53, "
+                    "Vented through the doors within the repeats' scatter (0.72–1.42); through the roof 0.19–0.45, "
                         + "the unsafe side",
                     "deflagration.md#checks"),
             ]
@@ -1635,7 +1651,7 @@ struct StandingScene {
         let fuel =
             gas == .hydrogen
             ? "Lean hydrogen, with its flame's 1/Le response, reads 1.24–2.96 of FM Global's vented tests and "
-                + "within the scatter of HySEA's containers vented through their doors, but 0.20–0.53 of those vented "
+                + "within the scatter of HySEA's containers vented through their doors, but 0.19–0.45 of those vented "
                 + "through their roof, the unsafe side; K_G in a closed sphere 0.89–0.99 of the measured. For methane, "
             : gas == .townGas
                 ? "Town gas, half hydrogen, was compared only in a closed sphere (K_G about 0.77 of the measured) "
@@ -1982,7 +1998,16 @@ struct StandingScene {
                     "Elastic bars and cantilevers",
                     "Wave speed, tip deflection and first period within 5% of "
                         + "theory", "validation.md#verification-against-theory"))
-            parts.append("steel verified against beam and wave theory, no test")
+            evidence.append(
+                StandingEvidence(
+                    "Steel struts buckling (blastbench buckling)",
+                    "Elastic buckling within 2% of Euler; at a slenderness near 1 about 1.5 times Eurocode 3's "
+                        + "resistance, the members being perfect (the unsafe side); an impact's buckled wavelength "
+                        + "1.03–1.20 times Lindberg's",
+                    "shell-model.md#buckling"))
+            parts.append(
+                "steel verified against beam, wave and buckling theory, no test; perfect members buckle about "
+                    + "half again later than Eurocode 3's near a slenderness of 1")
         }
         if classes.contains(.masonry) {
             level = max(level, .verified)
@@ -2079,6 +2104,12 @@ struct StandingScene {
                 "Independent bodies meet through contact between their nodes, the spring and damper of contact "
                     + "within a body, checked for momentum and energy but never against a test; they must start "
                     + "apart and never bond.")
+        }
+        // Open faces too near: their reflections move the response after the positive phase.
+        if let note = inputs.scenario.tightFacesNote {
+            resolution.append(
+                note + " On Tyndall's CLT building a domain this tight gave 29 mm at the first storey where "
+                    + "18 mm is converged.")
         }
         let configuration = inputs.configuration
         if configuration.airSleepThreshold > 0 || configuration.airSleepCrossings > 0 {
@@ -2285,6 +2316,13 @@ struct StandingScene {
                         + "Mendonça's two collapses missed",
                     "building-envelopes.md#slabs-held-on-their-edges"),
                 StandingEvidence(
+                    "ADBLAST's screwed TR84 cladding shot in air (10 tests, 0.5–1.5 kg)",
+                    "Profiled sheeting: within 1.0–1.35 of the shell model's deflection under the same load; in "
+                        + "the air's load on the whole panel 0.50–1.37 of measured, low on nine (on the middle "
+                        + "ribs 0.62–1.07); graded heavy to failed where the sheets set but stayed on; the screws "
+                        + "held, as measured",
+                    "profiled-sheeting.md#against-adblasts-cladding-as-an-envelope"),
+                StandingEvidence(
                     "Monk and Clubley's annealed windows in the Shoeburyness tunnel (12 timed panes)",
                     "Every pane broken, as in the tests, at 0.82–1.07 of the measured time and 0.69–1.15 of the "
                         + "deflection", "validation.md#window-glass"),
@@ -2307,9 +2345,11 @@ struct StandingScene {
                 "Reinforced blockwork is judged as a concrete of the masonry's strength, graded by the "
                     + "concrete's limits; a freestanding wall's cap adds only the mass its construction gives.",
                 "Profiled steel sheeting spans one way between its rails or purlins by UFC 3-340-02's method for "
-                    + "cold-formed panels on the maker's effective section, graded by PDC-TR 06-08's limits for "
-                    + "deck whose membrane action its fixings limit, and blown off when its dynamic reaction passes "
-                    + "what its screws hold by EN 1993-1-3; no blast test of cladding or its fixings compared.",
+                    + "cold-formed panels on its effective section (the maker's, or by its compressed flat's "
+                    + "class, a slender one at Winter's width), graded by PDC-TR 06-08's limits for deck whose membrane action its "
+                    + "fixings limit, and blown off when the reaction pulling it off its screws, as it comes back "
+                    + "out or is sucked, passes what they hold by EN 1993-1-3; a component's mean load under-reads "
+                    + "its most loaded ribs.",
                 "Cross-laminated timber spans one way, elastic–perfectly plastic, its resistance from the mean "
                     + "bending strength with the Ottawa shock tube's dynamic increase, graded by WoodWorks' ductility "
                     + "limits from the Tyndall tests; no envelope-level test of its damage compared.",

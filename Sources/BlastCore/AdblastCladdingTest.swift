@@ -222,4 +222,127 @@ public enum AdblastCladdingTest {
                     || abs(shells.node(edge).displacement.x) > 0.05),
             reflectedPeak: (samples.map(\.pressure).max() ?? ambient) - ambient, reflectedImpulse: impulse)
     }
+
+    public struct EnvelopeResult: Sendable {
+        /// The one-way model's peak deflection (m, down positive), the deflection it leaves (m),
+        /// its damage, and whether its screws were pulled through.
+        public var peak: Double
+        public var residual: Double
+        public var level: EnvelopeDamageLevel
+        public var screwsPulled: Bool
+    }
+
+    /// The sheets as an envelope's construction, `EnvelopePanel.profiledSheetOneWay` on a single
+    /// span of 2.46 m, at S320's nominal yield times UFC's 1.21 × 1.1 (426 MPa, the coupons 420–439
+    /// at 2.3 /s), with one screw a trough pulling through by EN 1993-1-3 (as the shells' are);
+    /// under `pressures` (Pa, inward positive) binned at `step`.
+    public static func envelope(_ test: Test, pressures: [Double], step: Double) -> EnvelopeResult {
+        let t = test.thicknessMM / 1000
+        let profile = SheetProfile.tr84(thickness: t, yield: 320e6)
+        let system = EnvelopePanel.profiledSheetOneWay(profile: profile, span: 2.46, continuous: false)
+        let response = system.response(pressures: pressures, step: step)
+        let rotation = atan(max(response.peakDeflection, -response.reboundDeflection) / 1.23) * 180 / .pi
+        var level = EnvelopeDamageLevel.profiledSheet(ductility: response.ductility, rotationDeg: rotation)
+        let screw = Double(0.016 * t * ultimate(thicknessMM: test.thicknessMM))
+        let holding = screw / Double(profile.pitch)
+        let pulled =
+            EnvelopePanel.sheetPullOff(
+                system, response: response, suction: -(pressures.min() ?? 0), span: 2.46)
+            > holding
+        if pulled { level = .failed }
+        return EnvelopeResult(
+            peak: response.peakDeflection, residual: response.residualDeflection, level: level,
+            screwsPulled: pulled)
+    }
+
+    /// The one-way model under the test's measured reflected pulse at the middle, as a triangle.
+    public static func envelopeOnMeasured(_ test: Test) -> EnvelopeResult {
+        let step = 1e-4
+        let peak = Double(test.reflectedPeakKPa!) * 1000
+        let duration = 2 * Double(test.reflectedImpulseKPaMS!) / Double(test.reflectedPeakKPa!) / 1000
+        let pressures = stride(from: 0.0, through: 0.1, by: step).map { time in
+            time < duration ? peak * (1 - time / duration) : 0
+        }
+        return envelope(test, pressures: pressures, step: step)
+    }
+
+    /// The one-way model under the load the air puts on the same panel as a rigid envelope, 1 m
+    /// above ground on two rigid supports, the charge as `runInAir`'s. The panel is cut into
+    /// `along` × `across` envelope objects, each recorded as the envelope recorder sums a component
+    /// (its mean net pressure): `whole` is under their mean, the whole panel's as one component;
+    /// `middle` under the middle band across (the ribs where the deflection was measured), along
+    /// the span weighted by the deflected shape sin(πx/L) (Biggs's equivalent uniform load). The
+    /// load depends only on the charge, so `loads` (along the span fastest) serves every test of it.
+    public static func envelopeInAir(
+        _ test: Test, along: Int = 5, across: Int = 3, cellSize: Float = 0.05, tntEquivalence: Float = 1.13,
+        device: MTLDevice
+    ) throws -> (whole: EnvelopeResult, middle: EnvelopeResult, loads: [EnvelopeComponentLoad]) {
+        let loads = try envelopeLoadsInAir(
+            test, along: along, across: across, cellSize: cellSize, tntEquivalence: tntEquivalence,
+            device: device)
+        let (whole, middle) = envelope(test, loads: loads, along: along, across: across)
+        return (whole, middle, loads)
+    }
+
+    /// `envelopeInAir`'s two results from its strips' loads.
+    public static func envelope(_ test: Test, loads: [EnvelopeComponentLoad], along: Int, across: Int)
+        -> (whole: EnvelopeResult, middle: EnvelopeResult)
+    {
+        let count = loads.map(\.netPa.count).min() ?? 0
+        let step = loads[0].binS
+        let tail = Array(repeating: 0.0, count: Int(0.07 / step))
+        let shape = (0..<along).map { sin(Double.pi * (Double($0) + 0.5) / Double(along)) }
+        let band = across / 2
+        let nets = loads.map(\.netPa)
+        let whole = (0..<count).map { n in nets.reduce(0) { $0 + $1[n] } / Double(nets.count) }
+        let middle = (0..<count).map { n in
+            (0..<along).reduce(0) { $0 + shape[$1] * nets[band * along + $1][n] } / shape.reduce(0, +)
+        }
+        return (
+            envelope(test, pressures: whole + tail, step: step),
+            envelope(test, pressures: middle + tail, step: step)
+        )
+    }
+
+    /// The air's load on the same panel cut into `along` × `across` envelope objects (along the
+    /// span fastest).
+    public static func envelopeLoadsInAir(
+        _ test: Test, along: Int, across: Int, cellSize: Float = 0.05, tntEquivalence: Float = 1.13,
+        device: MTLDevice
+    ) throws -> [EnvelopeComponentLoad] {
+        let offset = SIMD3<Float>(3, 3, 0)
+        let middle = offset + SIMD3<Float>(1.23, 1.6315, 1)
+        let supports = [Float(0), 2.46].map { x in
+            Box(min: offset + SIMD3(x - 0.1, -0.2, 0), max: offset + SIMD3(x + 0.1, 3.463, 0.95))
+        }
+        var scenario = Scenario(
+            name: "ADBLAST test \(test.test) as an envelope", domainSize: SIMD3(8.5, 9.3, 5.5),
+            boxes: supports,
+            charge: Charge(mass: test.chargeKgC4 * tntEquivalence, position: middle + SIMD3(0, 0, 3.5)))
+        var owners: [UUID] = []
+        let (dx, dy) = (Float(2.46) / Float(along), Float(3.263) / Float(across))
+        for j in 0..<across {
+            for i in 0..<along {
+                let strip = Box(
+                    min: offset + SIMD3(Float(i) * dx, Float(j) * dy, 0.958),
+                    max: offset + SIMD3(Float(i + 1) * dx, Float(j + 1) * dy, 1.042))
+                owners.append(
+                    try scenario.addEnvelopeObject(
+                        try BuildingEnvelope(solids: [strip]), name: "Strip \(i) \(j)"))
+            }
+        }
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
+        try solver.configureEnvelopeComponents(
+            objects: scenario.envelopeObjects, options: EnvelopeHistoryOptions(windowS: 0.03))
+        _ = solver.advance(until: 0.03)
+        let histories = solver.envelopeComponentHistories() ?? []
+        return try owners.map { owner in
+            guard
+                let history = histories.first(where: {
+                    $0.component.owner == owner && $0.component.kind == .roof
+                })
+            else { throw BlastError.allocationFailed("a strip's roof component") }
+            return EnvelopeComponentLoad(history)
+        }
+    }
 }
