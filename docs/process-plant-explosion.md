@@ -108,29 +108,32 @@ point says little about the next. 6.5 is used. A single run's peak is uncertain 
 the envelope buildings not yet in the air, gave 3.6 psi).
 
 **With the fitted flame** (`blastbench snapshot --preset plant --dx 0.5 --time 2
---envelope-damage`; 39–219 s on the Studio, depending on its load from other work):
+--envelope-damage`; 39–219 s on the Studio, depending on its load from other work), on 0.5.0's
+build. Its defaults have changed since the factor was fitted, and the same factor now gives 3.2 psi
+at 37 m, above the 2.5–2.8 psi it was fitted to (the run repeats to the digit); it has not been
+refitted:
 
 | Where | Model | Texas City (CSB) |
 |---|---|---|
-| In the process area | 6.4 psi (44 kPa) | 2–5 psi over most of the unit, 10+ psi at the compressor deck |
-| Free field, 37 m from the drum | 2.4 psi | 2.5–2.8 psi at the double-wide and QA/QC trailers (fitted) |
-| On the module's face | 8.3 psi, reflected | |
-| At the brick control room, 62 m | 1.6 psi; its walls fail and five of its six panes break | 1.5–2.5 psi at the ISOM satellite control room, masonry, heavily damaged |
-| At the concrete office, 108 m | 0.8 psi; moderate damage, and 5 of its 10 panes break | about 1 psi at the first row of tanks; windows broken out to 0.75 mile |
+| In the process area | 6.3 psi (44 kPa) | 2–5 psi over most of the unit, 10+ psi at the compressor deck |
+| Free field, 37 m from the drum | 3.2 psi | 2.5–2.8 psi at the double-wide and QA/QC trailers (fitted) |
+| On the module's face | 6.9 psi, reflected | |
+| At the brick control room, 62 m | 1.7 psi; its walls fail and four of its six panes break | 1.5–2.5 psi at the ISOM satellite control room, masonry, heavily damaged |
+| At the concrete office, 108 m | 0.7 psi; moderate damage, and 7 of its 10 panes break | about 1 psi at the first row of tanks; windows broken out to 0.75 mile |
 | Free field, 100 m | 0.4 psi | about 0.5 psi beyond the 1 psi line |
 
-- **The blast-resistant module** slides 3.9 m from where it stood, its walls whole: no element
-  fails. That is a module rated for 8 psi meeting 2.4 psi side-on, 8.3 psi reflected on its face,
+- **The blast-resistant module** slides 3.8 m from where it stood, its walls whole: no element
+  fails. That is a module rated for 8 psi meeting 3.2 psi side-on, 6.9 psi reflected on its face,
   for the long duration of a deflagration. Resting on gravel by friction alone, it is pushed
   bodily; tested units, anchored or not, slid under a short pulse by 0.74–1.25 in. Anchoring it
   is what vendors advise.
-- **The portable cabin** is thrown 6.6 m and its walls dented (the yellow of yielding steel in the
+- **The portable cabin** is thrown 6.3 m and its walls dented (the yellow of yielding steel in the
   picture), but no element fails. At 46 m the CSB found wood-framed trailers destroyed, and metal
   trailers' walls and roofs failing out to 67–76 m: the model's steel cabin comes off more lightly
   than the record's trailers, the unsafe side.
 - **The envelope buildings** show the components' damage: the brick control room failed, as the
   ISOM satellite control room was heavily damaged; the concrete office is moderately damaged and
-  loses half its glass.
+  loses 7 of its 10 panes.
 
 ![The plant and its buildings, the peak overpressure over 2 s, with the factor fitted](process-plant-overview.png)
 
