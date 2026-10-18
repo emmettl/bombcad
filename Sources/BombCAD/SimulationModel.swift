@@ -2492,13 +2492,19 @@ final class SimulationModel {
                     throw BlastError.allocationFailed(
                         "\(grid.cellCount / 1_000_000) million cells; try a coarser resolution")
                 }
-                let created = try BlastSolver(
-                    device: device, commandQueue: commandQueue, scenario: scenario,
-                    cellSize: settings.resolution.cellSize)
-                // Always: even with both options off the air takes the far-field faces (and gravity)
-                // from the settings, not the bare core's.
-                configureAir(created)
-                try created.load(scenario)
+                // In a pool of its own: what building a solver autoreleases keeps it alive until a
+                // pool drains, and a headless worker's runs, one after another, kept every one's
+                // memory (`SolverMemoryTests`).
+                let created = try autoreleasepool { () throws -> BlastSolver in
+                    let created = try BlastSolver(
+                        device: device, commandQueue: commandQueue, scenario: scenario,
+                        cellSize: settings.resolution.cellSize)
+                    // Always: even with both options off the air takes the far-field faces (and
+                    // gravity) from the settings, not the bare core's.
+                    configureAir(created)
+                    try created.load(scenario)
+                    return created
+                }
                 solver = created
             }
             // The blast's injury at a standing person's height, from the run's own peaks (`InjuryField`):
