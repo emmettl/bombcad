@@ -23,10 +23,13 @@ BUNDLE_REFERENCE = re.compile(rb"unable to find bundle named ([A-Za-z0-9_.-]+)")
 # A small project, run headless from inside the packaged app: it builds the solver, which
 # compiles the shaders of every bundle the air and the structures use.
 SMOKE_PROJECT = "Samples/Neighborhood/layout.json"
+# A structure on the fine (mapped) start, writing frames: its clock starts at the one-dimensional
+# solution's hand-over, some 9 ms in, after four frames. 0.5.0's build waited forever there.
+SMOKE_MAPPED = "Samples/MappedSmoke/layout.json"
 
 
-def run(*arguments, capture=False):
-    return subprocess.run(arguments, cwd=ROOT, check=True, text=True,
+def run(*arguments, capture=False, timeout=None):
+    return subprocess.run(arguments, cwd=ROOT, check=True, text=True, timeout=timeout,
                           stdout=subprocess.PIPE if capture else None).stdout
 
 
@@ -85,6 +88,12 @@ def smoke(app):
     with tempfile.TemporaryDirectory(prefix="bombcad-smoke-") as temporary:
         run(str(app / "Contents/MacOS" / EXECUTABLE), "run", str(ROOT / SMOKE_PROJECT),
             "--resolution", "coarse", "--duration", "0.002", "--out", str(Path(temporary) / "smoke.bombcad"))
+        # Past the mapped start's hand-over with a structure and frames, within minutes: a run that
+        # cannot step past it never ends.
+        run(str(app / "Contents/MacOS" / EXECUTABLE), "run", str(ROOT / SMOKE_MAPPED),
+            "--resolution", "coarse", "--duration", "0.016", "--frame-interval", "2",
+            "--usd", str(Path(temporary) / "mapped.usda"), "--out", str(Path(temporary) / "mapped.bombcad"),
+            timeout=600)
     # Its window and sidebar drawn offscreen through a change of source, as the Source menu makes it.
     run(str(app / "Contents/MacOS" / EXECUTABLE), "interface-smoke")
 

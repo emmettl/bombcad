@@ -1,0 +1,142 @@
+{
+  "atmosphere" : {
+    "density" : 1.225,
+    "pressure" : 101325
+  },
+  "boxes" : [
+
+  ],
+  "charge" : {
+    "mass" : 1,
+    "position" : [
+      10,
+      10,
+      0
+    ]
+  },
+  "domainSize" : [
+    24,
+    20,
+    10
+  ],
+  "gauges" : [
+    {
+      "name" : "Near",
+      "position" : [
+        12,
+        10,
+        0.25
+      ]
+    }
+  ],
+  "name" : "Mapped start smoke",
+  "objectOwnership" : {
+    "blocks" : [
+
+    ],
+    "order" : [
+      "00000000-0000-4000-8002-000000000000"
+    ],
+    "structure" : {
+      "id" : "00000000-0000-4000-8002-000000000000",
+      "name" : "Structure",
+      "openingIDs" : [
+
+      ],
+      "preferredSolidElementSize" : 0.25,
+      "solidIDs" : [
+        "00000000-0000-4000-8003-000000000000"
+      ],
+      "supportIDs" : [
+
+      ]
+    },
+    "version" : 1
+  },
+  "reflectiveFaces" : 16,
+  "structure" : {
+    "bareBars" : true,
+    "crackSlip" : true,
+    "elementKind" : "solid",
+    "elementSize" : 0.25,
+    "fixedBase" : true,
+    "inclinedBars" : [
+
+    ],
+    "material" : {
+      "aggregateSize" : 0.016,
+      "bondSpreading" : true,
+      "compressiveStrength" : 3e+07,
+      "concreteRateFactor" : 1,
+      "confinementCoefficient" : 4.1,
+      "crackDilatancy" : 0.5,
+      "crackResidual" : 0.1,
+      "crackSpacing" : 0.1,
+      "crushingEnergy" : 33662.37,
+      "density" : 2400,
+      "dowelFactor" : 1,
+      "erosionOpening" : 0.005,
+      "failureStrain" : 1e+30,
+      "fractureEnergy" : 134.64949,
+      "fractureRateExponent" : 0.5,
+      "hardeningModulus" : 0,
+      "interlockFactor" : 1,
+      "isTransparent" : false,
+      "model" : 1,
+      "name" : "Reinforced concrete",
+      "poissonRatio" : 0.2,
+      "rateDependent" : true,
+      "steel" : {
+        "ruptureStrain" : 0.15,
+        "ultimateStrain" : 0.075,
+        "ultimateStress" : 5.75e+08,
+        "yieldStress" : 5e+08,
+        "youngsModulus" : 2e+11
+      },
+      "steelRateDependent" : true,
+      "steelRateFactor" : 1,
+      "tensileStrength" : 2896468.5,
+      "yieldStress" : 1e+30,
+      "youngsModulus" : 2.5742963e+10
+    },
+    "openings" : [
+
+    ],
+    "reinforcement" : [
+
+    ],
+    "secondCracks" : true,
+    "shellLayers" : 8,
+    "shellSectionShear" : false,
+    "solidElementKind" : [
+
+    ],
+    "solidMaterial" : [
+
+    ],
+    "solidReinforcement" : [
+
+    ],
+    "solidSourceParts" : [
+
+    ],
+    "solids" : [
+      {
+        "max" : [
+          19.5,
+          11,
+          1
+        ],
+        "min" : [
+          19,
+          9,
+          0
+        ]
+      }
+    ],
+    "supports" : [
+
+    ],
+    "unitJoints" : true
+  }
+}
