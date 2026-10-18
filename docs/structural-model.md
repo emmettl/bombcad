@@ -1052,6 +1052,71 @@ up to a cell off the structure's face, and a sixth of a cell outside it on avera
   default. A half places the wall without bias but loses layers thinner than half a cell, and
   through a cell it spread slab 4's gauges as much (28% against 29%).
 
+**Outlines as cut cells** (an option since 18 October 2026, `SolverConfiguration.structureCutCells`,
+off; roadmap limitation 6, stage 1). A cell a structure's solid elements cross holds the air it
+has, and its faces open as far as they are. The air updates it as it does the terrain's
+[cut cells](terrain.md#cut-cells) and shares each step's difference along the wall's normal into
+a cell at least half air (`StructureCutGeometry`).
+- **The outline is the elements'.** Elements sit on a lattice of their size from the origin, an
+  element wherever its centre lies in the body. So a wall's faces lie on that lattice, not where its
+  box says. With elements half a cell across, a wall moves in half cells whatever its box. The
+  shares and apertures are the exact overlaps of the cells with the elements.
+- **A wall thinner than two cells** leaves air either side of a closed face. That face is a wall to
+  the sweep's stencil, so neither side reads the other's air through it.
+- **A sliver** under half air with no cell to take its difference becomes solid. It would otherwise
+  grow its difference by 1/α each step.
+- **Loads.** A face takes the pressure at the wall that the air's own cut update takes there: the
+  cell's air against its mirror, two shocks or two rarefactions. Where the wall shuts a cell's
+  face along a sweep, the air pushes with the sweep's own flux there, reconstructed as a whole cell
+  beside a solid one takes it. The face reads its own cell and the next one out, weighted by the
+  share of its own cell that is air.
+- **Limits.** Unrefined air only (refined runs keep the staircase). Solid elements only. The records
+  are made from the structure as built and are not remade as it moves, so this is for walls and
+  slabs before they fail. A cell the terrain's cut cells hold is the terrain's: neither a structure
+  cut cell nor one that takes a difference. The ground below them and rigid blocks are solid to the
+  structure's cut cells as to the air.
+- **On the lattice** a structure has no cut cells, and the option leaves the air as it is, bit for
+  bit (specialised for cut cells with nothing to do, fast math rounded the same sums differently).
+
+`blastbench walloffset --element 0.025 [--cut]` places a free wall 0.3 m thick, 3 m from 1 kg, at
+tenths of a 0.25 m cell off the lattice. It gives the wall's momentum over the 3 ms from arrival
+(N s), its peak force (kN), and the impulse at a gauge 1 m before it (Pa s):
+
+| Offset | Staircase: impulse, peak, gauge | Cut cells: impulse, peak, gauge | 0.0625 m air: impulse, peak, gauge |
+|---|---|---|---|
+| 0 | 1032, 534, 160.0 | 1253, 647, 160.0 | 1130, 693, 142.1 |
+| 0.1 | 1032, 534, 160.0 | 1277, 723, 160.8 | 1130, 693, 142.1 |
+| 0.3 | 1039, 535, 160.0 | 1242, 666, 157.9 | 1108, 677, 141.2 |
+| 0.5 | 1039, 535, 160.0 | 1199, 628, 152.6 | 1085, 662, 139.9 |
+| 0.7 | 942, 482, 138.5 | 1160, 600, 146.6 | 1064, 647, 137.8 |
+| 0.9 | 942, 482, 138.5 | 1149, 590, 141.0 | 1067, 647, 137.8 |
+| 1 | 942, 482, 138.5 | 1142, 583, 138.5 | 1043, 633, 134.8 |
+
+- **The air.** With cut cells the gauge falls smoothly between the staircase's two values on the
+  lattice. The staircase holds 160 and then drops 13% in a step, where its outline moves a cell.
+- **Impulse.** The wall's impulse lies within 2.6% of the line between its values on the lattice,
+  against the staircase's steps of up to 6%. It falls 9% across the cell, as the finer air's 8%.
+- **Peak force does not.** A tenth of a cell off the lattice it is 12% above that line, and the
+  excess shrinks as the offset grows. The overshoot is in the air beside a small cut cell, not in
+  how the face reads it: weighting the small cell's own reading less does not move it. Merging
+  each cut cell under half air with the cell taking its difference, as one, the standard cure,
+  made it worse: from a tenth to a half of a cell the impulse and peak fell 15% below the line,
+  and jumped back past it. Sharing the difference among all the neighbours on the air's side
+  instead (Colella's redistribution) cannot help a plane wave on a flat wall, since each column
+  then takes back from its neighbours' small cells what its own gave them.
+- **The level.** The cut cells' read is higher than the staircase's, which reads the cell beside the
+  face, not the pressure at the wall. With the air refined it comes down to the same value: on the
+  lattice, 1253, 1202 and 1165 N s on 0.25, 0.0625 and 0.03125 m air, against the staircase's 1032,
+  1130 and 1125. The coarse air's own impulse is high too: 160 Pa s at the gauge, against 140 on
+  the finer airs.
+- **Cost.** The air with a cut structure costs 1.23 times the recommended air per cell
+  (`blastbench aircost --preset wall --dx 0.3 --cut`: 0.570 against 0.465 ns per update, the
+  least of 30 rounds).
+
+Stage 2, moving solids and shells, waits on the peak's overshoot, by the roadmap's rule that it
+follows only if stage 1 pays. The car and the freestanding objects are rigid boxes in the air,
+not structures, so this stage does not touch their late flow.
+
 **Debris.** A node with no intact element left around it is loose debris, and the air loads it
 directly, since it no longer belongs to any face. It stands for a lump of volume *V*, an eighth
 of each element the body started with around it, whatever those were made of, and feels

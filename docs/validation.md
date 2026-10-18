@@ -4565,7 +4565,7 @@ balloon by construction.
 | Harness | Pinned | Owner |
 |---|---|---|
 | Hupfauf's slabs (`ContactSlabTest`) | by construction | concrete |
-| The chamber (`ChamberTest`), rooms | by construction; its four charges keep the balloon whatever the start (rerun 18 October, [on the mapped start](#on-the-mapped-start)) | concrete |
+| Rooms | by construction | concrete |
 | The validation ensemble's wall, and its Wu and Chiquito cases (`ValidationEnsemble`) | pinned (`balloonStart: true` for the slabs) | ensembles |
 | The anchorage wall (`AnchorageStudy`, `blastbench anchorage`) | pinned | anchorage |
 | Tyndall's CLT (`TyndallCLTTest`) | pinned | new materials |
@@ -4584,9 +4584,33 @@ balloon by construction.
 `blastbench digest --recommended` gives the same hashes on the pinned code as on main.
 
 Off the list since: Wu's, Wang's, Yao's and Chiquito's slabs, Alsubaei's walls and their air,
-Keys's walls in the open, Mendonça's `--recommended` studies and the Kasun cubicle (`envelope-debris`).
+Keys's walls in the open, Mendonça's `--recommended` studies, the Kasun cubicle (`envelope-debris`) and the chamber (its
+four charges each mapped since the start became one per charge).
 Each was rerun on the mapped start ([on the mapped start](#on-the-mapped-start)), and each takes
 `--balloon-start` for the balloon.
+
+#### Several charges (18 October)
+
+Each charge mapped from its own one-dimensional solution (`blastbench twocharges`): two 10 kg
+surface bursts 30 m apart (14 m/kg^(1/3)) on rigid ground, 0.25 m cells, gauges on each one's
+outer side, against Kingery–Bulmash: the peak its own charge's, the impulse over the whole
+record both charges' summed. Both mapped 7.1 m out (the side faces' 0.8), from 8.7 ms; the two
+alike to the last point:
+
+| Z | Peak: balloon / mapped | Impulse: balloon / mapped |
+|---|------------------------|---------------------------|
+| 1 | 52 / 114% | 100 / 93% |
+| 1.5 | 63 / 114% | 97 / 92% |
+| 2 | 61 / 98% | 93 / 92% |
+| 3 | 69 / 104% | 98 / 97% |
+| 4 | 70 / 70% | 98 / 100% |
+| 6 | 72 / 73% | 115 / 116% |
+
+Within the mapped radius the peaks are as a lone charge's; beyond it the grid carries both
+starts alike. The chamber's four charges, in their sleeves, map only 0.36 m out and change its
+results by 3% or less ([the chamber](#an-internal-explosion-in-a-reinforced-concrete-chamber)).
+Scenes of one charge are unchanged bit for bit (`blastbench digest --recommended --mapped` on
+every preset).
 
 #### The products' own equation of state (18 October)
 
@@ -4883,6 +4907,12 @@ Moving the faces below the chamber means shifting the scene by 11 m. That flips 
 steps of the chamfers in rounding (4,551 elements against 4,664) and moves the gauges by a cell.
 So the high faces alone were moved too, which needs no shift and leaves the mesh and the
 pressures exactly as in the box. That gives 46 and 24 mm (−8%, −14%).
+
+**On the mapped start** (18 October 2026, the bench's default since; `--balloon-start` for the
+balloon). Each of the four charges is mapped from its own one-dimensional solution, mirrored by
+the partition's mid-plane, but only 0.36 m out (Z 0.12), as the sleeves' walls stand 0.45 m off:
+6.5 and 4.2 MPa on the side walls and 4.1 MPa on the roof (against 6.5, 4.0 and 4.2 on the
+balloon), and the roof's edge rises 48 mm and is left 27 mm up (47 and 25), 10 elements removed.
 
 The comparison does not change its standing: a quarter of the measured residual, about half the
 paper's model's peak. The bench now runs this domain by default, at about twice the box's cost
@@ -5532,7 +5562,7 @@ harness here now takes the mapped start by default:
 | Alsubaei's air, half scale | the columns' peaks | | | within 2% |
 | Keys WR1A | debris mean / furthest, m; free field | 1.60 / 5.5; 99 kPa, 293 kPa ms | 1.75 / 7.0; 101 kPa, 305 kPa ms | +9%; +2%, +4% |
 | The Kasun cubicle (`envelope-debris`) | launch speed; hazardous reach | 134–148 m/s; 129 m | 134–147 m/s; 129 m | under 1% |
-| Shang's chamber | roof edge | 47 / 25 mm | 47 / 25 mm | none: four charges, so the balloon either way |
+| Shang's chamber | roof edge | 47 / 25 mm | 48 / 27 mm | +2%, +8%: each charge mapped 0.36 m out since the start became one per charge |
 
 None changes its standing.
 - **Chiquito P7:** the slab goes a tenth further, still a third of the measured.
@@ -5540,8 +5570,9 @@ None changes its standing.
 - **Wang A:** the near gauge reads a tenth lower.
 - **Yao T4:** a third more of its underside is damaged, its top still whole.
 
-The rest move by 6% at most. The chamber's four charges cannot be mapped, so it stays on the
-balloon, as the start's own rule says.
+The rest move by 6% at most. The chamber's four charges, mapped one by one since the start
+became one per charge (on this build they could not be), move it by 2 mm
+([several charges](#several-charges-18-october)).
 
 ## Verification against theory
 

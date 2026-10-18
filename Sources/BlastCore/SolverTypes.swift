@@ -174,6 +174,10 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// gave 3.8 times it. Not with gravity, whose ambient changes with height: there the faces
     /// copy. Far field in `recommended`.
     public var openFaces: OpenFaces = .copy
+    /// Whether structures' outlines are cut cells: a cell a structure's solids cross holds the air
+    /// it has and its faces open as far as they are (`StructureCutGeometry`), rather than the
+    /// structure taking whole cells. From the structures as built, without refinement. Off by default.
+    public var structureCutCells = false
     /// Smallest radius, in cells, of the sphere a charge's energy is deposited into.
     public var minimumBalloonCells: Float = 2
     /// Refine the air where the blast's shock is by this ratio, 2 or 4: each block of 4 x 4 x 4

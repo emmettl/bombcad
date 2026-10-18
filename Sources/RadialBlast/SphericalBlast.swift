@@ -434,7 +434,8 @@ public struct SphericalBlast: Sendable {
                         / w[i].z
                 }
             for (x, g) in zip(w, ratios) { fastest = max(fastest, abs(x.y) + (g * x.z / x.x).squareRoot()) }
-            let dt = cfl * cellSize / fastest
+            // The last step lands on the limit, so that solutions stopped there share one clock.
+            let dt = min(cfl * cellSize / fastest, limit - time)
             // Limited slopes (minmod, a monotonised central limiter's cautious member), then the
             // Hancock half step in primitive variables.
             func slope(_ a: SIMD3<Double>, _ b: SIMD3<Double>) -> SIMD3<Double> {

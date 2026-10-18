@@ -1392,6 +1392,7 @@ struct StructureUniforms {
     var fragmentStrain: Float = 0.05
     var groundCoulomb: Float = 0
     var groundStiffness: Float = 0
+    var fluidCutCells: UInt32 = 0
 }
 
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
@@ -1734,6 +1735,17 @@ enum ShaderLibrary {
     /// Index of the optional function constant that compiles congestion's porous cells into a
     /// kernel (`porousAirConstant` in Solver.metal).
     static let porousAirConstant = 14
+
+    /// Index of the optional function constant that compiles structures' cut cells into a kernel
+    /// (`structureCutConstant` in Solver.metal).
+    static let structureCutConstant = 15
+
+    /// `constants` with structures' cut cells compiled in.
+    static func withStructureCut(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {
+        var on = true
+        constants.setConstantValue(&on, type: .bool, index: structureCutConstant)
+        return constants
+    }
 
     /// `constants` with congestion's porous cells compiled in.
     static func withPorousAir(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {
