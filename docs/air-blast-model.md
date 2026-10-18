@@ -416,8 +416,8 @@ works on each cell's deviation from the background:
   that would leave no density or pressure, the first-order deviation, as without gravity. A cell
   at the pressure floor, as a cut cell beside the terrain can be left, holds less than the
   background falls across half of it (1.5 Pa for a 0.25 m cell), so it gives its faces its own
-  state instead. Before, such a face had no pressure and its sound speed was a NaN: refined air
-  over cut terrain with gravity broke, and its digest changed from run to run;
+  state instead. Before, such a face had no pressure and its sound speed was a NaN: air over
+  cut terrain with gravity broke, most often refined, and its digest changed from run to run;
 - the background's pressure at the face is left out of the momentum flux, and gravity's pull on
   the background out of the source, which is −g(ρ − ρ_b);
 - the energy gains −g times the mean of the cell's two faces' mass fluxes, so the gas's energy
