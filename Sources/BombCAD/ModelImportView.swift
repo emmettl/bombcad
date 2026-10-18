@@ -26,6 +26,9 @@ struct ModelImportView: View {
     @State private var scale: Float = 1
     @State private var yUp = false
     @State private var corner = SIMD3<Double>(1, 1, 0)
+    /// Opens in the corner's first field, under Units & placement (open to start with), so that Tab
+    /// moves on from there.
+    @FocusState private var focusedCorner: Int?
     @State private var deformable = false
     @State private var fixedBase = true
     @State private var material = StructureMaterial.reinforcedConcrete
@@ -263,6 +266,8 @@ struct ModelImportView: View {
                 .keyboardShortcut(.defaultAction)
             }
         }.padding(20).frame(width: 1120, height: 780)
+            .defaultFocus($focusedCorner, 0)
+            .task { focusedCorner = 0 }
             .onChange(of: scale) { schedulePreview() }.onChange(of: yUp) { schedulePreview() }
             .onChange(of: corner) { schedulePreview() }.onChange(of: resolution) { schedulePreview() }
             .onChange(of: domainSize) { schedulePreview() }.onChange(of: deformable) { schedulePreview() }
@@ -371,7 +376,9 @@ struct ModelImportView: View {
             TextField(
                 "Corner \(["X","Y","Z"][axis]) (m)",
                 value: Binding(get: { corner[axis] }, set: { corner[axis] = $0 }),
-                format: .number.precision(.fractionLength(0...4)))
+                format: .number.precision(.fractionLength(0...4))
+            )
+            .focused($focusedCorner, equals: axis)
         }
         Text("The lowest corner is placed here; simulation Z points upward.").font(.caption)
         HStack {

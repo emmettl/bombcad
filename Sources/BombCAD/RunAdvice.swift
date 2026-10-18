@@ -227,12 +227,14 @@ struct AdvisorSection: View {
                         "Minutes", value: $minutes, format: .number.precision(.significantDigits(1...3))
                     )
                     .labelsHidden().frame(maxWidth: 56).multilineTextAlignment(.trailing)
+                    .accessibilityLabel("\(quantity.title) (min)")
                     Text("min")
                 } else {
                     TextField(
                         "Percent", value: $percent, format: .number.precision(.significantDigits(1...3))
                     )
                     .labelsHidden().frame(maxWidth: 56).multilineTextAlignment(.trailing)
+                    .accessibilityLabel("\(quantity.title) (%)")
                     Text("%")
                 }
                 Spacer()
