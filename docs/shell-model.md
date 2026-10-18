@@ -419,7 +419,12 @@ ambient air. A 1930s cavity is closed at its reveals, so its air leaks out only 
 is left out. Once the other element is removed or has moved more than a cell away, the face sees
 the air beyond again. Without this the [terraced houses'](#the-terraced-houses) cavity walls took
 the blast twice; with the cavity at ambient instead, the rooms' pressure, once they had filled
-through the windows, pushed every inner leaf out with nothing behind it.
+through the windows, pushed every inner leaf out with nothing behind it. Of the presets and the
+profiled sheeting's harnesses (Langdon, ADBLAST), only the terraced houses have such faces (a
+scan of their meshes, 18 October 2026); imported IFC walls whose layers lie face to face
+(`tiesTouching`) have them too, and each layer now takes its own side instead of the whole
+difference. The large-panel flats and the Keys and Alsubaei walls are solid elements and are not
+affected. No recorded validation result outside the terraced houses has such faces.
 
 **Mask.** Each intact shell and beam marks the air cells its volume occupies, at points no more
 than half a cell apart. Any point makes its cell solid, and the cell moves with the mean
