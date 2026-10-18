@@ -99,6 +99,7 @@ extension EnvelopeDamageAssessment {
         var rotations: [Double] = []
         var levels: [EnvelopeDamageLevel] = []
         var failedAt: Double?
+        var launch: DebrisLaunch?
         for single in [false, true] where single || continuous {
             let system = EnvelopePanel.profiledSheetOneWay(profile: profile, span: span, continuous: !single)
             let response = system.response(pressures: pressures, step: load.binS)
@@ -109,15 +110,25 @@ extension EnvelopeDamageAssessment {
             if EnvelopePanel.sheetPullOff(system, response: response, suction: suction, span: span) > holding
             {
                 level = .failed
-                failedAt = min(failedAt ?? .infinity, response.reboundTime ?? response.peakTime)
+                let at = response.reboundTime ?? response.peakTime
+                if at < failedAt ?? .infinity {
+                    failedAt = at
+                    // Off its screws at the furthest of its rebound, at rest, the suction to carry it.
+                    launch = Self.launch(
+                        time: at, speed: 0, system: system, material: .profiledSteel,
+                        thickness: Double(profile.thickness), span: span,
+                        rotation: atan(-response.reboundDeflection / (span / 2)))
+                }
             }
             rotations.append(rotation)
             levels.append(level)
         }
-        return EnvelopeComponentDamage(
+        var result = EnvelopeComponentDamage(
             id: load.id, owner: load.owner, kind: load.kind, material: .profiledSteel, shortSpanM: span,
             peakNetPa: peak, rotationDeg: rotations.min()!...rotations.max()!,
             levels: levels.min()!...levels.max()!,
             failedAtS: failedAt)
+        result.launch = launch
+        return result
     }
 }

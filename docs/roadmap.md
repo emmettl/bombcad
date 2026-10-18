@@ -169,6 +169,10 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
 - **Done, an approximation:** [blast hazards](hazards.md): DoD's K-factor distances, the minimum
   safe distance and what governs it, and injury at standing height from the run's own peaks
   (Bowen, Bass, UFC's eardrums), checked against Teland's distances within 6% (17 October).
+  Debris from failed envelope components thrown and judged beside the fragments, and DESR's
+  structure debris distance for a charge inside a building (18 October): Keys's walls' mean reach
+  as measured, the Kasun cubicle's hazardous reach under half
+  ([hazards](hazards.md#debris-from-failed-envelope-components)).
 - **Done, illustrative:** the fireball's
   [thermal radiation](thermal-radiation.md) and [surface heating](surface-heating.md); its
   [rise and cloud](fireball-rise.md); [ground shock](ground-shock.md), as the manuals'

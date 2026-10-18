@@ -1120,6 +1120,14 @@ The four questions set before building it, and where each is answered:
 Its standing is an approximation for glass and concrete panels, and illustrative for brick and
 the inside pressure (see [standing](standing.md)).
 
+### Debris from failed components
+
+A wall, roof or pane that fails is thrown: its one-way model's speed at failure over its
+mechanism's shape, its pieces flown to where they land and judged as fragments are, the minimum
+safe distance taking it in ([hazards](hazards.md#debris-from-failed-envelope-components), where
+it is compared with Keys's walls and the Kasun cubicle). Each component's damage keeps how it was
+thrown (`EnvelopeComponentDamage.launch`).
+
 ### Future work
 
 - **Venting more.** [Venting](#venting-glazing-that-breaks-in-the-air) opens broken glazing and
