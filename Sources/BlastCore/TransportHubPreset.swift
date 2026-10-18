@@ -76,6 +76,9 @@ extension ScenarioPreset {
         var structure = StructureModel(
             solids: solids, material: column.equivalent(), elementSize: 0.5, fixedBase: true)
         structure.elementKind = .shell
+        // The trusses' members and the purlins welded where they meet, full-strength, fracturing as
+        // NIST's tested WUF-B did.
+        structure.steelConnection = .weldedFlange
         structure.shellLayers = 4
         for (index, material) in materials.enumerated() where material != structure.material {
             structure.setMaterial(material, of: index)

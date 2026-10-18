@@ -38,9 +38,12 @@ simplification is listed here.
 - **Composite floors.** The beams lie on their slab's midsurface and share its nodes: full shear
   connection between them, but without the composite section's lever arm. The floors are a
   little less stiff than real composite ones.
-- **Connections.** Every joint of the frame is rigid, because the shell model has no pinned
-  joints. A real frame of this kind has simple (pinned) beam-to-column connections and leans on
-  its core.
+- **Connections.** Since 18 October 2026 the beams sit on fin plates (single-plate shear
+  connections, [steel connections](shell-model.md#steel-connections)), as a gravity frame
+  leaning on its core does. A fin plate turns freely at 0.05 of the beam's plastic moment,
+  yields along the beam at 435 kN in the tested size, and fractures at 0.089 rad, as Weigand
+  and Berman's tests did. Columns run on through their joints. Before 18 October every joint
+  was rigid.
 - **Curtain wall.** It is one plate, 150 mm thick (a mullion's depth), round each storey of each
   face. Its frame material (`ScenarioPreset.curtainWallFrame`) is scaled so that a strip one
   element wide bends as stiffly and as strongly as a mullion, and weighs as much. The vision
@@ -91,9 +94,9 @@ The largest displacement the run reports, hundreds of metres, is a glass fragmen
 structure's own movement is far smaller.
 
 The frame is probably too strong against the blast near the charge. Each column is a rectangle
-0.19 m wide where the real section's flanges are 0.31 m, so it catches less of the blast. Its
-joints are rigid where a real frame's are pinned, so it is stiffer. And the equivalent
-rectangle's axial stiffness is about twice the section's.
+0.19 m wide where the real section's flanges are 0.31 m, so it catches less of the blast. The
+equivalent rectangle's axial stiffness is about twice the section's. The run above had rigid
+joints; how the fin plates change it is below.
 
 ### Cost
 

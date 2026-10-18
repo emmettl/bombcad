@@ -319,6 +319,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case interfaceBond
     case smearedMasonry
     case profiledSheets
+    /// Steel beams hinged at their joints by connections that fracture (`StructureModel.steelConnection`).
+    case steelConnections
     case inclinedBars
     case baseConnections
     case jointsBetweenParts
@@ -411,6 +413,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .interfaceBond: return any { $0.interfaceBond != nil }
         case .smearedMasonry: return materials.contains { $0.units != nil } && any { !$0.unitJoints }
         case .profiledSheets: return any { $0.solidSheets.contains { $0 != nil } }
+        case .steelConnections: return any { $0.steelConnection != nil }
         case .inclinedBars: return any { !$0.inclinedBars.isEmpty }
         case .baseConnections:
             return any { s in
@@ -807,6 +810,18 @@ public enum StandingTable {
                     + "a deforming purlin is not compared. Sheeted purlins and rails are held straight by the "
                     + "screws, which under uplift, their free flange in compression, is the unsafe side.",
                 document: "profiled-sheeting.md#against-adblasts-cladding-tests")
+        case .steelConnections:
+            return Entry(
+                title: "Steel connections that hinge and fracture", affects: [.structuralDamage],
+                limit: .approximation,
+                note:
+                    "Each steel beam that stops at a joint is held to it by a hinge that turns plastically at the "
+                    + "connection's moment and lets the beam go at its fracture turn: a welded flange (WUF-B) or "
+                    + "reduced beam section from NIST TN 1669, a fin plate from Weigand and Berman's thirteen "
+                    + "tests. Under a column's removal the hinged assemblies fail 5–27% past the measured drop at "
+                    + "1.07–1.16 of the measured load, where rigid joints never fail; but the fracture turns come from these slow tests, "
+                    + "so that is calibration, and no connection has been compared at blast rates.",
+                document: "shell-model.md#steel-connections")
         case .inclinedBars:
             return Entry(
                 title: "Inclined bars", affects: structure, limit: nil,
@@ -1127,6 +1142,7 @@ public enum StandingTable {
         "StructureModel.memberImperfections": .option([.perfectMembers]),
         "StructureModel.bucklingCurve": .input,
         "StructureModel.solidBucklingCurves": .input,
+        "StructureModel.steelConnection": .option([.steelConnections]),
         "StructureModel.shellSectionShear": .option([.shellSectionShear]),
         "StructureModel.secondCracks": .option([.noSecondCracks]),
         "StructureModel.bareBars": .option([.noBareBars]),
@@ -2016,7 +2032,7 @@ struct StandingScene {
                 "steel members compared with one series of blasted beams and columns, within half to twice "
                     + "either way; their yield rising with strain rate by Cowper and Symonds's law, mild steel's "
                     + "constants (Jones) to 300 MPa and ERDC's measured A992 and A572 grade 50 above; their "
-                    + "connections not compared")
+                    + "connections not compared at blast rates")
         }
         if classes.contains(.masonry) {
             level = max(level, .verified)

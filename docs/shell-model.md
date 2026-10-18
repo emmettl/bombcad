@@ -743,6 +743,80 @@ No test of a steel column buckling under blast with its measured response has be
 Nassr et al.'s columns under blast with axial load (McMaster, 2012) were loaded to a quarter of
 their capacity, short of buckling.
 
+## Steel connections
+
+Where steel members meet, they share a node unless the model says how they are connected. A
+shared node is a rigid joint that never breaks: only the members' own fibres can fail. Real
+connections turn, and they fracture. Since 18 October 2026, `StructureModel.steelConnection`
+names a connection (`SteelConnection`).
+
+**Where the hinges go.** Each steel beam that stops at another member gets its own end node,
+held to the joint's node by a hinge (`ShellMesh.Hinge`). "Stops at" means the joint is held by a
+column, by a member running on through it, or by a shell. The column, or the through member,
+keeps the joint's node.
+
+**How a hinge acts** (the `shellHinges` kernel, run before the nodes move):
+- **Stiffness.** Half that of a beam element of the same length: rotation 2EI/h about each cross
+  axis, axial and shear 0.5EA/h, torsion G(I₂+I₃)/h.
+  - It can't be stiffer. The beam's end node carries only its share of one element's mass, so a
+    stiffer hinge would need a shorter step.
+  - It is rigid by EN 1993-1-8's measure (§5.2.2.5, S_j ≥ 25EI/L) for a beam over 12.5 elements
+    long.
+- **Plastic moment.** It turns plastically past a fraction of the beam's plastic moment, so the
+  beam's plastic hinge forms in the connection.
+- **Strength along the beam.** Where the connection is weaker than the beam, it yields along the
+  beam as well, pulled or pushed.
+- **Fracture.** It lets the beam go entirely (moment, shear and pull) once its bending turn
+  about the cross axes, elastic and plastic together, reaches the fracture rotation. The tested
+  connections fractured in the same way.
+
+**The connections**, each from tests under a column's removal:
+
+| Connection | Moment / M_p | Fracture turn | Along the beam | Source |
+|---|---|---|---|---|
+| Welded flange, bolted web (WUF-B) | 0.95 | 0.081 rad | as the beam | Sadek et al., NIST TN 1669 (2010) |
+| Reduced beam section (RBS) | 0.8 | 0.14 rad | as the beam | NIST TN 1669; AISC 358 sizes the cut |
+| Single-plate shear (fin plate) | 0.05 | 0.089 rad | 0.13 of the squash load | Weigand and Berman (2016), 13 tests |
+
+How the shear tab's figures were derived:
+- **Fracture turn:** the median of Weigand and Berman's thirteen tests (0.067–0.110 rad).
+- **Moment:** three A325 bolts' shear strength (130 kN each), about the middle bolt at 76 mm
+  pitch, over W18×35's M_p.
+- **Strength along the beam:** the three-bolt tests' median pull (435 kN), over the equivalent
+  rectangle's squash load for W18×35 (4M_p/d = 3,350 kN).
+- **Shear:** left unlimited. The tests held 32–60 kN once their pull had grown, but under gravity
+  the tab carries its beam.
+
+**The column-removal assemblies** (`ColumnRemovalTest`, `blastbench removal`): two spans pushed
+down at the middle column's stub at 0.1 m/s.
+
+| Assembly | Joints | Peak load | Failed at | Measured |
+|---|---|---|---|---|
+| WUF-B, W21×73 on W18×119, 6.10 m spans | rigid | 1,559 kN | none by 1.1 m | 890 kN, 495 mm |
+| | hinged | 1,032 kN | 629 mm (1.27) | |
+| RBS, W24×94 on W24×131, 6.10 m spans | rigid | 2,545 kN | none by 1.1 m | 1,780 kN, 851 mm |
+| | hinged | 1,905 kN | 895 mm (1.05) | |
+| SPS, W18×35 on W14×90, 9.1 m spans | rigid | 569 kN | none by 1.4 m | about 157 kN, 892 mm |
+| | hinged | 181 kN | 941 mm (1.05) | |
+
+The load is read every 5 ms and judged on its mean over 10 mm of drop, because it rings with the
+stub's mass. Weigand and Berman loaded one connection as the two-span system would load it, so
+their stub load is derived: 2(T sin θ + V cos θ), from the eight three-bolt tests' medians (a
+pull of 431 kN, 40 kN shear at the column face, 0.0905 rad).
+
+- **Rigid joints** never fail by the test's drop: the beams' fibres alone carry the catenary.
+- **Hinged, they fail late,** 5–27% past the test's drop. The hinge turns less than the chord
+  rotation the tests quote, because the beams bend too.
+- **The loads read high:** 1.07–1.16 of measured at their peaks.
+- **This is a check, not a validation.** The fracture turns come from these same tests, so they
+  are calibration.
+
+**Not compared:** connections at blast rates.
+- **Culache's** high-rate moment connections (Southampton, 2017) could not be fetched.
+- **Dinu et al.'s** end-plate connections under column loss (Timișoara) are on a server that
+  refuses connections.
+- **EN 1993-1-8's component method** is not used: none of its springs is built.
+
 ## Limitations
 
 1. **Midsurface geometry.** Members end on each other's midsurfaces and centrelines, so where
@@ -805,6 +879,13 @@ their capacity, short of buckling.
     Flanged sections drawn as rectangles (`SteelSection.equivalent`) are stiffer about their
     minor axis than the section, a beam's well above it, so they buckle that way at a higher
     load than they should; their bow is sized for the rectangle.
+12. **Connections are three tested types, at slow rates.** A hinge takes one connection's
+    moment, fracture turn and pull for every beam in the model, scaled to each beam's plastic
+    moment. Connections are not sized to their beams, and there is no component method. The
+    fracture turns come from column-removal tests at about 0.1 m/s. A beam's fracture under
+    blast, at strain rates a thousand times higher, has not been compared. A hinge fractures
+    on its bending turn alone, not on the pull that grew with it in the tests. Its shear is
+    unlimited, so a shear tab never fails in shear.
 
 ## Future work
 
@@ -817,6 +898,13 @@ their capacity, short of buckling.
 
 ## Sources
 
+- F. Sadek, J. A. Main, H. S. Lew, S. D. Robert, V. P. Chiarito and S. El-Tawil, *An
+  experimental and computational study of steel moment connections under a column removal
+  scenario*, NIST Technical Note 1669, 2010 (open). The WUF-B and RBS assemblies and their
+  fracture rotations.
+- J. M. Weigand and J. W. Berman, "Steel gravity connections subjected to large rotations and
+  axial loads", *Connections VIII*, Boston, 2016 (open, NIST pub 920903). Single-plate shear
+  and bolted angle connections under a column's removal, Table 1.
 - J. R. Gladden, N. Z. Handzy, A. Belmonte and E. Villermaux, "Dynamic buckling and
   fragmentation in brittle rods", *Physical Review Letters* 94, 035503, 2005 (arXiv
   cond-mat/0410642). The preferred wavelength of a rod struck at its end, and its v^(−1/2) scaling
