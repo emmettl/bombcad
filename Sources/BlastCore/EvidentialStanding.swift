@@ -138,8 +138,18 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// it leaves out. Saved with a kept run, so that the run keeps the standing it was made under
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
-    /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-37"
+    /// The table's identity, derived from its content (`StandingFingerprint`), so that a kept run
+    /// says which it was judged by. Before 18 October 2026 it was numbered by hand,
+    /// "standing-table-1" to "standing-table-36", and kept runs still carry those.
+    public static var currentTable: String { StandingFingerprint.current }
+
+    /// The table's identity as shown: "standing table 36" for a numbered one, else
+    /// "standing a1b2c3d4".
+    public var tableTitle: String {
+        table.hasPrefix("standing-table-")
+            ? "standing table " + table.dropFirst("standing-table-".count)
+            : "standing " + table.dropFirst("standing-".count)
+    }
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -1281,7 +1291,10 @@ public enum StandingTable {
 
 extension SceneStanding {
     /// The standing of each result `inputs` produce, by the table above.
-    public init(_ inputs: StandingInputs) {
+    public init(_ inputs: StandingInputs) { self.init(inputs, table: Self.currentTable) }
+
+    /// The standing of `inputs`, recorded as judged by `table`.
+    init(_ inputs: StandingInputs, table: String) {
         let scene = StandingScene(inputs)
         var results = [scene.peakOverpressure(), scene.impulse(), scene.blastInjury()]
         if !scene.structures.isEmpty { results += [scene.structuralResponse(), scene.structuralDamage()] }
@@ -1320,7 +1333,9 @@ extension SceneStanding {
             results[index].unbanded = unbanded
             results[index].regimes = scene.regimes(for: results[index].kind)
         }
-        self.init(results: results, resolution: scene.resolutionNotes(), unsupported: scene.unsupported())
+        self.init(
+            table: table, results: results, resolution: scene.resolutionNotes(),
+            unsupported: scene.unsupported())
         gauges = scene.gaugeBands()
     }
 }
