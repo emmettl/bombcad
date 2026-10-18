@@ -138,7 +138,7 @@ condition stands in for the room. It is kept on the branch `claude/oblique-far-f
 
 **The samples.** Most were sized for the positive phase and a run of minutes, and open with the
 warning. The warehouse and the transport hub were widened to meet the clearance (18 October
-2026), at about 1.4–1.5 times the air. For the rest, meeting it would take far more air (the
+2026), at about 1.4–1.5 times the air, and the terraced row was laid out to meet it. For the rest, meeting it would take far more air (the
 cost of a run goes with it at a given cell). So they keep their domains, and their late response,
 after the positive phase, carries the warning:
 
@@ -158,7 +158,7 @@ after the positive phase, carries the warning:
 | Car park | 0.7 (top) | 4.8× |
 | Three buildings across a street | 2.2 (top) | 1.8× |
 | Underpass | 0.9 (ends) | 5.0× |
-| Block-built house, terraced houses | 2.0–2.1 | 1.7×, 2.1× |
+| Block-built house | 2.1 (behind the charge) | 1.7× |
 | Internal explosion (the test's chamber) | 0.3 | 6.5× |
 | Large-panel flats, street charge (500 kg) | 0.5 | 16× |
 
