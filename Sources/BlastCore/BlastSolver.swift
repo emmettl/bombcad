@@ -1854,6 +1854,9 @@ public final class BlastSolver {
     /// is some time after detonation.
     func startClock(at start: Double) {
         time = start
+        // The GPU's clock too, in its ticks: the exposure plane's arrivals, panes' and breaches'
+        // opening times and the envelope histories read it as time since detonation.
+        clockTicks = UInt64((start / StepControl.tick).rounded())
     }
 
     /// Direct access to the peak overpressure and impulse fields.

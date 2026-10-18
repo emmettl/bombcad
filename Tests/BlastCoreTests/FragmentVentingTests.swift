@@ -56,6 +56,41 @@ struct FragmentVentingTests {
         return rose
     }
 
+    @Test("On a mapped start a pane holed at a time opens then: the GPU's clock starts with the run's")
+    func holedPaneOnMappedStart() throws {
+        let (scene, spec) = try scene()
+        let id = try #require(
+            FragmentCloud.paneHoles(
+                spec: spec, scene: FragmentScene(scene), density: scene.atmosphere.density,
+                pressure: scene.atmosphere.pressure, until: 0.03
+            ).keys.first)
+        var config = SolverConfiguration.recommended
+        config.mappedCharge = true
+        config.airSleepThreshold = 0
+        let solver = try BlastSolver(
+            device: #require(MTLCreateSystemDefaultDevice()), scenario: scene, cellSize: 0.25,
+            configuration: config)
+        // Mapped: the clock starts at the one-dimensional solution's time, not at detonation.
+        #expect(solver.time > 1e-4)
+        try solver.configureEnvelopeComponents(
+            objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: 0.03))
+        let construction = EnvelopeConstruction.assumed(objectID: scene.envelopeObjects[0].id)
+        try solver.configureEnvelopeVenting(objects: scene.envelopeObjects) { _ in construction }
+        let hole = 0.002
+        solver.setEnvelopePaneHoles([id: hole])
+        var seen: Double?
+        while seen == nil, solver.time < 0.006 {
+            _ = solver.advance(steps: 1, timeLimit: 0.006)
+            if solver.envelopeVentingSnapshot()?.panes.first?.brokenAtS != nil { seen = solver.time }
+        }
+        // It opens on the step the run's clock passes the hole, as without the mapped start,
+        // not the mapped start's time later.
+        let opened = try #require(seen)
+        #expect(opened >= hole - 1e-7 && opened < hole + 2e-4, "opened at \(opened) s, holed at \(hole) s")
+        let recorded = try #require(solver.envelopeVentingSnapshot()?.panes.first?.brokenAtS)
+        #expect(abs(recorded - opened) < 2e-4, "recorded \(recorded) s, seen at \(opened) s")
+    }
+
     @Test("A pane holed before the blast opens then, the room fills earlier, however the run is batched")
     func holedPaneOpensFirst() throws {
         let (scene, spec) = try scene()
