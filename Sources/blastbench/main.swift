@@ -30,6 +30,8 @@ import simd
 //                      [--roomy] [--history out-%.csv]   (open faces 4 m/kg^(1/3) out; the deflection's record)
 //   blastbench twoface [--wu S8] [--wang A] [--yao T4] [--roomy] [--out dir]   (Wu's, Wang's and Yao's slabs;
 //                      --roomy moves every open face out to 4 m/kg^(1/3), as Scenario.openFaceRoom)
+//   --balloon-start on closein, twoface, perimeter, keys, envelope-debris and mendonca --recommended:
+//                      the charge started from the balloon these were recorded on before 18 October 2026
 //   blastbench contact [--tests SN142,SN131] [--dx 0.02] [--refine 2] [--levels 2] [--layers 12] [--time 0.003] [--step-divisor 4] [--charge 1.64] [--progress] [--fastest] [--column] [--no-debris-drag] [--no-contact]
 //   blastbench slab [--history] [--history-csv dir] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map] [--plan [0.1]]
 //                   [--stiffening [--profile [--line] [--column -44]]]   (where the tension along the span is carried)
@@ -990,7 +992,7 @@ func runChamber() throws {
         afterburnEnergy: option("afterburn-energy").flatMap { Float($0) }.map { $0 * 1e6 },
         airModel: chosenGas(), openFaces: chosenFaces(),
         refinement: option("refine").flatMap { Int($0) } ?? 1,
-        contact: flag("no-contact") ? .off : nil,
+        contact: flag("no-contact") ? .off : nil, mappedCharge: flag("mapped"),
         // `--progress` reports every 10 ms of a long run.
         progress: flag("progress")
             ? { line in
@@ -2896,6 +2898,7 @@ func runTwoFace() throws {
                 refinement: option("refine").flatMap { Int($0) } ?? 2, elementSize: yaoElement,
                 duration: duration,
                 afterburning: burning, airModel: chosenGas(), openFaces: chosenFaces(), roomy: flag("roomy"),
+                balloonStart: flag("balloon-start"),
                 adjust: adjust,
                 prepare: { solver in
                     // `--weightless`: the slab without its own weight, as compared before 17 October 2026.
@@ -2962,7 +2965,8 @@ func runTwoFace() throws {
                 refinement: option("refine").flatMap { Int($0) } ?? 2, elementSize: elementSize,
                 duration: duration,
                 heldLengthwise: flag("held"), afterburning: burning, airModel: chosenGas(),
-                openFaces: chosenFaces(), roomy: flag("roomy"), adjust: adjust,
+                openFaces: chosenFaces(), roomy: flag("roomy"), balloonStart: flag("balloon-start"),
+                adjust: adjust,
                 prepare: { solver in
                     prepareTrace(solver)
                     lastStructure = solver
@@ -3024,6 +3028,7 @@ func runTwoFace() throws {
                 edges: option("edges").flatMap { TwoFaceSlabTests.WangEdges(rawValue: $0) }
                     ?? (flag("hinged") ? .hinged : .fixed),
                 afterburning: burning, airModel: chosenGas(), openFaces: chosenFaces(), roomy: flag("roomy"),
+                balloonStart: flag("balloon-start"),
                 adjust: { scenario in
                     adjust(&scenario)
                     if let bond = chosenBondSlip(diameter: test.bar) { scenario.structure?.bondSlip = bond }
@@ -3095,7 +3100,7 @@ func runCloseIn() throws {
             refinement: refinement, mappedCharge: !flag("no-map"), afterburning: burning,
             airModel: chosenGas(), openFaces: chosenFaces(),
             heldLengthwise: !flag("sliding"), stepsPerSample: option("trace") != nil ? 1 : 16,
-            roomy: flag("roomy"),
+            roomy: flag("roomy"), balloonStart: flag("balloon-start"),
             adjust: { scenario in
                 if flag("no-rate") { scenario.structure?.material.rateDependent = false }
                 if let scale = option("charge-scale").flatMap({ Float($0) }) { scenario.charge.mass *= scale }
