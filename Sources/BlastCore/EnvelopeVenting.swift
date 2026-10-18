@@ -238,9 +238,20 @@ final class EnvelopeVenting {
     init(
         device: MTLDevice, library: MTLLibrary, grid: Grid, mask: UnsafeBufferPointer<UInt8>,
         objects: [SceneObject], components: [EnvelopeComponent], rigidBoxes: [Box],
-        constructions: (UUID) -> EnvelopeConstruction
+        constructions: (UUID) -> EnvelopeConstruction, equivalents: [(plate: Int?, strip: Int?)] = []
     ) throws {
         self.components = components
+        // The recorder's entry whose step mean drives each component, its equivalent uniform load
+        // where recorded, as its damage is judged: a sheeted wall's or roof's strip, else its plate.
+        func entry(_ n: Int) -> UInt32 {
+            guard equivalents.indices.contains(n) else { return UInt32(n) }
+            let component = components[n]
+            let construction = constructions(component.owner)
+            let kind = component.kind == .wall ? construction.walls : construction.roof
+            let sheeted = component.kind != .pane && kind == .profiledSteelSheeting
+            return UInt32(
+                (sheeted ? equivalents[n].strip ?? equivalents[n].plate : equivalents[n].plate) ?? n)
+        }
         let envelopes = objects.compactMap(\.envelope)
         let ownerIDs = objects.map(\.id)
         owners = ownerIDs
@@ -279,7 +290,7 @@ final class EnvelopeVenting {
             for point in system.backbone {
                 table.append(SIMD4(Float(point.x), Float(point.y), Float(brittle.stress(at: point.x)), 0))
             }
-            panes.append(Pane(component: UInt32(n), owner: UInt32(ownerIndex(component.owner))))
+            panes.append(Pane(component: entry(n), owner: UInt32(ownerIndex(component.owner))))
             paneIndices.append(n)
         }
         paneComponents = paneIndices
@@ -333,7 +344,7 @@ final class EnvelopeVenting {
             guard held > 0 else { continue }
             walls.append(
                 SIMD4(
-                    UInt32(n), UInt32(ownerIndex(component.owner)), UInt32(wallSystems.count),
+                    entry(n), UInt32(ownerIndex(component.owner)), UInt32(wallSystems.count),
                     UInt32(failure.systems.count) | (failure.cantilever ? 1 << 16 : 0)))
             for system in failure.systems {
                 let sdof = system.sdof
