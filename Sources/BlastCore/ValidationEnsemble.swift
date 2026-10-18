@@ -494,8 +494,9 @@ public enum ValidationEnsemble {
             test.standoff = Float(value("standoff", Double(wuTest.standoff ?? 0.5)))
             var concrete = values
             concrete["fc"] = value("fc", 0.8 * 47e6) * value("cylinder")
+            // On the balloon start, as the ensemble was run (validation.md, "Still on the balloon start").
             let result = try TwoFaceSlabTests.run(
-                device: device, test: test,
+                device: device, test: test, balloonStart: true,
                 adjust: { scenario in
                     if let material = scenario.structure?.material {
                         scenario.structure?.material = perturbed(material, concrete)
@@ -507,7 +508,7 @@ public enum ValidationEnsemble {
             test.charge *= Float(value("mass"))
             test.standoff = Float(value("standoff", Double(chiquitoTest.standoff)))
             let result = try CloseInSlabTest.run(
-                device: device, test: test,
+                device: device, test: test, balloonStart: true,
                 adjust: { scenario in
                     if let material = scenario.structure?.material {
                         scenario.structure?.material = perturbed(material, values)

@@ -44,8 +44,9 @@ enum HeadlessRun {
         and writes it as JSON; each building's line is printed too. A structure making rubble
         (rubbleParticles) has its debris flown on to where it lands and judged against the
         hazardous-fragment criteria, as fragments are; --debris-results writes it as JSON.
-        --envelope-window starts each component's history when the air at it first moves and keeps
-        that many seconds of it, not the whole run: across a district, the bins stay fine.
+        --envelope-window starts each component's history when the blast reaches it (500 Pa on
+        either side) and keeps that many seconds of it, not the whole run: across a district, the
+        bins stay fine.
         --thermal reckons the fireball's thermal radiation on the ground and the scene's faces,
         frame by frame; the receivers go into the USD scene and, with --thermal-results, a JSON
         file. --cloud hands the hot gas left at the end of the run over to a model of the
@@ -113,7 +114,7 @@ enum HeadlessRun {
         /// Where each envelope component's pressure history goes, as JSON.
         var envelopeHistories: URL?
         var envelopeDamage: URL?
-        /// Seconds of each component's history kept from when its air first moves; nil for the
+        /// Seconds of each component's history kept from when the blast reaches it; nil for the
         /// whole run from t = 0.
         var envelopeWindow: Double?
         /// Where the structures' debris landings and their hazard go, as JSON.

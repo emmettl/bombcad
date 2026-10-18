@@ -42,4 +42,22 @@ struct PrecastSeatTests {
             "\(result.sliding) N against \(result.measuredSliding)")
         #expect(result.lag < 1e-3)
     }
+
+    @Test(
+        "On a neoprene pad, friction falling with pressure: the heavy seat's energy and sliding force near measured"
+    )
+    func neoprene() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "This test needs a Metal device")
+        // The first 60 reversals, out to about 20 mm, where the one-flat-coefficient law was 40% high.
+        let result = try PrecastSeatTest.run(
+            device: device, test: "spc_i1_150", samples: samples, law: .neoprenePad, reversals: 60)
+        #expect(
+            abs(result.energy / result.measuredEnergy - 1) < 0.15,
+            "\(result.energy) J against \(result.measuredEnergy)")
+        // Below measured, as over the whole history (0.86–0.92): pressed unevenly across the seat, its
+        // points slide on less than the law gives at the mean pressure, 0.41 × (150 / 100)^−0.2 = 0.38.
+        #expect(
+            abs(result.sliding / result.measuredSliding - 1) < 0.15,
+            "\(result.sliding) N against \(result.measuredSliding)")
+    }
 }

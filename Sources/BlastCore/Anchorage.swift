@@ -47,6 +47,11 @@ public struct Anchorage: Sendable, Hashable, Codable {
     public var cohesionSlip: Float
     /// Coefficient of friction, on the joint and on the ground once it has separated.
     public var friction: Float
+    /// Friction that falls as the joint is pressed harder, as an elastomer's does:
+    /// `friction` × (pressure / `frictionReferencePressure`)^(−`frictionExponent`). Nil: constant.
+    public var frictionExponent: Float?
+    /// The pressure, in Pa, at which the friction is `friction` (with `frictionExponent`).
+    public var frictionReferencePressure: Float?
     /// Pressure in Pa the ground bears before it yields and the base settles; nil bears any.
     public var bearingCapacity: Float?
     /// How far, in metres, the joint can close by yielding at `bearingCapacity` before it bears
@@ -119,6 +124,20 @@ public struct Anchorage: Sendable, Hashable, Codable {
     /// over 40 J/m² of fracture energy (about half of the concrete's own), and the cohesion and
     /// friction of a rough joint in Eurocode 2, EN 1992-1-1 §6.2.5 (c = 0.45 of a C30 concrete's
     /// mean tensile strength of 2.9 MPa, μ = 0.7), lost over 1 mm of sliding.
+    /// A precast beam resting on a plain neoprene pad: friction that falls as the pad is pressed
+    /// harder, 0.41 × (pressure / 0.82 MPa)^(−0.20), no tension and no cohesion. Fitted to Batalha
+    /// et al.'s seats on one pad (*Earthquake Eng. Struct. Dyn.* 2022; data in Samples/PrecastSeat),
+    /// on the first half of the cycles at 50 and 150 kN over the seat's 0.35 × 0.35 m (the pads' own
+    /// size is in the paper, not read): their friction fell from 0.5 of the load at 50 kN to 0.4 at
+    /// 150 kN, as Magliulo et al.'s law for elastomeric bearings has it (μ ∝ σ^−0.163). Two pads
+    /// held the same.
+    public static let neoprenePad: Self = {
+        var law = Self.resting(friction: 0.41)
+        law.frictionExponent = 0.20
+        law.frictionReferencePressure = 100e3 / (0.35 * 0.35)
+        return law
+    }()
+
     public static let constructionJoint = Self(
         tensileStrength: 1e6, tensionOpening: 2 * 40 / 1e6, cohesion: 1.3e6, cohesionSlip: 1e-3,
         friction: 0.7)
@@ -318,7 +337,9 @@ struct AnchorageParameters {
         // A joint that is not under the body carries its normal; zero is up.
         let normal = law.isUnder ? SIMD3<Float>.zero : law.across
         bearing = SIMD4(law.bearingCapacity ?? 0, normal.x, normal.y, normal.z)
-        closing = SIMD4(law.closingGap ?? 0, material.youngsModulus / elementSize, 0, 0)
+        closing = SIMD4(
+            law.closingGap ?? 0, material.youngsModulus / elementSize, law.frictionExponent ?? 0,
+            law.frictionReferencePressure ?? 1)
     }
 }
 
@@ -327,8 +348,11 @@ extension Anchorage {
     public func validate() throws {
         let values = [
             tensileStrength, tensionPlateau, tensionOpening, cohesion, cohesionSlip, friction,
-            bearingCapacity ?? 0, closingGap ?? 0,
+            bearingCapacity ?? 0, closingGap ?? 0, frictionExponent ?? 0,
         ]
+        guard frictionReferencePressure.map({ $0.isFinite && $0 > 0 }) ?? true else {
+            throw ImportedMesh.ImportError.invalid("A joint's friction reference pressure must be positive.")
+        }
         guard values.allSatisfy({ $0.isFinite && $0 >= 0 }),
             tensionOpening >= tensionPlateau,
             normalStiffness.map({ $0.isFinite && $0 > 0 }) ?? true,

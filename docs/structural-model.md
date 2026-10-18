@@ -339,18 +339,42 @@ over its whole history, and the force at which it slides with the test's median 
 | concrete, 100 kN | resting, μ 0.6 (the preset) | 60.0 / 68.2 kN | 183 / 207 kJ |
 | one pad, 50, 100, 150 kN | resting, μ 0.5 | 25, 50, 75 / 24, 45, 59 kN | 80, 156, 229 / 75, 127, 162 kJ |
 | two pads, 50, 100, 150 kN | resting, μ 0.5 | 25, 50, 75 / 27, 47, 62 kN | 80, 156, 229 / 78, 121, 149 kJ |
+| one pad, 50, 100, 150 kN | neoprene pad (`--neoprene`) | 22.0, 38.5, 53.2 / 24.0, 43.6, 57.5 kN | 70, 120, 163 / 75, 127, 162 kJ |
+| two pads, 50, 100, 150 kN | neoprene pad | 22.1, 38.5, 53.2 / 25.7, 43.7, 58.5 kN | 71, 120, 162 / 78, 121, 149 kJ |
 | dowels, 100 and 150 kN | resting, μ 0.7 | 70, 105 / 98–129 kN | 101–119 / 43–57 kJ |
 
 On concrete the seat slides at 0.68 to 0.69 of its load, flat to ±48 mm with no loss, and a
 resting joint with Eurocode 2's 0.7 for a rough joint follows each test within 2–4% in energy;
 the preset's 0.6 is 11% low. On neoprene the seat slides at 0.48 of the load at 50 kN, falling to
-0.39 at 150 kN and with wear over the cycles: one coefficient matches the light load and
-overstates the heavy ones by 23–53%; the law has neither friction that falls with pressure nor
-wear of the pad. With dowels the seat's force rises with slip to 160–200 kN at 20–25 mm one way
-and stays near friction (0.4 of the load) the other, the dowels bending against the corbel's
-edge; the law has nothing of the kind, and Rasmussen's 1.3 d² √(f_c f_y) (82 kN for the two,
-with the strengths assumed) only bounds the first millimetres. The seat's length, the pads and
-the materials are in the paper, not read; the model here needs none of them.
+0.39 at 150 kN: one coefficient matches the light load and overstates the heavy ones by 23–53%.
+
+**Neoprene pads** (`Anchorage.neoprenePad`): friction that falls as the pad is pressed harder,
+`friction` × (pressure / `frictionReferencePressure`)^(−`frictionExponent`), 0.41 at 0.82 MPa
+falling as the pressure's −0.20th power (Magliulo et al.'s law for elastomeric bearings has
+−0.163). Its two constants were fitted on the first half of the cycles of the one-pad tests at 50
+and 150 kN, by their energy and sliding force, and the law judged on the rest: on the GPU, every
+pad test's energy within 0.91–1.09 of measured and its sliding force 0.86–0.92, two pads without
+refitting, as Batalha et al. found two pads as strong as one. Wear over the cycles and a pad
+shear spring before sliding were tried and dropped: the wear made the later cycles worse, and
+the spring, sliding nothing in the small cycles, dissipated too little in them. The pressure is
+over the seat, 0.35 × 0.35 m; the pads' own size is in the paper, not read, so a pad of another
+size takes the same law only as far as its pressure is the seat's. The study's beam above, on a
+pad at about 0.35 MPa, gets 0.49 from it, its 0.5 as it is.
+
+**Dowels, not modelled.** Their seats do not slide as friction does: the force reverses within
+a few millimetres of each turn, then grows with the slip both ways, with no plateau, pinched
+about the middle; the first cycle at each amplitude peaks highest (176–201 kN at 15–25 mm at
+150 kN), a repeat at the same amplitude about a third lower, as the corbel cracks from the
+dowels and its cover spalls (at 10 mm with the dowels 6 cm from the edge, at 30 mm with them at
+13 cm; SeismicPRECAST project book, 2021, §4.1). Pulled towards the edge the dowels give about
+half what they give pushed. Rasmussen's 1.3 d² √(f_c f_y) (82 kN for the two, with the
+strengths assumed) bounds only the first millimetres. Friction and a dowel bearing one way, fitted on the first half of
+one test, dissipate 1.4–1.6 times the measured energy on all three. The group's own model of
+these joints (Rodrigues et al., *Structural Engineering International* 32(4), 2022) is a pinched,
+degrading hysteresis of ten or more constants, which three tests cannot fix; so no dowel law is
+built until the paper's details (the dowels' grade, grout and holes) are to hand. The seat's
+length, the pads and the materials are in the paper, not read; the model here needs none of
+them.
 
 `blastbench anchorage --panel` stands the study's wall as a panel 3 m long resting on the
 ground between two columns that do not move, its vertical edges tied to them by each connection
@@ -1108,8 +1132,8 @@ air sees the ground as hard either way. See [Validation](validation.md#brick-wal
 the app it is Run ▸ Terrain ▸ Made of ▸ Soil under debris only, or any earth or rock type (`SolverConfiguration.groundStiffness`,
 saved with the project, `--ground` for a headless run), 10–150 MN/m³ from loose sand to dense
 sand (50 by default, as a footing's soil), on solid elements only; the rigid ground stays the
-default, the one comparison (Keys's walls in the open, one run each) narrowing the debris by an
-eighth to a third but not to what was measured. The standing names it ("Soft ground under debris").
+default, the one comparison (Keys's walls in the open, one run each) narrowing the debris by up to a
+quarter but not to what was measured. The standing names it ("Soft ground under debris").
 
 ### Debris as a hazard
 

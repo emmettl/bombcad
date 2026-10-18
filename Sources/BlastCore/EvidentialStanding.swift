@@ -1226,6 +1226,8 @@ public enum StandingTable {
         "Anchorage.friction": .input,
         "Anchorage.bearingCapacity": .input,
         "Anchorage.closingGap": .input,
+        "Anchorage.frictionExponent": .input,
+        "Anchorage.frictionReferencePressure": .input,
         "Anchorage.footing": .option([.footings, .cyclicSand]),
         "Anchorage.side": .input,
         "Anchorage.jointNormal": .input,
@@ -2057,15 +2059,17 @@ struct StandingScene {
             evidence.append(
                 StandingEvidence(
                     "Brick walls' debris (Keys, 2016)",
-                    "Loads within 15%; the walls crack at the measured heights but fall as one column, lying "
-                        + "1.0–1.4 m too far out in the open and thrown half as far as measured in a shock tube",
+                    "Loads within 15%; the walls crack at the measured heights but fall as one column where the "
+                        + "tests' folded, so how they come apart is wrong; their debris lies 1.0–1.5 m too far out "
+                        + "in the open, the safe side for its reach, and is thrown half as far as measured in a "
+                        + "shock tube, the unsafe side",
                     "validation.md#brick-walls-debris"
                 ))
             if has(.softGround) {
                 evidence.append(
                     StandingEvidence(
                         "Brick walls' debris on soft ground (Keys, 2016)",
-                        "At 5×10⁷ Pa/m the mean distance 1.11–1.40 m against 0.23–0.64 m measured (1.60–1.64 m "
+                        "At 5×10⁷ Pa/m the mean distance 1.21–1.63 m against 0.23–0.64 m measured (1.62–1.77 m "
                             + "on the hard ground); one run of each wall", "validation.md#brick-walls-debris")
                 )
             }
@@ -2276,7 +2280,7 @@ struct StandingScene {
         if materialClasses.contains(.glass) || materialClasses.contains(.masonry) {
             level = .illustrative
             summary +=
-                " Masonry breaks into too few pieces: brick walls fall as one column, lying 1.5–2 m too far out in "
+                " Masonry breaks into too few pieces: brick walls fall as one column, lying 1.0–1.4 m too far out in "
                 + "the open, and are thrown half as far as measured in a shock tube. Glass breaking up has no comparison."
         }
         return result(
