@@ -482,4 +482,32 @@ struct ExperimentalRigidBoxTests {
         #expect(try snapshot(first.air) == snapshot(second.air))
         #expect(try snapshot(first.air) == snapshot(reference.air))
     }
+
+    @Test(
+        "The patches a box's loads are summed over come in the blocks' order, whatever pool slots they hold")
+    func loadPatchOrder() throws {
+        let scene = try scenario(position: SIMD3(2.095, 2, 2))
+        var config = SolverConfiguration()
+        config.refinement = 2
+        config.refinementMemory = 32 << 20
+        let simulation = try ExperimentalRigidBoxSimulation(
+            device: device, scenario: scene, cellSize: 0.2, configuration: config)
+        let r = try #require(simulation.air.refinement)
+        let owners = r.tileOfPatch.contents().bindMemory(to: UInt32.self, capacity: r.maxPatches)
+        let map = r.patchOfTile.contents().bindMemory(
+            to: Int32.self, capacity: r.tileDims.x * r.tileDims.y * r.tileDims.z)
+        let active = (0..<r.maxPatches).filter { owners[$0] != .max }
+        try #require(active.count > 1)
+        // The first and last patches placed swap their slots.
+        let (a, b) = (active.first!, active.last!)
+        let (ownerA, ownerB) = (owners[a], owners[b])
+        owners[a] = ownerB
+        owners[b] = ownerA
+        map[Int(ownerA)] = Int32(b)
+        map[Int(ownerB)] = Int32(a)
+        let listed = r.patches(inBlocks: [(low: .zero, high: r.tileDims &- 1)])
+        let tiles = listed.map { Int(owners[$0]) }
+        #expect(listed.count == active.count)
+        #expect(tiles == tiles.sorted())
+    }
 }

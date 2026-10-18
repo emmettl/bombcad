@@ -676,15 +676,27 @@ final class AirRefinement {
             rows: UInt32(terrain.rows), enabled: 1, cutSamples: UInt32(coarseCut?.geometry.samples ?? 8))
     }
 
-    /// The pool slots of the patches in use whose block passes `near` (block coordinates).
-    func patches(near: (SIMD3<Int>) -> Bool) -> [Int] {
-        let owners = tileOfPatch.contents().bindMemory(to: UInt32.self, capacity: maxPatches)
-        return (0..<maxPatches).filter { patch in
-            guard owners[patch] != .max else { return false }
-            let tile = Int(owners[patch])
-            return near(
-                SIMD3(tile % tileDims.x, (tile / tileDims.x) % tileDims.y, tile / (tileDims.x * tileDims.y)))
+    /// The pool slots of the patches in use over any of these ranges of blocks (block coordinates,
+    /// inclusive), in the blocks' order (x fastest): not the pool's, which the GPU's placing of
+    /// patches decides, so that what is summed over them comes out the same every run.
+    func patches(inBlocks ranges: [(low: SIMD3<Int>, high: SIMD3<Int>)]) -> [Int] {
+        let map = (patchOfTile.contents() + offset(of: patchOfTile)).bindMemory(
+            to: Int32.self, capacity: tileDims.x * tileDims.y * tileDims.z)
+        var found = Set<Int>()
+        for range in ranges {
+            let low = simd_max(range.low, .zero)
+            let high = simd_min(range.high, tileDims &- 1)
+            guard all(low .<= high) else { continue }
+            for z in low.z...high.z {
+                for y in low.y...high.y {
+                    for x in low.x...high.x {
+                        let tile = x + tileDims.x * (y + tileDims.y * z)
+                        if map[tile] >= 0 { found.insert(tile) }
+                    }
+                }
+            }
         }
+        return found.sorted().map { Int(map[$0]) }
     }
 
     /// Whether any of these patches has a fine cell of an experimental box.

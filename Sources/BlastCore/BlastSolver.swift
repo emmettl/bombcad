@@ -4087,8 +4087,7 @@ extension BlastSolver {
             let range = experimentalCellRange(geometry.low, geometry.high, margin: 2)
             return (range.low / AirRefinement.patchSize, range.high / AirRefinement.patchSize)
         }
-        return refinement.patches { tile in blocks.contains { all(tile .>= $0.low) && all(tile .<= $0.high) }
-        }
+        return refinement.patches(inBlocks: blocks)
     }
 
     /// The air's impulse and its moment about the centre of mass on all the boxes together.
