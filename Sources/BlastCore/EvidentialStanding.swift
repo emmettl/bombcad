@@ -1993,22 +1993,27 @@ struct StandingScene {
             parts.append("plain concrete verified against its own curves, no member compared")
         }
         if classes.contains(.steel) {
-            level = max(level, .verified)
-            evidence.append(
+            level = max(level, .compared)
+            evidence += [
                 StandingEvidence(
                     "Elastic bars and cantilevers",
                     "Wave speed, tip deflection and first period within 5% of "
-                        + "theory", "validation.md#verification-against-theory"))
-            evidence.append(
+                        + "theory", "validation.md#verification-against-theory"),
                 StandingEvidence(
                     "Steel struts buckling (blastbench buckling)",
-                    "Elastic buckling within 2% of Euler; at a slenderness near 1 about 1.5 times Eurocode 3's "
-                        + "resistance, the members being perfect (the unsafe side); an impact's buckled wavelength "
-                        + "1.03–1.20 times Lindberg's",
-                    "shell-model.md#buckling"))
+                    "Straight, elastic buckling within 2% of Euler; bowed by default, 0.97–1.02 of Eurocode 3's "
+                        + "curves a, b and c over slenderness 0.2–2; an impact's buckled wavelength 1.03–1.20 times "
+                        + "Lindberg's", "shell-model.md#buckling"),
+                StandingEvidence(
+                    "Nassr's steel beams and columns in the open (W150 and W200, 50–250 kg of ANFO)",
+                    "Beams 0.59–1.23 of the measured deflection, columns 0.35–1.68: within a quarter on the "
+                        + "shots near elastic and the curtain shot; high about the weak axis (no strain-rate law: "
+                        + "Nassr measured yield raised 1.3–1.5), low where the readings likely include the frame's "
+                        + "movement", "validation.md#steel-beams-and-columns-in-the-open"),
+            ]
             parts.append(
-                "steel verified against beam, wave and buckling theory, no test; perfect members buckle about "
-                    + "half again later than Eurocode 3's near a slenderness of 1")
+                "steel members compared with one series of blasted beams and columns, within half to twice "
+                    + "either way, without a strain-rate law; their connections not compared")
         }
         if classes.contains(.masonry) {
             level = max(level, .verified)

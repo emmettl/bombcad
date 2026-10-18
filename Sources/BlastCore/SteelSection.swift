@@ -51,7 +51,8 @@ public struct SteelSection: Sendable, Hashable {
     public var rectangleWidth: Float { 0.6 * depth }
 
     /// `steel` scaled so that a rectangle `width` (by default `rectangleWidth`) by `depth` of it
-    /// bends as stiffly and as strongly about its major axis as the section, and weighs as much.
+    /// bends as stiffly and as strongly about its major axis as the section, and weighs as much:
+    /// its modulus by the second moments' ratio, its yield and hardening by the plastic moduli's.
     /// Its wave speed, which sets the time step, is the same whatever the width; a narrower one
     /// keeps its faces off the mesh's lines.
     public func equivalent(of steel: StructureMaterial = .structuralSteel, width: Float? = nil)
@@ -63,6 +64,9 @@ public struct SteelSection: Sendable, Hashable {
         material.youngsModulus *= secondMoment / (width * depth * depth * depth / 12)
         material.density *= area / (width * depth)
         material.yieldStress *= plasticModulus / (width * depth * depth / 4)
+        // Hardening is a stress per strain, scaled as the yield is: the rectangle's fibres strain as
+        // the section's do at the same curvature, so the stresses carry the section's moments.
+        material.hardeningModulus *= plasticModulus / (width * depth * depth / 4)
         return material
     }
 }

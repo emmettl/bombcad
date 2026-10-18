@@ -530,6 +530,14 @@ less stiffly, bend more.
 
 ## Validation
 
+**Steel members.** Nassr's W150 and W200 beams and columns, blasted in the open, are the steel
+beams' first measured comparison: 0.59–1.23 of the measured deflection for the beams and
+0.35–1.68 for the columns. They are within a quarter on the shots near elastic and the
+curtain shot, and over-read about the weak axis, where the steel's missing strain-rate law
+shows ([steel members](validation.md#steel-beams-and-columns-in-the-open)). With that comparison
+`SteelSection.equivalent` came to scale the steel's hardening with its yield (it had kept the
+section's hardening against a scaled stiffness and yield, 2.5 times too steep for a W150).
+
 The contest slab of the [validation notes](validation.md) with shells, through
 `blastbench slab --shells 2,1,0.5`:
 
