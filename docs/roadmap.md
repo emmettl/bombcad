@@ -140,9 +140,13 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
   hysteresis, hourglass control, tension stiffening and a crushing band ruled out; whether the
   specimen's hinge differed or its rig held the rebound back the record cannot say
   ([concrete model](concrete-model.md#how-the-model-got-here), step 16).
+- **Done:** precast seats on neoprene pads, friction falling with pressure, within 0.91–1.09 of
+  the measured energy ([measured seats](structural-model.md#base-connections)).
+- **Stopped, for data:** dowelled seats, a pinched, degrading hysteresis three tests cannot fix
+  (same section); CLT panels' screwed angle connections, measured only through the panels
+  ([data wanted](data-wanted.md#to-fetch)).
 - **Next:** a shaken footing's lurch, and the rest of its
-  energy (sand crushed across the whole contact, the shaken sand's own); pads' and dowels'
-  laws; footings on a slope.
+  energy (sand crushed across the whole contact, the shaken sand's own); footings on a slope.
 - **Done, approximation:** [profiled steel sheeting](profiled-sheeting.md) as a skin with its ribs
   as beams, its thin flanges buckling, screwed to its purlins by screws that pull through; Langdon's
   connections as spring supports. Against Langdon's corrugated panels 10 of 13 permanent sets are

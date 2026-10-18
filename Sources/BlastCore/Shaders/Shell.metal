@@ -106,7 +106,7 @@ float3 gravityPull(constant ShellUniforms &u) {
 AnchorLaw anchorLaw(constant ShellUniforms &u) {
     return AnchorLaw{u.anchorNormalStiffness, u.anchorShearStiffness, u.anchorTension, u.anchorPlateau,
                      u.anchorOpening, u.anchorCohesion, u.anchorCohesionSlip, u.anchorFriction, 0.0f,
-                     {0.0f, 0.0f, 0.0f}, 0.0f, 0.0f, {0.0f, 0.0f}};
+                     {0.0f, 0.0f, 0.0f}, 0.0f, 0.0f, 0.0f, 1.0f};
 }
 
 // Slip through the thickness at which concrete cracked across a plane fails in direct shear:
