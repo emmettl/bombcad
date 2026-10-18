@@ -2549,7 +2549,8 @@ final class SimulationModel {
             uniqueKeysWithValues: (solver?.bodies ?? []).compactMap { body in
                 body.summary().map { (body.id, $0) }
             })
-        nextStructureSampleTime = sampleInterval
+        // The first sample after the run's start: a mapped start's clock starts at its solution's time.
+        nextStructureSampleTime = (floor((solver?.time ?? 0) / sampleInterval + 1e-6) + 1) * sampleInterval
         lastSampleTime = nil
         chargeIsBlocked = scenario.chargeIsBlocked
         openedVentPanels = 0
