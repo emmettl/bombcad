@@ -92,6 +92,7 @@ struct AutomaticCompanionPlacementTests {
         document.thermal = thermal
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
         model.costStore = store
+        model.costCatchUpTimeout = nil
         return model
     }
 
@@ -133,7 +134,8 @@ struct AutomaticCompanionPlacementTests {
         #expect(costs.models["thermal"]?.seconds["local"] != nil)
 
         // Probed on the mini, and made dear here beside a slow blast: the next run goes there.
-        await first.probeAutomatic()
+        // Without the probe's 30 s deadline: under a full test run the worker can take longer.
+        await first.probeAutomatic(timeout: nil)
         costs = try #require(store.costs(for: key))
         #expect(costs.models["thermal"]?.seconds["mini"] != nil)
         let kind = try #require(first.thermal?.kind)
