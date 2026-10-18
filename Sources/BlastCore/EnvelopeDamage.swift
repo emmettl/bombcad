@@ -81,6 +81,23 @@ public struct EnvelopeComponentLoad: Sendable {
         return edges[2] && edges[3] && !edges[0] && !edges[1] && !isFreestanding
     }
 
+    /// How tall the panel stands for its SDOF, m: a façade strip's storey (3 m), however the air's
+    /// cells cut the strip (on 4 m cells a strip is 4 m tall, on 8 m cells 8 m, and a panel that
+    /// tall is weaker by the square of it), or the region's height, if less (a top storey's
+    /// remainder) or for anything else.
+    public var panelHeight: Double {
+        let height = Double(region.size.z)
+        return kind == .facade ? min(height, Double(BuildingEnvelope.storey)) : height
+    }
+
+    /// The spans its SDOF takes, shorter first, m: `spans`, a façade strip's height its storey's.
+    public var panelSpans: (short: Double, long: Double) {
+        guard kind == .facade, axis != 2 else { return spans }
+        let width = Double(region.size[axis == 0 ? 1 : 0])
+        let height = panelHeight
+        return (min(width, height), max(width, height))
+    }
+
     /// The region's two in-plane sizes, shorter first, m.
     public var spans: (short: Double, long: Double) {
         let sizes = (0..<3).filter { $0 != axis }.map { Double(region.size[$0]) }.sorted()
@@ -639,7 +656,7 @@ public enum EnvelopeDamageAssessment {
     )
         -> EnvelopeComponentDamage?
     {
-        let spans = load.spans
+        let spans = load.panelSpans
         let a = min(spans.short, largestSpan)
         let b = min(spans.long, largestSpan)
         let pressures = load.netPa
@@ -743,7 +760,7 @@ public enum EnvelopeDamageAssessment {
                 thickness: thickness, material: masonry, a: a, b: b,
                 axialLoad: isRoof
                     ? 0 : overburden(load, buildingTop, thickness: thickness, material: masonry),
-                height: Double(load.region.size.z)
+                height: load.panelHeight
             )
             .response(pressures: pressures, step: load.binS)
             let level: EnvelopeDamageLevel =

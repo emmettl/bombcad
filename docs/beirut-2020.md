@@ -125,6 +125,40 @@ where any storey's is. Sides broken at the pane's median strength / at E1300's d
   panes to a façade, of all ages and sizes, make some break where a typical one does not: one
   pane a storey cannot show that tail.
 
+### Glass as a mix of panes
+
+One typical pane can only break or not. The app now gives each map building a mix of panes by
+its height (older low-rise to 10 m: small 4 mm panes; apartments to 30 m: 4 and 6 mm; taller or
+commercial: large 6–10 mm panes), each breaking with E1300's probability, so a façade breaks by
+degrees (building-envelopes.md). The mixes are assumptions; no survey of Beirut's glazing by
+building was found. By the map's mixes, on the same 4 m runs:
+
+| Distance | Panes broken, 0.2 / 0.5 / 1.1 kt | Sides with some pane broken, 0.2 / 0.5 / 1.1 kt | GEER |
+|---|---|---|---|
+| 0.5–0.75 km | 1.00 / 1.00 / 1.00 | 1.00 / 1.00 / 1.00 | 0.84 |
+| 0.75–1 km | 0.95 / 1.00 / 1.00 | 1.00 / 1.00 / 1.00 | 0.62 |
+| 1–1.25 km | 0.70 / 0.98 / 1.00 | 1.00 / 1.00 / 1.00 | 0.39 |
+| 1.25–1.5 km | 0.40 / 0.89 / 0.99 | 0.99 / 1.00 / 1.00 | 0.35 |
+| 1.5–1.75 km | 0.12 / 0.57 / 0.89 | 0.87 / 0.99 / 1.00 | 0.38 |
+| 1.75–2 km | 0.05 / 0.31 / 0.63 | 0.59 / 0.89 / 0.98 | 0.28 |
+| 2–2.5 km | 0.02 / 0.11 / 0.33 | 0.24 / 0.63 / 0.89 | 0.26 |
+| 2.5–3 km | 0.00 / 0.01 / 0.05 | 0.03 / 0.21 / 0.57 | 0.11 |
+
+- **The tail is there now.** Beyond 2 km some panes break, as some did; but a side holds dozens
+  of panes, so the chance that one breaks stays near one far out, above GEER's share of façades
+  damaged at every yield. GEER's "damaged" is what a photograph two months on still shows.
+- **The panes broken follow the pane's size more than its thickness.** At 0.5 kt, all four mixes
+  on the same loads: 1.25–1.5 km breaks 0.66 of the older low-rise mix's small panes, 0.88 of the
+  apartments' and 0.98 of the large commercial panes; 2–2.5 km, 0.07, 0.11 and 0.24.
+- **The total is several times the army's count.** The Lebanese army counted about 550,000 m² of
+  glass and 140,000 m² of glass façades broken in the 85,000 units it surveyed (reported in the
+  press). Within the 5 km box the mixes hold 7.3 million m² of glass, of which 1.35, 2.6 and 3.7
+  million m² break at 0.2, 0.5 and 1.1 kt: two to five times the count, which surveyed only the
+  units reported.
+
+These are on 4 m cells, which have not converged on the façades (below), so they are
+provisional.
+
 ### Structure against the building survey (GEER, 2021)
 
 GEER inspected 181 buildings (from calls to a hotline, so biased towards concern) and classed
