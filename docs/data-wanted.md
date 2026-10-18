@@ -19,7 +19,8 @@ ERDC, Zenodo, figshare, Mendeley Data, HathiTrust, Wikimedia, the universities' 
 the publishers alike), and its page reader could not resolve any host. Only web search worked, so
 what it found are routes, not documents: corrected titles, direct links, open mirrors and prices,
 each seen in search results but not opened. They are in the last column of each table, and in
-full in [the cloud report](../CLOUD-REPORT.md). Where a row says "not searched", the session's
+full in the session's report, kept outside the repository at
+`/Volumes/StudioData/bombcad/cloud-reports/2026-10-19/data-fetch.md`. Where a row says "not searched", the session's
 allowance of 200 searches ran out first.
 
 **First**, in this order:
@@ -135,8 +136,8 @@ means an open paper whose numbers were transcribed into the code. The survey's
 
 Nothing has moved here from the cloud session of 18 October 2026: its network reached none of the
 sources, so nothing was fetched or digitised and no `Fixtures/` folder was added. What it found
-instead, the routes, is under To fetch and To request above and in [the cloud
-report](../CLOUD-REPORT.md).
+instead, the routes, is under To fetch and To request above and in the session's report, kept outside the repository at
+`/Volumes/StudioData/bombcad/cloud-reports/2026-10-19/data-fetch.md`.
 
 | Source | Folder | Compared in |
 |---|---|---|
