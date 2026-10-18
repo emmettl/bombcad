@@ -169,8 +169,12 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
 
     /// The response to a net pressure held at `pressures[i]` over [i·step, (i+1)·step) and then
     /// released, followed until `tail` elastic periods after the load ends. A recorded history's
-    /// bins are impulses, so their mean pressures carry the impulse exactly.
-    public func response(pressures: [Double], step: Double, tail: Double = 3) -> SDOFResponse {
+    /// bins are impulses, so their mean pressures carry the impulse exactly. With `watch` (m), when
+    /// the deflection first passes it either way and the velocity then (`passedAt`,
+    /// `velocityPassing`): where a construction is taken to fail, for what it throws.
+    public func response(pressures: [Double], step: Double, tail: Double = 3, watch: Double? = nil)
+        -> SDOFResponse
+    {
         precondition(step > 0 && tail >= 0)
         let period = period
         // Velocity Verlet is stable below T/π; T/200 keeps the closed-form cases in the tests
@@ -252,6 +256,10 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
                 response.reboundDeflection = x
                 response.reboundTime = time
             }
+            if let watch, response.passedAt == nil, abs(x) >= watch {
+                response.passedAt = time
+                response.velocityPassing = v
+            }
             if cracked, !broken, let membrane, membrane.isLost(at: x) {
                 broken = true
                 response.lostResistanceAt = time
@@ -312,6 +320,10 @@ public struct SDOFResponse: Codable, Hashable, Sendable {
     /// Largest outward deflection, as a negative number, m, and when, s (nil if it never went out).
     public var reboundDeflection = 0.0
     public var reboundTime: Double?
+    /// When the deflection first passed the deflection watched for, either way, s, and the
+    /// velocity then, m/s, inward positive (`SDOFSystem.response(watch:)`).
+    public var passedAt: Double?
+    public var velocityPassing: Double?
     /// Permanent set at the end, m.
     public var residualDeflection = 0.0
     /// When the deflection, either way, passed the backbone's last point with no resistance left,
@@ -336,6 +348,11 @@ public struct SDOFResponse: Codable, Hashable, Sendable {
 
     /// Peak deflection over X_E (UFC §3-14.2).
     public var ductility: Double { peakDeflection / equivalentElasticDeflection }
+    /// The same, the larger of the inward and outward deflections: a section with bars in both faces
+    /// judged either way alike (UFC 3-340-02 §4-26.2).
+    public var ductilityEitherWay: Double {
+        max(peakDeflection, -reboundDeflection) / equivalentElasticDeflection
+    }
 
     /// Support rotation of a span loaded symmetrically, θ = atan(x / (L/2)) in degrees (UFC
     /// Table 3-5; PDC-TR 06-08 §3-2).

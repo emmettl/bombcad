@@ -39,7 +39,7 @@ extension ProjectRunSettings {
             &configuration, detailedCharge: detailedCharge, sharpShocks: sharpShocks,
             shockLevels: shockLevels ?? 1, gravity: gravity ?? false, shockThreshold: shockThreshold ?? 0.1,
             adaptiveSubsteps: adaptiveSubsteps ?? false, terrainCutCells: cutsTerrain(over: scenario),
-            outlineByOverlap: countsByOverlap(over: scenario))
+            outlineByOverlap: countsByOverlap(over: scenario), mappedStart: startsMapped)
         let cellSize = (Resolution(rawValue: resolution) ?? .medium).cellSize
         configuration.fitRefinementMemory(
             scenario.grid(cellSize: cellSize), memory: AdvisorMachine.thisMac.memory)
@@ -78,14 +78,7 @@ extension SimulationInputs {
     /// of the Macs `elsewhere` would hold what this one cannot. `factor` scales the estimates to
     /// this Mac as its runs have gone (`RunCostStore`).
     func advice(for target: AdvisorTarget, memory: Int, elsewhere: [AdvisorMachine] = []) -> Advice {
-        var configuration = SolverConfiguration()
-        ProjectRunSettings.configureAir(
-            &configuration, detailedCharge: settings.detailedCharge, sharpShocks: settings.sharpShocks,
-            shockLevels: settings.shockLevels ?? 1, gravity: settings.gravity ?? false,
-            shockThreshold: settings.shockThreshold ?? 0.1,
-            adaptiveSubsteps: settings.adaptiveSubsteps ?? false,
-            terrainCutCells: settings.cutsTerrain(over: scenario),
-            outlineByOverlap: settings.countsByOverlap(over: scenario))
+        var configuration = airConfiguration
         // Each setting's pools may grow to whatever the memory leaves them (`fitRefinementMemory`).
         configuration.refinementMemory = memory
         return RunAdvisor.advise(
@@ -95,6 +88,29 @@ extension SimulationInputs {
         ) { setting in
             Self.fidelity(scenario, settings.applying(setting), thermal: thermal)
         }
+    }
+
+    /// The air's configuration these settings ask for, as the advisor prices it.
+    var airConfiguration: SolverConfiguration {
+        var configuration = SolverConfiguration()
+        ProjectRunSettings.configureAir(
+            &configuration, detailedCharge: settings.detailedCharge, sharpShocks: settings.sharpShocks,
+            shockLevels: settings.shockLevels ?? 1, gravity: settings.gravity ?? false,
+            shockThreshold: settings.shockThreshold ?? 0.1,
+            adaptiveSubsteps: settings.adaptiveSubsteps ?? false,
+            terrainCutCells: settings.cutsTerrain(over: scenario),
+            outlineByOverlap: settings.countsByOverlap(over: scenario), mappedStart: settings.startsMapped)
+        return configuration
+    }
+
+    /// The advisor's estimate of a run of these inputs, as they are set, on a domain of `size`.
+    func cost(domain size: SIMD3<Float>) -> RunCostEstimate {
+        var scenario = scenario
+        scenario.domainSize = size
+        let setting = settings.advisorSetting
+        return RunCost.estimate(
+            scenario, cellSize: setting.cellSize, configuration: setting.applied(to: airConfiguration),
+            duration: settings.duration)
     }
 
     /// How far each result is expected to lie from the measurements under `settings`, by the

@@ -38,7 +38,8 @@ func runSettle(device: MTLDevice) throws {
     }
     let window = option("window").flatMap { Double($0) } ?? (scene == "slab" ? 0.02 : 0.2)
     let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cell)
-    solver.configuration = .recommended
+    // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+    solver.configuration = .recommended.balloonStart
 
     struct State {
         var u: [SIMD3<Float>] = []

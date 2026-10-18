@@ -24,8 +24,11 @@ long-span steel and glass roof, beside a glazed concourse (`ScenarioPreset.trans
   [steel connections](shell-model.md#steel-connections)). These are full-strength and fracture
   at 0.081 rad. The posts and chords within a truss stay welded rigidly, as a Vierendeel
   truss's are.
-- **Glazing.** 10 mm toughened glass covers the whole roof. The structure model's glass is a
-  brittle solid, so laminated glass is not built into it.
+- **Glazing.** 10 mm toughened glass covers the whole roof. As an option
+  (`ScenarioPreset.transportHub(title:laminatedRoof:)`), it is laminated panes 3 m square between
+  the purlins, 6 + 1.52 mm PVB + 6 mm ([laminated glass](shell-model.md#laminated-glass)), each
+  fragmenting on its own; their edges along the shed are carried on the purlins, those across it
+  run on into the next pane.
 - **Openness.** Its ends and sides are open to the tracks.
 - **Sizing.** The sections were sized here for the span and the glass's weight, not taken from a
   design. Under self-weight a truss's chords carry about 350 kN, under a tenth of their squash
@@ -65,13 +68,23 @@ Run on 0.5 m air for 300 ms (1,417 steps, 30 s on the Studio), the run above:
   the members move at most 268 mm, against 270 mm with rigid joints (11 elements fail, 325 mm).
 - **The concourse walls** are moderately damaged.
 
-The roof glass is toughened, not laminated, so how it falls is not graded: the structure
-model's glass is shells, whose broken pieces become debris.
+**The shed's roof glass, toughened or laminated** (`blastbench hubroof [--laminated]`, 0.5 m air,
+300 ms), graded pane by pane as the envelope grades a rooflight (`RoofGlassHazard`, by
+`OverheadGlassHazard`'s rules) falling 15 m onto the platforms:
+
+| Roof | Panes | Cracked and held | Glass fallen | Hazardous |
+|---|---|---|---|---|
+| 10 mm toughened, one sheet | 1 | — | 6 kg (one element), 0.9 kJ striking | yes: shards past 15 cm would strike with 79 J |
+| Laminated, 3 m panes | 192 | 55 | none | none |
+
+The toughened roof loses one element's glass, which falls as shards; it is graded hazardous, as
+a shard of its thickness big enough to strike with 79 J fits in it. The laminated roof's
+cracked panes stay up on their interlayer.
 
 ## Limitations
 
-- **Laminated glass only on the envelope.** The shed's roof glass in the structure model is
-  toughened, a brittle solid with no interlayer to hold it.
+- **The laminated roof's panes** are carried on the purlins along the shed and run on into each
+  other across it: no glazing bars or silicone hold them, so none can pull out.
 - **The trusses are Vierendeel frames.** A real long-span roof is more often a triangulated
   truss or arch, whose members carry axial force rather than bending. Members along the axes
   cannot be diagonal.

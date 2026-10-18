@@ -51,6 +51,24 @@ patches are pinned, as all patches whose outlines differ are, so the refined she
 ground is kept once the blast has passed. On [cut cells](#cut-cells) (refined once) none of this
 arises: the fine cells hold what the coarse cell held, share for share, and patches are released.
 
+Rigid blocks too where the air is near still (within 5% of ambient), since 18 October 2026. A block whose edges fall between the coarse cells
+takes part of the cells beside it at a finer level, and sharing the gas squeezed it into what was
+left. At threshold 0.005 that flagged the blocks beside, and their patches did the same. In
+Beirut's district refined twice, the refinement ran ahead of the blast from building to building:
+a precursor of 20–200 kPa, 50–200 m ahead of the shock, which the gauges took for its arrival
+(0.72 s at 584 m, against 1.15 s by Kingery–Bulmash). Refined once it hardly showed, and over
+terrain alone not at all. A cut cell under a block's fine outline is likewise left as filled,
+not made to hold its coarse cell's gas share for share: the shares disagree there, and the
+correction pulled the pressure down by 1–5 kPa ahead of the blast. With both, the same district
+refined twice (600 m box, 8 m cells to 2 m at threshold 0.005) has nothing over 300 Pa ahead of
+the shock after the first 0.2 s. Its arrivals 552–584 m out come 3–4% before Kingery–Bulmash's,
+as unrefined ones do, and its peaks on the line are unchanged. Where the blast has raised the
+air, a block's share is still shared, so a closed room's gas is conserved once the blast fills
+it; before then, and in a room the charge hardly raises (5 kg in 7,300 m³, 1 kPa), patches
+placed beside a block give up about what they gain (−0.05–0.1% net in the tests' rooms). A
+narrower band, half the refinement threshold, let the precursor's own disturbance carry it on:
+the 552 m arrival came 20% early. A moving structure's outline always shares its gas.
+
 ## Importing a DEM
 
 `ElevationGrid` reads, with no library:
@@ -280,6 +298,16 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell
   for the coarse cells to stand on a sliver can cap a fine one, and refined once the same district
   ran away 0.04 s in. A coarse cut cell whose fine cells are then all solid keeps what it had. A
   structure that comes to rest on a sliver during a run is not caught by this rule.
+  The two levels can still disagree. A fine sliver whose cell above is air at its own level but
+  lies under a block in its parent's cells passes up into a solid cell. That happens where the
+  second level's pool is full and the patch above is not placed. What such a column carries up
+  and cannot pass goes to its last cell of air taken as at least half air, so a sliver's density
+  can no longer be driven below nothing; at most half of what is carried is lost, there only
+  (since 18 October 2026). Before this, Beirut's district on 8 m cells refined twice to 0.005,
+  with a 3 GB pool (the second level full), floored a sliver's density 0.875 s in. The step after
+  read a NaN wave speed and was 0.62 s long; it now runs as with a second level that has room.
+  A wave speed that is NaN, infinite or negative now stops the batch, unstable, where it would
+  have set a step far too long.
 - **A deflagration's air** is cut too, since 17 October 2026 (it kept the staircase before). Its
   mixture is carried across cut cells at the same limited linear mass fractions on both sides of
   each face, with the sub-grid mixing's carrying through each face's open part, and near the cut

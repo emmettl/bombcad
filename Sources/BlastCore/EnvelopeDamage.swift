@@ -114,6 +114,23 @@ public struct EnvelopeComponentLoad: Sendable {
         return edges[2] && edges[3] && !edges[0] && !edges[1] && !isFreestanding
     }
 
+    /// How tall the panel stands for its SDOF, m: a façade strip's storey (3 m), however the air's
+    /// cells cut the strip (on 4 m cells a strip is 4 m tall, on 8 m cells 8 m, and a panel that
+    /// tall is weaker by the square of it), or the region's height, if less (a top storey's
+    /// remainder) or for anything else.
+    public var panelHeight: Double {
+        let height = Double(region.size.z)
+        return kind == .facade ? min(height, Double(BuildingEnvelope.storey)) : height
+    }
+
+    /// The spans its SDOF takes, shorter first, m: `spans`, a façade strip's height its storey's.
+    public var panelSpans: (short: Double, long: Double) {
+        guard kind == .facade, axis != 2 else { return spans }
+        let width = Double(region.size[axis == 0 ? 1 : 0])
+        let height = panelHeight
+        return (min(width, height), max(width, height))
+    }
+
     /// The region's two in-plane sizes, shorter first, m.
     public var spans: (short: Double, long: Double) {
         let sizes = (0..<3).filter { $0 != axis }.map { Double(region.size[$0]) }.sorted()
@@ -204,6 +221,8 @@ public struct EnvelopeComponentDamage: Codable, Sendable, Identifiable {
     /// Columns of its cells holed through and opened in the air (fragments' and breaches'), with
     /// venting; nil where none.
     public var holesOpened: Int? = nil
+    /// Failed and thrown: how (`EnvelopeDebris`); nil where it stays, or nothing is thrown.
+    public var launch: DebrisLaunch? = nil
 }
 
 /// How hazardous a window's glass is to the room behind it, by where it lands: GSA-TS01's
@@ -638,6 +657,32 @@ public enum EnvelopeDamageAssessment {
         atan(max(response.peakDeflection, -response.reboundDeflection) / (span / 2)) * 180 / .pi
     }
 
+    /// Concrete fails past 10° of support rotation (ASCE/SEI 59-11, `EnvelopeDamageLevel.concrete`).
+    static let failedRotation = 10 * Double.pi / 180
+
+    /// Concrete's ductility for its level, whichever way it went furthest: pushed out (by a charge
+    /// inside, or its rebound) it is judged as pushed in, UFC 3-340-02 §4-26.2's "designed for a
+    /// negative load" by "the same equations", with ASCE/SEI 59-11's limits. Only inward, as
+    /// before 18 October 2026, with `BOMBCAD_CONCRETE_INWARD_ONLY` set, to compare.
+    static func concreteDuctility(_ response: SDOFResponse) -> Double {
+        concreteInwardOnly ? response.ductility : response.ductilityEitherWay
+    }
+
+    static let concreteInwardOnly = ProcessInfo.processInfo.environment["BOMBCAD_CONCRETE_INWARD_ONLY"] != nil
+
+    /// What a component that failed at `time` (from its load's first bin) moving at `speed` (m/s,
+    /// inward positive, at its largest deflection) throws; nil where it did not.
+    static func launch(
+        time: Double?, speed: Double?, system: SDOFSystem, material: EnvelopeComponentDamage.Material,
+        thickness: Double, span: Double, pane: SIMD2<Double>? = nil, rotation: Double
+    ) -> DebrisLaunch? {
+        guard let time else { return nil }
+        return DebrisLaunch(
+            timeS: time, speedMS: speed ?? 0, massPerArea: system.massPerArea, thicknessM: thickness,
+            piece: DebrisLaunch.piece(material, thickness: thickness, span: span, pane: pane),
+            rotationRad: rotation)
+    }
+
     /// One component's damage, or nil for a component of no known kind; its failure's time from
     /// t = 0. A pane a fragment holed at `holedAt` s, if that came first, breaks then, its glass
     /// pushed in from rest by the load after it. `buildingTop` (m, the building's highest point)
@@ -655,6 +700,7 @@ public enum EnvelopeDamageAssessment {
                 holedAt: holedAt.map { max($0 - load.startS, 0) })
         else { return nil }
         damage.failedAtS = damage.failedAtS.map { $0 + load.startS }
+        damage.launch?.timeS += load.startS
         damage.crackedAtS = damage.crackedAtS.map { $0 + load.startS }
         damage.blastArrivalS = damage.blastArrivalS.map { $0 + load.startS }
         // Holed before its window began: when it was, not the window's start.
@@ -672,7 +718,7 @@ public enum EnvelopeDamageAssessment {
     )
         -> EnvelopeComponentDamage?
     {
-        let spans = load.spans
+        let spans = load.panelSpans
         let a = min(spans.short, largestSpan)
         let b = min(spans.long, largestSpan)
         let pressures = load.netPa
@@ -706,6 +752,12 @@ public enum EnvelopeDamageAssessment {
                 response.lostResistanceAt)
             result.crackedAtS = response.crackedAt
             result.fragmentBrokeAtS = holedAt.flatMap { $0 == response.lostResistanceAt ? $0 : nil }
+            result.launch = Self.launch(
+                time: response.lostResistanceAt, speed: response.velocityAtLoss, system: pane,
+                material: result.material,
+                thickness: construction.laminate.map { $0.plies.reduce(0, +) }
+                    ?? Double(construction.glassThicknessM),
+                span: a, pane: SIMD2(a, b), rotation: atan((response.deflectionAtBreak ?? 0) / (a / 2)))
             result.blastArrivalS = arrival
             if load.axis != 2 {
                 result.glazing = GlazingHazard.broken(
@@ -749,20 +801,28 @@ public enum EnvelopeDamageAssessment {
             // steel the ratio of the gross section); roofs the default concrete with a central mat.
             let section = section(construction, thickness: thickness, roof: isRoof)
             let material = isRoof ? StructureMaterial.reinforcedConcrete : construction.wallMaterial
-            let responses = [EnvelopePanel.Edges.fixed, .simplySupported].map { edges in
+            let systems = [EnvelopePanel.Edges.fixed, .simplySupported].map { edges in
                 EnvelopePanel.reinforcedConcrete(
                     thickness: thickness, depth: section.depth, steelArea: section.steelArea,
                     material: material,
-                    a: a, b: b, edges: edges
-                ).response(pressures: pressures, step: load.binS)
+                    a: a, b: b, edges: edges)
+            }
+            let responses = systems.map {
+                $0.response(pressures: pressures, step: load.binS, watch: tan(failedRotation) * a / 2)
             }
             let rotations = responses.map { rotation($0, span: a) }
             let levels = zip(responses, rotations).map {
-                EnvelopeDamageLevel.concrete(ductility: $0.ductility, rotationDeg: $1)
+                EnvelopeDamageLevel.concrete(ductility: concreteDuctility($0), rotationDeg: $1)
             }
-            return damage(
-                kind == .reinforcedBlockwork && !isRoof ? .reinforcedBlockwork : .reinforcedConcrete,
-                rotations.min()!...rotations.max()!, levels.min()!...levels.max()!, nil)
+            let concrete: EnvelopeComponentDamage.Material =
+                kind == .reinforcedBlockwork && !isRoof ? .reinforcedBlockwork : .reinforcedConcrete
+            var result = damage(
+                concrete, rotations.min()!...rotations.max()!, levels.min()!...levels.max()!, nil)
+            // Thrown as the simply supported bound fails, the worse.
+            result.launch = Self.launch(
+                time: responses[1].passedAt, speed: responses[1].velocityPassing, system: systems[1],
+                material: concrete, thickness: thickness, span: a, rotation: failedRotation)
+            return result
         case .profiledSteelSheeting:
             return profiledSheet(
                 load, construction: construction, roof: isRoof, pressures: pressures, peak: peak)
@@ -772,17 +832,23 @@ public enum EnvelopeDamageAssessment {
         case .unreinforcedMasonry:
             var masonry = StructureMaterial.masonry
             masonry.steel = nil
-            let response = EnvelopePanel.unreinforcedMasonry(
+            let system = EnvelopePanel.unreinforcedMasonry(
                 thickness: thickness, material: masonry, a: a, b: b,
                 axialLoad: isRoof
                     ? 0 : overburden(load, buildingTop, thickness: thickness, material: masonry),
-                height: Double(load.region.size.z)
+                height: load.panelHeight
             )
-            .response(pressures: pressures, step: load.binS)
+            let response = system.response(pressures: pressures, step: load.binS)
             let level: EnvelopeDamageLevel =
                 response.lostResistanceAt != nil ? .failed : (response.ductility > 1 ? .heavy : .none)
             let rotation = Self.rotation(response, span: a)
-            return damage(.unreinforcedMasonry, rotation...rotation, level...level, response.lostResistanceAt)
+            var result = damage(
+                .unreinforcedMasonry, rotation...rotation, level...level, response.lostResistanceAt)
+            result.launch = Self.launch(
+                time: response.lostResistanceAt, speed: response.velocityAtLoss, system: system,
+                material: .unreinforcedMasonry, thickness: thickness, span: a,
+                rotation: atan(system.backbone.last!.x / (a / 2)))
+            return result
         }
     }
 
@@ -796,6 +862,9 @@ public enum EnvelopeDamageAssessment {
         peak: Double
     ) -> EnvelopeComponentDamage {
         let pressures = cantileverLoad(net)
+        // −1 where the load was turned to push from the face it struck harder: what it throws
+        // goes that way, against the recorded net's sign.
+        let turned: Double = zip(pressures, net).contains { $0 != $1 } ? -1 : 1
         let height = min(load.height, largestSpan)
         let thickness = Double(construction.wallThicknessM)
         func damage(
@@ -817,21 +886,28 @@ public enum EnvelopeDamageAssessment {
             return crossLaminated(
                 load, construction: construction, roof: false, span: height, cantilever: true,
                 pressures: pressures,
-                peak: peak)
+                peak: peak, turned: turned)
         case .reinforcedConcrete, .reinforcedBlockwork:
             let section = construction.wallBars(thickness: thickness)
-            let response = EnvelopePanel.reinforcedConcreteCantilever(
+            let system = EnvelopePanel.reinforcedConcreteCantilever(
                 thickness: thickness, depth: section.depth, steelArea: section.steelArea,
                 material: construction.wallMaterial, height: height,
                 topMass: Double(construction.capMassKgPerM ?? 0)
             )
-            .response(pressures: pressures, step: load.binS)
+            let response = system.response(
+                pressures: pressures, step: load.binS, watch: tan(failedRotation) * height)
             let rotation =
                 atan(max(response.peakDeflection, -response.reboundDeflection) / height) * 180 / .pi
-            return damage(
-                construction.walls == .reinforcedBlockwork ? .reinforcedBlockwork : .reinforcedConcrete,
-                response,
-                EnvelopeDamageLevel.concrete(ductility: response.ductility, rotationDeg: rotation))
+            let concrete: EnvelopeComponentDamage.Material =
+                construction.walls == .reinforcedBlockwork ? .reinforcedBlockwork : .reinforcedConcrete
+            var result = damage(
+                concrete, response,
+                EnvelopeDamageLevel.concrete(ductility: concreteDuctility(response), rotationDeg: rotation))
+            result.launch = Self.launch(
+                time: response.passedAt, speed: response.velocityPassing.map { $0 * turned }, system: system,
+                material: concrete,
+                thickness: thickness, span: height, rotation: failedRotation)
+            return result
         case .unreinforcedMasonry:
             var masonry = StructureMaterial.masonry
             masonry.steel = nil
@@ -842,7 +918,13 @@ public enum EnvelopeDamageAssessment {
                 pressures: pressures, step: load.binS, tail: max(3, rockingFollowS / system.period))
             let level: EnvelopeDamageLevel =
                 response.lostResistanceAt != nil ? .failed : (response.ductility > 1 ? .heavy : .none)
-            return damage(.unreinforcedMasonry, response, level)
+            var result = damage(.unreinforcedMasonry, response, level)
+            result.launch = Self.launch(
+                time: response.lostResistanceAt, speed: response.velocityAtLoss.map { $0 * turned },
+                system: system,
+                material: .unreinforcedMasonry, thickness: thickness, span: height,
+                rotation: atan(system.backbone.last!.x / height))
+            return result
         }
     }
 
@@ -866,20 +948,27 @@ public enum EnvelopeDamageAssessment {
         case .reinforcedConcrete, .reinforcedBlockwork:
             let section = section(construction, thickness: thickness, roof: isRoof)
             let material = isRoof ? StructureMaterial.reinforcedConcrete : construction.wallMaterial
-            let responses = [EnvelopePanel.Edges.fixed, .simplySupported].map { edges in
+            let systems = [EnvelopePanel.Edges.fixed, .simplySupported].map { edges in
                 EnvelopePanel.reinforcedOneWay(
                     thickness: thickness, depth: section.depth, steelArea: section.steelArea,
                     material: material,
-                    span: span, edges: edges
-                ).response(pressures: pressures, step: load.binS)
+                    span: span, edges: edges)
+            }
+            let responses = systems.map {
+                $0.response(pressures: pressures, step: load.binS, watch: tan(failedRotation) * span / 2)
             }
             let rotations = responses.map { rotation($0, span: span) }
             let levels = zip(responses, rotations).map {
-                EnvelopeDamageLevel.concrete(ductility: $0.ductility, rotationDeg: $1)
+                EnvelopeDamageLevel.concrete(ductility: concreteDuctility($0), rotationDeg: $1)
             }
-            return damage(
-                kind == .reinforcedBlockwork && !isRoof ? .reinforcedBlockwork : .reinforcedConcrete,
-                rotations.min()!...rotations.max()!, levels.min()!...levels.max()!, nil)
+            let concrete: EnvelopeComponentDamage.Material =
+                kind == .reinforcedBlockwork && !isRoof ? .reinforcedBlockwork : .reinforcedConcrete
+            var result = damage(
+                concrete, rotations.min()!...rotations.max()!, levels.min()!...levels.max()!, nil)
+            result.launch = Self.launch(
+                time: responses[1].passedAt, speed: responses[1].velocityPassing, system: systems[1],
+                material: concrete, thickness: thickness, span: span, rotation: failedRotation)
+            return result
         case .profiledSteelSheeting:
             return profiledSheet(
                 load, construction: construction, roof: isRoof, pressures: pressures, peak: peak)
@@ -889,16 +978,22 @@ public enum EnvelopeDamageAssessment {
         case .unreinforcedMasonry:
             var masonry = StructureMaterial.masonry
             masonry.steel = nil
-            let response = EnvelopePanel.unreinforcedMasonryOneWay(
+            let system = EnvelopePanel.unreinforcedMasonryOneWay(
                 thickness: thickness, material: masonry, span: span, edges: .fixed,
                 axialLoad: isRoof || !load.spansVertically
                     ? 0 : overburden(load, buildingTop, thickness: thickness, material: masonry)
             )
-            .response(pressures: pressures, step: load.binS)
+            let response = system.response(pressures: pressures, step: load.binS)
             let level: EnvelopeDamageLevel =
                 response.lostResistanceAt != nil ? .failed : (response.ductility > 1 ? .heavy : .none)
             let rotation = Self.rotation(response, span: span)
-            return damage(.unreinforcedMasonry, rotation...rotation, level...level, response.lostResistanceAt)
+            var result = damage(
+                .unreinforcedMasonry, rotation...rotation, level...level, response.lostResistanceAt)
+            result.launch = Self.launch(
+                time: response.lostResistanceAt, speed: response.velocityAtLoss, system: system,
+                material: .unreinforcedMasonry, thickness: thickness, span: span,
+                rotation: atan(system.backbone.last!.x / (span / 2)))
+            return result
         }
     }
 

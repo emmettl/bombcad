@@ -127,6 +127,46 @@ the time, with what it could not meet; **Apply** takes them. `BombCAD run --advi
 the same from the command line. See [Performance](performance.md#choosing-settings).
 The More menu offers Save As and Import Layout JSON. Export Layout JSON saves just the scene. See [Save files](save-files.md).
 
+## A district from a map
+
+**File ▸ New District…** (⌥⌘N) lays out a district from files you supply, as Beirut's was laid
+out ([Beirut, 2020](beirut-2020.md)); the app fetches nothing.
+
+![The New District window on the made-up district in the tests](new-district.png)
+
+- **Map**: an OpenStreetMap export (.osm, from openstreetmap.org's Export, or an extract) or GeoJSON
+  of building footprints. Each building becomes an envelope with a construction (from its
+  `building:material` tag, or assumed) and a glazing mix by its height and type.
+- **Building heights** (optional): a raster such as GHSL's GHS-BUILT-H, for buildings whose tags
+  give no height or levels. Without it they are taken as two storeys.
+- **Terrain** (optional): a GeoTIFF or ESRI ASCII grid of elevations, as the Terrain section reads.
+  **Surface model** takes a surface model's roofs and trees down to the ground (opened over 100 m)
+  and puts what lies within a metre of sea level at it; turn it off for a bare-earth model.
+- **Charge**: click the map (drawn from the file's footprints) or type a longitude and latitude,
+  and give the TNT yield and the ground under it. The air is centred on the charge.
+- **Extent**: the buildings whose footprint's centre lies within the radius are placed. The open
+  faces are kept 4 m/kg^(1/3) from them: the sides beyond the outermost building (unless turned
+  off), the top above the charge and at least half that above the highest roof or ground
+  ([open faces](air-blast-model.md#open-faces-near-a-structure)). **Cells** are the finest uniform cells whose run fits this
+  Mac's memory with the components' histories, by the advisor's cost model, or a size you choose.
+  Refinement is not offered: over a district it does not yet run cleanly.
+- **Lay Out** places the buildings and shows, before anything is created, how many were placed, the
+  air's size and cells, the memory and the time unloaded and as this Mac's runs have gone.
+  **Create Project** opens it as a new project, the run long enough for the blast to reach the
+  farthest building and load it for half a second; its components keep half a second of load from
+  their arrival.
+
+A worked example, Beirut at 0.5 kt: export the port's district from openstreetmap.org (or an
+extract), take Copernicus GLO-30's tile N33 E035 and GHSL's height tile for it, choose the three,
+type 35.519042 and 33.901425, 0.5 kt on saturated soil, and buildings within 2,500 m. The faces then
+lie 317 m beyond them, so the air is about 5.6 km square: more than a project's 128 million cells
+at 4 m, so its finest are 5 m cells (Beirut's page ran a 5 km square at 4 m under a 320 m top, its side
+faces at the buildings and its outer bands less sure, through `scenebench district-scene`). Lay
+Out shows what it costs before the project is made. What such a run gets right and what it does not, the glass beyond
+1.5 km against the structure, is on [Beirut's page](beirut-2020.md#what-holds-and-what-does-not).
+The made-up district in `Fixtures/SyntheticDistrict` (a map, heights and terrain) tries the window
+in seconds.
+
 ## Importing models
 
 **Import Model…** reads watertight OBJ/STL geometry and IFC buildings. Confirm source units, up axis and
@@ -352,7 +392,9 @@ keeps the result as a saved run, for scripts and other Macs; see
 write the scene, the structure and the blast over time for rendering elsewhere
 ([USD export](usd-export.md)). Sweeps can share their cases with other Macs over SSH,
 in the app or with `BombCAD sweep`; see
-[sharing a sweep](run-comparison.md#sharing-a-sweep-with-another-mac). With another Mac named in
+[sharing a sweep](run-comparison.md#sharing-a-sweep-with-another-mac). A Mac on the same network
+can instead share its GPU from Settings and be paired with a code, without SSH; see
+[Macs nearby](run-comparison.md#macs-nearby-without-ssh). With another Mac named in
 `~/.config/bombcad/remote.json`, `BombCAD sweep` and `BombCAD ensemble` take it whenever it is
 free, without `--worker`, and `make check-anywhere` runs the checks on whichever Mac is quieter;
 see [checks on the mini](continuous-integration.md#checks-on-the-mini-instead-of-this-mac).

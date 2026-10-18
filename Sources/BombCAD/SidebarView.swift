@@ -295,10 +295,13 @@ struct SidebarView: View {
                     + "charge for the farthest ground R, keeps what it sends down out of the gauges' positive phase."
             )
             if let note = model.settings.scenario.tightFacesNote {
-                Label(note, systemImage: "exclamationmark.triangle")
+                Label(note + " " + Scenario.tightFacesMatterLeast, systemImage: "exclamationmark.triangle")
                     .font(.caption)
                     .foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
+                if let widening = model.wideningToTheRule {
+                    wideningToTheRule(widening)
+                }
             }
             Menu("Fit to the charge") {
                 ForEach([10, 20, 40] as [Float], id: \.self) { reach in
@@ -315,6 +318,57 @@ struct SidebarView: View {
                     + "high as the open top needs, the charge in its middle, and a grid scaled to the charge."
             )
         }
+    }
+
+    /// The choice the open faces' warning offers: the domain grown from its origin to the clearance,
+    /// with what it costs by the advisor's estimate before it is taken, and the faces at the origin
+    /// it cannot clear without moving the scene.
+    @ViewBuilder
+    private func wideningToTheRule(
+        _ widening: (
+            domain: SIMD3<Float>, now: RunCostEstimate, widened: RunCostEstimate,
+            left: [(name: String, clearance: Float)]
+        )
+    ) -> some View {
+        let grows = widening.domain != model.domainSize
+        if grows {
+            let air = Double(widening.widened.cells) / Double(max(widening.now.cells, 1))
+            let time = Self.widenedTime(from: widening.now, to: widening.widened)
+            Button(
+                String(
+                    format: "Widen to the rule · %.0f × %.0f × %.0f m", widening.domain.x, widening.domain.y,
+                    widening.domain.z)
+            ) { model.widenToTheRule() }
+            .help(
+                "Grows the domain from its origin until the far faces (east, north and the top) are "
+                    + String(format: "%.0f", Scenario.structureFaceClearance)
+                    + " m/kg^(1/3) from the charge and the structures. Nothing in the scene moves.")
+            Text(String(format: "%.1f× the air; the run about %@, by the advisor's estimate.", air, time))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        if !widening.left.isEmpty {
+            let list = widening.left.map { String(format: "%@ %.1f", $0.name, $0.clearance) }
+                .joined(separator: ", ")
+            Text(
+                (grows ? "Still near after widening: " : "Near the origin: ") + list
+                    + " m/kg^(1/3). The domain grows only away from its origin, so clearing these means moving the scene's contents away from it."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// A run's time on the domain as it is and widened, unloaded and as this Mac's runs have gone.
+    private static func widenedTime(from now: RunCostEstimate, to widened: RunCostEstimate) -> String {
+        var time =
+            RunAdvisor.duration(now.seconds) + " → " + RunAdvisor.duration(widened.seconds) + " unloaded"
+        if let factor = RunCostStore.standard.factor {
+            time += ", " + RunAdvisor.duration(widened.seconds * factor) + " here lately"
+        }
+        return time
     }
 
     /// One side of the domain, applied when it is committed.
@@ -349,6 +403,16 @@ struct SidebarView: View {
                     "Burns the charge's products in the air they mix with, and lets hot air store energy "
                         + "in molecular vibration. Closer to tests of charges in rooms and in the open; "
                         + "about twice as slow.")
+            if model.settings.detailedCharge {
+                Toggle("Fine start of the blast", isOn: $model.settings.mappedStart)
+                    .help(
+                        "Solves a lone charge's first moments on a fine radial grid and maps them onto the "
+                            + "air once the shock has spread as far as it can before meeting anything, instead "
+                            + "of starting from a ball of hot gas a few cells across. Peaks close in come within "
+                            + "about a sixth of Kingery-Bulmash for charges of 10 kg and more, where the ball leaves "
+                            + "them a third to a half low. Off, as "
+                            + "before 18 October 2026.")
+            }
             if !model.settings.scenario.structuralObjects.isEmpty {
                 Toggle("Outline structures by overlap", isOn: $model.settings.outlineByOverlap)
                     .help(

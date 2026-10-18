@@ -47,8 +47,8 @@ public struct KFactorDistance: Codable, Sendable, Equatable, Identifiable {
 /// The distance an exposure needs from a charge, never shorter than the published distance that
 /// applies: the inhabited building distance (K40), and for a cased charge DoD's default hazardous
 /// fragment distance for items not tested (DoD 4145.26-M Table AP2.T2, "OPEN"); BombCAD's own
-/// hazardous fragment distance is shown beside them as an estimate (it reads short of DoD's
-/// test-derived distances by a sixth to a half: fragments.md), and governs only where larger.
+/// hazardous fragment distance is shown beside them as an estimate (0.58–1.02 of DoD's
+/// test-derived distances, short with thick walls: fragments.md), and governs only where larger.
 public struct MinimumSafeDistance: Codable, Sendable, Equatable {
     public var overpressureM: Float
     /// DoD's default for a cased charge of this weight; nil for a bare charge, whose distance in the
@@ -56,11 +56,31 @@ public struct MinimumSafeDistance: Codable, Sendable, Equatable {
     public var publishedFragmentM: Float?
     /// BombCAD's estimate, where its fragments were flown.
     public var fragmentM: Float?
+    /// BombCAD's hazardous debris distance from the envelope components that failed and were thrown
+    /// (`EnvelopeDebris`), an estimate like the fragments'; nil where none was (left out of older
+    /// records).
+    public var debrisM: Float? = nil
+    /// DoD's default for a charge inside a building, whose debris it throws: DESR 6055.09 Table
+    /// V3.E3.T2's "Structure" column; nil in the open (left out of older records).
+    public var publishedDebrisM: Float? = nil
 
-    public var distanceM: Float { max(overpressureM, publishedFragmentM ?? 0, fragmentM ?? 0) }
+    public var distanceM: Float {
+        max(overpressureM, publishedFragmentM ?? 0, fragmentM ?? 0, debrisM ?? 0, publishedDebrisM ?? 0)
+    }
 
     public var governedBy: String {
         let distance = distanceM
+        let others = max(overpressureM, publishedFragmentM ?? 0, fragmentM ?? 0)
+        if let publishedDebrisM, publishedDebrisM == distance, publishedDebrisM > others,
+            publishedDebrisM >= debrisM ?? 0
+        {
+            return "DoD's default structure debris distance"
+        }
+        if let debrisM, debrisM == distance,
+            debrisM > max(others, publishedDebrisM ?? 0)
+        {
+            return "BombCAD's envelope debris distance"
+        }
         if let fragmentM, fragmentM == distance, fragmentM > max(overpressureM, publishedFragmentM ?? 0) {
             return "BombCAD's fragment distance"
         }
@@ -70,12 +90,18 @@ public struct MinimumSafeDistance: Codable, Sendable, Equatable {
         return "overpressure (K40)"
     }
 
-    /// For `kilograms` of TNT-equivalent net explosive weight, cased (fragments flown) or bare.
-    public init(kilograms: Float, fragments: GroundHazard?, cased: Bool? = nil) {
+    /// For `kilograms` of TNT-equivalent net explosive weight, cased (fragments flown) or bare,
+    /// with any envelope `debris` thrown, and `inStructure` when the charge is inside a building.
+    public init(
+        kilograms: Float, fragments: GroundHazard?, cased: Bool? = nil, debris: GroundHazard? = nil,
+        inStructure: Bool = false
+    ) {
+        publishedDebrisM = inStructure ? Self.defaultStructureDebrisDistance(kilograms: kilograms) : nil
         overpressureM = KFactorDistance.k40.distance(kilograms: kilograms)
         publishedFragmentM =
             (cased ?? (fragments != nil)) ? Self.defaultFragmentDistance(kilograms: kilograms) : nil
         fragmentM = fragments?.hazardDistance
+        debrisM = debris?.hazardDistance
     }
 
     /// DoD 4145.26-M Table AP2.T2's hazardous fragment distance for HD 1.1 in the open, m:
@@ -88,17 +114,32 @@ public struct MinimumSafeDistance: Codable, Sendable, Equatable {
         return -251.87 + 118.56 * log(q)
     }
 
+    /// DESR 6055.09 (Edition 1, Change 2) Table V3.E3.T2's hazardous fragment distance for HD 1.1
+    /// in a structure that can contribute to the debris hazard, m: 61.0 m to 14.1 kg,
+    /// `-251.87 + 118.56 ln Q` to 204.1 kg (EQN V3.E3.T2-10), and 381 m above.
+    public static func defaultStructureDebrisDistance(kilograms q: Float) -> Float {
+        guard q > 0 else { return 0 }
+        if q > 204.1 { return 381 }
+        if q <= 14.1 { return 61 }
+        return -251.87 + 118.56 * log(q)
+    }
+
     public var summary: String {
         String(
             format: "minimum safe distance %.0f m, %@ governing (K40 %.0f m", distanceM, governedBy,
             overpressureM)
+            + (publishedDebrisM.map { String(format: "; DoD's default structure debris distance %.0f m", $0) }
+                ?? "")
             + (publishedFragmentM.map { String(format: "; DoD's default fragment distance %.0f m", $0) } ?? "")
             + (fragmentM.map {
                 String(
                     format:
-                        "; BombCAD's fragment distance %.0f m, an estimate that reads short by a sixth to a half",
+                        "; BombCAD's fragment distance %.0f m, an estimate that reads up to two-fifths short",
                     $0)
-            } ?? "") + ")"
+            } ?? "")
+            + (debrisM.map { String(format: "; BombCAD's envelope debris distance %.0f m, an estimate", $0) }
+                ?? "")
+            + ")"
     }
 }
 

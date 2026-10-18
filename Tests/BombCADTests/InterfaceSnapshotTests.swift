@@ -66,8 +66,21 @@ struct InterfaceSnapshotTests {
         let store = try #require(UserDefaults(suiteName: suite))
         defer { store.removePersistentDomain(forName: suite) }
         try snapshot(
-            AppSettingsView().defaultAppStorage(store), size: CGSize(width: 480, height: 640),
+            AppSettingsView().defaultAppStorage(store), size: CGSize(width: 480, height: 720),
             appearance: appearance, to: folder.appending(path: "settings.png"))
+    }
+
+    @Test("Render the New District window laid out on the made-up district", arguments: ["light", "dark"])
+    func newDistrict(style: String) async throws {
+        let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
+        let folder = URL(filePath: output, directoryHint: .isDirectory).appending(path: style)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let district = try NewDistrictTests().model()
+        await district.lay()
+        #expect(district.preview != nil)
+        try snapshot(
+            NewDistrictView(model: district), size: CGSize(width: 620, height: 900),
+            appearance: style == "dark" ? .darkAqua : .aqua, to: folder.appending(path: "new-district.png"))
     }
 
     @Test("Review the editor at fixed viewport sizes", arguments: ["light", "dark"])
@@ -219,14 +232,14 @@ struct InterfaceSnapshotTests {
     /// that each of the Run sidebar's sections shows its settings.
     private func everySection() throws -> ProjectDocument {
         var scene = ScenarioPreset.blastWall.scenario
-        scene.boxes = [Box(min: SIMD3(4, 4, 0), max: SIMD3(7, 9, 3))]
+        scene.boxes = [Box(min: SIMD3(7, 9, 0), max: SIMD3(10, 14, 3))]
         scene.rigidObjects = [
             try RigidObjectDefinition(
-                name: "Crate", shape: .box(size: SIMD3(1, 1, 1)), position: SIMD3(22, 14, 0.5), mass: 200)
+                name: "Crate", shape: .box(size: SIMD3(1, 1, 1)), position: SIMD3(25, 19, 0.5), mass: 200)
         ]
-        scene.rigidCars = [try .saloon(position: SIMD3(24, 20, 0))]
+        scene.rigidCars = [try .saloon(position: SIMD3(27, 25, 0))]
         scene.replaceTerrain(
-            with: .hill(domain: scene.domainSize, spacing: 0.5, centre: SIMD2(26, 16), height: 2, radius: 4))
+            with: .hill(domain: scene.domainSize, spacing: 0.5, centre: SIMD2(29, 21), height: 2, radius: 4))
         var document = ProjectDocument(scenario: scene)
         document.runSettings?.resolution = "coarse"
         // As the sections' switches set them, with a line of points a choice does not offer.
@@ -250,14 +263,22 @@ struct InterfaceSnapshotTests {
         // The top just over the wall, far nearer than 4 m/kg^(1/3).
         scene.domainSize.z = wall.max.z + 0.5
         #expect(scene.tightFacesNote != nil)
-        var document = ProjectDocument(scenario: scene)
-        document.runSettings?.resolution = "coarse"
-        let model = SimulationModel(document: document)
-        try snapshot(
-            SidebarView(model: model).frame(width: 310, height: 6000), size: CGSize(width: 310, height: 6000),
-            appearance: style == "dark" ? .darkAqua : .aqua,
-            to: folder.appending(path: "run-tight-faces.png"),
-            expandToFit: false)
+        // With the far faces alone near, the choice to widen to the rule and its price; with the
+        // charge brought near x = 0 as well, the face widening cannot clear named beneath it.
+        var origin = scene
+        origin.charge.position.x = 3
+        for (name, scene) in [("run-tight-faces.png", scene), ("run-tight-faces-origin.png", origin)] {
+            var document = ProjectDocument(scenario: scene)
+            document.runSettings?.resolution = "coarse"
+            let model = SimulationModel(document: document)
+            #expect(model.wideningToTheRule != nil)
+            try snapshot(
+                SidebarView(model: model).frame(width: 310, height: 6000),
+                size: CGSize(width: 310, height: 6000),
+                appearance: style == "dark" ? .darkAqua : .aqua,
+                to: folder.appending(path: name),
+                expandToFit: false)
+        }
     }
 
     /// A methane cloud in a vented room.

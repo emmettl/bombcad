@@ -144,7 +144,8 @@ struct RunCostTests {
             #expect(abs(predicted - measured) < 0.06, "\(scenario.name): \(predicted) against \(measured)")
         }
         // Taking fewer substeps costs less.
-        var configuration = SolverConfiguration.recommended
+        // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+        var configuration = SolverConfiguration.recommended.balloonStart
         configuration.refinement = 2
         let all = RunCost.estimate(
             open, cellSize: 0.5, configuration: configuration, duration: open.acousticCrossingTime)
@@ -155,7 +156,9 @@ struct RunCostTests {
         // The advisor's refined settings take them in the open, and not close in.
         func refinedTakeThem(_ scenario: Scenario, _ duration: Double) -> Bool {
             let advice = RunAdvisor.advise(
-                scenario, configuration: .recommended, duration: duration, target: .seconds(3600),
+                // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+                scenario, configuration: .recommended.balloonStart, duration: duration,
+                target: .seconds(3600),
                 current: AdvisorSetting(cellSize: 0.5), memory: 32 << 30, maximumCells: 2_000_000
             ) { _ in ([.peak: 0.1], [:]) }
             let refined = advice.candidates.filter { $0.setting.refinement > 1 }
@@ -217,7 +220,8 @@ struct RunCostTests {
     @Test("The advisor finds the finest cells that fit, and says which Mac holds what this one cannot")
     func memoryAware() {
         let (scenario, duration) = landscape
-        var configuration = SolverConfiguration.recommended
+        // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+        var configuration = SolverConfiguration.recommended.balloonStart
         configuration.refinementMemory = 64 << 30
         // Within 10% at the shock only on 2 m cells, refined at 0.005.
         func evaluate(_ setting: AdvisorSetting) -> ([AdvisorQuantity: Double], [AdvisorQuantity: String]) {

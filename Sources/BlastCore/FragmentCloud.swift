@@ -317,6 +317,7 @@ public struct FragmentCloud: Sendable {
         blockTargets = scene.blockTargets ?? []
         structureTargets = scene.structureTargets ?? []
         terrain = scene.terrain
+        crossings.chargeHeight = charge.position.z - (scene.terrain?.height(at: charge.position) ?? 0)
         var particles: [Particle] = []
         // P(mass > m) = exp(-(m/μ)^β), whose mean is μ Γ(1 + 1/β): 2μ for Mott's β = ½. The mean
         // is Mott's scaling's with a casing's dimensions, and each fragment flown then stands for
@@ -386,6 +387,7 @@ public struct FragmentCloud: Sendable {
         self.blockTargets = blockTargets
         self.structureTargets = structureTargets
         self.terrain = terrain
+        crossings.chargeHeight = centre.z - (terrain?.height(at: centre) ?? 0)
     }
 
     /// The box a consumer needs air over to carry every airborne particle `ahead` seconds on,
@@ -421,6 +423,10 @@ public struct FragmentCloud: Sendable {
                     // only follow the rate's own change, not its stiffness.
                     let drag = dragRate(particle, air)
                     if drag > 0 { dt = min(dt, max(Double(0.5 / drag), 1e-5)) }
+                    // Nor may gravity change its speed by more than a twentieth in a step: a slow
+                    // piece (debris falling off a wall) would otherwise land at the speed a step of
+                    // seconds ends with.
+                    dt = min(dt, Double(0.05 * max(speed, 1) / 9.81))
                 }
                 dt = max(dt, 1e-7)
                 let start = particle.position

@@ -124,6 +124,12 @@ structure as seen from the charge counts from the charge alone. The app's Domain
 face nearer than that (`Scenario.tightOpenFaces`, `Scenario.structureFaceClearance`). The domain
 can be grown only from its origin, so faces below the origin are moved by moving the scene.
 
+The record's comparisons built in tighter boxes were each checked with one case at the rule
+(18 October 2026; [validation](validation.md#open-faces-at-the-clearance-rule)). Peaks and
+close-in slabs did not move. A 4 × 5 m slab in a box barely wider than itself lost a quarter of
+its swing, its underside's push draining out through the sides, and a chamber's roof was left
+11% lower.
+
 A better boundary was tried in place of the clearance. The faces took each wave as a plane one
 from the largest charge, at its angle, letting a grazing wave carry on past the face. It is not
 used:
@@ -135,6 +141,45 @@ used:
 
 A plane wave at its angle cannot carry the spherical spreading beyond a face, so no local face
 condition stands in for the room. It is kept on the branch `claude/oblique-far-field`.
+
+**The samples.** Most were sized for the positive phase and a run of minutes, and open with the
+warning. The warehouse, the transport hub and the deformable wall were widened to meet the
+clearance (18 October 2026), at about 1.4–1.6 times the air, and the terraced row was laid out to
+meet it. For the rest, meeting it would take far more air (the cost of a run goes with it at a
+given cell). So they keep their domains, and their late response, after the positive phase, carries
+the warning:
+
+| Sample | Nearest open face, m/kg^(1/3) | Air to meet 4 m/kg^(1/3) |
+|---|---|---|
+| Deformable building | 1.7 (behind the charge) | 2.7× |
+| Two-storey frame (2 t) | 0.7 (top) | 32× |
+| Frame with masonry infill | 2.4 (top) | 1.6× |
+| Three-storey building | 1.3 (behind the charge) | 2.0× |
+| Eight-storey frame (4 t) | 0.5 (top) | 19× |
+| Twelve-storey tower (4 t) | 0.6 (top) | 14× |
+| Steel and glass office (1 t) | 0.6 (top) | 3.8× |
+| Column, close-in | 0.5 (top) | 32× |
+| Wall in front of a building | 1.7 (sides, behind) | 3.1× |
+| Glass façade | 1.1 (behind the charge) | 1.4×, but its frame would have to move |
+| Car park | 0.7 (top) | 4.8× |
+| Three buildings across a street | 2.2 (top) | 1.8× |
+| Underpass | 0.9 (ends) | 5.0× |
+| Block-built house | 2.1 (behind the charge) | 1.7× |
+| Internal explosion (the test's chamber) | 0.3 | 6.5× |
+| Large-panel flats, street charge (500 kg) | 0.5 | 16× |
+
+The glass façade's panes break in the positive phase, which the faces do not move. The
+chamber's charge is inside its walls, so the faces see only what leaks out. In the frames and
+towers it is their collapse, long after the positive phase, that the faces may move.
+
+The warning leaves the choice to the user. Beneath it, **Widen to the rule** grows the domain from
+its origin until its far faces (east, north and the top) are 4 m/kg^(1/3) from the charge and the
+structures (`Scenario.grownToTheRule`, the `high` half of `Scenario.openFaceRoom`). Nothing in the
+scene moves. The advisor's estimate of a run on the grown domain is shown beside it, as times the
+air and the run's time before and after. Faces at the origin (west and south) can be cleared only
+by moving the scene's contents away from it, which the action does not do: it names those still
+near. The warning also says when the faces matter least: what the positive phase decides, such as
+glass breaking, and a charge inside its walls.
 
 ## The charge
 
@@ -182,25 +227,87 @@ air (next) it does not.
 
 ### A finely resolved start
 
-`SolverConfiguration.mappedCharge` starts a lone charge from a one-dimensional solution
-instead of the balloon. The blast is solved with spherical symmetry (the same MUSCL–Hancock
-and HLLC scheme, with the face areas 4πr² and the pressure's geometric source), on a radial
-grid of a few millimetres, from a sphere of the charge's own size (TNT's density), until its
-shock reaches 0.8 of the distance to the nearest block, structure or open face, at most 16
-cells; a charge on the ground spreads as one of twice the mass, mirrored. The state is then
-laid onto the grid (each cell averaged over 64 samples, the radial momentum turned into
-vectors) and the clock set to the time that took. Gauges and cells the shock has already
-passed take their histories, peaks and impulses from the one-dimensional solution.
+Since 18 October 2026 a lone charge starts from a one-dimensional solution instead of the
+balloon (`SolverConfiguration.mappedCharge`, on in `recommended` and, with afterburning and hot
+air, in the app's runs; a project saved before then keeps the balloon). The blast is solved with
+spherical symmetry (the same MUSCL–Hancock and HLLC scheme, with the face areas 4πr² and the
+pressure's geometric source), on a radial grid of a twentieth of the charge's radius, from a
+sphere of the charge's own size (TNT's density). It reaches as far as it can before meeting
+anything: 0.8 of the distance to the nearest block, structure, ground that is not flat or open
+face, at most 64 cells and 6 m/kg^(1/3). A charge on the ground spreads as one of twice the
+mass, mirrored. The state is then laid onto the grid (each cell averaged over 64 samples, the
+radial momentum turned into vectors) and the clock set to the time that took. Gauges, cells and
+the injury plane (`configureExposurePlane`) the shock has already passed take their histories,
+peaks, impulses and arrivals from the one-dimensional solution. Where it cannot reach three
+cells, or with dissociating air, gravity, sub-grid mixing, radiative cooling, the afterburning
+limit or more than one charge, the balloon starts it instead.
 
-The one-dimensional solver keeps its energy within 1% and, from a point source, spreads as
-Sedov and Taylor say within 8%. On the Kingery–Bulmash comparison (on 0.5 m cells, mapped out
-to 8 m) the incident peaks inside the mapped region read 116% to 131% instead of 57% to 66%:
-no longer smeared, but now high, as an ideal gas expanding from the charge's own size does
-next to a real explosive. Beyond the mapped region nothing changes: within a couple of metres
-the grid smears the shock again as much as before (62% to 73% from 9 m out, against 62% to
-69%). So it gives exact one-dimensional records close in and a correct start, but no lasting
-gain in resolution; refinement of the grid near the shock (below) does that. It is off by
-default, and only for a single charge, an ideal gas and no afterburning.
+**Its gas.** The one-dimensional solution has the air's own gas, the ideal gas or hot air (the
+same vibrational energy, in double precision), and with afterburning carries the products and the
+air's oxygen and burns them at the grid's rate. A fine grid mixes the fireball far less than the
+coarse cells mix the balloon's, so it diffuses the products and oxygen with an eddy diffusivity
+κ W^(1/3), κ = 16 m²/s/kg^(1/3): fitted once, on 10 kg on 0.5 m cells, and checked on 1 and 100
+kg and 0.25 m cells. With it, hot air and afterburning the one-dimensional burst gains just what
+its products burn (to 1%; `MappedChargeTests`).
+
+**Against Kingery–Bulmash** (`blastbench validate --mass`, incident; see
+[Validation](validation.md#the-mapped-start-18-october)), from 1 m/kg^(1/3):
+
+| | Balloon | Mapped |
+|---|---|---|
+| 10 and 100 kg, 0.25–0.5 m cells | 32–84% | 83–117% |
+| 1 kg, 0.25 and 0.5 m cells | 11–47% | 63–99% |
+| 10 kg, 0.5 m refined once / twice | 29–69% / 48–83% | 72–109% at both |
+
+- **Impulse:** within 5–15% at every grid beyond 1 m/kg^(1/3). It holds beyond the mapped radius,
+  so nothing is counted twice. Refined, the patches placed at the restart take their coarse
+  cells' impulse again once the passage is laid down (`Refinement.reseedImpulseBase`); without
+  that the impulse beyond 6 m was lost (5–38%).
+- **Close in:** at 0.5–0.75 m/kg^(1/3) the incident impulse reads 125–175%, where
+  Kingery–Bulmash rests on few tests.
+- **Reflected peaks:** on a wall, with the start held back by it, within a few points of the
+  balloon's, and as low: the grid still smears the reflection.
+- **Past the mapped radius:** the grid smears the shock again over a few metres: 100 kg on
+  0.25 m cells, mapped 12.8 m out (0.8 of the way to the domain's top), reads 83–86% at 18–23 m.
+
+**The injury reach** at standing height (10 kg on 0.25 m cells, `InjuryFieldTests`) comes to
+0.80 and 0.65 of the free field's for the lungs' threshold and 50% lethality, against the
+balloon's 0.69 and 0.50; the eardrums' are unchanged at 0.84–0.86. Standing height is still short
+of a surface burst's ground-level curves close in, where the wave off the ground arrives apart.
+
+**Its cost** is the one-dimensional solution's own, on the CPU before the run: about 4 s out to 4
+m/kg^(1/3) and 8 s to 6 on an M4 Max, whatever the charge (`blastbench mapped-cost`), which the
+run advisor adds (`RunCost.mappedStartSeconds`). It is solved once for each charge, gas and
+reach and kept (the last four), so a scene run again starts at once. The solver is its own
+module (`RadialBlast`), built optimised even for tests, which would otherwise take many minutes
+over it. In the app the solution stops at half the run's duration if its shock has not reached
+the radius by then, so that a short run still steps the grid (`BlastSolver.mappedStartLatest`).
+Without the cap in scaled distance, a small charge on coarse cells would be solved hundreds of
+charge radii out, for many minutes.
+
+**The products' own equation of state** (tried 18 October 2026, kept as an option, off). With
+`mappedChargeProducts` the one-dimensional solution carries the detonation products as a tracer
+with TNT's Jones–Wilkins–Lee law (A 371.2 GPa, B 3.231 GPa, R1 4.15, R2 0.95, ω 0.30 at 1.63
+g/cm³, from the LLNL Explosives Handbook; the handbook's other TNT set, as ANSYS Autodyn carries
+it, as a check). Where products and air mix each presses as it would alone at its partial
+density, both at the mixture's energy per kilogram; the scheme bounds the waves as Davis does.
+It raises the incident peak close in (52 to 67% of Kingery–Bulmash at 0.2 m/kg^(1/3), 64 to 81%
+at 0.3, 88 to 100% at 0.5) and changes nothing past 0.75 (within 4%), nor the impulse; the
+products have spread to some 10 kg/m³ by the time they are mapped, where JWL's terms for dense
+products are gone, but there the air's gas reads their pressure 13–25% higher (ω 0.30 against
+the hot air's 0.33–0.40). On the grid it moves the reflected loads too little to adopt: the
+impulse within 2% from 0.3 m/kg^(1/3), the peak within 2 points from 0.5, and at 0.3 from 105%
+to 131% of the curves on 5 mm cells, away from them and within close in's scatter
+([validation](validation.md#the-products-own-equation-of-state-18-october)). It makes the
+one-dimensional solution 2.3 to 2.8 times as long. Where it would matter is in contact, where the
+charge is never mapped (see future work).
+
+**The comparisons of structures** (slabs, walls, rooms, envelopes and the rest) were run on the
+balloon start. Their harnesses are pinned to it (`SolverConfiguration.balloonStart`) until each
+is run again ([the list](validation.md#still-on-the-balloon-start)).
+
+**Sharing.** Neither ContinuumKit nor Edgerton has a one-dimensional solver. `SphericalBlast`
+can be extracted into ContinuumKit, by its process, if another project needs a resolved start.
 
 ### Hot air
 
@@ -322,7 +429,12 @@ others; Käppeli and Mishra; and the perturbation form of Giraldo and Restelli),
 works on each cell's deviation from the background:
 - the slopes and the Hancock predictor are the deviations', with the background's own gradient,
   and gravity's pull on the deviation, in the predictor;
-- each face carries the background at the face plus the reconstructed deviation;
+- each face carries the background at the face plus the reconstructed deviation, and where
+  that would leave no density or pressure, the first-order deviation, as without gravity. A cell
+  at the pressure floor, as a cut cell beside the terrain can be left, holds less than the
+  background falls across half of it (1.5 Pa for a 0.25 m cell), so it gives its faces its own
+  state instead. Before, such a face had no pressure and its sound speed was a NaN: air over
+  cut terrain with gravity broke, most often refined, and its digest changed from run to run;
 - the background's pressure at the face is left out of the momentum flux, and gravity's pull on
   the background out of the source, which is −g(ρ − ρ_b);
 - the energy gains −g times the mean of the cell's two faces' mass fluxes, so the gas's energy
@@ -346,6 +458,7 @@ height. Gravity is compiled into the kernels only when on, so with it off they a
 - Air at rest stays at rest to the bit for 200 steps: isothermal or cooling with height, ideal
   or thermally perfect, refined in two levels everywhere, and in a closed box over a hill.
 - Its pressure 63.5 m up is the barometric formula's to 10⁻⁵.
+- A layer of cells at the pressure floor, in thermally perfect air at rest, stays finite.
 - In a closed box a hot bubble's rise conserves the gas's energy and potential energy together
   to 10⁻⁶.
 - A sphere of air twice as hot as its surroundings first accelerates at 90% of potential flow's
@@ -563,6 +676,36 @@ shocks" switch (ratio 2) and, under it, "Twice over again" (two levels); `blastb
   street, and moves the peaks of `validate` up by 1 to 2.5%, towards Kingery–Bulmash, and
   impulses and arrivals under 1%; close in, where every substep is taken, nothing changes (see
   [Performance](performance.md#refinement)).
+- **Held beside envelopes and structures (options, off by default).** Refinement follows the shock
+  and leaves a building once the shock has passed. Two options hold it in a band about each
+  object while the air there is loaded past so many pascals:
+  - `refinementHoldsEnvelopes`, beside the envelope recorder's faces (see
+    [building envelopes](building-envelopes.md#surface-exposure-and-loads));
+  - `refinementHoldsStructures`, a cell beyond each structure's solids as built;
+    `blastbench … --hold-structures 100`.
+
+  For structures it does not pay. On Tyndall's CLT building, test 1, in a domain at the open
+  faces' clearance, 0.5 m cells refined by 2 against uniform 0.25 m cells (18 October 2026):
+
+  | Air | Front reflected peak | Front positive phase | First storey, in / rebound | Second storey, in / rebound | Run |
+  |---|---|---|---|---|---|
+  | uniform 0.25 m | 25.2 kPa | 137.2 Pa s | 17 / −22 mm | 27 / −26 mm | 13 s |
+  | refined, threshold 0.1 | 19.7 kPa | 137.8 Pa s | 15 / −21 mm | 28 / −23 mm | 13 s |
+  | the same, held at 100 Pa | 21.2 kPa | 135.7 Pa s | 15 / −21 mm | 27 / −22 mm | 20 s |
+  | refined, threshold 0.02 | 25.2 kPa | 137.0 Pa s | 16 / −22 mm | 27 / −22 mm | 15 s |
+  | the same, held at 100 Pa | 25.2 kPa | 137.0 Pa s | 16 / −22 mm | 27 / −23 mm | 17 s |
+
+  The measured positive phase was 137 Pa s.
+  - **What sets the peak at the building is the threshold.** The shock reaches it at about
+    13 kPa, below threshold 0.1's reach of 20 kPa, so the shock crosses the building's cells
+    unrefined. Held, the band refines the air only within a cell of the wall, too late to
+    sharpen a shock that has already crossed 22 m of coarse cells. At 0.02 the refinement
+    follows the shock to the building and gives the uniform grid's peak without a band.
+  - **The structure's response barely moves:** within 1 mm, at 13–54% more time.
+  - **Wu's slab S8 (1.6 kg at 0.5 m)** moved by 0.1 mm at 18% more time.
+
+  The standing's bands, which take the cells the shock is on as it passes, and the advisor's
+  choice of threshold already capture this, so neither option is in the defaults.
 - **Exactness.** It is all done on the GPU, with no round trip to the CPU between steps, and
   every sum runs in a fixed order: runs repeat exactly, uniform air refined everywhere stays
   exactly uniform, and mass and energy in a closed box are conserved to rounding (within 10⁻⁴,
@@ -673,7 +816,8 @@ UFC 3-340-02, lowest for light charges.
    street's impulses by under 4% and the Kingery–Bulmash gauges' by under 1%.
 4. **One gas.** Detonation products are treated as air: by default as an ideal gas of γ = 1.4,
    or as thermally perfect air, so the fireball's composition, and its temperature, are not
-   realistic. It loses the heat it radiates only with radiative cooling on, and then only above
+   realistic. The mapped start can carry them as detonation products (JWL, an option), which
+   moves open-air loads too little to adopt; in contact, never mapped, they stay air. It loses the heat it radiates only with radiative cooling on, and then only above
    the luminous temperature, as a grey gas with soot, into black, cold surroundings.
 5. **Moving solids are a staircase of whole cells.** A moving wall pushes the gas through its
    ghost states, and its surface jumps a cell at a time. The gas is conserved within 0.3% as it
@@ -683,12 +827,17 @@ UFC 3-340-02, lowest for light charges.
 
 ## Future work
 
-- **The products' own composition** for the gas very close to a charge. (Dissociation of the
-  air is done, as an option; it changes the checked loads by under 1%.)
-- **Better source.** Two options, in order of effort: start from a one-dimensional, finely
-  resolved spherical solution and map it onto the grid once the shock has grown to several
-  cells; or carry the detonation products as a second gas with a Jones–Wilkins–Lee equation of
-  state and optional afterburn energy.
+- **The products' own equation of state on the grid, for charges in contact.** In the mapped
+  start it was tried and changes the loads from 0.3 m/kg^(1/3) out too little to adopt
+  ([above](#a-finely-resolved-start)); in contact, where the charge is too near anything to be
+  mapped, a ball of air at the charge's density delivers about twice the products' impulse
+  ([Hupfauf](validation.md#slabs-under-contact-charges)), and the products would need a second
+  gas on the grid. (Dissociation of the air is done, as an option; it changes the checked loads
+  by under 1%.)
+- **A mapped start for each charge.** Scenes of several charges (the chamber's four) start from
+  the balloon, as one solution cannot hold two centres. Each could be solved in one dimension
+  and mapped until their shells meet; as the solutions are kept by start, alike charges would
+  cost one solve.
 - **Better open boundaries**, if they are ever needed: a perfectly matched or sponge layer
   works at any angle, unlike the one-dimensional characteristic condition that was tried.
 - **More of the refinement**: patches placed and released over a fine outline without the gas

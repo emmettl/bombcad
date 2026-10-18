@@ -511,6 +511,7 @@ struct ShellMeshElement {
     float a;
     float b;
     int shield[2];
+    uint pane;
 };
 
 // Draws each shell as the slab it stands for: a box between its two faces, which lie half its

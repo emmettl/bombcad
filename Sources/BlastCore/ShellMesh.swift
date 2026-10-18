@@ -897,6 +897,10 @@ struct ShellMesh {
                 layers.append(SIMD3(zeta, areas.x, areas.y))
             }
         }
+        // A laminated pane's interlayer, at its midsurface both ways.
+        if let interlayer = model.material(of: plate.solid).interlayerThickness, layers.count < maxBars {
+            layers.append(SIMD3(0, interlayer, interlayer))
+        }
         return layers
     }
 

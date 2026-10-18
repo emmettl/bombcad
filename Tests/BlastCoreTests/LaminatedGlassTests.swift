@@ -5,27 +5,10 @@ import Testing
 
 @Suite("Laminated glass")
 struct LaminatedGlassTests {
-    /// Osnes, Holmen, Hopperstad and Børvik, "Fracture and fragmentation of blast-loaded laminated
-    /// glass", *IJIE* 132 (2019) 103334 (CC BY), Table 2: 3.8 mm annealed / 1.52 mm PVB / 3.8 mm
-    /// annealed, clamped over 300 × 300 mm in SIMLab's shock tube, the reflected pressure a
-    /// Friedlander curve p_max (1 − t/t_d) exp(−b t/t_d). Measured: whether both plies cracked,
-    /// and the largest deflection, mm (the centre target lost after it on D-01, D-03 and E-02).
-    static let osnes:
-        [(test: String, pMax: Double, duration: Double, b: Double, cracked: Bool, deflection: Double)] = [
-            ("A-01", 167.8e3, 18.89e-3, 1.18, false, 3.74), ("A-02", 168.7e3, 18.78e-3, 1.15, false, 3.55),
-            ("A-03", 169.7e3, 19.37e-3, 1.18, false, 3.56), ("A-04", 172.4e3, 18.87e-3, 1.21, false, 5.79),
-            ("B-01", 204.3e3, 19.60e-3, 1.39, false, 4.25), ("B-02", 205.5e3, 19.65e-3, 1.29, false, 4.59),
-            ("B-03", 206.3e3, 20.01e-3, 1.35, false, 4.38), ("C-01", 215.2e3, 20.62e-3, 1.42, false, 4.54),
-            ("C-02", 215.6e3, 20.78e-3, 1.51, true, 69.67), ("D-01", 231.7e3, 21.40e-3, 1.63, true, 93.80),
-            ("D-02", 237.4e3, 20.23e-3, 1.44, true, 95.41), ("D-03", 237.7e3, 21.09e-3, 1.48, true, 121.61),
-            ("D-04", 238.9e3, 21.40e-3, 1.52, true, 92.53), ("E-01", 254.2e3, 23.10e-3, 2.21, true, 99.18),
-            ("E-02", 258.9e3, 24.20e-3, 1.98, true, 111.61),
-        ]
+    static let osnes = LaminatedGlassMeasurements.osnes
 
     static func friedlander(pMax: Double, duration: Double, b: Double, step: Double) -> [Double] {
-        stride(from: 0.5 * step, to: duration, by: step).map { t in
-            pMax * (1 - t / duration) * exp(-b * t / duration)
-        }
+        LaminatedGlassMeasurements.friedlander(pMax: pMax, duration: duration, b: b, step: step)
     }
 
     @Test("Wölfel–Bennison's effective thicknesses and the membrane's shape follow their closed forms")
@@ -97,21 +80,13 @@ struct LaminatedGlassTests {
         #expect(strong.ratios.allSatisfy { $0 > 0.6 && $0 < 1.2 })
     }
 
-    /// A triangular pulse, peak `peak` and impulse `impulse`, then (optionally) a triangular
-    /// suction phase.
     static func triangle(
         peak: Double, impulse: Double, suction: Double = 0, suctionImpulse: Double = 0, step: Double,
         until: Double
     ) -> [Double] {
-        let duration = 2 * impulse / peak
-        let suctionDuration = suction > 0 ? 2 * suctionImpulse / suction : 0
-        return stride(from: 0.5 * step, to: until, by: step).map { t in
-            if t < duration { return peak * (1 - t / duration) }
-            let u = t - duration
-            guard u < suctionDuration else { return 0 }
-            let half = 0.5 * suctionDuration
-            return -suction * (u < half ? u / half : (suctionDuration - u) / half)
-        }
+        LaminatedGlassMeasurements.triangle(
+            peak: peak, impulse: impulse, suction: suction, suctionImpulse: suctionImpulse, step: step,
+            until: until)
     }
 
     /// Zhang, Hao and Wang, *IJIE* 78 (2015), field tests, Tables 3–5: 1.5 × 1.2 m panes clamped in
@@ -130,25 +105,7 @@ struct LaminatedGlassTests {
             ("3-1-1", 3, 1.52, 82.2, 413.3, 17.5, 261.7, 264, "held"),
         ]
 
-    /// Hooper, PhD thesis (Imperial College London, 2011), Tables 3.1, 3.7, 3.8 and 3.12: panes
-    /// bonded with a 20 mm bite of structural silicone; the reflected peak and impulse at the pane
-    /// measured (tests 3–6, 8) or ConWep's (1, 2, 7: the gauges there read side-on); the largest
-    /// deflection up to failure (mm), the largest speed (m/s) and how each failed.
-    static let hooper:
-        [(
-            test: String, a: Double, b: Double, ply: Double, interlayer: Double, peak: Double,
-            impulse: Double,
-            deflection: Double, speed: Double, outcome: String
-        )] = [
-            ("1", 1.5, 1.2, 3, 1.52, 165, 392, 179, 27.3, "joint failed, 7–8 ms"),
-            ("2", 1.5, 1.2, 3, 1.52, 93.4, 288, 173, 17.4, "joint failed on the rebound"),
-            ("3", 1.5, 1.2, 3, 1.52, 132, 413, 205, 20.5, "joint failed, 9–12 ms"),
-            ("4", 1.5, 1.2, 3, 1.52, 152, 461, 140, 29.0, "joint failed, 7–9 ms"),
-            ("5", 1.5, 1.2, 3, 1.52, 97, 419, 199, 21.9, "joint failed on the rebound"),
-            ("6", 1.5, 1.2, 3, 1.52, 100, 418, 207, 22.3, "joint failed on the rebound"),
-            ("7", 3.6, 2.0, 6, 1.52, 197, 739, 209, 23.7, "joint failed, PVB torn at 20% of the edge, 11 ms"),
-            ("8", 3.3, 1.7, 6, 0.76, 223, 808, 185, 30.6, "PVB torn at every edge, 8.5 ms"),
-        ]
+    static let hooper = LaminatedGlassMeasurements.hooper
 
     @Test("Zhang et al.'s and Hooper's framed panes in the open")
     func framedPanes() {

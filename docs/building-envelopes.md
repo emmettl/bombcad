@@ -615,7 +615,13 @@ one way as the run goes, at most once a second and again when it stops:
 - **Levels.**
   - Concrete is a range of support rotation between fixed and simply supported edges, judged by
     ASCE/SEI 59-11's limits for single-reinforced slabs: moderate to 2°, heavy to 5°, hazardous to
-    10°, failed beyond.
+    10°, failed beyond. Since 18 October 2026 both its rotation and its ductility are taken
+    whichever way it went furthest. A wall pushed out (by a charge inside, by its room's pressure
+    once its glass has gone, or by its rebound) is judged by the same limits as one pushed in:
+    UFC 3-340-02 §4-26.2 designs an element for rebound "for a negative load" by "the same
+    equations", and with bars in both faces its rebound resistance is its ultimate. Venting's walls,
+    stepped with the air, yield either way too, so a building's walls blown out from inside open
+    and its gas leaves ([what this moved](#concrete-judged-either-way)).
   - Brick is cracked or fallen (deflected past its thickness). No citable limits for unreinforced
     masonry without arching were found.
   - Cross-laminated timber by its displacement ductility, WoodWorks TR-18-06.2's limits for CLT in
@@ -674,6 +680,37 @@ For the Tyndall buildings' 3-ply walls over their 3.66 m storey:
 - No test of a CLT envelope's damage level is compared; the full-scale buildings are compared with
   the detailed model ([validation](validation.md#cross-laminated-timber-buildings-at-tyndall)).
 
+### Concrete judged either way
+
+Before 18 October 2026, concrete's level took its ductility from its inward deflection only, and
+venting's walls yielded only inward. A wall pushed out stayed at "none" however far it went: the
+Kasun cubicle's walls, blown out by 80 kg inside, read none at 89° and never opened. They are now
+judged whichever way they went furthest ([levels](#one-way-damage-single-degree-of-freedom)).
+`blastbench envelope-regrade` runs every sample with envelope buildings, venting on. The other
+comparisons were judged both ways (with `BOMBCAD_CONCRETE_INWARD_ONLY` set for the old rule). What
+moved:
+
+| Sample or comparison | Inward only | Either way |
+|---|---|---|
+| Office tower, the two concrete buildings across the street (0.25 m air, 0.2 s) | left: none 9, moderate 7, heavy 2, hazardous 2; right: none 6, moderate 10, heavy 2, hazardous 2 | left: moderate 15, heavy 3, hazardous 2; right: moderate 16, heavy 2, hazardous 2 |
+| Transport hub, the concourse | none 35, moderate 3 | none 34, moderate 4 |
+| The Kasun cubicle, 80 kg inside | walls and roof none (at 89°); none vented; inside 12–18 MPa to 30 ms | all failed; all five vented from 2.6 ms; inside 61 kPa at 5 ms, 1 kPa at 30 ms; debris's hazardous reach 142 → 129 m |
+
+On the office's neighbours, once their glass had broken, the pressure in their rooms (24–25 kPa)
+pushed lightly loaded panels out past their elastic limit. Nothing more failed or vented, and the
+panes and inside pressures are unchanged.
+
+Unchanged:
+- the process plant;
+- the damage references' 19 runs, judged one way;
+- the venting checks (the street and the office tower, filled and vented);
+- every slab in `blastbench envelope-slabs` (the contest slab, Reynolds's, Wu's, Wang's and
+  Mendonça's, both bounds);
+- Alsubaei's and Keys's walls in `blastbench envelope-walls`.
+
+The portal-frame warehouse is sheeted, and the terraced houses and large-panel flats are detailed
+structures, not envelopes, so none of them is judged this way.
+
 ## Freestanding walls
 
 A wall whose foot is held (on the ground or a slab) and whose top is not is judged as a cantilever
@@ -721,6 +758,10 @@ heaviest low on the wall counts for less than its mean says:
 - the blockwork at 125 kg comes to 9.3°, hazardous, short of the 10° that fails it, where it
   collapsed: a miss, on the unsafe side, which the mean's 11.8° had not made;
 - the brick walls fall as before.
+
+The mechanism's shape, which decides the 125 kg wall, has no load map to be checked against:
+Alsubaei's gauges stand on pipe columns behind the walls, and Keys gives one measured load a
+panel.
 
 Five of the seven outcomes are as measured on the equivalent load, six on the mean. The account below is of the mean's. Six of the seven outcomes are as measured. The miss is the half-scale wall, which both the
 cantilever and the detailed model bend far past the light cracking seen: the safe side, and the
@@ -987,6 +1028,9 @@ would settle it.
 
 ## Laminated glass
 
+The structure model meshes laminated panes as shells by the same data
+([laminated glass](shell-model.md#laminated-glass)).
+
 Since 17 October 2026 a construction can glaze its windows with laminated glass
 (`EnvelopeConstruction.laminate`, a `LaminatedGlass`: two plies, a PVB or ionoplast interlayer, and
 what its frame holds). Annealed stays the default. `LaminatedGlass.facade` is 6 mm + 1.52 mm PVB +
@@ -1115,6 +1159,14 @@ The four questions set before building it, and where each is answered:
 
 Its standing is an approximation for glass and concrete panels, and illustrative for brick and
 the inside pressure (see [standing](standing.md)).
+
+### Debris from failed components
+
+A wall, roof or pane that fails is thrown: its one-way model's speed at failure over its
+mechanism's shape, its pieces flown to where they land and judged as fragments are, the minimum
+safe distance taking it in ([hazards](hazards.md#debris-from-failed-envelope-components), where
+it is compared with Keys's walls and the Kasun cubicle). Each component's damage keeps how it was
+thrown (`EnvelopeComponentDamage.launch`).
 
 ### Future work
 

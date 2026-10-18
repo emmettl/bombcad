@@ -3,7 +3,7 @@ import SwiftUI
 
 /// `BombCAD run …` runs a project without a window (see `HeadlessRun`), `BombCAD sweep …` runs a
 /// sweep (see `HeadlessSweep`), `BombCAD ensemble …` reruns validation cases over their uncertain
-/// inputs (see `HeadlessEnsemble`), `BombCAD cloud …` follows a run's cloud again (see `HeadlessCloud`), `BombCAD worker` serves sweep cases over its standard input and output (see `SweepWorker`), `BombCAD watch …` runs a project on another Mac and watches it from this one (see `HeadlessWatch`), `BombCAD interface-smoke` draws a new document's views offscreen through a change of source (see `InterfaceSmoke`); anything else opens the app.
+/// inputs (see `HeadlessEnsemble`), `BombCAD cloud …` follows a run's cloud again (see `HeadlessCloud`), `BombCAD worker` serves sweep cases over its standard input and output (see `SweepWorker`), `BombCAD serve`, `pair` and `nearby` share a GPU with Macs nearby (see `HeadlessNearby`), `BombCAD watch …` runs a project on another Mac and watches it from this one (see `HeadlessWatch`), `BombCAD interface-smoke` draws a new document's views offscreen through a change of source (see `InterfaceSmoke`); anything else opens the app.
 @main
 enum BombCADMain {
     static func main() {
@@ -32,6 +32,10 @@ enum BombCADMain {
             exit(HeadlessCloud.main(Array(arguments.dropFirst())))
         case "interface-smoke":
             Task { @MainActor in exit(InterfaceSmoke.main()) }
+        case "serve", "pair", "nearby":
+            Task { @MainActor in
+                exit(await HeadlessNearby.main(arguments[0], Array(arguments.dropFirst())))
+            }
         case "worker":
             Task { @MainActor in
                 exit(await SweepWorker.main(Array(arguments.dropFirst())))
@@ -54,9 +58,16 @@ struct BombCADApp: App {
         }
         .defaultSize(width: 1440, height: 920)
         .commands {
+            NewDistrictCommands()
             SimulationCommands()
             HelpCommands()
         }
+
+        Window("New District", id: "new-district") {
+            NewDistrictView()
+        }
+        .defaultSize(width: 620, height: 820)
+        .windowResizability(.contentMinSize)
 
         Window("BombCAD Help", id: "help") {
             HelpView()
@@ -76,5 +87,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // foreground app explicitly.
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+        NearbySharing.shared.restore()
     }
 }

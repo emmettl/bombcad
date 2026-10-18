@@ -173,6 +173,10 @@ struct SimulationSettings: Equatable {
     /// (`SolverConfiguration.settlesStructures`), as since 17 October 2026; false for their weight
     /// taken as the run starts, as before.
     var settlesStructures = true
+    /// With afterburning and hot air, a lone charge starts from a fine one-dimensional burst mapped
+    /// onto the grid (`SolverConfiguration.mappedCharge`), by default since 18 October 2026; off, as
+    /// before, from a sphere of hot gas a few cells across.
+    var mappedStart = true
     /// Debris lands on soil, a Winkler bed of `groundStiffness` (Pa/m), instead of the hard ground.
     var softGround = false
     var groundStiffness = SolverConfiguration.soilSubgradeModulus
@@ -669,6 +673,11 @@ final class SimulationModel {
     /// Each envelope building's one-way damage from its components' loads so far
     /// (`EnvelopeDamageAssessment`), and why there is none when there is none.
     private(set) var envelopeDamage: [EnvelopeBuildingDamage] = []
+    /// The debris of the envelope components that failed, thrown and landed, once a run has
+    /// stopped (`EnvelopeDebris`); nil where none failed.
+    private(set) var envelopeDebris: EnvelopeDebris?
+    /// The loads the damage was last judged on, for the debris.
+    @ObservationIgnored private var envelopeLoads: [EnvelopeComponentLoad] = []
     private(set) var envelopeDamageStatus = ""
     /// Why the glazing is not vented though asked to be, or empty.
     private(set) var envelopeVentingStatus = ""
@@ -718,7 +727,16 @@ final class SimulationModel {
         envelopeDamage = EnvelopeDamageAssessment.assess(
             loads: loads, constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms,
             strikes: strikes, vented: vented)
+        envelopeLoads = loads
         applyEnvelopeDamageColours()
+    }
+
+    /// Throws the debris of the envelope components judged failed and flies it to where it lands,
+    /// for the hazard and the minimum safe distance: when a run stops, not while it runs.
+    func refreshEnvelopeDebris() {
+        envelopeDebris =
+            envelopeDamage.isEmpty
+            ? nil : solver?.envelopeDebris(scenario: scenario, loads: envelopeLoads, damage: envelopeDamage)
     }
 
     /// The structures' rubble flown on to where it lands, judged as a hazard; nil unless a
@@ -825,6 +843,7 @@ final class SimulationModel {
                 settings.outlineByOverlap = run.countsByOverlap(over: scenario)
                 settings.ventsGlazing = run.ventsGlazing(over: scenario)
                 settings.settlesStructures = run.settlesStructures(over: scenario)
+                settings.mappedStart = run.startsMapped
                 settings.softGround = run.groundStiffness != nil
                 settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
                 settings.ground = run.ground ?? .rigid
@@ -876,7 +895,8 @@ final class SimulationModel {
             rebuild()
         }
         completedRunSettings = nil
-        if solver?.time == 0, lastSampleTime == nil {
+        // Before the first step (a mapped start's clock starts at its solution's time).
+        if solver?.stepCount == 0, lastSampleTime == nil {
             // The structures at rest under their own weight first, so that the first sample, and
             // every deflection after it, starts from them as they stood.
             solver?.settleStructures()
@@ -976,6 +996,7 @@ final class SimulationModel {
             settings.outlineByOverlap = run.countsByOverlap(over: document.scenario)
             settings.ventsGlazing = run.ventsGlazing(over: document.scenario)
             settings.settlesStructures = run.settlesStructures(over: document.scenario)
+            settings.mappedStart = run.startsMapped
             settings.softGround = run.groundStiffness != nil
             settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
             settings.ground = run.ground ?? .rigid
@@ -1186,6 +1207,7 @@ final class SimulationModel {
         settings.outlineByOverlap = inputs.settings.countsByOverlap(over: inputs.scenario)
         settings.ventsGlazing = inputs.settings.ventsGlazing(over: inputs.scenario)
         settings.settlesStructures = inputs.settings.settlesStructures(over: inputs.scenario)
+        settings.mappedStart = inputs.settings.startsMapped
         settings.softGround = inputs.settings.groundStiffness != nil
         settings.groundStiffness = inputs.settings.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
         settings.ground = inputs.settings.ground ?? .rigid
@@ -1296,6 +1318,32 @@ final class SimulationModel {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// The domain whose far faces meet the open faces' clearance (`Scenario.grownToTheRule`), with
+    /// the advisor's estimate of a run on it and on the domain as it is, and the faces at the origin
+    /// still tight; nil when no face is tight.
+    var wideningToTheRule:
+        (
+            domain: SIMD3<Float>, now: RunCostEstimate, widened: RunCostEstimate,
+            left: [(name: String, clearance: Float)]
+        )?
+    {
+        guard let grown = settings.scenario.grownToTheRule() else { return nil }
+        let inputs = SimulationInputs(
+            scenario: settings.scenario, settings: ProjectRunSettings(model: self), thermal: thermalSpec)
+        return (
+            grown.domain, inputs.cost(domain: settings.scenario.domainSize),
+            inputs.cost(domain: grown.domain),
+            grown.left
+        )
+    }
+
+    /// Grows the domain from its origin so that its far faces meet the open faces' clearance,
+    /// nothing in the scene moving (`Scenario.grownToTheRule`).
+    func widenToTheRule() {
+        guard let grown = settings.scenario.grownToTheRule(), grown.domain != domainSize else { return }
+        resizeDomain(to: grown.domain)
     }
 
     /// Whether the scene is open, with nothing in it but its charge, gauges and terrain, and so
@@ -2355,6 +2403,7 @@ final class SimulationModel {
     private func requestRebuild() {
         envelopeExposure = []
         envelopeDamage = []
+        envelopeDebris = nil
         envelopeExposureStatus = ""
         envelopeVentingStatus = ""
         if batchInFlight {
@@ -2376,8 +2425,11 @@ final class SimulationModel {
             terrainCutCells: settings.terrainCutCells,
             groundStiffness: settings.softGround ? settings.groundStiffness : nil,
             ground: settings.ground == .rigid ? nil : settings.ground,
-            outlineByOverlap: settings.outlineByOverlap, settlesStructures: settings.settlesStructures)
+            outlineByOverlap: settings.outlineByOverlap, settlesStructures: settings.settlesStructures,
+            mappedStart: settings.mappedStart)
         solver.configuration.fitRefinementMemory(solver.grid, memory: advisorMemory)
+        // A mapped start begins no later than halfway through the run, so that the grid has the rest.
+        solver.mappedStartLatest = duration / 2
     }
 
     private func rebuild() {
@@ -2387,6 +2439,7 @@ final class SimulationModel {
         stopGroundShock()
         envelopeExposure = []
         envelopeDamage = []
+        envelopeDebris = nil
         envelopeExposureStatus = ""
         envelopeVentingStatus = ""
         stopThermal()
@@ -2435,7 +2488,7 @@ final class SimulationModel {
             }
             // The blast's injury at a standing person's height, from the run's own peaks (`InjuryField`):
             // probes that leave the air as it is.
-            if let solver, solver.time == 0 {
+            if let solver, solver.stepCount == 0 {
                 injuryField = nil
                 try? solver.configureExposurePlane(heightM: Self.standingHeight, arrivalThresholdPa: 1_000)
             }
@@ -2447,7 +2500,8 @@ final class SimulationModel {
                     // The components' histories feed their one-way damage, so the app keeps them for
                     // every run of envelopes; headless runs only when asked.
                     if let options = envelopeHistoryOptions
-                        ?? (envelopeHistoriesByDefault ? EnvelopeHistoryOptions(windowS: duration) : nil)
+                        ?? (envelopeHistoriesByDefault
+                            ? Self.defaultEnvelopeHistory(duration: duration, memory: advisorMemory) : nil)
                     {
                         try solver.configureEnvelopeComponents(
                             objects: scenario.envelopeObjects, options: options)
@@ -2673,6 +2727,7 @@ final class SimulationModel {
                 ambient: Double(scenario.atmosphere.pressure))
         }
         publishTraces()
+        refreshEnvelopeDebris()
         if fragments != nil || thermal != nil || groundShock != nil {
             let (gpu, elapsed) = (blastGPUSeconds, time)
             Task { [weak self] in await self?.recordCosts(blastGPUSeconds: gpu, elapsed: elapsed) }
@@ -2695,7 +2750,10 @@ final class SimulationModel {
                 self.fragmentHazard = hazard
                 self.fragmentStrikes = landed.impacts.filter { $0.penetration != nil }
                 self.updateFragmentStatus()
-                if !self.envelopeDamage.isEmpty { self.refreshEnvelopeDamage() }
+                if !self.envelopeDamage.isEmpty {
+                    self.refreshEnvelopeDamage()
+                    self.refreshEnvelopeDebris()
+                }
             }
         }
         if let thermal {
@@ -2842,7 +2900,8 @@ extension SimulationModel {
                 ground: ground)
         }
         let safe = MinimumSafeDistance(
-            kilograms: scenario.charge.mass, fragments: fragmentHazard, cased: isCased)
+            kilograms: scenario.charge.mass, fragments: fragmentHazard, cased: isCased,
+            debris: envelopeDebris?.hazard, inStructure: scenario.chargeInsideBuilding)
         if safe.distanceM > safe.overpressureM {
             lines += HazardOverlay.ring(
                 centre: centre, radius: safe.distanceM, kind: .kFactor, ground: ground)
@@ -2873,16 +2932,23 @@ extension SimulationModel {
         }
         lines.append(
             "M"
-                + MinimumSafeDistance(kilograms: mass, fragments: fragmentHazard, cased: isCased).summary
+                + MinimumSafeDistance(
+                    kilograms: mass, fragments: fragmentHazard, cased: isCased,
+                    debris: envelopeDebris?.hazard,
+                    inStructure: scenario.chargeInsideBuilding
+                ).summary
                 .dropFirst())
+        if let envelopeDebris { lines.append(envelopeDebris.summary) }
         if let injuryField { lines.append(injuryField.summary) }
         return lines
     }
 
     func hazardLines() -> [SIMD4<Float>] {
-        guard let fragmentHazard else { return [] }
         let terrain = scenario.terrain
-        return HazardOverlay.lines(fragmentHazard) { terrain?.height(at: SIMD3($0, 0)) ?? 0 }
+        // The fragments' rings, and the envelope debris's beside them.
+        return [fragmentHazard, envelopeDebris?.hazard].compactMap { $0 }.flatMap { hazard in
+            HazardOverlay.lines(hazard) { terrain?.height(at: SIMD3($0, 0)) ?? 0 }
+        }
     }
 
     /// Draws the run's particles: in flight, coloured by speed; tracers; where fragments landed,

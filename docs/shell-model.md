@@ -437,6 +437,43 @@ and walls with its weight, and the ties carry nothing (`TerracedHousesTests`).
 categories (`TerracedRowDamage`); its comparison with bombed houses is in
 [validation](validation.md#terraced-houses-against-wartime-bomb-damage).
 
+## Laminated glass
+
+`StructureMaterial.laminatedGlass(_:a:b:)` meshes a laminated pane a × b as one shell, with the
+laws and data the envelope's pane uses ([building envelopes](building-envelopes.md#laminated-glass),
+`LaminatedGlass`, `Interlayer`):
+
+- **Before it cracks:** monolithic glass, its stiffness scaled so that the shell deflects as the
+  plies' Wölfel–Bennison deflection thickness does over the shorter span, its tensile strength so
+  that it cracks when the more stressed ply would (the stress thickness), its mass the plies' and
+  the interlayer's. The plies crack at the stress a load rising over 1 ms breaks them at, by
+  E1300's flaw model and glass's static fatigue (`GlassStrength`, Brown's integral of a ramp,
+  σ₆₀ (60 (n + 1) / t)^(1/n)), from E1300's median 60 s strength for the pane's area.
+- **Fragmenting:** once a crack opens through a layer anywhere in a pane (its crack strain past
+  0.2%), the whole pane is in fragments, which keep their mass and carry nothing: Hooper's
+  post-crack model (thesis, Imperial College London, 2011, §7.2.2) takes the cracks to spread at
+  once across the pane and the glass's modulus to nothing. A pane is a solid; the mark passes from
+  the elements' pass to the next through the nodes' pass, so it does not depend on the order the
+  threads run in. Left to bear on one another in compression, the fragments' stiff bands gathered
+  the interlayer's stretch between them and it tore through.
+- **The interlayer:** an isotropic membrane at the midsurface, in plane stress by von Mises
+  (Poisson's ratio 0.45), hardening along Hooper's Johnson–Cook fit to cracked laminate (Table
+  7.3), σ = (6.72 + 10.6 ε_p^0.303)(1 + 0.248 ln ε̇) MPa on 0.55 GPa, at the envelope's 10 s⁻¹
+  (`Interlayer.crackedLaminateCurve`), scaled to other interlayers by their plateau stresses. It
+  tears where its total strain passes the failure strain (`Interlayer.failureStrain`), and only its
+  tearing removes an element. As two sets of bars, one each way, it was a net with no shear,
+  which sheared at the corners; held at a flat plateau, as the envelope's membrane is, its
+  stretch gathered into a band. The hardening spreads it.
+- **The frame:** `LaminatedShellTest` holds a pane on pinned edges, as Osnes et al.'s clamps did,
+  or in structural silicone: edge springs (`SpringSupport`) of the laminate's `edgeCapacity` per
+  metre either way, reached at 20 mm (Hooper's 20 mm bites peaked at 15–22 mm, §6.3) and tearing to
+  nothing over 5 mm more; `releasesOnPull` lets the edge come away once either has torn.
+
+Judged on Osnes et al.'s 15 shock-tube panes and Hooper's 8 bonded panes beside the envelope's
+single degree of freedom ([validation](validation.md#laminated-glass), `blastbench laminated`,
+`LaminatedShellTests`). The transport hub's shed roof can be laminated
+([transport hub](transport-hub.md)).
+
 ## Coupling to the air
 
 **Loads.** At each of its four points, a shell is loaded by the difference between the air's

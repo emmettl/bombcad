@@ -1,5 +1,6 @@
 import Foundation
 import Metal
+import RadialBlast
 import simd
 
 /// Energy source, modelled as a sphere of hot compressed gas (the "bursting balloon" model).
@@ -359,6 +360,7 @@ extension BlastSolver {
         let scenario = configuration.ground.map { scenario.coupled(to: $0) } ?? scenario
         try scenario.validateObjectOwnership()
         clearEnvelopeExposure()
+        mappedStart = nil
         configuration.ambientPressure = scenario.atmosphere.pressure
         configuration.reflectiveFaces = scenario.reflectiveFaces
         ambientSoundSpeed = scenario.atmosphere.soundSpeed(gamma: configuration.gamma)
@@ -495,8 +497,11 @@ extension BlastSolver {
     /// reflecting face the charge sits on mirrors it instead), at most 16 cells; nil if mapping is
     /// off or not possible, or would not reach 3 cells.
     func mapping(for scenario: Scenario) -> (radius: Float, onGround: Bool)? {
-        guard configuration.mappedCharge, !configuration.afterburning, configuration.airModel == .idealGas,
-            scenario.deflagration == nil,
+        // The one-dimensional solution has the ideal gas and hot air, and afterburning without its
+        // extinction limit; not gravity, sub-grid mixing or radiative cooling.
+        guard configuration.mappedCharge, configuration.airModel != .dissociating,
+            configuration.afterburnLimit == nil, configuration.gravity == nil, configuration.mixing == nil,
+            configuration.radiativeCooling == nil, scenario.deflagration == nil,
             (scenario.additionalCharges ?? []).isEmpty, scenario.charge.mass > 0
         else { return nil }
         let c = scenario.charge.position
@@ -506,7 +511,9 @@ extension BlastSolver {
         var nearest = Float.infinity
         if shaped, let terrain = scenario.terrain {
             // The surface, sampled a quarter cell apart within the furthest the blast may be mapped.
-            let reach = 16 * dx
+            let reach = min(
+                configuration.mappedChargeCells * dx,
+                configuration.mappedChargeScaledReach * cbrt(scenario.charge.mass))
             let step = 0.25 * dx
             let count = Int((2 * reach / step).rounded(.up))
             for b in 0...count {
@@ -530,7 +537,23 @@ extension BlastSolver {
         for (face, distance) in faces where !(face == .zMin && onGround) {
             nearest = min(nearest, distance)
         }
-        let radius = min(0.8 * nearest, 16 * dx)
+        let cap = min(
+            configuration.mappedChargeCells * dx,
+            configuration.mappedChargeScaledReach * cbrt(scenario.charge.mass))
+        // Glazing, which closes its cells of the mask without a block (envelopes' walls are blocks).
+        for object in scenario.envelopeObjects {
+            guard let envelope = object.envelope else { continue }
+            for pane in envelope.panes.indices {
+                for cell in envelope.paneCells(pane, grid: grid) {
+                    let i = cell % grid.nx
+                    let j = (cell / grid.nx) % grid.ny
+                    let k = cell / (grid.nx * grid.ny)
+                    let corner = SIMD3(Float(i), Float(j), Float(k)) * dx
+                    nearest = min(nearest, simd_distance(simd_clamp(c, corner, corner + dx), c))
+                }
+            }
+        }
+        let radius = min(0.8 * nearest, cap)
         return radius >= 3 * dx ? (radius, onGround) : nil
     }
 

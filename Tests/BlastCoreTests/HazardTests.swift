@@ -79,12 +79,83 @@ struct HazardTests {
             crossings.counts.enumerated().allSatisfy { $0.offset % crossings.sectors == 0 || $0.element == 0 }
         )
         let hazard = GroundHazard(impacts: cloud.impacts, centre: .zero, crossings: crossings)
+        // The band from 10° up down to the ground 10 m below: R² (π/4) (sin 10° + 10/R).
+        #expect(crossings.chargeHeight == 10)
         let expected = try #require(
-            crossings.radii.last { $0 * $0 * (.pi / 4) * 2 * sin(10 * Float.pi / 180) <= 100 * 55.7 })
-        #expect(hazard.airDistances?[0] == expected && abs(expected - 142) < 1)
+            crossings.radii.last { $0 * $0 * (.pi / 4) * (sin(10 * Float.pi / 180) + 10 / $0) <= 100 * 55.7 })
+        #expect(hazard.airDistances?[0] == expected && abs(expected - 172) < 1)
         // All landing together, far out, they crowd one cell on the ground, which goes further.
         #expect(hazard.airDistance == expected && hazard.groundDistance! > expected)
-        #expect(hazard.hazardDistance == hazard.groundDistance && hazard.summary.contains("in flight 142 m"))
+        #expect(hazard.hazardDistance == hazard.groundDistance && hazard.summary.contains("in flight 172 m"))
+    }
+
+    @Test("In flight, the band below the ground is not counted: a spray from the ground at its own density")
+    func bandAboveTheGround() throws {
+        // 2,000 fragments from 0.1 m up, spread evenly over the first direction's cell (45°) and
+        // ±10°: the half fired down land at once, and the other half cross each sphere at the
+        // spray's own density, 1,000 over R² (π/4) sin 10°, which TP-12's Q₀/R² is.
+        let particles = (0..<2_000).map { i in
+            // Evenly over the cell: elevations by their sines in order, azimuths by the golden ratio.
+            let u = (Float(i) * 0.618_034).truncatingRemainder(dividingBy: 1)
+            let azimuth = (u - 0.5) * Float.pi / 4
+            let elevation = asin((2 * (Float(i) + 0.5) / 2_000 - 1) * sin(10 * Float.pi / 180))
+            let direction = SIMD3(
+                cos(elevation) * cos(azimuth), cos(elevation) * sin(azimuth), sin(elevation))
+            return FragmentCloud.Particle(
+                position: SIMD3(0, 0, 0.1), velocity: 600 * direction, mass: 0.1, area: 1.5 * 0.0234 * 0.0234)
+        }
+        var cloud = FragmentCloud(particles: particles, centre: SIMD3(0, 0, 0.1))
+        cloud.land(in: Primitive(density: 1.2, pressure: 101_325))
+        let crossings = cloud.crossings
+        let sphere = try #require(crossings.radii.firstIndex { $0 > 50 })
+        let r = crossings.radii[sphere]
+        let spray = 1_000 / (r * r * (.pi / 4) * sin(10 * Float.pi / 180))
+        let density = crossings.density(sphere: sphere, sector: 0)
+        #expect(abs(density / spray - 1) < 0.08, "\(density) against \(spray)")
+        // Counted over the whole band, as results kept before 18 October were, half of it.
+        var whole = crossings
+        whole.chargeHeight = nil
+        #expect(abs(whole.density(sphere: sphere, sector: 0) / spray - 0.5) < 0.05)
+        // High above the ground the whole band is open.
+        var high = crossings
+        high.chargeHeight = 100
+        #expect(high.area(sphere: sphere) == whole.area(sphere: sphere))
+    }
+
+    @Test("TP-12's own procedure gives what the flown count gives on the same fragments, gravity apart")
+    func zakersProcedure() {
+        // The 500 lb bomb with the helper's wall: Q₀/R² exp(−√(2m/m₀)) reaches one per 55.7 m² at
+        // 181 m for the flown cubes at a C_d of 1.28 (flown in flight, 156 m: low fragments landing
+        // first under gravity, which TP-12 leaves out), 165 m for TP-12's natural fragments.
+        let bomb = FragmentThrowComparison.cases[3]
+        let cubes = FragmentThrowComparison.zakerDistance(bomb, shapeFactor: 7850 / pow(1.5, 1.5), drag: 1.28)
+        let natural = FragmentThrowComparison.zakerDistance(bomb, shapeFactor: 2600, drag: 1.28)
+        #expect(abs(cubes - 181) < 1 && abs(natural - 165) < 1, "\(cubes), \(natural)")
+        // More drag, a shorter distance.
+        #expect(FragmentThrowComparison.zakerDistance(bomb, shapeFactor: 2600, drag: 2) < natural)
+    }
+
+    @Test("Mott's scaling against TP-12's arena masses (Sternberg's steel cylinders, Table 1)")
+    func sternbergsCylinders() throws {
+        // 9 in long, 2 in bore, 2.5 in across: the mean of fragments over a grain (0.0648 g), by
+        // Mott's form with Cooper's B, against Sternberg's measured. Cyclotol's alike; the rest
+        // coarser by Cooper's B than these cylinders broke, TNT the most.
+        let measured: [(String, Float, ClosedRange<Float>)] = [
+            ("Cyclotol (75/25)", 11.5, 0.97...1.03), ("Composition B", 12, 1.10...1.18),
+            ("H-6", 15.5, 1.21...1.29), ("TNT", 17.5, 1.32...1.40),
+        ]
+        for (name, grains, band) in measured {
+            var spec = FragmentSpec()
+            spec.explosive = name
+            spec.mottCoefficient = FragmentExplosive.named(name)?.mottCoefficient
+            spec.wallThickness = 0.25 * 0.0254
+            spec.innerDiameter = 2 * 0.0254
+            let mu = try #require(spec.mottMeanMass) / 2
+            // Over x₁ = √(m₁/μ), N ∝ exp(−x) leaves a mean of μ (x₁² + 2x₁ + 2).
+            let x1 = (0.064_798_91e-3 / mu).squareRoot()
+            let mean = mu * (x1 * x1 + 2 * x1 + 2) / 0.064_798_91e-3
+            #expect(band.contains(mean / grains), "\(name): \(mean) grains against \(grains)")
+        }
     }
 
     @Test("Glass is graded by where it lands: GSA's conditions and ASTM F1642's ratings")

@@ -26,6 +26,7 @@ import Metal
 ///   --no-bars                           blockwork without its bars
 ///   --no-joints                         blockwork as one material, without its mortar joints
 ///   --clearance 3                       the air behind and above, in wall heights
+///   --roomy                             every open face 4 m/kg^(1/3) from the charge and the wall
 ///   --footing 2,0.5                     the footing's width and depth (the thesis's 2.2 × 0.6 m
 ///                                       for the canopied wall, half that taken for the half-scale)
 ///
@@ -294,7 +295,7 @@ private func runPerimeterWall(device: MTLDevice) throws {
                     bars: bars, joints: !flag("no-joints"), footing: footing,
                     clearance: option("clearance").flatMap { Float($0) } ?? 3,
                     afterburning: burning, airModel: chosenGas(), openFaces: chosenFaces(),
-                    progress: flag("progress") ? { print("    " + $0) } : nil)
+                    roomy: flag("roomy"), progress: flag("progress") ? { print("    " + $0) } : nil)
                 print(
                     "  \(format(Double(anfo), 0)) kg, \(base.rawValue): top \(format(Double(r.peakTop) * 1000, 1)) mm "
                         + "peak, \(format(Double(r.finalTop) * 1000, 1)) left; mid-height "

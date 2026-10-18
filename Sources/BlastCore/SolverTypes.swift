@@ -53,6 +53,18 @@ public struct SolverConfiguration: Sendable, Hashable {
         configuration.afterburning = true
         configuration.airModel = .thermallyPerfect
         configuration.openFaces = .farField
+        // The fine one-dimensional start, since 18 October 2026 (docs/air-blast-model.md, "A finely
+        // resolved start"); the harnesses validated on the balloon before then take `balloonStart`.
+        configuration.mappedCharge = true
+        return configuration
+    }
+
+    /// This configuration with the charge started from the balloon of hot gas, as every comparison
+    /// recorded before 18 October 2026 was; each harness so pinned is listed in validation.md, "Still
+    /// on the balloon start", until it is rerun on the mapped start.
+    public var balloonStart: SolverConfiguration {
+        var configuration = self
+        configuration.mappedCharge = false
         return configuration
     }
 
@@ -109,10 +121,35 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// tests show it barely does.
     public var afterburnTime: Float = 10e-3
     /// Start a lone charge from a fine one-dimensional solution of its first moments, mapped
-    /// onto the grid once its shock has spread as far as it can before meeting anything (at most
-    /// 16 cells), instead of from a sphere of hot gas a few cells across. Only with an ideal gas
-    /// and without afterburning.
+    /// onto the grid once its shock has spread as far as it can before meeting anything (0.8 of the
+    /// way to the nearest block, structure, ground that is not flat or open face, at most
+    /// `mappedChargeCells`), instead of from a sphere of hot gas a few cells across; the balloon
+    /// where that is under 3 cells. With the ideal gas or hot air, and afterburning burnt in the
+    /// one-dimensional solution as on the grid; not with dissociating air, gravity, sub-grid mixing,
+    /// radiative cooling, the afterburning limit or more than one charge (see
+    /// docs/air-blast-model.md, "A finely resolved start").
     public var mappedCharge = false
+    /// The furthest, in cells, a mapped charge's blast is solved in one dimension before it is
+    /// mapped (if nothing is nearer). 64 brought the incident peaks to 99–117% of Kingery–Bulmash
+    /// on 0.25 m cells, where 16 left them at 67–89%.
+    public var mappedChargeCells: Float = 64
+    /// The furthest, in scaled distance (m/kg^(1/3)), a mapped charge's blast is solved in one
+    /// dimension: past it the grid carries the wave well enough, and the one-dimensional solution's
+    /// cost, which grows as the square of its reach in charge radii, stays within seconds.
+    public var mappedChargeScaledReach: Float = 6
+    /// Whether the mapped charge's products have their own equation of state in the
+    /// one-dimensional solution (JWL, TNT's from the LLNL handbook) rather than the air's gas.
+    /// They are dilute, and press as the air's gas nearly would, by the time they are mapped. A
+    /// study (`blastbench products`, `closeair --products`), off by default.
+    public var mappedChargeProducts = false
+    /// With afterburning, whether the products burn in the one-dimensional solution, or are carried
+    /// unburnt to burn on the grid once mapped, as the balloon's do.
+    public var mappedChargeBurns = true
+    /// The one-dimensional fireball's turbulent mixing of products and air, as an eddy
+    /// diffusivity per cube root of the charge's mass, m^2/s/kg^(1/3) (see `SphericalBlast`): the
+    /// mixing the grid's cells give the balloon's products, which a fine one-dimensional grid does
+    /// not. 16 was fitted once, on 10 kg and 0.5 m cells, and checked on 1 and 100 kg and 0.25 m.
+    public var mappedChargeMixing: Float = 16
     /// Once no air cell is further than this fraction of ambient pressure from ambient, and
     /// there is a structure to keep following, the air is frozen and only the structure is
     /// advanced. Zero disables this. The default, 2 kPa at sea level, is small beside the
@@ -152,6 +189,11 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// façades' reflected loads stay on the finest cells through their positive phase rather
     /// than only as the shock passes. Nil, the default, holds nothing.
     public var refinementHoldsEnvelopes: Float?
+    /// Holds refinement likewise in the air about each structure (a cell beyond each of its
+    /// solids, both faces of a wall or slab), past this many pascals: its load after the shock has
+    /// passed (the reflections, the second swing, the venting) on the finest cells. With both
+    /// set, the band holds past the lower. Nil holds nothing.
+    public var refinementHoldsStructures: Float?
     /// How close, in cells of the grid a level refines, such a pair must come to a block for the
     /// block to be refined too: the margin kept around the shock. A shock moves under half a cell
     /// a step and the blocks are placed afresh every step, so 1 still holds it. Until 15 October

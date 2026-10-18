@@ -40,7 +40,7 @@ nothing in it should be used to judge the safety of a real structure.
 | 1 | The structural model has been compared with eleven member tests, and springs back too far | Mostly on the unsafe side, predicting too little damage: shear 11–15% too strong (37% on coarse meshes), the chamber's roof and close-in slabs too stiff (a quarter and a third to a half as far), small charges' slabs 40–70%, struck beams' struts holding where the tests crushed, six elements through 17% strong in bending, bars that slip too stiff nearly everywhere. In detail: on a slab test the peak rises to 124 mm on 32 elements against 109 measured (113 in its repeat), not converged (a strip of it runs away on 32), and under the contest's lower shot reaches about 80% of the peak; a beam bent to failure carries 98–101% of its measured moment; a beam failing in shear carries 111–115% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements, and Ando's beams without stirrups peak within 15% on average on 16 elements (53% too far on 24), and A36 breaks at the speed its test did where B36 holds, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; Peterson's short beams struck to a shear failure (2026) give the forces at a shear span of one depth, the deep ones too stiff, and fail without stirrups, but by splitting along their bars, while those with stirrups that crushed their strut in the test hold; full-scale slabs under close-in charges are left a third to a half as far down as measured, barely spalled and not holed; 2 m slabs with steel in one face or both bend within −20% to +7% under 1.6 kg at 0.5 m but 40–70% as far under smaller charges, and are holed by contact charges at a stable step to a half and a third of the measured size; in a full-scale internal explosion, with the chamber's detailing modelled, the roof's edge peaks at 49 mm against 87 mm in the test paper's own model and is left 25 mm up against 95 mm measured, with cracks that press as they slide, now the confined regime's default (38 and 15 mm without); on the finest mesh the answer has not converged. Bars that slip converge on every mesh but are too stiff nearly everywhere; hourglass control does 7–18% of the work at the slabs' peaks, where an element's own bending would be under 2% | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
 | 2 | Shear failure and joints are the least reliable predictions             | The unsafe side where they err, shear too strong: breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | Afterburning's burning time is fitted, and its fireball never cools       | Afterburning and hot air are the default since 15 October 2026 (1.3–2 times slower; off still selectable): incident and suction impulses within a few per cent, rooms within 8%, but the burning time was fitted to the open blast's impulse, and the gas keeps the heat it radiates (21% of the charge's energy against a TNT fireball's 4–7%) unless radiative cooling is on; turned off, incident impulse is 13–22% low and rooms' gas 48–114% of the design value | [Air-blast model](air-blast-model.md#afterburning) |
-| 4 | Peak pressure is under-resolved near the charge                         | Peaks read low, the unsafe side: close-in loading needs fine or twice-refined air; spall needs cells of 0.005 W^(1/3) and 12 elements through a slab | [Validation](validation.md#what-stops-the-spall-and-the-breach) |
+| 4 | Peak pressure is under-resolved near the charge                         | Incident peaks close in come within a sixth of Kingery–Bulmash from 1 m/kg^(1/3) for 10–100 kg since the mapped start (18 October 2026; 63–99% for 1 kg), where the balloon left 32–84% (11–47%); reflected peaks near walls still read low, the unsafe side, and need fine or twice-refined air; spall needs cells of 0.005 W^(1/3) and 12 elements through a slab; the comparisons of structures were run on the balloon start ([still on it](validation.md#still-on-the-balloon-start)) | [Validation](validation.md#what-stops-the-spall-and-the-breach) |
 | 5 | Collapse compared once, blind, and missed (two of Mendonça's slabs under an open-air charge); debris twice, off slabs under contact charges and brick walls under blasts | Debris held back rather than thrown, the unsafe side for a hazard (as rubble particles, an option, thrown at nearer the measured speed); brick walls crack at the measured heights but fall as one column, shattering on a rigid ground in the open (soft ground, an option, halves that) and thrown half as far as measured in a shock tube; collapse looks plausible, that is all | [Validation](validation.md#slabs-under-contact-charges), [brick walls](validation.md#brick-walls-debris) |
 | 6 | Moving solids are a staircase of whole cells                            | Either way, to a cell: wall positions are good to a cell; small fragments are crude | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | Up to sixteen bodies of up to eight materials each, bonded within and meeting each other only by contact, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly (IFC buildings import as shells and beams where square to the axes, their materials, ties and supports inferred and listed); thrown debris and contact between buildings are approximate | [Structural model](structural-model.md#limitations) |
@@ -97,9 +97,17 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
   ([validation](validation.md#hourglass-control)); stage 3, failed concrete kept as rubble
   particles, an option for debris: speeds nearer the tests', no holes
   ([rubble](validation.md#rubble-kept-as-particles-stage-3)).
-- **Next:** Peterson's short beams under impact: bond splitting along the bars and the strut's
-  crushing ([Peterson](validation.md#short-beams-struck-to-a-shear-failure)); then stage 2's
-  embedded cracks where members fail in shear, if Peterson's and OA1's modes call for them.
+- **Stopped, for data:** Peterson's short beams under impact
+  ([Peterson](validation.md#short-beams-struck-to-a-shear-failure)). Bars that slip by the Model
+  Code's splitting law (`--bond splitting`) take away the false split along the bars and give
+  the tests' crack angles, but then the beams without stirrups hold and those with stirrups at
+  45 mm fail; compression softening of cracked concrete (the modified compression field theory's),
+  crushing zones, less crushing energy, spalling and no confinement each fail nothing more, or
+  the wrong beams. Rerun on 18 October's defaults, the forces and failures stand. The struts crush
+  on their face, as the tests' spalled, but the beams never ask more of them, and the images
+  cannot say whether the spalling caused the failure; strut tests that can are in
+  [data wanted](data-wanted.md). Stage 2's embedded cracks were tried three times (14–15 October)
+  and not adopted: they soften slabs that do not fail.
 - **In reserve:** stage 4, a peridynamic zone, only if stage 3 cannot hole the right slabs.
 - **Deferred:** embedded strong discontinuities (E-FEM) until the data decides between them and
   the alternatives ([alternatives](concrete-strategy.md#3-alternatives-for-the-failure-zones-only)).
@@ -110,9 +118,13 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
 
 - **Done:** afterburning, hot air and dissociation; refinement in one or two levels; gravity,
   sub-grid mixing and radiative cooling as options ([air-blast model](air-blast-model.md));
-  terrain on cut cells ([terrain](terrain.md#cut-cells)); bursts checked to 40 m/kg^(1/3) ([large scenes](large-scenes.md)).
-- **Next:** close in, a mapped one-dimensional start or the products' own composition for the
-  hottest gas. Weak shocks to 40 m/kg^(1/3) need no new criterion: threshold 0.005 follows them
+  terrain on cut cells ([terrain](terrain.md#cut-cells)); bursts checked to 40 m/kg^(1/3) ([large scenes](large-scenes.md));
+  the mapped one-dimensional start, the default since 18 October 2026
+  ([a finely resolved start](air-blast-model.md#a-finely-resolved-start)).
+- **Next:** rerun the comparisons still on the balloon start
+  ([list](validation.md#still-on-the-balloon-start)); reflected peaks near walls; the products
+  as a second gas only for contact charges (their own equation of state in the mapped start was
+  tried and moves open-air loads too little, [record](validation.md#the-products-own-equation-of-state-18-october)). Weak shocks to 40 m/kg^(1/3) need no new criterion: threshold 0.005 follows them
   at about the least it can cost, and 8 m cells refined twice give 84–94% of Kingery–Bulmash's
   peaks out to there ([large scenes](large-scenes.md#following-weak-shocks-further-tried-and-not-needed-to-40-mkg13)).
 - **Deferred:** cut cells for moving solids.
@@ -124,7 +136,12 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
   ([multiple-object scene](multiple-object-scene.md#implemented-contact-between-bodies)); base
   connections, joints at any angle and between parts, and footings on soil checked against FoRCy
   and FoRDy ([supports, as they were built](structural-model.md#supports-and-connections-as-they-were-built)).
-- **Next:** the rebound after a slab's peak; a shaken footing's lurch, and the rest of its
+- **Traced to an end:** the rebound after a slab's peak, set by the mid-span hinge turning back
+  about its bars once its crushed compression zone unloads; residual crack opening, the bars'
+  hysteresis, hourglass control, tension stiffening and a crushing band ruled out; whether the
+  specimen's hinge differed or its rig held the rebound back the record cannot say
+  ([concrete model](concrete-model.md#how-the-model-got-here), step 16).
+- **Next:** a shaken footing's lurch, and the rest of its
   energy (sand crushed across the whole contact, the shaken sand's own); pads' and dowels'
   laws; footings on a slope.
 - **Done, approximation:** [profiled steel sheeting](profiled-sheeting.md) as a skin with its ribs
@@ -169,6 +186,10 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
 - **Done, an approximation:** [blast hazards](hazards.md): DoD's K-factor distances, the minimum
   safe distance and what governs it, and injury at standing height from the run's own peaks
   (Bowen, Bass, UFC's eardrums), checked against Teland's distances within 6% (17 October).
+  Debris from failed envelope components thrown and judged beside the fragments, and DESR's
+  structure debris distance for a charge inside a building (18 October): Keys's walls' mean reach
+  as measured, the Kasun cubicle's hazardous reach under half
+  ([hazards](hazards.md#debris-from-failed-envelope-components)).
 - **Done, illustrative:** the fireball's
   [thermal radiation](thermal-radiation.md) and [surface heating](surface-heating.md); its
   [rise and cloud](fireball-rise.md); [ground shock](ground-shock.md), as the manuals'
@@ -217,8 +238,9 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
     cavity walls tied across, timber joists seated in pockets, roof tiles thrown as debris.
     Judged against wartime bomb damage
     ([validation](validation.md#terraced-houses-against-wartime-bomb-damage)): right a tenth of
-    a second in, but cracked front walls then go over that surveyed houses kept standing. Next:
-    brick leaves' resistance once cracked (rocking and arching under the load above them).
+    a second in, but cracked front walls then go over that surveyed houses kept standing. SBEDS's
+    rocking resistance would not hold them either (10–60 J/m² against about 600); stopped until
+    tests of brick walls blasted past cracking ([data wanted](data-wanted.md)) can say what does.
   - Steel portal-frame warehouses with profiled metal cladding: a sample is built
     ([warehouse](profiled-sheeting.md#the-portal-frame-warehouse-sample)), its sheets screwed to
     its Zed purlins and rails and torn off as their screws pull through; the purlins at their
@@ -230,8 +252,9 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
     - [glass falling from overhead](building-envelopes.md#glass-falling-from-overhead);
     - [buckling](shell-model.md#buckling) checked against Euler and Lindberg, and steel members
       bowed by default to Eurocode 3's curves (within 3%).
-    It still needs laminated glass in the structure model, edge tearing, and a dynamic
-    buckling test (Kenny's thesis, in [data wanted](data-wanted.md)).
+    - [laminated glass in the structure model](shell-model.md#laminated-glass), its roof laminated
+      as an option, judged on Osnes's and Hooper's panes.
+    It still needs a dynamic buckling test (Kenny's thesis, in [data wanted](data-wanted.md)).
 
 ### Distributed computing
 
