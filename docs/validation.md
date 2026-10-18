@@ -4565,7 +4565,7 @@ balloon by construction.
 | Harness | Pinned | Owner |
 |---|---|---|
 | Hupfauf's slabs (`ContactSlabTest`) | by construction | concrete |
-| The chamber (`ChamberTest`), rooms | by construction; its four charges keep the balloon whatever the start (rerun 18 October, [on the mapped start](#on-the-mapped-start)) | concrete |
+| Rooms | by construction | concrete |
 | The validation ensemble's wall, and its Wu and Chiquito cases (`ValidationEnsemble`) | pinned (`balloonStart: true` for the slabs) | ensembles |
 | The anchorage wall (`AnchorageStudy`, `blastbench anchorage`) | pinned | anchorage |
 | Tyndall's CLT (`TyndallCLTTest`) | pinned | new materials |
@@ -4584,9 +4584,33 @@ balloon by construction.
 `blastbench digest --recommended` gives the same hashes on the pinned code as on main.
 
 Off the list since: Wu's, Wang's, Yao's and Chiquito's slabs, Alsubaei's walls and their air,
-Keys's walls in the open, Mendonça's `--recommended` studies and the Kasun cubicle (`envelope-debris`).
+Keys's walls in the open, Mendonça's `--recommended` studies, the Kasun cubicle (`envelope-debris`) and the chamber (its
+four charges each mapped since the start became one per charge).
 Each was rerun on the mapped start ([on the mapped start](#on-the-mapped-start)), and each takes
 `--balloon-start` for the balloon.
+
+#### Several charges (18 October)
+
+Each charge mapped from its own one-dimensional solution (`blastbench twocharges`): two 10 kg
+surface bursts 30 m apart (14 m/kg^(1/3)) on rigid ground, 0.25 m cells, gauges on each one's
+outer side, against Kingery–Bulmash: the peak its own charge's, the impulse over the whole
+record both charges' summed. Both mapped 7.1 m out (the side faces' 0.8), from 8.7 ms; the two
+alike to the last point:
+
+| Z | Peak: balloon / mapped | Impulse: balloon / mapped |
+|---|------------------------|---------------------------|
+| 1 | 52 / 114% | 100 / 93% |
+| 1.5 | 63 / 114% | 97 / 92% |
+| 2 | 61 / 98% | 93 / 92% |
+| 3 | 69 / 104% | 98 / 97% |
+| 4 | 70 / 70% | 98 / 100% |
+| 6 | 72 / 73% | 115 / 116% |
+
+Within the mapped radius the peaks are as a lone charge's; beyond it the grid carries both
+starts alike. The chamber's four charges, in their sleeves, map only 0.36 m out and change its
+results by 3% or less ([the chamber](#an-internal-explosion-in-a-reinforced-concrete-chamber)).
+Scenes of one charge are unchanged bit for bit (`blastbench digest --recommended --mapped` on
+every preset).
 
 #### The products' own equation of state (18 October)
 
@@ -4884,6 +4908,12 @@ steps of the chamfers in rounding (4,551 elements against 4,664) and moves the g
 So the high faces alone were moved too, which needs no shift and leaves the mesh and the
 pressures exactly as in the box. That gives 46 and 24 mm (−8%, −14%).
 
+**On the mapped start** (18 October 2026, the bench's default since; `--balloon-start` for the
+balloon). Each of the four charges is mapped from its own one-dimensional solution, mirrored by
+the partition's mid-plane, but only 0.36 m out (Z 0.12), as the sleeves' walls stand 0.45 m off:
+6.5 and 4.2 MPa on the side walls and 4.1 MPa on the roof (against 6.5, 4.0 and 4.2 on the
+balloon), and the roof's edge rises 48 mm and is left 27 mm up (47 and 25), 10 elements removed.
+
 The comparison does not change its standing: a quarter of the measured residual, about half the
 paper's model's peak. The bench now runs this domain by default, at about twice the box's cost
 ([open faces at the clearance rule](#open-faces-at-the-clearance-rule)).
@@ -5156,6 +5186,67 @@ itself was shaken, which the model's sand, moving rigidly with the base, is not:
 tests dissipated about ten points of damping more than the slow one, for the same model. All these
 were tried on a quasi-static replica of the bed driven by the slow test's measured rotation
 (within 2% of the model's moment and 4% of its settlement there) before the shaken runs.
+
+## Footings on a slope
+
+Footings on a hillside (`FootingGround`, [structural model](structural-model.md#footings)) are
+judged on closed forms only. No measured footing near a slope under fast or cyclic loading was
+found open (searched 18 October 2026: the centrifuge and shake-table footing sets, FoRCy and
+FoRDy among them, are on level ground; the slope tests found are static, as Kyoto's of a strip
+near a crest); G. G. Meyerhof wrote in 1957 that no measured capacities were available, and his
+charts are still the reference ("The ultimate bearing capacity of foundations on slopes", 4th
+ICSMFE, London, 1957, open in the ISSMGE library; read off his figures here, to about a tenth).
+
+**On a slope's face** (his Fig. 3, a rough strip on the surface, cohesionless soil), the bearing
+capacity's share of level ground's, against Vesić's (1 − tan β)², which the model uses, and
+Brinch Hansen's (1 − ½ tan β)⁵:
+
+| Slope β | Meyerhof, φ = 30° | 40° | 45° | Vesić | Hansen | Vesić / Meyerhof |
+|---|---|---|---|---|---|---|
+| 10° | 0.70 | 0.64 | 0.58 | 0.68 | 0.63 | 0.97–1.17 |
+| 20° | 0.46 | 0.33 | 0.29 | 0.41 | 0.37 | 0.88–1.39 |
+| 30° | 0.15 | 0.14 | 0.13 | 0.18 | 0.18 | 1.19–1.37 |
+
+Vesić's falls as Meyerhof's do, and gives up to two fifths more on dense sand on steep slopes;
+the closed forms in use differ by as much among themselves (a 2022 comparison, López, Flores and
+Arévalo, CILAMCE, finds two methods a factor of 1.4–2 apart near a crest).
+
+**Near a crest** (his Fig. 6, φ = 40°, on the surface), b from the crest in footing widths,
+against the model's fall over 4B beyond the edge, (1 − b/4B) of the slope's:
+
+| β | b = 0 | 1 B | 2 B | 3 B | 4 B |
+|---|---|---|---|---|---|
+| 20°, Meyerhof | 0.35 | 0.62 | 0.79 | 0.89 | |
+| 20°, model | 0.40 | 0.53 | 0.67 | 0.83 | 1 |
+| 40°, Meyerhof | 0.03 | 0.33 | 0.58 | 0.79 | 0.93 |
+| 40°, model | 0.03 | 0.14 | 0.34 | 0.62 | 1 |
+
+Within 0.85–1.14 of his at 20°, and below him, on the safe side, between one and three widths
+back from a 40° crest (0.42–0.79 of his).
+
+**Checks** (`FootingSlopeTests`): Coulomb's pressures are Rankine's on level ground and cos²φ at
+the steepest slope that stands, and downhill the passive falls to under 0.55 of level ground's at
+20°; a plane's slope and fall are read exactly, and on a plateau the fall over 4B is (1 − b/4B) of
+the slope's within 0.02; sides in ground as deep as the level embedment give the level sides'
+stiffnesses within 10⁻⁴, and in the slope the uphill side bears from deeper than the downhill;
+on a 20° slope a block's footing on the surface holds 0.8 of (1 − tan β)² of its level capacity
+and sinks at 1.2; set 0.5 m into the slope, it stands under the deeper uphill side's push, holds
+0.8 of the level footing's sliding resistance pushed uphill and slides under the same push
+downhill.
+
+**A frame on a hillside** (`blastbench hillside`, "Two-storey frame on a hillside"; air 0.25 m,
+recommended air, cut cells, 18 October 2026), a sample, not a comparison:
+- **At rest:** the frame settles on its six pads in 1 s (past its footing joints' chatter, see
+  [settling](structural-model.md#settling-under-its-own-weight)), the middle pads bearing 278 kN
+  and the others 173-183 kN, 13-21% of their capacity on the slope (1,342 kN, 0.56 of level
+  ground's), settling 1.4-3.4 mm.
+- **Under 500 kg 7 m in front:** the frame is pushed back and its front columns pull their pads
+  up: by 100 ms the front pads have lifted 87-113 mm off the sand and slid 31-51 mm back, the
+  back ones lifted 12-24 mm, the frame moved up to 128 mm, cracked (damage 0.10) and kept all its
+  elements. No pad bears more than it did at rest: at this charge uplift, not the slope's cut in
+  bearing, governs.
+- **The run:** stable on cut cells only since a structure shuts in the slivers under it
+  ([terrain](terrain.md#cut-cells)); before, it went non-finite as the blast arrived.
 
 ## Hourglass control
 
@@ -5471,7 +5562,7 @@ harness here now takes the mapped start by default:
 | Alsubaei's air, half scale | the columns' peaks | | | within 2% |
 | Keys WR1A | debris mean / furthest, m; free field | 1.60 / 5.5; 99 kPa, 293 kPa ms | 1.75 / 7.0; 101 kPa, 305 kPa ms | +9%; +2%, +4% |
 | The Kasun cubicle (`envelope-debris`) | launch speed; hazardous reach | 134–148 m/s; 129 m | 134–147 m/s; 129 m | under 1% |
-| Shang's chamber | roof edge | 47 / 25 mm | 47 / 25 mm | none: four charges, so the balloon either way |
+| Shang's chamber | roof edge | 47 / 25 mm | 48 / 27 mm | +2%, +8%: each charge mapped 0.36 m out since the start became one per charge |
 
 None changes its standing.
 - **Chiquito P7:** the slab goes a tenth further, still a third of the measured.
@@ -5479,8 +5570,9 @@ None changes its standing.
 - **Wang A:** the near gauge reads a tenth lower.
 - **Yao T4:** a third more of its underside is damaged, its top still whole.
 
-The rest move by 6% at most. The chamber's four charges cannot be mapped, so it stays on the
-balloon, as the start's own rule says.
+The rest move by 6% at most. The chamber's four charges, mapped one by one since the start
+became one per charge (on this build they could not be), move it by 2 mm
+([several charges](#several-charges-18-october)).
 
 ## Verification against theory
 
