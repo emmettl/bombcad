@@ -1922,19 +1922,52 @@ func runSnapshot() throws {
     // fractured, and the largest turn.
     if flag("hinges"), let shells = solver.shells {
         let positions = shells.referencePositions
-        var bands: [Int: (count: Int, released: Int, turn: Float)] = [:]
+        var moved = [SIMD3<Float>](repeating: .zero, count: positions.count)
+        shells.mutateNodes { nodes in for n in nodes.indices { moved[n] = nodes[n].displacement } }
+        var bands: [Int: (count: Int, released: Int, turn: Float, sideways: SIMD2<Float>)] = [:]
         for hinge in shells.hingeTurns {
             let band = Int(positions[hinge.jointNode].z / 4)
-            var entry = bands[band] ?? (0, 0, 0)
+            var entry = bands[band] ?? (0, 0, 0, .zero)
             entry.count += 1
             entry.released += hinge.released ? 1 : 0
             entry.turn = max(entry.turn, hinge.turn)
+            entry.sideways += SIMD2(moved[hinge.jointNode].x, moved[hinge.jointNode].y)
             bands[band] = entry
         }
+        // The floors' largest vertical movement, on the horizontal beams' nodes in each band.
+        var sag: [Int: Float] = [:]
+        for beam in shells.beamNodes where beam.axis != 2 {
+            for node in [beam.first, beam.second] {
+                let band = Int(positions[node].z / 4)
+                sag[band] = max(sag[band] ?? 0, abs(moved[node].z))
+            }
+        }
         for (band, entry) in bands.sorted(by: { $0.key < $1.key }) {
+            print("    floors' beams moved up to \(format(Double(sag[band] ?? 0) * 1000, 0)) mm vertically")
+            let sideways = entry.sideways / Float(entry.count) * 1000
             print(
                 "  connections at \(4 * band)–\(4 * band + 4) m: \(entry.released) of \(entry.count) fractured, "
-                    + "largest turn \(format(Double(entry.turn), 3)) rad")
+                    + "largest turn \(format(Double(entry.turn), 3)) rad; joints moved "
+                    + "(\(format(Double(sideways.x), 0)), \(format(Double(sideways.y), 0))) mm sideways on average"
+            )
+        }
+        var kinds: [String: (count: Int, released: Int)] = [:]
+        for (hinge, kind) in zip(shells.hingeTurns, shells.hingeJointKinds) {
+            kinds[kind, default: (0, 0)].count += 1
+            kinds[kind, default: (0, 0)].released += hinge.released ? 1 : 0
+        }
+        for (kind, entry) in kinds.sorted(by: { $0.key < $1.key }) {
+            print("  joints held by a \(kind): \(entry.released) of \(entry.count) fractured")
+        }
+        let plastic = shells.hingePlasticTurns
+        if !plastic.isEmpty {
+            let n = Double(plastic.count)
+            print(
+                "  plastic turn, mean (largest): about the vertical "
+                    + "\(format(plastic.reduce(0) { $0 + Double($1.aboutVertical) } / n, 3)) "
+                    + "(\(format(Double(plastic.map(\.aboutVertical).max() ?? 0), 3))) rad, about the horizontal "
+                    + "\(format(plastic.reduce(0) { $0 + Double($1.aboutHorizontal) } / n, 3)) "
+                    + "(\(format(Double(plastic.map(\.aboutHorizontal).max() ?? 0), 3))) rad")
         }
     }
     // `--runaway m`: the active elements with a node moved further than m, by material.

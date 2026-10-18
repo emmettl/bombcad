@@ -854,6 +854,13 @@ pull of 431 kN, 40 kN shear at the column face, 0.0905 rad).
   refuses connections.
 - **EN 1993-1-8's component method** is not used: none of its springs is built.
 
+**In the presets:**
+- **The hub** has welded flanges, and none of its 46 fractures under its 100 kg
+  ([transport hub](transport-hub.md)).
+- **The office** has fin plates. Its front ground-storey columns, which no beam now holds from
+  turning, are lost to the 1 t at the kerb, and 334 of its 480 fin plates fracture by 1 s as the
+  floors above them drop ([office](office-tower.md#on-fin-plates)). With rigid joints it stood.
+
 ## Limitations
 
 1. **Midsurface geometry.** Members end on each other's midsurfaces and centrelines, so where

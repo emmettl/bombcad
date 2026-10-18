@@ -79,7 +79,8 @@ once when a run started, and the frame sagged its 7 mm while the blast was on it
 ## The blast
 
 Run with `blastbench snapshot --preset office --dx 0.5 --time 3 --frames 0.05,0.25,1,2`: 1,000 kg
-at the kerb, 5 m from the front façade, on 0.5 m air.
+at the kerb, 5 m from the front façade, on 0.5 m air. This run and its images are from before 18
+October 2026, on rigid joints. On fin plates, see [below](#on-fin-plates).
 
 | Time | What happens |
 |---|---|
@@ -97,6 +98,42 @@ The frame is probably too strong against the blast near the charge. Each column 
 0.19 m wide where the real section's flanges are 0.31 m, so it catches less of the blast. The
 equivalent rectangle's axial stiffness is about twice the section's. The run above had rigid
 joints; how the fin plates change it is below.
+
+### On fin plates
+
+Rerun on 18 October 2026 to 1 s with the beams on fin plates (`blastbench snapshot --preset
+office --dx 0.5 --time 1 --hinges`), against the same frame with rigid joints (`--rigid-joints`).
+
+**Under gravity alone it stands as before:** 99.9% of the weight carried, 8.5 mm, and none of
+its 480 fin plates fractures, damped or (over 1 s at 2/s) nearly undamped.
+
+**Under the blast:**
+
+| Time | Fin plates fractured | Where | Steel members moved, most |
+|---|---|---|---|
+| 0.25 s | 27 of 480 | 23 at the first floor, 4 at the second | 1.5 m |
+| 0.5 s | 42 | 26 at the first floor, the rest up to the seventh | 2.5 m |
+| 1 s | 334 | 26–30 of the 40 on every floor | 2.4 m |
+
+With rigid joints at 0.5 s the members move 745 mm, and no connection can fracture.
+
+**The front columns are lost, by this reading.** No beam holds the front's ground-storey columns
+from turning at the first floor, so the blast bows them and they shorten. At 0.5 s:
+- On every floor above the first, the floors' beams have moved up to about 650 mm vertically.
+  The joints have moved 240–360 mm along y on average, the same on every floor above the
+  first.
+- A 650 mm drop over a 7.5 m bay turns the beams by about 0.087 rad against the columns still
+  standing. The largest turns, 0.084–0.089 rad, are the same on every floor.
+- So the fin plates fracture floor by floor as the frame hangs over the lost columns. The
+  columns' own shortening was not measured.
+
+With rigid joints, the beams hold those columns at every floor and nothing drops that far.
+
+This is the onset of a progressive collapse, where the run on rigid joints stood. The image at
+1 s still shows the building upright, its fragments round it. The run stops before the
+outcome, and 3 s costs about an hour. The fin plates' fracture turn comes from tests in which
+the turn came with a pull. No test of a fin plate turned without one has been compared, so the
+count above is only as good as that turn.
 
 ### Cost
 

@@ -1224,6 +1224,35 @@ public final class ShellSolver {
         }
     }
 
+    /// Each hinge's plastic turn so far about the vertical and about the horizontal cross axis of
+    /// its beam, rad (zero for an upright beam's, which has none).
+    public var hingePlasticTurns: [(aboutVertical: Float, aboutHorizontal: Float)] {
+        guard !mesh.hinges.isEmpty else { return [] }
+        let records = (loadTableBuffer.contents() + hingeLayout.records).bindMemory(
+            to: SIMD4<Float>.self, capacity: 8 * mesh.hinges.count)
+        return mesh.hinges.indices.map {
+            let state = records[8 * $0 + 3]
+            // The first cross axis is (axis + 1) % 3, the second (axis + 2) % 3.
+            let firstIsVertical = (mesh.hinges[$0].axis + 1) % 3 == 2
+            return firstIsVertical ? (abs(state.x), abs(state.y)) : (abs(state.y), abs(state.x))
+        }
+    }
+
+    /// Each beam's nodes and axis.
+    public var beamNodes: [(first: Int, second: Int, axis: Int)] {
+        mesh.beams.map { (Int($0.nodes.x), Int($0.nodes.y), $0.axis) }
+    }
+
+    /// What holds each hinge's joint: "column" where an upright beam meets it, else "shell" where
+    /// a shell element does, else "beam".
+    public var hingeJointKinds: [String] {
+        let columns = Set(mesh.beams.filter { $0.axis == 2 }.flatMap { [$0.nodes.x, $0.nodes.y] })
+        let shells = Set(mesh.elements.flatMap { [$0.nodes.x, $0.nodes.y, $0.nodes.z, $0.nodes.w] })
+        return mesh.hinges.map {
+            columns.contains($0.jointNode) ? "column" : shells.contains($0.jointNode) ? "shell" : "beam"
+        }
+    }
+
     public var hasFailed: Bool { failureGateBuffer.contents().load(as: UInt32.self) != 0 }
     /// Whether something had failed as of the coupled solver's last checkpoint, which then
     /// stands in for `hasFailed` in deciding what to encode, so that contact and debris join at
