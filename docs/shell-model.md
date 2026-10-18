@@ -697,6 +697,12 @@ their capacity, short of buckling.
     screws count as holding it) gets the same bow, about twice the one §5.3.4(3) gives for
     lateral-torsional buckling, so it buckles sideways sooner than it should: a lone 6 m Zed
     purlin collapses sideways under 0.9 of its in-plane capacity, where straight it holds.
+    Sheeted purlins and rails stay straight, as the screws hold them at every rib line. That is
+    right pushed in, where the screwed flange is the compressed one. Under uplift, from suction
+    or the sheet's rebound, it is the unsafe side. The free flange is then in compression and
+    the sheeting does not hold it: EN 1993-1-3 §10.1 takes it as a beam on an elastic foundation,
+    and that usually governs a purlin. The equivalent rectangle has no flanges to tell apart, so
+    a sheeted purlin is too strong under uplift.
     Flanged sections drawn as rectangles (`SteelSection.equivalent`) are stiffer about their
     minor axis than the section, a beam's well above it, so they buckle that way at a higher
     load than they should; their bow is sized for the rectangle.

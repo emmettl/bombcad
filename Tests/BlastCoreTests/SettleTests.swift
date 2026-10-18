@@ -57,6 +57,11 @@ struct SettleTests {
         #expect(fastest == 0)
         let rest = tip(structure)
         #expect(rest < -0.0003, "sag \(rest * 1000) mm")
+        // Deflection is measured from the settled shape, reading zero before the blast; the sag is
+        // reported on its own, and as the settlement's displacement.
+        let summary = structure.summary()
+        #expect(summary.maxDisplacement == 0)
+        #expect(summary.selfWeightSag >= abs(rest) && settlement.displacement == summary.selfWeightSag)
         let still = try swing(settled, from: rest)
         #expect(still < 0.1 * abs(rest), "settled: \(still * 1000) mm off rest, sag \(rest * 1000) mm")
 
@@ -67,7 +72,7 @@ struct SettleTests {
         let unsettled = try #require(fromRest.structure)
         fromRest.settleStructures()
         #expect(fromRest.settlements.isEmpty && !fromRest.structuresSettled)
-        #expect(unsettled.summary().maxDisplacement == 0)
+        #expect(unsettled.summary().maxDisplacement == 0 && unsettled.summary().selfWeightSag == 0)
         let swinging = try swing(fromRest, from: rest)
         #expect(
             swinging > 0.5 * abs(rest), "from rest: \(swinging * 1000) mm off rest, sag \(rest * 1000) mm")
