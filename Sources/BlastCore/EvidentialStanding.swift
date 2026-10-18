@@ -2321,8 +2321,8 @@ struct StandingScene {
                     "Freestanding walls against measurement: Alsubaei's perimeter walls and Keys's brick walls",
                     "On the equivalent load 5 of 7 outcomes as measured, built as tested (6 on the mean); the "
                         + "blockwork's top 28 mm against 28; the half-scale concrete wall 4.2° where light cracking "
-                        + "was seen, the safe side (the detailed model 2.1°); the blockwork at 125 kg 9.3°, short of "
-                        + "failing, where it collapsed",
+                        + "was seen, the safe side (the detailed model 2.1°); the blockwork at 125 kg 9.3° against "
+                        + "the 10° that fails it, where it collapsed: the unsafe side",
                     "building-envelopes.md#freestanding-walls"),
                 StandingEvidence(
                     "One-way reinforced masonry walls under measured loads (Hayman, 2014)",
