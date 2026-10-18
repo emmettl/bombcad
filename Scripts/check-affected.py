@@ -6,8 +6,8 @@ It looks at what this branch changes against origin/main (committed, staged, uns
 untracked files) and runs one of three tiers:
 
 - documents and Python scripts only (docs/, Markdown, images, Scripts/*.py, the reference
-  calculations in Scripts/reference/ and their tables, the analytic oracles in Scripts/analytic/): lint and the
-  scripts' tests and links (`ci-test`); no Swift build, no GPU.
+  calculations in Scripts/reference/ and their tables, the analytic oracles in
+  Scripts/analytic/): lint and the scripts' tests and links (`ci-test`); no Swift build, no GPU.
 - code outside the core: lint, the strict build, `ci-test`, and the Swift tests that name a changed
   file's type or live in a changed test file, plus a few that many changes trip (the standing and
   the shader layouts).
