@@ -36,7 +36,8 @@ func runEnvelopeDebris(device: MTLDevice) throws {
             objectID: owner, walls: .reinforcedConcrete, wallThicknessM: wall, roof: .reinforcedConcrete,
             roofThicknessM: wall, source: .user, detail: "0.15 m reinforced concrete, bars in both faces",
             barsInBothFaces: true))
-    var configuration = SolverConfiguration.recommended
+    // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+    var configuration = SolverConfiguration.recommended.balloonStart
     configuration.airSleepThreshold = 0
     configuration.airSleepCrossings = 0
     let solver = try BlastSolver(

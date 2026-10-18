@@ -4492,7 +4492,7 @@ balloon by construction.
 | The validation ensemble's wall (`ValidationEnsemble`) | pinned | ensembles |
 | The anchorage wall (`AnchorageStudy`, `blastbench anchorage`) | pinned | anchorage |
 | Tyndall's CLT (`TyndallCLTTest`) | pinned | new materials |
-| Envelope walls, slabs, Nian, façades (`blastbench envelope-walls`, `envelope-slabs`, `nian`, `facade`) | pinned | envelopes |
+| Envelope walls, slabs, Nian, façades, debris (`blastbench envelope-walls`, `envelope-slabs`, `nian`, `facade`, `envelope-debris`) | pinned | envelopes |
 | Envelope damage, venting, openings (`scenebench`), and their tests | pinned | envelopes |
 | Districts and Beirut (`scenebench district`, `district-compare`) | pinned | districts |
 | The panel block (`blastbench panelblock`) and terraced houses (`blastbench house`) | pinned | large panels |

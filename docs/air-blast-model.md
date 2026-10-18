@@ -280,8 +280,10 @@ m/kg^(1/3) and 8 s to 6 on an M4 Max, whatever the charge (`blastbench mapped-co
 run advisor adds (`RunCost.mappedStartSeconds`). It is solved once for each charge, gas and
 reach and kept (the last four), so a scene run again starts at once. The solver is its own
 module (`RadialBlast`), built optimised even for tests, which would otherwise take many minutes
-over it. Without the cap in scaled distance, a small
-charge on coarse cells would be solved hundreds of charge radii out, for many minutes.
+over it. In the app the solution stops at half the run's duration if its shock has not reached
+the radius by then, so that a short run still steps the grid (`BlastSolver.mappedStartLatest`).
+Without the cap in scaled distance, a small charge on coarse cells would be solved hundreds of
+charge radii out, for many minutes.
 
 **The comparisons of structures** (slabs, walls, rooms, envelopes and the rest) were run on the
 balloon start. Their harnesses are pinned to it (`SolverConfiguration.balloonStart`) until each
