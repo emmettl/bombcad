@@ -17,7 +17,8 @@ At 0.5 kt on 4 m cells, against the surveys below:
 - **Holds: the glass's far edge, and its grid.** Beyond 1.5 km the share of façades blown out is
   GEER's W3 (0.07 and 0.02 against 0.09 and 0.02), and the glass has converged by 4 m.
 - **Does not: the peaks.** They are 0.68–0.78 of Kingery–Bulmash and still rising on finer cells
-  (0.78–0.83 at 3 m); refinement gives 0.80–0.86 but fills its pool and loads the façades early.
+  (0.78–0.83 at 3 m); refinement gives 0.80–0.86 on the line, but a disturbance ahead of its
+  shock loads the façades early.
 - **Does not: the glass close in, or its total.** The model's façades break together: inside
   1.5 km every side has some pane broken (GEER 0.35–0.84) and inside 1.25 km nearly all are blown
   out (GEER 0.17–0.77). It breaks 3.8 times the army's count of broken glass, on a glazed share
@@ -241,7 +242,8 @@ The 1 km box (2 km square, 320 m top, 0.5 kt) on three grids, uniform cells:
   the line to 900 m, more than 3 m cells, in 29 minutes on the mini (43 with the façades held
   refined while loaded, which changes nothing here). But its finest pool fills within 14 GB, and
   gauges 0.5–1 km out see something arrive at 0.78–0.84 s whatever their distance, ahead of the
-  shock (1.0–2.3 s there); its façades are loaded early (concrete moderate at 0.75–1 km in 312
+  shock (1.0–2.3 s there); a smaller scene shows it with room left in the pool, so it is the
+  refinement's own and not yet found. Its façades are loaded early (concrete moderate at 0.75–1 km in 312
   buildings, where 3 m cells have 11), so its damage cannot be used. It is left to the refinement
   work and a larger Mac.
 
