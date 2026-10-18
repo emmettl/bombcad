@@ -3,17 +3,45 @@ import SwiftUI
 import UniformTypeIdentifiers
 import simd
 
+/// A district's air: uniform cells, or a base of cells refined twice, to a quarter of their size,
+/// where the shock is (at a jump of 0.005 of the pressure, as Beirut's refined runs were).
+struct DistrictAir: Sendable, Equatable {
+    /// The uniform cells, or the refined air's base.
+    var cellSize: Float
+    var refined: Bool
+
+    static let threshold: Float = 0.005
+
+    /// The cells at the façades as the shock loads them. A refined air takes the ground as a
+    /// staircase of whole cells (`NewDistrictModel.settings`).
+    var finest: Float { refined ? cellSize / 4 : cellSize }
+
+    var title: String {
+        refined
+            ? "\(Resolution.metres(cellSize)) refined twice to \(Resolution.metres(finest)) at the shock"
+            : "uniform \(Resolution.metres(cellSize)) cells"
+    }
+}
+
 /// A district laid out for File ▸ New District, and what a run of it costs.
 struct DistrictPreview: Sendable {
+    struct Priced: Sendable {
+        var air: DistrictAir
+        var cost: RunCostEstimate
+    }
+
     var document: ProjectDocument
     var report: MapBuildingReport
     var cost: RunCostEstimate
     /// The memory the components' histories may take, bytes, beside the air's.
     var historyBudget: Int
-    var cellSize: Float
+    var air: DistrictAir
+    /// The other kind of air that fits, priced on the same layout, to set against `air`.
+    var alternative: Priced?
     /// Buildings within the radius; those placed are in `report`.
     var within: Int
 
+    var cellSize: Float { air.cellSize }
     var scenario: Scenario { document.scenario }
 }
 
@@ -58,7 +86,22 @@ final class NewDistrictModel {
     var radius: Float = 500
     /// The side faces 4 m/kg^(1/3) beyond the outermost building.
     var clearFaces = true
-    /// The cells chosen; nil for the finest that fits this Mac (`advisedCell`).
+    /// The air's kind: the advisor's (`DistrictAir` refined where that is both cheaper and finer
+    /// at the façades than the uniform cells that fit), or one the user chose.
+    enum AirChoice: String, CaseIterable, Identifiable {
+        case advised, uniform, refined
+        var id: Self { self }
+        var title: String {
+            switch self {
+            case .advised: "Advisor's choice"
+            case .uniform: "Uniform cells"
+            case .refined: "Refined at the shock"
+            }
+        }
+    }
+
+    var airChoice = AirChoice.advised
+    /// The cells chosen (the refined air's base); nil for the finest that fits this Mac.
     var cellSize: Float?
     /// The GPU memory the run may take, bytes: this Mac's share for the air.
     var memory = AdvisorMachine.thisMac.memory
@@ -134,11 +177,14 @@ final class NewDistrictModel {
         }
         isWorking = true
         message = nil
-        let (radius, clear, cell, ground, memory) = (radius, clearFaces, cellSize, ground, memory)
+        let (radius, clear, choice, cell, ground, memory) = (
+            radius, clearFaces, airChoice, cellSize, ground, memory
+        )
         let result = await Task.detached(priority: .userInitiated) {
             Result {
                 try Self.preview(
-                    layout, radius: radius, clearFaces: clear, cellSize: cell, ground: ground, memory: memory)
+                    layout, radius: radius, clearFaces: clear, air: choice, cellSize: cell, ground: ground,
+                    memory: memory)
             }
         }.value
         isWorking = false
@@ -150,11 +196,11 @@ final class NewDistrictModel {
         }
     }
 
-    /// The district as a project with its run settings, the cells `cellSize` or the finest that
-    /// fits `memory` (`advisedCell`), and what its run costs.
+    /// The district as a project with its run settings, its air `air` (on cells `cellSize`, or the
+    /// finest that fit `memory`), and what its run costs.
     nonisolated static func preview(
-        _ layout: DistrictLayout, radius: Float, clearFaces: Bool, cellSize: Float?, ground: GroundType,
-        memory: Int
+        _ layout: DistrictLayout, radius: Float, clearFaces: Bool, air choice: AirChoice = .advised,
+        cellSize: Float? = nil, ground: GroundType, memory: Int
     ) throws -> DistrictPreview {
         let within = layout.buildings(within: radius).count
         guard within > 0 else {
@@ -162,77 +208,150 @@ final class NewDistrictModel {
         }
         let duration = DistrictLayout.duration(radius: radius)
         let history = historyBudget(memory: memory)
-        var sizes =
-            cellSize.map { [$0] }
-            ?? cellSizes.filter {
-                fits(
-                    layout, radius: radius, clearFaces: clearFaces, cellSize: $0, ground: ground,
-                    memory: memory)
+        func fitting(refined: Bool) -> [DistrictAir] {
+            let sizes = cellSize.map { [$0] } ?? cellSizes.filter { !refined || $0 >= 2 }
+            return sizes.map { DistrictAir(cellSize: $0, refined: refined) }.filter {
+                cellSize != nil
+                    || fits(
+                        layout, radius: radius, clearFaces: clearFaces, air: $0, ground: ground,
+                        memory: memory)
             }
+        }
+        // Both kinds that fit, the other to set against the one chosen.
+        let uniform = fitting(refined: false)
+        let refined = fitting(refined: true)
+        var candidates: [DistrictAir]
+        switch choice {
+        case .uniform: candidates = uniform
+        case .refined: candidates = refined
+        case .advised where cellSize != nil: candidates = uniform
+        case .advised:
+            candidates =
+                prefersRefined(
+                    layout, radius: radius, clearFaces: clearFaces, uniform: uniform.first,
+                    refined: refined.first,
+                    ground: ground, memory: memory) ? refined + uniform : uniform + refined
+        }
         let tooLarge = MapBuilding.Failure.malformed(
             "no cells of \(Int(cellSizes.last!)) m or less fit this Mac for a district this large")
-        guard !sizes.isEmpty else { throw tooLarge }
+        guard !candidates.isEmpty else { throw tooLarge }
         // Finer cells hold more of the footprints' boxes, and the ground and roofs raise the top:
-        // the finest whose buildings a scene holds and whose run, laid out, still fits.
+        // the finest whose buildings a scene holds and whose run, laid out, still fits. The
+        // footprints and the ground are on the air's own cells, a refined air's base, as Beirut's
+        // refined runs were.
         while true {
-            let cell = sizes.removeFirst()
+            let air = candidates.removeFirst()
             do {
-                let half = layout.halfSide(radius: radius, cellSize: cell, clearFaces: clearFaces)
+                let half = layout.halfSide(radius: radius, cellSize: air.cellSize, clearFaces: clearFaces)
                 let made = try layout.scene(
-                    halfSide: half, cellSize: cell, radius: radius,
+                    halfSide: half, cellSize: air.cellSize, radius: radius,
                     name: String(format: "District at %.4f, %.4f", layout.charge.y, layout.charge.x))
                 var document = ProjectDocument(scenario: made.scene)
-                let run = settings(document.runSettings, cellSize: cell, ground: ground, duration: duration)
+                let run = settings(document.runSettings, air: air, ground: ground, duration: duration)
                 document.runSettings = run
                 try ProjectDocument.validate(made.scene)
                 try ProjectDocument.validateGrid(
-                    made.scene, resolution: Resolution(cellSize: cell) ?? .coarse)
-                let cost = run.costEstimate(made.scene)
+                    made.scene, resolution: Resolution(cellSize: air.cellSize) ?? .coarse)
+                let cost = estimate(run, made.scene, memory: memory)
                 if cellSize == nil, cost.memory + history > memory {
-                    if sizes.isEmpty { throw tooLarge }
+                    if candidates.isEmpty { throw tooLarge }
                     continue
                 }
+                // The other kind, priced on this layout.
+                let other = (air.refined ? uniform : refined).first.map { other in
+                    DistrictPreview.Priced(
+                        air: other,
+                        cost: estimate(
+                            settings(document.runSettings, air: other, ground: ground, duration: duration),
+                            made.scene, memory: memory))
+                }
                 return DistrictPreview(
-                    document: document, report: made.report, cost: cost, historyBudget: history,
-                    cellSize: cell,
-                    within: within)
+                    document: document, report: made.report, cost: cost, historyBudget: history, air: air,
+                    alternative: other, within: within)
             } catch {
-                if sizes.isEmpty { throw error }
+                if candidates.isEmpty { throw error }
             }
         }
     }
 
+    /// Whether the advisor takes refined air: the finest refined base that fits is finer at the
+    /// façades than the finest uniform cells that fit, and its run is no dearer.
+    nonisolated static func prefersRefined(
+        _ layout: DistrictLayout, radius: Float, clearFaces: Bool, uniform: DistrictAir?,
+        refined: DistrictAir?,
+        ground: GroundType, memory: Int
+    ) -> Bool {
+        guard let refined else { return false }
+        guard let uniform else { return true }
+        guard refined.finest < uniform.finest else { return false }
+        func seconds(_ air: DistrictAir) -> Double {
+            price(layout, radius: radius, clearFaces: clearFaces, air: air, ground: ground, memory: memory)
+                .cost
+                .seconds
+        }
+        return seconds(refined) <= seconds(uniform)
+    }
+
     /// The finest uniform cells the advisor's cost model fits within `memory` with the components'
-    /// histories, within the project's largest grid and 2,048 cells a side. Refinement is not
-    /// offered: over a district it does not yet run cleanly (docs/beirut-2020.md).
+    /// histories, within the project's largest grid and 2,048 cells a side.
     nonisolated static func advisedCell(
         _ layout: DistrictLayout, radius: Float, clearFaces: Bool, ground: GroundType, memory: Int
     ) -> Float? {
         cellSizes.first {
-            fits(layout, radius: radius, clearFaces: clearFaces, cellSize: $0, ground: ground, memory: memory)
+            fits(
+                layout, radius: radius, clearFaces: clearFaces,
+                air: DistrictAir(cellSize: $0, refined: false),
+                ground: ground, memory: memory)
         }
     }
 
-    /// Whether a district's air on `cellSize` cells fits: priced on a flat domain alone (the ground
-    /// and the buildings are laid out only for the cells chosen, and priced again then).
-    nonisolated static func fits(
-        _ layout: DistrictLayout, radius: Float, clearFaces: Bool, cellSize: Float, ground: GroundType,
+    /// A district's air priced on a flat domain alone (the ground and the buildings are laid out
+    /// only for the air chosen, and priced again then), and its grid.
+    nonisolated static func price(
+        _ layout: DistrictLayout, radius: Float, clearFaces: Bool, air: DistrictAir, ground: GroundType,
         memory: Int
-    ) -> Bool {
-        let half = layout.halfSide(radius: radius, cellSize: cellSize, clearFaces: clearFaces)
-        let top = layout.top(chargeZ: 0, highestRoof: 0, cellSize: cellSize)
+    ) -> (cost: RunCostEstimate, grid: BlastCore.Grid) {
+        let half = layout.halfSide(radius: radius, cellSize: air.cellSize, clearFaces: clearFaces)
+        let top = layout.top(chargeZ: 0, highestRoof: 0, cellSize: air.cellSize)
         let scenario = Scenario(
             name: "District", domainSize: SIMD3(2 * half, 2 * half, top), boxes: [],
             charge: Charge(mass: layout.mass, position: SIMD3(half, half, 0)))
-        let grid = scenario.grid(cellSize: cellSize)
+        let run = settings(
+            ProjectDocument(scenario: scenario).runSettings, air: air, ground: ground,
+            duration: DistrictLayout.duration(radius: radius))
+        return (estimate(run, scenario, memory: memory), scenario.grid(cellSize: air.cellSize))
+    }
+
+    /// Whether a district's air fits: within the project's largest grid, 2,048 cells a side, and
+    /// `memory` with the components' histories.
+    nonisolated static func fits(
+        _ layout: DistrictLayout, radius: Float, clearFaces: Bool, air: DistrictAir, ground: GroundType,
+        memory: Int
+    ) -> Bool {
+        let (cost, grid) = price(
+            layout, radius: radius, clearFaces: clearFaces, air: air, ground: ground, memory: memory)
         guard grid.cellCount <= ProjectDocument.maximumCells, max(grid.nx, grid.ny, grid.nz) <= 2048 else {
             return false
         }
-        let document = ProjectDocument(scenario: scenario)
-        let run = settings(
-            document.runSettings, cellSize: cellSize, ground: ground,
-            duration: DistrictLayout.duration(radius: radius))
-        return run.costEstimate(scenario).memory + historyBudget(memory: memory) <= memory
+        return cost.memory + historyBudget(memory: memory) <= memory
+    }
+
+    /// What a run of `scenario` under `run` costs on a Mac that lets the air take `memory`: the
+    /// refined levels' pools may grow to what the coarse grid leaves (`fitRefinementMemory`).
+    nonisolated static func estimate(_ run: ProjectRunSettings, _ scenario: Scenario, memory: Int)
+        -> RunCostEstimate
+    {
+        var configuration = SolverConfiguration()
+        ProjectRunSettings.configureAir(
+            &configuration, detailedCharge: run.detailedCharge, sharpShocks: run.sharpShocks,
+            shockLevels: run.shockLevels ?? 1, gravity: run.gravity ?? false,
+            shockThreshold: run.shockThreshold ?? 0.1,
+            adaptiveSubsteps: run.adaptiveSubsteps ?? false, terrainCutCells: run.cutsTerrain(over: scenario),
+            outlineByOverlap: run.countsByOverlap(over: scenario))
+        let cellSize = (Resolution(rawValue: run.resolution) ?? .medium).cellSize
+        configuration.fitRefinementMemory(scenario.grid(cellSize: cellSize), memory: memory)
+        return RunCost.estimate(
+            scenario, cellSize: cellSize, configuration: configuration, duration: run.duration)
     }
 
     /// The memory a district's components' histories may take: an eighth of the run's, at most 4 GB
@@ -240,13 +359,17 @@ final class NewDistrictModel {
     nonisolated static func historyBudget(memory: Int) -> Int { min(memory / 8, 4 << 30) }
 
     nonisolated private static func settings(
-        _ settings: ProjectRunSettings?, cellSize: Float, ground: GroundType, duration: Double
+        _ settings: ProjectRunSettings?, air: DistrictAir, ground: GroundType, duration: Double
     ) -> ProjectRunSettings {
         var run = settings ?? ProjectRunSettings(settings: SimulationSettings(), duration: duration)
-        run.resolution = (Resolution(cellSize: cellSize) ?? .coarse).rawValue
-        run.sharpShocks = false
-        run.shockLevels = nil
-        run.shockThreshold = nil
+        run.resolution = (Resolution(cellSize: air.cellSize) ?? .coarse).rawValue
+        run.sharpShocks = air.refined
+        run.shockLevels = air.refined ? 2 : nil
+        run.shockThreshold = air.refined ? DistrictAir.threshold : nil
+        // Refined, the ground as a staircase of whole cells: cut through the cells, the second
+        // level's rang ahead of the shock over Beirut (±0.5–0.9 kPa from 0.8 s, 300 ms early) until
+        // the terrain's cut cells are fixed there; on a staircase the arrivals are within 4%.
+        if air.refined { run.terrainCutCells = nil }
         run.adaptiveSubsteps = nil
         run.ground = ground == .rigid ? nil : ground
         run.duration = duration
@@ -431,7 +554,14 @@ struct NewDistrictView: View {
                     "The open faces release a blast that grazes them; kept 4 m/kg^(1/3) from the charge and the "
                         + "buildings, they do not reach the buildings' loads. The top is always kept so from the charge."
                 )
-            Picker("Cells", selection: $model.cellSize) {
+            Picker("Air", selection: $model.airChoice) {
+                ForEach(NewDistrictModel.AirChoice.allCases) { Text($0.title).tag($0) }
+            }
+            .help(
+                "Uniform cells, or a coarser base refined twice where the shock is. The advisor takes the refined "
+                    + "air where it is both finer at the façades and no dearer than the uniform cells that fit."
+            )
+            Picker(model.airChoice == .refined ? "Base cells" : "Cells", selection: $model.cellSize) {
                 Text("Finest that fits this Mac").tag(Float?.none)
                 ForEach(NewDistrictModel.cellSizes, id: \.self) { size in
                     Text(Resolution.metres(size)).tag(Float?.some(size))
@@ -447,11 +577,22 @@ struct NewDistrictView: View {
                 let size = preview.scenario.domainSize
                 Text(
                     String(
-                        format:
-                            "%d of %d buildings within %.0f m placed; %.0f × %.0f × %.0f m of air on %@ cells.",
+                        format: "%d of %d buildings within %.0f m placed; %.0f × %.0f × %.0f m of air, %@.",
                         preview.report.placed.count, preview.within, model.radius, size.x, size.y, size.z,
-                        Resolution.metres(preview.cellSize)))
-                Text(costLine(preview))
+                        preview.air.title))
+                Text(costLine(preview.cost, preview: preview))
+                if let other = preview.alternative {
+                    Text("Instead, \(other.air.title): " + costLine(other.cost, preview: preview))
+                        .foregroundStyle(.secondary)
+                }
+                if preview.air.refined {
+                    Text(
+                        "Refined air takes the ground as a staircase of whole cells for now: cut through the cells, "
+                            + "the finest level rang ahead of the shock over Beirut, and arrival times read early "
+                            + "(docs/beirut-2020.md)."
+                    )
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
                 if !preview.report.skipped.isEmpty {
                     Text("Left out: \(preview.report.skipped.count) (too small, outside or under a cell).")
                         .foregroundStyle(.secondary)
@@ -469,8 +610,7 @@ struct NewDistrictView: View {
         }
     }
 
-    private func costLine(_ preview: DistrictPreview) -> String {
-        let cost = preview.cost
+    private func costLine(_ cost: RunCostEstimate, preview: DistrictPreview) -> String {
         var line = String(
             format:
                 "%.0f million cells, %d steps over %.1f s: about %@ of memory with the components' histories, ",

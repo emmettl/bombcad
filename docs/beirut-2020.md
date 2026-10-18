@@ -20,8 +20,8 @@ At 0.5 kt on 4 m cells, against the surveys below:
   silos the model's peaks are Denny et al.'s measured third at 160 m and three fifths at 240 m, and at
   Stennett et al.'s six observers the shock arrives within 6% of their times.
 - **Does not: the peaks.** They are 0.68–0.78 of Kingery–Bulmash and still rising on finer cells
-  (0.78–0.83 at 3 m); refinement gives 0.80–0.86 on the line and the 3 m cells' façade loads, but a
-  weak disturbance still runs ahead of its shock in one part of the city. The JRC's simulation matches Kingery–Bulmash to 750 m with a charge
+  (0.78–0.83 at 3 m); refinement, on a staircase ground, gives 0.79–0.86 on the line, arrivals
+  within 3%, and the 3 m cells' façade loads and glass, at 3.2 times their cost. The JRC's simulation matches Kingery–Bulmash to 750 m with a charge
   tuned to it; this one is not tuned.
 - **Does not: the glass close in, or its total.** The model's façades break together: inside
   1.5 km every side has some pane broken (GEER 0.35–0.84) and inside 1.25 km nearly all are blown
@@ -256,20 +256,28 @@ The 1 km box (2 km square, 320 m top, 0.5 kt) on three grids, uniform cells:
   cells cut them (4 m on 4 m cells, 8 m on 8 m), and a masonry strip's resistance falls with the
   square of its height: the coarse grids' walls were the weak ones, and stone failed in 102
   buildings at 0.5–0.75 km on 4 m cells where the storey's span gives 7.
-- **Refinement** (8 m refined twice to 2 m at the shock) gives 0.80–0.86 of Kingery–Bulmash on
-  the line to 900 m, more than 3 m cells, in about 35 minutes on the mini, its finest pool full
-  within 14 GB. Two fixes to the refined air (18 October: gas squeezed beside buildings' fine
-  outlines, and cut cells under them restricted short; [terrain](terrain.md)) and the windows opened
-  at 500 Pa (above) bring its façades' loads to the 3 m cells': median peaks 29, 17, 11 and 8 kPa
-  at 0.5–1.5 km against 30, 18, 12 and 9. Its stone at 0.5–0.75 km cracks in 256 buildings and fails in 9 (3 m:
-  269 and 10); concrete is moderately damaged in 195 there and 45 at 0.75–1 km (3 m: 139 and 11).
-  But a ringing of about ±0.5–0.9 kPa still runs ahead of the shock over the city south-east of the
-  charge, at about 2 km/s, so carried by the refinement and not the air: gauges there 580–810 m out
-  take it for the arrival at 0.81–0.94 s, while the shock itself comes on time (1.21 s at 618 m,
-  where Kingery–Bulmash has 1.24 s), and it opens a 0.5 s window too early on 7% of the façade
-  strips at 0.5–0.75 km and 18% at 1–1.25 km, whose panes then go unbroken (0.81–0.93 broken,
-  against 0.92–1.00 on 3 m cells). The peaks are untouched; the arrivals and the damage are
-  indicative until it is found.
+- **Refinement** (8 m refined twice to 2 m at the shock, at a jump of 0.005) gives 0.79–0.86 of
+  Kingery–Bulmash on the line to 900 m, more than 3 m cells. Two fixes to the refined air (18
+  October: gas squeezed beside buildings' fine outlines, and cut cells under them restricted
+  short; [terrain](terrain.md)) and the windows opened at 500 Pa (above) bring its façades' loads
+  to the 3 m cells'. A ringing of about ±0.5–0.9 kPa from the ground's cut cells at the finest
+  level still ran ahead of the shock over the city south-east of the charge, at about 2 km/s:
+  gauges there took it for the arrival 300 ms early, and it opened 7–18% of the
+  façades' windows before the load. With the ground as a staircase of whole cells (`--staircase`)
+  it is gone:
+
+  | | 8 m refined twice, staircase | 8 m refined twice, cut cells | 3 m |
+  |---|---|---|---|
+  | Run on the mini | 1,429 s | 2,079 s (finest pool full) | 451 s |
+  | Arrivals at Rigby's observers 250–1,075 m | 0.97–1.03 of Kingery–Bulmash | six 25–52% early | |
+  | Façades' median peak, 0.5–0.75 / 0.75–1 / 1–1.25 / 1.25–1.5 km | 32, 18, 11.5, 8.8 kPa | 29, 17, 11, 8.4 kPa | 30, 18, 12, 8.9 kPa |
+  | Panes broken, same bands | 1.00, 1.00, 0.99, 0.95 | 0.93, 0.88, 0.84, 0.81 | 1.00, 1.00, 0.98, 0.92 |
+  | Stone heavy / failed, 0.5–0.75 km | 262 / 10 | 256 / 9 | 269 / 10 |
+  | Concrete moderate, 0.5–0.75 / 0.75–1 km | 200 / 45 | 195 / 45 | 139 / 11 |
+
+  Refined on the staircase, the glass and the stone are the 3 m cells', the concrete more damaged
+  (its peaks are higher), at 3.2 times the cost: refinement does not save a district's run time
+  yet, and File ▸ New District takes it only where it is the cheaper way to finer façades.
 
 ### Structure against the building survey (GEER, 2021)
 
