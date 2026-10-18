@@ -4548,6 +4548,7 @@ balloon by construction.
 | Districts and Beirut (`scenebench district`, `district-compare`) | pinned | districts |
 | The panel block (`blastbench panelblock`) and terraced houses (`blastbench house`) | pinned | large panels |
 | Buildings, settling (`blastbench buildings`, `settle`) | pinned | structures |
+| The transport hub's roof glass (`blastbench hubroof`) | pinned | glass |
 | Terrain, landscape, ground motion (`blastbench terrain`, `landscape`, `groundmotion`) | pinned | terrain, ground shock |
 | Dial Pack (`blastbench dialpack`) | pinned | thermal |
 | Mendonça (`blastbench mendonca`) | pinned | blind tests (frozen) |
