@@ -124,6 +124,12 @@ structure as seen from the charge counts from the charge alone. The app's Domain
 face nearer than that (`Scenario.tightOpenFaces`, `Scenario.structureFaceClearance`). The domain
 can be grown only from its origin, so faces below the origin are moved by moving the scene.
 
+The record's comparisons built in tighter boxes were each checked with one case at the rule
+(18 October 2026; [validation](validation.md#open-faces-at-the-clearance-rule)). Peaks and
+close-in slabs did not move. A 4 × 5 m slab in a box barely wider than itself lost a quarter of
+its swing, its underside's push draining out through the sides, and a chamber's roof was left
+11% lower.
+
 A better boundary was tried in place of the clearance. The faces took each wave as a plane one
 from the largest charge, at its angle, letting a grazing wave carry on past the face. It is not
 used:
