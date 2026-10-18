@@ -426,17 +426,19 @@ extension RefinementTests {
             device: device, scenario: scenario, cellSize: 0.5, configuration: refined(2))
         let before = solver.totals()
         // The fine outline leaves a sliver of air along some of the block's faces that the coarse
-        // cells count as solid: placing patches there adds the still air it held, at most its
-        // volume's worth (0.25 m deep, under 1% of the room), and from then on
-        // the patches stay and the gas is conserved.
+        // cells count as solid, and takes one the coarse cells count as air along others: placing
+        // patches there in still air adds the air one held and gives up the other's, at most
+        // their volume's worth (0.25 m deep, under 1% of the room), and once the blast fills the
+        // room the patches stay and the gas is conserved.
         var placed = solver.totals()
         for n in 0..<4 {
-            let result = solver.advance(steps: 100)
+            let result = solver.advance(steps: n == 0 ? 300 : 100)
             #expect(result.isStable)
             let now = solver.totals()
             if n == 0 {
                 placed = now
-                #expect(now.mass > before.mass && (now.mass - before.mass) / before.mass < 0.006)
+                #expect(
+                    abs(now.mass - before.mass) / before.mass < 0.006, "mass \(before.mass) -> \(now.mass)")
             } else {
                 #expect(
                     abs(now.mass - placed.mass) / placed.mass < 1e-4, "mass \(placed.mass) -> \(now.mass)")

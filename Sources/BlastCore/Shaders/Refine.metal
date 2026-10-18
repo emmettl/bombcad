@@ -2506,13 +2506,13 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
 // pressure by the solid share (an eighth of a cell solid, 14%), which would flag the blocks beside
 // and refine its way along a sloping surface ahead of the blast. What is given up there balances,
 // on average over the surface, the still air gained where a fine cell is fluid in a solid coarse
-// cell. Nor under a rigid block (since 18 October 2026): a block whose edges fall between the
-// coarse cells' takes part of the cells beside it at a finer level, and the gas shared into what
-// is left raised the pressure there by up to several times; at threshold 0.005 that flagged the
-// blocks beside, whose patches did the same, and in Beirut's district refined twice the
-// refinement ran ahead of the shock from building to building, a precursor of 20-200 kPa 50-200 m
-// ahead that the gauges took for the blast's arrival. Only a moving structure's outline shares its
-// gas, as its air is its own.
+// cell. Nor under a rigid block where the air is still (since 18 October 2026): a block whose
+// edges fall between the coarse cells' takes part of the cells beside it at a finer level, and the
+// gas shared into what is left raised the pressure there by up to several times; at threshold
+// 0.005 that flagged the blocks beside, whose patches did the same, and in Beirut's district
+// refined twice the refinement ran ahead of the shock from building to building, a precursor of
+// 20-200 kPa 50-200 m ahead that the gauges took for the blast's arrival. Where the air moves, the
+// block's share is shared, so that the gas in a closed room stays conserved.
 kernel void refineFillConserve(device Cell *fine [[buffer(0)]],
                                const device uchar *mask [[buffer(1)]],
                                constant SolverUniforms &u [[buffer(2)]],
@@ -2600,11 +2600,18 @@ kernel void refineFillConserve(device Cell *fine [[buffer(0)]],
     Cell lost = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
     float2 lostSpecies = float2(0.0f);
     bool species = u.afterburnEnergy > 0.0f;
+    // A block's share is given up only where the air is still (within half the threshold's jump of
+    // ambient), where sharing it would make a pressure out of nothing ahead of the blast; where the
+    // air moves it is shared, and the gas conserved.
+    int parent = parentIndex(cell, parentPatches, u);
+    bool still = !coarseSolid
+        && fabs(cellPressureOf(coarse[parent], u) - u.ambientPressure) < 0.5f * u.refineThreshold * u.ambientPressure;
+    uchar givenUp = still ? 18 : 16;
     for (int n = 0; n < all; ++n) {
         uint child = fineIndex(patch, cell * r + int3(n % r, (n / r) % r, n / (r * r)), tile, u);
         if ((fineMask[child] & 1) == 0) {
             fluid += 1;
-        } else if (!coarseSolid && (fineMask[child] & 18) == 0) {
+        } else if (!coarseSolid && (fineMask[child] & givenUp) == 0) {
             lost = addCells(lost, fine[child]);
             if (species) {
                 lostSpecies += fineSpecies[child];
