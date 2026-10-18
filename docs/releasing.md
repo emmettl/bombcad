@@ -84,6 +84,13 @@ Expand the final ZIP somewhere fresh and test that copy, ideally downloaded thro
 another Mac with Gatekeeper enabled: first launch, Metal rendering, a run of each preset, and
 opening and saving a layout.
 
+## The notes
+
+Each change a user would notice adds a fragment under
+[release-notes/next](release-notes/next/README.md) in its own push. Before building, assemble them
+into the version's notes with `python3 Scripts/release-notes.py assemble X.Y.Z`, read the result as
+a whole, and commit it.
+
 ## After publishing: the Homebrew cask
 
 The app installs with `brew install emmettl/tap/bombcad`, from the cask in

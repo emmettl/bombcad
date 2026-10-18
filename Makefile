@@ -72,6 +72,7 @@ ci-test:
 	python3 Scripts/test-concrete-matrix.py
 	python3 Scripts/test-update-homebrew-tap.py
 	python3 Scripts/test-check-affected.py
+	python3 Scripts/test-release-notes.py
 	python3 Scripts/check-doc-links.py
 
 check: lint build-strict test ci-test
