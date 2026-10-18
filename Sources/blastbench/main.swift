@@ -45,7 +45,7 @@ import simd
 //                        [--panel]   (a 3 m panel resting on the ground, its edges tied to columns by each base)
 //   blastbench seat [--speeds 4,8,12] [--seats 0.1,0.2] [--time 1.5] [--h 0.1] [--dowels]
 //                   (a precast beam on corbels of two columns, one column struck away from the span)
-//   blastbench precast [--tests i0_50,i0_100,i0_150] [--friction 0.7] [--reversals 40] [--samples Samples/PrecastSeat] [--history out-%.csv]
+//   blastbench precast [--tests i0_50,i0_100,i0_150] [--friction 0.7] [--neoprene] [--reversals 40] [--samples Samples/PrecastSeat] [--history out-%.csv]
 //                      (a precast beam's seat cycled along its corbel, against Batalha et al.'s tests)
 //   blastbench rocking [--shear 40] [--bearing 814] [--packets a,b,c,d,e] [--speed 0.2] [--history out.csv]
 //                      [--elastic | --elastic-share 0.12 --memory 0 --heave 0]   (the sand's settling; also for shaking)
@@ -4303,14 +4303,18 @@ func runPrecast() throws {
     let limit = option("reversals").flatMap { Int($0) }
     let folder = URL(fileURLWithPath: option("samples") ?? "Samples/PrecastSeat")
     print(
-        "Precast seat cycled along its corbel, resting with friction \(format(Double(friction), 2))"
+        "Precast seat cycled along its corbel, "
+            + (flag("neoprene")
+                ? "on neoprene (friction falling with pressure)"
+                : "resting with friction \(format(Double(friction), 2))")
             + (limit.map { ", first \($0) reversals" } ?? ""))
     print(
         pad("test", 13) + pad("load", 8) + pad("sliding, model", 16) + pad("test", 10)
             + pad("energy, model", 15)
             + pad("test", 10) + pad("lag", 9) + pad("run time", 9))
     for test in tests {
-        var law = Anchorage.resting(friction: friction)
+        // `--neoprene`: friction falling with pressure, fitted to the pads' tests (`Anchorage.neoprenePad`).
+        var law = flag("neoprene") ? Anchorage.neoprenePad : Anchorage.resting(friction: friction)
         // `--pad 1e8` gives the joint a neoprene pad's shear stiffness, in Pa/m.
         law.shearStiffness = option("pad").flatMap { Float($0) }
         // `--normal 1e9` the joint's stiffness across, in Pa/m.
