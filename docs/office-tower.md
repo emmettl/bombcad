@@ -8,9 +8,12 @@ stand two smaller buildings as envelopes, and a van's worth of explosive is park
 **Standing.** A showcase on the model as it stands, compared as a building with nothing measured
 ([standing](standing.md)). Its gauges take the open blast's bands (Kingery–Bulmash on today's
 air). Its structure is an approximation: its steel members are compared with Nassr's blasted
-beams and columns ([shell model](shell-model.md#validation)), its connections are not, and
-its toughened glass is the annealed panes' model with a higher strength. Its damage is
-illustrative, and the neighbours' envelope damage is the one-way model's, an approximation.
+beams and columns ([shell model](shell-model.md#validation)). Its fin-plate connections are
+checked against slow column-removal tests only, so their fracture under a blast is an
+approximation and may be too late ([steel connections](shell-model.md#steel-connections)). Its
+toughened glass is the annealed panes' model with a higher strength. Its damage, and the
+collapse it starts on fin plates (below), are illustrative: no collapse is compared with
+anything measured. The neighbours' envelope damage is the one-way model's, an approximation.
 
 ![The office 250 ms after 1,000 kg at the kerb: its front glazing gone on the lower floors, glass and frame thrown into the street and out of its sides](office-tower.png)
 
@@ -115,6 +118,7 @@ its 480 fin plates fractures, damped or (over 1 s at 2/s) nearly undamped.
 | 0.25 s | 27 of 480 | 23 at the first floor, 4 at the second | 1.5 m |
 | 0.5 s | 42 | 26 at the first floor, the rest up to the seventh | 2.5 m |
 | 1 s | 334 | 26–30 of the 40 on every floor | 2.4 m |
+| 3 s | 428 | 34–40 of the 40 on every floor | 8.6 m |
 
 With rigid joints at 0.5 s the members move 745 mm, and no connection can fracture.
 
@@ -130,10 +134,24 @@ from turning at the first floor, so the blast bows them and they shorten. At 0.5
 
 With rigid joints, the beams hold those columns at every floor and nothing drops that far.
 
-This is the onset of a progressive collapse, where the run on rigid joints stood. The image at
-1 s still shows the building upright, its fragments round it. The run stops before the
-outcome, and 3 s costs about an hour. The fin plates' fracture turn comes from tests in which
-the turn came with a pull. No test of a fin plate turned without one has been compared, so the
+**By 3 s it is collapsing** (`--time 3 --frames 0.5,1,2`, 48 minutes on the Studio, about 1 GB).
+- **The floors.** On every floor, beams freed at both ends have dropped up to 7.5–8.5 m, about
+  two storeys. The slabs, still tied to the columns at their heads, sag and slope between them.
+- **The perimeter** leans out: the joints have moved 0.9–1.5 m along y on average, more the
+  higher they are. The side façade peels away from the floors behind it.
+- **The columns** stand, bent at the front corner. Only 2 of the 16,080 member elements have
+  failed. Whether the core is damaged was not looked at.
+- **Elsewhere**, 39,474 of 236,868 elements have failed.
+
+The run stops with the floors still coming down. Whether the columns and core stay up once
+they have lost their floors is not known. The collapse is the model's alone: nothing measured
+judges it.
+
+![The office on fin plates 3 s after the blast: the floors sagging and sloping between columns still standing, the side façade peeling away](office-tower-fin-3s.png)
+
+With rigid joints the same blast left the frame standing at 3 s (above).
+
+The fin plates' fracture turn comes from tests in which the turn came with a pull. No test of a fin plate turned without one has been compared, so the
 count above is only as good as that turn.
 
 ### Cost

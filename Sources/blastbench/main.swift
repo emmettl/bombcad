@@ -5648,6 +5648,7 @@ do {
     case "lacroix": try runLacroix(device: device)
     case "nassr": try runNassr(device: device)
     case "removal": try runColumnRemoval(device: device)
+    case "kenny": try runKenny(device: device)
     case "beam": try runBeam()
     case "shear": try runShearBeam()
     case "pushoff": try runPushOff()
