@@ -267,7 +267,7 @@ its products burn (to 1%; `MappedChargeTests`).
 
 - **Impulse:** within 5–15% at every grid beyond 1 m/kg^(1/3). It holds beyond the mapped radius,
   so nothing is counted twice. Refined, the patches placed at the restart take their coarse
-  cells' impulse again once the passage is laid down (`Refinement.reseedImpulseBase`); without
+  cells' impulse again once the passage is laid down (`AirRefinement.reseedImpulseBase`); without
   that the impulse beyond 6 m was lost (5–38%).
 - **Close in:** at 0.5–0.75 m/kg^(1/3) the incident impulse reads 125–175%, where
   Kingery–Bulmash rests on few tests.
@@ -541,8 +541,6 @@ grid's differences a point source's flow keeps a share of Smagorinsky's that fal
 quarter at five cells and a twelfth at ten). A [deflagration](deflagration.md#the-burning-velocity)
 with flame turbulence turns it on and takes its sub-grid velocity from it, so the flame and the
 air share one sub-grid model. Charges keep Smagorinsky's, bit for bit.
-
-## Skipping still air
 
 ## Skipping still air
 

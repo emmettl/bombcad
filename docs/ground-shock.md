@@ -170,8 +170,8 @@ the compaction the blast leaves behind.
   the front takes to cross a cell, as the solver's own shock is already that wide in the peak
   and impulse it keeps. It is centred, so the column's arrivals can be up to half of it early,
   and it shaves a peak falling after the shock by w/(2t_d) for a triangle of length t_d and
-  window w: 7% for a 4 ms pulse, a fifth for the 1.4 ms pulse 4 m from 100 kg, 5% for 1 t at
-  21 m.
+  window w: 7% for a 4 ms pulse, a fifth for the 1.4 ms pulse 4 m from 100 kg, about 3% for the
+  11 ms pulse of 1 t at 21 m.
 - **Sideways.** The column is vertical, and the air presses only straight down on the ground,
   so nothing in it drives horizontal shear. A horizontal shear column is natural for an
   earthquake coming up from below, not for a load pressing from above. The horizontal velocity
@@ -455,7 +455,7 @@ Kingery–Bulmash's Friedlander pulse, with the curves' peak, impulse, duration 
 | 42 m | 55 kPa, 735 Pa·s, at 59.4 ms; 59 kPa, 694 Pa·s, at 62.8 ms | 412 m/s, outrunning | 0.057; 0.059, 0.058, 0.058 (Kingery–Bulmash: 0.060; 0.062, 0.061, 0.061) | 0.0008–0.0012 |
 
 - **Velocity.** Every model gives about P/(ρc), the column within a few per cent of the
-  estimate: at 0.5 m the soil's unloading has worn little off a pulse 7–14 m long in it. The
+  estimate: at 0.5 m the soil's unloading has worn little off a pulse about 5–12 m long in it. The
   air model's peaks are 90% and 93% of Kingery–Bulmash's on 0.25 m cells (83% and 86% on 0.5 m,
   the velocities likewise), its impulses within 6%, which changes nothing in the conclusion.
 - **Against the soil's unknown stiffness.** Fed Kingery–Bulmash, the column unloading at twice
