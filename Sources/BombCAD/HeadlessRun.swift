@@ -701,6 +701,7 @@ enum HeadlessRun {
         let end = inputs.settings.duration
         if framed || options.cloud != nil {
             var frame = 0
+            var started = false
             model.onSample = { solver in
                 if let spec = options.cloud, solver.time >= end - 1e-9 {
                     handOver = solver.cloudHandOver(hotterThan: spec.handOverTemperature)
@@ -715,6 +716,22 @@ enum HeadlessRun {
                 if let view {
                     let last = solver.time >= end - 1e-9
                     if last || abs(solver.time - index * interval) < 1e-6 { view(solver, Int(index), last) }
+                }
+                if !started {
+                    started = true
+                    // A mapped start's clock starts at its solution's time: the frames before it are
+                    // the structure at rest and the air as it is then, no volumes and no fireball.
+                    let first = max(Int((solver.time / interval - 1e-6).rounded(.up)), 0)
+                    if first > 0 {
+                        do {
+                            try sendFramesBefore(
+                                first, solver: solver, interval: interval, scene: scene, feeds: feeds,
+                                scenario: inputs.scenario)
+                        } catch {
+                            exportError = error
+                        }
+                    }
+                    frame = first
                 }
                 guard exportError == nil, abs(solver.time - index * interval) < 1e-6, Int(index) == frame
                 else {
@@ -985,6 +1002,39 @@ enum HeadlessRun {
         let path = file.standardizedFileURL.path(percentEncoded: false)
         let prefix = base.hasSuffix("/") ? base : base + "/"
         return path.hasPrefix(prefix) ? "./" + path.dropFirst(prefix.count) : path
+    }
+
+    /// The frames `0..<count` that fall before a mapped start's clock: the structure at rest into
+    /// the scene, without volumes; no fireball for the thermal radiation; the fragments' and ground
+    /// shock's air as it is at the start.
+    @MainActor
+    static func sendFramesBefore(
+        _ count: Int, solver: BlastSolver, interval: Double, scene: USDSceneWriter?, feeds: [Feed],
+        scenario: Scenario
+    ) throws {
+        for k in 0..<count {
+            try scene?.append(solver.structureSurface(), volume: nil)
+            for feed in feeds {
+                let start = ContinuousClock.now
+                switch feed.consumer.kind {
+                case .fragments:
+                    let region = feed.consumer.report.region(
+                        for: k, interval: interval, domain: scenario.domainSize,
+                        cellSize: solver.grid.cellSize)
+                    feed.consumer.send(.air(solver.airSlice(region: region.box, stride: region.stride)))
+                case .thermal:
+                    feed.consumer.send(
+                        .fireball(
+                            FireballFrame(
+                                time: Double(k) * interval, volume: 0, centre: .zero, temperature: 0,
+                                hottest: 0)))
+                case .groundShock(let spec, _):
+                    let region = spec.region(cellSize: solver.grid.cellSize)
+                    feed.consumer.send(.ground(solver.groundSlice(low: region.low, high: region.high)))
+                }
+                feed.cost += start.duration(to: .now)
+            }
+        }
     }
 
     private static func waitUntil(_ model: SimulationModel, _ condition: () -> Bool) async throws {
