@@ -46,6 +46,9 @@ struct SlabCase {
     var pressures: [Double]
     var step: Double
     var load: String
+    /// The model's air load as the whole component's mean, beside `pressures`, its equivalent
+    /// uniform load weighted by its deflected shape.
+    var whole: [Double]? = nil
 }
 
 func runEnvelopeSlabs(device: MTLDevice) throws {
@@ -112,7 +115,13 @@ func runEnvelopeSlabs(device: MTLDevice) throws {
     /// The model's own load on the slab: its scene with the slab an envelope, the recorder on,
     /// the net pressure on its largest component turned to push from the struck face.
     func airLoad(_ scenario: Scenario, cellSize: Float, duration: Double) throws -> (
-        pressures: [Double], step: Double
+        pressures: [Double], step: Double, whole: [Double]
+    ) {
+        // Each case's solver freed before the next (its Metal buffers held by the pool otherwise).
+        try autoreleasepool { try airLoadInPool(scenario, cellSize: cellSize, duration: duration) }
+    }
+    func airLoadInPool(_ scenario: Scenario, cellSize: Float, duration: Double) throws -> (
+        pressures: [Double], step: Double, whole: [Double]
     ) {
         var scene = scenario
         for object in scenario.structuralObjects { try scene.useEnvelope(id: object.id) }
@@ -127,12 +136,19 @@ func runEnvelopeSlabs(device: MTLDevice) throws {
         while solver.time < duration {
             if solver.advance(steps: 16, timeLimit: duration).steps == 0 { break }
         }
-        let loads = (solver.envelopeComponentHistories() ?? []).map(EnvelopeComponentLoad.init)
-        guard let slab = loads.max(by: { $0.spans.short * $0.spans.long < $1.spans.short * $1.spans.long })
-        else {
+        let histories = solver.envelopeComponentHistories() ?? []
+        func area(_ history: EnvelopeComponentHistory) -> Double {
+            EnvelopeComponentLoad(history).spans.short * EnvelopeComponentLoad(history).spans.long
+        }
+        guard let slab = histories.max(by: { area($0) < area($1) }) else {
             throw BlastError.allocationFailed("no envelope component")
         }
-        return (EnvelopeDamageAssessment.cantileverLoad(slab.netPa), slab.binS)
+        let plate = EnvelopeComponentLoad(slab)
+        let whole = EnvelopeComponentLoad(slab, whole: true)
+        return (
+            EnvelopeDamageAssessment.cantileverLoad(plate.netPa), plate.binS,
+            EnvelopeDamageAssessment.cantileverLoad(whole.netPa)
+        )
     }
     // Wu's slabs with steel in one face (S) or both (D), on two opposite edges, the charge above.
     if names.contains("wu") {
@@ -150,7 +166,8 @@ func runEnvelopeSlabs(device: MTLDevice) throws {
                     measured: test.peak.map { String(format: "%.1f mm", $0 * 1000) } ?? "-",
                     detailed: detailed[test.name] ?? "-",
                     systems: strips(thickness: 0.1, depth: 0.08, steel: steel, material: material, span: 1.9),
-                    span: 1.9, pressures: air.pressures, step: air.step, load: "model's air"))
+                    span: 1.9, pressures: air.pressures, step: air.step, load: "model's air", whole: air.whole
+                ))
         }
     }
     // Wang's slabs, clamped all round: two-way panels over their clear 0.4 × 1.1 m.
@@ -174,7 +191,7 @@ func runEnvelopeSlabs(device: MTLDevice) throws {
                     id: "Wang \(test.name)", measured: String(format: "%.1f mm", test.peaks[centre] * 1000),
                     detailed: detailed[test.name] ?? "-", systems: systems, span: 0.4,
                     pressures: air.pressures,
-                    step: air.step, load: "model's air"))
+                    step: air.step, load: "model's air", whole: air.whole))
         }
     }
     // Mendonça's slabs on trestles, the charge above (revealed; calibration data).
@@ -206,7 +223,8 @@ func runEnvelopeSlabs(device: MTLDevice) throws {
                     detailed: "first peak about 4 mm (slab 1 10 mm), standing",
                     systems: strips(
                         thickness: 0.08, depth: 0.055, steel: steel, material: material, span: 0.9),
-                    span: 0.9, pressures: air.pressures, step: air.step, load: "model's air"))
+                    span: 0.9, pressures: air.pressures, step: air.step, load: "model's air", whole: air.whole
+                ))
         }
     }
     for slabCase in cases {
@@ -227,6 +245,16 @@ func runEnvelopeSlabs(device: MTLDevice) throws {
                     format: "  %@: %.1f mm, %.2f°, ductility %.1f, %@ (r_u %.0f kPa, T %.1f ms)", name,
                     response.peakDeflection * 1000, rotation, response.ductility, level,
                     system.ultimateResistance / 1000, system.period * 1000))
+            if let whole = slabCase.whole {
+                let mean = system.response(pressures: whole, step: slabCase.step)
+                let turned = mean.supportRotationDegrees(span: slabCase.span)
+                print(
+                    String(
+                        format: "    on the whole component: %.1f mm, %.2f°, %@ (impulse %.0f Pa s)",
+                        mean.peakDeflection * 1000, turned,
+                        EnvelopeDamageLevel.concrete(ductility: mean.ductility, rotationDeg: turned).label,
+                        whole.reduce(0) { $0 + max($1, 0) } * slabCase.step))
+            }
         }
         print("  measured: \(slabCase.measured); the detailed model: \(slabCase.detailed)")
     }

@@ -36,11 +36,12 @@ public enum BucklingStudy {
         device: MTLDevice, length: Float = 3, side: Float = 0.05, elementSize: Float = 0.05,
         rate: Float = 0.02,
         shortening: Float = 0.006, yieldStress: Float? = nil, nudge: Float = 0.002, damping: Float = 20,
-        clamped: Bool = false
+        clamped: Bool = false, cowperSymonds: SIMD2<Float>? = nil
     ) throws -> Result {
-        let material = StructureMaterial(
+        var material = StructureMaterial(
             name: "Strut steel", density: 7850, youngsModulus: 210e9, poissonRatio: 0.3,
             yieldStress: yieldStress ?? 1e30, hardeningModulus: 0, failureStrain: 1e30)
+        material.rateLaw = cowperSymonds.map { .cowperSymonds(d: $0.x, q: $0.y) }
         let half = side / 2
         var model = StructureModel(
             solids: [Box(min: SIMD3(0, -half, 1 - half), max: SIMD3(length, half, 1 + half))],

@@ -481,7 +481,9 @@ public enum PerimeterWallTests {
     /// calls them grouted), and `joints` meshes it as units and mortar joints rather than as one
     /// material. On a footing, `footing` gives its width across the wall and its depth
     /// instead of the thesis's (the canopied wall's) or half of them (the half-scale wall's). The
-    /// air reaches `clearance` times the wall's height behind it and above it (at least 3 m).
+    /// air reaches `clearance` times the wall's height behind it and above it (at least 3 m);
+    /// with `roomy`, every open face is moved out to `Scenario.structureFaceClearance`, the wing
+    /// walls carried on to the faces.
     public static func runWall(
         device: MTLDevice, wall: Wall, base: Base, anfo: Float, cellSize: Float = 0.05,
         elementSize: Float = 0.05, duration: Double = 0.2, gap: Float = 0.05, bars: Bool = true,
@@ -489,19 +491,32 @@ public enum PerimeterWallTests {
         crackWidth: Float = 0.1e-3, footing: SIMD2<Float>? = nil, clearance: Float = 3,
         afterburning: Bool = SolverConfiguration.recommended.afterburning,
         airModel: AirModel? = nil, openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
-        progress: ((String) -> Void)? = nil
+        roomy: Bool = false, progress: ((String) -> Void)? = nil
     ) throws -> WallResult {
         let started = ContinuousClock.now
         let layout = wall.layout
         let t = layout.wallThickness
         let height = layout.wallHeight
         let behind = max(clearance * layout.top, 3)
-        let size = SIMD3(
+        var size = SIMD3(
             2 * layout.margin + layout.chargeToWall + t + behind, layout.width,
             max(clearance * layout.top, layout.top + 3))
-        let charge = SIMD3(layout.margin, layout.width / 2, layout.heightOfBurst)
+        var charge = SIMD3(layout.margin, layout.width / 2, layout.heightOfBurst)
+        var y0 = (layout.width - wall.length) / 2
+        if roomy {
+            // The faces' room from the stem alone (`Scenario.openFaceRoom`), then the scene moved by it.
+            let front = charge.x + layout.chargeToWall
+            let stem = Box(min: SIMD3(front, y0, 0), max: SIMD3(front + t, y0 + wall.length, layout.top))
+            let pad = Scenario(
+                name: layout.name, domainSize: size, boxes: [],
+                charge: Charge(mass: anfo * tntFactor, position: charge), gauges: [],
+                structure: StructureModel(solids: [stem], material: concrete, elementSize: elementSize)
+            ).openFaceRoom(step: 0.5)
+            size += pad.low + pad.high
+            charge += pad.low
+            y0 += pad.low.y
+        }
         let front = charge.x + layout.chargeToWall
-        let y0 = (layout.width - wall.length) / 2
         let y1 = y0 + wall.length
         let stem = Box(min: SIMD3(front, y0, 0), max: SIMD3(front + t, y1, height))
         var solids = [stem]
@@ -560,7 +575,7 @@ public enum PerimeterWallTests {
         }
         // The wing walls, rigid, either side.
         var boxes: [Box] = []
-        for (a, b) in [(Float(0), y0 - gap), (y1 + gap, layout.width)] where b > a {
+        for (a, b) in [(Float(0), y0 - gap), (y1 + gap, size.y)] where b > a {
             boxes.append(Box(min: SIMD3(front, a, 0), max: SIMD3(front + t, b, height)))
             if layout.canopyDepth > 0 {
                 boxes.append(
@@ -569,7 +584,7 @@ public enum PerimeterWallTests {
                         max: SIMD3(front + t + layout.canopyReach, b, layout.top)))
             }
         }
-        let middle = layout.width / 2
+        let middle = charge.y
         let scenario = Scenario(
             name: layout.name, domainSize: size, boxes: boxes,
             charge: Charge(mass: anfo * tntFactor, position: charge),

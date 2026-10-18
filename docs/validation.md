@@ -69,9 +69,9 @@ swift run -c release blastbench perimeter --study wall
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
 | Structural response  | One slab test: solid elements 113–125 mm (104–115%) on 4 to 32 elements through, rising with refinement and not converged, the same on 32 with half the step (on the earlier 50-step average of the strain rate it, and a strip of it, ran away there; 92–98% under the earlier strain-rate laws), shells 135 mm (124%), against 109 mm; the test's repeat peaked at 113 mm, a scatter of about ±2%; a 5% change in its hand-read load moves the peak 13–14%, and a source's 68 ksi yield for the bars, against the measured curve's 72, 9%. The contest's lower shot, run openly with a scaled record, reached about 80% of its peak. Its series' three slabs with half the steel (Reynolds's RSCR4–6), run openly after blind test 3 on shots of the same rig: peaks 0.91–1.06 of measured, all standing as tested; on such a shot's shape in place of the scaled record the lower shot reaches 87–97% ([below](#reynoldss-8-in-slabs-and-the-lower-shots-shape)). One beam bent to failure: peak moment 101% on 12 elements, failing at 44 mm against 42 mm, 100% on 24, holding to 60 mm, but breaking at 11 and 7 mm on 36 and 48, before the test's yield (12 October defaults; see [convergence](#convergence-on-todays-defaults)). One beam without stirrups failing in shear: 104–111% on 24 to 48 elements, 132% on 12, not converged, failing suddenly as the test did. Seven drop-weight impacts on beams: with stirrups within 12–23% under light drops and −5% to −1% under heavy ones on 16 elements (+2% to +18% and +17% to +28% on 24), struck about twice as hard as measured, the reactions up to 40% low under the heavy drops and 48% high under the light; the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived. Nineteen on beams without stirrups at rising speeds: within the 2 mm reading at 1 m/s and 15% at 3 m/s, 22% on average beyond on 16 elements (16% before the strain-rate window, the beams that broke moving by up to two thirds either way) and 53% on 24 on the earlier defaults, springing back too far, and decided by how the ends were held (clamped, stiffer than the test's static stiffness). Eighteen short beams struck to shear failure (Peterson et al., 2026): forces as measured at a shear span of one depth (the impact force set by a pad fitted to it), the deep beams too stiff; the beams with stirrups that crushed their strut in the tests hold | Unsafe side in shear: 4–11% too strong on 24 to 48 elements, 32% on 12, not converged, struck beams failing by the wrong mechanism and Peterson's struts holding where the tests crushed (low: one static test); 6 elements through 17% strong in bending. Bending of one slab either way by load: 4–15% high under the contest's load, rising towards 19% as the mesh is refined, 12–21% low (too stiff, the unsafe side) under its lower shot, not converged (moderate, on the meshes that agreed); impact either way on 16 elements but not on finer meshes, which settle 12–75% high, where the strain-rate laws, chosen among published laws on these tests, decide it (moderate on one mesh). Every structural figure here holds on the mesh it was found on ([convergence](#convergence-on-todays-defaults)) |
 | Close-in charges     | Reflected impulse within 8% of Kingery–Bulmash from 0.3 m/kg^(1/3) on fine enough cells; full-scale slabs under 2–15 kg at 0.5 and 1 m: gauges beside the slab 75–80% of the paper's text (55–60% of its Figure 9), the impulse under the charge 84–95% of Kingery–Bulmash's, for charges given as TNT equivalents; the slab left a third to a half as far down as measured, spalled only under the charge (on fine air and 12 elements through), and not holed | Unsafe side for damage: the slab bends a third to a half as far, spalls too little and is never holed (low); the load either way within 8%, good |
-| Steel in both faces | Wu et al. (2023): 2 m slabs, one layer or two, within −20% to +7% at the peak under 1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh, 40–70% (too stiff) in the six under 0.2–0.8 kg where the tests spalled; contact charges hole them at a stable step to a half and a third of the measured size (the larger holes at the default step were the step running away). Wang et al. (2022): an aluminised charge's impulse 75–82% as its stated 10 kg of TNT, 81–86% with afterburning and hot air; the slabs several times too stiff as supported | Unsafe side under the small charges: 40–70%, too stiff (low); either way under the larger, −20% to +7% (moderate, two shots); holes a half and a third of the size; low for one layer against two and spall |
+| Steel in both faces | Wu et al. (2023): 2 m slabs, one layer or two, within −20% to +7% at the peak under 1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh, 40–70% (too stiff) in the six under 0.2–0.8 kg where the tests spalled; contact charges hole them at a stable step to a half and a third of the measured size (the larger holes at the default step were the step running away). Wang et al. (2022): an aluminised charge's impulse 75–82% as its stated 10 kg of TNT, 81–86% with afterburning and hot air (76–84% with the open faces at the clearance rule); the slabs several times too stiff as supported | Unsafe side under the small charges: 40–70%, too stiff (low); either way under the larger, −20% to +7% (moderate, two shots); holes a half and a third of the size; low for one layer against two and spall |
 | Walls in the open    | Alsubaei (2015), ANFO before perimeter walls: column peaks with no wall within about 10% from 9 m out (a quarter to two thirds high at 8.2 m, where the measured are low); the wall's shielding bracketed, not tested, as the wing walls' length is unknown; walls crack where seen but more widely, rock or slide on their footings in sand; reinforced blockwork top 31 mm against 28 mm as one material, running away as units and joints | Moderate for peaks in the open; low for shielding and for the walls
-| Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof's edge is left 25 mm up against 95 mm measured, a quarter, and peaks at 48 mm against 87 mm in the paper's own model, with the confined regime's pressed interlock (15 and 38 mm without); on 25 mm elements the peak rises to 65 mm and the wall tops tear, so it has not converged | Unsafe side, too stiff: the roof's edge left a quarter as far up as measured (low); the joints' inclined cracking decides it, and the crack models disagree |
+| Internal explosion   | One full-scale chamber test: peak wall pressures 0.9 to 1.6 times those measured; the roof's edge is left 25 mm up against 95 mm measured, a quarter, and peaks at 47–48 mm against 87 mm in the paper's own model, with the confined regime's pressed interlock (15 and 38 mm without), the same with the open faces at the clearance rule; on 25 mm elements the peak rises to 65 mm and the wall tops tear, so it has not converged | Unsafe side, too stiff: the roof's edge left a quarter as far up as measured (low); the joints' inclined cracking decides it, and the crack models disagree |
 | Fireball radiation   | Two TNT shots by one group (DREO), with afterburning and hot air, today's air (copying faces, which leave the street's share unchanged): 100 t, whose total a 100 kg run scaled by the cube root exceeds three to five and a half times (afterburning alone radiates more, 29% against 21%); Dial Pack, 500 t, against which the pulse is a sixth as bright at its first maximum, dark from 40 to 350 ms and two to five times too bright after 1 s, 3.9% radiated by 2 s against 2.4%; with gravity it rises but stays as hot, with or without sub-grid mixing | Too bright in all (three to five and a half times), too faint early: illustrative; afterburning keeps the fireball near the flame temperature |
 | Cloud               | Church's tops of 22 TNT clouds of 54 to 1,270 kg: within 4% on average for the first two minutes (a geometric spread of 21% shot by shot), falling behind later; with afterburning, whose burning time was fitted to the open blast, and an entrainment coefficient whose plausible range moves the tops by −9% to +13% | Either way, within 4% on average (21% shot by shot): illustrative; see [the fireball's rise](fireball-rise.md#against-churchs-measured-clouds) |
 | Gas deflagrations    | A closed sphere against the thin-flame model: burns out at the fitted AICC pressure, conserving energy; laminar rise times within 1–3% at 48 cells across the radius (the default flame, cellular, 13–14% ahead); K_G 60 against 76 on 96 cells, unable to converge on a four-cell front. FM Global's six tests (digitised): lit at the back wall, 0.9–1.8 times the measured peaks; lit in the middle, 0.4–0.6, the flame stalling towards the back wall. Vented rooms: a seventh to a twenty-second of Molkov's correlation, which those tests show conservative | Verified for a laminar flame in a closed vessel; illustrative for vented rooms |
@@ -419,6 +419,20 @@ and by far.
   copying-face users: the vented rooms moved and now default to far-field faces
   ([deflagration](deflagration.md#vented-rooms-against-the-correlations)); the rigid box is
   closed; the app has used far-field faces since 15 October.
+
+  With every open face at the clearance rule, 4 m/kg^(1/3) from the charge and the slab (5.6 m
+  of margin, the top 8.1 m up; slab 4 on recommended air, 50 mm cells refined by 2, 500 ms; 18
+  October 2026, `--margin 5.6 --domain-height 8.1` against the harness's 1 m and 3.2 m):
+  - the blast's own peak, which sets this test's band, 4.01 → 3.95 mm, and the centre's gauge
+    1,222 kPa and 476 kPa ms in both;
+  - the lift-off doubles, 8.8 → 18.4 mm, and the end 2.38 → 2.56 mm (+8%): what follows the
+    positive phase is still the domain's at 2.5 m of margin;
+  - the corner gauges, 1 m from the side faces in the harness, 951 → 1,043 kPa and 252 → 300 kPa ms.
+
+  So the comparisons scored here stand. The blind records are frozen and are not rerun. Post-reveal
+  studies of the late response should use the rule's domain; on the harness's 12.5 mm cells that
+  is about 600 million cells, so on 50 mm refined by 2
+  ([open faces at the clearance rule](#open-faces-at-the-clearance-rule)).
 - **The collapses stand.** No movement of the supports explains them. At 1.3 and 1.6 m the
   model's load or its strength, or both, are wrong on the unsafe side.
 
@@ -2341,6 +2355,10 @@ leaves out:
 (The 8-element column predates cracks that slide for good, which moved the 6-element column by
 7–17 mm, and the CEB's strain-rate law for the bars, which moved it by 5–14 mm.)
 
+Checked with every open face 4 m/kg^(1/3) from the charge and the slab (18 October 2026, P7 on 50
+mm air, 6 through, `--roomy`): left 112 → 111 mm and peak 155 → 153 mm, the record within 4 mm
+throughout; the harness's domain stands ([open faces at the clearance rule](#open-faces-at-the-clearance-rule)).
+
 With Malvar and Ross's tensile law instead, P7 was left 51, 103 and 91 mm down on the three
 grids, and P2 and S5 156–173 mm, spalling 1% of the far face on the fine air.
 
@@ -2533,7 +2551,10 @@ On today's air (afterburning, hot air and far-field faces, the defaults since 15
 rerun 16 October), S8 peaks at 16.3–16.4 mm against 18.0 and D8 at 16.4–16.5 against 13.9
 across the three roundings, left 8.2–8.9 mm down: 0.91 and 1.18–1.19 times the measured peak. The air is not what moved
 them: on the ideal gas the same build gives 16.1 and 16.3 mm. The change from the 14.4 and
-14.9 mm above comes from changes to the structural model since, not traced here.
+14.9 mm above comes from changes to the structural model since, not traced here. With every
+open face 4 m/kg^(1/3) from the charge and the slab (S8, `--roomy`, 18 October), the peak goes
+16.3 → 16.1 mm and the residual 8.5 → 8.3 mm, within the roundings' spread; the harness's domain
+stands ([open faces at the clearance rule](#open-faces-at-the-clearance-rule)).
 
 One layer or two: the tests' single layer near the underside did better under the small
 charges and worse under the large (18.0 mm against 13.9 at 1.6 kg). The model hardly tells
@@ -2578,7 +2599,13 @@ far-field faces, it gives 81–86% of the impulse and half the peak, the domain 
 agreeing within 4%: an aluminised charge worth more than its stated equivalent. (A figure of
 94–104% with afterburning was recorded here before: it does not reproduce, and in this domain,
 2.5 m across with the charge 0.4 m from a face, copying faces trapped the burning products and
-read 2.5 times the measured impulse.) The paper's
+read 2.5 times the measured impulse.) With every open face 4 m/kg^(1/3) (8–8.5 m) from the charge
+and the slab, on 50 mm air refined by 2, which reads the harness's impulses within 2% (`--roomy
+--dx 0.05 --refine 2`, 18 October), the impulses fall by 2%, 2% and 7%, to 84%, 84% and 76% of
+measured, the peaks unchanged: the face 0.4 m behind the charge sent some of the blast back.
+The slabs' displacements do not move (within 0.1 mm at every gauge). On the harness's own 25 mm
+air the rule's domain would be about 200 million cells, past this Mac's memory, so the harness
+keeps its box and the roomy figures are the ones to quote ([open faces at the clearance rule](#open-faces-at-the-clearance-rule)). The paper's
 own ConWep curve peaks near 24 MPa. Deflection at the centre of the back, mm, measured / model:
 
 | Slab | Measured, peak / left | Edges fixed | Edges free to slide in their plane | With slip |
@@ -2653,8 +2680,20 @@ an aluminised charge, and say its TNT equivalence is low for impulse.
   - Read over the first 2 ms, the model gives 2.3–3.6 times the reported values. Taken as peaks,
     its slab would be 8–13 times too flexible, against every other comparison here.
   - Neither reading is scored. These three tests confirm the load only.
-- **The 20 kg test.** The model's slab bends to 167 mm and keeps 96 mm. Nothing on its top face is
-  crushed or removed, and 612 cm² of its underside is damaged. The test's slab, judged "moderate
+- **The 20 kg test.** The model's slab bends to 126 mm and keeps 73 mm. Nothing on its top face is
+  crushed or removed, and 714 cm² of its underside is damaged.
+  - That is with every open face 4 m/kg^(1/3) from the charge and the slab, 10.5 m out (`--yao T4
+    --roomy --dx 0.05 --refine 2`; 18 October 2026).
+  - The harness's own box, whose sides are 0.5 m from the slab's edges, gives 167 mm and keeps 96
+    (167 and 97 on the same 50 mm air), with 450–612 cm² damaged: a quarter too far. The wave that
+    runs round the slab's edges and pushes up on its underside drains out through those sides
+    instead.
+  - The first 2 ms and the pressures on the top face do not move.
+  - On the harness's 25 mm air the rule's domain would be about 600 million cells, so the roomy
+    run is on 50 mm refined by 2, 6.5 GB and 13 minutes
+    ([open faces at the clearance rule](#open-faces-at-the-clearance-rule)).
+
+  The test's slab, judged "moderate
   damage", showed a top crater 1.02 × 0.76 m, its bars exposed, a wider spall beneath them, and over
   ten long cracks. So the model is far too resistant locally, at 0.22 m/kg^(1/3): the close-in
   direction the record already shows ([Chiquito](#slabs-under-close-in-charges), a third to a half
@@ -2773,6 +2812,83 @@ Doudak, J. Struct. Eng. 144(9), 2018.
 - **Mid-span:** without its rotations held there (which symmetry holds anyway), a beam on two
   pins turns freely about its axis. It broke 16% early.
 
+## Steel beams and columns in the open
+
+The steel members' first measured comparison (since 17 October 2026). The office tower and the
+transport hub hang on steel; until now it was checked only against beam theory and Eurocode 3's
+buckling curves ([buckling](shell-model.md#buckling)).
+
+**The tests.** Nassr's PhD thesis (McMaster, 2012, open) blasted 26 wide-flange members in the
+open (`NassrSteelTest`, `blastbench nassr`):
+- **Members.** W150×24 and W200×71, 2,413 mm long, pinned at the top and on a roller at the
+  foot, in an RC frame walled in so the blast reflects off them evenly.
+- **Charges.** 50–250 kg of ANFO at 7–10.3 m.
+- **Beams** carried no axial load. **Columns** carried 25% of their capacity (270 and 640 kN),
+  from strands anchored at the ends' middles.
+- **Shot 5's members** faced a 1.18 m curtain with three times their mass.
+
+**The model.**
+- **Members.** Each is a line of 24 beams. The section is a rectangle of steel scaled to the
+  section's bending stiffness, plastic moment and mass about the axis bent, at the mill yield
+  (393 and 362 MPa), hardening to the ultimate at 15%, bowed by default.
+- **Load.** The shot's mean measured reflected pressure (Nassr's Table 2.5, the gauges that
+  recorded) as a triangle of that peak and impulse over the width the member faces: the flange,
+  the depth about the weak axis, or the curtain.
+- **Axial load.** A head mass under gravity, raised before the blast.
+
+Largest mid-span deflection, mm, measured, and the model without a strain-rate law, with the
+steel's law by grade (the default since 18 October 2026; nothing fitted to these tests), and with
+Nassr's own measured average factor on the yield:
+
+| Shot | Member | Load (peak, impulse) | Measured | No rate law | Ratio | Rate law by grade | Ratio | Nassr's DIF | Ratio |
+|---|---|---|---|---|---|---|---|---|---|
+| 1, 50 kg, x-x | Beam | 307 kPa, 715 Pa s | 6.9 | 5.9 | 0.86 | 5.9 | 0.86 | 6.1 (1.28) | 0.88 |
+| | Column | | 5.3 | 6.3 | 1.20 | 6.3 | 1.20 | 6.6 | 1.25 |
+| 2, 100 kg, y-y | Beam | 623 kPa, 1,279 Pa s | 40.8 | 50.0 | 1.22 | 45.9 | 1.12 | 45.5 (1.38) | 1.11 |
+| | Column | | 56.1 | 94.1 | 1.68 | 90.5 | 1.61 | 90.2 | 1.61 |
+| 3, 150 kg, x-x | Beam | 1,560 kPa, 2,128 Pa s | 33.2 | 19.6 | 0.59 | 18.9 | 0.57 | 18.6 (1.44) | 0.56 |
+| | Column | | 30.9 | 20.4 | 0.66 | 19.6 | 0.63 | 19.3 | 0.62 |
+| 4, 250 kg, x-x | Beam | 4,283 kPa, 3,174 Pa s | not recorded | 36.5 | | 31.5 | | 30.7 (1.46) | |
+| | Column | | 107 | 37.6 | 0.35 | 32.5 | 0.30 | 31.5 | 0.29 |
+| 5, 250 kg, x-x, curtain | Beam | 2,098 kPa, 3,144 Pa s | 62.8 | 77.1 | 1.23 | 60.1 | 0.96 | 60.5 (1.42) | 0.96 |
+| | Column | | 71.0 | 77.8 | 1.10 | 60.7 | 0.85 | 61.2 | 0.86 |
+
+The rate law by grade ([steel's strain rate](shell-model.md#materials), Murray et al.'s A992
+constants for these 362–393 MPa steels) does what Nassr's measured factors do, unfitted.
+
+**Shots 1, 2 and 5.** The beams read 0.86–1.23 of measured, and the columns 1.10–1.68.
+- **Strain rate.** Without a strain-rate law the weak-axis beam and the curtain beam read 1.22 and
+  1.23. Nassr measured rates that raise the yield by 1.28–1.46 on average. With the steel's law by
+  grade, the beams of shots 1, 2 and 5 come within 14%: 0.86–1.12.
+- **Shot 2's column** reads 1.6–1.7 times as far. It is bent about its weak axis at 43% of its
+  Euler load there, where the moment is amplified most.
+- **Section shape.** The rectangle standing for the I-section carries its moment in bending
+  exactly but its axial load at about twice the area. So a column's axial load takes less of
+  its section than the test's did.
+
+**Shots 3 and 4 read low, 0.29–0.66, and the measurements are unsure.**
+- **Shot 3.** Nassr reports shot 3's beams stayed elastic while deflecting 33 mm. That is twice
+  the deflection at which their own static tests yielded, and more than the measured impulse can
+  give a beam of their stiffness (about 16 mm by hand). The potentiometers stood on wooden posts while the
+  members hung on pins in the RC frame, so the readings likely include the supports' movement, as
+  the contest slab's did.
+- **Shot 4.** The column's 107 mm (60 mm left) comes beside its beams' 3.8 mm left in their
+  plane. The beams also deflected 17 mm out of plane, under a load that Nassr notes was no
+  longer plane at that scaled distance.
+- **Nassr's own SDOF** read shot 3 at 1.23 of measured without the rate effect and 1.04 with it,
+  where this model reads 0.59. The model and a hand estimate agree; his SDOF and the
+  measurement do not with either.
+
+**Standing.** Steel members are now compared with measurement, one series, and read 0.57–1.12 of
+measured for the beams and 0.30–1.61 for the columns, with the rate law by grade. The beams of
+the shots near elastic and of the curtain shot are within 14%.
+
+**Not compared:**
+- **Connections.** Culache's high-rate moment connections (Southampton thesis, 2017, open), NIST
+  TN 1669's column removal and Dinu et al.'s close-range frame blasts are in
+  [data wanted](data-wanted.md).
+- **A frame as a whole.**
+
 ## Cross-laminated timber buildings at Tyndall
 
 **The test.** Weaver, Newberry, O'Laughlin and Podesto, *Results from Blast Tests of Full-Scale
@@ -2796,30 +2912,116 @@ Cross-Laminated Timber Structures* (Karagozian & Case TR-17-17.1, for WoodWorks,
 - **The joints:** the walls' bases are held at the slab, and the panels are joined rigidly where
   they meet (the tests' screwed angles are not rigid).
 - **The rest:** the door and the boarded window are closed. The building settles under its
-  weight. Air of 0.25 m refined by 2, recommended air.
+  weight. Air of 0.25 m refined by 2, recommended air. Every open face is 4 m/kg^(1/3) from the
+  charge and the building ([open faces near a
+  structure](air-blast-model.md#open-faces-near-a-structure)): `blastbench tyndall --tests n
+  --pad back,side,top` with 9,4.5,6, 12,7,9 and 17,12.5,14 m for tests 1 to 3.
+- **The load compared:** the reflected pressure on the front's centre, its impulse over the
+  positive phase (from the shock's arrival to the first return below ambient), and the incident
+  pressure at ground level on the same arc, 7 m to the side, against the report's free-field
+  gauges.
 
-| Test | Reflected peak (kPa), measured / model | Impulse (kPa ms) | First storey, in / rebound (mm), measured | Model | Second storey, measured | Model | Damage, test / model |
-|---|---|---|---|---|---|---|---|
-| 1, 14.5 kg | 34.8 / 25.1 | 137 / 212 | 28 / −45 | 29 / −30 | 21 / −35 | 25 / −28 | superficial / some layer at full damage, nothing removed |
-| 2, 30.4 kg | 54.7 / 39.6 | 227 / 400 | 50 / −70 | 53 / −44 | 37 / −55 | 44 / −47 | superficial / some layer at full damage, nothing removed |
-| 3, 90.3 kg | 91.0 / 87.5 | 450 / 694 | 99 / −155 | 120 / −136 | 78 / −98 | 137 / −141 | moderate, first-storey front cracked / 78 elements removed |
+| Test | Reflected peak (kPa), measured / model | Impulse (kPa ms) | Incident peak (kPa) | Incident impulse (kPa ms) | First storey, in / rebound (mm), measured | Model | Second storey, measured | Model | Damage, test / model |
+|---|---|---|---|---|---|---|---|---|---|
+| 1, 14.5 kg | 34.8 / 25.1 | 137 / 140 | 16.6 / 12.3 | 75 / 71 | 28 / −45 | 18 / −24 | 21 / −35 | 29 / −27 | superficial / some layer at full damage, nothing removed |
+| 2, 30.4 kg | 54.7 / 39.5 | 227 / 223 | 23.8 / 20.7 | 124 / 115 | 50 / −70 | 31 / −36 | 37 / −55 | 41 / −42 | superficial / some layer at full damage, nothing removed |
+| 3, 90.3 kg | 91.0 / 88.1 | 450 / 473 | 35.5 / 39.2 | 230 / 237 | 99 / −155 | 159 / −133 | 78 / −98 | 106 / −110 | moderate, first-storey front cracked / 64 elements removed |
 
 **What it shows:**
-- **First storey inbound:** within 6% on tests 1 and 2, and 21% high on test 3, where the front
-  broke more than it did in the test.
-- **Second storey:** 19–76% high.
-- **Rebound:** 66–88% of measured. The real walls swung back further: the screwed angles at their
-  bases and the floors give, where the model's joints are rigid.
 - **The load:**
-  - The reflected peak is 4–28% low on 0.25 m air, as peaks are on coarse air
-    ([blast loads](#blast-loads-against-empirical-references)).
-  - The impulse is 54–76% high. The report's measured impulses are below Kingery–Bulmash's,
-    which its authors put down to clearing round the small fronts. The model's front clears too,
-    so the gap is open: it may lie in the one gauge against the report's mean of several, or in
-    the neighbours left out.
-- **A first full-scale check of timber with the air:** with the inbound deflections close and
-  the load's impulse high, the walls are likely somewhat stiffer or stronger than the real ones.
-  The connections, modelled rigid, are the first suspect.
+  - The front's impulse over its positive phase is within 5% of the report's on all three
+    tests, and the incident impulse within 8%. An earlier harness integrated every positive
+    pressure to the end of the run, the reflections off the ground and the building's own rear
+    included, and read 54–76% high; that gap was the harness's.
+  - The reflected peak is 3–28% low and the incident peak up to 26% low on the lighter charges,
+    as peaks are on coarse air ([blast loads](#blast-loads-against-empirical-references)).
+- **The domain matters to the walls' later swings:** in the harness's first domain (32 × 16 ×
+  12 m, the charge 1.1 m from the face behind it), test 1's first storey went in 29 mm and test
+  3's 113 mm, against 18 and 159 mm here, with the same positive-phase load. Faces too near
+  reflect the grazing blast as a rarefaction that drives the wall's second swing; at 4 m/kg^(1/3)
+  the results no longer move ([open faces near a
+  structure](air-blast-model.md#open-faces-near-a-structure)).
+- **First storey inbound:** 0.62–0.64 of measured on tests 1 and 2, and 1.6 times on test 3,
+  where the front broke (64 elements removed) more than it did in the test.
+- **Second storey:** 1.1–1.4 times measured.
+- **Rebound:** 51–112% of measured, least at the first storey under the lighter charges. The
+  real walls swung back further there: the screwed angles at their bases and the floors give,
+  where the model's joints are rigid.
+- **A first full-scale check of timber with the air:** with the load matched, the first storey's
+  span is too stiff under the lighter charges and too weak once it cracks under the heaviest,
+  and the second storey too soft throughout. The connections, modelled rigid, are the first
+  suspect.
+
+## Terraced houses against wartime bomb damage
+
+**The data.** S. M. Gilbert, *A model for the effects of a condensed phase explosion in a built-up
+area* (PhD thesis, Loughborough University, 1994; open), chapter 5, from the Ministry of Home
+Security's surveys of British houses bombed in the Second World War:
+- **Categories** (its Table 5.1, as Jarrett used them): A demolished (over 75% of the external
+  brickwork destroyed); B to be pulled down (50–75% destroyed, or the rest unsafe); Cb
+  uninhabitable, the roof partly or wholly collapsed, up to 25% of one or two external walls
+  down; Ca uninhabitable with relatively minor structural damage; D habitable, with ceilings,
+  tiles and roof coverings damaged and minor cracks.
+- **Houses against distance** (its Table 5.7) from 250 kg semi-armour-piercing bombs, 96 kg of
+  TNT as a bare charge by Gilbert's effective charge: the share of houses at each distance in
+  category A, A or B, and A to C. They are mostly pre-war houses, solid 9-inch and cavity brick
+  mixed, and the categories are surveyors' judgements.
+- **Jarrett's radii**, as Gilbert revised them (his equation 5.4, R = k W^(1/3) / [1 + (3175 /
+  W)²]^(1/6), W in kg of TNT): for 96 kg, A 6.8 m, B 10.1 m, Cb 17.7 m and Ca 30.4 m. Half the
+  houses inside each radius are less damaged and half outside more.
+
+**The model.** The [terraced row](shell-model.md#the-terraced-houses) under 96 kg of TNT 0.3 m
+up, at each of the table's distances in front of the middle house's front wall
+(`blastbench house --mass 96 --standoff r --height 0.3`): air of 0.5 m, recommended air, the
+domain's open faces 18 m (4 m/kg^(1/3)) from the charge and the row. The middle house is graded
+by `TerracedRowDamage`, a brick element counted destroyed once removed or moved more than its
+leaf's thickness, a tenth of a second and three tenths after the burst. With the default brick
+(removed at a 3 mm crack) and with bricks kept to a 50 mm crack (`--erosion 0.05`):
+
+| Distance (m) | Surveyed: A / A–B / A–C | Surveyed median | 3 mm, 0.1 s | 3 mm, 0.3 s | 50 mm, 0.1 s | 50 mm, 0.3 s |
+|---|---|---|---|---|---|---|
+| 4.7 | 88% / – / – | A | A (85%) | A (99%) | A (78%) | A (95%) |
+| 7.8 | 28% / 88% / – | B | B (45%) | A (86%) | B (32%) | A (79%) |
+| 10.8 | 14% / 51% / 91% | B, near C | B (37%) | B (51%) | Cb (20%) | B (35%) |
+| 13.9 | – / 12% / 63% | C | Cb (14%) | B (48%) | Cb (5%) | B (32%) |
+| 16.9 | – / 3% / 37% | below C | Cb (2%) | B (44%) | D | Cb (24%) |
+| 20.0 | – / 8% / 26% | below C | Ca | B (27%) | D | Cb (8%) |
+| 23.0 | – / – / 15% | below C | Ca | Cb (5%) | D | Cb (2%) |
+
+The model's percentages are the external brickwork destroyed. By 0.3 s the tiles had moved on
+half of each roof at 23 m and on more of it nearer.
+
+**What it shows:**
+- **The blast's damage, at 0.1 s:** with bricks kept to a 50 mm crack, every house falls in the
+  surveyed median's category or the one below, out to 23 m, and within Jarrett's radii out to
+  13.9 m (one or two categories under them at 16.9–23 m). With the default 3 mm the houses read a
+  category above the median beyond 13.9 m.
+- **What follows, by 0.3 s:** the cracked front walls, held only at their ends by the party walls,
+  go over: 49–100% of the middle house's front at 13.9–16.9 m. The houses then read one or two
+  categories worse than surveyed beyond 11 m, either way. The surveyed houses mostly stood. A
+  cracked leaf with the floors and roof bearing on it, or arching between stiff ends, would
+  rock and settle back; the model's cracked leaves have no such resistance. Seating the roof on
+  the front and back walls as rafters' feet (unstrapped, as the joists) changed nothing.
+- **Rocking would not hold them either:** SBEDS's rocking resistance for a cracked unreinforced
+  wall, 8 P (t − x) / h² (as the envelope model takes it,
+  `EnvelopeComponentResistance.unreinforcedMasonry`), is 0.2–0.6 kPa for a front leaf carrying
+  only the brickwork above it, about 1.2 kPa with the roof bearing on it, and it can take in
+  about ½ r t, 10–60 J/m², before it falls. The blast gives the leaves about 600 J/m² at 16.9 m
+  (some 800 kPa ms on 390 kg/m²). The envelope model with the same law would grade these walls
+  as fallen too. Gilbert's effective charge is a hemispherical surface burst of bare TNT, as the
+  model's is, but it sets aside the height of burst, above or below the ground (his §4.1); a
+  bomb that burst partly buried would have loaded the houses less.
+- **The cavity:** the leaves' load had to be fixed first ([shielded
+  faces](shell-model.md#coupling-to-the-air)). Each leaf had taken the whole blast, and with the
+  cavity at ambient the rooms' pressure blew the inner leaves out; as a sealed cavity the two
+  leaves share it. Joists come off their seats only inside 14 m.
+- **Not compared:** Glasstone and Dolan's houses at 5 and 1.7 psi (a long nuclear load), the
+  Peterborough explosion (about 800 kg; its 37 m clearance makes a domain of about 75 × 90 × 45
+  m), and the IRA bombs at Hyde Park and Manchester, for which no open survey of houses was found.
+  The DoD and GSA damage levels set limits on members' response, not observed damage.
+- **Limits of the comparison:** the bombs burst at or below the ground, some in craters, and the
+  surveys measured to the house, not its front wall; the effective charges are uncertain by about
+  25%; the houses were of many kinds, the model one row of one.
 
 ## Slabs under contact charges
 
@@ -3298,6 +3500,12 @@ in foam-filled cells, was not. At 125 kg every version comes apart, as the test'
 node of it moves faster than 11–24 m/s, where nodes of the reinforced units and joints had left
 at 500–800 m/s; how far its pieces go, against the 15 m reported, has not been measured.
 
+Checked with every open face 4 m/kg^(1/3) from the charge and the wall (18 October 2026; 25 kg on
+starter bars, `--roomy` on 100 mm air in both domains, the rigid wing walls carried on to the
+faces): the top's peak 49.4 → 48.2 mm (−2%), mid-height 33.4 → 32.8 mm, the face's load the same
+within 2%. The wall is still swinging by ±10 mm at 0.3 s, so what is left there is not compared;
+the harness's domain stands ([open faces at the clearance rule](#open-faces-at-the-clearance-rule)).
+
 ### What this does and does not show
 
 It shows that the air solver's peaks on the columns are within about 10% of most measured ones
@@ -3435,6 +3643,13 @@ ground and, for the walls in the open, on soft ground (below):
 | WR2C, 15 m | −1.14 / 0.42 m | −0.25 / 1.75 m | 0.5 / 3.5 m | −1.05 m, −0.25 m |
 | BWL2C, tunnel | 3.47 / 6.34 m | 6.75 / 8.25 m | 9.0 / 13 m | |
 | BWL3B, tunnel | 3.27 / 5.99 m | 6.75 / 9.75 m | 9.5 / 15 m | |
+
+With every open face 4 m/kg^(1/3) from the charge and the wall (WR1A, clearance 14 m and 16 m up,
+18 October 2026), the debris lies where it did: mean 1.64 → 1.60 m, 90% within 3.25 m and
+nothing past 5.5 m in both, the wall falling away from the charge in both. (On this build the
+tight domain gives 1.64 m, not the 2.10 m above: the record has moved since 15 October for
+reasons other than the faces, not traced here.) The harness's 8 m stands
+([open faces at the clearance rule](#open-faces-at-the-clearance-rule)).
 
 **In the open the walls crack in the right places but do not fold.** WR1A cracked along bed
 joints at 0.5 m within 5 ms and at mid-height by 20 ms, and folded into three pieces about the
@@ -4280,7 +4495,7 @@ balloon by construction.
 | Envelope walls, slabs, Nian, façades (`blastbench envelope-walls`, `envelope-slabs`, `nian`, `facade`) | pinned | envelopes |
 | Envelope damage, venting, openings (`scenebench`), and their tests | pinned | envelopes |
 | Districts and Beirut (`scenebench district`, `district-compare`) | pinned | districts |
-| The panel block (`blastbench panelblock`) and terraced houses | pinned | large panels |
+| The panel block (`blastbench panelblock`) and terraced houses (`blastbench house`) | pinned | large panels |
 | Buildings, settling (`blastbench buildings`, `settle`) | pinned | structures |
 | Terrain, landscape, ground motion (`blastbench terrain`, `landscape`, `groundmotion`) | pinned | terrain, ground shock |
 | Dial Pack (`blastbench dialpack`) | pinned | thermal |
@@ -4502,7 +4717,9 @@ taken as the mats' (16 mm at 150 mm), 50 mm in from the sloped face and anchored
 each member; the paper gives neither their size nor the down-stand's detailing, which is
 taken as the walls': mats on both faces and ties through its width, standing for its
 stirrups. The other assumptions, and the geometry read off the paper's drawings, are listed
-in `ChamberTest.swift`. `blastbench chamber` runs 300 ms in about 17 s; `--charge-scale`
+in `ChamberTest.swift`. `blastbench chamber` runs 300 ms in about a minute, in a domain whose open
+faces are 4 m/kg^(1/3) from the charges and the chamber (since 18 October 2026; `--tight` for the
+box of 1 m either side and 2 m above, in about 17–30 s); `--charge-scale`
 scales the charges, `--pressures` fills the closed chamber with a steady overpressure instead
 (below), and `--progress` reports every 10 ms of a long run.
 
@@ -4529,6 +4746,20 @@ with today's other defaults: still about half the paper's model's 87 and 62 mm a
 today's air, had the bench's gas left ideal: that is afterburning alone, and hot air alone gives
 33 and 15 mm. Afterburning alone, in a chamber whose vent keeps the burning products in, nearly
 doubles the roof's rise; hot air with it takes that back.
+
+**With the open faces at the clearance rule** (18 October 2026). The box above has its side faces
+1 m from the chamber's walls and its top 2 m above the roof: 0.34 and 0.70 m/kg^(1/3). Moved out
+11 m either side and 10 m up, the roof's edge rises 47 mm and is left 25 mm up, against 50 and 28
+mm in the box on the same build: 6% and 11% less. The wall pressures are unchanged.
+
+Moving the faces below the chamber means shifting the scene by 11 m. That flips some half-element
+steps of the chamfers in rounding (4,551 elements against 4,664) and moves the gauges by a cell.
+So the high faces alone were moved too, which needs no shift and leaves the mesh and the
+pressures exactly as in the box. That gives 46 and 24 mm (−8%, −14%).
+
+The comparison does not change its standing: a quarter of the measured residual, about half the
+paper's model's peak. The bench now runs this domain by default, at about twice the box's cost
+([open faces at the clearance rule](#open-faces-at-the-clearance-rule)).
 
 **The roof.** At the test's charge the roof's free edge rises 38 mm and settles back to 7 mm
 with the default gas (ideal, no afterburning), and rises 37 mm and settles to 8 mm with
@@ -5049,6 +5280,51 @@ do (352 mm). With cracks on the lattice planes it gave 15, 25 and 32 mm at 50 kg
 with resolution as the peak pressure does, and 315, 437 and 657 mm at 200 kg; that model
 mishandled inclined cracks (see the [concrete model](concrete-model.md#cracking)). There is
 no test to compare these with.
+
+## Open faces at the clearance rule
+
+On Tyndall's CLT building the far-field faces were found to release a grazing blast, sending a
+rarefaction back that moved a flexible wall's second swing by half. Every open face should
+therefore stand at least 4 m/kg^(1/3) from the charge and the structure (see the
+[air-blast model](air-blast-model.md#open-faces-near-a-structure)). Most comparisons here were
+built in tighter boxes. One case of each was rerun with every open face moved out to the rule
+on 18 October 2026. `Scenario.openFaceRoom` sizes the room, and `--roomy` on `closein`,
+`twoface`, `perimeter --study wall` and `chamber` moves the scene with it; Mendonça's and Keys's
+benches take `--margin` / `--domain-height` and `--clearance` / `--height`.
+
+Each pair was run on the same build and the same cells. Where the rule's domain at the harness's
+own cells would not fit in this Mac's 36 GB, both domains were run on coarser air, named in the
+table.
+
+| Case | Compared | Box | At the rule | Change | Done |
+|---|---|---|---|---|---|
+| Chiquito P7, 13 kg at 1 m (50 mm air) | left (peak), mm | 112 (155) | 111 (153) | −1% | noted; box kept |
+| Wu S8, 1.6 kg at 0.5 m (25 mm refined by 2) | peak / residual, mm | 16.3 / 8.5 | 16.1 / 8.3 | −1%, −2% | noted; box kept |
+| Wang A, 10 kg at 1.2 m (50 mm refined by 2) | back's peak / left, mm; impulse P1–P3, MPa ms | 2.4 / 0.1; 2.86, 2.60, 2.40 | 2.4 / 0.1; 2.80, 2.55, 2.24 | 0; −2%, −2%, −7% | impulses updated (76–84% of measured); the rule at 25 mm too large |
+| Yao T4, 20 kg at 1 m (50 mm refined by 2) | centre's peak / left, mm | 167 / 97 | 126 / 73 | −24%, −25% | updated; top face still undamaged; the rule at 25 mm too large |
+| Mendonça slab 4, recommended air (50 mm refined by 2, 500 ms) | blast's peak / end, mm; lift-off | 4.01 / 2.38; 8.8 | 3.95 / 2.56; 18.4 | −1.5%, +8%; ×2 | noted; band (the blast's peak) stands; blind records frozen |
+| Alsubaei blockwork, 25 kg on starter bars (100 mm air) | top's peak, mm | 49.4 | 48.2 | −2% | noted; box kept |
+| Shang's chamber (0.1 m) | roof edge's peak / left, mm | 50 / 28 | 47 / 25 (high faces only: 46 / 24) | −6%, −11% | updated; the bench now runs the rule's domain |
+| Keys WR1A, 41 kg at 10.6 m (0.1 m, 3 s) | debris mean / 90% / furthest, m | 1.64 / 3.25 / 5.5 | 1.60 / 3.25 / 5.5 | −2% | noted; box kept |
+
+**The positive phase does not move**, as Tyndall's did not. Nor do the close-in slabs' peaks,
+since they peak before any reflection returns. Two things move:
+
+- **Yao's 20 kg slab.** A slab nearly as wide as its box loses a quarter of its swing. The blast
+  that wraps round its edges and pushes up on its underside drains out through side faces 0.5 m
+  away.
+- **Wang's gauge 0.3 m up.** A face 0.4 m behind a 10 kg charge sends some of the blast back, so
+  this gauge read 7% high.
+
+Mendonça's and the chamber's late responses also move: the lift-off doubles, and the roof's edge
+is left 11% lower. Neither of these is a scored quantity, or neither changes its standing.
+
+The cost of the rule's domain was 2 to 12 times the box's. The chamber's harness now runs the
+rule's domain by default. For the slabs at their harnesses' cells it would take 200–600 million
+cells (Wang, Yao, Mendonça), so those benches keep their boxes, and late responses should be
+quoted from `--roomy` runs on 50 mm air refined by 2. That air reproduced Yao's and Wang's box
+results within 1% and 2%. The runs and their outputs are on
+`/Volumes/StudioData/bombcad/roomy/`.
 
 ## Verification against theory
 

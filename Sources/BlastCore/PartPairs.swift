@@ -35,6 +35,22 @@ public final class PartPairs {
         public var seatedArea: Float = 0
         /// The work the pairs' sliding has dissipated, in joules.
         public var dissipated: Float = 0
+
+        public init() {}
+
+        /// Both summaries' pairs together.
+        public func combined(with other: Self) -> Self {
+            var both = self
+            both.pairs += other.pairs
+            both.separated += other.separated
+            both.unseated += other.unseated
+            both.force += other.force
+            both.maxSlip = max(maxSlip, other.maxSlip)
+            both.maxOpening = max(maxOpening, other.maxOpening)
+            both.seatedArea += other.seatedArea
+            both.dissipated += other.dissipated
+            return both
+        }
     }
 
     let count: Int
@@ -91,13 +107,11 @@ public final class PartPairs {
     /// The area of the pairs in `slot`.
     func area(inSlot slot: Int) -> Float { list.filter { $0.slot == slot }.reduce(0) { $0 + $1.area } }
 
-    /// Read only while the GPU is idle. `nodes` gives access to the body's nodes.
-    func summary(slot: Int?, nodes access: ((UnsafeMutableBufferPointer<StructureNode>) -> Void) -> Void)
-        -> Summary
-    {
+    /// Read only while the GPU is idle. `displacement` gives a node's displacement.
+    func summary(slot: Int?, displacement: (Int) -> SIMD3<Float>) -> Summary {
         let values = state.contents().bindMemory(to: SIMD4<Float>.self, capacity: 3 * count)
         var summary = Summary()
-        access { nodes in
+        do {
             for (p, pair) in list.enumerated() where slot.map({ $0 == pair.slot }) ?? true {
                 let stored = values[3 * p]
                 let law = pair.law
@@ -125,7 +139,7 @@ public final class PartPairs {
                 summary.dissipated += values[3 * p + 2].w
                 summary.force += SIMD3(values[3 * p + 1].x, values[3 * p + 1].y, values[3 * p + 1].z)
                 summary.maxSlip = max(summary.maxSlip, simd_length(SIMD2(stored.y, stored.z)))
-                let relative = nodes[pair.owner].displacement - nodes[pair.partner].displacement
+                let relative = displacement(pair.owner) - displacement(pair.partner)
                 summary.maxOpening = max(summary.maxOpening, simd_dot(relative, across) - values[3 * p + 2].x)
             }
         }

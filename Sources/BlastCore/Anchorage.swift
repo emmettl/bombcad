@@ -49,6 +49,11 @@ public struct Anchorage: Sendable, Hashable, Codable {
     public var friction: Float
     /// Pressure in Pa the ground bears before it yields and the base settles; nil bears any.
     public var bearingCapacity: Float?
+    /// How far, in metres, the joint can close by yielding at `bearingCapacity` before it bears
+    /// without limit, as stiffly as the body's material (E / h) or `normalStiffness` if stiffer;
+    /// nil yields without end. Ties across a cavity buckle at their compressive strength and let
+    /// the leaves close until they meet.
+    public var closingGap: Float?
     /// A rigid footing between the base and the soil; nil ties the base to the ground itself.
     public var footing: Footing?
     /// Which side of the body the joint is on, for a support region's connection; nil (or
@@ -301,6 +306,9 @@ struct AnchorageParameters {
     /// The ground's bearing capacity (zero: without limit), then the joint's normal when it is
     /// not under the body (zero otherwise).
     var bearing: SIMD4<Float>
+    /// The gap the joint closes by yielding before it bears without limit (zero: no limit), and
+    /// its stiffness once closed.
+    var closing: SIMD4<Float>
 
     init(_ law: Anchorage, material: StructureMaterial, elementSize: Float) {
         let stiffness = law.stiffness(material: material, elementSize: elementSize)
@@ -310,6 +318,7 @@ struct AnchorageParameters {
         // A joint that is not under the body carries its normal; zero is up.
         let normal = law.isUnder ? SIMD3<Float>.zero : law.across
         bearing = SIMD4(law.bearingCapacity ?? 0, normal.x, normal.y, normal.z)
+        closing = SIMD4(law.closingGap ?? 0, material.youngsModulus / elementSize, 0, 0)
     }
 }
 
@@ -318,7 +327,7 @@ extension Anchorage {
     public func validate() throws {
         let values = [
             tensileStrength, tensionPlateau, tensionOpening, cohesion, cohesionSlip, friction,
-            bearingCapacity ?? 0,
+            bearingCapacity ?? 0, closingGap ?? 0,
         ]
         guard values.allSatisfy({ $0.isFinite && $0 >= 0 }),
             tensionOpening >= tensionPlateau,
@@ -335,6 +344,9 @@ extension Anchorage {
                 ?? true
         else {
             throw ImportedMesh.ImportError.invalid("A joint's normal must be finite and not zero.")
+        }
+        guard closingGap == nil || betweenParts == true else {
+            throw ImportedMesh.ImportError.invalid("A closing gap is for a joint between two parts.")
         }
         guard footing == nil || betweenParts != true else {
             throw ImportedMesh.ImportError.invalid("A joint between two parts cannot stand on a footing.")

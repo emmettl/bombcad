@@ -35,6 +35,25 @@ struct BucklingTests {
         #expect(abs(r.peakForce / r.squash - 1) < 0.02)
     }
 
+    @Test("Cowper and Symonds's law raises a steel strut's squash load with its strain rate, not when slow")
+    func strainRate() throws {
+        let law = SIMD2<Float>(40.4, 5)
+        func factor(_ rate: Float) -> Float {
+            (1 + pow(rate / law.x, 1 / law.y))
+                / (1 + pow(StructureMaterial.tensileTestRate / law.x, 1 / law.y))
+        }
+        // 0.6 m shortened at 0.6 mm/s (10⁻³ /s, near a tensile test's 2.5 × 10⁻⁴) and at 0.18 m/s
+        // (0.3 /s): 1.04 and 1.26 times f_y A.
+        for (speed, rate) in [(Float(0.0006), Float(1e-3)), (0.18, 0.3)] {
+            let r = try BucklingStudy.run(
+                device: device, length: 0.6, elementSize: 0.1, rate: speed, shortening: 0.0015,
+                yieldStress: 355e6, clamped: true, cowperSymonds: law)
+            let expected = max(factor(rate), 1)
+            print("strut at \(rate) /s: \(r.peakForce / r.squash) of f_y A, Cowper and Symonds \(expected)")
+            #expect(abs(r.peakForce / (r.squash * expected) - 1) < 0.04)
+        }
+    }
+
     @Test("A strut struck at its end buckles at Lindberg's preferred wavelength")
     func impact() throws {
         // At 200 m/s a 20 mm square strut buckles about 0.26 m apart, behind the front.

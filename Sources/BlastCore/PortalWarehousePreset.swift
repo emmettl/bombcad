@@ -25,7 +25,9 @@ extension ScenarioPreset {
 
     static func portalWarehouseScenario(title: String) -> Scenario {
         let (span, bay, bays, eaves): (Float, Float, Int, Float) = (30, 6, 4, 8)
-        let (x0, y0): (Float, Float) = (20, 40)
+        // The charge 30 m from the gable and every open face 4 m/kg^(1/3) (18.6 m) from it and the
+        // sheds, as the late response asks (SceneExtent.structureFaceClearance).
+        let (x0, y0): (Float, Float) = (20, 49)
         let (x1, y1) = (x0 + span, y0 + Float(bays) * bay)
         var solids: [Box] = []
         var materials: [StructureMaterial?] = []
@@ -127,7 +129,7 @@ extension ScenarioPreset {
             structure.setSheet(assignment, of: sheet.index)
         }
         var scenario = Scenario(
-            name: title, domainSize: SIMD3(70, 104, 20), boxes: [],
+            name: title, domainSize: SIMD3(70, 113, 27), boxes: [],
             charge: Charge(mass: 100, position: SIMD3(x0 + span / 2, y0 - 30, 1)),
             gauges: [
                 Gauge("Front gable, outside", at: SIMD3(x0 + span / 2, y0 - 0.6, 4)),

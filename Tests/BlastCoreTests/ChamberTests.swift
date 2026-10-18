@@ -18,7 +18,8 @@ struct ChamberTests {
         "At the test's charge the roof bends up by tens of millimetres, as in the paper's model, and the walls hold"
     )
     func roofResponse() throws {
-        let result = try ChamberTest.run(device: device, duration: 0.3)
+        // In the old, tighter box, which costs a third as much; the bounds hold in both.
+        let result = try ChamberTest.run(device: device, duration: 0.3, roomy: false)
         // The paper's own model peaks at 87 mm; this one at about 70 mm. With cracks across the
         // lattice planes, which count an inclined crack twice, the roof was thrown off.
         #expect(

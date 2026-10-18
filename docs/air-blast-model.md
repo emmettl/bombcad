@@ -124,6 +124,12 @@ structure as seen from the charge counts from the charge alone. The app's Domain
 face nearer than that (`Scenario.tightOpenFaces`, `Scenario.structureFaceClearance`). The domain
 can be grown only from its origin, so faces below the origin are moved by moving the scene.
 
+The record's comparisons built in tighter boxes were each checked with one case at the rule
+(18 October 2026; [validation](validation.md#open-faces-at-the-clearance-rule)). Peaks and
+close-in slabs did not move. A 4 × 5 m slab in a box barely wider than itself lost a quarter of
+its swing, its underside's push draining out through the sides, and a chamber's roof was left
+11% lower.
+
 A better boundary was tried in place of the clearance. The faces took each wave as a plane one
 from the largest charge, at its angle, letting a grazing wave carry on past the face. It is not
 used:
@@ -135,6 +141,45 @@ used:
 
 A plane wave at its angle cannot carry the spherical spreading beyond a face, so no local face
 condition stands in for the room. It is kept on the branch `claude/oblique-far-field`.
+
+**The samples.** Most were sized for the positive phase and a run of minutes, and open with the
+warning. The warehouse, the transport hub and the deformable wall were widened to meet the
+clearance (18 October 2026), at about 1.4–1.6 times the air, and the terraced row was laid out to
+meet it. For the rest, meeting it would take far more air (the cost of a run goes with it at a
+given cell). So they keep their domains, and their late response, after the positive phase, carries
+the warning:
+
+| Sample | Nearest open face, m/kg^(1/3) | Air to meet 4 m/kg^(1/3) |
+|---|---|---|
+| Deformable building | 1.7 (behind the charge) | 2.7× |
+| Two-storey frame (2 t) | 0.7 (top) | 32× |
+| Frame with masonry infill | 2.4 (top) | 1.6× |
+| Three-storey building | 1.3 (behind the charge) | 2.0× |
+| Eight-storey frame (4 t) | 0.5 (top) | 19× |
+| Twelve-storey tower (4 t) | 0.6 (top) | 14× |
+| Steel and glass office (1 t) | 0.6 (top) | 3.8× |
+| Column, close-in | 0.5 (top) | 32× |
+| Wall in front of a building | 1.7 (sides, behind) | 3.1× |
+| Glass façade | 1.1 (behind the charge) | 1.4×, but its frame would have to move |
+| Car park | 0.7 (top) | 4.8× |
+| Three buildings across a street | 2.2 (top) | 1.8× |
+| Underpass | 0.9 (ends) | 5.0× |
+| Block-built house | 2.1 (behind the charge) | 1.7× |
+| Internal explosion (the test's chamber) | 0.3 | 6.5× |
+| Large-panel flats, street charge (500 kg) | 0.5 | 16× |
+
+The glass façade's panes break in the positive phase, which the faces do not move. The
+chamber's charge is inside its walls, so the faces see only what leaks out. In the frames and
+towers it is their collapse, long after the positive phase, that the faces may move.
+
+The warning leaves the choice to the user. Beneath it, **Widen to the rule** grows the domain from
+its origin until its far faces (east, north and the top) are 4 m/kg^(1/3) from the charge and the
+structures (`Scenario.grownToTheRule`, the `high` half of `Scenario.openFaceRoom`). Nothing in the
+scene moves. The advisor's estimate of a run on the grown domain is shown beside it, as times the
+air and the run's time before and after. Faces at the origin (west and south) can be cleared only
+by moving the scene's contents away from it, which the action does not do: it names those still
+near. The warning also says when the faces matter least: what the positive phase decides, such as
+glass breaking, and a charge inside its walls.
 
 ## The charge
 

@@ -31,8 +31,8 @@ Point, Canning Town*, Ministry of Housing and Local Government, HMSO, 1968):
 Meshed with solid elements of 87.5 mm, two through each wall and floor: 670,560 elements, 940 t,
 92 joints with 18,400 node pairs. Each storey's floor is continuous over the cross walls (the
 in-situ joint with its bars), and each wall line is one panel along its length (the vertical
-joints of Figure C, in-situ concrete through U-bars). The parts must be solid elements: joints
-between parts are not made for shells.
+joints of Figure C, in-situ concrete through U-bars). The parts are solid elements: joints between
+parts in shells act at their nodes, without moments, too crude for these walls' bearings.
 
 `blastbench panelblock --case gravity` checks it under its own weight, damped, as the [IFC
 corpus](ifc-import-corpus.md) checks an imported building: **it stands**, 99.7% of its weight

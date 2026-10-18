@@ -1731,7 +1731,13 @@ kernel void refineRestrict(device Cell *coarse [[buffer(0)]],
     }
     impulse[index] = impulseBase[patch * perPatch + position] + largest;
     if (cutCells && parentCutRecord(cell, index, cutColumns, cutRecords, u) >= 0) {
-        {
+        bool open = false;
+        for (int n = 0; n < r * r * r && !open; ++n) {
+            open = (fineMask[fineIndex(patch, cell * r + int3(n % r, (n / r) % r, n / (r * r)), tile, u)] & 1) == 0;
+        }
+        // As below, a cell whose fine cells are all solid (the terrain's and a block's on it) keeps
+        // what it had.
+        if (open) {
             float2 species;
             Cell mean = cutMean(cell, patch, tile, fine, fineMask, fineCut,
                                 parentCutLow(cell, index, cutColumns, cutRecords, u).x, fineSpecies, true, species, u);
@@ -2404,6 +2410,18 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
         if (!rigid && terrain.enabled != 0) {
             byTerrain = cutCells ? geometry.low.x == 0.0f : centre.z < terrainHeight(centre.xy, terrain, terrainHeights);
             rigid = byTerrain;
+        }
+        // A cut cell less than half air with a block on the fine cell above it is solid, as such a
+        // coarse cell is when the scene loads: its air would be shut in, and what its column could
+        // pass up no further would come back to it magnified as many times as it is small, every
+        // step. A block too thin for the coarse cells to hold can stand on one here.
+        if (!rigid && cutCells && geometry.low.x < 0.5f) {
+            float3 above = centre + float3(0.0f, 0.0f, u.dx / float(r));
+            bool capped = false;
+            for (uint n = 0; n < boxCount && !capped; ++n) {
+                capped = all(above >= boxes[2 * n].xyz) && all(above <= boxes[2 * n + 1].xyz);
+            }
+            rigid = capped && !inOpenedPane(above, panes, paneStatus);
         }
     } else {
         rigid = parentRigid(rigidMask, index, u);

@@ -136,7 +136,13 @@ public enum TwoFaceSlabTests {
     /// Radius (m) of a sphere of TNT (1,600 kg/m³) of `mass` kg.
     static func sphereRadius(_ mass: Float) -> Float { pow(3 * mass / (4 * .pi * 1600), 1 / 3) }
 
-    public static func scenario(_ test: WuTest, elementSize: Float = 0.0125) -> Scenario {
+    /// The scene, moved by `pad.low` with the domain grown by `pad.low + pad.high`
+    /// (`Scenario.openFaceRoom`).
+    public static func scenario(
+        _ test: WuTest, elementSize: Float = 0.0125,
+        pad: (low: SIMD3<Float>, high: SIMD3<Float>) = (.zero, .zero)
+    ) -> Scenario {
+        let wuSlab = Self.wuSlab.moved(by: pad.low)
         var model = StructureModel(
             solids: [wuSlab], material: wuMaterial(), elementSize: elementSize, fixedBase: false)
         let bar: Float = .pi * 0.004 * 0.004
@@ -148,7 +154,7 @@ public enum TwoFaceSlabTests {
         case .two:
             model.addMat(to: wuSlab, thicknessAxis: 2, areaPerMetre: bar / 0.2, depth: 0.02)
         }
-        let c = wuCentre
+        let c = wuCentre + pad.low
         // The frame's beams under the supported edges.
         let boxes = [
             Box(
@@ -160,7 +166,7 @@ public enum TwoFaceSlabTests {
         ]
         let height = test.standoff ?? sphereRadius(test.charge)
         return Scenario(
-            name: "Wu \(test.name)", domainSize: wuDomain, boxes: boxes,
+            name: "Wu \(test.name)", domainSize: wuDomain + pad.low + pad.high, boxes: boxes,
             charge: Charge(mass: test.charge, position: c + SIMD3(0, 0, height)),
             gauges: [Gauge("Slab centre", at: c + SIMD3(0, 0, 0.01))], structure: model)
     }
@@ -216,7 +222,13 @@ public enum TwoFaceSlabTests {
         return material
     }
 
-    public static func scenario(_ test: WangTest, elementSize: Float = 0.0125) -> Scenario {
+    /// The scene, moved by `pad.low` with the domain grown by `pad.low + pad.high`
+    /// (`Scenario.openFaceRoom`).
+    public static func scenario(
+        _ test: WangTest, elementSize: Float = 0.0125,
+        pad: (low: SIMD3<Float>, high: SIMD3<Float>) = (.zero, .zero)
+    ) -> Scenario {
+        let wangSlab = Self.wangSlab.moved(by: pad.low)
         var model = StructureModel(
             solids: [wangSlab], material: wangMaterial(), elementSize: elementSize, fixedBase: false)
         model.addMat(
@@ -233,10 +245,10 @@ public enum TwoFaceSlabTests {
                 min: SIMD3(s.min.x - 0.5, s.max.y + 0.3, 0),
                 max: SIMD3(s.max.x + 0.5, s.max.y + 0.35, s.max.z + 0.3)),
         ]
-        let c = wangCentre
+        let c = wangCentre + pad.low
         let gauges = wangGauges.map { Gauge($0.name, at: c + SIMD3($0.offset.x, -0.01, $0.offset.y)) }
         return Scenario(
-            name: "Wang \(test.name)", domainSize: wangDomain, boxes: boxes,
+            name: "Wang \(test.name)", domainSize: wangDomain + pad.low + pad.high, boxes: boxes,
             charge: Charge(mass: 10, position: c - SIMD3(0, 1.2, 0)), gauges: gauges, structure: model)
     }
 
@@ -421,12 +433,17 @@ public enum TwoFaceSlabTests {
         duration: Double = 0.1, heldLengthwise: Bool = false,
         afterburning: Bool = SolverConfiguration.recommended.afterburning,
         airModel: AirModel? = nil, openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
+        roomy: Bool = false,
         adjust: (inout Scenario) -> Void = { _ in },
         prepare: ((StructureSolver) -> Void)? = nil, progress: ((String) -> Void)? = nil,
         inspect: ((StructureSolver, Double) -> Void)? = nil,
         configure: (inout SolverConfiguration) -> Void = { _ in }
     ) throws -> Result {
-        var scenario = scenario(test, elementSize: elementSize)
+        // `roomy`: every open face moved out to `Scenario.structureFaceClearance`, the scene with it.
+        let pad = roomy ? scenario(test).openFaceRoom(step: 0.5) : (low: .zero, high: .zero)
+        let wuSlab = Self.wuSlab.moved(by: pad.low)
+        let wuCentre = Self.wuCentre + pad.low
+        var scenario = scenario(test, elementSize: elementSize, pad: pad)
         adjust(&scenario)
         let c = SIMD3(wuCentre.x, wuCentre.y, wuSlab.min.z)
         let probes: [(String, SIMD3<Float>)] = [
@@ -485,12 +502,17 @@ public enum TwoFaceSlabTests {
         elementSize: Float = 0.0125, duration: Double = 0.1, edges: WangEdges = .fixed,
         afterburning: Bool = SolverConfiguration.recommended.afterburning,
         airModel: AirModel? = nil, openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
+        roomy: Bool = false,
         adjust: (inout Scenario) -> Void = { _ in },
         prepare: ((StructureSolver) -> Void)? = nil, progress: ((String) -> Void)? = nil,
         inspect: ((StructureSolver, Double) -> Void)? = nil,
         configure: (inout SolverConfiguration) -> Void = { _ in }
     ) throws -> Result {
-        var scenario = scenario(test, elementSize: elementSize)
+        // `roomy`: every open face moved out to `Scenario.structureFaceClearance`, the scene with it.
+        let pad = roomy ? scenario(test).openFaceRoom(step: 0.5) : (low: .zero, high: .zero)
+        let wangSlab = Self.wangSlab.moved(by: pad.low)
+        let wangCentre = Self.wangCentre + pad.low
+        var scenario = scenario(test, elementSize: elementSize, pad: pad)
         adjust(&scenario)
         let back = SIMD3(wangCentre.x, wangSlab.max.y, wangCentre.z)
         let probes = wangGaugeHeights.enumerated().map { n, dz in

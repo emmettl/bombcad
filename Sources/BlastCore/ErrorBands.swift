@@ -1207,7 +1207,8 @@ extension StandingScene {
                             "a full-scale chamber; 0.1 m cells and elements; its roof's peak rises with the mesh "
                             + "(48 to 57 mm on 50 mm elements, the ideal gas) and on 25 mm elements the solution "
                             + "breaks down; with afterburning and hot air the wall pressures alike and the roof "
-                            + "rising 50 mm, left 27 mm up, against 48 and 25 on the ideal gas",
+                            + "rising 50 mm, left 27 mm up, against 48 and 25 on the ideal gas; with the open "
+                            + "faces at the clearance rule, 47 and 25",
                         check: "An internal explosion in a reinforced concrete chamber"))
                 if let structure = structures.first, abs(structure.elementSize - 0.1) > 0.01 {
                     bands.removeLast()
@@ -1555,9 +1556,9 @@ extension StandingScene {
             }
             if kinds.contains(.profiledSteelSheeting) {
                 unbanded.append(
-                    "Profiled steel sheeting, by UFC's cold-formed panel method: illustrative, no band. Against "
-                        + "ADBLAST's ten screwed cladding shots it reads 0.50–1.37 of the measured deflection under "
-                        + "the air's load on the whole panel, low on nine, and its screws held as measured.")
+                    "Profiled steel sheeting, by UFC's cold-formed panel method on the middle strip of its ribs: "
+                        + "an approximation, no band. Against ADBLAST's ten screwed cladding shots it reads "
+                        + "0.65–1.09 of the measured deflection, and its screws held as measured.")
             }
             if kinds.contains(.crossLaminatedTimber) {
                 unbanded.append(

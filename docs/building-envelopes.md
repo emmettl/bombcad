@@ -177,9 +177,34 @@ Headless runs write them with `--envelope-histories <file.json>`; kept runs do n
 Recording leaves the air bit-identical, and each side's binned impulse equals the mean of its faces'
 own integrals (tests in `EnvelopeComponentTests.swift`).
 
-**Cost.** Memory is components × bins × 8 bytes, plus about 13 bytes a face: at 0.25 m, the
-street's 4 buildings (20 components, 120 ms) take 0.37 MB, the 64-building neighbourhood
-(320 components, 60 ms) 4.4 MB. Each step, a SIMD group a component reads the flags of the tiles of
+**Equivalent uniform loads** (since 18 October 2026). A one-way model takes its load as uniform,
+but the air's is not. A close-in charge loads a panel's middle most. The blast clears round its
+edges: ADBLAST's cladding ribs at the sides take a quarter less than the middle ones. A component's
+mean pressure weighs its edges as much as its middle, where the bending is. So each wall, slab, roof
+and pane is also recorded as Biggs's equivalent uniform load, ∫p φ dA / ∫φ dA, its faces weighted by
+the shape φ of its plastic mechanism (`EnvelopeComponentHistory.plate`):
+- along an axis held at both edges, a hinge at the middle, 1 − |2s − 1|;
+- from the one edge held, rotation about it, s (a freestanding wall's foot);
+- along an axis held at neither edge, uniform;
+- a component held nowhere is taken as held all round, as its damage takes it.
+
+A second load, the **strip** (`EnvelopeComponentHistory.strip`), is the middle third across the
+span, weighted along it. Across is the axis held at neither edge, else the longer. It is for
+profiled sheeting, whose ribs span on their own and do not share their load sideways as a plate
+does.
+
+Damage, and venting's walls and panes stepped with the air, use the plate, or the strip for a
+sheeted wall or roof. `EnvelopeComponentLoad(history, whole: true)` keeps the plain mean. Both loads
+are further entries in the recorder, each face's pressure scaled by its weight (1 for the
+components' own, so their histories are unchanged to the bit, tested). They are kept only if they
+fit the memory budget at the bins' width the components alone take, so a district's bins never
+widen for them.
+
+**Cost.** Memory is components × bins × 8 bytes, plus about 17 bytes a face (with its weight): at
+0.25 m, the street's 4 buildings (20 components, 120 ms) take 0.37 MB, the 64-building
+neighbourhood (320 components, 60 ms) 4.4 MB. The equivalent uniform loads triple the bins and
+read about 2.3 times the faces: at 0.5 m the neighbourhood's 2.5 MB becomes 6.9 MB. Their time is
+in `scenebench envelope-histories`' *bands* variant, against the histories without them. Each step, a SIMD group a component reads the flags of the tiles of
 air its faces lie in. A component whose air is all still is finished there, from the still air's
 pressure added as its faces would be (the same bits, tested). The awake ones are listed for two
 indirect dispatches: a threadgroup of 256 a component reading its faces (a face in a still tile reads
@@ -680,15 +705,24 @@ construction one gives it in the editor, first with what the construction could 
 2026 (a central mat, the default strengths, no cap, blockwork as concrete), then with its bars in both
 faces, its strengths, the canopy's mass and reinforced blockwork:
 
-| Wall | Charge | Cantilever, as built | The app, before / now | Measured | The detailed model |
+| Wall | Charge | Cantilever, as built, on the mean load / the equivalent load | The app on the mean load, before / now | Measured | The detailed model |
 |---|---|---|---|---|---|
-| Alsubaei, half-scale concrete, 1 m high, 0.2 m | 14 kg ANFO at 2 m | top 94 mm, 5.4°, hazardous | 4.2°, heavy / 5.4°, hazardous | light cracking at the foot, no significant deformation (after 12 shots) | clamped: top 37 mm (2.1°); on its footing in sand it rocks, 196 mm |
-| Alsubaei, canopied concrete, 2 m stem, 0.4 m | 125 kg at 4 m | top 61 mm, 1.7°, moderate | 7.2°, hazardous / 1.7°, moderate | unfaced: cracks at the foot and across the back, no significant deformation; foam-faced: 7–35 mm at mid-height | clamped: top 54 mm, mid-height 25 mm |
-| Alsubaei, reinforced blockwork, 2 m, 0.4 m | 25 kg at 4 m | top 32 mm, 0.9°, moderate | 0.4°, moderate / 0.9°, moderate | top 28 mm; bed joints cracked | top 37 mm |
-| The same | 125 kg at 4 m | 11.8°, failed | 5.4°, hazardous / 11.8°, failed | collapsed | comes apart |
-| Keys, single-leaf brick, 2 m, 102.5 mm, WR1A / WR1B / WR2C | 41 kg TNT at 10.6 / 13 / 15 m | falls at 0.07 / 0.11 / 0.17 s | the same | all broke and fell | falls as one column |
+| Alsubaei, half-scale concrete, 1 m high, 0.2 m | 14 kg ANFO at 2 m | top 94 mm, 5.4°, hazardous / 74 mm, 4.2°, heavy | 4.2°, heavy / 5.4°, hazardous | light cracking at the foot, no significant deformation (after 12 shots) | clamped: top 37 mm (2.1°); on its footing in sand it rocks, 196 mm |
+| Alsubaei, canopied concrete, 2 m stem, 0.4 m | 125 kg at 4 m | top 61 mm, 1.7°, moderate / 59 mm, 1.7°, moderate | 7.2°, hazardous / 1.7°, moderate | unfaced: cracks at the foot and across the back, no significant deformation; foam-faced: 7–35 mm at mid-height | clamped: top 54 mm, mid-height 25 mm |
+| Alsubaei, reinforced blockwork, 2 m, 0.4 m | 25 kg at 4 m | top 32 mm, 0.9°, moderate / 28 mm, 0.8°, moderate | 0.4°, moderate / 0.9°, moderate | top 28 mm; bed joints cracked | top 37 mm |
+| The same | 125 kg at 4 m | 11.8°, failed / 9.3°, hazardous | 5.4°, hazardous / 11.8°, failed | collapsed | comes apart |
+| Keys, single-leaf brick, 2 m, 102.5 mm, WR1A / WR1B / WR2C | 41 kg TNT at 10.6 / 13 / 15 m | falls at 0.07 / 0.11 / 0.17 s / 0.07 / 0.12 / 0.18 s | the same | all broke and fell | falls as one column |
 
-Six of the seven outcomes are as measured. The miss is the half-scale wall, which both the
+**On the equivalent load** (18 October 2026, [above](#envelope-components-and-their-pressure-histories)),
+the walls are judged as the app now judges them. Weighted by rotation about the foot, a load
+heaviest low on the wall counts for less than its mean says:
+- the blockwork at 25 kg comes to 28 mm, the measured 28;
+- the half-scale wall comes down from hazardous to heavy, nearer the light cracking seen;
+- the blockwork at 125 kg comes to 9.3°, hazardous, short of the 10° that fails it, where it
+  collapsed: a miss, on the unsafe side, which the mean's 11.8° had not made;
+- the brick walls fall as before.
+
+Five of the seven outcomes are as measured on the equivalent load, six on the mean. The account below is of the mean's. Six of the seven outcomes are as measured. The miss is the half-scale wall, which both the
 cantilever and the detailed model bend far past the light cracking seen: the safe side, and the
 validation record's air gives that close-in ANFO wall a load a tenth above the design curves', which
 may be more than it took. The blockwork's top is within 16% of its double-integrated 28 mm. The
@@ -757,6 +791,24 @@ on the slab as a rigid envelope in its test's scene, the recommended air on 12.5
 | Wang A / B, clamped all round | the model's | 9.6 / 5.1 (0.49 / 0.36) | 4.7 / 1.6 | 19.7 / 14.1 | 3.1 / 2.8 clamped |
 | Mendonça 2, 4, 5, 7, 9 | the model's | 4.2–4.9 | 3.1–3.9 | 20–38 (with the rig's motion) | about 4 at the first peak |
 | Mendonça 1 / 10 | the model's | 17 (2.2°, heavy) / 7.8 (moderate) | 9.3 / 6.6 | both collapsed | both stand |
+| Wu S5–S8 | the model's, equivalent | 4.6, 7.5, 13.5, 28.0 (0.91–1.56) | 2.3–15.3 | 4.0, 8.2, 13.2, 18.0 | |
+| Wu D5–D8 | the model's, equivalent | 5.0, 9.6, 21.7, 49.5 (0.95–3.56) | 2.8–25.9 | 4.1, 10.1, 12.0, 13.9 | |
+| Wang A / B | the model's, equivalent | 9.2 / 4.9 (0.47 / 0.35) | 4.5 / 1.5 | 19.7 / 14.1 | |
+| Mendonça 2, 4, 5, 7, 9 | the model's, equivalent | 5.1–6.7 | 3.7–4.7 | 20–38 | |
+| Mendonça 1 / 10 | the model's, equivalent | 23 (2.9°, heavy) / 11 (1.4°, moderate) | 12 / 8.1 | both collapsed | |
+
+The rows marked *equivalent* (18 October 2026) take the model's load as the app now does, the
+slab's faces weighted by its mechanism's shape ([equivalent uniform
+loads](#envelope-components-and-their-pressure-histories)), each held all round as its component
+is. A close-in charge loads a slab's middle most:
+- Wu's slabs take 1.5–1.6 times the mean's impulse. One face's now reads 0.91–1.56 of measured
+  instead of 0.52–0.71. With steel in both faces, the two largest charges read well over, D8 3.6
+  times: the safe side.
+- Wang's panels, loaded nearly evenly, read about 4% lower.
+- Mendonça's standing slabs read a fifth to two fifths higher, still far under meters that carry
+  the rig's motion. The two that collapsed are still left heavy and moderate.
+
+The rows under measured loads do not use the recorder and are unchanged.
 
 **Under the measured loads the measured peak lies between the bounds** on all eight: the simply
 supported strip, the right edges for the simulator's pin and roller, reads 0.97–2.59 of the

@@ -79,6 +79,13 @@ extension Scenario {
     /// the charge counts from the charge alone: Tyndall's, 1.4 m/kg^(1/3) behind the building in
     /// every run, did not move its front's response. Empty without a structure.
     public var tightOpenFaces: [(name: String, clearance: Float)] {
+        openFaceClearances.filter { $0.clearance < Self.structureFaceClearance }
+            .map { ($0.name, $0.clearance) }.sorted { $0.clearance < $1.clearance }
+    }
+
+    /// Each open face with its axis, whether it is the high one, and its clearance in m/kg^(1/3)
+    /// from the charge and the structures beside it (`tightOpenFaces`). Empty without a structure.
+    private var openFaceClearances: [(name: String, axis: Int, high: Bool, clearance: Float)] {
         let structures = structuralObjects.compactMap { $0.structure?.bounds }
         guard !structures.isEmpty, charge.mass > 0 else { return [] }
         let scale = cbrt(charge.mass)
@@ -86,7 +93,7 @@ extension Scenario {
             (.xMin, "west (x = 0)", 0, false), (.xMax, "east", 0, true), (.yMin, "south (y = 0)", 1, false),
             (.yMax, "north", 1, true), (.zMin, "floor", 2, false), (.zMax, "top", 2, true),
         ]
-        var tight: [(name: String, clearance: Float)] = []
+        var clearances: [(name: String, axis: Int, high: Bool, clearance: Float)] = []
         for (face, name, axis, high) in faces where !reflectiveFaces.contains(face) {
             func distance(_ x: Float) -> Float { high ? domainSize[axis] - x : x }
             let fromCharge = distance(charge.position[axis])
@@ -96,10 +103,25 @@ extension Scenario {
             }
             let nearest =
                 ([fromCharge] + beside.flatMap { [distance($0.min[axis]), distance($0.max[axis])] }).min()!
-            let clearance = max(nearest, 0) / scale
-            if clearance < Self.structureFaceClearance { tight.append((name, clearance)) }
+            clearances.append((name, axis, high, max(nearest, 0) / scale))
         }
-        return tight.sorted { $0.clearance < $1.clearance }
+        return clearances
+    }
+
+    /// How far (m) each open face must move out for `tightOpenFaces` to be empty, each rounded up
+    /// to a multiple of `step`: `low` below the origin on each axis, which means moving the
+    /// scene by it, and `high` beyond the far side. Benchmarks built in tight domains use it to
+    /// check their comparisons against a domain that meets the rule (`--roomy`).
+    public func openFaceRoom(step: Float) -> (low: SIMD3<Float>, high: SIMD3<Float>) {
+        let wanted = Self.structureFaceClearance * cbrt(max(charge.mass, 0))
+        var low = SIMD3<Float>.zero
+        var high = SIMD3<Float>.zero
+        for face in openFaceClearances where face.clearance < Self.structureFaceClearance {
+            let short = wanted - face.clearance * cbrt(charge.mass)
+            let room = (short / step).rounded(.up) * step
+            if face.high { high[face.axis] = room } else { low[face.axis] = room }
+        }
+        return (low, high)
     }
 
     /// A line saying which open faces are too near (`tightOpenFaces`), or nil.
@@ -111,6 +133,25 @@ extension Scenario {
             format:
                 "Open faces near the charge or the structure (m/kg^(1/3)): %@. Their reflections can move the structure's response after the positive phase; keep each at least %.0f m/kg^(1/3) (%.0f m) away.",
             list, Self.structureFaceClearance, Self.structureFaceClearance * cbrt(charge.mass))
+    }
+
+    /// When the open faces matter least, for the warning's reader: results the positive phase
+    /// decides, and a charge the faces see only through what leaks out.
+    public static let tightFacesMatterLeast =
+        "They matter least for what the positive phase decides, such as glass breaking, and for a charge inside its walls, whose faces see only what leaks out."
+
+    /// The domain with each tight open face beyond its far side (east, north, top) moved out to
+    /// `structureFaceClearance`, to a multiple of `step`, grown from its origin so that nothing in
+    /// the scene moves (`openFaceRoom`'s `high`); nil when none is tight. Faces at the origin (west,
+    /// south) can be cleared only by moving the scene, which this does not do: those still tight
+    /// are `left`.
+    public func grownToTheRule(step: Float = 0.5) -> (
+        domain: SIMD3<Float>, left: [(name: String, clearance: Float)]
+    )? {
+        guard !tightOpenFaces.isEmpty else { return nil }
+        var grown = self
+        grown.domainSize += openFaceRoom(step: step).high
+        return (grown.domainSize, grown.tightOpenFaces)
     }
 
     /// Resizes the domain from its origin, everything staying where it is. Throws if the scene's
@@ -174,4 +215,9 @@ extension Scenario {
         domainSize.z = suggestedHeight
         gauges.removeAll { any($0.position .< 0) || any($0.position .>= domainSize) }
     }
+}
+
+extension Box {
+    /// The box moved by `offset`.
+    func moved(by offset: SIMD3<Float>) -> Box { Box(min: min + offset, max: max + offset) }
 }
