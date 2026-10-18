@@ -29,6 +29,9 @@ public final class BlastSolver {
     /// batch: the steps' times it gives are the same however the run is batched.
     private var clockTicks: UInt64 = 0
     private var exposurePlane: ExposurePlane?
+    /// The one-dimensional solution a charge was mapped from, where it was and how far it reached,
+    /// for an exposure plane set up after it (`configureExposurePlane`); nil otherwise.
+    var mappedStart: (blast: SphericalBlast, centre: SIMD3<Float>, radius: Float)?
     private var exposureNeedsInitialSample = false
     private(set) var envelopeExposure: EnvelopeExposure?
     private var envelopeNeedsInitialSample = false
@@ -453,10 +456,16 @@ public final class BlastSolver {
     public func configureExposurePlane(heightM: Float, arrivalThresholdPa: Float, spacingM: Float? = nil)
         throws
     {
-        precondition(!batchInFlight && time == 0, "Configure probes before stepping")
-        exposurePlane = try ExposurePlane(
+        precondition(!batchInFlight && stepCount == 0, "Configure probes before stepping")
+        let plane = try ExposurePlane(
             device: device, library: library, grid: grid, height: heightM,
             threshold: arrivalThresholdPa, spacing: spacingM)
+        // A charge mapped from one dimension has already passed the plane within its mapped radius:
+        // there it takes the solution's own peak, impulse and arrival.
+        if let mappedStart {
+            plane.seed(mappedStart.blast, centre: mappedStart.centre, radius: mappedStart.radius)
+        }
+        exposurePlane = plane
         exposureNeedsInitialSample = true
     }
 

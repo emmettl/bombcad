@@ -169,7 +169,8 @@ func runGroundMotion(device: MTLDevice) throws {
             scenario.gauges = ranges.map {
                 Gauge("ground \(format(Double($0), 0)) m", at: SIMD3($0, 0.25 * dx, 0.25 * dx))
             }
-            var configuration = SolverConfiguration.recommended
+            // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+            var configuration = SolverConfiguration.recommended.balloonStart
             configureRefinement(&configuration)
             configuration.gravity = chosenGravity()
             applyChosenAir(&configuration)

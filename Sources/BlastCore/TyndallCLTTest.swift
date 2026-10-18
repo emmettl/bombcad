@@ -138,7 +138,8 @@ public enum TyndallCLTTest {
         let x0 = 24 + pad.x
         let yc = 8 + pad.y
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
-        solver.configuration = .recommended
+        // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+        solver.configuration = .recommended.balloonStart
         solver.configuration.refinement = refinement
         configure?(&solver.configuration)
         try solver.load(scenario)

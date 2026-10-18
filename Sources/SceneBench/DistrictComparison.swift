@@ -138,7 +138,8 @@ enum DistrictComparison {
 
         // The recommended air (far-field faces: copying faces at a district's low top channel the
         // wave), or the bare core with `--bare`; whole cells for the terrain with `--staircase`.
-        var configuration = args.contains("--bare") ? SolverConfiguration() : .recommended
+        // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+        var configuration = args.contains("--bare") ? SolverConfiguration() : .recommended.balloonStart
         configuration.terrainCutCells = !args.contains("--staircase")
         if let name = value("ground") {
             guard let type = GroundType(rawValue: name) else {

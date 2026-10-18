@@ -1080,7 +1080,8 @@ func chosenBurnLimit() -> AfterburnLimit? {
 }
 
 func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver {
-    var configuration = SolverConfiguration.recommended
+    // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+    var configuration = SolverConfiguration.recommended.balloonStart
     configureRefinement(&configuration)
     configuration.radiativeCooling = try chosenCooling()
     configuration.gravity = chosenGravity()
@@ -1170,7 +1171,17 @@ func runValidation() throws {
         }
         if flag("hll") { solver.configuration.riemannSolver = .hll }
         applyChosenAir(&solver.configuration)
-        if flag("mapped") { solver.configuration.mappedCharge = true }
+        // The fine one-dimensional start with afterburning and hot air, as the app's default since
+        // 18 October 2026; `--balloon-start` for the sphere of hot gas, `--mapped` for it otherwise.
+        solver.configuration.mappedCharge =
+            flag("mapped") || (solver.configuration.afterburning && !flag("balloon-start"))
+        if let cells = option("mapped-cells").flatMap({ Float($0) }) {
+            solver.configuration.mappedChargeCells = cells
+        }
+        if flag("mapped-no-burn") { solver.configuration.mappedChargeBurns = false }
+        if let mixing = option("mapped-mixing").flatMap({ Float($0) }) {
+            solver.configuration.mappedChargeMixing = mixing
+        }
         if let time = option("burn-time").flatMap({ Float($0) }) {
             solver.configuration.afterburnTime = time / 1000
         }
@@ -1191,6 +1202,13 @@ func runValidation() throws {
 
     // 1. Kingery-Bulmash: the design-practice standard for a surface burst.
     var scenario = ScenarioPreset.openGround.scenario
+    // `--mass 10`: another charge, the domain scaled with its cube root, so the gauges keep their
+    // scaled distances.
+    var massScale: Float = 1
+    if let chosen = option("mass").flatMap({ Float($0) }) {
+        massScale = cbrt(chosen / scenario.charge.mass)
+        scenario.charge.mass = chosen
+    }
     let mass = Double(scenario.charge.mass)
     // Scaled distances from close in to as far as the domain allows (`--z` overrides).
     let distances =
@@ -1199,9 +1217,9 @@ func runValidation() throws {
     let points = distances.compactMap { KingeryBulmash.point(at: $0) }
     // `--domain-scale 2`: the domain this many times larger, charge and gauges in its middle, to
     // see what its open faces send back.
-    let scale = option("domain-scale").flatMap { Float($0) } ?? 1
-    scenario.domainSize *= scale
-    let centre = 32 * scale
+    let scale = (option("domain-scale").flatMap { Float($0) } ?? 1) * massScale
+    scenario.domainSize = (scenario.domainSize * scale).rounded(.up)
+    let centre = (32 * scale).rounded()
     scenario.charge.position = SIMD3(centre, centre, 0)
     scenario.gauges = points.map { point in
         Gauge(
@@ -1274,6 +1292,8 @@ func runValidation() throws {
         var column: [(peak: Double, impulse: Double)] = []
         for point in points {
             var wall = ScenarioPreset.openGround.scenario
+            // The charge `--mass` chose, at the stand-offs its scaled distances give.
+            wall.charge.mass = scenario.charge.mass
             wall.reflectiveFaces = [.zMin, .xMax]
             wall.charge.position = SIMD3(64 - Float(point.range(mass: mass)), 32, 0)
             wall.gauges = [Gauge("Wall", at: SIMD3(63.99, 32, 0.05))]
@@ -4362,7 +4382,8 @@ func runAnchorage() throws {
                     margin: option("margin").flatMap { Float($0) } ?? 12,
                     domainHeight: option("height").flatMap { Float($0) } ?? 18, soil: soil,
                     air: {
-                        var air = SolverConfiguration.recommended
+                        // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+                        var air = SolverConfiguration.recommended.balloonStart
                         applyChosenAir(&air)
                         return air
                     }(),
@@ -4440,7 +4461,8 @@ func runDialPack() throws {
         name: "Dial Pack", domainSize: SIMD3(side, side, side / 2), boxes: [],
         charge: Charge(mass: mass, position: SIMD3(side / 2, side / 2, radius)))
     scenario.gauges = []
-    var configuration = SolverConfiguration.recommended
+    // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+    var configuration = SolverConfiguration.recommended.balloonStart
     configureRefinement(&configuration)
     configuration.afterburning = true
     configuration.airModel = .thermallyPerfect
@@ -5053,7 +5075,9 @@ func runDigest() throws {
     for (name, preset, cellSize, afterburning, shells) in cases {
         // `--recommended` starts from the recommended air (afterburning throughout), `--gravity` adds
         // gravity in the air.
-        var configuration = flag("recommended") ? SolverConfiguration.recommended : SolverConfiguration()
+        // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+        var configuration =
+            flag("recommended") ? SolverConfiguration.recommended.balloonStart : SolverConfiguration()
         configureRefinement(&configuration)
         configuration.afterburning = afterburning || flag("recommended")
         configuration.gravity = chosenGravity()
@@ -5245,7 +5269,8 @@ func runAirCost() throws {
     hot.airModel = .thermallyPerfect
     var burning = core
     burning.afterburning = true
-    var recommended = SolverConfiguration.recommended
+    // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+    var recommended = SolverConfiguration.recommended.balloonStart
     recommended.skipStillAir = flag("skip")
     let airs = [
         ("ideal gas, copying faces", core), ("hot air", hot), ("afterburning, ideal gas", burning),
@@ -5454,6 +5479,21 @@ do {
     case "throughput": try runThroughput()
     case "structure": try runStructure()
     case "validate": try runValidation()
+    case "mapped-cost":
+        // The fine one-dimensional start's own time (CPU), by charge and cell: `--masses 1,10,100
+        // --dx 0.125,0.25,0.5 --cells 64`.
+        let masses = (option("masses") ?? "1,10,100,1000").split(separator: ",").compactMap { Float($0) }
+        let cells = (option("dx") ?? "0.125,0.25,0.5,1").split(separator: ",").compactMap { Float($0) }
+        let reach = option("cells").flatMap { Float($0) } ?? 64
+        for mass in masses {
+            for dx in cells {
+                let cost = BlastSolver.mappedStartCost(
+                    mass: mass, cellSize: dx, cells: reach, configuration: .recommended)
+                print(
+                    "\(mass) kg, \(dx) m: \(String(format: "%.2f", cost.seconds)) s, \(cost.cells) cells, \(cost.steps) steps"
+                )
+            }
+        }
     case "snapshot": try runSnapshot()
     case "thin-blocks": try runThinBlocks()
     case "gravity": try runGravity(device: device)

@@ -173,6 +173,10 @@ struct SimulationSettings: Equatable {
     /// (`SolverConfiguration.settlesStructures`), as since 17 October 2026; false for their weight
     /// taken as the run starts, as before.
     var settlesStructures = true
+    /// With afterburning and hot air, a lone charge starts from a fine one-dimensional burst mapped
+    /// onto the grid (`SolverConfiguration.mappedCharge`), by default since 18 October 2026; off, as
+    /// before, from a sphere of hot gas a few cells across.
+    var mappedStart = true
     /// Debris lands on soil, a Winkler bed of `groundStiffness` (Pa/m), instead of the hard ground.
     var softGround = false
     var groundStiffness = SolverConfiguration.soilSubgradeModulus
@@ -825,6 +829,7 @@ final class SimulationModel {
                 settings.outlineByOverlap = run.countsByOverlap(over: scenario)
                 settings.ventsGlazing = run.ventsGlazing(over: scenario)
                 settings.settlesStructures = run.settlesStructures(over: scenario)
+                settings.mappedStart = run.startsMapped
                 settings.softGround = run.groundStiffness != nil
                 settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
                 settings.ground = run.ground ?? .rigid
@@ -976,6 +981,7 @@ final class SimulationModel {
             settings.outlineByOverlap = run.countsByOverlap(over: document.scenario)
             settings.ventsGlazing = run.ventsGlazing(over: document.scenario)
             settings.settlesStructures = run.settlesStructures(over: document.scenario)
+            settings.mappedStart = run.startsMapped
             settings.softGround = run.groundStiffness != nil
             settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
             settings.ground = run.ground ?? .rigid
@@ -1186,6 +1192,7 @@ final class SimulationModel {
         settings.outlineByOverlap = inputs.settings.countsByOverlap(over: inputs.scenario)
         settings.ventsGlazing = inputs.settings.ventsGlazing(over: inputs.scenario)
         settings.settlesStructures = inputs.settings.settlesStructures(over: inputs.scenario)
+        settings.mappedStart = inputs.settings.startsMapped
         settings.softGround = inputs.settings.groundStiffness != nil
         settings.groundStiffness = inputs.settings.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
         settings.ground = inputs.settings.ground ?? .rigid
@@ -2376,7 +2383,8 @@ final class SimulationModel {
             terrainCutCells: settings.terrainCutCells,
             groundStiffness: settings.softGround ? settings.groundStiffness : nil,
             ground: settings.ground == .rigid ? nil : settings.ground,
-            outlineByOverlap: settings.outlineByOverlap, settlesStructures: settings.settlesStructures)
+            outlineByOverlap: settings.outlineByOverlap, settlesStructures: settings.settlesStructures,
+            mappedStart: settings.mappedStart)
         solver.configuration.fitRefinementMemory(solver.grid, memory: advisorMemory)
     }
 

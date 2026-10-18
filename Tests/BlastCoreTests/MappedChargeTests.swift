@@ -32,6 +32,39 @@ struct MappedChargeTests {
         #expect(abs(sedov - 1.2) / 1.2 < 0.08, "Sedov-Taylor radius \(sedov) m at \(blast.time) s")
     }
 
+    @Test("With hot air and afterburning the one-dimensional blast gains just what its products burn")
+    func hotAirAndAfterburning() {
+        // 10 kg of TNT, its products burning in 10 ms x 10^(1/3) as the air solver's do.
+        let afterburn = SphericalBlast.Afterburn(
+            energy: 10e6, rate: 1 / (10e-3 * cbrt(10.0)), oxygenPerFuel: 5.25 * 32 / 227.13)
+        var blast = SphericalBlast(
+            mass: 10, energy: 10 * Double(Charge.energyPerKilogram),
+            radius: cbrt(3 * 10 / (4 * Double.pi * 1600)),
+            extent: 3, cells: 400, gamma: 1.4, ambientDensity: 1.225, ambientPressure: 101_325,
+            thermallyPerfect: true, afterburn: afterburn)
+        func integral(_ values: (Int) -> Double) -> Double {
+            (0..<blast.density.count).reduce(0) { sum, i in
+                let inner = Double(i) * blast.cellSize
+                let outer = inner + blast.cellSize
+                return sum + values(i) * 4 / 3 * Double.pi * (outer * outer * outer - inner * inner * inner)
+            }
+        }
+        let energy0 = integral { blast.energy[$0] }
+        let fuel0 = integral { blast.fuel[$0] }
+        blast.run(toShockRadius: 2)
+        let burnt = fuel0 - integral { blast.fuel[$0] }
+        #expect(burnt > 0.001 * fuel0, "burnt \(burnt) kg of \(fuel0)")
+        // Energy flows out of the last cell only once the shock gets there, which it has not.
+        #expect(abs((integral { blast.energy[$0] } - energy0) / (burnt * 10e6) - 1) < 0.01)
+        #expect(blast.fuel.allSatisfy { $0 >= 0 } && blast.oxygen.allSatisfy { $0 >= 0 })
+        // Hot air: the ratio of specific heats falls in the fireball, from 1.4 in the cold air.
+        let hot = SphericalBlast.Gas(gamma: 1.4, thermallyPerfect: true)
+        #expect(abs(hot.ratio(density: 1.225, pressure: 101_325) - 1.4) < 0.001)
+        #expect(hot.ratio(density: 1, pressure: 1e6) < 1.33)
+        let p = hot.pressure(density: 2, internalEnergy: hot.internalEnergy(density: 2, pressure: 5e6))
+        #expect(abs(p / 5e6 - 1) < 1e-9)
+    }
+
     @Test("Mapped onto the grid, the charge brings its energy, and gauges it passed keep their record")
     func mappedOntoGrid() throws {
         let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")

@@ -116,7 +116,8 @@ func runEnvelopeSlabs(device: MTLDevice) throws {
     ) {
         var scene = scenario
         for object in scenario.structuralObjects { try scene.useEnvelope(id: object.id) }
-        var configuration = SolverConfiguration.recommended
+        // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+        var configuration = SolverConfiguration.recommended.balloonStart
         configuration.airSleepThreshold = 0
         configuration.airSleepCrossings = 0
         let solver = try BlastSolver(

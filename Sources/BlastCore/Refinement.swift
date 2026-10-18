@@ -736,6 +736,33 @@ final class AirRefinement {
         }
     }
 
+    /// Takes each placed patch's record of its coarse cells' impulse before it (what the coarse
+    /// cells' impulse is rebuilt from) afresh from `impulse`, the parent's field: for a first level
+    /// whose coarse impulse was laid down after its patches were placed, as a charge mapped from
+    /// one dimension lays its passage's.
+    func reseedImpulseBase(from impulse: UnsafeBufferPointer<Float>, grid: Grid) {
+        let tiles = tileOfPatch.contents().bindMemory(to: UInt32.self, capacity: maxPatches)
+        let size = Self.patchSize
+        let perPatch = size * size * size
+        let base = impulseBase.contents().bindMemory(to: Float.self, capacity: maxPatches * perPatch)
+        for patch in 0..<maxPatches where tiles[patch] != UInt32.max {
+            let tile = Int(tiles[patch])
+            let origin =
+                SIMD3(tile % tileDims.x, (tile / tileDims.x) % tileDims.y, tile / (tileDims.x * tileDims.y))
+                &* size
+            for z in 0..<size {
+                for y in 0..<size {
+                    for x in 0..<size {
+                        let cell = origin &+ SIMD3(x, y, z)
+                        guard cell.x < grid.nx, cell.y < grid.ny, cell.z < grid.nz else { continue }
+                        base[patch * perPatch + x + size * (y + size * z)] =
+                            impulse[grid.index(cell.x, cell.y, cell.z)]
+                    }
+                }
+            }
+        }
+    }
+
     func reset() {
         let tiles = tileDims.x * tileDims.y * tileDims.z
         let cells = maxPatches * side * side * side

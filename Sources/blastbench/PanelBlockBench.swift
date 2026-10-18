@@ -61,7 +61,8 @@ func runPanelBlock(device: MTLDevice) throws {
 
     // The recommended air (afterburning and hot air do not enter a deflagration).
     let solver = try BlastSolver(
-        device: device, scenario: scenario, cellSize: cellSize, configuration: .recommended)
+        // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+        device: device, scenario: scenario, cellSize: cellSize, configuration: .recommended.balloonStart)
     // Pieces that come off their seats fall on what is below them.
     // Diagnostics: `--contact after|off` (always by default), `--no-ground`.
     let contact: ContactMode =

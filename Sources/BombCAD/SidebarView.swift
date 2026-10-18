@@ -344,6 +344,15 @@ struct SidebarView: View {
                     "Burns the charge's products in the air they mix with, and lets hot air store energy "
                         + "in molecular vibration. Closer to tests of charges in rooms and in the open; "
                         + "about twice as slow.")
+            if model.settings.detailedCharge {
+                Toggle("Fine start of the blast", isOn: $model.settings.mappedStart)
+                    .help(
+                        "Solves a lone charge's first moments on a fine radial grid and maps them onto the "
+                            + "air once the shock has spread as far as it can before meeting anything, instead "
+                            + "of starting from a ball of hot gas a few cells across. Peaks close in come within "
+                            + "about a fifth of Kingery-Bulmash where the ball leaves them at half. Off, as "
+                            + "before 18 October 2026.")
+            }
             if !model.settings.scenario.structuralObjects.isEmpty {
                 Toggle("Outline structures by overlap", isOn: $model.settings.outlineByOverlap)
                     .help(

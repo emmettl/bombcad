@@ -1,5 +1,6 @@
 import Foundation
 import Metal
+import simd
 
 /// A horizontal plane of fixed Eulerian probes, sampled after each complete air step.
 /// Pressure is trilinearly interpolated from coarse cell centres at fixed physical points.
@@ -60,6 +61,22 @@ final class ExposurePlane {
     func reset() {
         buffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: buffer.length / 16)
             .update(repeating: SIMD4(0, 0, -1, 0), count: buffer.length / 16)
+    }
+
+    /// The peak, impulse and arrival `blast`, a one-dimensional solution about `centre`, left at the
+    /// plane's points within `radius` of it, before the grid takes over.
+    func seed(_ blast: SphericalBlast, centre: SIMD3<Float>, radius: Float) {
+        let records = buffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: nx * ny)
+        for j in 0..<ny {
+            for i in 0..<nx {
+                let point = SIMD3((Float(i) + 0.5) * spacing, (Float(j) + 0.5) * spacing, height)
+                let r = simd_distance(point, centre)
+                guard r < radius else { continue }
+                let extremes = blast.extremes(at: Double(r))
+                let arrival = blast.arrival(at: Double(r)).map { Float($0) } ?? -1
+                records[i + nx * j] = SIMD4(Float(extremes.x), Float(extremes.y), arrival, 0)
+            }
+        }
     }
 
     func snapshot(grid: Grid, elapsed: Double) -> ExposurePlaneSnapshot {
