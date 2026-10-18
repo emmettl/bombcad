@@ -264,9 +264,14 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
 
 - **Done:** sweeps and ensembles shared across Macs by measured speed; the effects beside the
   blast placed on other Macs by cost
-  ([several consumers](distributed-computing.md#several-consumers-on-several-machines)).
-- **Next:** single-GPU gains first: refined patches taking shorter steps, and cheaper contact
-  ([better first](distributed-computing.md#better-first)).
+  ([several consumers](distributed-computing.md#several-consumers-on-several-machines)); Macs
+  nearby as workers without SSH, paired once and over TLS
+  ([Macs nearby](distributed-computing.md#macs-nearby-without-ssh)). The single-GPU gains put
+  first are in: refined patches taking their own steps (`refinementOwnSteps`) and contact's exact
+  pair skip ([better first](distributed-computing.md#better-first)).
+- **Next:** the mini's slow sending to a Mac nearby over Wi-Fi, measured again in a quiet window,
+  and a session's bulk carried on a plain socket if it holds; the Studio as the sharing Mac, for
+  the thin client ([Macs nearby](distributed-computing.md#macs-nearby-without-ssh)).
 
 ### Usability, in parallel
 

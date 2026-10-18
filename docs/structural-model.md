@@ -1066,7 +1066,12 @@ tenths of a 0.25 m cell off the lattice. It gives the wall's momentum over the 3
   against the staircase's steps of up to 6%. It falls 9% across the cell, as the finer air's 8%.
 - **Peak force does not.** A tenth of a cell off the lattice it is 12% above that line, and the
   excess shrinks as the offset grows. The overshoot is in the air beside a small cut cell, not in
-  how the face reads it: weighting the small cell's own reading less does not move it.
+  how the face reads it: weighting the small cell's own reading less does not move it. Merging
+  each cut cell under half air with the cell taking its difference, as one, the standard cure,
+  made it worse: from a tenth to a half of a cell the impulse and peak fell 15% below the line,
+  and jumped back past it. Sharing the difference among all the neighbours on the air's side
+  instead (Colella's redistribution) cannot help a plane wave on a flat wall, since each column
+  then takes back from its neighbours' small cells what its own gave them.
 - **The level.** The cut cells' read is higher than the staircase's, which reads the cell beside the
   face, not the pressure at the wall. With the air refined it comes down to the same value: on the
   lattice, 1253, 1202 and 1165 N s on 0.25, 0.0625 and 0.03125 m air, against the staircase's 1032,
