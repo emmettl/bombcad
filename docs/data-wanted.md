@@ -123,7 +123,7 @@ means an open paper whose numbers were transcribed into the code. The survey's
 
 | Source | Folder | Compared in |
 |---|---|---|
-| Sadek et al. 2010 (NIST TN 1669); Weigand and Berman 2016: steel connections under a column's removal | – | [Steel connections](shell-model.md#steel-connections) |
+| Sadek et al. 2010 (NIST TN 1669); Weigand and Berman 2016: steel connections under a column's removal; Culache 2017: bolted end plates loaded slowly and in 40 ms | `Culache2017`, `NIST-TN1669` | [Steel connections](shell-model.md#steel-connections) |
 | Langdon 2003: corrugated blast wall panels under pulse pressure | `../profiled-sheeting/langdon-2003` | [Profiled sheeting](profiled-sheeting.md#against-langdons-corrugated-panels) |
 | ADBLAST 2015: trapezoidal cladding on screws under C4 | `../profiled-sheeting/adblast` | [Profiled sheeting](profiled-sheeting.md#against-adblasts-cladding-tests) |
 | Wu et al. 2023; Wang et al. 2022: slabs with steel in both faces | `Wu2023`, `Wang2022` | [Validation](validation.md#slabs-with-steel-in-both-faces) |

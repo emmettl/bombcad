@@ -19,11 +19,11 @@ long-span steel and glass roof, beside a glazed concourse (`ScenarioPreset.trans
   square hollow sections and its posts 200 × 10 mm, at 3 m. A Warren truss's diagonals would not
   lie along the axes, as the shells' lines must.
 - **Purlins.** 356 UB purlins run at 3 m along the shed on the trusses' top chords.
-- **Joints.** Since 18 October 2026 the trusses' chords meet the columns, and the purlins the
-  end trusses, through welded-flange connections (WUF-B,
-  [steel connections](shell-model.md#steel-connections)). These are full-strength and fracture
-  at 0.081 rad. The posts and chords within a truss stay welded rigidly, as a Vierendeel
-  truss's are.
+- **Joints.** Since 18 October 2026 the trusses' chords are bolted to the columns, and the
+  purlins to the end trusses, by extended end plates, as British portal frames are
+  ([steel connections](shell-model.md#steel-connections)). Each takes 0.74 of its beam's plastic
+  moment and fractures at 0.0122 rad, as Culache's broke when loaded in 40 ms. The posts and
+  chords within a truss stay welded rigidly, as a Vierendeel truss's are.
 - **Glazing.** 10 mm toughened glass covers the whole roof. As an option
   (`ScenarioPreset.transportHub(title:laminatedRoof:)`), it is laminated panes 3 m square between
   the purlins, 6 + 1.52 mm PVB + 6 mm ([laminated glass](shell-model.md#laminated-glass)), each
@@ -62,10 +62,13 @@ Run on 0.5 m air for 300 ms (1,417 steps, 30 s on the Studio), the run above:
 - **The shed** is open, so the blast reaches under its roof (15.7 kPa at the platforms) as well
   as over it (13.0 kPa). The roof glass is loaded on both faces and cracks in patches. The frames
   stand: 13 of 9,510 elements fail, and the largest deflection is 334 mm. With the members bowed, as
-  they are by default since (below), the same 13 fail and the deflection is 325 mm. With the
-  steel's strain-rate law and its joints hinged by welded-flange connections (the default since 18
-  October 2026), 13 fail and the deflection is 368 mm. None of its 46 connections fractures:
-  the members move at most 268 mm, against 270 mm with rigid joints (11 elements fail, 325 mm).
+  they are by default since (below), the same 13 fail and the deflection is 325 mm. With the steel's strain-rate law, rerun on 18 October 2026:
+  - **Rigid joints:** 11 fail, 325 mm, the members moving 270 mm at most.
+  - **Welded flanges (WUF-B):** 13 fail, 368 mm, members 268 mm.
+  - **Bolted extended end plates** (the default): 6 fail, 310 mm, members 272 mm.
+
+  None of the 46 connections fractures. The largest turn, 0.002 rad, is a sixth of the end
+  plates' fracture turn.
 - **The concourse walls** are moderately damaged.
 
 **The shed's roof glass, toughened or laminated** (`blastbench hubroof [--laminated]`, 0.5 m air,

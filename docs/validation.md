@@ -2899,11 +2899,15 @@ measured for the beams and 0.30–1.61 for the columns, with the rate law by gra
 the shots near elastic and of the curtain shot are within 14%.
 
 **Not compared:**
-- **Connections at blast rates.** Since 18 October 2026 beams can be hinged at their joints by
-  connections that fracture ([steel connections](shell-model.md#steel-connections)), checked
-  against NIST TN 1669's and Weigand and Berman's slow column-removal tests, from which their
-  fracture turns come. Culache's high-rate moment connections (Southampton thesis, 2017, open)
-  and Dinu et al.'s frames are in [data wanted](data-wanted.md).
+- **Connections under a blast.** Since 18 October 2026 beams can be hinged at their joints by
+  connections that fracture ([steel connections](shell-model.md#steel-connections)). They are
+  checked against two sets of slow column-removal tests, NIST TN 1669's and Weigand and
+  Berman's, from which their fracture turns come.
+  - **Rate.** Against Culache's bolted end plates loaded in 40 ms, a hinge taken from the slow
+    tests reads 13–41% too strong and 1.5–1.7 times too ductile with carbon-steel bolts. The end
+    plates therefore take the fast tests' values.
+  - **Not compared:** no connection inside a frame under a blast; Dinu et al.'s frames are in
+    [data wanted](data-wanted.md).
 - **A frame as a whole.**
 
 ## Cross-laminated timber buildings at Tyndall

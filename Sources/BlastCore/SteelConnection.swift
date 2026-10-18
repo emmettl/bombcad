@@ -53,4 +53,17 @@ public struct SteelConnection: Codable, Hashable, Sendable {
     public static let singlePlateShear = Self(
         name: "Single-plate shear (fin plate)", momentRatio: 0.05, fractureRotation: 0.089, tensionRatio: 0.13
     )
+
+    /// Bolted end plates at blast rates, from Culache's tests loaded to failure in 40 ms (half-scale,
+    /// S355 beams, 12 mm plates, M12 grade 8.8 bolts; Southampton PhD, 2017, Table 3.5). Their
+    /// carbon-steel bolts stripped their threads and broke with little turn, weaker and sooner than
+    /// in the same tests loaded over 300 s (127 and 98 kN m, 1.2 degrees): the slow tests' values
+    /// would make them 13–41% too strong and half again too ductile at a blast's rate. The moment is over the
+    /// beam's plastic moment at S355's nominal yield (305×102×25, 121 kN m; 305×127×37, 191 kN m).
+    /// An extended end plate: 90 kN m, 0.70 degrees.
+    public static let extendedEndPlate = Self(
+        name: "Extended end plate, bolted (at blast rates)", momentRatio: 0.74, fractureRotation: 0.0122)
+    /// A flush end plate: 87 kN m, 0.80 degrees.
+    public static let flushEndPlate = Self(
+        name: "Flush end plate, bolted (at blast rates)", momentRatio: 0.45, fractureRotation: 0.0140)
 }

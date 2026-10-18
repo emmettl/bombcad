@@ -823,9 +823,12 @@ public enum StandingTable {
                     "Each steel beam that stops at a joint is held to it by a hinge that turns plastically at the "
                     + "connection's moment and lets the beam go at its fracture turn: a welded flange (WUF-B) or "
                     + "reduced beam section from NIST TN 1669, a fin plate from Weigand and Berman's thirteen "
-                    + "tests. Under a column's removal the hinged assemblies fail 5–27% past the measured drop at "
-                    + "1.07–1.16 of the measured load, where rigid joints never fail; but the fracture turns come from these slow tests, "
-                    + "so that is calibration, and no connection has been compared at blast rates.",
+                    + "tests, bolted end plates from Culache's tests loaded in 40 ms. Under a column's removal "
+                    + "the hinged assemblies fail 5–27% past the measured drop at 1.07–1.16 of the measured "
+                    + "load, where rigid joints never fail; but their fracture turns come from those slow tests. "
+                    + "A hinge is independent of rate: from Culache's slow tests it would read bolted end plates "
+                    + "13–41% too strong and 1.5–1.7 times too ductile at a blast's rate, and the welded and "
+                    + "fin-plate types, from slow tests, may be too ductile too.",
                 document: "shell-model.md#steel-connections")
         case .inclinedBars:
             return Entry(

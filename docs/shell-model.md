@@ -807,13 +807,16 @@ keeps the joint's node.
   about the cross axes, elastic and plastic together, reaches the fracture rotation. The tested
   connections fractured in the same way.
 
-**The connections**, each from tests under a column's removal:
+**The connections**, from tests under a column's removal (slow) and under a sudden moment
+(blast rates):
 
 | Connection | Moment / M_p | Fracture turn | Along the beam | Source |
 |---|---|---|---|---|
 | Welded flange, bolted web (WUF-B) | 0.95 | 0.081 rad | as the beam | Sadek et al., NIST TN 1669 (2010) |
 | Reduced beam section (RBS) | 0.8 | 0.14 rad | as the beam | NIST TN 1669; AISC 358 sizes the cut |
 | Single-plate shear (fin plate) | 0.05 | 0.089 rad | 0.13 of the squash load | Weigand and Berman (2016), 13 tests |
+| Extended end plate, bolted | 0.74 | 0.0122 rad | as the beam | Culache (2017), loaded in 40 ms |
+| Flush end plate, bolted | 0.45 | 0.0140 rad | as the beam | Culache (2017), loaded in 40 ms |
 
 How the shear tab's figures were derived:
 - **Fracture turn:** the median of Weigand and Berman's thirteen tests (0.067–0.110 rad).
@@ -848,14 +851,39 @@ pull of 431 kN, 40 kN shear at the column face, 0.0905 rad).
 - **This is a check, not a validation.** The fracture turns come from these same tests, so they
   are calibration.
 
-**Not compared:** connections at blast rates.
-- **Culache's** high-rate moment connections (Southampton, 2017) could not be fetched.
+**At blast rates: Culache's end plates.** Culache (Southampton PhD, 2017) broke half-scale
+bolted end-plate moment connections (S355 beams, 12 mm plates, M12 bolts, a 1.1 m lever arm)
+twice each: slowly, over 300 s, and suddenly, the moment rising in about 4 ms and failure
+within 20 ms. A hinge is independent of rate: whichever test its moment and fracture turn are
+taken from, it gives them at any rate. Taken from the slow tests, against the fast ones (Table
+3.5):
+
+| Connection, bolts | Slow: moment, turn | Fast: moment, turn | The slow values over the fast |
+|---|---|---|---|
+| Extended, grade 8.8 | 127 kN m, 1.20° | 90 kN m, 0.70° | moment 1.41, turn 1.71 |
+| Flush, grade 8.8 | 98 kN m, 1.20° | 87 kN m, 0.80° | moment 1.13, turn 1.50 |
+| Extended, stainless A4-70 | 133 kN m, 4.22° | 115 kN m, 4.40° | moment 1.16, turn 0.96 |
+| Flush, stainless A4-70 | 105 kN m, 3.42° | 115 kN m, 3.50° | moment 0.91, turn 0.98 |
+
+- **Carbon-steel bolts.** Bolted connections with ordinary bolts were weaker and broke sooner
+  when loaded fast, their nuts' threads stripping. A hinge from a slow test reads them 13–41% too
+  strong and half again too ductile at a blast's rate.
+- **Stainless bolts** turned as far either way. Their moment rose by 10%, or fell by 14% where
+  the compression flange buckled.
+- **The cause.** The strength the steel gains at a high rate did not reach the connection as a
+  whole. Each configuration was tested once.
+
+So the end plates here take the fast tests' values. The WUF-B, RBS and fin plate take slow
+tests'. No fast test of a welded or fin-plate connection has been compared, and they may be
+too ductile at a blast's rate as the bolted ones would be.
+
+**Not compared:**
 - **Dinu et al.'s** end-plate connections under column loss (Timișoara) are on a server that
   refuses connections.
 - **EN 1993-1-8's component method** is not used: none of its springs is built.
 
 **In the presets:**
-- **The hub** has welded flanges, and none of its 46 fractures under its 100 kg
+- **The hub** has extended end plates at a blast's rate, as British portal frames are bolted
   ([transport hub](transport-hub.md)).
 - **The office** has fin plates. Its front ground-storey columns, which no beam now holds from
   turning, are lost to the 1 t at the kerb, and 334 of its 480 fin plates fracture by 1 s as the
@@ -923,13 +951,17 @@ pull of 431 kN, 40 kN shear at the column face, 0.0905 rad).
     Flanged sections drawn as rectangles (`SteelSection.equivalent`) are stiffer about their
     minor axis than the section, a beam's well above it, so they buckle that way at a higher
     load than they should; their bow is sized for the rectangle.
-12. **Connections are three tested types, at slow rates.** A hinge takes one connection's
-    moment, fracture turn and pull for every beam in the model, scaled to each beam's plastic
-    moment. Connections are not sized to their beams, and there is no component method. The
-    fracture turns come from column-removal tests at about 0.1 m/s. A beam's fracture under
-    blast, at strain rates a thousand times higher, has not been compared. A hinge fractures
-    on its bending turn alone, not on the pull that grew with it in the tests. Its shear is
-    unlimited, so a shear tab never fails in shear.
+12. **Connections are five tested types, independent of rate.** A hinge takes one
+    connection's moment, fracture turn and pull for every beam in the model, scaled to each
+    beam's plastic moment. Connections are not sized to their beams, and there is no component
+    method.
+    - **Rates.** The end plates' values come from tests loaded in 40 ms. The WUF-B's, RBS's and
+      fin plate's come from column-removal tests at about 0.1 m/s. Bolted end plates were 13–41%
+      weaker and broke at 0.58–0.67 of the turn when loaded fast, so the slow types may be too
+      ductile under a blast.
+    - **Fracture.** A hinge fractures on its bending turn alone, not on the pull that grew with
+      it in the tests.
+    - **Shear.** It is unlimited, so a shear tab never fails in shear.
 
 ## Future work
 
@@ -946,6 +978,9 @@ pull of 431 kN, 40 kN shear at the column face, 0.0905 rad).
   experimental and computational study of steel moment connections under a column removal
   scenario*, NIST Technical Note 1669, 2010 (open). The WUF-B and RBS assemblies and their
   fracture rotations.
+- A. Culache, *Assessment of steel endplate moment connections with stainless steel bolts
+  subjected to rapid loading rates*, PhD thesis, University of Southampton, 2017
+  (eprints.soton.ac.uk/436596). Table 3.5: bolted end plates loaded over 300 s and in 40 ms.
 - J. M. Weigand and J. W. Berman, "Steel gravity connections subjected to large rotations and
   axial loads", *Connections VIII*, Boston, 2016 (open, NIST pub 920903). Single-plate shear
   and bolted angle connections under a column's removal, Table 1.
