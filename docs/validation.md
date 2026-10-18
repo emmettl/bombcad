@@ -2868,30 +2868,107 @@ Cross-Laminated Timber Structures* (Karagozian & Case TR-17-17.1, for WoodWorks,
 - **The joints:** the walls' bases are held at the slab, and the panels are joined rigidly where
   they meet (the tests' screwed angles are not rigid).
 - **The rest:** the door and the boarded window are closed. The building settles under its
-  weight. Air of 0.25 m refined by 2, recommended air.
+  weight. Air of 0.25 m refined by 2, recommended air. Every open face is 4 m/kg^(1/3) from the
+  charge and the building ([open faces near a
+  structure](air-blast-model.md#open-faces-near-a-structure)): `blastbench tyndall --tests n
+  --pad back,side,top` with 9,4.5,6, 12,7,9 and 17,12.5,14 m for tests 1 to 3.
+- **The load compared:** the reflected pressure on the front's centre, its impulse over the
+  positive phase (from the shock's arrival to the first return below ambient), and the incident
+  pressure at ground level on the same arc, 7 m to the side, against the report's free-field
+  gauges.
 
-| Test | Reflected peak (kPa), measured / model | Impulse (kPa ms) | First storey, in / rebound (mm), measured | Model | Second storey, measured | Model | Damage, test / model |
-|---|---|---|---|---|---|---|---|
-| 1, 14.5 kg | 34.8 / 25.1 | 137 / 212 | 28 / −45 | 29 / −30 | 21 / −35 | 25 / −28 | superficial / some layer at full damage, nothing removed |
-| 2, 30.4 kg | 54.7 / 39.6 | 227 / 400 | 50 / −70 | 53 / −44 | 37 / −55 | 44 / −47 | superficial / some layer at full damage, nothing removed |
-| 3, 90.3 kg | 91.0 / 87.5 | 450 / 694 | 99 / −155 | 120 / −136 | 78 / −98 | 137 / −141 | moderate, first-storey front cracked / 78 elements removed |
+| Test | Reflected peak (kPa), measured / model | Impulse (kPa ms) | Incident peak (kPa) | Incident impulse (kPa ms) | First storey, in / rebound (mm), measured | Model | Second storey, measured | Model | Damage, test / model |
+|---|---|---|---|---|---|---|---|---|---|
+| 1, 14.5 kg | 34.8 / 25.1 | 137 / 140 | 16.6 / 12.3 | 75 / 71 | 28 / −45 | 18 / −24 | 21 / −35 | 29 / −27 | superficial / some layer at full damage, nothing removed |
+| 2, 30.4 kg | 54.7 / 39.5 | 227 / 223 | 23.8 / 20.7 | 124 / 115 | 50 / −70 | 31 / −36 | 37 / −55 | 41 / −42 | superficial / some layer at full damage, nothing removed |
+| 3, 90.3 kg | 91.0 / 88.1 | 450 / 473 | 35.5 / 39.2 | 230 / 237 | 99 / −155 | 159 / −133 | 78 / −98 | 106 / −110 | moderate, first-storey front cracked / 64 elements removed |
 
 **What it shows:**
-- **First storey inbound:** within 6% on tests 1 and 2, and 21% high on test 3, where the front
-  broke more than it did in the test.
-- **Second storey:** 19–76% high.
-- **Rebound:** 66–88% of measured. The real walls swung back further: the screwed angles at their
-  bases and the floors give, where the model's joints are rigid.
 - **The load:**
-  - The reflected peak is 4–28% low on 0.25 m air, as peaks are on coarse air
-    ([blast loads](#blast-loads-against-empirical-references)).
-  - The impulse is 54–76% high. The report's measured impulses are below Kingery–Bulmash's,
-    which its authors put down to clearing round the small fronts. The model's front clears too,
-    so the gap is open: it may lie in the one gauge against the report's mean of several, or in
-    the neighbours left out.
-- **A first full-scale check of timber with the air:** with the inbound deflections close and
-  the load's impulse high, the walls are likely somewhat stiffer or stronger than the real ones.
-  The connections, modelled rigid, are the first suspect.
+  - The front's impulse over its positive phase is within 5% of the report's on all three
+    tests, and the incident impulse within 8%. An earlier harness integrated every positive
+    pressure to the end of the run, the reflections off the ground and the building's own rear
+    included, and read 54–76% high; that gap was the harness's.
+  - The reflected peak is 3–28% low and the incident peak up to 26% low on the lighter charges,
+    as peaks are on coarse air ([blast loads](#blast-loads-against-empirical-references)).
+- **The domain matters to the walls' later swings:** in the harness's first domain (32 × 16 ×
+  12 m, the charge 1.1 m from the face behind it), test 1's first storey went in 29 mm and test
+  3's 113 mm, against 18 and 159 mm here, with the same positive-phase load. Faces too near
+  reflect the grazing blast as a rarefaction that drives the wall's second swing; at 4 m/kg^(1/3)
+  the results no longer move ([open faces near a
+  structure](air-blast-model.md#open-faces-near-a-structure)).
+- **First storey inbound:** 0.62–0.64 of measured on tests 1 and 2, and 1.6 times on test 3,
+  where the front broke (64 elements removed) more than it did in the test.
+- **Second storey:** 1.1–1.4 times measured.
+- **Rebound:** 51–112% of measured, least at the first storey under the lighter charges. The
+  real walls swung back further there: the screwed angles at their bases and the floors give,
+  where the model's joints are rigid.
+- **A first full-scale check of timber with the air:** with the load matched, the first storey's
+  span is too stiff under the lighter charges and too weak once it cracks under the heaviest,
+  and the second storey too soft throughout. The connections, modelled rigid, are the first
+  suspect.
+
+## Terraced houses against wartime bomb damage
+
+**The data.** S. M. Gilbert, *A model for the effects of a condensed phase explosion in a built-up
+area* (PhD thesis, Loughborough University, 1994; open), chapter 5, from the Ministry of Home
+Security's surveys of British houses bombed in the Second World War:
+- **Categories** (its Table 5.1, as Jarrett used them): A demolished (over 75% of the external
+  brickwork destroyed); B to be pulled down (50–75% destroyed, or the rest unsafe); Cb
+  uninhabitable, the roof partly or wholly collapsed, up to 25% of one or two external walls
+  down; Ca uninhabitable with relatively minor structural damage; D habitable, with ceilings,
+  tiles and roof coverings damaged and minor cracks.
+- **Houses against distance** (its Table 5.7) from 250 kg semi-armour-piercing bombs, 96 kg of
+  TNT as a bare charge by Gilbert's effective charge: the share of houses at each distance in
+  category A, A or B, and A to C. They are mostly pre-war houses, solid 9-inch and cavity brick
+  mixed, and the categories are surveyors' judgements.
+- **Jarrett's radii**, as Gilbert revised them (his equation 5.4, R = k W^(1/3) / [1 + (3175 /
+  W)²]^(1/6), W in kg of TNT): for 96 kg, A 6.8 m, B 10.1 m, Cb 17.7 m and Ca 30.4 m. Half the
+  houses inside each radius are less damaged and half outside more.
+
+**The model.** The [terraced row](shell-model.md#the-terraced-houses) under 96 kg of TNT 0.3 m
+up, at each of the table's distances in front of the middle house's front wall
+(`blastbench house --mass 96 --standoff r --height 0.3`): air of 0.5 m, recommended air, the
+domain's open faces 18 m (4 m/kg^(1/3)) from the charge and the row. The middle house is graded
+by `TerracedRowDamage`, a brick element counted destroyed once removed or moved more than its
+leaf's thickness, a tenth of a second and three tenths after the burst. With the default brick
+(removed at a 3 mm crack) and with bricks kept to a 50 mm crack (`--erosion 0.05`):
+
+| Distance (m) | Surveyed: A / A–B / A–C | Surveyed median | 3 mm, 0.1 s | 3 mm, 0.3 s | 50 mm, 0.1 s | 50 mm, 0.3 s |
+|---|---|---|---|---|---|---|
+| 4.7 | 88% / – / – | A | A (85%) | A (99%) | A (78%) | A (95%) |
+| 7.8 | 28% / 88% / – | B | B (45%) | A (86%) | B (32%) | A (79%) |
+| 10.8 | 14% / 51% / 91% | B, near C | B (37%) | B (51%) | Cb (20%) | B (35%) |
+| 13.9 | – / 12% / 63% | C | Cb (14%) | B (48%) | Cb (5%) | B (32%) |
+| 16.9 | – / 3% / 37% | below C | Cb (2%) | B (44%) | D | Cb (24%) |
+| 20.0 | – / 8% / 26% | below C | Ca | B (27%) | D | Cb (8%) |
+| 23.0 | – / – / 15% | below C | Ca | Cb (5%) | D | Cb (2%) |
+
+The model's percentages are the external brickwork destroyed. By 0.3 s the tiles had moved on
+half of each roof at 23 m and on more of it nearer.
+
+**What it shows:**
+- **The blast's damage, at 0.1 s:** with bricks kept to a 50 mm crack, every house falls in the
+  surveyed median's category or the one below, out to 23 m, and within Jarrett's radii out to
+  13.9 m (one or two categories under them at 16.9–23 m). With the default 3 mm the houses read a
+  category above the median beyond 13.9 m.
+- **What follows, by 0.3 s:** the cracked front walls, held only at their ends by the party walls,
+  go over: 49–100% of the middle house's front at 13.9–16.9 m. The houses then read one or two
+  categories worse than surveyed beyond 11 m, either way. The surveyed houses mostly stood. A
+  cracked leaf with the floors and roof bearing on it, or arching between stiff ends, would
+  rock and settle back; the model's cracked leaves have no such resistance. Seating the roof on
+  the front and back walls as rafters' feet (unstrapped, as the joists) changed nothing.
+- **The cavity:** the leaves' load had to be fixed first ([shielded
+  faces](shell-model.md#coupling-to-the-air)). Each leaf had taken the whole blast, and with the
+  cavity at ambient the rooms' pressure blew the inner leaves out; as a sealed cavity the two
+  leaves share it. Joists come off their seats only inside 14 m.
+- **Not compared:** Glasstone and Dolan's houses at 5 and 1.7 psi (a long nuclear load), the
+  Peterborough explosion (about 800 kg; its 37 m clearance makes a domain of about 75 × 90 × 45
+  m), and the IRA bombs at Hyde Park and Manchester, for which no open survey of houses was found.
+  The DoD and GSA damage levels set limits on members' response, not observed damage.
+- **Limits of the comparison:** the bombs burst at or below the ground, some in craters, and the
+  surveys measured to the house, not its front wall; the effective charges are uncertain by about
+  25%; the houses were of many kinds, the model one row of one.
 
 ## Slabs under contact charges
 
