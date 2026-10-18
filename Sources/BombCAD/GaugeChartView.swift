@@ -4,13 +4,11 @@ import SwiftUI
 /// Histories below the viewport: overpressure at the scenario's gauges, or the response of the
 /// deformable structure, with a readout beside the plot.
 struct GaugeChartView: View {
-    let model: SimulationModel
+    @Bindable var model: SimulationModel
     @State private var showsStructure = false
     @State private var export: ResultsDocument?
     @State private var exportError: String?
-    @State private var isSweeping = false
     @State private var isNamingRun = false
-    @State private var isComparingRuns = false
     @State private var runName = ""
 
     private var hasStructure: Bool { model.structureSummary != nil }
@@ -45,19 +43,16 @@ struct GaugeChartView: View {
                     }.frame(maxWidth: .infinity, alignment: .leading)
                 }
                 HStack {
-                    Button("Keep Run…") {
-                        var number = model.savedRuns.count + 1
-                        while model.savedRuns.contains(where: { $0.name == "Run \(number)" }) { number += 1 }
-                        runName = "Run \(number)"
-                        isNamingRun = true
-                    }.disabled(model.sweep.isActive || !model.canKeepRun)
-                        .help("Keep a completed run with its inputs and full measurement histories")
-                    Button("Compare (\(model.savedRuns.count))…") { isComparingRuns = true }
+                    Button("Keep Run…") { nameRun() }
+                        .disabled(model.sweep.isActive || !model.canKeepRun)
+                        .help("Keep a completed run with its inputs and full measurement histories (⌘K)")
+                    Button("Compare (\(model.savedRuns.count))…") { model.showsRunComparison = true }
                         .disabled(model.savedRuns.isEmpty)
+                        .help("Compare the kept runs (⇧⌘K)")
                 }.controlSize(.small)
                 HStack {
                     ExportResultsButton(model: model, export: $export)
-                    Button("Sweep…") { isSweeping = true }.controlSize(.small)
+                    Button("Sweep…") { model.showsParameterSweep = true }.controlSize(.small)
                 }
                 if model.sweep.isActive {
                     Text(model.sweep.message).font(.caption).lineLimit(2)
@@ -67,8 +62,19 @@ struct GaugeChartView: View {
             .frame(width: 230)
         }
         .padding(12)
-        .sheet(isPresented: $isSweeping) { ParameterSweepView(model: model) }
-        .sheet(isPresented: $isComparingRuns) { RunComparisonView(model: model) }
+        .sheet(isPresented: $model.showsParameterSweep) { ParameterSweepView(model: model) }
+        .sheet(isPresented: $model.showsRunComparison) { RunComparisonView(model: model) }
+        // From the Simulation and File menus.
+        .onChange(of: model.requestsKeptRun) {
+            guard model.requestsKeptRun else { return }
+            model.requestsKeptRun = false
+            if model.canKeepRun, !model.sweep.isActive { nameRun() }
+        }
+        .onChange(of: model.requestsResultsExport) {
+            guard model.requestsResultsExport else { return }
+            model.requestsResultsExport = false
+            if model.stepCount > 0 { export = ResultsDocument(text: model.resultsCSV()) }
+        }
         .alert("Keep completed run", isPresented: $isNamingRun) {
             TextField("Run name", text: $runName)
             Button("Keep") {
@@ -101,6 +107,14 @@ struct GaugeChartView: View {
     }
 
     static let palette: [Color] = [.blue, .orange, .green, .pink, .purple, .teal, .brown, .mint]
+
+    /// Asks for the kept run's name, the next "Run n" not yet taken.
+    private func nameRun() {
+        var number = model.savedRuns.count + 1
+        while model.savedRuns.contains(where: { $0.name == "Run \(number)" }) { number += 1 }
+        runName = "Run \(number)"
+        isNamingRun = true
+    }
 }
 
 /// Disabled until the run has taken a step; on its own so that the step count, which changes as

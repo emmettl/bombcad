@@ -322,8 +322,10 @@ private struct FreestandingRow: View {
                     model.duplicateFreestanding(id: id)
                 }
                 .labelStyle(.iconOnly)
+                .accessibilityLabel("Duplicate \(object?.name ?? car?.name ?? "object")")
                 Button("Remove", systemImage: "trash") { model.removeFreestanding(id: id) }
                     .labelStyle(.iconOnly)
+                    .accessibilityLabel("Remove \(object?.name ?? car?.name ?? "object")")
             }
         }
         .contextMenu {
