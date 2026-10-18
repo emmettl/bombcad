@@ -5655,6 +5655,12 @@ its limits). At 0.2, 0.5 and 1.1 kt of TNT on saturated ground:
   glass and 0.38 of it breaks at 0.5 kt, 2.6 million m², 3.8 times the army's count of about
   0.7 million m² of broken glass in the units it surveyed; the glazed share is an assumption, but
   matching the count by it alone would leave a quarter of any plausible window.
+- **Other sources**: at Stennett et al.'s six observers the shock arrives at 0.94–1.06 of their
+  times. Behind a block like the grain silos (Denny et al. 2025's 1:250 tests, 0.5 kt) the peak is
+  0.30–0.31 of the free field's at Z = 2 and 0.56–0.73 at Z = 3, as measured (about 0.3–0.4 and
+  0.5–0.9); farther out it recovers more slowly than their Viper::Blast's (0.82 against 1.0 at Z = 5;
+  0.90 against 0.92 at Z = 8). The JRC's EUROPLEXUS run (Valsamos et al. 2021) matched
+  Kingery–Bulmash to 750 m with a charge tuned to it.
 - **Structure**: 0.5 m stone carrying the masonry above it cracks at 0.5–1 km but falls in 8 of
   293 buildings at 0.5–0.75 km, where 7 of GEER's 13 sandstone houses there partly collapsed;
   0.2 m concrete is moderately damaged within 750 m and hardly beyond, where GEER's RC buildings
