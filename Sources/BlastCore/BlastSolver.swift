@@ -3709,7 +3709,17 @@ public final class BlastSolver {
             shares: try buffer(geometry.receiverShares, "structure cut receivers' shares"),
             starts: try buffer(geometry.receiverStarts, "structure cut receivers' starts"),
             contributors: try buffer(geometry.contributors, "structure cut contributors"))
-        try keepAir(geometry.cells)
+        // A cell the terrain's cut cells hold is theirs, and the remask's rules for it stand (a thin
+        // one under a structure turns solid): only the structure's own are kept air.
+        let terrain = terrainCut?.geometry
+        try keepAir(
+            geometry.cells.filter { cell in
+                let index = Int(cell)
+                return
+                    (terrain?.alpha(index % grid.nx, (index / grid.nx) % grid.ny, index / (grid.nx * grid.ny))
+                    ?? 1)
+                    >= 1
+            })
     }
 
     /// Shares each cut cell's difference over the step out up its column, in `state` just swept (see
