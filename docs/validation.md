@@ -3002,6 +3002,15 @@ half of each roof at 23 m and on more of it nearer.
   cracked leaf with the floors and roof bearing on it, or arching between stiff ends, would
   rock and settle back; the model's cracked leaves have no such resistance. Seating the roof on
   the front and back walls as rafters' feet (unstrapped, as the joists) changed nothing.
+- **Rocking would not hold them either:** SBEDS's rocking resistance for a cracked unreinforced
+  wall, 8 P (t − x) / h² (as the envelope model takes it,
+  `EnvelopeComponentResistance.unreinforcedMasonry`), is 0.2–0.6 kPa for a front leaf carrying
+  only the brickwork above it, about 1.2 kPa with the roof bearing on it, and it can take in
+  about ½ r t, 10–60 J/m², before it falls. The blast gives the leaves about 600 J/m² at 16.9 m
+  (some 800 kPa ms on 390 kg/m²). The envelope model with the same law would grade these walls
+  as fallen too. Gilbert's effective charge is a hemispherical surface burst of bare TNT, as the
+  model's is, but it sets aside the height of burst, above or below the ground (his §4.1); a
+  bomb that burst partly buried would have loaded the houses less.
 - **The cavity:** the leaves' load had to be fixed first ([shielded
   faces](shell-model.md#coupling-to-the-air)). Each leaf had taken the whole blast, and with the
   cavity at ambient the rooms' pressure blew the inner leaves out; as a sealed cavity the two
