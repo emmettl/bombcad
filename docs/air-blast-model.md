@@ -412,7 +412,12 @@ others; Käppeli and Mishra; and the perturbation form of Giraldo and Restelli),
 works on each cell's deviation from the background:
 - the slopes and the Hancock predictor are the deviations', with the background's own gradient,
   and gravity's pull on the deviation, in the predictor;
-- each face carries the background at the face plus the reconstructed deviation;
+- each face carries the background at the face plus the reconstructed deviation, and where
+  that would leave no density or pressure, the first-order deviation, as without gravity. A cell
+  at the pressure floor, as a cut cell beside the terrain can be left, holds less than the
+  background falls across half of it (1.5 Pa for a 0.25 m cell), so it gives its faces its own
+  state instead. Before, such a face had no pressure and its sound speed was a NaN: air over
+  cut terrain with gravity broke, most often refined, and its digest changed from run to run;
 - the background's pressure at the face is left out of the momentum flux, and gravity's pull on
   the background out of the source, which is −g(ρ − ρ_b);
 - the energy gains −g times the mean of the cell's two faces' mass fluxes, so the gas's energy
@@ -436,6 +441,7 @@ height. Gravity is compiled into the kernels only when on, so with it off they a
 - Air at rest stays at rest to the bit for 200 steps: isothermal or cooling with height, ideal
   or thermally perfect, refined in two levels everywhere, and in a closed box over a hill.
 - Its pressure 63.5 m up is the barometric formula's to 10⁻⁵.
+- A layer of cells at the pressure floor, in thermally perfect air at rest, stays finite.
 - In a closed box a hot bubble's rise conserves the gas's energy and potential energy together
   to 10⁻⁶.
 - A sphere of air twice as hot as its surroundings first accelerates at 90% of potential flow's

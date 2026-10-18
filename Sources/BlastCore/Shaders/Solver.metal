@@ -894,6 +894,15 @@ static inline FacePair reconstructGravity(Prim w, Prim e, Prim d, float2 rise, f
         faces.hi = w;
         faces.hi.rho = above.x + e.rho;
         faces.hi.p = above.y + e.p;
+        // Near a vacuum (a cell at the pressure floor), the background's fall across half a cell
+        // can be more than the cell holds, and the face would have no pressure, or none of its
+        // density, for the Riemann solver to take a sound speed from: there, the cell's own state.
+        if (!(faces.lo.rho > u.densityFloor && faces.lo.p > u.pressureFloor)) {
+            faces.lo = w;
+        }
+        if (!(faces.hi.rho > u.densityFloor && faces.hi.p > u.pressureFloor)) {
+            faces.hi = w;
+        }
     }
     return faces;
 }
