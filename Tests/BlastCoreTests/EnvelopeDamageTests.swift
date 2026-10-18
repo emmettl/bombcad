@@ -165,6 +165,26 @@ struct EnvelopeDamageTests {
         #expect((medium?.panesBroken ?? 1) <= (large?.panesBroken ?? 0))
     }
 
+    @Test("A façade strip spans its storey however tall the cells cut it")
+    func storeySpan() {
+        let owner = UUID()
+        let stone = EnvelopeConstruction(
+            objectID: owner, walls: .unreinforcedMasonry, wallThicknessM: 0.5, source: .user, detail: "")
+        // The same storey of a 9 m building as 3 m cells cut it and as 4 m cells do.
+        func strip(_ height: Float) -> EnvelopeComponentLoad {
+            load(
+                "s", .facade, owner: owner, region: Box(min: SIMD3(0, 0, 0), max: SIMD3(6, 0.5, height)),
+                axis: 1,
+                outer: pulse(30e3, over: 0.2, total: 0.5))
+        }
+        let three = EnvelopeDamageAssessment.assess(strip(3), construction: stone, buildingTop: 9)
+        let four = EnvelopeDamageAssessment.assess(strip(4), construction: stone, buildingTop: 9)
+        #expect(strip(4).panelHeight == 3 && strip(2).panelHeight == 2)
+        #expect(
+            three?.levels == four?.levels && three?.shortSpanM == four?.shortSpanM,
+            "\(String(describing: three?.levels)) \(String(describing: four?.levels))")
+    }
+
     @Test("The view's shader draws the same six colours as the palette")
     func shaderPalette() throws {
         let shader = try String(

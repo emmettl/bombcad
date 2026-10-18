@@ -39,6 +39,7 @@ func runTyndall(device: MTLDevice) throws {
                     c.airSleepCrossings = 0
                 }
                 if flag("copy-faces") { c.openFaces = .copy }
+                configureRefinement(&c)
             },
             progress: flag("progress") ? { print("  " + $0) } : nil)
         if let path = option("history") { try rows.write(toFile: path, atomically: true, encoding: .utf8) }
@@ -58,6 +59,8 @@ func runTyndall(device: MTLDevice) throws {
         )
         print("  second storey: \(mm(test.secondFloor)) measured, \(mm(result.secondFloor)) model")
         print("  damage up to \(format(Double(result.maxDamage), 2)); \(result.removed) elements removed")
+        print(
+            "  ran in \(format(result.wallSeconds, 0)) s")
         fflush(stdout)
     }
 }

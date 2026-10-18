@@ -875,6 +875,8 @@ enum HeadlessRun {
                 let name = inputs.scenario.object(id: building.id)?.name ?? "Building"
                 return "\(name): " + EnvelopeDamageSection.summary(building)
             }
+            // What the failed components throw, for the hazards (and the minimum safe distance).
+            model.refreshEnvelopeDebris()
         }
         if let debris {
             streams.append(debris.summary)

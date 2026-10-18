@@ -1092,6 +1092,7 @@ public enum StandingTable {
         "SolverConfiguration.refinement": .option([.shockRefinement, .twoLevelRefinement]),
         "SolverConfiguration.refinementThreshold": .numerical,
         "SolverConfiguration.refinementHoldsEnvelopes": .numerical,
+        "SolverConfiguration.refinementHoldsStructures": .numerical,
         "SolverConfiguration.refinementMargin": .numerical,
         "SolverConfiguration.refinementLevels": .option([.twoLevelRefinement]),
         "SolverConfiguration.refinementOwnSteps": .option([.adaptiveSubsteps]),
@@ -2330,8 +2331,8 @@ struct StandingScene {
                     "Freestanding walls against measurement: Alsubaei's perimeter walls and Keys's brick walls",
                     "On the equivalent load 5 of 7 outcomes as measured, built as tested (6 on the mean); the "
                         + "blockwork's top 28 mm against 28; the half-scale concrete wall 4.2° where light cracking "
-                        + "was seen, the safe side (the detailed model 2.1°); the blockwork at 125 kg 9.3°, short of "
-                        + "failing, where it collapsed",
+                        + "was seen, the safe side (the detailed model 2.1°); the blockwork at 125 kg 9.3° against "
+                        + "the 10° that fails it, where it collapsed: the unsafe side",
                     "building-envelopes.md#freestanding-walls"),
                 StandingEvidence(
                     "One-way reinforced masonry walls under measured loads (Hayman, 2014)",
@@ -2362,9 +2363,10 @@ struct StandingScene {
                     "validation.md#the-threshold-against-astm-e1300"),
                 StandingEvidence(
                     "A district against its surveys: Beirut, 2020, 14,169 map buildings at 0.2–1.1 kt",
-                    "One typical pane a storey breaks inside 1.25 km where GEER found 0.39–0.84 of street "
-                        + "façades damaged, half at 1.1–2.1 km by the glass assumed; 0.5 m stone falls where "
-                        + "partial collapses were found and cracks to about 1.2 km",
+                    "Glass (converged by 4 m cells) breaks inside 1.25 km where GEER found 0.39–0.84 of "
+                        + "street façades damaged, its edge set by the panes assumed; the structure low and "
+                        + "not converged: 0.5 m stone cracks where partial collapses were found, concrete "
+                        + "hardly damaged where GEER's was D1–D3",
                     "validation.md#a-district-beirut-2020"),
             ] + laminatedEvidence,
             assumptions: [
@@ -2387,6 +2389,8 @@ struct StandingScene {
                     + "2° is flagged as beyond the one-way model.",
                 "A component's load is Biggs's equivalent uniform load, its faces weighted by its plastic "
                     + "mechanism's shape from the edges it is held on (held nowhere, taken as held all round).",
+                "Concrete is judged whichever way it went furthest, pushed out as pushed in (UFC 3-340-02 "
+                    + "§4-26.2), with ASCE/SEI 59-11's limits.",
                 "Glass is annealed, on Moore's large-deflection plate, simply supported, breaking at E1300's "
                     + "median strength with the whole pane at its largest stress"
                     + (laminated
@@ -2693,6 +2697,13 @@ struct StandingScene {
                     "10 kg on open ground, the run's own peaks at 1.5 m on 0.25 m cells against the free field",
                     "The eardrums' reach 0.87–0.88 of it; the lungs' 0.69 and, for 50% lethality, 0.48: close in "
                         + "the cells' peaks read low (the unsafe side)", "hazards.md#checks"),
+                StandingEvidence(
+                    "Envelope debris against Keys's brick walls (2016) and the Kasun cubicle (80 kg inside)",
+                    "Keys: the debris's mean reach 0.25–0.53 m against 0.23–0.64 m, its far tail short (0.5–1.5 m "
+                        + "against 3–6 m); Kasun: launched at up to 118–131 m/s against the Klotz Group's 124 m/s, "
+                        + "its walls venting the gas, but hazardous debris to 129 m against the tests' 290–315 m, "
+                        + "the unsafe side (DoD's structure distance, 268 m, governs)",
+                    "hazards.md#debris-from-failed-envelope-components"),
             ],
             assumptions: [
                 "The curves come from animal tests under ideal (Friedlander) pulses, scaled to a 70 kg adult; "
@@ -2703,8 +2714,13 @@ struct StandingScene {
                 "A person standing in the open, or against a wall facing the charge, which sees the reflected "
                     + "pressure; probes beside a solid are not read.",
                 "K-factor distances (DoD 4145.26-M) are for a bare charge in the open, whatever the scene; the "
-                    + "minimum safe distance is never shorter than K40 and, for a cased charge, DoD's default "
-                    + "fragment distance; BombCAD's fragment distance, which reads short, is an estimate beside them.",
+                    + "minimum safe distance is never shorter than K40, for a cased charge DoD's default "
+                    + "fragment distance, and for a charge inside a building DESR 6055.09's structure debris "
+                    + "distance; BombCAD's fragment and envelope debris distances, which read short, are estimates "
+                    + "beside them.",
+                "Envelope debris: each failed component's pieces leave at its one-way model's speed at failure "
+                    + "(UFC 3-340-02 §4-58.2.1) over its mechanism's shape, square to its sections as turned; "
+                    + "what each construction breaks into is assumed, and pieces neither bounce nor roll.",
                 "Not for medical triage or casualty estimates.",
             ], documents: ["hazards.md#limitations"])
     }

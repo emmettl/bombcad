@@ -239,6 +239,34 @@ struct RefinementLevelsTests {
         }
     }
 
+    @Test("Refinement held about a structure while its air is loaded stays after the shock has gone")
+    func heldAboutStructure() throws {
+        let wall = Box(min: SIMD3(6, 2, 0), max: SIMD3(6.4, 8, 3))
+        let scenario = Scenario(
+            name: "Wall", domainSize: SIMD3(10, 10, 4), boxes: [],
+            charge: Charge(mass: 0.5, position: SIMD3(3, 5, 0.5)),
+            structure: StructureModel(solids: [wall], elementSize: 0.2, fixedBase: true))
+        func patches(hold: Float?) throws -> Int {
+            var configuration = SolverConfiguration()
+            configuration.refinement = 2
+            configuration.refinementMemory = 64 << 20
+            configuration.refinementHoldsStructures = hold
+            let solver = try BlastSolver(
+                device: device, scenario: scenario, cellSize: 0.5, configuration: configuration)
+            var patches = 0
+            while solver.time < 0.02 {
+                let batch = solver.advance(steps: 8, timeLimit: 0.02)
+                patches = batch.refinedTiles
+                if batch.steps == 0 { break }
+            }
+            return patches
+        }
+        // By 20 ms the shock has left the 10 m box; held, the air about the wall stays refined.
+        let free = try patches(hold: nil)
+        let held = try patches(hold: 100)
+        #expect(held > free, "\(held) held, \(free) without")
+    }
+
     /// Peak overpressure at 3 m from 1 kg on the ground, on cells of `cellSize`.
     private func peakAtThreeMetres(cellSize: Float, levels: Int) throws -> (peak: Float, refined: Int) {
         let scenario = Scenario(

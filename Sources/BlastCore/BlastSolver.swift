@@ -74,28 +74,51 @@ public final class BlastSolver {
         applyFacadeBand()
     }
 
-    /// The air beside the component recorder's faces (their fluid cells and a cell round them), in
-    /// which refinement is held while loaded (`SolverConfiguration.refinementHoldsEnvelopes`).
+    /// The air beside the component recorder's faces (their fluid cells and a cell round them),
+    /// and about each structure's solids (a cell beyond them), in which refinement is held while
+    /// loaded (`SolverConfiguration.refinementHoldsEnvelopes`, `refinementHoldsStructures`).
     private var facadeBand: MTLBuffer?
 
-    /// Sets the band on each refined level, or takes it off.
+    /// Sets the band on each refined level, or takes it off. The structures' part follows their
+    /// solids as built, not as they move: it is made afresh whenever the levels are.
     private func applyFacadeBand() {
-        guard let threshold = configuration.refinementHoldsEnvelopes,
-            let recorder = envelopeComponentRecorder,
-            !refinementLevels.isEmpty
-        else {
+        let envelopes = configuration.refinementHoldsEnvelopes.flatMap { threshold in
+            envelopeComponentRecorder.map { ($0, threshold) }
+        }
+        let structures = configuration.refinementHoldsStructures.flatMap { threshold in
+            bodies.isEmpty ? nil : (bodies.map(\.model), threshold)
+        }
+        guard envelopes != nil || structures != nil, !refinementLevels.isEmpty else {
+            facadeBand = nil
             for level in refinementLevels {
                 level.facadeBand = nil
                 level.facadeBandParameters.on = 0
             }
             return
         }
-        if facadeBand == nil,
-            let buffer = device.makeBuffer(length: max(1, grid.cellCount), options: .storageModeShared)
-        {
+        let threshold = min(envelopes?.1 ?? .infinity, structures?.1 ?? .infinity)
+        if facadeBand == nil {
+            facadeBand = device.makeBuffer(length: max(1, grid.cellCount), options: .storageModeShared)
+        }
+        if let buffer = facadeBand {
             let band = buffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
             memset(band, 0, grid.cellCount)
-            for face in recorder.faces {
+            for model in structures?.0 ?? [] {
+                for solid in model.solids {
+                    // The cells whose centres lie within a cell of the solid.
+                    let low = simd_max(SIMD3<Int>(((solid.min / grid.cellSize) - 1.5).rounded(.up)), .zero)
+                    let high = simd_min(
+                        SIMD3<Int>(((solid.max / grid.cellSize) + 0.5).rounded(.down)),
+                        SIMD3(grid.nx, grid.ny, grid.nz) &- 1)
+                    guard all(low .<= high) else { continue }
+                    for k in low.z...high.z {
+                        for j in low.y...high.y {
+                            for i in low.x...high.x { band[grid.index(i, j, k)] = 1 }
+                        }
+                    }
+                }
+            }
+            for face in envelopes?.0.faces ?? [] {
                 let index = Int(face.fluid)
                 let cell = SIMD3(index % grid.nx, (index / grid.nx) % grid.ny, index / (grid.nx * grid.ny))
                 for dz in -1...1 {

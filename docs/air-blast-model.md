@@ -651,6 +651,36 @@ shocks" switch (ratio 2) and, under it, "Twice over again" (two levels); `blastb
   street, and moves the peaks of `validate` up by 1 to 2.5%, towards Kingery–Bulmash, and
   impulses and arrivals under 1%; close in, where every substep is taken, nothing changes (see
   [Performance](performance.md#refinement)).
+- **Held beside envelopes and structures (options, off by default).** Refinement follows the shock
+  and leaves a building once the shock has passed. Two options hold it in a band about each
+  object while the air there is loaded past so many pascals:
+  - `refinementHoldsEnvelopes`, beside the envelope recorder's faces (see
+    [building envelopes](building-envelopes.md#surface-exposure-and-loads));
+  - `refinementHoldsStructures`, a cell beyond each structure's solids as built;
+    `blastbench … --hold-structures 100`.
+
+  For structures it does not pay. On Tyndall's CLT building, test 1, in a domain at the open
+  faces' clearance, 0.5 m cells refined by 2 against uniform 0.25 m cells (18 October 2026):
+
+  | Air | Front reflected peak | Front positive phase | First storey, in / rebound | Second storey, in / rebound | Run |
+  |---|---|---|---|---|---|
+  | uniform 0.25 m | 25.2 kPa | 137.2 Pa s | 17 / −22 mm | 27 / −26 mm | 13 s |
+  | refined, threshold 0.1 | 19.7 kPa | 137.8 Pa s | 15 / −21 mm | 28 / −23 mm | 13 s |
+  | the same, held at 100 Pa | 21.2 kPa | 135.7 Pa s | 15 / −21 mm | 27 / −22 mm | 20 s |
+  | refined, threshold 0.02 | 25.2 kPa | 137.0 Pa s | 16 / −22 mm | 27 / −22 mm | 15 s |
+  | the same, held at 100 Pa | 25.2 kPa | 137.0 Pa s | 16 / −22 mm | 27 / −23 mm | 17 s |
+
+  The measured positive phase was 137 Pa s.
+  - **What sets the peak at the building is the threshold.** The shock reaches it at about
+    13 kPa, below threshold 0.1's reach of 20 kPa, so the shock crosses the building's cells
+    unrefined. Held, the band refines the air only within a cell of the wall, too late to
+    sharpen a shock that has already crossed 22 m of coarse cells. At 0.02 the refinement
+    follows the shock to the building and gives the uniform grid's peak without a band.
+  - **The structure's response barely moves:** within 1 mm, at 13–54% more time.
+  - **Wu's slab S8 (1.6 kg at 0.5 m)** moved by 0.1 mm at 18% more time.
+
+  The standing's bands, which take the cells the shock is on as it passes, and the advisor's
+  choice of threshold already capture this, so neither option is in the defaults.
 - **Exactness.** It is all done on the GPU, with no round trip to the CPU between steps, and
   every sum runs in a fixed order: runs repeat exactly, uniform air refined everywhere stays
   exactly uniform, and mass and energy in a closed box are conserved to rounding (within 10⁻⁴,

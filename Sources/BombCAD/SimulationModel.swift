@@ -673,6 +673,11 @@ final class SimulationModel {
     /// Each envelope building's one-way damage from its components' loads so far
     /// (`EnvelopeDamageAssessment`), and why there is none when there is none.
     private(set) var envelopeDamage: [EnvelopeBuildingDamage] = []
+    /// The debris of the envelope components that failed, thrown and landed, once a run has
+    /// stopped (`EnvelopeDebris`); nil where none failed.
+    private(set) var envelopeDebris: EnvelopeDebris?
+    /// The loads the damage was last judged on, for the debris.
+    @ObservationIgnored private var envelopeLoads: [EnvelopeComponentLoad] = []
     private(set) var envelopeDamageStatus = ""
     /// Why the glazing is not vented though asked to be, or empty.
     private(set) var envelopeVentingStatus = ""
@@ -722,7 +727,16 @@ final class SimulationModel {
         envelopeDamage = EnvelopeDamageAssessment.assess(
             loads: loads, constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms,
             strikes: strikes, vented: vented)
+        envelopeLoads = loads
         applyEnvelopeDamageColours()
+    }
+
+    /// Throws the debris of the envelope components judged failed and flies it to where it lands,
+    /// for the hazard and the minimum safe distance: when a run stops, not while it runs.
+    func refreshEnvelopeDebris() {
+        envelopeDebris =
+            envelopeDamage.isEmpty
+            ? nil : solver?.envelopeDebris(scenario: scenario, loads: envelopeLoads, damage: envelopeDamage)
     }
 
     /// The structures' rubble flown on to where it lands, judged as a hazard; nil unless a
@@ -2389,6 +2403,7 @@ final class SimulationModel {
     private func requestRebuild() {
         envelopeExposure = []
         envelopeDamage = []
+        envelopeDebris = nil
         envelopeExposureStatus = ""
         envelopeVentingStatus = ""
         if batchInFlight {
@@ -2424,6 +2439,7 @@ final class SimulationModel {
         stopGroundShock()
         envelopeExposure = []
         envelopeDamage = []
+        envelopeDebris = nil
         envelopeExposureStatus = ""
         envelopeVentingStatus = ""
         stopThermal()
@@ -2710,6 +2726,7 @@ final class SimulationModel {
                 ambient: Double(scenario.atmosphere.pressure))
         }
         publishTraces()
+        refreshEnvelopeDebris()
         if fragments != nil || thermal != nil || groundShock != nil {
             let (gpu, elapsed) = (blastGPUSeconds, time)
             Task { [weak self] in await self?.recordCosts(blastGPUSeconds: gpu, elapsed: elapsed) }
@@ -2732,7 +2749,10 @@ final class SimulationModel {
                 self.fragmentHazard = hazard
                 self.fragmentStrikes = landed.impacts.filter { $0.penetration != nil }
                 self.updateFragmentStatus()
-                if !self.envelopeDamage.isEmpty { self.refreshEnvelopeDamage() }
+                if !self.envelopeDamage.isEmpty {
+                    self.refreshEnvelopeDamage()
+                    self.refreshEnvelopeDebris()
+                }
             }
         }
         if let thermal {
@@ -2879,7 +2899,8 @@ extension SimulationModel {
                 ground: ground)
         }
         let safe = MinimumSafeDistance(
-            kilograms: scenario.charge.mass, fragments: fragmentHazard, cased: isCased)
+            kilograms: scenario.charge.mass, fragments: fragmentHazard, cased: isCased,
+            debris: envelopeDebris?.hazard, inStructure: scenario.chargeInsideBuilding)
         if safe.distanceM > safe.overpressureM {
             lines += HazardOverlay.ring(
                 centre: centre, radius: safe.distanceM, kind: .kFactor, ground: ground)
@@ -2910,16 +2931,23 @@ extension SimulationModel {
         }
         lines.append(
             "M"
-                + MinimumSafeDistance(kilograms: mass, fragments: fragmentHazard, cased: isCased).summary
+                + MinimumSafeDistance(
+                    kilograms: mass, fragments: fragmentHazard, cased: isCased,
+                    debris: envelopeDebris?.hazard,
+                    inStructure: scenario.chargeInsideBuilding
+                ).summary
                 .dropFirst())
+        if let envelopeDebris { lines.append(envelopeDebris.summary) }
         if let injuryField { lines.append(injuryField.summary) }
         return lines
     }
 
     func hazardLines() -> [SIMD4<Float>] {
-        guard let fragmentHazard else { return [] }
         let terrain = scenario.terrain
-        return HazardOverlay.lines(fragmentHazard) { terrain?.height(at: SIMD3($0, 0)) ?? 0 }
+        // The fragments' rings, and the envelope debris's beside them.
+        return [fragmentHazard, envelopeDebris?.hazard].compactMap { $0 }.flatMap { hazard in
+            HazardOverlay.lines(hazard) { terrain?.height(at: SIMD3($0, 0)) ?? 0 }
+        }
     }
 
     /// Draws the run's particles: in flight, coloured by speed; tracers; where fragments landed,

@@ -184,6 +184,11 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// façades' reflected loads stay on the finest cells through their positive phase rather
     /// than only as the shock passes. Nil, the default, holds nothing.
     public var refinementHoldsEnvelopes: Float?
+    /// Holds refinement likewise in the air about each structure (a cell beyond each of its
+    /// solids, both faces of a wall or slab), past this many pascals: its load after the shock has
+    /// passed (the reflections, the second swing, the venting) on the finest cells. With both
+    /// set, the band holds past the lower. Nil holds nothing.
+    public var refinementHoldsStructures: Float?
     /// How close, in cells of the grid a level refines, such a pair must come to a block for the
     /// block to be refined too: the margin kept around the shock. A shock moves under half a cell
     /// a step and the blocks are placed afresh every step, so 1 still holds it. Until 15 October
