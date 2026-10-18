@@ -54,6 +54,8 @@ func runTyndall(device: MTLDevice) throws {
         )
         print("  second storey: \(mm(test.secondFloor)) measured, \(mm(result.secondFloor)) model")
         print("  damage up to \(format(Double(result.maxDamage), 2)); \(result.removed) elements removed")
+        print(
+            "  front's positive phase \(format(Double(result.positivePhase), 1)) Pa s; ran in \(format(result.wallSeconds, 0)) s")
         fflush(stdout)
     }
 }

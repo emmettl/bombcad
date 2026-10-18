@@ -123,6 +123,10 @@ public enum TyndallCLTTest {
         /// Reflected peak (Pa) and positive impulse (Pa s) at the first-storey front gauge.
         public var reflected: Float
         public var impulse: Float
+        /// The first-storey front gauge's positive phase (Pa s): from arrival to its first fall
+        /// below ambient. And the run's wall time (s).
+        public var positivePhase: Float = 0
+        public var wallSeconds: Double = 0
         public var maxDamage: Float
         public var removed: Int
     }
@@ -152,6 +156,7 @@ public enum TyndallCLTTest {
         var firstFloor = SIMD2<Float>.zero
         var secondFloor = SIMD2<Float>.zero
         var nextReport = 0.02
+        let started = Date()
         while solver.time < duration {
             let result = solver.advance(steps: 16, timeLimit: duration)
             if result.steps == 0 && !solver.airIsAsleep { break }
@@ -178,10 +183,19 @@ public enum TyndallCLTTest {
         for (p, q) in zip(samples, samples.dropFirst()) {
             impulse += Float(q.time - p.time) * max(0.5 * (p.pressure + q.pressure) - ambient, 0)
         }
+        var positivePhase: Float = 0
+        var arrived = false
+        for (p, q) in zip(samples, samples.dropFirst()) {
+            if !arrived && p.pressure - ambient > 1000 { arrived = true }
+            guard arrived else { continue }
+            if q.pressure < ambient { break }
+            positivePhase += Float(q.time - p.time) * (0.5 * (p.pressure + q.pressure) - ambient)
+        }
         let summary = shells.summary()
         return Result(
             firstFloor: firstFloor, secondFloor: secondFloor,
             reflected: (samples.map(\.pressure).max() ?? ambient) - ambient, impulse: impulse,
+            positivePhase: positivePhase, wallSeconds: Date().timeIntervalSince(started),
             maxDamage: summary.maxDamage, removed: summary.erodedElements)
     }
 }
