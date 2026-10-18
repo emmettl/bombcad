@@ -46,6 +46,7 @@ func runGauging(device: MTLDevice, cooling: RadiativeCooling?) throws {
             + (cooling == nil ? "" : ", the gas cooling")
             + "; first frame at \(String(format: "%.1f", solver.time * 1e3)) ms")
     var reached = [Double?](repeating: nil, count: ranges.count)
+    func range(_ k: Int) -> Float { ranges[k] }
     var peakFlux = [(Float, Double)](repeating: (0, 0), count: ranges.count)
     var peakGas = [(Float, Double)](repeating: (0, 0), count: ranges.count)
     var widest: (Float, Double) = (0, 0)
@@ -54,37 +55,47 @@ func runGauging(device: MTLDevice, cooling: RadiativeCooling?) throws {
     var lastPower: (time: Double, power: Double)?
     var rows: [String] = []
     let shown: Set<Int> = [2, 5, 10, 16, 24, 32, 55, 100, 180, 300, 500, 750, 1000]
-    for target in times where target > solver.time + 1e-9 {
-        while solver.time < target - 1e-9 {
-            let result = solver.advance(steps: 256, timeLimit: target)
-            if result.steps == 0 || !result.isStable { break }
-        }
-        let frame = solver.fireball(for: volume)
-        let flux = exposure.irradiance(frame, at: gauges)
-        let power = exposure.radiatedPower(frame)
-        if let lastPower { radiated += 0.5 * (lastPower.power + power) * (solver.time - lastPower.time) }
-        lastPower = (solver.time, power)
-        // The luminous gas as a hemisphere on the ground.
-        let across = 2 * Float(cbrt(3 * frame.volume / (2 * .pi)))
-        if across > widest.0 { widest = (across, solver.time) }
-        if frame.volume > 0 { lastLuminous = solver.time }
-        let gas = solver.withState { state in
-            cells.map { cell -> Float in
-                let c = state[grid.index(cell.i, cell.j, cell.k)]
-                let kinetic =
-                    0.5 * (c.momentumX * c.momentumX + c.momentumY * c.momentumY + c.momentumZ * c.momentumZ)
-                    / c.density
-                let p = configuration.airModel.pressure(
-                    density: c.density, internalEnergy: c.energy - kinetic, gamma: configuration.gamma)
-                return configuration.airModel.temperature(density: c.density, pressure: p)
+    // Before a mapped start's clock, the fireball from the one-dimensional solution.
+    var early: [Double: FireballFrame] = [:]
+    for frame in solver.earlyFireballFrames(for: volume, at: times) { early[frame.time] = frame }
+    for target in times where target > solver.time + 1e-9 || early[target] != nil {
+        if early[target] == nil {
+            while solver.time < target - 1e-9 {
+                let result = solver.advance(steps: 256, timeLimit: target)
+                if result.steps == 0 || !result.isStable { break }
             }
         }
+        let frame = early[target] ?? solver.fireball(for: volume)
+        let now = early[target]?.time ?? solver.time
+        let flux = exposure.irradiance(frame, at: gauges)
+        let power = exposure.radiatedPower(frame)
+        if let lastPower { radiated += 0.5 * (lastPower.power + power) * (now - lastPower.time) }
+        lastPower = (now, power)
+        // The luminous gas as a hemisphere on the ground.
+        let across = 2 * Float(cbrt(3 * frame.volume / (2 * .pi)))
+        if across > widest.0 { widest = (across, now) }
+        if frame.volume > 0 { lastLuminous = now }
+        let gas =
+            early[target] != nil
+            ? ranges.map { _ in Float(0) }
+            : solver.withState { state in
+                cells.map { cell -> Float in
+                    let c = state[grid.index(cell.i, cell.j, cell.k)]
+                    let kinetic =
+                        0.5
+                        * (c.momentumX * c.momentumX + c.momentumY * c.momentumY + c.momentumZ * c.momentumZ)
+                        / c.density
+                    let p = configuration.airModel.pressure(
+                        density: c.density, internalEnergy: c.energy - kinetic, gamma: configuration.gamma)
+                    return configuration.airModel.temperature(density: c.density, pressure: p)
+                }
+            }
         for k in ranges.indices {
-            if reached[k] == nil, gas[k] >= volume.luminousTemperature { reached[k] = solver.time }
-            if flux[k] > peakFlux[k].0 { peakFlux[k] = (flux[k], solver.time) }
-            if gas[k] > peakGas[k].0 { peakGas[k] = (gas[k], solver.time) }
+            if reached[k] == nil, across / 2 >= range(k) { reached[k] = now }
+            if flux[k] > peakFlux[k].0 { peakFlux[k] = (flux[k], now) }
+            if gas[k] > peakGas[k].0 { peakGas[k] = (gas[k], now) }
         }
-        let ms = Int((solver.time * 1000).rounded())
+        let ms = Int((now * 1000).rounded())
         if shown.contains(ms) {
             rows.append(
                 String(format: "%6d %8.1f %7.0f %7.0f", ms, across, frame.temperature, frame.hottest)
@@ -102,7 +113,7 @@ func runGauging(device: MTLDevice, cooling: RadiativeCooling?) throws {
     for (k, range) in ranges.enumerated() {
         let measured = [(3.2, 145.0, 32.0, 480.0), (16, 85, 55, 105), (nil, 30, 180, 74.5)][k]
         print(
-            String(format: "  %.0f m: luminous gas from ", range)
+            String(format: "  %.0f m: luminous hemisphere reaches it at ", range)
                 + (reached[k].map { String(format: "%.1f ms", $0 * 1e3) } ?? "never")
                 + (measured.0.map { String(format: " (camera %.1f ms)", $0) } ?? " (never reached)")
                 + String(
