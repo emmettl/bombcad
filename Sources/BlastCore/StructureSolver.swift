@@ -165,9 +165,12 @@ public final class StructureSolver {
     let nodeListBuffer: MTLBuffer
     public let nodeCount: Int
     private let placeholderBuffer: MTLBuffer
-    private let elementPipeline: MTLComputePipelineState
+    private var elementPipeline: MTLComputePipelineState
     /// Builds the element kernel with the work trace compiled in (`tracesWork`).
-    private let traceElementPipeline: () -> MTLComputePipelineState?
+    private var traceElementPipeline: () -> MTLComputePipelineState?
+    /// The element kernel's specialisation and its library, to specialise it again (`readStructureCutCells`).
+    private let elementConstants: MTLFunctionConstantValues
+    private let elementLibrary: MTLLibrary
     private var tracingPipeline: MTLComputePipelineState?
     private let nodePipeline: MTLComputePipelineState
     /// The node kernel with gravity turned from straight down, made when first needed.
@@ -278,6 +281,8 @@ public final class StructureSolver {
         var bareHourglass = model.releasesCrushedBareHourglass
         if bareHourglass { constants.setConstantValue(&bareHourglass, type: .bool, index: 21) }
         elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
+        elementConstants = constants
+        elementLibrary = library
         traceElementPipeline = {
             let tracing = MTLFunctionConstantValues()
             var single = single
@@ -1056,6 +1061,24 @@ public final class StructureSolver {
             for c in 0..<channels { totals[c] += workSums[n * channels + c] }
         }
         return totals
+    }
+
+    /// Specialises the element kernel for air that holds the structures' outlines as cut cells
+    /// (`SolverConfiguration.structureCutCells`): faces then read the pressure at the wall
+    /// (`cutFaceOverpressure` in Structure.metal). A function constant rather than a uniform's
+    /// branch, so that without it the kernel is as it was, bit for bit.
+    func readStructureCutCells() throws {
+        guard let constants = elementConstants.copy() as? MTLFunctionConstantValues else { return }
+        var on = true
+        constants.setConstantValue(&on, type: .bool, index: ShaderLibrary.structureCutConstant)
+        let library = elementLibrary
+        elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
+        // Tracing work's specialisation is the same with its work traced (constant 3).
+        guard let tracing = constants.copy() as? MTLFunctionConstantValues else { return }
+        var traced = true
+        tracing.setConstantValue(&traced, type: .bool, index: 3)
+        traceElementPipeline = { try? ShaderLibrary.pipeline("structureElements", in: library, constants: tracing) }
+        tracingPipeline = nil
     }
 
     public func elementCoordinates(_ index: Int) -> (i: Int, j: Int, k: Int) {

@@ -3709,6 +3709,7 @@ public final class BlastSolver {
             shares: try buffer(geometry.receiverShares, "structure cut receivers' shares"),
             starts: try buffer(geometry.receiverStarts, "structure cut receivers' starts"),
             contributors: try buffer(geometry.contributors, "structure cut contributors"))
+        for body in bodies { try body.solids?.readStructureCutCells() }
         // A cell the terrain's cut cells hold is theirs, and the remask's rules for it stand (a thin
         // one under a structure turns solid): only the structure's own are kept air.
         let terrain = terrainCut?.geometry

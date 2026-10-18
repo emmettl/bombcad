@@ -595,7 +595,7 @@ static inline float faceOverpressure(float3 point, float3 normal, const device C
                                      const device uchar *fluidMask, const device int *patchOfTile,
                                      const device Cell *fine, const device uchar *fineMask,
                                      constant StructureUniforms &u) {
-    if (u.fluidCutCells != 0) {
+    if (structureCut && u.fluidCutCells != 0) {
         return cutFaceOverpressure(point, normal, fluid, fluidMask, u);
     }
     return overpressureAlong(point, normal, 0.0f, 2, fluid, fluidMask, patchOfTile, fine, fineMask, u.fluidRefine,
