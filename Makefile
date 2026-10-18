@@ -79,6 +79,7 @@ ci-test:
 	python3 Scripts/reference/test-sdof.py
 	python3 Scripts/reference/test-blast1d.py
 	python3 Scripts/reference/test-compare.py
+	python3 Scripts/test-analytic-oracles.py
 	python3 Scripts/check-doc-links.py
 	python3 Scripts/check-shader-mirrors.py
 

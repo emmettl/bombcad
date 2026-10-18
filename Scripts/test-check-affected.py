@@ -32,6 +32,7 @@ class TierTests(unittest.TestCase):
                                      "Makefile"]), "affected")
         self.assertEqual(check.tier(["Scripts/reference/compare.py", "Scripts/reference/tables/blast1d-tnt.json"]),
                          "documents")
+        self.assertEqual(check.tier(["Scripts/analytic/sedov.py"]), "documents")
 
 
 class SuiteTests(unittest.TestCase):
