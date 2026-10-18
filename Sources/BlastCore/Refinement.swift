@@ -676,15 +676,27 @@ final class AirRefinement {
             rows: UInt32(terrain.rows), enabled: 1, cutSamples: UInt32(coarseCut?.geometry.samples ?? 8))
     }
 
-    /// The pool slots of the patches in use whose block passes `near` (block coordinates).
-    func patches(near: (SIMD3<Int>) -> Bool) -> [Int] {
-        let owners = tileOfPatch.contents().bindMemory(to: UInt32.self, capacity: maxPatches)
-        return (0..<maxPatches).filter { patch in
-            guard owners[patch] != .max else { return false }
-            let tile = Int(owners[patch])
-            return near(
-                SIMD3(tile % tileDims.x, (tile / tileDims.x) % tileDims.y, tile / (tileDims.x * tileDims.y)))
+    /// The pool slots of the patches in use over any of these ranges of blocks (block coordinates,
+    /// inclusive), in the blocks' order (x fastest): not the pool's, which the GPU's placing of
+    /// patches decides, so that what is summed over them comes out the same every run.
+    func patches(inBlocks ranges: [(low: SIMD3<Int>, high: SIMD3<Int>)]) -> [Int] {
+        let map = (patchOfTile.contents() + offset(of: patchOfTile)).bindMemory(
+            to: Int32.self, capacity: tileDims.x * tileDims.y * tileDims.z)
+        var found = Set<Int>()
+        for range in ranges {
+            let low = simd_max(range.low, .zero)
+            let high = simd_min(range.high, tileDims &- 1)
+            guard all(low .<= high) else { continue }
+            for z in low.z...high.z {
+                for y in low.y...high.y {
+                    for x in low.x...high.x {
+                        let tile = x + tileDims.x * (y + tileDims.y * z)
+                        if map[tile] >= 0 { found.insert(tile) }
+                    }
+                }
+            }
         }
+        return found.sorted().map { Int(map[$0]) }
     }
 
     /// Whether any of these patches has a fine cell of an experimental box.
@@ -712,27 +724,45 @@ final class AirRefinement {
     }
 
     /// Passes each fine face's impulse recorded on `patches` (which must hold every patch beside
-    /// a box) to `face`, with the fine cell's coordinates and the face's axis and side (0 low,
-    /// 1 high), and zeroes them.
-    func takeBoxFaceImpulses(in patches: [Int], _ face: (SIMD3<Int>, Int, Int, Double) -> Void) {
+    /// a box) to `face`, with the box `owner` gives it, the fine cell's coordinates and the face's
+    /// axis and side (0 low, 1 high), and zeroes them. `owner` is asked side by side over the
+    /// patches; `face` is called in turn, in the patches' order and each one's cells'.
+    func takeBoxFaceImpulses(
+        in patches: [Int], owner: (SIMD3<Int>, Int, Int) -> Int,
+        face: (Int, SIMD3<Int>, Int, Int, Double) -> Void
+    ) {
         guard let buffer = experimentalBoxImpulse else { return }
         let values = buffer.contents().bindMemory(to: Float.self, capacity: buffer.length / 4)
         let owners = tileOfPatch.contents().bindMemory(to: UInt32.self, capacity: maxPatches)
         let cells = side * side * side
-        for patch in patches {
-            let tile = Int(owners[patch])
-            let origin =
-                SIMD3(tile % tileDims.x, (tile / tileDims.x) % tileDims.y, tile / (tileDims.x * tileDims.y))
-                &* side
-            for n in 0..<cells {
-                let base = 6 * (patch * cells + n)
-                for slot in 0..<6 where values[base + slot] != 0 {
-                    face(
-                        origin &+ SIMD3(n % side, (n / side) % side, n / (side * side)), slot / 2, slot % 2,
-                        Double(values[base + slot]))
+        let side = side
+        let tileDims = tileDims
+        var faces = [[(box: Int, cell: SIMD3<Int>, axis: Int, side: Int, impulse: Double)]](
+            repeating: [], count: patches.count)
+        faces.withUnsafeMutableBufferPointer { faces in
+            concurrently(iterations: patches.count) { p in
+                let patch = patches[p]
+                let tile = Int(owners[patch])
+                let origin =
+                    SIMD3(
+                        tile % tileDims.x, (tile / tileDims.x) % tileDims.y, tile / (tileDims.x * tileDims.y))
+                    &* side
+                for n in 0..<cells {
+                    let base = 6 * (patch * cells + n)
+                    for slot in 0..<6 where values[base + slot] != 0 {
+                        let cell = origin &+ SIMD3(n % side, (n / side) % side, n / (side * side))
+                        faces[p].append(
+                            (
+                                owner(cell, slot / 2, slot % 2), cell, slot / 2, slot % 2,
+                                Double(values[base + slot])
+                            ))
+                    }
                 }
+                memset(buffer.contents() + patch * cells * 6 * MemoryLayout<Float>.stride, 0, cells * 6 * 4)
             }
-            memset(buffer.contents() + patch * cells * 6 * MemoryLayout<Float>.stride, 0, cells * 6 * 4)
+        }
+        for list in faces {
+            for entry in list { face(entry.box, entry.cell, entry.axis, entry.side, entry.impulse) }
         }
     }
 
@@ -1662,6 +1692,11 @@ extension AirRefinement {
     /// Commit the fine state and its coarse proxy only after the driver validates the whole step.
     /// `boxes` are those whose cells lie within `low`...`high` (m), before and after, and no
     /// others' do; each in the air must keep a fine cell.
+    ///
+    /// The region's fine cells are numbered through it, x fastest, and every sum is taken in that
+    /// order. Their outline is found in slabs side by side; only the cells that open or close are
+    /// redistributed, and only those whose state, outline or wall changes are written back, so the
+    /// gas comes out as from taking every cell in turn, to the bit.
     func prepareBoxRemap(
         _ boxes: [ExperimentalBoxGeometry], low unionLow: SIMD3<Float>, high unionHigh: SIMD3<Float>,
         grid: Grid
@@ -1676,6 +1711,7 @@ extension AirRefinement {
             stamp = now
         }
         let h = grid.cellSize / Float(ratio)
+        let r = ratio
         // Use complete coarse cells so averaging their fine children remains unchanged.
         // One coarse-cell margin contains every donor adjacent to an opening/closing cell.
         let gridDims = SIMD3(grid.nx, grid.ny, grid.nz)
@@ -1686,127 +1722,234 @@ extension AirRefinement {
             useLocalBoxRemap
             ? simd_min(SIMD3<Int>((unionHigh / grid.cellSize).rounded(.up)) &+ 1, gridDims &- 1)
             : gridDims &- 1
+        let side = side
         let perPatch = side * side * side
-        let owners = tileOfPatch.contents().bindMemory(to: UInt32.self, capacity: maxPatches)
+        let tileDims = tileDims
+        let tiles = (patchOfTile.contents() + offset(of: patchOfTile)).bindMemory(
+            to: Int32.self, capacity: tileDims.x * tileDims.y * tileDims.z)
         let masks = fineMask.contents().bindMemory(to: UInt8.self, capacity: maxPatches * perPatch)
         let states = fine[0].contents().bindMemory(to: CellState.self, capacity: maxPatches * perPatch)
         let walls = fineWall.contents().bindMemory(to: Float.self, capacity: maxPatches * perPatch * 3)
-        // Pool slot of each fine cell over the complete coarse cells low...high, -1 where unrefined.
-        let fineLow = low &* ratio
-        let extent = (high &- low &+ 1) &* ratio
-        var slotOf = [Int](repeating: -1, count: extent.x * extent.y * extent.z)
+        // The fine cells over the complete coarse cells low...high, numbered x fastest.
+        let fineLow = low &* r
+        let extent = (high &- low &+ 1) &* r
+        let total = extent.x * extent.y * extent.z
         func dense(_ p: SIMD3<Int>) -> Int? {
             let q = p &- fineLow
             guard all(q .>= 0), all(q .< extent) else { return nil }
             return q.x + extent.x * (q.y + extent.y * q.z)
         }
-        for patch in 0..<maxPatches where owners[patch] != .max {
-            let tile = Int(owners[patch])
-            let origin =
-                SIMD3(tile % tileDims.x, (tile / tileDims.x) % tileDims.y, tile / (tileDims.x * tileDims.y))
-                &* side
-            let coarseOrigin = origin / ratio
-            guard all(coarseOrigin .<= high), all((coarseOrigin &+ (Self.patchSize - 1)) .>= low) else {
-                continue
-            }
-            for n in 0..<perPatch {
-                let p = origin &+ SIMD3(n % side, (n / side) % side, n / (side * side))
-                let coarse = p / ratio
-                guard grid.contains(coarse.x, coarse.y, coarse.z), let d = dense(p) else { continue }
-                slotOf[d] = patch * perPatch + n
+        func position(_ d: Int) -> SIMD3<Int> {
+            fineLow &+ SIMD3(d % extent.x, (d / extent.x) % extent.y, d / (extent.x * extent.y))
+        }
+        // Pool slot of each, -1 where unrefined: the patches over the region's blocks, side by side
+        // (each writes only its own cells).
+        var slotOf = [Int32](repeating: -1, count: total)
+        let tileLow = low / Self.patchSize
+        let tileHigh = high / Self.patchSize
+        var placed: [(origin: SIMD3<Int>, patch: Int)] = []
+        for tz in tileLow.z...tileHigh.z {
+            for ty in tileLow.y...tileHigh.y {
+                for tx in tileLow.x...tileHigh.x {
+                    let patch = Int(tiles[tx + tileDims.x * (ty + tileDims.y * tz)])
+                    if patch >= 0 { placed.append((SIMD3(tx, ty, tz) &* side, patch)) }
+                }
             }
         }
-        // Spatial order, never pool-slot order: sequential donor redistribution must not
-        // depend on nondeterministic GPU patch allocation.
-        var coordinates: [SIMD3<Int>] = []
-        var slots: [Int] = []
-        var oldMask: [UInt8] = []
-        var nextMask: [UInt8] = []
-        var initial: [CellState] = []
-        var ownerOf: [Int] = []
-        var held = [Bool](repeating: false, count: boxes.count)
-        var lookup = [Int](repeating: -1, count: slotOf.count)
-        for d in slotOf.indices where slotOf[d] >= 0 {
-            let at = slotOf[d]
-            let p = fineLow &+ SIMD3(d % extent.x, (d / extent.x) % extent.y, d / (extent.x * extent.y))
-            let point = (SIMD3<Float>(p) + 0.5) * h
-            let owner = ExperimentalBoxGeometry.owner(of: point, among: boxes, cellSize: h)
-            let own = owner != nil
-            if let owner { held[owner] = true }
-            let rigid = masks[at] & 2 != 0
-            guard !(own && rigid) else { throw ExperimentalRigidBoxSimulation.Failure.sceneryCollision }
-            lookup[d] = coordinates.count
-            coordinates.append(p)
-            slots.append(at)
-            oldMask.append(masks[at])
-            nextMask.append((own || rigid ? 1 : 0) | (rigid ? 2 : 0) | (own ? 8 : 0))
-            ownerOf.append(owner ?? -1)
-            initial.append(states[at])
+        // Fine cells of the region whose coarse cells lie in the grid.
+        let fineHigh = simd_min(fineLow &+ extent, gridDims &* r)
+        slotOf.withUnsafeMutableBufferPointer { slotOf in
+            concurrently(iterations: placed.count) { n in
+                let (origin, patch) = placed[n]
+                let first = simd_max(origin, fineLow)
+                let last = simd_min(origin &+ side, fineHigh)
+                guard all(first .< last) else { return }
+                for z in first.z..<last.z {
+                    for y in first.y..<last.y {
+                        let row = (y - fineLow.y + extent.y * (z - fineLow.z)) * extent.x - fineLow.x
+                        let local =
+                            patch * perPatch + side * ((y - origin.y) + side * (z - origin.z)) - origin.x
+                        for x in first.x..<last.x { slotOf[row + x] = Int32(local + x) }
+                    }
+                }
+            }
+        }
+        phase("slots")
+        // Each cell's outline now, in slabs of fine layers side by side: which change solidity,
+        // which change outline, which a box holds (for its wall) or held before (to clear it).
+        struct Slab {
+            var changed: [Int] = []
+            var remasked: [Int] = []
+            var owned: [(cell: Int, box: Int)] = []
+            var released: [Int] = []
+            var held: [Bool]
+            var collision = false
+        }
+        var next = [UInt8](repeating: 0, count: total)
+        let layers = extent.z
+        let slabCount = min(layers, max(1, 4 * ProcessInfo.processInfo.activeProcessorCount))
+        var slabs = [Slab](
+            repeating: Slab(held: Array(repeating: false, count: boxes.count)), count: slabCount)
+        slotOf.withUnsafeBufferPointer { slotOf in
+            next.withUnsafeMutableBufferPointer { next in
+                slabs.withUnsafeMutableBufferPointer { slabs in
+                    concurrently(iterations: slabCount) { s in
+                        var slab = slabs[s]
+                        let layer = extent.x * extent.y
+                        for d in (layers * s / slabCount * layer)..<(layers * (s + 1) / slabCount * layer) {
+                            let at = Int(slotOf[d])
+                            guard at >= 0 else { continue }
+                            let point = (SIMD3<Float>(position(d)) + 0.5) * h
+                            let owner = ExperimentalBoxGeometry.owner(of: point, among: boxes, cellSize: h)
+                            let own = owner != nil
+                            if let owner { slab.held[owner] = true }
+                            let old = masks[at]
+                            let rigid = old & 2 != 0
+                            if own && rigid { slab.collision = true }
+                            let mask = UInt8((own || rigid ? 1 : 0) | (rigid ? 2 : 0) | (own ? 8 : 0))
+                            next[d] = mask
+                            if (old ^ mask) & 1 != 0 { slab.changed.append(d) }
+                            if old != mask { slab.remasked.append(d) }
+                            if let owner {
+                                slab.owned.append((d, owner))
+                            } else if old & 8 != 0 {
+                                slab.released.append(d)
+                            }
+                        }
+                        slabs[s] = slab
+                    }
+                }
+            }
         }
         phase("snapshot")
-        guard boxes.indices.allSatisfy({ held[$0] || boxes[$0].isAbsent }) else {
-            throw ExperimentalRigidBoxSimulation.Failure.unresolvedBox
+        guard !slabs.contains(where: \.collision) else {
+            throw ExperimentalRigidBoxSimulation.Failure.sceneryCollision
         }
-        phase("ordering")
-        func index(_ p: SIMD3<Int>) -> Int? {
-            guard let d = dense(p), lookup[d] >= 0 else { return nil }
-            return lookup[d]
+        guard
+            boxes.indices.allSatisfy({ b in boxes[b].isAbsent || slabs.contains { $0.held[b] } })
+        else {
+            throw ExperimentalRigidBoxSimulation.Failure.unresolvedBox
         }
         let offsets = [
             SIMD3(-1, 0, 0), SIMD3(1, 0, 0), SIMD3(0, -1, 0), SIMD3(0, 1, 0), SIMD3(0, 0, -1), SIMD3(0, 0, 1),
         ]
-        phase("lookup")
-        let remapped = try ConservativeCellRemap.apply(
-            initial,
-            oldSolid: oldMask.map { $0 & 1 != 0 }, newSolid: nextMask.map { $0 & 1 != 0 }, mode: boxRemapMode
-        ) { n in
-            offsets.compactMap { index(coordinates[n] &+ $0) }
+        func neighbours(_ d: Int) -> [Int] {
+            let p = position(d)
+            return offsets.compactMap { offset in
+                guard let e = dense(p &+ offset), slotOf[e] >= 0 else { return nil }
+                return e
+            }
+        }
+        // The new state of each cell the redistribution changes (cells taken in region order).
+        var changedState: [Int: CellState] = [:]
+        let changed = slabs.flatMap(\.changed)
+        if !changed.isEmpty {
+            if boxRemapMode == .redistribution {
+                try ConservativeCellRemap.redistribute(
+                    opening: changed.filter { next[$0] & 1 == 0 },
+                    closing: changed.filter { next[$0] & 1 != 0 },
+                    newSolid: { next[$0] & 1 != 0 }, neighbours: neighbours,
+                    read: { changedState[$0] ?? states[Int(slotOf[$0])] }, write: { changedState[$0] = $1 })
+            } else {
+                // Connected transport moves gas along paths through the whole region: every cell.
+                let cells = (0..<total).filter { slotOf[$0] >= 0 }
+                var number = [Int](repeating: -1, count: total)
+                for (n, d) in cells.enumerated() { number[d] = n }
+                let remapped = try ConservativeCellRemap.apply(
+                    cells.map { states[Int(slotOf[$0])] },
+                    oldSolid: cells.map { masks[Int(slotOf[$0])] & 1 != 0 },
+                    newSolid: cells.map { next[$0] & 1 != 0 }, mode: boxRemapMode
+                ) { n in neighbours(cells[n]).map { number[$0] } }
+                for (n, d) in cells.enumerated() { changedState[d] = remapped[n] }
+            }
         }
         phase("redistribution")
-        // Every body face must have a fine cell on both sides (except the domain ground).
-        for n in coordinates.indices where nextMask[n] & 8 != 0 {
-            for offset in offsets {
-                let q = coordinates[n] &+ offset
-                let c = q / ratio
-                guard all(q .>= 0), grid.contains(c.x, c.y, c.z) else { continue }
-                guard index(q) != nil else {
-                    throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
+        // Every body face must have a fine cell on both sides (except the domain ground). Within
+        // the region every fine cell has one but those of coarse cells left unrefined, so it is
+        // enough that none of theirs lies beside a box's cell.
+        let coarseExtent = high &- low &+ 1
+        var uncovered = [Bool](repeating: false, count: coarseExtent.z)
+        slotOf.withUnsafeBufferPointer { slotOf in
+            next.withUnsafeBufferPointer { next in
+                uncovered.withUnsafeMutableBufferPointer { uncovered in
+                    concurrently(iterations: coarseExtent.z) { z in
+                        for y in 0..<coarseExtent.y {
+                            for x in 0..<coarseExtent.x {
+                                let c = low &+ SIMD3(x, y, z)
+                                guard let first = dense(c &* r), slotOf[first] < 0 else { continue }
+                                for n in 0..<(r * r * r) {
+                                    let q = c &* r &+ SIMD3(n % r, (n / r) % r, n / (r * r))
+                                    for offset in offsets {
+                                        guard let e = dense(q &+ offset), slotOf[e] >= 0, next[e] & 8 != 0
+                                        else {
+                                            continue
+                                        }
+                                        uncovered[z] = true
+                                        return
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
+        }
+        guard !uncovered.contains(true) else {
+            throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
         }
         phase("coverage")
         return { coarse in
             let started = self.measureBoxRemap ? Date.timeIntervalSinceReferenceDate : 0
-            // Coarse cells low...high, in the order of their first fluid fine child.
-            let coarseExtent = high &- low &+ 1
-            var sums = [SIMD8<Double>](
-                repeating: .zero, count: coarseExtent.x * coarseExtent.y * coarseExtent.z)
-            var order: [(coarse: Int, index: Int)] = []
-            for n in coordinates.indices {
-                let at = slots[n]
-                let p = coordinates[n]
-                states[at] = remapped[n]
-                masks[at] = nextMask[n]
-                let velocity =
-                    ownerOf[n] >= 0 ? boxes[ownerOf[n]].velocity(at: (SIMD3<Float>(p) + 0.5) * h) : .zero
-                for axis in 0..<3 { walls[3 * at + axis] = velocity[axis] }
-                guard nextMask[n] & 1 == 0 else { continue }
-                let c = p / self.ratio
-                let q = c &- low
-                let slot = q.x + coarseExtent.x * (q.y + coarseExtent.y * q.z)
-                let state = remapped[n]
-                if sums[slot][7] == 0 { order.append((slot, grid.index(c.x, c.y, c.z))) }
-                sums[slot] += SIMD8(
-                    Double(state.density), Double(state.momentumX), Double(state.momentumY),
-                    Double(state.momentumZ), Double(state.energy), 0, 0, 1)
+            for (d, state) in changedState { states[Int(slotOf[d])] = state }
+            // Each slab's own cells, side by side.
+            concurrently(iterations: slabs.count) { s in
+                let slab = slabs[s]
+                for d in slab.remasked { masks[Int(slotOf[d])] = next[d] }
+                for (d, box) in slab.owned {
+                    let at = Int(slotOf[d])
+                    let velocity = boxes[box].velocity(at: (SIMD3<Float>(position(d)) + 0.5) * h)
+                    for axis in 0..<3 { walls[3 * at + axis] = velocity[axis] }
+                }
+                for d in slab.released {
+                    let at = Int(slotOf[d])
+                    for axis in 0..<3 { walls[3 * at + axis] = 0 }
+                }
             }
-            for (slot, index) in order {
-                let mean = sums[slot] / sums[slot][7]
-                coarse[index].density = Float(mean[0])
-                coarse[index].momentumX = Float(mean[1])
-                coarse[index].momentumY = Float(mean[2])
-                coarse[index].momentumZ = Float(mean[3])
-                coarse[index].energy = Float(mean[4])
+            // Each coarse cell low...high over a patch, the mean of its fluid fine cells, summed
+            // in region order; side by side over its layers.
+            slotOf.withUnsafeBufferPointer { slotOf in
+                next.withUnsafeBufferPointer { next in
+                    concurrently(iterations: coarseExtent.z) { z in
+                        for y in 0..<coarseExtent.y {
+                            for x in 0..<coarseExtent.x {
+                                let c = low &+ SIMD3(x, y, z)
+                                var sum = SIMD8<Double>.zero
+                                for e in 0..<r {
+                                    for b in 0..<r {
+                                        for a in 0..<r {
+                                            guard let d = dense(c &* r &+ SIMD3(a, b, e)), slotOf[d] >= 0,
+                                                next[d] & 1 == 0
+                                            else { continue }
+                                            let state = states[Int(slotOf[d])]
+                                            sum += SIMD8(
+                                                Double(state.density), Double(state.momentumX),
+                                                Double(state.momentumY), Double(state.momentumZ),
+                                                Double(state.energy), 0, 0, 1)
+                                        }
+                                    }
+                                }
+                                guard sum[7] > 0 else { continue }
+                                let mean = sum / sum[7]
+                                let index = grid.index(c.x, c.y, c.z)
+                                coarse[index].density = Float(mean[0])
+                                coarse[index].momentumX = Float(mean[1])
+                                coarse[index].momentumY = Float(mean[2])
+                                coarse[index].momentumZ = Float(mean[3])
+                                coarse[index].energy = Float(mean[4])
+                            }
+                        }
+                    }
+                }
             }
             if self.measureBoxRemap {
                 self.boxRemapProfile["commit", default: 0] += Date.timeIntervalSinceReferenceDate - started

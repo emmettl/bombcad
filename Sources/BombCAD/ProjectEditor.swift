@@ -77,9 +77,14 @@ struct SimulationCommands: Commands {
                 .disabled(model?.canRedo != true)
         }
         CommandGroup(after: .importExport) {
+            Button("Import Model…") { model?.requestsModelImport = true }
+                .keyboardShortcut("i", modifiers: [.command, .shift])
+                .disabled(model == nil || model?.sweep.isActive == true)
             Button("Export for Rendering…") { model?.showsRenderExport = true }
                 .keyboardShortcut("e", modifiers: [.command, .shift])
                 .disabled(model == nil)
+            Button("Export Results as CSV…") { model?.requestsResultsExport = true }
+                .disabled(model == nil || model?.stepCount == 0)
         }
         CommandMenu("Simulation") {
             Button(model?.isRunning == true ? "Pause" : "Run") { model?.toggleRun() }
@@ -91,6 +96,15 @@ struct SimulationCommands: Commands {
             Button("Reset Camera") { model?.resetCamera() }
                 .keyboardShortcut("0")
                 .disabled(model == nil)
+            Divider()
+            Button("Keep Run…") { model?.requestsKeptRun = true }
+                .keyboardShortcut("k")
+                .disabled(model == nil || model?.sweep.isActive == true || model?.canKeepRun != true)
+            Button("Compare Runs…") { model?.showsRunComparison = true }
+                .keyboardShortcut("k", modifiers: [.command, .shift])
+                .disabled(model?.savedRuns.isEmpty != false)
+            Button("Parameter Sweep…") { model?.showsParameterSweep = true }
+                .disabled(model == nil || model?.sweep.isActive == true)
         }
     }
 }

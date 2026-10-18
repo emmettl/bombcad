@@ -10,6 +10,8 @@ struct RunComparisonView: View {
     @State private var gaugeKey: SavedSimulationRun.Gauge.Key?
     @State private var plotsStructure = false
     @State private var arrivalThreshold = 0.1
+    /// Opens in the arrival threshold, its one field, so that Tab moves on from there.
+    @FocusState private var focusesThreshold: Bool
     @State private var currentInputHash: String?
     @State private var removed: [SavedSimulationRun] = []
     @State private var export: ResultsDocument?
@@ -91,6 +93,8 @@ struct RunComparisonView: View {
             }
         }
         .padding(20).frame(minWidth: 920, minHeight: 640)
+        .defaultFocus($focusesThreshold, true)
+        .task { focusesThreshold = true }
         .onAppear {
             selectedIDs = Set(model.savedRuns.prefix(2).map(\.id))
             let inputs = model.sweep.baseline ?? model.currentInputs
@@ -141,6 +145,8 @@ struct RunComparisonView: View {
                     Text("Arrival threshold (kPa)")
                     TextField("Threshold", value: $arrivalThreshold, format: .number)
                         .frame(width: 80)
+                        .focused($focusesThreshold)
+                        .accessibilityLabel("Arrival threshold (kPa)")
                 }.font(.caption)
                 Text(
                     "Impulse uses the full recorded window. Phase duration runs from threshold arrival to the first zero crossing."
