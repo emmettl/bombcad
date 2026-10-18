@@ -32,7 +32,10 @@ public final class BlastSolver {
     private var exposurePlane: ExposurePlane?
     /// The one-dimensional solution a charge was mapped from, where it was and how far it reached,
     /// for an exposure plane set up after it (`configureExposurePlane`); nil otherwise.
-    var mappedStart: (blast: SphericalBlast, centre: SIMD3<Float>, radius: Float)?
+    var mappedStart: [(blast: SphericalBlast, centre: SIMD3<Float>, radius: Float)] = []
+    /// How far out each mapped charge was laid from its one-dimensional solution, m; empty for the
+    /// balloon.
+    public var mappedRadii: [Float] { mappedStart.map(\.radius) }
     /// The latest a mapped start may begin, s: its one-dimensional solution stops there should the
     /// shock not have reached its radius yet, so that a short run still steps the grid. Nil for no
     /// limit; the app sets half the run's duration. Takes effect at the next `load`.
@@ -493,7 +496,7 @@ public final class BlastSolver {
             threshold: arrivalThresholdPa, spacing: spacingM)
         // A charge mapped from one dimension has already passed the plane within its mapped radius:
         // there it takes the solution's own peak, impulse and arrival.
-        if let mappedStart {
+        for mappedStart in mappedStart {
             plane.seed(mappedStart.blast, centre: mappedStart.centre, radius: mappedStart.radius)
         }
         exposurePlane = plane
@@ -639,7 +642,27 @@ public final class BlastSolver {
         var sweepTiles: MTLComputePipelineState
         var collectTiles: MTLComputePipelineState
         var redistributeCutDefects: MTLComputePipelineState
+        var keepStructureCut: MTLComputePipelineState
+        var takeStructureCut: MTLComputePipelineState
     }
+    /// Structures' outlines as cut cells, when `configuration.structureCutCells` laid them at the
+    /// last restart (`StructureCutGeometry`): per cell its record, the records, their walls,
+    /// differences and what each sets aside, and the cells that take what is set aside.
+    struct StructureCutBuffers {
+        var geometry: StructureCutGeometry
+        var index: MTLBuffer
+        var cells: MTLBuffer
+        var records: MTLBuffer
+        var walls: MTLBuffer
+        var targets: MTLBuffer
+        var defects: MTLBuffer
+        var passed: MTLBuffer
+        var receivers: MTLBuffer
+        var shares: MTLBuffer
+        var starts: MTLBuffer
+        var contributors: MTLBuffer
+    }
+    private(set) var structureCut: StructureCutBuffers?
     /// The terrain's cut cells, when `configuration.terrainCutCells` laid them at the last load.
     var terrainCut: TerrainCutBuffers?
     /// `CellKernels` for each gas model used so far, with gravity compiled in or not.
@@ -2004,6 +2027,8 @@ public final class BlastSolver {
             bodiesInContact = false
         }
 
+        // Structures' cut cells, kept as air before the remask marks the structure.
+        try? setUpStructureCut()
         if hasBody, let commandBuffer = commandQueue.makeCommandBuffer(),
             let encoder = commandBuffer.makeComputeCommandEncoder()
         {
@@ -2580,6 +2605,11 @@ public final class BlastSolver {
             encoder.setBuffer(terrainCut?.ceilings ?? noSpecies, offset: 0, index: 24)
             // Not read without congestion.
             encoder.setBuffer(congestionBuffer ?? noSpecies, offset: 0, index: 25)
+            // Not read without structures' cut cells.
+            encoder.setBuffer(structureCut?.index ?? noSpecies, offset: 0, index: 26)
+            encoder.setBuffer(structureCut?.records ?? noSpecies, offset: 0, index: 27)
+            encoder.setBuffer(structureCut?.walls ?? noSpecies, offset: 0, index: 28)
+            encoder.setBuffer(structureCut?.defects ?? noSpecies, offset: 0, index: 29)
             for (n, axis) in axes.enumerated() where !asleep {
                 if configuration.periodicSides { encodePeriodicHalo(encoder, uniforms: uniforms) }
                 uniforms.axis = UInt32(axis)
@@ -2606,6 +2636,21 @@ public final class BlastSolver {
                         state: stateBuffers[1 - current],
                         species: hasSpecies ? speciesBuffers[1 - current] : noSpecies)
                     // The merge took over the encoder's pipeline and some of its buffers.
+                    encoder.setComputePipelineState(tilesEnabled ? kernels.sweepTiles : kernels.sweep)
+                    encoder.setBuffer(maskBuffer, offset: 0, index: 2)
+                    encoder.setBuffer(peakBuffer, offset: 0, index: 3)
+                    encoder.setBuffer(impulseBuffer, offset: 0, index: 4)
+                    encoder.setBuffer(controlBuffer, offset: 0, index: 5)
+                    encoder.setBuffer(maxSpeedBuffer, offset: 0, index: 6)
+                    encoder.setBuffer(wallVelocityBuffer, offset: 0, index: 8)
+                    encoder.setBuffer(tileListBuffer, offset: 0, index: 9)
+                    encoder.setBuffer(tileFlagBuffer, offset: 0, index: 10)
+                }
+                if let structureCut, n == axes.count - 1, refinement == nil {
+                    encodeStructureCutRedistribution(
+                        encoder, cut: structureCut, kernels: kernels, uniforms: uniforms,
+                        state: stateBuffers[1 - current],
+                        species: hasSpecies ? speciesBuffers[1 - current] : noSpecies)
                     encoder.setComputePipelineState(tilesEnabled ? kernels.sweepTiles : kernels.sweep)
                     encoder.setBuffer(maskBuffer, offset: 0, index: 2)
                     encoder.setBuffer(peakBuffer, offset: 0, index: 3)
@@ -2713,6 +2758,7 @@ public final class BlastSolver {
                     exchangeRegion: couplingRegion)
                 binding.couplingMap = tiledCoupling == nil ? nil : wallVelocityBuffer
                 binding.couplingMapCount = UInt32(tiledCoupling?.mapCount ?? 0)
+                binding.readsCutCells = structureCut != nil
                 if let refinement {
                     binding.refinement = (
                         refinement.patchOfTile, refinement.fine[0], refinement.fineMask, refinement.ratio,
@@ -3391,8 +3437,16 @@ public final class BlastSolver {
         }
     }
 
-    /// The share of cell `index` that holds air: its cut cell's, or one.
+    /// The share of cell `index` that holds air: its cut cell's (the terrain's or a structure's), or
+    /// one.
     func fluidShare(_ index: Int) -> Double {
+        if let structure = structureCut?.geometry, structure.index[index] >= 0,
+            terrainCut?.geometry.alpha(
+                index % grid.nx, (index / grid.nx) % grid.ny, index / (grid.nx * grid.ny))
+                ?? 1 >= 1
+        {
+            return Double(structure.records[Int(structure.index[index])].x)
+        }
         guard let cut = terrainCut?.geometry else { return 1 }
         let i = index % grid.nx
         let j = (index / grid.nx) % grid.ny
@@ -3551,9 +3605,10 @@ public final class BlastSolver {
         let limit = configuration.afterburnLimit != nil
         let cut = terrainCut != nil
         let porous = congestionBuffer != nil
+        let structureCutOn = structureCut != nil
         let key =
             16 * Int(model.rawValue) + (gravity ? 1 : 0) + (mixing ? 2 : 0) + (limit ? 4 : 0) + (cut ? 8 : 0)
-            + (porous ? 1024 : 0)
+            + (porous ? 1024 : 0) + (structureCutOn ? 2048 : 0)
         if let kernels = cellKernelsByModel[key] { return kernels }
         var constants = MTLFunctionConstantValues()
         var value = model.rawValue
@@ -3563,15 +3618,123 @@ public final class BlastSolver {
         if limit { constants = ShaderLibrary.withBurnLimit(constants) }
         if cut { constants = ShaderLibrary.withCutCells(constants) }
         if porous { constants = ShaderLibrary.withPorousAir(constants) }
+        if structureCutOn { constants = ShaderLibrary.withStructureCut(constants) }
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
             try ShaderLibrary.pipeline(name, in: library, constants: constants)
         }
         let kernels = CellKernels(
             sweep: try pipeline("sweep"), sweepTiles: try pipeline("sweepTiles"),
             collectTiles: try pipeline("collectTiles"),
-            redistributeCutDefects: try pipeline("redistributeCutDefects"))
+            redistributeCutDefects: try pipeline("redistributeCutDefects"),
+            keepStructureCut: try pipeline("keepStructureCut"),
+            takeStructureCut: try pipeline("takeStructureCut"))
         cellKernelsByModel[key] = kernels
         return kernels
+    }
+
+    /// Shares each structure cut cell's difference over the step out along its wall's normal, in
+    /// `state` just swept (`keepStructureCut`, then `takeStructureCut`, in Solver.metal).
+    private func encodeStructureCutRedistribution(
+        _ encoder: MTLComputeCommandEncoder, cut: StructureCutBuffers, kernels: CellKernels,
+        uniforms: SolverUniforms, state: MTLBuffer, species: MTLBuffer
+    ) {
+        var uniforms = uniforms
+        var count = UInt32(cut.geometry.cells.count)
+        guard count > 0 else { return }
+        encoder.setComputePipelineState(kernels.keepStructureCut)
+        encoder.setBuffer(state, offset: 0, index: 0)
+        encoder.setBuffer(species, offset: 0, index: 1)
+        encoder.setBuffer(cut.cells, offset: 0, index: 2)
+        encoder.setBuffer(cut.records, offset: 0, index: 3)
+        encoder.setBuffer(cut.targets, offset: 0, index: 4)
+        encoder.setBuffer(cut.defects, offset: 0, index: 5)
+        encoder.setBuffer(cut.passed, offset: 0, index: 6)
+        encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 7)
+        encoder.setBuffer(controlBuffer, offset: 0, index: 8)
+        encoder.setBuffer(peakBuffer, offset: 0, index: 9)
+        encoder.setBuffer(maxSpeedBuffer, offset: 0, index: 10)
+        encoder.setBuffer(tileFlagBuffer, offset: 0, index: 11)
+        encoder.setBytes(&count, length: 4, index: 12)
+        encoder.dispatchThreads(
+            MTLSize(width: Int(count), height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: min(Int(count), 256), height: 1, depth: 1))
+        var receivers = UInt32(cut.geometry.receivers.count)
+        guard receivers > 0 else { return }
+        encoder.setComputePipelineState(kernels.takeStructureCut)
+        encoder.setBuffer(cut.receivers, offset: 0, index: 2)
+        encoder.setBuffer(cut.shares, offset: 0, index: 3)
+        encoder.setBuffer(cut.starts, offset: 0, index: 4)
+        encoder.setBuffer(cut.contributors, offset: 0, index: 5)
+        encoder.setBytes(&receivers, length: 4, index: 12)
+        encoder.dispatchThreads(
+            MTLSize(width: Int(receivers), height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: min(Int(receivers), 256), height: 1, depth: 1))
+    }
+
+    /// Lays structures' outlines as cut cells (`configuration.structureCutCells`) from the bodies'
+    /// models as built, and keeps their cells of air from the remask; none with refinement.
+    private func setUpStructureCut() throws {
+        guard configuration.structureCutCells, hasBody, configuration.refinement <= 1 else {
+            structureCut = nil
+            return
+        }
+        // Solid elements only: shells' outlines are their midsurfaces, which a cut cell's air share
+        // does not describe.
+        let solids = bodies.map(\.model).filter { model in
+            model.elementKind == .solid && model.solidElementKind.allSatisfy { ($0 ?? .solid) == .solid }
+        }
+        // The scene's own solids (the terrain below its cut cells, rigid blocks) as they stand before
+        // the structures are counted in.
+        let scenery = rigidMaskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let terrainGeometry = terrainCut?.geometry
+        let grid = grid
+        let geometry = StructureCutGeometry(
+            models: solids, grid: grid, scenery: { scenery[$0] != 0 },
+            terrainCut: { index in
+                guard let terrainGeometry else { return false }
+                return terrainGeometry.alpha(
+                    index % grid.nx, (index / grid.nx) % grid.ny, index / (grid.nx * grid.ny)) < 1
+            })
+        // With no cell cut (a structure on the lattice), the air is as without cut cells, kernels
+        // and all: specialised for them, fast math may round the same sums differently.
+        guard !geometry.cells.isEmpty else {
+            structureCut = nil
+            return
+        }
+        func buffer<T>(_ values: [T], _ label: String) throws -> MTLBuffer {
+            let length = max(values.count * MemoryLayout<T>.stride, 16)
+            guard let buffer = device.makeBuffer(length: length, options: .storageModeShared) else {
+                throw BlastError.allocationFailed(label)
+            }
+            values.withUnsafeBytes { memcpy(buffer.contents(), $0.baseAddress!, $0.count) }
+            buffer.label = label
+            return buffer
+        }
+        let zeros = [SIMD4<Float>](repeating: .zero, count: 2 * max(geometry.cells.count, 1))
+        structureCut = StructureCutBuffers(
+            geometry: geometry, index: try buffer(geometry.index, "structure cut index"),
+            cells: try buffer(geometry.cells, "structure cut cells"),
+            records: try buffer(geometry.records, "structure cut records"),
+            walls: try buffer(geometry.walls, "structure cut walls"),
+            targets: try buffer(geometry.targets, "structure cut targets"),
+            defects: try buffer(zeros, "structure cut differences"),
+            passed: try buffer(zeros, "structure cut passed"),
+            receivers: try buffer(geometry.receivers, "structure cut receivers"),
+            shares: try buffer(geometry.receiverShares, "structure cut receivers' shares"),
+            starts: try buffer(geometry.receiverStarts, "structure cut receivers' starts"),
+            contributors: try buffer(geometry.contributors, "structure cut contributors"))
+        for body in bodies { try body.solids?.readStructureCutCells() }
+        // A cell the terrain's cut cells hold is theirs, and the remask's rules for it stand (a thin
+        // one under a structure turns solid): only the structure's own are kept air.
+        let terrain = terrainCut?.geometry
+        try keepAir(
+            geometry.cells.filter { cell in
+                let index = Int(cell)
+                return
+                    (terrain?.alpha(index % grid.nx, (index / grid.nx) % grid.ny, index / (grid.nx * grid.ny))
+                    ?? 1)
+                    >= 1
+            })
     }
 
     /// Shares each cut cell's difference over the step out up its column, in `state` just swept (see

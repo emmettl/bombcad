@@ -1009,7 +1009,9 @@ func runChamber() throws {
         afterburnEnergy: option("afterburn-energy").flatMap { Float($0) }.map { $0 * 1e6 },
         airModel: chosenGas(), openFaces: chosenFaces(),
         refinement: option("refine").flatMap { Int($0) } ?? 1,
-        contact: flag("no-contact") ? .off : nil, mappedCharge: flag("mapped"),
+        contact: flag("no-contact") ? .off : nil,
+        // Each charge from its own mapped one-dimensional start; `--balloon-start` for the balloon.
+        mappedCharge: !flag("balloon-start"),
         // `--progress` reports every 10 ms of a long run.
         progress: flag("progress")
             ? { line in
@@ -5239,6 +5241,8 @@ func runDigest() throws {
         configureRefinement(&configuration)
         configuration.afterburning = afterburning || flag("recommended")
         configuration.gravity = chosenGravity()
+        // `--mapped`: from the mapped one-dimensional start.
+        if flag("mapped") { configuration.mappedCharge = true }
         var scenario = preset.scenario
         if shells { scenario.structure?.elementKind = .shell }
         // `--terrain flat` lays the floor down as a heightfield, which must change nothing; another
@@ -5413,7 +5417,7 @@ func runSoilColumn() throws {
 /// event (each in an encoder of its own, so the sums leave out the gaps between them), the work
 /// each did per cell, how closely the patches fit the jumps the threshold flags, and the GPU's
 /// cost of an empty dispatch.
-/// `blastbench aircost [--preset street] [--dx 0.5] [--rounds 40] [--steps 4] [--skip]`: the GPU time
+/// `blastbench aircost [--preset street] [--dx 0.5] [--rounds 40] [--steps 4] [--skip] [--cut]`: the GPU time
 /// of a cell's update under each air: the ideal gas with copying faces (the core), hot air alone,
 /// afterburning with the ideal gas, and the recommended air (afterburning, hot air and far-field
 /// faces). Every cell is swept (with `--skip`, still air is skipped, as runs do, and the times
@@ -5434,10 +5438,16 @@ func runAirCost() throws {
     // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
     var recommended = SolverConfiguration.recommended.balloonStart
     recommended.skipStillAir = flag("skip")
-    let airs = [
+    var airs = [
         ("ideal gas, copying faces", core), ("hot air", hot), ("afterburning, ideal gas", burning),
         ("recommended", recommended),
     ]
+    // `--cut`: the recommended air again, with the preset's structure outlined by cut cells.
+    if flag("cut") {
+        var cut = recommended
+        cut.structureCutCells = true
+        airs.append(("recommended, cut structure", cut))
+    }
     let solvers = try airs.map { _, configuration in
         let solver = try BlastSolver(
             device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
@@ -5629,6 +5639,7 @@ do {
     case "laminated": try runLaminated(device: device)
     case "hubroof": try runHubRoof(device: device)
     case "facade": try runFacade(device: device)
+    case "walloffset": try runWallOffset(device: device)
     case "house": try runHouse(device: device)
     case "lacroix": try runLacroix(device: device)
     case "nassr": try runNassr(device: device)
@@ -5648,6 +5659,7 @@ do {
     case "structure": try runStructure()
     case "validate": try runValidation()
     case "products": try runProducts()
+    case "twocharges": try runTwoCharges(solver: { try makeAirSolver($0, cellSize: $1) })
     case "mapped-cost":
         // The fine one-dimensional start's own time (CPU), by charge and cell: `--masses 1,10,100
         // --dx 0.125,0.25,0.5 --cells 64`.

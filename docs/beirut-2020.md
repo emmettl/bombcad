@@ -20,8 +20,8 @@ At 0.5 kt on 4 m cells, against the surveys below:
   silos the model's peaks are Denny et al.'s measured third at 160 m and three fifths at 240 m, and at
   Stennett et al.'s six observers the shock arrives within 6% of their times.
 - **Does not: the peaks.** They are 0.68–0.78 of Kingery–Bulmash and still rising on finer cells
-  (0.78–0.83 at 3 m); refinement gives 0.80–0.86 on the line, but a disturbance ahead of its
-  shock loads the façades early. The JRC's simulation matches Kingery–Bulmash to 750 m with a charge
+  (0.78–0.83 at 3 m); refinement gives 0.80–0.86 on the line and the 3 m cells' façade loads, but a
+  weak disturbance still runs ahead of its shock in one part of the city. The JRC's simulation matches Kingery–Bulmash to 750 m with a charge
   tuned to it; this one is not tuned.
 - **Does not: the glass close in, or its total.** The model's façades break together: inside
   1.5 km every side has some pane broken (GEER 0.35–0.84) and inside 1.25 km nearly all are blown
@@ -257,15 +257,19 @@ The 1 km box (2 km square, 320 m top, 0.5 kt) on three grids, uniform cells:
   square of its height: the coarse grids' walls were the weak ones, and stone failed in 102
   buildings at 0.5–0.75 km on 4 m cells where the storey's span gives 7.
 - **Refinement** (8 m refined twice to 2 m at the shock) gives 0.80–0.86 of Kingery–Bulmash on
-  the line to 900 m, more than 3 m cells, in 29 minutes on the mini (43 with the façades held
-  refined while loaded, which changes nothing here). But its finest pool fills within 14 GB, and
-  gauges 0.5–1 km out see something arrive at 0.78–0.84 s whatever their distance, ahead of the
-  shock (1.0–2.3 s there); a smaller scene shows it with room left in the pool, so it was the
-  refinement's own: patches beside buildings raised the air ahead of the shock, flagging the next
-  building. That is fixed (patches in still air give up the gas their fine outline takes;
-  [terrain](terrain.md)), and arrivals are again 3–4% before Kingery–Bulmash. These refined runs'
-  façades were loaded early (concrete moderate at 0.75–1 km in 312 buildings, where 3 m cells have
-  11), so their damage cannot be used; it has not been rerun since the fix.
+  the line to 900 m, more than 3 m cells, in about 35 minutes on the mini, its finest pool full
+  within 14 GB. Two fixes to the refined air (18 October: gas squeezed beside buildings' fine
+  outlines, and cut cells under them restricted short; [terrain](terrain.md)) and the windows opened
+  at 500 Pa (above) bring its façades' loads to the 3 m cells': median peaks 29, 17, 11 and 8 kPa
+  at 0.5–1.5 km against 30, 18, 12 and 9. Its stone at 0.5–0.75 km cracks in 256 buildings and fails in 9 (3 m:
+  269 and 10); concrete is moderately damaged in 195 there and 45 at 0.75–1 km (3 m: 139 and 11).
+  But a ringing of about ±0.5–0.9 kPa still runs ahead of the shock over the city south-east of the
+  charge, at about 2 km/s, so carried by the refinement and not the air: gauges there 580–810 m out
+  take it for the arrival at 0.81–0.94 s, while the shock itself comes on time (1.21 s at 618 m,
+  where Kingery–Bulmash has 1.24 s), and it opens a 0.5 s window too early on 7% of the façade
+  strips at 0.5–0.75 km and 18% at 1–1.25 km, whose panes then go unbroken (0.81–0.93 broken,
+  against 0.92–1.00 on 3 m cells). The peaks are untouched; the arrivals and the damage are
+  indicative until it is found.
 
 ### Structure against the building survey (GEER, 2021)
 
