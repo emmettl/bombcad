@@ -3,7 +3,8 @@ import Foundation
 import simd
 
 /// A district from open data: a map's buildings as envelopes on a DEM's ground, a hemispherical
-/// charge on the ground at the centre. Shared by `scenebench district` and `district-scene`.
+/// charge on the ground at the centre (`DistrictLayout`). Shared by `scenebench district` and
+/// `district-scene`.
 struct DistrictInputs {
     var buildings: [MapBuilding]
     /// Elevations in metres above sea level, already reduced to the ground if asked.
@@ -18,21 +19,6 @@ struct DistrictInputs {
     /// How far the sea lies above the terrain's zero, m: the DEM's elevations are put on this.
     var seaBase: Float = 6
     var attributions: [String] = []
-
-    /// `--dem`'s elevations with those within `--sea` metres of sea level (or below it) put at it,
-    /// and the rest opened over `--ground-radius` metres (0 to keep the surface model): the sea is
-    /// left out of the opening, which would otherwise pull the quays down to it.
-    static func ground(_ dem: ElevationGrid, openingM: Double, seaM: Float) -> ElevationGrid {
-        let metres =
-            dem.units == .degrees
-            ? dem.step.y * ElevationGrid.metresPerDegree : dem.step.y
-        var land = dem
-        let sea = dem.elevations.indices.filter { dem.elevations[$0] < seaM }
-        for n in sea { land.elevations[n] = .nan }
-        var ground = land.opened(radius: Int((openingM / metres).rounded()))
-        for n in sea { ground.elevations[n] = 0 }
-        return ground
-    }
 
     static func read(_ args: [String]) throws -> DistrictInputs {
         func value(_ name: String) -> String? {
@@ -51,7 +37,7 @@ struct DistrictInputs {
         let ground = try value("dem").map {
             let dem = try ElevationGrid(contentsOf: URL(filePath: $0))
             attributions.append(value("dem-credit") ?? "Elevations: \(URL(filePath: $0).lastPathComponent)")
-            return Self.ground(
+            return DistrictLayout.ground(
                 dem, openingM: value("ground-radius").flatMap(Double.init) ?? 0,
                 seaM: Float(value("sea").flatMap(Double.init) ?? 0))
         }
@@ -73,32 +59,14 @@ struct DistrictInputs {
             mass: Float(value("mass").flatMap(Double.init) ?? 500_000), attributions: attributions)
     }
 
-    /// The square scene of side `2 radius` about the centre.
+    /// The square scene of side `2 radius` about the centre, every building in it placed.
     func scene(radius: Float) throws -> (scene: Scenario, report: MapBuildingReport) {
-        // The scene's south-west corner, in degrees: local metres by the same equirectangular
-        // mapping the placement and the crop use.
-        let metresPerDegree = ElevationGrid.metresPerDegree
-        let corner = SIMD2(
-            centre.x - Double(radius) / (metresPerDegree * cos(centre.y * .pi / 180)),
-            centre.y - Double(radius) / metresPerDegree)
-        var scene = Scenario(
-            name: "District \(Int(radius)) m", domainSize: SIMD3(2 * radius, 2 * radius, domainHeight),
-            boxes: [],
-            charge: Charge(mass: mass, position: SIMD3(radius, radius, 0)))
-        if let ground {
-            scene.terrain = try ground.terrain(
-                origin: corner, size: SIMD2(2 * radius, 2 * radius), spacing: cellSize, datum: 0,
-                base: seaBase,
-                name: "DEM"
-            ).terrain
-            // On the ground at the centre.
-            scene.charge.position.z = scene.terrain!.height(at: SIMD2(radius, radius))
-        }
-        var placement = MapBuildingPlacement(origin: corner, resolution: cellSize)
-        placement.heightGrid = heights
-        let report = try scene.addMapBuildings(buildings, placement: placement)
-        scene.attributions = (scene.attributions ?? []) + attributions
-        return (scene, report)
+        var layout = DistrictLayout(buildings: buildings, charge: centre, mass: mass)
+        layout.ground = ground
+        layout.heights = heights
+        layout.seaBase = seaBase
+        layout.attributions = attributions
+        return try layout.scene(halfSide: radius, cellSize: cellSize, height: domainHeight)
     }
 }
 

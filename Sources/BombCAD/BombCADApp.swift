@@ -54,9 +54,16 @@ struct BombCADApp: App {
         }
         .defaultSize(width: 1440, height: 920)
         .commands {
+            NewDistrictCommands()
             SimulationCommands()
             HelpCommands()
         }
+
+        Window("New District", id: "new-district") {
+            NewDistrictView()
+        }
+        .defaultSize(width: 620, height: 820)
+        .windowResizability(.contentMinSize)
 
         Window("BombCAD Help", id: "help") {
             HelpView()
