@@ -329,6 +329,17 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell
   read a NaN wave speed and was 0.62 s long; it now runs as with a second level that has room.
   A wave speed that is NaN, infinite or negative now stops the batch, unstable, where it would
   have set a step far too long.
+- **A block's cell on a patch's face.** Where a patch's face meets coarser air and the fine cell
+  inside is solid, the fine level gives refluxing the wall's flux through that face. Beside a
+  block standing in cut ground, that flux was the whole face's, while the coarser cut cell outside
+  had recorded its flux through the face times its own aperture, the terrain's open share, its
+  wall taking the rest; the difference, the pressure on the terrain's share, was added to the
+  cut cell every step and scattered by its small share of air. In still air ahead of a blast it
+  stirred hundreds of pascals to kilopascals, refined twice most (once, about a twentieth as
+  much), and arrived in Beirut's south-east as a precursor about 0.7 kPa ahead of the shock and
+  ringing at about 25 Hz. The wall's flux is now taken through the fine face's open share (since
+  19 October 2026): the air ahead stays within a pascal (`TerrainCutCellTests.stillAheadBesideBlock`,
+  3.8 kPa before).
 - **A deflagration's air** is cut too, since 17 October 2026 (it kept the staircase before). Its
   mixture is carried across cut cells at the same limited linear mass fractions on both sides of
   each face, with the sub-grid mixing's carrying through each face's open part, and near the cut

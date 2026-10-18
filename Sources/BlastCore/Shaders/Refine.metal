@@ -632,6 +632,19 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
             Prim w = primOf(outside, u);
             Prim wall = mirrored(w, float3(fineWall[own])[axis]);
             Flux f = layer == 1u ? riemannFlux(w, wall, u) : riemannFlux(wall, w, u);
+            // With the terrain's cut cells, through the face's open part only: the coarse cell
+            // recorded its flux there times its own aperture, the terrain's share of the face, and
+            // its wall takes the rest. A block's cell over cut ground would otherwise give the whole
+            // face's wall flux, and the difference, the pressure on the terrain's share, would be
+            // added to the coarse cell every step: in still air, beside a block on a slope.
+            if (cutCells && terrain.enabled != 0) {
+                CutGeometry g = cutGeometryAt(tile * int(side) + inside, u.dx / float(u.refineRatio),
+                                              cutSamples(u, terrain), terrain, terrainHeights);
+                float aperture = layer == 1u ? g.low[1 + axis] : g.high[axis];
+                f.mass *= aperture;
+                f.momentum *= aperture;
+                f.energy *= aperture;
+            }
             uint face = 2u * axis + (layer == 1u ? 0u : 1u);
             addFlux(fineFlux, registerSlot(patch, face, a, b, side), f, axis, levelStep(control, u));
         }
