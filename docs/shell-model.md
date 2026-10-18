@@ -731,7 +731,7 @@ bowed as Eurocode 3 takes members to be:
   the bow alone would carry. So a bowed member starts unstressed, its axial force bends it through
   the bow, and the bow turns with it.
 - The nodes stay on the straight line for the air, contact and drawing, a few millimetres off.
-- Members of an elastic stand-in (yield above 2 GPa), concrete and timber stay straight.
+- Members of an elastic stand-in (yielding above 5% of its modulus), concrete and timber stay straight.
 
 Pinned S355 struts 50 mm square, loaded by a head mass under gravity raised slowly (load control:
 the largest force the foot carries is the resistance, χ N_pl; `blastbench buckling
@@ -775,6 +775,43 @@ The wavelength is measured as the peak of the sideways speed's spectrum over the
 length, after five e-folds of the fastest growth, summed over eight random starts. One start
 alone scatters by ±20%. It scales as v^(−0.52), against Gladden et al.'s measured and Lindberg's
 v^(−1/2). The beams buckle about the right wavelength under a sudden load, 3–20% long.
+
+**Against Kenny's drop-hammer tests** (`KennyImpactTest`, `blastbench kenny`;
+Dalhousie PhD, 2001, a scan read from its pages). A 10 kg hammer was dropped at about 6.2 m/s
+onto upright strips 50.8 mm wide, clamped at the foot and held at the head by a slide bearing.
+- **The strips:** CR1018 steel 3.175 mm thick, and 6061-T6 aluminium 3.175 and 4.76 mm thick,
+  unsupported over 137–550 mm.
+- **The measurement** (Table 6-4): each series' mean final sideways deflection of its peak
+  buckle, which lay near the clamp.
+- **The materials:** Kenny's bilinear laws (Table 6-6). The steel takes Jones's mild-steel rate
+  law; the aluminium is taken as rate-independent.
+
+**How the strip is modelled.** Each strip is a line of beams, drawn 6 mm wide of a material
+50.8/6 times as stiff, dense and strong. Its axial stiffness, mass, weak-axis bending, plastic
+moment and wave speeds are therefore the strip's.
+
+**How the hammer is modelled.** It drives the head while the strip pushes back, parts from it
+when the strip stops pushing, and strikes again whenever it catches up. After 10 mm it meets
+the bearing disc and the drop tube stops it. That stroke is read from Kenny's procedure
+(Appendix B.3): the strip stood about 10 mm above the disc, and he measured about 5 mm of
+shortening. Without it the aluminium strips take the whole 192 J and fold 3–4 times too far.
+
+Final deflection over measured, 16 series:
+
+| Bow | Steel, 137–550 mm | Aluminium 3.175 mm | Aluminium 4.76 mm |
+|---|---|---|---|
+| Eurocode 3's, curve c (the default) | 1.44, 1.26, 2.11, 1.35, 2.45, 3.68 | 1.32, 0.98, 0.91, 0.71, 1.19, 1.41 | 1.23, 1.32, 1.70, 0.78 |
+| Kenny's measured β = A₀/L | 1.07, 0.61, 1.10, 0.75, 1.03, 1.97 | 1.04, 0.76, 0.84, 0.65, 0.57, 0.52 | 0.78, 0.88, 0.60, 0.45 |
+
+- **The default bows** give 13 of 16 within half to twice. The slenderest steel strips read 2.5
+  and 3.7 times too far: their Eurocode bow, 2–3 mm, is twice what Kenny measured.
+- **The measured bows** give 15 of 16 within half to twice, mostly a little low.
+- **The buckle is in the wrong place.** The tests' peak buckle lay 51–130 mm above the clamp,
+  where the reflected stress wave doubled. The model's mostly lies near mid-length, where the
+  half-sine bow seeds it.
+- **Rate matters.** Without its rate law the steel reads 1.3–7 times too far (measured bows, no
+  stroke).
+- **The aluminium's numbers rest on the stroke,** which is read, not measured.
 
 No test of a steel column buckling under blast with its measured response has been compared.
 Nassr et al.'s columns under blast with axial load (McMaster, 2012) were loaded to a quarter of
@@ -969,8 +1006,11 @@ too ductile at a blast's rate as the bolted ones would be.
   elements.
 - **Punching against a test**, before and after punching, and with an eccentric load.
 - **A flanged section's minor axis as it is**, so that a bowed I-section buckles about its weak
-  axis at its own load; and a test of imperfect struts under an impulsive axial load (Kenny's
-  thesis, in [data wanted](data-wanted.md)).
+  axis at its own load.
+- **A buckle that starts where the stress wave starts it.** Kenny's strips buckled near the
+  clamp, where the reflected wave doubled the stress. A half-sine bow puts the model's buckle
+  near mid-length instead. A bow with the measured imperfections' content, or one that
+  scatters, might place it.
 
 ## Sources
 
@@ -978,6 +1018,9 @@ too ductile at a blast's rate as the bolted ones would be.
   experimental and computational study of steel moment connections under a column removal
   scenario*, NIST Technical Note 1669, 2010 (open). The WUF-B and RBS assemblies and their
   fracture rotations.
+- D. Kenny, *Dynamic pulse buckling of slender beams with geometric imperfections subjected to
+  an axial impact*, PhD thesis, Dalhousie University, 2001 (hdl:10222/55746). Tables 6-1 to 6-4
+  and 6-6: the drop-hammer tests on steel and aluminium strips; Appendix B.3, the set-up.
 - A. Culache, *Assessment of steel endplate moment connections with stainless steel bolts
   subjected to rapid loading rates*, PhD thesis, University of Southampton, 2017
   (eprints.soton.ac.uk/436596). Table 3.5: bolted end plates loaded over 300 s and in 40 ms.

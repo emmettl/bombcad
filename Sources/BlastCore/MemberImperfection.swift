@@ -45,7 +45,7 @@ public enum BucklingCurve: String, Codable, Sendable, CaseIterable, Hashable {
 /// for the length pinned at its joints and W_pl / A a quarter of the weaker side: so its
 /// resistance follows its curve (`BucklingTests`, 0.97–1.02 of χ over λ̄ 0.2–2 on curves a, b
 /// and c, where Table 5.1's bows, sized for I-sections, gave 0.82–0.98). Members of a material
-/// without a real yield (an elastic stand-in, above 2 GPa) stay straight. Its nodes turned to the sine's slope (the joints left as they
+/// without a real yield (an elastic stand-in, yielding above 5% of its modulus) stay straight. Its nodes turned to the sine's slope (the joints left as they
 /// are). The beams' kernel adds each end's offset and turn to its node's own motion, so taking the
 /// motion from the straight line, and takes the strain the bow alone would carry away from each
 /// fibre's: a bowed member starts without stress, its axial force acting through the bow bends it
@@ -95,7 +95,9 @@ enum MemberImperfection {
             let curve = solid < model.solids.count ? model.bucklingCurve(of: solid) : model.bucklingCurve
             let ratio = divisor ?? divisorOverride
             let steel = materials[first.material]
-            guard steel.yieldStress < 2e9 else { continue }
+            // A material without a real yield, an elastic stand-in, stays straight: a metal yields
+            // at a few thousandths of its modulus (a section's equivalent, scaled, keeps that).
+            guard steel.yieldStress < 0.05 * steel.youngsModulus else { continue }
             // The line's nodes in order along it, and its joints.
             let nodes = Set(beams.flatMap { [Int(mesh.beams[$0].nodes.x), Int(mesh.beams[$0].nodes.y)] })
                 .sorted { mesh.positions[$0][k] < mesh.positions[$1][k] }
