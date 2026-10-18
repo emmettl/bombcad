@@ -77,7 +77,7 @@ including `BombCAD run` and the `blastbench` command-line tool.
 | Ground shock | The design manuals' estimate, or a layered soil column under each point | [Ground shock](docs/ground-shock.md) |
 | Craters | An empirical crater for each charge on earth or rock, kept shallow below a water table, after the blast; and the energy soft ground takes from the air | [Cratering](docs/cratering.md) |
 | Gas deflagrations | A methane, propane, hydrogen or town gas cloud lit in a room, with vent panels; congestion below the grid; a vapour cloud explosion at a process plant beside its buildings, after Texas City 2005 | [Gas deflagrations](docs/deflagration.md), [process plant](docs/process-plant-explosion.md) |
-| Building envelopes | Exposure-only buildings, up to districts of them from map data, each wall, roof and pane judged for damage as it goes: glass, concrete and brick panels, freestanding and one-way walls, slabs, and the pressure let inside | [Building envelopes](docs/building-envelopes.md#one-way-damage-single-degree-of-freedom), [street interactions](docs/street-interaction.md) |
+| Building envelopes | Exposure-only buildings, up to districts of them from map data (File ▸ New District), each wall, roof and pane judged for damage as it goes: glass, concrete and brick panels, freestanding and one-way walls, slabs, and the pressure let inside | [Building envelopes](docs/building-envelopes.md#one-way-damage-single-degree-of-freedom), [street interactions](docs/street-interaction.md) |
 | Other Macs | Sweeps and the effects beside the blast placed on other Macs by cost | [Distributed computing](docs/distributed-computing.md) |
 
 ## Headline results

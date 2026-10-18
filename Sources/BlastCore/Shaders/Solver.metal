@@ -906,6 +906,15 @@ static inline FacePair reconstructGravity(Prim w, Prim e, Prim d, float2 rise, f
         faces.hi = w;
         faces.hi.rho = above.x + e.rho;
         faces.hi.p = above.y + e.p;
+        // Near a vacuum (a cell at the pressure floor), the background's fall across half a cell
+        // can be more than the cell holds, and the face would have no pressure, or none of its
+        // density, for the Riemann solver to take a sound speed from: there, the cell's own state.
+        if (!(faces.lo.rho > u.densityFloor && faces.lo.p > u.pressureFloor)) {
+            faces.lo = w;
+        }
+        if (!(faces.hi.rho > u.densityFloor && faces.hi.p > u.pressureFloor)) {
+            faces.hi = w;
+        }
     }
     return faces;
 }
@@ -3134,7 +3143,7 @@ struct EnvelopeWallSystem {
     float sign;
     uint first;
     uint count;
-    uint pad0;
+    uint eitherWay;  // 1: yielded either way (concrete), not only inward
     uint pad1;
 };
 
@@ -3231,7 +3240,8 @@ kernel void stepEnvelopeWalls(const device float2 *current [[buffer(0)]],
             v += 0.5f * h * (load - r - s.damping * v) / (kick * s.mass);
             peak = max(peak, x);
             rebound = min(rebound, x);
-            if (!failed && ((peak > s.yieldPast && max(peak, -rebound) > s.rotationPast) || fabs(x) >= s.lostPast)) {
+            float yieldedBy = s.eitherWay != 0 ? max(peak, -rebound) : peak;
+            if (!failed && ((yieldedBy > s.yieldPast && max(peak, -rebound) > s.rotationPast) || fabs(x) >= s.lostPast)) {
                 failed = true;
                 if (!cantilever || k == judged) {
                     float t = clock.x - control.dt + float(i + 1) * h;

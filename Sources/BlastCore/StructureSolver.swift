@@ -2129,6 +2129,7 @@ public final class StructureSolver {
             parameters.rateExponent = 1 / law.y
             parameters.rateTestFactor = 1 + pow(StructureMaterial.tensileTestRate / law.x, 1 / law.y)
         }
+        if material.interlayerThickness != nil { parameters.fragments = 1 }
         if let buckling = material.localBuckling {
             parameters.bucklingAxis = UInt32(buckling.axis + 1)
             parameters.bucklingSide = Float(buckling.side)

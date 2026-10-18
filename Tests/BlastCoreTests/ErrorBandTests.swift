@@ -122,6 +122,19 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
                     "burning column \(first + grid)")
             }
         }
+        // The mapped start, since 18 October: the same four quantities on three grids.
+        let mapped = try table(ValidationTables.mappedDocument, header: "Incident peak: 0.5 m")
+        #expect(mapped.count == ValidationTables.distances.count)
+        for (first, code) in [
+            (2, ValidationTables.mappedIncidentPeak), (5, ValidationTables.mappedIncidentImpulse),
+            (8, ValidationTables.mappedReflectedPeak), (11, ValidationTables.mappedReflectedImpulse),
+        ] {
+            for grid in 0..<3 {
+                #expect(
+                    mapped.map { percent($0[first + grid]) } == code.byGrid[grid]!.map(Optional.some),
+                    "mapped column \(first + grid)")
+            }
+        }
         // Close in: four cell sizes, peaks then impulses.
         let close = try table("validation.md#close-in", header: "Z (free air)")
         #expect(close.map { Double($0[0]) } == ValidationTables.closeDistances.map(Optional.some))

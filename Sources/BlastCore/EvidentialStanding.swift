@@ -556,9 +556,14 @@ public enum StandingTable {
                 document: "air-blast-model.md#refining-near-the-shock")
         case .mappedCharge:
             return Entry(
-                title: "Finely resolved start", affects: air, limit: nil,
-                note: "The charge mapped onto the grid from a fine one-dimensional burst: the same energy as "
-                    + "the balloon within 3%.",
+                title: "Finely resolved start", affects: air + structure + [.envelopeExposure], limit: nil,
+                note:
+                    "The charge mapped onto the grid from a fine one-dimensional burst, as runs start since 18 "
+                    + "October 2026: from 1 m/kg^(1/3), incident peaks 83–117% of Kingery–Bulmash for 10 and 100 kg "
+                    + "on 0.25–0.5 m cells and 63–99% for 1 kg, where the balloon leaves 32–84% and 11–47%, its fireball's "
+                    + "mixing fitted once on 10 kg; impulses within 5–15%. The comparisons of structures, envelopes "
+                    + "and rooms were "
+                    + "run on the balloon start and are not yet run again on this one.",
                 document: "air-blast-model.md#a-finely-resolved-start")
         case .structureFixedInAir:
             return Entry(
@@ -1075,6 +1080,10 @@ public enum StandingTable {
         "SolverConfiguration.afterburnEnergy": .input,
         "SolverConfiguration.afterburnTime": .option([.afterburning]),
         "SolverConfiguration.mappedCharge": .option([.mappedCharge]),
+        "SolverConfiguration.mappedChargeCells": .numerical,
+        "SolverConfiguration.mappedChargeScaledReach": .numerical,
+        "SolverConfiguration.mappedChargeBurns": .numerical,
+        "SolverConfiguration.mappedChargeMixing": .numerical,
         "SolverConfiguration.airSleepThreshold": .numerical,
         "SolverConfiguration.airSleepCrossings": .numerical,
         "SolverConfiguration.debrisReach": .numerical,
@@ -1189,6 +1198,7 @@ public enum StandingTable {
         "StructureMaterial.timber": .input,
         "StructureMaterial.localBuckling": .input,
         "StructureMaterial.rateLaw": .input,
+        "StructureMaterial.interlayerThickness": .input,
         // Connections.
         "Anchorage.normalStiffness": .input,
         "Anchorage.shearStiffness": .input,
@@ -2032,14 +2042,14 @@ struct StandingScene {
                 StandingEvidence(
                     "Brick walls' debris (Keys, 2016)",
                     "Loads within 15%; the walls crack at the measured heights but fall as one column, lying "
-                        + "1.5–2 m too far out in the open and thrown half as far as measured in a shock tube",
+                        + "1.0–1.4 m too far out in the open and thrown half as far as measured in a shock tube",
                     "validation.md#brick-walls-debris"
                 ))
             if has(.softGround) {
                 evidence.append(
                     StandingEvidence(
                         "Brick walls' debris on soft ground (Keys, 2016)",
-                        "At 5×10⁷ Pa/m the mean distance 1.36 m against 0.23 and 0.64 m measured (2.10 and 2.15 m "
+                        "At 5×10⁷ Pa/m the mean distance 1.11–1.40 m against 0.23–0.64 m measured (1.60–1.64 m "
                             + "on the hard ground); one run of each wall", "validation.md#brick-walls-debris")
                 )
             }
@@ -2062,6 +2072,21 @@ struct StandingScene {
                     "A glass pane at 3 m", "Breaks under 1 kg and survives 0.5 g",
                     "validation.md#verification-against-theory"))
             parts.append("glass a brittle concrete, checked only to break and survive")
+            let laminated = structures.contains { model in
+                ([model.material] + model.solidMaterial.compactMap { $0 }).contains {
+                    $0.interlayerThickness != nil
+                }
+            }
+            if laminated {
+                evidence.append(
+                    StandingEvidence(
+                        "Laminated panes as shells (Osnes et al., 2019; Hooper, 2011)",
+                        "Ten of fifteen shock-tube panes crack or hold as measured at E1300's median strength, "
+                            + "the cracked ones going 0.80–1.28 of the measured deflection untorn; six of eight "
+                            + "bonded panes leave their silicone at 0.87–1.24 of the measured speed, the two "
+                            + "largest as soon as they crack",
+                        "validation.md#laminated-glass"))
+            }
         }
         if classes.contains(.timber) {
             evidence.append(
@@ -2355,9 +2380,10 @@ struct StandingScene {
                     "validation.md#the-threshold-against-astm-e1300"),
                 StandingEvidence(
                     "A district against its surveys: Beirut, 2020, 14,169 map buildings at 0.2–1.1 kt",
-                    "One typical pane a storey breaks inside 1.25 km where GEER found 0.39–0.84 of street "
-                        + "façades damaged, half at 1.1–2.1 km by the glass assumed; 0.5 m stone falls where "
-                        + "partial collapses were found and cracks to about 1.2 km",
+                    "Glass (converged by 4 m cells) breaks inside 1.25 km where GEER found 0.39–0.84 of "
+                        + "street façades damaged, its edge set by the panes assumed; the structure low and "
+                        + "not converged: 0.5 m stone cracks where partial collapses were found, concrete "
+                        + "hardly damaged where GEER's was D1–D3",
                     "validation.md#a-district-beirut-2020"),
             ] + laminatedEvidence,
             assumptions: [
@@ -2380,6 +2406,8 @@ struct StandingScene {
                     + "2° is flagged as beyond the one-way model.",
                 "A component's load is Biggs's equivalent uniform load, its faces weighted by its plastic "
                     + "mechanism's shape from the edges it is held on (held nowhere, taken as held all round).",
+                "Concrete is judged whichever way it went furthest, pushed out as pushed in (UFC 3-340-02 "
+                    + "§4-26.2), with ASCE/SEI 59-11's limits.",
                 "Glass is annealed, on Moore's large-deflection plate, simply supported, breaking at E1300's "
                     + "median strength with the whole pane at its largest stress"
                     + (laminated
@@ -2689,9 +2717,10 @@ struct StandingScene {
                 StandingEvidence(
                     "Envelope debris against Keys's brick walls (2016) and the Kasun cubicle (80 kg inside)",
                     "Keys: the debris's mean reach 0.25–0.53 m against 0.23–0.64 m, its far tail short (0.5–1.5 m "
-                        + "against 3–6 m); Kasun: launched at up to 120–132 m/s against the Klotz Group's 124 m/s, "
-                        + "but hazardous debris to 142 m against the tests' 290–315 m, the unsafe side (DoD's "
-                        + "structure distance, 268 m, governs)",
+                        + "against 3–6 m); Kasun: launched at up to 118–131 m/s against the Klotz Group's 124 m/s, "
+                        + "its walls venting the gas, but hazardous debris to 129 m against the tests' 290–315 m, "
+                        + "the unsafe side (DoD's structure distance, 268 m, governs); Kasun III's launch "
+                        + "speeds 44–49 m/s against 52 measured (6.9 kg PETN), 171–192 against 224 (110 kg)",
                     "hazards.md#debris-from-failed-envelope-components"),
             ],
             assumptions: [

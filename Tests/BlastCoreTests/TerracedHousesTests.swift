@@ -35,7 +35,8 @@ struct TerracedHousesTests {
         let timber = mesh.elements.filter { model.materials[$0.material].model == .timber }
         #expect(timber.count > 0 && timber.allSatisfy { $0.axis == 2 })
         let standing = SceneStanding(
-            StandingInputs(scenario: scenario, cellSize: 0.25, configuration: .recommended))
+            // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+            StandingInputs(scenario: scenario, cellSize: 0.25, configuration: .recommended.balloonStart))
         #expect(
             standing.results.contains { result in result.evidence.contains { $0.check.contains("timber") } })
     }
@@ -48,7 +49,8 @@ struct TerracedHousesTests {
         let solver = try BlastSolver(
             device: device, scenario: ScenarioPreset.terracedRow(title: "Terraced row", faceClearance: 0),
             cellSize: 0.5,
-            configuration: .recommended)
+            // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+            configuration: .recommended.balloonStart)
         solver.settleStructures()
         #expect(solver.settlements.allSatisfy { $0.settled })
         let shells = try #require(solver.bodies.first?.shells)

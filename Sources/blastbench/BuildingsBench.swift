@@ -67,7 +67,8 @@ func runBuildings() throws {
         for object in scenario.structuralObjects where !kept.contains(object.name) {
             try scenario.removeObject(id: object.id)
         }
-        var configuration = SolverConfiguration.recommended
+        // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+        var configuration = SolverConfiguration.recommended.balloonStart
         applyChosenAir(&configuration)
         configuration.airSleepThreshold = 0
         configuration.airSleepCrossings = 0

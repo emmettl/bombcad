@@ -36,7 +36,8 @@ enum VentingChecks {
             ]
         }
         for (name, vented, refined) in runs {
-            var config = SolverConfiguration.recommended
+            // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+            var config = SolverConfiguration.recommended.balloonStart
             if refined {
                 config.refinement = 2
                 config.refinementLevels = 1
@@ -124,7 +125,8 @@ enum VentingChecks {
         for (name, scene, spec, duration) in cases {
             let start = ContinuousClock.now
             let solver = try BlastSolver(
-                device: device, scenario: scene, cellSize: dx, configuration: .recommended)
+                // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+                device: device, scenario: scene, cellSize: dx, configuration: .recommended.balloonStart)
             try solver.configureEnvelopeExposure(objects: scene.envelopeObjects)
             try solver.configureEnvelopeComponents(
                 objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: duration))

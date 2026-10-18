@@ -48,7 +48,8 @@ final class EnvelopeVenting {
         var sign: Float
         var first: UInt32
         var count: UInt32
-        var pad0: UInt32 = 0
+        /// 1: yielded either way (concrete), not only inward.
+        var eitherWay: UInt32 = 0
         var pad1: UInt32 = 0
     }
 
@@ -360,7 +361,8 @@ final class EnvelopeVenting {
                         yieldPast: Float(min(system.yieldPast, 1e30)),
                         rotationPast: Float(min(system.rotationPast, 1e30)),
                         lostPast: Float(min(system.lostPast, 1e30)), sign: Float(system.sign),
-                        first: UInt32(wallTable.count), count: UInt32(sdof.backbone.count)))
+                        first: UInt32(wallTable.count), count: UInt32(sdof.backbone.count),
+                        eitherWay: system.eitherWay ? 1 : 0))
                 wallTable += sdof.backbone.map { SIMD4(Float($0.x), Float($0.y), 0, 0) }
             }
             wallIndices.append(n)

@@ -1108,8 +1108,8 @@ air sees the ground as hard either way. See [Validation](validation.md#brick-wal
 the app it is Run ▸ Terrain ▸ Made of ▸ Soil under debris only, or any earth or rock type (`SolverConfiguration.groundStiffness`,
 saved with the project, `--ground` for a headless run), 10–150 MN/m³ from loose sand to dense
 sand (50 by default, as a footing's soil), on solid elements only; the rigid ground stays the
-default, the one comparison (Keys's walls in the open, one run each) narrowing the debris by a
-third but not to what was measured. The standing names it ("Soft ground under debris").
+default, the one comparison (Keys's walls in the open, one run each) narrowing the debris by an
+eighth to a third but not to what was measured. The standing names it ("Soft ground under debris").
 
 ### Debris as a hazard
 

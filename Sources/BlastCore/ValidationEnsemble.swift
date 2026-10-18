@@ -544,7 +544,8 @@ public enum ValidationEnsemble {
         wall.gauges = [Gauge("Wall", at: SIMD3(63.99, 32, 0.05))]
         // The air every run ships with (`SolverConfiguration.recommended`).
         let solver = try BlastSolver(
-            device: device, scenario: wall, cellSize: wallCell, configuration: .recommended)
+            // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+            device: device, scenario: wall, cellSize: wallCell, configuration: .recommended.balloonStart)
         solver.advance(until: 0.1)
         let cell = solver.nearestFluidCell(to: wall.gauges[0].position)
         return [

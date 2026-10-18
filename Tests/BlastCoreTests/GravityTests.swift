@@ -228,4 +228,32 @@ struct GravityTests {
             abs(bubble.temperature / expected - 1) < 1e-3, "\(bubble.temperature) K against \(expected) K")
         #expect(abs(bubble.centre.z - 101) < 1e-3)
     }
+
+    @Test("Under gravity cells at the pressure floor, among air at rest, stay finite")
+    func cellsAtThePressureFloor() throws {
+        // As a cut cell beside the terrain can be left: the background's fall across half a cell is
+        // more than such a cell holds, which once gave its faces no pressure and the air NaNs. A
+        // layer of them, so that the horizontal sweeps leave them as they are for the vertical; in
+        // thermally perfect air, whose Riemann solver averages the two sides' sound speeds (an ideal
+        // gas's takes its own from the averaged enthalpy, which hid the NaN).
+        let solver = try column(
+            AirGravity(), cells: SIMD3(8, 8, 32), cellSize: 0.5, airModel: .thermallyPerfect)
+        solver.mutateState { cells in
+            for j in 0..<8 {
+                for i in 0..<8 {
+                    let n = solver.grid.index(i, j, 16)
+                    cells[n].density = 0.01
+                    cells[n].energy = 0
+                }
+            }
+        }
+        solver.restart()
+        let result = solver.advance(steps: 20)
+        let finite = solver.withState { cells in
+            cells.allSatisfy { c in
+                [c.density, c.momentumX, c.momentumY, c.momentumZ, c.energy].allSatisfy(\.isFinite)
+            }
+        }
+        #expect(result.isStable && result.steps == 20 && finite, "\(result.steps) steps, finite: \(finite)")
+    }
 }

@@ -52,7 +52,9 @@ func runNian(device: MTLDevice) throws {
                 charge: Charge(mass: mass, position: charge),
                 gauges: gauges.map { Gauge($0.name, at: $0.position) })
             let solver = try BlastSolver(
-                device: device, scenario: scenario, cellSize: cellSize, configuration: .recommended)
+                // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+                device: device, scenario: scenario, cellSize: cellSize,
+                configuration: .recommended.balloonStart)
             solver.advance(until: duration)
             let ambient = scenario.atmosphere.pressure
             peaks[withWall] = solver.gaugeHistories.map { history in

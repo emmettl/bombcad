@@ -2,7 +2,7 @@ import BlastCore
 import Foundation
 import Metal
 
-// `blastbench envelope-debris [--charge 80] [--dx 0.1] [--time 0.03]`: the Norwegian and Swedish
+// `blastbench envelope-debris [--charge 80] [--dx 0.1] [--time 0.03] [--ratio 0.0151] [--levers]`: the Norwegian and Swedish
 // Kasun cubicle (Kummer, IESS 2018, Fig. 11; Weerheijm and Conway, IESS 2018): 2 × 2 × 2 m inside,
 // walls and roof of 0.15 m reinforced concrete in both faces, on the ground, the charge in its
 // middle. As an envelope, its walls and roof judged one way on the air's load from inside, those
@@ -28,14 +28,19 @@ func runEnvelopeDebris(device: MTLDevice) throws {
     let middle = origin + SIMD3(outer / 2, outer / 2, inside / 2)
     var scenario = Scenario(
         name: "Kasun", domainSize: SIMD3(2 * origin.x + outer, 2 * origin.y + outer, 6), boxes: [],
-        charge: Charge(mass: charge, position: middle))
+        charge: Charge(mass: charge, position: middle),
+        gauges: [Gauge("Inside", at: origin + SIMD3(wall + 0.4, wall + 0.4, 0.4))])
     let owner = try scenario.addEnvelopeObject(BuildingEnvelope(solids: solids), name: "Kasun")
     scenario.setEnvelopeConstruction(
         EnvelopeConstruction(
             objectID: owner, walls: .reinforcedConcrete, wallThicknessM: wall, roof: .reinforcedConcrete,
-            roofThicknessM: wall, source: .user, detail: "0.15 m reinforced concrete, bars in both faces",
-            barsInBothFaces: true))
-    var configuration = SolverConfiguration.recommended
+            roofThicknessM: wall,
+            // Kasun III's bars (Weerheijm et al.): 12 mm at 100 mm both ways in both faces, 25 mm cover.
+            reinforcementRatio: option("ratio").flatMap { Float($0) } ?? 2 * 113.1e-6 / 0.1 / wall,
+            source: .user, detail: "0.15 m reinforced concrete, bars in both faces", barsInBothFaces: true,
+            barCoverM: 0.025))
+    // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+    var configuration = SolverConfiguration.recommended.balloonStart
     configuration.airSleepThreshold = 0
     configuration.airSleepCrossings = 0
     let solver = try BlastSolver(
@@ -51,6 +56,24 @@ func runEnvelopeDebris(device: MTLDevice) throws {
         if solver.advance(steps: 16, timeLimit: duration).steps == 0 { break }
     }
     let vented = solver.envelopeVentingSnapshot()
+    // Whether the walls opened, and the pressure inside, a corner 0.4 m in, falling as the gas left.
+    let opened = (vented?.walls ?? []).filter { $0.failedAtS != nil }
+    print(
+        "Venting opened \(opened.count) of \(vented?.walls.count ?? 0) walls and roofs"
+            + (opened.isEmpty
+                ? "" : String(format: ", the first at %.1f ms", 1000 * opened.compactMap(\.failedAtS).min()!))
+    )
+    if let samples = solver.gaugeHistories.first {
+        let times = [0.002, 0.005, 0.01, 0.02, duration - 1e-4]
+        print(
+            "Inside, overpressure "
+                + times.map { t in
+                    let sample = samples.min { abs($0.time - t) < abs($1.time - t) }
+                    return String(
+                        format: "%.0f kPa at %.0f ms", ((sample?.pressure ?? 101_325) - 101_325) / 1000,
+                        t * 1000)
+                }.joined(separator: ", "))
+    }
     let loads = (solver.envelopeComponentHistories() ?? []).filter {
         !$0.invalid || vented?.keeps($0) == true
     }
@@ -95,4 +118,27 @@ func runEnvelopeDebris(device: MTLDevice) throws {
             .summary
             .dropFirst())
     print("Measured (Kasun, 80 kg): 1 hazardous piece per 56 m² at 290–315 m; the Klotz Group's tool 260 m")
+    // `--levers`: how far the reach moves with the pieces' size, their drag and their launch angle.
+    guard flag("levers") else { return }
+    let components = damage.flatMap(\.components)
+    func reach(edge: Float? = nil, drag: Float = 1, tiltDeg: Double? = nil) -> String {
+        let varied = components.map { component -> EnvelopeComponentDamage in
+            var component = component
+            if let edge { component.launch?.piece = SIMD3(edge, edge, min(edge, wall)) }
+            if let tiltDeg { component.launch?.rotationRad = tiltDeg * .pi / 180 }
+            return component
+        }
+        guard
+            let debris = EnvelopeDebris.make(
+                loads: loads, components: varied, centre: scenario.charge.position,
+                ambient: Primitive(density: 1.225, pressure: 101_325), dragScale: drag)
+        else { return "nothing thrown" }
+        let pieceKg = varied.compactMap(\.launch).first?.pieceKg ?? 0
+        return String(
+            format: "pieces of %.1f kg: hazardous to %.0f m, furthest hazardous %.0f m", pieceKg,
+            debris.hazard.hazardDistance ?? 0, debris.hazard.furthestHazardous ?? 0)
+    }
+    for edge: Float in [0.05, 0.075, 0.15, 0.3] { print("  cubes of \(edge) m: " + reach(edge: edge)) }
+    for drag: Float in [0.5, 2] { print("  drag × \(drag): " + reach(drag: drag)) }
+    for tilt in [0.0, 20, 30, 45] { print("  launched \(Int(tilt))° off square: " + reach(tiltDeg: tilt)) }
 }

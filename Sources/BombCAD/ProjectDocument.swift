@@ -52,6 +52,11 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// it as the run started; nil, and left out of the file and the fingerprint, where the scene
     /// has no structure, or for a run saved before then.
     var settlesStructures: Bool?
+    /// True when, with afterburning and hot air, the charge started from a fine one-dimensional
+    /// burst mapped onto the grid, as since 18 October 2026; nil, and left out of the file and the
+    /// fingerprint, for the balloon of hot gas (so every run saved before then keeps its start), or
+    /// without afterburning and hot air.
+    var mappedStart: Bool?
     var solidElementSize: Float
     var duration: Double
 
@@ -72,6 +77,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         // With gravity the run takes the fill, and says so.
         ventsGlazing = settings.ventsGlazing && settings.scenario.hasEnvelopePanes ? true : nil
         settlesStructures = settings.scenario.structuralObjects.isEmpty ? nil : settings.settlesStructures
+        mappedStart = settings.detailedCharge && settings.mappedStart ? true : nil
         solidElementSize = settings.solidElementSize
         self.duration = duration
     }
@@ -106,6 +112,11 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     func settlesStructures(over scenario: Scenario) -> Bool {
         settlesStructures ?? scenario.structuralObjects.isEmpty
     }
+
+    /// Whether a run under these settings starts its charge from a fine one-dimensional burst: as
+    /// recorded with afterburning, where nil (a run saved before 18 October 2026, or with it off)
+    /// is not; without afterburning it does not apply, and it is on, for when afterburning is.
+    var startsMapped: Bool { mappedStart ?? !detailedCharge }
 
     /// The craters the charges of `scenario` dig in the ground these settings name; none on the
     /// rigid ground. They form after the blast, so they are worked out from the scene, not the run.

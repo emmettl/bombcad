@@ -231,6 +231,26 @@ public enum ValidationTables {
     /// Where the burning tables are recorded.
     public static let burningDocument = "validation.md#the-defaults-since-15-october"
 
+    /// On the mapped start, the default since 18 October 2026, with afterburning, hot air and
+    /// far-field faces (validation.md, "The mapped start").
+    public static let mappedIncidentPeak = Table(byGrid: [
+        [119, 108, 116, 104, 104, 101, 103, 78], [115, 116, 113, 101, 103, 83, 86, 87],
+        [116, 117, 113, 87, 91, 93, 94, 95],
+    ])
+    public static let mappedIncidentImpulse = Table(byGrid: [
+        [128, 96, 96, 100, 108, 105, 103, 106], [127, 96, 95, 98, 105, 106, 106, 106],
+        [127, 95, 93, 97, 104, 104, 103, 104],
+    ])
+    public static let mappedReflectedPeak = Table(byGrid: [
+        [15, 22, 34, 45, 60, 68, 72, 74], [32, 40, 55, 64, 77, 83, 87, 88], [57, 62, 76, 83, 92, 95, 97, 97],
+    ])
+    public static let mappedReflectedImpulse = Table(byGrid: [
+        [70, 79, 97, 103, 114, 115, 115, 114], [85, 95, 107, 111, 118, 118, 117, 115],
+        [96, 102, 113, 115, 119, 117, 114, 113],
+    ])
+    /// Where the mapped start's tables are recorded.
+    public static let mappedDocument = "validation.md#the-mapped-start-18-october"
+
     /// A column's range as "a–b%", from the `from`th distance out (1 is 1 m/kg^(1/3)).
     public static func span(_ table: Table, grid: Int, from: Int = 0) -> String {
         let column = table.byGrid[grid]!.dropFirst(from)
@@ -668,6 +688,8 @@ extension StandingScene {
     }
 
     private var burning: Bool { has(.afterburning) && has(.hotAir) }
+    /// On today's air and the mapped start, the default since 18 October 2026.
+    private var mapped: Bool { burning && has(.mappedCharge) }
 
     /// Boxes a gauge can sit on: blocks, structures and envelopes.
     private var surfaces: [Box] {
@@ -791,37 +813,54 @@ extension StandingScene {
                 }
             } else {
                 let check =
-                    burning
-                    ? "Kingery–Bulmash with afterburning, hot air and far-field faces, 100 kg (blastbench validate)"
-                    : "Kingery–Bulmash, 100 kg surface burst (blastbench validate)"
+                    mapped
+                    ? "Kingery–Bulmash on the mapped start, with afterburning, hot air and far-field faces, 100 kg "
+                        + "(blastbench validate)"
+                    : burning
+                        ? "Kingery–Bulmash with afterburning, hot air and far-field faces, 100 kg (blastbench validate)"
+                        : "Kingery–Bulmash, 100 kg surface burst (blastbench validate)"
                 let document =
-                    burning
-                    ? ValidationTables.burningDocument
-                    : "validation.md#kingerybulmash-the-design-practice-standard"
+                    mapped
+                    ? ValidationTables.mappedDocument
+                    : burning
+                        ? ValidationTables.burningDocument
+                        : "validation.md#kingerybulmash-the-design-practice-standard"
                 let grids = ValidationTables.grids
                 let distances = ValidationTables.distances
                 if onBox {
                     bands.peak = band(
-                        burning ? ValidationTables.burningReflectedPeak : ValidationTables.reflectedPeak,
+                        mapped
+                            ? ValidationTables.mappedReflectedPeak
+                            : burning
+                                ? ValidationTables.burningReflectedPeak : ValidationTables.reflectedPeak,
                         grids,
                         distances, measure: .peakOverpressure,
                         quantity: "Reflected peak overpressure", check: check, document: document,
                         low: "peaks smeared over cells")
                     bands.impulse = band(
-                        burning
-                            ? ValidationTables.burningReflectedImpulse : ValidationTables.reflectedImpulse,
+                        mapped
+                            ? ValidationTables.mappedReflectedImpulse
+                            : burning
+                                ? ValidationTables.burningReflectedImpulse
+                                : ValidationTables.reflectedImpulse,
                         grids,
                         distances, measure: .impulse, quantity: "Reflected impulse", check: check,
                         document: document,
                         low: "under-read")
                 } else {
                     bands.peak = band(
-                        burning ? ValidationTables.burningIncidentPeak : ValidationTables.incidentPeak, grids,
+                        mapped
+                            ? ValidationTables.mappedIncidentPeak
+                            : burning ? ValidationTables.burningIncidentPeak : ValidationTables.incidentPeak,
+                        grids,
                         distances,
                         measure: .peakOverpressure, quantity: "Incident peak overpressure", check: check,
                         document: document, low: "peaks smeared over cells")
                     bands.impulse = band(
-                        burning ? ValidationTables.burningIncidentImpulse : ValidationTables.incidentImpulse,
+                        mapped
+                            ? ValidationTables.mappedIncidentImpulse
+                            : burning
+                                ? ValidationTables.burningIncidentImpulse : ValidationTables.incidentImpulse,
                         grids,
                         distances, measure: .impulse, quantity: "Incident impulse", check: check,
                         document: document,
