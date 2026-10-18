@@ -135,6 +135,25 @@ extension Scenario {
             list, Self.structureFaceClearance, Self.structureFaceClearance * cbrt(charge.mass))
     }
 
+    /// When the open faces matter least, for the warning's reader: results the positive phase
+    /// decides, and a charge the faces see only through what leaks out.
+    public static let tightFacesMatterLeast =
+        "They matter least for what the positive phase decides, such as glass breaking, and for a charge inside its walls, whose faces see only what leaks out."
+
+    /// The domain with each tight open face beyond its far side (east, north, top) moved out to
+    /// `structureFaceClearance`, to a multiple of `step`, grown from its origin so that nothing in
+    /// the scene moves (`openFaceRoom`'s `high`); nil when none is tight. Faces at the origin (west,
+    /// south) can be cleared only by moving the scene, which this does not do: those still tight
+    /// are `left`.
+    public func grownToTheRule(step: Float = 0.5) -> (
+        domain: SIMD3<Float>, left: [(name: String, clearance: Float)]
+    )? {
+        guard !tightOpenFaces.isEmpty else { return nil }
+        var grown = self
+        grown.domainSize += openFaceRoom(step: step).high
+        return (grown.domainSize, grown.tightOpenFaces)
+    }
+
     /// Resizes the domain from its origin, everything staying where it is. Throws if the scene's
     /// contents, its charge or its terrain would not fit; gauges left outside are removed, and
     /// their names returned.

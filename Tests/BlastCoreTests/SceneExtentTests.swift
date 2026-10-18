@@ -73,6 +73,37 @@ struct SceneExtentTests {
         #expect(none.low == .zero && none.high == .zero)
     }
 
+    @Test("Widening to the rule grows the far faces from the origin, nothing in the scene moving")
+    func grownToTheRule() throws {
+        // The deformable wall meets the rule as it ships.
+        let wall = ScenarioPreset.blastWall.scenario
+        #expect(wall.tightOpenFaces.isEmpty && wall.grownToTheRule() == nil)
+        // With its top and north face brought in, both are grown back out; the domain alone changes.
+        var tight = wall
+        tight.domainSize.y -= 6
+        tight.domainSize.z = 8
+        let grown = try #require(tight.grownToTheRule())
+        #expect(grown.left.isEmpty, "\(grown.left)")
+        #expect(grown.domain.x == tight.domainSize.x)
+        #expect(grown.domain.y > tight.domainSize.y && grown.domain.z > tight.domainSize.z)
+        var widened = tight
+        try widened.resizeDomain(to: grown.domain)
+        #expect(widened.tightOpenFaces.isEmpty)
+        var unmoved = widened
+        unmoved.domainSize = tight.domainSize
+        #expect(unmoved == tight, "only the domain's size changed")
+        // A charge near x = 0 leaves the west face for moving the scene, which this does not do.
+        var west = tight
+        west.charge.position.x = 3
+        let left = try #require(west.grownToTheRule()).left
+        #expect(left.map(\.name) == ["west (x = 0)"])
+        // Only the west face near: nothing to grow, and it is still named.
+        var origin = wall
+        origin.charge.position.x = 3
+        let only = try #require(origin.grownToTheRule())
+        #expect(only.domain == origin.domainSize && only.left.map(\.name) == ["west (x = 0)"])
+    }
+
     @Test("Resizing keeps the contents, drops gauges left outside, and refuses to cut anything off")
     func resize() throws {
         var scenario = ScenarioPreset.openGround.scenario

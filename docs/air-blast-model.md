@@ -143,14 +143,14 @@ A plane wave at its angle cannot carry the spherical spreading beyond a face, so
 condition stands in for the room. It is kept on the branch `claude/oblique-far-field`.
 
 **The samples.** Most were sized for the positive phase and a run of minutes, and open with the
-warning. The warehouse and the transport hub were widened to meet the clearance (18 October
-2026), at about 1.4–1.5 times the air, and the terraced row was laid out to meet it. For the rest, meeting it would take far more air (the
-cost of a run goes with it at a given cell). So they keep their domains, and their late response,
-after the positive phase, carries the warning:
+warning. The warehouse, the transport hub and the deformable wall were widened to meet the
+clearance (18 October 2026), at about 1.4–1.6 times the air, and the terraced row was laid out to
+meet it. For the rest, meeting it would take far more air (the cost of a run goes with it at a
+given cell). So they keep their domains, and their late response, after the positive phase, carries
+the warning:
 
 | Sample | Nearest open face, m/kg^(1/3) | Air to meet 4 m/kg^(1/3) |
 |---|---|---|
-| Deformable wall | 2.7 (sides) | 1.6× |
 | Deformable building | 1.7 (behind the charge) | 2.7× |
 | Two-storey frame (2 t) | 0.7 (top) | 32× |
 | Frame with masonry infill | 2.4 (top) | 1.6× |
@@ -171,6 +171,15 @@ after the positive phase, carries the warning:
 The glass façade's panes break in the positive phase, which the faces do not move. The
 chamber's charge is inside its walls, so the faces see only what leaks out. In the frames and
 towers it is their collapse, long after the positive phase, that the faces may move.
+
+The warning leaves the choice to the user. Beneath it, **Widen to the rule** grows the domain from
+its origin until its far faces (east, north and the top) are 4 m/kg^(1/3) from the charge and the
+structures (`Scenario.grownToTheRule`, the `high` half of `Scenario.openFaceRoom`). Nothing in the
+scene moves. The advisor's estimate of a run on the grown domain is shown beside it, as times the
+air and the run's time before and after. Faces at the origin (west and south) can be cleared only
+by moving the scene's contents away from it, which the action does not do: it names those still
+near. The warning also says when the faces matter least: what the positive phase decides, such as
+glass breaking, and a charge inside its walls.
 
 ## The charge
 
