@@ -42,7 +42,7 @@ V3.E3.T2's "Structure" column: 61 m to 14.1 kg, `-251.87 + 118.56 ln Q` m to 204
 above); and for a cased charge DoD's default hazardous fragment distance for items not tested, Table AP2.T2's "open" column (`107.87 + 24.14 ln Q` m under 45.4 kg,
 not less than 71.9 m; `-251.87 + 118.56 ln Q` m to 204.1 kg; 381 m above). BombCAD's own
 [hazardous fragment distance](fragments.md#hazard) is shown beside them as an **estimate**: it
-reads short of DoD's test-derived distances by a sixth to a half
+reads 0.58–1.02 of DoD's test-derived distances, up to two-fifths short
 ([fragments.md](fragments.md#against-dods-distances)), so it governs only where it is the larger.
 BombCAD's own [envelope debris distance](#debris-from-failed-envelope-components) is likewise an
 estimate beside them, governing only where larger. The summary says which governs. A bare charge in the open takes K40 (DoD 4145.26-M
@@ -206,7 +206,7 @@ not a probe.
   it: 44, 23, 22 and 11.5 m.
 - Bare, the **minimum safe distance is 74 m, overpressure (K40) governing**. In a 150 kg steel
   cylinder (12 mm wall, 250 mm bore, 1 m up; `--fragments`), DoD's default fragment distance for
-  100 kg, 294 m, governs: **the minimum safe distance is 294 m**. BombCAD's own estimate, 172 m in
+  100 kg, 294 m, governs: **the minimum safe distance is 294 m**. BombCAD's own estimate, 208 m in
   flight, is shown beside it.
 
 ## Limitations

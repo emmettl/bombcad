@@ -206,16 +206,21 @@ blast's own hazards, its safety distances and injury, and the minimum safe dista
 are in [Blast hazards](hazards.md).
 
 - **Hazardous fragments** strike with 79 J (58 ft-lb) or more, and the **hazardous fragment
-  distance** is where they fall below one per 55.7 m² (600 ft²), a 1% chance of one striking a
-  person's 0.56 m² (6 ft²): DoD 6055.09-M (now DESR 6055.09) and DoD 4145.26-M §C5.8.1.3, as FAA
-  Guide 437.53-1 (2011) restates it. Fragments of 14.9 J (11 ft-lb) or more, FAA's threshold for
+  distance** is where they fall below one per 55.7 m² (600 ft²): DoD 6055.09-M (now DESR 6055.09)
+  and DoD 4145.26-M §C5.8.1.3, as FAA Guide 437.53-1 (2011) restates it. That density is about a
+  1% chance, p = 1 − exp(−q A_T), of one striking a standing person facing the explosion, whose
+  area TP-12 takes as 6.2 ft² (0.58 m²). Fragments of 14.9 J (11 ft-lb) or more, FAA's threshold for
   serious injury, are counted too.
-- **In flight.** The density is the one a person standing there meets: on a surface across the
-  fragments' paths (DDESB Technical Paper 12, Zaker 1975, as the explosives safety seminars quote
-  it), not where they land. As each fragment flies, the spheres it crosses round the charge (the
-  first a metre out, each after a tenth further) are counted if it is hazardous and within 10° of
-  the horizontal there (`FragmentCrossings`); a direction's distance is the furthest sphere it
-  crosses at one per 55.7 m² or more of that band.
+- **In flight.** The density is the one a person standing there meets: on a surface normal to
+  the fragments' rays, q = Q₀/R² with Q₀ the fragments per steradian towards the person (DDESB
+  Technical Paper 12, Zaker 1975, p. 10), not where they land. As each fragment flies, the spheres
+  it crosses round the charge (the first a metre out, each after a tenth further) are counted if
+  it is hazardous and within 10° of the horizontal there (`FragmentCrossings`); a direction's
+  distance is the furthest sphere it crosses at one per 55.7 m² or more of that band above the
+  ground. TP-12 takes Q₀ in the one direction of interest; the 10° band is BombCAD's, to average
+  it over enough of the spray to be sampled. Until 18 October the band's area took in its half
+  below the ground, which no fragment crosses, and so halved the density of a charge on the
+  ground ([against TP-12](#against-ddesb-tp-12)).
 - **On the ground.** Landings are binned in rings (the same steps) and directions too, for where
   fragments come down; fragments stopped by a structure or block are counted apart, as they do not
   reach the open ground behind it.
@@ -228,7 +233,7 @@ are in [Blast hazards](hazards.md).
 **An example**: 100 kg of TNT in a 150 kg steel cylinder (12 mm wall, 250 mm bore, its axis
 level along x), 1 m above open ground. Mott gives 18,400 fragments of a mean 8 g, launched at
 1,725 m/s. With 200,000 flown, 44% of the landings are hazardous and the furthest hazardous one
-lands 1,341 m out. The hazardous fragment distance is 172 m side-on to the casing, where its
+lands 1,341 m out. The hazardous fragment distance is 208 m side-on to the casing, where its
 spray goes, in flight; on the ground alone, 50 m. DoD's default for 100 kg in the open, a
 policy distance for items not tested, is 294 m (DoD 4145.26-M Table AP2.T2).
 
@@ -258,22 +263,64 @@ some 130 kg), lying level half their diameter off the ground, their fragments fl
 
 | Item | Wall, bore | In flight | On the ground | DoD | Ratio |
 |---|---|---|---|---|---|
-| 155 mm projectile | 38 mm, 138 mm (the casing helper's) | 54.8 m | 9.8 m | 126.5 m | 0.43 |
-| | 20 mm, 115 mm | 80.2 m | 13.1 m | | 0.63 |
-| | 12 mm, 131 mm | 97.0 m | 19.2 m | | 0.77 |
-| 500 lb bomb | 25 mm, 326 mm (the helper's) | 117.4 m | 19.2 m | 204.2 m | 0.57 |
-| | 15 mm, 243 mm | 156.2 m | 23.2 m | | 0.77 |
-| | 10 mm, 253 mm | 171.9 m | 30.9 m | | 0.84 |
+| 155 mm projectile | 38 mm, 138 mm (the casing helper's) | 72.9 m | 9.8 m | 126.5 m | 0.58 |
+| | 20 mm, 115 mm | 106.7 m | 13.1 m | | 0.84 |
+| | 12 mm, 131 mm | 129.1 m | 19.2 m | | 1.02 |
+| 500 lb bomb | 25 mm, 326 mm (the helper's) | 156.2 m | 19.2 m | 204.2 m | 0.77 |
+| | 15 mm, 243 mm | 189.1 m | 23.2 m | | 0.93 |
+| | 10 mm, 253 mm | 208.0 m | 30.9 m | | 1.02 |
 
-Each distance is set by 700 to 2,200 fragments flown. BombCAD falls short of DoD's by between a
-sixth and a half, closest with walls near the items' own; the wall, which sets Mott's mean mass
-and so how many fragments there are, decides it, and the items' real walls are not public. The
+Each distance is set by 560 to 2,100 fragments flown. BombCAD reads 0.58–1.02 of DoD's, level
+with walls near the items' own and up to two-fifths short with the helper's thick ones; the wall,
+which sets Mott's mean mass and so how many fragments there are, decides it, and the items' real
+walls are not public. (Until 18 October, counting the band below the ground, it read 0.43–0.84.) The
 ground's landings alone are a sixth to a fifteenth of DoD's. What may account for the rest: DDESB
 counts fragments from the whole item, nose and base too, where this casing is a plain cylinder
 spraying within 0.25 rad of square to its axis; it counts fragments bouncing on and skipping off
 the ground, which stop here where they land; and its distances carry its own margins. So the
-hazard distance is an approximation, on the unsafe side, by a factor of up to 2.3. No arena test's
+hazard distance is an approximation, on the unsafe side, by a factor of up to 1.7. No arena test's
 fragment-by-fragment data has been compared ([wanted](data-wanted.md#to-fetch)).
+
+## Against DDESB TP-12
+
+DDESB Technical Paper 12 (T. A. Zaker, *Fragment and Debris Hazards*, July 1975; WHS release
+10-F-0806), read at first hand on 18 October 2026, against what BombCAD does:
+
+| TP-12 | BombCAD |
+|---|---|
+| The density on a surface normal to the ray at R, q = (Q₀/R²) exp(−√(2m/m₀)), Q₀ the fragments per steradian towards the target; gravity changes their speed, not their direction (p. 10) | Crossings of spheres round the charge, which are normal to the rays; a fragment's speed and path its own, gravity bending it |
+| Q₀ in the direction of interest, usually square to the item's axis (p. 13); no band of angles | A band 10° either side of the horizontal, its part below the ground left out (until 18 October counted, which halved the density near the ground) |
+| A standing man facing the explosion presents 6.2 ft² (0.58 m²), "conservatively large"; one per 600 ft² is about a 1% chance of a strike, p = 1 − exp(−q A_T) (p. 12) | The criterion, one per 55.7 m², as TP-12; the 0.58 m² enters nothing else |
+| 58 ft-lb (79 J) at impact makes a fragment hazardous (p. 12) | The same |
+| Arena: the item level at mid-height, about 4 m/kg^(1/3) from witness panels and recovery boxes; speeds from the flashes through the panels, corrected for drag over the radius; masses per polar zone, fitted by Mott's form at their coarse end (pp. 2–4, 14) | No arena data: Mott's scaling and Gurney's speed from the casing, one spray within 0.25 rad of square |
+| Drag: C_d 1.08 subsonic, 1.4 at Mach 1.5, 1.28 from Mach 3 (Dunn and Porter's recovered fragments, Fig. 3), taken as 1.28; shape factor m = k A^(3/2), 2.37–2.6 g/cm³ for natural fragments, 4.74 for stacks (pp. 7–9, 13–14) | Hansche and Rinehart's tumbling cubes, 0.82 subsonic to 1.25 at Mach 1.25 and 1.1 beyond; cubes, k 4.27 g/cm³ |
+| The distance: the lightest hazardous mass at R by drag alone or at free-fall speed, whichever is smaller, and R where q falls to the criterion (p. 14) | Each fragment flown and counted as it crosses |
+
+TP-12's own procedure on the same fragments (`FragmentThrowComparison.zakerDistance`, printed by
+`blastbench fragment-throw`), at its C_d of 1.28:
+
+| Item, wall | Flown, in flight | TP-12, cubes | TP-12, k 2.6 g/cm³ |
+|---|---|---|---|
+| 155 mm, 38 mm | 72.9 m | 88.5 m | 84.2 m |
+| 155 mm, 20 mm | 106.7 m | 127.2 m | 114.0 m |
+| 155 mm, 12 mm | 129.1 m | 139.2 m | 119.8 m |
+| 500 lb, 25 mm | 156.2 m | 181.0 m | 164.8 m |
+| 500 lb, 15 mm | 189.1 m | 213.5 m | 184.2 m |
+| 500 lb, 10 mm | 208.0 m | 218.0 m | 182.8 m |
+
+On the same cubes TP-12's procedure gives 1.05–1.21 times the flown distance: it lets no fragment
+fall, where the flown ones fired just above the horizontal land before they reach the furthest
+spheres. With its natural fragments' shape factor it comes within 0.88–1.15. Counted over the
+whole band, as before 18 October, the flown distance was about 0.6 of TP-12's: the band below the
+ground was the difference.
+
+**Arena masses.** TP-12's one table of arena data (its Table 1, from Sternberg, NOLTR 73-83) is
+the mean mass of fragments over a grain from 9 in steel cylinders of 2 in bore and 2.5 in across
+(AISI 1045). Mott's scaling with Cooper's B gives, for the four explosives both have: Cyclotol
+75/25 11.5 grains (Sternberg 11.5), Composition B 13.7 (12), H-6 19.4 (15.5), TNT 23.8 (17.5), so
+1.00–1.36 times, coarser. Its Gurney velocities (Table 2, from Jacobs) are BombCAD's (Cooper's)
+within 1.5% in its LLL column (TNT 7,910 ft/s, 2,411 m/s against 2,440), and BombCAD's are 1–10%
+above its best estimates (TNT 7,260 ft/s, 2,213 m/s).
 
 ## What fragments do to what they strike
 
@@ -387,9 +434,9 @@ summary printed counts them (`struck targets: … stopped, … spalled, … thro
   386, doi:10.3390/app15010386.
 - DoD 4145.26-M, *DoD Contractor's Safety Manual for Ammunition and Explosives*, 2008 (open on
   epa.gov): §C5.8 and Tables AP2.T2 and AP2.T3, the hazardous fragment distances.
-- T. A. Zaker, *Fragment and Debris Hazards*, DDESB Technical Paper 12, 1975: the density on a
-  surface normal to the fragments' rays, and a person's 6 ft², as quoted in DDESB's seminar
-  minutes (the paper itself not read here).
+- T. A. Zaker, *Fragment and Debris Hazards*, DDESB Technical Paper 12, July 1975 (WHS FOIA
+  release 10-F-0806, read 18 October 2026): the density on a surface normal to the fragments'
+  rays, a person's 6.2 ft², the procedure, and Sternberg's arena masses.
 - FAA, *Calculation of Safety Clear Zones for Experimental Permits*, Guide 437.53-1 (2011): the
   hazardous fragment's 79 J and 600 ft² from DoD 6055.09-M, and its own 11 ft-lb.
 - D. E. Grady, *Fragmentation of Rings and Shells*, Springer, 2006: the exponential form.
