@@ -284,6 +284,9 @@ charge on coarse cells would be solved hundreds of charge radii out, for many mi
 balloon start. Their harnesses are pinned to it (`SolverConfiguration.balloonStart`) until each
 is run again ([the list](validation.md#still-on-the-balloon-start)).
 
+**Sharing.** Neither ContinuumKit nor Edgerton has a one-dimensional solver. `SphericalBlast`
+can be extracted into ContinuumKit, by its process, if another project needs a resolved start.
+
 ### Hot air
 
 The gas left by a charge, and burnt products all the more, is at 2000 to 3000 K, where the
