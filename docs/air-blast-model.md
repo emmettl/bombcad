@@ -275,9 +275,12 @@ its products burn (to 1%; `MappedChargeTests`).
 balloon's 0.69 and 0.50; the eardrums' are unchanged at 0.84–0.86. Standing height is still short
 of a surface burst's ground-level curves close in, where the wave off the ground arrives apart.
 
-**Its cost** is the one-dimensional solution's own, on the CPU before the run: about 8 s out to 4
-m/kg^(1/3) and 20 s to 6 on an M4 Max, whatever the charge (`blastbench mapped-cost`), which the
-run advisor adds (`RunCost.mappedStartSeconds`). Without the cap in scaled distance, a small
+**Its cost** is the one-dimensional solution's own, on the CPU before the run: about 4 s out to 4
+m/kg^(1/3) and 8 s to 6 on an M4 Max, whatever the charge (`blastbench mapped-cost`), which the
+run advisor adds (`RunCost.mappedStartSeconds`). It is solved once for each charge, gas and
+reach and kept (the last four), so a scene run again starts at once. The solver is its own
+module (`RadialBlast`), built optimised even for tests, which would otherwise take many minutes
+over it. Without the cap in scaled distance, a small
 charge on coarse cells would be solved hundreds of charge radii out, for many minutes.
 
 **The comparisons of structures** (slabs, walls, rooms, envelopes and the rest) were run on the

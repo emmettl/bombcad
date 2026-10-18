@@ -5524,7 +5524,7 @@ do {
                 let cost = BlastSolver.mappedStartCost(
                     mass: 10, cellSize: z * cbrt(10) / 64, cells: 64, configuration: .recommended)
                 print(
-                    "Z \(z): \(String(format: "%.2f", cost.seconds)) s, \(cost.cells) cells, \(cost.steps) steps"
+                    "Z \(z): \(String(format: "%.2f", cost.seconds)) s, \(cost.cells) cells, \(cost.steps) steps, digest \(String(cost.digest, radix: 16))"
                 )
             }
             break

@@ -1,5 +1,6 @@
 import Foundation
 import Metal
+import RadialBlast
 import simd
 
 /// GPU finite-volume solver for the compressible Euler equations around rigid obstacles.
@@ -32,6 +33,10 @@ public final class BlastSolver {
     /// The one-dimensional solution a charge was mapped from, where it was and how far it reached,
     /// for an exposure plane set up after it (`configureExposurePlane`); nil otherwise.
     var mappedStart: (blast: SphericalBlast, centre: SIMD3<Float>, radius: Float)?
+    /// The latest a mapped start may begin, s: its one-dimensional solution stops there should the
+    /// shock not have reached its radius yet, so that a short run still steps the grid. Nil for no
+    /// limit; the app sets half the run's duration. Takes effect at the next `load`.
+    public var mappedStartLatest: Double?
     private var exposureNeedsInitialSample = false
     private(set) var envelopeExposure: EnvelopeExposure?
     private var envelopeNeedsInitialSample = false
@@ -43,7 +48,8 @@ public final class BlastSolver {
 
     /// Records stationary voxel-face exposure. Deformable reference bodies observed must be fully
     /// pinned; other bodies may move, and never take the air beside the faces recorded (see
-    /// `keepAir`). Must be configured at time zero after loading. Ordinary runs allocate no recorder.
+    /// `keepAir`). Must be configured before the first step after loading. Ordinary runs allocate no
+    /// recorder.
     public func configureEnvelopeExposure(objects: [SceneObject]) throws {
         let mask = try stationaryMask(observing: objects)
         let exposure = try EnvelopeExposure(
@@ -391,13 +397,14 @@ public final class BlastSolver {
         return envelopeComponentRecorder?.histories(elapsed: time)
     }
 
-    /// The air's mask at time zero, for the envelope recorders observing `objects`. Envelopes are
-    /// stationary; a detailed structure observed as one (a damage reference's) must be pinned, with
+    /// The air's mask before the first step, for the envelope recorders observing `objects`.
+    /// Envelopes are stationary; a detailed structure observed as one (a damage reference's) must be pinned, with
     /// every other body, while beside envelopes alone other bodies may move.
     private func stationaryMask(observing objects: [SceneObject]) throws -> UnsafeBufferPointer<UInt8> {
         precondition(!batchInFlight, "Cannot configure observers during a batch")
         let observesStructures = objects.contains { $0.structure != nil }
-        guard time == 0, experimentalBoxes.isEmpty,
+        // Before the first step: a mapped start's clock starts at its solution's time.
+        guard stepCount == 0, experimentalBoxes.isEmpty,
             !observesStructures
                 || bodies.allSatisfy({ body in
                     var fixed = true
@@ -415,7 +422,7 @@ public final class BlastSolver {
                     }
                     return fixed
                 })
-        else { throw BlastError.allocationFailed("stationary envelope observation at time zero") }
+        else { throw BlastError.allocationFailed("stationary envelope observation before the first step") }
         return UnsafeBufferPointer(
             start: maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount),
             count: grid.cellCount)
@@ -1880,7 +1887,7 @@ public final class BlastSolver {
     /// body without gravity, with motion set by the scene, or no longer as loaded (moved, set
     /// moving or broken since).
     public func settleStructures() {
-        guard configuration.settlesStructures, !structuresSettled, time == 0, stepCount == 0,
+        guard configuration.settlesStructures, !structuresSettled, stepCount == 0,
             ProcessInfo.processInfo.environment["BOMBCAD_SETTLE"] != "off"
         else { return }
         precondition(!batchInFlight, "Cannot settle while a batch is in flight")

@@ -1,5 +1,6 @@
 import Foundation
 import Metal
+import RadialBlast
 import simd
 
 /// Energy source, modelled as a sphere of hot compressed gas (the "bursting balloon" model).
@@ -536,9 +537,23 @@ extension BlastSolver {
         for (face, distance) in faces where !(face == .zMin && onGround) {
             nearest = min(nearest, distance)
         }
-        let radius = min(
-            0.8 * nearest, configuration.mappedChargeCells * dx,
+        let cap = min(
+            configuration.mappedChargeCells * dx,
             configuration.mappedChargeScaledReach * cbrt(scenario.charge.mass))
+        // Glazing, which closes its cells of the mask without a block (envelopes' walls are blocks).
+        for object in scenario.envelopeObjects {
+            guard let envelope = object.envelope else { continue }
+            for pane in envelope.panes.indices {
+                for cell in envelope.paneCells(pane, grid: grid) {
+                    let i = cell % grid.nx
+                    let j = (cell / grid.nx) % grid.ny
+                    let k = cell / (grid.nx * grid.ny)
+                    let corner = SIMD3(Float(i), Float(j), Float(k)) * dx
+                    nearest = min(nearest, simd_distance(simd_clamp(c, corner, corner + dx), c))
+                }
+            }
+        }
+        let radius = min(0.8 * nearest, cap)
         return radius >= 3 * dx ? (radius, onGround) : nil
     }
 

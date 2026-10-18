@@ -1,5 +1,6 @@
 import Foundation
 import Metal
+import RadialBlast
 import simd
 
 /// A horizontal plane of fixed Eulerian probes, sampled after each complete air step.

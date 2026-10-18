@@ -1,5 +1,6 @@
 import Foundation
 import Metal
+import RadialBlast
 import Testing
 import simd
 
@@ -63,6 +64,18 @@ struct MappedChargeTests {
         #expect(hot.ratio(density: 1, pressure: 1e6) < 1.33)
         let p = hot.pressure(density: 2, internalEnergy: hot.internalEnergy(density: 2, pressure: 5e6))
         #expect(abs(p / 5e6 - 1) < 1e-9)
+    }
+
+    @Test("Solved once and kept: the same start gives the same solution, and a time limit stops it short")
+    func keptAndLimited() {
+        let blast = SphericalBlast(
+            mass: 1, energy: Double(Charge.energyPerKilogram), radius: cbrt(3 / (4 * Double.pi * 1600)),
+            extent: 3, cells: 300, gamma: 1.4, ambientDensity: 1.225, ambientPressure: 101_325)
+        let first = blast.solved(toShockRadius: 2)
+        let again = blast.solved(toShockRadius: 2)
+        #expect(first.steps > 0 && again.digest == first.digest && again.steps == first.steps)
+        let short = blast.solved(toShockRadius: 2, until: first.time / 2)
+        #expect(short.time >= first.time / 2 && short.time < first.time && short.shockRadius < 2)
     }
 
     @Test("Mapped onto the grid, the charge brings its energy, and gauges it passed keep their record")

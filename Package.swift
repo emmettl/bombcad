@@ -18,11 +18,18 @@ let package = Package(
             exact: "0.1.0-alpha.26")
     ],
     targets: [
+        // The fine one-dimensional start of a blast (`SphericalBlast`), optimised in debug builds
+        // too: unoptimised, its millions of cell steps hold every test that starts a run for many
+        // minutes.
+        .target(
+            name: "RadialBlast",
+            swiftSettings: [.unsafeFlags(["-O"], .when(configuration: .debug))]),
         // Shaders are copied verbatim and compiled at runtime so that `swift build`,
         // `swift test` and Xcode all behave identically.
         .target(
             name: "BlastCore",
             dependencies: [
+                "RadialBlast",
                 .product(name: "SceneModel", package: "continuumkit"),
                 .product(name: "GeometryImport", package: "continuumkit"),
                 .product(name: "CompressibleFlow", package: "continuumkit"),
@@ -48,7 +55,9 @@ let package = Package(
         // ContinuumKit's SolidMechanics is the reference the shells' timber law is checked against.
         .testTarget(
             name: "BlastCoreTests",
-            dependencies: ["BlastCore", .product(name: "SolidMechanics", package: "continuumkit")]),
+            dependencies: [
+                "BlastCore", "RadialBlast", .product(name: "SolidMechanics", package: "continuumkit"),
+            ]),
         .testTarget(
             name: "BombCADTests",
             dependencies: [

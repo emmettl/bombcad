@@ -881,7 +881,8 @@ final class SimulationModel {
             rebuild()
         }
         completedRunSettings = nil
-        if solver?.time == 0, lastSampleTime == nil {
+        // Before the first step (a mapped start's clock starts at its solution's time).
+        if solver?.stepCount == 0, lastSampleTime == nil {
             // The structures at rest under their own weight first, so that the first sample, and
             // every deflection after it, starts from them as they stood.
             solver?.settleStructures()
@@ -2412,6 +2413,8 @@ final class SimulationModel {
             outlineByOverlap: settings.outlineByOverlap, settlesStructures: settings.settlesStructures,
             mappedStart: settings.mappedStart)
         solver.configuration.fitRefinementMemory(solver.grid, memory: advisorMemory)
+        // A mapped start begins no later than halfway through the run, so that the grid has the rest.
+        solver.mappedStartLatest = duration / 2
     }
 
     private func rebuild() {
@@ -2469,7 +2472,7 @@ final class SimulationModel {
             }
             // The blast's injury at a standing person's height, from the run's own peaks (`InjuryField`):
             // probes that leave the air as it is.
-            if let solver, solver.time == 0 {
+            if let solver, solver.stepCount == 0 {
                 injuryField = nil
                 try? solver.configureExposurePlane(heightM: Self.standingHeight, arrivalThresholdPa: 1_000)
             }

@@ -329,11 +329,12 @@ public enum RunCost {
     }
 
     /// The one-dimensional solution's time, s, out to `z` m/kg^(1/3), whatever the charge (its grid is
-    /// a twentieth of the charge's radius, at least 2,000 cells): 8.2 s to 4, 19.6 to 6, 38.8 to 8 on
-    /// a quiet M4 Max (`blastbench mapped-cost --z 4,6,8`, 18 October 2026). Within 2,000 cells the
-    /// steps, and so the time, grow as the reach; beyond, as its square.
+    /// a twentieth of the charge's radius, at least 2,000 cells): 2.3 s to 1, 3.7 to 4, 8.4 to 6 and
+    /// 17.2 to 8 on an M4 Max (`blastbench mapped-cost --z 1,2,4,6,8`, 18 October 2026, its gas law's
+    /// exponentials shared). Within 2,000 cells the steps, and so the time, grow as the reach; beyond,
+    /// as its square.
     public static func mappedStartSeconds(scaledReach z: Double) -> Double {
-        z <= 4 ? 2.05 * z : 0.43 * pow(z, 2.17)
+        z <= 4 ? 1.85 + 0.46 * z : 3.69 * pow(z / 4, 2.2)
     }
 
     /// The blast's arrival time (s) and incident overpressure (Pa) at `range` from a surface burst

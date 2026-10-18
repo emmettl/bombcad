@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import simd
 
 /// The early life of a blast from a charge in free air, solved in one dimension (spherical
@@ -9,49 +10,79 @@ import simd
 /// charge's own size, it resolves the shock while it is far thinner than a cell of the 3D grid,
 /// and is then mapped onto that grid (see `BlastSolver.depositMapped(_:)`), in place of the
 /// coarse "balloon".
-struct SphericalBlast {
+///
+/// Its own module, built optimised even for debugging (see Package.swift): its loops are millions
+/// of cell steps, which unoptimised code takes many minutes over, in every test that starts a run.
+public struct SphericalBlast: Sendable {
     /// The gas: an ideal gas of `gamma`, or thermally perfect air (`AirModel.thermallyPerfect`),
     /// whose N2 and O2 store energy in vibration, in double precision.
-    struct Gas {
-        var gamma: Double
-        var thermallyPerfect: Bool
+    public struct Gas: Hashable, Sendable {
+        public var gamma: Double
+        public var thermallyPerfect: Bool
+
+        public init(gamma: Double, thermallyPerfect: Bool) {
+            self.gamma = gamma
+            self.thermallyPerfect = thermallyPerfect
+        }
 
         static let r = 287.05
-        static let modes: [(share: Double, theta: Double)] = [(0.79, 3390), (0.21, 2270)]
+        // N2's and O2's shares and vibrational temperatures, K: 0.79 at 3390, 0.21 at 2270, summed
+        // in that order.
 
         static func vibration(_ t: Double) -> Double {
-            r * modes.reduce(0) { $0 + $1.share * $1.theta / (exp(min($1.theta / max(t, 1), 80)) - 1) }
+            let warm = max(t, 1)
+            let nitrogen = 0.79 * 3390 / (exp(min(3390 / warm, 80)) - 1)
+            let oxygen = 0.21 * 2270 / (exp(min(2270 / warm, 80)) - 1)
+            return r * (0 + nitrogen + oxygen)
         }
 
         static func vibrationHeat(_ t: Double) -> Double {
-            r
-                * modes.reduce(0) { sum, mode in
-                    let x = min(mode.theta / max(t, 1), 80)
-                    let e = exp(x)
-                    return sum + mode.share * x * x * e / ((e - 1) * (e - 1))
-                }
+            let warm = max(t, 1)
+            func share(_ share: Double, _ theta: Double) -> Double {
+                let x = min(theta / warm, 80)
+                let e = exp(x)
+                return share * x * x * e / ((e - 1) * (e - 1))
+            }
+            return r * (0 + share(0.79, 3390) + share(0.21, 2270))
+        }
+
+        /// `vibration(t)` and `vibrationHeat(t)` together, from the same two exponentials.
+        static func vibrationAndHeat(_ t: Double) -> (energy: Double, heat: Double) {
+            let warm = max(t, 1)
+            let x = min(3390 / warm, 80)
+            let y = min(2270 / warm, 80)
+            let ex = exp(x)
+            let ey = exp(y)
+            let energy = r * (0 + 0.79 * 3390 / (ex - 1) + 0.21 * 2270 / (ey - 1))
+            let heat =
+                r
+                * (0 + 0.79 * x * x * ex / ((ex - 1) * (ex - 1)) + 0.21 * y * y * ey / ((ey - 1) * (ey - 1)))
+            return (energy, heat)
         }
 
         /// The temperature at internal energy `e` per kilogram (thermally perfect).
         static func temperature(specificEnergy e: Double) -> Double {
             var t = max(e, 1) / (2.5 * r)
-            for _ in 0..<8 { t -= (2.5 * r * t + vibration(t) - e) / (2.5 * r + vibrationHeat(t)) }
+            for _ in 0..<8 {
+                let vibrating = vibrationAndHeat(t)
+                t -= (2.5 * r * t + vibrating.energy - e) / (2.5 * r + vibrating.heat)
+            }
             return max(t, 1e-6)
         }
 
-        func pressure(density rho: Double, internalEnergy e: Double) -> Double {
+        public func pressure(density rho: Double, internalEnergy e: Double) -> Double {
             guard thermallyPerfect else { return (gamma - 1) * e }
             return rho * Self.r * Self.temperature(specificEnergy: e / rho)
         }
 
-        func internalEnergy(density rho: Double, pressure p: Double) -> Double {
+        public func internalEnergy(density rho: Double, pressure p: Double) -> Double {
             guard thermallyPerfect else { return p / (gamma - 1) }
             let t = p / (rho * Self.r)
             return rho * (2.5 * Self.r * t + Self.vibration(t))
         }
 
         /// The ratio of specific heats, which sets the speed of sound.
-        func ratio(density rho: Double, pressure p: Double) -> Double {
+        public func ratio(density rho: Double, pressure p: Double) -> Double {
             guard thermallyPerfect else { return gamma }
             let t = p / (rho * Self.r)
             return 1 + Self.r / (2.5 * Self.r + Self.vibrationHeat(t))
@@ -61,52 +92,74 @@ struct SphericalBlast {
     /// Afterburning as the air solver has it: products meeting oxygen burn at `rate` per second
     /// as far as the oxygen allows (`oxygenPerFuel` kilograms a kilogram), releasing `energy` per
     /// kilogram.
-    struct Afterburn {
-        var energy: Double
-        var rate: Double
-        var oxygenPerFuel: Double
+    public struct Afterburn: Hashable, Sendable {
+        public var energy: Double
+        public var rate: Double
+        public var oxygenPerFuel: Double
         /// The fireball's turbulent mixing, an eddy diffusivity of the products and oxygen, m^2/s:
         /// the mixing the grid's own cells give the balloon, which a fine one-dimensional grid
         /// does not.
-        var diffusivity: Double = 0
+        public var diffusivity: Double = 0
+
+        public init(energy: Double, rate: Double, oxygenPerFuel: Double, diffusivity: Double = 0) {
+            self.energy = energy
+            self.rate = rate
+            self.oxygenPerFuel = oxygenPerFuel
+            self.diffusivity = diffusivity
+        }
     }
 
-    let cellSize: Double
-    var density: [Double]
-    var momentum: [Double]
-    var energy: [Double]
+    /// What the solution starts from, all of it: two alike give the same solution, bit for bit.
+    struct Setup: Hashable {
+        var mass, energy, radius, extent: Double
+        var cells: Int
+        var gas: Gas
+        var ambientDensity, ambientPressure: Double
+        var afterburn: Afterburn?
+        var oxygenInAir: Double
+    }
+
+    let setup: Setup
+    public let cellSize: Double
+    public internal(set) var density: [Double]
+    public internal(set) var momentum: [Double]
+    public internal(set) var energy: [Double]
     /// With afterburning: unburnt products and oxygen, kg/m^3.
-    var fuel: [Double]
-    var oxygen: [Double]
-    let gas: Gas
-    let afterburn: Afterburn?
-    var gamma: Double { gas.gamma }
-    let ambientDensity: Double
-    let ambientPressure: Double
-    private(set) var time: Double = 0
+    public internal(set) var fuel: [Double]
+    public internal(set) var oxygen: [Double]
+    public let gas: Gas
+    public let afterburn: Afterburn?
+    public var gamma: Double { gas.gamma }
+    public let ambientDensity: Double
+    public let ambientPressure: Double
+    public private(set) var time: Double = 0
     /// Steps taken so far.
-    private(set) var steps = 0
+    public private(set) var steps = 0
     /// Largest overpressure and positive-phase impulse seen so far in each cell.
-    private(set) var peak: [Double]
-    private(set) var impulse: [Double]
+    public private(set) var peak: [Double]
+    public private(set) var impulse: [Double]
     /// When the overpressure in each cell first passed `arrivalThreshold`, s; −1 where it has not.
-    private(set) var arrival: [Double]
+    public private(set) var arrival: [Double]
     /// The overpressure that marks the blast's arrival, Pa.
-    static let arrivalThreshold = 1_000.0
+    public static let arrivalThreshold = 1_000.0
     /// Radii at which the pressure is recorded, and their records (time, absolute pressure).
-    var probes: [Double] = []
-    private(set) var records: [[(time: Double, pressure: Double)]] = []
+    public var probes: [Double] = []
+    public private(set) var records: [[(time: Double, pressure: Double)]] = []
 
     /// A sphere of hot gas holding `energy` joules and `mass` kilograms within `radius` metres,
     /// in still air holding `oxygen` kilograms of oxygen per kilogram; the grid reaches `extent`
     /// metres in `cells` cells.
-    init(
+    public init(
         mass: Double, energy totalEnergy: Double, radius: Double, extent: Double, cells: Int, gamma: Double,
         ambientDensity: Double, ambientPressure: Double, thermallyPerfect: Bool = false,
         afterburn: Afterburn? = nil, oxygenInAir: Double = 0.232
     ) {
         cellSize = extent / Double(cells)
         gas = Gas(gamma: gamma, thermallyPerfect: thermallyPerfect)
+        setup = Setup(
+            mass: mass, energy: totalEnergy, radius: radius, extent: extent, cells: cells, gas: gas,
+            ambientDensity: ambientDensity, ambientPressure: ambientPressure, afterburn: afterburn,
+            oxygenInAir: oxygenInAir)
         self.afterburn = afterburn
         self.ambientDensity = ambientDensity
         self.ambientPressure = ambientPressure
@@ -143,9 +196,10 @@ struct SphericalBlast {
     }
 
     /// The radius of the leading shock: the outermost cell 1% above ambient pressure.
-    var shockRadius: Double {
-        for i in stride(from: density.count - 1, through: 0, by: -1)
-        where primitive(i).z > 1.01 * ambientPressure {
+    public var shockRadius: Double { shockRadius((0..<density.count).map(primitive)) }
+
+    private func shockRadius(_ w: [SIMD3<Double>]) -> Double {
+        for i in stride(from: w.count - 1, through: 0, by: -1) where w[i].z > 1.01 * ambientPressure {
             return (Double(i) + 1) * cellSize
         }
         return 0
@@ -155,9 +209,12 @@ struct SphericalBlast {
         func energy(_ w: SIMD3<Double>) -> Double {
             gas.internalEnergy(density: w.x, pressure: w.z) + 0.5 * w.x * w.y * w.y
         }
-        func physical(_ w: SIMD3<Double>) -> SIMD3<Double> {
-            SIMD3(w.x * w.y, w.x * w.y * w.y + w.z, (energy(w) + w.z) * w.y)
+        func physical(_ w: SIMD3<Double>, _ e: Double) -> SIMD3<Double> {
+            SIMD3(w.x * w.y, w.x * w.y * w.y + w.z, (e + w.z) * w.y)
         }
+        // Each side's total energy once: the gas law's exponentials are most of the cost.
+        let el = energy(l)
+        let er = energy(r)
         let gl = gas.ratio(density: l.x, pressure: l.z)
         let gr = gas.ratio(density: r.x, pressure: r.z)
         let cl = (gl * l.z / l.x).squareRoot()
@@ -165,40 +222,41 @@ struct SphericalBlast {
         let sl = l.x.squareRoot()
         let sr = r.x.squareRoot()
         let uRoe = (sl * l.y + sr * r.y) / (sl + sr)
-        let hl = (energy(l) + l.z) / l.x
-        let hr = (energy(r) + r.z) / r.x
+        let hl = (el + l.z) / l.x
+        let hr = (er + r.z) / r.x
         let hRoe = (sl * hl + sr * hr) / (sl + sr)
         let gRoe = (sl * gl + sr * gr) / (sl + sr)
         let cRoe = max((gRoe - 1) * (hRoe - 0.5 * uRoe * uRoe), 1e-12).squareRoot()
         let waveL = min(l.y - cl, uRoe - cRoe)
         let waveR = max(r.y + cr, uRoe + cRoe)
-        if waveL >= 0 { return physical(l) }
-        if waveR <= 0 { return physical(r) }
+        if waveL >= 0 { return physical(l, el) }
+        if waveR <= 0 { return physical(r, er) }
         let ml = l.x * (waveL - l.y)
         let mr = r.x * (waveR - r.y)
         let star = (r.z - l.z + l.y * ml - r.y * mr) / (ml - mr)
         if star >= 0 {
             let factor = ml / (waveL - star)
             let starState = SIMD3(
-                factor, factor * star, factor * (energy(l) / l.x + (star - l.y) * (star + l.z / ml)))
-            return physical(l) + waveL * (starState - SIMD3(l.x, l.x * l.y, energy(l)))
+                factor, factor * star, factor * (el / l.x + (star - l.y) * (star + l.z / ml)))
+            return physical(l, el) + waveL * (starState - SIMD3(l.x, l.x * l.y, el))
         }
         let factor = mr / (waveR - star)
-        let starState = SIMD3(
-            factor, factor * star, factor * (energy(r) / r.x + (star - r.y) * (star + r.z / mr)))
-        return physical(r) + waveR * (starState - SIMD3(r.x, r.x * r.y, energy(r)))
+        let starState = SIMD3(factor, factor * star, factor * (er / r.x + (star - r.y) * (star + r.z / mr)))
+        return physical(r, er) + waveR * (starState - SIMD3(r.x, r.x * r.y, er))
     }
 
-    /// Advances until the shock reaches `radius` metres.
-    mutating func run(toShockRadius radius: Double, cfl: Double = 0.4) {
+    /// Advances until the shock reaches `radius` metres, or the clock `limit` seconds.
+    public mutating func run(toShockRadius radius: Double, until limit: Double = .infinity, cfl: Double = 0.4)
+    {
         let n = density.count
         records = probes.map { _ in [] }
         var guardSteps = 0
-        while shockRadius < radius && guardSteps < 2_000_000 {
+        // The primitive state, once a step: the shock's reach, the step and the records all read it.
+        var w = (0..<n).map(primitive)
+        while shockRadius(w) < radius && time < limit && guardSteps < 2_000_000 {
             guardSteps += 1
             steps += 1
             var fastest = 1e-6
-            let w = (0..<n).map(primitive)
             let ratios = w.map { gas.ratio(density: $0.x, pressure: $0.z) }
             for (x, g) in zip(w, ratios) { fastest = max(fastest, abs(x.y) + (g * x.z / x.x).squareRoot()) }
             let dt = cfl * cellSize / fastest
@@ -279,8 +337,9 @@ struct SphericalBlast {
                 }
             }
             time += dt
+            w = (0..<n).map(primitive)
             for i in 0..<n {
-                let overpressure = primitive(i).z - ambientPressure
+                let overpressure = w[i].z - ambientPressure
                 peak[i] = max(peak[i], overpressure)
                 impulse[i] += max(overpressure, 0) * dt
                 if arrival[i] < 0, overpressure > Self.arrivalThreshold { arrival[i] = time }
@@ -329,8 +388,20 @@ struct SphericalBlast {
         for i in 0..<n { amount[i] = max(fraction[i] * max(density[i], 1e-9), 0) }
     }
 
+    /// A hash of the solution's every bit (state, species, records and clock), for checking that
+    /// a change to the solver leaves it exactly as it was.
+    public var digest: UInt64 {
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
+        for field in [density, momentum, energy, fuel, oxygen, peak, impulse, arrival, [time]] {
+            for value in field {
+                hash = (hash ^ value.bitPattern) &* 0x100_0000_01b3
+            }
+        }
+        return hash
+    }
+
     /// Peak overpressure and positive impulse at `radius`, interpolated between cell centres.
-    func extremes(at radius: Double) -> SIMD2<Double> {
+    public func extremes(at radius: Double) -> SIMD2<Double> {
         let x = radius / cellSize - 0.5
         let i = min(max(Int(x.rounded(.down)), 0), density.count - 1)
         let j = min(i + 1, density.count - 1)
@@ -340,7 +411,7 @@ struct SphericalBlast {
 
     /// When the blast arrived at `radius`, s, interpolated between cell centres where it has
     /// reached both; nil where it has not arrived.
-    func arrival(at radius: Double) -> Double? {
+    public func arrival(at radius: Double) -> Double? {
         let x = radius / cellSize - 0.5
         let i = min(max(Int(x.rounded(.down)), 0), arrival.count - 1)
         let j = min(i + 1, arrival.count - 1)
@@ -351,7 +422,7 @@ struct SphericalBlast {
 
     /// Density, radial momentum and total energy per volume at `radius`, interpolated between
     /// cell centres.
-    func state(at radius: Double) -> SIMD3<Double> {
+    public func state(at radius: Double) -> SIMD3<Double> {
         let x = radius / cellSize - 0.5
         let i = min(max(Int(x.rounded(.down)), 0), density.count - 1)
         let j = min(i + 1, density.count - 1)
@@ -362,165 +433,72 @@ struct SphericalBlast {
     }
 
     /// Unburnt products and oxygen per volume at `radius`, interpolated between cell centres.
-    func species(at radius: Double) -> SIMD2<Double> {
+    public func species(at radius: Double) -> SIMD2<Double> {
         let x = radius / cellSize - 0.5
         let i = min(max(Int(x.rounded(.down)), 0), density.count - 1)
         let j = min(i + 1, density.count - 1)
         let t = min(max(x - Double(i), 0), 1)
         return SIMD2(fuel[i] + t * (fuel[j] - fuel[i]), oxygen[i] + t * (oxygen[j] - oxygen[i]))
     }
+
+    /// The solution sampled over the grid cell (`i`, `j`, `k`) of `dx` m, centred on the charge
+    /// at `centre`, at `samples` points a side: the sums of the state (density, radial momentum,
+    /// total energy), of the momentum as a vector and, with afterburning, of the products and
+    /// oxygen, over the points within `reach` m of the centre, and how many those were.
+    public func sample(
+        cell i: Int, _ j: Int, _ k: Int, cellSize dx: Float, centre: SIMD3<Float>, reach: Double, samples: Int
+    ) -> (state: SIMD3<Double>, momentum: SIMD3<Double>, species: SIMD2<Double>, count: Int) {
+        var sum = SIMD3<Double>.zero
+        var momentum = SIMD3<Double>.zero
+        var carried = SIMD2<Double>.zero
+        var counted = 0
+        for c in 0..<samples {
+            for b in 0..<samples {
+                for a in 0..<samples {
+                    let offset = (SIMD3(Float(a), Float(b), Float(c)) + 0.5) / Float(samples)
+                    let point = (SIMD3(Float(i), Float(j), Float(k)) + offset) * dx
+                    let arm = SIMD3<Double>(point - centre)
+                    let r = simd_length(arm)
+                    guard r < reach else { continue }
+                    let s = state(at: r)
+                    sum += s
+                    momentum += r > 1e-9 ? s.y * arm / r : .zero
+                    if afterburn != nil { carried += species(at: r) }
+                    counted += 1
+                }
+            }
+        }
+        return (sum, momentum, carried, counted)
+    }
 }
 
-extension BlastSolver {
-    /// Lays down `charge` as its blast is when the shock has spread to `radius` metres, from a
-    /// one-dimensional solution started at the charge's own size, and returns the solution, from
-    /// which the time it took, and the peaks, impulses and histories at points the shock has
-    /// already passed, are taken (`recordMapped`). A charge on the ground (rigid, reflecting)
-    /// spreads as one of twice the mass in free air, of which the half above the ground is laid
-    /// down. Cells farther than `radius` are left as they are; nothing solid may lie within it.
-    /// The one-dimensional solution, unrun, a charge of `charge` takes to be mapped out to
-    /// `radius` m under `configuration`: from a sphere of TNT's density, on a radial grid of a
-    /// twentieth of its radius (2,000 to 20,000 cells) reaching 1.6 times `radius`.
-    static func mappedSolution(
-        _ charge: Charge, radius: Float, onGround: Bool, configuration: SolverConfiguration,
-        ambientDensity: Float
-    ) -> SphericalBlast {
-        let multiplier: Double = onGround ? 2 : 1
-        let mass = Double(charge.mass) * multiplier
-        let energy = Double(charge.energy) * multiplier
-        let size = cbrt(3 * mass / (4 * Double.pi * 1600))
-        let extent = Double(radius) * 1.6
-        let cells = min(max(Int(extent / (size / 20)), 2000), 20000)
-        // The air's own gas and, with afterburning, its burning, at the real charge's rate.
-        let burning: SphericalBlast.Afterburn? =
-            configuration.afterburning
-            ? SphericalBlast.Afterburn(
-                energy: Double(configuration.afterburnEnergy),
-                rate: configuration.mappedChargeBurns
-                    ? 1
-                        / max(
-                            Double(configuration.afterburnTime) * cbrt(max(Double(charge.mass), 1e-3)), 1e-9)
-                    : 0,
-                oxygenPerFuel: Double(Self.oxygenPerFuel),
-                diffusivity: Double(configuration.mappedChargeMixing) * cbrt(Double(charge.mass))) : nil
-        return SphericalBlast(
-            mass: mass, energy: energy, radius: size, extent: extent, cells: cells,
-            gamma: Double(configuration.gamma), ambientDensity: Double(ambientDensity),
-            ambientPressure: Double(configuration.ambientPressure),
-            thermallyPerfect: configuration.airModel == .thermallyPerfect, afterburn: burning,
-            oxygenInAir: Double(Self.oxygenInAir))
+extension SphericalBlast {
+    private struct Key: Hashable {
+        var setup: Setup
+        var probes: [Double]
+        var radius: Double
+        var limit: Double
     }
 
-    /// The wall time, cells and steps of the one-dimensional solution a charge of `mass` kg on the
-    /// ground takes to be mapped `cells` cells of `cellSize` m out, under `configuration`.
-    public static func mappedStartCost(
-        mass: Float, cellSize: Float, cells mappedCells: Float, configuration: SolverConfiguration
-    ) -> (seconds: Double, cells: Int, steps: Int) {
-        let radius = mappedCells * cellSize
-        var blast = mappedSolution(
-            Charge(mass: mass, position: .zero), radius: radius, onGround: true, configuration: configuration,
-            ambientDensity: 1.225)
-        let start = Date()
-        blast.run(toShockRadius: Double(radius))
-        return (Date().timeIntervalSince(start), blast.density.count, blast.steps)
-    }
+    /// The last few solutions, newest last: runs of one scene, and tests of alike scenes, start
+    /// from one charge again and again.
+    private static let solutions = Mutex<[(key: Key, blast: SphericalBlast)]>([])
+    private static let kept = 4
 
-    func depositMapped(_ charge: Charge, radius: Float, onGround: Bool, probes: [SIMD3<Float>])
-        -> SphericalBlast
-    {
-        var blast = Self.mappedSolution(
-            charge, radius: radius, onGround: onGround, configuration: configuration,
-            ambientDensity: ambientDensity)
-        blast.probes = probes.map { Double(simd_distance($0, charge.position)) }
-        blast.run(toShockRadius: Double(radius))
-
-        let grid = self.grid
-        let dx = grid.cellSize
-        let reach = radius + dx
-        let low = grid.cell(containing: charge.position - reach)
-        let high = grid.cell(containing: charge.position + reach)
-        let samples = 4
-        var species: [(index: Int, value: SIMD2<Float>)] = []
-        mutateState { cells in
-            for k in low.k...high.k {
-                for j in low.j...high.j {
-                    for i in low.i...high.i where !isSolid(i, j, k) {
-                        var sum = SIMD3<Double>.zero
-                        var momentum = SIMD3<Double>.zero
-                        var carried = SIMD2<Double>.zero
-                        var counted = 0
-                        for c in 0..<samples {
-                            for b in 0..<samples {
-                                for a in 0..<samples {
-                                    let offset = (SIMD3(Float(a), Float(b), Float(c)) + 0.5) / Float(samples)
-                                    let point = (SIMD3(Float(i), Float(j), Float(k)) + offset) * dx
-                                    let arm = SIMD3<Double>(point - charge.position)
-                                    let r = simd_length(arm)
-                                    guard r < Double(radius) * 1.5 else { continue }
-                                    let s = blast.state(at: r)
-                                    sum += s
-                                    momentum += r > 1e-9 ? s.y * arm / r : .zero
-                                    if blast.afterburn != nil { carried += blast.species(at: r) }
-                                    counted += 1
-                                }
-                            }
-                        }
-                        // Only cells wholly within reach of the solution are replaced; the rest
-                        // are still air.
-                        guard counted == samples * samples * samples else { continue }
-                        let n = Double(counted)
-                        let index = grid.index(i, j, k)
-                        cells[index].density = Float(sum.x / n)
-                        cells[index].momentumX = Float(momentum.x / n)
-                        cells[index].momentumY = Float(momentum.y / n)
-                        cells[index].momentumZ = Float(momentum.z / n)
-                        cells[index].energy = Float(sum.z / n)
-                        if blast.afterburn != nil { species.append((index, SIMD2<Float>(carried / n))) }
-                    }
-                }
-            }
-        }
-        // The products and oxygen the solution carried there, as the balloon's deposit lays them.
-        if !species.isEmpty {
-            mutateSpecies { buffer in
-                for (index, value) in species { buffer[index] = value }
-            }
-            largestCharge = max(largestCharge, charge.mass)
+    /// This blast, unrun, run until the shock reaches `radius` metres or the clock `limit` seconds
+    /// (`run(toShockRadius:until:)`), or the same solution kept from an earlier call that asked for
+    /// it exactly.
+    public func solved(toShockRadius radius: Double, until limit: Double = .infinity) -> SphericalBlast {
+        precondition(steps == 0, "Only an unrun blast can be solved")
+        let key = Key(setup: setup, probes: probes, radius: radius, limit: limit)
+        if let kept = Self.solutions.withLock({ list in list.last { $0.key == key }?.blast }) { return kept }
+        var blast = self
+        blast.run(toShockRadius: radius, until: limit)
+        Self.solutions.withLock { list in
+            list.removeAll { $0.key == key }
+            list.append((key, blast))
+            if list.count > Self.kept { list.removeFirst(list.count - Self.kept) }
         }
         return blast
-    }
-
-    /// After `restart()`, sets the clock to the time the mapped solution took, and gives the
-    /// cells and gauges inside its reach the peaks, impulses and histories it recorded.
-    func recordMapped(_ blast: SphericalBlast, charge: Charge, radius: Float, gauges: [SIMD3<Float>]) {
-        startClock(at: blast.time)
-        mappedStart = (blast, charge.position, radius)
-        let grid = self.grid
-        let dx = grid.cellSize
-        let low = grid.cell(containing: charge.position - radius)
-        let high = grid.cell(containing: charge.position + radius)
-        setFields { peak, impulse in
-            defer {
-                // Patches placed already (at the restart) took their coarse cells' impulse then,
-                // before this: they take it again, or their cells would rebuild it from nothing.
-                refinement?.reseedImpulseBase(from: UnsafeBufferPointer(impulse), grid: grid)
-            }
-            for k in low.k...high.k {
-                for j in low.j...high.j {
-                    for i in low.i...high.i {
-                        let centre = (SIMD3(Float(i), Float(j), Float(k)) + 0.5) * dx
-                        let r = Double(simd_distance(centre, charge.position))
-                        guard r < Double(radius) else { continue }
-                        let extremes = blast.extremes(at: r)
-                        peak[grid.index(i, j, k)] = Float(extremes.x)
-                        impulse[grid.index(i, j, k)] = Float(extremes.y)
-                    }
-                }
-            }
-        }
-        for (index, gauge) in gauges.enumerated() where simd_distance(gauge, charge.position) < radius {
-            prependGaugeHistory(
-                index, blast.records[index].map { GaugeSample(time: $0.time, pressure: Float($0.pressure)) })
-        }
     }
 }
