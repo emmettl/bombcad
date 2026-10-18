@@ -28,9 +28,13 @@ func runWallOffset(device: MTLDevice) throws {
             solids: [wall], material: .elastic(density: 2400, youngsModulus: 30e9, poissonRatio: 0.2),
             elementSize: element, fixedBase: false)
         model.elementKind = .solid
+        // A gauge in the air 1 m before the wall's face as placed on the lattice, at mid-height:
+        // the incident and reflected waves the air itself makes, before any reading of it onto
+        // the wall.
         let scenario = Scenario(
             name: "Wall offset", domainSize: SIMD3(10, 6, 4), boxes: [],
-            charge: Charge(mass: mass, position: SIMD3(2, 3, 0)), structure: model)
+            charge: Charge(mass: mass, position: SIMD3(2, 3, 0)),
+            gauges: [Gauge("Front", at: SIMD3(4.01, 3.01, 1.01))], structure: model)
         var configuration = SolverConfiguration.recommended
         configureRefinement(&configuration)
         applyChosenMask(&configuration)
@@ -83,13 +87,23 @@ func runWallOffset(device: MTLDevice) throws {
             break
         }
         let front = momentum(at: arrival + window) - momentum(at: arrival)
+        // The gauge's impulse over 7 ms from the incident wave's arrival (overpressure above 1 kPa): the
+        // reflection reaches it about 4 ms after.
+        let samples = solver.gaugeHistories.first ?? []
+        let ambient = Double(scenario.atmosphere.pressure)
+        let gaugeStart = samples.first { Double($0.pressure) - ambient > 1000 }?.time ?? 0
+        var gaugeImpulse = 0.0
+        for (a, b) in zip(samples, samples.dropFirst())
+        where a.time >= gaugeStart && b.time <= gaugeStart + 0.007 {
+            gaugeImpulse += 0.5 * (Double(a.pressure) + Double(b.pressure) - 2 * ambient) * (b.time - a.time)
+        }
         print(
             String(
                 format:
-                    "  %6.2f          %6.3f     %9.2f      %9.2f    %9.2f   arrival %.2f ms  %d steps %.1f s",
+                    "  %6.2f          %6.3f     %9.2f      %9.2f    %9.2f   arrival %.2f ms  %d steps %.1f s  gauge %.1f Pa s",
                 offset,
                 face, front, front * Double(face - 2) / 3, peak / 1000, arrival * 1000, airSteps,
-                -started.timeIntervalSinceNow))
+                -started.timeIntervalSinceNow, gaugeImpulse))
         fflush(stdout)
     }
 }

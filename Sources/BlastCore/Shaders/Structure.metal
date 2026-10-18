@@ -117,6 +117,7 @@ struct StructureUniforms {
     float fragmentStrain;   // ...and the crack strain across one that make concrete fragments
     float groundCoulomb;    // > 0: the ground's Coulomb friction coefficient (else `groundFriction`'s decay)
     float groundStiffness;  // > 0: soft ground, Pa/m over a node's h² (else the hard ground)
+    uint fluidCutCells;     // 1: the air holds structures' outlines as cut cells (`structureCutCells`)
 };
 
 // Gravity's pull per unit mass, when it has been turned.
@@ -523,11 +524,80 @@ static inline float3 cornerSign(uint a) {
     return float3(float(a & 1u), float((a >> 1) & 1u), float((a >> 2) & 1u)) * 2.0f - 1.0f;
 }
 
+// The pressure at a wall the gas (`rho`, `p`, sound speed `c`) meets moving towards it at `towards`
+// (negative: away): two shocks, or two rarefactions, between it and its mirror, for a gas of
+// ratio `gamma`.
+static inline float reflectedPressure(float rho, float p, float towards, float gamma) {
+    float c = sqrt(gamma * p / rho);
+    if (towards <= 0.0f) {
+        float base = max(1.0f + 0.5f * (gamma - 1.0f) * towards / c, 0.0f);
+        return p * pow(base, 2.0f * gamma / (gamma - 1.0f));
+    }
+    float a = 2.0f / ((gamma + 1.0f) * rho);
+    float b = (gamma - 1.0f) / (gamma + 1.0f) * p;
+    // Newton's method on (q - p) sqrt(a / (q + b)) = towards, from the acoustic estimate.
+    float q = p + rho * c * towards;
+    for (int n = 0; n < 6; ++n) {
+        float root = sqrt(a / (q + b));
+        float f = (q - p) * root - towards;
+        float slope = root * (1.0f - 0.5f * (q - p) / (q + b));
+        q = max(q - f / slope, p);
+    }
+    return q;
+}
+
+// Where the air holds the structure's outline as cut cells (unrefined air): the overpressure at the
+// face, as the air's own update takes it at its wall (`cutCellUpdate` in Solver.metal), of the
+// air in the cell the face lies in against its mirror across the face, so that the face takes
+// what the air gives up. Read off the cells as they stand, the load fell 6% below a straight line
+// between a wall on the lattice and one a cell further, where the air at a gauge before it moved
+// along that line; read half a cell out it jumped at the middle of the cell.
+static inline float cutFaceOverpressure(float3 point, float3 normal, const device Cell *fluid,
+                                        const device uchar *fluidMask, constant StructureUniforms &u) {
+    float h = u.fluidCell;
+    int3 dims = int3(u.fluidNx, u.fluidNy, u.fluidNz);
+    float3 magnitude = fabs(normal);
+    int axis = magnitude.x >= max(magnitude.y, magnitude.z) ? 0 : (magnitude.y >= magnitude.z ? 1 : 2);
+    auto open = [&](int3 c) {
+        return all(c >= 0) && all(c < dims) && fluidMask[c.x + dims.x * (c.y + dims.y * c.z)] == 0;
+    };
+    auto atWall = [&](int3 c) {
+        Cell cell = fluid[c.x + dims.x * (c.y + dims.y * c.z)];
+        float rho = max(cell.rho, 1e-6f);
+        float3 velocity = float3(cell.mx, cell.my, cell.mz) / rho;
+        float p = max(gasPressure(rho, cell.energy - 0.5f * rho * dot(velocity, velocity), u.fluidAirModel,
+                                  u.fluidGamma),
+                      1.0f);
+        return reflectedPressure(rho, p, -dot(velocity, normal), u.fluidGamma) - u.ambientPressure;
+    };
+    // The cell the face lies in, `alpha` of it air along the normal, and the next cell out, weighted
+    // by that share: a sliver's own state, whose speed swings as small cells' do, peaked 19% high
+    // a tenth of a cell off the lattice; on the lattice both weights fall on the cell beside the face.
+    int out = normal[axis] > 0.0f ? 1 : -1;
+    int3 here = int3(floor((point + normal * (1e-4f * h)) / h));
+    float position = point[axis] / h - float(here[axis]);
+    float alpha = clamp(out > 0 ? 1.0f - position : position, 0.0f, 1.0f);
+    int3 next = here;
+    next[axis] += out;
+    bool hereOpen = open(here);
+    bool nextOpen = open(next);
+    if (!hereOpen) {
+        return nextOpen ? atWall(next) : 0.0f;
+    }
+    if (!nextOpen || alpha >= 1.0f) {
+        return atWall(here);
+    }
+    return alpha * atWall(here) + (1.0f - alpha) * atWall(next);
+}
+
 // Overpressure of the air just outside an element face: the first fluid cell within two cells.
 static inline float faceOverpressure(float3 point, float3 normal, const device Cell *fluid,
                                      const device uchar *fluidMask, const device int *patchOfTile,
                                      const device Cell *fine, const device uchar *fineMask,
                                      constant StructureUniforms &u) {
+    if (u.fluidCutCells != 0) {
+        return cutFaceOverpressure(point, normal, fluid, fluidMask, u);
+    }
     return overpressureAlong(point, normal, 0.0f, 2, fluid, fluidMask, patchOfTile, fine, fineMask, u.fluidRefine,
                              u.fluidBlocksX, u.fluidBlocksY, u.fluidCell, int3(u.fluidNx, u.fluidNy, u.fluidNz),
                              u.fluidAirModel, u.fluidGamma, u.ambientPressure, patchOfTile + u.fluidDeepPatchOffset,

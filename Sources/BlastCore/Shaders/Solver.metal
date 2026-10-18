@@ -1076,6 +1076,78 @@ static inline CutUpdate cutCellUpdate(Prim w0, Flux fluxLow, Flux fluxHigh, floa
     return update;
 }
 
+// As `cutCellUpdate`, for a structure's cut cell: `wallFace` is 1 or -1 where its high or low face
+// along the sweep is shut whole against a mirror, 0 otherwise.
+static inline CutUpdate structureCutUpdate(Prim w0, Flux fluxLow, Flux fluxHigh, float apertureLow, float apertureHigh,
+                                      float share, float3 normal, bool gravityHere, const device float4 *gravityTable,
+                                      int k, float lambda, float dt, int wallFace, constant SolverUniforms &u) {
+    Flux cutLow = fluxLow;
+    Flux cutHigh = fluxHigh;
+    // The pressure at the wall: of the state against its mirror across the wall's normal.
+    float towards = dot(w0.v, normal);
+    Prim into = w0;
+    into.v = float3(towards, 0.0f, 0.0f);
+    Prim back = into;
+    back.v.x = -towards;
+    float wallPressure = riemannFlux(into, back, u).momentum.x;
+    // Where the wall shuts one of the cell's faces along the sweep whole and stands against its
+    // mirror there, the sweep's own flux through that face is the wall's push, from the state
+    // reconstructed to it as a whole cell beside a solid one takes it: from the cell's mean, the push
+    // was lower, and a wall loaded by the cell read the lower the more of the cell was air, 8%
+    // at nine tenths. (Not under gravity, whose vertical fluxes leave out the background's pressure.)
+    if (wallFace != 0 && !gravityHere) {
+        wallPressure = (wallFace > 0 ? fluxHigh : fluxLow).momentum.x;
+    }
+    // The Riemann solver's own rounding, between a state and itself: whole cells see it at
+    // both faces, where it cancels, but weighted by unequal apertures it would not, so it is
+    // taken out of the cut cell's fluxes (and its wall's), and air at rest stays at rest. (The
+    // vertical sweep under gravity takes the physical flux between states alike already.)
+    if (!gravityHere) {
+        Flux self = riemannFlux(w0, w0, u);
+        Flux exact = physicalFlux(w0, totalEnergy(w0, u));
+        Flux residual = {self.mass - exact.mass, self.momentum - exact.momentum, self.energy - exact.energy};
+        cutLow.mass -= residual.mass;
+        cutLow.momentum -= residual.momentum;
+        cutLow.energy -= residual.energy;
+        cutHigh.mass -= residual.mass;
+        cutHigh.momentum -= residual.momentum;
+        cutHigh.energy -= residual.energy;
+        wallPressure -= residual.momentum.x;
+    }
+    // Under gravity the vertical fluxes leave out the background's pressure at the faces, and
+    // the wall's push is its pressure less the background's in the cell (which balances the
+    // background's at the faces and its weight in the cell's fluid share).
+    if (gravityHere) {
+        // Still against the wall, its pressure is the cell's, exactly, as `gravityFlux` takes
+        // the physical flux between states alike.
+        if (towards == 0.0f) {
+            wallPressure = w0.p;
+        }
+        wallPressure -= primOfCell(gravityRestOf(gravityTable, k), u).p;
+    }
+    // The wall's push, (apertureLow - apertureHigh) times its pressure, taken as the faces'
+    // momentum fluxes less that pressure: the same sum, and nothing at rest.
+    cutLow.momentum.x -= wallPressure;
+    cutHigh.momentum.x -= wallPressure;
+    cutLow.mass *= apertureLow;
+    cutLow.momentum *= apertureLow;
+    cutLow.energy *= apertureLow;
+    cutHigh.mass *= apertureHigh;
+    cutHigh.momentum *= apertureHigh;
+    cutHigh.energy *= apertureHigh;
+    Flux defect;
+    defect.mass = -lambda * ((cutHigh.mass - cutLow.mass) - share * (fluxHigh.mass - fluxLow.mass));
+    defect.momentum = -lambda * ((cutHigh.momentum - cutLow.momentum) - share * (fluxHigh.momentum - fluxLow.momentum));
+    defect.energy = -lambda * ((cutHigh.energy - cutLow.energy) - share * (fluxHigh.energy - fluxLow.energy));
+    if (gravityHere) {
+        // Gravity's work, through the open part of each face (its pull on the momentum, over
+        // the fluid share, is the whole cell's times it, so leaves no difference).
+        defect.energy -= dt * u.gravity * 0.5f * ((cutHigh.mass + cutLow.mass) - share * (fluxHigh.mass + fluxLow.mass));
+    }
+    CutUpdate update = {cutLow, cutHigh, defect};
+    return update;
+}
+
 static inline Flux sumOf(Flux a, Flux b) {
     a.mass += b.mass;
     a.momentum += b.momentum;
@@ -1571,8 +1643,12 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
             }
             float4 wall = structureCutWalls[structureRecord];
             cutShare = own.x;
-            CutUpdate update = cutCellUpdate(w0, fluxLow, fluxHigh, apertureLow, apertureHigh, cutShare,
-                                             toSweep(wall.xyz, axis), gravityHere, gravityTable, cell.z, lambda, dt, u);
+            int wallFace = apertureHigh == 0.0f && kindP1 == kindWall && apertureLow > 0.0f
+                               ? 1
+                               : (apertureLow == 0.0f && kindM1 == kindWall && apertureHigh > 0.0f ? -1 : 0);
+            CutUpdate update = structureCutUpdate(w0, fluxLow, fluxHigh, apertureLow, apertureHigh, cutShare,
+                                                  toSweep(wall.xyz, axis), gravityHere, gravityTable, cell.z, lambda,
+                                                  dt, wallFace, u);
             cutLow = update.low;
             cutHigh = update.high;
             defect = update.defect;

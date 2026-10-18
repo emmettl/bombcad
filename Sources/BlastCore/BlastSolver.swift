@@ -2755,6 +2755,7 @@ public final class BlastSolver {
                     exchangeRegion: couplingRegion)
                 binding.couplingMap = tiledCoupling == nil ? nil : wallVelocityBuffer
                 binding.couplingMapCount = UInt32(tiledCoupling?.mapCount ?? 0)
+                binding.readsCutCells = structureCut != nil
                 if let refinement {
                     binding.refinement = (
                         refinement.patchOfTile, refinement.fine[0], refinement.fineMask, refinement.ratio,
@@ -3674,7 +3675,12 @@ public final class BlastSolver {
             structureCut = nil
             return
         }
-        let geometry = StructureCutGeometry(models: bodies.map(\.model), grid: grid)
+        // Solid elements only: shells' outlines are their midsurfaces, which a cut cell's air share
+        // does not describe.
+        let solids = bodies.map(\.model).filter { model in
+            model.elementKind == .solid && model.solidElementKind.allSatisfy { ($0 ?? .solid) == .solid }
+        }
+        let geometry = StructureCutGeometry(models: solids, grid: grid)
         // With no cell cut (a structure on the lattice), the air is as without cut cells, kernels
         // and all: specialised for them, fast math may round the same sums differently.
         guard !geometry.cells.isEmpty else {

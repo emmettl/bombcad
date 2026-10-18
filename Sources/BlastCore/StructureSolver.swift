@@ -37,6 +37,9 @@ public final class StructureSolver {
         /// Where the air has a second level: its cells along a coarse cell's edge, its grid of
         /// blocks, and where its patches' list and cells start in the first level's buffers.
         var deepRefinement: (ratio: Int, blocks: SIMD3<Int>, patchOffset: Int, cellOffset: Int)?
+        /// Whether the air holds structures' outlines as cut cells: a face then reads the cell it
+        /// lies in, which holds the air against it, not the one half a cell out.
+        var readsCutCells = false
     }
 
     /// Bytes of state per element (`ElementState` in Structure.metal).
@@ -2079,6 +2082,7 @@ public final class StructureSolver {
                 uniforms.fluidDeepCellOffset = UInt32(deep.cellOffset)
             }
             uniforms.fluidCell = fluid.grid.cellSize
+            uniforms.fluidCutCells = fluid.readsCutCells ? 1 : 0
             uniforms.fluidNx = UInt32(fluid.grid.nx)
             uniforms.fluidNy = UInt32(fluid.grid.ny)
             uniforms.fluidNz = UInt32(fluid.grid.nz)
