@@ -1970,7 +1970,8 @@ struct StandingScene {
                 StandingEvidence(
                     "An internal explosion in a reinforced concrete chamber",
                     "Unsafe side, too stiff: its roof's edge left 25 mm up against 95 mm measured (a quarter) "
-                        + "with the confined regime's pressed interlock, 27 mm with afterburning and hot air; not "
+                        + "with the confined regime's pressed interlock, on today's air with the open faces at the "
+                        + "clearance rule (27 mm in the test's tighter box); not "
                         + "converged on 25 mm elements; the wall pressures 0.9 to 1.6 times those measured on either "
                         + "air",
                     "validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber"),
