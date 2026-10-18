@@ -2693,7 +2693,8 @@ struct StandingScene {
                     "Keys: the debris's mean reach 0.25–0.53 m against 0.23–0.64 m, its far tail short (0.5–1.5 m "
                         + "against 3–6 m); Kasun: launched at up to 118–131 m/s against the Klotz Group's 124 m/s, "
                         + "its walls venting the gas, but hazardous debris to 129 m against the tests' 290–315 m, "
-                        + "the unsafe side (DoD's structure distance, 268 m, governs)",
+                        + "the unsafe side (DoD's structure distance, 268 m, governs); Kasun III's launch "
+                        + "speeds 44–49 m/s against 52 measured (6.9 kg PETN), 171–192 against 224 (110 kg)",
                     "hazards.md#debris-from-failed-envelope-components"),
             ],
             assumptions: [
