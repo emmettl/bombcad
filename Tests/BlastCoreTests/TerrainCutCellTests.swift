@@ -331,4 +331,52 @@ struct TerrainCutCellTests {
         #expect(abs(after.mass / before.mass - 1) < 1e-3, "mass \(after.mass / before.mass - 1)")
         #expect(abs(after.energy / before.energy - 1) < 1e-3, "energy \(after.energy / before.energy - 1)")
     }
+
+    @Test(
+        "Under a block's fine outline, a coarse cut cell restricted from its fine cells holds their air's mean"
+    )
+    func blockedRestriction() throws {
+        // Ground at 1.41 m, so the coarse cells from 1 to 2 m are cut (0.59 air); a block from
+        // x = 20.6 m, so the coarse cell from 20 to 21 m stays air while the fine cells from 20.5
+        // m are the block's. Restricted over the coarse share, which knows nothing of the block,
+        // that cell held half its fine air's density.
+        var scenario = Scenario(
+            name: "Block on cut ground", domainSize: SIMD3(48, 48, 16),
+            boxes: [Box(min: SIMD3(20.6, 18, 0), max: SIMD3(30, 30, 3))],
+            charge: Charge(mass: 100, position: SIMD3(15, 24, 2.5)))
+        scenario.reflectiveFaces = .all
+        scenario.terrain = Terrain.sampled(
+            domain: scenario.domainSize, spacing: 0.5, source: "block on cut ground"
+        ) {
+            p in
+            1.4 + 0.0005 * p.x
+        }
+        var configuration = cut()
+        configuration.refinement = 2
+        configuration.refinementThreshold = 0.02
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 1, configuration: configuration)
+        let geometry = try #require(solver.terrainCut?.geometry)
+        #expect(
+            geometry.alpha(20, 24, 1) > 0.5 && geometry.alpha(20, 24, 1) < 1 && !solver.isSolid(20, 24, 1))
+        var checked = 0
+        for _ in 0..<12 {
+            _ = solver.advance(steps: 8)
+            let level = try #require(solver.refinement)
+            guard level.holdsAny(from: SIMD3(20, 24, 1), through: SIMD3(20, 24, 1)) else { continue }
+            let fine = level.fineReader()
+            // The block's fine cells are solid; the air's are those at x = 40.
+            #expect(fine(SIMD3(41, 48, 3)) == nil)
+            let pressures = [SIMD3(40, 48, 3), SIMD3(40, 49, 3), SIMD3(40, 48, 2), SIMD3(40, 49, 2)]
+                .compactMap {
+                    fine($0).map { solver.primitive(of: $0.state).pressure }
+                }
+            guard let low = pressures.min(), let high = pressures.max() else { continue }
+            let coarse = solver.primitive(20, 24, 1).pressure
+            #expect(
+                coarse > 0.99 * low && coarse < 1.01 * high, "coarse \(coarse) Pa, fine \(low)-\(high) Pa")
+            checked += 1
+        }
+        #expect(checked > 0)
+    }
 }

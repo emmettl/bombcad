@@ -69,6 +69,16 @@ placed beside a block give up about what they gain (−0.05–0.1% net in the te
 narrower band, half the refinement threshold, let the precursor's own disturbance carry it on:
 the 552 m arrival came 20% early. A moving structure's outline always shares its gas.
 
+Restriction likewise, since 18 October 2026: a coarse cut cell where a block's fine outline takes
+some of its fine cells becomes the mean of the air in those left, weighted by their shares, as a
+cell without a cut becomes the mean of its fluid fine cells. Divided by the coarse cell's own
+share, which knows nothing of the block, it came out short by the block's share, as low as half
+the fine air's pressure (`blockedRestriction` in the tests). A released patch leaves such a
+deficit in the coarse air, and once level 2's pool runs out patches come and go. Beirut's 1 km box
+refined twice, which runs out, showed façade loads of −1.5 to −2.5 kPa before the blast and
+arrivals at 0.8 s from 584 to 807 m, the suspected result; the 600 m box, its pool run out too,
+did not show them either way.
+
 ## Importing a DEM
 
 `ElevationGrid` reads, with no library:
