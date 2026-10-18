@@ -2262,7 +2262,7 @@ struct StandingScene {
         if materialClasses.contains(.glass) || materialClasses.contains(.masonry) {
             level = .illustrative
             summary +=
-                " Masonry breaks into too few pieces: brick walls fall as one column, lying 1.5–2 m too far out in "
+                " Masonry breaks into too few pieces: brick walls fall as one column, lying 1.0–1.4 m too far out in "
                 + "the open, and are thrown half as far as measured in a shock tube. Glass breaking up has no comparison."
         }
         return result(

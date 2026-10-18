@@ -244,10 +244,12 @@ The 1 km box (2 km square, 320 m top, 0.5 kt) on three grids, uniform cells:
   the line to 900 m, more than 3 m cells, in 29 minutes on the mini (43 with the façades held
   refined while loaded, which changes nothing here). But its finest pool fills within 14 GB, and
   gauges 0.5–1 km out see something arrive at 0.78–0.84 s whatever their distance, ahead of the
-  shock (1.0–2.3 s there); a smaller scene shows it with room left in the pool, so it is the
-  refinement's own and not yet found. Its façades are loaded early (concrete moderate at 0.75–1 km in 312
-  buildings, where 3 m cells have 11), so its damage cannot be used. It is left to the refinement
-  work and a larger Mac.
+  shock (1.0–2.3 s there); a smaller scene shows it with room left in the pool, so it was the
+  refinement's own: patches beside buildings raised the air ahead of the shock, flagging the next
+  building. That is fixed (patches in still air give up the gas their fine outline takes;
+  [terrain](terrain.md)), and arrivals are again 3–4% before Kingery–Bulmash. These refined runs'
+  façades were loaded early (concrete moderate at 0.75–1 km in 312 buildings, where 3 m cells have
+  11), so their damage cannot be used; it has not been rerun since the fix.
 
 ### Structure against the building survey (GEER, 2021)
 
