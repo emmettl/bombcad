@@ -28,6 +28,10 @@ class TierTests(unittest.TestCase):
         self.assertEqual(check.tier(["Sources/BlastCore/Footing.swift", "docs/a.md"]), "affected")
         self.assertEqual(check.tier(["Scripts/build-app.sh"]), "affected")
         self.assertEqual(check.tier(["Scripts/release.py", "docs/a.md"]), "documents")
+        self.assertEqual(check.tier(["Scripts/reference/compare.py", "Scripts/reference/tables/blast1d-tnt.json",
+                                     "Makefile"]), "affected")
+        self.assertEqual(check.tier(["Scripts/reference/compare.py", "Scripts/reference/tables/blast1d-tnt.json"]),
+                         "documents")
 
 
 class SuiteTests(unittest.TestCase):
