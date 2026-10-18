@@ -1244,6 +1244,13 @@ kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
         float ambient = airGravity ? gravityAmbientOf(gravityTable, z, u) : u.ambientPressure;
         recordCell(maxSpeed, momentum, c.rho, pressure, u, ambient);
     };
+    // What a column carries up and cannot pass on, stopped by a block above the terrain, goes to
+    // its last cell of air, taken as at least half air. That cell may be a sliver between the
+    // terrain and a building's base, a twentieth air, where the column's whole carry would change
+    // its density twentyfold and could take it below nothing. Through a district on 8 m cells
+    // refined twice, with the second level's pool full, an isolated patch's sliver did, and the
+    // run broke. What it is not given (at most half of what is carried, and only there) is lost.
+    auto blockedShare = [](float share) { return max(share, 0.5f); };
     uint current = patch;
     int3 at = tile;
     bool more = true;
@@ -1256,9 +1263,9 @@ kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
             int index = int(fineIndex(current, f, at, u));
             if ((fineMask[index] & 1) != 0) {
                 // Solid: the terrain's beneath the air, or a block above it, which what is still
-                // carried up cannot pass; the last cell of air takes it.
+                // carried up cannot pass; the last cell of air takes it (`blockedShare`).
                 if (last >= 0 && (any(passed != 0.0f) || any(passedEnergy != 0.0f))) {
-                    apply(last, passed, passedEnergy, lastShare, lastZ);
+                    apply(last, passed, passedEnergy, blockedShare(lastShare), lastZ);
                     passed = float4(0.0f);
                     passedEnergy = float4(0.0f);
                 }
@@ -1312,7 +1319,7 @@ kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
             passedUp[slot] += passed;
             passedUp[slot + 1] += passedEnergy;
         } else if (last >= 0) {
-            apply(last, passed, passedEnergy, lastShare, lastZ);
+            apply(last, passed, passedEnergy, blockedShare(lastShare), lastZ);
         }
     }
 }

@@ -280,6 +280,16 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell
   for the coarse cells to stand on a sliver can cap a fine one, and refined once the same district
   ran away 0.04 s in. A coarse cut cell whose fine cells are then all solid keeps what it had. A
   structure that comes to rest on a sliver during a run is not caught by this rule.
+  The two levels can still disagree. A fine sliver whose cell above is air at its own level but
+  lies under a block in its parent's cells passes up into a solid cell. That happens where the
+  second level's pool is full and the patch above is not placed. What such a column carries up
+  and cannot pass goes to its last cell of air taken as at least half air, so a sliver's density
+  can no longer be driven below nothing; at most half of what is carried is lost, there only
+  (since 18 October 2026). Before this, Beirut's district on 8 m cells refined twice to 0.005,
+  with a 3 GB pool (the second level full), floored a sliver's density 0.875 s in. The step after
+  read a NaN wave speed and was 0.62 s long; it now runs as with a second level that has room.
+  A wave speed that is NaN, infinite or negative now stops the batch, unstable, where it would
+  have set a step far too long.
 - **A deflagration's air** is cut too, since 17 October 2026 (it kept the staircase before). Its
   mixture is carried across cut cells at the same limited linear mass fractions on both sides of
   each face, with the sub-grid mixing's carrying through each face's open part, and near the cut
