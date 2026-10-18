@@ -2295,10 +2295,10 @@ struct StandingScene {
                     ? "with the air seeing each building whole but for its glazing, which opens in the air as "
                         + "it breaks: "
                     : "with the air seeing the building whole and the inside a one-way fill: ")
-                + "glass breakage and its time, concrete panels' rotation between fixed and simply supported "
-                + "edges, and freestanding walls as cantilevers from their foot, as approximations; brick panels, "
-                + "profiled steel sheeting, cross-laminated timber and the inside pressure through broken panes "
-                + "illustrative.",
+                + "each on its equivalent uniform load: glass breakage and its time, concrete panels' rotation "
+                + "between fixed and simply supported edges, freestanding walls as cantilevers from their foot, "
+                + "and profiled steel sheeting between its rails, as approximations; brick panels, "
+                + "cross-laminated timber and the inside pressure through broken panes illustrative.",
             evidence: [
                 StandingEvidence(
                     "UFC 3-340-02 §2-15.4's loads on the walls inside, through an open front window (16 cases, "
@@ -2318,9 +2318,10 @@ struct StandingScene {
                     "building-envelopes.md#one-way-damage-single-degree-of-freedom"),
                 StandingEvidence(
                     "Freestanding walls against measurement: Alsubaei's perimeter walls and Keys's brick walls",
-                    "6 of 7 outcomes as measured, built as tested; the blockwork's top within 16% (32 mm "
-                        + "against 28); the half-scale concrete wall 5.4° where light cracking was seen, the safe "
-                        + "side (the detailed model 2.1°)",
+                    "On the equivalent load 5 of 7 outcomes as measured, built as tested (6 on the mean); the "
+                        + "blockwork's top 28 mm against 28; the half-scale concrete wall 4.2° where light cracking "
+                        + "was seen, the safe side (the detailed model 2.1°); the blockwork at 125 kg 9.3°, short of "
+                        + "failing, where it collapsed",
                     "building-envelopes.md#freestanding-walls"),
                 StandingEvidence(
                     "One-way reinforced masonry walls under measured loads (Hayman, 2014)",
@@ -2330,15 +2331,16 @@ struct StandingScene {
                 StandingEvidence(
                     "Slabs held on their edges against measurement (the contest slab, Reynolds, Wu, Wang, Mendonça)",
                     "Under measured loads the measured peak between the fixed and simply supported bounds on all "
-                        + "eight; under the model's own close-in loads under-read, as the detailed model is, and "
+                        + "eight; under the model's own close-in loads, on the equivalent load, Wu's one-face slabs "
+                        + "0.91–1.56 of measured (0.52–0.71 on the mean), Wang's clamped panels 0.35–0.47, and "
                         + "Mendonça's two collapses missed",
                     "building-envelopes.md#slabs-held-on-their-edges"),
                 StandingEvidence(
                     "ADBLAST's screwed TR84 cladding shot in air (10 tests, 0.5–1.5 kg)",
                     "Profiled sheeting: within 1.0–1.35 of the shell model's deflection under the same load; in "
-                        + "the air's load on the whole panel 0.50–1.37 of measured, low on nine (on the middle "
-                        + "ribs 0.62–1.07); graded heavy to failed where the sheets set but stayed on; the screws "
-                        + "held, as measured",
+                        + "the air's load on the strip of ribs it is judged on 0.65–1.09 of measured (the shells "
+                        + "0.90–1.35; the whole panel's mean 0.49–1.36); graded heavy to failed where the sheets "
+                        + "set but stayed on; the screws held, as measured",
                     "profiled-sheeting.md#against-adblasts-cladding-as-an-envelope"),
                 StandingEvidence(
                     "Monk and Clubley's annealed windows in the Shoeburyness tunnel (12 timed panes)",
@@ -2366,13 +2368,15 @@ struct StandingScene {
                     + "cold-formed panels on its effective section (the maker's, or by its compressed flat's "
                     + "class, a slender one at Winter's width), graded by PDC-TR 06-08's limits for deck whose membrane action its "
                     + "fixings limit, and blown off when the reaction pulling it off its screws, as it comes back "
-                    + "out or is sucked, passes what they hold by EN 1993-1-3; a component's mean load under-reads "
-                    + "its most loaded ribs.",
+                    + "out or is sucked, passes what they hold by EN 1993-1-3; on the load on the middle third of "
+                    + "its ribs across the span, as they span on their own.",
                 "Cross-laminated timber spans one way, elastic–perfectly plastic, its resistance from the mean "
                     + "bending strength with the Ottawa shock tube's dynamic increase, graded by WoodWorks' ductility "
                     + "limits from the Tyndall tests; no envelope-level test of its damage compared.",
                 "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
                     + "2° is flagged as beyond the one-way model.",
+                "A component's load is Biggs's equivalent uniform load, its faces weighted by its plastic "
+                    + "mechanism's shape from the edges it is held on (held nowhere, taken as held all round).",
                 "Glass is annealed, on Moore's large-deflection plate, simply supported, breaking at E1300's "
                     + "median strength with the whole pane at its largest stress"
                     + (laminated

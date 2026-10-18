@@ -2642,6 +2642,7 @@ kernel void sampleEnvelopeComponentFaces(const device Cell *state [[buffer(0)]],
                                          const device int *childPatches [[buffer(14)]],
                                          const device Cell *childFine [[buffer(15)]],
                                          const device uchar *childMask [[buffer(16)]],
+                                         const device float *weights [[buffer(17)]],
                                          uint group [[threadgroup_position_in_grid]],
                                          uint local [[thread_index_in_threadgroup]]) {
     if (control.dt <= 0 && r.initial == 0) return;
@@ -2672,7 +2673,9 @@ kernel void sampleEnvelopeComponentFaces(const device Cell *state [[buffer(0)]],
             if (!still && r.readsRefined != 0
                 && refinedFaceOverpressure(face.x, face.y, u, patchOfTile, fine, fineMask, childPatches,
                                            childFine, childMask, refined)) {
-                pressures[first + n] = refined;
+                // Each face's weight: 1 for a component's own faces (the same bits), its share of
+                // an equivalent load's otherwise.
+                pressures[first + n] = refined * weights[first + n];
                 continue;
             }
         }
@@ -2695,7 +2698,7 @@ kernel void sampleEnvelopeComponentFaces(const device Cell *state [[buffer(0)]],
         if (row) {
             stillPressure[n] = p;
         } else {
-            pressures[first + n] = p;
+            pressures[first + n] = p * weights[first + n];
         }
     }
 }

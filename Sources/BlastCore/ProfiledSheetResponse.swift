@@ -79,12 +79,15 @@ extension EnvelopeDamageLevel {
 extension EnvelopeDamageAssessment {
     /// A sheeted wall's or roof's damage: one way between its rails or purlins, whatever the
     /// component's own span, from a single span to the first span of a continuous sheet, graded
-    /// by PDC-TR 06-08; failed, blown off, if the reaction pulling it off its screws, as it comes
-    /// back out or is sucked, passed what they hold.
+    /// by PDC-TR 06-08, under the load on the middle third across its span (`EnvelopeComponentLoad
+    /// .strip`); failed, blown off, if the reaction pulling it off its screws, as it comes back out
+    /// or is sucked, passed what they hold.
     static func profiledSheet(
         _ load: EnvelopeComponentLoad, construction: EnvelopeConstruction, roof: Bool, pressures: [Double],
         peak: Double
     ) -> EnvelopeComponentDamage {
+        // Its ribs span on their own: the load on the middle third across the span, where recorded.
+        let pressures = load.stripPa == nil ? pressures : load.strip.netPa
         let profile = construction.sheet(roof: roof)
         let span = Double(construction.sheetSpanM ?? 1.8)
         let continuous = construction.sheetContinuous ?? true

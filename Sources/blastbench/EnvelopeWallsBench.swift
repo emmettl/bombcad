@@ -207,6 +207,9 @@ func runEnvelopeWalls(device: MTLDevice) throws {
             histories = solver.envelopeComponentHistories() ?? []
         }
         let loads = histories.map(EnvelopeComponentLoad.init)
+        let wholes = Dictionary(
+            histories.map { ($0.component.id, EnvelopeComponentLoad($0, whole: true)) },
+            uniquingKeysWith: { a, _ in a })
         let seconds = Double((ContinuousClock.now - started).components.seconds)
         print("\(wallCase.id): \(String(format: "%.0f", seconds)) s")
         for load in loads where load.kind == .wall {
@@ -248,6 +251,18 @@ func runEnvelopeWalls(device: MTLDevice) throws {
                     rotation, response.ductility, level,
                     response.lostResistanceAt.map { String(format: ", fallen at %.2f s", $0) } ?? "",
                     wallCase.asBuilt.ultimateResistance / 1000, wallCase.asBuilt.period * 1000))
+            if let whole = wholes[load.id] {
+                let mean = EnvelopeDamageAssessment.cantileverLoad(whole.netPa)
+                let other = wallCase.asBuilt.response(pressures: mean, step: load.binS, tail: tail)
+                let turned = atan(max(other.peakDeflection, -other.reboundDeflection) / height) * 180 / .pi
+                print(
+                    String(
+                        format:
+                            "    on the whole component: top %.1f mm, %.2f°%@ (positive impulse %.0f Pa s)",
+                        other.peakDeflection * 1000, turned,
+                        other.lostResistanceAt.map { String(format: ", fallen at %.2f s", $0) } ?? "",
+                        mean.reduce(0) { $0 + max($1, 0) } * load.binS))
+            }
         }
         print("  measured: \(wallCase.measured)")
         print("  detailed model: \(wallCase.detailed)")
