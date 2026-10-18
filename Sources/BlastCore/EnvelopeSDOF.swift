@@ -348,6 +348,11 @@ public struct SDOFResponse: Codable, Hashable, Sendable {
 
     /// Peak deflection over X_E (UFC §3-14.2).
     public var ductility: Double { peakDeflection / equivalentElasticDeflection }
+    /// The same, the larger of the inward and outward deflections: a section with bars in both faces
+    /// judged either way alike (UFC 3-340-02 §4-26.2).
+    public var ductilityEitherWay: Double {
+        max(peakDeflection, -reboundDeflection) / equivalentElasticDeflection
+    }
 
     /// Support rotation of a span loaded symmetrically, θ = atan(x / (L/2)) in degrees (UFC
     /// Table 3-5; PDC-TR 06-08 §3-2).

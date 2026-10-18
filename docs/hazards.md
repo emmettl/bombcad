@@ -104,10 +104,13 @@ line and the minimum safe distance with it. Headless, it is a `Hazards:` line, w
   carries about 55 J), so none is hazardous.
 - **The Kasun cubicle** (Norwegian and Swedish tests: 2 × 2 × 2 m inside, 0.15 m reinforced
   concrete, 80 kg inside):
-  - launch: the walls and roof fail at 2.6–2.8 ms, their pieces leaving at up to 120–132 m/s,
+  - launch: the walls and roof fail at 2.6–2.8 ms, their pieces leaving at up to 118–131 m/s,
     against the Klotz Group's debris launch velocity, 525 √(γ L / M) = 124 m/s (Weerheijm and
     Conway, IESS 2018);
-  - reach: hazardous debris to 142 m, its furthest hazardous piece at 259 m, against the tests'
+  - venting: the failed walls and roof open in the air from 2.6 ms, and the gas leaves. The
+    overpressure inside, 12.9 MPa at 2 ms, is 61 kPa at 5 ms, 25 kPa at 20 ms and 1 kPa at
+    30 ms. Shut, it stays at 12–18 MPa.
+  - reach: hazardous debris to 129 m, its furthest hazardous piece at 257 m, against the tests'
     1 per 56 m² at 290–315 m (Kummer, IESS 2018, Fig. 11; the Klotz Group's tool 260 m). That is
     under half, the unsafe side. Here the pieces are 1 kg cubes leaving within 10° of square to
     their sections; the tests' spread of sizes and angles is not modelled. DESR's structure
@@ -184,10 +187,7 @@ not a probe.
   - its pieces' sizes are assumed;
   - launch angles come only from the sections' turn at failure;
   - pieces neither bounce, roll nor break on landing;
-  - against the Kasun tests its hazardous reach is under half;
-  - a wall that fails outwards from a charge inside its building is thrown, but envelope damage
-    grades concrete by its inward ductility, so such a wall reads undamaged and venting does not
-    open it.
+  - against the Kasun tests its hazardous reach is under half.
 - One standing height (1.5 m); probes beside a solid are not read, and close in the cells' peaks
   read low.
 - K-factor distances: the primary charge only, as a bare charge in the open; additional charges

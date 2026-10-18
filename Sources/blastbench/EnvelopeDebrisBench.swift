@@ -28,7 +28,8 @@ func runEnvelopeDebris(device: MTLDevice) throws {
     let middle = origin + SIMD3(outer / 2, outer / 2, inside / 2)
     var scenario = Scenario(
         name: "Kasun", domainSize: SIMD3(2 * origin.x + outer, 2 * origin.y + outer, 6), boxes: [],
-        charge: Charge(mass: charge, position: middle))
+        charge: Charge(mass: charge, position: middle),
+        gauges: [Gauge("Inside", at: origin + SIMD3(wall + 0.4, wall + 0.4, 0.4))])
     let owner = try scenario.addEnvelopeObject(BuildingEnvelope(solids: solids), name: "Kasun")
     scenario.setEnvelopeConstruction(
         EnvelopeConstruction(
@@ -51,6 +52,24 @@ func runEnvelopeDebris(device: MTLDevice) throws {
         if solver.advance(steps: 16, timeLimit: duration).steps == 0 { break }
     }
     let vented = solver.envelopeVentingSnapshot()
+    // Whether the walls opened, and the pressure inside, a corner 0.4 m in, falling as the gas left.
+    let opened = (vented?.walls ?? []).filter { $0.failedAtS != nil }
+    print(
+        "Venting opened \(opened.count) of \(vented?.walls.count ?? 0) walls and roofs"
+            + (opened.isEmpty
+                ? "" : String(format: ", the first at %.1f ms", 1000 * opened.compactMap(\.failedAtS).min()!))
+    )
+    if let samples = solver.gaugeHistories.first {
+        let times = [0.002, 0.005, 0.01, 0.02, duration - 1e-4]
+        print(
+            "Inside, overpressure "
+                + times.map { t in
+                    let sample = samples.min { abs($0.time - t) < abs($1.time - t) }
+                    return String(
+                        format: "%.0f kPa at %.0f ms", ((sample?.pressure ?? 101_325) - 101_325) / 1000,
+                        t * 1000)
+                }.joined(separator: ", "))
+    }
     let loads = (solver.envelopeComponentHistories() ?? []).filter {
         !$0.invalid || vented?.keeps($0) == true
     }
