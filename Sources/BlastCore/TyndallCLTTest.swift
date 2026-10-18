@@ -210,7 +210,8 @@ public enum TyndallCLTTest {
         let summary = shells.summary()
         return Result(
             firstFloor: firstFloor, secondFloor: secondFloor, reflected: wall.peak, impulse: wall.impulse,
-            incident: free.peak, incidentImpulse: free.impulse, wallSeconds: Date().timeIntervalSince(started),
+            incident: free.peak, incidentImpulse: free.impulse,
+            wallSeconds: Date().timeIntervalSince(started),
             maxDamage: summary.maxDamage, removed: summary.erodedElements)
     }
 }
