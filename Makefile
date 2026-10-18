@@ -75,6 +75,10 @@ ci-test:
 	python3 Scripts/test-check-affected.py
 	python3 Scripts/test-release-notes.py
 	python3 Scripts/test-check-shader-mirrors.py
+	python3 Scripts/reference/test-kingery-bulmash.py
+	python3 Scripts/reference/test-sdof.py
+	python3 Scripts/reference/test-blast1d.py
+	python3 Scripts/reference/test-compare.py
 	python3 Scripts/check-doc-links.py
 	python3 Scripts/check-shader-mirrors.py
 
