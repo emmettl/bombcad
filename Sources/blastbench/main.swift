@@ -5516,6 +5516,8 @@ do {
     case "settle": try runSettle(device: device)
     case "poulin": try runPoulin(device: device)
     case "tyndall": try runTyndall(device: device)
+    case "laminated": try runLaminated(device: device)
+    case "hubroof": try runHubRoof(device: device)
     case "facade": try runFacade(device: device)
     case "house": try runHouse(device: device)
     case "lacroix": try runLacroix(device: device)

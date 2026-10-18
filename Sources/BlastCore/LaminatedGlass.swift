@@ -68,6 +68,60 @@ public enum Interlayer: String, Codable, Hashable, Sendable, CaseIterable {
             return 47e6
         }
     }
+
+    /// The cracked laminate's stress on the interlayer (Pa) against its plastic strain, at strain
+    /// rate `rate` (1/s), for an interlayer `thickness` (m) thick, as at most eight points to its
+    /// failure strain, and its modulus: Hooper's Johnson–Cook fit to randomly cracked 7.52 mm
+    /// laminate with 1.52 mm of PVB, the law of his post-crack shell model (thesis, §7.2.2 and
+    /// Table 7.3), σ = (6.72 + 10.6 ε_p^0.303)(1 + 0.248 ln(ε̇ / 1 s⁻¹)) MPa on a modulus of
+    /// 0.55 GPa, scaled to other thicknesses as their plateau stresses are (`plateauStress`).
+    /// Ionoplast's, without a cracked-laminate test, is its plateau held to its failure strain on a
+    /// modulus that reaches it at the plateau strain of 1.2%.
+    public func crackedLaminateCurve(thickness: Double, rate: Double) -> (
+        modulus: Double, curve: [SIMD2<Double>]
+    ) {
+        let failure = failureStrain(thickness: thickness)
+        switch self {
+        case .sgp:
+            let plateau = plateauStress(thickness: thickness, rate: rate)
+            let modulus = plateau / LaminatedGlass.plateauStrain
+            return (modulus, [SIMD2(0, plateau), SIMD2(max(failure - plateau / modulus, 1e-3), plateau)])
+        case .pvb:
+            let modulus = 0.55e9
+            let scale =
+                plateauStress(thickness: thickness, rate: rate)
+                / plateauStress(thickness: 1.52e-3, rate: rate)
+            let factor = 1 + 0.248 * log(max(rate, 1e-3))
+            func stress(_ plastic: Double) -> Double {
+                scale * factor * (6.72e6 + 10.6e6 * pow(plastic, 0.303))
+            }
+            // The plastic strain at which the total, plastic and elastic, reaches the failure strain.
+            var last = failure
+            for _ in 0..<8 { last = max(failure - stress(last) / modulus, 2e-3) }
+            let strains = [0, 0.02, 0.05, 0.1, 0.2, 0.4, 0.8].filter { $0 < last } + [last]
+            return (modulus, strains.map { SIMD2($0, stress($0)) })
+        }
+    }
+
+    /// The cracked laminate's failure strain at blast rates for an interlayer `thickness` (m)
+    /// thick: Hooper's for cracked PVB laminate (thesis, pp. 130–135: about 150% for 1.52 and 2.28
+    /// mm sheets at every rate, 20% for 0.76 mm and 10% for 0.38 mm at 10 m/s), ionoplast's 120%
+    /// (Elkilani et al., at 20 s⁻¹).
+    public func failureStrain(thickness: Double) -> Double {
+        switch self {
+        case .sgp: return 1.2
+        case .pvb:
+            let table: [(t: Double, e: Double)] = [
+                (0.38e-3, 0.10), (0.76e-3, 0.20), (1.52e-3, 1.5), (2.28e-3, 1.5),
+            ]
+            if thickness <= table[0].t { return table[0].e }
+            if thickness >= table.last!.t { return table.last!.e }
+            for (a, b) in zip(table, table.dropFirst()) where thickness <= b.t {
+                return a.e + (thickness - a.t) / (b.t - a.t) * (b.e - a.e)
+            }
+            return table[0].e
+        }
+    }
 }
 
 /// A laminated pane: two glass plies bonded by an interlayer, which holds the glass once it has
@@ -116,39 +170,19 @@ public struct LaminatedGlass: Codable, Hashable, Sendable {
     /// 10–30 s⁻¹ Hooper measured at the centre of his blast-loaded panes (thesis, Table 3.8).
     public static let strainRate = 10.0
     /// Deflection over the shorter span at which the cracked laminate tears: where its average
-    /// membrane strain, (8/3)(x/a)², reaches its failure strain at blast rates, Hooper's for cracked
-    /// PVB laminate (thesis, pp. 130–135: about 150% for 1.52 and 2.28 mm sheets at every rate, 20%
-    /// for 0.76 mm and 10% for 0.38 mm at 10 m/s), ionoplast's 120% (Elkilani et al., at 20 s⁻¹).
-    /// A cracked pane tears at its edges first, where the strain gathers: Zhang, Hao and Wang saw
-    /// 1.52 mm PVB start to tear at 0.23 (*IJIE* 78, 2015, §3.2.2) and Osnes et al.'s held at 0.4.
+    /// membrane strain, (8/3)(x/a)², reaches its failure strain at blast rates
+    /// (`Interlayer.failureStrain`). A cracked pane tears at its edges first, where the strain
+    /// gathers: Zhang, Hao and Wang saw 1.52 mm PVB start to tear at 0.23 (*IJIE* 78, 2015,
+    /// §3.2.2) and Osnes et al.'s held at 0.4.
     public func tearRatio() -> Double {
-        let strain: Double
-        switch interlayer {
-        case .sgp: strain = 1.2
-        case .pvb:
-            let table: [(t: Double, e: Double)] = [
-                (0.38e-3, 0.10), (0.76e-3, 0.20), (1.52e-3, 1.5), (2.28e-3, 1.5),
-            ]
-            let t = interlayerThickness
-            if t <= table[0].t {
-                strain = table[0].e
-            } else if t >= table.last!.t {
-                strain = table.last!.e
-            } else {
-                var value = table[0].e
-                for (a, b) in zip(table, table.dropFirst()) where t <= b.t {
-                    value = a.e + (t - a.t) / (b.t - a.t) * (b.e - a.e)
-                    break
-                }
-                strain = value
-            }
-        }
-        return (3 * strain / 8).squareRoot()
+        (3 * interlayer.failureStrain(thickness: interlayerThickness) / 8).squareRoot()
     }
     /// Deflection over the shorter span at which the cracked laminate reaches its plateau
     /// tension: 0.067, an average membrane strain (8/3)(x/a)² of 1.2%, the yield strain of Hooper's
     /// fit to cracked laminate (thesis, Table 7.3: A 6.72 MPa, E 0.55 GPa).
     public static let plateauRatio = 0.067
+    /// The cracked laminate's strain at its plateau tension, the same datum: 1.2%.
+    public static let plateauStrain = 0.012
 
     /// Wölfel–Bennison effective thicknesses (ASTM E1300's for laminated glass, after Calderone,
     /// Davies and Bennison 2009) for a pane whose shorter span is `span`: the monolithic thickness
@@ -218,5 +252,63 @@ extension EnvelopePanel {
             tearRatio: laminate.tearRatio(), plateauDeflection: LaminatedGlass.plateauRatio * short,
             edgeCapacity: laminate.edgeCapacity)
         return system
+    }
+}
+
+extension StructureMaterial {
+    /// A laminated pane a × b (m) meshed as one shell `laminate.thickness` thick, with the laws
+    /// and data the envelope's pane uses (`EnvelopePanel.laminatedGlass`):
+    /// - **Uncracked:** monolithic `glass`, its stiffness scaled so that the shell deflects as
+    ///   the Wölfel–Bennison deflection thickness does over the shorter span, and its tensile
+    ///   strength so that it cracks when the more stressed ply would (the stress thickness); its
+    ///   mass the plies' and the interlayer's. The plies crack at the stress a load rising over
+    ///   `LaminatedGlass.loadDuration` breaks them at by E1300's flaw model and glass's static
+    ///   fatigue (`GlassStrength`: Brown's integral of a ramp, σ₆₀ (60 (n + 1) / t)^(1/n)), from
+    ///   the pane's 60 s strength, E1300's median for its area unless given.
+    /// - **Cracked:** the glass's layers crack and carry only compression, the fragments bearing
+    ///   on one another; the interlayer, a layer at the midsurface both ways
+    ///   (`interlayerThickness`), carries the load as an isotropic membrane in plane stress (von
+    ///   Mises, Poisson's ratio 0.45) by the cracked laminate's stress against strain at 10 s⁻¹
+    ///   (`Interlayer.crackedLaminateCurve`, Hooper's), until its equivalent plastic strain
+    ///   passes the curve's end, at its failure strain (`Interlayer.failureStrain`), and it
+    ///   tears. The curve hardens: a membrane held at a flat plateau, as the envelope's single
+    ///   degree of freedom takes it, gathers its stretch into a band.
+    /// - **Fragmenting:** once any of a pane's glass cracks open through a layer, the whole
+    ///   pane's is in fragments, which keep their mass but carry nothing, the interlayer holding
+    ///   them: Hooper's post-crack model (thesis, §7.2.2), which takes the cracks to spread at once
+    ///   across the pane and the glass's modulus to nothing. Left to bear on one another in
+    ///   compression, the fragments' stiff bands gathered the interlayer's stretch between them
+    ///   and it tore through.
+    public static func laminatedGlass(
+        _ laminate: LaminatedGlass, a: Double, b: Double, glass: StructureMaterial = .annealedGlass,
+        sixtySecondStrength: Double? = nil
+    ) -> StructureMaterial {
+        let effective = laminate.effectiveThicknesses(span: min(a, b), modulus: Double(glass.youngsModulus))
+        let n = GlassStrength.fatigueExponent
+        let strength =
+            (sixtySecondStrength ?? GlassStrength.sixtySecond(area: a * b))
+            * pow(60 * (n + 1) / LaminatedGlass.loadDuration, 1 / n)
+        let h = laminate.thickness
+        var material = glass
+        material.name = String(
+            format: "Laminated glass (%.1f/%.2f %@/%.1f mm)", laminate.plies[0] * 1e3,
+            laminate.interlayerThickness * 1e3, laminate.interlayer.label, laminate.plies[1] * 1e3)
+        material.youngsModulus = glass.youngsModulus * Float(pow(effective.deflection / h, 3))
+        material.tensileStrength = Float(strength * pow(effective.stress / h, 2))
+        material.density = Float(
+            (Double(glass.density) * laminate.plies.reduce(0, +)
+                + laminate.interlayer.density * laminate.interlayerThickness) / h)
+        let cracked = laminate.interlayer.crackedLaminateCurve(
+            thickness: laminate.interlayerThickness, rate: LaminatedGlass.strainRate)
+        let last = cracked.curve.last!
+        var interlayer = SteelProperties(
+            yieldStress: Float(cracked.curve[0].y), ultimateStress: Float(last.y),
+            ultimateStrain: Float(last.x),
+            ruptureStrain: Float(last.x))
+        interlayer.youngsModulus = Float(cracked.modulus)
+        interlayer.measuredCurve = cracked.curve.map { SIMD2(Float($0.x), Float($0.y)) }
+        material.steel = interlayer
+        material.interlayerThickness = Float(laminate.interlayerThickness)
+        return material
     }
 }
