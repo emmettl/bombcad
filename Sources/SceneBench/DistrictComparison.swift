@@ -216,6 +216,9 @@ enum DistrictComparison {
             for (level, pool) in solver.refinementPools.enumerated() {
                 print("Refined level \(level + 1): \(pool)")
             }
+            if !solver.refinementPools.isEmpty {
+                print("Refined pools grew late: \(solver.refinementPoolGrewLate)")
+            }
 
             // Arrival: the first sample 500 Pa above the gauge's first.
             let mass = Double(scene.charge.mass)
