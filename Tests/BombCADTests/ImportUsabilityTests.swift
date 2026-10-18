@@ -58,9 +58,9 @@ struct ImportUsabilityTests {
     }
     @Test("Profiles persist complete properties, update case-insensitively, match names and remove safely")
     func profiles() throws {
-        let suite = "BombCAD-ImportTests-\(UUID())"
-        let defaults = try #require(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let temporary = try TemporaryDefaults()
+        defer { temporary.remove() }
+        let defaults = temporary.defaults
         var custom = StructureMaterial.structuralSteel
         custom.density = 7800
         custom.name = "Test steel"
@@ -85,9 +85,9 @@ struct ImportUsabilityTests {
     }
     @Test("Profile editors in different windows preserve each other's saves")
     func concurrentProfileStores() throws {
-        let suite = "BombCAD-ImportWindows-\(UUID())"
-        let defaults = try #require(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let temporary = try TemporaryDefaults()
+        defer { temporary.remove() }
+        let defaults = temporary.defaults
         let first = ImportProfileStore(storage: defaults)
         let second = ImportProfileStore(storage: defaults)
         let a = ImportProfile(
@@ -104,9 +104,9 @@ struct ImportUsabilityTests {
     }
     @Test("Bad profiles and profile capacity fail without overwriting stored preferences")
     func profileLimits() throws {
-        let suite = "BombCAD-ImportLimits-\(UUID())"
-        let defaults = try #require(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let temporary = try TemporaryDefaults()
+        defer { temporary.remove() }
+        let defaults = temporary.defaults
         let store = ImportProfileStore(storage: defaults)
         var profile = ImportProfile(
             name: "", scale: 1, yUp: false, deformable: false, fixedBase: true,

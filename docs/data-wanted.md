@@ -79,7 +79,8 @@ fails, search the number at [discover.dtic.mil](https://discover.dtic.mil/).
 | Puttock et al., PDR model against MERGE, ERGOS and Buxton, *J. Loss Prev.* (2021) 104659 | Elsevier | The reference implementation's errors |
 | BFETS Phase 2 report, BG R-1579 | FABIG (purchase) | Full-scale module explosions, 27 tests |
 | CCPS, *Guidelines for Vapor Cloud Explosion…*, 2nd ed. (2010) | Wiley/AIChE | Congestion and blast curves in industry practice |
-| Dinu et al., close-range blasts on steel frames, SDSS 2016 | [UPT](https://www.ct.upt.ro/centre/cemsig/codec_files/3.c15-%20Effects%20of%20close%20range%20blasts%20on%20steel%20frames.%20Experimental%20testing%20and%20numerical%20validation.pdf) | Beam–column assemblies under charges close in: a frame's members and joints together |
+| Dinu et al., close-range blasts on steel frames, SDSS 2016 | [UPT](https://www.ct.upt.ro/centre/cemsig/codec_files/3.c15-%20Effects%20of%20close%20range%20blasts%20on%20steel%20frames.%20Experimental%20testing%20and%20numerical%20validation.pdf), refuses the connection | Beam–column assemblies under charges close in: a frame's members and joints together |
+| Dinu, Marginean and Dubina, end-plate moment connections under column loss, *Eng. Struct.* 151 (2017) 861–878; the group's conference papers | Elsevier; [UPT](https://www.ct.upt.ro/centre/cemsig/codec_files/), refuses the connection | European bolted end-plate and welded joints under column loss: a component-method check of the connections |
 | Ari-Gur, Weller and Singer, columns under axial impact, *IJSS* 18(7) (1982) 619–641 | Elsevier | The classic tests of columns struck at an end, imperfections measured |
 | Batalha et al., precast beam-to-column seats under cyclic load, *Earthquake Eng. Struct. Dyn.* 51(5) (2022) 1096–1114; save to `concrete-stages/seat-research/pdfs/` | [doi:10.1002/eqe.3606](https://doi.org/10.1002/eqe.3606); the Porto repository copy is restricted | The seats' pad size, thickness and hardness, the concrete's strength and the dowels' grade, embedment and grout, which the [measured seats](structural-model.md#base-connections) now take from companion papers; and the group's calibrated dowel parameters, without which the dowels' pinched, degrading cycles are left unmodelled |
 | Dewey, the TNT and ANFO equivalences of the Beirut explosion, *Shock Waves* 31 (2021) | [doi:10.1007/s00193-021-00992-1](https://doi.org/10.1007/s00193-021-00992-1) | Peak overpressure against distance from Rigby's arrival times: the nearest to a measured pressure curve for Beirut (more in `data/Beirut2020/TO-FETCH.md`) |
@@ -123,6 +124,7 @@ means an open paper whose numbers were transcribed into the code. The survey's
 
 | Source | Folder | Compared in |
 |---|---|---|
+| Sadek et al. 2010 (NIST TN 1669); Weigand and Berman 2016: steel connections under a column's removal; Culache 2017: bolted end plates loaded slowly and in 40 ms | `Culache2017`, `NIST-TN1669` | [Steel connections](shell-model.md#steel-connections) |
 | Langdon 2003: corrugated blast wall panels under pulse pressure | `../profiled-sheeting/langdon-2003` | [Profiled sheeting](profiled-sheeting.md#against-langdons-corrugated-panels) |
 | ADBLAST 2015: trapezoidal cladding on screws under C4 | `../profiled-sheeting/adblast` | [Profiled sheeting](profiled-sheeting.md#against-adblasts-cladding-tests) |
 | Wu et al. 2023; Wang et al. 2022: slabs with steel in both faces | `Wu2023`, `Wang2022` | [Validation](validation.md#slabs-with-steel-in-both-faces) |
