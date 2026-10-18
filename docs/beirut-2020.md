@@ -51,7 +51,9 @@ unreinforced masonry, for the old sandstone houses.
 scenebench district-scene --osm beirut-port-buildings.osm --dem Copernicus_DSM_COG_10_N33_00_E035_00_DEM.tif --ground-radius 100 --sea 1 --heights GHS_BUILT_H_ANBH_E2018_GLOBE_R2023A_4326_3ss_V1_0_R6_C22.tif --centre 35.519042,33.901425 --radius 2500 --dx 4 --height 320 --mass 500000 --out beirut.json
 ```
 
-`beirut.json` opens in the app and runs headless:
+In the app, **File ▸ New District…** lays out the same from the same files, with the faces at
+the open-face rule ([Using the app](using-the-app.md#a-district-from-a-map)). `beirut.json` opens in
+the app and runs headless:
 
 ```bash
 BombCAD run beirut.json --resolution 4 --ground saturated --duration 8 --envelope-window 0.5 --envelope-damage damage.json

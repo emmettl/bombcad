@@ -2489,7 +2489,8 @@ final class SimulationModel {
                     // The components' histories feed their one-way damage, so the app keeps them for
                     // every run of envelopes; headless runs only when asked.
                     if let options = envelopeHistoryOptions
-                        ?? (envelopeHistoriesByDefault ? EnvelopeHistoryOptions(windowS: duration) : nil)
+                        ?? (envelopeHistoriesByDefault
+                            ? Self.defaultEnvelopeHistory(duration: duration, memory: advisorMemory) : nil)
                     {
                         try solver.configureEnvelopeComponents(
                             objects: scenario.envelopeObjects, options: options)
