@@ -70,21 +70,30 @@ extension EnvelopeDamageAssessment {
     /// freestanding cantilever), graded by WoodWorks' limits; failed, blown out, past ductility 2.
     static func crossLaminated(
         _ load: EnvelopeComponentLoad, construction: EnvelopeConstruction, roof: Bool, span: Double,
-        cantilever: Bool = false, pressures: [Double], peak: Double
+        cantilever: Bool = false, pressures: [Double], peak: Double, turned: Double = 1
     ) -> EnvelopeComponentDamage {
         let thickness = Double(roof ? construction.roofThicknessM : construction.wallThicknessM)
         let system = EnvelopePanel.crossLaminatedOneWay(
             thickness: thickness, span: span, cantilever: cantilever)
-        let response = system.response(pressures: pressures, step: load.binS)
+        let response = system.response(
+            pressures: pressures, step: load.binS, watch: 2 * system.equivalentElasticDeflection)
         let level = EnvelopeDamageLevel.crossLaminated(ductility: response.ductility)
         let rotation =
             cantilever
             ? atan(max(response.peakDeflection, -response.reboundDeflection) / span) * 180 / .pi
             : Self.rotation(response, span: span)
-        return EnvelopeComponentDamage(
+        var result = EnvelopeComponentDamage(
             id: load.id, owner: load.owner, kind: load.kind, material: .crossLaminatedTimber,
             shortSpanM: span,
             peakNetPa: peak, rotationDeg: rotation...rotation, levels: level...level,
             failedAtS: level == .failed ? response.peakTime : nil, cantilever: cantilever ? true : nil)
+        // Blown out as it passes ductility 2, at its speed then.
+        result.launch =
+            level == .failed
+            ? Self.launch(
+                time: response.passedAt, speed: response.velocityPassing.map { $0 * turned }, system: system,
+                material: .crossLaminatedTimber, thickness: thickness, span: span,
+                rotation: atan(2 * system.equivalentElasticDeflection / (cantilever ? span : span / 2))) : nil
+        return result
     }
 }

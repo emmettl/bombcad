@@ -136,6 +136,8 @@ public enum TyndallCLTTest {
         public var impulse: Float
         public var incident: Float
         public var incidentImpulse: Float
+        /// The run's wall time (s).
+        public var wallSeconds: Double = 0
         public var maxDamage: Float
         public var removed: Int
     }
@@ -165,6 +167,7 @@ public enum TyndallCLTTest {
         var firstFloor = SIMD2<Float>.zero
         var secondFloor = SIMD2<Float>.zero
         var nextReport = 0.02
+        let started = Date()
         while solver.time < duration {
             let result = solver.advance(steps: 16, timeLimit: duration)
             if result.steps == 0 && !solver.airIsAsleep { break }
@@ -207,7 +210,8 @@ public enum TyndallCLTTest {
         let summary = shells.summary()
         return Result(
             firstFloor: firstFloor, secondFloor: secondFloor, reflected: wall.peak, impulse: wall.impulse,
-            incident: free.peak, incidentImpulse: free.impulse, maxDamage: summary.maxDamage,
-            removed: summary.erodedElements)
+            incident: free.peak, incidentImpulse: free.impulse,
+            wallSeconds: Date().timeIntervalSince(started),
+            maxDamage: summary.maxDamage, removed: summary.erodedElements)
     }
 }
