@@ -74,21 +74,31 @@ enum ConservativeCellRemap {
                 closingTransit: Set(closing), neighbours: neighbours)
         }
         var cells = original
+        try redistribute(
+            opening: opening, closing: closing, closingTransit: closingTransit, newSolid: { newSolid[$0] },
+            neighbours: neighbours, read: { cells[$0] }, write: { cells[$0] = $1 })
+        return cells
+    }
+
+    /// The redistribution itself, over cells known by any index: `opening` and `closing` in the
+    /// order they are to be taken (`apply` takes them in index order), `read` and `write` the
+    /// cells' states. Every list built from `neighbours` keeps its order or is sorted by index, so
+    /// two callers numbering the same cells in the same order get the same sums to the bit.
+    static func redistribute(
+        opening: [Int], closing: [Int], closingTransit: Set<Int> = [], newSolid: (Int) -> Bool,
+        neighbours: (Int) -> [Int], read: (Int) -> CellState, write: (Int, CellState) -> Void
+    ) throws {
         func vector(_ c: CellState) -> SIMD8<Double> {
             SIMD8(
                 Double(c.density), Double(c.momentumX), Double(c.momentumY), Double(c.momentumZ),
                 Double(c.energy), 0, 0, 0)
         }
         func state(_ v: SIMD8<Double>) -> CellState {
-            var c = original[0]
-            c.density = Float(v[0])
-            c.momentumX = Float(v[1])
-            c.momentumY = Float(v[2])
-            c.momentumZ = Float(v[3])
-            c.energy = Float(v[4])
-            return c
+            CellState(
+                density: Float(v[0]), momentumX: Float(v[1]), momentumY: Float(v[2]), momentumZ: Float(v[3]),
+                energy: Float(v[4]))
         }
-        for n in opening { cells[n] = state(.zero) }
+        for n in opening { write(n, state(.zero)) }
         // Between objects that touch, a cell can open or close with no air beside it, nor any
         // path of other such cells to air: it then trades gas with the nearest air, found
         // through whatever lies between, at most `reach` cells away. Gas so crosses a solid
@@ -98,7 +108,7 @@ enum ConservativeCellRemap {
             var visited: Set<Int> = [n]
             for _ in 0..<reach {
                 let adjacent = frontier.flatMap(neighbours).filter { visited.insert($0).inserted }
-                let air = adjacent.filter { !newSolid[$0] && (!gas || cells[$0].density > 0) }
+                let air = adjacent.filter { !newSolid($0) && (!gas || read($0).density > 0) }
                 if !air.isEmpty { return Array(Set(air)).sorted() }
                 guard !adjacent.isEmpty else { break }
                 frontier = adjacent
@@ -117,15 +127,15 @@ enum ConservativeCellRemap {
             var targets: [Int] = []
             while targets.isEmpty && !frontier.isEmpty {
                 let adjacent = frontier.flatMap(neighbours)
-                targets = Array(Set(adjacent.filter { !newSolid[$0] })).sorted()
+                targets = Array(Set(adjacent.filter { !newSolid($0) })).sorted()
                 if targets.isEmpty {
                     frontier = adjacent.filter { closingSet.contains($0) && visited.insert($0).inserted }
                 }
             }
             if targets.isEmpty { targets = nearestAir(n, gas: false) }
             guard !targets.isEmpty else { throw Failure.enclosedClosingCell(n) }
-            let share = vector(cells[n]) / Double(targets.count)
-            for target in targets { cells[target] = state(vector(cells[target]) + share) }
+            let share = vector(read(n)) / Double(targets.count)
+            for target in targets { write(target, state(vector(read(target)) + share)) }
         }
         // Lift-off can expose a connected sheet of air whose interior initially has only
         // other empty new cells as neighbours. Fill from existing gas, then progress inward;
@@ -134,28 +144,37 @@ enum ConservativeCellRemap {
         while !pending.isEmpty {
             var remaining: [Int] = []
             for n in pending {
-                let donors = neighbours(n).filter { !newSolid[$0] && cells[$0].density > 0 }
+                let donors = neighbours(n).filter { !newSolid($0) && read($0).density > 0 }
                 guard !donors.isEmpty else {
                     remaining.append(n)
                     continue
                 }
                 let fraction = 1 / Double(donors.count + 1)
-                let sum = donors.reduce(SIMD8<Double>.zero) { $0 + vector(cells[$1]) }
-                cells[n] = state(vector(cells[n]) + sum * fraction)
-                for donor in donors { cells[donor] = state(vector(cells[donor]) * (1 - fraction)) }
+                let sum = donors.reduce(SIMD8<Double>.zero) { $0 + vector(read($1)) }
+                write(n, state(vector(read(n)) + sum * fraction))
+                for donor in donors { write(donor, state(vector(read(donor)) * (1 - fraction))) }
             }
             if remaining.count == pending.count, let n = remaining.first {
                 let donors = nearestAir(n, gas: true)
                 guard !donors.isEmpty else { throw Failure.disconnectedOpening(remaining.count) }
                 let fraction = 1 / Double(donors.count + 1)
-                let sum = donors.reduce(SIMD8<Double>.zero) { $0 + vector(cells[$1]) }
-                cells[n] = state(vector(cells[n]) + sum * fraction)
-                for donor in donors { cells[donor] = state(vector(cells[donor]) * (1 - fraction)) }
+                let sum = donors.reduce(SIMD8<Double>.zero) { $0 + vector(read($1)) }
+                write(n, state(vector(read(n)) + sum * fraction))
+                for donor in donors { write(donor, state(vector(read(donor)) * (1 - fraction))) }
                 remaining.removeFirst()
             }
             pending = remaining
         }
-        return cells
+    }
+}
+
+extension CellState {
+    init(density: Float, momentumX: Float, momentumY: Float, momentumZ: Float, energy: Float) {
+        self.density = density
+        self.momentumX = momentumX
+        self.momentumY = momentumY
+        self.momentumZ = momentumZ
+        self.energy = energy
     }
 }
 

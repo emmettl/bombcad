@@ -4139,21 +4139,23 @@ extension BlastSolver {
         if let refinement {
             let geometries = experimentalBoxes.map(ExperimentalBoxGeometry.init)
             let dx = grid.cellSize / Float(refinement.ratio)
-            refinement.takeBoxFaceImpulses(in: experimentalBoxPatches(refinement)) {
-                cell, axis, side, impulse in
-                var across = cell
-                across[axis] += side == 0 ? -1 : 1
-                let point = (SIMD3<Float>(across) + 0.5) * dx
-                let b =
-                    ExperimentalBoxGeometry.owner(of: point, among: geometries, cellSize: dx)
-                    ?? geometries.indices.min {
-                        simd_distance(geometries[$0].centre, point)
-                            < simd_distance(geometries[$1].centre, point)
-                    }!
-                var face = Double(dx) * (SIMD3<Double>(cell) + 0.5)
-                face[axis] += (side == 0 ? -0.5 : 0.5) * Double(dx)
-                record(b, face: face, axis: axis, impulse: impulse)
-            }
+            refinement.takeBoxFaceImpulses(
+                in: experimentalBoxPatches(refinement),
+                owner: { cell, axis, side in
+                    var across = cell
+                    across[axis] += side == 0 ? -1 : 1
+                    let point = (SIMD3<Float>(across) + 0.5) * dx
+                    return ExperimentalBoxGeometry.owner(of: point, among: geometries, cellSize: dx)
+                        ?? geometries.indices.min {
+                            simd_distance(geometries[$0].centre, point)
+                                < simd_distance(geometries[$1].centre, point)
+                        }!
+                },
+                face: { b, cell, axis, side, impulse in
+                    var face = Double(dx) * (SIMD3<Double>(cell) + 0.5)
+                    face[axis] += (side == 0 ? -0.5 : 0.5) * Double(dx)
+                    record(b, face: face, axis: axis, impulse: impulse)
+                })
         }
         return loads
     }
