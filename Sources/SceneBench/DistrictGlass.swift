@@ -102,6 +102,11 @@ enum DistrictGlass {
     }
 
     static func printBands(_ title: String, _ judged: [(distanceM: Double, sides: [GlazingBreakage])]) {
+        let total = judged.flatMap(\.sides).reduce(GlazingBreakage(), +)
+        print(
+            String(
+                format: "%@: %.0f m² of glass broken of %.0f m² (%.0f of %.0f panes)", title, total.brokenM2,
+                total.glazedM2, total.broken, total.panes))
         print("\(title): panes broken, sides with some broken, GEER's façades damaged")
         for band in bands(judged) {
             print(

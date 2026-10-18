@@ -103,6 +103,7 @@ public struct GlazingMix: Codable, Hashable, Sendable {
             let count = Double(glazedFraction * pane.share) * areaM2 / Double(pane.areaM2)
             guard count > 0 else { continue }
             result.panes += count
+            result.glazedM2 += count * Double(pane.areaM2)
             // Under 50 Pa no pane comes near breaking.
             guard peak > 50 else { continue }
             let a = Double(min(pane.widthM, pane.heightM))
@@ -114,6 +115,7 @@ public struct GlazingMix: Codable, Hashable, Sendable {
                 response.lostResistanceAt != nil
                 ? 1 : GlassStrength.probability(stress: response.equivalentStress ?? 0, area: a * b)
             result.broken += count * probability
+            result.brokenM2 += count * probability * Double(pane.areaM2)
             result.logNoneBroken += count * log(max(1 - probability, 1e-300))
         }
         return result
@@ -125,6 +127,9 @@ public struct GlazingBreakage: Codable, Hashable, Sendable {
     /// Panes expected, and expected to break.
     public var panes = 0.0
     public var broken = 0.0
+    /// The glass in them and the glass expected broken, m².
+    public var glazedM2 = 0.0
+    public var brokenM2 = 0.0
     /// The log of the chance that none breaks (sums over regions, as their panes break apart).
     public var logNoneBroken = 0.0
 
@@ -139,6 +144,8 @@ public struct GlazingBreakage: Codable, Hashable, Sendable {
         var sum = a
         sum.panes += b.panes
         sum.broken += b.broken
+        sum.glazedM2 += b.glazedM2
+        sum.brokenM2 += b.brokenM2
         sum.logNoneBroken += b.logNoneBroken
         return sum
     }
