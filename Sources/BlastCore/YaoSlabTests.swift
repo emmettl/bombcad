@@ -126,7 +126,7 @@ extension TwoFaceSlabTests {
         elementSize: Float = 0.01875, duration: Double = 0.1,
         afterburning: Bool = SolverConfiguration.recommended.afterburning,
         airModel: AirModel? = nil, openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
-        roomy: Bool = false,
+        roomy: Bool = false, balloonStart: Bool = false,
         adjust: (inout Scenario) -> Void = { _ in },
         prepare: ((StructureSolver) -> Void)? = nil, progress: ((String) -> Void)? = nil,
         inspect: ((StructureSolver, Double) -> Void)? = nil,
@@ -148,7 +148,7 @@ extension TwoFaceSlabTests {
         return try run(
             device: device, scenario: scenario, slab: yaoSlab, thicknessAxis: 2, probes: probes,
             cellSize: cellSize, refinement: refinement, duration: duration, chargeTowardsLow: false,
-            afterburning: afterburning, airModel: airModel, openFaces: openFaces,
+            afterburning: afterburning, airModel: airModel, openFaces: openFaces, balloonStart: balloonStart,
             // Under its own weight, settled before the blast and read from there, as the tests'
             // sensors read from the slab resting on its supports.
             hold: { yaoHold($0, $1, offset: pad.low, $2) }, prepare: prepare, progress: progress,
