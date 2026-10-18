@@ -8,7 +8,8 @@ public enum HazardCriteria {
     /// V3.E3.T2-1 (now DESR 6055.09), as FAA Guide 437.53-1 (2011) restates it.
     public static let hazardousEnergyJ: Float = 79
     /// The hazardous fragment distance is where hazardous fragments fall below one per 600 ft²
-    /// (55.7 m²) of ground, a 1% chance of one striking a person's 6 ft² (same sources).
+    /// (55.7 m²), about a 1% chance of one striking a standing person's 6.2 ft² (0.58 m²): DDESB
+    /// TP-12 (Zaker, 1975), p = 1 − exp(−q A_T).
     public static let hazardousAreaM2: Float = 55.7
     /// FAA's lower threshold for a fragment that can seriously injure, 11 ft-lb (14.9 J) (Guide
     /// 437.53-1, "Hazardous fragment").
@@ -17,8 +18,11 @@ public enum HazardCriteria {
 
 /// Hazardous fragments (79 J or more) crossing spheres round the charge near the horizontal, where
 /// a person standing at that range would meet them: the density DDESB judges by, on a surface
-/// normal to the fragments' paths (TP-12, Zaker 1975: a person's 6 ft² presented to them),
-/// rather than where they land. Counted by `FragmentCloud` as each flies.
+/// normal to the fragments' rays (TP-12, Zaker 1975, p. 10: q = Q₀/R² with Q₀ the fragments per
+/// unit solid angle towards the person), rather than where they land. TP-12 takes Q₀ in the one
+/// direction of interest; the band of `band` either side of the horizontal averages it over enough
+/// of the spray to be sampled, and its part below the ground, which no fragment crosses, is left
+/// out (`chargeHeight`). Counted by `FragmentCloud` as each flies.
 public struct FragmentCrossings: Codable, Sendable, Equatable {
     /// The spheres' radii, m (`GroundHazard.edges` out to 5 km, the first 1 m).
     public var radii: [Float]
@@ -29,6 +33,10 @@ public struct FragmentCrossings: Codable, Sendable, Equatable {
     /// sector`), and the flown ones among them.
     public var counts: [Float]
     public var samples: [Int]
+    /// The charge's height above the ground beneath it, m: below the ground no fragment crosses a
+    /// sphere, so that part of the band is not in its area. Nil in results kept before 18 October
+    /// 2026, which counted the whole band, and so half the density of a charge on the ground.
+    public var chargeHeight: Float?
 
     public static let standardBand: Float = 10 * .pi / 180
 
@@ -40,9 +48,11 @@ public struct FragmentCrossings: Codable, Sendable, Equatable {
         samples = Array(repeating: 0, count: radii.count * sectors)
     }
 
-    /// The sphere `s`'s area in one direction's cell of the band, m².
+    /// The sphere `s`'s area in one direction's cell of the band above the ground, m².
     public func area(sphere s: Int) -> Float {
-        radii[s] * radii[s] * (2 * .pi / Float(sectors)) * 2 * sin(band)
+        let r = radii[s]
+        let lowest = chargeHeight.map { -min(asin(min(max($0, 0) / r, 1)), band) } ?? -band
+        return r * r * (2 * .pi / Float(sectors)) * (sin(band) - sin(lowest))
     }
 
     public func density(sphere s: Int, sector: Int) -> Float {
