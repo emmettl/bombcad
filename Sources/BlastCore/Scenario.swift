@@ -448,7 +448,9 @@ extension BlastSolver {
         try setStructures(
             scenario.structuralObjects.map { object in
                 var object = object
-                if let model = object.structure { object.setStructure(model.detectingRegime(in: scenario)) }
+                if let model = object.structure {
+                    object.setStructure(model.detectingRegime(in: scenario).standing(on: scenario.terrain))
+                }
                 return object
             })
         // Soft ground, if chosen, under every structure's solid elements (shells keep the hard ground).

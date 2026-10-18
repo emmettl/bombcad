@@ -5127,6 +5127,55 @@ tests dissipated about ten points of damping more than the slow one, for the sam
 were tried on a quasi-static replica of the bed driven by the slow test's measured rotation
 (within 2% of the model's moment and 4% of its settlement there) before the shaken runs.
 
+## Footings on a slope
+
+Footings on a hillside (`FootingGround`, [structural model](structural-model.md#footings)) are
+judged on closed forms only. No measured footing near a slope under fast or cyclic loading was
+found open (searched 18 October 2026: the centrifuge and shake-table footing sets, FoRCy and
+FoRDy among them, are on level ground; the slope tests found are static, as Kyoto's of a strip
+near a crest); G. G. Meyerhof wrote in 1957 that no measured capacities were available, and his
+charts are still the reference ("The ultimate bearing capacity of foundations on slopes", 4th
+ICSMFE, London, 1957, open in the ISSMGE library; read off his figures here, to about a tenth).
+
+**On a slope's face** (his Fig. 3, a rough strip on the surface, cohesionless soil), the bearing
+capacity's share of level ground's, against Vesić's (1 − tan β)², which the model uses, and
+Brinch Hansen's (1 − ½ tan β)⁵:
+
+| Slope β | Meyerhof, φ = 30° | 40° | 45° | Vesić | Hansen | Vesić / Meyerhof |
+|---|---|---|---|---|---|---|
+| 10° | 0.70 | 0.64 | 0.58 | 0.68 | 0.63 | 0.97–1.17 |
+| 20° | 0.46 | 0.33 | 0.29 | 0.41 | 0.37 | 0.88–1.39 |
+| 30° | 0.15 | 0.14 | 0.13 | 0.18 | 0.18 | 1.19–1.37 |
+
+Vesić's falls as Meyerhof's do, and gives up to two fifths more on dense sand on steep slopes;
+the closed forms in use differ by as much among themselves (a 2022 comparison, López, Flores and
+Arévalo, CILAMCE, finds two methods a factor of 1.4–2 apart near a crest).
+
+**Near a crest** (his Fig. 6, φ = 40°, on the surface), b from the crest in footing widths,
+against the model's fall over 4B beyond the edge, (1 − b/4B) of the slope's:
+
+| β | b = 0 | 1 B | 2 B | 3 B | 4 B |
+|---|---|---|---|---|---|
+| 20°, Meyerhof | 0.35 | 0.62 | 0.79 | 0.89 | |
+| 20°, model | 0.40 | 0.53 | 0.67 | 0.83 | 1 |
+| 40°, Meyerhof | 0.03 | 0.33 | 0.58 | 0.79 | 0.93 |
+| 40°, model | 0.03 | 0.14 | 0.34 | 0.62 | 1 |
+
+Within 0.85–1.14 of his at 20°, and below him, on the safe side, between one and three widths
+back from a 40° crest (0.42–0.79 of his).
+
+**Checks** (`FootingSlopeTests`): Coulomb's pressures are Rankine's on level ground and cos²φ at
+the steepest slope that stands, and downhill the passive falls to under 0.55 of level ground's at
+20°; a plane's slope and fall are read exactly, and on a plateau the fall over 4B is (1 − b/4B) of
+the slope's within 0.02; sides in ground as deep as the level embedment give the level sides'
+stiffnesses within 10⁻⁴, and in the slope the uphill side bears from deeper than the downhill;
+on a 20° slope a block's footing on the surface holds 0.8 of (1 − tan β)² of its level capacity
+and sinks at 1.2; set 0.5 m into the slope, it stands under the deeper uphill side's push, holds
+0.8 of the level footing's sliding resistance pushed uphill and slides under the same push
+downhill.
+
+**A frame on a hillside** (`blastbench hillside`, "Two-storey frame on a hillside"): RESULTS.
+
 ## Hourglass control
 
 Not a test but a numerical check across the tests: how much of the work done on a structure

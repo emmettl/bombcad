@@ -323,6 +323,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case baseConnections
     case jointsBetweenParts
     case footings
+    /// Footings on a terrain: their soil read from the slope round them (`FootingGround`).
+    case footingsOnSlope
     case softGround
     /// Earth or rock under the charge (`SolverConfiguration.ground`): less of its energy for the air.
     case groundCoupling
@@ -427,6 +429,12 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
                 (s.fixedBase && s.baseAnchorage?.footing != nil)
                     || s.supportAnchorages.contains { $0?.footing != nil }
             }
+        case .footingsOnSlope:
+            return (inputs.scenario.terrain.map { !$0.isFlat } ?? false)
+                && any { s in
+                    (s.fixedBase && s.baseAnchorage?.footing != nil)
+                        || s.supportAnchorages.contains { $0?.footing != nil }
+                }
         case .softGround: return config.groundStiffness != nil && !structures.isEmpty
         case .groundCoupling: return config.ground.map { $0 != .rigid } ?? false
         case .cyclicSand:
@@ -839,6 +847,16 @@ public enum StandingTable {
                     + "With the sand that settles under cycles (the default), settlement 1.3–1.7 times that "
                     + "measured, and 0.4–1.3 times in eight shaken events; a tenth on the elastic bed.",
                 document: "validation.md#a-footing-rocked-on-dry-sand")
+        case .footingsOnSlope:
+            return Entry(
+                title: "Footings on a slope", affects: structure, limit: .approximation,
+                note:
+                    "Level footings stepped into the slope, their sides buried and their earth pressures set "
+                    + "by the ground round them, their bearing capacity cut by Vesić's (1 − tan β)², 0.88–1.39 "
+                    + "of Meyerhof's on a slope's face and 0.85–1.14 near a 20° crest; their stiffness the level "
+                    + "ground's. Judged on closed forms only: no measured footing near a slope under fast "
+                    + "loading was found.",
+                document: "validation.md#footings-on-a-slope")
         case .softGround:
             return Entry(
                 title: "Soft ground under debris", affects: [.structuralDamage], limit: nil,
@@ -2820,8 +2838,8 @@ struct StandingScene {
         }
         if has(.terrain) {
             effects.append(
-                "Over the terrain, footings and the ground's connection stay level and hold the base at z = 0 "
-                    + "(a stepped base takes a support region a level); a ground point's soil column is level "
+                "Over the terrain, footings stay level, their sides and bearing capacity read from the slope "
+                    + "round them, their stiffness the level ground's; what falls lands along z; a ground point's soil column is level "
                     + "ground's, along the surface's normal; the fireball's radiated power is measured over the "
                     + "floor.")
         }

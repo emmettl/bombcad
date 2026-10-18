@@ -4196,3 +4196,62 @@ kernel void discreteBarGather(const device uint *gatherStart [[buffer(0)]],
     }
     barNodeForce[id] = float4(force, 0.0f);
 }
+
+// On a terrain, after the node pass: a node that falls onto it lands there as on the floor
+// (`structureNodes`, which keeps z = 0), the ground's height the terrain's under it
+// (`terrainHeight`). A node buried at rest, as a base set into a slope, is held no deeper than it
+// started, not thrown up to the surface. Held, prescribed and connected nodes are left to their
+// supports. Dispatched only over a terrain, so level ground's runs are as they were.
+kernel void structureTerrainLanding(device StructureNode *nodes [[buffer(0)]],
+                                    const device StepControl &control [[buffer(1)]],
+                                    constant StructureUniforms &u [[buffer(2)]],
+                                    const device uint *nodeList [[buffer(3)]],
+                                    const device float4 *anchors [[buffer(4)]],
+                                    constant TerrainUniforms &t [[buffer(5)]],
+                                    const device float *heights [[buffer(6)]],
+                                    uint threadIndex [[thread_position_in_grid]]) {
+    bool active;
+    float dt = structureStep(u, control, active);
+    if (!active || u.groundFriction < 0.0f) {
+        return;
+    }
+    StructureNode node = nodes[threadIndex];
+    if (node.mass <= 0.0f || (node.flags & 15u) != 0u || (u.anchored != 0 && anchors[3 * threadIndex].x > 0.0f)) {
+        return;
+    }
+    float3 reference = float3(u.originX, u.originY, u.originZ) + float3(latticeNode(nodeList[threadIndex], u)) * u.h;
+    float3 displacement = float3(node.displacement);
+    float3 velocity = float3(node.velocity);
+    float buried = max(terrainHeight(reference.xy, t, heights) - reference.z, 0.0f);
+    float ground = terrainHeight(reference.xy + displacement.xy, t, heights) - buried;
+    float penetration = ground - (reference.z + displacement.z);
+    if (penetration <= 0.0f) {
+        return;
+    }
+    if (u.groundStiffness > 0.0f) {
+        // Soft ground, as on the floor: a Winkler bed of the given modulus over h², damped at 30%.
+        float k = u.groundStiffness * u.h * u.h / node.mass;
+        float push = dt * (k * penetration - 2.0f * 0.3f * sqrt(k) * velocity.z);
+        float gained = max(push, 0.0f);
+        velocity.z += push;
+        if (u.groundCoulomb > 0.0f) {
+            float sliding = length(velocity.xy);
+            velocity.xy *= sliding > 0.0f ? max(0.0f, 1.0f - u.groundCoulomb * gained / sliding) : 0.0f;
+        } else {
+            velocity.xy *= max(0.0f, 1.0f - u.groundFriction * dt);
+        }
+    } else {
+        // Landing: the fall stopped at the surface (along z; friction in the plan), as on the floor.
+        float stopped = max(-velocity.z, 0.0f);
+        displacement.z = ground - reference.z;
+        velocity.z = max(velocity.z, 0.0f);
+        if (u.groundCoulomb > 0.0f) {
+            float sliding = length(velocity.xy);
+            velocity.xy *= sliding > 0.0f ? max(0.0f, 1.0f - u.groundCoulomb * stopped / sliding) : 0.0f;
+        } else {
+            velocity.xy *= max(0.0f, 1.0f - u.groundFriction * dt);
+        }
+    }
+    nodes[threadIndex].displacement = displacement;
+    nodes[threadIndex].velocity = velocity;
+}

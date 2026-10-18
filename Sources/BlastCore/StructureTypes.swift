@@ -858,6 +858,9 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// saved.
     public internal(set) var detectedRegime: StructuralRegime?
     public internal(set) var detectedLoading: StructuralLoading?
+    /// The terrain the model's footings stand in, from the scene it runs in (`standing(on:)`);
+    /// not saved. Nil on level ground.
+    public internal(set) var ground: Terrain?
     /// Whether a cracked solid element's hourglass control (the bending its one integration point
     /// cannot feel) stiffens only as its most opened crack's secant share of the elastic, instead
     /// of as an uncracked element whatever its cracking, up to the cap.
@@ -994,6 +997,14 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// The same body with each profiled sheet built as `ProfiledSheet` builds it: its solid the
     /// skin, as thick as the profile is deep, the ribs appended after the other solids. The
     /// body as the shell solver meshes it.
+    /// This model with its footings set in `terrain` (`FootingGround`): each one's soil read
+    /// from the ground round it. A flat terrain, or none, leaves them on level ground.
+    public func standing(on terrain: Terrain?) -> StructureModel {
+        var model = self
+        model.ground = terrain.flatMap { $0.isFlat ? nil : $0 }
+        return model
+    }
+
     public func expandingSheets() -> StructureModel {
         guard solidSheets.contains(where: { $0 != nil }) else { return self }
         var model = self

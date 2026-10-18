@@ -492,8 +492,24 @@ On the Mac mini, unloaded, 2.2 million cells (the ridges on 0.25 m cells):
   [building envelopes](building-envelopes.md#buildings-from-map-data)); uphill, the terrain
   fills in under them.
 - **Footings** sit wherever the nodes they tie are, so a body over a step is connected by a
-  support region a level, each with its own connection and footing at its height. The ground's
-  own connection and clamp still hold only the nodes at z = 0.
+  support region a level, each with its own connection and footing at its height, and stay level,
+  as footings cut into a hillside are. Each reads the ground round it from the terrain
+  ([on a slope](structural-model.md#footings)): its sides buried as deep as the surface stands
+  over its base, its earth pressures for ground rising or falling away, its bearing capacity cut
+  by Vesić's (1 − tan β)² for the ground falling away beyond it. "Two-storey frame on a hillside" stands a frame
+  on six such footings across a 1 in 4 slope.
+- **The clamp and the ground's connection** hold a base where it stands on the terrain: the
+  nodes of its lower faces within half an element of the surface under them (`isOnGround`), as
+  near as a base built of elements can follow a slope; on level ground, the nodes at z = 0 as
+  before. A base on a slope can be built in steps and clamped or connected to the ground as it
+  is, without a support region a level.
+- **What falls lands on the terrain**: a structure's loose nodes, shell and beam nodes and rubble
+  particles stop at the surface under them rather than at z = 0 (`structureTerrainLanding`,
+  `shellTerrainLanding`, `rubbleMove`), with the floor's friction and, if chosen, its soft
+  ground; a node buried at rest, as a base set into a slope, goes no deeper than it started.
+  The landing is along z, with friction in the plan, as on the floor; a pass after the node pass,
+  dispatched only over a terrain, so level ground's runs are bit for bit as they were. Fragments,
+  envelope debris and the hazard outputs already found the surface.
 - **The app's 3D view** draws the terrain as a mesh of its nodes, lit by its normal, with 10 m
   contours, tinted by the blast's field in the air half a cell above it, or, while the thermal
   radiation is shown, painted with the ground's receivers' values. Objects, ground points and
@@ -560,10 +576,10 @@ surface cross a cell a metre. The GPU and the CPU agree on every receiver.
      edge between nodes crossing an object's edge is not found, as between boxes, and a step is a
      slope one node apart. The single-object studies (`ExperimentalRigidBoxSimulation`, the car's
      and the demos) keep the floor;
-   - footings and the ground's connection stay level: the clamp and the ground's connection hold
-     the nodes at z = 0, under any terrain; a footing's soil is a level half-space whatever the
-     slope (no slope factor on its stiffness or bearing capacity), and its embedment is what is
-     given, not the terrain round it. A stepped base takes a support region a level;
+   - a footing's sides and bearing capacity follow the slope, but its stiffness and radiation are
+     the level half-space's, and its bearing capacity near a steep crest is below Meyerhof's
+     (judged on closed forms only). What lands on the terrain is pushed out along z, not the
+     surface's normal, and slides with the floor's friction in the plan;
    - a fragment step that crosses a ridge and comes down beyond it within one step passes through
      it (steps are far shorter than any hill);
    - blocks and structures cast no shadows on the terrain in the view, nor it on them, and the USD
@@ -573,8 +589,7 @@ surface cross a cell a metre. The GPU and the CPU agree on every receiver.
 
 ## Future work
 
-- **Footings and the ground's connection on a slope**: the base held where it meets the terrain,
-  with slope factors on a footing's soil.
+- **A footing's stiffness on a slope**, given data for it; landing along the surface's normal.
 - **DEM reprojection** (UTM from geographic) and area-averaged downsampling.
 - **Measured terrain shielding** or blast over hills, to validate rather than check.
 - **Landscape scale**: the shielding study holds at 500 t, scaled (see [Large
