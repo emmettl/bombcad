@@ -245,8 +245,8 @@ Found, and what was done (in 0.6.0):
    Escape already closed each and returned focus.
 5. **Tab order** ran through the sidebar's fields, then stopped on nothing before cycling back: the
    3D view, which takes first responder on a click but no keys. ContinuumKit's `OrbitControlView`
-   now leaves the Tab loop (`canBecomeKeyView` false; a click still ends a field's editing), on
-   branch `claude/orbit-view-key-loop` until its next release is tagged and BombCAD pins it.
+   now leaves the Tab loop (`canBecomeKeyView` false; a click still ends a field's editing),
+   released in ContinuumKit 0.1.0-alpha.28, which BombCAD pins.
 6. **No keyboard path** to Import Model, Parameter sweep, Compare runs, Keep Run or Export CSV,
    which were toolbar or chart-panel buttons only. They are menu items now: File ▸ Import Model…
    (⇧⌘I) and Export Results as CSV…; Simulation ▸ Keep Run… (⌘K), Compare Runs… (⇧⌘K) and
@@ -266,8 +266,7 @@ sheets' first focus and the menus have not yet been seen on the real screen.
 For a person at a real screen:
 
 - The fixes above, on the screen: the labels as the accessibility tree reads them, each sheet
-  opening in its field, Tab no longer stopping on the 3D view (once ContinuumKit's release is
-  pinned), and the new menu items.
+  opening in its field, Tab no longer stopping on the 3D view, and the new menu items.
 - With Full Keyboard Access on (System Settings ▸ Keyboard): Tab through every control, buttons,
   pickers, steppers and switches included, in reading order.
 - VoiceOver's speech itself, beyond the labels the tree carries.
