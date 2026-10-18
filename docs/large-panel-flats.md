@@ -1,7 +1,8 @@
 # A large-panel block of flats
 
-Two presets show progressive collapse through the joints of a precast building with no frame,
-the kind that partly collapsed at Ronan Point in 1968:
+Two presets load a precast building with no frame through its joints, the kind that partly
+collapsed at Ronan Point in 1968; the street charge brings it down progressively, and the gas
+flat vents through its face wall and stands:
 - **Large-panel flats: gas in a corner flat**
 - **Large-panel flats: street charge**
 

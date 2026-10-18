@@ -217,14 +217,18 @@ public enum PerimeterWallTests {
         columnWidth: Float? = nil, wallLength: Float? = nil, duration: Double? = nil,
         afterburning: Bool = SolverConfiguration.recommended.afterburning,
         airModel: AirModel? = nil, openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
-        progress: ((String) -> Void)? = nil
+        balloonStart: Bool = false, progress: ((String) -> Void)? = nil
     ) throws -> AirResult {
         let started = ContinuousClock.now
         let scenario = scenario(
             layout, anfo: anfo, wall: wall, columnWidth: columnWidth, wallLength: wallLength,
             cellSize: cellSize)
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
-        solver.configuration.mappedCharge = !afterburning
+        // The mapped one-dimensional start since 18 October 2026; `balloonStart` keeps the hot-gas
+        // balloon these comparisons were recorded on before then (with afterburning; the ideal gas
+        // was mapped already).
+        solver.configuration.mappedCharge =
+            balloonStart ? !afterburning : SolverConfiguration.recommended.mappedCharge
         solver.configuration.afterburning = afterburning
         solver.configuration.openFaces = openFaces
         // As the app's "Afterburning and hot air": both or neither.
@@ -491,7 +495,7 @@ public enum PerimeterWallTests {
         crackWidth: Float = 0.1e-3, footing: SIMD2<Float>? = nil, clearance: Float = 3,
         afterburning: Bool = SolverConfiguration.recommended.afterburning,
         airModel: AirModel? = nil, openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
-        roomy: Bool = false, progress: ((String) -> Void)? = nil
+        roomy: Bool = false, balloonStart: Bool = false, progress: ((String) -> Void)? = nil
     ) throws -> WallResult {
         let started = ContinuousClock.now
         let layout = wall.layout
@@ -594,7 +598,11 @@ public enum PerimeterWallTests {
             ],
             structure: model)
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
-        solver.configuration.mappedCharge = !afterburning
+        // The mapped one-dimensional start since 18 October 2026; `balloonStart` keeps the hot-gas
+        // balloon these comparisons were recorded on before then (with afterburning; the ideal gas
+        // was mapped already).
+        solver.configuration.mappedCharge =
+            balloonStart ? !afterburning : SolverConfiguration.recommended.mappedCharge
         solver.configuration.afterburning = afterburning
         solver.configuration.openFaces = openFaces
         // As the app's "Afterburning and hot air": both or neither.

@@ -84,7 +84,7 @@ private func runPerimeterAir(device: MTLDevice) throws {
         let r = try T.runAir(
             device: device, layout: layout, anfo: anfo, wall: wall, cellSize: dx, refinement: refine,
             columnWidth: columns, wallLength: wing, afterburning: burning,
-            airModel: chosenGas(), openFaces: chosenFaces(),
+            airModel: chosenGas(), openFaces: chosenFaces(), balloonStart: flag("balloon-start"),
             progress: flag("progress") ? { print("    " + $0) } : nil)
         print(
             "  \(format(Double(anfo), 2)) kg \(wall ? "with" : "without") the wall: "
@@ -295,7 +295,8 @@ private func runPerimeterWall(device: MTLDevice) throws {
                     bars: bars, joints: !flag("no-joints"), footing: footing,
                     clearance: option("clearance").flatMap { Float($0) } ?? 3,
                     afterburning: burning, airModel: chosenGas(), openFaces: chosenFaces(),
-                    roomy: flag("roomy"), progress: flag("progress") ? { print("    " + $0) } : nil)
+                    roomy: flag("roomy"), balloonStart: flag("balloon-start"),
+                    progress: flag("progress") ? { print("    " + $0) } : nil)
                 print(
                     "  \(format(Double(anfo), 0)) kg, \(base.rawValue): top \(format(Double(r.peakTop) * 1000, 1)) mm "
                         + "peak, \(format(Double(r.finalTop) * 1000, 1)) left; mid-height "

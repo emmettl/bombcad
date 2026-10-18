@@ -7,7 +7,8 @@ stand two smaller buildings as envelopes, and a van's worth of explosive is park
 
 **Standing.** A showcase on the model as it stands, compared as a building with nothing measured
 ([standing](standing.md)). Its gauges take the open blast's bands (Kingery–Bulmash on today's
-air). Its structure is an approximation: steel is verified against beam theory, not a test, and
+air). Its structure is an approximation: its steel members are compared with Nassr's blasted
+beams and columns ([shell model](shell-model.md#validation)), its connections are not, and
 its toughened glass is the annealed panes' model with a higher strength. Its damage is
 illustrative, and the neighbours' envelope damage is the one-way model's, an approximation.
 

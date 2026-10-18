@@ -169,6 +169,7 @@ public enum CloseInSlabTest {
         afterburning: Bool = SolverConfiguration.recommended.afterburning,
         airModel: AirModel? = nil, openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
         heldLengthwise: Bool = true, stepsPerSample: Int = 16, roomy: Bool = false,
+        balloonStart: Bool = false,
         adjust: (inout Scenario) -> Void = { _ in }, progress: ((String) -> Void)? = nil,
         inspect: ((StructureSolver, Double) -> Void)? = nil, prepare: ((StructureSolver) -> Void)? = nil
     ) throws -> Result {
@@ -184,7 +185,10 @@ public enum CloseInSlabTest {
         var scenario = scenario(test, elementSize: elementSize, pad: pad)
         adjust(&scenario)
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
-        solver.configuration.mappedCharge = mappedCharge && !afterburning
+        // The mapped one-dimensional start since 18 October 2026; `balloonStart` keeps the hot-gas
+        // balloon these comparisons were recorded on before then (with afterburning; the ideal gas
+        // was mapped already).
+        solver.configuration.mappedCharge = mappedCharge && (balloonStart ? !afterburning : true)
         solver.configuration.afterburning = afterburning
         solver.configuration.openFaces = openFaces
         // As the app's "Afterburning and hot air": both or neither.

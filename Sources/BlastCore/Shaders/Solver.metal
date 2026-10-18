@@ -2484,6 +2484,7 @@ struct ComponentRecording {
     uint fromArrival;      // 1: a component's bins start when its air first moves
     uint readsRefined;     // 1: faces in refined air read its finest cells against them
     uint skipStill;        // 1: read a face in a still tile as the still air (no gravity)
+    float arrivalPa;       // With `fromArrival`: the side's overpressure that starts the bins; 0, the air's first moving
 };
 
 // A component's first bin before its air has moved, with `fromArrival`: nothing is binned.
@@ -2531,7 +2532,7 @@ struct ComponentClock {
 
 static inline void finishComponent(uint index, float2 sum, uint broken, uint4 side, uint lane,
                                    const device StepControl &control, constant ComponentRecording &r,
-                                   const device ComponentClock &clock, uint start, device float4 *peaks,
+                                   const device ComponentClock &clock, device uint *starts, device float4 *peaks,
                                    device float2 *bins, device float2 *maxima, device atomic_uint *truncated,
                                    device float2 *current) {
     for (ushort offset = componentLanes / 2; offset > 0; offset /= 2) {
@@ -2549,6 +2550,12 @@ static inline void finishComponent(uint index, float2 sum, uint broken, uint4 si
     peaks[index] = peak;
     // The step's two sides, for what reads them before the next (`stepEnvelopePanes`).
     current[index] = float2(outer, inner);
+    uint start = starts[index];
+    // The blast's arrival: either side's overpressure past the threshold, this step's bin the first.
+    if (r.fromArrival != 0 && start == notStarted && r.arrivalPa > 0.0f && max(outer, inner) > r.arrivalPa) {
+        start = clock.bin;
+        starts[index] = start;
+    }
     if (start == notStarted) return;
     float dt = r.initial != 0 ? 0.0f : control.dt;
     // The step, in seconds from the start of the bin it begins in.
@@ -2608,14 +2615,15 @@ kernel void markEnvelopeComponents(const device StepControl &control [[buffer(2)
     // Whether any of its tiles is awake; without tiles, all air counts as moving.
     bool moved = u.tileNx == 0;
     uint2 range = tileRanges[index];
-    bool look = r.skipStill != 0 || (r.fromArrival != 0 && starts[index] == notStarted);
+    bool waking = r.fromArrival != 0 && r.arrivalPa <= 0.0f;
+    bool look = r.skipStill != 0 || (waking && starts[index] == notStarted);
     for (uint n = lane; look && !moved && n < range.y; n += componentLanes) {
         moved = tileFlags[tiles[range.x + n]] != tileStill;
     }
     moved = simd_any(moved);
     bool woken = r.skipStill == 0 || moved;
     uint start = starts[index];
-    if (r.fromArrival != 0 && start == notStarted && moved) {
+    if (waking && start == notStarted && moved) {
         start = clock.bin;
     }
     if (lane == 0) {
@@ -2632,7 +2640,7 @@ kernel void markEnvelopeComponents(const device StepControl &control [[buffer(2)
     if (woken || r.initial != 0) return;
     uint4 side = sides[index];
     float2 sum = float2(stillSum(stillPressure, side.y, lane), stillSum(stillPressure, side.w, lane));
-    finishComponent(index, sum, 0u, side, lane, control, r, clock, start, peaks, bins, maxima, truncated,
+    finishComponent(index, sum, 0u, side, lane, control, r, clock, starts, peaks, bins, maxima, truncated,
                     current);
 }
 
@@ -2738,7 +2746,7 @@ kernel void sampleEnvelopeComponents(const device float *pressures [[buffer(0)]]
                                      device uint *faceDispatch [[buffer(12)]],
                                      device uint *sumDispatch [[buffer(13)]],
                                      const device ComponentClock &clock [[buffer(14)]],
-                                     const device uint *starts [[buffer(15)]],
+                                     device uint *starts [[buffer(15)]],
                                      uint group [[threadgroup_position_in_grid]],
                                      uint lane [[thread_index_in_simdgroup]]) {
     if (group == 0 && lane == 0) {
@@ -2756,7 +2764,7 @@ kernel void sampleEnvelopeComponents(const device float *pressures [[buffer(0)]]
     } else {
         sum = float2(stillSum(stillPressure, side.y, lane), stillSum(stillPressure, side.w, lane));
     }
-    finishComponent(index, sum, broken, side, lane, control, r, clock, starts[index], peaks, bins, maxima,
+    finishComponent(index, sum, broken, side, lane, control, r, clock, starts, peaks, bins, maxima,
                     truncated, current);
 }
 

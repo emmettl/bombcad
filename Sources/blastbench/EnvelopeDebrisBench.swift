@@ -39,8 +39,9 @@ func runEnvelopeDebris(device: MTLDevice) throws {
             reinforcementRatio: option("ratio").flatMap { Float($0) } ?? 2 * 113.1e-6 / 0.1 / wall,
             source: .user, detail: "0.15 m reinforced concrete, bars in both faces", barsInBothFaces: true,
             barCoverM: 0.025))
-    // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
-    var configuration = SolverConfiguration.recommended.balloonStart
+    // The mapped start since 18 October 2026; `--balloon-start` for the balloon it was first run on.
+    var configuration =
+        flag("balloon-start") ? SolverConfiguration.recommended.balloonStart : SolverConfiguration.recommended
     configuration.airSleepThreshold = 0
     configuration.airSleepCrossings = 0
     let solver = try BlastSolver(
