@@ -420,7 +420,7 @@ extension RefinementTests {
         var scenario = Scenario(
             name: "Closed box", domainSize: SIMD3(24, 20, 16),
             boxes: [Box(min: SIMD3(13.25, 6.25, 0), max: SIMD3(18.25, 14.25, 9.25))],
-            charge: Charge(mass: 5, position: SIMD3(8, 10, 1)))
+            charge: Charge(mass: 100, position: SIMD3(8, 10, 1)))
         scenario.reflectiveFaces = .all
         let solver = try BlastSolver(
             device: device, scenario: scenario, cellSize: 0.5, configuration: refined(2))
@@ -429,7 +429,7 @@ extension RefinementTests {
         // cells count as solid, and takes one the coarse cells count as air along others: placing
         // patches there in still air adds the air one held and gives up the other's, at most
         // their volume's worth (0.25 m deep, under 1% of the room), and once the blast fills the
-        // room the patches stay and the gas is conserved.
+        // room (100 kg raises it about 25 kPa) the patches stay and the gas is conserved.
         var placed = solver.totals()
         for n in 0..<4 {
             let result = solver.advance(steps: n == 0 ? 300 : 100)

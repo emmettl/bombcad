@@ -2506,7 +2506,7 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
 // pressure by the solid share (an eighth of a cell solid, 14%), which would flag the blocks beside
 // and refine its way along a sloping surface ahead of the blast. What is given up there balances,
 // on average over the surface, the still air gained where a fine cell is fluid in a solid coarse
-// cell. Nor under a rigid block where the air is still (since 18 October 2026): a block whose
+// cell. Nor under a rigid block where the air is near still (since 18 October 2026): a block whose
 // edges fall between the coarse cells' takes part of the cells beside it at a finer level, and the
 // gas shared into what is left raised the pressure there by up to several times; at threshold
 // 0.005 that flagged the blocks beside, whose patches did the same, and in Beirut's district
@@ -2600,12 +2600,12 @@ kernel void refineFillConserve(device Cell *fine [[buffer(0)]],
     Cell lost = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
     float2 lostSpecies = float2(0.0f);
     bool species = u.afterburnEnergy > 0.0f;
-    // A block's share is given up only where the air is still (within half the threshold's jump of
-    // ambient), where sharing it would make a pressure out of nothing ahead of the blast; where the
-    // air moves it is shared, and the gas conserved.
+    // A block's share is given up only where the air is near still (within 5% of ambient), where
+    // sharing it would make a pressure out of nothing ahead of the blast; where the blast has
+    // raised it it is shared, and the gas conserved. (A band of half the threshold's jump left the
+    // precursor's own disturbance to carry it on, 20% early at 552 m in Beirut.)
     int parent = parentIndex(cell, parentPatches, u);
-    bool still = !coarseSolid
-        && fabs(cellPressureOf(coarse[parent], u) - u.ambientPressure) < 0.5f * u.refineThreshold * u.ambientPressure;
+    bool still = !coarseSolid && fabs(cellPressureOf(coarse[parent], u) - u.ambientPressure) < 0.05f * u.ambientPressure;
     uchar givenUp = still ? 18 : 16;
     for (int n = 0; n < all; ++n) {
         uint child = fineIndex(patch, cell * r + int3(n % r, (n / r) % r, n / (r * r)), tile, u);

@@ -23,11 +23,13 @@ struct RefinementLevelsTests {
         return configuration
     }
 
-    private func closedBox(_ configuration: SolverConfiguration, offset: Float = 0) throws -> BlastSolver {
+    private func closedBox(_ configuration: SolverConfiguration, offset: Float = 0, mass: Float = 5) throws
+        -> BlastSolver
+    {
         var scenario = Scenario(
             name: "Closed box", domainSize: SIMD3(24, 20, 16),
             boxes: [Box(min: SIMD3(13 + offset, 6, 0), max: SIMD3(18 + offset, 14, 9))],
-            charge: Charge(mass: 5, position: SIMD3(8, 10, 1)))
+            charge: Charge(mass: mass, position: SIMD3(8, 10, 1)))
         scenario.reflectiveFaces = .all
         return try BlastSolver(
             device: device, scenario: scenario, cellSize: 0.5, configuration: configuration)
@@ -141,8 +143,8 @@ struct RefinementLevelsTests {
         // with one level, placing patches in still air over the slivers a coarser outline counts
         // as solid adds the air they held, and over those it counts as air gives theirs up (at
         // most their volume's worth either way); once the blast fills the room the patches stay
-        // and the gas is conserved.
-        let solver = try closedBox(twoLevels(), offset: 0.125)
+        // and the gas is conserved (100 kg raises it about 25 kPa).
+        let solver = try closedBox(twoLevels(), offset: 0.125, mass: 100)
         let before = solver.totals()
         var placed = before
         for n in 0..<4 {
