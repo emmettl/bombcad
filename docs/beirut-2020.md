@@ -260,9 +260,8 @@ The 1 km box (2 km square, 320 m top, 0.5 kt) on three grids, uniform cells:
   the line to 900 m, more than 3 m cells, in about 35 minutes on the mini, its finest pool full
   within 14 GB. Two fixes to the refined air (18 October: gas squeezed beside buildings' fine
   outlines, and cut cells under them restricted short; [terrain](terrain.md)) and the windows opened
-  at 500 Pa (above)
-  bring its façades' loads to the 3 m cells': median peaks 29, 17, 11 and 8 kPa at 0.5–1.5 km
-  against 30, 18, 12 and 9. Its stone at 0.5–0.75 km cracks in 256 buildings and fails in 9 (3 m:
+  at 500 Pa (above) bring its façades' loads to the 3 m cells': median peaks 29, 17, 11 and 8 kPa
+  at 0.5–1.5 km against 30, 18, 12 and 9. Its stone at 0.5–0.75 km cracks in 256 buildings and fails in 9 (3 m:
   269 and 10); concrete is moderately damaged in 195 there and 45 at 0.75–1 km (3 m: 139 and 11).
   But a disturbance of about 0.7 kPa still runs ahead of the shock over the city south-east of the
   charge: gauges there 580–810 m out see it at 0.81–0.94 s (the shock at 1.15–1.75 s), and it opens
