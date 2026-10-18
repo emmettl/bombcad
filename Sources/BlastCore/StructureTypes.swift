@@ -745,6 +745,9 @@ public struct StructureModel: Sendable, Hashable, Codable {
     public var bucklingCurve: BucklingCurve = .b
     /// Members' own buckling curves, by index into `solids`; encoded only when some has one.
     public var solidBucklingCurves: [BucklingCurve?] = []
+    /// Steel beams joined to what they end on by hinges that turn and fracture (`SteelConnection`);
+    /// nil for members sharing their joints' nodes, rigid.
+    public var steelConnection: SteelConnection?
     /// In a body of both kinds, the shells' size; `elementSize` if nil.
     public var shellElementSize: Float?
     /// Layers of concrete (or other material) through the thickness of each shell.
@@ -1277,6 +1280,15 @@ public struct StructureSummary: Sendable, Hashable {
     public var maxDamage: Float = 0
     /// True when the solution has become numerically unstable (some displacement is not a number).
     public var hasBlownUp = false
+    /// Beam elements (members: columns, beams, braces) still carrying load, and those removed.
+    public var activeBeams = 0
+    public var erodedBeams = 0
+    /// Largest displacement now, in metres, of a node still attached to an active beam, from the
+    /// settled shape: the frame's own movement, without the panes and plates thrown off it.
+    public var maxBeamDisplacement: Float = 0
+    /// Steel connections' hinges (`SteelConnection`), and those that have fractured.
+    public var hinges = 0
+    public var hingesReleased = 0
 
     public init() {}
 
@@ -1295,6 +1307,11 @@ public struct StructureSummary: Sendable, Hashable {
         both.maxPlasticStrain = max(maxPlasticStrain, other.maxPlasticStrain)
         both.maxDamage = max(maxDamage, other.maxDamage)
         both.hasBlownUp = hasBlownUp || other.hasBlownUp
+        both.activeBeams += other.activeBeams
+        both.erodedBeams += other.erodedBeams
+        both.maxBeamDisplacement = max(maxBeamDisplacement, other.maxBeamDisplacement)
+        both.hinges += other.hinges
+        both.hingesReleased += other.hingesReleased
         return both
     }
 }
@@ -1842,7 +1859,7 @@ extension StructureModel {
         case bareBars, removesFragments, crackSlip, bondSlip,
             solidElementKind, solidSheets, springSupports, sheetFastenings, memberImperfections,
             bucklingCurve,
-            solidBucklingCurves
+            solidBucklingCurves, steelConnection
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
         case pressedInterlock, regimeOverride, loadingOverride, regimeDefaults
         case hourglassFollowsCracking, hourglassCapsSteel, discreteBars, barsAsTrusses, trussDiameter
@@ -1902,6 +1919,7 @@ extension StructureModel {
         if !sheetFastenings.isEmpty { try container.encode(sheetFastenings, forKey: .sheetFastenings) }
         if !memberImperfections { try container.encode(false, forKey: .memberImperfections) }
         if bucklingCurve != .b { try container.encode(bucklingCurve, forKey: .bucklingCurve) }
+        try container.encodeIfPresent(steelConnection, forKey: .steelConnection)
         if !solidBucklingCurves.isEmpty {
             try container.encode(solidBucklingCurves, forKey: .solidBucklingCurves)
         }
@@ -1966,6 +1984,7 @@ extension StructureModel {
         sheetFastenings = try container.decodeIfPresent([SheetFastening].self, forKey: .sheetFastenings) ?? []
         memberImperfections = try container.decodeIfPresent(Bool.self, forKey: .memberImperfections) ?? true
         bucklingCurve = try container.decodeIfPresent(BucklingCurve.self, forKey: .bucklingCurve) ?? .b
+        steelConnection = try container.decodeIfPresent(SteelConnection.self, forKey: .steelConnection)
         solidBucklingCurves =
             try container.decodeIfPresent([BucklingCurve?].self, forKey: .solidBucklingCurves) ?? []
         shellElementSize = try container.decodeIfPresent(Float.self, forKey: .shellElementSize)

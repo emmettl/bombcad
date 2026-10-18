@@ -55,7 +55,7 @@ class ReleaseTests(unittest.TestCase):
         self.make_app()
         calls = []
 
-        def command(*arguments, capture=False):
+        def command(*arguments, capture=False, timeout=None):
             calls.append(arguments)
             if arguments[0] == "lipo":
                 return "arm64"
@@ -101,12 +101,15 @@ class ReleaseTests(unittest.TestCase):
     def test_the_app_is_run_from_inside_its_bundle_before_signing_and_before_archiving(self):
         calls = self.complete_pipeline(gatekeeper_accepts=True)
         executable = str(self.root / "dist/BombCAD.app/Contents/MacOS/BombCAD")
-        runs = [index for index, call in enumerate(calls) if call[:2] == (executable, "run")]
         signing = next(index for index, call in enumerate(calls) if call[0] == "codesign")
         archiving = max(index for index, call in enumerate(calls) if call[0] == "ditto")
-        self.assertEqual(len(runs), 2)
-        self.assertLess(runs[0], signing)
-        self.assertTrue(signing < runs[1] < archiving)
+        # The sample project, and a structure on the mapped start writing frames, each time.
+        for project in (release.SMOKE_PROJECT, release.SMOKE_MAPPED):
+            runs = [index for index, call in enumerate(calls)
+                    if call[:3] == (executable, "run", str(self.root / project))]
+            self.assertEqual(len(runs), 2)
+            self.assertLess(runs[0], signing)
+            self.assertTrue(signing < runs[1] < archiving)
         # Its views drawn through a change of source, each time too.
         drawn = [index for index, call in enumerate(calls) if call[:2] == (executable, "interface-smoke")]
         self.assertEqual(len(drawn), 2)
@@ -121,7 +124,7 @@ class ReleaseTests(unittest.TestCase):
     def assert_never_signed(self, reason):
         calls = []
 
-        def command(*arguments, capture=False):
+        def command(*arguments, capture=False, timeout=None):
             calls.append(arguments)
             return "arm64" if arguments[0] == "lipo" else ""
 
@@ -152,7 +155,7 @@ class ReleaseTests(unittest.TestCase):
         self.make_app()
         calls = []
 
-        def command(*arguments, capture=False):
+        def command(*arguments, capture=False, timeout=None):
             calls.append(arguments)
             if arguments[0] == "lipo":
                 return "arm64"

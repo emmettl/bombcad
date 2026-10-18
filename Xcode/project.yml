@@ -1,0 +1,42 @@
+# XcodeGen spec for working on BombCAD in Xcode: `make xcode`, then open Xcode/BombCAD.xcodeproj.
+# The Swift package (../Package.swift) stays the build's source of truth; this project only adds
+# it as a local package, so its sources, schemes (blastbench, scenebench, the tests) and
+# ContinuumKit appear in the navigator, plus one target that builds the real BombCAD.app the way
+# `make app` does (resource bundles, Info.plist, the IFC helper) so it can be run and debugged,
+# with Metal frame capture, as an app. The generated project is not committed (.gitignore).
+name: BombCAD
+options:
+  bundleIdPrefix: dev.bombcad
+  createIntermediateGroups: true
+  deploymentTarget:
+    macOS: "15.0"
+packages:
+  BombCAD:
+    path: ..
+fileGroups:
+  - ../docs
+  - ../Scripts
+  - ../Support
+  - ../Makefile
+  - ../README.md
+targets:
+  BombCAD App:
+    type: tool
+    platform: macOS
+    legacy:
+      toolPath: /bin/bash
+      arguments: Scripts/xcode-build-app.sh
+      passSettings: true
+      workingDirectory: ..
+schemes:
+  BombCAD App:
+    build:
+      targets:
+        BombCAD App: all
+    run:
+      config: Debug
+      askForAppToLaunch: true
+      enableGPUFrameCaptureMode: metal
+      enableGPUValidationMode: disabled
+    archive:
+      config: Release

@@ -3902,6 +3902,53 @@ extension BlastSolver {
         )
     }
 
+    /// The boxes remapped together, from each one's region of coarse cells (nil for a box out of
+    /// the air before and after): those whose regions meet, and then any group whose span, the
+    /// box around its members' regions, meets another's, since each group is remapped over its
+    /// span and two would otherwise write the same cells (an L of boxes and one in its corner).
+    /// No two groups' spans meet. Each group's members are in order, the groups by their first.
+    static func experimentalRemapGroups(_ regions: [(low: SIMD3<Int>, high: SIMD3<Int>)?]) -> [[Int]] {
+        let slots = regions.indices.filter { regions[$0] != nil }
+        var groups: [[Int]] = []
+        var group = Array(regions.indices)
+        func overlap(_ a: (low: SIMD3<Int>, high: SIMD3<Int>), _ b: (low: SIMD3<Int>, high: SIMD3<Int>))
+            -> Bool
+        {
+            all(a.low .<= b.high) && all(b.low .<= a.high)
+        }
+        for b in slots where group[b] == b {
+            var members = [b]
+            var next = 0
+            while next < members.count {
+                for c in slots where group[c] == c && c != b && overlap(regions[members[next]]!, regions[c]!)
+                {
+                    group[c] = b
+                    members.append(c)
+                }
+                next += 1
+            }
+            groups.append(members.sorted())
+        }
+        func span(_ members: [Int]) -> (low: SIMD3<Int>, high: SIMD3<Int>) {
+            members.compactMap { regions[$0] }.reduce(
+                (SIMD3<Int>(repeating: .max), SIMD3<Int>(repeating: .min))
+            ) { (simd_min($0.low, $1.low), simd_max($0.high, $1.high)) }
+        }
+        var merged = true
+        while merged {
+            merged = false
+            search: for a in groups.indices {
+                for b in groups.indices where b > a && overlap(span(groups[a]), span(groups[b])) {
+                    groups[a] = (groups[a] + groups[b]).sorted()
+                    groups.remove(at: b)
+                    merged = true
+                    break search
+                }
+            }
+        }
+        return groups.sorted { $0[0] < $1[0] }
+    }
+
     /// Conservative local redistribution when whole cells change occupancy. This is a coarse
     /// reference remap, not a cut-cell method; local pressure artefacts must be checked on
     /// refinement. Every box moves at once, and nothing is changed if any of them fails. A box
@@ -3978,23 +4025,7 @@ extension BlastSolver {
             var groups: [[Int]] = []
             let slots = bodies.indices.filter { regions[$0] != nil }
             if refinement.useLocalBoxRemap {
-                var group = Array(bodies.indices)
-                func overlap(_ a: Int, _ b: Int) -> Bool {
-                    guard let ra = regions[a], let rb = regions[b] else { return false }
-                    return all(ra.low .<= rb.high) && all(rb.low .<= ra.high)
-                }
-                for b in slots where group[b] == b {
-                    var members = [b]
-                    var next = 0
-                    while next < members.count {
-                        for c in slots where group[c] == c && c != b && overlap(members[next], c) {
-                            group[c] = b
-                            members.append(c)
-                        }
-                        next += 1
-                    }
-                    groups.append(members.sorted())
-                }
+                groups = Self.experimentalRemapGroups(regions)
             } else if !slots.isEmpty {
                 groups = [slots]
             }
@@ -4112,8 +4143,7 @@ extension BlastSolver {
             let range = experimentalCellRange(geometry.low, geometry.high, margin: 2)
             return (range.low / AirRefinement.patchSize, range.high / AirRefinement.patchSize)
         }
-        return refinement.patches { tile in blocks.contains { all(tile .>= $0.low) && all(tile .<= $0.high) }
-        }
+        return refinement.patches(inBlocks: blocks)
     }
 
     /// The air's impulse and its moment about the centre of mass on all the boxes together.
@@ -4165,21 +4195,23 @@ extension BlastSolver {
         if let refinement {
             let geometries = experimentalBoxes.map(ExperimentalBoxGeometry.init)
             let dx = grid.cellSize / Float(refinement.ratio)
-            refinement.takeBoxFaceImpulses(in: experimentalBoxPatches(refinement)) {
-                cell, axis, side, impulse in
-                var across = cell
-                across[axis] += side == 0 ? -1 : 1
-                let point = (SIMD3<Float>(across) + 0.5) * dx
-                let b =
-                    ExperimentalBoxGeometry.owner(of: point, among: geometries, cellSize: dx)
-                    ?? geometries.indices.min {
-                        simd_distance(geometries[$0].centre, point)
-                            < simd_distance(geometries[$1].centre, point)
-                    }!
-                var face = Double(dx) * (SIMD3<Double>(cell) + 0.5)
-                face[axis] += (side == 0 ? -0.5 : 0.5) * Double(dx)
-                record(b, face: face, axis: axis, impulse: impulse)
-            }
+            refinement.takeBoxFaceImpulses(
+                in: experimentalBoxPatches(refinement),
+                owner: { cell, axis, side in
+                    var across = cell
+                    across[axis] += side == 0 ? -1 : 1
+                    let point = (SIMD3<Float>(across) + 0.5) * dx
+                    return ExperimentalBoxGeometry.owner(of: point, among: geometries, cellSize: dx)
+                        ?? geometries.indices.min {
+                            simd_distance(geometries[$0].centre, point)
+                                < simd_distance(geometries[$1].centre, point)
+                        }!
+                },
+                face: { b, cell, axis, side, impulse in
+                    var face = Double(dx) * (SIMD3<Double>(cell) + 0.5)
+                    face[axis] += (side == 0 ? -0.5 : 0.5) * Double(dx)
+                    record(b, face: face, axis: axis, impulse: impulse)
+                })
         }
         return loads
     }
