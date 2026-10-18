@@ -4538,7 +4538,7 @@ balloon by construction.
 | Harness | Pinned | Owner |
 |---|---|---|
 | Wu and Wang's slabs (`TwoFaceSlabTests`), Yao's (`YaoSlabTests`), Chiquito's (`CloseInSlabTest`), Hupfauf's (`ContactSlabTest`) | by construction | the domain-faces recheck, then concrete |
-| The chamber (`ChamberTest`), rooms | by construction | concrete |
+| Rooms | by construction | concrete |
 | Alsubaei's walls (`PerimeterWallTests`) | by construction | walls |
 | Keys's brick walls (`MasonryDebrisTest`) | by construction | masonry |
 | The validation ensemble's wall (`ValidationEnsemble`) | pinned | ensembles |
@@ -4557,6 +4557,29 @@ balloon by construction.
 | The run-cost and standing tests on `recommended` | pinned | numerics |
 
 `blastbench digest --recommended` gives the same hashes on the pinned code as on main.
+
+#### Several charges (18 October)
+
+Each charge mapped from its own one-dimensional solution (`blastbench twocharges`): two 10 kg
+surface bursts 30 m apart (14 m/kg^(1/3)) on rigid ground, 0.25 m cells, gauges on each one's
+outer side, against Kingery–Bulmash: the peak its own charge's, the impulse over the whole
+record both charges' summed. Both mapped 7.1 m out (the side faces' 0.8), from 8.7 ms; the two
+alike to the last point:
+
+| Z | Peak: balloon / mapped | Impulse: balloon / mapped |
+|---|------------------------|---------------------------|
+| 1 | 52 / 114% | 100 / 93% |
+| 1.5 | 63 / 114% | 97 / 92% |
+| 2 | 61 / 98% | 93 / 92% |
+| 3 | 69 / 104% | 98 / 97% |
+| 4 | 70 / 70% | 98 / 100% |
+| 6 | 72 / 73% | 115 / 116% |
+
+Within the mapped radius the peaks are as a lone charge's; beyond it the grid carries both
+starts alike. The chamber's four charges, in their sleeves, map only 0.36 m out and change its
+results by 3% or less ([the chamber](#an-internal-explosion-in-a-reinforced-concrete-chamber)).
+Scenes of one charge are unchanged bit for bit (`blastbench digest --recommended --mapped` on
+every preset).
 
 #### The products' own equation of state (18 October)
 
@@ -4853,6 +4876,12 @@ Moving the faces below the chamber means shifting the scene by 11 m. That flips 
 steps of the chamfers in rounding (4,551 elements against 4,664) and moves the gauges by a cell.
 So the high faces alone were moved too, which needs no shift and leaves the mesh and the
 pressures exactly as in the box. That gives 46 and 24 mm (−8%, −14%).
+
+**On the mapped start** (18 October 2026, the bench's default since; `--balloon-start` for the
+balloon). Each of the four charges is mapped from its own one-dimensional solution, mirrored by
+the partition's mid-plane, but only 0.36 m out (Z 0.12), as the sleeves' walls stand 0.45 m off:
+6.5 and 4.2 MPa on the side walls and 4.1 MPa on the roof (against 6.5, 4.0 and 4.2 on the
+balloon), and the roof's edge rises 48 mm and is left 27 mm up (47 and 25), 10 elements removed.
 
 The comparison does not change its standing: a quarter of the measured residual, about half the
 paper's model's peak. The bench now runs this domain by default, at about twice the box's cost

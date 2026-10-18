@@ -132,4 +132,39 @@ struct MappedChargeTests {
         #expect(!near.isEmpty && (near.map(\.pressure).max() ?? 0) > 1e6)
         #expect(solver.peakOverpressure(68, 64, 0) > 1e6)
     }
+
+    @Test("Several charges are each mapped to half the way between them, one by a block left the balloon")
+    func severalCharges() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
+        var scenario = ScenarioPreset.openGround.scenario
+        let main = scenario.charge.position
+        // One alike 8 m off, one hard against a block: mapped, mapped (4 m out, half way) and balloon.
+        scenario.additionalCharges = [
+            Charge(mass: scenario.charge.mass, position: main + SIMD3(0, 8, 0)),
+            Charge(mass: scenario.charge.mass, position: main + SIMD3(0, -12, 0)),
+        ]
+        scenario.boxes = [Box(min: main + SIMD3(-1, -12.4, 0), max: main + SIMD3(1, -12.2, 2))]
+        scenario.gauges = [
+            Gauge("First", at: main + SIMD3(2, 0, 0.25)), Gauge("Second", at: main + SIMD3(2, 8, 0.25)),
+        ]
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.5)
+        let balloon = solver.totals()
+        solver.configuration.mappedCharge = true
+        let mappings = solver.mappings(for: scenario)
+        #expect(mappings.map(\.index) == [0, 1])
+        #expect(mappings.allSatisfy { abs($0.radius - 4) < 1e-4 })
+        try solver.load(scenario)
+        let mapped = solver.totals()
+        #expect(
+            abs(mapped.energy - balloon.energy) < 0.03 * 3 * Double(scenario.charge.energy),
+            "\(mapped.energy) J against \(balloon.energy) J")
+        // One clock for both; each gauge 2 m from its own charge keeps that charge's record.
+        #expect(solver.time > 0 && solver.mappedStart.count == 2)
+        for history in solver.gaugeHistories.prefix(2) {
+            #expect(!history.isEmpty && (history.map(\.pressure).max() ?? 0) > 1e6)
+        }
+        let first = solver.gaugeHistories[0].map(\.pressure).max() ?? 0
+        let second = solver.gaugeHistories[1].map(\.pressure).max() ?? 0
+        #expect(abs(first / second - 1) < 1e-3, "alike charges, alike records: \(first) and \(second) Pa")
+    }
 }

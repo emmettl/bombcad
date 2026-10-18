@@ -1535,8 +1535,13 @@ struct StandingScene {
 
     private var sourceAssumptions: [String] {
         var lines = [
-            "The charge is a sphere of hot compressed gas (a bursting balloon), poor within a few charge "
-                + "diameters or cells of it.",
+            has(.mappedCharge)
+                ? "Each charge starts from a fine one-dimensional burst laid on the grid where it has room "
+                    + "(3 cells or more, at most half the way to another charge); one nearer anything is a "
+                    + "sphere of hot compressed gas (a bursting balloon), poor within a few charge diameters or "
+                    + "cells of it."
+                : "The charge is a sphere of hot compressed gas (a bursting balloon), poor within a few charge "
+                    + "diameters or cells of it.",
             "Shocks are smeared over two or three cells.",
         ]
         lines.append(

@@ -119,7 +119,7 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
 - **Done:** afterburning, hot air and dissociation; refinement in one or two levels; gravity,
   sub-grid mixing and radiative cooling as options ([air-blast model](air-blast-model.md));
   terrain on cut cells ([terrain](terrain.md#cut-cells)); bursts checked to 40 m/kg^(1/3) ([large scenes](large-scenes.md));
-  the mapped one-dimensional start, the default since 18 October 2026
+  the mapped one-dimensional start, the default since 18 October 2026, for each charge
   ([a finely resolved start](air-blast-model.md#a-finely-resolved-start)).
 - **Next:** rerun the comparisons still on the balloon start
   ([list](validation.md#still-on-the-balloon-start)); reflected peaks near walls; the products

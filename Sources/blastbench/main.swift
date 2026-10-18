@@ -991,6 +991,8 @@ func runChamber() throws {
         airModel: chosenGas(), openFaces: chosenFaces(),
         refinement: option("refine").flatMap { Int($0) } ?? 1,
         contact: flag("no-contact") ? .off : nil,
+        // Each charge from its own mapped one-dimensional start; `--balloon-start` for the balloon.
+        mappedStart: !flag("balloon-start"),
         // `--progress` reports every 10 ms of a long run.
         progress: flag("progress")
             ? { line in
@@ -5131,6 +5133,8 @@ func runDigest() throws {
         configureRefinement(&configuration)
         configuration.afterburning = afterburning || flag("recommended")
         configuration.gravity = chosenGravity()
+        // `--mapped`: from the mapped one-dimensional start.
+        if flag("mapped") { configuration.mappedCharge = true }
         var scenario = preset.scenario
         if shells { scenario.structure?.elementKind = .shell }
         // `--terrain flat` lays the floor down as a heightfield, which must change nothing; another
@@ -5539,6 +5543,7 @@ do {
     case "structure": try runStructure()
     case "validate": try runValidation()
     case "products": try runProducts()
+    case "twocharges": try runTwoCharges(solver: { try makeAirSolver($0, cellSize: $1) })
     case "mapped-cost":
         // The fine one-dimensional start's own time (CPU), by charge and cell: `--masses 1,10,100
         // --dx 0.125,0.25,0.5 --cells 64`.

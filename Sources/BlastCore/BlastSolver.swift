@@ -32,7 +32,10 @@ public final class BlastSolver {
     private var exposurePlane: ExposurePlane?
     /// The one-dimensional solution a charge was mapped from, where it was and how far it reached,
     /// for an exposure plane set up after it (`configureExposurePlane`); nil otherwise.
-    var mappedStart: (blast: SphericalBlast, centre: SIMD3<Float>, radius: Float)?
+    var mappedStart: [(blast: SphericalBlast, centre: SIMD3<Float>, radius: Float)] = []
+    /// How far out each mapped charge was laid from its one-dimensional solution, m; empty for the
+    /// balloon.
+    public var mappedRadii: [Float] { mappedStart.map(\.radius) }
     /// The latest a mapped start may begin, s: its one-dimensional solution stops there should the
     /// shock not have reached its radius yet, so that a short run still steps the grid. Nil for no
     /// limit; the app sets half the run's duration. Takes effect at the next `load`.
@@ -493,7 +496,7 @@ public final class BlastSolver {
             threshold: arrivalThresholdPa, spacing: spacingM)
         // A charge mapped from one dimension has already passed the plane within its mapped radius:
         // there it takes the solution's own peak, impulse and arrival.
-        if let mappedStart {
+        for mappedStart in mappedStart {
             plane.seed(mappedStart.blast, centre: mappedStart.centre, radius: mappedStart.radius)
         }
         exposurePlane = plane

@@ -360,7 +360,7 @@ extension BlastSolver {
         let scenario = configuration.ground.map { scenario.coupled(to: $0) } ?? scenario
         try scenario.validateObjectOwnership()
         clearEnvelopeExposure()
-        mappedStart = nil
+        mappedStart = []
         configuration.ambientPressure = scenario.atmosphere.pressure
         configuration.reflectiveFaces = scenario.reflectiveFaces
         ambientSoundSpeed = scenario.atmosphere.soundSpeed(gamma: configuration.gamma)
@@ -457,7 +457,7 @@ extension BlastSolver {
         try loadDeflagration(scenario)
         fill(
             uniform: Primitive(density: scenario.atmosphere.density, pressure: scenario.atmosphere.pressure))
-        let mapping = mapping(for: scenario)
+        let mappings = mappings(for: scenario)
         let gaugeCells = scenario.gauges.map { gauge -> (i: Int, j: Int, k: Int) in
             var cell = nearestFluidCell(to: gauge.position)
             // On cut cells a gauge in a cell less than half air reads the first one above that is.
@@ -467,10 +467,17 @@ extension BlastSolver {
             return cell
         }
         let gaugeCentres = gaugeCells.map { grid.cellCentre($0.i, $0.j, $0.k) }
-        var mapped: SphericalBlast?
-        if let mapping {
+        var mapped: [SphericalBlast] = []
+        if !mappings.isEmpty {
+            // Charges too near anything to be mapped are laid as the balloon, first, so that the
+            // mapped ones are laid over nothing of theirs; the balloon stands for its charge some
+            // time after it fired, and is laid as the mapped ones are, at their clock.
+            for (k, charge) in charges(of: scenario).enumerated()
+            where !mappings.contains(where: { $0.index == k }) {
+                deposit(charge)
+            }
             mapped = depositMapped(
-                scenario.charge, radius: mapping.radius, onGround: mapping.onGround, probes: gaugeCentres)
+                mappings, among: charges(of: scenario).map(\.position), probes: gaugeCentres)
         } else if let deflagration = scenario.deflagration {
             deflagrationStage?.initialUnburnt = depositCloud(deflagration)
         } else {
@@ -487,33 +494,77 @@ extension BlastSolver {
         if scenario.structuralObjects.count > 1, configuration.refinement > 1, refinement == nil {
             throw BlastError.allocationFailed("multi-body air refinement")
         }
-        if let mapping, let mapped {
-            recordMapped(mapped, charge: scenario.charge, radius: mapping.radius, gauges: gaugeCentres)
+        if !mapped.isEmpty {
+            recordMapped(
+                mapped, mappings: mappings, among: charges(of: scenario).map(\.position), gauges: gaugeCentres
+            )
         }
     }
 
-    /// How far a lone charge's blast can be solved in one dimension before it meets anything:
-    /// 0.8 of the distance to the nearest block, structure or open face of the domain (a
-    /// reflecting face the charge sits on mirrors it instead), at most 16 cells; nil if mapping is
-    /// off or not possible, or would not reach 3 cells.
-    func mapping(for scenario: Scenario) -> (radius: Float, onGround: Bool)? {
+    /// A charge laid down from its own one-dimensional solution: which of the scene's charges
+    /// (0 the main one, then the additional ones), how far out, and whether on the ground or on
+    /// another reflecting face, which mirrors it.
+    struct ChargeMapping {
+        var index: Int
+        var charge: Charge
+        var radius: Float
+        var onGround: Bool
+    }
+
+    /// The scene's charges, the main one first.
+    func charges(of scenario: Scenario) -> [Charge] { [scenario.charge] + (scenario.additionalCharges ?? []) }
+
+    /// The charges whose blast can be solved in one dimension before it meets anything, each as
+    /// far as it can (`mapping(of:among:scenario:)`); the rest are laid as the balloon. Empty if
+    /// mapping is off or not possible.
+    func mappings(for scenario: Scenario) -> [ChargeMapping] {
         // The one-dimensional solution has the ideal gas and hot air, and afterburning without its
         // extinction limit; not gravity, sub-grid mixing or radiative cooling.
         guard configuration.mappedCharge, configuration.airModel != .dissociating,
             configuration.afterburnLimit == nil, configuration.gravity == nil, configuration.mixing == nil,
-            configuration.radiativeCooling == nil, scenario.deflagration == nil,
-            (scenario.additionalCharges ?? []).isEmpty, scenario.charge.mass > 0
-        else { return nil }
-        let c = scenario.charge.position
+            configuration.radiativeCooling == nil, scenario.deflagration == nil
+        else { return [] }
+        let charges = charges(of: scenario)
+        return charges.indices.compactMap { k in
+            guard charges[k].mass > 0 else { return nil }
+            let others = charges.indices.filter { $0 != k }.map { charges[$0].position }
+            return mapping(of: charges[k], among: others, scenario: scenario).map {
+                ChargeMapping(index: k, charge: charges[k], radius: $0.radius, onGround: $0.onGround)
+            }
+        }
+    }
+
+    /// How far a charge's blast can be solved in one dimension before it meets anything: 0.8 of
+    /// the distance to the nearest block, structure, pane or open face of the domain (a reflecting
+    /// face the charge sits on, the ground or a mirror plane, mirrors it instead), half the way to the nearest of the scene's
+    /// `others` charges (where their shells could first meet), and within the cells' and the
+    /// scaled reach's caps; nil if that would not reach 3 cells.
+    func mapping(of charge: Charge, among others: [SIMD3<Float>], scenario: Scenario)
+        -> (radius: Float, onGround: Bool)?
+    {
+        let c = charge.position
         let dx = grid.cellSize
         let shaped = scenario.terrain.map { !$0.isFlat } ?? false
-        let onGround = c.z <= 0.5 * dx && scenario.reflectiveFaces.contains(.zMin) && !shaped
+        let size = scenario.domainSize
+        let faces: [(BoundaryFaces, Float)] = [
+            (.xMin, c.x), (.xMax, size.x - c.x), (.yMin, c.y), (.yMax, size.y - c.y), (.zMin, c.z),
+            (.zMax, size.z - c.z),
+        ]
+        // The reflecting face the charge lies on, if any (the ground first, unless it is shaped):
+        // it mirrors the blast, as a charge of twice the mass in free air.
+        let mirror =
+            c.z <= 0.5 * dx && scenario.reflectiveFaces.contains(.zMin) && !shaped
+            ? BoundaryFaces.zMin
+            : faces.first { face, distance in
+                face != .zMin && distance <= 0.5 * dx && scenario.reflectiveFaces.contains(face)
+            }?.0
+        let onGround = mirror != nil
         var nearest = Float.infinity
         if shaped, let terrain = scenario.terrain {
             // The surface, sampled a quarter cell apart within the furthest the blast may be mapped.
             let reach = min(
                 configuration.mappedChargeCells * dx,
-                configuration.mappedChargeScaledReach * cbrt(scenario.charge.mass))
+                configuration.mappedChargeScaledReach * cbrt(charge.mass))
             let step = 0.25 * dx
             let count = Int((2 * reach / step).rounded(.up))
             for b in 0...count {
@@ -529,17 +580,11 @@ extension BlastSolver {
         for box in obstacles {
             nearest = min(nearest, simd_distance(simd_clamp(c, box.min, box.max), c))
         }
-        let size = scenario.domainSize
-        let faces: [(BoundaryFaces, Float)] = [
-            (.xMin, c.x), (.xMax, size.x - c.x), (.yMin, c.y), (.yMax, size.y - c.y), (.zMin, c.z),
-            (.zMax, size.z - c.z),
-        ]
-        for (face, distance) in faces where !(face == .zMin && onGround) {
+        for (face, distance) in faces where face != mirror {
             nearest = min(nearest, distance)
         }
         let cap = min(
-            configuration.mappedChargeCells * dx,
-            configuration.mappedChargeScaledReach * cbrt(scenario.charge.mass))
+            configuration.mappedChargeCells * dx, configuration.mappedChargeScaledReach * cbrt(charge.mass))
         // Glazing, which closes its cells of the mask without a block (envelopes' walls are blocks).
         for object in scenario.envelopeObjects {
             guard let envelope = object.envelope else { continue }
@@ -553,7 +598,8 @@ extension BlastSolver {
                 }
             }
         }
-        let radius = min(0.8 * nearest, cap)
+        var radius = min(0.8 * nearest, cap)
+        for other in others { radius = min(radius, 0.5 * simd_distance(other, c)) }
         return radius >= 3 * dx ? (radius, onGround) : nil
     }
 
