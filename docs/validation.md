@@ -5688,6 +5688,10 @@ checks; see the [shell model](shell-model.md#verification).
 These establish that the equations are solved as intended. They say nothing about whether the
 equations are the right ones.
 
+Independent Python versions of the exact solutions to Sod's shock tube and the Sedov–Taylor
+blast, a textbook scheme to read errors against, and a script that scores a solver profile
+against both are described in [analytic oracles](analytic-oracles.md).
+
 ## Convergence on today's defaults
 
 The independent review's larger issue 2 ([validation-review.md](validation-review.md)): no
