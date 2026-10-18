@@ -1186,6 +1186,7 @@ public enum StandingTable {
         // Timber's properties; its standing follows from its material class.
         "StructureMaterial.timber": .input,
         "StructureMaterial.localBuckling": .input,
+        "StructureMaterial.rateLaw": .input,
         // Connections.
         "Anchorage.normalStiffness": .input,
         "Anchorage.shearStiffness": .input,
@@ -2005,14 +2006,16 @@ struct StandingScene {
                         + "Lindberg's", "shell-model.md#buckling"),
                 StandingEvidence(
                     "Nassr's steel beams and columns in the open (W150 and W200, 50–250 kg of ANFO)",
-                    "Beams 0.59–1.23 of the measured deflection, columns 0.35–1.68: within a quarter on the "
-                        + "shots near elastic and the curtain shot; high about the weak axis (no strain-rate law: "
-                        + "Nassr measured yield raised 1.3–1.5), low where the readings likely include the frame's "
-                        + "movement", "validation.md#steel-beams-and-columns-in-the-open"),
+                    "With the steel's strain-rate law by grade, unfitted: beams 0.57–1.12 of the measured "
+                        + "deflection, columns 0.30–1.61; the beams near elastic and the curtain shot's within 14%; "
+                        + "a column bent about its weak axis 1.6 times; low where the readings likely include the "
+                        + "frame's movement", "validation.md#steel-beams-and-columns-in-the-open"),
             ]
             parts.append(
                 "steel members compared with one series of blasted beams and columns, within half to twice "
-                    + "either way, without a strain-rate law; their connections not compared")
+                    + "either way; their yield rising with strain rate by Cowper and Symonds's law, mild steel's "
+                    + "constants (Jones) to 300 MPa and ERDC's measured A992 and A572 grade 50 above; their "
+                    + "connections not compared")
         }
         if classes.contains(.masonry) {
             level = max(level, .verified)

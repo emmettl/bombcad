@@ -2113,6 +2113,15 @@ public final class StructureSolver {
             hourglassStiffness: hourglassCoefficient * material.youngsModulus * h / 48,
             soundSpeed: material.dilatationalWaveSpeed)
         parameters.youngsModulus = material.youngsModulus
+        if let rateLaw = material.resolvingRateLaw().rateLaw, case .cowperSymonds(let d, let q) = rateLaw,
+            d > 0,
+            q > 0
+        {
+            let law = SIMD2<Float>(d, q)
+            parameters.rateConstant = law.x
+            parameters.rateExponent = 1 / law.y
+            parameters.rateTestFactor = 1 + pow(StructureMaterial.tensileTestRate / law.x, 1 / law.y)
+        }
         if let buckling = material.localBuckling {
             parameters.bucklingAxis = UInt32(buckling.axis + 1)
             parameters.bucklingSide = Float(buckling.side)

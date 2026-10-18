@@ -59,7 +59,8 @@ public struct SteelSection: Sendable, Hashable {
         -> StructureMaterial
     {
         let width = width ?? rectangleWidth
-        var material = steel
+        // The grade's rate law from the steel's own yield, before it is scaled.
+        var material = steel.resolvingRateLaw()
         material.name = "\(steel.name), \(name)"
         material.youngsModulus *= secondMoment / (width * depth * depth * depth / 12)
         material.density *= area / (width * depth)
