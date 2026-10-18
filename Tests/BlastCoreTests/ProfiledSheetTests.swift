@@ -335,8 +335,11 @@ struct ProfiledSheetTests {
             solids: [Box(min: SIMD3(0, -width / 2, 0.9), max: SIMD3(6, width / 2, 1.1))],
             material: zed.equivalent(of: steel, width: width), elementSize: 0.25, fixedBase: false)
         model.elementKind = .shell
-        // Straight: its capacity in bending is the check, as the sheeting it carries holds it
-        // sideways; bowed and free, the rectangle standing for it buckles sideways first.
+        // Straight and held sideways along its length, as the sheeting it carries holds it: its
+        // capacity in bending is the check. Free, the rectangle standing for it is past its
+        // lateral-torsional buckling load at 0.9 of collapse and stands only while perfectly
+        // symmetric: bowed, or with its fibres' yields raised a little unevenly by the strain-rate
+        // law, it buckles sideways first.
         model.memberImperfections = false
         // Collapse at w = 8 M_c / L² per metre: 3.33 kN/m from M_c = 14.98 kN m.
         let collapse: Float = 8 * 14.98e3 / 36
@@ -347,6 +350,7 @@ struct ProfiledSheetTests {
             solver.damping = 80
             let ends = solver.nodes { $0.x < 1e-4 || $0.x > 6 - 1e-4 }
             solver.mutateNodes { nodes in
+                for n in nodes.indices { nodes[n].restrain(y: true) }
                 for n in ends { nodes[n].restrain(y: true, z: true) }
                 nodes[ends[0]].restrain(x: true)
             }
@@ -386,5 +390,35 @@ struct ProfiledSheetTests {
                 + "\(result.reflectedPeak / 1000) kPa, \(result.reflectedImpulse) kPa ms (measured 315, 196)")
         #expect(abs(result.structure.firstPeak / -0.110 - 1) < 0.25)
         #expect(abs(result.reflectedImpulse / 196 - 1) < 0.3)
+    }
+
+    @Test(
+        "ADBLAST's sheets in the one-way model: a slender flange at Winter's effective width, and under each test's measured pulse the shell model's deflection to within a third"
+    )
+    func adblastOneWay() throws {
+        // TR84 at 0.75 mm: the 100 mm crest buckles at 4π²E/(12(1-ν²))(t/b)² = 43 MPa, so ρ = (λ -
+        // 0.22)/λ² = 0.34 at 320 MPa; the modulus falls from the gross 21,100 mm³/m to 16,300.
+        // Langdon's narrow 2 mm flange is compact (b/t 22 against 38ε = 34 at 296 MPa) and forms a
+        // hinge; her wide one (b/t 48, past 42ε = 37) is slender, at Winter's width.
+        let wall = SheetProfile.langdonBlastWall
+        let plastic = Double(wall.section.plasticModulus) / Double(wall.pitch)
+        #expect(abs(Double(wall.designModulus(crestCompressed: true)) / plastic - 1) < 1e-4)
+        #expect(Double(wall.designModulus(crestCompressed: false)) < plastic)
+        // The same load, the measured pulse over the whole panel: the shells' first deflections
+        // (docs/profiled-sheeting.md) against the one-way model's.
+        let url = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().appending(path: "Fixtures/ADBLAST2015/tests.json")
+        let shell: [Int: Double] = [
+            3: 29, 4: 60, 6: 77, 1: 86, 2: 88, 7: 72, 8: 401, 10: 245, 11: 365, 12: 272,
+        ]
+        for test in try AdblastCladdingTest.tests(from: url) {
+            let result = AdblastCladdingTest.envelopeOnMeasured(test)
+            let ratio = result.peak * 1000 / shell[test.test]!
+            print(
+                "ADBLAST test \(test.test) under its measured pulse: one-way \(result.peak * 1000) mm, \(ratio) of the shell"
+            )
+            #expect(ratio > 0.95 && ratio < 1.4, "test \(test.test): \(ratio)")
+            #expect(!result.screwsPulled)
+        }
     }
 }

@@ -388,6 +388,9 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     /// A beam's flange that buckles locally (a thin-walled section's, as a profiled sheet's rib):
     /// its fibres on that side lose their compressive stress past an onset strain. Nil for none.
     public var localBuckling: LocalBuckling?
+    /// Steel's yield raised by its strain rate (`SteelRateLaw`), for von Mises beams and shells, on
+    /// yield and hardening; nil for none. Structural steel's is by its grade.
+    public var rateLaw: SteelRateLaw?
 
     /// A von Mises material.
     public init(
@@ -501,9 +504,27 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     }()
 
     /// Structural steel, S355: yields at 355 MPa and hardens slowly, failing at 20% strain.
-    public static let structuralSteel = Self(
-        name: "Structural steel", density: 7850, youngsModulus: 210e9, poissonRatio: 0.3, yieldStress: 355e6,
-        hardeningModulus: 1e9, failureStrain: 0.2)
+    public static let structuralSteel: Self = {
+        var steel = Self(
+            name: "Structural steel", density: 7850, youngsModulus: 210e9, poissonRatio: 0.3,
+            yieldStress: 355e6,
+            hardeningModulus: 1e9, failureStrain: 0.2)
+        steel.rateLaw = .byGrade
+        return steel
+    }()
+
+    /// This material with a law by grade made the constants of its own yield, as they must be
+    /// before a section's equivalent scales the yield.
+    public func resolvingRateLaw(yield: Float? = nil) -> Self {
+        guard rateLaw == .byGrade else { return self }
+        var material = self
+        let constants = SteelRateLaw.constants(yield: yield ?? yieldStress)
+        material.rateLaw = .cowperSymonds(d: constants.x, q: constants.y)
+        return material
+    }
+
+    /// The tensile test's strain rate, 1/s, at which a steel's yield is measured (EN ISO 6892-1).
+    public static let tensileTestRate: Float = 2.5e-4
 
     /// Annealed float glass, as a brittle material: elastic until it cracks at 45 MPa, then
     /// gone after a fraction of a millimetre (its fracture energy, about 8 J/m², is that of
@@ -1228,8 +1249,13 @@ public struct StructureSummary: Sendable, Hashable {
     /// Elements removed after reaching the failure strain.
     public var erodedElements = 0
     /// Largest displacement now, in metres, of a node still attached to an active element: the
-    /// structure's deflection at this moment, not the largest it has reached.
+    /// structure's deflection at this moment, not the largest it has reached. Measured from the
+    /// shape it settled to under its own weight, where it was settled, so that it reads zero
+    /// before the blast arrives (`selfWeightSag` holds the sag itself).
     public var maxDisplacement: Float = 0
+    /// Largest displacement, in metres, of the shape the structure settled to under its own weight
+    /// before the blast, from its undeformed shape; zero where it was not settled.
+    public var selfWeightSag: Float = 0
     /// Largest equivalent plastic strain (von Mises) or compressive strain (concrete) in an
     /// active element.
     public var maxPlasticStrain: Float = 0
@@ -1251,6 +1277,7 @@ public struct StructureSummary: Sendable, Hashable {
         both.activeElements += other.activeElements
         both.erodedElements += other.erodedElements
         both.maxDisplacement = max(maxDisplacement, other.maxDisplacement)
+        both.selfWeightSag = max(selfWeightSag, other.selfWeightSag)
         both.maxPlasticStrain = max(maxPlasticStrain, other.maxPlasticStrain)
         both.maxDamage = max(maxDamage, other.maxDamage)
         both.hasBlownUp = hasBlownUp || other.hasBlownUp
@@ -1434,6 +1461,11 @@ struct MaterialParameters {
     var bucklingOnset: Float = 1e30
     var bucklingSoftening: Float = 1
     var bucklingResidual: Float = 1
+    // Cowper and Symonds's law (`SteelRateLaw`): D (0 for none), 1 / q, and the factor at the
+    // tensile test's rate, which the yield is taken from.
+    var rateConstant: Float = 0
+    var rateExponent: Float = 1
+    var rateTestFactor: Float = 1
 }
 
 /// Layout matches `CouplingUniforms` in `Structure.metal`.
@@ -1769,6 +1801,7 @@ extension StructureMaterial {
         // Glass saved before this property existed is still drawn as glass.
         isTransparent = try value(.isTransparent, name.localizedCaseInsensitiveContains("glass"))
         timber = try container.decodeIfPresent(TimberProperties.self, forKey: .timber)
+        rateLaw = try container.decodeIfPresent(SteelRateLaw.self, forKey: .rateLaw)
     }
 }
 
@@ -2078,5 +2111,29 @@ public struct SpringLaw: Codable, Hashable, Sendable {
         self.stiffness = stiffness
         self.yield = yield
         self.hardening = hardening
+    }
+}
+
+/// How a steel's yield rises with its strain rate: Cowper and Symonds's 1 + (ε̇ / D)^(1/q), taken
+/// over its value at a tensile test's 2.5 × 10⁻⁴ /s (EN ISO 6892-1), the rate its yield is
+/// measured at, and never below 1, so a slowly loaded member keeps its yield.
+public enum SteelRateLaw: Codable, Hashable, Sendable {
+    /// The constants of the steel's grade, by its yield (`constants(yield:)`).
+    case byGrade
+    case cowperSymonds(d: Float, q: Float)
+
+    /// (D in 1/s, q) for a steel of `yield` (Pa). The weaker a steel, the more its yield rises:
+    /// - to 300 MPa, mild steel's D = 40.4 /s, q = 5 (N. Jones, *Structural Impact*, 1989, Table 8.1);
+    /// - to 400 MPa, fitted to Murray et al.'s ASTM A992 (372 MPa) between 0.002 and 2 /s,
+    ///   D = 68.8 /s, q = 5.8, within 2% of their means;
+    /// - above, fitted to their A572 grade 50 (424 MPa), D = 94.4 /s, q = 4.0, within 2%; for steels
+    ///   stronger than they tested (quenched and tempered) likely too much still.
+    /// (M. P. Murray, S. P. Rowell and T. A. Thornton, ERDC, "Effects of high strain rates on ASTM
+    /// A992 and A572 Grade 50 steel", International Explosives Safety Symposium 2018, Tables 3–4,
+    /// measured for UFC 3-340-02; their static tests at 2 × 10⁻⁵ /s.)
+    public static func constants(yield: Float) -> SIMD2<Float> {
+        if yield <= 300e6 { return SIMD2(40.4, 5) }
+        if yield <= 400e6 { return SIMD2(68.8, 5.8) }
+        return SIMD2(94.4, 4.0)
     }
 }

@@ -27,6 +27,9 @@ import simd
 //   blastbench closeair [--z 0.3,0.5,0.75,1] [--dx 0.02] [--mapped] [--refine 2] [--refine-levels 2]
 //   blastbench closein [--tests P1,P7] [--dx 0.05] [--h 0.025] [--time 0.3] [--refine 2] [--afterburn] [--progress] [--bond ...]
 //                      [--trace out-%.csv [--trace-until 0.001]] [--faces] [--energy] [--under] [--skirts]
+//                      [--roomy] [--history out-%.csv]   (open faces 4 m/kg^(1/3) out; the deflection's record)
+//   blastbench twoface [--wu S8] [--wang A] [--yao T4] [--roomy] [--out dir]   (Wu's, Wang's and Yao's slabs;
+//                      --roomy moves every open face out to 4 m/kg^(1/3), as Scenario.openFaceRoom)
 //   blastbench contact [--tests SN142,SN131] [--dx 0.02] [--refine 2] [--levels 2] [--layers 12] [--time 0.003] [--step-divisor 4] [--charge 1.64] [--progress] [--fastest] [--column] [--no-debris-drag] [--no-contact]
 //   blastbench slab [--history] [--history-csv dir] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map] [--plan [0.1]]
 //                   [--stiffening [--profile [--line] [--column -44]]]   (where the tension along the span is carried)
@@ -952,9 +955,22 @@ func runChamber() throws {
     print(
         "Air cells \(format(Double(cellSize), 3)) m, elements \(format(Double(elementSize), 3)) m, \(format(duration * 1000, 0)) ms"
             + (downstand ? "" : ", no down-stand"))
+    // The open faces, across and above, 4 m/kg^(1/3) from the charge and the chamber by default
+    // (since 18 October 2026); `--tight` keeps the box of 1 m either side and 2 m above, as before;
+    // `--pad 0,11,10` moves them by hand (m: across below, which moves the chamber, across above,
+    // and the top).
+    var room =
+        flag("tight")
+        ? (low: .zero, high: .zero) : ChamberTest.scenario(elementSize: elementSize).openFaceRoom(step: 0.5)
+    if let v = option("pad")?.split(separator: ",").compactMap({ Float($0) }), v.count == 3 {
+        room = (SIMD3(0, v[0], 0), SIMD3(0, v[1], v[2]))
+    }
     var scenario = ChamberTest.scenario(
         elementSize: elementSize, downstand: downstand, ties: !flag("no-ties"), elastic: flag("elastic"),
-        chargeScale: chargeScale)
+        chargeScale: chargeScale, pad: room)
+    if room.low != .zero || room.high != .zero {
+        print("Domain \(scenario.domainSize.x) x \(scenario.domainSize.y) x \(scenario.domainSize.z) m")
+    }
     if let residual = option("crack-residual").flatMap({ Float($0) }) {
         scenario.structure?.material.crackResidual = residual
         print("Residual crack opening \(format(Double(residual) * 100, 0))%")
@@ -1816,7 +1832,8 @@ func runSnapshot() throws {
             var lines: [SIMD4<Float>] = []
             for k in [KFactorDistance.k24, .k40] {
                 lines += HazardOverlay.ring(
-                    centre: centre, radius: k.distance(kilograms: scenario.charge.mass), kind: .kFactor)
+                    centre: centre, radius: k.requiredDistance(kilograms: scenario.charge.mass),
+                    kind: .kFactor)
             }
             lines += HazardOverlay.contour(field, level: .eardrumThreshold, kind: .eardrum)
             lines += HazardOverlay.contour(field, level: .lethality50, kind: .lung)
@@ -1847,14 +1864,20 @@ func runSnapshot() throws {
             "Structure: \(summary.activeElements) elements intact, \(summary.erodedElements) failed, "
                 + "deflection \(format(Double(summary.maxDisplacement) * 1000, 0)) mm "
                 + "(largest \(format(Double(largest) * 1000, 0)) mm), "
-                + "worst damage \(format(Double(min(summary.maxDamage, 1)) * 100, 0))%")
+                + "worst damage \(format(Double(min(summary.maxDamage, 1)) * 100, 0))%"
+                + (summary.selfWeightSag > 0
+                    ? "; sagged \(format(Double(summary.selfWeightSag) * 1000, 0)) mm under its own weight first"
+                    : ""))
     }
     if solver.bodies.count > 1 {
         for body in solver.bodies {
             guard let summary = body.summary() else { continue }
             print(
                 "  \(body.name): \(summary.erodedElements) of \(summary.activeElements + summary.erodedElements) "
-                    + "elements failed, moved up to \(format(Double(summary.maxDisplacement) * 1000, 0)) mm")
+                    + "elements failed, moved up to \(format(Double(summary.maxDisplacement) * 1000, 0)) mm"
+                    + (summary.selfWeightSag > 0
+                        ? " (after sagging \(format(Double(summary.selfWeightSag) * 1000, 0)) mm under its own weight)"
+                        : ""))
         }
     }
     // Each gauge's peak overpressure and positive impulse over the run.
@@ -2849,7 +2872,8 @@ func runTwoFace() throws {
                 device: device, test: test, cellSize: cellSize,
                 refinement: option("refine").flatMap { Int($0) } ?? 2, elementSize: yaoElement,
                 duration: duration,
-                afterburning: burning, airModel: chosenGas(), openFaces: chosenFaces(), adjust: adjust,
+                afterburning: burning, airModel: chosenGas(), openFaces: chosenFaces(), roomy: flag("roomy"),
+                adjust: adjust,
                 prepare: { solver in
                     // `--weightless`: the slab without its own weight, as compared before 17 October 2026.
                     if flag("weightless") { solver.gravity = 0 }
@@ -2915,7 +2939,7 @@ func runTwoFace() throws {
                 refinement: option("refine").flatMap { Int($0) } ?? 2, elementSize: elementSize,
                 duration: duration,
                 heldLengthwise: flag("held"), afterburning: burning, airModel: chosenGas(),
-                openFaces: chosenFaces(), adjust: adjust,
+                openFaces: chosenFaces(), roomy: flag("roomy"), adjust: adjust,
                 prepare: { solver in
                     prepareTrace(solver)
                     lastStructure = solver
@@ -2976,7 +3000,7 @@ func runTwoFace() throws {
                 elementSize: elementSize, duration: duration,
                 edges: option("edges").flatMap { TwoFaceSlabTests.WangEdges(rawValue: $0) }
                     ?? (flag("hinged") ? .hinged : .fixed),
-                afterburning: burning, airModel: chosenGas(), openFaces: chosenFaces(),
+                afterburning: burning, airModel: chosenGas(), openFaces: chosenFaces(), roomy: flag("roomy"),
                 adjust: { scenario in
                     adjust(&scenario)
                     if let bond = chosenBondSlip(diameter: test.bar) { scenario.structure?.bondSlip = bond }
@@ -3048,6 +3072,7 @@ func runCloseIn() throws {
             refinement: refinement, mappedCharge: !flag("no-map"), afterburning: burning,
             airModel: chosenGas(), openFaces: chosenFaces(),
             heldLengthwise: !flag("sliding"), stepsPerSample: option("trace") != nil ? 1 : 16,
+            roomy: flag("roomy"),
             adjust: { scenario in
                 if flag("no-rate") { scenario.structure?.material.rateDependent = false }
                 if let scale = option("charge-scale").flatMap({ Float($0) }) { scenario.charge.mass *= scale }
@@ -3095,6 +3120,13 @@ func runCloseIn() throws {
                 applyFragmentThresholds(structure)
                 inspect?(structure, time)
             }, prepare: prepareTrace)
+        if let path = option("history") {
+            // `--history <csv>`: the mid-span deflection every sample, `%` for the test's name.
+            let rows = result.history.map { "\($0.x),\($0.y * 1000)" }.joined(separator: "\n")
+            try ("time_s,deflection_mm\n" + rows).write(
+                toFile: path.replacingOccurrences(of: "%", with: test.name), atomically: true, encoding: .utf8
+            )
+        }
         if let path = option("trace") {
             let centre = result.gaugeHistories[5]
             let text = centre.map { "\($0.time),\($0.pressure)" }.joined(separator: "\n")
@@ -5453,7 +5485,9 @@ do {
     case "poulin": try runPoulin(device: device)
     case "tyndall": try runTyndall(device: device)
     case "facade": try runFacade(device: device)
+    case "house": try runHouse(device: device)
     case "lacroix": try runLacroix(device: device)
+    case "nassr": try runNassr(device: device)
     case "beam": try runBeam()
     case "shear": try runShearBeam()
     case "pushoff": try runPushOff()
@@ -5497,7 +5531,9 @@ do {
         }
         for k in KFactorDistance.all {
             print(
-                String(format: "%@ (%.2f m/kg^(1/3)): %6.1f m", k.name, k.metric, k.distance(kilograms: mass))
+                String(
+                    format: "%@ (%.2f m/kg^(1/3)): %6.1f m", k.name, k.metric,
+                    k.requiredDistance(kilograms: mass))
                     + (k.overpressurePa.map { String(format: ", %.1f kPa", $0 / 1000) } ?? "") + " — " + k.use
             )
         }

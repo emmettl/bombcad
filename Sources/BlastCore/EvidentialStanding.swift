@@ -138,8 +138,18 @@ public struct ResultStanding: Codable, Hashable, Sendable, Identifiable {
 /// it leaves out. Saved with a kept run, so that the run keeps the standing it was made under
 /// when the table is later revised.
 public struct SceneStanding: Codable, Hashable, Sendable {
-    /// Advance when the table's content changes, so that a kept run says which it was judged by.
-    public static let currentTable = "standing-table-33"
+    /// The table's identity, derived from its content (`StandingFingerprint`), so that a kept run
+    /// says which it was judged by. Before 18 October 2026 it was numbered by hand,
+    /// "standing-table-1" to "standing-table-36", and kept runs still carry those.
+    public static var currentTable: String { StandingFingerprint.current }
+
+    /// The table's identity as shown: "standing table 36" for a numbered one, else
+    /// "standing a1b2c3d4".
+    public var tableTitle: String {
+        table.hasPrefix("standing-table-")
+            ? "standing table " + table.dropFirst("standing-table-".count)
+            : "standing " + table.dropFirst("standing-".count)
+    }
 
     public var table = Self.currentTable
     public var results: [ResultStanding]
@@ -794,7 +804,8 @@ public enum StandingTable {
                     + "by screws that pull through. Langdon's corrugated panels: 10 of 13 permanent sets within "
                     + "half to twice of measured. ADBLAST's screwed cladding in air: first deflection 0.90–1.35 "
                     + "of measured on all ten tests, but what is left after is not right, and cladding torn off "
-                    + "a deforming purlin is not compared.",
+                    + "a deforming purlin is not compared. Sheeted purlins and rails are held straight by the "
+                    + "screws, which under uplift, their free flange in compression, is the unsafe side.",
                 document: "profiled-sheeting.md#against-adblasts-cladding-tests")
         case .inclinedBars:
             return Entry(
@@ -1176,6 +1187,7 @@ public enum StandingTable {
         // Timber's properties; its standing follows from its material class.
         "StructureMaterial.timber": .input,
         "StructureMaterial.localBuckling": .input,
+        "StructureMaterial.rateLaw": .input,
         // Connections.
         "Anchorage.normalStiffness": .input,
         "Anchorage.shearStiffness": .input,
@@ -1186,6 +1198,7 @@ public enum StandingTable {
         "Anchorage.cohesionSlip": .input,
         "Anchorage.friction": .input,
         "Anchorage.bearingCapacity": .input,
+        "Anchorage.closingGap": .input,
         "Anchorage.footing": .option([.footings, .cyclicSand]),
         "Anchorage.side": .input,
         "Anchorage.jointNormal": .input,
@@ -1281,7 +1294,10 @@ public enum StandingTable {
 
 extension SceneStanding {
     /// The standing of each result `inputs` produce, by the table above.
-    public init(_ inputs: StandingInputs) {
+    public init(_ inputs: StandingInputs) { self.init(inputs, table: Self.currentTable) }
+
+    /// The standing of `inputs`, recorded as judged by `table`.
+    init(_ inputs: StandingInputs, table: String) {
         let scene = StandingScene(inputs)
         var results = [scene.peakOverpressure(), scene.impulse(), scene.blastInjury()]
         if !scene.structures.isEmpty { results += [scene.structuralResponse(), scene.structuralDamage()] }
@@ -1320,7 +1336,9 @@ extension SceneStanding {
             results[index].unbanded = unbanded
             results[index].regimes = scene.regimes(for: results[index].kind)
         }
-        self.init(results: results, resolution: scene.resolutionNotes(), unsupported: scene.unsupported())
+        self.init(
+            table: table, results: results, resolution: scene.resolutionNotes(),
+            unsupported: scene.unsupported())
         gauges = scene.gaugeBands()
     }
 }
@@ -1568,7 +1586,7 @@ struct StandingScene {
                     "deflagration.md#checks"),
                 StandingEvidence(
                     "HySEA's 20 ft containers, lean hydrogen of 15% and 21% (Skjold et al., 2017)",
-                    "Vented through the doors within the repeats' scatter (0.72–1.42); through the roof 0.20–0.53, "
+                    "Vented through the doors within the repeats' scatter (0.72–1.42); through the roof 0.19–0.45, "
                         + "the unsafe side",
                     "deflagration.md#checks"),
             ]
@@ -1636,7 +1654,7 @@ struct StandingScene {
         let fuel =
             gas == .hydrogen
             ? "Lean hydrogen, with its flame's 1/Le response, reads 1.24–2.96 of FM Global's vented tests and "
-                + "within the scatter of HySEA's containers vented through their doors, but 0.20–0.53 of those vented "
+                + "within the scatter of HySEA's containers vented through their doors, but 0.19–0.45 of those vented "
                 + "through their roof, the unsafe side; K_G in a closed sphere 0.89–0.99 of the measured. For methane, "
             : gas == .townGas
                 ? "Town gas, half hydrogen, was compared only in a closed sphere (K_G about 0.77 of the measured) "
@@ -1953,7 +1971,8 @@ struct StandingScene {
                 StandingEvidence(
                     "An internal explosion in a reinforced concrete chamber",
                     "Unsafe side, too stiff: its roof's edge left 25 mm up against 95 mm measured (a quarter) "
-                        + "with the confined regime's pressed interlock, 27 mm with afterburning and hot air; not "
+                        + "with the confined regime's pressed interlock, on today's air with the open faces at the "
+                        + "clearance rule (27 mm in the test's tighter box); not "
                         + "converged on 25 mm elements; the wall pressures 0.9 to 1.6 times those measured on either "
                         + "air",
                     "validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber"),
@@ -1977,13 +1996,29 @@ struct StandingScene {
             parts.append("plain concrete verified against its own curves, no member compared")
         }
         if classes.contains(.steel) {
-            level = max(level, .verified)
-            evidence.append(
+            level = max(level, .compared)
+            evidence += [
                 StandingEvidence(
                     "Elastic bars and cantilevers",
                     "Wave speed, tip deflection and first period within 5% of "
-                        + "theory", "validation.md#verification-against-theory"))
-            parts.append("steel verified against beam and wave theory, no test")
+                        + "theory", "validation.md#verification-against-theory"),
+                StandingEvidence(
+                    "Steel struts buckling (blastbench buckling)",
+                    "Straight, elastic buckling within 2% of Euler; bowed by default, 0.97–1.02 of Eurocode 3's "
+                        + "curves a, b and c over slenderness 0.2–2; an impact's buckled wavelength 1.03–1.20 times "
+                        + "Lindberg's", "shell-model.md#buckling"),
+                StandingEvidence(
+                    "Nassr's steel beams and columns in the open (W150 and W200, 50–250 kg of ANFO)",
+                    "With the steel's strain-rate law by grade, unfitted: beams 0.57–1.12 of the measured "
+                        + "deflection, columns 0.30–1.61; the beams near elastic and the curtain shot's within 14%; "
+                        + "a column bent about its weak axis 1.6 times; low where the readings likely include the "
+                        + "frame's movement", "validation.md#steel-beams-and-columns-in-the-open"),
+            ]
+            parts.append(
+                "steel members compared with one series of blasted beams and columns, within half to twice "
+                    + "either way; their yield rising with strain rate by Cowper and Symonds's law, mild steel's "
+                    + "constants (Jones) to 300 MPa and ERDC's measured A992 and A572 grade 50 above; their "
+                    + "connections not compared")
         }
         if classes.contains(.masonry) {
             level = max(level, .verified)
@@ -2007,8 +2042,17 @@ struct StandingScene {
                             + "on the hard ground); one run of each wall", "validation.md#brick-walls-debris")
                 )
             }
+            evidence.append(
+                StandingEvidence(
+                    "Terraced brick houses graded against wartime bomb damage (Gilbert, 1994)",
+                    "From 96 kg, a tenth of a second in, the houses' damage categories fall a category above "
+                        + "the surveyed median beyond 14 m (within one with bricks kept to a 50 mm crack); by "
+                        + "0.3 s their unrestrained front walls have gone over, one or two categories worse "
+                        + "than surveyed beyond 11 m",
+                    "validation.md#terraced-houses-against-wartime-bomb-damage"))
             parts.append(
-                "masonry's joints verified; brick walls under blasts fall as one column, not in pieces")
+                "masonry's joints verified; brick walls under blasts fall as one column, not in pieces; brick "
+                    + "houses too damaged at the longer ranges of wartime bombs")
         }
         if classes.contains(.glass) {
             level = max(level, .approximation)
@@ -2037,9 +2081,9 @@ struct StandingScene {
             evidence.append(
                 StandingEvidence(
                     "Cross-laminated timber buildings at Tyndall, 22.9 m from 14.5–90 kg (Weaver et al., 2017)",
-                    "The front's first storey inbound within 6% on the two lighter charges and 21% high on the "
-                        + "heaviest, the second storey 19–76% high, rebound 66–88% of measured; the front's "
-                        + "impulse 54–76% above the report's",
+                    "The front's impulse within 5% of the report's, the faces 4 m/kg^(1/3) out; the first storey "
+                        + "inbound 0.62–0.64 of measured on the two lighter charges and 1.6 times on the heaviest, "
+                        + "the second storey 1.1–1.4 times, rebound 51–112%",
                     "validation.md#cross-laminated-timber-buildings-at-tyndall"))
             parts.append(
                 "timber compared on CLT panels and glulam beams in a shock tube, its strength calibrated, and on "
@@ -2080,6 +2124,12 @@ struct StandingScene {
                 "Independent bodies meet through contact between their nodes, the spring and damper of contact "
                     + "within a body, checked for momentum and energy but never against a test; they must start "
                     + "apart and never bond.")
+        }
+        // Open faces too near: their reflections move the response after the positive phase.
+        if let note = inputs.scenario.tightFacesNote {
+            resolution.append(
+                note + " On Tyndall's CLT building a domain this tight gave 29 mm at the first storey where "
+                    + "18 mm is converged.")
         }
         let configuration = inputs.configuration
         if configuration.airSleepThreshold > 0 || configuration.airSleepCrossings > 0 {
@@ -2247,10 +2297,10 @@ struct StandingScene {
                     ? "with the air seeing each building whole but for its glazing, which opens in the air as "
                         + "it breaks: "
                     : "with the air seeing the building whole and the inside a one-way fill: ")
-                + "glass breakage and its time, concrete panels' rotation between fixed and simply supported "
-                + "edges, and freestanding walls as cantilevers from their foot, as approximations; brick panels, "
-                + "profiled steel sheeting, cross-laminated timber and the inside pressure through broken panes "
-                + "illustrative.",
+                + "each on its equivalent uniform load: glass breakage and its time, concrete panels' rotation "
+                + "between fixed and simply supported edges, freestanding walls as cantilevers from their foot, "
+                + "and profiled steel sheeting between its rails, as approximations; brick panels, "
+                + "cross-laminated timber and the inside pressure through broken panes illustrative.",
             evidence: [
                 StandingEvidence(
                     "UFC 3-340-02 §2-15.4's loads on the walls inside, through an open front window (16 cases, "
@@ -2270,9 +2320,10 @@ struct StandingScene {
                     "building-envelopes.md#one-way-damage-single-degree-of-freedom"),
                 StandingEvidence(
                     "Freestanding walls against measurement: Alsubaei's perimeter walls and Keys's brick walls",
-                    "6 of 7 outcomes as measured, built as tested; the blockwork's top within 16% (32 mm "
-                        + "against 28); the half-scale concrete wall 5.4° where light cracking was seen, the safe "
-                        + "side (the detailed model 2.1°)",
+                    "On the equivalent load 5 of 7 outcomes as measured, built as tested (6 on the mean); the "
+                        + "blockwork's top 28 mm against 28; the half-scale concrete wall 4.2° where light cracking "
+                        + "was seen, the safe side (the detailed model 2.1°); the blockwork at 125 kg 9.3°, short of "
+                        + "failing, where it collapsed",
                     "building-envelopes.md#freestanding-walls"),
                 StandingEvidence(
                     "One-way reinforced masonry walls under measured loads (Hayman, 2014)",
@@ -2282,9 +2333,17 @@ struct StandingScene {
                 StandingEvidence(
                     "Slabs held on their edges against measurement (the contest slab, Reynolds, Wu, Wang, Mendonça)",
                     "Under measured loads the measured peak between the fixed and simply supported bounds on all "
-                        + "eight; under the model's own close-in loads under-read, as the detailed model is, and "
+                        + "eight; under the model's own close-in loads, on the equivalent load, Wu's one-face slabs "
+                        + "0.91–1.56 of measured (0.52–0.71 on the mean), Wang's clamped panels 0.35–0.47, and "
                         + "Mendonça's two collapses missed",
                     "building-envelopes.md#slabs-held-on-their-edges"),
+                StandingEvidence(
+                    "ADBLAST's screwed TR84 cladding shot in air (10 tests, 0.5–1.5 kg)",
+                    "Profiled sheeting: within 1.0–1.35 of the shell model's deflection under the same load; in "
+                        + "the air's load on the strip of ribs it is judged on 0.65–1.09 of measured (the shells "
+                        + "0.90–1.35; the whole panel's mean 0.49–1.36); graded heavy to failed where the sheets "
+                        + "set but stayed on; the screws held, as measured",
+                    "profiled-sheeting.md#against-adblasts-cladding-as-an-envelope"),
                 StandingEvidence(
                     "Monk and Clubley's annealed windows in the Shoeburyness tunnel (12 timed panes)",
                     "Every pane broken, as in the tests, at 0.82–1.07 of the measured time and 0.69–1.15 of the "
@@ -2308,14 +2367,18 @@ struct StandingScene {
                 "Reinforced blockwork is judged as a concrete of the masonry's strength, graded by the "
                     + "concrete's limits; a freestanding wall's cap adds only the mass its construction gives.",
                 "Profiled steel sheeting spans one way between its rails or purlins by UFC 3-340-02's method for "
-                    + "cold-formed panels on the maker's effective section, graded by PDC-TR 06-08's limits for "
-                    + "deck whose membrane action its fixings limit, and blown off when its dynamic reaction passes "
-                    + "what its screws hold by EN 1993-1-3; no blast test of cladding or its fixings compared.",
+                    + "cold-formed panels on its effective section (the maker's, or by its compressed flat's "
+                    + "class, a slender one at Winter's width), graded by PDC-TR 06-08's limits for deck whose membrane action its "
+                    + "fixings limit, and blown off when the reaction pulling it off its screws, as it comes back "
+                    + "out or is sucked, passes what they hold by EN 1993-1-3; on the load on the middle third of "
+                    + "its ribs across the span, as they span on their own.",
                 "Cross-laminated timber spans one way, elastic–perfectly plastic, its resistance from the mean "
                     + "bending strength with the Ottawa shock tube's dynamic increase, graded by WoodWorks' ductility "
                     + "limits from the Tyndall tests; no envelope-level test of its damage compared.",
                 "Each panel alone: frame action, junctions and neighbouring walls are not seen; a panel past "
                     + "2° is flagged as beyond the one-way model.",
+                "A component's load is Biggs's equivalent uniform load, its faces weighted by its plastic "
+                    + "mechanism's shape from the edges it is held on (held nowhere, taken as held all round).",
                 "Glass is annealed, on Moore's large-deflection plate, simply supported, breaking at E1300's "
                     + "median strength with the whole pane at its largest stress"
                     + (laminated

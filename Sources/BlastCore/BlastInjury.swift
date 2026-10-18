@@ -15,9 +15,17 @@ public struct KFactorDistance: Codable, Sendable, Equatable, Identifiable {
     public var overpressurePa: Float?
     /// What the standard uses it for.
     public var use: String
+    /// The least distance the standard allows whatever the weight, m; nil where it sets none.
+    public var minimumM: Float? = nil
 
-    /// The distance for `kilograms` of TNT-equivalent net explosive weight, m.
+    /// The distance for `kilograms` of TNT-equivalent net explosive weight by the K-factor alone, m.
     public func distance(kilograms: Float) -> Float { metric * cbrt(max(kilograms, 0)) }
+
+    /// The distance the standard requires for `kilograms`: the K-factor's, but never under its
+    /// minimum, m.
+    public func requiredDistance(kilograms: Float) -> Float {
+        max(distance(kilograms: kilograms), minimumM ?? 0)
+    }
 
     /// Unbarricaded intraline distance, 3.5 psi (§C5.6.2.4).
     public static let k18 = KFactorDistance(
@@ -31,7 +39,7 @@ public struct KFactorDistance: Codable, Sendable, Equatable, Identifiable {
     /// Non-essential personnel at intentional detonations, not less than 381 m (§C5.18.6.3).
     public static let k328 = KFactorDistance(
         name: "K328", k: 328, metric: 130.1, overpressurePa: nil,
-        use: "Non-essential personnel at intentional detonations (not less than 381 m)")
+        use: "Non-essential personnel at intentional detonations (not less than 381 m)", minimumM: 381)
 
     public static let all = [k18, k24, k40, k328]
 }

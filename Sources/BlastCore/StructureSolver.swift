@@ -701,14 +701,21 @@ public final class StructureSolver {
         pairs = try PartPairs(device: device, pairs: found, nodeCount: nodeCount)
         let stiffest = max(anchorStiffness?.normal ?? 0, anchorStiffness?.shear ?? 0)
         for pair in found where pair.reducedMass > 0 {
-            anchorFrequencySquared = max(anchorFrequencySquared, stiffest * pair.area / pair.reducedMass)
+            let closed = pair.law.closing.x > 0 ? pair.law.closing.y : 0
+            anchorFrequencySquared = max(
+                anchorFrequencySquared, max(stiffest, closed) * pair.area / pair.reducedMass)
         }
     }
 
     /// The connections between parts of the body after the last step, those of support region
     /// `support` alone if given, or nil without any.
     public func pairSummary(support: Int? = nil) -> PartPairs.Summary? {
-        pairs?.summary(slot: support.map { $0 + 1 }, nodes: { body in mutateNodes(body) })
+        guard let pairs else { return nil }
+        var summary = PartPairs.Summary()
+        mutateNodes { nodes in
+            summary = pairs.summary(slot: support.map { $0 + 1 }, displacement: { nodes[$0].displacement })
+        }
+        return summary
     }
 
     /// Makes the footings of connections that have one, under the nodes they tie.
@@ -852,6 +859,7 @@ public final class StructureSolver {
     /// Restores the undeformed, stress-free, stationary body.
     public func reset() {
         time = 0
+        settledDisplacements = nil
         failureGateBuffer.contents().storeBytes(of: 0, as: UInt32.self)
         failedAtCheckpoint = nil
         memset(contactForceBuffer.contents(), 0, contactForceBuffer.length)
@@ -1416,9 +1424,21 @@ public final class StructureSolver {
         return total
     }
 
+    /// Each node's displacement in the shape it settled to under its own weight
+    /// (`BlastSolver.settleStructures()`), from which `summary()` measures; nil when not settled.
+    public private(set) var settledDisplacements: [SIMD3<Float>]?
+
+    /// Records the present shape as the one the structure settled to, so that deflections are
+    /// measured from it.
+    public func recordSettledShape() {
+        mutateNodes { nodes in settledDisplacements = nodes.map(\.displacement) }
+    }
+
     /// Scans the mesh for damage and deflection. Costs a pass over the lattice on the CPU.
     public func summary() -> StructureSummary {
         var summary = StructureSummary()
+        let settled = settledDisplacements
+        var sagSquared: Float = 0
         let instances = instanceBuffer.contents().bindMemory(to: UInt32.self, capacity: max(elementCount, 1))
         let flags = flagBuffer.contents().bindMemory(to: UInt8.self, capacity: ex * ey * ez)
         var maxSquared: Float = 0
@@ -1440,13 +1460,17 @@ public final class StructureSolver {
                 let (i, j, k) = elementCoordinates(index)
                 for corner in 0..<8 {
                     let (a, b, c) = (i + (corner & 1), j + ((corner >> 1) & 1), k + ((corner >> 2) & 1))
-                    let squared = simd_length_squared(nodes[nodeIndex(a, b, c)].displacement)
+                    let node = nodeIndex(a, b, c)
+                    let rest = settled?[node] ?? .zero
+                    let squared = simd_length_squared(nodes[node].displacement - rest)
                     if !squared.isFinite { summary.hasBlownUp = true }
                     maxSquared = max(maxSquared, squared)
+                    sagSquared = max(sagSquared, simd_length_squared(rest))
                 }
             }
         }
         summary.maxDisplacement = maxSquared.squareRoot()
+        summary.selfWeightSag = sagSquared.squareRoot()
         return summary
     }
 
@@ -2096,6 +2120,15 @@ public final class StructureSolver {
             hourglassStiffness: hourglassCoefficient * material.youngsModulus * h / 48,
             soundSpeed: material.dilatationalWaveSpeed)
         parameters.youngsModulus = material.youngsModulus
+        if let rateLaw = material.resolvingRateLaw().rateLaw, case .cowperSymonds(let d, let q) = rateLaw,
+            d > 0,
+            q > 0
+        {
+            let law = SIMD2<Float>(d, q)
+            parameters.rateConstant = law.x
+            parameters.rateExponent = 1 / law.y
+            parameters.rateTestFactor = 1 + pow(StructureMaterial.tensileTestRate / law.x, 1 / law.y)
+        }
         if let buckling = material.localBuckling {
             parameters.bucklingAxis = UInt32(buckling.axis + 1)
             parameters.bucklingSide = Float(buckling.side)

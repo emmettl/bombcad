@@ -736,6 +736,57 @@ struct ShellMesh {
         return (strengths, rings)
     }
 
+    /// For each element, the nearest element of another member below and above it (along its
+    /// axis, -1 where there is none): parallel to it, over its centre, and no more than a metre
+    /// beyond its faces. The air does not resolve a gap thinner than its cells, so a face that
+    /// such an element faces across one sees ambient air instead of the air beyond both
+    /// (`shellShielded` in Shell.metal): the leaves of a cavity wall each take their own side.
+    func shields() -> [(below: Int32, above: Int32)] {
+        let reach: Float = 1
+        let side = elements.reduce(Float(0)) { max($0, $1.size.x, $1.size.y) }
+        guard side > 0 else { return [] }
+        func centre(_ element: Element) -> SIMD3<Float> {
+            (0..<4).reduce(SIMD3<Float>.zero) { $0 + positions[Int(element.nodes[$1])] } / 4
+        }
+        let centres = elements.map(centre)
+        // Elements by axis and by the cell their centre falls in, across that axis.
+        var cells: [SIMD3<Int32>: [Int]] = [:]
+        func key(_ axis: Int, _ point: SIMD3<Float>, _ di: Int32 = 0, _ dj: Int32 = 0) -> SIMD3<Int32> {
+            let (i1, i2) = ((axis + 1) % 3, (axis + 2) % 3)
+            return SIMD3(
+                Int32(axis), Int32((point[i1] / side).rounded(.down)) + di,
+                Int32((point[i2] / side).rounded(.down)) + dj)
+        }
+        for (e, element) in elements.enumerated() {
+            cells[key(element.axis, centres[e]), default: []].append(e)
+        }
+        return elements.indices.map { e in
+            let element = elements[e]
+            let k = element.axis
+            let (i1, i2) = ((k + 1) % 3, (k + 2) % 3)
+            let at = centres[e]
+            var below: (index: Int32, distance: Float) = (-1, .infinity)
+            var above: (index: Int32, distance: Float) = (-1, .infinity)
+            for di: Int32 in -1...1 {
+                for dj: Int32 in -1...1 {
+                    for f in cells[key(k, at, di, dj)] ?? [] where elements[f].solid != element.solid {
+                        let other = elements[f]
+                        let c = centres[f]
+                        guard abs(at[i1] - c[i1]) <= 0.5 * other.size.x + 1e-4,
+                            abs(at[i2] - c[i2]) <= 0.5 * other.size.y + 1e-4
+                        else { continue }
+                        let offset = c[k] - at[k]
+                        let gap = abs(offset) - 0.5 * (element.thickness + other.thickness)
+                        guard abs(offset) > 1e-4, gap <= reach else { continue }
+                        if offset > 0, offset < above.distance { above = (Int32(f), offset) }
+                        if offset < 0, -offset < below.distance { below = (Int32(f), -offset) }
+                    }
+                }
+            }
+            return (below.index, above.index)
+        }
+    }
+
     /// Each node's volume as loose debris: its share of the elements it belongs to.
     func debrisVolumes() -> [Float] {
         var volumes = [Float](repeating: 0, count: max(positions.count, 1))

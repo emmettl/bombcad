@@ -92,7 +92,15 @@ public enum CloseInSlabTest {
         return material
     }
 
-    public static func scenario(_ test: Test, elementSize: Float = 0.025) -> Scenario {
+    /// The scene, moved by `pad.low` with the domain grown by `pad.low + pad.high`
+    /// (`Scenario.openFaceRoom`).
+    public static func scenario(
+        _ test: Test, elementSize: Float = 0.025,
+        pad: (low: SIMD3<Float>, high: SIMD3<Float>) = (.zero, .zero)
+    ) -> Scenario {
+        let o = pad.low
+        let slab = Self.slab.moved(by: o)
+        let boltLines = Self.boltLines.map { $0 + o.x }
         var model = StructureModel(
             solids: [slab], material: material(), elementSize: elementSize, fixedBase: false)
         // Bars 30 mm in, to the centre of the outer layer and the inner one about a bar further.
@@ -102,11 +110,11 @@ public enum CloseInSlabTest {
             to: slab, thicknessAxis: 2, areaPerMetre: bottom, depth: 0.042, faces: (low: true, high: false))
         model.addMat(
             to: slab, thicknessAxis: 2, areaPerMetre: top, depth: 0.042, faces: (low: false, high: true))
-        let c = centre
+        let c = centre + o
         let boxes = [
             // The supporting blocks, under the slab's ends to the bolt lines.
-            Box(min: SIMD3(0.2, c.y - 1, 0), max: SIMD3(boltLines[0], c.y + 1, slab.min.z)),
-            Box(min: SIMD3(boltLines[1], c.y - 1, 0), max: SIMD3(6.6, c.y + 1, slab.min.z)),
+            Box(min: SIMD3(0.2 + o.x, c.y - 1, 0), max: SIMD3(boltLines[0], c.y + 1, slab.min.z)),
+            Box(min: SIMD3(boltLines[1], c.y - 1, 0), max: SIMD3(6.6 + o.x, c.y + 1, slab.min.z)),
             // The gauges' blocks, either side, their tops level with the slab's.
             Box(min: SIMD3(c.x - 0.275, c.y + 0.83, 0), max: SIMD3(c.x + 0.275, c.y + 2.4, slab.max.z)),
             Box(min: SIMD3(c.x - 0.275, c.y - 2.4, 0), max: SIMD3(c.x + 0.275, c.y - 0.83, slab.max.z)),
@@ -125,7 +133,7 @@ public enum CloseInSlabTest {
             Gauge("Slab centre", at: c + SIMD3(0, 0, lift)),
         ]
         return Scenario(
-            name: "Close-in slab \(test.name)", domainSize: domainSize, boxes: boxes,
+            name: "Close-in slab \(test.name)", domainSize: domainSize + pad.low + pad.high, boxes: boxes,
             charge: Charge(mass: test.charge, position: c + SIMD3(0, 0, test.standoff)), gauges: gauges,
             structure: model)
     }
@@ -160,11 +168,20 @@ public enum CloseInSlabTest {
         refinement: Int = 1, mappedCharge: Bool = true,
         afterburning: Bool = SolverConfiguration.recommended.afterburning,
         airModel: AirModel? = nil, openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
-        heldLengthwise: Bool = true, stepsPerSample: Int = 16,
+        heldLengthwise: Bool = true, stepsPerSample: Int = 16, roomy: Bool = false,
         adjust: (inout Scenario) -> Void = { _ in }, progress: ((String) -> Void)? = nil,
         inspect: ((StructureSolver, Double) -> Void)? = nil, prepare: ((StructureSolver) -> Void)? = nil
     ) throws -> Result {
-        var scenario = scenario(test, elementSize: elementSize)
+        // `roomy`: every open face moved out to `Scenario.structureFaceClearance`, the scene with
+        // it; probes that `adjust` and `inspect` place by the static coordinates do not follow.
+        let pad =
+            roomy
+            ? scenario(test, elementSize: elementSize).openFaceRoom(step: 0.5)
+            : (low: SIMD3<Float>.zero, high: SIMD3<Float>.zero)
+        let slab = Self.slab.moved(by: pad.low)
+        let boltLines = Self.boltLines.map { $0 + pad.low.x }
+        let centre = Self.centre + pad.low
+        var scenario = scenario(test, elementSize: elementSize, pad: pad)
         adjust(&scenario)
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
         solver.configuration.mappedCharge = mappedCharge && !afterburning

@@ -19,10 +19,13 @@ extension EnvelopePanel {
         profile: SheetProfile, span: Double, continuous: Bool,
         strengthIncrease: Double = coldFormedStrengthIncrease
     ) -> SDOFSystem {
-        let (area, secondMoment, modulus) = profile.perWidth
+        let (area, secondMoment, _) = profile.perWidth
+        // Crests out: pushed in, the span's middle bends its crests into compression, a continuous
+        // sheet's supports its troughs.
         let stress = Double(profile.yieldStress) * strengthIncrease
-        let moment = stress * Double(modulus)
-        let resistance = (continuous ? 3.6 * 3 : 7.2) * moment / (span * span)
+        let positive = stress * Double(profile.designModulus(crestCompressed: true))
+        let negative = stress * Double(profile.designModulus(crestCompressed: false))
+        let resistance = (continuous ? 3.6 * (negative + 2 * positive) : 7.2 * positive) / (span * span)
         let deflection =
             (continuous ? 0.0062 : 0.0130) * resistance * pow(span, 4)
             / (Double(StructureMaterial.structuralSteel.youngsModulus) * Double(secondMoment))
@@ -44,15 +47,19 @@ extension EnvelopePanel {
         return min(pullOut, pullThrough)
     }
 
-    /// The largest reaction per metre of support (N/m) on a span `span` whose response reached
-    /// `response` under net pressures peaking at `peak` (Pa): UFC Table 3-9's dynamic reaction of
-    /// a uniformly loaded span, 0.39 R + 0.11 F at its plastic stage, R and F the resistance and
-    /// the load on the span per metre width, each taken at its largest.
-    public static func sheetReaction(_ system: SDOFSystem, response: SDOFResponse, peak: Double, span: Double)
+    /// The largest reaction per metre of support pulling a sheet off its screws (N/m), on a span
+    /// `span`: pushed in, it bears on its supports, and only coming back out does it pull on its
+    /// screws. UFC Table 3-9's dynamic reaction of a uniformly loaded span, 0.39 R + 0.11 F, R the
+    /// resistance at its furthest outward deflection (at most the rebound's share of the ultimate)
+    /// and F the largest suction, per metre width.
+    public static func sheetPullOff(
+        _ system: SDOFSystem, response: SDOFResponse, suction: Double, span: Double
+    )
         -> Double
     {
-        let resistance = min(system.stiffness * response.peakDeflection, system.ultimateResistance)
-        return (0.39 * resistance + 0.11 * peak) * span
+        let outward = -min(response.reboundDeflection, 0)
+        let resistance = min(system.stiffness * outward, system.reboundFactor * system.ultimateResistance)
+        return (0.39 * resistance + 0.11 * max(suction, 0)) * span
     }
 }
 
@@ -72,12 +79,15 @@ extension EnvelopeDamageLevel {
 extension EnvelopeDamageAssessment {
     /// A sheeted wall's or roof's damage: one way between its rails or purlins, whatever the
     /// component's own span, from a single span to the first span of a continuous sheet, graded
-    /// by PDC-TR 06-08; failed, blown off, if its fixings' reaction passed what its screws hold
-    /// (at the time of its peak deflection, the reaction's largest).
+    /// by PDC-TR 06-08, under the load on the middle third across its span (`EnvelopeComponentLoad
+    /// .strip`); failed, blown off, if the reaction pulling it off its screws, as it comes back out
+    /// or is sucked, passed what they hold.
     static func profiledSheet(
         _ load: EnvelopeComponentLoad, construction: EnvelopeConstruction, roof: Bool, pressures: [Double],
         peak: Double
     ) -> EnvelopeComponentDamage {
+        // Its ribs span on their own: the load on the middle third across the span, where recorded.
+        let pressures = load.stripPa == nil ? pressures : load.strip.netPa
         let profile = construction.sheet(roof: roof)
         let span = Double(construction.sheetSpanM ?? 1.8)
         let continuous = construction.sheetContinuous ?? true
@@ -95,9 +105,11 @@ extension EnvelopeDamageAssessment {
             let rotation = rotation(response, span: span)
             var level = EnvelopeDamageLevel.profiledSheet(
                 ductility: response.ductility, rotationDeg: rotation)
-            if EnvelopePanel.sheetReaction(system, response: response, peak: peak, span: span) > holding {
+            let suction = -(pressures.min() ?? 0)
+            if EnvelopePanel.sheetPullOff(system, response: response, suction: suction, span: span) > holding
+            {
                 level = .failed
-                failedAt = min(failedAt ?? .infinity, response.peakTime)
+                failedAt = min(failedAt ?? .infinity, response.reboundTime ?? response.peakTime)
             }
             rotations.append(rotation)
             levels.append(level)

@@ -149,7 +149,8 @@ public final class BlastSolver {
         let mask = try stationaryMask(observing: objects)
         envelopeVenting = try EnvelopeVenting(
             device: device, library: library, grid: grid, mask: mask, objects: objects,
-            components: recorder.components, rigidBoxes: rigidBoxes ?? [], constructions: constructions)
+            components: recorder.components, rigidBoxes: rigidBoxes ?? [], constructions: constructions,
+            equivalents: zip(recorder.plateEntry, recorder.stripEntry).map { ($0, $1) })
         for level in refinementLevels { level.setPanes(ventedPanes) }
     }
 
@@ -1933,7 +1934,7 @@ public final class BlastSolver {
                 Settlement(
                     name: body.name, settled: settled, time: elapsed, steps: steps,
                     seconds: Date().timeIntervalSince(start), residualSpeed: peak > 0 ? speed / peak : 0,
-                    displacement: body.summary()?.maxDisplacement ?? 0))
+                    displacement: body.summary()?.selfWeightSag ?? 0))
         }
         guard moved, let commandBuffer = commandQueue.makeCommandBuffer(),
             let encoder = commandBuffer.makeComputeCommandEncoder()
@@ -3136,7 +3137,7 @@ public final class BlastSolver {
         encoder.setBuffer(recorder.starts, offset: 0, index: 21)
         encoder.setBuffer(recorder.current, offset: 0, index: 22)
         encoder.dispatchThreadgroups(
-            MTLSize(width: (recorder.components.count + perGroup - 1) / perGroup, height: 1, depth: 1),
+            MTLSize(width: (recorder.entryCount + perGroup - 1) / perGroup, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 32 * perGroup, height: 1, depth: 1))
         // The listed components' faces: a threadgroup each (and at the first sample one for the
         // still air's row).
@@ -3152,6 +3153,7 @@ public final class BlastSolver {
         encoder.setBuffer(recorder.stillPressure, offset: 0, index: 10)
         // The refined air, for faces in it (`readsRefinedAir`); the second level's as the gauges'.
         bindRefinedAir(encoder, from: 11)
+        encoder.setBuffer(recorder.weightBuffer, offset: 0, index: 17)
         encoder.dispatchThreadgroups(
             indirectBuffer: recorder.faceDispatch, indirectBufferOffset: 0,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))

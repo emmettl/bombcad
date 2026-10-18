@@ -171,6 +171,11 @@ struct SidebarView: View {
                     LabeledContent(
                         "Deflection now", value: String(format: "%.0f mm", summary.maxDisplacement * 1000))
                     LabeledContent("Largest so far", value: String(format: "%.0f mm", model.peakDeflection))
+                    if summary.selfWeightSag > 0 {
+                        LabeledContent(
+                            "Sag under own weight",
+                            value: String(format: "%.0f mm", summary.selfWeightSag * 1000))
+                    }
                     ExpectedRangeLine(
                         model: model,
                         value: ShownValue(measure: .peakDeflection, value: model.peakDeflection, unit: "mm"))
@@ -290,10 +295,13 @@ struct SidebarView: View {
                     + "charge for the farthest ground R, keeps what it sends down out of the gauges' positive phase."
             )
             if let note = model.settings.scenario.tightFacesNote {
-                Label(note, systemImage: "exclamationmark.triangle")
+                Label(note + " " + Scenario.tightFacesMatterLeast, systemImage: "exclamationmark.triangle")
                     .font(.caption)
                     .foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
+                if let widening = model.wideningToTheRule {
+                    wideningToTheRule(widening)
+                }
             }
             Menu("Fit to the charge") {
                 ForEach([10, 20, 40] as [Float], id: \.self) { reach in
@@ -310,6 +318,57 @@ struct SidebarView: View {
                     + "high as the open top needs, the charge in its middle, and a grid scaled to the charge."
             )
         }
+    }
+
+    /// The choice the open faces' warning offers: the domain grown from its origin to the clearance,
+    /// with what it costs by the advisor's estimate before it is taken, and the faces at the origin
+    /// it cannot clear without moving the scene.
+    @ViewBuilder
+    private func wideningToTheRule(
+        _ widening: (
+            domain: SIMD3<Float>, now: RunCostEstimate, widened: RunCostEstimate,
+            left: [(name: String, clearance: Float)]
+        )
+    ) -> some View {
+        let grows = widening.domain != model.domainSize
+        if grows {
+            let air = Double(widening.widened.cells) / Double(max(widening.now.cells, 1))
+            let time = Self.widenedTime(from: widening.now, to: widening.widened)
+            Button(
+                String(
+                    format: "Widen to the rule · %.0f × %.0f × %.0f m", widening.domain.x, widening.domain.y,
+                    widening.domain.z)
+            ) { model.widenToTheRule() }
+            .help(
+                "Grows the domain from its origin until the far faces (east, north and the top) are "
+                    + String(format: "%.0f", Scenario.structureFaceClearance)
+                    + " m/kg^(1/3) from the charge and the structures. Nothing in the scene moves.")
+            Text(String(format: "%.1f× the air; the run about %@, by the advisor's estimate.", air, time))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        if !widening.left.isEmpty {
+            let list = widening.left.map { String(format: "%@ %.1f", $0.name, $0.clearance) }
+                .joined(separator: ", ")
+            Text(
+                (grows ? "Still near after widening: " : "Near the origin: ") + list
+                    + " m/kg^(1/3). The domain grows only away from its origin, so clearing these means moving the scene's contents away from it."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// A run's time on the domain as it is and widened, unloaded and as this Mac's runs have gone.
+    private static func widenedTime(from now: RunCostEstimate, to widened: RunCostEstimate) -> String {
+        var time =
+            RunAdvisor.duration(now.seconds) + " → " + RunAdvisor.duration(widened.seconds) + " unloaded"
+        if let factor = RunCostStore.standard.factor {
+            time += ", " + RunAdvisor.duration(widened.seconds * factor) + " here lately"
+        }
+        return time
     }
 
     /// One side of the domain, applied when it is committed.

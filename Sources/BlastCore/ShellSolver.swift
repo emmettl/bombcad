@@ -83,6 +83,10 @@ struct ShellUniforms {
     var linkRecords: UInt32 = 0
     var linkStarts: UInt32 = 0
     var linkEntries: UInt32 = 0
+    /// Connections between two parts of the body (`Anchorage.betweenParts`).
+    var pairs: UInt32 = 0
+    /// 1 when contact's forces were found this substep (if it is on).
+    var contactEncoded: UInt32 = 0
 }
 
 /// Layout matches `BeamElement` in `Shell.metal`.
@@ -112,6 +116,10 @@ struct ShellElementData {
     var thickness: Float
     var a: Float
     var b: Float
+    /// Another member's element facing this one below and above it (-1: none), for the air's
+    /// load (`ShellMesh.shields`).
+    var shieldBelow: Int32 = -1
+    var shieldAbove: Int32 = -1
 }
 
 /// Node of a shell mesh as stored on the GPU. Layout matches `ShellNode` in `Shell.metal`.
@@ -304,6 +312,9 @@ public final class ShellSolver {
     /// Bar groups of each beam: position across the section and area, eight per beam.
     private let beamBarLayoutBuffer: MTLBuffer
     private let contactPipelines: [MTLComputePipelineState]
+    private let pairPipelines: [MTLComputePipelineState]
+    /// Connections between two parts of the body (`Anchorage.betweenParts`), when it has any.
+    private var pairs: PartPairs?
     let contactHeadBuffer: MTLBuffer
     let contactSlotBuffer: MTLBuffer
     /// Per table entry, the last substep's stamp at which it held a node that had moved far
@@ -367,6 +378,7 @@ public final class ShellSolver {
         tiePipeline = try pipeline("shellTies")
         linkPipeline = mesh.links.isEmpty ? nil : try pipeline("shellLinks")
         contactPipelines = try ["shellContactClear", "shellContactHash", "shellContactForces"].map(pipeline)
+        pairPipelines = try ["shellPairs", "shellPairGather"].map(pipeline)
 
         func buffer(_ length: Int, _ label: String) throws -> MTLBuffer {
             guard let buffer = device.makeBuffer(length: max(length, 16), options: .storageModeShared) else {
@@ -458,12 +470,14 @@ public final class ShellSolver {
         let layout = barLayoutBuffer.contents().bindMemory(
             to: SIMD4<Float>.self, capacity: elements * barSlots)
         var incidence = [[UInt32]](repeating: [], count: nodes)
+        let shields = mesh.shields()
         for (e, element) in mesh.elements.enumerated() {
             data[e] = ShellElementData(
                 n0: element.nodes.x, n1: element.nodes.y, n2: element.nodes.z, n3: element.nodes.w,
                 axis: UInt32(element.axis), material: UInt32(element.material),
                 barCount: UInt32(element.bars.count),
-                thickness: element.thickness, a: element.size.x, b: element.size.y)
+                thickness: element.thickness, a: element.size.x, b: element.size.y,
+                shieldBelow: shields[e].below, shieldAbove: shields[e].above)
             for s in 0..<barSlots {
                 layout[e * barSlots + s] = s < element.bars.count ? SIMD4(element.bars[s], 0) : .zero
             }
@@ -521,10 +535,6 @@ public final class ShellSolver {
         var fibreStarts: [UInt32] = [0]
         var fibreGeometry: [SIMD4<Float>] = []
         try model.validateAnchorages()
-        guard !model.supportAnchorages.contains(where: { $0?.betweenParts == true }) else {
-            throw ImportedMesh.ImportError.invalid(
-                "Connections between two parts are for solid elements only.")
-        }
         var fibreLaws: [AnchorageParameters] = []
         var slots: [Int] = []
         if let stiffness = model.connectionStiffness {
@@ -534,7 +544,7 @@ public final class ShellSolver {
             let lists = mesh.jointPoints(across: Self.fibresAcross, normals: model.connectionNormals) {
                 point, node in
                 guard let slot = model.connectionSlot(at: point), slot != 0 || abs(node.z) < 1e-4,
-                    let law = model.connection(inSlot: slot)
+                    let law = model.connection(inSlot: slot), law.betweenParts != true
                 else { return nil }
                 return (slot, law.across)
             }
@@ -704,6 +714,130 @@ public final class ShellSolver {
                 bodyMass: bodyMass,
                 contactDamping: contactDamping)
         }
+        try setUpPairs()
+    }
+
+    /// Makes the connections between two parts of the body (`Anchorage.betweenParts`). In each
+    /// such support region, every node on faces of the region that face its joint (as a
+    /// connection to the ground finds them, `ShellMesh.jointPoints`) is tied to the nearest node
+    /// in the region of a member it does not share, within eight elements, on the joint's side of
+    /// it or level with it,
+    /// over the faces' area. Its seat is the region and half an element past it (the node's own
+    /// share): once it has slid that far, relative to its partner, it is off the seat for good.
+    private func setUpPairs() throws {
+        let slots = Set(
+            model.supports.indices.filter { model.anchorage(ofSupport: $0)?.betweenParts == true }.map {
+                $0 + 1
+            })
+        guard !slots.isEmpty else { return }
+        let positions = mesh.positions
+        let h = model.elementSize
+        // The members each node belongs to.
+        var members = [Set<Int>](repeating: [], count: positions.count)
+        for element in mesh.elements {
+            for corner in 0..<4 { members[Int(element.nodes[corner])].insert(element.solid) }
+        }
+        for beam in mesh.beams {
+            for end in 0..<2 { members[Int(beam.nodes[end])].insert(beam.solid) }
+        }
+        for tie in mesh.ties { members[Int(tie.slave)].formUnion(members[Int(tie.master)]) }
+        // Each region's points on their own, where regions overlap.
+        var points = [[ShellMesh.JointPoint]](repeating: [], count: positions.count)
+        for slot in slots.sorted() {
+            guard let law = model.connection(inSlot: slot) else { continue }
+            let found = mesh.jointPoints(across: Self.fibresAcross, normals: [law.across]) { point, _ in
+                model.containsSupport(slot - 1, at: point) ? (slot, law.across) : nil
+            }
+            for n in found.indices { points[n] += found[n] }
+        }
+        var masses = [Float](repeating: 0, count: positions.count)
+        mutateNodes { nodes in for n in nodes.indices { masses[n] = nodes[n].mass } }
+        // Each region's nodes, by cells an element across.
+        func cell(_ p: SIMD3<Float>) -> SIMD3<Int32> { SIMD3<Int32>((p / h).rounded(.down)) }
+        var cells: [Int: [SIMD3<Int32>: [Int]]] = [:]
+        for slot in slots {
+            var grid: [SIMD3<Int32>: [Int]] = [:]
+            for (n, position) in positions.enumerated() where model.containsSupport(slot - 1, at: position) {
+                grid[cell(position), default: []].append(n)
+            }
+            cells[slot] = grid
+        }
+        var found: [PartPairs.Pair] = []
+        for (owner, list) in points.enumerated() where !list.isEmpty {
+            for slot in Set(list.map(\.slot)).sorted() {
+                guard let law = model.connection(inSlot: slot), let grid = cells[slot] else { continue }
+                let region = model.supports[slot - 1]
+                let area = list.filter { $0.slot == slot }.reduce(0) { $0 + $1.area }
+                let at = positions[owner]
+                guard area > 0, model.containsSupport(slot - 1, at: at) else { continue }
+                // The nearest within eight elements, searching shells of cells outwards until none
+                // can be nearer.
+                var best: (node: Int, distance: Float)?
+                let centre = cell(at)
+                let reach: Int32 = 8
+                var ring: Int32 = 0
+                while ring <= reach, best.map({ $0.distance > Float(ring - 1) * h }) ?? true {
+                    for i in -ring...ring {
+                        for j in -ring...ring {
+                            for k in -ring...ring where max(abs(i), abs(j), abs(k)) == ring {
+                                for n in grid[centre &+ SIMD3(i, j, k)] ?? []
+                                where n != owner && members[n].isDisjoint(with: members[owner])
+                                    && simd_dot(at - positions[n], law.across) > -1e-3 * h
+                                {
+                                    let distance = simd_distance(at, positions[n])
+                                    if best.map({
+                                        distance < $0.distance - 1e-6
+                                            || (abs(distance - $0.distance) <= 1e-6 && n < $0.node)
+                                    }) ?? true {
+                                        best = (n, distance)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    ring += 1
+                }
+                guard let best else { continue }
+                // How far the owner can slide along each axis of the joint before it leaves the
+                // region.
+                let axes = Anchorage.jointAxes(law.isUnder ? .zero : law.across)
+                var seat = SIMD4<Float>(repeating: 0)
+                for (k, direction) in [axes.along, -axes.along, axes.other, -axes.other].enumerated() {
+                    var reach = Float.infinity
+                    for axis in 0..<3 where abs(direction[axis]) > 1e-6 {
+                        let bound = direction[axis] > 0 ? region.max[axis] : region.min[axis]
+                        reach = min(reach, (bound - at[axis]) / direction[axis])
+                    }
+                    seat[k] = max(reach, 0) + h / 2
+                }
+                let reduced =
+                    masses[owner] * masses[best.node] / max(masses[owner] + masses[best.node], 1e-30)
+                found.append(
+                    PartPairs.Pair(
+                        owner: owner, partner: best.node, area: area, slot: slot, seat: seat,
+                        reducedMass: reduced,
+                        law: AnchorageParameters(law, material: model.material, elementSize: h)))
+            }
+        }
+        guard !found.isEmpty else { return }
+        pairs = try PartPairs(device: device, pairs: found, nodeCount: positions.count)
+        for pair in found where pair.reducedMass > 0 {
+            let stiffest = max(
+                pair.law.stiffnessAndTension.x, pair.law.stiffnessAndTension.y,
+                pair.law.closing.x > 0 ? pair.law.closing.y : 0)
+            anchorFrequencySquared = max(anchorFrequencySquared, stiffest * pair.area / pair.reducedMass)
+        }
+    }
+
+    /// The connections between parts of the body after the last step, those of support region
+    /// `support` alone if given, or nil without any.
+    public func pairSummary(support: Int? = nil) -> PartPairs.Summary? {
+        guard let pairs else { return nil }
+        var summary = PartPairs.Summary()
+        mutateNodes { nodes in
+            summary = pairs.summary(slot: support.map { $0 + 1 }, displacement: { nodes[$0].displacement })
+        }
+        return summary
     }
 
     // MARK: - State
@@ -711,7 +845,9 @@ public final class ShellSolver {
     /// Restores the undeformed, stress-free, stationary structure.
     public func reset() {
         time = 0
+        settledDisplacements = nil
         footings?.reset()
+        pairs?.reset()
         failureGateBuffer.contents().storeBytes(of: 0, as: UInt32.self)
         failedAtCheckpoint = nil
         memset(flagBuffer.contents(), Int32(ElementFlag.active.rawValue), flagBuffer.length)
@@ -1011,6 +1147,16 @@ public final class ShellSolver {
         return total
     }
 
+    /// Each node's displacement in the shape it settled to under its own weight
+    /// (`BlastSolver.settleStructures()`), from which `summary()` measures; nil when not settled.
+    public private(set) var settledDisplacements: [SIMD3<Float>]?
+
+    /// Records the present shape as the one the structure settled to, so that deflections are
+    /// measured from it.
+    public func recordSettledShape() {
+        mutateNodes { nodes in settledDisplacements = nodes.map(\.displacement) }
+    }
+
     public func summary() -> StructureSummary {
         var summary = StructureSummary()
         let damage = displayBuffer.contents().bindMemory(to: Float.self, capacity: max(elementCount, 1))
@@ -1035,14 +1181,19 @@ public final class ShellSolver {
             }
         }
         var largest: Float = 0
+        var sag: Float = 0
+        let settled = settledDisplacements
         mutateNodes { nodes in
             for (n, node) in nodes.enumerated() where attached[n] {
-                let squared = simd_length_squared(node.displacement)
+                let rest = settled?[n] ?? .zero
+                let squared = simd_length_squared(node.displacement - rest)
                 if !squared.isFinite { summary.hasBlownUp = true }
                 largest = max(largest, squared)
+                sag = max(sag, simd_length_squared(rest))
             }
         }
         summary.maxDisplacement = largest.squareRoot()
+        summary.selfWeightSag = sag.squareRoot()
         return summary
     }
 
@@ -1251,6 +1402,29 @@ public final class ShellSolver {
                         MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
                 }
             }
+            if let pairs {
+                uniforms.contactEncoded = encodeContact && !contactTableOnly ? 1 : 0
+                encoder.setComputePipelineState(pairPipelines[0])
+                encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
+                encoder.setBuffer(pairs.nodes, offset: 0, index: 1)
+                encoder.setBuffer(pairs.state, offset: 0, index: 2)
+                encoder.setBuffer(pairs.seats, offset: 0, index: 3)
+                encoder.setBuffer(pairs.laws, offset: 0, index: 4)
+                encoder.setBytes(&uniforms, length: MemoryLayout<ShellUniforms>.stride, index: 5)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 6)
+                encoder.dispatchThreads(
+                    MTLSize(width: pairs.count, height: 1, depth: 1), threadsPerThreadgroup: group)
+                encoder.setComputePipelineState(pairPipelines[1])
+                encoder.setBuffer(pairs.state, offset: 0, index: 0)
+                encoder.setBuffer(pairs.nodeStart, offset: 0, index: 1)
+                encoder.setBuffer(pairs.nodeEntries, offset: 0, index: 2)
+                encoder.setBytes(&uniforms, length: MemoryLayout<ShellUniforms>.stride, index: 3)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 4)
+                encoder.setBuffer(failureGateBuffer, offset: 0, index: 5)
+                encoder.setBuffer(contactForceBuffer, offset: 0, index: 6)
+                encoder.dispatchThreads(
+                    MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            }
             beforeNodes?(uniforms)
 
             if let linkPipeline {
@@ -1443,6 +1617,7 @@ public final class ShellSolver {
         uniforms.crackSlip = model.crackSlip ? 1 : 0
         uniforms.removesFragments = model.removesFragments ? 1 : 0
         if fibreCount > 0 { uniforms.anchored = 1 }
+        uniforms.pairs = UInt32(pairs?.count ?? 0)
         if footings != nil { uniforms.footings = 1 }
         if let anchorStiffness, let anchorage = model.baseAnchorage, fibreCount > 0 {
             uniforms.anchorNormalStiffness = anchorStiffness.normal

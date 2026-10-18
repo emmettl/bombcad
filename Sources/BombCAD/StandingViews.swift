@@ -328,7 +328,7 @@ struct StandingDetail: View {
                         }
                     }
                 }
-                Text("Judged by \(standing.table), from the validation record for these settings.")
+                Text("Judged by \(standing.tableTitle), from the validation record for these settings.")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
