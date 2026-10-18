@@ -22,7 +22,8 @@ struct ExposurePlaneTests {
             let scenario = Scenario(
                 name: "Burst", domainSize: SIMD3(8, 8, 4), boxes: [],
                 charge: Charge(mass: 1, position: SIMD3(2, 4, 0)))
-            var configuration = SolverConfiguration.recommended
+            // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+            var configuration = SolverConfiguration.recommended.balloonStart
             configuration.refinement = refinement
             configuration.refinementMemory = 64 << 20
             let solver = try BlastSolver(

@@ -99,10 +99,12 @@ public struct EnvelopeDebris: Codable, Sendable {
             blocks: blocks, solids: solids, terrain: terrain)
     }
 
-    /// The same from the components' damage alone.
+    /// The same from the components' damage alone; `dragScale` scales every piece's drag, to see
+    /// how much the reach depends on it.
     public static func make(
         loads: [EnvelopeComponentLoad], components: [EnvelopeComponentDamage], centre: SIMD3<Float>,
-        ambient: Primitive, blocks: [Box] = [], solids: [UUID: [Box]] = [:], terrain: Terrain? = nil
+        ambient: Primitive, blocks: [Box] = [], solids: [UUID: [Box]] = [:], terrain: Terrain? = nil,
+        dragScale: Float = 1
     ) -> EnvelopeDebris? {
         let byID = Dictionary(loads.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         var sources: [Source] = []
@@ -112,7 +114,8 @@ public struct EnvelopeDebris: Codable, Sendable {
             for component in components {
                 guard let launch = component.launch, let load = byID[component.id] else { continue }
                 failedRegions[load.owner, default: []].append(load.region)
-                let thrown = Self.thrown(load, launch: launch, material: component.material)
+                let thrown = Self.thrown(
+                    load, launch: launch, material: component.material, dragScale: dragScale)
                 guard !thrown.particles.isEmpty else { continue }
                 sources.append(
                     Source(
@@ -145,7 +148,8 @@ public struct EnvelopeDebris: Codable, Sendable {
 
     /// One component's samples: their particles, its mass and pieces, and its launch speeds.
     static func thrown(
-        _ load: EnvelopeComponentLoad, launch: DebrisLaunch, material: EnvelopeComponentDamage.Material
+        _ load: EnvelopeComponentLoad, launch: DebrisLaunch, material: EnvelopeComponentDamage.Material,
+        dragScale: Float = 1
     ) -> (particles: [FragmentCloud.Particle], massKg: Double, pieces: Double, fastest: Double, mean: Double)
     {
         let region = load.region
@@ -210,7 +214,7 @@ public struct EnvelopeDebris: Codable, Sendable {
                     direction[load.axis] > 0 ? region.max[load.axis] + 0.01 : region.min[load.axis] - 0.01
                 var particle = FragmentCloud.Particle(
                     position: position, velocity: direction * Float(abs(speed)), mass: Float(pieceKg),
-                    area: mean)
+                    area: mean * dragScale)
                 particle.weight = weight
                 particles.append(particle)
             }

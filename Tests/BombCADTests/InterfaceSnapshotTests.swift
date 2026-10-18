@@ -70,6 +70,19 @@ struct InterfaceSnapshotTests {
             appearance: appearance, to: folder.appending(path: "settings.png"))
     }
 
+    @Test("Render the New District window laid out on the made-up district", arguments: ["light", "dark"])
+    func newDistrict(style: String) async throws {
+        let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
+        let folder = URL(filePath: output, directoryHint: .isDirectory).appending(path: style)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let district = try NewDistrictTests().model()
+        await district.lay()
+        #expect(district.preview != nil)
+        try snapshot(
+            NewDistrictView(model: district), size: CGSize(width: 620, height: 900),
+            appearance: style == "dark" ? .darkAqua : .aqua, to: folder.appending(path: "new-district.png"))
+    }
+
     @Test("Review the editor at fixed viewport sizes", arguments: ["light", "dark"])
     func constrainedPanels(style: String) throws {
         let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])

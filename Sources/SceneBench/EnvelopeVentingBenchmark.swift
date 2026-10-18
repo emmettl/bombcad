@@ -48,7 +48,8 @@ enum EnvelopeVentingBenchmark {
             var panes = 0
             for round in 0..<rounds {
                 for vented in round.isMultiple(of: 2) ? [false, true] : [true, false] {
-                    var config = SolverConfiguration.recommended
+                    // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+                    var config = SolverConfiguration.recommended.balloonStart
                     config.airSleepThreshold = 0
                     let solver = try BlastSolver(
                         device: device, scenario: scene, cellSize: dx, configuration: config)

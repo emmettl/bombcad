@@ -128,7 +128,8 @@ private func runLandscapeBurst(device: MTLDevice, out: URL) throws {
     let duration =
         option("time").flatMap(Double.init)
         ?? (last.scaledArrival + 1.5 * (KingeryBulmash.scaledDuration(at: zMax) ?? 0.01)) * scale
-    var configuration = SolverConfiguration.recommended
+    // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+    var configuration = SolverConfiguration.recommended.balloonStart
     configureRefinement(&configuration)
     configuration.gravity = chosenGravity()
     // As the app's "Afterburning and hot air", on unless `--no-afterburn`.

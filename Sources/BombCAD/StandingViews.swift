@@ -12,7 +12,7 @@ extension ProjectRunSettings {
         gravity: Bool = false, shockThreshold: Float = 0.1, adaptiveSubsteps: Bool = false,
         terrainCutCells: Bool = true,
         groundStiffness: Float? = nil, ground: GroundType? = nil, outlineByOverlap: Bool = true,
-        settlesStructures: Bool = true
+        settlesStructures: Bool = true, mappedStart: Bool = false
     ) {
         configuration.afterburning = detailedCharge
         configuration.airModel = detailedCharge ? .thermallyPerfect : .idealGas
@@ -28,6 +28,8 @@ extension ProjectRunSettings {
         configuration.ground = ground
         configuration.structureMaskOverlap = outlineByOverlap
         configuration.settlesStructures = settlesStructures
+        // The fine one-dimensional start, with the afterburning and hot air it was checked with.
+        configuration.mappedCharge = detailedCharge && mappedStart
     }
 
     /// What the standing of a run of `scenario` under these settings is derived from.
@@ -41,7 +43,7 @@ extension ProjectRunSettings {
             shockLevels: shockLevels ?? 1, gravity: gravity ?? false, shockThreshold: shockThreshold ?? 0.1,
             adaptiveSubsteps: adaptiveSubsteps ?? false, terrainCutCells: cutsTerrain(over: scenario),
             groundStiffness: groundStiffness, ground: ground,
-            outlineByOverlap: countsByOverlap(over: scenario))
+            outlineByOverlap: countsByOverlap(over: scenario), mappedStart: mappedStart == true)
         return StandingInputs(
             scenario: scenario, cellSize: (Resolution(rawValue: resolution) ?? .medium).cellSize,
             configuration: configuration, thermal: thermal, cloud: cloud, fragments: fragments,

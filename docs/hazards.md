@@ -110,11 +110,46 @@ line and the minimum safe distance with it. Headless, it is a `Hazards:` line, w
   - venting: the failed walls and roof open in the air from 2.6 ms, and the gas leaves. The
     overpressure inside, 12.9 MPa at 2 ms, is 61 kPa at 5 ms, 25 kPa at 20 ms and 1 kPa at
     30 ms. Shut, it stays at 12–18 MPa.
-  - reach: hazardous debris to 129 m, its furthest hazardous piece at 257 m, against the tests'
+  - reach: hazardous debris to 129 m, its furthest hazardous piece at 258 m, against the tests'
     1 per 56 m² at 290–315 m (Kummer, IESS 2018, Fig. 11; the Klotz Group's tool 260 m). That is
     under half, the unsafe side. Here the pieces are 1 kg cubes leaving within 10° of square to
     their sections; the tests' spread of sizes and angles is not modelled. DESR's structure
     distance for 80 kg, 268 m, governs the minimum safe distance.
+- **Kasun III's launch speeds** (the same cubicle, its bars 12 mm at 100 mm in both faces; Weerheijm,
+  Stolz, Riedel and Mediavilla, TU Delft repository, Table 2, from high-speed film). PETN is taken
+  as 1.27 TNT, and the bench builds the cubicle with these bars (1.5% of the section). At failure,
+  at the largest deflection:
+
+  | Charge | Measured, mean (least) | The model | The Klotz Group's formula |
+  |---|---|---|---|
+  | 6.9 kg PETN | 52 m/s (29) | 44–49 m/s | 41 m/s |
+  | 110 kg PETN | 224 m/s (173) | 171–192 m/s | 164 m/s |
+
+  The light charge reads 0.84–0.95 of the measured mean, the heavy one 0.76–0.86, near its
+  least. At 14 kg/m³ the shock adds to the gas pressure that the one-way model is driven by.
+
+**Why Kasun's reach is short** (18 October 2026). `blastbench envelope-debris --levers` throws the same
+failed walls with one thing changed at a time, at 80 kg:
+
+| Changed | Hazardous to | Furthest hazardous piece |
+|---|---|---|
+| Nothing (1 kg cubes, 10° off square) | 129 m | 258 m |
+| Cubes of 0.3 kg / 8.1 kg / 32 kg | 189 / 73 / 41 m | 208 / 349 / 400 m |
+| Drag halved / doubled | 142 / 129 m | 349 / 176 m |
+| Launched square / 20° / 45° off it | 60 / 172 / 189 m | 57 / 334 / 348 m |
+
+No one lever reaches the tests' 290–315 m. Small pieces give the density but not the range;
+large ones the range but not the density. The tests had both, a spread of sizes and of angles,
+which the model has not. The open record does not give the spread:
+- Kasun's piece masses, their pickup by distance, and any bounce and roll are in the FOI and
+  Forsvarsbygg reports (FOI-R--2202--SE for 80 kg), which are to be ordered;
+- the Kasun III database is in a DDESB seminar paper that could not be reached;
+- DDESB TP-21 treats bounce and roll only in words.
+
+MSIAC's plot of Kasun's inhabited building distances (van der Voort et al., IESS 2018) reads about
+330–380 m near 80 kg, longer still. The model is left as it is, its reach recorded as under half,
+and DESR's structure distance stands under it. The reports wanted are in
+[Data wanted](data-wanted.md#to-request).
 
 ## Injury
 

@@ -86,7 +86,8 @@ enum EnvelopeOpeningsBenchmark {
         }
         let dx = value("dx").flatMap(Float.init) ?? 0.25
         guard let device = MTLCreateSystemDefaultDevice() else { throw BlastError.allocationFailed("Metal") }
-        var config = SolverConfiguration.recommended
+        // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+        var config = SolverConfiguration.recommended.balloonStart
         config.airSleepThreshold = 0
         config.airSleepCrossings = 0
         let wallMiddle = SIMD3<Float>(front, middle, 1.5)

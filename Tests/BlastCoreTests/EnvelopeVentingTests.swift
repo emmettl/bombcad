@@ -72,7 +72,8 @@ struct EnvelopeVentingTests {
         let scene = try glazedScene(charge: 5)
         let construction = EnvelopeConstruction.assumed(objectID: scene.envelopeObjects[0].id)
         func vented() throws -> BlastSolver {
-            var config = SolverConfiguration.recommended
+            // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+            var config = SolverConfiguration.recommended.balloonStart
             config.airSleepThreshold = 0
             let solver = try BlastSolver(
                 device: #require(MTLCreateSystemDefaultDevice()), scenario: scene, cellSize: 0.25,
@@ -123,7 +124,8 @@ struct EnvelopeVentingTests {
                 charge: Charge(mass: 5, position: SIMD3(7, 2, 1)),
                 gauges: [Gauge("Inside", at: SIMD3(7, 10, 1.5)), Gauge("Back", at: SIMD3(7, 12.5, 1.5))])
             try scene.addEnvelopeObject(envelope, name: "Building")
-            var config = SolverConfiguration.recommended
+            // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+            var config = SolverConfiguration.recommended.balloonStart
             config.airSleepThreshold = 0
             config.refinement = levels == 0 ? 1 : 2
             config.refinementLevels = max(levels, 1)
@@ -166,7 +168,8 @@ struct EnvelopeVentingTests {
         let brick = EnvelopeConstruction(
             objectID: owner, walls: .unreinforcedMasonry, wallThicknessM: 0.1, source: .user, detail: "")
         func vented() throws -> BlastSolver {
-            var config = SolverConfiguration.recommended
+            // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+            var config = SolverConfiguration.recommended.balloonStart
             config.airSleepThreshold = 0
             let solver = try BlastSolver(
                 device: #require(MTLCreateSystemDefaultDevice()), scenario: scene, cellSize: 0.25,
@@ -223,7 +226,8 @@ struct EnvelopeVentingTests {
         let scene = try glazedScene(charge: 5)
         var results: [(broke: Double, peak: Double)] = []
         for gravity in [false, true] {
-            var config = SolverConfiguration.recommended
+            // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+            var config = SolverConfiguration.recommended.balloonStart
             config.airSleepThreshold = 0
             config.gravity = gravity ? AirGravity() : nil
             let solver = try BlastSolver(
@@ -260,7 +264,8 @@ struct EnvelopeVentingTests {
         func run(_ holes: [(owner: UUID, time: Double, position: SIMD3<Float>, areaM2: Float)]) throws
             -> (BlastSolver, EnvelopeVentingSnapshot)
         {
-            var config = SolverConfiguration.recommended
+            // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+            var config = SolverConfiguration.recommended.balloonStart
             config.airSleepThreshold = 0
             let solver = try BlastSolver(
                 device: #require(MTLCreateSystemDefaultDevice()), scenario: scene, cellSize: 0.25,
@@ -308,7 +313,8 @@ struct EnvelopeVentingTests {
         let owner = scene.envelopeObjects[0].id
         var thick = EnvelopeConstruction.assumed(objectID: owner)
         thick.glassThicknessM = 0.05
-        var config = SolverConfiguration.recommended
+        // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+        var config = SolverConfiguration.recommended.balloonStart
         config.airSleepThreshold = 0
         let solver = try BlastSolver(
             device: #require(MTLCreateSystemDefaultDevice()), scenario: scene, cellSize: 0.25,

@@ -210,7 +210,8 @@ public enum AnchorageStudy {
     public static func runCoupled(
         device: MTLDevice, base: BaseConnection, mass: Float = 50, standoff: Float = 10,
         duration: Double = 0.5, cellSize: Float = 0.25, elementSize: Float = 0.0625, margin: Float = 12,
-        domainHeight: Float = 18, soil: Soil? = nil, air: SolverConfiguration = .recommended,
+        // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+        domainHeight: Float = 18, soil: Soil? = nil, air: SolverConfiguration = .recommended.balloonStart,
         progress: ((String) -> Void)? = nil
     ) throws -> Result {
         let started = ContinuousClock.now
