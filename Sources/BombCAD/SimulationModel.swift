@@ -2838,7 +2838,7 @@ extension SimulationModel {
         var lines: [SIMD4<Float>] = []
         for k in [KFactorDistance.k24, .k40] {
             lines += HazardOverlay.ring(
-                centre: centre, radius: k.distance(kilograms: scenario.charge.mass), kind: .kFactor,
+                centre: centre, radius: k.requiredDistance(kilograms: scenario.charge.mass), kind: .kFactor,
                 ground: ground)
         }
         let safe = MinimumSafeDistance(
@@ -2866,7 +2866,10 @@ extension SimulationModel {
     var blastHazardSummary: [String] {
         let mass = scenario.charge.mass
         var lines = KFactorDistance.all.map { k in
-            String(format: "%@: %.0f m", k.name, k.distance(kilograms: mass)) + " — " + k.use.lowercased()
+            String(format: "%@: %.0f m", k.name, k.requiredDistance(kilograms: mass)) + " — "
+                + k.use.lowercased()
+                + (k.requiredDistance(kilograms: mass) > k.distance(kilograms: mass)
+                    ? String(format: "; the K-factor alone gives %.0f m", k.distance(kilograms: mass)) : "")
         }
         lines.append(
             "M"
