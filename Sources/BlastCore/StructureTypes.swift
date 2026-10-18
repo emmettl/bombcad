@@ -1718,6 +1718,17 @@ enum ShaderLibrary {
     /// kernel (`porousAirConstant` in Solver.metal).
     static let porousAirConstant = 14
 
+    /// Index of the optional function constant that compiles structures' cut cells into a kernel
+    /// (`structureCutConstant` in Solver.metal).
+    static let structureCutConstant = 15
+
+    /// `constants` with structures' cut cells compiled in.
+    static func withStructureCut(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {
+        var on = true
+        constants.setConstantValue(&on, type: .bool, index: structureCutConstant)
+        return constants
+    }
+
     /// `constants` with congestion's porous cells compiled in.
     static func withPorousAir(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {
         var on = true

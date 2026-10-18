@@ -1079,6 +1079,7 @@ public enum StandingTable {
         "SolverConfiguration.airSleepCrossings": .numerical,
         "SolverConfiguration.debrisReach": .numerical,
         "SolverConfiguration.openFaces": .option([.copiedOpenFaces]),
+        "SolverConfiguration.structureCutCells": .numerical,
         "SolverConfiguration.minimumBalloonCells": .numerical,
         "SolverConfiguration.refinement": .option([.shockRefinement, .twoLevelRefinement]),
         "SolverConfiguration.refinementThreshold": .numerical,
