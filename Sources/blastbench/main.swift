@@ -271,6 +271,8 @@ func applyChosenAir(_ configuration: inout SolverConfiguration) {
     configuration.afterburning = burning
     configuration.airModel = chosenGas()
     configuration.openFaces = chosenFaces()
+    // `--wall-read`: gauges beside a wall read the pressure at the wall (`gaugesReadWallPressure`).
+    if flag("wall-read") { configuration.gaugesReadWallPressure = true }
 }
 
 /// `--fracture-rate 0.5`: how the fracture energy follows the tensile strain-rate law, and the
@@ -1328,23 +1330,27 @@ func runValidation() throws {
     for cellSize in cellSizes {
         var column: [(peak: Double, impulse: Double)] = []
         for point in points {
-            var wall = ScenarioPreset.openGround.scenario
-            // The charge `--mass` chose, at the stand-offs its scaled distances give.
-            wall.charge.mass = scenario.charge.mass
-            wall.reflectiveFaces = [.zMin, .xMax]
-            wall.charge.position = SIMD3(64 - Float(point.range(mass: mass)), 32, 0)
-            wall.gauges = [Gauge("Wall", at: SIMD3(63.99, 32, 0.05))]
-            let solver = try BlastSolver(device: device, scenario: wall, cellSize: cellSize)
-            configure(solver)
-            try solver.load(wall)
-            solver.advance(until: 0.1)
-            let cell = solver.nearestFluidCell(to: wall.gauges[0].position)
-            column.append(
-                (
+            // Each solver let go before the next is made: at 0.125 m one holds 67 million cells,
+            // about 6.7 GB, and eight left to the end of the loop took the Studio into swap.
+            let value = try autoreleasepool { () throws -> (peak: Double, impulse: Double) in
+                var wall = ScenarioPreset.openGround.scenario
+                // The charge `--mass` chose, at the stand-offs its scaled distances give.
+                wall.charge.mass = scenario.charge.mass
+                wall.reflectiveFaces = [.zMin, .xMax]
+                wall.charge.position = SIMD3(64 - Float(point.range(mass: mass)), 32, 0)
+                wall.gauges = [Gauge("Wall", at: SIMD3(63.99, 32, 0.05))]
+                let solver = try BlastSolver(device: device, scenario: wall, cellSize: cellSize)
+                configure(solver)
+                try solver.load(wall)
+                solver.advance(until: 0.1)
+                let cell = solver.nearestFluidCell(to: wall.gauges[0].position)
+                return (
                     Double((solver.gaugeHistories[0].map(\.pressure).max() ?? 0) - wall.atmosphere.pressure)
                         / 1000,
                     Double(solver.impulse(cell.i, cell.j, cell.k))
-                ))
+                )
+            }
+            column.append(value)
         }
         reflected.append(column)
     }
@@ -5554,6 +5560,7 @@ do {
     case "hubroof": try runHubRoof(device: device)
     case "facade": try runFacade(device: device)
     case "walloffset": try runWallOffset(device: device)
+    case "wallpeak": try runWallPeak(device: device)
     case "house": try runHouse(device: device)
     case "lacroix": try runLacroix(device: device)
     case "nassr": try runNassr(device: device)

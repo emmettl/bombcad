@@ -178,6 +178,13 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// it has and its faces open as far as they are (`StructureCutGeometry`), rather than the
     /// structure taking whole cells. From the structures as built, without refinement. Off by default.
     public var structureCutCells = false
+    /// Whether a gauge beside a wall (a solid cell, or a reflective face of the domain, within a cell
+    /// of its point) reads the pressure at the wall: its cell's gas against its mirror across the
+    /// wall, two shocks or two rarefactions, rather than the cell's mean. A reflected shock is
+    /// smeared over cells and the cell beside the wall reads it low (69% of Kingery–Bulmash's
+    /// reflected peak at 2 m/kg^(1/3) on 0.25 m cells for 100 kg); read at the wall it comes within
+    /// what the incident shock had lost on its way (93%). Off by default.
+    public var gaugesReadWallPressure = false
     /// Smallest radius, in cells, of the sphere a charge's energy is deposited into.
     public var minimumBalloonCells: Float = 2
     /// Refine the air where the blast's shock is by this ratio, 2 or 4: each block of 4 x 4 x 4
@@ -400,6 +407,7 @@ struct SolverUniforms {
     var ownSteps: UInt32 = 0
     var refineLevel: UInt32 = 0
     var sweepAxes: UInt32 = 0
+    var gaugeWalls: UInt32 = 0
 }
 
 /// Layout matches `StepControl` in `Solver.metal`.
