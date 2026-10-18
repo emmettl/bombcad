@@ -136,6 +136,36 @@ used:
 A plane wave at its angle cannot carry the spherical spreading beyond a face, so no local face
 condition stands in for the room. It is kept on the branch `claude/oblique-far-field`.
 
+**The samples.** Most were sized for the positive phase and a run of minutes, and open with the
+warning. The warehouse and the transport hub were widened to meet the clearance (18 October
+2026), at about 1.4–1.5 times the air. For the rest, meeting it would take far more air (the
+cost of a run goes with it at a given cell). So they keep their domains, and their late response,
+after the positive phase, carries the warning:
+
+| Sample | Nearest open face, m/kg^(1/3) | Air to meet 4 m/kg^(1/3) |
+|---|---|---|
+| Deformable wall | 2.7 (sides) | 1.6× |
+| Deformable building | 1.7 (behind the charge) | 2.7× |
+| Two-storey frame (2 t) | 0.7 (top) | 32× |
+| Frame with masonry infill | 2.4 (top) | 1.6× |
+| Three-storey building | 1.3 (behind the charge) | 2.0× |
+| Eight-storey frame (4 t) | 0.5 (top) | 19× |
+| Twelve-storey tower (4 t) | 0.6 (top) | 14× |
+| Steel and glass office (1 t) | 0.6 (top) | 3.8× |
+| Column, close-in | 0.5 (top) | 32× |
+| Wall in front of a building | 1.7 (sides, behind) | 3.1× |
+| Glass façade | 1.1 (behind the charge) | 1.4×, but its frame would have to move |
+| Car park | 0.7 (top) | 4.8× |
+| Three buildings across a street | 2.2 (top) | 1.8× |
+| Underpass | 0.9 (ends) | 5.0× |
+| Block-built house, terraced houses | 2.0–2.1 | 1.7×, 2.1× |
+| Internal explosion (the test's chamber) | 0.3 | 6.5× |
+| Large-panel flats, street charge (500 kg) | 0.5 | 16× |
+
+The glass façade's panes break in the positive phase, which the faces do not move. The
+chamber's charge is inside its walls, so the faces see only what leaks out. In the frames and
+towers it is their collapse, long after the positive phase, that the faces may move.
+
 ## The charge
 
 The charge is a "bursting balloon": a sphere of hot, dense gas at rest.
