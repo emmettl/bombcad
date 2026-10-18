@@ -2043,8 +2043,10 @@ struct StandingScene {
             evidence.append(
                 StandingEvidence(
                     "Brick walls' debris (Keys, 2016)",
-                    "Loads within 15%; the walls crack at the measured heights but fall as one column, lying "
-                        + "1.0–1.4 m too far out in the open and thrown half as far as measured in a shock tube",
+                    "Loads within 15%; the walls crack at the measured heights but fall as one column where the "
+                        + "tests' folded, so how they come apart is wrong; their debris lies 1.0–1.4 m too far out "
+                        + "in the open, the safe side for its reach, and is thrown half as far as measured in a "
+                        + "shock tube, the unsafe side",
                     "validation.md#brick-walls-debris"
                 ))
             if has(.softGround) {
