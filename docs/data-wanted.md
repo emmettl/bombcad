@@ -101,6 +101,12 @@ The survey names a few more, each under its item: Hao et al. (2017), Ross and Kr
 Kiger and Slawson (1984), Bauwens et al.'s propane and hydrogen papers, Kingery and Bulmash
 (1984), and Oswald (2017).
 
+**Still to find**: needs no source in hand meets yet.
+
+| Need | What a test would have to show | Unlocks |
+|---|---|---|
+| Brick walls' blast resistance once cracked | Unreinforced brick walls (a cavity wall's 102.5 mm leaves, a solid 215 mm wall) built between returns or other stiff ends, blasted past cracking: deflection histories to the end of the motion, whether each wall stood, the axial load on it and how stiff its ends were, so that arching across between the returns, arching up between floors and rocking under the load above can be told apart | Whether the [terraced houses'](validation.md#terraced-houses-against-wartime-bomb-damage) cracked front walls should stand, as most surveyed houses did; without it any resistance added would be fitted to that judge |
+
 ## To request
 
 Datasets in no open document, which have to be asked of their owners. Drafts, with contacts
