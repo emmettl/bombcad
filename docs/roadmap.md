@@ -122,8 +122,9 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
   the mapped one-dimensional start, the default since 18 October 2026
   ([a finely resolved start](air-blast-model.md#a-finely-resolved-start)).
 - **Next:** rerun the comparisons still on the balloon start
-  ([list](validation.md#still-on-the-balloon-start)); close in, the products' own composition
-  for the hottest gas; reflected peaks near walls. Weak shocks to 40 m/kg^(1/3) need no new criterion: threshold 0.005 follows them
+  ([list](validation.md#still-on-the-balloon-start)); reflected peaks near walls; the products
+  as a second gas only for contact charges (their own equation of state in the mapped start was
+  tried and moves open-air loads too little, [record](validation.md#the-products-own-equation-of-state-18-october)). Weak shocks to 40 m/kg^(1/3) need no new criterion: threshold 0.005 follows them
   at about the least it can cost, and 8 m cells refined twice give 84–94% of Kingery–Bulmash's
   peaks out to there ([large scenes](large-scenes.md#following-weak-shocks-further-tried-and-not-needed-to-40-mkg13)).
 - **Deferred:** cut cells for moving solids.

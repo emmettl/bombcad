@@ -80,7 +80,7 @@ swift run -c release blastbench perimeter --study wall
 | Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.1–1.7 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own. [Brick walls](#brick-walls-debris) (Keys, 2016): loads within 15%, but the walls break into too few pieces, falling at full length in the open (means of 1.6 m against 0.2 to 0.6 m) and thrown half as far as measured in a shock tube. Collapse once, blind: [Mendonça's slabs](#blind-test-2-mendonças-slabs-under-an-open-air-charge), the two that collapsed left standing | Unsafe side for debris: held back rather than thrown, slabs never holed, brick walls thrown short (low); collapse missed in both slabs that collapsed (blind) |
 | Window glass         | Monk and Clubley's annealed windows in the Shoeburyness tunnel (4 mm, 0.89 m², four aspect ratios, about 33 kPa reflected for longer than they lasted): the app's large-deflection panes (Moore's plate, E1300's flaw model) break every pane, as every pane broke, at 0.82–1.07 of the twelve measured times and 0.69–1.15 of the deflection (the small-deflection panes before them at 0.40–0.46). Against ASTM E1300: its stresses within 8%, its load resistance 0.57–0.72 | Either way within about 20% for timing under a strong load (moderate); the threshold a third under E1300's design resistance, the safe side, not measured |
 | Inside buildings     | [UFC 3-340-02 §2-15](#inside-buildings-against-ufc-3-340-02s-loads-through-openings), its own charts' data: through an open window the air's back-wall load 0.74–1.22 of the UFC's, the side walls and the front's inside 0.31–0.67; the one-way fill 0.95–1.35 of the UFC's leakage fill and 0.15–0.42 of its back-wall load | A design method, not measurement; head-on, rigid, open windows |
-| Fragments            | [Cooper (1996)](#fragments-against-coopers-data): his worked Mott and Gurney examples to rounding; one counted cast-iron bomb within a factor of 1.36 (rms) by Mott's form, 1.12 by Grady's; drag now the measured curve for tumbling cubes, 5% from the previous law. Hazard distance 0.43–0.84 of DoD 4145.26-M's test-derived distances for two items, in flight |  Masses either way within a factor of 1.4 (moderate, one test); hazard distance short by a sixth to a half (the unsafe side; moderate); launch speeds untested (low) |
+| Fragments            | [Cooper (1996)](#fragments-against-coopers-data): his worked Mott and Gurney examples to rounding; one counted cast-iron bomb within a factor of 1.36 (rms) by Mott's form, 1.12 by Grady's; drag now the measured curve for tumbling cubes, 5% from the previous law. Hazard distance 0.58–1.02 of DoD 4145.26-M's test-derived distances for two items, in flight; TP-12's own procedure 1.05–1.21 times it on the same fragments; Mott's scaling 1.00–1.36 times the masses of Sternberg's cylinders (TP-12 Table 1) |  Masses either way within a factor of 1.4 (moderate, one test); hazard distance up to two-fifths short (the unsafe side; moderate); launch speeds untested (low) |
 | Ground shock         | Xia et al. (2022), 1 t of TNT on the ground, accelerations 0.5 m deep at 21 and 42 m: the vertical velocity from the manuals' relation and the layered soil column 20 to 30 times the measured accelerations' integral at 21 m and 50 to 80 times at 42 m, within three times a velocity gauge that clipped; the measured motion mostly horizontal, at ranges near and past where the ground's wave outruns the air; the soil not measured. An elastic half-space about the charge, with a direct source calibrated against UFC 3-340-01: the horizontal within 1.5 times at 21 m but 18 times at 42 m, the vertical still 15 to 60 times. With soil that yields (compaction and a Mohr–Coulomb cone, the source the crater's energy): the horizontal 2.1 to 2.4 times at 21 m and 10 to 11 times at 42 m, the vertical 16 to 90 times, the fall-off R^(−1.5) against the measured R^(−3.3) to R^(−3.8) | Far too high in the vertical, the safe side; the horizontal motion that dominated not modelled, the unsafe side; illustrative |
 | A district           | [Beirut, 2020](#a-district-beirut-2020): 14,169 map buildings over 5 km at 4 m; the shock's arrival at Rigby's 30 observers best at 0.5 kt (median 0.98 of observed; 25 of 27 from 400 m out within 10%); peaks 0.68–0.78 of Kingery–Bulmash at 4 m; one typical pane a storey breaks inside 1.25 km where GEER's street survey found 0.39–0.84 of façades damaged, its edge (1.1–2.2 km by the glass assumed) about Rigby 2024's 1.86 km; glass converged by 4 m (3 m within 0.03), a mix of panes by building giving the tail beyond 2 km, GEER's W3 beyond 1.5 km but every façade blown out inside 1.25 km; structure under-damaged: 0.5 m stone cracks but rarely falls where GEER found partial collapse, 0.2 m concrete hardly damaged beyond 750 m where GEER's RC was D1–D3 to 2 km, and not converged at 3 m | Arrival times good; peaks low (the cells); glass moderate, set by the glass assumed more than the yield; structure low, the unsafe side (one construction for all, not converged) |
 | Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 1–2%, structural responses 4–20%, residual deflections and failure 17–28%; the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
@@ -4007,9 +4007,10 @@ one counted test, a cast-iron aerial bomb, is within a factor of 1.36 (rms) of M
 Hansche and Rinehart's measured curve for tumbling cubes, which moves the distance a fragment
 keeps 79 J by under 5%; Hoerner's fixed-orientation curves span 30% shorter to 50% longer. Cooper
 covers mild steel cylinders and 13 explosives; no arena test of launch speeds or ranges has been
-compared ([wanted](data-wanted.md#to-fetch)). The hazardous fragment distance, in flight as DDESB counts it, is 0.43–0.84 of DoD 4145.26-M's
-test-derived distances for a 155 mm projectile and a 500 lb bomb, short, the casing's wall
-deciding ([Fragments](fragments.md#against-dods-distances)). What fragments do to what they strike follows UFC 3-340-02 and THOR, whose
+compared ([wanted](data-wanted.md#to-fetch)). The hazardous fragment distance, in flight as DDESB counts it, is 0.58–1.02 of DoD 4145.26-M's
+test-derived distances for a 155 mm projectile and a 500 lb bomb, short with thick walls, the
+casing's wall deciding (0.43–0.84 until 18 October, when the band below the ground was counted;
+[against TP-12](fragments.md#against-ddesb-tp-12)) ([Fragments](fragments.md#against-dods-distances)). What fragments do to what they strike follows UFC 3-340-02 and THOR, whose
 worked examples it reproduces within 1% ([Fragments](fragments.md#what-fragments-do-to-what-they-strike)); no
 penetration test has been compared.
 
@@ -4548,6 +4549,7 @@ balloon by construction.
 | Districts and Beirut (`scenebench district`, `district-compare`) | pinned | districts |
 | The panel block (`blastbench panelblock`) and terraced houses (`blastbench house`) | pinned | large panels |
 | Buildings, settling (`blastbench buildings`, `settle`) | pinned | structures |
+| The transport hub's roof glass (`blastbench hubroof`) | pinned | glass |
 | Terrain, landscape, ground motion (`blastbench terrain`, `landscape`, `groundmotion`) | pinned | terrain, ground shock |
 | Dial Pack (`blastbench dialpack`) | pinned | thermal |
 | Mendonça (`blastbench mendonca`) | pinned | blind tests (frozen) |
@@ -4555,6 +4557,50 @@ balloon by construction.
 | The run-cost and standing tests on `recommended` | pinned | numerics |
 
 `blastbench digest --recommended` gives the same hashes on the pinned code as on main.
+
+#### The products' own equation of state (18 October)
+
+The mapped start with its products as TNT's detonation products (JWL, the LLNL handbook's set;
+`mappedChargeProducts`, see the [air-blast model](air-blast-model.md#a-finely-resolved-start))
+rather than hot air. The one-dimensional solution alone, a 1 kg surface burst (`blastbench
+products`), against Kingery–Bulmash's incident curves, hot air / JWL / the handbook's other TNT
+set:
+
+| Z | Peak | Impulse | Arrival |
+|---|------|---------|---------|
+| 0.2 | 52 / 67 / 71% | 227 / 192 / 177% | 94 / 86 / 82% |
+| 0.3 | 64 / 81 / 83% | 204 / 198 / 197% | 106 / 95 / 91% |
+| 0.5 | 88 / 100 / 103% | 172 / 174 / 184% | 107 / 97 / 94% |
+| 0.75 | 109 / 111 / 114% | 127 / 121 / 123% | 101 / 94 / 92% |
+| 1 | 115 / 111 / 115% | 97 / 97 / 98% | 97 / 92 / 91% |
+| 2 to 6 | 103–104 / 99–102 / 101–103% | 89–107%, alike | 95–98 / 95–98 / 93–98% |
+
+On the grid, `blastbench closeair --mapped` with and without `--products` (1 kg above rigid
+ground, reflected square on below), hot air → JWL:
+
+| Z | Cells | Reflected peak | Reflected impulse |
+|---|-------|----------------|-------------------|
+| 0.3 | 20 / 10 / 5 mm | 35 → 39 / 64 → 75 / 105 → 131% | 85 → 84 / 101 → 99 / 104 → 103% |
+| 0.5 | 20 / 10 / 5 mm | 55 → 55 / 75 → 76 / 92 → 94% | 88 → 86 / 93 → 91 / 100 → 100% |
+| 0.75 | 20 mm | 58 → 57% | 98 → 96% |
+| 1 | 20 mm | 66 → 65% | 103 → 101% |
+
+- The impulse, which loads a structure, moves by 2% or less; the peak by 2 points or less from
+  0.5 m/kg^(1/3) out. At 0.3 the peak rises a quarter on 5 mm cells, from 105% of the curves to
+  131%, away from them, where they rest on few tests and gauges in one shot differ by up to 40%
+  (Rae and McAfee, above). Not adopted: the change is within close in's scatter, and away from
+  the curves.
+- The products have spread to some 10 kg/m³ by the time they are mapped, even 0.4 m/kg^(1/3)
+  out, where JWL's terms for dense products are gone; the grid's hot air then reads their
+  pressure 13–25% higher than JWL's ω does. Carried with their own law all the way to 7
+  m/kg^(1/3) in one dimension they change the peaks by 4% or less past 0.75, so a second gas on
+  the grid would not change open-air loads either; in contact it would
+  ([Hupfauf](#slabs-under-contact-charges)).
+- The fireball: the products reach as far (0.85 against 0.84 m/kg^(1/3) at 0.5 ms/kg^(1/3)) and
+  are as hot, as air at their energy, from 0.2 ms/kg^(1/3) on; Dial Pack's cells hand over far
+  later than that, so its record cannot tell them apart.
+- The one-dimensional solution takes 2.3–2.8 times as long (31–34 s against 12–14 s to 7
+  m/kg^(1/3)).
 
 
 ### Kinney–Graham

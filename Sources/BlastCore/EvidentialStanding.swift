@@ -1084,6 +1084,7 @@ public enum StandingTable {
         "SolverConfiguration.mappedChargeScaledReach": .numerical,
         "SolverConfiguration.mappedChargeBurns": .numerical,
         "SolverConfiguration.mappedChargeMixing": .numerical,
+        "SolverConfiguration.mappedChargeProducts": .numerical,
         "SolverConfiguration.airSleepThreshold": .numerical,
         "SolverConfiguration.airSleepCrossings": .numerical,
         "SolverConfiguration.debrisReach": .numerical,
@@ -2608,9 +2609,15 @@ struct StandingScene {
             StandingEvidence(
                 "DoD 4145.26-M's hazardous fragment distances for single items in the open, from DDESB's test "
                     + "protocol (a 155 mm projectile 126.5 m, a 500 lb bomb 204.2 m), the items from public totals",
-                "0.43–0.77 and 0.57–0.84 in flight, short (the unsafe side), as the walls assumed go from thick "
-                    + "to thin; landings on the ground alone would be a sixth to a fifteenth",
+                "0.58–1.02 and 0.77–1.02 in flight, short (the unsafe side) to level, as the walls assumed go "
+                    + "from thick to thin; landings on the ground alone would be a sixth to a fifteenth",
                 "fragments.md#against-dods-distances"),
+            StandingEvidence(
+                "DDESB Technical Paper 12 (Zaker, 1975): its density on a surface normal to the rays, its "
+                    + "procedure, and Sternberg's steel cylinders' masses (its Table 1)",
+                "Its procedure on the same fragments gives 1.05–1.21 times the flown distance (it lets no "
+                    + "fragment fall); Mott's scaling with Cooper's B gives 1.00–1.36 times the mean mass of "
+                    + "Sternberg's fragments over a grain", "fragments.md#against-ddesb-tp-12"),
         ]
         let shared = [
             "One way: fragments do not push back on the air or the structure, and stop where they first hit.",
@@ -2620,8 +2627,8 @@ struct StandingScene {
                 + "the first surface, through or not, and does not load it.",
             "Hazard distance: the DDESB's, where fragments of 79 J or more fall below one per 55.7 m² on a "
                 + "surface across their paths near the horizontal (or on open ground, if further), in 8 directions; "
-                + "0.43–0.84 of DoD's test-derived distances for two items, short (the unsafe side), the casing's "
-                + "wall deciding; no fragment-by-fragment arena data compared.",
+                + "0.58–1.02 of DoD's test-derived distances for two items, up to two-fifths short (the unsafe "
+                + "side), the casing's wall deciding; no fragment-by-fragment arena data compared.",
         ]
         guard inputs.fragments?.mottFactor != nil else {
             return result(

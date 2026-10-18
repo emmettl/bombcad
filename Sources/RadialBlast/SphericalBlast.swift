@@ -19,10 +19,13 @@ public struct SphericalBlast: Sendable {
     public struct Gas: Hashable, Sendable {
         public var gamma: Double
         public var thermallyPerfect: Bool
+        /// The detonation products' own equation of state, or nil for products as hot air.
+        public var products: JWL?
 
-        public init(gamma: Double, thermallyPerfect: Bool) {
+        public init(gamma: Double, thermallyPerfect: Bool, products: JWL? = nil) {
             self.gamma = gamma
             self.thermallyPerfect = thermallyPerfect
+            self.products = products
         }
 
         static let r = 287.05
@@ -87,6 +90,105 @@ public struct SphericalBlast: Sendable {
             let t = p / (rho * Self.r)
             return 1 + Self.r / (2.5 * Self.r + Self.vibrationHeat(t))
         }
+
+        // With the products' own equation of state, a mixture holding a share `y` of its mass as
+        // products: each part presses as it would alone at its own partial density (Dalton), both
+        // at the mixture's internal energy per kilogram. It is the products' JWL where they are
+        // alone, the air's gas where they are absent, and JWL's terms for dense products die away
+        // as they dilute.
+
+        /// The pressure of a mixture holding `e` internal energy per volume.
+        public func pressure(density rho: Double, internalEnergy e: Double, products y: Double) -> Double {
+            guard let jwl = products, y > 0 else { return pressure(density: rho, internalEnergy: e) }
+            let specific = e / rho
+            let air =
+                thermallyPerfect
+                ? rho * (1 - y) * Self.r * Self.temperature(specificEnergy: specific)
+                : (gamma - 1) * rho * (1 - y) * specific
+            return jwl.cold(rho * y).pressure + jwl.omega * rho * y * specific + air
+        }
+
+        /// The internal energy per volume of a mixture at pressure `p`.
+        public func internalEnergy(density rho: Double, pressure p: Double, products y: Double) -> Double {
+            guard let jwl = products, y > 0 else { return internalEnergy(density: rho, pressure: p) }
+            let thermal = p - jwl.cold(rho * y).pressure
+            guard thermallyPerfect else {
+                return thermal / (jwl.omega * y + (gamma - 1) * (1 - y))
+            }
+            // Newton on the temperature the energy per kilogram has in air: from above, as the
+            // translational and rotational heat alone overestimates it.
+            var t = max(thermal, 1) / (rho * Self.r * (2.5 * jwl.omega * y + 1 - y))
+            for _ in 0..<12 {
+                let vibrating = Self.vibrationAndHeat(t)
+                let f =
+                    rho * (jwl.omega * y * (2.5 * Self.r * t + vibrating.energy) + (1 - y) * Self.r * t)
+                    - thermal
+                let slope = rho * (jwl.omega * y * (2.5 * Self.r + vibrating.heat) + (1 - y) * Self.r)
+                t = max(t - f / slope, 1e-6)
+            }
+            return rho * (2.5 * Self.r * t + Self.vibration(t))
+        }
+
+        /// The square of a mixture's speed of sound, at `specific` internal energy per kilogram and
+        /// pressure `p`: (∂p/∂ρ) at that energy, plus p/ρ² (∂p/∂e) at that density.
+        func soundSquared(density rho: Double, specific: Double, pressure p: Double, products y: Double)
+            -> Double
+        {
+            guard let jwl = products else { return 0 }
+            var byDensity = y * (jwl.cold(rho * y).slope + jwl.omega * specific)
+            var byEnergy = jwl.omega * rho * y
+            if thermallyPerfect {
+                let t = Self.temperature(specificEnergy: specific)
+                byDensity += (1 - y) * Self.r * t
+                byEnergy += rho * (1 - y) * Self.r / (2.5 * Self.r + Self.vibrationHeat(t))
+            } else {
+                byDensity += (1 - y) * (gamma - 1) * specific
+                byEnergy += rho * (1 - y) * (gamma - 1)
+            }
+            return max(byDensity + p / (rho * rho) * byEnergy, 1e-6)
+        }
+
+        /// The ratio ρc²/p of a mixture, which the scheme takes as its gas's ratio of heats.
+        public func ratio(density rho: Double, pressure p: Double, products y: Double) -> Double {
+            guard products != nil, y > 0 else { return ratio(density: rho, pressure: p) }
+            let specific = internalEnergy(density: rho, pressure: p, products: y) / rho
+            return rho * soundSquared(density: rho, specific: specific, pressure: p, products: y) / p
+        }
+    }
+
+    /// The Jones–Wilkins–Lee equation of state of detonation products: p = A (1 − ω/(R1 V))
+    /// exp(−R1 V) + B (1 − ω/(R2 V)) exp(−R2 V) + ω ρ e, with V the products' volume relative to the
+    /// unreacted explosive's (`density`).
+    public struct JWL: Hashable, Sendable {
+        public var a, b, r1, r2, omega, density: Double
+
+        public init(a: Double, b: Double, r1: Double, r2: Double, omega: Double, density: Double) {
+            (self.a, self.b, self.r1, self.r2, self.omega, self.density) = (a, b, r1, r2, omega, density)
+        }
+
+        /// TNT at 1.63 g/cm³, from the LLNL Explosives Handbook (B. M. Dobratz and P. C. Crawford,
+        /// UCRL-52997, Change 2, 1985): A 3.712 Mbar, B 0.03231 Mbar, R1 4.15, R2 0.95, ω 0.30.
+        public static let tnt = JWL(a: 371.2e9, b: 3.231e9, r1: 4.15, r2: 0.95, omega: 0.30, density: 1630)
+        /// TNT's other set quoted from the handbook, which ANSYS Autodyn's library carries: A 373.77
+        /// GPa, B 3.747 GPa, R1 4.15, R2 0.90, ω 0.35; the difference between the two is a measure
+        /// of how well the products' state is known.
+        public static let tntLeeFinger = JWL(
+            a: 373.77e9, b: 3.747e9, r1: 4.15, r2: 0.90, omega: 0.35, density: 1630)
+
+        /// The pressure of products at density `rho` beyond ω ρ e, and its slope in density.
+        func cold(_ rho: Double) -> (pressure: Double, slope: Double) {
+            let v = density / rho
+            // Beyond a thousand times the explosive's volume both terms are below the smallest
+            // double (and the slope would be 0 × ∞).
+            guard rho > 0, v < 1000 else { return (0, 0) }
+            let first = exp(-r1 * v)
+            let second = exp(-r2 * v)
+            let pressure = a * (1 - omega / (r1 * v)) * first + b * (1 - omega / (r2 * v)) * second
+            let byVolume =
+                a * first * (omega / (r1 * v * v) - r1 + omega / v)
+                + b * second * (omega / (r2 * v * v) - r2 + omega / v)
+            return (pressure, -byVolume * v / rho)
+        }
     }
 
     /// Afterburning as the air solver has it: products meeting oxygen burn at `rate` per second
@@ -127,6 +229,8 @@ public struct SphericalBlast: Sendable {
     /// With afterburning: unburnt products and oxygen, kg/m^3.
     public internal(set) var fuel: [Double]
     public internal(set) var oxygen: [Double]
+    /// With the products' own equation of state: the detonation products, burnt or not, kg/m^3.
+    public internal(set) var products: [Double]
     public let gas: Gas
     public let afterburn: Afterburn?
     public var gamma: Double { gas.gamma }
@@ -152,10 +256,10 @@ public struct SphericalBlast: Sendable {
     public init(
         mass: Double, energy totalEnergy: Double, radius: Double, extent: Double, cells: Int, gamma: Double,
         ambientDensity: Double, ambientPressure: Double, thermallyPerfect: Bool = false,
-        afterburn: Afterburn? = nil, oxygenInAir: Double = 0.232
+        afterburn: Afterburn? = nil, oxygenInAir: Double = 0.232, products jwl: JWL? = nil
     ) {
         cellSize = extent / Double(cells)
-        gas = Gas(gamma: gamma, thermallyPerfect: thermallyPerfect)
+        gas = Gas(gamma: gamma, thermallyPerfect: thermallyPerfect, products: jwl)
         setup = Setup(
             mass: mass, energy: totalEnergy, radius: radius, extent: extent, cells: cells, gas: gas,
             ambientDensity: ambientDensity, ambientPressure: ambientPressure, afterburn: afterburn,
@@ -172,6 +276,7 @@ public struct SphericalBlast: Sendable {
         momentum = Array(repeating: 0, count: cells)
         energy = Array(repeating: ambientEnergy, count: cells)
         fuel = Array(repeating: 0, count: cells)
+        products = Array(repeating: 0, count: cells)
         // The air the products displace keeps its oxygen, as the air solver's deposit has it.
         oxygen = Array(repeating: afterburn == nil ? 0 : oxygenInAir * ambientDensity, count: cells)
         for i in 0..<cells {
@@ -184,6 +289,7 @@ public struct SphericalBlast: Sendable {
             density[i] += inside * mass / volume
             energy[i] += inside * totalEnergy / volume
             if afterburn != nil { fuel[i] = inside * mass / volume }
+            if jwl != nil { products[i] = inside * mass / volume }
         }
     }
 
@@ -191,8 +297,30 @@ public struct SphericalBlast: Sendable {
     private func primitive(_ i: Int) -> SIMD3<Double> {
         let rho = max(density[i], 1e-9)
         let u = momentum[i] / rho
-        let p = max(gas.pressure(density: rho, internalEnergy: energy[i] - 0.5 * rho * u * u), 1e-3)
-        return SIMD3(rho, u, p)
+        guard gas.products != nil else {
+            let p = max(gas.pressure(density: rho, internalEnergy: energy[i] - 0.5 * rho * u * u), 1e-3)
+            return SIMD3(rho, u, p)
+        }
+        let p = gas.pressure(density: rho, internalEnergy: energy[i] - 0.5 * rho * u * u, products: share(i))
+        return SIMD3(rho, u, max(p, 1e-3))
+    }
+
+    /// The share of cell `i`'s mass that is detonation products; below a billionth, none (the
+    /// air's own law, and its cost).
+    private func share(_ i: Int) -> Double {
+        let y = min(max(products[i] / max(density[i], 1e-9), 0), 1)
+        return y < 1e-9 ? 0 : y
+    }
+
+    /// The products' share of the mass at `radius`, interpolated between cell centres.
+    public func productShare(at radius: Double) -> Double {
+        let x = radius / cellSize - 0.5
+        let i = min(max(Int(x.rounded(.down)), 0), density.count - 1)
+        let j = min(i + 1, density.count - 1)
+        let t = min(max(x - Double(i), 0), 1)
+        let rho = density[i] + t * (density[j] - density[i])
+        let y = min(max((products[i] + t * (products[j] - products[i])) / max(rho, 1e-9), 0), 1)
+        return y < 1e-9 ? 0 : y
     }
 
     /// The radius of the leading shock: the outermost cell 1% above ambient pressure.
@@ -245,6 +373,43 @@ public struct SphericalBlast: Sendable {
         return physical(r, er) + waveR * (starState - SIMD3(r.x, r.x * r.y, er))
     }
 
+    /// The HLLC flux between a mixture of products `yl` on the left and `yr` on the right, with
+    /// Davis's bounds on the waves, as the Roe-averaged sound speed of an ideal gas does not hold.
+    private func flux(_ l: SIMD3<Double>, _ r: SIMD3<Double>, products yl: Double, _ yr: Double) -> SIMD3<
+        Double
+    > {
+        let il = gas.internalEnergy(density: l.x, pressure: l.z, products: yl)
+        let ir = gas.internalEnergy(density: r.x, pressure: r.z, products: yr)
+        let el = il + 0.5 * l.x * l.y * l.y
+        let er = ir + 0.5 * r.x * r.y * r.y
+        func physical(_ w: SIMD3<Double>, _ e: Double) -> SIMD3<Double> {
+            SIMD3(w.x * w.y, w.x * w.y * w.y + w.z, (e + w.z) * w.y)
+        }
+        func sound(_ w: SIMD3<Double>, _ heat: Double, _ y: Double) -> Double {
+            guard y > 0 else { return (gas.ratio(density: w.x, pressure: w.z) * w.z / w.x).squareRoot() }
+            return gas.soundSquared(density: w.x, specific: heat / w.x, pressure: w.z, products: y)
+                .squareRoot()
+        }
+        let cl = sound(l, il, yl)
+        let cr = sound(r, ir, yr)
+        let waveL = min(l.y - cl, r.y - cr)
+        let waveR = max(l.y + cl, r.y + cr)
+        if waveL >= 0 { return physical(l, el) }
+        if waveR <= 0 { return physical(r, er) }
+        let ml = l.x * (waveL - l.y)
+        let mr = r.x * (waveR - r.y)
+        let star = (r.z - l.z + l.y * ml - r.y * mr) / (ml - mr)
+        if star >= 0 {
+            let factor = ml / (waveL - star)
+            let starState = SIMD3(
+                factor, factor * star, factor * (el / l.x + (star - l.y) * (star + l.z / ml)))
+            return physical(l, el) + waveL * (starState - SIMD3(l.x, l.x * l.y, el))
+        }
+        let factor = mr / (waveR - star)
+        let starState = SIMD3(factor, factor * star, factor * (er / r.x + (star - r.y) * (star + r.z / mr)))
+        return physical(r, er) + waveR * (starState - SIMD3(r.x, r.x * r.y, er))
+    }
+
     /// Advances until the shock reaches `radius` metres, or the clock `limit` seconds.
     public mutating func run(toShockRadius radius: Double, until limit: Double = .infinity, cfl: Double = 0.4)
     {
@@ -257,7 +422,17 @@ public struct SphericalBlast: Sendable {
             guardSteps += 1
             steps += 1
             var fastest = 1e-6
-            let ratios = w.map { gas.ratio(density: $0.x, pressure: $0.z) }
+            let ratios =
+                gas.products == nil
+                ? w.map { gas.ratio(density: $0.x, pressure: $0.z) }
+                : (0..<n).map { i in
+                    let y = share(i)
+                    guard y > 0 else { return gas.ratio(density: w[i].x, pressure: w[i].z) }
+                    let specific = (energy[i] - 0.5 * w[i].x * w[i].y * w[i].y) / w[i].x
+                    return w[i].x
+                        * gas.soundSquared(density: w[i].x, specific: specific, pressure: w[i].z, products: y)
+                        / w[i].z
+                }
             for (x, g) in zip(w, ratios) { fastest = max(fastest, abs(x.y) + (g * x.z / x.x).squareRoot()) }
             let dt = cfl * cellSize / fastest
             // Limited slopes (minmod, a monotonised central limiter's cautious member), then the
@@ -293,10 +468,17 @@ public struct SphericalBlast: Sendable {
             var fluxes = Array(repeating: SIMD3<Double>.zero, count: n + 1)
             var fuelFlux = Array(repeating: 0.0, count: n + 1)
             var oxygenFlux = Array(repeating: 0.0, count: n + 1)
+            var productFlux = Array(repeating: 0.0, count: gas.products == nil ? 0 : n + 1)
             for face in 1...n {
                 let left = hi[face - 1]
                 let right = face < n ? lo[face] : hi[n - 1]
-                fluxes[face] = flux(left, right)
+                if gas.products == nil {
+                    fluxes[face] = flux(left, right)
+                } else {
+                    fluxes[face] = flux(left, right, products: share(face - 1), share(min(face, n - 1)))
+                    let upwind = fluxes[face].x >= 0 ? face - 1 : min(face, n - 1)
+                    productFlux[face] = fluxes[face].x / max(density[upwind], 1e-9) * products[upwind]
+                }
                 if afterburn != nil {
                     let upwind = fluxes[face].x >= 0 ? face - 1 : min(face, n - 1)
                     let share = fluxes[face].x / max(density[upwind], 1e-9)
@@ -314,6 +496,11 @@ public struct SphericalBlast: Sendable {
                 density[i] -= dt * change.x
                 momentum[i] -= dt * (change.y - w[i].z * (areaOut - areaIn) / volume)
                 energy[i] -= dt * change.z
+                if gas.products != nil {
+                    products[i] = max(
+                        products[i] - dt * (areaOut * productFlux[i + 1] - areaIn * productFlux[i]) / volume,
+                        0)
+                }
                 if afterburn != nil {
                     fuel[i] = max(
                         fuel[i] - dt * (areaOut * fuelFlux[i + 1] - areaIn * fuelFlux[i]) / volume, 0)
@@ -325,6 +512,7 @@ public struct SphericalBlast: Sendable {
             if let afterburn, afterburn.diffusivity > 0 {
                 mix(&fuel, diffusivity: afterburn.diffusivity, dt: dt)
                 mix(&oxygen, diffusivity: afterburn.diffusivity, dt: dt)
+                if gas.products != nil { mix(&products, diffusivity: afterburn.diffusivity, dt: dt) }
             }
             // Afterburning, after the step, as the air solver's final sweep does it.
             if let afterburn {
@@ -347,7 +535,12 @@ public struct SphericalBlast: Sendable {
             for (k, r) in probes.enumerated() {
                 let s = state(at: r)
                 let rho = max(s.x, 1e-9)
-                let p = gas.pressure(density: rho, internalEnergy: s.z - 0.5 * s.y * s.y / rho)
+                let p =
+                    gas.products == nil
+                    ? gas.pressure(density: rho, internalEnergy: s.z - 0.5 * s.y * s.y / rho)
+                    : gas.pressure(
+                        density: rho, internalEnergy: s.z - 0.5 * s.y * s.y / rho,
+                        products: productShare(at: r))
                 records[k].append((time, p))
             }
         }
