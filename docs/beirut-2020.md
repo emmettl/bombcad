@@ -263,11 +263,13 @@ The 1 km box (2 km square, 320 m top, 0.5 kt) on three grids, uniform cells:
   at 500 Pa (above) bring its façades' loads to the 3 m cells': median peaks 29, 17, 11 and 8 kPa
   at 0.5–1.5 km against 30, 18, 12 and 9. Its stone at 0.5–0.75 km cracks in 256 buildings and fails in 9 (3 m:
   269 and 10); concrete is moderately damaged in 195 there and 45 at 0.75–1 km (3 m: 139 and 11).
-  But a disturbance of about 0.7 kPa still runs ahead of the shock over the city south-east of the
-  charge: gauges there 580–810 m out see it at 0.81–0.94 s (the shock at 1.15–1.75 s), and it opens
-  a 0.5 s window too early on 7% of the façade strips at 0.5–0.75 km and 18% at 1–1.25 km, whose
-  panes then go unbroken (0.81–0.93 broken, against 0.92–1.00 on 3 m cells). Its damage is
-  indicative until that is found.
+  But a ringing of about ±0.5–0.9 kPa still runs ahead of the shock over the city south-east of the
+  charge, at about 2 km/s, so carried by the refinement and not the air: gauges there 580–810 m out
+  take it for the arrival at 0.81–0.94 s, while the shock itself comes on time (1.21 s at 618 m,
+  where Kingery–Bulmash has 1.24 s), and it opens a 0.5 s window too early on 7% of the façade
+  strips at 0.5–0.75 km and 18% at 1–1.25 km, whose panes then go unbroken (0.81–0.93 broken,
+  against 0.92–1.00 on 3 m cells). The peaks are untouched; the arrivals and the damage are
+  indicative until it is found.
 
 ### Structure against the building survey (GEER, 2021)
 
