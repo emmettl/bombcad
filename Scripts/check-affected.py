@@ -16,7 +16,7 @@ untracked files) and runs one of three tiers:
 
 The full check still runs nightly on the mini and before every release; this only decides what a
 push waits for. `--dry-run` prints the tier and the tests without running anything; `--full`
-forces the full check.
+forces the full check (through make: `make check-affected ARGS=--dry-run`).
 """
 
 import argparse

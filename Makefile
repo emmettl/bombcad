@@ -103,7 +103,7 @@ check-anywhere:
 # The pre-push check sized to the change (Scripts/check-affected.py): documents and scripts get
 # lint and ci-test, other code its own tests too, and the solver's core the full check-anywhere.
 check-affected:
-	python3 Scripts/check-affected.py
+	python3 Scripts/check-affected.py $(ARGS)
 
 release-check:
 	python3 Scripts/release.py check

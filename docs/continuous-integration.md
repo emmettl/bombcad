@@ -36,7 +36,9 @@ the branch with `origin/main` and runs one of three tiers:
 | Other code | lint, `make build-strict`, `ci-test`, and the Swift suites that name a changed file's type or sit in a changed test file, plus the standing's and the shader layouts' suites |
 | The core: any shader, `Package.swift`/`.resolved`, RadialBlast, or BlastSolver, SolverTypes, StructureSolver, StructureTypes, ShellSolver, Scenario, MappedStart, Refinement, StructuralBody | the full `make check-anywhere` |
 
-`--dry-run` prints the tier and the suites; `--full` forces the full check. The full check still
+`--dry-run` prints the tier and the suites; `--full` forces the full check. Through make they go
+in `ARGS` (`make check-affected ARGS=--dry-run`): `make check-affected --dry-run` is make's own
+dry run, which prints the command and runs nothing. The full check still
 runs nightly on `main` and on every release commit, and its suspect list names the commit that broke
 anything the tiers missed. When the project gains users, the full check before every push comes
 back.
