@@ -41,7 +41,14 @@ The [steel and glass office](docs/office-tower.md) and the [large-panel block of
 
 A signed, notarized build for Apple silicon Macs running macOS 15 or later is on the
 [Releases](https://github.com/emmettl/bombcad/releases) page. Expand the ZIP and move
-`BombCAD.app` to Applications; the `.sha256` file beside it checks the download.
+`BombCAD.app` to Applications; the `.sha256` file beside it checks the download. Or, with
+Homebrew:
+
+```bash
+brew install emmettl/tap/bombcad
+```
+
+which also puts the headless runner on the path as `bombcad`.
 
 ## Building and running
 
