@@ -495,7 +495,7 @@ public enum ValidationTables {
     public static let spreads: [Spread] = [
         Spread(
             id: "slab", coefficient: 0.12,
-            quote: "| Contest slab, peak (mm) | 108 | 113 | 107, 12% | 89–126 |"),
+            quote: "| Contest slab, peak (mm) | 109 | 113 | 106, 12% | 89–126 |"),
         Spread(
             id: "wuPeak", coefficient: 0.04,
             quote: "| Wu S8, peak (mm) | 18.0 | 14.4 | 14.3, 4% | 13.6–15.2 |"),
@@ -504,11 +504,11 @@ public enum ValidationTables {
             quote: "| Chiquito S1–S3, gauge at 1 m (MPa) | 2.5 | 1.48 | 1.48, 8% | 1.32–1.66 |"),
         Spread(
             id: "wallPeak", coefficient: 0.02,
-            quote: "| Kingery–Bulmash wall, reflected peak (kPa) | 1,060 (K–B) | 691 | 697, 2% | 672–715 |"),
+            quote: "| Kingery–Bulmash wall, reflected peak (kPa) | 1,060 (K–B) | 677 | 678, 2% | 655–696 |"),
         Spread(
-            id: "wallImpulse", coefficient: 0.01,
+            id: "wallImpulse", coefficient: 0.02,
             quote:
-                "| Kingery–Bulmash wall, reflected impulse (Pa s) | 1,690 (K–B) | 1,710 | 1,710, 1% | 1,670–1,740 |"
+                "| Kingery–Bulmash wall, reflected impulse (Pa s) | 1,690 (K–B) | 1,880 | 1,880, 2% | 1,830–1,920 |"
         ),
     ]
 
