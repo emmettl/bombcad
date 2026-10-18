@@ -6,17 +6,17 @@ extension BlastSolver {
     /// Lays down `charge` as its blast is when the shock has spread to `radius` metres, from a
     /// one-dimensional solution started at the charge's own size, and returns the solution, from
     /// which the time it took, and the peaks, impulses and histories at points the shock has
-    /// already passed, are taken (`recordMapped`). A charge on the ground (rigid, reflecting)
-    /// spreads as one of twice the mass in free air, of which the half above the ground is laid
-    /// down. Cells farther than `radius` are left as they are; nothing solid may lie within it.
+    /// already passed, are taken (`recordMapped`). A charge on `mirrors` reflecting faces (the
+    /// ground, a model's mirror planes) spreads as one of 2^`mirrors` times the mass in free air,
+    /// of which the part on the domain's side is laid down. Cells farther than `radius` are left as they are; nothing solid may lie within it.
     /// The one-dimensional solution, unrun, a charge of `charge` takes to be mapped out to
     /// `radius` m under `configuration`: from a sphere of TNT's density, on a radial grid of a
     /// twentieth of its radius (2,000 to 20,000 cells) reaching 1.6 times `radius`.
     static func mappedSolution(
-        _ charge: Charge, radius: Float, onGround: Bool, configuration: SolverConfiguration,
+        _ charge: Charge, radius: Float, mirrors: Int, configuration: SolverConfiguration,
         ambientDensity: Float, products: SphericalBlast.JWL? = nil, refined: Int = 1
     ) -> SphericalBlast {
-        let multiplier: Double = onGround ? 2 : 1
+        let multiplier = Double(1 << mirrors)
         let mass = Double(charge.mass) * multiplier
         let energy = Double(charge.energy) * multiplier
         // With the products' own law, the charge at the explosive's own density.
@@ -52,7 +52,7 @@ extension BlastSolver {
         refined: Int = 1
     ) -> SphericalBlast {
         mappedSolution(
-            Charge(mass: mass, position: .zero), radius: reach * cbrt(mass), onGround: true,
+            Charge(mass: mass, position: .zero), radius: reach * cbrt(mass), mirrors: 1,
             configuration: configuration, ambientDensity: 1.225, products: products, refined: refined)
     }
 
@@ -63,7 +63,7 @@ extension BlastSolver {
     ) -> (seconds: Double, cells: Int, steps: Int, digest: UInt64) {
         let radius = mappedCells * cellSize
         var blast = mappedSolution(
-            Charge(mass: mass, position: .zero), radius: radius, onGround: true, configuration: configuration,
+            Charge(mass: mass, position: .zero), radius: radius, mirrors: 1, configuration: configuration,
             ambientDensity: 1.225)
         let start = Date()
         blast.run(toShockRadius: Double(radius))
@@ -80,7 +80,7 @@ extension BlastSolver {
     {
         let unrun = mappings.map { mapping -> SphericalBlast in
             var blast = Self.mappedSolution(
-                mapping.charge, radius: mapping.radius, onGround: mapping.onGround,
+                mapping.charge, radius: mapping.radius, mirrors: mapping.mirrors,
                 configuration: configuration,
                 ambientDensity: ambientDensity, products: configuration.mappedChargeProducts ? .tnt : nil)
             blast.probes = probes.map { Double(simd_distance($0, mapping.charge.position)) }

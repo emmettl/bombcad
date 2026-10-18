@@ -502,13 +502,13 @@ extension BlastSolver {
     }
 
     /// A charge laid down from its own one-dimensional solution: which of the scene's charges
-    /// (0 the main one, then the additional ones), how far out, and whether on the ground or on
-    /// another reflecting face, which mirrors it.
+    /// (0 the main one, then the additional ones), how far out, and how many reflecting faces it
+    /// lies on (the ground, a model's mirror planes), each of which mirrors it.
     struct ChargeMapping {
         var index: Int
         var charge: Charge
         var radius: Float
-        var onGround: Bool
+        var mirrors: Int
     }
 
     /// The scene's charges, the main one first.
@@ -529,7 +529,7 @@ extension BlastSolver {
             guard charges[k].mass > 0 else { return nil }
             let others = charges.indices.filter { $0 != k }.map { charges[$0].position }
             return mapping(of: charges[k], among: others, scenario: scenario).map {
-                ChargeMapping(index: k, charge: charges[k], radius: $0.radius, onGround: $0.onGround)
+                ChargeMapping(index: k, charge: charges[k], radius: $0.radius, mirrors: $0.mirrors)
             }
         }
     }
@@ -540,7 +540,7 @@ extension BlastSolver {
     /// `others` charges (where their shells could first meet), and within the cells' and the
     /// scaled reach's caps; nil if that would not reach 3 cells.
     func mapping(of charge: Charge, among others: [SIMD3<Float>], scenario: Scenario)
-        -> (radius: Float, onGround: Bool)?
+        -> (radius: Float, mirrors: Int)?
     {
         let c = charge.position
         let dx = grid.cellSize
@@ -550,15 +550,11 @@ extension BlastSolver {
             (.xMin, c.x), (.xMax, size.x - c.x), (.yMin, c.y), (.yMax, size.y - c.y), (.zMin, c.z),
             (.zMax, size.z - c.z),
         ]
-        // The reflecting face the charge lies on, if any (the ground first, unless it is shaped):
-        // it mirrors the blast, as a charge of twice the mass in free air.
-        let mirror =
-            c.z <= 0.5 * dx && scenario.reflectiveFaces.contains(.zMin) && !shaped
-            ? BoundaryFaces.zMin
-            : faces.first { face, distance in
-                face != .zMin && distance <= 0.5 * dx && scenario.reflectiveFaces.contains(face)
-            }?.0
-        let onGround = mirror != nil
+        // The reflecting faces the charge lies on (the ground unless it is shaped, a model's mirror
+        // planes): each mirrors the blast, as a charge of twice the mass in free air.
+        let mirrors = faces.filter { face, distance in
+            distance <= 0.5 * dx && scenario.reflectiveFaces.contains(face) && !(face == .zMin && shaped)
+        }.map(\.0)
         var nearest = Float.infinity
         if shaped, let terrain = scenario.terrain {
             // The surface, sampled a quarter cell apart within the furthest the blast may be mapped.
@@ -580,7 +576,7 @@ extension BlastSolver {
         for box in obstacles {
             nearest = min(nearest, simd_distance(simd_clamp(c, box.min, box.max), c))
         }
-        for (face, distance) in faces where face != mirror {
+        for (face, distance) in faces where !mirrors.contains(face) {
             nearest = min(nearest, distance)
         }
         let cap = min(
@@ -600,7 +596,7 @@ extension BlastSolver {
         }
         var radius = min(0.8 * nearest, cap)
         for other in others { radius = min(radius, 0.5 * simd_distance(other, c)) }
-        return radius >= 3 * dx ? (radius, onGround) : nil
+        return radius >= 3 * dx ? (radius, mirrors.count) : nil
     }
 
     /// The ratio the air's finest level will be refined by at the next `restart()`, or 1.

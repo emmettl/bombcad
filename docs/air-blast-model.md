@@ -235,8 +235,8 @@ pressure's geometric source), on a radial grid of a twentieth of the charge's ra
 sphere of the charge's own size (TNT's density). It reaches as far as it can before meeting
 anything: 0.8 of the distance to the nearest block, structure, pane, ground that is not flat or
 open face, half the way to the nearest other charge, at most 64 cells and 6 m/kg^(1/3). A charge
-on the ground, or on another reflecting face (a model's mirror plane), spreads as one of twice
-the mass, mirrored. The state is then laid onto the grid (each cell averaged over 64 samples, the
+on the ground spreads as one of twice the mass, mirrored; on more reflecting faces (a model's
+mirror planes, a corner of them), as one of 2, 4 or 8 times the mass. The state is then laid onto the grid (each cell averaged over 64 samples, the
 radial momentum turned into vectors) and the clock set to the time that took. With several
 charges, all are solved to one time, the earliest at which any shock reaches its radius (the
 others then still within theirs), and each is laid in the cells nearer it than any other charge,

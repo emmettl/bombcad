@@ -133,6 +133,24 @@ struct MappedChargeTests {
         #expect(solver.peakOverpressure(68, 64, 0) > 1e6)
     }
 
+    @Test("A charge on a mirror plane, or in a corner of two, is mapped as mirrored by each")
+    func mirrorPlanes() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
+        var scenario = ScenarioPreset.openGround.scenario
+        scenario.reflectiveFaces = [.zMin, .xMin]
+        let middle = scenario.charge.position
+        scenario.charge.position = SIMD3(0, middle.y, 0)
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.5)
+        solver.configuration.mappedCharge = true
+        #expect(solver.mappings(for: scenario).map(\.mirrors) == [2])
+        // Above the ground on the mirror plane: mirrored once.
+        scenario.charge.position = SIMD3(0, middle.y, 3)
+        #expect(solver.mappings(for: scenario).map(\.mirrors) == [1])
+        // On a face that does not reflect: not mapped (the open face is at the charge).
+        scenario.reflectiveFaces = [.zMin]
+        #expect(solver.mappings(for: scenario).isEmpty)
+    }
+
     @Test("Several charges are each mapped to half the way between them, one by a block left the balloon")
     func severalCharges() throws {
         let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
