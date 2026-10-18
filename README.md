@@ -151,6 +151,7 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [Terrain](docs/terrain.md)                  | A heightfield ground the blast sees, DEM import, and slopes checked against shock reflection theory |
 | [Large scenes](docs/large-scenes.md) | Bursts of hundreds of tonnes to kilotonnes over kilometres: accuracy, cost and grids against Kingery–Bulmash, terrain at scale |
 | [Beirut, 2020](docs/beirut-2020.md) | The port explosion over 14,169 map buildings, set against the arrival times and the surveys of glass and structural damage |
+| [Charge inference](docs/charge-inference.md) | The charge's yield and place inferred from observed arrival times (and broken glass), with credible intervals; Beirut's found again |
 | [Validation](docs/validation.md)            | Every comparison with measurements and theory, with a summary   |
 | [Validation review](docs/validation-review.md) | An independent review of the record's claims, ranked by severity |
 | [Blind tests](docs/blind-tests.md) | The protocol and register of tests predicted on frozen defaults before their measurements are unsealed |

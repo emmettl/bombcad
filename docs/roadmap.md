@@ -311,9 +311,13 @@ most are about reaching an answer for less, with the full solver kept as the ref
    step is a ray-traced far field set against Beirut's full run beyond 1 km.
 4. **Uncertainty by default.** Results as probabilities ("this façade fails with 70% chance")
    from the scatter in yield, materials and rounding, cheap once item 2 exists.
-5. **From damage back to the explosion.** Infer yield, place and height from observed arrival
-   times, broken glass and damage, as the Beirut page does by hand for its yield. The first step
-   is fitting Beirut's yield and place to Rigby's arrivals and GEER's glass automatically.
+5. **From damage back to the explosion** (first step done). Infer yield, place and height from
+   observed arrival times, broken glass and damage, as the Beirut page did by hand for its yield.
+   `scenebench infer-charge` ([charge inference](charge-inference.md)) now samples the yield and
+   place from arrivals, finding Beirut's 0.5 kt and Warehouse 12 from Rigby's observers; height
+   and clock offset are not resolved by them, and GEER's glass biases the yield (the glass model
+   breaks more than the survey saw). Next: damage that calibrates (the structural survey, or glass
+   once the envelope model matches GEER), and BombCAD's own runs as the forward model in the loop.
 6. **Protective design.** The least set of glazing, wall and stand-off changes that meets a
    hazard target, which needs item 2's speed.
 
