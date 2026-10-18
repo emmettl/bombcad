@@ -41,6 +41,18 @@ runs nightly on `main` and on every release commit, and its suspect list names t
 anything the tiers missed. When the project gains users, the full check before every push comes
 back.
 
+**The GPU structs match on both sides.** `make ci-test` runs `Scripts/check-shader-mirrors.py`,
+which lays out each Swift struct uploaded to a Metal buffer and the shader struct that reads it by
+the two languages' rules (no compiler is needed, so it runs on any machine), and each shader struct
+the renderer copies from a solver's. It fails when a size, a stride, a field's offset or a field's
+kind (float, integer, half, bool) differs. It finds pairs by name, by a Swift doc comment naming
+the shader struct in backticks, and by `pair` lines in `Scripts/shader-mirrors-allow.txt`, which
+also lists each deliberate difference with its reason. It was added on 18 October 2026, after
+`ShellElement` grew from 40 to 52 bytes in the solver and not in `Render.metal`; the Swift test
+`RenderLayoutTests` guards that one pair as well. It does not read the shader source ContinuumKit
+compiles in, and buffers written as raw floats are checked only where a `size` line names the Swift
+constant holding their stride.
+
 **No compiler warnings.** Every check builds with `make build-strict` (`Scripts/build-strict.py`):
 the package and its tests, failing on any warning in this package's own code, each listed once;
 SwiftPM suppresses ContinuumKit's. There were none on 12 October 2026, down from 108 (mostly
