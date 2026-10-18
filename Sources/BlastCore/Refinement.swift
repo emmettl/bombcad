@@ -1988,14 +1988,20 @@ struct TerrainUniforms {
     var cutSamples: UInt32 = 8
 }
 
-/// `PaneLookup` in Refine.metal.
+/// `PaneLookup` in Refine.metal: 32 bytes, as the kernels read its (cell, pane) entries from the
+/// byte after it. Its padding is three floats, not a `SIMD3<Float>`, whose 16-byte alignment made
+/// it 48 in Swift: the kernels then took two zeros for entries and missed the last two, so the two
+/// highest pane cells never opened on the fine grid and pane 0 breaking opened coarse cell
+/// (0, 0, 0)'s fine cells.
 struct PaneLookup {
     var count: UInt32 = 0
     var nx: UInt32 = 0
     var ny: UInt32 = 0
     var nz: UInt32 = 0
     var coarseDx: Float = 0
-    var pad = SIMD3<Float>.zero
+    var pad0: Float = 0
+    var pad1: Float = 0
+    var pad2: Float = 0
 }
 
 extension AirRefinement {
