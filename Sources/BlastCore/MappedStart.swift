@@ -167,7 +167,7 @@ extension BlastSolver {
         gauges: [SIMD3<Float>]
     ) {
         startClock(at: blasts.map(\.time).min() ?? 0)
-        mappedStart = zip(blasts, mappings).map { ($0, $1.charge.position, $1.radius) }
+        mappedStart = zip(blasts, mappings).map { ($0, $1.charge.position, $1.radius, $1.charge, $1.mirrors) }
         let grid = self.grid
         let dx = grid.cellSize
         let shared = positions.count > 1
