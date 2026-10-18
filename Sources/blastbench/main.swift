@@ -5581,6 +5581,7 @@ do {
     case "adblast": try runAdblast(device: device)
     case "envelope-walls": try runEnvelopeWalls(device: device)
     case "envelope-debris": try runEnvelopeDebris(device: device)
+    case "envelope-regrade": try runEnvelopeRegrade(device: device)
     case "nian": try runNian(device: device)
     case "envelope-slabs": try runEnvelopeSlabs(device: device)
     default:

@@ -660,6 +660,16 @@ public enum EnvelopeDamageAssessment {
     /// Concrete fails past 10° of support rotation (ASCE/SEI 59-11, `EnvelopeDamageLevel.concrete`).
     static let failedRotation = 10 * Double.pi / 180
 
+    /// Concrete's ductility for its level, whichever way it went furthest: pushed out (by a charge
+    /// inside, or its rebound) it is judged as pushed in, UFC 3-340-02 §4-26.2's "designed for a
+    /// negative load" by "the same equations", with ASCE/SEI 59-11's limits. Only inward, as
+    /// before 18 October 2026, with `BOMBCAD_CONCRETE_INWARD_ONLY` set, to compare.
+    static func concreteDuctility(_ response: SDOFResponse) -> Double {
+        concreteInwardOnly ? response.ductility : response.ductilityEitherWay
+    }
+
+    static let concreteInwardOnly = ProcessInfo.processInfo.environment["BOMBCAD_CONCRETE_INWARD_ONLY"] != nil
+
     /// What a component that failed at `time` (from its load's first bin) moving at `speed` (m/s,
     /// inward positive, at its largest deflection) throws; nil where it did not.
     static func launch(
@@ -802,7 +812,7 @@ public enum EnvelopeDamageAssessment {
             }
             let rotations = responses.map { rotation($0, span: a) }
             let levels = zip(responses, rotations).map {
-                EnvelopeDamageLevel.concrete(ductility: $0.ductility, rotationDeg: $1)
+                EnvelopeDamageLevel.concrete(ductility: concreteDuctility($0), rotationDeg: $1)
             }
             let concrete: EnvelopeComponentDamage.Material =
                 kind == .reinforcedBlockwork && !isRoof ? .reinforcedBlockwork : .reinforcedConcrete
@@ -892,7 +902,7 @@ public enum EnvelopeDamageAssessment {
                 construction.walls == .reinforcedBlockwork ? .reinforcedBlockwork : .reinforcedConcrete
             var result = damage(
                 concrete, response,
-                EnvelopeDamageLevel.concrete(ductility: response.ductility, rotationDeg: rotation))
+                EnvelopeDamageLevel.concrete(ductility: concreteDuctility(response), rotationDeg: rotation))
             result.launch = Self.launch(
                 time: response.passedAt, speed: response.velocityPassing.map { $0 * turned }, system: system,
                 material: concrete,
@@ -949,7 +959,7 @@ public enum EnvelopeDamageAssessment {
             }
             let rotations = responses.map { rotation($0, span: span) }
             let levels = zip(responses, rotations).map {
-                EnvelopeDamageLevel.concrete(ductility: $0.ductility, rotationDeg: $1)
+                EnvelopeDamageLevel.concrete(ductility: concreteDuctility($0), rotationDeg: $1)
             }
             let concrete: EnvelopeComponentDamage.Material =
                 kind == .reinforcedBlockwork && !isRoof ? .reinforcedBlockwork : .reinforcedConcrete

@@ -2957,7 +2957,7 @@ struct EnvelopeWallSystem {
     float sign;
     uint first;
     uint count;
-    uint pad0;
+    uint eitherWay;  // 1: yielded either way (concrete), not only inward
     uint pad1;
 };
 
@@ -3054,7 +3054,8 @@ kernel void stepEnvelopeWalls(const device float2 *current [[buffer(0)]],
             v += 0.5f * h * (load - r - s.damping * v) / (kick * s.mass);
             peak = max(peak, x);
             rebound = min(rebound, x);
-            if (!failed && ((peak > s.yieldPast && max(peak, -rebound) > s.rotationPast) || fabs(x) >= s.lostPast)) {
+            float yieldedBy = s.eitherWay != 0 ? max(peak, -rebound) : peak;
+            if (!failed && ((yieldedBy > s.yieldPast && max(peak, -rebound) > s.rotationPast) || fabs(x) >= s.lostPast)) {
                 failed = true;
                 if (!cantilever || k == judged) {
                     float t = clock.x - control.dt + float(i + 1) * h;

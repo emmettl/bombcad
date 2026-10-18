@@ -2380,6 +2380,8 @@ struct StandingScene {
                     + "2° is flagged as beyond the one-way model.",
                 "A component's load is Biggs's equivalent uniform load, its faces weighted by its plastic "
                     + "mechanism's shape from the edges it is held on (held nowhere, taken as held all round).",
+                "Concrete is judged whichever way it went furthest, pushed out as pushed in (UFC 3-340-02 "
+                    + "§4-26.2), with ASCE/SEI 59-11's limits.",
                 "Glass is annealed, on Moore's large-deflection plate, simply supported, breaking at E1300's "
                     + "median strength with the whole pane at its largest stress"
                     + (laminated
@@ -2689,9 +2691,9 @@ struct StandingScene {
                 StandingEvidence(
                     "Envelope debris against Keys's brick walls (2016) and the Kasun cubicle (80 kg inside)",
                     "Keys: the debris's mean reach 0.25–0.53 m against 0.23–0.64 m, its far tail short (0.5–1.5 m "
-                        + "against 3–6 m); Kasun: launched at up to 120–132 m/s against the Klotz Group's 124 m/s, "
-                        + "but hazardous debris to 142 m against the tests' 290–315 m, the unsafe side (DoD's "
-                        + "structure distance, 268 m, governs)",
+                        + "against 3–6 m); Kasun: launched at up to 118–131 m/s against the Klotz Group's 124 m/s, "
+                        + "its walls venting the gas, but hazardous debris to 129 m against the tests' 290–315 m, "
+                        + "the unsafe side (DoD's structure distance, 268 m, governs)",
                     "hazards.md#debris-from-failed-envelope-components"),
             ],
             assumptions: [

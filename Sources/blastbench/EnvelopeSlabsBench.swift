@@ -237,12 +237,18 @@ func runEnvelopeSlabs(device: MTLDevice) throws {
         for (name, system) in slabCase.systems {
             let response = system.response(pressures: slabCase.pressures, step: slabCase.step)
             let rotation = response.supportRotationDegrees(span: slabCase.span)
-            let level = EnvelopeDamageLevel.concrete(ductility: response.ductility, rotationDeg: rotation)
+            let level = EnvelopeDamageLevel.concrete(
+                ductility: response.ductilityEitherWay, rotationDeg: rotation
+            )
+            .label
+            let inward = EnvelopeDamageLevel.concrete(ductility: response.ductility, rotationDeg: rotation)
                 .label
             print(
                 String(
-                    format: "  %@: %.1f mm, %.2f°, ductility %.1f, %@ (r_u %.0f kPa, T %.1f ms)", name,
-                    response.peakDeflection * 1000, rotation, response.ductility, level,
+                    format:
+                        "  %@: %.1f mm, %.2f°, ductility %.1f, %@ (inward only %@; r_u %.0f kPa, T %.1f ms)",
+                    name,
+                    response.peakDeflection * 1000, rotation, response.ductilityEitherWay, level, inward,
                     system.ultimateResistance / 1000, system.period * 1000))
             if let whole = slabCase.whole {
                 let mean = system.response(pressures: whole, step: slabCase.step)
@@ -251,7 +257,8 @@ func runEnvelopeSlabs(device: MTLDevice) throws {
                     String(
                         format: "    on the whole component: %.1f mm, %.2f°, %@ (impulse %.0f Pa s)",
                         mean.peakDeflection * 1000, turned,
-                        EnvelopeDamageLevel.concrete(ductility: mean.ductility, rotationDeg: turned).label,
+                        EnvelopeDamageLevel.concrete(ductility: mean.ductilityEitherWay, rotationDeg: turned)
+                            .label,
                         whole.reduce(0) { $0 + max($1, 0) } * slabCase.step))
             }
         }
