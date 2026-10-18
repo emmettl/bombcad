@@ -1168,7 +1168,8 @@ extension StandingScene {
                             "a full-scale chamber; 0.1 m cells and elements; its roof's peak rises with the mesh "
                             + "(48 to 57 mm on 50 mm elements, the ideal gas) and on 25 mm elements the solution "
                             + "breaks down; with afterburning and hot air the wall pressures alike and the roof "
-                            + "rising 50 mm, left 27 mm up, against 48 and 25 on the ideal gas",
+                            + "rising 50 mm, left 27 mm up, against 48 and 25 on the ideal gas; with the open "
+                            + "faces at the clearance rule, 47 and 25",
                         check: "An internal explosion in a reinforced concrete chamber"))
                 if let structure = structures.first, abs(structure.elementSize - 0.1) > 0.01 {
                     bands.removeLast()

@@ -62,12 +62,17 @@ extension TwoFaceSlabTests {
     }
 
     /// Two mats of 10 mm bars at 85 mm both ways (1.2% through the section), their centres 25 mm in.
-    public static func scenario(_ test: YaoTest, elementSize: Float = 0.01875) -> Scenario {
+    /// Moved by `pad.low` with the domain grown by `pad.low + pad.high` (`Scenario.openFaceRoom`).
+    public static func scenario(
+        _ test: YaoTest, elementSize: Float = 0.01875,
+        pad: (low: SIMD3<Float>, high: SIMD3<Float>) = (.zero, .zero)
+    ) -> Scenario {
+        let yaoSlab = Self.yaoSlab.moved(by: pad.low)
         var model = StructureModel(
             solids: [yaoSlab], material: yaoMaterial(), elementSize: elementSize, fixedBase: false)
         let bar: Float = .pi * 0.005 * 0.005
         model.addMat(to: yaoSlab, thicknessAxis: 2, areaPerMetre: bar / 0.085, depth: 0.025)
-        let c = yaoCentre
+        let c = yaoCentre + pad.low
         let boxes = [
             Box(
                 min: SIMD3(yaoSlab.min.x, yaoSlab.min.y, 0),
@@ -77,7 +82,7 @@ extension TwoFaceSlabTests {
                 max: SIMD3(yaoSlab.max.x, yaoSlab.max.y, yaoSlab.min.z)),
         ]
         return Scenario(
-            name: "Yao \(test.name)", domainSize: yaoDomain, boxes: boxes,
+            name: "Yao \(test.name)", domainSize: yaoDomain + pad.low + pad.high, boxes: boxes,
             charge: Charge(mass: test.charge, position: c + SIMD3(0, 0, test.standoff)),
             gauges: [
                 Gauge("centre", at: c + SIMD3(0, 0, 0.005)),
@@ -87,11 +92,14 @@ extension TwoFaceSlabTests {
     }
 
     /// Holds the slab as the tests' supports did: resting on them (pushing up only), held in plane
-    /// along the first bearing's middle line and across at the centre of each, simply supported.
+    /// along the first bearing's middle line and across at the centre of each, simply supported;
+    /// the slab moved by `offset`.
     public static func yaoHold(
         _ structure: StructureSolver, _ nodes: UnsafeMutableBufferPointer<StructureNode>,
-        _ index: (Float, Int) -> Int
+        offset: SIMD3<Float> = .zero, _ index: (Float, Int) -> Int
     ) {
+        let yaoSlab = Self.yaoSlab.moved(by: offset)
+        let yaoCentre = Self.yaoCentre + offset
         let h = structure.model.elementSize
         let bottom = index(yaoSlab.min.z, 2)
         let middle = index(yaoCentre.y, 1)
@@ -118,12 +126,18 @@ extension TwoFaceSlabTests {
         elementSize: Float = 0.01875, duration: Double = 0.1,
         afterburning: Bool = SolverConfiguration.recommended.afterburning,
         airModel: AirModel? = nil, openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
+        roomy: Bool = false,
         adjust: (inout Scenario) -> Void = { _ in },
         prepare: ((StructureSolver) -> Void)? = nil, progress: ((String) -> Void)? = nil,
         inspect: ((StructureSolver, Double) -> Void)? = nil,
         configure: (inout SolverConfiguration) -> Void = { _ in }
     ) throws -> Result {
-        var scenario = scenario(test, elementSize: elementSize)
+        // `roomy`: every open face moved out to `Scenario.structureFaceClearance`, the scene with it,
+        // by multiples of 1.5 m (of 18.75 mm elements and of 25, 50 and 100 mm cells).
+        let pad = roomy ? scenario(test).openFaceRoom(step: 1.5) : (low: .zero, high: .zero)
+        let yaoSlab = Self.yaoSlab.moved(by: pad.low)
+        let yaoCentre = Self.yaoCentre + pad.low
+        var scenario = scenario(test, elementSize: elementSize, pad: pad)
         adjust(&scenario)
         let c = SIMD3(yaoCentre.x, yaoCentre.y, yaoSlab.min.z)
         let diagonal = simd_normalize(SIMD3<Float>(4, 5, 0))
@@ -137,6 +151,7 @@ extension TwoFaceSlabTests {
             afterburning: afterburning, airModel: airModel, openFaces: openFaces,
             // Under its own weight, settled before the blast and read from there, as the tests'
             // sensors read from the slab resting on its supports.
-            hold: yaoHold, prepare: prepare, progress: progress, inspect: inspect, configure: configure)
+            hold: { yaoHold($0, $1, offset: pad.low, $2) }, prepare: prepare, progress: progress,
+            inspect: inspect, configure: configure)
     }
 }

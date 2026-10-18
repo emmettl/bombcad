@@ -66,8 +66,16 @@ public enum ChamberTest {
 
     public static func scenario(
         elementSize: Float = 0.1, downstand: Bool = true, ties: Bool = true, elastic: Bool = false,
-        chargeScale: Float = 1, haunches: Bool = true
+        chargeScale: Float = 1, haunches: Bool = true,
+        pad: (low: SIMD3<Float>, high: SIMD3<Float>) = (.zero, .zero)
     ) -> Scenario {
+        // Moved across by `pad.low.y`, the domain grown by `pad.low + pad.high` across and up
+        // (`Scenario.openFaceRoom`); x is held by the end wall and the mirror, z by the ground.
+        let dy = pad.low.y
+        let sideWalls = (low: Self.sideWalls.low + dy, high: Self.sideWalls.high + dy)
+        let inside = (low: Self.inside.low + dy, high: Self.inside.high + dy)
+        let chargePositions = Self.chargePositions.map { $0 + SIMD3(0, dy, 0) }
+        let width = 10 + pad.low.y + pad.high.y
         let w1 = Box(min: SIMD3(0, sideWalls.low, 0), max: SIMD3(partitionFace, inside.low, roof.high))
         let w3 = Box(min: SIMD3(0, inside.high, 0), max: SIMD3(partitionFace, sideWalls.high, roof.high))
         let s1 = Box(min: SIMD3(0, sideWalls.low, roof.low), max: SIMD3(roofEdge, sideWalls.high, roof.high))
@@ -140,9 +148,9 @@ public enum ChamberTest {
         if !elastic { model.inclinedBars = diagonals }
         // Held at the end wall's outer face, in the partition and in the foundation.
         model.supports = [
-            Box(min: SIMD3(-1, 0, -1), max: SIMD3(0, 10, 10)),
-            Box(min: SIMD3(partitionFace, 0, -1), max: SIMD3(mirror + 1, 10, 10)),
-            Box(min: SIMD3(-1, 0, -1), max: SIMD3(mirror + 1, 10, floorTop)),
+            Box(min: SIMD3(-1, 0, -1), max: SIMD3(0, width, 10)),
+            Box(min: SIMD3(partitionFace, 0, -1), max: SIMD3(mirror + 1, width, 10)),
+            Box(min: SIMD3(-1, 0, -1), max: SIMD3(mirror + 1, width, floorTop)),
         ]
         // 16 mm bars at 150 mm, both faces, both ways: 1,340 mm² per metre.
         let area: Float = 201e-6 / 0.15
@@ -203,11 +211,12 @@ public enum ChamberTest {
         let gauges = [
             Gauge("Side wall W1, 2.3 m in", at: SIMD3(endWallFace + 2.3, inside.low + 0.05, 2.8)),
             Gauge("Side wall W3, 1.5 m in", at: SIMD3(endWallFace + 1.5, inside.high - 0.05, 2.8)),
-            Gauge("Roof, 1.5 m in", at: SIMD3(endWallFace + 1.5, 5.0, roof.low - 0.05)),
-            Gauge("End wall, middle", at: SIMD3(endWallFace + 0.05, 5.0, 2.8)),
+            Gauge("Roof, 1.5 m in", at: SIMD3(endWallFace + 1.5, 5 + dy, roof.low - 0.05)),
+            Gauge("End wall, middle", at: SIMD3(endWallFace + 0.05, 5 + dy, 2.8)),
         ]
         var scenario = Scenario(
-            name: "Internal explosion (Shang et al.)", domainSize: SIMD3(mirror, 10, 9), boxes: boxes,
+            name: "Internal explosion (Shang et al.)", domainSize: SIMD3(mirror, width, 9 + pad.high.z),
+            boxes: boxes,
             charge: Charge(mass: 25 * chargeScale, position: chargePositions[0]), gauges: gauges,
             structure: model)
         scenario.additionalCharges = chargePositions.dropFirst().map {
@@ -277,13 +286,19 @@ public enum ChamberTest {
         afterburning: Bool = SolverConfiguration.recommended.afterburning,
         afterburnEnergy: Float? = nil, airModel: AirModel = SolverConfiguration.recommended.airModel,
         openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
-        duration: Double = 0.3, refinement: Int = 1
+        duration: Double = 0.3, refinement: Int = 1, roomy: Bool = true
     ) throws -> Result {
-        try run(
+        // `roomy`: the open faces (across and the top) moved out to `Scenario.structureFaceClearance`,
+        // as compared since 18 October 2026; in the box of 1 m either side and 2 m above, the
+        // roof's edge rose 50 mm and was left 28 mm up against 46-47 and 24-25 (docs/validation.md,
+        // "Open faces at the clearance rule").
+        let pad =
+            roomy ? scenario(elementSize: elementSize).openFaceRoom(step: 0.5) : (low: .zero, high: .zero)
+        return try run(
             device: device,
             scenario: scenario(
                 elementSize: elementSize, downstand: downstand, ties: ties, elastic: elastic,
-                chargeScale: chargeScale),
+                chargeScale: chargeScale, pad: pad),
             cellSize: cellSize, duration: duration, afterburning: afterburning,
             afterburnEnergy: afterburnEnergy, airModel: airModel, openFaces: openFaces, refinement: refinement
         )
@@ -315,6 +330,10 @@ public enum ChamberTest {
         contact: ContactMode? = nil,
         progress: ((String) -> Void)? = nil, prepare: ((StructureSolver) -> Void)? = nil
     ) throws -> Result {
+        // The scene as `scenario(pad:)` moved it across.
+        let dy = scenario.charge.position.y - chargePositions[0].y
+        let sideWalls = (low: Self.sideWalls.low + dy, high: Self.sideWalls.high + dy)
+        let inside = (low: Self.inside.low + dy, high: Self.inside.high + dy)
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
         let defaults = SolverConfiguration()
         if afterburning != defaults.afterburning || airModel != defaults.airModel
@@ -351,7 +370,7 @@ public enum ChamberTest {
         // For benchmarks: a hook before the run, such as a shorter step.
         prepare?(structure)
         let h = structure.model.elementSize
-        let edge = SIMD3<Float>(roofEdge, 5.0, roof.high)
+        let edge = SIMD3<Float>(roofEdge, 5 + dy, roof.high)
         let start = ContinuousClock.now
         var history: [SIMD2<Float>] = []
         // The top node of the roof at the edge, at mid-span.
@@ -365,7 +384,7 @@ public enum ChamberTest {
         let probePoints: [(String, (Int, Int, Int), SIMD3<Float>)] = [
             ("Side wall W1, middle", lattice(SIMD3(endWallFace + 2.5, sideWalls.low, 3.5)), SIMD3(0, -1, 0)),
             (
-                "Roof, middle", lattice(SIMD3((endWallFace + roofEdge) / 2, 5.0, roof.high - 0.5 * h)),
+                "Roof, middle", lattice(SIMD3((endWallFace + roofEdge) / 2, 5 + dy, roof.high - 0.5 * h)),
                 SIMD3(0, 0, 1)
             ),
         ]
