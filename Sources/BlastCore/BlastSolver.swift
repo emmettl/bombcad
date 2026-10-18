@@ -3762,7 +3762,7 @@ public final class BlastSolver {
             guard let buffer = device.makeBuffer(length: length, options: .storageModeShared) else {
                 throw BlastError.allocationFailed(label)
             }
-            values.withUnsafeBytes { memcpy(buffer.contents(), $0.baseAddress!, $0.count) }
+            _ = values.withUnsafeBytes { memcpy(buffer.contents(), $0.baseAddress!, $0.count) }
             buffer.label = label
             return buffer
         }
