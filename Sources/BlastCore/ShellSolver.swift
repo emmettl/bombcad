@@ -87,6 +87,8 @@ struct ShellUniforms {
     var pairs: UInt32 = 0
     /// 1 when contact's forces were found this substep (if it is on).
     var contactEncoded: UInt32 = 0
+    /// Panes of laminated glass that can fragment (the solids), or 0 (`MaterialParameters.fragments`).
+    var fragmentPanes: UInt32 = 0
 }
 
 /// Layout matches `BeamElement` in `Shell.metal`.
@@ -120,6 +122,8 @@ struct ShellElementData {
     /// load (`ShellMesh.shields`).
     var shieldBelow: Int32 = -1
     var shieldAbove: Int32 = -1
+    /// The solid it was made from, whose laminated glass fragments as one.
+    var pane: UInt32 = 0
 }
 
 /// Node of a shell mesh as stored on the GPU. Layout matches `ShellNode` in `Shell.metal`.
@@ -455,7 +459,9 @@ public final class ShellSolver {
         let linkEntries = linkStarts + ((mesh.positions.count + 1) * 4 + 15) & ~15
         linkLayout = (springEnd, linkStarts, linkEntries)
         loadTableBuffer = try buffer(linkEntries + 2 * mesh.links.count * 4, "applied load table")
-        failureGateBuffer = try buffer(16, "failure gate")
+        // Something has failed (contact), then two flags a solid for laminated glass: cracked in
+        // this element pass, and in fragments.
+        failureGateBuffer = try buffer(4 * (2 + 2 * model.solids.count), "failure gate")
         placeholderBuffer = try buffer(64, "shell placeholder")
 
         // The fourth component is the node's volume as loose debris. (Worked out in a method of
@@ -477,7 +483,7 @@ public final class ShellSolver {
                 axis: UInt32(element.axis), material: UInt32(element.material),
                 barCount: UInt32(element.bars.count),
                 thickness: element.thickness, a: element.size.x, b: element.size.y,
-                shieldBelow: shields[e].below, shieldAbove: shields[e].above)
+                shieldBelow: shields[e].below, shieldAbove: shields[e].above, pane: UInt32(element.solid))
             for s in 0..<barSlots {
                 layout[e * barSlots + s] = s < element.bars.count ? SIMD4(element.bars[s], 0) : .zero
             }
@@ -617,7 +623,7 @@ public final class ShellSolver {
                 packed(support.turnNegative),
                 SIMD4(
                     Float(support.edge), Float(support.along), Float(support.acrossAxis),
-                    support.releases == true ? 1 : 0),
+                    support.releases == true ? (support.releasesOnPull == true ? 2 : 1) : 0),
                 packed(support.acrossNegative ?? support.across),
             ]
         }
@@ -843,12 +849,34 @@ public final class ShellSolver {
     // MARK: - State
 
     /// Restores the undeformed, stress-free, stationary structure.
+    /// The share of the nodes on spring supports that have come away from them
+    /// (`SpringSupport.releases`). Read only while the GPU is idle.
+    public func releasedSpringShare() -> Double {
+        guard !model.springSupports.isEmpty else { return 0 }
+        let offset = (Self.maxLoadPoints * 8 + (max(elementCount, 1) + max(nodeCount, 1)) * 4 + 15) & ~15
+        let springs = (loadTableBuffer.contents() + offset).bindMemory(
+            to: SIMD4<Float>.self, capacity: 3 * nodeCount)
+        var held = 0
+        var released = 0
+        for n in 0..<nodeCount where springs[3 * n].x > 0 {
+            held += 1
+            if springs[3 * n + 1].w > 0.5 { released += 1 }
+        }
+        return held > 0 ? Double(released) / Double(held) : 0
+    }
+
+    /// Whether solid `index`'s laminated glass has fragmented (`StructureMaterial.laminatedGlass`).
+    public func hasFragmented(_ index: Int) -> Bool {
+        guard index >= 0, 4 * (3 + 2 * index) <= failureGateBuffer.length else { return false }
+        return failureGateBuffer.contents().load(fromByteOffset: 4 * (2 + 2 * index), as: UInt32.self) != 0
+    }
+
     public func reset() {
         time = 0
         settledDisplacements = nil
         footings?.reset()
         pairs?.reset()
-        failureGateBuffer.contents().storeBytes(of: 0, as: UInt32.self)
+        memset(failureGateBuffer.contents(), 0, failureGateBuffer.length)
         failedAtCheckpoint = nil
         memset(flagBuffer.contents(), Int32(ElementFlag.active.rawValue), flagBuffer.length)
         memset(beamFlagBuffer.contents(), Int32(ElementFlag.active.rawValue), beamFlagBuffer.length)
@@ -1618,6 +1646,9 @@ public final class ShellSolver {
         uniforms.removesFragments = model.removesFragments ? 1 : 0
         if fibreCount > 0 { uniforms.anchored = 1 }
         uniforms.pairs = UInt32(pairs?.count ?? 0)
+        if materials.contains(where: { $0.interlayerThickness != nil }) {
+            uniforms.fragmentPanes = UInt32(model.solids.count)
+        }
         if footings != nil { uniforms.footings = 1 }
         if let anchorStiffness, let anchorage = model.baseAnchorage, fibreCount > 0 {
             uniforms.anchorNormalStiffness = anchorStiffness.normal

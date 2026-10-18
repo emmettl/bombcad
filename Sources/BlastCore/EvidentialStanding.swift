@@ -1197,6 +1197,7 @@ public enum StandingTable {
         "StructureMaterial.timber": .input,
         "StructureMaterial.localBuckling": .input,
         "StructureMaterial.rateLaw": .input,
+        "StructureMaterial.interlayerThickness": .input,
         // Connections.
         "Anchorage.normalStiffness": .input,
         "Anchorage.shearStiffness": .input,
@@ -2040,14 +2041,14 @@ struct StandingScene {
                 StandingEvidence(
                     "Brick walls' debris (Keys, 2016)",
                     "Loads within 15%; the walls crack at the measured heights but fall as one column, lying "
-                        + "1.5–2 m too far out in the open and thrown half as far as measured in a shock tube",
+                        + "1.0–1.4 m too far out in the open and thrown half as far as measured in a shock tube",
                     "validation.md#brick-walls-debris"
                 ))
             if has(.softGround) {
                 evidence.append(
                     StandingEvidence(
                         "Brick walls' debris on soft ground (Keys, 2016)",
-                        "At 5×10⁷ Pa/m the mean distance 1.36 m against 0.23 and 0.64 m measured (2.10 and 2.15 m "
+                        "At 5×10⁷ Pa/m the mean distance 1.11–1.40 m against 0.23–0.64 m measured (1.60–1.64 m "
                             + "on the hard ground); one run of each wall", "validation.md#brick-walls-debris")
                 )
             }
@@ -2070,6 +2071,21 @@ struct StandingScene {
                     "A glass pane at 3 m", "Breaks under 1 kg and survives 0.5 g",
                     "validation.md#verification-against-theory"))
             parts.append("glass a brittle concrete, checked only to break and survive")
+            let laminated = structures.contains { model in
+                ([model.material] + model.solidMaterial.compactMap { $0 }).contains {
+                    $0.interlayerThickness != nil
+                }
+            }
+            if laminated {
+                evidence.append(
+                    StandingEvidence(
+                        "Laminated panes as shells (Osnes et al., 2019; Hooper, 2011)",
+                        "Ten of fifteen shock-tube panes crack or hold as measured at E1300's median strength, "
+                            + "the cracked ones going 0.80–1.28 of the measured deflection untorn; six of eight "
+                            + "bonded panes leave their silicone at 0.87–1.24 of the measured speed, the two "
+                            + "largest as soon as they crack",
+                        "validation.md#laminated-glass"))
+            }
         }
         if classes.contains(.timber) {
             evidence.append(

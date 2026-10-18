@@ -391,6 +391,9 @@ public struct StructureMaterial: Sendable, Hashable, Codable {
     /// Steel's yield raised by its strain rate (`SteelRateLaw`), for von Mises beams and shells, on
     /// yield and hardening; nil for none. Structural steel's is by its grade.
     public var rateLaw: SteelRateLaw?
+    /// A laminated pane's interlayer, m thick: shells of this material carry a layer of it at
+    /// their midsurface, with the law of `steel` (`StructureMaterial.laminatedGlass`). Nil for none.
+    public var interlayerThickness: Float?
 
     /// A von Mises material.
     public init(
@@ -1466,6 +1469,9 @@ struct MaterialParameters {
     var rateConstant: Float = 0
     var rateExponent: Float = 1
     var rateTestFactor: Float = 1
+    /// 1 for laminated glass (`StructureMaterial.interlayerThickness`): its pane fragments whole
+    /// once any of it cracks.
+    var fragments: UInt32 = 0
 }
 
 /// Layout matches `CouplingUniforms` in `Structure.metal`.
@@ -2078,6 +2084,9 @@ public struct SpringSupport: Codable, Hashable, Sendable {
     /// Whether the edge comes away altogether once the across spring has given way to nothing: a
     /// sheet off its screws (nil for no).
     public var releases: Bool?
+    /// With `releases`, whether the edge also comes away once the pull spring has given way to
+    /// nothing: a pane torn out of its silicone, which holds it neither way once torn (nil for no).
+    public var releasesOnPull: Bool?
 
     public init(
         region: Box, edge: Int, along: Int, pull: SpringLaw, across: SpringLaw,
