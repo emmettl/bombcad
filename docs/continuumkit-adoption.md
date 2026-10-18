@@ -1,12 +1,15 @@
 # ContinuumKit adoption
 
-BombCAD pins [ContinuumKit `0.1.0-alpha.26`](https://github.com/emmettl/ContinuumKit/releases/tag/0.1.0-alpha.26)
-and commits the resolved Git revision (`c855423`). Since alpha.19 the pressure-gradient
+BombCAD pins [ContinuumKit `0.1.0-alpha.28`](https://github.com/emmettl/ContinuumKit/releases/tag/0.1.0-alpha.28)
+and commits the resolved Git revision (`872b204`). Since alpha.19 the pressure-gradient
 fit (`FiniteVolumePressureFit`) solves its least squares with the shared `PivotedQR`;
 since alpha.25 contact's table and search are the shared `ContactSearchMetal`; since alpha.26
 its timber shells and beams run a single-precision copy of the shared `TimberFailure`, which
 BombCAD contributed ([ContinuumKit#93](https://github.com/emmettl/ContinuumKit/pull/93)) and tests
-its copy against (`TimberTests`). Source picking and fragment segments use the
+its copy against (`TimberTests`); since alpha.28 the 3D view (`SceneRender`'s `OrbitControlView`)
+is no stop in the window's Tab loop ([ContinuumKit#94](https://github.com/emmettl/ContinuumKit/pull/94)),
+as BombCAD's real-screen review asked (alpha.27 was tagged but never published: its release runs
+met the Mac mini's new Homebrew Python, which #95–#97 keep out of the gate). Source picking and fragment segments use the
 shared closed-box query in `SceneModel`; application ownership and mechanical
 coupling remain in BombCAD.
 

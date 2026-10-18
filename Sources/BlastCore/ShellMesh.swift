@@ -616,7 +616,7 @@ struct ShellMesh {
             let first = beams[members[0]]
             guard first.axis != 2, let ends = endsOf[solid], materials.indices.contains(first.material),
                 materials[first.material].model == .vonMises, materials[first.material].steel == nil,
-                materials[first.material].yieldStress < 2e9
+                materials[first.material].yieldStress < 0.05 * materials[first.material].youngsModulus
             else { continue }
             for end in [ends.low, ends.high] {
                 let others = solidsOfNode[Int(end)].subtracting([solid])

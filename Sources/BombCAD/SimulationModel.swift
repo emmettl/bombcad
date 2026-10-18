@@ -2187,7 +2187,12 @@ final class SimulationModel {
 
     /// Probes the thermal radiation, if placed automatically, here and on each Mac connected, so
     /// that the next run is placed by each Mac's speed now.
-    func probeAutomatic() async {
+    /// How long a run's costs wait for its companions to catch up before they are left
+    /// unrecorded; nil waits however long it takes (the tests, so that a loaded Mac cannot fail
+    /// them).
+    var costCatchUpTimeout: Duration? = .seconds(60)
+
+    func probeAutomatic(timeout: Duration? = .seconds(30)) async {
         guard thermalHost == ConsumerPlacement.automatic, !isRunning, let kind = companionKinds["thermal"],
             let spec = thermalSpec, (try? spec.validate()) != nil,
             let key = ConsumerCostStore.key(currentInputs, frameInterval: 0.001)
@@ -2195,7 +2200,8 @@ final class SimulationModel {
         var costs = costs(for: key)
         await ConsumerProbe.probe(
             "thermal", kind: kind, inputs: currentInputs,
-            workers: workers.sorted { $0.key < $1.key }.map { ($0.key, $0.value) }, into: &costs)
+            workers: workers.sorted { $0.key < $1.key }.map { ($0.key, $0.value) }, into: &costs,
+            timeout: timeout)
         keep(costs, for: key)
     }
 
@@ -2203,8 +2209,8 @@ final class SimulationModel {
     /// frame in: each where it ran, and the blast's GPU time, less that of companions here
     /// sharing its GPU.
     private func recordCosts(blastGPUSeconds: Double, elapsed: Double) async {
-        let deadline = ContinuousClock.now + .seconds(60)
-        while !companionsCaughtUp, ContinuousClock.now < deadline {
+        let deadline = costCatchUpTimeout.map { ContinuousClock.now + $0 }
+        while !companionsCaughtUp, deadline.map({ ContinuousClock.now < $0 }) ?? true {
             try? await Task.sleep(for: .milliseconds(20))
         }
         guard companionsCaughtUp, let key = runCostKey, elapsed > 0 else { return }
