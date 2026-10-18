@@ -522,10 +522,12 @@ extension BlastSolver {
     /// mapping is off or not possible.
     func mappings(for scenario: Scenario) -> [ChargeMapping] {
         // The one-dimensional solution has the ideal gas and hot air, and afterburning without its
-        // extinction limit; not gravity, sub-grid mixing or radiative cooling.
+        // extinction limit; not gravity or sub-grid mixing. It does not radiate: with radiative
+        // cooling the gas starts losing its heat once mapped, the fireball's first moments radiating
+        // little of it.
         guard configuration.mappedCharge, configuration.airModel != .dissociating,
             configuration.afterburnLimit == nil, configuration.gravity == nil, configuration.mixing == nil,
-            configuration.radiativeCooling == nil, scenario.deflagration == nil
+            scenario.deflagration == nil
         else { return [] }
         let charges = charges(of: scenario)
         return charges.indices.compactMap { k in
