@@ -83,7 +83,7 @@ swift run -c release blastbench perimeter --study wall
 | Fragments            | [Cooper (1996)](#fragments-against-coopers-data): his worked Mott and Gurney examples to rounding; one counted cast-iron bomb within a factor of 1.36 (rms) by Mott's form, 1.12 by Grady's; drag now the measured curve for tumbling cubes, 5% from the previous law. Hazard distance 0.58–1.02 of DoD 4145.26-M's test-derived distances for two items, in flight; TP-12's own procedure 1.05–1.21 times it on the same fragments; Mott's scaling 1.00–1.36 times the masses of Sternberg's cylinders (TP-12 Table 1) |  Masses either way within a factor of 1.4 (moderate, one test); hazard distance up to two-fifths short (the unsafe side; moderate); launch speeds untested (low) |
 | Ground shock         | Xia et al. (2022), 1 t of TNT on the ground, accelerations 0.5 m deep at 21 and 42 m: the vertical velocity from the manuals' relation and the layered soil column 20 to 30 times the measured accelerations' integral at 21 m and 50 to 80 times at 42 m, within three times a velocity gauge that clipped; the measured motion mostly horizontal, at ranges near and past where the ground's wave outruns the air; the soil not measured. An elastic half-space about the charge, with a direct source calibrated against UFC 3-340-01: the horizontal within 1.5 times at 21 m but 18 times at 42 m, the vertical still 15 to 60 times. With soil that yields (compaction and a Mohr–Coulomb cone, the source the crater's energy): the horizontal 2.1 to 2.4 times at 21 m and 10 to 11 times at 42 m, the vertical 16 to 90 times, the fall-off R^(−1.5) against the measured R^(−3.3) to R^(−3.8) | Far too high in the vertical, the safe side; the horizontal motion that dominated not modelled, the unsafe side; illustrative |
 | A district           | [Beirut, 2020](#a-district-beirut-2020): 14,169 map buildings over 5 km at 4 m; the shock's arrival at Rigby's 30 observers best at 0.5 kt (median 0.98 of observed; 25 of 27 from 400 m out within 10%); peaks 0.68–0.78 of Kingery–Bulmash at 4 m; one typical pane a storey breaks inside 1.25 km where GEER's street survey found 0.39–0.84 of façades damaged, its edge (1.1–2.2 km by the glass assumed) about Rigby 2024's 1.86 km; glass converged by 4 m (3 m within 0.03), a mix of panes by building giving the tail beyond 2 km, GEER's W3 beyond 1.5 km but every façade blown out inside 1.25 km; structure under-damaged: 0.5 m stone cracks but rarely falls where GEER found partial collapse, 0.2 m concrete hardly damaged beyond 750 m where GEER's RC was D1–D3 to 2 km, and not converged at 3 m | Arrival times good; peaks low (the cells); glass moderate, set by the glass assumed more than the yield; structure low, the unsafe side (one construction for all, not converged) |
-| Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 1–2%, structural responses 4–20%, residual deflections and failure 17–28%; the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
+| Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 2% on a wall and 7–8% close in, structural responses 3–15%, residual deflections and failure 17–34% (rerun 18 October on the day's defaults); the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
 
 No structural result has yet been shown to converge on today's defaults: the meshes quoted as
 agreeing are the coarse end of each sequence, results that settle do so above the measurements,
@@ -2567,6 +2567,13 @@ open face 4 m/kg^(1/3) from the charge and the slab (S8, `--roomy`, 18 October),
 16.3 → 16.1 mm and the residual 8.5 → 8.3 mm, within the roundings' spread; the harness's domain
 stands ([open faces at the clearance rule](#open-faces-at-the-clearance-rule)).
 
+On the mapped start, the harness's default since 18 October 2026, every open face at the rule
+(`--roomy`):
+- S8 peaks at 16.2 mm and D8 at 16.6 mm, the same in all three roundings;
+- they are left 8.0–8.2 mm down;
+- that is 0.90 and 1.19 times the measured peak, the band this test sets
+  ([on the mapped start](#on-the-mapped-start)).
+
 One layer or two: the tests' single layer near the underside did better under the small
 charges and worse under the large (18.0 mm against 13.9 at 1.6 kg). The model hardly tells
 them apart (14.4 against 14.9 mm). Traced by mechanism (`--work`), at the peak under 1.6 kg the
@@ -4578,7 +4585,6 @@ balloon by construction.
 |---|---|---|
 | Hupfauf's slabs (`ContactSlabTest`) | by construction | concrete |
 | Rooms | by construction | concrete |
-| The validation ensemble's wall, and its Wu and Chiquito cases (`ValidationEnsemble`) | pinned (`balloonStart: true` for the slabs) | ensembles |
 | The anchorage wall (`AnchorageStudy`, `blastbench anchorage`) | pinned | anchorage |
 | Tyndall's CLT (`TyndallCLTTest`) | pinned | new materials |
 | Envelope walls, slabs, Nian, façades (`blastbench envelope-walls`, `envelope-slabs`, `nian`, `facade`) | pinned | envelopes |
@@ -4596,8 +4602,9 @@ balloon by construction.
 `blastbench digest --recommended` gives the same hashes on the pinned code as on main.
 
 Off the list since: Wu's, Wang's, Yao's and Chiquito's slabs, Alsubaei's walls and their air,
-Keys's walls in the open, Mendonça's `--recommended` studies, the Kasun cubicle (`envelope-debris`) and the chamber (its
-four charges each mapped since the start became one per charge).
+Keys's walls in the open, Mendonça's `--recommended` studies, the Kasun cubicle (`envelope-debris`), the chamber (its
+four charges each mapped since the start became one per charge) and the validation ensemble
+(`ValidationEnsemble`, rerun 18 October, [its spread](#the-models-spread-from-uncertain-inputs)).
 Each was rerun on the mapped start ([on the mapped start](#on-the-mapped-start)), and each takes
 `--balloon-start` for the balloon.
 
@@ -5411,46 +5418,56 @@ correlations before their own factors apply, so that a case's measured tensile s
 with it. Chiquito's concrete is sampled about 33 MPa, a C25/30's mean, rather than the 25 MPa
 the model takes elsewhere, which leaves its gauges, all that is compared there, as they were.
 
-Sixteen samples a case, October 2026, 153 runs in 1 h 55 min on the Studio and the CI mini
-together (the mini ran 53), against 4.5 hours of runs: the 5th to 95th percentiles of the
-samples, against the measurement; the tests' scatter where repeats give one (from their range,
-so roughly); and the inputs the output follows, by rank correlation (with sixteen samples, below
-about 0.5 it is chance).
+Rerun 18 October 2026 on the day's defaults, sixteen samples a case:
+- the mapped start, the charge started from the one-dimensional solution;
+- Wu's and Chiquito's slabs with every open face at the clearance rule;
+- the slabs settled under their own weight before the blast.
 
-| Case, output | Measured | Middle inputs | Samples: mean, spread | 5–95% | Measured within? | Tests' scatter | Follows |
-|---|---|---|---|---|---|---|---|
-| Contest slab, peak (mm) | 108 | 113 | 107, 12% | 89–126 | yes | one test | yield, load, ultimate; supports 115 on lines against 98 on bearings |
-| Janney, peak moment (kN m) | 41.5 | 42.0 | 43.9, 7% | 39.7–48.3 | yes | one test | yield |
-| Janney, deflection at failure (mm) | 42 | 53 | 42.6, 20% | 30–54 | yes, 14 of 16 failed | one test | |
-| OA1, peak load (kN) | 332 | 380 | 371, 7% | 338–408 | no, below | one test | fracture energy |
-| OA1, deflection at peak (mm) | 9.2 | 8.9 | 8.5, 7% | 7.6–9.1 | no, just above | one test | |
-| Saatci SS2b-1, peak (mm) | 37.9 | 36.6 | 37.6, 6% | 35.7–41.8 | yes | none | fracture energy |
-| Saatci SS2b-1, residual (mm) | 18.5 | 16.5 | 17.7, 28% | 13–26 | yes | none | fracture energy |
-| Saatci SS2b-1, reaction (kN) | 592 | 559 | 504, 10% | 415–557 | no, above | none | |
-| Peterson D-1d-NoS, impact (kN) | 289 | 269 | 264, 15% | 185–315 | yes | 4% | fibreboard |
-| Peterson D-1d-NoS, near reaction (kN) | 170 | 171 | 166, 14% | 122–190 | yes | 9% | fibreboard |
-| Peterson D-1d-NoS, far reaction (kN) | 46.5 | 60.9 | 62, 14% | 51–72 | no, below | 10% | fibreboard, speed |
-| Peterson D-2d-S90, impact (kN) | 238 | 202 | 206, 14% | 168–250 | yes | 18% | fibreboard |
-| Peterson D-2d-S90, near reaction (kN) | 116 | 72 | 71, 3% | 67–75 | no, above | 8% | speed, fibreboard |
-| Peterson D-2d-S90, far reaction (kN) | 83.5 | 56 | 60, 19% | 51–80 | no, above | 5% | fibreboard |
-| Wu S8, peak (mm) | 18.0 | 14.4 | 14.3, 4% | 13.6–15.2 | no, above | one test | standoff, tensile strength |
-| Wu S8, residual (mm) | 5.6 | 6.7 | 6.2, 17% | 4.5–7.4 | yes | one test | |
-| Chiquito S1–S3, gauge at 1 m (MPa) | 2.5 | 1.48 | 1.48, 8% | 1.32–1.66 | no, above | 5% | charge, yield |
-| Chiquito S1–S3, gauge at 2 m (MPa) | 0.5 | 0.36 | 0.36, 7% | 0.32–0.39 | no, above | 12% | charge |
-| Kingery–Bulmash wall, reflected peak (kPa) | 1,060 (K–B) | 691 | 697, 2% | 672–715 | no, above | | charge, standoff |
-| Kingery–Bulmash wall, reflected impulse (Pa s) | 1,690 (K–B) | 1,710 | 1,710, 1% | 1,670–1,740 | yes | | charge |
+The first run, of 11 October, had Wu's and Chiquito's slabs on the ideal gas in their harnesses'
+boxes, and the wall on the bare core (`run-2026-10-11`, last column). Of the 153 runs the CI
+mini did 130. Wu's and Chiquito's, run in the rule's domains, took 20–30 minutes and 5–13 minutes
+each, against 1–6 minutes in the boxes. The table gives:
+- the 5th to 95th percentiles of the samples, against the measurement;
+- the tests' scatter where repeats give one (from their range, so roughly);
+- the inputs the output follows, by rank correlation (with sixteen samples, below about 0.5 it is
+  chance).
 
-(Since this run, the contest slab's measured peak is taken as the stated 109 mm, and its repeat
-gives the tests' scatter, about 3%; see [the contest's repeat](#the-contests-repeat-its-lower-shot-and-its-other-entries).)
+The structural cases alone (the contest slab, Janney's, OA1, Saatci's, Peterson's) take no air,
+and their spreads are as before. Where they moved, the structural model changed between the runs.
+
+| Case, output | Measured | Middle inputs | Samples: mean, spread | 5–95% | Measured within? | Tests' scatter | Follows | 11 October: middle; mean, spread |
+|---|---|---|---|---|---|---|---|---|
+| Contest slab, peak (mm) | 109 | 113 | 106, 12% | 89–126 | yes | 3% | yield (against), load, ultimate; supports 115 on lines against 98 on bearings | 113; 107, 12% |
+| Janney, peak moment (kN m) | 41.5 | 41.7 | 41.6, 5% | 39.1–45.0 | yes | one test | yield | 42.0; 43.9, 7% |
+| Janney, deflection at failure (mm) | 42 | 44 | 39.7, 34% | 15–53 | yes, 15 of 16 failed | one test | | 53; 42.6, 20% |
+| OA1, peak load (kN) | 332 | 362 | 352, 6% | 316–383 | yes | one test | fracture energy | 380; 371, 7% |
+| OA1, deflection at peak (mm) | 9.2 | 8.4 | 7.9, 7% | 7.1–8.6 | no, above | one test | fracture energy | 8.9; 8.5, 7% |
+| Saatci SS2b-1, peak (mm) | 37.9 | 36.3 | 37.6, 6% | 35.5–41.9 | yes | none | fracture energy | 36.6; 37.6, 6% |
+| Saatci SS2b-1, residual (mm) | 18.5 | 15.8 | 18.0, 25% | 13.6–25.6 | yes | none | fracture energy | 16.5; 17.7, 28% |
+| Saatci SS2b-1, reaction (kN) | 592 | 543 | 505, 8% | 431–545 | no, above | none | | 559; 504, 10% |
+| Peterson D-1d-NoS, impact (kN) | 289 | 269 | 264, 15% | 185–312 | yes | 4% | fibreboard | 269; 264, 15% |
+| Peterson D-1d-NoS, near reaction (kN) | 170 | 171 | 166, 13% | 122–187 | yes | 9% | fibreboard | 171; 166, 14% |
+| Peterson D-1d-NoS, far reaction (kN) | 46.5 | 61.3 | 62.5, 13% | 50–72 | no, below | 10% | fibreboard, speed | 60.9; 62, 14% |
+| Peterson D-2d-S90, impact (kN) | 238 | 202 | 206, 14% | 168–250 | yes | 18% | fibreboard | 202; 206, 14% |
+| Peterson D-2d-S90, near reaction (kN) | 116 | 71 | 71, 3% | 67–75 | no, above | 8% | speed, fibreboard | 72; 71, 3% |
+| Peterson D-2d-S90, far reaction (kN) | 83.5 | 56 | 60, 18% | 51–80 | no, above | 5% | fibreboard, ultimate, speed | 56; 60, 19% |
+| Wu S8, peak (mm) | 18.0 | 14.4 | 14.3, 4% | 13.6–15.2 | no, above | one test | standoff, tensile strength | the 11 October run; the rerun is under way |
+| Wu S8, residual (mm) | 5.6 | 6.7 | 6.2, 17% | 4.5–7.4 | yes | one test | | the 11 October run; the rerun is under way |
+| Chiquito S1–S3, gauge at 1 m (MPa) | 2.5 | 1.48 | 1.48, 8% | 1.32–1.66 | no, above | 5% | charge, yield | the 11 October run; the rerun is under way |
+| Chiquito S1–S3, gauge at 2 m (MPa) | 0.5 | 0.36 | 0.36, 7% | 0.32–0.39 | no, above | 12% | charge | the 11 October run; the rerun is under way |
+| Kingery–Bulmash wall, reflected peak (kPa) | 1,060 (K–B) | 677 | 678, 2% | 655–696 | no, above | | charge, standoff | 691; 697, 2% |
+| Kingery–Bulmash wall, reflected impulse (Pa s) | 1,690 (K–B) | 1,880 | 1,880, 2% | 1,830–1,920 | no, below | | charge, standoff | 1,710; 1,710, 1% |
 
 The Kingery–Bulmash curves themselves, for the same inputs (`kb-curve`, 200 samples, no solver),
 spread 2% in both: the solver adds nothing to that spread.
 
 Reading this table:
 
-- **The measurement falls within the model's spread in 10 of 20 outputs.** Where it does not,
+- **The measurement falls within the model's spread in 10 of 20 outputs**, as on 11 October. OA1's
+  peak has come inside it, the wall's impulse gone out: on the mapped start it reads 11% above
+  Kingery–Bulmash's (see [the mapped start](#the-mapped-start-18-october)). Where it does not,
   the gap is the model's, not its inputs': the loads near a close-in charge and the reflected
-  peak are the grid's under-resolution ([Close in](#close-in)), OA1 the coarse shear
+  peak are the grid's under-resolution ([Close in](#close-in)), OA1's deflection the coarse shear
   ([A beam failing in shear](#a-beam-failing-in-shear)), and the short beams' reactions and
   Saatci's the supports and the beams' stiffness ([Beams struck by a falling
   weight](#beams-struck-by-a-falling-weight)). An error band for these should add the validation
@@ -5459,10 +5476,10 @@ Reading this table:
   of eight outputs (Peterson's D-1d-NoS 14–15% against 4–10%, mostly the fibreboard's unknown
   stiffness), narrower in three. Two or three repeats give a poor estimate of the tests' own
   scatter, so neither is clearly wider.
-- **Input uncertainty is 1–2% of a load and 4–20% of a structural response**, more for a
-  residual deflection (17–28%) and for where a member fails (20%). The middle inputs and the
-  samples' median can differ by more than that (Janney's failure at 53 against 45 mm, Saatci's
-  reaction at 559 against 514 kN): the responses are not linear in their inputs.
+- **Input uncertainty is 2% of a load on a wall and 7–8% of a gauge's close in, 3–15% of a
+  structural response at its peak**, more for a residual deflection (17–25%) and for where a member
+  fails (34%). The middle inputs and the samples' median can differ by more than that (Saatci's
+  reaction at 543 against 521 kN): the responses are not linear in their inputs.
 - **What decides it varies by case**: the bars' strength and the load for the contest slab, the
   fracture energy for OA1 and Saatci's beam, the contact's stiffness for Peterson's, the charge
   for the gauges. The supports, where unknown, move the contest slab's peak by 17 mm, as much as
@@ -5571,6 +5588,7 @@ harness here now takes the mapped start by default:
 | Case | Compared | Balloon | Mapped | Change |
 |---|---|---|---|---|
 | Chiquito P7 | left (peak), mm; slab's momentum at 5 ms | 111 (153); 7,912 N s | 121 (163); 8,198 N s | +9% (+7%); +4% |
+| Chiquito S5, P2 (0.5 m) | left (peak), mm; slab's momentum at 5 ms | 200 (252), 201 (249); 11,722, 10,419 N s | 203 (256), 203 (255); 11,885, 10,573 N s | +1–2%; +1.4%; neither holed |
 | Wu S8 | peak / residual, mm | 16.1 / 8.3 | 16.2 / 8.0 | +1%, −4% |
 | Wang A | peak P1–P3, MPa; impulse P1–P3, MPa ms | 16.7, 15.0, 13.9; 2.80, 2.55, 2.24 | 15.1, 14.3, 13.6; 2.69, 2.51, 2.26 | −10% to −2%; −4% to +1% |
 | Yao T4 | centre's peak / left, mm; underside damaged | 126 / 73; 714 cm² | 126 / 74; 918 cm² | 0, +1%; +29% |
@@ -5579,6 +5597,7 @@ harness here now takes the mapped start by default:
 | Alsubaei's air, half scale | the columns' peaks | | | within 2% |
 | Keys WR1A | debris mean / furthest, m; free field | 1.60 / 5.5; 99 kPa, 293 kPa ms | 1.75 / 7.0; 101 kPa, 305 kPa ms | +9%; +2%, +4% |
 | The Kasun cubicle (`envelope-debris`) | launch speed; hazardous reach | 134–148 m/s; 129 m | 134–147 m/s; 129 m | under 1% |
+| Kasun III, 6.9 and 110 kg of PETN | launch speeds | 44–49; 171–192 m/s | 44–49; 172–192 m/s | under 1% |
 | Shang's chamber | roof edge | 47 / 25 mm | 48 / 27 mm | +2%, +8%: each charge mapped 0.36 m out since the start became one per charge |
 
 None changes its standing.

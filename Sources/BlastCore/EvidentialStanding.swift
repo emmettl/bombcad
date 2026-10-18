@@ -2065,6 +2065,12 @@ struct StandingScene {
                         + "curves a, b and c over slenderness 0.2–2; an impact's buckled wavelength 1.03–1.20 times "
                         + "Lindberg's", "shell-model.md#buckling"),
                 StandingEvidence(
+                    "Kenny's strips struck by a drop hammer (steel and aluminium, 137–550 mm, 6.2 m/s)",
+                    "Final deflection of the peak buckle, default bows: 13 of 16 series within half to twice "
+                        + "(steel 1.26–3.68, aluminium 0.71–1.70); with the measured bows 15 of 16 (0.45–1.97); "
+                        + "the buckle near mid-length where the tests' lay near the clamp; the hammer's 10 mm stroke "
+                        + "read from the set-up", "shell-model.md#buckling"),
+                StandingEvidence(
                     "Nassr's steel beams and columns in the open (W150 and W200, 50–250 kg of ANFO)",
                     "With the steel's strain-rate law by grade, unfitted: beams 0.57–1.12 of the measured "
                         + "deflection, columns 0.30–1.61; the beams near elastic and the curtain shot's within 14%; "
@@ -2185,8 +2191,8 @@ struct StandingScene {
                 StandingEvidence(
                     "Wu et al.'s slabs with steel in both faces",
                     "Unsafe side under 0.2–0.8 kg, too stiff: 40–70% of the measured peak (S5 and D5 alike with "
-                        + "afterburning and hot air); 0.91 and 1.18–1.19 times under 1.6 kg on today's build, two "
-                        + "shots on one mesh, either air",
+                        + "afterburning and hot air); 0.90 and 1.19 times under 1.6 kg on the mapped start, the open "
+                        + "faces at the clearance rule, two shots on one mesh, in all three roundings",
                     "validation.md#slabs-with-steel-in-both-faces"))
             resolution.append(
                 String(
@@ -2308,8 +2314,9 @@ struct StandingScene {
         if materialClasses.contains(.glass) || materialClasses.contains(.masonry) {
             level = .illustrative
             summary +=
-                " Masonry breaks into too few pieces: brick walls fall as one column, lying 1.0–1.4 m too far out in "
-                + "the open, and are thrown half as far as measured in a shock tube. Glass breaking up has no comparison."
+                " Masonry breaks into too few pieces: brick walls fall as one column, lying 1.0–1.5 m too far out in "
+                + "the open (the safe side for their reach) and thrown half as far as measured in a shock tube (the "
+                + "unsafe side). Glass breaking up has no comparison."
         }
         return result(
             .structuralDamage, level, summary, evidence: evidence,
