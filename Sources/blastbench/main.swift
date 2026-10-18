@@ -5448,6 +5448,7 @@ do {
     case "tyndall": try runTyndall(device: device)
     case "facade": try runFacade(device: device)
     case "lacroix": try runLacroix(device: device)
+    case "nassr": try runNassr(device: device)
     case "beam": try runBeam()
     case "shear": try runShearBeam()
     case "pushoff": try runPushOff()

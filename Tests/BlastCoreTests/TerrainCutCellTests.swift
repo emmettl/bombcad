@@ -284,4 +284,51 @@ struct TerrainCutCellTests {
         #expect(abs(after.mass / before.mass - 1) < 1e-5, "mass \(after.mass / before.mass - 1)")
         #expect(abs(after.energy / before.energy - 1) < 1e-5, "energy \(after.energy / before.energy - 1)")
     }
+
+    @Test("Refined, a sliver under a block only the fine cells hold is solid there")
+    func cappedFineSliver() throws {
+        // Ground a fifth of the way up the fine cells' third layer, in coarse cells over half air;
+        // a block from 1.6 to 2.4 m, which the fine cells hold whole and the coarse cells as their
+        // third layer, so the coarse cells under it stay air while the fine sliver beneath it is
+        // shut in.
+        var scenario = Scenario(
+            name: "Capped fine slivers", domainSize: SIMD3(48, 48, 16),
+            boxes: [Box(min: SIMD3(20, 18, 1.6), max: SIMD3(30, 30, 2.4))],
+            charge: Charge(mass: 100, position: SIMD3(15, 24, 2.5)))
+        scenario.reflectiveFaces = .all
+        scenario.terrain = Terrain.sampled(domain: scenario.domainSize, spacing: 0.5, source: "fine slivers")
+        {
+            p in
+            1.4 + 0.0005 * p.x
+        }
+        var configuration = cut()
+        configuration.refinement = 2
+        configuration.refinementThreshold = 0.02
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 1, configuration: configuration)
+        let geometry = try #require(solver.terrainCut?.geometry)
+        #expect(geometry.alpha(25, 24, 1) > 0.5 && !solver.isSolid(25, 24, 1) && solver.isSolid(25, 24, 2))
+        let before = solver.totals()
+        var covered = false
+        for _ in 0..<10 {
+            _ = solver.advance(steps: 10)
+            let level = try #require(solver.refinement)
+            if level.holdsAny(from: SIMD3(25, 24, 1), through: SIMD3(25, 24, 1)) {
+                covered = true
+                // The fine sliver under the block (a sixth air) is solid; the one beside it is air.
+                let fine = level.fineReader()
+                #expect(fine(SIMD3(50, 48, 2)) == nil)
+                #expect(
+                    !level.holdsAny(from: SIMD3(18, 24, 1), through: SIMD3(18, 24, 1))
+                        || fine(SIMD3(36, 48, 2)) != nil)
+            }
+        }
+        #expect(covered)
+        let after = solver.totals()
+        #expect(after.mass.isFinite && after.energy.isFinite)
+        // The block's fine outline differs from its coarse one, which gives up 3e-4 of the gas; the
+        // capped sliver made 2e-3 more.
+        #expect(abs(after.mass / before.mass - 1) < 1e-3, "mass \(after.mass / before.mass - 1)")
+        #expect(abs(after.energy / before.energy - 1) < 1e-3, "energy \(after.energy / before.energy - 1)")
+    }
 }
