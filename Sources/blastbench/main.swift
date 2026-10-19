@@ -64,6 +64,12 @@ import simd
 //                        [--thermal-variants a.json,b.json]]
 //                       [--air thermal] [--afterburn] [--radiate [--absorption 0.1] [--soot-yield 0.185]]
 //                       [--stationary-walls] [--cloud spec.json [--frame-cloud] [--cloud-results out.json]]
+//                       [--checkpoint-at T --checkpoint-out DIR] [--resume DIR] [--from DIR]
+//                        (a checkpoint saved at the first 64-step boundary from T s; a run carried on from
+//                        one; or one drawn as it was saved: SolverCheckpoint)
+//   blastbench checkpoint-check [--steps 192] [--at 128] [--recommended] [--refine 2] [--refine-levels 2]
+//                       [--terrain ridge] [--gravity] [--case open] [--dx 0.25] [--out DIR]
+//                        (a run saved part way and carried on from it, against the same run straight through)
 //                       [--standing]   (the standing a new document of the preset shows, in place of a run)
 //   blastbench dialpack [--dx 4] [--time 1] [--tons 500] [--domain 480] [--radiate] [--refine 2]
 //   blastbench hazards [--mass 100] [--fragments spec.json [--height 1]]
@@ -1599,11 +1605,52 @@ func runSnapshot() throws {
         try solver.configureEnvelopeComponents(
             objects: scenario.envelopeObjects, options: EnvelopeHistoryOptions(windowS: time))
     }
+    // Checkpoints (`SolverCheckpoint`): `--resume DIR` carries on from a saved state, `--from DIR`
+    // draws it as it was saved, and `--checkpoint-at T --checkpoint-out DIR` saves the state at the
+    // first 64-step boundary at or after T s. The fragments, ground points and fireball fed
+    // alongside are not saved, so they cannot be used with them.
+    let resumeFrom = option("resume") ?? option("from")
+    let checkpointAt = option("checkpoint-at").flatMap { Double($0) }
+    let checkpointOut = option("checkpoint-out").map { URL(filePath: $0) }
+    if resumeFrom != nil || checkpointAt != nil {
+        guard fragments == nil, ground == nil, thermal == nil else {
+            print("Checkpoints do not cover --fragments, --ground-shock or --thermal.")
+            exit(2)
+        }
+    }
+    if let resumeFrom {
+        let header = try solver.restoreCheckpoint(from: URL(filePath: resumeFrom), scene: scenario)
+        print(
+            String(
+                format: "Resumed from %@: step %d, %.6f s (%.1f MB stored)", resumeFrom, header.stepCount,
+                header.time,
+                Double(header.storedBytes) / 1e6))
+    }
+    var checkpointSaved = false
+    func saveCheckpointIfDue() {
+        guard let checkpointAt, let checkpointOut, !checkpointSaved, solver.time >= checkpointAt,
+            solver.stepCount.isMultiple(of: BlastSolver.checkpointInterval)
+        else { return }
+        do {
+            let header = try solver.saveCheckpoint(to: checkpointOut, scene: scenario)
+            checkpointSaved = true
+            print(
+                String(
+                    format:
+                        "Saved a checkpoint at step %d, %.6f s, to %@: %.1f MB raw, %.1f MB stored, %.2f s",
+                    header.stepCount, header.time, checkpointOut.path, Double(header.rawBytes) / 1e6,
+                    Double(header.storedBytes) / 1e6, header.seconds))
+        } catch {
+            print("No checkpoint: \(error)")
+            checkpointSaved = true
+        }
+    }
     func advance(to end: Double) {
         while solver.time < end - 1e-9 {
             let result = solver.advance(
                 steps: 64,
                 timeLimit: fragments == nil && thermal == nil ? end : min(end, solver.time + 0.001))
+            saveCheckpointIfDue()
             feedFragments()
             feedGround()
             feedThermal()
@@ -1621,7 +1668,12 @@ func runSnapshot() throws {
         let stem = (output as NSString).deletingPathExtension
         try writeSnapshot(to: "\(stem)-\(format(frameTime * 1000, 0))ms.png")
     }
-    advance(to: time)
+    if option("from") == nil { advance(to: time) }
+    if checkpointAt != nil, !checkpointSaved {
+        print(
+            "No checkpoint: the run ended before a \(BlastSolver.checkpointInterval)-step boundary from --checkpoint-at"
+        )
+    }
     let wall = ContinuousClock.now - started
     try writeSnapshot(to: output)
 
@@ -5651,6 +5703,7 @@ func runProfile() throws {
 do {
     switch command {
     case "digest": try runDigest()
+    case "checkpoint-check": try runCheckpointCheck(device: device)
     case "profile": try runProfile()
     case "aircost": try runAirCost()
     case "buildings": try runBuildings()

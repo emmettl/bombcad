@@ -261,3 +261,19 @@ extension BlastSolver {
             gamma: configuration.gamma)
     }
 }
+
+// The cooling's state for a checkpoint (`SolverCheckpoint`): the time since the loss was last
+// taken. (A checkpoint falls on a step the loss is taken at, where it is zero, but it is saved
+// rather than assumed; what each step radiated is collected at every batch's end.)
+extension RadiativeCoolingStage: SolverCheckpointing {
+    var checkpointName: String { "radiativeCooling" }
+    var checkpointVersion: Int { 1 }
+
+    func checkpointParts() -> [SolverCheckpoint.Part] { [.buffer("elapsed", elapsed, 0..<elapsed.length)] }
+
+    func restoreCheckpoint(_ parts: [String: Data]) throws {
+        try SolverCheckpoint.restore(
+            parts["elapsed"], into: elapsed, offset: 0, length: elapsed.length,
+            name: "radiativeCooling.elapsed")
+    }
+}

@@ -195,7 +195,8 @@ fresh run and clears undo across documents.
 The application uses the system document lifecycle for writing rather than implementing in-place
 directory updates. Tests also exercise Foundation's atomic wrapper replacement and confirm
 that validation failures leave the previous saved document readable. This is not a test of
-power-loss durability or a simulation checkpoint facility.
+power-loss durability. A run's solver state is not part of the project file; it can be saved
+and resumed headless as a [checkpoint](checkpoints.md), which the app does not yet offer.
 
 ## Application defaults
 

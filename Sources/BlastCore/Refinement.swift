@@ -2072,3 +2072,95 @@ extension AirRefinement {
             threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))
     }
 }
+
+// A level's state for a checkpoint (`SolverCheckpoint`): its pool's tables, its fine cells and
+// what they carry from step to step. A second level's cells, mask, occupancy and blocks lie in its
+// parent's buffers, after the parent's own, and each level saves its own slice. What every step
+// rewrites before reading (the halo, the ghosts, the flux sums, the requests) is not saved.
+extension AirRefinement: SolverCheckpointing {
+    var checkpointName: String { parent == nil ? "refinement1" : "refinement2" }
+    var checkpointVersion: Int { 1 }
+
+    /// The level's own buffers, saved whole, by name.
+    private var checkpointBuffers: [(String, MTLBuffer)] {
+        var buffers: [(String, MTLBuffer)] = [
+            ("tileOfPatch", tileOfPatch), ("freeStack", freeStack), ("counters", counters),
+            ("patchList", patchList), ("arguments", arguments), ("pinned", pinned), ("seenMask", seenMask),
+            ("fineWall", fineWall), ("fineImpulse", fineImpulse), ("impulseBase", impulseBase),
+            ("fineB", fine[1]),
+        ]
+        if species { buffers += [("speciesA", fineSpecies[0]), ("speciesB", fineSpecies[1])] }
+        if let fineCut, let fineDefects, let patchCut {
+            buffers += [("fineCut", fineCut), ("fineDefects", fineDefects), ("patchCut", patchCut)]
+        }
+        return buffers
+    }
+
+    /// Its slices of the buffers a second level shares with its parent: (name, buffer, offset, length).
+    private var checkpointSlices: [(String, MTLBuffer, Int, Int)] {
+        let cells = maxPatches * side * side * side
+        let tiles = tileDims.x * tileDims.y * tileDims.z
+        return [
+            ("patchOfTile", patchOfTile, patchOffset * 4, tiles * 4),
+            (
+                "fineA", fine[0], cellOffset * MemoryLayout<CellState>.stride,
+                cells * MemoryLayout<CellState>.stride
+            ),
+            ("fineMask", fineMask, cellOffset, cells),
+            ("fineOccupancy", fineOccupancy, cellOffset * 16, cells * 16),
+        ]
+    }
+
+    func checkpointParts() -> [SolverCheckpoint.Part] {
+        var scalars = SolverCheckpoint.Writer()
+        scalars.append(maxPatches)
+        scalars.append(cellOffset)
+        return [.bytes("scalars", scalars.data)]
+            + checkpointBuffers.map { .buffer($0.0, $0.1, 0..<$0.1.length) }
+            + checkpointSlices.map { .buffer($0.0, $0.1, $0.2..<($0.2 + $0.3)) }
+    }
+
+    func restoreCheckpoint(_ parts: [String: Data]) throws {
+        var scalars = SolverCheckpoint.Reader(parts["scalars"] ?? Data())
+        let patches = scalars.read(Int.self)
+        let offset = scalars.read(Int.self)
+        try scalars.finish(checkpointName)
+        guard patches == maxPatches, offset == cellOffset else {
+            throw SolverCheckpoint.Refusal(
+                description:
+                    "\(checkpointName)'s pool is \(maxPatches) patches where it was saved at \(patches)")
+        }
+        for (name, buffer) in checkpointBuffers {
+            try SolverCheckpoint.restore(
+                parts[name], into: buffer, offset: 0, length: buffer.length, name: "\(checkpointName).\(name)"
+            )
+        }
+        for (name, buffer, offset, length) in checkpointSlices {
+            try SolverCheckpoint.restore(
+                parts[name], into: buffer, offset: offset, length: length, name: "\(checkpointName).\(name)")
+        }
+    }
+}
+
+extension AirRefinement {
+    /// Folds this level's fine cells (state and, with afterburning, species) into `hash`, block by
+    /// block in the level's order, so that it does not depend on which pool slot holds which block
+    /// (slots freed in a step are handed back in whatever order the GPU's atomics took them).
+    func digest(into hash: inout UInt64) {
+        let tiles = tileDims.x * tileDims.y * tileDims.z
+        let cells = side * side * side
+        let owners = (patchOfTile.contents() + patchOffset * 4).bindMemory(to: Int32.self, capacity: tiles)
+        let state = (fine[0].contents() + cellOffset * MemoryLayout<CellState>.stride)
+            .bindMemory(to: UInt32.self, capacity: maxPatches * cells * 5)
+        let pairs =
+            species
+            ? fineSpecies[0].contents().bindMemory(to: UInt32.self, capacity: maxPatches * cells * 2) : nil
+        func fold(_ word: UInt32) { hash = (hash ^ UInt64(word)) &* 0x100_0000_01b3 }
+        for tile in 0..<tiles where owners[tile] >= 0 {
+            fold(UInt32(tile))
+            let patch = Int(owners[tile])
+            for n in (patch * cells * 5)..<((patch + 1) * cells * 5) { fold(state[n]) }
+            if let pairs { for n in (patch * cells * 2)..<((patch + 1) * cells * 2) { fold(pairs[n]) } }
+        }
+    }
+}

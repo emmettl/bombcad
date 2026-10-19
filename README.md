@@ -152,6 +152,7 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [Large scenes](docs/large-scenes.md) | Bursts of hundreds of tonnes to kilotonnes over kilometres: accuracy, cost and grids against Kingery–Bulmash, terrain at scale |
 | [Beirut, 2020](docs/beirut-2020.md) | The port explosion over 14,169 map buildings, set against the arrival times and the surveys of glass and structural damage |
 | [Charge inference](docs/charge-inference.md) | The charge's yield and place inferred from observed arrival times (and broken glass), with credible intervals; Beirut's found again |
+| [Checkpoints](docs/checkpoints.md) | A run's state saved part way and carried on, the same to the bit: what is saved, the format, sizes and times |
 | [Validation](docs/validation.md)            | Every comparison with measurements and theory, with a summary   |
 | [Validation review](docs/validation-review.md) | An independent review of the record's claims, ranked by severity |
 | [Reference calculations](docs/reference-calculations.md) | Independent Python implementations of the published methods, and the comparison script |
