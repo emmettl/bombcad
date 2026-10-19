@@ -1090,6 +1090,22 @@ What this says:
 - **Tearing is the weakest part.** An average-strain criterion reads the tears at the edges late.
   Hooper's 0.76 mm pane tore at about 0.11 of its span; Zhang's 1.52 mm one began at 0.23;
   Osnes's held at 0.4. No single span ratio fits all three.
+- **An edge test from the transverse wave was tried and not adopted** (19 October 2026). Once the
+  glass cracks, a kink runs in from each held edge at c = √(T / ρA) (Hooper measured 15–37 m/s
+  after cracking, Table 3.10), and the strip behind it meets the frame at atan(v / c), stretched by
+  √(1 + (v / c)²) − 1. Tearing the strip at the interlayer's failure strain left every 1.52 mm pane
+  as it was (it needs v / c above 2.3), but tore Hooper's 0.76 mm pane the moment it cracked, at
+  2.9 ms and 21 m/s, against 8.5 ms and 31 m/s measured: three times early where the average
+  strain was twice late. The single degree of freedom carries the bending pane's speed into the
+  crack, and the formula then gives 72% at the edge where Hooper's image correlation read 13% as
+  that pane tore, and 15% held by the 1.52 mm ones (§3.4). The peak speed behind his v / c ≈ 2 for
+  that test came after it tore. Fitting the threshold to the one pane that tore at its edges would
+  be tuning. A founded edge model needs the bridging ligament: Hooper's single-crack tests (Table
+  5.3) show its strain rising past 150% at 8 mm (0.38 mm PVB) and 24 mm (0.76 mm) of opening at
+  0.1 m/s, held back by the interlayer delaminating from the fragments, faster for thick sheets. That
+  wants the crack's opening at the frame, which the shells give and the single degree of freedom
+  does not; the shells (meshed panes) let the large panes go on cracking too. Left until more
+  blast tests on thin interlayers tear at their edges.
 
 The standing is an approximation, with the evidence above in its line.
 
