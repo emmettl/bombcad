@@ -9,6 +9,8 @@ final class ProjectSession {
 
     init(document: ProjectDocument, preferences: AppPreferences = .load()) {
         model = SimulationModel(document: document, playbackSpeed: preferences.playbackSpeed)
+        // A window's runs are recorded to replay; headless runs and workers are not.
+        model.recordsTimelines = true
         model.costStore = .standard
     }
 
@@ -29,6 +31,8 @@ final class ProjectSession {
 
 struct ProjectEditor: View {
     @Binding var document: ProjectDocument
+    /// Where the project is saved, for its kept runs' timelines; nil until it is.
+    var fileURL: URL? = nil
     @State private var session: ProjectSession?
 
     var body: some View {
@@ -44,7 +48,9 @@ struct ProjectEditor: View {
         .task {
             // Defer expensive GPU construction until this window actually appears.
             if session == nil { session = ProjectSession(document: document) }
+            session?.model.packageURL = fileURL
         }
+        .onChange(of: fileURL) { _, url in session?.model.packageURL = url }
         .onChange(of: session?.snapshot) { _, snapshot in
             if let snapshot, snapshot != document { document = snapshot }
         }

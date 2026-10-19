@@ -54,7 +54,7 @@ struct BombCADApp: App {
 
     var body: some Scene {
         DocumentGroup(newDocument: ProjectDocument.newProject()) { file in
-            ProjectEditor(document: file.$document)
+            ProjectEditor(document: file.$document, fileURL: file.fileURL)
         }
         .defaultSize(width: 1440, height: 920)
         .commands {
@@ -88,5 +88,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         NearbySharing.shared.restore()
+        DispatchQueue.global(qos: .background).async { RunTimelineRecorder.removeStaleStaging() }
     }
 }

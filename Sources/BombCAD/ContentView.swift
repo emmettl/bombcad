@@ -79,6 +79,7 @@ struct ContentView: View {
                                 .padding(.bottom, 16)
                         }
                     }
+                TimelineBar(model: model)
                 Divider()
                 GaugeChartView(model: model)
                     .frame(height: 230)

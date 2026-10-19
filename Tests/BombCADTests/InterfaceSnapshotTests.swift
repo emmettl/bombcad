@@ -344,6 +344,35 @@ struct InterfaceSnapshotTests {
         #expect(ProjectDocument(model: model) == original)
     }
 
+    @Test("Render the replay bar offering a recording and scrubbing one", arguments: ["light", "dark"])
+    func replayBar(style: String) async throws {
+        let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
+        let folder = URL(filePath: output, directoryHint: .isDirectory).appending(path: style)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let appearance: NSAppearance.Name = style == "dark" ? .darkAqua : .aqua
+        let kept = try SavedRunTests().fixture()
+        var document = ProjectDocument(scenario: kept.scenario)
+        document.runSettings = kept.settings
+        let model = SimulationModel(document: document, playbackSpeed: .unlimited)
+        model.recordsTimelines = true
+        while !model.experimentIsReady { try await Task.sleep(for: .milliseconds(5)) }
+        model.run()
+        while model.isRunning || model.hasPendingGPUWork || model.recentTimeline == nil {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        let size = CGSize(width: 900, height: 44)
+        try snapshot(
+            TimelineBar(model: model).frame(width: size.width), size: size, appearance: appearance,
+            to: folder.appending(path: "replay-offered.png"))
+        model.replay(nil)
+        model.playback?.seek(to: model.time / 2)
+        try snapshot(
+            TimelineBar(model: model).frame(width: size.width), size: size, appearance: appearance,
+            to: folder.appending(path: "replay-scrubbing.png"))
+        model.stopReplay()
+        if let recent = model.recentTimeline { try? FileManager.default.removeItem(at: recent) }
+    }
+
     @Test("Render the panels not yet reviewed, whole and at a short height", arguments: ["light", "dark"])
     func remainingPanels(style: String) throws {
         let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])

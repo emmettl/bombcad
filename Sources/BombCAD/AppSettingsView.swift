@@ -7,6 +7,9 @@ struct AppSettingsView: View {
     @AppStorage(AppPreferences.Key.playbackSpeed) private var playbackSpeed = PlaybackSpeed.x100.rawValue
     @AppStorage(AppPreferences.Key.sweepHosts) private var sweepHosts = ""
     @AppStorage(AppPreferences.Key.sweepUsesRemote) private var sweepUsesRemote = false
+    @AppStorage(AppPreferences.Key.recordsTimelines) private var recordsTimelines = true
+    @AppStorage(AppPreferences.Key.timelineBudgetMB) private var timelineBudgetMB =
+        RunTimelineRecorder.defaultBudgetBytes >> 20
     @State private var newHost = ""
     @State private var addError: String?
     /// Each host's last test result, and the hosts being tested.
@@ -51,6 +54,20 @@ struct AppSettingsView: View {
                 } footer: {
                     Text(
                         "The starting playback speed for new windows. You can change it in each window’s Run tab."
+                    )
+                }
+
+                Section {
+                    Toggle("Record runs to replay", isOn: $recordsTimelines)
+                    Picker("Space for each run", selection: $timelineBudgetMB) {
+                        ForEach([64, 128, 256, 512, 1024], id: \.self) { Text("\($0) MB").tag($0) }
+                    }
+                    .disabled(!recordsTimelines)
+                } header: {
+                    Text("Replay")
+                } footer: {
+                    Text(
+                        "A run records what the view draws, about 240 frames, so that it can be replayed and scrubbed without running again, and a kept run keeps its recording in the project. Past its space, a run records less often rather than stopping."
                     )
                 }
 

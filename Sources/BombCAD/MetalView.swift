@@ -95,13 +95,20 @@ struct MetalView: NSViewRepresentable {
             _ = model.thermalReckoned
             _ = model.fragmentHazard
             _ = model.injuryField
+            // A replay draws its frame's state in place of the run's.
+            let replay = model.playback.map { ($0.index, $0.frame) }
             var settings = model.renderSettings
-            settings.showCharge = model.time == 0
+            settings.showCharge = (replay?.1?.time ?? model.time) == 0
             settings.highlight = model.highlightedBox
             settings.craters = model.craters.map(CraterMark.init)
             // The ground points read the project's points and the run's estimate, both observed.
             let dots =
-                model.fragmentDots(showFragments: settings.showFragments, showTracers: settings.showTracers)
+                (replay != nil
+                    ? model.fragmentDots(
+                        replay?.1?.fragments, showFragments: settings.showFragments,
+                        showTracers: settings.showTracers)
+                    : model.fragmentDots(
+                        showFragments: settings.showFragments, showTracers: settings.showTracers))
                 + (settings.showGroundPoints ? model.groundShockDots() : [])
             let paint = settings.thermal.flatMap { model.thermalPaint($0) }
             // The cloud's outlines are its silhouettes from the eye, so they follow the camera.
@@ -112,7 +119,7 @@ struct MetalView: NSViewRepresentable {
                 + (settings.showBlastHazards ? model.blastHazardLines() : [])
             return Frame(
                 settings: settings, dots: dots, paint: paint, lines: lines, camera: model.camera,
-                freestanding: model.freestandingBoxes())
+                freestanding: replay.map { $0.1?.freestanding ?? [] } ?? model.freestandingBoxes())
         }
 
         func draw(in view: MTKView) {

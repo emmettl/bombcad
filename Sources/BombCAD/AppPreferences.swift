@@ -19,6 +19,9 @@ struct AppPreferences: Equatable, Sendable {
         /// The GPU memory each sweep host lets the air take, in bytes, as it said when it last
         /// connected: for the advisor (`AdvisorMachine.workers`).
         static let workerMemory = "sweep.workerMemory"
+        /// Whether runs record their timeline to replay, and each run's budget for it, in MB.
+        static let recordsTimelines = "timeline.records"
+        static let timelineBudgetMB = "timeline.budgetMB"
     }
 
     /// Notes the GPU memory `host` lets the air take.
@@ -43,6 +46,8 @@ struct AppPreferences: Equatable, Sendable {
     /// Other Macs to share sweeps with, as SSH host names or aliases, and whether to use them.
     var sweepHosts: [String] = []
     var sweepUsesRemote = false
+    var recordsTimelines = true
+    var timelineBudgetMB = RunTimelineRecorder.defaultBudgetBytes >> 20
 
     /// The hosts sweeps should share cases with: none unless sharing is on.
     var sweepRemoteHosts: [String] { sweepUsesRemote ? sweepHosts : [] }
@@ -85,6 +90,10 @@ struct AppPreferences: Equatable, Sendable {
         }
         preferences.sweepHosts = hosts(store.string(forKey: Key.sweepHosts) ?? "")
         preferences.sweepUsesRemote = store.object(forKey: Key.sweepUsesRemote) as? Bool ?? false
+        preferences.recordsTimelines = store.object(forKey: Key.recordsTimelines) as? Bool ?? true
+        if let budget = store.object(forKey: Key.timelineBudgetMB) as? Int, budget >= 16 {
+            preferences.timelineBudgetMB = budget
+        }
         return preferences
     }
 
@@ -95,5 +104,7 @@ struct AppPreferences: Equatable, Sendable {
         store.set(playbackSpeed.rawValue, forKey: Key.playbackSpeed)
         store.set(Self.text(sweepHosts), forKey: Key.sweepHosts)
         store.set(sweepUsesRemote, forKey: Key.sweepUsesRemote)
+        store.set(recordsTimelines, forKey: Key.recordsTimelines)
+        store.set(timelineBudgetMB, forKey: Key.timelineBudgetMB)
     }
 }

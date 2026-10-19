@@ -116,6 +116,33 @@ concrete's or masonry's strength, whether blockwork is fully grouted, and a free
 cap. These are read from IFC material layers or OpenStreetMap's `building:material` where those
 give them, and otherwise assumed.
 
+## Replaying a run
+
+A run records what the view draws as it goes, so that it can be watched again, scrubbed, stepped
+and dragged through without running it again. **Replay** under the view offers the last run and
+every kept run that has a recording; while replaying, the bar plays and pauses (24 frames a
+second), steps a frame either way, and drags to any moment, and **Done** returns to the run. Running
+again ends a replay.
+- **What is recorded:** up to 240 frames over the run, each the blast's field (every cell or every
+  few, at most about half a million), every structure's nodes and elements (moved, cracked,
+  failed), the fragments in flight and the freestanding objects. Displacements are kept to three
+  significant figures and damage to 1/255: the recording is for the eye, never for results.
+- **What is not, yet:** vent panels opening, the envelopes' damage colours, the thermal paint and
+  the cloud are shown as the run left them at its end, not as they came.
+- **Kept with the run:** Keep Run keeps the recording too, in the project's `runs/` folder beside
+  its results, and a reopened project replays its kept runs. Settings ▸ Replay turns recording off
+  or sets each run's space (256 MB by default); past it a run records less often rather than
+  stopping, so the recording still spans the run.
+- **Its cost:** a frame is captured between the run's batches, waiting for the GPU to cut out the
+  field (about 10 ms for 25 million cells), and capturing never takes more than 2% of the run's
+  time, so a run of a few seconds records a few frames. Measured on the Studio
+  (`RunTimelineCostStudyTests`): the office tower's frames are 3.5 MB each, so its 256 MB holds
+  about 70 frames, each captured in 33 ms, 0.2% of its run; the made-up district's, on 25 million
+  cells, take 9 ms and a few kilobytes each, and its 3 s run records 9.
+
+Continuing a run from a moment of its timeline, at full detail or with a change, needs the
+solver's checkpoints, which are being built.
+
 ## Large scenes and the advisor
 
 **Large scenes.** The charge's slider runs from 1 kg to 10 kt. The **Grid** offers, beside the

@@ -492,6 +492,23 @@ final class SimulationModel {
     }
     /// Kept runs' timelines staged on disk until the project is saved (`ProjectDocument.runFolders`).
     var runFolders: [UUID: URL] = [:]
+    /// The project's package on disk, once saved: where a reopened project's kept runs keep their
+    /// timelines (`runs/<run id>/`).
+    var packageURL: URL?
+    /// Whether runs are recorded to replay: in a project's window, when Settings ask for it; never
+    /// in a headless run, a sweep's worker or a watched run.
+    @ObservationIgnored var recordsTimelines = false
+    /// Records the run under way for replay (`RunTimelineRecorder`), when Settings ask for it.
+    @ObservationIgnored private var timelineRecorder: RunTimelineRecorder?
+    /// The last run's recording, until another run starts; a kept run takes it into `runFolders`.
+    private(set) var recentTimeline: URL?
+    /// A run being replayed in the view in place of the solver's state, or nil.
+    private(set) var playback: TimelinePlayback?
+    /// What recording the last run cost: its frames, the main thread's seconds capturing them, and
+    /// the bytes kept; and the run's wall-clock seconds.
+    @ObservationIgnored private(set) var timelineCost:
+        (frames: Int, seconds: Double, bytes: Int, wall: Double)?
+    @ObservationIgnored private var timelineStarted = ContinuousClock.now
     let chargeInference = ChargeInferenceModel()
     /// Asked of the views that own them from the menus, and cleared there: choosing a model to
     /// import, naming the run to keep, and saving the results as CSV.
@@ -1144,6 +1161,8 @@ final class SimulationModel {
                 startThermal(solver)
             }
         }
+        if playback != nil { stopReplay() }
+        if let solver, solver.stepCount == 0, timelineRecorder == nil { startTimeline(solver) }
         isRunning = true
         restartPacing()
         pump()
@@ -2113,6 +2132,7 @@ final class SimulationModel {
         document.savedRuns.append(run)
         _ = try document.makeArchive()
         savedRuns.append(run)
+        if let recentTimeline { runFolders[run.id] = recentTimeline }
     }
 
     /// Keeps a run made elsewhere, as by a sweep worker on another Mac, with the checks
@@ -2175,6 +2195,112 @@ final class SimulationModel {
             })
         else { return }
         savedRuns.append(run)
+    }
+
+    // MARK: - Timeline
+
+    private func startTimeline(_ solver: BlastSolver) {
+        let preferences = AppPreferences.load()
+        // A sweep's cases are kept as results, not to replay.
+        guard recordsTimelines, preferences.recordsTimelines, !sweep.isActive, var inputs = loadedRunSettings
+        else { return }
+        inputs.duration = duration
+        do {
+            let recorder = try RunTimelineRecorder(
+                solver: solver, fingerprint: SavedSimulationRun.fingerprint(scenario, settings: inputs),
+                duration: duration, budgetBytes: preferences.timelineBudgetMB << 20)
+            recorder.endTime = duration
+            timelineRecorder = recorder
+            timelineStarted = .now
+            recordTimeline(solver)
+        } catch {
+            timelineRecorder = nil
+        }
+    }
+
+    private func recordTimeline(_ solver: BlastSolver, last: Bool = false) {
+        timelineRecorder?.recordIfDue(
+            solver, fragments: fragments?.fragmentLive ?? fragmentLive, freestanding: freestandingBoxes(),
+            force: last)
+    }
+
+    private func finishTimeline() {
+        guard let recorder = timelineRecorder, let solver else { return }
+        recordTimeline(solver, last: true)
+        timelineRecorder = nil
+        let wall = ContinuousClock.now - timelineStarted
+        Task { [weak self] in
+            let folder = await recorder.finish()
+            self?.timelineCost = (
+                recorder.frames, recorder.captureSeconds, recorder.bytes,
+                Double(wall.components.seconds) + Double(wall.components.attoseconds) * 1e-18
+            )
+            self?.recentTimeline = folder
+        }
+    }
+
+    /// Forgets the run under way's recording, and the last run's unless it was kept.
+    private func discardTimeline() {
+        stopReplay()
+        timelineRecorder?.discard()
+        timelineRecorder = nil
+        if let recent = recentTimeline, !runFolders.values.contains(recent) {
+            try? FileManager.default.removeItem(at: recent)
+        }
+        recentTimeline = nil
+    }
+
+    /// Where `run`'s timeline lies: staged since it was kept, or in the saved package.
+    func timelineFolder(for run: SavedSimulationRun) -> URL? {
+        if let folder = runFolders[run.id] { return folder }
+        guard let packageURL else { return nil }
+        let folder = packageURL.appending(
+            path: "\(RunTimelineManifest.folder)/\(run.id.uuidString.lowercased())",
+            directoryHint: .isDirectory)
+        let manifest = folder.appending(path: RunTimelineManifest.fileName)
+        return FileManager.default.fileExists(atPath: manifest.path) ? folder : nil
+    }
+
+    /// The kept runs that can be replayed.
+    var replayableRuns: [SavedSimulationRun] { savedRuns.filter { timelineFolder(for: $0) != nil } }
+
+    /// Replays `run`'s timeline in the view, or the last run's for nil, showing its last frame.
+    func replay(_ run: SavedSimulationRun?) {
+        guard !isRunning, let device, let renderer, let commandQueue,
+            let folder = run.map(timelineFolder) ?? recentTimeline
+        else { return }
+        stopReplay()
+        do {
+            let player = try RunTimelinePlayer(folder: folder, device: device)
+            let shown = run?.scenario ?? scenario
+            let playback = TimelinePlayback(
+                player: player, title: run?.name ?? "This run", scenario: shown, commandQueue: commandQueue)
+            renderer.setScene(shown, view: player.upload.view)
+            renderer.setVentPanels([])
+            renderer.setEnvelopeDamage([:])
+            try playback.show(player.entries.count - 1)
+            self.playback = playback
+            sceneVersion += 1
+        } catch {
+            errorMessage = "This run's recording could not be read: \(error.localizedDescription)"
+            restoreLiveView()
+        }
+    }
+
+    /// Back to the scene and the solver's state.
+    func stopReplay() {
+        guard let playback else { return }
+        playback.pause()
+        self.playback = nil
+        restoreLiveView()
+    }
+
+    private func restoreLiveView() {
+        guard let renderer, let solver else { return }
+        renderer.setScene(scenario, solver: solver)
+        showOpenedVentPanels(solver)
+        applyEnvelopeDamageColours()
+        sceneVersion += 1
     }
 
     // MARK: - Ground shock
@@ -2694,6 +2820,7 @@ final class SimulationModel {
     private func rebuild() {
         isLoadingInputs = true
         defer { isLoadingInputs = false }
+        discardTimeline()
         stopFragments()
         stopGroundShock()
         envelopeExposure = []
@@ -2934,6 +3061,7 @@ final class SimulationModel {
         sendFragmentFrame(solver, last: finished)
         sendGroundShockFrame(solver, last: finished)
         sendFireball(solver)
+        recordTimeline(solver)
 
         let now = ContinuousClock.now
         let wall = (now - lastBatchCompletion).seconds
@@ -2995,6 +3123,7 @@ final class SimulationModel {
 
     private func finish() {
         isRunning = false
+        finishTimeline()
         firingNotes = (solver?.firings ?? []).map { firing in
             let how =
                 switch firing.how {
@@ -3256,7 +3385,13 @@ extension SimulationModel {
     /// value from 0 to 1.
     func fragmentDots(showFragments: Bool, showTracers: Bool) -> [SIMD4<Float>] {
         // Straight from the consumer, so the dots move with every frame drawn.
-        guard let live = fragments?.fragmentLive ?? fragmentLive else { return [] }
+        fragmentDots(
+            fragments?.fragmentLive ?? fragmentLive, showFragments: showFragments, showTracers: showTracers)
+    }
+
+    /// `live`'s fragments and tracers in flight, and its strikes, as the view draws them.
+    func fragmentDots(_ live: FragmentLive?, showFragments: Bool, showTracers: Bool) -> [SIMD4<Float>] {
+        guard let live else { return [] }
         var dots: [SIMD4<Float>] = []
         dots.reserveCapacity(live.positions.count)
         for n in live.positions.indices {
