@@ -5,8 +5,9 @@
 It looks at what this branch changes against origin/main (committed, staged, unstaged and
 untracked files) and runs one of three tiers:
 
-- documents and Python scripts only (docs/, Markdown, images, Scripts/*.py): lint and the
-  scripts' tests and links (`ci-test`); no Swift build, no GPU.
+- documents and Python scripts only (docs/, Markdown, images, Scripts/*.py, the reference
+  calculations in Scripts/reference/ and their tables, the analytic oracles in
+  Scripts/analytic/): lint and the scripts' tests and links (`ci-test`); no Swift build, no GPU.
 - code outside the core: lint, the strict build, `ci-test`, and the Swift tests that name a changed
   file's type or live in a changed test file, plus a few that many changes trip (the standing and
   the shader layouts).
@@ -15,7 +16,7 @@ untracked files) and runs one of three tiers:
 
 The full check still runs nightly on the mini and before every release; this only decides what a
 push waits for. `--dry-run` prints the tier and the tests without running anything; `--full`
-forces the full check.
+forces the full check (through make: `make check-affected ARGS=--dry-run`).
 """
 
 import argparse
@@ -35,7 +36,8 @@ CORE = [
     re.compile(r"^Sources/RadialBlast/"),
 ]
 # Documents and the Python scripts, which ci-test covers on its own.
-DOCUMENT = re.compile(r"(^docs/|\.md$|\.png$|\.jpg$|\.svg$|^LICENSE$|^Scripts/[^/]+\.py$)")
+DOCUMENT = re.compile(r"(^docs/|\.md$|\.png$|\.jpg$|\.svg$|^LICENSE$|^Scripts/(analytic/|reference/)?[^/]+\.py$|"
+                      r"^Scripts/reference/tables/[^/]+\.json$)")
 # Suites that changes elsewhere often trip: the standing parses the docs and options, the
 # layout test guards the renderer's copies of the solver's structs.
 ALWAYS = ["StandingFingerprintTests", "EvidentialStandingTests", "StandingRunTests",

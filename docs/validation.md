@@ -4135,6 +4135,12 @@ also fed Kingery–Bulmash's Friedlander pulse.
 `blastbench validate` puts a 100 kg charge on rigid ground and compares the air solver with two
 references.
 
+Independent Python implementations of Kingery–Bulmash, oblique reflection, Biggs's single degree
+of freedom and a one-dimensional spherical blast, written from the published sources rather than
+from BombCAD's code, check these references and the gauges themselves: see [reference
+calculations](reference-calculations.md), whose `compare.py` reads `validate`'s histories and the
+scene benchmarks' reports.
+
 ### Kingery–Bulmash, the design-practice standard
 
 Kingery and Bulmash fitted polynomials to a large body of test data for a hemispherical surface
@@ -5698,6 +5704,10 @@ checks; see the [shell model](shell-model.md#verification).
 
 These establish that the equations are solved as intended. They say nothing about whether the
 equations are the right ones.
+
+Independent Python versions of the exact solutions to Sod's shock tube and the Sedov–Taylor
+blast, a textbook scheme to read errors against, and a script that scores a solver profile
+against both are described in [analytic oracles](analytic-oracles.md).
 
 ## Convergence on today's defaults
 

@@ -1690,8 +1690,9 @@ struct StandingScene {
             StandingEvidence(
                 "BP Texas City 2005 (CSB), a layout after it",
                 "The model's own flame gives 0.01 psi at 37 m against the CSB's 2.5–2.8: congestion's "
-                    + "acceleration is not resolved. With the burning velocity times 6.5, fitted there: 2.4 psi, "
-                    + "the brick control room failing at 1.6 psi (1.5–2.5, heavily damaged)",
+                    + "acceleration is not resolved. With the burning velocity times 6.5, fitted there to 2.4 psi: "
+                    + "3.2 psi on today's defaults, not refitted, the brick control room failing at 1.7 psi "
+                    + "(1.5–2.5, heavily damaged)",
                 "process-plant-explosion.md#results"),
         ]
     }
