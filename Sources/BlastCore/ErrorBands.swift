@@ -293,6 +293,11 @@ public enum ValidationTables {
             self.document = document
             quotes = quote
         }
+
+        /// "75–84%".
+        public var percent: String { String(format: "%.0f–%.0f%%", low * 100, high * 100) }
+        /// "0.84–0.99".
+        public var ratio: String { String(format: "%.2f–%.2f", low, high) }
     }
 
     /// Every single figure the bands use. `ErrorBandTests` checks each quote lies under its
@@ -438,6 +443,48 @@ public enum ValidationTables {
         Figure(
             id: "ventedMiddle", low: 0.4, high: 0.6, document: "validation.md#summary",
             quote: "lit in the middle, 0.4–0.6"),
+        // Estimates beside a run, against BombCAD's own runs: the standing lines of
+        // `FacadeLoadSurrogate`, `HybridFarField` and `ChargeInference` are worded from these.
+        Figure(
+            id: "surrogateGlassSides", low: 0.75, high: 0.84,
+            document: "validation.md#the-quick-estimate-against-beiruts-runs",
+            quote: "agrees with the run's for 75–84%"),
+        Figure(
+            id: "surrogateConcrete", low: 0.08, high: 0.27,
+            document: "validation.md#the-quick-estimate-against-beiruts-runs",
+            quote: "8–27% of the concrete"),
+        Figure(
+            id: "surrogateStone", low: 0.37, high: 0.46,
+            document: "validation.md#the-quick-estimate-against-beiruts-runs",
+            quote: "37–46% of the stone"),
+        Figure(
+            id: "surrogateNearPeak", low: 0.84, high: 0.99,
+            document: "validation.md#the-quick-estimate-against-beiruts-runs",
+            quote: "peaks 0.84–0.99"),
+        Figure(
+            id: "surrogateFarLoads", low: 1.08, high: 1.63,
+            document: "validation.md#the-quick-estimate-against-beiruts-runs",
+            quote: "1.08–1.63 times the run's on the median"),
+        Figure(
+            id: "hybridFarPeak", low: 0.77, high: 1.04,
+            document: "validation.md#the-hybrid-far-field-against-beiruts-runs",
+            quote: "façade peaks 0.77–1.04 of the full run's to 2.5 km"),
+        Figure(
+            id: "hybridFarImpulse", low: 1.04, high: 1.5,
+            document: "validation.md#the-hybrid-far-field-against-beiruts-runs",
+            quote: "impulses 1.04–1.5 times"),
+        Figure(
+            id: "inferredBeirut", low: 0.50, high: 0.54,
+            document: "validation.md#the-charge-from-its-arrivals",
+            quote: "0.50–0.54 kt"),
+        Figure(
+            id: "inferredWithRatios", low: 0.97, high: 1.01,
+            document: "validation.md#the-charge-from-its-arrivals",
+            quote: "0.97–1.01 of it on 2 m cells"),
+        Figure(
+            id: "inferredByCurvesAlone", low: 1.27, high: 1.95,
+            document: "validation.md#the-charge-from-its-arrivals",
+            quote: "1.27–1.95 times the yield"),
     ]
 
     public static func figure(_ id: String) -> Figure { figures.first { $0.id == id }! }
