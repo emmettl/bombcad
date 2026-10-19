@@ -1,0 +1,8 @@
+{
+  "source": "United Nations, International Ammunition Technical Guideline IATG 01.80, Formulae for ammunition management (3rd ed., 2021), Table 5: Kingery-Bulmash parameters of a hemispherical TNT surface burst at 50 m, worked examples. Derived numbers only.",
+  "rows": [
+    {"mass_kg": 100000, "range_m": 50, "incident_bar": 11.5, "incident_impulse_bar_ms": 106, "reflected_bar": 66.5, "reflected_impulse_bar_ms": 372, "arrival_ms": 24.8},
+    {"mass_kg": 10000, "range_m": 50, "incident_bar": 2.02, "incident_impulse_bar_ms": 25.2, "reflected_bar": 6.8, "reflected_impulse_bar_ms": 65.5, "arrival_ms": 48.1},
+    {"mass_kg": 1000, "range_m": 50, "incident_bar": 0.43, "incident_impulse_bar_ms": 5.9, "reflected_bar": 1.01, "reflected_impulse_bar_ms": 12.6, "arrival_ms": 82.4}
+  ]
+}
