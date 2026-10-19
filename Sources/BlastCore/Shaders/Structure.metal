@@ -288,6 +288,7 @@ struct MaterialParameters {
     float bucklingOnset;
     float bucklingSoftening;
     float bucklingResidual;
+    float bucklingFold;    // π t / 4 b (h / d)^(3/2): a buckled fold's straightening, 0 for none
     float rateConstant;    // Cowper and Symonds's D (1/s), 0 for none
     float rateExponent;    // 1 / q
     float rateTestFactor;  // 1 + (tensile test's rate / D)^(1/q)

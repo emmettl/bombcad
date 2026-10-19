@@ -2,7 +2,6 @@ import Foundation
 import Testing
 import simd
 
-@testable import BlastCore
 @testable import BlastModel
 
 @Suite("Fragments penetrating what they strike")
@@ -183,7 +182,7 @@ struct FragmentPenetrationTests {
             name: "Glazed", domainSize: SIMD3(16, 20, 6), boxes: [],
             charge: Charge(mass: 1, position: SIMD3(7, 2, 1.6)))
         try scene.addEnvelopeObject(
-            EnvelopeVentingTests().building(origin: SIMD3(4, 7, 0), cutOpening: true), name: "Building")
+            glazedBuilding(origin: SIMD3(4, 7, 0), cutOpening: true), name: "Building")
         let owner = scene.envelopeObjects[0].id
         // Walls a centimetre thick, which the fragments go through.
         var construction = EnvelopeConstruction.assumed(objectID: owner)
@@ -209,4 +208,22 @@ struct FragmentPenetrationTests {
         // A hole is a fragment's presented area: a 0.25 g steel cube's is under a square centimetre.
         #expect(holes.allSatisfy { $0.areaM2 < 1e-3 })
     }
+}
+
+/// The damage references' building, as `EnvelopeVentingTests.building` (in BlastCoreTests, whose
+/// helpers this target cannot reach) builds it: four walls 0.2 m thick and a roof over a 6 m
+/// square, with a window 1.5 by 1.25 m in the south wall glazed by a pane in a cut opening, or
+/// with the glass set in the wall without an opening.
+private func glazedBuilding(origin: SIMD3<Float>, cutOpening: Bool) throws -> BuildingEnvelope {
+    let (x, y) = (origin.x, origin.y)
+    let solids = [
+        Box(min: SIMD3(x, y, 0), max: SIMD3(x + 6, y + 0.2, 3)),
+        Box(min: SIMD3(x, y + 5.8, 0), max: SIMD3(x + 6, y + 6, 3)),
+        Box(min: SIMD3(x, y + 0.2, 0), max: SIMD3(x + 0.2, y + 5.8, 3)),
+        Box(min: SIMD3(x + 5.8, y + 0.2, 0), max: SIMD3(x + 6, y + 5.8, 3)),
+        Box(min: SIMD3(x, y, 3), max: SIMD3(x + 6, y + 6, 3.2)),
+    ]
+    let window = Box(min: SIMD3(x + 2.25, y, 1), max: SIMD3(x + 3.75, y + 0.2, 2.25))
+    let pane = Box(min: SIMD3(x + 2.25, y + 0.097, 1), max: SIMD3(x + 3.75, y + 0.103, 2.25))
+    return try BuildingEnvelope(solids: solids, openings: cutOpening ? [window] : [], panes: [pane])
 }

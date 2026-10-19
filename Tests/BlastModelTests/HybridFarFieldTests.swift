@@ -32,6 +32,10 @@ struct HybridFarFieldTests {
         // The arrivals from 500 m to the hand-over only.
         #expect(abs(far.arrival - 1.05) < 1e-9)
         #expect(far.seedStrips == 2)
+        // Where the seeds were taken, the far field is the seed: no step at the hand-over.
+        let atSeeds = 1_000 * exp(far.seedLogDistance ?? 0)
+        let p = far.apply(Self.prediction(1_000, 50), distanceM: atSeeds)
+        #expect(abs(p.peakPa / 1_000 - far.peak) < 1e-9)
     }
 
     @Test("Without a trend the far field is the seed alone; beyond the hand-over it carries the trend on")

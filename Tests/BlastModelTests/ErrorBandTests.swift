@@ -2,7 +2,6 @@ import Foundation
 import Testing
 import simd
 
-@testable import BlastCore
 @testable import BlastModel
 
 private let docs = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()

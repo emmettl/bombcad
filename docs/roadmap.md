@@ -220,7 +220,9 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
 - **Now:** why the deflagration's flame stalls when lit in the middle (0.4–0.6 there), a young
   flame's speed on coarse cells, and a thinner front, without which K_G cannot converge.
 - **Paused:** the fireball's radiation, about 21% radiated against Dial Pack's 5.1%; if it
-  resumes, flame sheets round a fuel-rich core and the missing hot shock layer.
+  resumes, flame sheets round a fuel-rich core. The hot shock layer shows in the early frames
+  since 19 October (hot air's absorption, soot within the products): Dial Pack's first maximum
+  three-fifths of the measured, from a quarter.
 - **Cratering, stage 1, done (approximation for the diameter):** [an empirical crater](cratering.md)
   by Cooper's scaling for each soil and height of burst, with Kinney and Graham's scatter; it
   forms after the blast, so it is reported, drawn and exported when the run ends and does not
@@ -336,8 +338,8 @@ most are about reaching an answer for less, with the full solver kept as the ref
    carries the façades' loads beyond it on item 2's surrogate, matched to the near run, so its
    shielding is the surrogate's and channelling is not yet in it. Handing over at 1 km, Beirut at
    0.5 kt takes about 7 minutes against the full run's 34, and the share of building sides with
-   some glass broken comes within 0.03 of the full run's to 1.5 km at every yield; it is not yet
-   in the app ([a city in minutes](hybrid-far-field.md)).
+   some glass broken comes within 0.04 of the full run's to 1.5 km at every yield; in the app
+   under File ▸ New District ([a city in minutes](hybrid-far-field.md)).
 4. **Uncertainty by default.** Results as probabilities ("this façade fails with 70% chance")
    from the scatter in yield, materials and rounding, cheap once item 2 exists. First step done for the
    glass: each building side's chance of broken, blown-out and thrown glass in about a minute, calibrated to

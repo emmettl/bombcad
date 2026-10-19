@@ -343,7 +343,10 @@ struct FloorPlanTests {
         #expect(walls.contains { simd_distance($0.a, SIMD2(10, -20)) < 1e-9 })
         // The half circle of radius 25 between (110, -30) and (60, -30) in pieces of at most 15°:
         // its top 25 above them.
-        #expect(walls.flatMap { [$0.a, $0.b] }.contains { abs($0.y - 5) < 1e-9 && abs($0.x - 85) < 1e-9 })
+        // In two steps, with magnitude for abs: on Linux the test sees the simd stand-in's and the
+        // shim's abs too, and the one expression timed out the type checker.
+        let ends = walls.flatMap { [$0.a, $0.b] }
+        #expect(ends.contains { ($0.y - 5).magnitude < 1e-9 && ($0.x - 85).magnitude < 1e-9 })
         #expect(walls.count == 3 + 12 + 4, "\(walls.count)")
         // The window, a symbol placed, one insert of its own, turned a quarter and 30 long.
         let window = segments.filter { $0.layer == "Windows" }

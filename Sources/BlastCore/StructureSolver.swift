@@ -1474,6 +1474,23 @@ public final class StructureSolver {
         mutateNodes { nodes in settledDisplacements = nodes.map(\.displacement) }
     }
 
+    /// The nodes at each element's eight corners, element by element in `instanceBuffer`'s order
+    /// (corner bits x, y, z), for `summary`: the elements and their nodes never move in the
+    /// lattice. Looked up once, not on every summary, which the app takes several times a batch
+    /// and which a debug build spent most of a structural run's time on (19 October 2026).
+    private lazy var summaryCorners: [Int] = {
+        let instances = instanceBuffer.contents().bindMemory(to: UInt32.self, capacity: max(elementCount, 1))
+        var corners: [Int] = []
+        corners.reserveCapacity(8 * elementCount)
+        for n in 0..<elementCount {
+            let (i, j, k) = elementCoordinates(Int(instances[n]))
+            for corner in 0..<8 {
+                corners.append(nodeIndex(i + (corner & 1), j + ((corner >> 1) & 1), k + ((corner >> 2) & 1)))
+            }
+        }
+        return corners
+    }()
+
     /// Scans the mesh for damage and deflection. Costs a pass over the lattice on the CPU.
     public func summary() -> StructureSummary {
         var summary = StructureSummary()
@@ -1481,8 +1498,13 @@ public final class StructureSolver {
         var sagSquared: Float = 0
         let instances = instanceBuffer.contents().bindMemory(to: UInt32.self, capacity: max(elementCount, 1))
         let flags = flagBuffer.contents().bindMemory(to: UInt8.self, capacity: ex * ey * ez)
+        let state = stateBuffer.contents()
+        let corners = summaryCorners
         var maxSquared: Float = 0
         mutateNodes { nodes in
+            // The nodes of the active elements, each once: the largest over them is the same
+            // whichever order and however often a node is met (`max` passes over a NaN either way).
+            var held = [Bool](repeating: false, count: nodes.count)
             for n in 0..<elementCount {
                 let index = Int(instances[n])
                 guard flags[index] == ElementFlag.active.rawValue else {
@@ -1490,23 +1512,18 @@ public final class StructureSolver {
                     continue
                 }
                 summary.activeElements += 1
-                let strain = stateBuffer.contents().load(
-                    fromByteOffset: n * Self.stateStride + 24, as: Float.self)
+                let strain = state.load(fromByteOffset: n * Self.stateStride + 24, as: Float.self)
                 summary.maxPlasticStrain = max(summary.maxPlasticStrain, strain)
                 summary.maxDamage = max(
-                    summary.maxDamage,
-                    stateBuffer.contents().load(fromByteOffset: n * Self.stateStride + 28, as: Float.self)
-                )
-                let (i, j, k) = elementCoordinates(index)
-                for corner in 0..<8 {
-                    let (a, b, c) = (i + (corner & 1), j + ((corner >> 1) & 1), k + ((corner >> 2) & 1))
-                    let node = nodeIndex(a, b, c)
-                    let rest = settled?[node] ?? .zero
-                    let squared = simd_length_squared(nodes[node].displacement - rest)
-                    if !squared.isFinite { summary.hasBlownUp = true }
-                    maxSquared = max(maxSquared, squared)
-                    sagSquared = max(sagSquared, simd_length_squared(rest))
-                }
+                    summary.maxDamage, state.load(fromByteOffset: n * Self.stateStride + 28, as: Float.self))
+                for corner in 0..<8 { held[corners[8 * n + corner]] = true }
+            }
+            for node in 0..<nodes.count where held[node] {
+                let rest = settled?[node] ?? .zero
+                let squared = simd_length_squared(nodes[node].displacement - rest)
+                if !squared.isFinite { summary.hasBlownUp = true }
+                maxSquared = max(maxSquared, squared)
+                sagSquared = max(sagSquared, simd_length_squared(rest))
             }
         }
         summary.maxDisplacement = maxSquared.squareRoot()
@@ -2191,6 +2208,7 @@ public final class StructureSolver {
             parameters.bucklingOnset = buckling.onsetStrain
             parameters.bucklingSoftening = max(buckling.softeningStrain, 1e-9)
             parameters.bucklingResidual = buckling.residual
+            parameters.bucklingFold = buckling.foldRatio ?? 0
         }
         if material.model == .timber, let timber = material.timber {
             parameters.materialModel = MaterialModel.timber.rawValue

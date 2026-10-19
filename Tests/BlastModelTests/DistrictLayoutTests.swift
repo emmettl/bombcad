@@ -2,7 +2,6 @@ import Foundation
 import Testing
 import simd
 
-@testable import BlastCore
 @testable import BlastModel
 
 /// File ▸ New District's layout (`DistrictLayout`) on a made-up district (Fixtures/SyntheticDistrict).
@@ -10,6 +9,12 @@ import simd
 struct DistrictLayoutTests {
     static let folder = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         .deletingLastPathComponent().appending(path: "Fixtures/SyntheticDistrict")
+
+    /// A fixture's ESRI ASCII grid, as `ElevationGrid(contentsOf:)` reads an `.asc` file (that
+    /// initialiser, which also reads GeoTIFF through Apple's Compression, is BlastCore's).
+    static func grid(_ url: URL) throws -> ElevationGrid {
+        try ElevationGrid(esriASCII: String(contentsOf: url, encoding: .utf8))
+    }
 
     /// The charge at the grid's centre, 1 t of TNT, on the fixture's ground and heights.
     static func layout(ground: Bool = true) throws -> DistrictLayout {
@@ -19,10 +24,10 @@ struct DistrictLayoutTests {
         var layout = DistrictLayout(
             buildings: buildings, charge: SIMD2(612 / east, 608 / ElevationGrid.metresPerDegree), mass: 1_000)
         #expect(simd_length(centre.position(layout.charge) - SIMD2(612, 608)) < 0.01)
-        layout.heights = try ElevationGrid(contentsOf: folder.appending(path: "heights.asc"))
+        layout.heights = try Self.grid(folder.appending(path: "heights.asc"))
         if ground {
             layout.ground = DistrictLayout.ground(
-                try ElevationGrid(contentsOf: folder.appending(path: "ground.asc")), openingM: 0, seaM: 1)
+                try Self.grid(folder.appending(path: "ground.asc")), openingM: 0, seaM: 1)
         }
         return layout
     }
@@ -65,7 +70,9 @@ struct DistrictLayoutTests {
         let half = layout.halfSide(radius: 250, cellSize: 4)
         let (scene, report) = try layout.scene(halfSide: half, cellSize: 4, radius: 250)
         #expect(scene.domainSize.x == 2 * half && scene.domainSize.y == 2 * half)
-        #expect(report.placed.count == layout.buildings(within: 250).count)
+        // All but the centre block, which holds the charge and would bury it.
+        #expect(report.placed.count == layout.buildings(within: 250).count - 1)
+        #expect(report.skipped.map(\.reason) == ["holds the charge"])
         #expect(scene.envelopeObjects.count == report.placed.count)
         // Each with a construction and a glazing mix; the brick ones from their tag.
         for object in scene.envelopeObjects {
@@ -88,7 +95,7 @@ struct DistrictLayoutTests {
 
     @Test("The sea stays at the base when a surface model is opened")
     func sea() throws {
-        let dem = try ElevationGrid(contentsOf: Self.folder.appending(path: "ground.asc"))
+        let dem = try Self.grid(Self.folder.appending(path: "ground.asc"))
         let ground = DistrictLayout.ground(dem, openingM: 100, seaM: 1)
         for n in dem.elevations.indices where dem.elevations[n] < 1 { #expect(ground.elevations[n] == 0) }
         // Opening takes the hill down: nowhere higher than before.
@@ -96,6 +103,31 @@ struct DistrictLayoutTests {
             #expect(ground.elevations[n] <= dem.elevations[n] + 1e-4)
         }
         #expect(ground.elevations.max()! < dem.elevations.max()!)
+    }
+
+    @Test("The building over the charge is cleared, the standing says so, and kept it buries the charge")
+    func chargeOnBuilding() throws {
+        // The fixture's charge lies inside its centre block; footprints on the refined air's finest cells.
+        let layout = try Self.layout()
+        let half = layout.halfSide(radius: 100, cellSize: 10)
+        let (scene, report) = try layout.scene(halfSide: half, cellSize: 10, radius: 100, footprintCells: 5)
+        #expect(report.skipped.map(\.reason) == ["holds the charge"] && report.clearedCharge)
+        #expect(!scene.blocks(scene.charge.position))
+        // The standing says the building was cleared.
+        let standing = SceneStanding(
+            StandingInputs(scenario: scene, cellSize: 10, configuration: .recommended))
+        #expect(
+            standing.results.contains { result in
+                result.assumptions.contains { $0.hasPrefix(MapBuildingReport.clearedChargeNote) }
+            })
+        // Kept, the building stands over the charge, which is buried.
+        var kept = layout
+        kept.clearsChargeBuilding = false
+        let (keptScene, keptReport) = try kept.scene(
+            halfSide: half, cellSize: 10, radius: 100, footprintCells: 5)
+        #expect(keptReport.skipped.isEmpty && keptReport.placed.count == report.placed.count + 1)
+        #expect(keptScene.blocks(keptScene.charge.position))
+        // That it goes off on both kinds of air: DistrictChargeRunTests.
     }
 
     @Test("Without a ground the district stands on the floor")
@@ -107,5 +139,46 @@ struct DistrictLayoutTests {
         #expect(
             scene.domainSize.z
                 == layout.top(chargeZ: 0, highestRoof: report.placed.map(\.top).max()!, cellSize: 5))
+    }
+
+    @Test(
+        "Split at a hand-over: the near box's buildings in the air, the rest beside it where the full layout puts them"
+    )
+    func hybrid() throws {
+        let layout = try Self.layout()
+        let near = layout.halfSide(radius: 150, cellSize: 4)
+        let (scene, far, report) = try layout.hybrid(
+            handoverM: 150, nearHalfSide: near, radius: 480, halfSide: 488, cellSize: 4)
+        #expect(scene.domainSize.x == 2 * near && report.placed.count == scene.envelopeObjects.count)
+        // Every building the full layout places is in one set or the other, never both: one the near
+        // scene places even in part stays in the air.
+        let (full, fullReport) = try layout.scene(halfSide: 488, cellSize: 4, radius: 480)
+        #expect(Set(scene.envelopeObjects.map(\.id)).isDisjoint(with: Set(far.buildings.map(\.id))))
+        let inNear = Set(report.placed.map(\.id))
+        let farIDs = Set(fullReport.placed.filter { !inNear.contains($0.id) }.map(\.objectID))
+        let expected = full.envelopeObjects.filter { farIDs.contains($0.id) }
+        #expect(!expected.isEmpty && expected.count == far.buildings.count)
+        #expect(report.placed.count + far.buildings.count == fullReport.placed.count)
+        // The far ones in the near scene's coordinates, as the full layout places them.
+        let shift = SIMD3<Float>(near - 488, near - 488, 0)
+        for (original, building) in zip(expected, far.buildings) {
+            let blocks = building.envelope.blocks
+            #expect(original.name == building.name)
+            #expect(
+                zip(try #require(original.envelope).blocks, blocks).allSatisfy {
+                    $0.min + shift == $1.min && $0.max + shift == $1.max
+                })
+            #expect(far.construction(for: building.id).objectID == building.id)
+        }
+        // The whole district's ground, moved likewise.
+        let terrain = try #require(far.terrain)
+        let p = SIMD2<Float>(-50, 400)
+        #expect(abs(terrain.height(at: p) - full.terrain!.height(at: p - SIMD2(shift.x, shift.y))) < 1e-4)
+        // It saves and reopens, and the combined scene holds both sets for the far field's lines.
+        try far.validate()
+        let decoded = try JSONDecoder().decode(FarFieldSet.self, from: JSONEncoder().encode(far))
+        #expect(decoded == far)
+        let combined = try far.combined(with: scene)
+        #expect(combined.envelopeObjects.count == scene.envelopeObjects.count + far.buildings.count)
     }
 }

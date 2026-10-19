@@ -314,9 +314,9 @@ route ("CCSD: 45 m") gives the user a baseline.
 
 | Step | Calls | Missing |
 |---|---|---|
-| Site and constructions | `Scenario`, `EnvelopeConstruction`, `GlazingMix`, `LaminatedGlass` | Security film (a membrane with an anchorage); wall retrofits; a cost per construction |
+| Site and constructions | `Scenario`, `EnvelopeConstruction`, `GlazingMix`, `LaminatedGlass`, `SecurityFilm`, `WallLiner`, `EnvelopeConstruction.glassToughened` (stage 3, [below](#changes-as-constructions-stage-3)) | A cost per construction; retrofits other than polyurea on masonry (no open tests) |
 | Threats | `Scenario.charge`; `scenebench infer-charge --samples` | Several charges as one weighted threat; the surrogate takes one charge per estimate |
-| Stand-off and barriers | `FacadeLoadSurrogate.Raster` (solids in the plan) | A barrier or stand-off line as a scene element; an edit API that applies a plan to a copy of the scene |
+| Stand-off and barriers | `Scenario.addBarrier`, `Scenario.standOffLines` and `StandOffLine.stopPoint(for:)`, `FacadeLoadSurrogate.Raster` (envelopes and fixed blocks in the plan) | An edit API that applies a plan to a copy of the scene |
 | Loads | `FacadeLoadSurrogate.estimate` | Converged (not 4 m-cell) loads; terms for close-in Z below 4.6 m/kg^(1/3); shielding by thin barriers (fitted on buildings only); channelling |
 | Response and limits | `EnvelopeDamageAssessment`, `SDOFResponseMemo`, `GlazingHazard` | A limit multiplier per component (bisection on the memoised responses); levels for retrofitted walls |
 | Chance | `GlazingMix`'s E1300 chance; the surrogate's scatter in `ValidationTables.figures` | Horizons 4's load scatter as a probability per side; correlated scatter between neighbouring sides |
@@ -534,6 +534,39 @@ In the app, **Simulation ▸ Protective Design…** runs the same search on the 
 glazing changes, colours each side by the chosen plan's residual chance, and writes a plan's
 glazing into the project's constructions ([using the app](using-the-app.md#protective-design)).
 
+## Changes as constructions (stage 3)
+
+Built on 19 October 2026: the changes a plan can make, as parts of the scene.
+
+- **Security film and toughened glass** (`EnvelopeConstruction.film`, `.glassToughened`):
+  - The film is a membrane once the glass cracks, held by its anchorage.
+  - Judged against 67 open GSA tests of filmed 1/4" panes:
+    - wet-glazed film holds, as 18 of 24 were graded;
+    - daylight film is one class lighter than most;
+    - mechanical anchorage, on a vendor's capacity, is never better than its test.
+
+  See [security film](building-envelopes.md#security-film).
+- **Polyurea liners on masonry** (`EnvelopeConstruction.wallLiner`): Ciornei's membrane on the
+  wall's backbone. It is judged against one lined blockwork wall, so it is illustrative. FRP,
+  steel-stud liners and fabric catchers are left out: their tests are not open. See
+  [liners](building-envelopes.md#polyurea-liners-on-masonry).
+- **A barrier wall** (`Scenario.addBarrier(from:to:height:thickness:)`):
+  - It is a fixed block along x or y, 0.3 m thick unless said, standing on the lowest ground
+    under it. The air, freestanding objects and fragments see it as they see any block.
+  - The façade load surrogate's raster now holds the scene's fixed blocks too, each its own
+    owner (below −1, so that crossing two counts two). A block thinner than a cell is held on
+    every cell it overlaps, so that a thin wall is not lost between cell centres, as it would be
+    on 4 m cells.
+  - Its shielding terms were fitted on buildings, so until they are refitted on fine-cell barrier
+    runs (stage 2), a barrier counts as one more building crossed: it barely shades.
+- **A stand-off line** (`Scenario.standOffLines`, `StandOffLine`):
+  - It is a polyline on the plan guarding its left or its right.
+  - `guards(_:)` tells a place it keeps charges from, and `Scenario.chargesInsideStandOff` lists
+    the charges it guards against. The app warns of them in the charge section.
+  - `stopPoint(for:)` moves a guarded charge to the line, a metre to its unguarded side, for
+    the search.
+  - It is saved with the layout but is not part of the numerical input: the air never sees it.
+
 ## Open questions
 
 - **Shielding.**
@@ -560,11 +593,12 @@ glazing into the project's constructions ([using the app](using-the-app.md#prote
 - **Independence.** The prototype treats panes, sides and threats as independent. Load scatter is
   correlated along a street, and so is the glass's strength within a batch. Ignoring it
   understates the chance that many sides fail together.
-- **Film and anchorage.** The prototype's film is a guess: 20 kN/m plateau tension, and an
-  anchorage of 3 or 30 kN/m. BombCAD would need a film model judged against tests: published
-  shock-tube tests of filmed glass, and the GSA's window-film studies, if they can be found open.
-- **Walls.** Arching in unreinforced masonry, and the response of retrofits (catcher systems,
-  polymer coatings), are both missing. PDC-TR 06-08's 2025 limits for them have not been read.
+- **Film and anchorage.** The prototype's film was a guess. BombCAD's is now judged against 67
+  open GSA tests ([security film](building-envelopes.md#security-film)). Mechanical anchorages
+  still have no open capacity.
+- **Walls.** Unreinforced masonry does not arch in the envelope's model. Of the retrofits, only
+  polyurea liners have open tests ([liners](building-envelopes.md#polyurea-liners-on-masonry)).
+  PDC-TR 06-08's 2025 limits for retrofitted walls have not been read.
 - **Moving the threat.** A stand-off line moves the charge to where it would be stopped. The
   attacker might choose another place, so a plan should be judged against all reachable places,
   as the street scenario does, not one.
@@ -585,7 +619,8 @@ glazing into the project's constructions ([using the app](using-the-app.md#prote
   Its plans illustrate the method, not any real building.
 - Only the search over glazing (film among it) and stand-offs, the glass's chances and their
   confirmation on a run are built in BombCAD (`scenebench protect`, and the app's sheet for
-  glazing); walls and barriers are not.
+  glazing). Walls and barriers are not in the search yet; stage 3 built them as constructions and
+  scene elements ([above](#changes-as-constructions-stage-3)).
 
 ## Sources
 

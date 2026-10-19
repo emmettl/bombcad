@@ -141,7 +141,7 @@ extension FacadeLoadSurrogate {
     /// their strips with a face on the air, on cells `cellSize` m across.
     public static func glassSides(scene: Scenario, cellSize: Float) -> [GlassSideStrips] {
         let objects = scene.envelopeObjects
-        let raster = Raster(objects: objects, terrain: scene.terrain, cell: cellSize)
+        let raster = Raster(objects: objects, blocks: scene.boxes, terrain: scene.terrain, cell: cellSize)
         let charge = scene.charge.position
         let mixes = objects.map { scene.envelopeConstruction(for: $0.id).glazing }
         var perObject = [[GlassSideStrips]](repeating: [], count: objects.count)

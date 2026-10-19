@@ -349,6 +349,14 @@ public struct MapBuildingReport: Sendable, Equatable {
 
     public func count(_ source: HeightSource) -> Int { placed.filter { $0.heightSource == source }.count }
 
+    /// Why a building over the charge was left out (`MapBuildingPlacement.clearsChargeBuilding`).
+    public static let holdsTheCharge = "holds the charge"
+    /// The import note a cleared building leaves, which the standing repeats.
+    public static let clearedChargeNote =
+        "The building over the charge was cleared to open ground: the charge goes off in the open, not inside it."
+    /// Whether the building over the charge was cleared.
+    public var clearedCharge: Bool { skipped.contains { $0.reason == Self.holdsTheCharge } }
+
     public var summary: String {
         "\(placed.count) buildings placed (\(count(.height)) by height, \(count(.levels)) by levels, "
             + (count(.grid) > 0 ? "\(count(.grid)) from the height grid, " : "")
@@ -371,6 +379,10 @@ public struct MapBuildingPlacement: Sendable {
     /// building height: where a building's tags give no height, the cell holding its footprint's
     /// centre gives it, if above 0. A cell's mean over its built-up area, not the building's own.
     public var heightGrid: ElevationGrid?
+    /// Clear the building whose footprint holds the charge's cell, leaving open ground there: a real
+    /// event's charge is often inside a building (Beirut's Warehouse 12), and one buried in a solid
+    /// block releases nothing (`Scenario.blocks`). Off, the building stands and the charge is buried.
+    public var clearsChargeBuilding = true
 
     public init(origin: SIMD2<Double>, resolution: Float) {
         self.origin = origin
@@ -420,7 +432,8 @@ extension Scenario {
     /// Places `buildings` as stationary envelopes, each its own building of solid boxes extruded
     /// from its footprint (rasterised at `placement.resolution`) from the ground (the lowest point
     /// of the terrain under it, if there is one) to its height. Footprints with fewer than three
-    /// distinct corners or no area, outside the scene, or under a cell are left out, and a later
+    /// distinct corners or no area, outside the scene, under a cell or (by default) over the charge
+    /// are left out (a charge inside a solid block would not go off), and a later
     /// building gives up the cells of an earlier one it overlaps; the report says which. The
     /// attribution is added to the scene's. Nothing changes if the scene would not hold them.
     @discardableResult
@@ -439,6 +452,9 @@ extension Scenario {
         let columns = Int((domainSize.x / r).rounded(.up))
         let rows = Int((domainSize.y / r).rounded(.up))
         var taken = Set<Int>()
+        let chargeCell =
+            min(max(Int(charge.position.x / r), 0), columns - 1)
+            + columns * min(max(Int(charge.position.y / r), 0), rows - 1)
         for building in buildings {
             // Local metres; duplicates and closing points dropped.
             var rings: [[SIMD2<Double>]] = []
@@ -487,6 +503,11 @@ extension Scenario {
                 }
             }
             report.overlapCells += overlap
+            // A footprint over the charge's cell would bury it in a solid block, and no blast leave it.
+            guard !placement.clearsChargeBuilding || charge.mass <= 0 || !cells.contains(chargeCell) else {
+                report.skipped.append((building.id, MapBuildingReport.holdsTheCharge))
+                continue
+            }
             guard !cells.isEmpty else {
                 report.skipped.append(
                     (
@@ -552,6 +573,9 @@ extension Scenario {
             copy.attributions = (copy.attributions ?? []) + [attribution]
         }
         copy.importNotes = (copy.importNotes ?? []) + ["Map buildings: \(report.summary)."]
+        if report.clearedCharge {
+            copy.importNotes = (copy.importNotes ?? []) + [MapBuildingReport.clearedChargeNote]
+        }
         try copy.validateObjectOwnership()
         self = copy
         return report

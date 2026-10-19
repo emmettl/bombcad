@@ -155,6 +155,15 @@ marches agree to a thousandth of the highest irradiance.
   (C₇H₅N₃O₆ → 2.5 H₂O + 3.5 CO + 3.5 C + 1.5 N₂), as particles small against the wavelength, as
   explosives' soot is seen to be, absorbing 1817 f T a metre (f its volume fraction at
   1,800 kg/m³; Williams, Shaddix and others). Neither has been checked against a TNT fireball's optical depth.
+  Hot air adds its own (`hotAirAbsorption`, on by default since 19 October 2026), the Planck mean
+  of equilibrium air at the cell's temperature and density: Kivel and Bailey's predictions of
+  what it emits, as Howe correlates them (NASA TN D-1031, figure 6), E = 2α(ρ/ρ₀)^τ W/cm³ at each
+  of 1,000 to 18,000 K, read as κ = E/4σT⁴. At the normal density it is 0.03 a metre at
+  3,000 K, 0.8 at 6,000 K and 3 at 8,000 K, rising with the density's power 1.2 to 1.6: a shock's
+  layer at 6,600 K and five times the density absorbs about 10 a metre, where the fireball's gas
+  at 2,500 K and a tenth of it absorbs under a thousandth, and nothing changes. The cells carry
+  it, worked out where they are cut out (`HotAir`, and its copy in `Extract.metal`), as the mean
+  of their luminous gas's.
 - **The shape** (`"fireball": "shape"`) is a solid flame: its surface is where the blocks'
   share, interpolated between their centres, is one half, and it radiates from there at the
   temperature of the block it is in. This "solid flame" treatment is the usual one for fireballs in hazard assessment, there
@@ -532,25 +541,68 @@ millisecond, before the grid's own, and headless runs and the benches likewise, 
 thermal record starts at detonation again. (Between the mapped start's default on 18 October and
 these frames, a run's record began at the hand-over: 0.5.0's known limitation.)
 
+The early frames take the products' soot only within the products' own gas: the sphere holding
+the charge's mass (with its mirrors), which in one dimension is where the products are, as the
+equations carry no mass across the contact. The eddy diffusivity the start mixes with
+(16 W^⅓ m²/s, 1,230 m²/s at Dial Pack) spreads the products, a tag on the gas, out to the shock
+and past it from the first step, about 1.8 m by 1.25 ms, where a real fireball's mixing grows
+from the contact; their soot blackened the shock's layer of air with a cooler skin, 3,300 K over
+5,600 K at 0.5 ms and 1,700 K over 5,400 K at 2 ms, and hid the front. Without the soot the
+layer, 0.6 m of air at up to 6,600 K and five times the ambient density, is as transparent as
+0.1/m makes it; with hot air's own absorption (above), about 10 a metre at its hottest, it shows.
+
+The volume marches these frames through the solution's own shells (`FireballFrame.spheres`,
+one sphere a charge), exactly, piece by piece between the shells' boundaries, rather than through
+their voxels: the front is about a voxel thick (0.23 m at 1 ms) against the soot-black products
+behind it, and the voxels' κB, interpolated with κ between their centres, gave most of its voxel
+the products' cooler radiance, three-fifths of the exact intensity (an opaque shell 0.6 m thick
+round a black core, `blastbench shell-sphere`, comes out exact on 0.25 m voxels; the solution's
+own front 0.65 to 0.86 of exact). The voxels still give the frames' shape, the directions each
+receiver samples, and the picture; the shells are marched on the CPU's cores, as the GPU's march
+knows only voxels: 0.1 s a frame for 3,600 receivers round Dial Pack's fireball at 1.25 ms, where
+its voxels take 0.2 s on the GPU (`blastbench shell-sphere --time-ground 2`).
+
 Against Dial Pack (`blastbench dialpack --mapped`, the charge on the ground so that it can be
-mapped, 4 m cells, to 0.5 s), the intensity toward 1,700 m in cal/sr/s × 10⁷:
+mapped, 4 m cells, to 0.5 s), the intensity toward 1,700 m in cal/sr/s × 10⁷, the 18 October
+frames, and since 19 October with the soot within the products, hot air absorbing and the
+shells marched; and exact rays through the same one-dimensional solution, on its own 0.15 m
+cells (`blastbench radial-profile --reach 2.5 --dump`):
 
-| | Measured | Balloon | Mapped, early frames |
-|---|---|---|---|
-| The first maximum, 1.25 ms | 157 | 25 | 38 |
-| 2 ms | 80 | 19 | 47 |
-| The second maximum, 25 ms | 112 | 20 | 16 |
-| 50 to 200 ms | 55 to 101 | 0 to 4 | 0 to 3 |
-| Fluence at 600 m by 0.5 s | 3.83 kJ/m² | 0.77 | 1.54 |
+| | Measured | Balloon | Mapped, early frames | Since 19 October | Exact, same solution |
+|---|---|---|---|---|---|
+| 1 ms | 80 | | 33 | 88 | 91 |
+| The first maximum, 1.25 ms | 157 | 25 | 38 | 94 | 99 |
+| 2 ms | 80 | 19 | 47 | 82 | 84 |
+| 3 ms | 69 | | 32 | 54 | 55 |
+| 5 ms | 74 | | 28 | 41 | 43 |
+| The second maximum, 25 ms | 112 | 20 | 16 | 25 | |
+| 50 to 200 ms | 55 to 101 | 0 to 4 | 0 to 3 | 0 to 3 | |
+| Fluence at 600 m by 0.5 s | 3.83 kJ/m² | 0.77 | 1.54 | 1.57 | |
 
-The first maximum comes half as bright again, a quarter of the measured where the balloon gave a
-sixth; the second and the dark middle are as before. The frames resolve the hot shock layer the
-grid smears, but the medium makes little of it: hot air absorbs 0.1/m, grey, however hot, so the
-layer, centimetres to metres thick at 6,000 to 8,000 K, is thin and faint, where air that hot is
-nearly opaque. Against Clough and Clubley's 41 kg (`blastbench gauging`), the products reach 3 m
-by 3.2 ms (the camera's fireball 4 m), but they have cooled below the luminous temperature as they
-expanded, and the gas at least 1,500 K is 1.3 to 4 m across from 2 to 10 ms: the luminous
-hemisphere reaches the 4 m box at 22.5 ms (20 ms on the balloon) against 3.2 ms.
+No one change does it: through the voxels, the soot within the products and grey air gives 46 at
+1.25 ms, hot air with the soot spread to the shock 38, both 55. Together, and marched through the
+shells, the first maximum comes at about the right time, three-fifths of its height, and falls
+away as measured; the exact rays' remaining difference is the frames' half-millisecond spacing.
+The rest, to 157, would need the front hotter than the 6,600 K the start's air reaches: the
+report finds 7,500 to 8,000 K. Air that dissociates in equilibrium would make it cooler, not
+hotter: behind a shock at the start's 3.9 km/s it reaches 4,960 K where the start's thermally
+perfect air reaches 6,320 K (the Rankine–Hugoniot jump with each of the air models), a third of
+the radiance, so it was not tried in the start. What is short is the shock's speed near the
+charge: at the start's front, 10.2 m at 1.25 ms, Kingery–Bulmash's shock moves at 5.0 km/s, behind
+which air in equilibrium reaches 6,800 to 7,500 K, the report's range; the start's products,
+expanding as hot air does, drive it at 3.9. With JWL's products (`mappedChargeProducts`, tried for
+the loads and not adopted) the front reaches 7,700 K at 1 ms and 8,000 K at 1.25 ms (`blastbench
+radial-profile --jwl`), but those cells, air by the mass behind them, hold 70% to 90% products by
+the tag the eddy diffusivity spreads, which the products' law reads; until the tag stays behind
+the contact early, the products' law at the front cannot be trusted, and the first flash rests at
+three-fifths.
+
+Against Clough and Clubley's 41 kg (`blastbench gauging`), the products reach 3 m by 3.2 ms (the
+camera's fireball 4 m), but they have cooled below the luminous temperature as they expanded,
+and the gas at least 1,500 K is 1.3 to 4 m across from 2 to 10 ms: the luminous hemisphere
+reaches the 4 m box at 22.5 ms (20 ms on the balloon) against 3.2 ms. Hot air's absorption
+changes none of this, nor the gauges' flux once the fireball reaches them; at 41 kg the shock is
+too weak by the time it leaves the products to glow.
 
 ### Against Dial Pack
 
@@ -684,8 +736,9 @@ than in thin flame sheets round a fuel-rich core.
 **This work is paused** (October 2026). Gravity put the fireball's rise right, but sub-grid mixing
 and an extinction limit for afterburning left Dial Pack at about 21% of the blast yield radiated
 by 6 s, against 5.1%. If it resumes, the candidates are burning in flame sheets round a fuel-rich
-core (a mixture-fraction flame model), and the hot luminous shock layer the grid smears out,
-which makes the first millisecond's pulse a sixth as bright as measured. Until then the thermal
+core (a mixture-fraction flame model); the hot luminous shock layer, which the grid smears out,
+now shows in the early frames from the one-dimensional start, at three-fifths of the first
+millisecond's measured pulse ([before the grid's clock](#before-the-grids-clock)). Until then the thermal
 radiation stays illustrative.
 
 Over the first second the errors offset: the fluence at 600 m by 1 s is 4.9 kJ/m² (4.5 cooling;
@@ -723,7 +776,9 @@ Pattmann gave as 3.8% and 6.6%.
   against a fireball's measured course.
 - The volume's absorption is assumed: a grey coefficient for the hot gas, between the thin-gas
   Planck mean and what saturated bands allow over metres, and Rayleigh soot as a fixed share of
-  the unburnt products. Real soot forms, burns and cools on its own course, not the products'.
+  the unburnt products. Hot air's own is a Planck mean, grey too, from a 1957 prediction for
+  equilibrium air; a shock's layer out of equilibrium, or the products' own gases at those
+  temperatures, would absorb otherwise. Real soot forms, burns and cools on its own course, not the products'.
   Without afterburning there is no soot, and the fireball is as thin as the gas's coefficient
   makes it. No optical depth of a TNT fireball has been compared.
 - Scattering is left out: the soot's particles are small enough to absorb far more than they
@@ -792,6 +847,11 @@ Pattmann gave as 3.8% and 6.6%.
 - TNF Workshop, [Radiation models](https://tnfworkshop.org/radiation/) (RADCAL, after
   Grosshandler, NIST): curve fits of the Planck-mean absorption coefficients of water and carbon
   dioxide, 300 to 2,500 K, behind the gas's coefficient (an assumption, as above).
+- B. Kivel and K. Bailey, *Tables of radiation from high temperature air*, Avco-Everett Research
+  Laboratory Research Report 21 (1957), as correlated by J. T. Howe, *Radiation emission effects
+  of the equilibrium boundary layer in the stagnation region*, NASA TN D-1031 (1961), figure 6,
+  [NTRS](https://ntrs.nasa.gov/citations/19980230624): hot air's emission, from which its Planck
+  mean absorption.
 - B. F. Williams, C. R. Shaddix and others, *International Journal of Heat and Mass Transfer* 50
   (2007) 1616–1630, via [RadLib's Planck-mean
   documentation](https://ignite.byu.edu/radlib_documentation/classrad__planck__mean.html): soot's

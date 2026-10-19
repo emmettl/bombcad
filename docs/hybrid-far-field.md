@@ -5,7 +5,8 @@ kilometre at 0.5 kt the shock is weak and nearly spherical, yet the full Beirut 
 it on 4 m cells for another 6 s and 3 km. The hybrid mode runs the air in 3-D only out to a
 hand-over radius. Beyond it, each façade's load comes from the [façade load
 surrogate](surrogate-first-look.md), matched to the near run where both hold. It is the first step
-of [Horizons](roadmap.md#horizons) item 3, "City scale in minutes".
+of [Horizons](roadmap.md#horizons) item 3, "City scale in minutes". It is in the app under File ▸
+New District, and headless in SceneBench.
 
 ## What holds and what does not
 
@@ -20,11 +21,11 @@ Judged on Beirut against the full 4 m runs at 0.2, 0.5 and 1.1 kt ([Beirut,
   all 14,169 buildings about a minute on the Studio. At 0.5 kt the whole district takes about
   7 minutes against 34.
 - **Holds: the glass to 1.5 km at every yield.** The share of building sides with some glass broken
-  comes within 0.03 of the full run's there; to 2 km at 0.5 kt and to 2.5 km at 1.1 kt.
+  comes within 0.04 of the full run's there; to 2 km at 0.5 kt and to 2.5 km at 1.1 kt.
 - **Holds: arrivals.** Beyond the hand-over, Kingery–Bulmash's arrival scaled to the near run's
   comes 2–4% before the full run's. Against Rigby et al.'s observers past 1 km that is 0.95–1.08
   of the observed at 0.5 kt, and 0.91–1.02 at 1.1 kt.
-- **Does not: the far edge at the small yield.** At 0.2 kt the share broken falls 0.13–0.25 below
+- **Does not: the far edge at the small yield.** At 0.2 kt the share broken falls 0.16–0.28 below
   the full run's from 1.5 to 2.5 km. The near run's trend with distance, carried on, falls faster
   there than the run does; the surrogate unscaled is closer.
 - **Does not: blown-out glass in every band.** Its share differs from the full run's by up to 0.22
@@ -62,17 +63,24 @@ falling as distance^-0.47 and ^-0.30 beyond.
 ## Against the full run, by band
 
 Sides with some glass broken, full run / hybrid (the surrogate unscaled), and the hybrid's
-façade peak over the full run's (median):
+façade peak over the full run's (median). The 0.2 kt column was rerun on 19 October with the
+surrogate held at its fitted range's ends, which moves its far edge; the others predate it.
 
 | Distance | 0.2 kt | 0.5 kt | 1.1 kt | Peak, 0.2 / 0.5 / 1.1 kt |
 |---|---|---|---|---|
 | 0.5–1 km | 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 / 1.00 |
-| 1–1.25 km | 1.00 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 0.98 / 0.99 / 0.99 |
-| 1.25–1.5 km | 0.99 / 0.96 (0.97) | 1.00 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 0.90 / 0.93 / 0.96 |
-| 1.5–1.75 km | 0.84 / 0.71 (0.82) | 0.99 / 0.99 (1.00) | 1.00 / 1.00 (1.00) | 0.91 / 0.98 / 1.04 |
-| 1.75–2 km | 0.61 / 0.36 (0.52) | 0.91 / 0.93 (0.98) | 0.99 / 1.00 (1.00) | 0.81 / 0.91 / 0.99 |
-| 2–2.5 km | 0.23 / 0.07 (0.15) | 0.66 / 0.51 (0.77) | 0.94 / 0.95 (1.00) | 0.77 / 0.88 / 1.00 |
-| 2.5–3 km | 0.02 / 0.01 (0.04) | 0.18 / 0.18 (0.47) | 0.65 / 0.78 (0.97) | 1.03 / 1.12 / 1.29 |
+| 1–1.25 km | 1.00 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 0.95 / 0.99 / 0.99 |
+| 1.25–1.5 km | 0.99 / 0.95 (0.97) | 1.00 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 0.88 / 0.93 / 0.96 |
+| 1.5–1.75 km | 0.84 / 0.68 (0.82) | 0.99 / 0.99 (1.00) | 1.00 / 1.00 (1.00) | 0.89 / 0.98 / 1.04 |
+| 1.75–2 km | 0.61 / 0.33 (0.52) | 0.91 / 0.93 (0.98) | 0.99 / 1.00 (1.00) | 0.79 / 0.91 / 0.99 |
+| 2–2.5 km | 0.23 / 0.07 (0.15) | 0.66 / 0.51 (0.77) | 0.94 / 0.95 (1.00) | 0.76 / 0.88 / 1.00 |
+| 2.5–3 km | 0.02 / 0.02 (0.06) | 0.18 / 0.18 (0.47) | 0.65 / 0.78 (0.97) | 1.09 / 1.12 / 1.29 |
+
+Carrying the trend only to 1.5 times the hand-over and holding it beyond, as the app does, moves
+the share broken at 1.75–2 km to 0.40, 0.96 and 1.00, at 2–2.5 km to 0.10, 0.69 and 0.99, and at
+2.5–3 km to 0.04, 0.38 and 0.95 (0.2, 0.5 and 1.1 kt). That is closer to the full run at 0.2 kt
+and at 2–2.5 km at 0.5 kt, and further at 2.5–3 km at the larger yields. Carrying it to twice the
+hand-over lands between the two (`--trend-reach`).
 
 Beyond about 2.2 km the full run's own side faces lie near the buildings
 ([Beirut](beirut-2020.md#what-the-model-can-and-cannot-represent)), so its far bands are the less
@@ -95,8 +103,14 @@ sure reference. Impulses run 1.04–1.5 times the full run's from the hand-over 
   the mode's method, its standing and the match. `scenebench hybrid-judge` sets it against a full
   run's saved loads; unlike `district-hybrid`, it fits the trend only when given `--trend-from`
   (500 m for a hand-over at 1 km), and otherwise carries the match on flat.
-- **In the app:** not yet. A project holds only the buildings inside its air, so the far field's
-  buildings need a place to live first (see Future work).
+- **In the app:** File ▸ New District with **Near field and far field** on (the default when the
+  radius reaches 1.25 times the hand-over). The sheet hands over at 12 m/kg^(1/3), rounded to 50 m,
+  and draws the hand-over on the map. The project's air reaches the hand-over; the buildings beyond
+  it are kept beside it (saved as `farField.json`, never voxelised) and drawn with the rest. When the run
+  ends they are judged in seconds on the cores and painted with their damage, labelled "far field
+  estimate" in the Envelope damage section with the match and its standing. The app carries the
+  trend to 1.5 times the hand-over and holds it from there (`FarFieldSet.trendReachDefault`; see
+  below).
 
 ## Limitations
 
@@ -110,8 +124,9 @@ sure reference. Impulses run 1.04–1.5 times the full run's from the hand-over 
 
 ## Future work
 
-- **A district mode in the app.** File ▸ New District would make the near box a project and keep
-  the far buildings beside it, judged after the run.
 - **A hand-over chosen by the run**, where the shock has weakened past a threshold, rather than
   given.
-- **The trend damped** toward the surrogate's own form far out, which held better at 0.2 kt.
+- **The trend damped** toward the surrogate's own form far out, which held better at 0.2 kt. The
+  reach held at 1.5 times the hand-over is a first, cheap form of it.
+- **Far buildings in the app's other views.** They are painted in the viewport and the map, but
+  picking, the inspector and the damage table's per-component rows hold only the near buildings.

@@ -176,3 +176,12 @@ extension BuildingEnvelope {
         return cells
     }
 }
+
+extension BuildingEnvelope {
+    /// The same envelope moved by `offset`, metres.
+    public func translated(by offset: SIMD3<Float>) throws -> BuildingEnvelope {
+        func move(_ box: Box) -> Box { Box(min: box.min + offset, max: box.max + offset) }
+        return try BuildingEnvelope(
+            solids: solids.map(move), openings: openings.map(move), panes: panes.map(move))
+    }
+}

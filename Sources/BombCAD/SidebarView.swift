@@ -128,6 +128,7 @@ struct SidebarView: View {
             GroundShockSection(model: model)
             EnvelopeExposureSection(model: model)
             EnvelopeDamageSection(model: model)
+            FarFieldSection(model: model)
 
             if let summary = model.structureSummary {
                 Section(model.settings.scenario.structuralObjects.count > 1 ? "All structures" : "Structure")
@@ -500,6 +501,16 @@ struct SidebarView: View {
             if model.chargeIsBlocked {
                 Label(
                     "The charge is inside a block, a wall or the ground and will release no energy.",
+                    systemImage: "exclamationmark.triangle"
+                )
+                .font(.caption)
+                .foregroundStyle(.orange)
+            }
+            let inside = model.settings.scenario.chargesInsideStandOff
+            if !inside.isEmpty {
+                Label(
+                    (inside == [0] ? "The charge stands" : "\(inside.count) charges stand")
+                        + " inside a stand-off line, where the layout keeps charges back.",
                     systemImage: "exclamationmark.triangle"
                 )
                 .font(.caption)

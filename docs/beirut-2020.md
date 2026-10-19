@@ -19,7 +19,7 @@ At 0.5 kt on 4 m cells, against the surveys below:
 - **Holds: the silos' shadow close in, and a second set of arrivals.** Behind a block like the
   silos the model's peaks are Denny et al.'s measured third at 160 m and three fifths at 240 m, and at
   Stennett et al.'s six observers the shock arrives within 6% of their times.
-- **Does not: the peaks.** They are 0.68–0.78 of Kingery–Bulmash and still rising on finer cells
+- **Does not: the peaks.** They are 0.65–0.83 of Kingery–Bulmash (0.68–0.79 at 0.5 kt) and still rising on finer cells
   (0.78–0.83 at 3 m); refinement, on a staircase ground, gives 0.79–0.86 on the line and arrivals
   within 3%, and refined once under a ceiling over the roofs it gives the 4 m cells' glass at 0.44 of
   their run time. The JRC's simulation matches Kingery–Bulmash to 750 m with a charge
@@ -123,8 +123,9 @@ by their coordinates (the run takes the coordinates).
 ### Peak overpressure
 
 On a line north over the basin and the sea, against Kingery–Bulmash at the same TNT mass:
-0.68 of it at 100 m, 0.74 at 200 m, 0.78 at 500 m, 0.76 at 1 km and 0.77 at 2.4 km, at every
-yield. About 5 points of that is the ground taking a tenth of the charge; the rest is 4 m cells,
+at 0.5 kt 0.68 of it at 100 m, 0.74 at 200 m, 0.79 at 500 m, 0.76 at 1 km and 0.76 at 2.4 km;
+at 0.2 kt 0.65–0.74 along the line, at 1.1 kt 0.70–0.83 (0.81 at 1 km): the larger the charge,
+the more cells its shock spans. About 5 points of that is the ground taking a tenth of the charge; the rest is 4 m cells,
 which spread the shock (8 m cells refined twice to 2 m at the shock give 84–94% on the
 landscape benchmark). The JRC's simulation at 1.1 kt gave 125, 46, 23 and 10.5 kPa at 300, 500,
 750 and 1,000 m against this run's 1.1 kt line's 94, 37, 20 and 13 kPa ([below](#the-jrcs-simulation-valsamos-et-al-2021);
@@ -346,8 +347,8 @@ Larcher and Casadei 2021, *Safety Science* 137, 105190, CC BY 4.0), also from Op
 
 - **Its peaks are Kingery–Bulmash's to 750 m** because its charge is tuned to them: the balloon's
   energy is chosen to give the peak or the impulse. This run's charge is not tuned, so its 4 m cells'
-  spreading of the shock shows (0.68–0.78 of Kingery–Bulmash). At 1 km the JRC's falls to 0.68 of
-  Kingery–Bulmash while this run's line holds 0.84; its 150 m top is the height this page found too
+  spreading of the shock shows (0.70–0.83 of Kingery–Bulmash at 1.1 kt). At 1 km the JRC's falls to
+  0.68 of Kingery–Bulmash while this run's line holds 0.81; its 150 m top is the height this page found too
   low beyond 700 m (above), which may be part of it.
 - **Its damage is a threshold map; this page's is a judgement of each component**, against a survey
   by distance. The JRC's moderate damage or worse (above 17 kPa) reaches 1.9 km east–west and 1.35 km

@@ -728,51 +728,61 @@ extension SphericalBlast {
 /// the gas at least `luminous` K hot, sampled `samples` times a side in each voxel.
 public enum RadialVoxels {
     /// A charge's profile: its temperature (K) and unburnt products (kg/m³) cell by cell, its
-    /// cells' size, and where the luminous gas ends.
+    /// absorption as hot air (`HotAir`, 1/m) from its densities (kg/m³), its cells' size, and
+    /// where the luminous gas ends. Without densities the gas is taken to absorb nothing of its own
+    /// as hot air.
     public struct Profile: Sendable {
         public var centre: SIMD3<Float>
         public var cellSize: Double
         public var temperature: [Float]
         public var unburnt: [Float]
+        public var absorption: [Float]
         public var reach: Float
 
         public init(
-            centre: SIMD3<Float>, cellSize: Double, temperature: [Float], unburnt: [Float], reach: Float
+            centre: SIMD3<Float>, cellSize: Double, temperature: [Float], unburnt: [Float],
+            density: [Float] = [], reach: Float
         ) {
             self.centre = centre
             self.cellSize = cellSize
             self.temperature = temperature
             self.unburnt = unburnt
+            absorption =
+                density.isEmpty
+                ? [] : zip(temperature, density).map { HotAir.planckAbsorption(temperature: $0, density: $1) }
             self.reach = reach
         }
 
-        func sample(_ r: Float) -> (temperature: Float, unburnt: Float) {
+        func sample(_ r: Float) -> (temperature: Float, unburnt: Float, absorption: Float) {
             let x = Double(r) / cellSize - 0.5
             let i = min(max(Int(x.rounded(.down)), 0), temperature.count - 1)
             let j = min(i + 1, temperature.count - 1)
             let t = Float(min(max(x - Double(i), 0), 1))
             return (
                 temperature[i] + t * (temperature[j] - temperature[i]),
-                unburnt[i] + t * (unburnt[j] - unburnt[i])
+                unburnt[i] + t * (unburnt[j] - unburnt[i]),
+                absorption.isEmpty ? 0 : absorption[i] + t * (absorption[j] - absorption[i])
             )
         }
     }
 
     /// Per voxel (x fastest) its luminous share in 255ths, its luminous gas's temperature (the
-    /// fourth root of its mean T⁴) and unburnt products; and over them all the luminous volume's
+    /// fourth root of its mean T⁴), unburnt products and absorption as hot air (the mean of its
+    /// samples', `HotAir`, 1/m); and over them all the luminous volume's
     /// sum, its first moment and its T⁴'s, and the hottest sample. Each sample takes the profile
     /// of the nearest charge.
     public static func lay(
         _ profiles: [Profile], luminous: Float, voxelSize v: Float, first: SIMD3<Int32>, counts: SIMD3<Int32>,
         samples s: Int
     ) -> (
-        fills: [UInt8], temperatures: [UInt16], unburnt: [Float], volume: Double, moment: SIMD3<Double>,
-        fourth: Double, hottest: Float
+        fills: [UInt8], temperatures: [UInt16], unburnt: [Float], airAbsorption: [Float], volume: Double,
+        moment: SIMD3<Double>, fourth: Double, hottest: Float
     ) {
         let total = Int(counts.x) * Int(counts.y) * Int(counts.z)
         var fills = [UInt8](repeating: 0, count: total)
         var temperatures = [UInt16](repeating: 0, count: total)
         var unburnt = [Float](repeating: 0, count: total)
+        var airAbsorption = [Float](repeating: 0, count: total)
         var volume = 0.0
         var moment = SIMD3<Double>.zero
         var fourth = 0.0
@@ -792,6 +802,7 @@ public enum RadialVoxels {
                     var lit = 0
                     var t4 = 0.0
                     var products = 0.0
+                    var absorption = 0.0
                     for c in 0..<s {
                         for b in 0..<s {
                             for a in 0..<s {
@@ -810,6 +821,7 @@ public enum RadialVoxels {
                                 let t = Double(gas.temperature)
                                 t4 += t * t * t * t
                                 products += Double(gas.unburnt)
+                                absorption += Double(gas.absorption)
                                 hottest = max(hottest, gas.temperature)
                             }
                         }
@@ -820,12 +832,13 @@ public enum RadialVoxels {
                     fills[index] = UInt8(min((fraction * 255).rounded(), 255))
                     temperatures[index] = UInt16(min(pow(t4 / Double(lit), 0.25).rounded(), 65535))
                     unburnt[index] = Float(products / Double(lit))
+                    airAbsorption[index] = Float(absorption / Double(lit))
                     volume += fraction * voxel
                     moment += fraction * voxel * SIMD3<Double>(centre)
                     fourth += t4 * share * voxel
                 }
             }
         }
-        return (fills, temperatures, unburnt, volume, moment, fourth, hottest)
+        return (fills, temperatures, unburnt, airAbsorption, volume, moment, fourth, hottest)
     }
 }

@@ -25,12 +25,16 @@ extension SimulationModel {
 
     /// Places map buildings as exposure-only envelopes on the scene (and its terrain), its (0, 0) at
     /// `origin` (longitude, latitude), their footprints on `resolution` cells. Undo removes them.
-    func placeMapBuildings(_ buildings: [MapBuilding], origin: SIMD2<Double>, resolution: Float) throws
+    func placeMapBuildings(
+        _ buildings: [MapBuilding], origin: SIMD2<Double>, resolution: Float,
+        clearsChargeBuilding: Bool = true
+    ) throws
         -> MapBuildingReport
     {
         var scene = settings.scenario
-        let report = try scene.addMapBuildings(
-            buildings, placement: MapBuildingPlacement(origin: origin, resolution: resolution))
+        var placement = MapBuildingPlacement(origin: origin, resolution: resolution)
+        placement.clearsChargeBuilding = clearsChargeBuilding
+        let report = try scene.addMapBuildings(buildings, placement: placement)
         settings.scenario = scene
         return report
     }
@@ -80,6 +84,7 @@ struct MapBuildingsSection: View {
     @State private var latitude = ""
     @State private var isImporting = false
     @State private var message: String?
+    @State private var clearsChargeBuilding = true
 
     var body: some View {
         Section("Map buildings") {
@@ -91,6 +96,11 @@ struct MapBuildingsSection: View {
                 Text("\(loaded.buildings.count) buildings in \(loaded.name).").font(.caption)
                 TextField("Longitude of the scene's corner", text: $longitude)
                 TextField("Latitude of the scene's corner", text: $latitude)
+                Toggle("Clear the building over the charge", isOn: $clearsChargeBuilding)
+                    .help(
+                        "Leave open ground where a footprint holds the charge, so that it goes off in the open. "
+                            + "Off, the building stands and the charge, buried in its solid block, releases nothing."
+                    )
                 Button("Place buildings") { place(loaded.buildings) }
                     .disabled(Double(longitude) == nil || Double(latitude) == nil)
             }
@@ -134,7 +144,8 @@ struct MapBuildingsSection: View {
         guard let lon = Double(longitude), let lat = Double(latitude) else { return }
         do {
             let report = try model.placeMapBuildings(
-                buildings, origin: SIMD2(lon, lat), resolution: model.grid?.cellSize ?? 0.5)
+                buildings, origin: SIMD2(lon, lat), resolution: model.grid?.cellSize ?? 0.5,
+                clearsChargeBuilding: clearsChargeBuilding)
             let skipped = report.skipped.prefix(5).map { "\($0.id): \($0.reason)" }.joined(separator: "; ")
             message =
                 report.summary + "."

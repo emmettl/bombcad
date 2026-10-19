@@ -58,6 +58,10 @@ public final class BlastSolver {
     /// shock not have reached its radius yet, so that a short run still steps the grid. Nil for no
     /// limit; the app sets half the run's duration. Takes effect at the next `load`.
     public var mappedStartLatest: Double?
+    /// The most voxels, and the samples a side of each, the early fireball frames take
+    /// (`earlyFireballFrames`); nil for their defaults. For studying their resolution.
+    public var earlyFrameVoxelLimit: Int?
+    public var earlyFrameSampleCount: Int?
     private var exposureNeedsInitialSample = false
     private(set) var envelopeExposure: EnvelopeExposure?
     private var envelopeNeedsInitialSample = false
@@ -104,7 +108,7 @@ public final class BlastSolver {
 
     /// Sets the band on each refined level, or takes it off. The structures' part follows their
     /// solids as built, not as they move: it is made afresh whenever the levels are.
-    private func applyFacadeBand() {
+    func applyFacadeBand() {
         let envelopes = configuration.refinementHoldsEnvelopes.flatMap { threshold in
             envelopeComponentRecorder.map { ($0, threshold) }
         }
@@ -118,7 +122,8 @@ public final class BlastSolver {
             facadeBand = nil
             for level in refinementLevels {
                 level.facadeBand = nil
-                level.facadeBandParameters.on = 0
+                // All of it: a ceiling left set would have the kernels read `wanted` as the band.
+                level.facadeBandParameters = FacadeBandParameters()
             }
             return
         }
@@ -130,7 +135,9 @@ public final class BlastSolver {
         if let buffer = facadeBand {
             let band = buffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
             memset(band, 0, grid.cellCount)
-            // Bit 2: above the ceiling, the cell's centre more than it above the ground beneath.
+            // Bit 2: above the ceiling, the cell's centre more than it above the ground beneath; but
+            // never within 3 m/kg^(1/3) of a charge, whose near field stays refined however high.
+            let charges = ceilingExemptions
             if let ceiling {
                 for j in 0..<grid.ny {
                     for i in 0..<grid.nx {
@@ -140,7 +147,13 @@ public final class BlastSolver {
                             ?? 0
                         let first = max(Int(((ground + ceiling) / grid.cellSize - 0.5).rounded(.up)), 0)
                         guard first < grid.nz else { continue }
-                        for k in first..<grid.nz { band[grid.index(i, j, k)] |= 2 }
+                        for k in first..<grid.nz {
+                            let centre = (SIMD3(Float(i), Float(j), Float(k)) + 0.5) * grid.cellSize
+                            if charges.contains(where: { simd_distance(centre, $0.position) < $0.radius }) {
+                                continue
+                            }
+                            band[grid.index(i, j, k)] |= 2
+                        }
                     }
                 }
             }
@@ -887,6 +900,8 @@ public final class BlastSolver {
     /// The ground's shape the mask was made with; nil for flat ground or once the mask has been
     /// edited by hand. The fine cells follow it as they follow `rigidBoxes`.
     public internal(set) var terrain: Terrain?
+    /// Each charge loaded, and the sphere about it the refinement's ceiling spares.
+    var ceilingExemptions: [(position: SIMD3<Float>, radius: Float)] = []
     /// The first cell of air above the terrain in each column, x fastest; nil for flat ground.
     public internal(set) var terrainSurface: [Int32]?
     /// Charges laid down in fine cells for refined air (see `deposit`): what each fine cell gained,
@@ -3240,6 +3255,7 @@ public final class BlastSolver {
                 commandBuffer.waitUntilCompleted()
                 failed = failed || commandBuffer.error != nil
                 gpuSteps.measure(commandBuffer, steps: part)
+                stepGPUSeconds += max(commandBuffer.gpuEndTime - commandBuffer.gpuStartTime, 0)
                 encoded += part
             }
             // Nothing encoded: no batch to complete.
@@ -3278,6 +3294,10 @@ public final class BlastSolver {
 
     /// The GPU's time for a step lately, from the buffers `advance` has waited for.
     private var gpuSteps = GPUStepRate()
+    /// The GPU's seconds in the batches' step buffers since the solver was made, each buffer's
+    /// start to end. Other processes' work on the GPU between a buffer's start and end counts
+    /// too, so on a shared Mac compare the least of several runs.
+    public private(set) var stepGPUSeconds: Double = 0
 
     /// The GPU time each of `advance`'s command buffers aims at, `commandBufferTarget` unless
     /// set; the steps are the same whatever it is.

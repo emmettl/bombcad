@@ -733,6 +733,7 @@ final class SimulationModel {
     }
 
     private func applyEnvelopeDamageColours() {
+        defer { applyFarFieldColours() }
         if !protectionPlanChances.isEmpty {
             renderer?.setEnvelopeDamage(protectionPlanChances.mapValues { EnvelopeChanceColour.code($0) })
             return
@@ -760,6 +761,74 @@ final class SimulationModel {
         }
         renderer?.setEnvelopeDamage(
             Dictionary(uniqueKeysWithValues: envelopeDamage.map { ($0.id, EnvelopeDamageColour.code($0)) }))
+    }
+
+    // MARK: - The far field
+
+    /// A district's buildings beyond its near field (New District's near field and far field): kept
+    /// beside the scene, outside its air, drawn after it and judged after each run.
+    var farFieldSet: FarFieldSet? {
+        didSet {
+            guard farFieldSet != oldValue else { return }
+            farFieldDamage = []
+            farField = nil
+            farFieldStatus = ""
+            applyFarFieldColours()
+        }
+    }
+    /// The far buildings' damage from the last run's far field, its match and how it went.
+    private(set) var farFieldDamage: [EnvelopeBuildingDamage] = []
+    private(set) var farField: HybridFarField?
+    private(set) var farFieldStatus = ""
+    private(set) var judgingFarField = false
+
+    private func applyFarFieldColours() {
+        renderer?.setFarField(
+            farFieldSet,
+            damage: showsEnvelopeDamage
+                ? Dictionary(
+                    uniqueKeysWithValues: farFieldDamage.map { ($0.id, EnvelopeDamageColour.code($0)) })
+                : [:])
+    }
+
+    /// Judges the far set on the far field carried from the run just finished, away from the main
+    /// thread (`HybridFarField.judge`); a run started meanwhile discards it.
+    private func judgeFarField() {
+        guard let set = farFieldSet, let solver, stepCount > 0,
+            let histories = solver.envelopeComponentHistories()
+        else { return }
+        let (near, cellSize, steps) = (scenario, grid?.cellSize ?? settings.resolution.cellSize, stepCount)
+        judgingFarField = true
+        farFieldStatus = "Judging the far field…"
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let result = Result {
+                try HybridFarField.judge(
+                    near: near, far: set, histories: histories, cellSize: cellSize, nearBeyond: false)
+            }
+            await MainActor.run {
+                guard let self else { return }
+                self.judgingFarField = false
+                guard self.farFieldSet == set, self.stepCount == steps, !self.isRunning else { return }
+                switch result {
+                case .success(let judged):
+                    self.farFieldDamage = judged.buildings
+                    self.farField = judged.farField
+                    self.farFieldStatus =
+                        String(
+                            format:
+                                "Far field estimate: %d buildings beyond %.0f m in %.1f s, matched to the run's %d façade strips (peak ×%.2f, impulse ×%.2f at the hand-over).",
+                            judged.buildings.count, Double(set.handoverM), judged.seconds, judged.nearStrips,
+                            judged.farField.peak, judged.farField.impulse)
+                        + (judged.outsideFit > 0
+                            ? " \(judged.outsideFit) components lie beyond the distances the surrogate was fitted over: their loads are extrapolated."
+                            : "")
+                case .failure(let error):
+                    self.farFieldDamage = []
+                    self.farFieldStatus = "The far field could not be judged: \(error)"
+                }
+                self.applyFarFieldColours()
+            }
+        }
     }
 
     /// What the view colours envelopes by: their damage, or (from a quick estimate) each side's
@@ -967,6 +1036,7 @@ final class SimulationModel {
             groundShockSpec = document.groundShock
             thermalSpec = document.thermal
             cloudSpec = document.cloud
+            farFieldSet = document.farField
             projectArchive = document.archive
             projectDocumentID = document.documentID
             if let run = document.runSettings {
@@ -1122,6 +1192,7 @@ final class SimulationModel {
         groundShockSpec = document.groundShock
         thermalSpec = document.thermal
         cloudSpec = document.cloud
+        farFieldSet = document.farField
         projectArchive = document.archive
         projectDocumentID = document.documentID
         if let run = document.runSettings {
@@ -2577,6 +2648,9 @@ final class SimulationModel {
         envelopeExposure = []
         envelopeDamage = []
         envelopeDamageIsEstimate = false
+        farFieldDamage = []
+        farField = nil
+        farFieldStatus = ""
         envelopeGlassChances = []
         envelopeDebris = nil
         envelopeExposureStatus = ""
@@ -2618,6 +2692,9 @@ final class SimulationModel {
         envelopeExposure = []
         envelopeDamage = []
         envelopeDamageIsEstimate = false
+        farFieldDamage = []
+        farField = nil
+        farFieldStatus = ""
         envelopeGlassChances = []
         envelopeDebris = nil
         envelopeExposureStatus = ""
@@ -2751,6 +2828,7 @@ final class SimulationModel {
         traces = scenario.gauges.enumerated().map { GaugeTrace(id: $0.offset, name: $0.element.name) }
         if let solver {
             renderer.setScene(scenario, solver: solver)
+            applyFarFieldColours()
             sceneVersion += 1
         }
     }
@@ -2929,6 +3007,7 @@ final class SimulationModel {
         }
         publishTraces()
         refreshEnvelopeDebris()
+        judgeFarField()
         if fragments != nil || thermal != nil || groundShock != nil {
             let (gpu, elapsed) = (blastGPUSeconds, time)
             Task { [weak self] in await self?.recordCosts(blastGPUSeconds: gpu, elapsed: elapsed) }
@@ -2989,7 +3068,8 @@ final class SimulationModel {
         guard samples, lastSampleTime != solver.time,
             solver.time >= nextStructureSampleTime - 1e-9 || solver.time >= duration - 1e-9
         else { return }
-        let summary = solver.bodySummary()
+        let summaries = summarise(solver)
+        let summary = summaries.structure
         stopIfSolverFailed(solver, summary: summary)
         guard summary?.hasBlownUp != true else { return }
         if let summary, structureRecord.last?.time != solver.time * 1000 {
@@ -2998,20 +3078,31 @@ final class SimulationModel {
                     id: structureRecord.count, time: solver.time * 1000,
                     deflection: Double(summary.maxDisplacement) * 1000))
         }
-        for body in solver.bodies {
-            if let summary = body.summary(), bodyRecords[body.id]?.last?.time != solver.time * 1000 {
-                var history = bodyRecords[body.id] ?? []
-                history.append(
-                    StructureSample(
-                        id: history.count, time: solver.time * 1000,
-                        deflection: Double(summary.maxDisplacement) * 1000))
-                bodyRecords[body.id] = history
-            }
+        for (id, summary) in summaries.bodies where bodyRecords[id]?.last?.time != solver.time * 1000 {
+            var history = bodyRecords[id] ?? []
+            history.append(
+                StructureSample(
+                    id: history.count, time: solver.time * 1000,
+                    deflection: Double(summary.maxDisplacement) * 1000))
+            bodyRecords[id] = history
         }
         nextStructureSampleTime =
             (floor(solver.time / sampleInterval + 1e-6) + 1) * sampleInterval
         lastSampleTime = solver.time
         onSample?(solver)
+    }
+
+    /// Each body's summary, and the structure's as `BlastSolver.bodySummary()` combines them,
+    /// from one pass over each body's mesh: taken once for the whole and again for each body, the
+    /// passes were most of a debug build's structural run (19 October 2026).
+    private func summarise(_ solver: BlastSolver) -> (
+        structure: StructureSummary?, bodies: [(id: UUID, summary: StructureSummary)]
+    ) {
+        let bodies = solver.bodies.compactMap { body in body.summary().map { (id: body.id, summary: $0) } }
+        let structure = bodies.reduce(StructureSummary?.none) { total, body in
+            total.map { $0.combined(with: body.summary) } ?? body.summary
+        }
+        return (structure, bodies)
     }
 
     /// Stops the run where the solver can no longer go on.
@@ -3046,9 +3137,9 @@ final class SimulationModel {
             refreshEnvelopeDamage()
         }
         recordSampleIfDue(solver)
-        structureSummary = solver.bodySummary()
-        bodySummaries = Dictionary(
-            uniqueKeysWithValues: solver.bodies.compactMap { body in body.summary().map { (body.id, $0) } })
+        let summaries = summarise(solver)
+        structureSummary = summaries.structure
+        bodySummaries = Dictionary(uniqueKeysWithValues: summaries.bodies.map { ($0.id, $0.summary) })
         stopIfSolverFailed(solver, summary: structureSummary)
         if structuresInContactFrom == nil, solver.bodiesInContact { structuresInContactFrom = solver.time }
         structureHistory = structureRecord

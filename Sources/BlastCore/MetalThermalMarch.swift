@@ -56,7 +56,9 @@ final class MetalThermalMarch: ThermalMarch, @unchecked Sendable {
         guard count > 0 else { return [] }
         guard !medium.tiles.isEmpty else { return [Float](repeating: 0, count: count) }
         return lock.withLock {
-            if let answer = march(medium, set, occluded: occluded) {
+            // The spheres' shells are marched on the CPU's cores, a frame from the mapped start's
+            // first moments at a time.
+            if medium.spherical == nil, let answer = march(medium, set, occluded: occluded) {
                 counts.gpuFrames += 1
                 return answer
             }

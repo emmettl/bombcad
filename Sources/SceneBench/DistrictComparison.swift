@@ -278,6 +278,7 @@ enum DistrictComparison {
             }
             let wall = DistrictBenchmark.seconds(start)
             print(String(format: "Ran to %.3f s in %d steps, %.0f s", solver.time, steps, wall))
+            print(String(format: "Step buffers' GPU time %.2f s", solver.stepGPUSeconds))
             if profiling {
                 let total = stages.values.reduce(0, +)
                 print(
@@ -527,6 +528,16 @@ enum DistrictComparison {
                 return RefinementRegion(low: SIMD3(low.x, low.y, -1e4), high: SIMD3(high.x, high.y, 1e4))
             }
             print(String(format: "Corridor to (%.0f, %.0f) m, %.0f m either side", target.x, target.y, width))
+        }
+        // `--confine-box x0,y0,x1,y1`: refinement only in that box, m in the domain (to time the
+        // refinement's fixed costs with a box the shock never reaches).
+        if let numbers = value("confine-box").map({ $0.split(separator: ",").compactMap { Float($0) } }),
+            numbers.count == 4
+        {
+            configuration.refinementConfinedTo = [
+                RefinementRegion(
+                    low: SIMD3(numbers[0], numbers[1], -1e4), high: SIMD3(numbers[2], numbers[3], 1e4))
+            ]
         }
         let (finalTime, steps, wall, arrivals, linePoints, recorded) = try event(configuration)
         let loads = recorded.map(EnvelopeComponentLoad.init)

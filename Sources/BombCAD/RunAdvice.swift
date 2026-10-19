@@ -21,6 +21,9 @@ extension ProjectRunSettings {
     /// These settings with the advisor's `setting` of the air.
     func applying(_ setting: AdvisorSetting) -> ProjectRunSettings {
         var settings = self
+        // A refinement ceiling keeps its four cells over the buildings on the new cells.
+        let old = (Resolution(rawValue: resolution) ?? .medium).cellSize
+        settings.refinementCeiling = refinementCeiling.map { $0 + 4 * (setting.cellSize - old) }
         settings.resolution = (Resolution(cellSize: setting.cellSize) ?? .medium).rawValue
         settings.sharpShocks = setting.refinement > 1
         settings.shockLevels = setting.refinement > 1 && setting.levels > 1 ? 2 : nil
@@ -178,7 +181,14 @@ extension SimulationModel {
 
     /// Takes the advisor's setting of the air.
     func apply(_ setting: AdvisorSetting) {
-        if let resolution = Resolution(cellSize: setting.cellSize) { settings.resolution = resolution }
+        if let resolution = Resolution(cellSize: setting.cellSize) {
+            // A refinement ceiling keeps its four cells over the buildings on the new cells.
+            let old = settings.resolution.cellSize
+            settings.refinementCeiling = settings.refinementCeiling.map {
+                $0 + 4 * (resolution.cellSize - old)
+            }
+            settings.resolution = resolution
+        }
         settings.sharpShocks = setting.refinement > 1
         settings.shockLevels = setting.refinement > 1 ? setting.levels : 1
         settings.shockThreshold = setting.refinement > 1 ? setting.threshold : 0.1

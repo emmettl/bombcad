@@ -119,12 +119,36 @@ kernel void extractFireballBlocks(
 // it is air at least `luminous` kelvin hot, rounded to the kelvin, and otherwise zero; in the high
 // 16, the density of its unburnt detonation products in kg/m³ as a half float, zero without
 // afterburning or where it is not luminous. The host reads back only the luminous blocks' box.
+// Hot equilibrium air's Planck mean absorption coefficient at `t` K and `rho` kg/m^3, in 1/m: the
+// CPU's `HotAir.planckAbsorption` (Kivel and Bailey, as NASA TN D-1031 correlates them), its
+// logarithm at the normal density 1.293 kg/m^3 and the density's exponent at each temperature.
+static inline float hotAirAbsorption(float t, float rho) {
+    const float temperatures[6] = {1000.0f, 3000.0f, 6000.0f, 8000.0f, 12000.0f, 18000.0f};
+    const float logKappa[6] = {-8.36160f, -3.57248f, -0.17727f, 1.16553f, 3.83899f, 6.42003f};
+    const float exponents[6] = {1.000f, 1.228f, 1.337f, 1.288f, 1.356f, 1.579f};
+    if (!(t > 0.0f) || !(rho > 0.0f)) {
+        return 0.0f;
+    }
+    float c = clamp(t, 1000.0f, 18000.0f);
+    int n = 0;
+    while (n < 4 && c > temperatures[n + 1]) {
+        n += 1;
+    }
+    float share = log(c / temperatures[n]) / log(temperatures[n + 1] / temperatures[n]);
+    float lk = logKappa[n] + share * (logKappa[n + 1] - logKappa[n]);
+    float tau = exponents[n] + share * (exponents[n + 1] - exponents[n]);
+    return exp(lk + tau * log(rho / 1.293f));
+}
+
+// Each cell's luminous temperature in kelvin (the low 16 bits of x) and its unburnt products'
+// density as a half (the high), and in y its absorption as hot air (`hotAirAbsorption`) as a half;
+// all zero where it is not luminous.
 kernel void extractLuminousCells(
     device const StepControl &control [[buffer(0)]],
     device const Cell *state [[buffer(1)]],
     device const uchar *mask [[buffer(2)]],
     device const float2 *species [[buffer(3)]],
-    device uint *cells [[buffer(4)]],
+    device uint2 *cells [[buffer(4)]],
     constant float &luminous [[buffer(5)]],
     constant uint &hasSpecies [[buffer(6)]],
     constant SolverUniforms &u [[buffer(7)]],
@@ -137,7 +161,9 @@ kernel void extractLuminousCells(
     float t = mask[index] != 0 ? 0.0f : luminousTemperatureOf(state[index], luminous, u);
     uint kelvin = t == 0.0f ? 0u : clamp(uint(rint(t)), 1u, 65535u);
     float products = kelvin != 0u && hasSpecies != 0u ? max(species[index].x, 0.0f) : 0.0f;
-    cells[index] = kelvin | (uint(as_type<ushort>(half(min(products, 65504.0f)))) << 16);
+    float air = kelvin != 0u ? min(hotAirAbsorption(t, state[index].rho), 65504.0f) : 0.0f;
+    cells[index] = uint2(
+        kelvin | (uint(as_type<ushort>(half(min(products, 65504.0f)))) << 16), uint(as_type<ushort>(half(air))));
 }
 
 // The visualisation field (updateVisualization in Solver.metal: r overpressure, g peak and a

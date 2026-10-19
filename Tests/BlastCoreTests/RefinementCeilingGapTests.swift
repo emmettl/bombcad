@@ -193,14 +193,10 @@ struct RefinementCeilingGapTests {
     /// and bit for bit. Run first with the ceiling kept, as a control: a solver reused with the
     /// same settings must match a fresh one, or the comparison means nothing.
     ///
-    /// Expected to fail until the early return resets the whole `FacadeBandParameters`; it may
-    /// also fault on the GPU, as the read runs past the end of the bound buffer.
-    // Run once on the Studio on 19 October 2026: no GPU fault; the control (the same ceiling again)
-    // matched a fresh solver bit for bit and the refined blocks matched without the ceiling, but
-    // 176,381 words of state, peak and impulse differed from a fresh solver's.
-    @Test(
-        "A solver run again without its ceiling refines as a fresh one without a ceiling",
-        .disabled("review-2 #3: ceiling left on after reuse; claim 42"))
+    /// It failed until the early return reset the whole `FacadeBandParameters` (review 2, #3): run
+    /// again without the ceiling, 176,381 words of state, peak and impulse differed from a fresh
+    /// solver's.
+    @Test("A solver run again without its ceiling refines as a fresh one without a ceiling")
     func ceilingClearedOnReuse() throws {
         let scene = openField()
         let fresh = try BlastSolver(

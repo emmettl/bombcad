@@ -155,7 +155,12 @@ out ([Beirut, 2020](beirut-2020.md)); the app fetches nothing.
   **Surface model** takes a surface model's roofs and trees down to the ground (opened over 100 m)
   and puts what lies within a metre of sea level at it; turn it off for a bare-earth model.
 - **Charge**: click the map (drawn from the file's footprints) or type a longitude and latitude,
-  and give the TNT yield and the ground under it. The air is centred on the charge.
+  and give the TNT yield and the ground under it. The air is centred on the charge. **Clear the
+  building over the charge** (on) leaves open ground where a footprint holds the charge, so that
+  it goes off in the open, as a real event's charge inside a building did; the standing says so,
+  and the building's walls neither confine nor vent the blast. Off, the building stands and the
+  charge, buried in its solid block, releases nothing (the sheet warns). The Map buildings section
+  has the same option.
 - **Extent**: the buildings whose footprint's centre lies within the radius are placed. The open
   faces are kept 4 m/kg^(1/3) from them: the sides beyond the outermost building (unless turned
   off), the top above the charge and at least half that above the highest roof or ground
@@ -170,6 +175,13 @@ out ([Beirut, 2020](beirut-2020.md)); the app fetches nothing.
   the ceiling takes its upper floors' load on the coarse cells. The refined air takes the ground as
   a staircase of whole cells for now: cut through the cells, a second refined level rang ahead of
   the shock over Beirut ([Beirut's page](beirut-2020.md#what-cell-size-the-glass-and-the-damage-need)).
+- **Near field and far field** (on when the radius reaches 1.25 times the hand-over, drawn on the
+  map at 12 m/kg^(1/3), to 50 m) runs the air only to the hand-over and its faces' clearance. The
+  buildings beyond are kept beside the project, never voxelised, and judged in seconds when the run
+  ends on the load carried from it: painted with their damage and listed under **Far field
+  (estimate)** in Envelope damage, walls and roofs at the surrogate's standing, glass close to a
+  full run's to about 1.5 km at Beirut's yields
+  ([a city in minutes](hybrid-far-field.md#using-it)).
 - **Lay Out** places the buildings and shows, before anything is created, how many were placed, the
   air's size and cells, the memory and the time unloaded and as this Mac's runs have gone, and
   the same for the other kind of air.

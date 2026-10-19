@@ -2,7 +2,6 @@ import Foundation
 import Testing
 import simd
 
-@testable import BlastCore
 @testable import BlastModel
 
 /// Paths through the façade load surrogate (`FacadeLoadSurrogate`) that `FacadeLoadSurrogateTests`
