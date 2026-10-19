@@ -542,6 +542,46 @@ struct EnvelopeComponentHistoryTests {
             "\(refinedFine) \(refinedCoarse) \(uniform)")
     }
 
+    @Test("A refinement ceiling keeps the refined air below it, at both levels, and changes nothing unset")
+    func refinementCeiling() throws {
+        let scene = Scenario(
+            name: "Open", domainSize: SIMD3(12, 12, 8), boxes: [],
+            charge: Charge(mass: 0.5, position: SIMD3(6, 6, 0.5)))
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        func run(_ ceiling: Float?) throws -> (rows: [[Int]], digest: [Float]) {
+            var config = SolverConfiguration()
+            config.refinement = 2
+            config.refinementLevels = 2
+            config.refinementMemory = 64 << 20
+            config.refinementCeiling = ceiling
+            let solver = try BlastSolver(
+                device: device, scenario: scene, cellSize: 0.25, configuration: config)
+            var rows: [[Int]] = []
+            while solver.time < 0.01 {
+                let batch = solver.advance(steps: 8, timeLimit: 0.01)
+                if batch.steps == 0 { break }
+                let now = solver.refinedBlocksByHeight()
+                rows = rows.isEmpty ? now : zip(rows, now).map { zip($0, $1).map { max($0, $1) } }
+            }
+            let digest = solver.withState { cells in
+                stride(from: 0, to: cells.count, by: 997).map { cells[$0].density + cells[$0].energy }
+            }
+            return (rows, digest)
+        }
+        let free = try run(nil)
+        let capped = try run(2)
+        // Blocks are 4 coarse cells (1 m) high at the first level and 4 of its cells (0.5 m) at the
+        // second. Capped at 2 m, none from 3 m up (a jump just below the ceiling refines the block
+        // round it, which may reach a block over it); some there without.
+        #expect(free.rows[0].dropFirst(3).reduce(0, +) > 0 && free.rows[1].dropFirst(6).reduce(0, +) > 0)
+        #expect(capped.rows[0].dropFirst(3).allSatisfy { $0 == 0 }, "\(capped.rows[0])")
+        #expect(capped.rows[1].dropFirst(6).allSatisfy { $0 == 0 }, "\(capped.rows[1])")
+        #expect(capped.rows[0].prefix(2).reduce(0, +) > 0 && capped.rows[1].prefix(4).reduce(0, +) > 0)
+        // A ceiling above the domain is no ceiling: the same air, bit for bit.
+        let high = try run(100)
+        #expect(high.digest.map(\.bitPattern) == free.digest.map(\.bitPattern))
+    }
+
     @Test("Refinement held beside a wall while its air is loaded keeps it fine after the shock has gone")
     func heldBand() throws {
         var scene = Scenario(

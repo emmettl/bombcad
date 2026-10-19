@@ -93,7 +93,8 @@ public final class BlastSolver {
         let structures = configuration.refinementHoldsStructures.flatMap { threshold in
             bodies.isEmpty ? nil : (bodies.map(\.model), threshold)
         }
-        guard envelopes != nil || structures != nil, !refinementLevels.isEmpty else {
+        let ceiling = refinementLevels.isEmpty ? nil : configuration.refinementCeiling
+        guard envelopes != nil || structures != nil || ceiling != nil, !refinementLevels.isEmpty else {
             facadeBand = nil
             for level in refinementLevels {
                 level.facadeBand = nil
@@ -101,6 +102,7 @@ public final class BlastSolver {
             }
             return
         }
+        let held = envelopes != nil || structures != nil
         let threshold = min(envelopes?.1 ?? .infinity, structures?.1 ?? .infinity)
         if facadeBand == nil {
             facadeBand = device.makeBuffer(length: max(1, grid.cellCount), options: .storageModeShared)
@@ -108,6 +110,20 @@ public final class BlastSolver {
         if let buffer = facadeBand {
             let band = buffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
             memset(band, 0, grid.cellCount)
+            // Bit 2: above the ceiling, the cell's centre more than it above the ground beneath.
+            if let ceiling {
+                for j in 0..<grid.ny {
+                    for i in 0..<grid.nx {
+                        let ground =
+                            terrain?.height(
+                                at: SIMD2((Float(i) + 0.5) * grid.cellSize, (Float(j) + 0.5) * grid.cellSize))
+                            ?? 0
+                        let first = max(Int(((ground + ceiling) / grid.cellSize - 0.5).rounded(.up)), 0)
+                        guard first < grid.nz else { continue }
+                        for k in first..<grid.nz { band[grid.index(i, j, k)] |= 2 }
+                    }
+                }
+            }
             for model in structures?.0 ?? [] {
                 for solid in model.solids {
                     // The cells whose centres lie within a cell of the solid.
@@ -118,7 +134,7 @@ public final class BlastSolver {
                     guard all(low .<= high) else { continue }
                     for k in low.z...high.z {
                         for j in low.y...high.y {
-                            for i in low.x...high.x { band[grid.index(i, j, k)] = 1 }
+                            for i in low.x...high.x { band[grid.index(i, j, k)] |= 1 }
                         }
                     }
                 }
@@ -129,7 +145,7 @@ public final class BlastSolver {
                 for dz in -1...1 {
                     for dy in -1...1 {
                         for dx in -1...1 where grid.contains(cell.x + dx, cell.y + dy, cell.z + dz) {
-                            band[grid.index(cell.x + dx, cell.y + dy, cell.z + dz)] = 1
+                            band[grid.index(cell.x + dx, cell.y + dy, cell.z + dz)] |= 1
                         }
                     }
                 }
@@ -141,7 +157,8 @@ public final class BlastSolver {
             level.facadeBandParameters = FacadeBandParameters(
                 nx: UInt32(grid.nx), ny: UInt32(grid.ny), nz: UInt32(grid.nz),
                 ratio: UInt32(level.parentScale),
-                threshold: threshold, ambient: configuration.ambientPressure, on: facadeBand == nil ? 0 : 1)
+                threshold: held ? threshold : 0, ambient: configuration.ambientPressure,
+                on: held && facadeBand != nil ? 1 : 0, ceiling: ceiling != nil && facadeBand != nil ? 1 : 0)
         }
     }
 
