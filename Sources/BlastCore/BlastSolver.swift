@@ -3240,6 +3240,7 @@ public final class BlastSolver {
                 commandBuffer.waitUntilCompleted()
                 failed = failed || commandBuffer.error != nil
                 gpuSteps.measure(commandBuffer, steps: part)
+                stepGPUSeconds += max(commandBuffer.gpuEndTime - commandBuffer.gpuStartTime, 0)
                 encoded += part
             }
             // Nothing encoded: no batch to complete.
@@ -3278,6 +3279,10 @@ public final class BlastSolver {
 
     /// The GPU's time for a step lately, from the buffers `advance` has waited for.
     private var gpuSteps = GPUStepRate()
+    /// The GPU's seconds in the batches' step buffers since the solver was made, each buffer's
+    /// start to end. Other processes' work on the GPU between a buffer's start and end counts
+    /// too, so on a shared Mac compare the least of several runs.
+    public private(set) var stepGPUSeconds: Double = 0
 
     /// The GPU time each of `advance`'s command buffers aims at, `commandBufferTarget` unless
     /// set; the steps are the same whatever it is.
