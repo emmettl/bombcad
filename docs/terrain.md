@@ -33,7 +33,8 @@ import), `Shaders/Refine.metal` (`refineFill`, the fine cells' outline) and, for
   one-dimensional start treats the terrain as an obstacle it must not reach.
 - **Persistence.** Heights are saved as little-endian 32-bit floats in base64. A scene without
   terrain encodes exactly as before (saved-run fingerprints are unchanged). A project with
-  terrain is scene encoding 8, which older readers refuse rather than open as flat ground.
+  terrain is scene encoding 8 or later (9 with a structural IFC import, 10 with an envelope's
+  glass), which older readers refuse rather than open as flat ground.
 - **Bit-identical when flat.** A flat heightfield gives the same `blastbench digest` hashes as
   no terrain: uniform, refined once and refined twice (`blastbench digest --terrain flat`).
 
@@ -249,7 +250,9 @@ history) over flat ground's on the same cells:
 blastbench scene, or Run ▸ Terrain ▸ Cut cells along its slopes off in the app, for whole cells)
 cuts the ground's surface through the cells instead of rounding it to whole ones, so a slope is
 a slope. Only the terrain is cut; blocks, structures and moving bodies keep their whole cells.
-The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell` and
+File ▸ New District's refined air lays the ground as a staircase for now: cut through the cells,
+a second refined level rang ahead of the shock over Beirut (see [A district from a
+map](using-the-app.md#a-district-from-a-map)). The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell` and
 `redistributeCutDefects` in `Shaders/Solver.metal`, and for refined air `cutGeometryAt`,
 `fineSweepCell`, `refineRedistributeCut` and `refineCutPassUp` in `Shaders/Refine.metal`.
 
@@ -316,9 +319,10 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell
   footing does not open and refill it, even if the structure later slides away or falls (it held
   less than half a cell of air). The pass runs only where a structure stands on the terrain, so
   other runs are as they were to the bit. Refined air does not apply it to its own cells yet, so
-  for now refined runs with a structure standing on the terrain (a solid's base within half a
-  metre of the ground above the floor under it, `structureStandsOnTerrain`) keep the terrain as a
-  staircase (`cutsTerrain(of:)`); the same rule in `refineRemaskPrepare` is next.
+  for now refined runs with a structure standing on the terrain (a solid's base below, or within
+  half a metre, an element or an air cell, whichever is most, of the highest ground under its
+  footprint, where that ground is above the floor, `structureStandsOnTerrain`) keep the terrain as
+  a staircase (`cutsTerrain(of:)`); the same rule in `refineRemaskPrepare` is next.
   The two levels can still disagree. A fine sliver whose cell above is air at its own level but
   lies under a block in its parent's cells passes up into a solid cell. That happens where the
   second level's pool is full and the patch above is not placed. What such a column carries up
@@ -592,7 +596,7 @@ surface cross a cell a metre. The GPU and the CPU agree on every receiver.
    and drawn after it, see [cratering](cratering.md)), no soil that gives or absorbs (soft ground
    takes a share of a charge's energy before the run, the same place), no vegetation or
    roughness besides the staircase's, no snow or water. The floor under the terrain still reflects.
-3. **Refinement near the surface.** Placing a patch gains still air on one side of the surface and
+3. **Refinement near the surface, on the staircase.** Placing a patch gains still air on one side of the surface and
    gives up gas on the other (0.08% of a closed box's gas in 120 steps over a hill). Patches along
    the surface are kept once placed. A refined coarse cell records the largest impulse of its fine
    cells, and next to a terrain some of those sit in the staircase's corners: the painted impulse

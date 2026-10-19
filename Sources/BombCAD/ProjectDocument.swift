@@ -20,6 +20,10 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// The jump that refines the air, as a share of the pressure, when it is not the usual 0.1;
     /// nil, and left out of the file and the fingerprint, when it is.
     var shockThreshold: Float?
+    /// With `sharpShocks`, no air refined more than this many metres above the ground
+    /// (`SolverConfiguration.refinementCeiling`), as File ▸ New District sets over the roofs; nil,
+    /// and left out of the file and the fingerprint, for no ceiling.
+    var refinementCeiling: Float?
     /// True when each refined level takes only the substeps its own waves need; nil, and left out
     /// of the file and the fingerprint, when every level takes all of them.
     var adaptiveSubsteps: Bool?
@@ -70,6 +74,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         sharpShocks = settings.sharpShocks
         shockLevels = settings.shockLevels > 1 ? settings.shockLevels : nil
         shockThreshold = settings.shockThreshold != 0.1 ? settings.shockThreshold : nil
+        refinementCeiling = settings.sharpShocks ? settings.refinementCeiling : nil
         adaptiveSubsteps = settings.sharpShocks && settings.adaptiveSubsteps ? true : nil
         gravity = settings.gravity ? true : nil
         terrainCutCells =
@@ -144,6 +149,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         guard Resolution(rawValue: resolution) != nil, solidElementSize.isFinite, solidElementSize > 0,
             duration.isFinite, duration > 0, shockLevels.map({ $0 == 2 }) ?? true,
             shockThreshold.map({ $0.isFinite && $0 > 0 && $0 <= 1 }) ?? true,
+            refinementCeiling.map({ $0.isFinite && $0 > 0 }) ?? true,
             groundStiffness.map({ $0.isFinite && $0 > 0 }) ?? true,
             waterTable.map({ $0.isFinite && $0 >= 0 && $0 <= 1000 }) ?? true
         else { throw ProjectFileError.invalid("Project simulation settings are invalid.") }

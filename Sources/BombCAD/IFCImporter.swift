@@ -95,7 +95,9 @@ enum IFCImporter {
         // Materials are only for meshing the building as a structure: an unreadable set leaves
         // them out rather than the import.
         let materials =
-            (try? IFCMaterials.decode(metadata, metresPerUnit: unitsRead ? 1 : Float(lengthUnit?.metres ?? 1)))
+            (try? IFCMaterials.decode(
+                metadata, metresPerUnit: unitsRead ? 1 : Float(lengthUnit?.metres ?? 1),
+                layerMaterials: IFCStep.layerMaterials(data)))
             ?? [:]
         var reinforcement = IFCReinforcementReader.Metadata(metadata)
         if !unitsRead { reinforcement.scale = Float(lengthUnit?.metres ?? 1) }

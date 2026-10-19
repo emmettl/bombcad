@@ -88,7 +88,7 @@ report stays under **Edit layout → Structure from IFC**.
 
 - **Elements.** Walls, slabs and roofs square to the axes become shells: as thick as their
   structural layer where the IFC gives a material layer set (the block of a brick-on-block
-  wall), else as their geometry. Columns, beams and members become beams of their section's
+  wall, which then carries the brick's mass, though not its stiffness), else as their geometry. Columns, beams and members become beams of their section's
   depth and width; a flanged section (under half its bounds filled) is a rectangle 0.6 of its
   depth wide whose material is scaled to the bending stiffness, strength and mass of a
   wide-flange shape of its area and depth. Footings become footings under the members on
@@ -99,7 +99,8 @@ report stays under **Edit layout → Structure from IFC**.
   (stud partitions, flooring, tiles) and slabs on grade that walls pass through stay rigid
   obstacles, each with its reason.
 - **Materials.** Read from the IFC's material names where they name one the solver has
-  (concrete, with its grade if given, block, masonry, steel, glass). Elsewhere the stated
+  (concrete, with its grade if given, block, masonry, steel, glass). A layer of a layer set is
+  read by its material's name; its own name ("Outer leaf") is used only where it has no material. Elsewhere the stated
   default, flagged in the report, the standing and the parts list; choose a part's material
   under Parts to replace it. Past the solver's eight materials (flanged steel sections each
   have one), the nearest of a kind are merged, and the report gives the largest stiffness

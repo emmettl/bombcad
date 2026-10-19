@@ -83,7 +83,7 @@ swift run -c release blastbench perimeter --study wall
 | Fragments            | [Cooper (1996)](#fragments-against-coopers-data): his worked Mott and Gurney examples to rounding; one counted cast-iron bomb within a factor of 1.36 (rms) by Mott's form, 1.12 by Grady's; drag now the measured curve for tumbling cubes, 5% from the previous law. Hazard distance 0.58–1.02 of DoD 4145.26-M's test-derived distances for two items, in flight; TP-12's own procedure 1.05–1.21 times it on the same fragments; Mott's scaling 1.00–1.36 times the masses of Sternberg's cylinders (TP-12 Table 1) |  Masses either way within a factor of 1.4 (moderate, one test); hazard distance up to two-fifths short (the unsafe side; moderate); launch speeds untested (low) |
 | Ground shock         | Xia et al. (2022), 1 t of TNT on the ground, accelerations 0.5 m deep at 21 and 42 m: the vertical velocity from the manuals' relation and the layered soil column 20 to 30 times the measured accelerations' integral at 21 m and 50 to 80 times at 42 m, within three times a velocity gauge that clipped; the measured motion mostly horizontal, at ranges near and past where the ground's wave outruns the air; the soil not measured. An elastic half-space about the charge, with a direct source calibrated against UFC 3-340-01: the horizontal within 1.5 times at 21 m but 18 times at 42 m, the vertical still 15 to 60 times. With soil that yields (compaction and a Mohr–Coulomb cone, the source the crater's energy): the horizontal 2.1 to 2.4 times at 21 m and 10 to 11 times at 42 m, the vertical 16 to 90 times, the fall-off R^(−1.5) against the measured R^(−3.3) to R^(−3.8) | Far too high in the vertical, the safe side; the horizontal motion that dominated not modelled, the unsafe side; illustrative |
 | A district           | [Beirut, 2020](#a-district-beirut-2020): 14,169 map buildings over 5 km at 4 m; the shock's arrival at Rigby's 30 observers best at 0.5 kt (median 0.98 of observed; 25 of 27 from 400 m out within 10%); peaks 0.68–0.78 of Kingery–Bulmash at 4 m; one typical pane a storey breaks inside 1.25 km where GEER's street survey found 0.39–0.84 of façades damaged, its edge (1.1–2.2 km by the glass assumed) about Rigby 2024's 1.86 km; glass converged by 4 m (3 m within 0.03), a mix of panes by building giving the tail beyond 2 km, GEER's W3 beyond 1.5 km but every façade blown out inside 1.25 km; structure under-damaged: 0.5 m stone cracks but rarely falls where GEER found partial collapse, 0.2 m concrete hardly damaged beyond 750 m where GEER's RC was D1–D3 to 2 km, and not converged at 3 m | Arrival times good; peaks low (the cells); glass moderate, set by the glass assumed more than the yield; structure low, the unsafe side (one construction for all, not converged) |
-| Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 2% on a wall and 7–8% close in, structural responses 3–15%, residual deflections and failure 17–34% (rerun 18 October on the day's defaults); the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
+| Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 2% on a wall and 6–7% close in, structural responses 3–15%, residual deflections and failure 21–34% (rerun 18 October on the day's defaults); the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
 
 No structural result has yet been shown to converge on today's defaults: the meshes quoted as
 agreeing are the coarse end of each sequence, results that settle do so above the measurements,
@@ -5440,8 +5440,8 @@ Rerun 18 October 2026 on the day's defaults, sixteen samples a case:
 - the slabs settled under their own weight before the blast.
 
 The first run, of 11 October, had Wu's and Chiquito's slabs on the ideal gas in their harnesses'
-boxes, and the wall on the bare core (`run-2026-10-11`, last column). Of the 153 runs the CI
-mini did 130. Wu's and Chiquito's, run in the rule's domains, took 20–30 minutes and 5–13 minutes
+boxes, and the wall on the bare core (`run-2026-10-11`, last column). Of the 153 runs, 14.4
+hours of them, the CI mini did 135. Wu's and Chiquito's, run in the rule's domains, took 20–30 minutes and 5–13 minutes
 each, against 1–6 minutes in the boxes. The table gives:
 - the 5th to 95th percentiles of the samples, against the measurement;
 - the tests' scatter where repeats give one (from their range, so roughly);
@@ -5467,10 +5467,10 @@ and their spreads are as before. Where they moved, the structural model changed 
 | Peterson D-2d-S90, impact (kN) | 238 | 202 | 206, 14% | 168–250 | yes | 18% | fibreboard | 202; 206, 14% |
 | Peterson D-2d-S90, near reaction (kN) | 116 | 71 | 71, 3% | 67–75 | no, above | 8% | speed, fibreboard | 72; 71, 3% |
 | Peterson D-2d-S90, far reaction (kN) | 83.5 | 56 | 60, 18% | 51–80 | no, above | 5% | fibreboard, ultimate, speed | 56; 60, 19% |
-| Wu S8, peak (mm) | 18.0 | 14.4 | 14.3, 4% | 13.6–15.2 | no, above | one test | standoff, tensile strength | the 11 October run; the rerun is under way |
-| Wu S8, residual (mm) | 5.6 | 6.7 | 6.2, 17% | 4.5–7.4 | yes | one test | | the 11 October run; the rerun is under way |
-| Chiquito S1–S3, gauge at 1 m (MPa) | 2.5 | 1.48 | 1.48, 8% | 1.32–1.66 | no, above | 5% | charge, yield | the 11 October run; the rerun is under way |
-| Chiquito S1–S3, gauge at 2 m (MPa) | 0.5 | 0.36 | 0.36, 7% | 0.32–0.39 | no, above | 12% | charge | the 11 October run; the rerun is under way |
+| Wu S8, peak (mm) | 18.0 | 16.2 | 16.1, 4% | 15.3–17.1 | no, above | one test | standoff, tensile strength | 14.4; 14.3, 4% |
+| Wu S8, residual (mm) | 5.6 | 8.0 | 7.3, 21% | 5.1–9.3 | yes | one test | tensile strength, yield (against) | 6.7; 6.2, 17% |
+| Chiquito S1–S3, gauge at 1 m (MPa) | 2.5 | 1.45 | 1.45, 7% | 1.29–1.61 | no, above | 5% | charge, yield (against) | 1.48; 1.48, 8% |
+| Chiquito S1–S3, gauge at 2 m (MPa) | 0.5 | 0.36 | 0.36, 6% | 0.32–0.39 | no, above | 12% | charge, yield (against), ultimate | 0.36; 0.36, 7% |
 | Kingery–Bulmash wall, reflected peak (kPa) | 1,060 (K–B) | 677 | 678, 2% | 655–696 | no, above | | charge, standoff | 691; 697, 2% |
 | Kingery–Bulmash wall, reflected impulse (Pa s) | 1,690 (K–B) | 1,880 | 1,880, 2% | 1,830–1,920 | no, below | | charge, standoff | 1,710; 1,710, 1% |
 
@@ -5488,12 +5488,12 @@ Reading this table:
   Saatci's the supports and the beams' stiffness ([Beams struck by a falling
   weight](#beams-struck-by-a-falling-weight)). An error band for these should add the validation
   error to this spread, not replace it.
-- **Where the tests were repeated, the model's spread is comparable with theirs**: wider in five
-  of eight outputs (Peterson's D-1d-NoS 14–15% against 4–10%, mostly the fibreboard's unknown
-  stiffness), narrower in three. Two or three repeats give a poor estimate of the tests' own
+- **Where the tests were repeated, the model's spread is comparable with theirs**: wider in six
+  of nine outputs (Peterson's D-1d-NoS 13–15% against 4–10%, mostly the fibreboard's unknown
+  stiffness, and the contest slab's 12% against its repeat's 3%), narrower in three. Two or three repeats give a poor estimate of the tests' own
   scatter, so neither is clearly wider.
-- **Input uncertainty is 2% of a load on a wall and 7–8% of a gauge's close in, 3–15% of a
-  structural response at its peak**, more for a residual deflection (17–25%) and for where a member
+- **Input uncertainty is 2% of a load on a wall and 6–7% of a gauge's close in, 3–15% of a
+  structural response at its peak**, more for a residual deflection (21–25%) and for where a member
   fails (34%). The middle inputs and the samples' median can differ by more than that (Saatci's
   reaction at 543 against 521 kN): the responses are not linear in their inputs.
 - **What decides it varies by case**: the bars' strength and the load for the contest slab, the

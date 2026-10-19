@@ -7,6 +7,7 @@ import simd
 /// [--window 0.5] [--budget 2048] [--ground saturated] [--observers rigby.csv] [--pane 1.2,1.5]
 /// [--design-probability 0.008] [--glass 0.006,0.004] [--staircase] [--bare] [--trace]
 /// [--save-loads folder] [--refine 2 --levels 2 --threshold 0.005 --refine-memory GB --hold Pa]
+/// [--ceiling auto|m] [--place-dx m] [--profile]
 /// --out folder`: the district's event, and what an accident survey
 /// can be set against: arrival times at observers' positions (Rigby et al.'s CSV: lat, lon, and
 /// the time seen), peak overpressures on a line of gauges over the open side, and each building's
@@ -153,6 +154,19 @@ enum DistrictComparison {
             configuration.refinementMemory = Int(memory * Double(1 << 30))
         }
         configuration.refinementHoldsEnvelopes = value("hold").flatMap(Float.init)
+        // `--ceiling auto|m`: no refinement more than this above the ground; auto, the height of
+        // all but the tallest 2% of the buildings and four cells for the shock's top.
+        if let ceiling = value("ceiling") {
+            let heights = report.placed.map { $0.top - $0.base }.sorted()
+            let most =
+                heights.isEmpty ? 0 : heights[min(heights.count - 1, Int(0.98 * Double(heights.count)))]
+            configuration.refinementCeiling = ceiling == "auto" ? most + 4 * dx : Float(ceiling)
+            print(
+                String(
+                    format:
+                        "Refinement ceiling %.0f m above the ground (98%% of the buildings to %.0f m, the tallest %.0f m)",
+                    configuration.refinementCeiling ?? 0, most, heights.last ?? 0))
+        }
         if let name = value("ground") {
             guard let type = GroundType(rawValue: name) else {
                 throw BlastError.allocationFailed("--ground \(name)")
@@ -181,15 +195,42 @@ enum DistrictComparison {
                     windowS: value("window").flatMap(Double.init) ?? 0.5,
                     memoryBudget: (value("budget").flatMap(Int.init) ?? 2048) << 20, windowFromArrival: true))
             print("\(solver.grid.cellCount) cells, \(solver.envelopeComponents()?.count ?? 0) components")
+            // `--profile`: the GPU's time in each stage, over batches of 16 steps (`blastbench profile`).
+            let profiling = args.contains("--profile")
+            if profiling { try solver.enableGPUProfiling(true, detailed: true) }
+            var stages: [String: Double] = [:]
+            var phases = SIMD4<Double>.zero
             let start = ContinuousClock.now
             var steps = 0
             var lastReport = 0.0
             while solver.time < until {
                 // `--trace [steps]`: batches of that many steps (16), each printed.
                 let batch =
-                    args.contains("--trace")
+                    args.contains("--trace") || profiling
                     ? solver.advance(steps: value("trace").flatMap(Int.init) ?? 16, timeLimit: until)
                     : solver.advance(until: until)
+                if let profile = solver.lastBatchGPUProfile, profiling {
+                    for (name, seconds) in profile.stages { stages[name, default: 0] += seconds }
+                    phases += SIMD4(profile.airS, profile.mechanicsS, profile.couplingS, profile.observationS)
+                }
+                // Where the refined air lies, every half second: each level's blocks by height.
+                if profiling, !solver.refinementPools.isEmpty,
+                    Int(solver.time / 0.5)
+                        > Int((solver.time - batch.lastTimeStep * Double(batch.steps)) / 0.5)
+                {
+                    let block = Double(dx) * 4
+                    for (level, row) in solver.refinedBlocksByHeight().enumerated() {
+                        let height = block / pow(Double(configuration.refinement), Double(level))
+                        let total = row.reduce(0, +)
+                        let bands = row.enumerated().filter { $0.element > 0 }.map {
+                            String(format: "%.0f m %d", Double($0.offset) * height, $0.element)
+                        }
+                        print(
+                            String(
+                                format: "  t %.2f s, level %d: %d blocks of %.0f m; by height: ", solver.time,
+                                level + 1, total, height) + bands.joined(separator: ", "))
+                    }
+                }
                 steps += batch.steps
                 // No steps: within the solver's tolerance of the end.
                 guard batch.steps > 0 else { break }
@@ -214,6 +255,19 @@ enum DistrictComparison {
             }
             let wall = DistrictBenchmark.seconds(start)
             print(String(format: "Ran to %.3f s in %d steps, %.0f s", solver.time, steps, wall))
+            if profiling {
+                let total = stages.values.reduce(0, +)
+                print(
+                    String(
+                        format:
+                            "GPU s: air %.1f, mechanics %.1f, coupling %.1f, observation %.1f; stages %.1f",
+                        phases.x, phases.y, phases.z, phases.w, total))
+                for (name, seconds) in stages.sorted(by: { $0.value > $1.value }) {
+                    print(
+                        "  " + name.padding(toLength: 28, withPad: " ", startingAt: 0)
+                            + String(format: " %8.2f s  %5.1f%%", seconds, 100 * seconds / max(total, 1e-12)))
+                }
+            }
             for (level, pool) in solver.refinementPools.enumerated() {
                 print("Refined level \(level + 1): \(pool)")
             }

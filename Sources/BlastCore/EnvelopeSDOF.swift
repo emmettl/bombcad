@@ -94,7 +94,10 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
         }
 
         /// The largest principal stress at deflection `x` either way, Pa.
-        public func stress(at x: Double) -> Double {
+        public func stress(at x: Double) -> Double { Self.stress(stress, at: x) }
+
+        /// The same on the (deflection, stress) points `stress`.
+        static func stress(_ stress: [SIMD2<Double>], at x: Double) -> Double {
             let x = abs(x)
             guard x > stress[0].x else { return stress[0].y * x / stress[0].x }
             for (a, b) in zip(stress, stress.dropFirst()) where x <= b.x {
@@ -175,6 +178,15 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
     public func response(pressures: [Double], step: Double, tail: Double = 3, watch: Double? = nil)
         -> SDOFResponse
     {
+        if let memo = SDOFResponseMemo.active {
+            return memo.response(
+                SDOFResponseMemo.Key(system: self, pressures: pressures, step: step, tail: tail, watch: watch)
+            ) { integrate(pressures: pressures, step: step, tail: tail, watch: watch) }
+        }
+        return integrate(pressures: pressures, step: step, tail: tail, watch: watch)
+    }
+
+    func integrate(pressures: [Double], step: Double, tail: Double, watch: Double?) -> SDOFResponse {
         precondition(step > 0 && tail >= 0)
         let period = period
         // Velocity Verlet is stable below T/π; T/200 keeps the closed-form cases in the tests
@@ -208,8 +220,15 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
         var broken = false
         var cracked = false  // a laminated pane's glass, still held on its interlayer
         var fatigue = 0.0  // ∫ (σ/S)ⁿ dt so far, s
+        // Read once: the loop below takes tens of thousands of steps, and reading the optional
+        // struct in each copied (retained) its stress table.
+        let isBrittle = brittle != nil
+        let brittleStress = brittle?.stress ?? []
+        let strength = brittle?.strength ?? 0
+        let referenceDuration = brittle?.referenceDuration ?? 0
+        let fatigueExponent = brittle?.fatigueExponent
         func resistance(at x: Double) -> Double {
-            if brittle != nil {
+            if isBrittle {
                 // Elastic on the backbone both ways until it breaks; a cracked laminated pane on
                 // its interlayer's membrane until that tears or pulls out.
                 guard !broken else { return 0 }
@@ -266,14 +285,14 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
                 response.velocityAtLoss = v
                 response.deflectionAtLoss = abs(x)
             }
-            if let brittle, !broken, !cracked {
-                let sigma = brittle.stress(at: x)
+            if isBrittle, !broken, !cracked {
+                let sigma = Brittle.stress(brittleStress, at: x)
                 response.peakStress = max(response.peakStress ?? 0, sigma)
-                if let n = brittle.fatigueExponent {
-                    fatigue += h * pow(sigma / brittle.strength, n)
-                    broken = fatigue >= brittle.referenceDuration
+                if let n = fatigueExponent {
+                    fatigue += h * pow(sigma / strength, n)
+                    broken = fatigue >= referenceDuration
                 } else {
-                    broken = sigma >= brittle.strength
+                    broken = sigma >= strength
                 }
                 if broken, membrane != nil {
                     // Laminated: the glass cracks; the pane holds on its interlayer.
@@ -292,7 +311,7 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
             if !cracked, response.lostResistanceAt == nil, backbone.last!.y == 0, abs(x) >= backbone.last!.x {
                 response.lostResistanceAt = time
                 response.velocityAtLoss = v
-                if brittle != nil {
+                if isBrittle {
                     broken = true
                     response.deflectionAtBreak = abs(x)
                 }
@@ -307,6 +326,68 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
 }
 
 /// Peak, rebound and permanent deflection of an SDOF system, with what a damage level is judged by.
+/// SDOF responses remembered by system and load while `remembering` runs: the same system under
+/// the same load answers alike, so a district's façades under a few distinct loads
+/// (`FacadeLoadSurrogate`'s pulses) are integrated once each. Exact: a response is reused only for
+/// an equal system, load, step, tail and watch.
+public final class SDOFResponseMemo: @unchecked Sendable {
+    struct Key: Hashable {
+        var system: SDOFSystem
+        var pressures: [Double]
+        var step: Double
+        var tail: Double
+        var watch: Double?
+    }
+
+    private static let shardCount = 64
+    private let locks = (0..<SDOFResponseMemo.shardCount).map { _ in NSLock() }
+    private var shards = [[Key: SDOFResponse]](repeating: [:], count: SDOFResponseMemo.shardCount)
+    /// Responses integrated, and found remembered.
+    public private(set) var misses = 0
+    public private(set) var hits = 0
+
+    func response(_ key: Key, _ make: () -> SDOFResponse) -> SDOFResponse {
+        let shard = abs(key.hashValue % Self.shardCount)
+        locks[shard].lock()
+        if let known = shards[shard][key] {
+            locks[shard].unlock()
+            Self.countLock.lock()
+            hits += 1
+            Self.countLock.unlock()
+            return known
+        }
+        locks[shard].unlock()
+        let made = make()
+        locks[shard].lock()
+        shards[shard][key] = made
+        locks[shard].unlock()
+        Self.countLock.lock()
+        misses += 1
+        Self.countLock.unlock()
+        return made
+    }
+
+    private static let countLock = NSLock()
+    private static let key = "BombCAD.SDOFResponseMemo"
+
+    /// The memo `remembering` set on this thread, or on the thread that handed this one its work
+    /// through `concurrently`; nil elsewhere, so concurrent callers never share one.
+    static var active: SDOFResponseMemo? {
+        get { Thread.current.threadDictionary[key] as? SDOFResponseMemo }
+        set { Thread.current.threadDictionary[key] = newValue }
+    }
+
+    /// `body` with every SDOF response it asks for remembered (on this thread, and on the threads
+    /// its `concurrently` loops run on); the memo returned with its result.
+    public static func remembering<T>(_ body: () throws -> T) rethrows -> (T, SDOFResponseMemo) {
+        let memo = SDOFResponseMemo()
+        let before = active
+        active = memo
+        defer { active = before }
+        return (try body(), memo)
+    }
+}
+
 public struct SDOFResponse: Codable, Hashable, Sendable {
     /// Deflection at the end of the backbone's elastic segment, m.
     public var yieldDeflection: Double

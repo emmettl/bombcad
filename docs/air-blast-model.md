@@ -773,8 +773,9 @@ So most of the loss is in reading the cell, not in the incident wave.
 **By cells per charge length.** The cell read's fraction of Kingery–Bulmash's reflected peak
 depends on the scaled distance Z and on N = W^(1/3)/Δx, the cells across the charge's scaled
 length. At Z = 1, 100 kg on 0.25 m cells (N = 18.6) reads 40%, and 1 kg on 0.05 m cells (N = 20)
-38%. Uniform cells; the reflected impulse is within 6% beyond 1.5 m/kg^(1/3) on 0.25 m cells for
-100 kg (validation):
+38%. Uniform cells; on the same runs the reflected impulse is 7–18% high from 1.5 m/kg^(1/3) out
+on 0.25 m cells for 100 kg (within 6% on the ideal gas and the balloon start; see
+[validation](validation.md#the-mapped-start-18-october)):
 
 | Z (m/kg^(1/3)) | N = 9.3 | N = 18.6 | N = 20 | N = 37 | N = 50 |
 |---|---|---|---|---|---|
@@ -799,8 +800,12 @@ cell it reads, at any level.
   (from 15–74%); close in, 48–61% on 0.05 m (from 17–38%) and 82–96% on 0.02 m (from 36–69%).
 - Impulse overshoots close in: 113–131% on 0.05 m and 119–143% on 0.02 m, from 61–103%. While the
   pressure at a wall rises, the cell beside it keeps a mean speed towards it, and the two-shock
-  read counts that speed as gas brought to rest for the whole positive phase. It does not shrink
-  as the cells do.
+  read counts that speed as gas brought to rest. It does not shrink as the cells do. The surplus
+  comes at the peak, not in the tail: on 0.02 m cells it is all there within 0.05–0.1 ms of the
+  arrival (+520 of +500 Pa s at Z 0.5, +83 of +91 at Z 1; `closeair --history`), so the read's spike
+  is too broad, not the wall cell's pressure held too long. A peak taken from the read at the wall
+  and an impulse from the cell beside it would come within 82–96% and 84–103% close in, but only
+  the gauges would have it: glass, envelope components and injury read their own surfaces.
 - Tyndall's test 1 (0.25 m air refined twice): the front's reflected peak goes from 25.1 to
   26.8 kPa against the measured 34.8, and its impulse from 140 to 150 kPa ms against 137. Its gap
   is the incident wave: the free field reads 9.8 kPa against the measured 16.6, and the front
