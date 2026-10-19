@@ -3138,23 +3138,28 @@ static inline float3 footingUnrotate(float4 q, float3 v) {
     return footingRotate(float4(-q.xyz, q.w), v);
 }
 
-// A point of a body tied to a footing: it started at `rest`, is now at `position` and moves at
+// A point of a body tied to a footing: it started at `rest`, has moved by `moved` and moves at
 // `velocity`. The connection acts across the footing's top as it does across the ground
 // (`anchorTraction`), in the footing's frame, which moves and turns with it. Returns the force on
 // the point, and writes the footing's reaction and its moment about the footing's centre to
-// `link`. `state` and `settlement` are as `anchorTraction`'s.
-static inline float3 footingJoint(thread float4 &state, thread float &settlement, float3 rest, float3 position,
+// `link`. `state` and `settlement` are as `anchorTraction`'s. The point's place relative to the
+// footing is worked out from displacements alone, never from positions: a scene's positions are
+// tens of metres, rounded to microns, and the joint's stiffness (E/h) turned that rounding into a
+// fresh traction of about a megapascal every step, which kept the body chattering at rest.
+static inline float3 footingJoint(thread float4 &state, thread float &settlement, float3 rest, float3 moved,
                                   float3 velocity, float area, float damper, AnchorLaw law, FootingConstants c,
                                   FootingState s, device float4 *link) {
-    float3 centre = c.rest.xyz + s.centre.xyz;
-    float3 arm = footingRotate(s.rotation, rest - c.rest.xyz);
-    float3 held = centre + arm;
+    // The point's arm from the footing's centre at rest, and how the footing's turning has moved it.
+    float3 a = rest - c.rest.xyz;
+    float3 t = 2.0f * cross(s.rotation.xyz, a);
+    float3 turned = s.rotation.w * t + cross(s.rotation.xyz, t);
+    float3 arm = a + turned;
     float3 heldVelocity = s.velocity.xyz + cross(s.spin.xyz, arm);
-    float3 relative = footingUnrotate(s.rotation, position - held);
+    float3 relative = footingUnrotate(s.rotation, moved - s.centre.xyz - turned);
     float rise = footingUnrotate(s.rotation, velocity - heldVelocity).z;
     float3 force = footingRotate(s.rotation, -area * anchorTraction(state, settlement, relative, rise, damper, law));
     link[0] = float4(-force, 0.0f);
-    link[1] = float4(cross(held - centre, -force), 0.0f);
+    link[1] = float4(cross(arm, -force), 0.0f);
     return force;
 }
 
@@ -3167,7 +3172,7 @@ float3 footingAnchorForce(device float4 *anchors, uint index, StructureNode node
     float4 state = float4(stored.yzw, anchors[3 * index + 1].w);
     float settlement = anchors[3 * index + 2].x;
     float damper = 2.0f * u.contactDamping * sqrt(law.kn * node.mass / area);
-    float3 force = footingJoint(state, settlement, rest, rest + float3(node.displacement), float3(node.velocity),
+    float3 force = footingJoint(state, settlement, rest, float3(node.displacement), float3(node.velocity),
                                 area, damper, law, c, s, links + 2 * index);
     anchors[3 * index] = float4(area, state.xyz);
     anchors[3 * index + 1] = float4(force, state.w);
@@ -3433,6 +3438,7 @@ struct CouplingUniforms {
     uint overlapUnits;  // 0: elements counted as points; else each sample box by its overlap, in these units
     uint maskHysteresis;  // 1: a cell turns solid an eighth above `threshold` and opens an eighth below
     uint keepsAir;  // 1: cells marked in `keptAir` (beside stationary envelopes' recorded faces) stay air
+    uint holdsBoxes;  // 1: freestanding objects' cells (`boxMask`) stay solid with their own wall velocities
 };
 
 // Decode a compact slot for remasking/exchange, or the historical dense-region coordinate.
@@ -3636,6 +3642,7 @@ kernel void remaskPrepare(device uchar *mask [[buffer(0)]],
                           device float *wallVelocity [[buffer(5)]],
                           const device uint *couplingTiles [[buffer(6)]],
                           const device uchar *keptAir [[buffer(7)]],
+                          const device uchar *boxMask [[buffer(8)]],
                           uint3 tid [[thread_position_in_grid]]) {
     int3 cell = couplingWorldCell(tid, u, couplingTiles);
     if (any(cell < 0)) { return; }
@@ -3650,7 +3657,9 @@ kernel void remaskPrepare(device uchar *mask [[buffer(0)]],
     if (u.keepsAir != 0u && keptAir[index] != 0) {
         count = 0u;
     }
-    bool solid = rigid[index] != 0 || count >= need;
+    // A freestanding object's cell is its own: solid, at the velocity the object gave it.
+    bool box = u.holdsBoxes != 0u && boxMask[index] != 0;
+    bool solid = rigid[index] != 0 || box || count >= need;
 
     // The air sees a solid cell moving at the mean velocity of the elements in it.
     float3 velocity = float3(0.0f);
@@ -3659,9 +3668,11 @@ kernel void remaskPrepare(device uchar *mask [[buffer(0)]],
                         int(occupancy[4 * local + 3]));
         velocity = float3(sum) / (wallSpeedScale * float(count));
     }
-    wallVelocity[(u.couplingMapCount == 0u ? 0u : u.couplingMapCount + 2u) + 3 * local] = velocity.x;
-    wallVelocity[(u.couplingMapCount == 0u ? 0u : u.couplingMapCount + 2u) + 3 * local + 1] = velocity.y;
-    wallVelocity[(u.couplingMapCount == 0u ? 0u : u.couplingMapCount + 2u) + 3 * local + 2] = velocity.z;
+    if (!box) {
+        wallVelocity[(u.couplingMapCount == 0u ? 0u : u.couplingMapCount + 2u) + 3 * local] = velocity.x;
+        wallVelocity[(u.couplingMapCount == 0u ? 0u : u.couplingMapCount + 2u) + 3 * local + 1] = velocity.y;
+        wallVelocity[(u.couplingMapCount == 0u ? 0u : u.couplingMapCount + 2u) + 3 * local + 2] = velocity.z;
+    }
 
     if (wasSolid && !solid) {
         const int3 offsets[6] = {

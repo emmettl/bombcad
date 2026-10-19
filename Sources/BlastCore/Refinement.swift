@@ -19,6 +19,9 @@ final class AirRefinement {
     /// each patch keeping its place, so that a level that never fills it steps as one made at
     /// `capacity` would.
     private(set) var maxPatches: Int
+    /// For tests: the allocations to make before one fails, as when memory runs out part way through
+    /// growing (`grow`).
+    var allocationsBeforeFailure: Int?
     /// The most patches the pool may hold (its memory's worth).
     let capacity: Int
     /// The grid's size in blocks of `patchSize` cells.
@@ -843,6 +846,45 @@ final class AirRefinement {
             memset(new.contents() + old * perPatch, fill, added * perPatch)
             return new
         }
+        // This level's own buffers first: a failure part way leaves some larger than the pool, which
+        // does no harm, as the free stack (last) still holds only the slots there were. The shared
+        // buffers are swapped only after all of them: swapped first, a failure after (which the
+        // solver passes over, keeping the pools as they are) left this level's in the new and its
+        // child's in the old, as the child never adopted them.
+        if added > 0 {
+            tileOfPatch = try regrow(tileOfPatch, 4, fill: 0xFF)
+            patchList = try regrow(patchList, 4)
+            newPatches = try regrow(newPatches, 4)
+            pinned = try regrow(pinned, 4)
+            let block = Self.patchSize * Self.patchSize * Self.patchSize
+            seenMask = try regrow(seenMask, block)
+            fineWall = try regrow(fineWall, cells * 12)
+            halo = try regrow(halo, 512 * state)
+            ghosts = try regrow(ghosts, 4 * side * side * state)
+            ghostKinds = try regrow(ghostKinds, 4 * side * side)
+            fineFlux = try regrow(fineFlux, 6 * side * side * 5 * 4)
+            fineImpulse = try regrow(fineImpulse, cells * 4)
+            impulseBase = try regrow(impulseBase, block * 4)
+            coarseFlux = try regrow(coarseFlux, 6 * Self.patchSize * Self.patchSize * 5 * 4)
+            fine[1] = try regrow(fine[1], cells * state)
+            let pair = species ? 8 : 0
+            fineSpecies[0] = try regrow(fineSpecies[0], cells * pair)
+            fineSpecies[1] = try regrow(fineSpecies[1], cells * pair)
+            ghostSpecies = try regrow(ghostSpecies, 4 * side * side * pair)
+            fineSpeciesFlux = try regrow(fineSpeciesFlux, 6 * side * side * pair)
+            coarseSpeciesFlux = try regrow(coarseSpeciesFlux, 6 * Self.patchSize * Self.patchSize * pair)
+            if let buffer = fineCut { fineCut = try regrow(buffer, cells * 32) }
+            if let buffer = fineDefects { fineDefects = try regrow(buffer, cells * 32) }
+            if let buffer = patchCut { patchCut = try regrow(buffer, 4) }
+            if let buffer = passedUp { passedUp = try regrow(buffer, side * side * 32) }
+            if let buffer = combinedBodyOccupancy { combinedBodyOccupancy = try regrow(buffer, cells * 16) }
+            if let buffer = experimentalBoxImpulse {
+                experimentalBoxImpulse = try regrow(buffer, cells * 6 * 4)
+            }
+        }
+        // The last allocations, the free stack and the shared buffers, before anything that holds
+        // the pool's size (the shared buffers, the stack, the counters) changes.
+        let stackBuffer = added > 0 ? try makeBuffer(patches * 4, "free patches") : nil
         if parent == nil {
             // The shared buffers: this level's cells, then its child's. All three are made before
             // any is swapped, so that the child's part never lies in two places.
@@ -871,44 +913,15 @@ final class AirRefinement {
             }
             (fineMask, fineOccupancy, fine[0]) = (shared[0].1, shared[1].1, shared[2].1)
         }
-        guard added > 0 else { return }
-        // Each of this level's own buffers; a failure part way leaves some larger than the pool,
-        // which does no harm, as the free stack (last) still holds only the slots there were.
-        tileOfPatch = try regrow(tileOfPatch, 4, fill: 0xFF)
-        patchList = try regrow(patchList, 4)
-        newPatches = try regrow(newPatches, 4)
-        pinned = try regrow(pinned, 4)
-        let block = Self.patchSize * Self.patchSize * Self.patchSize
-        seenMask = try regrow(seenMask, block)
-        fineWall = try regrow(fineWall, cells * 12)
-        halo = try regrow(halo, 512 * state)
-        ghosts = try regrow(ghosts, 4 * side * side * state)
-        ghostKinds = try regrow(ghostKinds, 4 * side * side)
-        fineFlux = try regrow(fineFlux, 6 * side * side * 5 * 4)
-        fineImpulse = try regrow(fineImpulse, cells * 4)
-        impulseBase = try regrow(impulseBase, block * 4)
-        coarseFlux = try regrow(coarseFlux, 6 * Self.patchSize * Self.patchSize * 5 * 4)
-        fine[1] = try regrow(fine[1], cells * state)
-        let pair = species ? 8 : 0
-        fineSpecies[0] = try regrow(fineSpecies[0], cells * pair)
-        fineSpecies[1] = try regrow(fineSpecies[1], cells * pair)
-        ghostSpecies = try regrow(ghostSpecies, 4 * side * side * pair)
-        fineSpeciesFlux = try regrow(fineSpeciesFlux, 6 * side * side * pair)
-        coarseSpeciesFlux = try regrow(coarseSpeciesFlux, 6 * Self.patchSize * Self.patchSize * pair)
-        if let buffer = fineCut { fineCut = try regrow(buffer, cells * 32) }
-        if let buffer = fineDefects { fineDefects = try regrow(buffer, cells * 32) }
-        if let buffer = patchCut { patchCut = try regrow(buffer, 4) }
-        if let buffer = passedUp { passedUp = try regrow(buffer, side * side * 32) }
-        if let buffer = combinedBodyOccupancy { combinedBodyOccupancy = try regrow(buffer, cells * 16) }
-        if let buffer = experimentalBoxImpulse { experimentalBoxImpulse = try regrow(buffer, cells * 6 * 4) }
-        let stackBuffer = try makeBuffer(patches * 4, "free patches")
-        let stack = stackBuffer.contents().bindMemory(to: UInt32.self, capacity: patches)
-        for n in 0..<added { stack[n] = UInt32(patches - 1 - n) }
-        memcpy(stackBuffer.contents() + added * 4, freeStack.contents(), old * 4)
-        freeStack = stackBuffer
-        let count = counters.contents().bindMemory(to: Int32.self, capacity: 8)
-        count[0] += Int32(added)
-        count[3] += Int32(added)
+        if let stackBuffer {
+            let stack = stackBuffer.contents().bindMemory(to: UInt32.self, capacity: patches)
+            for n in 0..<added { stack[n] = UInt32(patches - 1 - n) }
+            memcpy(stackBuffer.contents() + added * 4, freeStack.contents(), old * 4)
+            freeStack = stackBuffer
+            let count = counters.contents().bindMemory(to: Int32.self, capacity: 8)
+            count[0] += Int32(added)
+            count[3] += Int32(added)
+        }
         maxPatches = patches
     }
 
@@ -923,6 +936,12 @@ final class AirRefinement {
     }
 
     private func makeBuffer(_ length: Int, _ label: String) throws -> MTLBuffer {
+        if let left = allocationsBeforeFailure {
+            allocationsBeforeFailure = left > 1 ? left - 1 : nil
+            if left <= 1 {
+                throw BlastError.allocationFailed("\(label) (\(length) bytes, as the test asked)")
+            }
+        }
         guard let buffer = device.makeBuffer(length: max(length, 16), options: .storageModeShared) else {
             throw BlastError.allocationFailed("\(label) (\(length) bytes)")
         }
@@ -1969,14 +1988,20 @@ struct TerrainUniforms {
     var cutSamples: UInt32 = 8
 }
 
-/// `PaneLookup` in Refine.metal.
+/// `PaneLookup` in Refine.metal: 32 bytes, as the kernels read its (cell, pane) entries from the
+/// byte after it. Its padding is three floats, not a `SIMD3<Float>`, whose 16-byte alignment made
+/// it 48 in Swift: the kernels then took two zeros for entries and missed the last two, so the two
+/// highest pane cells never opened on the fine grid and pane 0 breaking opened coarse cell
+/// (0, 0, 0)'s fine cells.
 struct PaneLookup {
     var count: UInt32 = 0
     var nx: UInt32 = 0
     var ny: UInt32 = 0
     var nz: UInt32 = 0
     var coarseDx: Float = 0
-    var pad = SIMD3<Float>.zero
+    var pad0: Float = 0
+    var pad1: Float = 0
+    var pad2: Float = 0
 }
 
 extension AirRefinement {
