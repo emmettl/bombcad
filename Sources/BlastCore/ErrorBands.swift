@@ -498,10 +498,10 @@ public enum ValidationTables {
             quote: "| Contest slab, peak (mm) | 109 | 113 | 106, 12% | 89–126 |"),
         Spread(
             id: "wuPeak", coefficient: 0.04,
-            quote: "| Wu S8, peak (mm) | 18.0 | 14.4 | 14.3, 4% | 13.6–15.2 |"),
+            quote: "| Wu S8, peak (mm) | 18.0 | 16.2 | 16.1, 4% | 15.3–17.1 |"),
         Spread(
-            id: "closeInGauge", coefficient: 0.08,
-            quote: "| Chiquito S1–S3, gauge at 1 m (MPa) | 2.5 | 1.48 | 1.48, 8% | 1.32–1.66 |"),
+            id: "closeInGauge", coefficient: 0.07,
+            quote: "| Chiquito S1–S3, gauge at 1 m (MPa) | 2.5 | 1.45 | 1.45, 7% | 1.29–1.61 |"),
         Spread(
             id: "wallPeak", coefficient: 0.02,
             quote: "| Kingery–Bulmash wall, reflected peak (kPa) | 1,060 (K–B) | 677 | 678, 2% | 655–696 |"),

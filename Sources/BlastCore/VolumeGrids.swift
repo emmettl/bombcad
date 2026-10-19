@@ -25,7 +25,7 @@ extension BlastSolver {
         shockThreshold: Float = volumeThresholds.shock
     ) -> [OpenVDBWriter.Grid] {
         let cells = grid.cellCount
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: cells)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: cells)
         let dimensions = SIMD3(grid.nx, grid.ny, grid.nz)
         let h = Double(grid.cellSize)
         let origin = SIMD3(repeating: h / 2)

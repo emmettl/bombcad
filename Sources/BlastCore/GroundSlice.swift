@@ -104,7 +104,7 @@ extension BlastSolver {
         let gamma = configuration.gamma
         let airModel = configuration.airModel
         let ambient = configuration.ambientPressure
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         let terrain = terrainSurface
         let grid = grid
         withState { cells in
