@@ -290,6 +290,8 @@ func applyChosenAir(_ configuration: inout SolverConfiguration) {
     configuration.afterburning = burning
     configuration.airModel = chosenGas()
     configuration.openFaces = chosenFaces()
+    // `--wall-read`: gauges beside a wall read the pressure at the wall (`gaugesReadWallPressure`).
+    if flag("wall-read") { configuration.gaugesReadWallPressure = true }
 }
 
 /// `--fracture-rate 0.5`: how the fracture energy follows the tensile strain-rate law, and the
@@ -1347,23 +1349,27 @@ func runValidation() throws {
     for cellSize in cellSizes {
         var column: [(peak: Double, impulse: Double)] = []
         for point in points {
-            var wall = ScenarioPreset.openGround.scenario
-            // The charge `--mass` chose, at the stand-offs its scaled distances give.
-            wall.charge.mass = scenario.charge.mass
-            wall.reflectiveFaces = [.zMin, .xMax]
-            wall.charge.position = SIMD3(64 - Float(point.range(mass: mass)), 32, 0)
-            wall.gauges = [Gauge("Wall", at: SIMD3(63.99, 32, 0.05))]
-            let solver = try BlastSolver(device: device, scenario: wall, cellSize: cellSize)
-            configure(solver)
-            try solver.load(wall)
-            solver.advance(until: 0.1)
-            let cell = solver.nearestFluidCell(to: wall.gauges[0].position)
-            column.append(
-                (
+            // Each solver let go before the next is made: at 0.125 m one holds 67 million cells,
+            // about 6.7 GB, and eight left to the end of the loop took the Studio into swap.
+            let value = try autoreleasepool { () throws -> (peak: Double, impulse: Double) in
+                var wall = ScenarioPreset.openGround.scenario
+                // The charge `--mass` chose, at the stand-offs its scaled distances give.
+                wall.charge.mass = scenario.charge.mass
+                wall.reflectiveFaces = [.zMin, .xMax]
+                wall.charge.position = SIMD3(64 - Float(point.range(mass: mass)), 32, 0)
+                wall.gauges = [Gauge("Wall", at: SIMD3(63.99, 32, 0.05))]
+                let solver = try BlastSolver(device: device, scenario: wall, cellSize: cellSize)
+                configure(solver)
+                try solver.load(wall)
+                solver.advance(until: 0.1)
+                let cell = solver.nearestFluidCell(to: wall.gauges[0].position)
+                return (
                     Double((solver.gaugeHistories[0].map(\.pressure).max() ?? 0) - wall.atmosphere.pressure)
                         / 1000,
                     Double(solver.impulse(cell.i, cell.j, cell.k))
-                ))
+                )
+            }
+            column.append(value)
         }
         reflected.append(column)
     }
@@ -4620,7 +4626,9 @@ func runDialPack() throws {
     let radius = cbrt(3 * mass / (4 * .pi * 1600))
     var scenario = Scenario(
         name: "Dial Pack", domainSize: SIMD3(side, side, side / 2), boxes: [],
-        charge: Charge(mass: mass, position: SIMD3(side / 2, side / 2, radius)))
+        // With `--mapped`, on the ground as a surface burst, so that it can be mapped: one radius up
+        // it is neither on the ground nor three cells clear of it.
+        charge: Charge(mass: mass, position: SIMD3(side / 2, side / 2, flag("mapped") ? 0 : radius)))
     scenario.gauges = []
     // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
     var configuration = SolverConfiguration.recommended.balloonStart
@@ -4632,6 +4640,8 @@ func runDialPack() throws {
     configuration.gravity = chosenGravity()
     configuration.mixing = chosenMixing()
     configuration.afterburnLimit = chosenBurnLimit()
+    // `--mapped`: the mapped start, its fireball before the grid's clock from the one-dimensional solution.
+    if flag("mapped") { configuration.mappedCharge = true }
     let solver = try BlastSolver(
         device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
     var volume = ThermalSpec()
@@ -4681,30 +4691,34 @@ func runDialPack() throws {
     let started = ContinuousClock.now
     // With gravity, the gas the cloud's rise would be handed at 1 s, everything at least 500 K.
     var early: CloudHandOver?
-    for target in frameTimes {
-        while solver.time < target - 1e-9 {
+    // Before a mapped start's clock, the fireball from the one-dimensional solution.
+    var oneD: [Double: FireballFrame] = [:]
+    for frame in solver.earlyFireballFrames(for: volume, at: frameTimes) { oneD[frame.time] = frame }
+    for target in frameTimes where oneD[target] != nil || target > solver.time - 1e-9 {
+        while oneD[target] == nil, solver.time < target - 1e-9 {
             let result = solver.advance(steps: 256, timeLimit: target)
             if result.steps == 0 || !result.isStable { break }
         }
         if configuration.gravity != nil, early == nil, solver.time >= 1 - 1e-6 {
             early = solver.cloudHandOver(hotterThan: 500)
         }
-        let frame = solver.fireball(for: volume)
+        let frame = oneD[target] ?? solver.fireball(for: volume)
+        let now = oneD[target]?.time ?? solver.time
         var values: [Float] = []
         for model in models { values += model.exposure.irradiance(frame, at: points) }
         let power = models[0].exposure.radiatedPower(frame)
         if let last {
             for n in values.indices {
-                fluence[n] += 0.5 * Double(last.values[n] + values[n]) * (solver.time - last.time)
+                fluence[n] += 0.5 * Double(last.values[n] + values[n]) * (now - last.time)
             }
         }
-        if let lastPower { radiated += 0.5 * (lastPower.power + power) * (solver.time - lastPower.time) }
+        if let lastPower { radiated += 0.5 * (lastPower.power + power) * (now - lastPower.time) }
         for n in values.indices { peak[n] = max(peak[n], values[n]) }
-        last = (solver.time, values)
-        lastPower = (solver.time, power)
+        last = (now, values)
+        lastPower = (now, power)
         lines.append(
             [
-                String(format: "%.5f", solver.time), String(format: "%.2f", 2 * frame.radius),
+                String(format: "%.5f", now), String(format: "%.2f", 2 * frame.radius),
                 String(format: "%.0f", frame.temperature), String(format: "%.0f", frame.hottest),
                 String(format: "%.1f", frame.centre.z), String(format: "%.4g", power),
                 String(format: "%.4g", solver.radiatedEnergy),
@@ -5643,6 +5657,7 @@ do {
     case "hubroof": try runHubRoof(device: device)
     case "facade": try runFacade(device: device)
     case "walloffset": try runWallOffset(device: device)
+    case "wallpeak": try runWallPeak(device: device)
     case "house": try runHouse(device: device)
     case "hillside": try runHillside(device: device)
     case "lacroix": try runLacroix(device: device)
@@ -5664,6 +5679,7 @@ do {
     case "structure": try runStructure()
     case "validate": try runValidation()
     case "products": try runProducts()
+    case "gauging": try runGauging(device: device, cooling: try chosenCooling())
     case "twocharges": try runTwoCharges(solver: { try makeAirSolver($0, cellSize: $1) })
     case "mapped-cost":
         // The fine one-dimensional start's own time (CPU), by charge and cell: `--masses 1,10,100

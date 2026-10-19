@@ -8,6 +8,14 @@ import simd
 /// Envelope buildings whose glazing breaks in the air (`EnvelopeVenting`).
 @Suite("Envelope venting", .serialized, .gpuThreads)
 struct EnvelopeVentingTests {
+    @Test("The fine grid's pane lookup is led by a header of 32 bytes, four entries, as the kernels read it")
+    func paneLookupLayout() {
+        // `PaneLookup` in Refine.metal is 32 bytes, and the kernels read its (cell, pane) entries
+        // from the byte after it; at 48 bytes in Swift the last two pane cells were never found.
+        #expect(MemoryLayout<PaneLookup>.size == 32)
+        #expect(MemoryLayout<PaneLookup>.stride == 4 * MemoryLayout<SIMD2<UInt32>>.stride)
+    }
+
     /// The damage references' building: four walls 0.2 m thick and a roof over a 6 m square, with a
     /// window 1.5 by 1.25 m in the south wall glazed by `glass` (a pane in a cut opening), or with
     /// the glass set in the wall without an opening.

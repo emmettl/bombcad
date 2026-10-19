@@ -133,6 +133,33 @@ struct MappedChargeTests {
         #expect(solver.peakOverpressure(68, 64, 0) > 1e6)
     }
 
+    @Test("Before the grid's clock the fireball comes from the one-dimensional solution, from detonation on")
+    func earlyFrames() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
+        var configuration = SolverConfiguration.recommended
+        configuration.mappedCharge = true
+        let scenario = ScenarioPreset.openGround.scenario
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 0.5, configuration: configuration)
+        let start = solver.time
+        #expect(start > 0.002)
+        let spec = ThermalSpec()
+        let frames = solver.earlyFireballFrames(
+            for: spec, at: [0, 0.0005, 0.001, 0.002, start, start + 0.001])
+        // Only the times after detonation and before the clock.
+        #expect(frames.map(\.time) == [0.0005, 0.001, 0.002])
+        for frame in frames {
+            #expect(frame.volume > 0 && frame.temperature >= spec.luminousTemperature, "\(frame.time) s")
+            let cells = try #require(frame.cells)
+            #expect(cells.fills.contains { $0 > 0 })
+            // Mirrored by the ground: the luminous gas above it, round the charge.
+            #expect(frame.centre.z > 0 && abs(frame.centre.x - scenario.charge.position.x) < 0.5)
+        }
+        // The fireball grows.
+        #expect(
+            frames[0].volume < frames[2].volume, "\(frames.map { ($0.time, $0.radius, $0.temperature) })")
+    }
+
     @Test("A charge on a mirror plane, or in a corner of two, is mapped as mirrored by each")
     func mirrorPlanes() throws {
         let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")

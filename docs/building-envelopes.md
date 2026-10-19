@@ -394,7 +394,8 @@ Envelopes** for a group of them, turns an attached rigid import into a building 
   kept. Element identities, materials and the link to the source are not kept; Undo restores the
   import.
 
-Limits are the envelopes': 2,048 solids and 256 openings a building, 2,048 fragments in a scene.
+Limits are the envelopes': 2,048 solids and 256 openings a building, and 262,144 rigid blocks
+across a scene.
 
 **Checked against the same building as rigid obstacles** (`EnvelopeImportStudyTests`, run with
 `BOMBCAD_ENVELOPE_STUDY=<folder>`; 10 kg 8 m in front, 80 ms, surfaces recorded on both, the
@@ -855,9 +856,9 @@ is. A close-in charge loads a slab's middle most:
 
 The rows under measured loads do not use the recorder and are unchanged.
 
-**Under the measured loads the measured peak lies between the bounds** on all eight: the simply
-supported strip, the right edges for the simulator's pin and roller, reads 0.97–2.59 of the
-measured peak, the safe side; the fixed one a tenth or less. The strip's far-range strengths are
+**Under the measured loads the measured peak lies between the bounds** on seven of the eight: the
+simply supported strip, the right edges for the simulator's pin and roller, reads 0.97–2.59 of the
+measured peak, the safe side except HSCV3's 0.97; the fixed one a sixth or less. The strip's far-range strengths are
 elastic–perfectly plastic, where the contest slab's bars harden by 64% beyond yield; the record's
 own SBEDS figure for the contest slab is 239 mm, as far over. **Under the model's own close-in
 loads it reads low, as the detailed model does**: Wu's slabs at 0.45–1.42 simply supported, the
@@ -1056,8 +1057,8 @@ what its frame holds). Annealed stays the default. `LaminatedGlass.facade` is 6 
 - **It tears** when the membrane's average strain, (8/3)(x/a)², reaches the cracked laminate's
   failure strain. For PVB this is Hooper's: about 150% for 1.52 and 2.28 mm, 20% for 0.76 mm,
   10% for 0.38 mm. For ionoplast it is 120%.
-- **It pulls out** when the tension at the edge, building up to T by 6.7% of the span (Hooper's
-  cracked-laminate yield strain), passes what the frame holds. Structural silicone holds 1.1 MPa
+- **It pulls out** when the tension at the edge, building up to T by a deflection of 6.7% of the span
+  (where the membrane strain reaches 1.2%, Hooper's cracked-laminate yield strain), passes what the frame holds. Structural silicone holds 1.1 MPa
   over its bite, the strength Hooper recommends designing to; a deep clamp (nil) holds.
 - **Hazard.** A pane cracked and held is GSA's condition 2 (ASTM F1642: no hazard). A torn or
   pulled-out pane is thrown whole, as an annealed one is.

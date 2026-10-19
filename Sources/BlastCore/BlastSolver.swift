@@ -32,7 +32,9 @@ public final class BlastSolver {
     private var exposurePlane: ExposurePlane?
     /// The one-dimensional solution a charge was mapped from, where it was and how far it reached,
     /// for an exposure plane set up after it (`configureExposurePlane`); nil otherwise.
-    var mappedStart: [(blast: SphericalBlast, centre: SIMD3<Float>, radius: Float)] = []
+    var mappedStart:
+        [(blast: SphericalBlast, centre: SIMD3<Float>, radius: Float, charge: Charge, mirrors: Int)] =
+            []
     /// How far out each mapped charge was laid from its one-dimensional solution, m; empty for the
     /// balloon.
     public var mappedRadii: [Float] { mappedStart.map(\.radius) }
@@ -3610,6 +3612,7 @@ public final class BlastSolver {
         uniforms.airModel = configuration.airModel.rawValue
         refinement?.configure(&uniforms, threshold: configuration.refinementThreshold)
         uniforms.refineMargin = UInt32(max(configuration.refinementMargin, 0))
+        uniforms.gaugeWalls = configuration.gaugesReadWallPressure ? 1 : 0
         if let finerRefinement {
             uniforms.childTileNx = UInt32(finerRefinement.tileDims.x)
             uniforms.childTileNy = UInt32(finerRefinement.tileDims.y)

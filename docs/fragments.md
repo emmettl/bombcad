@@ -231,7 +231,7 @@ are in [Blast hazards](hazards.md).
   (`count`) and the distance settles.
 
 **An example**: 100 kg of TNT in a 150 kg steel cylinder (12 mm wall, 250 mm bore, its axis
-level along x), 1 m above open ground. Mott gives 18,400 fragments of a mean 8 g, launched at
+level along x), 1 m above open ground. Mott gives 18,800 fragments of a mean 8 g, launched at
 1,725 m/s. With 200,000 flown, 44% of the landings are hazardous and the furthest hazardous one
 lands 1,341 m out. The hazardous fragment distance is 208 m side-on to the casing, where its
 spray goes, in flight; on the ground alone, 50 m. DoD's default for 100 kg in the open, a
@@ -407,8 +407,8 @@ summary printed counts them (`struck targets: … stopped, … spalled, … thro
 - In the app, frames fall at the ends of batches, just past each millisecond, so its fragments vary
   a little from run to run (above).
 - A kept run keeps the fragments' impacts, not their paths.
-- The hazard distance falls short of DoD's test-derived distances for two items by a sixth to a
-  half ([above](#against-dods-distances)); no ricochet, no fragments stopped by people or
+- The hazard distance falls short of DoD's test-derived distances for two items by up to two-fifths
+  ([above](#against-dods-distances)); no ricochet, no fragments stopped by people or
   vegetation, and the spray of a plain cylinder, without nose or base.
 
 ## Sources
