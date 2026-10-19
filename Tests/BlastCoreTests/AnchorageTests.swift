@@ -64,6 +64,16 @@ struct AnchorageTests {
         return total / mass
     }
 
+    @Test("Friction that falls with pressure takes an exponent below 1, so that its force still grows")
+    func frictionExponentBound() throws {
+        var law = Anchorage.neoprenePad
+        try law.validate()
+        for exponent in [1, 1.5] as [Float] {
+            law.frictionExponent = exponent
+            #expect(throws: (any Error).self) { try law.validate() }
+        }
+    }
+
     @Test("A clamped base is unchanged, and a connected one is tied rather than clamped")
     func clampedOrTied() throws {
         let clamped = try block(SIMD3(1, 1, 1), anchorage: nil)
