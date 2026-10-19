@@ -148,16 +148,16 @@ out ([Beirut, 2020](beirut-2020.md)); the app fetches nothing.
   faces are kept 4 m/kg^(1/3) from them: the sides beyond the outermost building (unless turned
   off), the top above the charge and at least half that above the highest roof or ground
   ([open faces](air-blast-model.md#open-faces-near-a-structure)). **Air** is uniform cells, or
-  a coarser base refined twice, to a quarter of its cells, where the shock is (at a jump of 0.005
-  of the pressure, as Beirut's refined runs). The advisor's choice is the finest of each whose run
-  fits this Mac's memory with the components' histories, by its cost model, and takes the refined
-  air where that is both finer at the façades and no dearer; **Cells** sets a size instead (the
-  refined air's base). The refined air takes the ground as a staircase of whole cells for now:
-  with the ground cut through the cells, the finest level rang ahead of the shock over Beirut
-  (about ±0.5–0.9 kPa, 300 ms early), so that arrival times read early and some façades' windows
-  opened before the load. On the staircase the arrivals are within 4% of Kingery–Bulmash and the
-  façade loads, glass and stone those of 3 m cells, at 3.2 times their cost
-  ([Beirut's page](beirut-2020.md#what-cell-size-the-glass-and-the-damage-need)).
+  a coarser base refined once, to half its cells, where the shock is (at a jump of 0.005 of the
+  pressure) and only near the ground: to the height of all but the tallest 2% of the buildings and
+  four base cells over them, the footprints on the finer cells. The advisor's choice is the finest
+  of each whose run fits this Mac's memory with the components' histories, by its cost model, and
+  takes the refined air where that is both finer at the façades and no dearer; **Cells** sets a size
+  instead (the refined air's base). Over Beirut, 8 m refined so to 4 m gave the glass and the
+  arrivals of 4 m cells in 0.44 of their run time, the façades' peaks 4–12% lower; a tower above
+  the ceiling takes its upper floors' load on the coarse cells. The refined air takes the ground as
+  a staircase of whole cells for now: cut through the cells, a second refined level rang ahead of
+  the shock over Beirut ([Beirut's page](beirut-2020.md#what-cell-size-the-glass-and-the-damage-need)).
 - **Lay Out** places the buildings and shows, before anything is created, how many were placed, the
   air's size and cells, the memory and the time unloaded and as this Mac's runs have gone, and
   the same for the other kind of air.

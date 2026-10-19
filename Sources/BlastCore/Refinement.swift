@@ -2023,5 +2023,7 @@ struct FacadeBandParameters {
     var threshold: Float = 0
     var ambient: Float = 0
     var on: UInt32 = 0
-    var pad: UInt32 = 0
+    /// 1 where the band's bit 2 marks the coarse cells above the refinement's ceiling
+    /// (`SolverConfiguration.refinementCeiling`), never refined; 0 for none.
+    var ceiling: UInt32 = 0
 }

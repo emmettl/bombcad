@@ -153,6 +153,8 @@ struct SimulationSettings: Equatable {
     /// With `sharpShocks`, the jump across a cell that refines it, as a share of its pressure:
     /// lower follows a weakening shock further, at a cost (see docs/large-scenes.md).
     var shockThreshold: Float = 0.1
+    /// With `sharpShocks`, no air refined more than this many metres above the ground; nil for none.
+    var refinementCeiling: Float?
     /// With `sharpShocks`, each refined level takes only the substeps its own waves need
     /// (`SolverConfiguration.refinementOwnSteps`): the advisor turns it on where it pays.
     var adaptiveSubsteps = false
@@ -846,6 +848,7 @@ final class SimulationModel {
                 settings.sharpShocks = run.sharpShocks
                 settings.shockLevels = run.shockLevels ?? 1
                 settings.shockThreshold = run.shockThreshold ?? 0.1
+                settings.refinementCeiling = run.refinementCeiling
                 settings.adaptiveSubsteps = run.adaptiveSubsteps ?? false
                 settings.gravity = run.gravity ?? false
                 settings.terrainCutCells = run.cutsTerrain(over: scenario)
@@ -999,6 +1002,7 @@ final class SimulationModel {
             settings.sharpShocks = run.sharpShocks
             settings.shockLevels = run.shockLevels ?? 1
             settings.shockThreshold = run.shockThreshold ?? 0.1
+            settings.refinementCeiling = run.refinementCeiling
             settings.adaptiveSubsteps = run.adaptiveSubsteps ?? false
             settings.gravity = run.gravity ?? false
             settings.terrainCutCells = run.cutsTerrain(over: document.scenario)
@@ -1210,6 +1214,7 @@ final class SimulationModel {
         settings.sharpShocks = inputs.settings.sharpShocks
         settings.shockLevels = inputs.settings.shockLevels ?? 1
         settings.shockThreshold = inputs.settings.shockThreshold ?? 0.1
+        settings.refinementCeiling = inputs.settings.refinementCeiling
         settings.adaptiveSubsteps = inputs.settings.adaptiveSubsteps ?? false
         settings.gravity = inputs.settings.gravity ?? false
         settings.terrainCutCells = inputs.settings.cutsTerrain(over: inputs.scenario)
@@ -2435,7 +2440,7 @@ final class SimulationModel {
             groundStiffness: settings.softGround ? settings.groundStiffness : nil,
             ground: settings.ground == .rigid ? nil : settings.ground,
             outlineByOverlap: settings.outlineByOverlap, settlesStructures: settings.settlesStructures,
-            mappedStart: settings.mappedStart)
+            mappedStart: settings.mappedStart, refinementCeiling: settings.refinementCeiling)
         solver.configuration.fitRefinementMemory(solver.grid, memory: advisorMemory)
         // A mapped start begins no later than halfway through the run, so that the grid has the rest.
         solver.mappedStartLatest = duration / 2

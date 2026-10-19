@@ -77,16 +77,28 @@ struct NewDistrictTests {
     }
 
     @Test(
-        "Refined air: a base refined twice where the shock is, as Beirut's, priced against the uniform cells")
+        "Refined air: a base refined once where the shock is, under the roofs' ceiling, against the uniform cells"
+    )
     func refined() async throws {
         let model = try model()
         model.airChoice = .refined
         await model.lay()
         let preview = try #require(model.preview, "\(model.message ?? "")")
-        #expect(preview.air.refined && preview.air.finest == preview.air.cellSize / 4)
+        #expect(preview.air.refined && preview.air.finest == preview.air.cellSize / 2)
         let run = try #require(preview.document.runSettings)
         #expect(run.resolution == Resolution(cellSize: preview.air.cellSize)!.rawValue)
-        #expect(run.sharpShocks && run.shockLevels == 2 && run.shockThreshold == 0.005)
+        #expect(run.sharpShocks && run.shockLevels == nil && run.shockThreshold == 0.005)
+        // The ceiling: all but the tallest 2% of the buildings (tagged up to 32 m here) and four
+        // base cells over them.
+        let layout = try #require(model.layout)
+        let ceiling = try #require(run.refinementCeiling)
+        #expect(ceiling == layout.refinementCeiling(radius: 250, cellSize: preview.air.cellSize))
+        #expect(ceiling > 6 + 4 * preview.air.cellSize && ceiling <= 32 + 4 * preview.air.cellSize)
+        // The footprints on the finest cells.
+        #expect(
+            preview.scenario.envelopeSources?.allSatisfy {
+                $0.detail.hasSuffix("cells of \(preview.air.finest) m")
+            } == true)
         // On a staircase of whole cells until the finest level's cut cells stop ringing.
         #expect(run.terrainCutCells == nil)
         #expect(preview.cost.memory + preview.historyBudget <= model.memory)

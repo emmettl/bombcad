@@ -20,8 +20,9 @@ At 0.5 kt on 4 m cells, against the surveys below:
   silos the model's peaks are Denny et al.'s measured third at 160 m and three fifths at 240 m, and at
   Stennett et al.'s six observers the shock arrives within 6% of their times.
 - **Does not: the peaks.** They are 0.68–0.78 of Kingery–Bulmash and still rising on finer cells
-  (0.78–0.83 at 3 m); refinement, on a staircase ground, gives 0.79–0.86 on the line, arrivals
-  within 3%, and the 3 m cells' façade loads and glass, at 3.2 times their cost. The JRC's simulation matches Kingery–Bulmash to 750 m with a charge
+  (0.78–0.83 at 3 m); refinement, on a staircase ground, gives 0.79–0.86 on the line and arrivals
+  within 3%, and refined once under a ceiling over the roofs it gives the 4 m cells' glass at 0.44 of
+  their run time. The JRC's simulation matches Kingery–Bulmash to 750 m with a charge
   tuned to it; this one is not tuned.
 - **Does not: the glass close in, or its total.** The model's façades break together: inside
   1.5 km every side has some pane broken (GEER 0.35–0.84) and inside 1.25 km nearly all are blown
@@ -276,8 +277,24 @@ The 1 km box (2 km square, 320 m top, 0.5 kt) on three grids, uniform cells:
   | Concrete moderate, 0.5–0.75 / 0.75–1 km | 200 / 45 | 195 / 45 | 139 / 11 |
 
   Refined on the staircase, the glass and the stone are the 3 m cells', the concrete more damaged
-  (its peaks are higher), at 3.2 times the cost: refinement does not save a district's run time
-  yet, and File ▸ New District takes it only where it is the cheaper way to finer façades.
+  (its peaks are higher), at 3.2 times the cost. Three quarters of that is the finest level's own
+  sweeps, ghosts and halo (flagging, placing and the recorder under 2%), and its blocks filled the
+  column evenly from the ground to the 320 m top. A ceiling over the ground
+  (`SolverConfiguration.refinementCeiling`: no air refined more than 72 m above it, 40 m for all but
+  the tallest 2% of the buildings and 32 m for the shock's top) with the footprints on the finest
+  cells makes refinement pay; on the same staircase:
+
+  | | 8 m refined once to 4 m, capped | 4 m | 8 m refined twice to 2 m, capped |
+  |---|---|---|---|
+  | Run on the mini | 74 s | 170 s | 645 s (1,429 s uncapped) |
+  | Arrivals, 250–1,075 m | within 2% of the 4 m cells' | | 0.97–1.03 of Kingery–Bulmash |
+  | Façades' median peak, 0.5–0.75 / 0.75–1 / 1–1.25 / 1.25–1.5 km | 24.5, 15.4, 10.4, 8.4 kPa | 27.8, 16.6, 11.2, 8.6 kPa | 28.8, 16.8, 11.0, 8.7 kPa |
+  | Panes broken, 0.75–1 / 1–1.25 / 1.25–1.5 km | 1.00, 0.99, 0.94 | 1.00, 0.99, 0.94 | 1.00, 1.00, 0.97 |
+  | Stone heavy / failed, 0.5–0.75 km | 239 / 7 | 257 / 10 | 249 / 8 |
+
+  Refined once and capped, the glass and the arrivals are the 4 m cells' at 0.44 of their run time,
+  the façades' peaks 4–12% lower and the stone a little less cracked; File ▸ New District now
+  offers that air. A tower above the ceiling takes its upper floors' load on the coarse cells.
 
 ### Structure against the building survey (GEER, 2021)
 
