@@ -23,7 +23,8 @@ func runGauging(device: MTLDevice, cooling: RadiativeCooling?) throws {
     let solver = try BlastSolver(
         device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
     var volume = ThermalSpec()
-    volume.groundSpacing = side
+    // `--ground-spacing m`: receivers on the ground too, as the app has them (2 m), to time the march.
+    volume.groundSpacing = option("ground-spacing").flatMap { Float($0) } ?? side
     // `--hot-air`/`--grey-air`: the gas absorbing as hot air does, or only grey, whatever the default.
     if flag("hot-air") { volume.hotAirAbsorption = true }
     if flag("grey-air") { volume.hotAirAbsorption = false }

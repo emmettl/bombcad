@@ -559,7 +559,8 @@ the products' cooler radiance, three-fifths of the exact intensity (an opaque sh
 round a black core, `blastbench shell-sphere`, comes out exact on 0.25 m voxels; the solution's
 own front 0.65 to 0.86 of exact). The voxels still give the frames' shape, the directions each
 receiver samples, and the picture; the shells are marched on the CPU's cores, as the GPU's march
-knows only voxels.
+knows only voxels: 0.1 s a frame for 3,600 receivers round Dial Pack's fireball at 1.25 ms, where
+its voxels take 0.2 s on the GPU (`blastbench shell-sphere --time-ground 2`).
 
 Against Dial Pack (`blastbench dialpack --mapped`, the charge on the ground so that it can be
 mapped, 4 m cells, to 0.5 s), the intensity toward 1,700 m in cal/sr/s × 10⁷, the 18 October

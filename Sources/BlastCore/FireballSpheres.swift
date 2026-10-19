@@ -124,31 +124,49 @@ struct SphericalMedium: Sendable {
             let sphere = spheres[chord.sphere]
             let size = sphere.shellSize
             let count = sphere.shells.count
-            // Where the ray crosses each shell's outer boundary, coming in and going out.
+            let impact2 = chord.impact * chord.impact
+            // The ray comes in across the shells' outer boundaries from the outermost down to the
+            // one it grazes, and goes out across them again: shell `k - 1` lies between the
+            // crossings of boundaries `k` and `k - 1` on the way in, and of `k - 1` and `k` on
+            // the way out.
             let innermost = min(Int(chord.impact / size), count - 1)
-            var crossings: [Float] = []
-            crossings.reserveCapacity(2 * (count - innermost) + 2)
-            for k in stride(from: count, to: innermost, by: -1) {
-                let r = Float(k) * size
-                crossings.append(chord.closest - max(r * r - chord.impact * chord.impact, 0).squareRoot())
-            }
-            for k in (innermost + 1)...count {
-                let r = Float(k) * size
-                crossings.append(chord.closest + max(r * r - chord.impact * chord.impact, 0).squareRoot())
-            }
             var from = chord.enter
-            for crossing in crossings where crossing > from {
-                let to = min(crossing, chord.leave)
-                let middle = 0.5 * (from + to) - chord.closest
-                let r = (chord.impact * chord.impact + middle * middle).squareRoot()
-                let shell = sphere.shells[min(Int(r / size), count - 1)]
-                if shell.x > 0 {
-                    let passed = exp(-shell.x * (to - from))
-                    radiance += through * shell.y * (1 - passed)
-                    through *= passed
-                    if through < 1e-4 { return radiance }
+            var k = count
+            var outward = false
+            while true {
+                let shellIndex: Int
+                let to: Float
+                if !outward {
+                    shellIndex = k - 1
+                    if shellIndex <= innermost {
+                        outward = true
+                        // The grazed shell, across its chord to its far side.
+                        let r = Float(innermost + 1) * size
+                        to = chord.closest + max(r * r - impact2, 0).squareRoot()
+                        k = innermost + 1
+                    } else {
+                        let r = Float(k - 1) * size
+                        to = chord.closest - max(r * r - impact2, 0).squareRoot()
+                        k -= 1
+                    }
+                } else {
+                    guard k < count else { break }
+                    shellIndex = k
+                    let r = Float(k + 1) * size
+                    to = chord.closest + max(r * r - impact2, 0).squareRoot()
+                    k += 1
                 }
-                from = to
+                let end = min(to, chord.leave)
+                if end > from {
+                    let shell = sphere.shells[shellIndex]
+                    if shell.x > 0 {
+                        let passed = exp(-shell.x * (end - from))
+                        radiance += through * shell.y * (1 - passed)
+                        through *= passed
+                        if through < 1e-4 { return radiance }
+                    }
+                    from = end
+                }
                 if from >= chord.leave { break }
             }
         }

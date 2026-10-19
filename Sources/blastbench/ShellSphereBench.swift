@@ -135,5 +135,43 @@ func runShellSphere() throws {
             String(
                 format: "  voxels of %.3f m: march %.4g W/sr, %.2f of exact", size, intensity,
                 intensity / exact))
+        // `--time-ground spacing`: one frame added for a ground of receivers round it, through its
+        // voxels and through its shells, timed.
+        if let spacing = option("time-ground").flatMap({ Float($0) }), !profile.isEmpty {
+            var ground = Scenario(
+                name: "Ground", domainSize: SIMD3(120, 120, 60), boxes: [],
+                charge: Charge(mass: 0, position: SIMD3(60, 60, 0)))
+            ground.reflectiveFaces = .ground
+            var timed = spec
+            timed.groundSpacing = spacing
+            let centred = SIMD3<Float>(60, 60, 0)
+            let moved =
+                SIMD3<Int32>((centred / size).rounded(.toNearestOrEven))
+                &- SIMD3<Int32>((centre / size).rounded(.toNearestOrEven))
+            let sphereCells = LuminousCells(
+                voxelSize: size, first: first &+ moved, counts: counts, fills: fills,
+                temperatures: temperatures,
+                products: nil, airAbsorption: absorption)
+            // The profile's κ goes in as the hot air's, the rest of the medium being nothing; out
+            // to its luminous gas's end, as an early frame's sphere is.
+            let lit = (profile.lastIndex { $0.t > 0 } ?? 0) + 1
+            profile = Array(profile[..<lit])
+            let shells = FireballSphere(
+                centre: centred, shellSize: cell, temperatures: profile.map { $0.t },
+                products: [Float](repeating: 0, count: profile.count),
+                airAbsorption: profile.map { $0.kappa })
+            for withShells in [false, true] {
+                var exposure = ThermalExposure(spec: timed, scene: FragmentScene(ground))
+                let frame = FireballFrame(
+                    time: 0.001, volume: 1, centre: centred, temperature: hot, hottest: hot,
+                    cells: sphereCells,
+                    spheres: withShells ? [shells] : nil)
+                let start = ContinuousClock.now
+                exposure.add(frame)
+                print(
+                    "    \(exposure.receivers.count) receivers, \(withShells ? "shells" : "voxels"): \(start.duration(to: .now))"
+                )
+            }
+        }
     }
 }
