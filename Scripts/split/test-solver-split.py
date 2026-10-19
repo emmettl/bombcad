@@ -211,6 +211,20 @@ class SplitTests(unittest.TestCase):
         moves = split.load_plan()["swift"]["files"]["BlastSolver+Stepping.swift"]["moves"]
         self.assertEqual(moves[moves.index("advanceOnce()") + 1], "added()")
 
+    def test_lenient_warns_of_what_is_appended(self):
+        import contextlib
+        import io
+        source = self.root / "Sources/BlastCore/BlastSolver.swift"
+        source.write_text(SWIFT + "\nextension StepRate {\n    func more() {}\n}\n")
+        split.LENIENT = True
+        try:
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                split.swift_state(split.load_plan())
+        finally:
+            split.LENIENT = False
+        self.assertIn("warning: extension StepRate from more() comes after everything the plan names", out.getvalue())
+
     def test_metal_order(self):
         wrong = plan()
         wrong["metal"]["stays"].remove("pressureOf")

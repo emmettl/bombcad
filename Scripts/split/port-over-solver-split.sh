@@ -7,7 +7,8 @@
 # The branch must first sit on the commit just before the split (`git rebase <split>^`, resolving
 # any conflicts there as usual) and hold no merges. Then each of its commits is cut by the same
 # plan in a temporary worktree (what the commit adds that the plan does not name goes with what is
-# above it) and committed again, on the split, as `<branch>-split`, with its message and author.
+# above it; the script says where each went, and warns of what came after everything the plan
+# names, which lands in the last file) and committed again, on the split, as `<branch>-split`, with its message and author.
 # The branch itself is left as it is. What the split's commit holds beyond the script's cut of its
 # parent (comments fixed by hand) is applied to each commit too.
 set -euo pipefail
@@ -45,6 +46,8 @@ cut_tree() {
     git -C "$work" checkout --quiet --force --detach "$1"
     git -C "$work" clean --quiet -fd -- Sources
     python3 "${tools[@]}" split --root "$work" --lenient > "$scratch/log" || { cat "$scratch/log" >&2; exit 1; }
+    # What the plan did not name, and where it went; the warnings are worth a look.
+    grep -E "not in the plan|warning:" "$scratch/log" >&2 || true
     local changed
     changed=$(git -C "$work" status --porcelain -- Sources | awk '{print $2}' | grep '\.swift$' || true)
     if [[ -n "$changed" ]]; then

@@ -414,7 +414,22 @@ def swift_state(plan: dict, text: str | None = None):
             place.target[key] = ""
         elif u is not None and name and not u.movable:
             problems.append(f"{key} cannot leave the class's body ({u.why_fixed})")
+    if LENIENT:
+        for container in ("class", "file"):
+            warn_appended([u.key for u in units if u.container == container], plan_keys(plan, "swift"), place)
     return text, sf, units, place, problems
+
+
+def warn_appended(keys: list[str], planned: set[str], place: Placement) -> None:
+    """A port's new declarations after the last the plan names went with that last one, which may
+    be the wrong file (a top-level declaration appended to the old file lands in the last part):
+    say so, for the porter to check."""
+    k = len(keys)
+    while k > 0 and keys[k - 1] not in planned:
+        k -= 1
+    for key in keys[k:]:
+        print(f"  warning: {key} comes after everything the plan names, so it went to "
+              f"{place.target.get(key) or 'stays'} with what is above it; check that is where it belongs")
 
 
 def metal_state(plan: dict, text: str | None = None):
@@ -422,6 +437,8 @@ def metal_state(plan: dict, text: str | None = None):
     text = text if text is not None else (ROOT / source).read_text(encoding="utf-8")
     items = metal_items(text)
     place, problems = placement(plan, "metal", [i.key for i in items])
+    if LENIENT:
+        warn_appended([i.key for i in items], plan_keys(plan, "metal"), place)
     if not problems:
         problems += metal_order_problems(items, place)
     return text, items, place, problems

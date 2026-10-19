@@ -100,3 +100,17 @@ In the window:
 5. Commit, push, and ask the sessions that edit the two files (`split_solver.py editors`) to rebase.
    A branch's change to a moved member rebases as a conflict on the old file; apply it to the
    member in its new file.
+
+# Narrowing what the splits widened (#87)
+
+`narrow_access.py package` takes each of BlastModel's `package` declarations back to internal,
+builds the package with its tests, and gives `package` back to exactly those the build's errors
+point at, round after round until it builds (`--state` keeps the rounds' result between runs). On
+19 October 2026 it took 792 of 1,724 back to internal: the other 932 are used from BlastCore, the
+app, the benches or their tests. `test-narrow-access.py` tests its reading of the errors.
+
+`@_exported import BlastModel` (BlastCore/BlastModelExports.swift) stays: explicit imports would
+add `import BlastModel` to about 216 files in five targets and two test targets, and a dependency
+to each in Package.swift, for no change in what builds or how it runs, at the cost of a rebase
+for every session with a branch open. Worth revisiting if BlastModel and BlastCore are ever
+versioned apart, or when the package adopts Swift 6's internal imports by default.
