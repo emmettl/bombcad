@@ -77,10 +77,11 @@ Run on 0.5 m air for 300 ms (1,417 steps, 30 s on the Studio), the run above:
 
 | Roof | Panes | Cracked and held | Glass fallen | Hazardous |
 |---|---|---|---|---|
-| 10 mm toughened, one sheet | 1 | — | 6 kg (one element), 0.9 kJ striking | yes: shards past 15 cm would strike with 79 J |
+| 10 mm toughened, one sheet | 1 | — | 38 kg (six elements), 5.5 kJ striking | yes: shards past 15 cm would strike with 79 J |
 | Laminated, 3 m panes | 192 | 55 | none | none |
 
-The toughened roof loses one element's glass, which falls as shards; it is graded hazardous, as
+The toughened roof loses six elements' glass (one in an earlier run; the same on either start,
+19 October 2026), which falls as shards; it is graded hazardous, as
 a shard of its thickness big enough to strike with 79 J fits in it. The laminated roof's
 cracked panes stay up on their interlayer.
 

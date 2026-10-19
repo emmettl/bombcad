@@ -524,6 +524,11 @@ cells the clamped wall sways within 1 to 2 mm of the 0.25 m answer.
 | resting | over | 237 mm, still going | 327 mm, still going | 7 mm, stands |
 | on soil (600 kPa, 50 MN/m³) | over | 593 mm, still going | 399 mm, still going | 9 mm, then 50 mm back |
 
+On today's recommended air (0.5 s, the mapped start since 19 October 2026): at 10 m clamped 28
+mm and on starter bars 29 mm (27 and 28 on the balloon), the construction joint 241 mm, resting
+245 mm and on soil 307 mm, still going (232, 226 and 282 on the balloon); at 25 m 7, 7, 8, 12 and
+25 mm. Walls held at their base move by 1–4% between the starts; those free to rock, up to 9%.
+
 The face's positive impulse is the Kingery–Bulmash reflected impulse (946 Pa s against 929 at
 10 m, 312 against 331 at 25 m), but its peak is low on these cells (281 kPa against 434). The
 pulse leaves out what reaches the back: the wave runs over the 3 m wall and round its ends and

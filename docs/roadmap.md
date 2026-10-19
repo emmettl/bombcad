@@ -125,8 +125,10 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
   terrain on cut cells ([terrain](terrain.md#cut-cells)); bursts checked to 40 m/kg^(1/3) ([large scenes](large-scenes.md));
   the mapped one-dimensional start, the default since 18 October 2026, for each charge
   ([a finely resolved start](air-blast-model.md#a-finely-resolved-start)).
-- **Next:** rerun the comparisons still on the balloon start
-  ([list](validation.md#still-on-the-balloon-start)); reflected peaks near walls; the products
+- **Next:** rerun the long comparisons still on the balloon start (districts and Beirut, terrain
+  and ground motion, Dial Pack, the panel block; [list](validation.md#still-on-the-balloon-start)),
+  the short ones having moved off it on 19 October 2026 by 0–4% but for Tyndall's broken front
+  ([record](validation.md#off-the-balloon-on-19-october)); reflected peaks near walls; the products
   as a second gas only for contact charges (their own equation of state in the mapped start was
   tried and moves open-air loads too little, [record](validation.md#the-products-own-equation-of-state-18-october)). Weak shocks to 40 m/kg^(1/3) need no new criterion: threshold 0.005 follows them
   at about the least it can cost, and 8 m cells refined twice give 84–94% of Kingery–Bulmash's

@@ -97,9 +97,10 @@ line and the minimum safe distance with it. Headless, it is a `Hazards:` line, w
 
 **Against measurement:**
 - **Keys's brick walls** (Keys, 2016; 41 kg TNT at 10.6–15 m, 2 m single-leaf walls falling as
-  cantilevers, `Fixtures/Keys2016`): their debris's mass-weighted mean reach is 0.25–0.53 m from
+  cantilevers, `Fixtures/Keys2016`): their debris's mass-weighted mean reach is 0.31–0.59 m from
   the wall's face, against 0.23–0.64 m measured; the median 0.25 m, as measured; 90% within
-  0.25–0.75 m against 1.25–2.25 m; the furthest 0.5–1.5 m against 3–6 m. Bricks that bounce and
+  0.75–1.25 m against 1.25–2.25 m; the furthest 1.0–1.5 m against 3–6 m (on the mapped start since
+  19 October 2026; on the balloon, 0.25–0.53, 0.25–0.75 and 0.5–1.5 m). Bricks that bounce and
   roll are not modelled, so the far tail is short. None lands with 79 J (a brick falling 2 m
   carries about 55 J), so none is hazardous.
 - **The Kasun cubicle** (Norwegian and Swedish tests: 2 × 2 × 2 m inside, 0.15 m reinforced

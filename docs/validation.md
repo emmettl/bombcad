@@ -2968,9 +2968,13 @@ Cross-Laminated Timber Structures* (Karagozian & Case TR-17-17.1, for WoodWorks,
 
 | Test | Reflected peak (kPa), measured / model | Impulse (kPa ms) | Incident peak (kPa) | Incident impulse (kPa ms) | First storey, in / rebound (mm), measured | Model | Second storey, measured | Model | Damage, test / model |
 |---|---|---|---|---|---|---|---|---|---|
-| 1, 14.5 kg | 34.8 / 25.1 | 137 / 140 | 16.6 / 12.3 | 75 / 71 | 28 / −45 | 18 / −24 | 21 / −35 | 29 / −27 | superficial / some layer at full damage, nothing removed |
-| 2, 30.4 kg | 54.7 / 39.5 | 227 / 223 | 23.8 / 20.7 | 124 / 115 | 50 / −70 | 31 / −36 | 37 / −55 | 41 / −42 | superficial / some layer at full damage, nothing removed |
-| 3, 90.3 kg | 91.0 / 88.1 | 450 / 473 | 35.5 / 39.2 | 230 / 237 | 99 / −155 | 159 / −133 | 78 / −98 | 106 / −110 | moderate, first-storey front cracked / 64 elements removed |
+| 1, 14.5 kg | 34.8 / 25.1 | 137 / 140 | 16.6 / 12.4 | 75 / 71 | 28 / −45 | 17 / −24 | 21 / −35 | 29 / −28 | superficial / some layer at full damage, nothing removed |
+| 2, 30.4 kg | 54.7 / 39.5 | 227 / 223 | 23.8 / 20.8 | 124 / 114 | 50 / −70 | 31 / −36 | 37 / −55 | 41 / −42 | superficial / some layer at full damage, nothing removed |
+| 3, 90.3 kg | 91.0 / 86.9 | 450 / 471 | 35.5 / 39.2 | 230 / 237 | 99 / −155 | 192 / −261 | 78 / −98 | 82 / −90 | moderate, first-storey front cracked / 65 elements removed |
+
+On the mapped start since 19 October 2026; on the balloon it was first run on, test 1's first
+storey went in 18 mm and test 3's 159 mm (151 on a rerun, 42 elements removed), its second storey
+106 mm, its rebound −133 mm. Tests 1 and 2 are the same on either start to a millimetre.
 
 **What it shows:**
 - **The load:**
@@ -2986,10 +2990,13 @@ Cross-Laminated Timber Structures* (Karagozian & Case TR-17-17.1, for WoodWorks,
   reflect the grazing blast as a rarefaction that drives the wall's second swing; at 4 m/kg^(1/3)
   the results no longer move ([open faces near a
   structure](air-blast-model.md#open-faces-near-a-structure)).
-- **First storey inbound:** 0.62–0.64 of measured on tests 1 and 2, and 1.6 times on test 3,
-  where the front broke (64 elements removed) more than it did in the test.
-- **Second storey:** 1.1–1.4 times measured.
-- **Rebound:** 51–112% of measured, least at the first storey under the lighter charges. The
+- **First storey inbound:** 0.61–0.62 of measured on tests 1 and 2, and 1.9 times on test 3,
+  where the front broke (65 elements removed) more than it did in the test. How far it goes
+  turns on how much of the front breaks: 1.5–1.6 times on the balloon start, with 42–64 elements
+  removed.
+- **Second storey:** 1.05–1.4 times measured.
+- **Rebound:** 51–168% of measured, least at the first storey under the lighter charges, most
+  where test 3's broken front swung back. The
   real walls swung back further there: the screwed angles at their bases and the floors give,
   where the model's joints are rigid.
 - **A first full-scale check of timber with the air:** with the load matched, the first storey's
@@ -3049,6 +3056,11 @@ the same runs:
 | 16.9 | below C | Cb (5%) | B (46%) | Ca (2%) | B (28%) |
 | 20.0 | below C | Ca (1%) | B (35%) | Ca (0%) | Cb (24%) |
 | 23.0 | below C | Ca (0.4%) | Cb (16%) | D | Cb (13%) |
+
+On the mapped start since 19 October 2026, at 0.1 s with the default brick, the middle house reads
+A (87%), B (47%), B (38%), B (26%), Cb (5%), Ca (1.1%) and Ca (0.3%) from 4.7 to 23 m: within a
+point of the balloon's column above at every distance. The 0.3 s and 50 mm columns are still the
+balloon's; a 0.3 s run takes about an hour.
 
 What the roof moves:
 - **At 0.1 s:** the same category or one worse, from 13.9 m out. With bricks kept to 50 mm the
@@ -3626,23 +3638,29 @@ Peaks, kPa, measured / model on 50 mm cells (100 mm), and the wall's factor (wit
 
 | Gauge | 5 kg: measured | model | 20 kg: measured | model | The wall's factor, 5 / 20 kg |
 |---|---|---|---|---|---|
-| In front, 3 m along | 310 | 335 (285) | 1,620 | 1,077 (896) | 1.00 |
-| 5 m along | 122 | 106 (97) | 220 | 311 (285) | 1.00 |
-| 7 m along | 63 | 55 (50) | 170 | 145 (134) | 1.00 |
-| 9 m along | 49 | 36 (32) | 120 | 86 (80) | 1.00 |
-| Face, 0.22 m up (reflected) | 3,240 | 1,238 (924) | 7,720 | 5,137 (3,389) | |
-| 2 m behind | 14.3 | 27.1 (24.6) | – | 56.8 (50.9) | 0.29 / 0.21 |
-| 4 m behind | – | 27.9 (25.2) | 52.1 | 65.3 (59.8) | 0.55 / 0.50 |
-| 6 m behind | 12.2 | 26.0 (23.9) | – | 63.2 (60.5) | 0.78 / 0.80 |
+| In front, 3 m along | 310 | 326 (274) | 1,620 | 1,056 (905) | 0.80 / 0.82 |
+| 5 m along | 122 | 109 (98) | 220 | 313 (279) | 1.00 |
+| 7 m along | 63 | 57 (52) | 170 | 147 (136) | 1.00 / 0.99 |
+| 9 m along | 49 | 37 (34) | 120 | 87 (82) | 0.99 |
+| Face, 0.22 m up (reflected) | 3,240 | 1,218 (874) | 7,720 | 5,024 (3,334) | |
+| 2 m behind | 14.3 | 27.5 (24.6) | – | 58.1 (51.7) | 0.29 / 0.22 |
+| 4 m behind | – | 28.3 (25.2) | 52.1 | 66.8 (60.4) | 0.54 / 0.50 |
+| 6 m behind | 12.2 | 26.4 (23.8) | – | 64.7 (60.9) | 0.77 / 0.80 |
 
-**In front,** where the gauges see the open wave beside the wall, the model is 1–11% below the
+On the mapped start since 19 October 2026. On the balloon it was first run on, the 50 mm peaks
+were within 4% of these (the front face 1,238 and 5,137 kPa, the gauges behind 2–3% lower) and
+the wall's factor at 3 m 1.00. That factor's fall to 0.80 is the start's, not the wall's: without
+the wall the one-dimensional start is mapped further out, past the 3 m gauge, and with it the
+wall stops the mapping short of it.
+
+**In front,** where the gauges see the open wave beside the wall, the model is 3–12% below the
 paper's own ConWep values (5 kg: 370, 118, 61, 40 kPa; 20 kg: 1,090, 340, 160, 90) and the measured
 scatter about them is larger: at 20 kg the first two gauges read 1.5 and 0.65 of ConWep. The
-reflected peak at the wall's foot is 0.79 and 0.83 of ConWep's on 50 mm cells and still rising with
+reflected peak at the wall's foot is 0.78 and 0.81 of ConWep's on 50 mm cells and still rising with
 the mesh; the measured 3.24 MPa at 5 kg, twice ConWep's, is a narrow spike.
 
-**Behind the wall the model shields less than the test**: 1.9 and 2.1 times the measured peaks at 5 kg
-and 1.25 times at 20 kg, rising a little as the cells are halved. With a whole, known length, the wave
+**Behind the wall the model shields less than the test**: 1.9 and 2.2 times the measured peaks at 5 kg
+and 1.28 times at 20 kg, rising a little as the cells are halved. With a whole, known length, the wave
 over the top and round the ends (6 m of wall, 3 m from the charge) leaves 0.3 of the open peak 2 m
 behind, rising to 0.8 by 6 m; the paper's factors against its empirical free field are 0.12–0.33.
 The measured peaks behind are the filtered records of gauges the authors call abnormal, and a 2 kHz
@@ -4561,7 +4579,8 @@ points lower and the impulses 1–5 (hot air's known effect), and the row and th
 follows give those. The chamber on the fixed bench leaves the roof's edge at 50 mm peak and 27
 mm (25 mm on the earlier default; 95 mm measured), its wall pressures still 0.9–1.6 times those
 measured. The coupled anchorage wall (`blastbench anchorage --air`, 0.5 s) sways 27 and 28 mm
-clamped and on starter bars at 10 m, against 22 mm on the earlier air in
+clamped and on starter bars at 10 m (28 and 29 mm on the mapped start since 19 October), against
+22 mm on the earlier air in
 [the structural model's table](structural-model.md), which ran 1 s.
 
 Two faults were found and fixed on the way. The far-field ghost first let hot air's
@@ -4635,14 +4654,10 @@ balloon by construction.
 |---|---|---|
 | Hupfauf's slabs (`ContactSlabTest`) | by construction | concrete |
 | Rooms | by construction | concrete |
-| The anchorage wall (`AnchorageStudy`, `blastbench anchorage`) | pinned | anchorage |
-| Tyndall's CLT (`TyndallCLTTest`) | pinned | new materials |
-| Envelope walls, slabs, Nian, façades (`blastbench envelope-walls`, `envelope-slabs`, `nian`, `facade`) | pinned | envelopes |
 | Envelope damage, venting, openings (`scenebench`), and their tests | pinned | envelopes |
 | Districts and Beirut (`scenebench district`, `district-compare`) | pinned | districts |
-| The panel block (`blastbench panelblock`) and terraced houses (`blastbench house`) | pinned | large panels |
+| The panel block (`blastbench panelblock`; its runs take over an hour) | pinned | large panels |
 | Buildings, settling (`blastbench buildings`, `settle`) | pinned | structures |
-| The transport hub's roof glass (`blastbench hubroof`) | pinned | glass |
 | Terrain, landscape, ground motion (`blastbench terrain`, `landscape`, `groundmotion`) | pinned | terrain, ground shock |
 | Dial Pack (`blastbench dialpack`) | pinned | thermal |
 | Mendonça's blind runs (`blastbench mendonca` without `--recommended`) | their frozen air | blind tests (frozen) |
@@ -4656,7 +4671,29 @@ Keys's walls in the open, Mendonça's `--recommended` studies, the Kasun cubicle
 four charges each mapped since the start became one per charge) and the validation ensemble
 (`ValidationEnsemble`, rerun 18 October, [its spread](#the-models-spread-from-uncertain-inputs)).
 Each was rerun on the mapped start ([on the mapped start](#on-the-mapped-start)), and each takes
-`--balloon-start` for the balloon.
+`--balloon-start` for the balloon. On 19 October 2026 the short ones followed
+([below](#off-the-balloon-on-19-october)): the envelope walls, slabs, Nian and the façade, the
+anchorage wall, Tyndall's CLT, the hub's roof glass and the terraced houses at 0.1 s.
+
+##### Off the balloon on 19 October
+
+Each run both ways from one build (`--balloon-start` against the default), outputs on StudioData
+under `bombcad/balloon-rerun`:
+
+| Harness | Balloon | Mapped | Moved |
+|---|---|---|---|
+| Envelope walls (`envelope-walls`) | Alsubaei's walls 74, 59, 28 mm, 9.3° at 125 kg; Keys's debris mean 0.25–0.53 m | 76, 60, 28 mm, 9.5°; 0.31–0.59 m | 0–3%, every level the same; the bricks thrown a few centimetres further, inside the measured 0.23–0.64 m |
+| Envelope slabs (`envelope-slabs`) | Wu's, Wang's, Mendonça's slabs under the model's air | 0.5–3% more load, 1–4% more deflection | every level the same; measured-load slabs unchanged |
+| Nian's wall (`nian`, 50 mm) | in front 335, 106, 55, 36 kPa at 5 kg; behind 27.1, 27.9, 26.0 | 326, 109, 57, 37; 27.5, 28.3, 26.4 | within 4%; the wall's factor at 3 m 1.00 → 0.80, the start's mapping, not the wall's |
+| The façade (`facade --fine`) | | | identical |
+| The anchorage wall (`anchorage --air`) | 10 m: clamped 27, starter bars 28 mm; rocking bases 226–282 mm | 28, 29 mm; 241–307 mm | 1–4% held at the base, up to 9% rocking |
+| Tyndall's CLT (`tyndall`, tests 1–3) | first storey 18, 31, 151–159 mm | 17, 31, 192 mm | tests 1–2 unchanged; test 3, where the front breaks, 1.5–1.6 → 1.9 of measured (42–65 elements removed, as much between runs as between starts) |
+| The hub's roof glass (`hubroof`) | toughened: 6 elements fall; laminated: 53 cracked and held | 6; 55 | the laminated roof 2 panes more cracked, none lost |
+| Terraced houses (`house`, 0.1 s, the default brick) | A 87%, B 47%, B 38%, B 27%, Cb 5%, Ca 1%, Ca 0.4% | A 87%, B 47%, B 38%, B 26%, Cb 5%, Ca 1.1%, Ca 0.3% | within a point; the 0.3 s and 50 mm columns still the balloon's |
+
+No standing or band changed: the bands these feed (the freestanding walls' outcomes, Keys's
+debris, the slabs' levels) keep their outcomes, and Tyndall has none; its evidence now quotes 1.9
+times on test 3.
 
 #### Several charges (18 October)
 

@@ -749,19 +749,23 @@ faces, its strengths, the canopy's mass and reinforced blockwork:
 
 | Wall | Charge | Cantilever, as built, on the mean load / the equivalent load | The app on the mean load, before / now | Measured | The detailed model |
 |---|---|---|---|---|---|
-| Alsubaei, half-scale concrete, 1 m high, 0.2 m | 14 kg ANFO at 2 m | top 94 mm, 5.4°, hazardous / 74 mm, 4.2°, heavy | 4.2°, heavy / 5.4°, hazardous | light cracking at the foot, no significant deformation (after 12 shots) | clamped: top 37 mm (2.1°); on its footing in sand it rocks, 196 mm |
-| Alsubaei, canopied concrete, 2 m stem, 0.4 m | 125 kg at 4 m | top 61 mm, 1.7°, moderate / 59 mm, 1.7°, moderate | 7.2°, hazardous / 1.7°, moderate | unfaced: cracks at the foot and across the back, no significant deformation; foam-faced: 7–35 mm at mid-height | clamped: top 54 mm, mid-height 25 mm |
+| Alsubaei, half-scale concrete, 1 m high, 0.2 m | 14 kg ANFO at 2 m | top 97 mm, 5.5°, hazardous / 76 mm, 4.3°, heavy | 4.2°, heavy / 5.4°, hazardous | light cracking at the foot, no significant deformation (after 12 shots) | clamped: top 37 mm (2.1°); on its footing in sand it rocks, 196 mm |
+| Alsubaei, canopied concrete, 2 m stem, 0.4 m | 125 kg at 4 m | top 62 mm, 1.8°, moderate / 60 mm, 1.7°, moderate | 7.2°, hazardous / 1.7°, moderate | unfaced: cracks at the foot and across the back, no significant deformation; foam-faced: 7–35 mm at mid-height | clamped: top 54 mm, mid-height 25 mm |
 | Alsubaei, reinforced blockwork, 2 m, 0.4 m | 25 kg at 4 m | top 32 mm, 0.9°, moderate / 28 mm, 0.8°, moderate | 0.4°, moderate / 0.9°, moderate | top 28 mm; bed joints cracked | top 37 mm |
-| The same | 125 kg at 4 m | 11.8°, failed / 9.3°, hazardous | 5.4°, hazardous / 11.8°, failed | collapsed | comes apart |
-| Keys, single-leaf brick, 2 m, 102.5 mm, WR1A / WR1B / WR2C | 41 kg TNT at 10.6 / 13 / 15 m | falls at 0.07 / 0.11 / 0.17 s / 0.07 / 0.12 / 0.18 s | the same | all broke and fell | falls as one column |
+| The same | 125 kg at 4 m | 12.0°, failed / 9.5°, hazardous | 5.4°, hazardous / 11.8°, failed | collapsed | comes apart |
+| Keys, single-leaf brick, 2 m, 102.5 mm, WR1A / WR1B / WR2C | 41 kg TNT at 10.6 / 13 / 15 m | falls at 0.06 / 0.10 / 0.14 s / 0.06 / 0.10 / 0.15 s | the same | all broke and fell | falls as one column |
+
+The cantilever's columns are on the mapped start since 19 October 2026. On the balloon they were
+first run on, every Alsubaei wall read within 2% of these (the half-scale wall 94 and 74 mm, the
+blockwork at 125 kg 11.8° and 9.3°) and the brick walls fell 0.01–0.03 s later.
 
 **On the equivalent load** (18 October 2026, [above](#envelope-components-and-their-pressure-histories)),
 the walls are judged as the app now judges them. Weighted by rotation about the foot, a load
 heaviest low on the wall counts for less than its mean says:
 - the blockwork at 25 kg comes to 28 mm, the measured 28;
 - the half-scale wall comes down from hazardous to heavy, nearer the light cracking seen;
-- the blockwork at 125 kg comes to 9.3°, hazardous, short of the 10° that fails it, where it
-  collapsed: a miss, on the unsafe side, which the mean's 11.8° had not made;
+- the blockwork at 125 kg comes to 9.5°, hazardous, short of the 10° that fails it, where it
+  collapsed: a miss, on the unsafe side, which the mean's 12.0° had not made;
 - the brick walls fall as before.
 
 The mechanism's shape, which decides the 125 kg wall, has no load map to be checked against:
@@ -822,7 +826,10 @@ simply supported and fixed, built as tested (its bars' area and depth, its concr
 strengths), driven by the measured load where the record has one (the contest slab's record, and
 its lower shot at 0.764 of it; Reynolds's digitised traces) and otherwise by the model's own air load
 on the slab as a rigid envelope in its test's scene, the recommended air on 12.5 or 25 mm cells
-(17 October 2026). Peak deflection at the middle, mm:
+(17 October 2026). Peak deflection at the middle, mm, on the balloon start the table was first run
+on. On the mapped start (19 October 2026) the slabs under the model's air load take 0.5–3% more
+peak and impulse and deflect 1–4% further, every level the same; those under a measured load do
+not move:
 
 | Slab | Load | Simply supported | Fixed | Measured | The detailed model |
 |---|---|---|---|---|---|

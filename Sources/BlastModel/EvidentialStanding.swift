@@ -2243,8 +2243,9 @@ package struct StandingScene {
                 StandingEvidence(
                     "Cross-laminated timber buildings at Tyndall, 22.9 m from 14.5–90 kg (Weaver et al., 2017)",
                     "The front's impulse within 5% of the report's, the faces 4 m/kg^(1/3) out; the first storey "
-                        + "inbound 0.62–0.64 of measured on the two lighter charges and 1.6 times on the heaviest, "
-                        + "the second storey 1.1–1.4 times, rebound 51–112%",
+                        + "inbound 0.61–0.62 of measured on the two lighter charges and 1.9 times on the heaviest, "
+                        + "where the front broke more than the test's (1.5–1.6 on the balloon start, as more or less "
+                        + "of it broke), the second storey 1.05–1.4 times, rebound 51–168%",
                     "validation.md#cross-laminated-timber-buildings-at-tyndall"))
             parts.append(
                 "timber compared on CLT panels and glulam beams in a shock tube, its strength calibrated, and on "
@@ -2560,8 +2561,8 @@ package struct StandingScene {
                 StandingEvidence(
                     "Freestanding walls against measurement: Alsubaei's perimeter walls and Keys's brick walls",
                     "On the equivalent load 5 of 7 outcomes as measured, built as tested (6 on the mean); the "
-                        + "blockwork's top 28 mm against 28; the half-scale concrete wall 4.2° where light cracking "
-                        + "was seen, the safe side (the detailed model 2.1°); the blockwork at 125 kg 9.3° against "
+                        + "blockwork's top 28 mm against 28; the half-scale concrete wall 4.3° where light cracking "
+                        + "was seen, the safe side (the detailed model 2.1°); the blockwork at 125 kg 9.5° against "
                         + "the 10° that fails it, where it collapsed: the unsafe side",
                     "building-envelopes.md#freestanding-walls"),
                 StandingEvidence(
@@ -2940,7 +2941,7 @@ package struct StandingScene {
                         + "the cells' peaks read low (the unsafe side)", "hazards.md#checks"),
                 StandingEvidence(
                     "Envelope debris against Keys's brick walls (2016) and the Kasun cubicle (80 kg inside)",
-                    "Keys: the debris's mean reach 0.25–0.53 m against 0.23–0.64 m, its far tail short (0.5–1.5 m "
+                    "Keys: the debris's mean reach 0.31–0.59 m against 0.23–0.64 m, its far tail short (1.0–1.5 m "
                         + "against 3–6 m); Kasun: launched at up to 118–131 m/s against the Klotz Group's 124 m/s, "
                         + "its walls venting the gas, but hazardous debris to 129 m against the tests' 290–315 m, "
                         + "the unsafe side (DoD's structure distance, 268 m, governs); Kasun III's launch "
