@@ -54,6 +54,14 @@ enum SceneBench {
             try EnvelopeBenchmark.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "infer-charge-study" {
+            try InferChargeStudy.run(Array(args.dropFirst()))
+            return
+        }
+        if args.first == "infer-charge" {
+            try InferCharge.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "venting-checks" {
             try VentingChecks.run(Array(args.dropFirst()))
             return

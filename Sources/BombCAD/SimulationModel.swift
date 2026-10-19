@@ -2300,6 +2300,15 @@ final class SimulationModel {
             ? SurfaceHeating.Layout(spec: spec.heating, grids: thermalGrids, scene: scene) : nil
         reckonedSpec = spec
         nextFireballTime = 0
+        // A mapped start's clock starts at its solution's time: the fireball before it, a frame a
+        // millisecond, from the one-dimensional solution, so that the record starts at detonation.
+        if solver.stepCount == 0, solver.time > 0.001 {
+            let times = (1...Int((solver.time / 0.001).rounded(.down))).map { Double($0) * 0.001 }
+            for frame in solver.earlyFireballFrames(for: spec, at: times) {
+                fireballFrames.append(frame.withoutShape)
+                thermal?.send(.fireball(frame))
+            }
+        }
         sendFireball(solver)
         updateThermalStatus()
     }

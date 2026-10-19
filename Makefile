@@ -62,7 +62,8 @@ lint:
 format:
 	swift format format --in-place --recursive Package.swift Sources Tests Scripts
 
-# The scripts' own tests, and the documents' relative links and anchors (check-doc-links.py).
+# The scripts' own tests, the documents' relative links and anchors (check-doc-links.py), and the
+# GPU structs' layouts on the Swift and Metal sides (check-shader-mirrors.py).
 ci-test:
 	python3 Scripts/test-release.py
 	python3 Scripts/test-nightly.py
@@ -73,7 +74,14 @@ ci-test:
 	python3 Scripts/test-update-homebrew-tap.py
 	python3 Scripts/test-check-affected.py
 	python3 Scripts/test-release-notes.py
+	python3 Scripts/test-check-shader-mirrors.py
+	python3 Scripts/reference/test-kingery-bulmash.py
+	python3 Scripts/reference/test-sdof.py
+	python3 Scripts/reference/test-blast1d.py
+	python3 Scripts/reference/test-compare.py
+	python3 Scripts/test-analytic-oracles.py
 	python3 Scripts/check-doc-links.py
+	python3 Scripts/check-shader-mirrors.py
 
 check: lint build-strict test ci-test
 
@@ -95,7 +103,7 @@ check-anywhere:
 # The pre-push check sized to the change (Scripts/check-affected.py): documents and scripts get
 # lint and ci-test, other code its own tests too, and the solver's core the full check-anywhere.
 check-affected:
-	python3 Scripts/check-affected.py
+	python3 Scripts/check-affected.py $(ARGS)
 
 release-check:
 	python3 Scripts/release.py check
