@@ -312,10 +312,16 @@ most are about reaching an answer for less, with the full solver kept as the ref
    The first step is a surrogate for envelope damage across a district, checked against Beirut's
    runs: done for glass, which it gets right side by side for three in four of Beirut's building
    sides in half a minute, not for walls and roofs ([first look](surrogate-first-look.md)).
-3. **City scale in minutes.** Gas dynamics only near the charge and in the streets that matter,
-   and further out the blast carried by ray-traced shielding and channelling (the thermal model
-   already uses Metal ray tracing) with scaled blast laws, handed over at a boundary. The first
-   step is a ray-traced far field set against Beirut's full run beyond 1 km.
+3. **City scale in minutes** (first step done, headless). Gas dynamics only near the charge and
+   in the streets that matter, and further out the blast carried by ray-traced shielding and
+   channelling (the thermal model already uses Metal ray tracing) with scaled blast laws, handed
+   over at a boundary. The first step, a far field set against Beirut's full run beyond 1 km, is
+   done without ray tracing: `scenebench district-hybrid` runs the air to a hand-over radius and
+   carries the façades' loads beyond it on item 2's surrogate, matched to the near run, so its
+   shielding is the surrogate's and channelling is not yet in it. Handing over at 1 km, Beirut at
+   0.5 kt takes about 7 minutes against the full run's 34, and the share of building sides with
+   some glass broken comes within 0.03 of the full run's to 1.5 km at every yield; it is not yet
+   in the app ([a city in minutes](hybrid-far-field.md)).
 4. **Uncertainty by default.** Results as probabilities ("this façade fails with 70% chance")
    from the scatter in yield, materials and rounding, cheap once item 2 exists.
 5. **From damage back to the explosion** (first step done). Infer yield, place and height from

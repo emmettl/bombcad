@@ -775,6 +775,9 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
             from.w = 1;
             mirror.w = -1.0f;
         } else {
+            // An open face beyond the next cell: its ghost as that cell builds it, as on the
+            // coarse grid (`sweepCell`), so that the face between them takes one flux.
+            if (farFieldFaces(u)) { wP2 = farFieldGhost(wP1, 1.0f, u); }
             from.w = 1;
         }
     } else {
@@ -797,6 +800,7 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
             from.x = -1;
             mirror.x = -1.0f;
         } else {
+            if (farFieldFaces(u)) { wM2 = farFieldGhost(wM1, -1.0f, u); }
             from.x = -1;
         }
     } else {

@@ -1454,6 +1454,11 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
             from.w = 1;
             mirror.w = -1.0f;
         } else {
+            // An open face beyond the next cell: its ghost as that cell builds it (`farFieldGhost`
+            // of its state), so that both cells reconstruct the face between them alike and the
+            // flux through it is one. A copy here left the two fluxes apart wherever the ghost
+            // differed: a tube's far-field ends took in mass without the oxygen it carried.
+            if (farFieldFaces(u)) { wP2 = farFieldGhost(wP1, 1.0f, u); }
             from.w = 1;
         }
     } else {
@@ -1477,6 +1482,8 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
             from.x = -1;
             mirror.x = -1.0f;
         } else {
+            // As above, the open face beyond the previous cell.
+            if (farFieldFaces(u)) { wM2 = farFieldGhost(wM1, -1.0f, u); }
             from.x = -1;
         }
     } else {
