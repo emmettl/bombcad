@@ -115,7 +115,7 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
         #expect((hydrogen[.peakOverpressure]?.bands ?? []).map(\.ratio) == ["19–296%"])
         #expect(hydrogen[.peakOverpressure]?.summary.hasPrefix("Lean hydrogen") == true)
         let town = scene(.townGas)
-        #expect((town[.peakOverpressure]?.bands ?? []).isEmpty)
+        #expect(town[.peakOverpressure]?.bands?.isEmpty ?? true)
         #expect(town[.peakOverpressure]?.unbanded?.contains { $0.contains("town gas") } == true)
     }
 
@@ -131,9 +131,9 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
             return SceneStanding(inputs)
         }
         let plant = scene(.processPlantExplosion)
-        #expect((plant[.peakOverpressure]?.bands ?? []).isEmpty)
+        #expect(plant[.peakOverpressure]?.bands?.isEmpty ?? true)
         #expect(plant[.peakOverpressure]?.unbanded?.contains { $0.contains("vented room") } == true)
-        #expect((plant[.impulse]?.bands ?? []).isEmpty)
+        #expect(plant[.impulse]?.bands?.isEmpty ?? true)
         #expect((plant[.thermal]?.bands ?? []).isEmpty && (plant[.cloud]?.bands ?? []).isEmpty)
         let room = scene(.ventedGasRoom)
         #expect(!(room[.peakOverpressure]?.bands ?? []).isEmpty && (room[.impulse]?.bands ?? []).isEmpty)

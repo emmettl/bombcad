@@ -49,5 +49,29 @@ class WarningsTests(unittest.TestCase):
             [("Sources/Y.swift", 5, "capture of 'x' in a '@Sendable' closure")])
 
 
+    def test_a_warning_in_a_macro_expansion_counts_where_the_code_originates(self):
+        lines = [
+            "macro expansion #expect:1:90: \x1b[1;33mwarning: \x1b[1;39mexpression of type 'Bool?' is unused "
+            "[#\x1b]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\x1b\\NoUsage"
+            "\x1b]8;;\x1b\\]\x1b[0;0m",
+            "`- /work/bombcad/Tests/BlastCoreTests/StandingTests.swift:119:64: note: expanded code originates here",
+            "117 |         #expect(a == true)",
+            "    |  |                                 `- warning: expression of type 'Bool?' is unused",
+            "macro expansion #expect:1:63: warning: left side of nil coalescing operator '??' has "
+            "non-optional type '[Band]?', so the right side is never used",
+            "`- /work/bombcad/Tests/BlastCoreTests/StandingTests.swift:119:64: note: expanded code originates here",
+            "macro expansion #expect:1:5: warning: something in a dependency",
+            "`- /elsewhere/ContinuumKit/Tests/A.swift:3:4: note: expanded code originates here",
+        ]
+        self.assertEqual(
+            build_strict.warnings(lines, self.root),
+            [
+                ("Tests/BlastCoreTests/StandingTests.swift", 119, "expression of type 'Bool?' is unused"),
+                (
+                    "Tests/BlastCoreTests/StandingTests.swift", 119,
+                    "left side of nil coalescing operator '??' has non-optional type '[Band]?', so the right "
+                    "side is never used"),
+            ])
+
 if __name__ == "__main__":
     unittest.main()

@@ -6,6 +6,9 @@ SwiftPM suppresses the warnings of remote dependencies (ContinuumKit), so what i
 a warning in Sources/ or Tests/ fails the build, with each one listed once. Only files compiled
 in this build can warn, so an incremental build catches what a change brings and a clean build
 (`rm -rf .build`) everything. The package had none on 2026-10-12.
+
+A warning raised inside a macro's expansion (`#expect`, say) names the expansion rather than a
+file; it counts against the file and line the next line says the expanded code originates from.
 """
 
 import os
@@ -17,18 +20,25 @@ ANSI = re.compile(r"\x1b\[[0-9;]*m|\x1b\]8;;[^\x1b]*\x1b\\")
 # The two forms swift build prints: the compiler's own, and the build system's summary.
 COMPILER = re.compile(r"^(/\S+?\.swift):(\d+):(\d+): warning: (.*)$")
 SUMMARY = re.compile(r"^warning: (/\S+?\.swift):(\d+):(\d+) (.*?)(: FixIt\(.*)?$")
+# A warning in a macro's expansion, and the note after it that says where the expanded code is.
+MACRO = re.compile(r"^macro expansion [^:]+:\d+:\d+: warning: (.*)$")
+ORIGIN = re.compile(r"^`- (/\S+?\.swift):(\d+):(\d+): note: expanded code originates here")
 
 
 def warnings(lines, root):
     """The distinct warnings in `lines` from files under `root`: (path from root, line, message)."""
     found = {}
     prefix = root.rstrip("/") + "/"
-    for line in lines:
-        line = ANSI.sub("", line.rstrip("\n"))
+    lines = [ANSI.sub("", line.rstrip("\n")) for line in lines]
+    for index, line in enumerate(lines):
         match = COMPILER.match(line) or SUMMARY.match(line)
-        if not match:
+        if match:
+            path, number, message = match.group(1), match.group(2), match.group(4)
+        elif (macro := MACRO.match(line)) and index + 1 < len(lines) and (
+                origin := ORIGIN.match(lines[index + 1])):
+            path, number, message = origin.group(1), origin.group(2), macro.group(1)
+        else:
             continue
-        path, number, _, message = match.group(1), match.group(2), match.group(3), match.group(4)
         if not path.startswith(prefix) or "/.build/" in path:
             continue
         message = re.sub(r"\s*\[#?\]?\S*$", "", message).strip()
