@@ -21,6 +21,9 @@ enum DistrictGlass {
         var binS: Double
         var first: Int
         var count: Int
+        /// The strip's box, m (saved since 19 October 2026; nil in older files).
+        var low: SIMD3<Float>?
+        var high: SIMD3<Float>?
     }
 
     struct Index: Codable {
@@ -59,7 +62,8 @@ enum DistrictGlass {
                 Strip(
                     building: building, axis: load.axis, outward: load.outward,
                     areaM2: spans.short * spans.long,
-                    binS: load.binS, first: values.count, count: net.count))
+                    binS: load.binS, first: values.count, count: net.count, low: load.region.min,
+                    high: load.region.max))
             values += net.map { Float16(Float(min(max($0, -65_504), 65_504))) }
         }
         try JSONEncoder().encode(Index(buildings: buildings, strips: strips)).write(
