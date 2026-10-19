@@ -71,7 +71,7 @@ APPLE_ONLY = {
     "AppKit", "UIKit", "SwiftUI", "CoreGraphics", "CoreImage", "CoreText", "ImageIO", "ModelIO",
     "SceneKit", "CryptoKit", "os", "Darwin", "IOSurface", "ContactSearchMetal",
 }
-# Modules BlastModel may import: ContinuumKit 0.1.0-alpha.29's CPU modules that build on Linux,
+# Modules BlastModel may import: ContinuumKit 0.1.0-alpha.30's CPU modules that build on Linux,
 # this package's RadialBlast, and the toolchain's own. Tests may also use SolidMechanics.
 PORTABLE = {"Foundation", "FoundationXML", "simd", "RadialBlast", "SceneModel", "Numerics",
             "GeometryImport", "CompressibleFlow", "Dispatch"}

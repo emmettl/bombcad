@@ -6,7 +6,7 @@ import Synchronization
 #else
     // Linux has no simd module of its own (ContinuumKit's stand-in comes only with its
     // libraries), and this module needs just these two of it: in Apple's order of operations, as
-    // BlastModel's stand-in (LinuxSIMD.swift) has them.
+    // ContinuumKit's stand-in (its Sources/LinuxSIMD) has them.
     // swift-format-ignore: AlwaysUseLowerCamelCase
     private func simd_length(_ v: SIMD3<Double>) -> Double {
         let p = v * v

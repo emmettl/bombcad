@@ -203,8 +203,7 @@ class SplitTests(unittest.TestCase):
         root = self.root = Path(self.directory.name)
         (root / "Scripts/split").mkdir(parents=True)
         for name in ("swift_source.py", "blastcore_graph.py", "split_blastmodel.py",
-                     "import-graph.py", "split-blastmodel.sh", "LinuxSIMD.swift",
-                     "SIMDParity.swift", "LinuxSIMDParityTests.swift"):
+                     "import-graph.py", "split-blastmodel.sh"):
             shutil.copy(HERE / name, root / "Scripts/split" / name)
         (root / "Scripts/split/seams.json").write_text('{"seams": []}\n')
         (root / "Scripts/split/overrides.json").write_text('{"stay": {}}\n')
@@ -279,15 +278,15 @@ class SplitTests(unittest.TestCase):
         self.assertIn('name: "BlastModel"', manifest)
         self.assertIn('"BlastModel", "RadialBlast",', manifest)
         self.assertIn("#if os(Linux)", manifest)
-        self.assertIn('exact: "0.1.0-alpha.29"', manifest)
-        self.assertIn("0.1.0-alpha.29", self.read("Package.resolved"))
+        self.assertIn('exact: "0.1.0-alpha.30"', manifest)
+        self.assertIn("0.1.0-alpha.30", self.read("Package.resolved"))
         self.assertIn("@testable import BlastModel",
                       self.read("Tests/BlastModelTests/PlainTests.swift"))
         self.assertIn("@testable import BlastCore\n@testable import BlastModel\n",
                       self.read("Tests/BlastCoreTests/SolverTests.swift"))
         self.assertIn("BlastModelTests", self.read("Makefile"))
         self.assertIn("Blast(Core|Model)", self.read("Scripts/check-affected.py"))
-        self.assertTrue((self.root / "Sources/BlastModel/LinuxSIMD.swift").exists())
+        self.assertFalse((self.root / "Sources/BlastModel/LinuxSIMD.swift").exists())
         self.git("add", "-A")
         self.git("commit", "-qm", "split")
         second = self.run_split()

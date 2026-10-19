@@ -15,8 +15,6 @@ under them. The findings and the numbers are in the cloud report of 19 October 2
 | `seams.json` | Behaviour-neutral edits beyond moving code; one, which moves a constant (`ShellSolver.fibresAcross`, 9) to `ShellMesh` |
 | `overrides.json` | Declarations a Linux build showed must stay in BlastCore, each with its reason |
 | `split-blastmodel.sh`, `split_blastmodel.py` | The split itself |
-| `LinuxSIMD.swift` | The part of Apple's simd that BlastModel uses, for Linux only |
-| `SIMDParity.swift`, `LinuxSIMDParityTests.swift` | Digests of those functions' results recorded on Linux, checked against Apple's simd on the Mac |
 | `test-split.py` | The tools' own tests, on a made-up package |
 
 ## In the window
@@ -29,7 +27,6 @@ under them. The findings and the numbers are in the cloud report of 19 October 2
 4. `swift package resolve`, to refresh `Package.resolved`'s origin hash for ContinuumKit
    0.1.0-alpha.29.
 5. On the Mac: build every target, `make check-anywhere`, and compare the digests with `main`'s.
-   `LinuxSIMDParityTests` there says whether Linux's simd results are Apple's bit for bit.
 6. Commit, and push the branch for review.
 
 After the split, the six plain types it had left in BlastCore for one coupling each
@@ -42,6 +39,11 @@ split found them.
 Running the script again changes nothing. `--no-seams` leaves the seam out, and with it about
 ninety declarations that depend on it stay in BlastCore (rewrite the map with
 `import-graph.py --write --no-seams` first).
+
+On Linux, BlastModel's `import simd` reaches ContinuumKit's stand-in (its `Sources/LinuxSIMD`),
+which follows Apple's simd bit for bit (but for the 3 × 3 inverse and the quaternions' sines,
+cosines and arc tangents) and whose `SIMDParityTests` check it against Apple's on the
+Mac. The split first installed a shim of its own with a parity test; both moved to ContinuumKit.
 
 # The air solver's split (#21)
 

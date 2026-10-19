@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/emmettl/ContinuumKit.git",
       "state" : {
-        "revision" : "eae6589985e5ab8e096d595f352d36447e4573eb",
-        "version" : "0.1.0-alpha.29"
+        "revision" : "2f14a4a23341452f8e4e3a925dcf011f18516078",
+        "version" : "0.1.0-alpha.30"
       }
     }
   ],

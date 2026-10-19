@@ -35,18 +35,15 @@ CORE = "Sources/BlastCore"
 MODEL = "Sources/BlastModel"
 CORE_TESTS = "Tests/BlastCoreTests"
 MODEL_TESTS = "Tests/BlastModelTests"
-SHIM_SOURCE = "Scripts/split/LinuxSIMD.swift"
-SHIM = f"{MODEL}/LinuxSIMD.swift"
-# Files the split adds from Scripts/split, by where they go.
-INSTALLED = {
-    SHIM: SHIM_SOURCE,
-    f"{MODEL}/SIMDParity.swift": "Scripts/split/SIMDParity.swift",
-    f"{MODEL_TESTS}/LinuxSIMDParityTests.swift": "Scripts/split/LinuxSIMDParityTests.swift",
-}
+# Files the split adds from Scripts/split, by where they go. None now: BlastModel's Linux simd
+# is ContinuumKit's stand-in, which follows Apple's simd bit for bit and carries its own parity
+# test (its Sources/LinuxSIMD and Tests/SIMDParityTests), so the shim and its test that the split
+# first installed are gone.
+INSTALLED: dict[str, str] = {}
 EXPORTS = f"{CORE}/BlastModelExports.swift"
 # ContinuumKit's first release whose CPU modules build on Linux (its tag's commit).
-CK_VERSION = "0.1.0-alpha.29"
-CK_REVISION = "eae6589985e5ab8e096d595f352d36447e4573eb"
+CK_VERSION = "0.1.0-alpha.30"
+CK_REVISION = "2f14a4a23341452f8e4e3a925dcf011f18516078"
 CK_PRODUCTS = ["SceneModel", "GeometryImport", "CompressibleFlow", "Numerics"]
 
 
@@ -638,7 +635,7 @@ def default_argument_idents(sf: ss.SourceFile, d: ss.Decl, last: int) -> set[str
 
 
 def widen_access(dry_run: bool = False) -> dict:
-    model = parse_folder(MODEL, (SHIM,))
+    model = parse_folder(MODEL)
     core = parse_folder(CORE)
     core_idents = all_idents(core)
     # `$name` is a property wrapper's projection of `name`.
@@ -781,7 +778,7 @@ def widen_access(dry_run: bool = False) -> dict:
 def memberwise_inits(dry_run: bool = False) -> list[str]:
     """An explicit `package` memberwise initialiser, in an extension beside it, for each struct
     that BlastCore builds with its implicit one (internal, so not visible to another module)."""
-    model = parse_folder(MODEL, (SHIM,))
+    model = parse_folder(MODEL)
     core = parse_folder(CORE)
     called: set[str] = set()
     for sf in core.values():
@@ -965,7 +962,7 @@ class _Shim:
 
 
 def subclass_check() -> None:
-    model = parse_folder(MODEL, (SHIM,))
+    model = parse_folder(MODEL)
     classes = {d.name for sf in model.values() for d in sf.decls if d.kind == "class"}
     for rel, sf in parse_folder(CORE).items():
         for d in sf.decls:
@@ -1020,7 +1017,7 @@ def finish(use_seams: bool) -> None:
             moved[item["path"]] = item["dest"]
     install_files()
     edit_manifest()
-    model = parse_folder(MODEL, (SHIM,))
+    model = parse_folder(MODEL)
     add_model_imports(model)
     retarget_moved_tests()
     subclass_check()

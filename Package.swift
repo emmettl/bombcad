@@ -15,7 +15,7 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/emmettl/ContinuumKit.git",
-            exact: "0.1.0-alpha.29")
+            exact: "0.1.0-alpha.30")
     ],
     targets: [
         // The fine one-dimensional start of a blast (`SphericalBlast`), optimised in debug builds
