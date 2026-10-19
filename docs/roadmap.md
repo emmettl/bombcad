@@ -322,8 +322,9 @@ most are about reaching an answer for less, with the full solver kept as the ref
    one building it does: a corridor from the charge gives full refinement's answer there at 2–9%
    of its refined work, and about a third of its GPU time on Beirut. Refining only beside the
    building is worse than coarse cells
-   ([refinement steering](refinement-steering.md)). Next: refining toward buildings the user
-   selects, and refinement's fixed costs scaling with the blocks held.
+   ([refinement steering](refinement-steering.md)). Refining toward buildings the user selects is
+   in the app since 19 October (Beirut: each chosen building as refined everywhere, at 0.4 of its
+   refined GPU time). Next: refinement's fixed costs scaling with the blocks held.
 2. **Answers in seconds.** Surrogates trained on BombCAD's own runs (reduced-order loads by
    geometry and charge, or a small learned model of envelope response), giving an instant first
    look that real runs then refine where it matters, and inheriting the standing's error bands.

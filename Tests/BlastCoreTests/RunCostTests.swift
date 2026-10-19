@@ -36,6 +36,31 @@ struct RunCostTests {
         #expect(cool.seconds > warm.seconds && cool.seconds < warm.seconds * 1.02)
     }
 
+    @Test("Refinement confined to a corridor is priced between the coarse cells and refining everywhere")
+    func corridorPriced() {
+        let scenario = ScenarioPreset.openGround.scenario
+        var everywhere = SolverConfiguration.recommended
+        everywhere.mappedCharge = false
+        everywhere.refinement = 2
+        var coarse = everywhere
+        coarse.refinement = 1
+        var corridor = everywhere
+        let charge = scenario.charge.position
+        let target = Box(
+            min: SIMD3(charge.x + 18, charge.y - 1, 0), max: SIMD3(charge.x + 20, charge.y + 1, 3))
+        corridor.refinementConfinedTo = RefinementRegion.corridors(from: [charge], to: [target], halfWidth: 3)
+        let estimates = [coarse, corridor, everywhere].map {
+            RunCost.estimate(scenario, cellSize: 0.5, configuration: $0, duration: 0.05)
+        }
+        #expect(estimates[0].seconds < estimates[1].seconds && estimates[1].seconds < estimates[2].seconds)
+        // It refines a fraction of the air, but keeps a share of the refinement's fixed costs.
+        #expect(estimates[1].refinedShare.x < 0.5 * estimates[2].refinedShare.x)
+        let refined = estimates[2].seconds - estimates[0].seconds
+        #expect(
+            estimates[1].seconds - estimates[0].seconds > RunCost.confinedRefinementFixedShare * 0.5 * refined
+        )
+    }
+
     @Test("Whole events come within a factor of two of the times docs/performance.md records")
     func againstRecord() {
         let street = ScenarioPreset.streetCanyon.scenario

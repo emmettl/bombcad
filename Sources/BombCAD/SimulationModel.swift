@@ -183,6 +183,9 @@ struct SimulationSettings: Equatable {
     /// (`SolverConfiguration.radiativeCooling`, the thermal description's medium), by default since
     /// 19 October 2026; off, as before, it keeps it and stays hot.
     var radiativeCooling = true
+    /// The scene's objects the refinement goes toward (`ProjectRunSettings.refineToward`); empty to
+    /// refine anywhere.
+    var refineToward: [UUID] = []
     /// Debris lands on soil, a Winkler bed of `groundStiffness` (Pa/m), instead of the hard ground.
     var softGround = false
     var groundStiffness = SolverConfiguration.soilSubgradeModulus
@@ -258,6 +261,8 @@ enum EditSelection: Hashable {
     case part(StructureModel.SourcePart)
     case gauge(Int)
     case imported(UUID)
+    /// A building, an exposure-only envelope or a structure, picked to refine toward.
+    case building(UUID)
 }
 
 struct GaugePoint: Identifiable {
@@ -424,9 +429,36 @@ final class SimulationModel {
         } catch { errorMessage = error.localizedDescription }
     }
 
+    /// The refinement toward the chosen buildings priced against refining everywhere, by the
+    /// advisor's estimate of the run's time (s); nil where the refinement goes anywhere.
+    var refineTowardCost: (toward: Double, everywhere: Double)? {
+        guard settings.sharpShocks, !settings.refineToward.isEmpty else { return nil }
+        let run = ProjectRunSettings(model: self)
+        var everywhere = run
+        everywhere.refineToward = nil
+        return (
+            run.costEstimate(settings.scenario).seconds, everywhere.costEstimate(settings.scenario).seconds
+        )
+    }
+
+    /// Whether the refinement goes toward the scene's object `id` (`SimulationSettings.refineToward`).
+    func refinesToward(_ id: UUID) -> Bool { settings.refineToward.contains(id) }
+
+    /// Adds the object `id` to the buildings the refinement goes toward, along corridors from each
+    /// charge, or takes it away; the refinement is turned on with it.
+    func toggleRefineToward(_ id: UUID) {
+        if let index = settings.refineToward.firstIndex(of: id) {
+            settings.refineToward.remove(at: index)
+        } else {
+            settings.refineToward.append(id)
+            settings.sharpShocks = true
+        }
+    }
+
     func removeEnvelope(id: UUID) {
         guard !isPreparingImports, settings.scenario.object(id: id)?.envelope != nil else { return }
         do { try settings.scenario.removeObject(id: id) } catch { errorMessage = error.localizedDescription }
+        settings.refineToward.removeAll { $0 == id }
     }
 
     /// Sets what an envelope's walls are built of, as the user's choice, keeping its other
@@ -1092,6 +1124,7 @@ final class SimulationModel {
                 settings.settlesStructures = run.settlesStructures(over: scenario)
                 settings.mappedStart = run.startsMapped
                 settings.radiativeCooling = run.cools
+                settings.refineToward = run.refineToward ?? []
                 settings.softGround = run.groundStiffness != nil
                 settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
                 settings.ground = run.ground ?? .rigid
@@ -1250,6 +1283,7 @@ final class SimulationModel {
             settings.settlesStructures = run.settlesStructures(over: document.scenario)
             settings.mappedStart = run.startsMapped
             settings.radiativeCooling = run.cools
+            settings.refineToward = run.refineToward ?? []
             settings.softGround = run.groundStiffness != nil
             settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
             settings.ground = run.ground ?? .rigid
@@ -1463,6 +1497,7 @@ final class SimulationModel {
         settings.settlesStructures = inputs.settings.settlesStructures(over: inputs.scenario)
         settings.mappedStart = inputs.settings.startsMapped
         settings.radiativeCooling = inputs.settings.cools
+        settings.refineToward = inputs.settings.refineToward ?? []
         settings.softGround = inputs.settings.groundStiffness != nil
         settings.groundStiffness = inputs.settings.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
         settings.ground = inputs.settings.ground ?? .rigid
@@ -1522,6 +1557,8 @@ final class SimulationModel {
             guard scenario.gauges.indices.contains(index) else { return nil }
             let position = scenario.gauges[index].position
             return Box(min: position - 0.25, max: position + 0.25)
+        case .building(let id):
+            return scenario.object(id: id)?.bounds
         case .imported(let id):
             guard let imported = scenario.importedModels?.first(where: { $0.id == id && $0.isAttached })
             else { return nil }
@@ -1981,7 +2018,14 @@ final class SimulationModel {
                 in: settings.scenario, origin: ray.origin, direction: ray.direction)
             {
                 inspectImport(id: id)
+            } else if let id = ScenePicking.building(
+                in: settings.scenario, origin: ray.origin, direction: ray.direction)
+            {
+                // A building picked, for the refinement to go toward (`toggleRefineToward`).
+                selection = .building(id)
             } else if case .imported = selection {
+                selection = nil
+            } else if case .building = selection {
                 selection = nil
             }
             return
@@ -2826,7 +2870,9 @@ final class SimulationModel {
             mappedStart: settings.mappedStart, refinementCeiling: settings.refinementCeiling,
             // The gas's own radiation, whatever the thermal overlay reckons: the overlay changes
             // nothing in the air.
-            radiativeCooling: settings.radiativeCooling ? RadiativeCooling() : nil)
+            radiativeCooling: settings.radiativeCooling ? RadiativeCooling() : nil,
+            refinementRegions: settings.sharpShocks && !settings.refineToward.isEmpty
+                ? settings.scenario.refinementCorridors(toward: settings.refineToward) : nil)
         solver.configuration.fitRefinementMemory(solver.grid, memory: advisorMemory)
         // A mapped start begins no later than halfway through the run, so that the grid has the rest.
         solver.mappedStartLatest = duration / 2

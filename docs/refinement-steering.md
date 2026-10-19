@@ -108,6 +108,44 @@ the ceiling.
 - **The disc.** 120–132 of 217 buildings were in doubt, so the disc (185–201 m) covered the box,
   and the answers and refined blocks were those of refining everywhere.
 
+## Refining toward chosen buildings
+
+Since 19 October 2026 this is a feature. In the app, click a building in the view (or use its row's
+toggle among the exposure-only buildings) and turn on **Refine toward this building**; choose as
+many as matter. The run refines corridors from each charge to each of them
+(`Scenario.refinementCorridors`, `RefinementRegion.corridors`): the line over the ground to the
+building's middle and on past its far side, 1.5 m/kg^(1/3) either side (120 m for 500 t, the wider
+of the two tried above), and the building itself widened as much. The rest of the scene stays on
+the coarse cells, which the sidebar says, with the advisor's estimate of the run's time against
+refining everywhere. A saved run keeps the buildings chosen (`ProjectRunSettings.refineToward`), so
+`BombCAD run` does the same. Headless, `scenebench district-compare --refine-toward x,y[;x,y]`
+refines toward the buildings nearest those points, and `Scripts/compare-refine-toward.py` sets a
+coarse run, one refined everywhere and one refined toward them side by side for those buildings.
+
+On Beirut's 1 km box (as above, 8 m cells refined once to 4 m, to 2.5 s, today's air), toward three
+of the four buildings at once:
+
+| Building | Coarse cells | Refined everywhere | Toward the three |
+|---|---|---|---|
+| 402 m | concrete 2, stone 2; 27.8 kPa | 2, 2; 29.3 kPa | 2, 2; 29.3 kPa |
+| 700 m | 0, 0; 19.6 kPa | 1, 2; 22.5 kPa | 1, 2; 22.5 kPa |
+| 852 m | 0, 0; 14.0 kPa | 0, 2; 21.9 kPa | 0, 2; 22.2 kPa |
+
+(Their glass breaks on every side in all three.) Each building takes refining everywhere's answer,
+where the coarse cells get two of the three wrong. The refined GPU time, from `--profile`'s stages,
+beyond the coarse cells' 3.0 s:
+
+| Refined toward | Block-steps of refining everywhere | Refined GPU s | Of everywhere's 21.5 |
+|---|---|---|---|
+| One building (700 m) | 20% | 9.6 | 0.45 |
+| Three buildings | 35% | 8.3 | 0.39 |
+
+The two are within the Studio's noise of each other: the fixed costs, not the blocks, set a few
+corridors' time. The advisor prices a confinement as its share of the refined work plus 0.29 of
+the rest (`RunCost.confinedRefinementFixedShare`), which gives 0.31 for the 60 m corridor above,
+0.43 for one building and 0.54 for three; making the fixed costs follow the blocks held ([Horizons](roadmap.md#horizons))
+would bring all three down.
+
 ## Limitations
 
 - **The decisions judged are the bench's.** Each side's glass is judged at the median strength,
@@ -124,10 +162,7 @@ the ceiling.
 
 ## What it could become
 
-- **Refine toward chosen buildings.** In the app, select the buildings that matter (a client's
-  building, a school), and the run refines corridors from the charge to them, about
-  1.5 W^(1/3) either side. It costs about a third of a fully refined run and gives the same answer
-  there. The rest of the district stays on the coarse cells and says so.
+- **Refine toward chosen buildings:** built ([above](#refining-toward-chosen-buildings)).
 - **Show the doubt.** The coarse first pass with its loads rescaled takes 1–3 s for Beirut's
   1 km box. Shown as an overlay, it tells the user which buildings' outcomes the cells could
   flip, before choosing what to refine.

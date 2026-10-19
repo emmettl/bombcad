@@ -156,7 +156,11 @@ Line** lays gauges outward from the charge at the Kingery–Bulmash scaled dista
 64 gauges are recorded. The Thermal section sets how far apart its ground receivers stand, at
 most 250,000 of them. See [Large scenes](large-scenes.md) for which grid to choose.
 Under Sharpen shocks, **Follow the shock** sets how weak a shock the refined air still follows
-(above 20, 5 or 1 kPa).
+(above 20, 5 or 1 kPa). To refine only toward the buildings that matter, click one in the view and
+turn on **Refine toward this building** (or use the toggle in its row): the shock is refined along a
+corridor from each charge to each building chosen, the rest of the scene stays on the coarse cells,
+and the sidebar gives the time against refining everywhere ([refinement
+steering](refinement-steering.md#refining-toward-chosen-buildings)).
 
 **Advisor.** In the Run tab, choose a target (peaks, impulse or deflection within a percentage,
 or a run under so many minutes) and **Suggest**: the advisor weighs grids, refinement and

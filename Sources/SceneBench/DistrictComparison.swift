@@ -8,6 +8,7 @@ import simd
 /// [--design-probability 0.008] [--glass 0.006,0.004] [--staircase] [--bare] [--trace]
 /// [--save-loads folder] [--refine 2 --levels 2 --threshold 0.005 --refine-memory GB --hold Pa]
 /// [--ceiling auto|m] [--place-dx m] [--profile] [--steer 0.8,1.5 --steer-reach 12 --steer-by ring|near --steer-on glass|structure] [--corridor x,y,60]
+/// [--refine-toward x,y;x,y [--toward-width 1.5]]
 /// --out folder`: the district's event, and what an accident survey
 /// can be set against: arrival times at observers' positions (Rigby et al.'s CSV: lat, lon, and
 /// the time seen), peak overpressures on a line of gauges over the open side, and each building's
@@ -528,6 +529,36 @@ enum DistrictComparison {
                 return RefinementRegion(low: SIMD3(low.x, low.y, -1e4), high: SIMD3(high.x, high.y, 1e4))
             }
             print(String(format: "Corridor to (%.0f, %.0f) m, %.0f m either side", target.x, target.y, width))
+        }
+        // `--refine-toward x,y[;x,y...]` (m in the domain): refinement toward the buildings nearest
+        // those points, along corridors from the charge, as the app's "Refine toward"
+        // (`Scenario.refinementCorridors`, 1.5 m/kg^(1/3) either side; `--toward-width` another).
+        if let text = value("refine-toward"), configuration.refinement > 1 {
+            let points = text.split(separator: ";").map { $0.split(separator: ",").compactMap { Float($0) } }
+                .filter { $0.count >= 2 }
+            let ids = points.compactMap { point -> UUID? in
+                let at = SIMD2(point[0], point[1])
+                return scene.envelopeObjects.min { a, b in
+                    func centre(_ object: SceneObject) -> SIMD2<Float> {
+                        guard let box = object.bounds else { return SIMD2(repeating: .infinity) }
+                        return 0.5 * SIMD2(box.min.x + box.max.x, box.min.y + box.max.y)
+                    }
+                    return simd_distance(centre(a), at) < simd_distance(centre(b), at)
+                }?.id
+            }
+            let width = value("toward-width").flatMap(Float.init) ?? RefinementRegion.corridorScaledHalfWidth
+            configuration.refinementConfinedTo = scene.refinementCorridors(
+                toward: ids, scaledHalfWidth: width)
+            for id in ids {
+                if let box = scene.object(id: id)?.bounds {
+                    let centre = 0.5 * (box.min + box.max)
+                    print(
+                        String(
+                            format: "Refining toward the building at (%.0f, %.0f) m, %.0f m from the charge",
+                            centre.x, centre.y,
+                            simd_distance(SIMD2(centre.x, centre.y), SIMD2(charge.x, charge.y))))
+                }
+            }
         }
         // `--confine-box x0,y0,x1,y1`: refinement only in that box, m in the domain (to time the
         // refinement's fixed costs with a box the shock never reaches).

@@ -70,6 +70,33 @@ struct StandingRunTests {
             ])
     }
 
+    @Test("Refining toward chosen buildings confines the run's refinement to corridors to them")
+    func refineToward() throws {
+        var scene = ScenarioPreset.openGround.scenario
+        let charge = scene.charge.position
+        let id = try scene.addEnvelopeObject(
+            BuildingEnvelope(solids: [
+                Box(min: SIMD3(charge.x + 15, charge.y - 2, 0), max: SIMD3(charge.x + 19, charge.y + 2, 3))
+            ]), name: "Chosen")
+        var settings = SimulationSettings()
+        settings.scenario = scene
+        settings.sharpShocks = true
+        settings.refineToward = [id]
+        let run = ProjectRunSettings(settings: settings, duration: 0.05)
+        #expect(run.refineToward == [id])
+        let regions = try #require(run.standingInputs(scene).configuration.refinementConfinedTo)
+        #expect(regions == scene.refinementCorridors(toward: [id]))
+        // Without refinement there is nothing to confine, and nothing is kept.
+        settings.sharpShocks = false
+        let plain = ProjectRunSettings(settings: settings, duration: 0.05)
+        #expect(
+            plain.refineToward == nil && plain.standingInputs(scene).configuration.refinementConfinedTo == nil
+        )
+        // Saved and opened again, the choice comes back.
+        let reopened = try JSONDecoder().decode(ProjectRunSettings.self, from: JSONEncoder().encode(run))
+        #expect(reopened.refineToward == [id])
+    }
+
     @Test("A headless run carries its standing into its summary, JSON, USD scene and volumes")
     @MainActor func headlessStanding() async throws {
         var scene = Scenario(

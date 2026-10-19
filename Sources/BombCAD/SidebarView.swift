@@ -487,6 +487,29 @@ struct SidebarView: View {
                             + "fastest in the coarse air, as in the open after the fireball has spread: 1.1 to 1.3 "
                             + "times faster there, peaks 1 to 2.5% higher (towards the references). The advisor "
                             + "turns it on where it pays.")
+                if !model.settings.refineToward.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        let count = model.settings.refineToward.count
+                        Text("Refined only toward \(count) building\(count == 1 ? "" : "s")")
+                        if let cost = model.refineTowardCost, cost.everywhere > 0 {
+                            Text(
+                                String(
+                                    format: "About %.0f%% of refining everywhere's time (%@ against %@)",
+                                    100 * cost.toward / cost.everywhere, RunAdvisor.duration(cost.toward),
+                                    RunAdvisor.duration(cost.everywhere))
+                            )
+                            .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Text("Elsewhere the results are the coarse cells'.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Button("Refine everywhere") { model.settings.refineToward = [] }
+                    }
+                    .padding(.leading, 20)
+                    .help(
+                        "The shocks are refined along corridors from each charge to the chosen buildings, 1.5 m/kg^(1/3) "
+                            + "either side, which gives refining everywhere's answer there at a fraction of its cost "
+                            + "(docs/refinement-steering.md). Choose buildings by clicking them in the view.")
+                }
             }
             LabeledSlider(
                 title: "X", value: axisBinding(\.x), range: 1...Double(model.domainSize.x - 1),

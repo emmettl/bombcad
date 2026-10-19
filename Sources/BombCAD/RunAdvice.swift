@@ -44,7 +44,8 @@ extension ProjectRunSettings {
             adaptiveSubsteps: adaptiveSubsteps ?? false, terrainCutCells: cutsTerrain(over: scenario),
             outlineByOverlap: countsByOverlap(over: scenario), mappedStart: startsMapped,
             refinementCeiling: refinementCeiling,
-            radiativeCooling: cools ? RadiativeCooling() : nil)
+            radiativeCooling: cools ? RadiativeCooling() : nil,
+            refinementRegions: refinementRegions(over: scenario))
         let cellSize = (Resolution(rawValue: resolution) ?? .medium).cellSize
         configuration.fitRefinementMemory(
             scenario.grid(cellSize: cellSize), memory: AdvisorMachine.thisMac.memory)
@@ -106,7 +107,8 @@ extension SimulationInputs {
             terrainCutCells: settings.cutsTerrain(over: scenario),
             outlineByOverlap: settings.countsByOverlap(over: scenario), mappedStart: settings.startsMapped,
             refinementCeiling: settings.refinementCeiling,
-            radiativeCooling: settings.cools ? RadiativeCooling() : nil)
+            radiativeCooling: settings.cools ? RadiativeCooling() : nil,
+            refinementRegions: settings.refinementRegions(over: scenario))
         return configuration
     }
 

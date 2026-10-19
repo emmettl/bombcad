@@ -65,6 +65,10 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// (`SolverConfiguration.radiativeCooling`), as since 19 October 2026; nil, and left out of the
     /// file and the fingerprint, where it kept it (every run saved before then).
     var radiativeCooling: Bool?
+    /// The scene's objects the refinement goes toward, along corridors from each charge
+    /// (`Scenario.refinementCorridors`), the rest of the scene staying on the coarse cells; nil,
+    /// and left out of the file and the fingerprint, to refine anywhere, or without refinement.
+    var refineToward: [UUID]?
     var solidElementSize: Float
     var duration: Double
 
@@ -88,6 +92,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         settlesStructures = settings.scenario.structuralObjects.isEmpty ? nil : settings.settlesStructures
         mappedStart = settings.detailedCharge && settings.mappedStart ? true : nil
         radiativeCooling = settings.detailedCharge && settings.radiativeCooling ? true : nil
+        refineToward = settings.sharpShocks && !settings.refineToward.isEmpty ? settings.refineToward : nil
         solidElementSize = settings.solidElementSize
         self.duration = duration
     }
@@ -95,6 +100,13 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     @MainActor
     init(model: SimulationModel) {
         self.init(settings: model.settings, duration: model.duration)
+    }
+
+    /// The boxes the refinement is confined to over `scenario`: corridors toward `refineToward`,
+    /// where the refinement is on and any of them is still in the scene; nil to refine anywhere.
+    func refinementRegions(over scenario: Scenario) -> [RefinementRegion]? {
+        guard sharpShocks, let ids = refineToward, !ids.isEmpty else { return nil }
+        return scenario.refinementCorridors(toward: ids)
     }
 
     /// Whether runs of `scenario` under these settings vent its glazing: as recorded where it is

@@ -111,6 +111,22 @@ struct EditorView: View {
 
             FreestandingObjectsSection(model: model)
 
+            if case .building(let id) = model.selection, let object = model.settings.scenario.object(id: id) {
+                Section {
+                    Text(object.name)
+                    Toggle(
+                        "Refine toward this building",
+                        isOn: Binding(
+                            get: { model.refinesToward(id) }, set: { _ in model.toggleRefineToward(id) }))
+                } header: {
+                    Text("Selected building")
+                } footer: {
+                    Text(
+                        "The shocks are refined only along corridors from each charge to the buildings chosen; the rest of the scene stays on the coarse cells. Click another building to choose it too."
+                    )
+                }
+            }
+
             if !model.settings.scenario.envelopeObjects.isEmpty {
                 Section {
                     ForEach(model.settings.scenario.envelopeObjects) { object in
@@ -142,6 +158,15 @@ struct EditorView: View {
                             .help(
                                 "What the walls are built of, for the building's one-way damage. The air never sees it."
                             )
+                            Toggle(
+                                "Refine toward",
+                                isOn: Binding(
+                                    get: { model.refinesToward(object.id) },
+                                    set: { _ in model.toggleRefineToward(object.id) })
+                            )
+                            .toggleStyle(.button).labelStyle(.iconOnly)
+                            .help("Refine the shocks toward this building, along a corridor from each charge")
+                            .accessibilityLabel("Refine toward \(object.name)")
                             Button("Remove", systemImage: "trash") { model.removeEnvelope(id: object.id) }
                                 .labelStyle(.iconOnly)
                                 .accessibilityLabel("Remove \(object.name)")

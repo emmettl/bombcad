@@ -53,4 +53,29 @@ public enum ScenePicking {
         }
         return selected
     }
+
+    /// The building a ray from `origin` along `direction` meets first: an exposure-only envelope or
+    /// a structure, by the id of its scene object; nil where a block or the ground is nearer, or
+    /// nothing is hit. For choosing the buildings the refinement goes toward.
+    public static func building(in scenario: Scenario, origin: SIMD3<Float>, direction: SIMD3<Float>) -> UUID?
+    {
+        var closest = Float.infinity
+        var selected: UUID?
+        func visit(_ boxes: [Box], id: UUID?) {
+            for box in boxes {
+                if let hit = distance(to: box, origin: origin, direction: direction), hit < closest {
+                    closest = hit
+                    selected = id
+                }
+            }
+        }
+        visit(scenario.boxes, id: nil)
+        for object in scenario.envelopeObjects { visit(object.envelope?.blocks ?? [], id: object.id) }
+        for object in scenario.structuralObjects { visit(object.structure?.solids ?? [], id: object.id) }
+        if direction.z < -1e-8 && origin.z >= 0 {
+            let ground = -origin.z / direction.z
+            if ground < closest { return nil }
+        }
+        return selected
+    }
 }

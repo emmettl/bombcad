@@ -89,7 +89,12 @@ extension RunCost {
                                             < SolverConfiguration.refinementCeilingExemption * cbrt($0.mass)
                                 }
                         } ?? false
-                    if Float(overpressure) >= reach && configuration.refinement > 1 && !capped {
+                    // Outside every box refinement is confined to, nothing is refined either.
+                    let outside =
+                        configuration.refinementConfinedTo.map { regions in
+                            !regions.contains { all(point .>= $0.low) && all(point .<= $0.high) }
+                        } ?? false
+                    if Float(overpressure) >= reach && configuration.refinement > 1 && !capped && !outside {
                         hold(
                             0, from: arrival,
                             for: max(Double(shellCells * cellSize / soundSpeed), core.x - arrival))
@@ -186,8 +191,18 @@ extension RunCost {
         if configuration.refinement > 1 && configuration.refinementOwnSteps {
             fineUpdates *= ownStepsShare(scenario, duration: duration)
         }
+        // Confined, the refinement keeps part of its fixed costs in the air it does not refine
+        // (`confinedRefinementFixedShare`): a share of the fine work refining everywhere would add.
+        var fixedUpdates = 0.0
+        if configuration.refinement > 1, configuration.refinementConfinedTo != nil {
+            var everywhere = configuration
+            everywhere.refinementConfinedTo = nil
+            let all = estimate(scenario, cellSize: cellSize, configuration: everywhere, duration: duration)
+            fixedUpdates = confinedRefinementFixedShare * max(all.fineUpdates - fineUpdates, 0)
+        }
         let seconds =
-            (coarseUpdates + fineUpdates * fineUpdateCost) * updateCost / cellUpdatesPerSecond
+            (coarseUpdates + (fineUpdates + fixedUpdates) * fineUpdateCost) * updateCost
+            / cellUpdatesPerSecond
             + elementUpdates / elementUpdatesPerSecond + overhead
             + mappedStartSeconds(scenario, cellSize: cellSize, configuration: configuration)
         return RunCostEstimate(
