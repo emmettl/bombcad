@@ -198,7 +198,7 @@ public final class BlastSolver {
         let dx = grid.cellSize
         let face = dx * dx
         let counts = [grid.nx, grid.ny, grid.nz]
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         func range(_ low: Float, _ high: Float, _ axis: Int) -> Range<Int> {
             let lower = min(max(Int((low / dx - 0.5).rounded(.up)), 0), counts[axis])
             let upper = min(max(Int((high / dx - 0.5).rounded(.up)), lower), counts[axis])
@@ -306,7 +306,7 @@ public final class BlastSolver {
         guard let venting = envelopeVenting else { return [:] }
         let dx = grid.cellSize
         let counts = [grid.nx, grid.ny, grid.nz]
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         func range(_ low: Float, _ high: Float, _ axis: Int) -> Range<Int> {
             let lower = min(max(Int((low / dx - 0.5).rounded(.up)), 0), counts[axis])
             let upper = min(max(Int((high / dx - 0.5).rounded(.up)), lower), counts[axis])
@@ -450,7 +450,7 @@ public final class BlastSolver {
                 })
         else { throw BlastError.allocationFailed("stationary envelope observation before the first step") }
         return UnsafeBufferPointer(
-            start: maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount),
+            start: maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount),
             count: grid.cellCount)
     }
 
@@ -706,6 +706,15 @@ public final class BlastSolver {
     private var needsRigidMaskCapture = true
     private let peakBuffer: MTLBuffer
     private let impulseBuffer: MTLBuffer
+    /// The CPU addresses of the state, mask, peak and impulse buffers, taken once: each
+    /// `MTLBuffer.contents()` returns an inner pointer, for which the buffer is retained and
+    /// autoreleased, so every per-cell read through it added an entry to the thread's autorelease
+    /// pool, and on a thread whose pool never drains (a command-line tool, a worker) kept the
+    /// buffer alive. Shared storage: the addresses never move.
+    private let stateContents: [UnsafeMutableRawPointer]
+    let maskContents: UnsafeMutableRawPointer
+    private let peakContents: UnsafeMutableRawPointer
+    private let impulseContents: UnsafeMutableRawPointer
     private let controlBuffer: MTLBuffer
     private let maxSpeedBuffer: MTLBuffer
     private let gaugeLogBuffer: MTLBuffer
@@ -868,6 +877,10 @@ public final class BlastSolver {
         wallVelocityBuffer = stillWallBuffer
         peakBuffer = try buffer(cells * MemoryLayout<Float>.stride, "peak overpressure")
         impulseBuffer = try buffer(cells * MemoryLayout<Float>.stride, "impulse")
+        stateContents = stateBuffers.map { $0.contents() }
+        maskContents = maskBuffer.contents()
+        peakContents = peakBuffer.contents()
+        impulseContents = impulseBuffer.contents()
         controlBuffer = try buffer(MemoryLayout<StepControl>.stride, "step control")
         // The fastest wave and the largest overpressure; with refined levels' own steps, each
         // level's fastest wave.
@@ -903,7 +916,7 @@ public final class BlastSolver {
         texture.label = "visualization"
         visualizationTexture = texture
 
-        memset(maskBuffer.contents(), 0, cells)
+        memset(maskContents, 0, cells)
         memset(rigidMaskBuffer.contents(), 0, cells)
         fill(uniform: Primitive(density: 1.225, pressure: configuration.ambientPressure))
     }
@@ -1094,7 +1107,7 @@ public final class BlastSolver {
     public func speciesTotals() -> (fuel: Double, oxygen: Double) {
         precondition(!batchInFlight, "Cannot read state while a batch is in flight")
         guard hasSpecies else { return (0, 0) }
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         let species = speciesBuffers[current].contents().bindMemory(
             to: SIMD2<Float>.self, capacity: grid.cellCount)
         let volume = Double(grid.cellSize) * Double(grid.cellSize) * Double(grid.cellSize)
@@ -1155,7 +1168,7 @@ public final class BlastSolver {
     func editState(_ body: (UnsafeMutableBufferPointer<CellState>) throws -> Void) rethrows {
         precondition(!batchInFlight, "Cannot edit state while a batch is in flight")
         frameExtractor?.invalidate()
-        let pointer = stateBuffers[current].contents().bindMemory(
+        let pointer = stateContents[current].bindMemory(
             to: CellState.self, capacity: grid.cellCount)
         try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
     }
@@ -1179,7 +1192,7 @@ public final class BlastSolver {
         terrainSurface = nil
         terrainCut = nil
         needsRigidMaskCapture = true
-        let pointer = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let pointer = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
     }
 
@@ -1190,7 +1203,7 @@ public final class BlastSolver {
         frameExtractor?.invalidate()
         rigidBoxes = nil
         needsRigidMaskCapture = true
-        let pointer = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let pointer = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
     }
 
@@ -1318,11 +1331,11 @@ public final class BlastSolver {
         debrisAreaBuffer = nil
         wallVelocityBuffer = stillWallBuffer
         if needsRigidMaskCapture {
-            memcpy(rigidMaskBuffer.contents(), maskBuffer.contents(), grid.cellCount)
+            memcpy(rigidMaskBuffer.contents(), maskContents, grid.cellCount)
             needsRigidMaskCapture = false
         }
         // Replacing/removing bodies must clear their old outline outside the new coupling region.
-        memcpy(maskBuffer.contents(), rigidMaskBuffer.contents(), grid.cellCount)
+        memcpy(maskContents, rigidMaskBuffer.contents(), grid.cellCount)
         guard let first = compiled.first else { return }
         let model = first.model
         // Follow the structure within a few metres of where it starts.
@@ -1914,8 +1927,8 @@ public final class BlastSolver {
 
     /// Direct access to the peak overpressure and impulse fields.
     func setFields(_ body: (UnsafeMutableBufferPointer<Float>, UnsafeMutableBufferPointer<Float>) -> Void) {
-        let peak = peakBuffer.contents().bindMemory(to: Float.self, capacity: grid.cellCount)
-        let impulse = impulseBuffer.contents().bindMemory(to: Float.self, capacity: grid.cellCount)
+        let peak = peakContents.bindMemory(to: Float.self, capacity: grid.cellCount)
+        let impulse = impulseContents.bindMemory(to: Float.self, capacity: grid.cellCount)
         body(
             UnsafeMutableBufferPointer(start: peak, count: grid.cellCount),
             UnsafeMutableBufferPointer(start: impulse, count: grid.cellCount))
@@ -2097,13 +2110,13 @@ public final class BlastSolver {
         }
         gaugeHistories = Array(repeating: [], count: gaugeCount)
         resetDebrisExchange()
-        memset(peakBuffer.contents(), 0, peakBuffer.length)
-        memset(impulseBuffer.contents(), 0, impulseBuffer.length)
+        memset(peakContents, 0, peakBuffer.length)
+        memset(impulseContents, 0, impulseBuffer.length)
         maxSpeedBuffer.contents().storeBytes(of: 0, as: UInt64.self)
         airIsAsleep = false
         // Both state buffers start alike, so that a tile never swept holds the same state in each.
         memcpy(
-            stateBuffers[1 - current].contents(), stateBuffers[current].contents(),
+            stateContents[1 - current], stateContents[current],
             stateBuffers[current].length)
         if hasSpecies {
             memcpy(
@@ -3435,7 +3448,7 @@ public final class BlastSolver {
     /// Read-only view of the current conserved state. Solid cells hold stale values.
     public func withState<R>(_ body: (UnsafeBufferPointer<CellState>) throws -> R) rethrows -> R {
         precondition(!batchInFlight, "Cannot read state while a batch is in flight")
-        let pointer = stateBuffers[current].contents().bindMemory(
+        let pointer = stateContents[current].bindMemory(
             to: CellState.self, capacity: grid.cellCount)
         return try body(UnsafeBufferPointer(start: pointer, count: grid.cellCount))
     }
@@ -3445,18 +3458,18 @@ public final class BlastSolver {
     }
 
     public func isSolid(_ i: Int, _ j: Int, _ k: Int) -> Bool {
-        maskBuffer.contents().load(fromByteOffset: grid.index(i, j, k), as: UInt8.self) != 0
+        maskContents.load(fromByteOffset: grid.index(i, j, k), as: UInt8.self) != 0
     }
 
     /// Largest overpressure (Pa) seen so far in a cell.
     public func peakOverpressure(_ i: Int, _ j: Int, _ k: Int) -> Float {
-        peakBuffer.contents().load(
+        peakContents.load(
             fromByteOffset: grid.index(i, j, k) * MemoryLayout<Float>.stride, as: Float.self)
     }
 
     /// Positive-phase impulse (Pa s) accumulated so far in a cell.
     public func impulse(_ i: Int, _ j: Int, _ k: Int) -> Float {
-        impulseBuffer.contents().load(
+        impulseContents.load(
             fromByteOffset: grid.index(i, j, k) * MemoryLayout<Float>.stride, as: Float.self)
     }
 
@@ -3478,7 +3491,7 @@ public final class BlastSolver {
     /// Total mass (kg) and energy (J) of the gas, summed over fluid cells; under the patches of
     /// refined air, over their fluid fine cells.
     public func totals() -> (mass: Double, energy: Double) {
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         let volume = Double(grid.cellSize) * Double(grid.cellSize) * Double(grid.cellSize)
         let fine = refinedGas()
         return withState { cells in
@@ -3511,7 +3524,7 @@ public final class BlastSolver {
 
     /// Total momentum of the gas in kg m/s, counted as `totals()` is.
     public func momentum() -> SIMD3<Double> {
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         let volume = Double(grid.cellSize) * Double(grid.cellSize) * Double(grid.cellSize)
         let fine = refinedGas()
         return withState { cells in
@@ -3527,7 +3540,7 @@ public final class BlastSolver {
     }
 
     public var fluidCellCount: Int {
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         var count = 0
         for index in 0..<grid.cellCount where mask[index] == 0 { count += 1 }
         return count
@@ -3975,7 +3988,7 @@ extension BlastSolver {
         }
         let geometries = bodies.map(ExperimentalBoxGeometry.init)
         let previous = initial ? geometries : experimentalBoxes.map(ExperimentalBoxGeometry.init)
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         let scenery = rigidMaskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
         // The coarse cells each box holds now, the first box taking a cell two share.
         var owner: [Int: Int] = [:]
