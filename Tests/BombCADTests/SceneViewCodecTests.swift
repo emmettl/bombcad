@@ -61,6 +61,28 @@ struct SceneViewCodecTests {
         #expect(try SceneViewCodec.decodeFrame(padded.dropFirst(3)) == frame)
     }
 
+    @Test("A view with the colours, which an app before them cannot read, comes only from protocol 13 on")
+    func protocolVersion() async throws {
+        // An app of protocol 12 reads a setup to its last body and throws at the colours after it.
+        #expect(SweepWorkerHello.protocolVersion >= 13)
+        let toWorker = Pipe()
+        let fromWorker = Pipe()
+        var hello = SweepWorkerHello(device: "Older GPU")
+        hello.protocolVersion = 12
+        try SweepWorkerWriter(fromWorker.fileHandleForWriting).send(.hello(hello))
+        let older = SweepWorkerClient(
+            name: "older worker", input: fromWorker.fileHandleForReading,
+            output: toWorker.fileHandleForWriting
+        ) { try? toWorker.fileHandleForWriting.close() }
+        await #expect(throws: ProjectFileError.self) { try await older.start() }
+        try? fromWorker.fileHandleForWriting.close()
+        let advert = NearbyWorkers.Advert(
+            id: UUID(), version: "0.5.0", protocolVersion: 12,
+            solverVersion: SavedSimulationRun.solverVersion,
+            device: "Older GPU")
+        #expect(!advert.compatible)
+    }
+
     @Test("The field read whole is the solver's; coarser, each texel keeps its block's extremes")
     func coarseField() throws {
         let (solver, _) = try solver()
