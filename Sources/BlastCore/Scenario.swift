@@ -178,14 +178,29 @@ public struct Scenario: Sendable, Hashable, Codable {
             cellSize: cellSize)
     }
 
-    /// True when the charge (or a gas cloud's ignition point) sits inside a rigid block or the
-    /// structure, where it can release no energy into the air.
+    /// True when the charge (or a gas cloud's ignition point) is buried in rigid blocks, a structure
+    /// or the ground (`blocks`), where it can release no energy into the air.
     public var chargeIsBlocked: Bool {
         // A gas cloud's ignition point, when the cloud is the source.
-        let point = deflagration?.ignition ?? charge.position
-        return rigidBoxes.contains { $0.contains(point) }
-            || terrain?.contains(point) == true
-            || structuralObjects.contains { $0.structure?.occupies(point) == true }
+        blocks(deflagration?.ignition ?? charge.position)
+    }
+
+    /// Whether `point` is buried: rigid blocks (an envelope's walls and a map building's solid
+    /// among them), structures or the ground on every side of it, a millimetre out. A charge there
+    /// releases no energy into the air, and the solver lays none of it. One on a face (a contact
+    /// charge on a wall, under a slab or on a roof) has air on that side and is laid in it; one on
+    /// the ground under a building's block, or on a seam between two of its boxes, is buried.
+    public func blocks(_ point: SIMD3<Float>) -> Bool {
+        let boxes = rigidBoxes
+        let step = max(Float(1e-3), 8 * max(abs(point.x), abs(point.y), abs(point.z)).ulp)
+        return (0..<3).allSatisfy { axis in
+            [-step, step].allSatisfy { offset in
+                var q = point
+                q[axis] += offset
+                return q.z < groundHeight(at: q) || boxes.contains { $0.contains(q) }
+                    || structuralObjects.contains { $0.structure?.occupies(q) == true }
+            }
+        }
     }
 
     /// The source in a few words: the charge's mass, or the gas cloud's mixture.
@@ -468,6 +483,12 @@ extension BlastSolver {
         try loadDeflagration(scenario)
         fill(
             uniform: Primitive(density: scenario.atmosphere.density, pressure: scenario.atmosphere.pressure))
+        // A charge inside a block, the ground or a structure releases nothing, on uniform cells and
+        // refined alike. The balloon would otherwise lay it in whatever air lies within its two
+        // cells: on uniform cells the air around a building's block, on refined air's finer cells
+        // none, the charge lost (a district's charge on a map building, claim #54).
+        let all = charges(of: scenario)
+        blockedCharges = all.indices.filter { all[$0].mass > 0 && scenario.blocks(all[$0].position) }
         let mappings = mappings(for: scenario)
         let gaugeCells = scenario.gauges.map { gauge -> (i: Int, j: Int, k: Int) in
             var cell = nearestFluidCell(to: gauge.position)
@@ -478,7 +499,6 @@ extension BlastSolver {
             return cell
         }
         let gaugeCentres = gaugeCells.map { grid.cellCentre($0.i, $0.j, $0.k) }
-        let all = charges(of: scenario)
         let positions = all.map(\.position)
         pendingFirings = []
         firings = []
@@ -493,7 +513,8 @@ extension BlastSolver {
             // mapped ones are laid over nothing of theirs; the balloon stands for its charge some
             // time after it fired, and is laid as the mapped ones are, at their clock. Those that
             // fire after it are laid when they do.
-            for (k, charge) in all.enumerated() where !mappings.contains(where: { $0.index == k }) {
+            for (k, charge) in all.enumerated()
+            where !mappings.contains(where: { $0.index == k }) && !blockedCharges.contains(k) {
                 if charge.firingTime <= start {
                     deposit(charge)
                     if charge.firingTime > 0 {
@@ -521,7 +542,7 @@ extension BlastSolver {
         } else if let deflagration = scenario.deflagration {
             deflagrationStage?.initialUnburnt = depositCloud(deflagration)
         } else {
-            for charge in all {
+            for (k, charge) in all.enumerated() where !blockedCharges.contains(k) {
                 if charge.firingTime == 0 {
                     deposit(charge)
                 } else {
@@ -583,7 +604,8 @@ extension BlastSolver {
         else { return [] }
         let charges = charges(of: scenario)
         return charges.indices.compactMap { k in
-            guard charges[k].mass > 0 else { return nil }
+            // A blocked charge is not laid at all (`blockedCharges`).
+            guard charges[k].mass > 0, !scenario.blocks(charges[k].position) else { return nil }
             let others = charges.indices.filter { $0 != k }.map { charges[$0].position }
             return mapping(of: charges[k], among: others, scenario: scenario).map {
                 ChargeMapping(index: k, charge: charges[k], radius: $0.radius, mirrors: $0.mirrors)
@@ -679,10 +701,9 @@ extension BlastSolver {
     /// still releases all of its energy into the air.
     public func deposit(_ charge: Charge) {
         guard charge.mass > 0 else { return }
-        if refinementAtRestart > 1 {
-            depositRefined(charge)
-            return
-        }
+        // Where the fine cells' smaller balloon holds no air (the charge hard against a block whose
+        // coarse cells are solid), the coarse cells' takes it, as on uniform cells.
+        if refinementAtRestart > 1, depositRefined(charge) { return }
         depositCoarse(charge)
     }
 
@@ -691,7 +712,8 @@ extension BlastSolver {
         guard charge.mass > 0 else { return }
         let grid = self.grid
         let dx = grid.cellSize
-        let radius = balloonRadius(for: charge)
+        // The coarse cells' balloon (refinement's minimum is of fine cells).
+        let radius = max(balloonRadius(for: charge), configuration.minimumBalloonCells * dx)
         let low = grid.cell(containing: charge.position - radius)
         let high = grid.cell(containing: charge.position + radius)
         let samples = 5
@@ -727,7 +749,8 @@ extension BlastSolver {
         let volume = total * dx * dx * dx
         let massDensity = charge.mass / volume
         let energyDensity = charge.energy / volume
-        mutateState { cells in
+        // Keeping other charges' fine cells (none on uniform cells).
+        editState { cells in
             for (index, fraction) in weights {
                 cells[index].density += massDensity * fraction
                 cells[index].energy += energyDensity * fraction
@@ -745,7 +768,8 @@ extension BlastSolver {
     /// resolve, and which then drives a stronger blast along its faces' normals than the sphere it
     /// stands for (30% higher peaks 1.5 radii out). The coarse cells take the mean of their fine
     /// cells, and `restart()` gives the fine cells their own share once the patches are placed.
-    private func depositRefined(_ charge: Charge) {
+    /// Whether any fine cell within the balloon was air: if none was, nothing is laid.
+    private func depositRefined(_ charge: Charge) -> Bool {
         let grid = self.grid
         let r = refinementAtRestart
         let fine = grid.cellSize / Float(r)
@@ -787,7 +811,7 @@ extension BlastSolver {
             }
         }
         let total = weights.reduce(Float(0)) { $0 + $1.fraction }
-        guard total > 0 else { return }
+        guard total > 0 else { return false }
         let volume = total * fine * fine * fine
         let massDensity = charge.mass / volume
         let energyDensity = charge.energy / volume
@@ -810,6 +834,7 @@ extension BlastSolver {
         mutateSpecies { species in
             for (index, added) in coarse { species[index].x += Float(added.x * share) }
         }
+        return true
     }
 
     /// The cell containing `point`, or the closest fluid cell if that one is solid.

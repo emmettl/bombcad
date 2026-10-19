@@ -77,6 +77,7 @@ ci-test:
 	python3 Scripts/test-check-shader-mirrors.py
 	python3 Scripts/split/test-split.py
 	python3 Scripts/reference/test-kingery-bulmash.py
+	python3 Scripts/footing-bed/test-bed-replica.py
 	python3 Scripts/reference/test-sdof.py
 	python3 Scripts/reference/test-blast1d.py
 	python3 Scripts/reference/test-compare.py

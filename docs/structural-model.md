@@ -879,7 +879,9 @@ the footing as the tests' did, which leaves its loops narrower and its energy a 
 thirds of a shaken test's; the sand moves rigidly with a shaken base, without its own
 hysteresis or densification (the free field settled a fifth to a quarter as much as the
 footing in SSG04); and a shaken footing does not lurch one way as the tests' did. Its share
-given back is one sand's and its heave fitted to one test.
+given back is one sand's and its heave fitted to one test. Why no point law closes the lurch or
+the rest of the energy, and what was tried, is in
+[validation](validation.md#a-footing-shaken-on-dry-sand) (19 October 2026).
 
 ## Supports and connections, as they were built
 

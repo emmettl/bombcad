@@ -1,0 +1,126 @@
+import Foundation
+import Testing
+
+@testable import BlastCore
+
+/// The protective-design search (`ProtectionSearch`) against the prototype's
+/// (`Scripts/protective/search.py`), on the prototype's own problems and chances
+/// (Fixtures/ProtectiveDesign/prototype.json, `Scripts/protective/export.py`).
+@Suite("Protective design search")
+struct ProtectionSearchTests {
+    struct Scenario: Decodable {
+        struct PlanJSON: Decodable {
+            var site: [Int]
+            var cost: Double
+            var meets: Bool
+            var choices: [[String]]
+        }
+        var scenario: String
+        var targetChance: Double
+        var site: [ProtectionSearch.SiteChange]
+        var sides: [ProtectionSearch.Side]
+        var chances: [String: [[Double]]]
+        var best: PlanJSON
+        var ranked: [PlanJSON]
+        var greedy: PlanJSON
+        var annealed: PlanJSON
+        var asBuilt: PlanJSON
+    }
+
+    static func scenarios() throws -> [Scenario] {
+        let url = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().appending(path: "Fixtures/ProtectiveDesign/prototype.json")
+        return try JSONDecoder().decode([Scenario].self, from: Data(contentsOf: url))
+    }
+
+    static func problem(_ s: Scenario) -> ProtectionSearch.Problem {
+        let table = s.chances
+        return ProtectionSearch.Problem(sides: s.sides, site: s.site, targetChance: s.targetChance) {
+            site, side, option in
+            table[site.map(String.init).joined(separator: ",")]![side][option]
+        }
+    }
+
+    /// A plan's choices as the prototype names them: each side's (glazing, wall).
+    static func named(_ plan: ProtectionSearch.Plan, _ s: Scenario) -> [[String]] {
+        plan.choices.enumerated().map { side, option in
+            [s.sides[side].options[option].glazing, s.sides[side].options[option].wall]
+        }
+    }
+
+    static func same(_ plan: ProtectionSearch.Plan, _ expected: Scenario.PlanJSON, _ s: Scenario) -> Bool {
+        plan.site == expected.site && abs(plan.cost - expected.cost) < 1e-6 && plan.meets == expected.meets
+            && named(plan, s) == expected.choices
+    }
+
+    @Test("Finds the prototype's plans on its problems: the exact best, the ranked list, greedy's, as built")
+    func matchesPrototype() throws {
+        let scenarios = try Self.scenarios()
+        #expect(scenarios.map(\.scenario) == ["courtyard", "street", "weak-shielding"])
+        for s in scenarios {
+            let problem = Self.problem(s)
+            let plans = ProtectionSearch.exact(problem)
+            #expect(plans.count == 1 << s.site.count)
+            let best = ProtectionSearch.best(plans, target: s.targetChance)
+            #expect(Self.same(best, s.best, s), "\(s.scenario): best \(best.site) \(best.cost)")
+            let ranked = ProtectionSearch.ranked(problem, plans: plans)
+            #expect(ranked.count == s.ranked.count)
+            for (a, b) in zip(ranked, s.ranked) {
+                #expect(
+                    Self.same(a, b, s),
+                    "\(s.scenario): ranked \(a.site) \(a.cost) against \(b.site) \(b.cost)")
+            }
+            let greedy = ProtectionSearch.greedy(problem)
+            #expect(Self.same(greedy, s.greedy, s), "\(s.scenario): greedy \(greedy.site) \(greedy.cost)")
+            #expect(Self.same(ProtectionSearch.asBuilt(problem), s.asBuilt, s))
+            // Annealing walks its own random path; like the prototype's it reaches the optimum.
+            let annealed = ProtectionSearch.anneal(problem)
+            #expect(abs(annealed.cost - s.annealed.cost) < 1e-6 && annealed.site == s.annealed.site)
+        }
+    }
+
+    @Test("Combinations come in the order Python's itertools gives them")
+    func combinations() {
+        #expect(
+            ProtectionSearch.combinations(4, 2) == [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]])
+        #expect(ProtectionSearch.combinations(3, 0) == [[]])
+        #expect(ProtectionSearch.combinations(3, 3) == [[0, 1, 2]])
+    }
+
+    @Test(
+        "On BombCAD's model: stronger glazing and stand-off lower a side's chance, infill ends it, and the best plan meets the target"
+    )
+    func bombcadModel() throws {
+        let scene = try FacadeGlassProbabilityTests.row()
+        let inputs = ProtectionModel.Inputs(
+            threats: [.init(mass: 100, x: 10, y: 30)],
+            target: .init(worseThan: "3b", chance: 0.1, buildings: nil),
+            glazing: [
+                .init(name: "toughened", kind: .toughened, costPerM2: 4, strength: nil, laminate: nil),
+                .init(name: "laminated", kind: .laminated, costPerM2: 5, strength: nil, laminate: nil),
+                .init(name: "infill", kind: .infill, costPerM2: 6, strength: nil, laminate: nil),
+            ],
+            standOffs: [.init(name: "keep it back", cost: 50, moves: [.init(threat: 0, x: -60, y: 30)])],
+            barriers: nil, draws: 4, seed: 1)
+        let model = try ProtectionModel.model(scene: scene, cellSize: 2, inputs: inputs)
+        let problem = model.problem
+        #expect(problem.sides.count == 16)
+        // The nearest block's side facing the charge.
+        let front = try #require(model.names.firstIndex { $0.hasSuffix("west") })
+        let annealed = problem.chance([], front, 0)
+        #expect(annealed > 0.5)
+        #expect(problem.chance([], front, 1) <= annealed)
+        #expect(problem.chance([], front, 3) == 0)
+        #expect(problem.chance([0], front, 0) < annealed)
+        let best = ProtectionSearch.best(ProtectionSearch.exact(problem), target: 0.1)
+        #expect(best.meets)
+        #expect(best.chances.allSatisfy { $0 <= 0.1 })
+        #expect(ProtectionSearch.greedy(problem).cost >= best.cost - 1e-9)
+        // Barriers wait for a scene element the loads see.
+        var walls = inputs
+        walls.barriers = ["along the front"]
+        #expect(throws: ProtectionModel.InputError.self) {
+            _ = try ProtectionModel.model(scene: scene, cellSize: 2, inputs: walls)
+        }
+    }
+}

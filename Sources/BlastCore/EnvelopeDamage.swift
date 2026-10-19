@@ -834,15 +834,19 @@ public enum EnvelopeDamageAssessment {
         case .unreinforcedMasonry:
             var masonry = StructureMaterial.masonry
             masonry.steel = nil
-            let system = EnvelopePanel.unreinforcedMasonry(
+            var system = EnvelopePanel.unreinforcedMasonry(
                 thickness: thickness, material: masonry, a: a, b: b,
                 axialLoad: isRoof
                     ? 0 : overburden(load, buildingTop, thickness: thickness, material: masonry),
                 height: load.panelHeight
             )
+            // A liner spans the shorter way, as a membrane between the supports it is lapped onto.
+            if let liner = construction.wallLiner, !isRoof { system = system.lined(liner, span: a) }
             let response = system.response(pressures: pressures, step: load.binS)
+            // Cracked once past the backbone's first point, lined or not.
             let level: EnvelopeDamageLevel =
-                response.lostResistanceAt != nil ? .failed : (response.ductility > 1 ? .heavy : .none)
+                response.lostResistanceAt != nil
+                ? .failed : (response.peakDeflection > system.backbone[0].x ? .heavy : .none)
             let rotation = Self.rotation(response, span: a)
             var result = damage(
                 .unreinforcedMasonry, rotation...rotation, level...level, response.lostResistanceAt)
@@ -980,14 +984,17 @@ public enum EnvelopeDamageAssessment {
         case .unreinforcedMasonry:
             var masonry = StructureMaterial.masonry
             masonry.steel = nil
-            let system = EnvelopePanel.unreinforcedMasonryOneWay(
+            var system = EnvelopePanel.unreinforcedMasonryOneWay(
                 thickness: thickness, material: masonry, span: span, edges: .fixed,
                 axialLoad: isRoof || !load.spansVertically
                     ? 0 : overburden(load, buildingTop, thickness: thickness, material: masonry)
             )
+            if let liner = construction.wallLiner, !isRoof { system = system.lined(liner, span: span) }
             let response = system.response(pressures: pressures, step: load.binS)
+            // Cracked once past the backbone's first point, lined or not.
             let level: EnvelopeDamageLevel =
-                response.lostResistanceAt != nil ? .failed : (response.ductility > 1 ? .heavy : .none)
+                response.lostResistanceAt != nil
+                ? .failed : (response.peakDeflection > system.backbone[0].x ? .heavy : .none)
             let rotation = Self.rotation(response, span: span)
             var result = damage(
                 .unreinforcedMasonry, rotation...rotation, level...level, response.lostResistanceAt)

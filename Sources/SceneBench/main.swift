@@ -70,6 +70,10 @@ enum SceneBench {
             try EnvelopeVentingBenchmark.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "protect" {
+            try Protect.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "glass-calibrate" {
             try GlassCalibration.run(Array(args.dropFirst()))
             return

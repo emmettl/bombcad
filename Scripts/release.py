@@ -118,6 +118,8 @@ def release(args):
     archive = ROOT / "dist" / f"BombCAD-{info['version']}-macos-arm64.zip"
     if archive.exists():
         raise ValueError(f"Archive already exists: {archive.name}. Move it aside explicitly before retrying.")
+    # The long studies in full, which the pre-push checks shorten (Tests/*/FullStudies.swift).
+    os.environ["BOMBCAD_FULL_STUDIES"] = "1"
     run("make", "check")
     run("make", "release-smoke")
     run("make", "app", "CONFIGURATION=release")

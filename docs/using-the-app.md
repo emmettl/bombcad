@@ -59,7 +59,9 @@ two raftered slopes over the structure from its walls' tops and raises the end w
 Independent Structure** adds another structure, up to sixteen, each with its own materials,
 supports, mesh and results (**Editing structure** picks which one the edits go to; imports make
 one each); they share the air, and meet through contact if they come close. You can move
-the charge, or the selected gauge, by clicking the ground. Save Project writes a `.bombcad`
+the charge, or the selected gauge, by clicking the ground. A charge inside a block, a wall, a
+map building, the ground or a structure releases no energy on any grid, and the sidebar says so; a
+roof's top is outside its block, so a charge can stand on one. Save Project writes a `.bombcad`
 document containing the scene, simulation settings, camera and embedded import sources. Projects
 reopen without the original OBJ/STL files. Named projects autosave; each
 project has its own window, and closing an edited untitled project asks whether to save.

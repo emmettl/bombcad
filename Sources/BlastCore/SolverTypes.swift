@@ -634,6 +634,9 @@ public enum BlastError: Error, CustomStringConvertible {
     case barOutsideConcrete(Int, SIMD3<Float>)
     /// Timber in solid elements, which have no law for it: it is meshed as shells and beams.
     case timberNeedsShells(String)
+    /// The charge is inside a block, a building, the ground or a structure, where it would
+    /// release no energy into the air (`Scenario.chargeIsBlocked`).
+    case chargeBlocked(SIMD3<Float>)
 
     public var description: String {
         switch self {
@@ -650,6 +653,11 @@ public enum BlastError: Error, CustomStringConvertible {
             "Discrete bar \(index + 1) does not lie wholly within the structure's elements: at \(point)"
         case .timberNeedsShells(let name):
             "\(name) is timber, which is meshed with shells and beams; choose shells for the structure"
+        case .chargeBlocked(let point):
+            String(
+                format:
+                    "The charge at %.1f, %.1f, %.1f m is inside a block, a building, the ground or a structure, where it would release no energy",
+                point.x, point.y, point.z)
         case .notPlateLike(let index):
             "Solid \(index + 1) is neither a wall or slab nor a column, so it cannot be meshed with shells and beams"
         }

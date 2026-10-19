@@ -1,0 +1,3 @@
+kind: fixed
+
+**A charge inside a block releases nothing on every grid, as the sidebar's warning says.** A charge inside a block, a wall, a map building, the ground or a structure used to go off on uniform cells, its balloon laid in whatever air lay within two cells (the air round a building's block), and vanish on refined air, whose finer balloon found none: a district whose charge sat on a map building broke 43% of its glass on 4 m cells and none refined. Such a charge now releases nothing on either, `scenebench district-compare` refuses the scene with a message, and a charge just outside a block whose fine cells hold no air within the balloon is laid on the coarse cells instead of being lost ([using the app](../../using-the-app.md#the-view-and-the-sidebar)).

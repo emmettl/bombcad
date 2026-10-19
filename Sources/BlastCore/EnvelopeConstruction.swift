@@ -63,6 +63,10 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
     /// Security film on every pane's (monolithic) glass, which holds its fragments once cracked
     /// (`SecurityFilm`); nil for none, and ignored on laminated glass (left out of the JSON).
     public var film: SecurityFilm?
+    /// A spray-on polyurea liner on the inside face of unreinforced masonry walls, lapped onto their
+    /// supports (`WallLiner`); nil for none (left out of the JSON). Freestanding walls are judged
+    /// without it.
+    public var wallLiner: WallLiner?
     /// The monolithic glass is thermally toughened, breaking at four times annealed glass's
     /// strength (`EnvelopePanel.filmedGlass`); nil or false for annealed (left out of the JSON).
     public var glassToughened: Bool?
