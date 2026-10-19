@@ -1221,9 +1221,23 @@ kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
     float lastShare = 1.0f;
     int lastZ = 0;
     // Adds `change` (mass, momentum) and `changeEnergy` (fuel, oxygen, energy) for its whole
-    // volume to fine cell `index`, holding `share` of air.
-    auto apply = [&](int index, float4 change, float4 changeEnergy, float share, int z) {
+    // volume to fine cell `index`, holding `share` of air. Unless `whole`, it takes no more than
+    // leaves it positive (`positiveCutShare`), and what it could not take is returned, for the
+    // cells above.
+    struct Left {
+        float4 change;
+        float4 changeEnergy;
+    };
+    auto apply = [&](int index, float4 change, float4 changeEnergy, float share, int z, bool whole) -> Left {
+        Left left = {float4(0.0f), float4(0.0f)};
         Cell c = fine[index];
+        float taken = whole ? 1.0f : positiveCutShare(c, change, changeEnergy, share, u);
+        if (taken < 1.0f) {
+            left.change = change - taken * change;
+            left.changeEnergy = changeEnergy - taken * changeEnergy;
+            change *= taken;
+            changeEnergy *= taken;
+        }
         c.rho += change.x / share;
         c.mx += change.y / share;
         c.my += change.z / share;
@@ -1243,6 +1257,7 @@ kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
         }
         float ambient = airGravity ? gravityAmbientOf(gravityTable, z, u) : u.ambientPressure;
         recordCell(maxSpeed, momentum, c.rho, pressure, u, ambient);
+        return left;
     };
     // What a column carries up and cannot pass on, stopped by a block above the terrain, goes to
     // its last cell of air, taken as at least half air. That cell may be a sliver between the
@@ -1265,7 +1280,7 @@ kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
                 // Solid: the terrain's beneath the air, or a block above it, which what is still
                 // carried up cannot pass; the last cell of air takes it (`blockedShare`).
                 if (last >= 0 && (any(passed != 0.0f) || any(passedEnergy != 0.0f))) {
-                    apply(last, passed, passedEnergy, blockedShare(lastShare), lastZ);
+                    apply(last, passed, passedEnergy, blockedShare(lastShare), lastZ, true);
                     passed = float4(0.0f);
                     passedEnergy = float4(0.0f);
                 }
@@ -1295,7 +1310,9 @@ kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
                 }
             }
             if (any(change != 0.0f) || any(changeEnergy != 0.0f)) {
-                apply(index, change, changeEnergy, share, f.z);
+                Left left = apply(index, change, changeEnergy, share, f.z, false);
+                passed += left.change;
+                passedEnergy += left.changeEnergy;
             }
             last = index;
             lastShare = share;
@@ -1319,7 +1336,7 @@ kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
             passedUp[slot] += passed;
             passedUp[slot + 1] += passedEnergy;
         } else if (last >= 0) {
-            apply(last, passed, passedEnergy, blockedShare(lastShare), lastZ);
+            apply(last, passed, passedEnergy, blockedShare(lastShare), lastZ, true);
         }
     }
 }
