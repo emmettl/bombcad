@@ -882,9 +882,9 @@ public final class BlastSolver {
         peakBuffer = try buffer(cells * MemoryLayout<Float>.stride, "peak overpressure")
         impulseBuffer = try buffer(cells * MemoryLayout<Float>.stride, "impulse")
         stateContents = stateBuffers.map { $0.contents() }
-        maskContents = maskContents
-        peakContents = peakContents
-        impulseContents = impulseContents
+        maskContents = maskBuffer.contents()
+        peakContents = peakBuffer.contents()
+        impulseContents = impulseBuffer.contents()
         controlBuffer = try buffer(MemoryLayout<StepControl>.stride, "step control")
         // The fastest wave and the largest overpressure; with refined levels' own steps, each
         // level's fastest wave.
