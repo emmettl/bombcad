@@ -83,6 +83,7 @@ swift run -c release blastbench perimeter --study wall
 | Fragments            | [Cooper (1996)](#fragments-against-coopers-data): his worked Mott and Gurney examples to rounding; one counted cast-iron bomb within a factor of 1.36 (rms) by Mott's form, 1.12 by Grady's; drag now the measured curve for tumbling cubes, 5% from the previous law. Hazard distance 0.58–1.02 of DoD 4145.26-M's test-derived distances for two items, in flight; TP-12's own procedure 1.05–1.21 times it on the same fragments; Mott's scaling 1.00–1.36 times the masses of Sternberg's cylinders (TP-12 Table 1) |  Masses either way within a factor of 1.4 (moderate, one test); hazard distance up to two-fifths short (the unsafe side; moderate); launch speeds untested (low) |
 | Ground shock         | Xia et al. (2022), 1 t of TNT on the ground, accelerations 0.5 m deep at 21 and 42 m: the vertical velocity from the manuals' relation and the layered soil column 20 to 30 times the measured accelerations' integral at 21 m and 50 to 80 times at 42 m, within three times a velocity gauge that clipped; the measured motion mostly horizontal, at ranges near and past where the ground's wave outruns the air; the soil not measured. An elastic half-space about the charge, with a direct source calibrated against UFC 3-340-01: the horizontal within 1.5 times at 21 m but 18 times at 42 m, the vertical still 15 to 60 times. With soil that yields (compaction and a Mohr–Coulomb cone, the source the crater's energy): the horizontal 2.1 to 2.4 times at 21 m and 10 to 11 times at 42 m, the vertical 16 to 90 times, the fall-off R^(−1.5) against the measured R^(−3.3) to R^(−3.8) | Far too high in the vertical, the safe side; the horizontal motion that dominated not modelled, the unsafe side; illustrative |
 | A district           | [Beirut, 2020](#a-district-beirut-2020): 14,169 map buildings over 5 km at 4 m; the shock's arrival at Rigby's 30 observers best at 0.5 kt (median 0.98 of observed; 25 of 27 from 400 m out within 10%); peaks 0.68–0.78 of Kingery–Bulmash at 4 m; one typical pane a storey breaks inside 1.25 km where GEER's street survey found 0.39–0.84 of façades damaged, its edge (1.1–2.2 km by the glass assumed) about Rigby 2024's 1.86 km; glass converged by 4 m (3 m within 0.03), a mix of panes by building giving the tail beyond 2 km, GEER's W3 beyond 1.5 km but every façade blown out inside 1.25 km; structure under-damaged: 0.5 m stone cracks but rarely falls where GEER found partial collapse, 0.2 m concrete hardly damaged beyond 750 m where GEER's RC was D1–D3 to 2 km, and not converged at 3 m | Arrival times good; peaks low (the cells); glass moderate, set by the glass assumed more than the yield; structure low, the unsafe side (one construction for all, not converged) |
+| Estimates beside a run | [Against BombCAD's own runs](#estimates-beside-a-run): the quick estimate's glass by building side 75–84% as Beirut's full runs, its walls and roofs 8–46%; the hybrid far field's glass within 0.03 to 1.5 km in a twelfth to a sixth of the time; the charge from arrivals 0.50–0.54 kt at Beirut, 0.97–1.01 of BombCAD's own charges with its ratios | Glass and yields approximations against the model's own runs, not measurement; walls and roofs from the estimate illustrative |
 | Input uncertainty    | [Ensembles](#the-models-spread-from-uncertain-inputs) of nine cases over their uncertain inputs (strengths, bars, charge, standoff, unclear supports): loads spread 2% on a wall and 6–7% close in, structural responses 3–15%, residual deflections and failure 21–34% (rerun 18 October on the day's defaults); the measurement within the model's 5th to 95th percentiles in 10 of 20 outputs; as wide as the tests' own scatter where they were repeated | How much of an error the inputs could explain: where the model misses, little |
 
 No structural result has yet been shown to converge on today's defaults: the meshes quoted as
@@ -5910,6 +5911,76 @@ its limits). At 0.2, 0.5 and 1.1 kt of TNT on saturated ground:
   were D1–D3 out to 2 km. The structure has not converged (3 m cells crack more than 4 m). Until
   façade strips were given their storey's span, they stood as tall as the cells cut them, and the
   coarse grids' weaker walls matched GEER's collapses by an error.
+
+## Estimates beside a run
+
+Three tools answer without running the whole scene, and one study shows a route rather than a
+model. Each is judged against BombCAD's own full runs or synthetic data, not against measurement,
+except where a source is named. The standing each prints, in the app, its JSON and its command,
+is read from the figures here (`ValidationTables.figures`).
+
+### The quick estimate against Beirut's runs
+
+The [façade load surrogate](surrogate-first-look.md#judged-against-beirut), against Beirut's full
+4 m runs at 0.2, 0.5 and 1.1 kt, which it was not fitted to:
+
+- **Glass**, by building side (none broken, some, blown out): it agrees with the run's for 75–84%
+  of sides deep in the district (89–97% in sight of the charge and behind one to three buildings),
+  never two states apart; the shares broken by distance band come within about 0.1 of the run's to
+  2 km.
+- **Walls and roofs:** of the components either calls damaged, 8–27% of the concrete and 37–46% of
+  the stone take the run's level. Not to be relied on.
+- **Loads** at 0.5 kt, the surrogate's over the run's on the median: peaks 0.84–0.99 and impulses
+  0.81–1.01 inside Z = 20 m/kg^(1/3), each strip scattered by about ×1.3 (the logarithm's standard
+  deviation 0.14–0.26); beyond it, 1.08–1.63 times the run's on the median, over the hills and
+  near the run's open faces, and far more scattered.
+- **Time:** 22–28 s over Beirut's 724,512 components on the Studio, against the run's 25–28
+  minutes on the CI mini.
+
+Standing: an approximation for the glass across a district, illustrative for walls and roofs.
+
+### The hybrid far field against Beirut's runs
+
+The [hybrid far field](hybrid-far-field.md#what-holds-and-what-does-not), handing over at 1 km,
+against the same full runs:
+
+- **Inside the hand-over** the near run's façade peaks are the full run's (median 1.00, within
+  3–8%) and its glass states identical.
+- **Beyond it**, façade peaks 0.77–1.04 of the full run's to 2.5 km on the median, impulses
+  1.04–1.5 times (up to 1.9 at 2.5–3 km); the share of sides with some glass broken within 0.03
+  of the full run's to 1.5 km at every yield, but 0.13–0.25 under it at 1.5–2.5 km at 0.2 kt;
+  blown-out shares up to 0.22 apart in a band.
+- **Arrivals** beyond the hand-over 2–4% before the full run's; 0.95–1.08 of Rigby et al.'s
+  observed past 1 km at 0.5 kt.
+- **Time:** the near runs took 135, 335 and 230 s on the CI mini against the full runs' 1,604,
+  2,017 and 2,464 s.
+
+Standing: an approximation for the glass to 1.5 km and the loads to 2.5 km; walls and roofs
+beyond the hand-over take the surrogate's.
+
+### The charge from its arrivals
+
+[Charge inference](charge-inference.md) from the shock's arrival times:
+
+- **Beirut:** 0.50–0.54 kt (90%: 0.36–0.85 kt) and Warehouse 12 within 25–32 m from Rigby et
+  al.'s 31 observers, their own 0.50 kt; 0.57–0.66 kt from Stennett et al.'s six, against their
+  0.637 kt. At 30 °C a fifth lower.
+- **Synthetic charges** (the model the data's own): of 200, 0.91 of masses and 0.95 of places
+  inside their 90% intervals, 0.62 and 0.76 inside their 68%.
+- **BombCAD's own arrivals** over a made-up district: Kingery–Bulmash alone finds the place but
+  1.27–1.95 times the yield; with BombCAD's ratios from a run at the estimate, 0.97–1.01 of it on
+  2 m cells, the truth inside every 90% interval.
+- **Broken glass** (GEER's survey) fits no yield and is not used for one.
+
+Standing: an approximation for the yield and the place from arrival times; illustrative for
+broken glass.
+
+### A house from a floor plan
+
+The [worked example](using-the-app.md#from-architectural-plans) of a house drawn as a plan, raised
+to IFC and imported (`PlanHouseStudyTests`): under 20 kg on the ground 10 m in front, the front
+reads 126 kPa reflected and its brick leaf is thrown into the house, 179 of 5,597 elements removed.
+Compared with no test: illustrative of the route, not of the walls.
 
 ## What is missing
 
