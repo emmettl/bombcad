@@ -58,7 +58,7 @@ public enum AdblastCladdingTest {
         public var buckles = true
         public var postBuckling = ProfiledSheet.PostBuckling.automatic
         /// The buckled flanges keep their folds (`ProfiledSheet.foldMemory`).
-        public var foldMemory = false
+        public var foldMemory = true
         /// Whether the screws can pull through (false: the sheet held to the tubes).
         public var releases = true
         public init() {}

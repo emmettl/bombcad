@@ -6,7 +6,7 @@ import Metal
 // see LangdonPanelTest.swift), the profiled-sheet model against measured deflections:
 //
 //   blastbench langdon [--tests c622,c1212] [--h 0.0572] [--yield 356] [--skin 0.05]
-//                      [--connection springs|plates] [--no-buckling] [--fold]
+//                      [--connection springs|plates] [--no-buckling] [--no-fold]
 //                      [--fixture Fixtures/Langdon2003/panels.json] [--out dir]
 //
 // Prints each test's measured and computed peak and permanent deflections, and writes them as
@@ -26,7 +26,7 @@ func runLangdon(device: MTLDevice) throws {
     if flag("no-buckling") { settings.buckles = false }
     if flag("collapse") { settings.postBuckling = .collapse }
     if flag("effective-width") { settings.postBuckling = .effectiveWidth }
-    if flag("fold") { settings.foldMemory = true }
+    if flag("no-fold") { settings.foldMemory = false }
     let out = URL(filePath: option("out") ?? "/Volumes/StudioData/bombcad/profiled-sheeting/langdon-runs")
     try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
     var summary =

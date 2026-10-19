@@ -2918,6 +2918,22 @@ the shots near elastic and of the curtain shot are within 14%.
     [data wanted](data-wanted.md).
 - **A frame as a whole.**
 
+## Profiled steel sheeting
+
+Sheets as a skin with their ribs as beams, their thin flanges buckling, on springs or screws
+([profiled sheeting](profiled-sheeting.md)):
+
+- **Langdon's corrugated panels** (33 pulse-pressure tests, both ways): 10 of the 13 permanent
+  sets over 10 mm within half to twice of measured, unchanged by the fold (its negative sets 1–5%
+  lower). Three miss where the panels
+  buckled earlier than plate theory says (c1212, c1803, c1801-4). The section-flattening term
+  that might reach them would be fitted to those three, and is not built.
+- **ADBLAST's screwed TR84 cladding in air** (10 shots of 0.5–1.5 kg):
+  - the first deflection is 0.90–1.35 of measured;
+  - what is left after misses by 27 mm on average (66 before 19 October 2026, when buckled
+    flanges began to keep their folds). The 1.5 mm sheets now end level or lifted as tested, and
+    the 0.75 mm sheets end 14–40 mm down where they ended within 23 mm of level.
+
 ## Cross-laminated timber buildings at Tyndall
 
 **The test.** Weaver, Newberry, O'Laughlin and Podesto, *Results from Blast Tests of Full-Scale

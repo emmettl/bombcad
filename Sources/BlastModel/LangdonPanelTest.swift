@@ -133,7 +133,7 @@ public enum LangdonPanelTest {
         public var buckles = true
         public var postBuckling = ProfiledSheet.PostBuckling.automatic
         /// The buckled flanges keep their folds (`ProfiledSheet.foldMemory`).
-        public var foldMemory = false
+        public var foldMemory = true
 
         public init() {}
     }

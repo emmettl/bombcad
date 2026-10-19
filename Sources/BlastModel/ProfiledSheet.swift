@@ -268,8 +268,8 @@ public struct ProfiledSheet: Sendable, Hashable {
     /// buckling, as a half-sine over the flange's width b, w = (2b/π)√ε, which tension pulls
     /// straight at the strength of its plastic hinges, σ_y t / 2w (a fold with hinges at its middle
     /// and ends, T w = 2 M_p, M_p = σ_y t² / 4), instead of at the yield. Off, a buckled fibre is
-    /// pulled back at its yield.
-    public var foldMemory = false
+    /// pulled back at its yield. On by default since 19 October 2026 (ADBLAST's final sets).
+    public var foldMemory = true
 
     public init(
         profile: SheetProfile, region: Box, span: Int, steel: StructureMaterial = .structuralSteel,
